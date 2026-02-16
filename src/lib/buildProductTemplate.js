@@ -26,12 +26,10 @@ export function buildProductTemplate({ category, brands, sports, rawContent }) {
   const technicalStatsInstructions = (category.technicalStats || [])
   .map((stat) => {
     let line = `- ${stat.name} (Label: ${stat.label})`;
-    if (stat.prompt) {
-      line += `\n  Rule: ${stat.prompt}`;
-    }
     return line;
   })
   .join("\n\n");
+  const globalTechnicalPrompt = category.technicalStatsPrompt || "";
 
   // 2. Brand & Sport & Serie context
   const brandList = brands.map((b) => ({
@@ -155,6 +153,7 @@ Correct attributes output:
 - This field is for technical scoring (Radar Chart).
 - Keys MUST match technicalStats names defined in Category.
 - Values MUST be integers between 0 and 100.
+${globalTechnicalPrompt ? `\nGLOBAL SCORING RULE:\n${globalTechnicalPrompt}\n` : ""}
 - Use your senior judgment based on raw content and "Technical Stats Rules" below.
 - If content doesn't specify a score, estimate logically based on professional knowledge of the product.
  

@@ -209,7 +209,8 @@ Correct name output:
   });
 
   const [technicalStats, setTechnicalStats] = useState([]); // لیست شاخص‌های فنی
-  const [currentStat, setCurrentStat] = useState({ name: '', label: '', prompt: '', description: '' });
+  const [currentStat, setCurrentStat] = useState({ name: '', label: '', description: '' });
+  const [technicalStatsPrompt, setTechnicalStatsPrompt] = useState('');
   const [editingStatId, setEditingStatId] = useState(null);
 
 
@@ -263,7 +264,7 @@ Correct name output:
     }
   
     // ریست کردن فرم به صورت کامل
-    setCurrentStat({ name: '', label: '', prompt: '', description: '' });
+    setCurrentStat({ name: '', label: '', description: '' });
   };
   
   const handleEditStat = (stat) => {
@@ -271,7 +272,6 @@ Correct name output:
     setCurrentStat({
       name: stat.name,
       label: stat.label,
-      prompt: stat.prompt || '',
       description: stat.description || '' // اطمینان از بارگذاری توضیحات هنگام ویرایش
     });
     document.getElementById('stat-form-anchor')?.scrollIntoView({ behavior: 'smooth' });
@@ -434,6 +434,7 @@ Correct name output:
         parent: formData.parent || null,
         attributes: formData.attributes,
         technicalStats: technicalStats,
+        technicalStatsPrompt: technicalStatsPrompt,
         prompts: productPrompts.filter((p) => p.context.trim() !== ''),
       };
 
@@ -697,12 +698,6 @@ Correct name output:
                   onChange={(e) => setCurrentStat(p => ({ ...p, description: e.target.value }))}
                   placeholder="مثال: میزان نیروی انتقالی به توپ در هنگام ضربه"
                 />
-                <Textarea
-                  label="راهنمای پرامپت (برای تحلیل AI)"
-                  value={currentStat.prompt}
-                  onChange={(e) => setCurrentStat(p => ({ ...p, prompt: e.target.value }))}
-                  placeholder="توضیح دهید AI بر چه اساسی باید نمره این شاخص را بین 0 تا 100 تعیین کند..."
-                />
                 <Button type="button" variant="primary" onClick={handleAddOrUpdateStat}>
                   {editingStatId ? 'بروزرسانی شاخص' : 'افزودن به نمودار'}
                 </Button>
@@ -723,6 +718,23 @@ Correct name output:
                   </div>
                 ))}
               </div>
+              {technicalStats.length > 0 && (
+                <div className="mt-6 p-6 bg-orange-50/50 border border-orange-100 rounded-[var(--radius)] space-y-3">
+                  <div className="flex items-center gap-2 text-orange-700 font-bold text-sm">
+                    <FiTag size={16} />
+                    راهنمای واحد هوش مصنوعی برای تحلیل شاخص‌های فنی
+                  </div>
+                  <Textarea
+                    value={technicalStatsPrompt}
+                    onChange={(e) => setTechnicalStatsPrompt(e.target.value)}
+                    placeholder="به AI توضیح دهید چگونه نمرات (۰ تا ۱۰۰) تمام شاخص‌های فوق را بر اساس دیتای محصول محاسبه کند..."
+                    rows={4}
+                  />
+                  <p className="text-[11px] text-neutral-500 italic">
+                    * این پرامپت برای تمامی شاخص‌های تعریف شده در این بخش به صورت یکپارچه عمل می‌کند.
+                  </p>
+                </div>
+              )}
             </div>
 
             {/* Submit Actions */}

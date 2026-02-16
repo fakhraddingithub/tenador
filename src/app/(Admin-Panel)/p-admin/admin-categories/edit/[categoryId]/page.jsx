@@ -158,7 +158,8 @@ export default function EditCategory() {
   });
 
   const [technicalStats, setTechnicalStats] = useState([]);
-  const [currentStat, setCurrentStat] = useState({ name: '', label: '', prompt: '', description: '' });
+  const [currentStat, setCurrentStat] = useState({ name: '', label: '', description: '' });
+  const [technicalStatsPrompt, setTechnicalStatsPrompt] = useState('');
   const [editingStatId, setEditingStatId] = useState(null);
 
   const sensors = useSensors(
@@ -187,6 +188,8 @@ export default function EditCategory() {
       if (res.ok && data.category) {
         const cat = data.category;
 
+        setTechnicalStatsPrompt(cat.technicalStatsPrompt || '');
+
         setFormData({
           title: cat.title || '',
           name: cat.name || '',
@@ -197,6 +200,7 @@ export default function EditCategory() {
             id: attr.id || attr._id || `attr-${Math.random().toString(36).substr(2, 9)}`,
             options: Array.isArray(attr.options) ? attr.options : []
           })),
+          technicalStatsPrompt: cat.technicalStatsPrompt
         });
 
         setTechnicalStats((cat.technicalStats || []).map(stat => ({
@@ -242,12 +246,12 @@ export default function EditCategory() {
       setTechnicalStats(prev => [...prev, newStat]);
       showToast.success('شاخص فنی جدید اضافه شد');
     }
-    setCurrentStat({ name: '', label: '', prompt: '', description: '' });
+    setCurrentStat({ name: '', label: '', description: '' });
   };
 
   const handleEditStat = (stat) => {
     setEditingStatId(stat.id);
-    setCurrentStat({ name: stat.name, label: stat.label, prompt: stat.prompt || '', description: stat.description || '' });
+    setCurrentStat({ name: stat.name, label: stat.label, description: stat.description || '' });
     document.getElementById('stat-form-anchor')?.scrollIntoView({ behavior: 'smooth' });
   };
 
@@ -398,6 +402,7 @@ export default function EditCategory() {
         parent: formData.parent || null,
         attributes: formData.attributes,
         technicalStats: technicalStats,
+        technicalStatsPrompt: technicalStatsPrompt,
         prompts: productPrompts.filter((p) => p.context.trim() !== ''),
       };
 
@@ -575,18 +580,12 @@ export default function EditCategory() {
                   onChange={(e) => setCurrentStat(p => ({ ...p, description: e.target.value }))}
                   placeholder="توضیحی که کاربر در سایت مشاهده می‌کند"
                 />
-                <Textarea
-                  label="راهنمای پرامپت (برای تحلیل AI)"
-                  value={currentStat.prompt}
-                  onChange={(e) => setCurrentStat(p => ({ ...p, prompt: e.target.value }))}
-                  placeholder="AI چگونه باید نمره این شاخص را تعیین کند؟"
-                />
                 <div className="flex gap-2">
                   <Button type="button" onClick={handleAddOrUpdateStat}>
                     {editingStatId ? 'بروزرسانی شاخص' : 'افزودن شاخص جدید'}
                   </Button>
                   {editingStatId && (
-                    <Button type="button" variant="secondary" onClick={() => { setEditingStatId(null); setCurrentStat({ name: '', label: '', prompt: '',description: '' }) }}>
+                    <Button type="button" variant="secondary" onClick={() => { setEditingStatId(null); setCurrentStat({ name: '', label: '', prompt: '', description: '' }) }}>
                       انصراف
                     </Button>
                   )}
@@ -617,6 +616,23 @@ export default function EditCategory() {
                   </div>
                 )}
               </div>
+              {technicalStats.length > 0 && (
+                <div className="mt-6 p-6 bg-orange-50/50 border border-orange-100 rounded-[var(--radius)] space-y-3">
+                  <div className="flex items-center gap-2 text-orange-700 font-bold text-sm">
+                    <FiTag size={16} />
+                    راهنمای واحد هوش مصنوعی برای تحلیل شاخص‌های فنی
+                  </div>
+                  <Textarea
+                    value={technicalStatsPrompt}
+                    onChange={(e) => setTechnicalStatsPrompt(e.target.value)}
+                    placeholder="به AI توضیح دهید چگونه نمرات (۰ تا ۱۰۰) تمام شاخص‌های فوق را بر اساس دیتای محصول محاسبه کند..."
+                    rows={4}
+                  />
+                  <p className="text-[11px] text-neutral-500 italic">
+                    * این پرامپت برای تمامی شاخص‌های تعریف شده در این بخش به صورت یکپارچه عمل می‌کند.
+                  </p>
+                </div>
+              )}
             </div>
 
             {/* Actions */}

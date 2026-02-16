@@ -53,11 +53,7 @@ const TechnicalStatSchema = new mongoose.Schema(
     description: {
       type: String, 
     },
-    prompt: {
-      type: String,
-      required: false, // راهنمای AI برای تخمین عدد این پارامتر
-      trim: true,
-    },
+    
     min: { type: Number, default: 0 },
     max: { type: Number, default: 100 }
   },
@@ -109,6 +105,10 @@ const CategorySchema = new mongoose.Schema(
     technicalStats: {
       type: [TechnicalStatSchema],
       default: [],
+    },
+
+    technicalStatsPrompt: {
+      type: String,
     },
 
     parent: {

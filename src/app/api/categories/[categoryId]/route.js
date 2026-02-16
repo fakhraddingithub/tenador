@@ -29,7 +29,7 @@ export async function PUT(req, { params }) {
     await connectToDB();
     const { categoryId } = await params;
     const body = await req.json();
-    const { title, name, parent, attributes, technicalStats, prompts } = body;
+    const { title, name, parent, attributes, technicalStats, technicalStatsPrompt, prompts } = body;
 
     const category = await Category.findById(categoryId);
     if (!category) {
@@ -69,6 +69,10 @@ export async function PUT(req, { params }) {
         }
         category.technicalStats = technicalStats;
       }
+    }
+
+    if (technicalStatsPrompt !== undefined) {
+      category.technicalStatsPrompt = technicalStatsPrompt
     }
 
     // به‌روزرسانی پرامپت‌ها

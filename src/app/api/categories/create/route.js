@@ -7,7 +7,7 @@ export async function POST(req) {
     await connectToDB();
 
     const body = await req.json();
-    const { title, name, parent, prompts, attributes, technicalStats } = body;
+    const { title, name, parent, prompts, attributes, technicalStats, technicalStatsPrompt } = body;
 
     // 1. اعتبارسنجی فیلدهای اجباری پایه
     if (!title?.trim()) {
@@ -26,10 +26,10 @@ export async function POST(req) {
     }
 
     // 2. بررسی تکراری نبودن (Case-insensitive برای اطمینان بیشتر)
-    const exists = await Category.findOne({ 
-      $or: [{ title: title.trim() }, { name: name.trim() }] 
+    const exists = await Category.findOne({
+      $or: [{ title: title.trim() }, { name: name.trim() }]
     });
-    
+
     if (exists) {
       return Response.json({ error: "کتگوری با این عنوان یا نام قبلاً ثبت شده است" }, { status: 409 });
     }
@@ -66,7 +66,8 @@ export async function POST(req) {
       parent: parent || null,
       prompts: prompts || [],
       attributes: attributes || [],
-      technicalStats: technicalStats || [], // ذخیره فیلد جدید
+      technicalStats: technicalStats || [],
+      technicalStatsPrompt: technicalStatsPrompt || "",
     });
 
     // 6. ثبت در سیستم اسلاگ‌های مرکزی
