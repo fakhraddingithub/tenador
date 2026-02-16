@@ -22,6 +22,17 @@ export function buildProductTemplate({ category, brands, sports, rawContent }) {
     })
     .join("\n\n");
 
+    // 1.1 Technical Stats rules
+  const technicalStatsInstructions = (category.technicalStats || [])
+  .map((stat) => {
+    let line = `- ${stat.name} (Label: ${stat.label})`;
+    if (stat.prompt) {
+      line += `\n  Rule: ${stat.prompt}`;
+    }
+    return line;
+  })
+  .join("\n\n");
+
   // 2. Brand & Sport & Serie context
   const brandList = brands.map((b) => ({
     id: b._id.toString(),
@@ -140,6 +151,12 @@ Correct attributes output:
   "grip": ["L2", "L3", "L4"]
   }
   
+  technicalStats:
+- This field is for technical scoring (Radar Chart).
+- Keys MUST match technicalStats names defined in Category.
+- Values MUST be integers between 0 and 100.
+- Use your senior judgment based on raw content and "Technical Stats Rules" below.
+- If content doesn't specify a score, estimate logically based on professional knowledge of the product.
  
   tag:
   ${category.prompts?.map(prompt => prompt.field === "tag" ? prompt.context.toString() : null)}
@@ -160,6 +177,9 @@ Category ID: ${category._id}
 
 Category Attributes:
 ${attributeInstructions}
+
+Category Technical Stats (Radar Chart Scoring):
+${technicalStatsInstructions || "No technical stats defined for this category."}
 
 ===============================
 AVAILABLE BRANDS
@@ -197,6 +217,9 @@ REQUIRED OUTPUT JSON STRUCTURE
   - attributes values MUST conform exactly to rules above
   - select attributes MUST always be arrays, never strings
   "attributes": {},
+  "technicalStats": {
+     "stat_name": 85
+  },
   "tag": [],
   "mainImage": "",
   "gallery": []

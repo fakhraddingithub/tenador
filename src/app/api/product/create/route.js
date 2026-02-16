@@ -90,10 +90,11 @@ export async function POST(req) {
       athlete,
       sport,
       attributes,
+      technicalStats, // اضافه شد
       label,
     } = body;
 
-    /* -------------------------------
+     /* -------------------------------
        Validate Required Fields
     ------------------------------- */
     const requiredFields = {
@@ -121,33 +122,45 @@ export async function POST(req) {
     ------------------------------- */
     const foundCategory = await Category.findById(category);
     if (!foundCategory) {
-      return Response.json(
-        { error: "Category not found" },
-        { status: 404 }
-      );
+      return Response.json({ error: "Category not found" }, { status: 404 });
     }
 
     /* -------------------------------
        Validate Attributes
     ------------------------------- */
     const allowedAttrs = foundCategory.attributes.map(a => a.name);
-
     if (attributes) {
       for (const key of Object.keys(attributes)) {
         if (!allowedAttrs.includes(key)) {
+          return Response.json({ error: `Attribute "${key}" is not allowed` }, { status: 400 });
+        }
+      }
+      for (const attr of foundCategory.attributes) {
+        if (attr.required && (attributes[attr.name] === undefined || attributes[attr.name] === null)) {
+          return Response.json({ error: `ویژگی "${attr.label}" را وارد کنید` }, { status: 400 });
+        }
+      }
+    }
+
+    /* -------------------------------
+       Validate Technical Stats (جدید 🔥)
+    ------------------------------- */
+    const allowedStats = foundCategory.technicalStats 
+      ? foundCategory.technicalStats.map(s => s.name) 
+      : [];
+
+    if (technicalStats) {
+      for (const key of Object.keys(technicalStats)) {
+        if (!allowedStats.includes(key)) {
           return Response.json(
-            { error: `Attribute "${key}" is not allowed` },
+            { error: `شاخص فنی "${key}" در این دسته تعریف نشده است` },
             { status: 400 }
           );
         }
-      }
-
-      for (const attr of foundCategory.attributes) {
-        if (attr.required && attributes[attr.name] == null) {
-          return Response.json(
-            { error: `ویژگی "${attr.label}" را وارد کنید` },
-            { status: 400 }
-          );
+        
+        const val = technicalStats[key];
+        if (isNaN(val) || val < 0 || val > 100) {
+           console.warn(`Value for ${key} is not a standard score (0-100): ${val}`);
         }
       }
     }
@@ -164,11 +177,7 @@ export async function POST(req) {
       await renameCloudinaryImage(mainImage, sku);
 
     const normalizedGallery = Array.isArray(gallery)
-      ? await Promise.all(
-          gallery.map((img, i) =>
-            renameCloudinaryImage(img, sku, i + 1)
-          )
-        )
+      ? await Promise.all(gallery.map((img, i) => renameCloudinaryImage(img, sku, i + 1)))
       : [];
 
     /* -------------------------------
@@ -194,14 +203,12 @@ export async function POST(req) {
       athlete: (athlete && athlete !== "") ? athlete : null,
       sport: sport || undefined,
       attributes: attributes || {},
+      technicalStats: technicalStats || {},
       label: label || "none",
     });
 
     return Response.json(
-      {
-        message: "Product created successfully",
-        product,
-      },
+      { message: "Product created successfully", product },
       { status: 201 }
     );
 

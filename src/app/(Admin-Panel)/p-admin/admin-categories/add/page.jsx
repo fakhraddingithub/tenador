@@ -82,7 +82,7 @@ function SortableAttribute({ attr, onRemove, onEdit }) {
           <div className="flex items-center gap-2 mt-1">
             <span className="text-xs text-neutral-500 font-mono">{attr.name}</span>
             <span className="text-xs text-neutral-400">•</span>
-            <span className="text-xs text-neutral-500">{attr.type}</span>
+            <span className="text-xs text-neutral-500">{attr.type === "string" ? "جدول ویژگی ها " : attr.type === "select" ? "لیست انتخابی" : "نمودار شاخص"}</span>
             <span className="text-xs text-neutral-400">•</span>
             <span className="text-xs text-neutral-500 font-bold">Priority: {attr.order}</span>
           </div>
@@ -189,7 +189,7 @@ Correct name output:
   ];
 
   const [productPrompts, setProductPrompts] = useState(
-    productFields.map((item) => ({ field: item.field,context: item.context }))
+    productFields.map((item) => ({ field: item.field, context: item.context }))
   );
 
   const [formData, setFormData] = useState({
@@ -207,6 +207,11 @@ Correct name output:
     options: '',
     prompt: '',
   });
+
+  const [technicalStats, setTechnicalStats] = useState([]); // لیست شاخص‌های فنی
+  const [currentStat, setCurrentStat] = useState({ name: '', label: '', prompt: '', description: '' });
+  const [editingStatId, setEditingStatId] = useState(null);
+
 
   // DnD Sensors Configuration
   const sensors = useSensors(
@@ -232,6 +237,48 @@ Correct name output:
     } catch (error) {
       console.error('Error fetching categories:', error);
     }
+  };
+
+  const handleAddOrUpdateStat = () => {
+    if (!currentStat.name || !currentStat.label) {
+      showToast.warning('نام و برچسب شاخص فنی الزامی است');
+      return;
+    }
+  
+    if (editingStatId) {
+      // ویرایش شاخص موجود
+      setTechnicalStats(prev => prev.map(s => 
+        s.id === editingStatId ? { ...currentStat, id: editingStatId } : s
+      ));
+      setEditingStatId(null);
+      showToast.success('شاخص فنی بروزرسانی شد');
+    } else {
+      // افزودن شاخص جدید
+      const newStat = {
+        ...currentStat,
+        id: `stat-${Math.random().toString(36).substr(2, 9)}`
+      };
+      setTechnicalStats(prev => [...prev, newStat]);
+      showToast.success('شاخص فنی جدید اضافه شد');
+    }
+  
+    // ریست کردن فرم به صورت کامل
+    setCurrentStat({ name: '', label: '', prompt: '', description: '' });
+  };
+  
+  const handleEditStat = (stat) => {
+    setEditingStatId(stat.id);
+    setCurrentStat({
+      name: stat.name,
+      label: stat.label,
+      prompt: stat.prompt || '',
+      description: stat.description || '' // اطمینان از بارگذاری توضیحات هنگام ویرایش
+    });
+    document.getElementById('stat-form-anchor')?.scrollIntoView({ behavior: 'smooth' });
+  };
+
+  const removeStat = (id) => {
+    setTechnicalStats(prev => prev.filter(s => s.id !== id));
   };
 
   const handleParentChange = (parentId) => {
@@ -386,6 +433,7 @@ Correct name output:
         name: formData.name,
         parent: formData.parent || null,
         attributes: formData.attributes,
+        technicalStats: technicalStats,
         prompts: productPrompts.filter((p) => p.context.trim() !== ''),
       };
 
@@ -523,12 +571,11 @@ Correct name output:
 
                 <div className="grid md:grid-cols-2 gap-4">
                   <Select
-                    label= "محل نمایش ویژگی"
+                    label="محل نمایش ویژگی"
                     value={currentAttribute.type}
                     onChange={(e) => setCurrentAttribute((p) => ({ ...p, type: e.target.value }))}
                     options={[
                       { value: 'string', label: 'جدول ویژگی ها' },
-                      { value: 'number', label: 'نمودار' },
                       { value: 'select', label: 'لیست انتخابی' },
                     ]}
                   />
@@ -614,6 +661,67 @@ Correct name output:
                     هیچ ویژگی اختصاصی برای این دسته تعریف نشده است.
                   </div>
                 )}
+              </div>
+            </div>
+
+            {/* Technical Stats Section (Chart) */}
+            <div id="stat-form-anchor" className="border-t pt-8 space-y-6">
+              <div className="flex items-center gap-3">
+                <div className="p-2 rounded-lg bg-orange-100 text-orange-600">
+                  <FiEdit3 size={18} />
+                </div>
+                <div>
+                  <h3 className="text-lg font-bold">شاخص‌های فنی (نمودار رادار)</h3>
+                  <p className="text-xs text-neutral-500">ویژگی‌هایی که در نمودار عنکبوتی مقایسه می‌شوند (مثلاً: قدرت، کنترل)</p>
+                </div>
+              </div>
+
+              <div className={`rounded-[var(--radius)] p-6 space-y-5 border-2 ${editingStatId ? 'bg-orange-50/30 border-orange-200' : 'bg-neutral-50 border-transparent'}`}>
+                <div className="grid md:grid-cols-2 gap-4">
+                  <Input
+                    label="نام سیستمی (انگلیسی)"
+                    value={currentStat.name}
+                    onChange={(e) => setCurrentStat(p => ({ ...p, name: e.target.value }))}
+                    placeholder="e.g. power"
+                  />
+                  <Input
+                    label="نام نمایشی (فارسی)"
+                    value={currentStat.label}
+                    onChange={(e) => setCurrentStat(p => ({ ...p, label: e.target.value }))}
+                    placeholder="مثال: قدرت ضربه"
+                  />
+                </div>
+                <Textarea
+                  label="توضیح کوتاه شاخص (نمایش در فرانت-اند)"
+                  value={currentStat.description}
+                  onChange={(e) => setCurrentStat(p => ({ ...p, description: e.target.value }))}
+                  placeholder="مثال: میزان نیروی انتقالی به توپ در هنگام ضربه"
+                />
+                <Textarea
+                  label="راهنمای پرامپت (برای تحلیل AI)"
+                  value={currentStat.prompt}
+                  onChange={(e) => setCurrentStat(p => ({ ...p, prompt: e.target.value }))}
+                  placeholder="توضیح دهید AI بر چه اساسی باید نمره این شاخص را بین 0 تا 100 تعیین کند..."
+                />
+                <Button type="button" variant="primary" onClick={handleAddOrUpdateStat}>
+                  {editingStatId ? 'بروزرسانی شاخص' : 'افزودن به نمودار'}
+                </Button>
+              </div>
+
+              {/* نمایش لیست شاخص‌های اضافه شده */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                {technicalStats.map((stat) => (
+                  <div key={stat.id} className="flex items-center justify-between p-3 bg-white border border-neutral-200 rounded-lg shadow-sm">
+                    <div className="flex flex-col">
+                      <span className="font-bold text-sm">{stat.label}</span>
+                      <span className="text-[10px] text-neutral-400 font-mono">{stat.name}</span>
+                    </div>
+                    <div className="flex gap-2">
+                      <button type="button" onClick={() => handleEditStat(stat)} className="p-2 text-blue-500 hover:bg-blue-50 rounded-md transition"><FiEdit3 size={14} /></button>
+                      <button type="button" onClick={() => removeStat(stat.id)} className="p-2 text-red-500 hover:bg-red-50 rounded-md transition"><FiTrash2 size={14} /></button>
+                    </div>
+                  </div>
+                ))}
               </div>
             </div>
 

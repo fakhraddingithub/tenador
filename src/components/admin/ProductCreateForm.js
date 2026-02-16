@@ -54,6 +54,7 @@ export default function ProductCreateForm({ initialData = {} }) {
     athlete: '',
     sport: '',
     attributes: {},
+    technicalStats: {},
     label: 'none',
     ...initialData,
   });
@@ -102,6 +103,7 @@ export default function ProductCreateForm({ initialData = {} }) {
   // ---------------------------
   const selectedCategory = categories.find(c => c._id === formData.category);
   const categoryAttributes = selectedCategory?.attributes || [];
+  const categoryTechnicalStats = selectedCategory?.technicalStats || [];
 
   // normalize AI attributes when category loads
   useEffect(() => {
@@ -126,6 +128,16 @@ export default function ProductCreateForm({ initialData = {} }) {
       attributes: {
         ...prev.attributes,
         [key]: value,
+      },
+    }));
+  }
+
+  function updateTechnicalStat(key, value) {
+    setFormData(prev => ({
+      ...prev,
+      technicalStats: {
+        ...prev.technicalStats,
+        [key]: value, // مقدار در Input استرینگ است، موقع سابمیت عدد می‌شود
       },
     }));
   }
@@ -156,9 +168,18 @@ export default function ProductCreateForm({ initialData = {} }) {
         }
       }
 
+      const normalizedStats = {};
+      for (const stat of categoryTechnicalStats) {
+        const val = formData.technicalStats?.[stat.name];
+        if (val !== undefined && val !== '') {
+          normalizedStats[stat.name] = Number(val);
+        }
+      }
+
       const payload = {
         ...formData,
         attributes: normalizedAttributes,
+        technicalStats: normalizedStats,
         basePrice: Number(formData.basePrice) || 0,
         tag: formData.tag || [],
         athlete: formData.athlete || null,
@@ -314,6 +335,34 @@ export default function ProductCreateForm({ initialData = {} }) {
               ))}
             </tbody>
           </table>
+        </div>
+      )}
+
+      {/* TECHNICAL STATS (RADAR CHART) */}
+      {categoryTechnicalStats.length > 0 && (
+        <div className="border-t pt-6 bg-blue-50/30 p-4 rounded-lg">
+          <h3 className="font-bold mb-4 text-blue-800">شاخص‌های فنی (نمودار رادار)</h3>
+          <p className="text-xs text-gray-500 mb-4">نمره‌ای بین 0 تا 100 وارد کنید.</p>
+
+          <div className="grid md:grid-cols-2 gap-4">
+            {categoryTechnicalStats.map(stat => (
+              <div key={stat.name} className="flex items-center space-x-reverse space-x-3 bg-white p-2 border rounded shadow-sm">
+                <label className="w-1/2 text-sm font-medium text-gray-700">
+                  {stat.label}
+                </label>
+                <div className="w-1/2">
+                  <Input
+                    type="number"
+                    min="0"
+                    max="100"
+                    placeholder="0-100"
+                    value={formData.technicalStats?.[stat.name] || ''}
+                    onChange={e => updateTechnicalStat(stat.name, e.target.value)}
+                  />
+                </div>
+              </div>
+            ))}
+          </div>
         </div>
       )}
 

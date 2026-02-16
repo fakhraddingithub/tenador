@@ -64,8 +64,8 @@ export async function GET(req, { params }) {
     product.tag = product.tag || [];
     product.gallery = product.gallery || [];
     product.attributes = product.attributes || {};
+    product.technicalStats = product.technicalStats || {};
     
-    // fallback to DB cache
     const priceDoc = await PriceCache.findOne({ productId }).lean();
     const price = priceDoc || { finalPrice: product.basePrice, bestDiscount: 0 };
     
@@ -82,15 +82,11 @@ export async function PUT(req, { params }) {
 
     const resolvedParams = await params;
     const productId = resolvedParams.productId || resolvedParams.id;
-    
     const body = await req.json();
 
     const product = await Product.findById(productId);
     if (!product) {
-      return NextResponse.json(
-        { error: "محصول پیدا نشد" },
-        { status: 404 }
-      );
+      return NextResponse.json({ error: "محصول پیدا نشد" }, { status: 404 });
     }
 
     const {
@@ -108,62 +104,67 @@ export async function PUT(req, { params }) {
       athlete,
       sport,
       attributes,
+      technicalStats,
       label,
     } = body;
 
     // -------------------------
-    // Validate Category + Attributes
+    // Validate Category + Attributes + TechnicalStats
     // -------------------------
     let finalCategoryId = category || product.category;
+    const foundCategory = await Category.findById(finalCategoryId);
 
-    if (category) {
-      const foundCategory = await Category.findById(category);
-      if (!foundCategory) {
-        return NextResponse.json(
-          { error: "دسته‌بندی پیدا نشد" },
-          { status: 404 }
-        );
-      }
+    if (!foundCategory) {
+        return NextResponse.json({ error: "دسته‌بندی نامعتبر است" }, { status: 400 });
     }
 
+    // اعتبارسنجی ویژگی‌های معمولی (Attributes)
     if (attributes !== undefined) {
-      if (typeof attributes !== "object" || Array.isArray(attributes)) {
-        return NextResponse.json(
-          { error: "فرمت attributes نامعتبر است" },
-          { status: 400 }
-        );
-      }
-
-      const foundCategory = await Category.findById(finalCategoryId);
       const allowedAttrs = foundCategory.attributes.map((a) => a.name);
-
       for (const key of Object.keys(attributes)) {
         if (!allowedAttrs.includes(key)) {
+          return NextResponse.json({ error: `ویژگی "${key}" مجاز نیست` }, { status: 400 });
+        }
+      }
+      product.attributes = attributes;
+    }
+
+    // اعتبارسنجی شاخص‌های فنی (Technical Stats) 🔥
+    if (technicalStats !== undefined) {
+      if (typeof technicalStats !== "object" || Array.isArray(technicalStats)) {
+        return NextResponse.json({ error: "فرمت technicalStats نامعتبر است" }, { status: 400 });
+      }
+
+      const allowedStats = foundCategory.technicalStats 
+        ? foundCategory.technicalStats.map(s => s.name) 
+        : [];
+
+      for (const key of Object.keys(technicalStats)) {
+        if (!allowedStats.includes(key)) {
           return NextResponse.json(
-            { error: `ویژگی "${key}" برای این دسته‌بندی مجاز نیست` },
+            { error: `شاخص فنی "${key}" در این دسته‌بندی تعریف نشده است` },
             { status: 400 }
           );
         }
       }
+      // جایگزینی مقادیر جدید
+      product.technicalStats = technicalStats;
+      // چون فیلد Mixed/Object است، به مانگوز اطلاع می‌دهیم که تغییر کرده
+      product.markModified('technicalStats');
     }
 
     // -------------------------
-    // Validate Relations
+    // Validate Relations (بدون تغییر نسبت به کد شما)
     // -------------------------
     if (brand) {
       const exists = await Brand.findById(brand);
-      if (!exists) {
-        return NextResponse.json({ error: "برند نامعتبر است" }, { status: 400 });
-      } else {
-        if (serie) {
-          const isSerieValid = exists.series.some(s => s.toString() === serie.toString());
-          if (!isSerieValid) { 
-            return NextResponse.json({ error: "سری متعلق به این برند نیست یا نامعتبر است" }, { status: 400 });
-          }
-        }
+      if (!exists) return NextResponse.json({ error: "برند نامعتبر است" }, { status: 400 });
+      if (serie) {
+        const isSerieValid = exists.series.some(s => s.toString() === serie.toString());
+        if (!isSerieValid) return NextResponse.json({ error: "سری متعلق به این برند نیست" }, { status: 400 });
       }
     }
-
+    
     if (sport) {
       const exists = await Sport.findById(sport);
       if (!exists)
@@ -177,23 +178,16 @@ export async function PUT(req, { params }) {
     }
 
     // -------------------------
-    // Update Fields
+    // Update Other Fields
     // -------------------------
     if (name !== undefined) product.name = name.trim();
-    if (shortDescription !== undefined)
-      product.shortDescription = shortDescription.trim();
-    if (longDescription !== undefined)
-      product.longDescription = longDescription.trim();
-    if (suitableFor !== undefined)
-      product.suitableFor = suitableFor.trim();
+    if (shortDescription !== undefined) product.shortDescription = shortDescription.trim();
+    if (longDescription !== undefined) product.longDescription = longDescription.trim();
+    if (suitableFor !== undefined) product.suitableFor = suitableFor.trim();
 
     if (basePrice !== undefined) {
       const parsedPrice = Number(basePrice);
-      if (isNaN(parsedPrice))
-        return NextResponse.json(
-          { error: "قیمت نامعتبر است" },
-          { status: 400 }
-        );
+      if (isNaN(parsedPrice)) return NextResponse.json({ error: "قیمت نامعتبر است" }, { status: 400 });
       product.basePrice = parsedPrice;
     }
 
@@ -217,13 +211,7 @@ export async function PUT(req, { params }) {
 
     if (label !== undefined) {
       const allowedLabels = ["none", "new", "hot", "discount", "limited"];
-      
-      if (!allowedLabels.includes(label)) {
-        return NextResponse.json(
-          { error: "مقدار لیبل نامعتبر است" },
-          { status: 400 }
-        );
-      }
+      if (!allowedLabels.includes(label)) return NextResponse.json({ error: "لیبل نامعتبر" }, { status: 400 });
       product.label = label;
     }
 
@@ -249,16 +237,10 @@ export async function PUT(req, { params }) {
     
     if (sport !== undefined) product.sport = sport || undefined;
 
-    if (attributes !== undefined) product.attributes = attributes;
-
-    await product.save(); // middleware slug اجرا میشه
+    await product.save();
 
     const populatedProduct = await Product.findById(product._id)
-      .populate("brand")
-      .populate("serie")
-      .populate("sport")
-      .populate("athlete")
-      .populate("category")
+      .populate("brand serie sport athlete category")
       .lean();
 
     return NextResponse.json({
@@ -267,10 +249,7 @@ export async function PUT(req, { params }) {
     });
   } catch (error) {
     console.error(error);
-    return NextResponse.json(
-      { error: error.message },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }
 

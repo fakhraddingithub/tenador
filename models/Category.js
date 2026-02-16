@@ -40,6 +40,29 @@ const AttributeSchema = new mongoose.Schema(
   { _id: false }
 );
 
+const TechnicalStatSchema = new mongoose.Schema(
+  {
+    name: {
+      type: String, 
+      required: true, // مثلا: power
+    },
+    label: {
+      type: String, 
+      required: true, // مثلا: قدرت
+    },
+    description: {
+      type: String, 
+    },
+    prompt: {
+      type: String,
+      required: false, // راهنمای AI برای تخمین عدد این پارامتر
+      trim: true,
+    },
+    min: { type: Number, default: 0 },
+    max: { type: Number, default: 100 }
+  },
+  { _id: false }
+);
 
 
 const CategorySchema = new mongoose.Schema(
@@ -77,9 +100,14 @@ const CategorySchema = new mongoose.Schema(
         context: String
       }
     ],
-    // تعریف واریانت ها
+
     attributes: {
       type: [AttributeSchema],
+      default: [],
+    },
+
+    technicalStats: {
+      type: [TechnicalStatSchema],
       default: [],
     },
 

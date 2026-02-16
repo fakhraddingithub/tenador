@@ -6,8 +6,8 @@ export async function GET(req, { params }) {
   try {
     await connectToDB();
     const { categoryId } = await params;
-    const category = await Category.findById(categoryId).populate('parent');
-    
+    const category = await Category.findById(categoryId).populate('parent').lean();
+
     if (!category) {
       return NextResponse.json(
         { error: "دسته‌بندی پیدا نشد" },
@@ -29,26 +29,49 @@ export async function PUT(req, { params }) {
     await connectToDB();
     const { categoryId } = await params;
     const body = await req.json();
-    const { title, parent, attributes, prompts } = body;
+    const { title, name, parent, attributes, technicalStats, prompts } = body;
 
     const category = await Category.findById(categoryId);
     if (!category) {
-      return NextResponse.json(
-        { error: "دسته‌بندی پیدا نشد" },
-        { status: 404 }
-      );
+      return NextResponse.json({ error: "دسته‌بندی پیدا نشد" }, { status: 404 });
     }
 
-    if (title && title.trim() !== "") {
-      category.title = title.trim();
+    // به‌روزرسانی فیلدهای متنی پایه
+    if (title?.trim()) category.title = title.trim();
+    
+    if (name?.trim()) {
+      // بررسی اعتبار فرمت نام جدید
+      if (!/^[a-zA-Z0-9\s\-_]+$/.test(name)) {
+        return NextResponse.json({ error: "فرمت نام انگلیسی نامعتبر است" }, { status: 400 });
+      }
+      category.name = name.trim();
     }
+
+    // به‌روزرسانی والد
     if (parent !== undefined) {
       category.parent = parent || null;
     }
+
+    // به‌روزرسانی ویژگی‌های جدول (Attributes)
     if (attributes !== undefined) {
-      category.attributes = attributes;
+      if (Array.isArray(attributes)) {
+        category.attributes = attributes;
+      }
     }
 
+    // به‌روزرسانی شاخص‌های نمودار (Technical Stats) - فیلد جدید
+    if (technicalStats !== undefined) {
+      if (Array.isArray(technicalStats)) {
+        // اعتبارسنجی مختصر قبل از ذخیره
+        const isValid = technicalStats.every(stat => stat.name && stat.label);
+        if (!isValid) {
+          return NextResponse.json({ error: "تمام شاخص‌های فنی باید نام و برچسب داشته باشند" }, { status: 400 });
+        }
+        category.technicalStats = technicalStats;
+      }
+    }
+
+    // به‌روزرسانی پرامپت‌ها
     if (prompts !== undefined) {
       category.prompts = prompts;
     }
@@ -60,10 +83,7 @@ export async function PUT(req, { params }) {
       category,
     });
   } catch (error) {
-    return NextResponse.json(
-      { error: error.message },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }
 

@@ -55,6 +55,7 @@ export default function ProductEditPage() {
     athlete: '',
     sport: '',
     attributes: {},
+    technicalStats: {},
     label: 'none',
   });
 
@@ -92,6 +93,8 @@ export default function ProductEditPage() {
             sport: p.sport?._id || p.sport,
             athlete: p.athlete?._id || p.athlete,
             category: p.category?._id || p.category,
+            attributes: p.attributes || {},
+            technicalStats: p.technicalStats || {},
             tag: Array.isArray(p.tag) ? p.tag.join(', ') : p.tag,
             label: p.label || 'none',
           });
@@ -117,6 +120,7 @@ export default function ProductEditPage() {
 
   const selectedCategory = categories.find(c => c._id === formData.category);
   const categoryAttributes = selectedCategory?.attributes || [];
+  const categoryTechnicalStats = selectedCategory?.technicalStats || [];
 
   function updateField(key, value) {
     setFormData(prev => ({ ...prev, [key]: value }));
@@ -126,6 +130,13 @@ export default function ProductEditPage() {
     setFormData(prev => ({
       ...prev,
       attributes: { ...prev.attributes, [key]: value },
+    }));
+  }
+
+  function updateTechnicalStat(key, value) {
+    setFormData(prev => ({
+      ...prev,
+      technicalStats: { ...prev.technicalStats, [key]: value },
     }));
   }
 
@@ -151,9 +162,18 @@ export default function ProductEditPage() {
         }
       }
 
+      const normalizedStats = {};
+      for (const stat of categoryTechnicalStats) {
+        const val = formData.technicalStats?.[stat.name];
+        if (val !== undefined && val !== '') {
+          normalizedStats[stat.name] = Number(val);
+        }
+      }
+
       const payload = {
         ...formData,
         attributes: normalizedAttributes,
+        technicalStats: normalizedStats,
         basePrice: Number(formData.basePrice) || 0,
         tag: typeof formData.tag === 'string' ? formData.tag.split(',').map(t => t.trim()) : formData.tag,
       };
@@ -320,6 +340,39 @@ export default function ProductEditPage() {
                 ))}
               </tbody>
             </table>
+          </div>
+        </div>
+      )}
+
+      {/* Technical Stats Section */}
+      {categoryTechnicalStats.length > 0 && (
+        <div className="bg-white p-8 rounded-[2.5rem] shadow-sm border border-gray-100">
+          <div className="flex items-center gap-2 border-b pb-4 mb-6">
+            <div className="bg-orange-50 p-2 rounded-lg text-orange-500">
+              <FaCogs size={20} />
+            </div>
+            <h2 className="font-black text-gray-800">تحلیل فنی (نمودار رادار)</h2>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {categoryTechnicalStats.map(stat => (
+              <div key={stat.name} className="space-y-2 p-4 bg-gray-50 rounded-2xl border border-gray-100">
+                <label className="text-sm font-bold text-gray-600 flex justify-between">
+                  {stat.label}
+                  <span className="text-blue-600">{formData.technicalStats?.[stat.name] || 0}%</span>
+                </label>
+                <Input
+                  type="number"
+                  min="0"
+                  max="100"
+                  className="bg-white"
+                  value={formData.technicalStats?.[stat.name] || ''}
+                  onChange={e => updateTechnicalStat(stat.name, e.target.value)}
+                  placeholder="نمره از ۱۰۰"
+                />
+                {stat.prompt && <p className="text-[10px] text-gray-400 italic leading-tight">{stat.prompt}</p>}
+              </div>
+            ))}
           </div>
         </div>
       )}

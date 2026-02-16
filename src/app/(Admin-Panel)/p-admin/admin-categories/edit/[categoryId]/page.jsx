@@ -82,7 +82,7 @@ function SortableAttribute({ attr, onRemove, onEdit }) {
           <div className="flex items-center gap-2 mt-1">
             <span className="text-xs text-neutral-500 font-mono">{attr.name}</span>
             <span className="text-xs text-neutral-400">•</span>
-            <span className="text-xs text-neutral-500">{attr.type}</span>
+            <span className="text-xs text-neutral-500">{attr.type === "string" ? "جدول ویژگی ها " : attr.type === "select" ? "لیست انتخابی" : "نمودار شاخص"}</span>
             <span className="text-xs text-neutral-400">•</span>
             <span className="text-xs text-neutral-500 font-bold">Priority: {attr.order}</span>
           </div>
@@ -157,6 +157,10 @@ export default function EditCategory() {
     prompt: '',
   });
 
+  const [technicalStats, setTechnicalStats] = useState([]);
+  const [currentStat, setCurrentStat] = useState({ name: '', label: '', prompt: '', description: '' });
+  const [editingStatId, setEditingStatId] = useState(null);
+
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
@@ -195,6 +199,11 @@ export default function EditCategory() {
           })),
         });
 
+        setTechnicalStats((cat.technicalStats || []).map(stat => ({
+          ...stat,
+          id: stat.id || stat._id || `stat-${Math.random().toString(36).substr(2, 9)}`
+        })));
+
         // Fill prompts
         if (cat.prompts) {
           const updatedPrompts = productFields.map(field => {
@@ -213,6 +222,37 @@ export default function EditCategory() {
     } finally {
       setFetching(false);
     }
+  };
+
+  const handleAddOrUpdateStat = () => {
+    if (!currentStat.name || !currentStat.label) {
+      showToast.warning('نام و برچسب شاخص فنی الزامی است');
+      return;
+    }
+
+    if (editingStatId) {
+      setTechnicalStats(prev => prev.map(s => s.id === editingStatId ? { ...currentStat, id: editingStatId } : s));
+      setEditingStatId(null);
+      showToast.success('شاخص فنی بروزرسانی شد');
+    } else {
+      const newStat = {
+        ...currentStat,
+        id: `stat-${Math.random().toString(36).substr(2, 9)}`
+      };
+      setTechnicalStats(prev => [...prev, newStat]);
+      showToast.success('شاخص فنی جدید اضافه شد');
+    }
+    setCurrentStat({ name: '', label: '', prompt: '', description: '' });
+  };
+
+  const handleEditStat = (stat) => {
+    setEditingStatId(stat.id);
+    setCurrentStat({ name: stat.name, label: stat.label, prompt: stat.prompt || '', description: stat.description || '' });
+    document.getElementById('stat-form-anchor')?.scrollIntoView({ behavior: 'smooth' });
+  };
+
+  const removeStat = (id) => {
+    setTechnicalStats(prev => prev.filter(s => s.id !== id));
   };
 
   const handleParentChange = (parentId) => {
@@ -357,6 +397,7 @@ export default function EditCategory() {
         name: formData.name,
         parent: formData.parent || null,
         attributes: formData.attributes,
+        technicalStats: technicalStats,
         prompts: productPrompts.filter((p) => p.context.trim() !== ''),
       };
 
@@ -471,7 +512,6 @@ export default function EditCategory() {
                     onChange={(e) => setCurrentAttribute(p => ({ ...p, type: e.target.value }))}
                     options={[
                       { value: 'string', label: 'جدول ویژگی ها' },
-                      { value: 'number', label: 'نمودار' },
                       { value: 'select', label: 'لیست انتخابی' }
                     ]}
                   />
@@ -500,6 +540,83 @@ export default function EditCategory() {
                   </div>
                 </SortableContext>
               </DndContext>
+            </div>
+
+            {/* Technical Stats Section (Chart) */}
+            <div id="stat-form-anchor" className="border-t pt-8 space-y-6">
+              <div className="flex items-center gap-3">
+                <div className="p-2 rounded-lg bg-orange-100 text-orange-600">
+                  <FiLayers size={18} />
+                </div>
+                <div>
+                  <h3 className="text-lg font-bold">شاخص‌های فنی (نمودار رادار)</h3>
+                  <p className="text-xs text-neutral-500">ویژگی‌های نمره‌ای برای تحلیل هوش مصنوعی و نمایش در نمودار</p>
+                </div>
+              </div>
+
+              <div className={`rounded-[var(--radius)] p-6 space-y-5 border-2 transition-all ${editingStatId ? 'bg-orange-50/30 border-orange-200' : 'bg-neutral-50 border-transparent'}`}>
+                <div className="grid md:grid-cols-2 gap-4">
+                  <Input
+                    label="نام سیستمی (انگلیسی)"
+                    value={currentStat.name}
+                    onChange={(e) => setCurrentStat(p => ({ ...p, name: e.target.value }))}
+                    placeholder="e.g. power"
+                  />
+                  <Input
+                    label="نام نمایشی (فارسی)"
+                    value={currentStat.label}
+                    onChange={(e) => setCurrentStat(p => ({ ...p, label: e.target.value }))}
+                    placeholder="مثال: قدرت ضربه"
+                  />
+                </div>
+                <Textarea
+                  label="توضیح کوتاه شاخص (جهت نمایش به کاربر)"
+                  value={currentStat.description}
+                  onChange={(e) => setCurrentStat(p => ({ ...p, description: e.target.value }))}
+                  placeholder="توضیحی که کاربر در سایت مشاهده می‌کند"
+                />
+                <Textarea
+                  label="راهنمای پرامپت (برای تحلیل AI)"
+                  value={currentStat.prompt}
+                  onChange={(e) => setCurrentStat(p => ({ ...p, prompt: e.target.value }))}
+                  placeholder="AI چگونه باید نمره این شاخص را تعیین کند؟"
+                />
+                <div className="flex gap-2">
+                  <Button type="button" onClick={handleAddOrUpdateStat}>
+                    {editingStatId ? 'بروزرسانی شاخص' : 'افزودن شاخص جدید'}
+                  </Button>
+                  {editingStatId && (
+                    <Button type="button" variant="secondary" onClick={() => { setEditingStatId(null); setCurrentStat({ name: '', label: '', prompt: '',description: '' }) }}>
+                      انصراف
+                    </Button>
+                  )}
+                </div>
+              </div>
+
+              {/* لیست شاخص‌ها */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                {technicalStats.map((stat) => (
+                  <div key={stat.id} className="flex items-center justify-between p-3 bg-white border border-neutral-200 rounded-lg shadow-sm group">
+                    <div className="flex flex-col">
+                      <span className="font-bold text-sm text-neutral-800">{stat.label}</span>
+                      <span className="text-[10px] text-neutral-400 font-mono">{stat.name}</span>
+                    </div>
+                    <div className="flex gap-1">
+                      <button type="button" onClick={() => handleEditStat(stat)} className="p-2 text-blue-500 hover:bg-blue-50 rounded-md transition">
+                        <FiEdit3 size={14} />
+                      </button>
+                      <button type="button" onClick={() => removeStat(stat.id)} className="p-2 text-red-500 hover:bg-red-50 rounded-md transition">
+                        <FiTrash2 size={14} />
+                      </button>
+                    </div>
+                  </div>
+                ))}
+                {technicalStats.length === 0 && (
+                  <div className="col-span-full text-center py-6 text-neutral-400 text-sm italic border-2 border-dashed rounded-lg">
+                    هیچ شاخص فنی برای این دسته ثبت نشده است.
+                  </div>
+                )}
+              </div>
             </div>
 
             {/* Actions */}

@@ -70,6 +70,12 @@ const ProductSchema = new mongoose.Schema(
       default: {},
 
     },
+    
+    technicalStats: {
+      type: Object,
+      default: {},
+
+    },
 
     stock: {
       type: Number,
