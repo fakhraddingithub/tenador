@@ -1,5 +1,6 @@
 'use client';
 
+import Image from 'next/image';
 import Link from 'next/link';
 
 export default function AthleteCard({ athlete, onDelete }) {
@@ -7,7 +8,7 @@ export default function AthleteCard({ athlete, onDelete }) {
     <div className="bg-white rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 overflow-hidden border border-gray-100">
       <div className="aspect-w-16 aspect-h-9 bg-gray-100">
         {athlete.photo ? (
-          <img
+          <Image
             src={athlete.photo}
             alt={athlete.name}
             className="w-full h-48 object-cover"
