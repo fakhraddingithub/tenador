@@ -19,7 +19,7 @@ const menuItems = [
   { title: 'کاربران', href: '/p-admin/users', icon: <FaUsersCog /> },
 ];
 
-export default function AdminLayout({ children, title = 'داشبورد مدیریت' }) {
+export default function   AdminLayout({ children, title = 'داشبورد مدیریت' }) {
   const pathname = usePathname();
   const [sidebarOpen, setSidebarOpen] = useState(true);
 
@@ -42,7 +42,7 @@ export default function AdminLayout({ children, title = 'داشبورد مدیر
           <div className="h-24 flex items-center justify-between px-6 relative z-10">
             {sidebarOpen && (
               <div className="flex flex-col">
-                <span className="text-xl font-black text-gray-800 tracking-tighter">TENADOR <span className="text-[var(--color-primary)]">ADMIN</span></span>
+                <span className="text-xl font-bold text-gray-800 tracking-tighter">TENADOR <span className="text-[var(--color-primary)]">ADMIN</span></span>
               </div>
             )}
             <button
@@ -73,7 +73,7 @@ export default function AdminLayout({ children, title = 'داشبورد مدیر
                   </span>
                   
                   {sidebarOpen && (
-                    <span className="font-black text-sm whitespace-nowrap">{item.title}</span>
+                    <span className="font-bold text-sm whitespace-nowrap">{item.title}</span>
                   )}
 
                   {/* Active Indicator Light */}
@@ -116,7 +116,7 @@ export default function AdminLayout({ children, title = 'داشبورد مدیر
                     </div>
                  </div>
                  <div className="hidden md:block">
-                    <p className="text-xs font-black text-gray-800">مدیریت کل</p>
+                    <p className="text-xs font-bold text-gray-800">مدیریت کل</p>
                     <p className="text-[10px] text-gray-400 font-bold">خوش آمدید</p>
                  </div>
               </div>

@@ -87,7 +87,7 @@ export default function SerieCreateForm({ initialData, brandId, brandName }) {
                 <FaLayerGroup size={24} />
             </div>
             <div>
-                <h2 className="text-2xl font-black italic">پیکربندی سری محصولات</h2>
+                <h2 className="text-2xl font-bold italic">پیکربندی سری محصولات</h2>
                 <p className="text-gray-400 text-[10px] font-bold uppercase tracking-widest mt-1">
                     Brand: <span className="text-black">{brandName}</span>
                 </p>
@@ -126,7 +126,7 @@ export default function SerieCreateForm({ initialData, brandId, brandName }) {
 
           {/* بخش رنگ‌ها */}
           <div className="bg-black p-8 rounded-[3rem] shadow-2xl text-white">
-            <h3 className="text-[10px] font-black uppercase text-gray-500 mb-6 flex items-center gap-2">
+            <h3 className="text-[10px] font-bold uppercase text-gray-500 mb-6 flex items-center gap-2">
                 <FaPalette className="text-[var(--color-primary)]" /> Color Branding
             </h3>
             <div className="space-y-4">
@@ -156,13 +156,13 @@ export default function SerieCreateForm({ initialData, brandId, brandName }) {
         <div className="lg:col-span-8 space-y-8">
           
           <div className="bg-white p-10 rounded-[3.5rem] shadow-sm border border-gray-50 space-y-8">
-            <h3 className="flex items-center gap-3 font-black text-gray-900 italic uppercase">
+            <h3 className="flex items-center gap-3 font-bold text-gray-900 italic uppercase">
                 <FaIdCard className="text-blue-500" /> Identity Info
             </h3>
             
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div className="space-y-2">
-                <label className="text-[10px] font-black text-gray-400 mr-4 uppercase tracking-widest flex items-center gap-2">
+                <label className="text-[10px] font-bold text-gray-400 mr-4 uppercase tracking-widest flex items-center gap-2">
                     <FaFont /> Name (English Only)
                 </label>
                 <input 
@@ -176,14 +176,14 @@ export default function SerieCreateForm({ initialData, brandId, brandName }) {
               </div>
 
               <div className="space-y-2 text-right">
-                <label className="text-[10px] font-black text-gray-400 ml-4 uppercase tracking-widest flex flex-row-reverse items-center gap-2">
+                <label className="text-[10px] font-bold text-gray-400 ml-4 uppercase tracking-widest flex flex-row-reverse items-center gap-2">
                     عنوان فارسی سری
                 </label>
                 <input 
                     name="title" 
                     value={formData.title} 
                     onChange={handleChange}
-                    className="w-full p-5 bg-gray-50 border-none rounded-2xl font-black text-gray-900 focus:ring-2 focus:ring-black transition-all text-right" 
+                    className="w-full p-5 bg-gray-50 border-none rounded-2xl font-bold text-gray-900 focus:ring-2 focus:ring-black transition-all text-right" 
                     placeholder="مثال: سری پردیتور اج"
                     required
                 />
@@ -191,7 +191,7 @@ export default function SerieCreateForm({ initialData, brandId, brandName }) {
             </div>
 
             <div className="space-y-2 text-right">
-                <label className="text-[10px] font-black text-gray-400 ml-4 uppercase tracking-widest flex flex-row-reverse items-center gap-2">
+                <label className="text-[10px] font-bold text-gray-400 ml-4 uppercase tracking-widest flex flex-row-reverse items-center gap-2">
                     <FaQuoteRight /> توضیحات متای سری
                 </label>
                 <textarea 
@@ -208,7 +208,7 @@ export default function SerieCreateForm({ initialData, brandId, brandName }) {
           <button 
             type="submit" 
             disabled={loading}
-            className="w-full bg-black text-white py-8 rounded-[3rem] font-black text-xl hover:shadow-[0_20px_50px_rgba(0,0,0,0.15)] hover:-translate-y-1 transition-all flex items-center justify-center gap-4 active:scale-95 disabled:opacity-50 group"
+            className="w-full bg-black text-white py-8 rounded-[3rem] font-bold text-xl hover:shadow-[0_20px_50px_rgba(0,0,0,0.15)] hover:-translate-y-1 transition-all flex items-center justify-center gap-4 active:scale-95 disabled:opacity-50 group"
           >
             {loading ? (
                 <div className="w-8 h-8 border-4 border-white/20 border-t-white rounded-full animate-spin" />

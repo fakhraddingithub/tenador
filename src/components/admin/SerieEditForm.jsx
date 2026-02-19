@@ -109,7 +109,7 @@ export default function SerieEditPage({ id }) {
     return (
       <div className="h-96 flex flex-col items-center justify-center gap-4 text-gray-400">
         <FaSync className="animate-spin text-3xl text-[var(--color-primary)]" />
-        <p className="font-black italic text-xs uppercase tracking-widest">Loading Serie Data...</p>
+        <p className="font-bold italic text-xs uppercase tracking-widest">Loading Serie Data...</p>
       </div>
     );
   }
@@ -124,7 +124,7 @@ export default function SerieEditPage({ id }) {
                 <FaEdit size={24} />
             </div>
             <div>
-                <h2 className="text-2xl font-black italic">ویرایش سری: {formData?.title || "..."}</h2>
+                <h2 className="text-2xl font-bold italic">ویرایش سری: {formData?.title || "..."}</h2>
                 <p className="text-gray-400 text-[10px] font-bold uppercase tracking-widest mt-1">
                     برند مرتبط: <span className="text-black">{brandName}</span>
                 </p>
@@ -133,7 +133,7 @@ export default function SerieEditPage({ id }) {
         <button 
           type="button" 
           onClick={() => router.push("/p-admin/admin-brands")}
-          className="p-4 bg-gray-50 text-gray-500 rounded-2xl hover:bg-gray-100 transition-all flex items-center gap-2 font-black text-[10px]"
+          className="p-4 bg-gray-50 text-gray-500 rounded-2xl hover:bg-gray-100 transition-all flex items-center gap-2 font-bold text-[10px]"
         >
           بازگشت به برندها <FaArrowRight />
         </button>
@@ -167,7 +167,7 @@ export default function SerieEditPage({ id }) {
           </div>
 
           <div className="bg-black p-8 rounded-[3rem] shadow-2xl text-white">
-            <h3 className="text-[10px] font-black uppercase text-gray-500 mb-6 flex items-center gap-2">
+            <h3 className="text-[10px] font-bold uppercase text-gray-500 mb-6 flex items-center gap-2">
                 <FaPalette className="text-[var(--color-primary)]" /> پالت رنگی اختصاصی
             </h3>
             <div className="space-y-4">
@@ -196,13 +196,13 @@ export default function SerieEditPage({ id }) {
         {/* ستون راست: متن‌ها */}
         <div className="lg:col-span-8 space-y-8 text-right">
           <div className="bg-white p-10 rounded-[3.5rem] shadow-sm border border-gray-50 space-y-8">
-            <h3 className="flex flex-row-reverse items-center gap-3 font-black text-gray-900 italic uppercase">
+            <h3 className="flex flex-row-reverse items-center gap-3 font-bold text-gray-900 italic uppercase">
                 <FaIdCard className="text-[var(--color-primary)]" /> مشخصات فنی
             </h3>
             
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div className="space-y-2 text-right">
-                <label className="text-[10px] font-black text-gray-400 mr-4 uppercase tracking-widest flex items-center gap-2">
+                <label className="text-[10px] font-bold text-gray-400 mr-4 uppercase tracking-widest flex items-center gap-2">
                     <FaFont /> نام سیستمی (Slug)
                 </label>
                 <input 
@@ -214,20 +214,20 @@ export default function SerieEditPage({ id }) {
               </div>
 
               <div className="space-y-2">
-                <label className="text-[10px] font-black text-gray-400 ml-4 uppercase tracking-widest flex flex-row-reverse items-center gap-2">
+                <label className="text-[10px] font-bold text-gray-400 ml-4 uppercase tracking-widest flex flex-row-reverse items-center gap-2">
                     عنوان نمایشی (فارسی)
                 </label>
                 <input 
                     name="title" 
                     value={formData?.title || ""} 
                     onChange={handleChange}
-                    className="w-full p-5 bg-gray-50 border border-gray-100 rounded-2xl font-black text-gray-900 focus:ring-2 focus:ring-[var(--color-primary)] outline-none transition-all text-right" 
+                    className="w-full p-5 bg-gray-50 border border-gray-100 rounded-2xl font-bold text-gray-900 focus:ring-2 focus:ring-[var(--color-primary)] outline-none transition-all text-right" 
                 />
               </div>
             </div>
 
             <div className="space-y-2">
-                <label className="text-[10px] font-black text-gray-400 ml-4 uppercase tracking-widest flex flex-row-reverse items-center gap-2">
+                <label className="text-[10px] font-bold text-gray-400 ml-4 uppercase tracking-widest flex flex-row-reverse items-center gap-2">
                     <FaQuoteRight /> توضیحات برند
                 </label>
                 <textarea 
@@ -243,7 +243,7 @@ export default function SerieEditPage({ id }) {
           <button 
             type="submit" 
             disabled={loading}
-            className="w-full bg-black text-white py-8 rounded-[3rem] font-black text-xl hover:shadow-2xl hover:-translate-y-1 transition-all flex items-center justify-center gap-4 active:scale-95 disabled:opacity-50"
+            className="w-full bg-black text-white py-8 rounded-[3rem] font-bold text-xl hover:shadow-2xl hover:-translate-y-1 transition-all flex items-center justify-center gap-4 active:scale-95 disabled:opacity-50"
           >
             {loading ? (
               <div className="w-8 h-8 border-4 border-white/30 border-t-white rounded-full animate-spin"></div>

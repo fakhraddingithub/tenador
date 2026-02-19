@@ -78,7 +78,7 @@ const CheckUploadSection = ({ checks, onUpdate, onRemove, remainingBalance }) =>
                     type="text"
                     value={check.number}
                     onChange={(e) => onUpdate(index, 'number', e.target.value)}
-                    className="w-full p-2 text-xs border border-gray-200 rounded-[var(--radius)] outline-none focus:border-[var(--color-secondary)] transition-all font-black"
+                    className="w-full p-2 text-xs border border-gray-200 rounded-[var(--radius)] outline-none focus:border-[var(--color-secondary)] transition-all font-bold"
                     placeholder="مثلا: ۱۲۳۴۵۶"
                   />
                 </div>
@@ -91,7 +91,7 @@ const CheckUploadSection = ({ checks, onUpdate, onRemove, remainingBalance }) =>
                       const val = Number(e.target.value.replace(/\D/g, ''));
                       onUpdate(index, 'amount', val);
                     }}
-                    className="w-full p-2 text-xs border border-gray-200 rounded-[var(--radius)] outline-none focus:border-[var(--color-secondary)] transition-all font-black"
+                    className="w-full p-2 text-xs border border-gray-200 rounded-[var(--radius)] outline-none focus:border-[var(--color-secondary)] transition-all font-bold"
                   />
                 </div>
                 <div className="space-y-1">

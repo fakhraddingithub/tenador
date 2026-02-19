@@ -19,15 +19,6 @@ export default function Navbar({ user }) {
   const [isCategoryOpen, setIsCategoryOpen] = useState(false);
   const [hoveredSport, setHoveredSport] = useState(null);
   const [searchQuery, setSearchQuery] = useState('');
-  const [isScrolled, setIsScrolled] = useState(false);
-
-  useEffect(() => {
-    const handleScroll = () => {
-      setIsScrolled(window.scrollY > 40);
-    };
-    window.addEventListener('scroll', handleScroll);
-    return () => window.removeEventListener('scroll', handleScroll);
-  }, []);
 
   useEffect(() => {
     const stored = localStorage.getItem('cart');
@@ -41,28 +32,21 @@ export default function Navbar({ user }) {
 
   return (
     <>
-      <nav className={`fixed top-0 right-0 left-0 z-50 bg-gradient-to-b from-[#fff] to-[#aa4725]/30 backdrop-blur-md border-b border-[#aa4725]/80 transition-all duration-500 ease-in-out ${
-        isScrolled ? 'h-[75px]' : 'h-[145px]'
-      }`}>
+      {/* Navbar Fixed Height: 75px & Background: #20232ae6 */}
+      <nav className="fixed top-0 right-0 left-0 z-50 bg-[#20232ae6] backdrop-blur-md border-b border-white/10 h-[75px] transition-all duration-300">
         <div className="hidden lg:block container mx-auto px-4 h-full">
           <div className="relative flex items-center justify-between h-full">
             
-            {/* بخش راست: لوگو + دسته‌بندی و منوها (که بین دو حالت جابجا می‌شوند) */}
             <div className="flex items-center gap-6">
-              {/* لوگو */}
-              <div className={`transition-all duration-500 ${isScrolled ? 'scale-75' : 'scale-100 pb-10'}`}>
+              {/* Logo - Always Small */}
+              <div className="scale-75">
                 <Link href="/">
                   <Image src="/logo/logo.svg" alt="logo" width={100} height={100} />
                 </Link>
               </div>
 
-              {/* کانتینر دسته‌بندی و لینک‌ها - بدون گذاشتن جای خالی */}
-              <div className={`flex items-center gap-4 transition-all duration-500 ease-in-out ${
-                isScrolled 
-                ? 'opacity-100 translate-y-0 relative' 
-                : 'opacity-100 translate-y-[45px] absolute right-4' 
-              }`}>
-                {/* دکمه دسته‌بندی محصولات */}
+              {/* Navigation & Categories */}
+              <div className="flex items-center gap-4">
                 <div className="relative group">
                   <button
                     onMouseEnter={() => setIsCategoryOpen(true)}
@@ -72,34 +56,34 @@ export default function Navbar({ user }) {
                     <span>دسته‌بندی محصولات</span>
                   </button>
 
-                  {/* دراپ‌داون کامل دسته‌بندی */}
+                  {/* Dropdown with Background: #20232ae6 */}
                   {isCategoryOpen && (
                     <div 
-                      className="absolute top-full right-0 mt-2 w-[600px] bg-white border border-black/10 shadow-2xl rounded-[var(--radius)] overflow-hidden z-[100]"
+                      className="absolute top-full right-0 mt-2 w-[600px] bg-[#20232ae6] backdrop-blur-xl border border-white/10 shadow-2xl rounded-[var(--radius)] overflow-hidden z-[100]"
                       onMouseLeave={() => { setIsCategoryOpen(false); setHoveredSport(null); }}
                     >
                       <div className="flex h-[400px]">
-                        {/* ستون راست: رشته‌ها */}
-                        <div className="w-1/2 border-l border-gray-100 p-4">
+                        {/* Right Column */}
+                        <div className="w-1/2 border-l border-white/5 p-4">
                           <h3 className="text-sm font-semibold text-gray-400 mb-3 pr-2 text-right">رشته‌های ورزشی</h3>
                           <ul className="space-y-1">
                             {SPORTS_CATEGORIES.map((sport) => (
                               <li key={sport.id} onMouseEnter={() => setHoveredSport(sport.slug)}>
-                                <a href={`/category/${sport.slug}`} className={`block text-right rounded-md px-4 py-2 transition-all ${hoveredSport === sport.slug ? 'bg-[#aa4725] text-white' : 'text-gray-700 hover:bg-gray-50'}`}>
+                                <a href={`/category/${sport.slug}`} className={`block text-right rounded-md px-4 py-2 transition-all ${hoveredSport === sport.slug ? 'bg-[#ffffff1a] text-[#aa4725]' : 'text-white hover:bg-[#ffffff1a]'}`}>
                                   {sport.name}
                                 </a>
                               </li>
                             ))}
                           </ul>
                         </div>
-                        {/* ستون چپ: برندها */}
-                        <div className="w-1/2 p-4 bg-gray-50/50">
+                        {/* Left Column */}
+                        <div className="w-1/2 p-4 bg-white/5">
                           {hoveredSport ? (
                             <ul className="space-y-1">
                               <h3 className="text-sm font-semibold text-gray-400 mb-3 pr-2 text-right">برندهای برتر</h3>
                               {BRANDS[hoveredSport]?.map((brand, index) => (
                                 <li key={index}>
-                                  <a href={`/brand/${brand}`} className="block text-right rounded-md px-4 py-2 text-gray-700 hover:text-[#aa4725] hover:bg-white transition-all">{brand}</a>
+                                  <a href={`/brand/${brand}`} className="block text-right rounded-md px-4 py-2 text-white hover:text-[#aa4725] hover:bg-[#ffffff1a] transition-all">{brand}</a>
                                 </li>
                               ))}
                             </ul>
@@ -112,10 +96,10 @@ export default function Navbar({ user }) {
                   )}
                 </div>
 
-                {/* لینک‌های ناوبری */}
+                {/* Nav Links: Color White */}
                 <div className="flex items-center gap-4">
                   {NAVIGATION_ITEMS.map((item) => (
-                    <a key={item.id} href={item.href} className="text-[#0d0d0d] hover:text-[#aa4725] transition-colors font-medium text-sm whitespace-nowrap">
+                    <a key={item.id} href={item.href} className="text-white hover:text-[#aa4725] transition-colors font-medium text-sm whitespace-nowrap">
                       {item.label}
                     </a>
                   ))}
@@ -123,42 +107,49 @@ export default function Navbar({ user }) {
               </div>
             </div>
 
-            {/* بخش وسط: فیلد جستجو */}
-            <div className={`flex-grow transition-all duration-500 ease-in-out px-8 ${
-              isScrolled ? 'max-w-xl' : 'max-w-2xl -translate-y-4'
-            }`}>
+            {/* Search Bar */}
+            <div className="flex-grow px-8 max-w-xl">
               <Input
-                className='rounded-[var(--radius)]'
+                className='rounded-[var(--radius)] bg-white/10 border-white/20 text-white placeholder:text-gray-400'
                 type="search"
                 placeholder="جستجو در محصولات..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                icon={<FiSearch size={20} />}
+                icon={<FiSearch size={20} className="text-white" />}
               />
             </div>
 
-            {/* بخش چپ: داشبورد و سبد خرید */}
-            <div className={`flex items-center gap-3 transition-all duration-500 ${
-              isScrolled ? 'translate-y-0' : '-translate-y-4'
-            }`}>
+            {/* Dashboard & Cart Buttons */}
+            <div className="flex items-center gap-3">
               {isLoggedIn ? (
                 <Link href={"/p-user"}>
-                  <Button className="flex items-center gap-1 rounded-[var(--radius)]" variant="outline" size="sm">
+                  <Button 
+                    className="flex items-center gap-1 rounded-[var(--radius)] text-white border-white hover:bg-white hover:text-black transition-all" 
+                    variant="outline" 
+                    size="sm"
+                  >
                     <FiUser className="ml-1" />
                     <span>داشبورد</span>
                   </Button>
                 </Link>
               ) : (
                 <Link href={"/login-register"}>
-                  <Button className="rounded-[var(--radius)]" variant="outline" size="sm">
+                  <Button 
+                    className="rounded-[var(--radius)] text-white border-white hover:bg-white hover:text-black transition-all" 
+                    variant="outline" 
+                    size="sm"
+                  >
                      ورود | ثبت‌نام
                   </Button>
                 </Link>
               )}
 
               <div className="relative cursor-pointer" onClick={() => setOpenCart(true)}>
-                <IconButton variant="default">
-                  <FiShoppingCart size={24} className="text-[var(--color-text)]" />
+                <IconButton 
+                   className="bg-transparent border-white hover:bg-white text-white hover:text-black transition-all"
+                   variant="outline"
+                >
+                  <FiShoppingCart size={22} />
                   {cartCount > 0 && (
                     <span className="absolute -top-1 -right-1 bg-[#aa4725] text-white text-[10px] w-5 h-5 flex items-center justify-center rounded-full">
                       {cartCount}
@@ -175,21 +166,21 @@ export default function Navbar({ user }) {
         <div className="lg:hidden flex items-center h-full container mx-auto px-4">
            <div className="flex items-center justify-between w-full gap-3">
               <Link href="/">
-                <Image src="/logo/logo.svg" alt="logo" width={isScrolled ? 60 : 80} height={60} className="transition-all" />
+                <Image src="/logo/logo.svg" alt="logo" width={60} height={60} />
               </Link>
               <div className="flex-grow">
-                <Input type="search" placeholder="جستجو..." className="py-2 text-xs" icon={<FiSearch size={16} />} />
+                <Input type="search" placeholder="جستجو..." className="py-2 text-xs bg-white/10 border-white/20 text-white" icon={<FiSearch size={16} />} />
               </div>
               <div className="relative" onClick={() => setOpenCart(true)}>
-                <FiShoppingCart size={22} className="text-[#aa4725]" />
+                <FiShoppingCart size={22} className="text-white" />
                 {cartCount > 0 && <span className="absolute -top-2 -right-2 bg-[#aa4725] text-white text-[9px] w-4 h-4 rounded-full flex items-center justify-center">{cartCount}</span>}
               </div>
            </div>
         </div>
       </nav>
 
-      {/* Spacer */}
-      {!isHomePage && <div className={`transition-all duration-500 ${isScrolled ? 'h-[75px]' : 'h-[145px]'}`}></div>}
+      {/* Spacer - Fixed Height */}
+      {!isHomePage && <div className="h-[75px]"></div>}
       
       <CartDrawer isOpen={openCart} onClose={() => setOpenCart(false)} />
     </>

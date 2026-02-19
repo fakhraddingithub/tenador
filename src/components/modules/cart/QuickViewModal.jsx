@@ -77,7 +77,7 @@ export default function QuickViewModal({
               </span>
               <span className="text-[11px] text-gray-400 font-medium">کد کالا: {product.sku}</span>
             </div>
-            <h2 className="text-2xl font-black text-[#1a1a1a] leading-tight mb-4">
+            <h2 className="text-2xl font-bold text-[#1a1a1a] leading-tight mb-4">
               {product.name}
             </h2>
 
@@ -103,7 +103,7 @@ export default function QuickViewModal({
 
                 return (
                   <div key={attr.name} className="flex flex-col gap-3">
-                    <h4 className="text-[14px] font-black text-gray-800 flex items-center gap-2">
+                    <h4 className="text-[14px] font-bold text-gray-800 flex items-center gap-2">
                       <span className="w-1 h-4 bg-[#aa4725] rounded-full"></span>
                       {attr.label || attr.name} {/* نمایش عنوان فارسی اتریبیوت */}
                     </h4>
@@ -142,7 +142,7 @@ export default function QuickViewModal({
               <div className="flex flex-col gap-1">
                 <span className="text-xs text-gray-400 font-bold">قیمت نهایی:</span>
                 <div className="flex items-baseline gap-1">
-                  <span className="text-3xl font-black text-[#aa4725]">
+                  <span className="text-3xl font-bold text-[#aa4725]">
                     {product.basePrice?.toLocaleString()}
                   </span>
                   <span className="text-sm font-bold text-[#aa4725]">تومان</span>
@@ -157,7 +157,7 @@ export default function QuickViewModal({
                 >
                   <FaPlus size={12} />
                 </button>
-                <span className="px-5 font-black text-lg text-[#1a1a1a]">{quantity}</span>
+                <span className="px-5 font-bold text-lg text-[#1a1a1a]">{quantity}</span>
                 <button
                   onClick={() => setQuantity(q => Math.max(1, q - 1))}
                   className="w-10 h-10 flex items-center justify-center bg-white rounded-[4px] shadow-sm hover:text-red-500 transition-all"
@@ -170,7 +170,7 @@ export default function QuickViewModal({
             <div className="flex gap-3">
               <button
                 onClick={() => onAddToCart(product, quantity, selectedGrip)}
-                className="flex-[5] h-14 bg-[#aa4725] text-white rounded-[6px] font-black text-lg flex items-center justify-center gap-3 hover:bg-[#8e3b1e] transition-all shadow-xl shadow-[#aa4725]/20 active:scale-95"
+                className="flex-[5] h-14 bg-[#aa4725] text-white rounded-[6px] font-bold text-lg flex items-center justify-center gap-3 hover:bg-[#8e3b1e] transition-all shadow-xl shadow-[#aa4725]/20 active:scale-95"
               >
                 <FaShoppingCart size={20} />
                 افزودن به سبد خرید

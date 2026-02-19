@@ -83,7 +83,7 @@
     };
 console.log(brandData);
 
-    if (loading) return <div className="p-20 text-center font-black animate-pulse text-gray-400">CONNECTING TO DATABASE...</div>;
+    if (loading) return <div className="p-20 text-center font-bold animate-pulse text-gray-400">CONNECTING TO DATABASE...</div>;
 
     return (
       <div className="max-w-7xl mx-auto p-6 space-y-10 pb-20">
@@ -92,7 +92,7 @@ console.log(brandData);
         <div className="flex justify-between items-center">
           <button 
             onClick={() => router.back()}
-            className="group flex items-center gap-2 bg-white px-5 py-2.5 rounded-2xl shadow-sm border border-gray-100 text-sm font-black text-gray-600 hover:bg-black hover:text-white transition-all"
+            className="group flex items-center gap-2 bg-white px-5 py-2.5 rounded-2xl shadow-sm border border-gray-100 text-sm font-bold text-gray-600 hover:bg-black hover:text-white transition-all"
           >
             <FaChevronLeft className="group-hover:-translate-x-1 transition-transform" size={12} />
             <span>بازگشت به لیست</span>
@@ -104,29 +104,29 @@ console.log(brandData);
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           <div className="bg-black p-8 rounded-[2.5rem] text-white flex justify-between items-center shadow-2xl relative overflow-hidden group">
             <div className="relative z-10">
-              <p className="text-gray-400 text-[10px] font-black uppercase tracking-widest mb-2">Total Series</p>
-              <h4 className="text-5xl font-black italic">{brand?.series?.length || 0}</h4>
+              <p className="text-gray-400 text-[10px] font-bold uppercase tracking-widest mb-2">Total Series</p>
+              <h4 className="text-5xl font-bold italic">{brand?.series?.length || 0}</h4>
             </div>
             <FaLayerGroup className="text-white/10 text-8xl absolute -right-5 group-hover:rotate-12 transition-transform" />
           </div>
 
           <div className="bg-white p-8 rounded-[2.5rem] border border-gray-100 flex justify-between items-center shadow-sm relative overflow-hidden group">
             <div className="relative z-10">
-              <p className="text-gray-400 text-[10px] font-black uppercase tracking-widest mb-2">Total Products</p>
-              <h4 className="text-5xl font-black text-gray-900 italic">{brandData.length}</h4>
+              <p className="text-gray-400 text-[10px] font-bold uppercase tracking-widest mb-2">Total Products</p>
+              <h4 className="text-5xl font-bold text-gray-900 italic">{brandData.length}</h4>
             </div>
             <FaBox className="text-gray-50 text-8xl absolute -right-5 group-hover:-rotate-12 transition-transform" />
           </div>
 
           <div className="bg-[var(--color-primary)] text-white p-8 rounded-[2.5rem] text-black flex items-center justify-between shadow-xl">
             <div className="space-y-1">
-                <div className="flex items-center gap-2 text-[10px] font-black opacity-50"><FaGlobeAmericas /> COUNTRY</div>
-                <p className="font-black text-xl uppercase">{brand?.country || "Global"}</p>
+                <div className="flex items-center gap-2 text-[10px] font-bold opacity-50"><FaGlobeAmericas /> COUNTRY</div>
+                <p className="font-bold text-xl uppercase">{brand?.country || "Global"}</p>
             </div>
             <div className="h-full w-px bg-black/10 mx-4" />
             <div className="space-y-1">
-                <div className="flex items-center gap-2 text-[10px] font-black opacity-50"><FaCalendarAlt /> FOUNDED</div>
-                <p className="font-black text-xl">{brand?.foundedYear || "N/A"}</p>
+                <div className="flex items-center gap-2 text-[10px] font-bold opacity-50"><FaCalendarAlt /> FOUNDED</div>
+                <p className="font-bold text-xl">{brand?.foundedYear || "N/A"}</p>
             </div>
           </div>
         </div>
@@ -138,15 +138,15 @@ console.log(brandData);
               <img src={brand?.logo} className="w-full h-full object-contain" alt="" />
             </div>
             <div>
-              <h1 className="text-3xl font-black tracking-tighter text-gray-900">{brand?.title}</h1>
+              <h1 className="text-3xl font-bold tracking-tighter text-gray-900">{brand?.title}</h1>
               <p className="text-gray-400 font-bold text-xs uppercase tracking-widest">{brand?.name}</p>
             </div>
           </div>
           <div className="flex gap-3">
-            <button onClick={() => router.push(`/p-admin/admin-brands/edit/${brandId}`)} className="px-7 py-4 bg-gray-50 text-gray-900 rounded-2xl font-black text-xs flex items-center gap-2 hover:bg-gray-200 transition-all">
+            <button onClick={() => router.push(`/p-admin/admin-brands/edit/${brandId}`)} className="px-7 py-4 bg-gray-50 text-gray-900 rounded-2xl font-bold text-xs flex items-center gap-2 hover:bg-gray-200 transition-all">
               <FaEdit /> ویرایش برند
             </button>
-            <button onClick={handleDeleteBrand} className="px-7 py-4 bg-red-50 text-red-600 rounded-2xl font-black text-xs flex items-center gap-2 hover:bg-red-100 transition-all">
+            <button onClick={handleDeleteBrand} className="px-7 py-4 bg-red-50 text-red-600 rounded-2xl font-bold text-xs flex items-center gap-2 hover:bg-red-100 transition-all">
               <FaTrash /> حذف برند
             </button>
           </div>
@@ -156,10 +156,10 @@ console.log(brandData);
         <div className="space-y-8">
           <div className="flex justify-between items-end px-4">
             <div>
-              <h3 className="text-2xl font-black text-gray-900 italic underline underline-offset-8 decoration-4 decoration-[var(--color-primary)]">مدل های برند</h3>
+              <h3 className="text-2xl font-bold text-gray-900 italic underline underline-offset-8 decoration-4 decoration-[var(--color-primary)]">مدل های برند</h3>
             </div>
             <Link href={`${brandId}/add-serie`}>
-            <button className="bg-black text-white px-7 py-3.5 rounded-2xl font-black text-xs flex items-center gap-2 hover:scale-105 active:scale-95 transition-all shadow-lg shadow-gray-200">
+            <button className="bg-black text-white px-7 py-3.5 rounded-2xl font-bold text-xs flex items-center gap-2 hover:scale-105 active:scale-95 transition-all shadow-lg shadow-gray-200">
               <FaPlus /> ایجاد سری جدید
             </button>
             </Link>
@@ -175,15 +175,15 @@ console.log(brandData);
                 <div className="h-56 bg-gray-50 relative overflow-hidden">
                   <img src={serie.image || "/placeholder.jpg"} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" alt="" />
                   <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity flex items-end p-10">
-                    <span className="text-white font-black text-xs flex items-center gap-2">VIEW SERIES ASSETS <FaArrowRight /></span>
+                    <span className="text-white font-bold text-xs flex items-center gap-2">VIEW SERIES ASSETS <FaArrowRight /></span>
                   </div>
                 </div>
                 
                 <div className="p-10">
                   <div className="flex justify-between items-start mb-6">
                     <div>
-                      <h4 className="text-2xl font-black text-gray-900 group-hover:text-blue-600 transition-colors uppercase">{serie.title}</h4>
-                      <p className="text-gray-400 text-[10px] font-black uppercase tracking-[0.2em] mt-1">{serie.name}</p>
+                      <h4 className="text-2xl font-bold text-gray-900 group-hover:text-blue-600 transition-colors uppercase">{serie.title}</h4>
+                      <p className="text-gray-400 text-[10px] font-bold uppercase tracking-[0.2em] mt-1">{serie.name}</p>
                     </div>
                     <div className="w-14 h-14 bg-gray-50 rounded-2xl flex items-center justify-center border border-gray-100 p-2">
                       <img src={serie.logo} className="w-full h-full object-contain grayscale opacity-50" alt="" />

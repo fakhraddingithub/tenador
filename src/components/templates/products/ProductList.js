@@ -34,13 +34,7 @@ export default function ProductList({
       {products.map((product) => (
         <ProductCard
           key={product._id}
-          slug={product.slug}
-          image={product.mainImage}
-          name={product.name}
-          description={product.shortDescription}
-          price={product.basePrice}
-          discountPrice={product.discountPrice}
-          brandLogo={product.brand.logo}
+          product={product}
           isWishlisted={product.isWishlisted}
           onQuickView={() => openQuickView(product)}
           onAddToCart={() => onAddToCart?.(product)}

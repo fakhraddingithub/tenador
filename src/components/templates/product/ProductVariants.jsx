@@ -25,7 +25,7 @@ const ProductVariants = ({ variants = [] }) => {
           <div className="flex items-center justify-between mb-4 px-1">
             <div className="flex items-center gap-2">
               <span className="w-1 h-4 bg-[#aa4725] rounded-full"></span>
-              <span className="text-sm font-black text-gray-800 tracking-tight">
+              <span className="text-sm font-bold text-gray-800 tracking-tight">
                 {variant.label}
               </span>
             </div>
@@ -54,7 +54,7 @@ const ProductVariants = ({ variants = [] }) => {
                   onClick={() => handleSelect(vIdx, val)}
                   className={`
                     relative h-12 min-w-[75px] px-4
-                    rounded-[6px] text-xs font-black transition-all duration-300
+                    rounded-[6px] text-xs font-bold transition-all duration-300
                     flex items-center justify-center gap-2 border
                     ${
                       isActive

@@ -74,7 +74,7 @@ const OrderSummary = ({ order }) => {
 
       <div className="flex justify-between items-center bg-[var(--color-primary)]/5 p-4 rounded-[6px] border border-[var(--color-primary)]/10">
         <span className="font-bold text-gray-800">مبلغ قابل پرداخت:</span>
-        <span className="text-xl font-black text-[var(--color-primary)]">{formatPrice(order.totalPrice)}</span>
+        <span className="text-xl font-bold text-[var(--color-primary)]">{formatPrice(order.totalPrice)}</span>
       </div>
     </div>
   );

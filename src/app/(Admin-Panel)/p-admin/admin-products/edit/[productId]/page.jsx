@@ -213,7 +213,7 @@ export default function ProductEditPage() {
             <FaEdit size={24} />
           </div>
           <div>
-            <h1 className="text-xl font-black text-gray-900">ویرایش محصول</h1>
+            <h1 className="text-xl font-bold text-gray-900">ویرایش محصول</h1>
             <p className="text-gray-400 text-xs mt-1">شناسه: {id}</p>
           </div>
         </div>
@@ -226,7 +226,7 @@ export default function ProductEditPage() {
       <div className="bg-white p-8 rounded-[2.5rem] shadow-sm border border-gray-100 space-y-6">
         <div className="flex items-center gap-2 border-b pb-4 mb-6">
           <FaBox className="text-gray-400" />
-          <h2 className="font-black text-gray-800">اطلاعات پایه</h2>
+          <h2 className="font-bold text-gray-800">اطلاعات پایه</h2>
         </div>
 
         <Input
@@ -255,7 +255,7 @@ export default function ProductEditPage() {
       <div className="bg-white p-8 rounded-[2.5rem] shadow-sm border border-gray-100">
         <div className="flex items-center gap-2 border-b pb-4 mb-6">
           <FaCogs className="text-gray-400" />
-          <h2 className="font-black text-gray-800">ارتباطات و قیمت</h2>
+          <h2 className="font-bold text-gray-800">ارتباطات و قیمت</h2>
         </div>
 
         <div className="grid md:grid-cols-3 gap-6">
@@ -320,7 +320,7 @@ export default function ProductEditPage() {
         <div className="bg-white p-8 rounded-[2.5rem] shadow-sm border border-gray-100">
           <div className="flex items-center gap-2 border-b pb-4 mb-6">
             <FaTags className="text-gray-400" />
-            <h2 className="font-black text-gray-800">ویژگی‌های فنی</h2>
+            <h2 className="font-bold text-gray-800">ویژگی‌های فنی</h2>
           </div>
           <div className="overflow-hidden border rounded-2xl">
             <table className="w-full">
@@ -351,7 +351,7 @@ export default function ProductEditPage() {
             <div className="bg-orange-50 p-2 rounded-lg text-orange-500">
               <FaCogs size={20} />
             </div>
-            <h2 className="font-black text-gray-800">تحلیل فنی (نمودار رادار)</h2>
+            <h2 className="font-bold text-gray-800">تحلیل فنی (نمودار رادار)</h2>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -381,7 +381,7 @@ export default function ProductEditPage() {
       <div className="bg-white p-8 rounded-[2.5rem] shadow-sm border border-gray-100">
         <div className="flex items-center gap-2 border-b pb-4 mb-6">
           <FaImages className="text-gray-400" />
-          <h2 className="font-black text-gray-800">رسانه و تگ‌ها</h2>
+          <h2 className="font-bold text-gray-800">رسانه و تگ‌ها</h2>
         </div>
         <div className="grid md:grid-cols-2 gap-8">
           <ImageUpload label="تصویر اصلی محصول" value={formData.mainImage} onChange={v => updateField('mainImage', v)} folder="product" />

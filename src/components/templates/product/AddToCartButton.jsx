@@ -38,7 +38,7 @@ const AddToCartButton = ({ onAddToCart }) => {
         className={`
           relative flex items-center justify-center gap-3
           h-[52px] px-8 rounded-[6px]
-          text-white text-sm font-black uppercase tracking-wider
+          text-white text-sm font-bold uppercase tracking-wider
           transition-all duration-300
           shadow-[0_10px_20px_-10px_rgba(170,71,37,0.4)]
           ${isAdded ? "shadow-[0_10px_20px_-10px_rgba(16,185,129,0.4)]" : "hover:shadow-[0_15px_25px_-10px_rgba(170,71,37,0.5)]"}
@@ -63,7 +63,7 @@ const AddToCartButton = ({ onAddToCart }) => {
               className="flex items-center gap-2"
             >
               <FiCheck className="h-5 w-5 stroke-[3]" />
-              <span className="font-black">تایید شد</span>
+              <span className="font-bold">تایید شد</span>
             </motion.div>
           ) : (
             <motion.div
@@ -74,7 +74,7 @@ const AddToCartButton = ({ onAddToCart }) => {
               className="flex items-center gap-2"
             >
               <FiShoppingCart className="h-5 w-5" />
-              <span className="font-black">افزودن به سبد خرید</span>
+              <span className="font-bold">افزودن به سبد خرید</span>
             </motion.div>
           )}
         </AnimatePresence>

@@ -119,11 +119,11 @@ export default function AthleteCreateForm({ initialData, isEdit = false }) {
       {/* Header */}
       <div className="flex justify-between items-center bg-white p-8 rounded-[2.5rem] shadow-sm border border-gray-100">
         <div>
-          <h2 className="text-3xl font-black tracking-tighter text-gray-900 flex items-center gap-3">
+          <h2 className="text-3xl font-bold tracking-tighter text-gray-900 flex items-center gap-3">
             {isEdit ? 'ویرایش پروفایل قهرمان' : 'ثبت قهرمان جدید'}
           </h2>
         </div>
-        <div className="flex items-center gap-2 bg-green-50 text-green-600 px-4 py-2 rounded-2xl border border-green-100 font-black text-[10px] uppercase">
+        <div className="flex items-center gap-2 bg-green-50 text-green-600 px-4 py-2 rounded-2xl border border-green-100 font-bold text-[10px] uppercase">
             <div className="w-2 h-2 bg-green-500 rounded-full animate-ping" />
             System Active
         </div>
@@ -144,17 +144,17 @@ export default function AthleteCreateForm({ initialData, isEdit = false }) {
           </div>
           
           <div className="bg-black text-white p-8 rounded-[3rem] shadow-2xl">
-             <h3 className="text-gray-500 font-black text-[10px] uppercase tracking-widest mb-6 flex items-center gap-2">
+             <h3 className="text-gray-500 font-bold text-[10px] uppercase tracking-widest mb-6 flex items-center gap-2">
                 <FaUser className="text-[var(--color-primary)]" /> Physical Metrics
              </h3>
              <div className="grid grid-cols-2 gap-4">
                 <div className="bg-white/5 p-4 rounded-2xl border border-white/10">
                    <label className="block text-[9px] text-gray-400 font-bold mb-1">HEIGHT (CM)</label>
-                   <input type="number" name="height" value={formData.height || ""} onChange={handleChange} className="bg-transparent w-full outline-none font-black text-xl" />
+                   <input type="number" name="height" value={formData.height || ""} onChange={handleChange} className="bg-transparent w-full outline-none font-bold text-xl" />
                 </div>
                 <div className="bg-white/5 p-4 rounded-2xl border border-white/10">
                    <label className="block text-[9px] text-gray-400 font-bold mb-1">WEIGHT (KG)</label>
-                   <input type="number" name="weight" value={formData.weight || ""} onChange={handleChange} className="bg-transparent w-full outline-none font-black text-xl" />
+                   <input type="number" name="weight" value={formData.weight || ""} onChange={handleChange} className="bg-transparent w-full outline-none font-bold text-xl" />
                 </div>
              </div>
           </div>
@@ -165,7 +165,7 @@ export default function AthleteCreateForm({ initialData, isEdit = false }) {
           
           {/* هویت */}
           <div className="bg-white p-8 rounded-[3rem] border border-gray-50 shadow-sm space-y-6">
-            <h3 className="flex items-center gap-3 font-black text-gray-900"><FaIdCard className="text-blue-500" /> مشخصات اصلی</h3>
+            <h3 className="flex items-center gap-3 font-bold text-gray-900"><FaIdCard className="text-blue-500" /> مشخصات اصلی</h3>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <input name="name" value={formData.name} onChange={handleChange} className="w-full p-4 bg-gray-50 border-none rounded-2xl font-bold" placeholder="English Slug" />
               <input name="title" value={formData.title} onChange={handleChange} className="w-full p-4 bg-gray-50 border-none rounded-2xl font-bold" placeholder="نام فارسی" />
@@ -176,7 +176,7 @@ export default function AthleteCreateForm({ initialData, isEdit = false }) {
           {/* تالار افتخارات (برگشت به فرم) */}
           <div className="bg-gradient-to-br from-yellow-50 to-white p-8 rounded-[3.5rem] border border-yellow-100 shadow-sm">
             <div className="flex justify-between items-center mb-6">
-              <h3 className="flex items-center gap-3 font-black text-gray-900"><FaTrophy className="text-yellow-600" /> تالار افتخارات و مدال‌ها</h3>
+              <h3 className="flex items-center gap-3 font-bold text-gray-900"><FaTrophy className="text-yellow-600" /> تالار افتخارات و مدال‌ها</h3>
               <button type="button" onClick={addHonor} className="bg-yellow-600 text-white p-3 rounded-2xl hover:rotate-90 transition-transform shadow-lg shadow-yellow-200">
                 <FaPlus size={14} />
               </button>
@@ -185,9 +185,9 @@ export default function AthleteCreateForm({ initialData, isEdit = false }) {
             <div className="space-y-3">
               {formData.honors?.map((honor, index) => (
                 <div key={index} className="flex gap-3 items-center bg-white p-4 rounded-[2rem] border border-yellow-50 shadow-sm group">
-                  <div className="w-10 h-10 bg-yellow-50 rounded-xl flex items-center justify-center font-black text-yellow-700 text-xs">{index + 1}</div>
+                  <div className="w-10 h-10 bg-yellow-50 rounded-xl flex items-center justify-center font-bold text-yellow-700 text-xs">{index + 1}</div>
                   <input placeholder="عنوان افتخار" value={honor.title} onChange={(e) => handleHonorChange(index, "title", e.target.value)} className="flex-1 bg-transparent border-none font-bold text-sm outline-none" />
-                  <input type="number" value={honor.quantity} onChange={(e) => handleHonorChange(index, "quantity", e.target.value)} className="w-16 bg-gray-50 rounded-xl p-2 text-center font-black text-sm" />
+                  <input type="number" value={honor.quantity} onChange={(e) => handleHonorChange(index, "quantity", e.target.value)} className="w-16 bg-gray-50 rounded-xl p-2 text-center font-bold text-sm" />
                   <button type="button" onClick={() => removeHonor(index)} className="text-red-200 group-hover:text-red-500 transition-colors px-2">
                     <FaTrash size={14} />
                   </button>
@@ -200,8 +200,8 @@ export default function AthleteCreateForm({ initialData, isEdit = false }) {
           {/* مدیریت اسپانسرها */}
           <div className="bg-white p-8 rounded-[3.5rem] border border-gray-100 shadow-sm">
             <div className="flex justify-between items-center mb-6">
-              <h3 className="flex items-center gap-3 font-black text-gray-900"><FaHandshake className="text-orange-500" /> مدیریت حامیان مالی</h3>
-              <span className="text-[10px] font-black bg-gray-900 text-white px-3 py-1 rounded-full uppercase italic tracking-widest">Selected: {formData.sponsors?.length || 0}</span>
+              <h3 className="flex items-center gap-3 font-bold text-gray-900"><FaHandshake className="text-orange-500" /> مدیریت حامیان مالی</h3>
+              <span className="text-[10px] font-bold bg-gray-900 text-white px-3 py-1 rounded-full uppercase italic tracking-widest">Selected: {formData.sponsors?.length || 0}</span>
             </div>
             
             <div className="relative mb-6">
@@ -225,7 +225,7 @@ export default function AthleteCreateForm({ initialData, isEdit = false }) {
                       <div className="w-12 h-12 rounded-full overflow-hidden bg-white border border-gray-50 p-1">
                         <img src={sponsor.logo} className="w-full h-full object-contain" alt="" />
                       </div>
-                      <span className="text-[9px] font-black text-center truncate w-full uppercase">{sponsor.name}</span>
+                      <span className="text-[9px] font-bold text-center truncate w-full uppercase">{sponsor.name}</span>
                       {isSelected && <FaCheckCircle className="absolute top-2 right-4 text-orange-500 animate-pulse" size={14} />}
                     </div>
                   );
@@ -234,7 +234,7 @@ export default function AthleteCreateForm({ initialData, isEdit = false }) {
           </div>
 
           {/* دکمه نهایی */}
-          <button type="submit" disabled={loading} className="w-full bg-black text-white py-8 rounded-[3rem] font-black text-xl hover:bg-[var(--color-primary)] transition-all shadow-2xl flex items-center justify-center gap-4 active:scale-95">
+          <button type="submit" disabled={loading} className="w-full bg-black text-white py-8 rounded-[3rem] font-bold text-xl hover:bg-[var(--color-primary)] transition-all shadow-2xl flex items-center justify-center gap-4 active:scale-95">
             {loading ? <div className="w-8 h-8 border-4 border-white/20 border-t-white rounded-full animate-spin" /> : <><FaSave /> ثبت و نهایی‌سازی پروفایل</>}
           </button>
         </div>

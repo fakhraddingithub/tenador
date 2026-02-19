@@ -23,14 +23,14 @@ export default function ProductCard({ product, onEdit, onDelete, onViewVariants 
         
         {/* Overlay Badges */}
         <div className="absolute top-3 right-3 flex flex-col gap-2">
-          <span className="bg-white/90 backdrop-blur px-3 py-1 rounded-full text-[10px] font-black text-[var(--color-primary)] shadow-sm border border-orange-50 uppercase tracking-tighter">
+          <span className="bg-white/90 backdrop-blur px-3 py-1 rounded-full text-[10px] font-bold text-[var(--color-primary)] shadow-sm border border-orange-50 uppercase tracking-tighter">
             {product.brand?.name || 'بدون برند'}
           </span>
         </div>
 
         {/* Base Price Badge */}
         <div className="absolute bottom-3 left-3">
-          <div className="bg-[var(--color-primary)] text-white px-3 py-1.5 rounded-lg shadow-lg text-sm font-black flex items-center gap-1.5">
+          <div className="bg-[var(--color-primary)] text-white px-3 py-1.5 rounded-lg shadow-lg text-sm font-bold flex items-center gap-1.5">
             <FaMoneyBillWave size={12} className="text-[var(--color-secondary)]" />
             {(product.basePrice || 0).toLocaleString('fa-IR')} 
             <span className="text-[10px] opacity-80 font-medium">تومان</span>
@@ -41,7 +41,7 @@ export default function ProductCard({ product, onEdit, onDelete, onViewVariants 
       {/* Content Section */}
       <div className="p-5 flex flex-col flex-1">
         <div className="mb-4">
-          <h3 className="text-lg font-black text-[var(--color-text)] mb-1 group-hover:text-[var(--color-primary)] transition-colors line-clamp-1">
+          <h3 className="text-lg font-bold text-[var(--color-text)] mb-1 group-hover:text-[var(--color-primary)] transition-colors line-clamp-1">
             {product.name}
           </h3>
           <p className="text-xs text-gray-400 font-bold flex items-center gap-1">

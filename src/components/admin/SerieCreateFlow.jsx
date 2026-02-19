@@ -72,7 +72,7 @@ export default function ModernSerieAIFlow({ brandId, brandName }) {
     return (
       <div className="max-w-4xl mx-auto my-20 text-center space-y-4">
         <div className="w-12 h-12 border-4 border-[var(--color-primary)] border-t-transparent rounded-full animate-spin mx-auto" />
-        <p className="font-black text-gray-400">در حال فراخوانی دستورالعمل‌های برند...</p>
+        <p className="font-bold text-gray-400">در حال فراخوانی دستورالعمل‌های برند...</p>
       </div>
     );
   }
@@ -87,11 +87,11 @@ export default function ModernSerieAIFlow({ brandId, brandName }) {
               <FaCheckCircle size={24} />
             </div>
             <div>
-              <h2 className="font-black text-xl">اطلاعات آماده است!</h2>
+              <h2 className="font-bold text-xl">اطلاعات آماده است!</h2>
               <p className="text-gray-400 text-xs font-bold">می‌توانید فیلدها را بازبینی و ثبت کنید.</p>
             </div>
           </div>
-          <button onClick={() => setParsedData(null)} className="text-xs font-black text-red-500 hover:underline">ویرایش مجدد JSON</button>
+          <button onClick={() => setParsedData(null)} className="text-xs font-bold text-red-500 hover:underline">ویرایش مجدد JSON</button>
         </div>
 
         {/* کامپوننت فرم ساخت سری که دیتای استخراج شده را به عنوان مقدار اولیه می‌گیرد */}
@@ -112,7 +112,7 @@ export default function ModernSerieAIFlow({ brandId, brandName }) {
               }`}>
               {s.icon}
             </div>
-            <span className={`text-xs font-black tracking-tight ${step >= s.id ? "text-black" : "text-gray-300"}`}>
+            <span className={`text-xs font-bold tracking-tight ${step >= s.id ? "text-black" : "text-gray-300"}`}>
               {s.label}
             </span>
           </div>
@@ -126,7 +126,7 @@ export default function ModernSerieAIFlow({ brandId, brandName }) {
         {step === 1 && (
           <div className="p-10 flex-1 flex flex-col space-y-6 animate-in slide-in-from-left-5 duration-500">
             <div className="space-y-1 text-right">
-              <h2 className="text-2xl font-black italic flex flex-row-reverse items-center gap-3">
+              <h2 className="text-2xl font-bold italic flex flex-row-reverse items-center gap-3">
                 <FaPenNib className="text-white bg-black p-2 rounded-xl" /> استخراج هوشمند اطلاعات
               </h2>
               <p className="text-gray-400 text-sm font-bold">توضیحات یا کاتالوگ سری جدید محصول را در کادر زیر وارد کنید.</p>
@@ -142,7 +142,7 @@ export default function ModernSerieAIFlow({ brandId, brandName }) {
             <button
               onClick={generatePrompt}
               disabled={loading}
-              className="w-full bg-black text-white font-black py-6 rounded-2xl flex items-center justify-center gap-3 hover:shadow-2xl transition-all active:scale-[0.98] disabled:opacity-50"
+              className="w-full bg-black text-white font-bold py-6 rounded-2xl flex items-center justify-center gap-3 hover:shadow-2xl transition-all active:scale-[0.98] disabled:opacity-50"
             >
               {loading ? "در حال پردازش..." : <><FaMagic className="text-[var(--color-primary)]" /> ساخت دستور هوشمند</>}
             </button>
@@ -153,7 +153,7 @@ export default function ModernSerieAIFlow({ brandId, brandName }) {
         {step === 2 && (
           <div className="p-10 flex-1 flex flex-col space-y-6 animate-in zoom-in-95 duration-500">
             <div className="bg-[var(--color-primary)]/10 border-r-4 border-[var(--color-primary)] p-6 rounded-2xl text-right">
-              <p className="text-black font-black text-sm mb-1">راهنما:</p>
+              <p className="text-black font-bold text-sm mb-1">راهنما:</p>
               <p className="text-sm text-gray-700 font-bold leading-6">دستور زیر را کپی کرده و به هوش مصنوعی (مانند ChatGPT) بدهید. سپس خروجی کد (JSON) را کپی کرده و در مرحله بعد وارد کنید.</p>
             </div>
 
@@ -164,19 +164,19 @@ export default function ModernSerieAIFlow({ brandId, brandName }) {
 
               <button
                 onClick={() => { navigator.clipboard.writeText(aiPrompt); toast.info("کپی شد!"); }}
-                className="absolute top-6 right-6 bg-[var(--color-primary)] text-white px-6 py-3 rounded-xl text-xs font-black flex items-center gap-2 hover:scale-105 active:scale-95 transition-all shadow-lg"
+                className="absolute top-6 right-6 bg-[var(--color-primary)] text-white px-6 py-3 rounded-xl text-xs font-bold flex items-center gap-2 hover:scale-105 active:scale-95 transition-all shadow-lg"
               >
                 <FaCopy /> کپی دستور
               </button>
             </div>
 
             <div className="flex gap-4">
-              <button onClick={() => setStep(1)} className="flex-1 py-5 font-black text-xs text-gray-400 hover:text-black transition-all">
+              <button onClick={() => setStep(1)} className="flex-1 py-5 font-bold text-xs text-gray-400 hover:text-black transition-all">
                 بازگشت به مرحله قبل
               </button>
               <button
                 onClick={() => setStep(3)}
-                className="flex-[2] bg-black text-white py-5 rounded-2xl font-black text-sm flex items-center justify-center gap-3 hover:shadow-xl transition-all"
+                className="flex-[2] bg-black text-white py-5 rounded-2xl font-bold text-sm flex items-center justify-center gap-3 hover:shadow-xl transition-all"
               >
                 مرحله بعد: وارد کردن کد <FaArrowLeft className="text-[var(--color-primary)]" />
               </button>
@@ -188,7 +188,7 @@ export default function ModernSerieAIFlow({ brandId, brandName }) {
         {step === 3 && (
           <div className="p-10 flex-1 flex flex-col space-y-6 animate-in slide-in-from-right-5 duration-500">
             <div className="space-y-1 text-right">
-              <h2 className="text-2xl font-black italic flex flex-row-reverse items-center gap-3">
+              <h2 className="text-2xl font-bold italic flex flex-row-reverse items-center gap-3">
                 <FaCode className="text-white bg-black p-2 rounded-xl" /> بارگذاری خروجی هوش مصنوعی
               </h2>
               <p className="text-gray-400 text-sm font-bold">کد JSON دریافت شده را در کادر زیر قرار دهید.</p>
@@ -202,12 +202,12 @@ export default function ModernSerieAIFlow({ brandId, brandName }) {
             />
 
             <div className="flex gap-4">
-              <button onClick={() => setStep(2)} className="flex-1 py-5 font-black text-xs text-gray-400 hover:text-black transition-all">
+              <button onClick={() => setStep(2)} className="flex-1 py-5 font-bold text-xs text-gray-400 hover:text-black transition-all">
                 بازگشت
               </button>
               <button
                 onClick={validateAndParse}
-                className="flex-[3] bg-[var(--color-primary)] text-white font-black py-5 rounded-2xl shadow-lg shadow-[var(--color-primary)]/20 hover:-translate-y-1 transition-all flex items-center justify-center gap-2"
+                className="flex-[3] bg-[var(--color-primary)] text-white font-bold py-5 rounded-2xl shadow-lg shadow-[var(--color-primary)]/20 hover:-translate-y-1 transition-all flex items-center justify-center gap-2"
               >
                 تایید و انتقال به فرم نهایی <FaCheckCircle />
               </button>

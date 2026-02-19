@@ -88,7 +88,7 @@ export default function AdminCategories() {
               <Link href="/p-admin" className="flex items-center gap-2 text-[var(--color-primary)] text-sm font-bold group">
                 <FaArrowRight className="group-hover:translate-x-1 transition-transform" /> بازگشت به داشبورد
               </Link>
-              <h1 className="text-3xl font-black text-[var(--color-text)] tracking-tight flex items-center gap-3">
+              <h1 className="text-3xl font-bold text-[var(--color-text)] tracking-tight flex items-center gap-3">
                 <FaShapes className="text-[var(--color-secondary)]" /> مدیریت <span className="text-[var(--color-primary)]">دسته‌ها</span>
               </h1>
             </div>
@@ -170,7 +170,7 @@ export default function AdminCategories() {
           </div>
         </div>
 
-        <h3 className="text-lg font-black text-[var(--color-text)] mb-1 group-hover:text-[var(--color-primary)] transition-colors">
+        <h3 className="text-lg font-bold text-[var(--color-text)] mb-1 group-hover:text-[var(--color-primary)] transition-colors">
           {category.title}
         </h3>
         

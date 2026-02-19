@@ -15,7 +15,7 @@ const ProductHeader = ({ name, shortDescription }) => {
           text-3xl
           md:text-3xl
           lg:text-4xl
-          font-black
+          font-bold
           leading-[1.1]
           tracking-tight
           mb-4

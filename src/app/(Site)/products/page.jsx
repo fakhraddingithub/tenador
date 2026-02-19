@@ -1,6 +1,3 @@
-// ===============================
-// app/products/page.jsx (Server Component)
-// ===============================
 import ProductListClient from "@/components/templates/products/ProductListClient";
 import { getProducts } from "base/services/product.service";
 

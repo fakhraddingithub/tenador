@@ -24,7 +24,7 @@ const ProductPrice = ({ basePrice, discountedPrice, hasDiscount }) => {
               <motion.span 
                 initial={{ scale: 0.9, opacity: 0 }}
                 animate={{ scale: 1, opacity: 1 }}
-                className="bg-[#aa4725] text-white text-[11px] font-black px-2.5 py-1 rounded-full shadow-lg shadow-[#aa4725]/20 uppercase tracking-tighter"
+                className="bg-[#aa4725] text-white text-[11px] font-bold px-2.5 py-1 rounded-full shadow-lg shadow-[#aa4725]/20 uppercase tracking-tighter"
               >
                 {discountPercent}% OFF
               </motion.span>
@@ -32,7 +32,7 @@ const ProductPrice = ({ basePrice, discountedPrice, hasDiscount }) => {
 
             {/* قیمت نهایی */}
             <div className="flex items-baseline gap-2">
-              <span className="text-3xl md:text-4xl font-black text-[#1a1a1a] tracking-tight">
+              <span className="text-3xl md:text-4xl font-bold text-[#1a1a1a] tracking-tight">
                 {formatPrice(discountedPrice)}
               </span>
               <span className="text-sm font-bold text-gray-500">تومان</span>
@@ -40,7 +40,7 @@ const ProductPrice = ({ basePrice, discountedPrice, hasDiscount }) => {
           </div>
         ) : (
           <div className="flex items-baseline gap-2">
-            <span className="text-3xl md:text-4xl font-black text-[#aa4725] tracking-tight">
+            <span className="text-3xl md:text-4xl font-bold text-[#aa4725] tracking-tight">
               {formatPrice(basePrice)}
             </span>
             <span className="text-sm font-bold text-gray-500">تومان</span>

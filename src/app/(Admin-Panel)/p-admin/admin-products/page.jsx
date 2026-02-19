@@ -77,10 +77,10 @@ export default function AdminProducts() {
               <FiBox size={32} />
             </div>
             <div>
-              <div className="flex items-center gap-2 text-[var(--color-primary)] font-black text-[10px] uppercase tracking-[0.3em] mb-1">
+              <div className="flex items-center gap-2 text-[var(--color-primary)] font-bold text-[10px] uppercase tracking-[0.3em] mb-1">
                 <FiActivity /> Inventory Management
               </div>
-              <h1 className="text-3xl font-black text-gray-900 tracking-tight">
+              <h1 className="text-3xl font-bold text-gray-900 tracking-tight">
                 لیست <span className="text-transparent bg-clip-text bg-gradient-to-r from-gray-900 to-gray-500">محصولات</span>
               </h1>
             </div>
@@ -94,7 +94,7 @@ export default function AdminProducts() {
             
             <button
               onClick={() => router.push('/p-admin/admin-products/add')}
-              className="flex items-center gap-3 bg-gradient-to-r from-[var(--color-primary)] to-orange-500 text-white px-8 py-4 rounded-[1.5rem] font-black shadow-lg shadow-orange-200 hover:-translate-y-1 transition-all active:scale-95"
+              className="flex items-center gap-3 bg-gradient-to-r from-[var(--color-primary)] to-orange-500 text-white px-8 py-4 rounded-[1.5rem] font-bold shadow-lg shadow-orange-200 hover:-translate-y-1 transition-all active:scale-95"
             >
               <FiPlus size={20} />
               <span>افزودن محصول جدید</span>
@@ -106,8 +106,8 @@ export default function AdminProducts() {
         <div className="flex gap-4 mb-10 overflow-x-auto no-scrollbar pb-2">
           <div className="flex-none px-6 py-3 bg-white border border-white rounded-2xl shadow-sm flex items-center gap-3">
              <span className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
-             <span className="text-xs font-black text-gray-500 uppercase tracking-tighter">Total Products:</span>
-             <span className="text-sm font-black text-gray-900">{products.length}</span>
+             <span className="text-xs font-bold text-gray-500 uppercase tracking-tighter">Total Products:</span>
+             <span className="text-sm font-bold text-gray-900">{products.length}</span>
           </div>
           <div className="flex-none px-6 py-3 bg-white border border-white rounded-2xl shadow-sm flex items-center gap-3 text-gray-400">
              <FiLayers size={14} />
@@ -122,18 +122,18 @@ export default function AdminProducts() {
               <div className="w-20 h-20 border-4 border-gray-100 border-t-[var(--color-primary)] rounded-full animate-spin" />
               <FiZap className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-[var(--color-primary)] animate-pulse" size={24} />
             </div>
-            <span className="text-gray-400 font-black text-xs uppercase tracking-[0.4em]">Synchronizing Data...</span>
+            <span className="text-gray-400 font-bold text-xs uppercase tracking-[0.4em]">Synchronizing Data...</span>
           </div>
         ) : products.length === 0 ? (
           <div className="bg-white/50 backdrop-blur-md rounded-[4rem] border-4 border-dashed border-white p-24 text-center">
             <div className="inline-flex p-8 bg-gray-100 rounded-full mb-6">
               <FiBox size={48} className="text-gray-300" />
             </div>
-            <h3 className="text-2xl font-black text-gray-800 mb-2">انبار خالی است!</h3>
+            <h3 className="text-2xl font-bold text-gray-800 mb-2">انبار خالی است!</h3>
             <p className="text-gray-400 font-medium mb-8">هنوز هیچ محصولی به سیستم اضافه نشده است.</p>
             <button 
               onClick={() => router.push('/p-admin/admin-products/add')}
-              className="text-[var(--color-primary)] font-black uppercase text-sm tracking-widest hover:underline"
+              className="text-[var(--color-primary)] font-bold uppercase text-sm tracking-widest hover:underline"
             >
               + Create First Product
             </button>
@@ -160,7 +160,7 @@ export default function AdminProducts() {
       
       {/* Footer Branding */}
       <footer className="mt-20 px-6 py-10 border-t border-gray-200/50 flex flex-col items-center opacity-30 italic">
-         <div className="text-4xl font-black text-gray-200 select-none tracking-tighter uppercase">Product Grid System v3.0</div>
+         <div className="text-4xl font-bold text-gray-200 select-none tracking-tighter uppercase">Product Grid System v3.0</div>
       </footer>
     </div>
   );

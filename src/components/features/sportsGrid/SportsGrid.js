@@ -1,110 +1,152 @@
-'use client';
+"use client";
 
-import { useState } from 'react';
-import { SPORTS_CATEGORIES } from '@/lib/constants';
+import { useState } from "react";
+import { motion, AnimatePresence } from "framer-motion";
+import { FiArrowUpLeft, FiChevronDown } from "react-icons/fi";
 
-const ALL_CATEGORIES = [...SPORTS_CATEGORIES];
+export default function SportsGrid({ categories = [] }) {
+  const [showAll, setShowAll] = useState(false);
 
-export default function   SportsGrid() {
-  const [hoveredId, setHoveredId] = useState(null);
+  // ۴ مورد اول برای نمایش در گرید اصلی
+  const initialCategories = categories.slice(0, 4);
+  // بقیه موارد برای نمایش در بخش کشویی
+  const remainingCategories = categories.slice(4);
+
+  // استایل چیدمان برای ۴ کارت اول (ایجاد یک بلوک مستطیلی کامل و جذاب)
+  const getTopGridSpan = (index) => {
+    const patterns = [
+      "md:col-span-2 md:row-span-2", // 0: بزرگ (مربع دو در دو)
+      "md:col-span-1 md:row-span-1", // 1: کوچک (بالا)
+      "md:col-span-1 md:row-span-2", // 2: عمودی (بلند)
+      "md:col-span-1 md:row-span-1", // 3: کوچک (پایین)
+    ];
+    return patterns[index] || "md:col-span-1 md:row-span-1";
+  };
 
   return (
-    <section className="py-16 lg:py-24 bg-gradient-to-b from-[#fff] to-[#aa4725]/50">
+    <section className="py-20 bg-white text-black">
       <div className="container mx-auto px-4">
-        <h2 className="text-3xl lg:text-4xl font-bold mb-12 text-center">
-          دسته‌بندی ورزشی
-        </h2>
+        {/* هدر بخش */}
+        <div className="mb-12 flex flex-col md:flex-row justify-between items-end border-b border-gray-100 pb-6">
+          <div className="border-r-4 border-[#aa4725] pr-4">
+            <h2 className="text-3xl md:text-4xl font-bold text-gray-900 mb-2">
+              رشته‌های ورزشی
+            </h2>
+            <p className="text-gray-500 text-sm font-medium">
+              تجهیزات تخصصی برای هر سبک بازی
+            </p>
+          </div>
+        </div>
 
-        {/* Irregular Grid Layout */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-0">
-          {/* Large Item - Tennis */}
-          <a
-            href={`/category/${ALL_CATEGORIES[0].slug}`}
-            className="relative col-span-2 row-span-2 h-[400px] lg:h-[500px] overflow-hidden group cursor-pointer"
-            onMouseEnter={() => setHoveredId(ALL_CATEGORIES[0].id)}
-            onMouseLeave={() => setHoveredId(null)}
-          >
-            <div
-              className="absolute inset-0 bg-cover bg-center transition-transform duration-700 group-hover:scale-110"
-              style={{
-                backgroundImage: `linear-gradient(to top, rgba(13, 13, 13, 0.8), rgba(13, 13, 13, 0.3)), url(${ALL_CATEGORIES[0].image})`,
-              }}
+        {/* گرید اصلی (۴ آیتم اول) */}
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 auto-rows-[220px] md:auto-rows-[260px]">
+          {initialCategories.map((category, index) => (
+            <CategoryCard
+              key={category.id}
+              category={category}
+              className={getTopGridSpan(index)}
             />
-            {hoveredId === ALL_CATEGORIES[0].id && (
-              <div className="absolute inset-0 glass-effect pointer-events-none" />
-            )}
-            <div className="absolute inset-0 flex items-end p-8 diagonal-separator">
-              <h3
-                className={`text-3xl lg:text-4xl font-bold transition-colors duration-300 ${
-                  hoveredId === ALL_CATEGORIES[0].id ? 'text-[#aa4725]' : 'text-white'
-                }`}
-              >
-                {ALL_CATEGORIES[0].name}
-              </h3>
-            </div>
-          </a>
-
-          {/* Medium Items - Padel, Squash */}
-          {[ALL_CATEGORIES[1], ALL_CATEGORIES[2]].map((category, index) => (
-            <a
-              key={category.id}
-              href={`/category/${category.slug}`}
-              className="relative h-[200px] lg:h-[250px] overflow-hidden group cursor-pointer"
-              onMouseEnter={() => setHoveredId(category.id)}
-              onMouseLeave={() => setHoveredId(null)}
-            >
-              <div
-                className="absolute inset-0 bg-cover bg-center transition-transform duration-700 group-hover:scale-110"
-                style={{
-                  backgroundImage: `linear-gradient(to top, rgba(13, 13, 13, 0.8), rgba(13, 13, 13, 0.3)), url(${category.image})`,
-                }}
-              />
-              {hoveredId === category.id && (
-                <div className="absolute inset-0 glass-effect pointer-events-none" />
-              )}
-              <div className={`absolute inset-0 flex items-end p-6 ${index === 0 ? 'diagonal-separator' : 'diagonal-separator-reverse'}`}>
-                <h3
-                  className={`text-2xl lg:text-3xl font-bold transition-colors duration-300 ${
-                    hoveredId === category.id ? 'text-[#aa4725]' : 'text-white'
-                  }`}
-                >
-                  {category.name}
-                </h3>
-              </div>
-            </a>
-          ))}
-
-          {/* Small Items - Badminton, Pingpong, General, Accessories */}
-          {[ALL_CATEGORIES[3], ALL_CATEGORIES[4]].map((category, index) => (
-            <a
-              key={category.id}
-              href={`/category/${category.slug}`}
-              className="relative h-[200px] lg:h-[250px] overflow-hidden group cursor-pointer"
-              onMouseEnter={() => setHoveredId(category.id)}
-              onMouseLeave={() => setHoveredId(null)}
-            >
-              <div
-                className="absolute inset-0 bg-cover bg-center transition-transform duration-700 group-hover:scale-110"
-                style={{
-                  backgroundImage: `linear-gradient(to top, rgba(13, 13, 13, 0.8), rgba(13, 13, 13, 0.3)), url(${category.image})`,
-                }}
-              />
-              {hoveredId === category.id && (
-                <div className="absolute inset-0 glass-effect pointer-events-none" />
-              )}
-              <div className={`absolute inset-0 flex items-end p-6 ${index % 2 === 0 ? 'diagonal-separator' : ''}`}>
-                <h3
-                  className={`text-xl lg:text-2xl font-bold transition-colors duration-300 ${
-                    hoveredId === category.id ? 'text-[#aa4725]' : 'text-white'
-                  }`}
-                >
-                  {category.name}
-                </h3>
-              </div>
-            </a>
           ))}
         </div>
+
+        {/* بخش کشویی برای بقیه ورزش‌ها */}
+        <AnimatePresence initial={false}>
+          {showAll && remainingCategories.length > 0 && (
+            <motion.div
+              initial={{ height: 0, opacity: 0 }}
+              animate={{ height: "auto", opacity: 1 }}
+              exit={{ height: 0, opacity: 0 }}
+              transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
+              className="overflow-hidden"
+            >
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mt-4 auto-rows-[260px]">
+                {remainingCategories.map((category) => (
+                  <CategoryCard
+                    key={category.id}
+                    category={category}
+                    className="md:col-span-1 md:row-span-1"
+                  />
+                ))}
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {/* دکمه کشویی (آکاردئون) */}
+        {categories.length > 4 && (
+          <div className="mt-10 flex justify-center">
+            <button
+              onClick={() => setShowAll(!showAll)}
+              className="group flex items-center gap-3 bg-gray-50 hover:bg-gray-100 border border-gray-200 px-8 py-4 transition-all duration-300"
+              style={{ borderRadius: "6px" }}
+            >
+              <span className="font-bold text-sm text-gray-800">
+                {showAll ? "بستن لیست" : "مشاهده همه ورزش ها"}
+              </span>
+              <div
+                className="bg-white border border-gray-200 p-1.5 shadow-sm transition-transform duration-500"
+                style={{
+                  borderRadius: "6px",
+                  transform: showAll ? "rotate(180deg)" : "rotate(0deg)",
+                }}
+              >
+                <FiChevronDown className="text-[#aa4725]" size={20} />
+              </div>
+            </button>
+          </div>
+        )}
       </div>
     </section>
+  );
+}
+
+// کامپوننت مجزا برای کارت‌ها جهت تمیزی کد
+function CategoryCard({ category, className }) {
+  return (
+    <a
+      href={`/category/${category.slug}`}
+      className={`relative group block w-full h-full overflow-hidden bg-gray-100 ${className}`}
+      style={{ borderRadius: "6px" }}
+    >
+      {/* تصویر اصلی */}
+      <img
+        src={category.image}
+        alt={category.name}
+        className="absolute inset-0 w-full h-full object-cover transition-transform duration-700 ease-out group-hover:scale-105"
+      />
+
+      {/* شید تیره در حالت عادی برای خوانایی متن */}
+      <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/10 to-transparent transition-opacity duration-500 group-hover:opacity-40" />
+
+      {/* عنوان در حالت عادی (با هاور محو می‌شود) */}
+      <div className="absolute inset-x-0 bottom-0 p-6 flex items-end justify-between transition-all duration-500 opacity-100 group-hover:opacity-0 group-hover:translate-y-4">
+        <h3 className="text-white text-2xl font-bold">{category.name}</h3>
+      </div>
+
+      {/* پنل شیشه‌ای کشویی (در هاور از پایین بالا می‌آید) */}
+      <div className="absolute inset-x-0 bottom-0 p-4 translate-y-[120%] group-hover:translate-y-0 transition-transform duration-500 ease-out z-20">
+        <div
+          className=" bg-[#20232ae6]/80 backdrop-blur-lg border border-[#20232ae6] p-5 flex justify-between items-center shadow-[0_8px_30px_rgb(0,0,0,0.12)]"
+          style={{ borderRadius: "6px" }}
+        >
+          <div>
+            <span className="text-white text-[11px] font-bold block mb-1 opacity-90 drop-shadow-md">
+              تجهیزات تخصصی
+            </span>
+            <h3 className="text-white font-bold text-2xl drop-shadow-lg">
+              {category.name}
+            </h3>
+          </div>
+
+          {/* دکمه فلش */}
+          <div
+            className="bg-[#aa4725] text-white p-3 rotate-45 group-hover:rotate-0 transition-transform duration-500 delay-100 shadow-md"
+            style={{ borderRadius: "6px" }}
+          >
+            <FiArrowUpLeft size={22} />
+          </div>
+        </div>
+      </div>
+    </a>
   );
 }

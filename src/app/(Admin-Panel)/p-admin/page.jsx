@@ -45,7 +45,7 @@ export default function AdminDashboard() {
           <div className="absolute inset-0 border-4 border-[var(--color-primary)]/20 rounded-full"></div>
           <div className="absolute inset-0 border-4 border-[var(--color-primary)] border-t-transparent rounded-full animate-spin"></div>
         </div>
-        <p className="text-gray-400 font-black animate-pulse">در حال تجزیه و تحلیل داده‌ها...</p>
+        <p className="text-gray-400 font-bold animate-pulse">در حال تجزیه و تحلیل داده‌ها...</p>
       </div>
     );
   }
@@ -55,7 +55,7 @@ export default function AdminDashboard() {
       {/* Welcome Section */}
       <div className="mb-10 flex flex-col md:flex-row justify-between items-start md:items-end gap-4">
         <div>
-          <h1 className="text-4xl font-black text-gray-800 tracking-tight mb-2">
+          <h1 className="text-4xl font-bold text-gray-800 tracking-tight mb-2">
             سلام، <span className="text-[var(--color-primary)]">مدیر عزیز!</span> 👋
           </h1>
           <p className="text-gray-400 font-bold flex items-center gap-2">
@@ -64,7 +64,7 @@ export default function AdminDashboard() {
         </div>
         <div className="bg-white px-6 py-3 rounded-2xl shadow-sm border border-white flex items-center gap-4">
           <div className="text-right">
-            <p className="text-[10px] text-gray-400 font-black uppercase">آخرین آپدیت</p>
+            <p className="text-[10px] text-gray-400 font-bold uppercase">آخرین آپدیت</p>
             <p className="text-xs font-bold text-gray-700">همین الان</p>
           </div>
           <div className="w-10 h-10 bg-green-50 text-green-500 rounded-xl flex items-center justify-center animate-pulse">
@@ -84,12 +84,12 @@ export default function AdminDashboard() {
               <div className="p-4 bg-white/10 backdrop-blur-xl rounded-2xl">
                 <FaBoxOpen size={30} className="text-[var(--color-secondary)]" />
               </div>
-              <span className="bg-green-500 text-white text-[10px] px-3 py-1 rounded-full font-black flex items-center gap-1">
+              <span className="bg-green-500 text-white text-[10px] px-3 py-1 rounded-full font-bold flex items-center gap-1">
                 <FaArrowUp />
               </span>
             </div>
             <div>
-              <p className="text-6xl font-black mb-2">{stats.products}</p>
+              <p className="text-6xl font-bold mb-2">{stats.products}</p>
               <h3 className="text-xl font-bold opacity-80">محصولات ثبت شده</h3>
             </div>
           </div>
@@ -101,7 +101,7 @@ export default function AdminDashboard() {
             <FaUserAstronaut size={50} />
           </div>
           <div>
-            <p className="text-5xl font-black text-gray-800 mb-1">{stats.athletes}</p>
+            <p className="text-5xl font-bold text-gray-800 mb-1">{stats.athletes}</p>
             <h3 className="text-lg font-bold text-gray-400 uppercase tracking-widest">قهرمانان</h3>
             <div className="mt-4 flex -space-x-3 space-x-reverse">
               {[1, 2, 3, 4].map(i => (
@@ -123,7 +123,7 @@ export default function AdminDashboard() {
               <FaRunning size={24} />
             </div>
             <div>
-              <p className="text-2xl font-black text-gray-800">{stats.sports}</p>
+              <p className="text-2xl font-bold text-gray-800">{stats.sports}</p>
               <h3 className="text-sm font-bold text-gray-400">رشته ورزشی</h3>
             </div>
           </div>
@@ -136,7 +136,7 @@ export default function AdminDashboard() {
               <FaFolderOpen size={24} />
             </div>
             <div>
-              <p className="text-2xl font-black text-gray-800">{stats.categories}</p>
+              <p className="text-2xl font-bold text-gray-800">{stats.categories}</p>
               <h3 className="text-sm font-bold text-gray-400">دسته‌بندی</h3>
             </div>
           </div>
@@ -149,7 +149,7 @@ export default function AdminDashboard() {
               <FaBold size={24} />
             </div>
             <div>
-              <p className="text-2xl font-black text-gray-800">{stats.brands}</p>
+              <p className="text-2xl font-bold text-gray-800">{stats.brands}</p>
               <h3 className="text-sm font-bold text-gray-400">برند همکار</h3>
             </div>
           </div>
@@ -161,7 +161,7 @@ export default function AdminDashboard() {
       <div className="mt-8 grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="lg:col-span-2 bg-white rounded-[2.5rem] p-8 border border-white shadow-sm relative overflow-hidden h-64">
           <div className="flex justify-between items-center mb-8">
-            <h3 className="text-xl font-black text-gray-800">تحلیل بازدیدها</h3>
+            <h3 className="text-xl font-bold text-gray-800">تحلیل بازدیدها</h3>
             <select className="bg-gray-50 border-none rounded-xl text-xs font-bold p-2 outline-none">
               <option>۷ روز اخیر</option>
               <option>۳۰ روز اخیر</option>
@@ -179,10 +179,10 @@ export default function AdminDashboard() {
         <div className="bg-gradient-to-br from-[var(--color-primary)] to-[var(--color-secondary)] rounded-[2.5rem] p-8 text-white flex flex-col justify-between">
           <div className="flex justify-between items-start">
             <FaRegBell size={24} className="animate-bounce" />
-            <button className="text-[10px] font-black uppercase bg-white/20 px-3 py-1 rounded-full">مشاهده همه</button>
+            <button className="text-[10px] font-bold uppercase bg-white/20 px-3 py-1 rounded-full">مشاهده همه</button>
           </div>
           <div>
-            <h3 className="text-2xl font-black mb-2">اعلان‌های سیستم</h3>
+            <h3 className="text-2xl font-bold mb-2">اعلان‌های سیستم</h3>
             <p className="text-sm opacity-80 leading-relaxed font-bold">۳ محصول جدید برای تایید نهایی در صف انتظار هستند. بررسی کنید!</p>
           </div>
         </div>

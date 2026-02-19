@@ -69,7 +69,7 @@ export default function AdminBrands() {
               <Link href="/p-admin" className="flex items-center gap-2 text-[var(--color-primary)] text-sm font-bold mb-1">
                 <FaArrowRight size={12} /> بازگشت به داشبورد
               </Link>
-              <h1 className="text-3xl font-black text-gray-800 tracking-tight">
+              <h1 className="text-3xl font-bold text-gray-800 tracking-tight">
                 مرکز <span className="text-[var(--color-primary)]">برندها</span>
               </h1>
             </div>
@@ -124,7 +124,7 @@ export default function AdminBrands() {
                       {brand.logo ? (
                         <img src={brand.logo} alt={brand.name} className="w-full h-full object-contain" />
                       ) : (
-                        <span className="text-3xl font-black text-gray-200">{brand.name?.[0]}</span>
+                        <span className="text-3xl font-bold text-gray-200">{brand.name?.[0]}</span>
                       )}
                     </div>
                   </div>
@@ -132,7 +132,7 @@ export default function AdminBrands() {
 
                 {/* Brand Info */}
                 <div className="text-center mb-8 relative z-10">
-                  <h2 className="text-xl font-black text-gray-800 mb-2 group-hover:text-[var(--color-primary)] transition-colors">{brand.name}</h2>
+                  <h2 className="text-xl font-bold text-gray-800 mb-2 group-hover:text-[var(--color-primary)] transition-colors">{brand.name}</h2>
                   <div className="flex items-center justify-center gap-4 text-[10px] font-bold text-gray-400 uppercase tracking-widest">
                     <span className="flex items-center gap-1"><FaGlobeAmericas className="text-[var(--color-secondary)]" /> {brand.country || 'Global'}</span>
                     <span className="w-1.5 h-1.5 bg-gray-200 rounded-full" />
@@ -144,7 +144,7 @@ export default function AdminBrands() {
                 <div className="flex gap-2">
                   <Link
                     href={`/p-admin/admin-brands/edit/${brand._id}`}
-                    className="flex-1 bg-gray-50 text-gray-700 py-3 rounded-2xl text-xs font-black flex items-center justify-center gap-2 hover:bg-gray-900 hover:text-white transition-all"
+                    className="flex-1 bg-gray-50 text-gray-700 py-3 rounded-2xl text-xs font-bold flex items-center justify-center gap-2 hover:bg-gray-900 hover:text-white transition-all"
                   >
                     <FaEdit /> ویرایش
                   </Link>

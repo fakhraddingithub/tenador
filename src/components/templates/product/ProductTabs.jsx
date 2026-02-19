@@ -28,7 +28,7 @@ const ProductTabs = ({ description, attributes, reviews }) => {
               onClick={() => setActiveTab(tab.id)}
               className={`
                 relative px-2 py-4 text-sm transition-all duration-300 outline-none shrink-0
-                ${isActive ? "font-black text-[#1a1a1a]" : "font-bold text-gray-400 hover:text-gray-600"}
+                ${isActive ? "font-bold text-[#1a1a1a]" : "font-bold text-gray-400 hover:text-gray-600"}
               `}
             >
               <div className="flex items-center gap-2">

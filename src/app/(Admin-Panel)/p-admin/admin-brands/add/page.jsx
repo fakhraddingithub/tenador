@@ -81,14 +81,14 @@ export default function AddBrand() {
       {/* --- Header Section --- */}
       <header className="max-w-5xl mx-auto px-6 py-10 flex justify-between items-end">
         <div>
-          <Link href="/p-admin/admin-brands" className="flex items-center gap-2 text-[var(--color-primary)] text-sm font-black mb-2 hover:translate-x-1 transition-transform">
+          <Link href="/p-admin/admin-brands" className="flex items-center gap-2 text-[var(--color-primary)] text-sm font-bold mb-2 hover:translate-x-1 transition-transform">
             <FaArrowRight size={12} /> بازگشت به برندها
           </Link>
-          <h1 className="text-4xl font-black text-gray-800 tracking-tight">
+          <h1 className="text-4xl font-bold text-gray-800 tracking-tight">
             ثبت برند <span className="text-[var(--color-primary)]">جدید</span>
           </h1>
         </div>
-        <div className="hidden md:block text-left italic font-black text-gray-100 text-6xl select-none">BRAND</div>
+        <div className="hidden md:block text-left italic font-bold text-gray-100 text-6xl select-none">BRAND</div>
       </header>
 
       <main className="max-w-5xl mx-auto px-6">
@@ -97,13 +97,13 @@ export default function AddBrand() {
           {/* --- Right Column: Info --- */}
           <div className="lg:col-span-2 space-y-6">
             <div className="bg-white/70 backdrop-blur-xl border border-white rounded-[2.5rem] p-8 shadow-xl shadow-gray-200/50">
-              <h2 className="text-lg font-black text-gray-800 mb-6 flex items-center gap-2">
+              <h2 className="text-lg font-bold text-gray-800 mb-6 flex items-center gap-2">
                 <span className="w-2 h-6 bg-[var(--color-secondary)] rounded-full" /> اطلاعات اصلی برند
               </h2>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div className="space-y-2">
-                  <label className="text-xs font-black text-gray-400 mr-2 uppercase">نام سیستمی (English)</label>
+                  <label className="text-xs font-bold text-gray-400 mr-2 uppercase">نام سیستمی (English)</label>
                   <input
                     required
                     placeholder="e.g. Nike"
@@ -113,7 +113,7 @@ export default function AddBrand() {
                   />
                 </div>
                 <div className="space-y-2">
-                  <label className="text-xs font-black text-gray-400 mr-2 uppercase">عنوان نمایشی (Persian)</label>
+                  <label className="text-xs font-bold text-gray-400 mr-2 uppercase">عنوان نمایشی (Persian)</label>
                   <input
                     required
                     placeholder="مثلاً نایکی"
@@ -123,7 +123,7 @@ export default function AddBrand() {
                   />
                 </div>
                 <div className="relative group space-y-2">
-                  <label className="text-xs font-black text-gray-400 mr-2 uppercase flex items-center gap-1"><FaGlobeAmericas /> کشور سازنده</label>
+                  <label className="text-xs font-bold text-gray-400 mr-2 uppercase flex items-center gap-1"><FaGlobeAmericas /> کشور سازنده</label>
                   <input
                     className="w-full bg-gray-50/50 border-2 border-transparent focus:border-[var(--color-secondary)] focus:bg-white rounded-2xl px-5 py-4 outline-none transition-all font-bold text-gray-700 shadow-sm"
                     value={formData.country}
@@ -131,7 +131,7 @@ export default function AddBrand() {
                   />
                 </div>
                 <div className="space-y-2">
-                  <label className="text-xs font-black text-gray-400 mr-2 uppercase flex items-center gap-1"><FaCalendarAlt /> سال تأسیس</label>
+                  <label className="text-xs font-bold text-gray-400 mr-2 uppercase flex items-center gap-1"><FaCalendarAlt /> سال تأسیس</label>
                   <input
                     type="number"
                     className="w-full bg-gray-50/50 border-2 border-transparent focus:border-[var(--color-secondary)] focus:bg-white rounded-2xl px-5 py-4 outline-none transition-all font-bold text-gray-700 shadow-sm"
@@ -142,7 +142,7 @@ export default function AddBrand() {
               </div>
 
               <div className="mt-6 space-y-2">
-                <label className="text-xs font-black text-gray-400 mr-2 uppercase">داستان برند (توضیحات)</label>
+                <label className="text-xs font-bold text-gray-400 mr-2 uppercase">داستان برند (توضیحات)</label>
                 <textarea
                   rows={4}
                   className="w-full bg-gray-50/50 border-2 border-transparent focus:border-[var(--color-secondary)] focus:bg-white rounded-[2rem] px-5 py-4 outline-none transition-all font-medium text-gray-600 shadow-sm"
@@ -154,7 +154,7 @@ export default function AddBrand() {
 
             {/* Banner Upload */}
             <div className="bg-white/70 backdrop-blur-xl border border-white rounded-[2.5rem] p-8 shadow-xl shadow-gray-200/50">
-              <h2 className="text-lg font-black text-gray-800 mb-6">تصویر هدر برند</h2>
+              <h2 className="text-lg font-bold text-gray-800 mb-6">تصویر هدر برند</h2>
               <UploadField
                 url={formData.image}
                 loading={uploading.image}
@@ -164,7 +164,7 @@ export default function AddBrand() {
             </div>
 
             <div className="bg-white/70 backdrop-blur-xl border border-white rounded-[2.5rem] p-8 shadow-xl shadow-gray-200/50 mt-8">
-              <h2 className="text-lg font-black text-gray-800 mb-6 flex items-center gap-2">
+              <h2 className="text-lg font-bold text-gray-800 mb-6 flex items-center gap-2">
                 <FaMagic className="text-[var(--color-primary)]" /> دستورالعمل‌های هوش مصنوعی (سری‌ها)
               </h2>
               <p className="text-xs text-gray-500 mb-6 font-bold">
@@ -174,7 +174,7 @@ export default function AddBrand() {
               <div className="space-y-6">
                 {formData.prompts.map((item, index) => (
                   <div key={item.field} className="space-y-2">
-                    <label className="text-[10px] font-black text-gray-400 mr-2 uppercase flex items-center gap-1">
+                    <label className="text-[10px] font-bold text-gray-400 mr-2 uppercase flex items-center gap-1">
                       <FaParagraph size={10} /> دستورالعمل برای فیلد {item.field}
                     </label>
                     <textarea
@@ -194,14 +194,14 @@ export default function AddBrand() {
           {/* --- Left Column: Assets --- */}
           <div className="space-y-8">
             <div className="bg-gradient-to-br from-gray-900 to-gray-800 rounded-[2.5rem] p-8 text-white shadow-2xl">
-              <h2 className="text-lg font-black mb-8 flex items-center justify-between">
+              <h2 className="text-lg font-bold mb-8 flex items-center justify-between">
                 هویت بصری
                 <FaRocket className="text-[var(--color-primary)]" />
               </h2>
 
               <div className="space-y-8">
                 <div>
-                  <p className="text-[10px] font-black uppercase text-gray-400 mb-3 tracking-widest text-center">لوگوی اصلی</p>
+                  <p className="text-[10px] font-bold uppercase text-gray-400 mb-3 tracking-widest text-center">لوگوی اصلی</p>
                   <UploadField
                     url={formData.logo}
                     loading={uploading.logo}
@@ -211,7 +211,7 @@ export default function AddBrand() {
                 </div>
 
                 <div>
-                  <p className="text-[10px] font-black uppercase text-gray-400 mb-3 tracking-widest text-center">آیکن (Favicon)</p>
+                  <p className="text-[10px] font-bold uppercase text-gray-400 mb-3 tracking-widest text-center">آیکن (Favicon)</p>
                   <UploadField
                     url={formData.icon}
                     loading={uploading.icon}
@@ -227,7 +227,7 @@ export default function AddBrand() {
             <button
               type="submit"
               disabled={loading}
-              className={`w-full py-6 rounded-[2rem] font-black text-lg shadow-2xl transition-all flex items-center justify-center gap-3 active:scale-95 ${loading ? 'bg-gray-200 text-gray-400 cursor-not-allowed' : 'bg-[var(--color-primary)] text-white hover:shadow-[#aa472555] hover:-translate-y-1'
+              className={`w-full py-6 rounded-[2rem] font-bold text-lg shadow-2xl transition-all flex items-center justify-center gap-3 active:scale-95 ${loading ? 'bg-gray-200 text-gray-400 cursor-not-allowed' : 'bg-[var(--color-primary)] text-white hover:shadow-[#aa472555] hover:-translate-y-1'
                 }`}
             >
               {loading ? (
@@ -265,7 +265,7 @@ function UploadField({ url, loading, onSelect, isSquare, small, aspect = "aspect
             ) : (
               <>
                 <FaCloudUploadAlt className={`mx-auto mb-2 text-gray-300 group-hover:text-[var(--color-primary)] transition-colors ${small ? 'text-xl' : 'text-3xl'}`} />
-                {!small && <span className="text-[10px] font-black text-gray-400 uppercase tracking-tighter">Click to Upload</span>}
+                {!small && <span className="text-[10px] font-bold text-gray-400 uppercase tracking-tighter">Click to Upload</span>}
               </>
             )}
           </div>

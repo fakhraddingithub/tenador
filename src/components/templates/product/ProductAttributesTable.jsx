@@ -31,7 +31,7 @@ const ProductAttributesTable = ({ attributes = [] }) => {
             {/* بخش عنوان ویژگی */}
             <div className="flex items-center gap-3">
               <span className="w-1.5 h-1.5 rounded-full bg-gray-200 group-hover:bg-[#aa4725] transition-colors" />
-              <span className="text-[11px] font-black uppercase tracking-tighter text-gray-400 group-hover:text-gray-600">
+              <span className="text-[11px] font-bold uppercase tracking-tighter text-gray-400 group-hover:text-gray-600">
                 {attr.label}
               </span>
             </div>

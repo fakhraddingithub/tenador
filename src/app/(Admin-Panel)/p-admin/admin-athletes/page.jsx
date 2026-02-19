@@ -79,7 +79,7 @@ export default function AdminAthletes() {
               <Link href="/p-admin" className="flex items-center gap-2 text-[var(--color-primary)] text-sm font-bold group">
                 <FaArrowRight className="group-hover:translate-x-1 transition-transform" /> بازگشت به داشبورد
               </Link>
-              <h1 className="text-3xl font-black text-[var(--color-text)] tracking-tight">
+              <h1 className="text-3xl font-bold text-[var(--color-text)] tracking-tight">
                 مدیریت <span className="text-[var(--color-primary)]">قهرمانان</span>
               </h1>
             </div>
@@ -123,7 +123,7 @@ export default function AdminAthletes() {
                 
                 {/* Status Badge */}
                 <div className="absolute top-4 right-4 z-10">
-                  <span className="bg-white/90 backdrop-blur px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest shadow-sm">
+                  <span className="bg-white/90 backdrop-blur px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-widest shadow-sm">
                     {athlete.sport?.name || 'بدون رشته'}
                   </span>
                 </div>
@@ -143,7 +143,7 @@ export default function AdminAthletes() {
                   )}
                   <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent" />
                   <div className="absolute bottom-4 right-4 left-4">
-                    <h2 className="text-white font-black text-xl mb-0.5">{athlete.title}</h2>
+                    <h2 className="text-white font-bold text-xl mb-0.5">{athlete.title}</h2>
                     <p className="text-gray-300 text-xs flex items-center gap-1">
                       <FaGlobe className="text-[var(--color-secondary)]" /> {athlete.nationality || 'ملیت نامشخص'}
                     </p>
@@ -155,15 +155,15 @@ export default function AdminAthletes() {
                   <div className="grid grid-cols-3 gap-2 py-2 border-b border-gray-50">
                     <div className="text-center">
                       <p className="text-[10px] text-gray-400 uppercase font-bold mb-1 flex items-center justify-center gap-1"><FaTextHeight /> قد</p>
-                      <p className="text-sm font-black text-[var(--color-text)]">{athlete.height || '-'} <span className="text-[8px] text-gray-400">CM</span></p>
+                      <p className="text-sm font-bold text-[var(--color-text)]">{athlete.height || '-'} <span className="text-[8px] text-gray-400">CM</span></p>
                     </div>
                     <div className="text-center border-x border-gray-50">
                       <p className="text-[10px] text-gray-400 uppercase font-bold mb-1 flex items-center justify-center gap-1"><FaWeightHanging /> وزن</p>
-                      <p className="text-sm font-black text-[var(--color-text)]">{athlete.weight || '-'} <span className="text-[8px] text-gray-400">KG</span></p>
+                      <p className="text-sm font-bold text-[var(--color-text)]">{athlete.weight || '-'} <span className="text-[8px] text-gray-400">KG</span></p>
                     </div>
                     <div className="text-center">
                       <p className="text-[10px] text-gray-400 uppercase font-bold mb-1 flex items-center justify-center gap-1"><FaAward /> مدال</p>
-                      <p className="text-sm font-black text-[var(--color-text)]">{athlete.honors?.length || 0}</p>
+                      <p className="text-sm font-bold text-[var(--color-text)]">{athlete.honors?.length || 0}</p>
                     </div>
                   </div>
 

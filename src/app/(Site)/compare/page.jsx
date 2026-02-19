@@ -374,7 +374,7 @@ function BestInCategory({ categoryId, onAddProduct }) {
 
     return (
         <div className="mt-10">
-            <h3 className="text-xl font-black mb-6 flex items-center gap-2 text-[var(--color-primary)]">
+            <h3 className="text-xl font-bold mb-6 flex items-center gap-2 text-[var(--color-primary)]">
                 <span className="w-2 h-7 bg-[var(--color-secondary)] rounded-full"></span>
                 برترین‌های کل دسته‌بندی
             </h3>
@@ -387,7 +387,7 @@ function BestInCategory({ categoryId, onAddProduct }) {
                         className="group cursor-pointer relative bg-white border border-neutral-100 p-4 rounded-[var(--radius)] shadow-sm hover:shadow-xl hover:border-[var(--color-primary)] transition-all duration-300"
                     >
                         {/* امتیاز بزرگ در پس زمینه */}
-                        <div className="absolute top-2 left-3 text-3xl font-black opacity-10 text-[var(--color-primary)] group-hover:opacity-30 transition-opacity">
+                        <div className="absolute top-2 left-3 text-3xl font-bold opacity-10 text-[var(--color-primary)] group-hover:opacity-30 transition-opacity">
                             {data.score}
                         </div>
 
@@ -411,7 +411,7 @@ function BestInCategory({ categoryId, onAddProduct }) {
                                     {data.product.title || data.product.name}
                                 </h4>
                                 <div className="flex items-center gap-2">
-                                    <span className="text-[11px] text-[var(--color-primary)] font-black">
+                                    <span className="text-[11px] text-[var(--color-primary)] font-bold">
                                         امتیاز: {data.score} از ۱۰۰
                                     </span>
                                 </div>

@@ -19,7 +19,7 @@ const DownPaymentSection = ({ value, onChange, max }) => {
           type="text"
           value={value.toLocaleString()}
           onChange={handleChange}
-          className="w-full pr-10 pl-4 py-3 border border-gray-200 rounded-[var(--radius)] focus:ring-2 focus:ring-[var(--color-primary)] focus:border-transparent outline-none transition-all font-black"
+          className="w-full pr-10 pl-4 py-3 border border-gray-200 rounded-[var(--radius)] focus:ring-2 focus:ring-[var(--color-primary)] focus:border-transparent outline-none transition-all font-bold"
           placeholder="مبلغ به ریال..."
         />
         <HiOutlineCash className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 text-xl" />
