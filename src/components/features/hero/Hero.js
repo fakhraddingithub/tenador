@@ -75,7 +75,7 @@ export default function Hero({ slides = [] }) {
                       className="text-base md:text-xl lg:text-2xl text-gray-100 max-w-2xl leading-relaxed line-clamp-2 md:line-clamp-none"
                       style={{ textShadow: "1px 1px 5px rgba(0,0,0,0.5)" }}
                     >
-                      {slide.description}
+                      {slide.subtitle}
                     </p>
                   </motion.div>
                 </div>

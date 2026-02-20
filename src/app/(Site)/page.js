@@ -4,21 +4,35 @@ import BestSellers from '@/components/features/bestSellers/BestSellers';
 import BrandsTicker from '@/components/features/brandsTicker/BrandsTicker';
 import AmazingOffers from '@/components/features/amazingOffers/AmazingOffers';
 import RolandGarros from '@/components/features/rolandGarros/RolandGarros';
-import Articles from '@/components/features/articles/Articles';
-import { getProducts } from "base/services/product.service";
-import { HERO_SLIDES } from "@/lib/mockData";
-import { SPORTS_CATEGORIES } from '@/lib/constants';
 import ComparisonBanner from '@/components/features/comparisonBanner/ComparisonBanner';
+
+// سرویس‌ها را وارد کنید (فرض بر این است که این سرویس‌ها را دارید یا باید بسازید)
+import { getProducts } from "base/services/product.service";
+import connectToDB from "base/configs/db";
+import SlideModel from "base/models/Slide";
+import SportModel from "base/models/Sport";
+
 export default async function Home() {
-  const products = await getProducts();
+  // ۱. اتصال به دیتابیس
+  await connectToDB();
+
+  // ۲. دریافت موازی داده‌ها برای افزایش سرعت (Parallel Fetching)
+  const [products, slides, sports] = await Promise.all([
+    getProducts(),
+    SlideModel.find({ isActive: true }).sort({ priority: 1 }).lean(),
+    SportModel.find({}).lean()
+  ]);
+
   return (
     <>
-      <Hero slides={HERO_SLIDES} />
-      <SportsGrid categories={SPORTS_CATEGORIES}/>
-      <ComparisonBanner/>
-      <BestSellers products={products}/>
+      <Hero slides={JSON.parse(JSON.stringify(slides))} />
+      
+      <SportsGrid categories={JSON.parse(JSON.stringify(sports))} />
+      
+      <ComparisonBanner />
+      <BestSellers products={products} />
       <BrandsTicker />
-      <AmazingOffers products={products}/>
+      <AmazingOffers products={products} />
       <RolandGarros />
       {/* <Articles /> */}
     </>

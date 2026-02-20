@@ -3,6 +3,8 @@
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { FiArrowUpLeft, FiChevronDown } from "react-icons/fi";
+import Image from "next/image";
+import Link from "next/link";
 
 export default function SportsGrid({ categories = [] }) {
   const [showAll, setShowAll] = useState(false);
@@ -42,7 +44,7 @@ export default function SportsGrid({ categories = [] }) {
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4 auto-rows-[220px] md:auto-rows-[260px]">
           {initialCategories.map((category, index) => (
             <CategoryCard
-              key={category.id}
+              key={category._id}
               category={category}
               className={getTopGridSpan(index)}
             />
@@ -103,8 +105,8 @@ export default function SportsGrid({ categories = [] }) {
 // کامپوننت مجزا برای کارت‌ها جهت تمیزی کد
 function CategoryCard({ category, className }) {
   return (
-    <a
-      href={`/category/${category.slug}`}
+    <Link
+      href={`/sports/${category.slug}`}
       className={`relative group block w-full h-full overflow-hidden bg-gray-100 ${className}`}
       style={{ borderRadius: "6px" }}
     >
@@ -119,34 +121,63 @@ function CategoryCard({ category, className }) {
       <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/10 to-transparent transition-opacity duration-500 group-hover:opacity-40" />
 
       {/* عنوان در حالت عادی (با هاور محو می‌شود) */}
-      <div className="absolute inset-x-0 bottom-0 p-6 flex items-end justify-between transition-all duration-500 opacity-100 group-hover:opacity-0 group-hover:translate-y-4">
-        <h3 className="text-white text-2xl font-bold">{category.name}</h3>
+      <div className="absolute inset-x-0 bottom-0 p-6 flex items-center justify-between transition-all duration-500 opacity-100 group-hover:opacity-0 group-hover:translate-y-4">
+  {/* بخش نام و آیکون در یک ردیف */}
+  <div className="flex items-center gap-3">
+    {category.icon && (
+      <div className="w-8 h-8 relative flex-shrink-0">
+        <Image
+          src={category.icon}
+          alt={category.name}
+          fill
+          className="object-contain brightness-0 invert"
+        />
       </div>
+    )}
+    <h3 className="text-white text-2xl font-bold">{category.title}</h3>
+  </div>
+
+  {/* اگر آیکون یا المان دیگری در سمت چپ (مثل فلش) داشتی اینجا قرار می‌گیرد */}
+</div>
 
       {/* پنل شیشه‌ای کشویی (در هاور از پایین بالا می‌آید) */}
       <div className="absolute inset-x-0 bottom-0 p-4 translate-y-[120%] group-hover:translate-y-0 transition-transform duration-500 ease-out z-20">
-        <div
-          className=" bg-[#20232ae6]/80 backdrop-blur-lg border border-[#20232ae6] p-5 flex justify-between items-center shadow-[0_8px_30px_rgb(0,0,0,0.12)]"
-          style={{ borderRadius: "6px" }}
-        >
-          <div>
-            <span className="text-white text-[11px] font-bold block mb-1 opacity-90 drop-shadow-md">
-              تجهیزات تخصصی
-            </span>
-            <h3 className="text-white font-bold text-2xl drop-shadow-lg">
-              {category.name}
-            </h3>
-          </div>
-
-          {/* دکمه فلش */}
-          <div
-            className="bg-[#aa4725] text-white p-3 rotate-45 group-hover:rotate-0 transition-transform duration-500 delay-100 shadow-md"
-            style={{ borderRadius: "6px" }}
-          >
-            <FiArrowUpLeft size={22} />
-          </div>
+      <div
+  className="bg-[#20232ae6]/80 backdrop-blur-lg border border-[#20232ae6] p-5 flex justify-between items-center shadow-[0_8px_30px_rgb(0,0,0,0.12)]"
+  style={{ borderRadius: "6px" }}
+>
+  <div>
+    <span className="text-white text-[11px] font-bold block mb-1 opacity-90 drop-shadow-md">
+      تجهیزات تخصصی
+    </span>
+    
+    {/* ردیف آیکون و عنوان */}
+    <div className="flex items-center gap-3">
+      {category.icon && (
+        <div className="w-7 h-7 relative flex-shrink-0">
+          <Image
+            src={category.icon}
+            alt={category.name}
+            fill
+            className="object-contain brightness-0 invert"
+          />
         </div>
+      )}
+      <h3 className="text-white font-bold text-2xl drop-shadow-lg">
+        {category.title}
+      </h3>
+    </div>
+  </div>
+
+  {/* دکمه فلش */}
+  <div
+    className="bg-[#aa4725] text-white p-3 rotate-45 group-hover:rotate-0 transition-transform duration-500 delay-100 shadow-md flex-shrink-0"
+    style={{ borderRadius: "6px" }}
+  >
+    <FiArrowUpLeft size={22} />
+  </div>
+</div>
       </div>
-    </a>
+    </Link>
   );
 }
