@@ -5,11 +5,13 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { 
   FaChartPie, FaRunning, FaBold, FaUserAstronaut, 
-  FaFolderOpen, FaBoxOpen, FaUsersCog, FaBars, FaTimes 
+  FaFolderOpen, FaBoxOpen, FaUsersCog, FaBars, FaTimes, 
+  FaHome
 } from 'react-icons/fa';
 import { HiOutlineLogout } from "react-icons/hi";
 const menuItems = [
   { title: 'داشبورد', href: '/p-admin', icon: <FaChartPie /> },
+  { title: 'صفحه اصلی', href: '/p-admin/admin-home', icon: <FaHome  /> },
   { title: 'ورزش‌ها', href: '/p-admin/admin-sports', icon: <FaRunning /> },
   { title: 'برندها', href: '/p-admin/admin-brands', icon: <FaBold /> },
   { title: 'ورزشکاران', href: '/p-admin/admin-athletes', icon: <FaUserAstronaut /> },

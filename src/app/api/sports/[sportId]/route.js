@@ -29,7 +29,7 @@ export async function PUT(req, { params }) {
     await connectToDB();
     const { sportId } = await params;
     const body = await req.json();
-    const { name, description, icon } = body;
+    const { name, description, icon, image } = body;
 
     const sport = await Sport.findById(sportId);
     if (!sport) {
@@ -47,6 +47,9 @@ export async function PUT(req, { params }) {
     }
     if (icon !== undefined) {
       sport.icon = icon;
+    }
+    if (image !== undefined) {
+      sport.image = image;
     }
 
     await sport.save();
