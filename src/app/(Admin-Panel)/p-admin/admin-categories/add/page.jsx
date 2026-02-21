@@ -43,6 +43,7 @@ import { showToast } from '@/lib/toast';
 import { showError } from '@/lib/swal';
 
 // --- Sortable Item Component ---
+// Updated to support both legacy attr.type and new attr.uiType
 function SortableAttribute({ attr, onRemove, onEdit }) {
   const {
     attributes,
@@ -59,6 +60,20 @@ function SortableAttribute({ attr, onRemove, onEdit }) {
     zIndex: isDragging ? 50 : 'auto',
     opacity: isDragging ? 0.6 : 1,
   };
+
+  const uiTypeLabel = (() => {
+    const t = attr.uiType || attr.type; // backward compatibility
+    switch (t) {
+      case 'text-input': return 'متن';
+      case 'number-input': return 'عدد';
+      case 'dropdown': return 'لیست انتخابی';
+      case 'swatch': return 'سواچ';
+      case 'button-toggle': return 'دکمه انتخاب';
+      case 'string': return 'جدول ویژگی‌ها';
+      case 'select': return 'لیست انتخابی';
+      default: return '—';
+    }
+  })();
 
   return (
     <div
@@ -82,7 +97,7 @@ function SortableAttribute({ attr, onRemove, onEdit }) {
           <div className="flex items-center gap-2 mt-1">
             <span className="text-xs text-neutral-500 font-mono">{attr.name}</span>
             <span className="text-xs text-neutral-400">•</span>
-            <span className="text-xs text-neutral-500">{attr.type === "string" ? "جدول ویژگی ها " : attr.type === "select" ? "لیست انتخابی" : "نمودار شاخص"}</span>
+            <span className="text-xs text-neutral-500">{uiTypeLabel}</span>
             <span className="text-xs text-neutral-400">•</span>
             <span className="text-xs text-neutral-500 font-bold">Priority: {attr.order}</span>
           </div>
@@ -167,10 +182,16 @@ Correct name output:
       `
     },
     {
-      field: 'suitableFor',
-      context: `- Persian
-- Who this product is for (e.g. "مناسب بازیکنان حرفه‌ای تنیس")
-      `
+      field: 'color',
+      context: ` Read the provided product content carefully.
+Detect and extract the product color code.
+The color code may appear in formats like:
+   - Color Code: 1234
+   - Code: ABC-567
+   - SKU variation with color identifier
+   - Hex color format like #FFFFFF
+ If multiple codes exist, select the one specifically related to color.
+ If no color code exists, return null.`
     },
     {
       field: 'basePrice',
@@ -197,12 +218,25 @@ Correct name output:
     name: '',
     parent: '',
     attributes: [],
+    // variantAttributes kept separate (not part of attributes)
   });
 
+  // ---------- Attribute (global) state ----------
   const [currentAttribute, setCurrentAttribute] = useState({
     name: '',
     label: '',
-    type: 'string',
+    required: true,
+    options: '',
+    prompt: '',
+  });
+
+  // ---------- Variant attributes ----------
+  const [variantAttributes, setVariantAttributes] = useState([]);
+  const [editingVariantId, setEditingVariantId] = useState(null);
+  const [currentVariantAttr, setCurrentVariantAttr] = useState({
+    name: '',
+    label: '',
+    uiType: 'dropdown',
     required: true,
     options: '',
     prompt: '',
@@ -212,7 +246,6 @@ Correct name output:
   const [currentStat, setCurrentStat] = useState({ name: '', label: '', description: '' });
   const [technicalStatsPrompt, setTechnicalStatsPrompt] = useState('');
   const [editingStatId, setEditingStatId] = useState(null);
-
 
   // DnD Sensors Configuration
   const sensors = useSensors(
@@ -240,21 +273,20 @@ Correct name output:
     }
   };
 
+  // ---------- Technical Stats handlers (unchanged) ----------
   const handleAddOrUpdateStat = () => {
     if (!currentStat.name || !currentStat.label) {
       showToast.warning('نام و برچسب شاخص فنی الزامی است');
       return;
     }
-  
+
     if (editingStatId) {
-      // ویرایش شاخص موجود
-      setTechnicalStats(prev => prev.map(s => 
+      setTechnicalStats(prev => prev.map(s =>
         s.id === editingStatId ? { ...currentStat, id: editingStatId } : s
       ));
       setEditingStatId(null);
       showToast.success('شاخص فنی بروزرسانی شد');
     } else {
-      // افزودن شاخص جدید
       const newStat = {
         ...currentStat,
         id: `stat-${Math.random().toString(36).substr(2, 9)}`
@@ -262,17 +294,16 @@ Correct name output:
       setTechnicalStats(prev => [...prev, newStat]);
       showToast.success('شاخص فنی جدید اضافه شد');
     }
-  
-    // ریست کردن فرم به صورت کامل
+
     setCurrentStat({ name: '', label: '', description: '' });
   };
-  
+
   const handleEditStat = (stat) => {
     setEditingStatId(stat.id);
     setCurrentStat({
       name: stat.name,
       label: stat.label,
-      description: stat.description || '' // اطمینان از بارگذاری توضیحات هنگام ویرایش
+      description: stat.description || ''
     });
     document.getElementById('stat-form-anchor')?.scrollIntoView({ behavior: 'smooth' });
   };
@@ -281,25 +312,21 @@ Correct name output:
     setTechnicalStats(prev => prev.filter(s => s.id !== id));
   };
 
-  const handleParentChange = (parentId) => {
+  // ---------- Parent handling (unchanged except keep behavior) ----------
+  const copyParentFileds = (parentId) => {
     if (!parentId) {
-      // اگر روی حالت "بدون والد" ست شد، فیلدها را پاک نمی‌کنیم (اختیاری) یا ریست می‌کنیم
       setFormData(prev => ({ ...prev, parent: '' }));
       return;
     }
 
-    // ۱. پیدا کردن آبجکت کامل دسته والد از لیست موجود
     const selectedParent = categories.find(cat => cat._id === parentId);
 
     if (selectedParent) {
-      // ۲. کپی کردن اتریبیوت‌ها (با تولید ID جدید برای جلوگیری از تداخل در Drag & Drop)
       const inheritedAttributes = (selectedParent.attributes || []).map(attr => ({
         ...attr,
         id: `attr-${Math.random().toString(36).substr(2, 9)}-${Date.now()}`,
       }));
 
-      // ۳. کپی کردن پرامپت‌ها
-      // اگر دسته والد پرامپت داشت، جایگزین پرامپت‌های فعلی می‌کنیم
       if (selectedParent.prompts && selectedParent.prompts.length > 0) {
         const newPrompts = productPrompts.map(p => {
           const parentContext = selectedParent.prompts.find(pp => pp.field === p.field);
@@ -308,10 +335,8 @@ Correct name output:
         setProductPrompts(newPrompts);
       }
 
-      // ۴. بروزرسانی فرم (بدون ذخیره کردن parent ID طبق خواسته شما)
       setFormData(prev => ({
         ...prev,
-        parent: '', // خالی می‌ماند تا در دیتابیس ذخیره نشود
         attributes: inheritedAttributes
       }));
 
@@ -326,6 +351,7 @@ Correct name output:
     }));
   };
 
+  // ---------- Global attributes handlers (modified) ----------
   const handleAddOrUpdateAttribute = () => {
     if (!currentAttribute.name || !currentAttribute.label) {
       showToast.warning('نام و برچسب ویژگی الزامی است');
@@ -335,16 +361,13 @@ Correct name output:
     const attrData = {
       name: currentAttribute.name,
       label: currentAttribute.label,
-      type: currentAttribute.type,
       required: currentAttribute.required,
-      options: currentAttribute.type === 'select'
-        ? currentAttribute.options.split(',').map((opt) => opt.trim()).filter(Boolean)
-        : [],
+      options: currentAttribute.options ? currentAttribute.options.split(',').map(o => o.trim()).filter(Boolean) : [],
       prompt: currentAttribute.prompt || '',
+      // NOTE: intentionally NOT sending uiType for global attributes (schema default applies)
     };
 
     if (editingId) {
-      // Edit mode
       setFormData((prev) => ({
         ...prev,
         attributes: prev.attributes.map((attr) =>
@@ -354,7 +377,6 @@ Correct name output:
       setEditingId(null);
       showToast.success('ویژگی با موفقیت ویرایش شد');
     } else {
-      // Create mode
       const newAttribute = {
         ...attrData,
         id: `attr-${Math.random().toString(36).substr(2, 9)}-${Date.now()}`,
@@ -374,7 +396,6 @@ Correct name output:
     setCurrentAttribute({
       name: '',
       label: '',
-      type: 'string',
       required: true,
       options: '',
       prompt: '',
@@ -387,12 +408,10 @@ Correct name output:
     setCurrentAttribute({
       name: attr.name,
       label: attr.label,
-      type: attr.type,
       required: attr.required,
       options: Array.isArray(attr.options) ? attr.options.join(', ') : '',
       prompt: attr.prompt || '',
     });
-    // Smooth scroll to builder form
     document.getElementById('attribute-form-anchor')?.scrollIntoView({ behavior: 'smooth' });
   };
 
@@ -407,6 +426,69 @@ Correct name output:
     if (editingId === id) resetAttributeForm();
   };
 
+  // ---------- Variant attributes handlers (new) ----------
+  const handleAddOrUpdateVariant = () => {
+    if (!currentVariantAttr.name || !currentVariantAttr.label) {
+      showToast.warning('نام و برچسب ویژگی واریانت الزامی است');
+      return;
+    }
+
+    const variantData = {
+      name: currentVariantAttr.name,
+      label: currentVariantAttr.label,
+      uiType: currentVariantAttr.uiType,
+      required: currentVariantAttr.required,
+      options: currentVariantAttr.uiType === 'dropdown' ? (currentVariantAttr.options ? currentVariantAttr.options.split(',').map(o => o.trim()).filter(Boolean) : []) : [],
+      prompt: currentVariantAttr.prompt || '',
+    };
+
+    if (editingVariantId) {
+      setVariantAttributes(prev => prev.map(v => v.id === editingVariantId ? { ...variantData, id: editingVariantId } : v));
+      setEditingVariantId(null);
+      showToast.success('ویژگی واریانت بروزرسانی شد');
+    } else {
+      const newVariant = {
+        ...variantData,
+        id: `vattr-${Math.random().toString(36).substr(2, 9)}-${Date.now()}`,
+        order: variantAttributes.length + 1,
+      };
+      setVariantAttributes(prev => [...prev, newVariant]);
+      showToast.success('ویژگی واریانت جدید اضافه شد');
+    }
+
+    resetVariantForm();
+  };
+
+  const resetVariantForm = () => {
+    setCurrentVariantAttr({
+      name: '',
+      label: '',
+      uiType: 'text-input',
+      required: true,
+      options: '',
+      prompt: '',
+    });
+    setEditingVariantId(null);
+  };
+
+  const handleEditVariant = (v) => {
+    setEditingVariantId(v.id);
+    setCurrentVariantAttr({
+      name: v.name,
+      label: v.label,
+      uiType: v.uiType || 'text-input',
+      required: v.required ?? true,
+      options: Array.isArray(v.options) ? v.options.join(', ') : '',
+      prompt: v.prompt || '',
+    });
+    document.getElementById('variant-form-anchor')?.scrollIntoView({ behavior: 'smooth' });
+  };
+
+  const removeVariant = (id) => {
+    setVariantAttributes(prev => prev.filter(v => v.id !== id));
+  };
+
+  // ---------- Drag end (attributes only) ----------
   const handleDragEnd = (event) => {
     const { active, over } = event;
 
@@ -423,6 +505,7 @@ Correct name output:
     }
   };
 
+  // ---------- Submit (include variantAttributes) ----------
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
@@ -433,6 +516,7 @@ Correct name output:
         name: formData.name,
         parent: formData.parent || null,
         attributes: formData.attributes,
+        variantAttributes: variantAttributes,
         technicalStats: technicalStats,
         technicalStatsPrompt: technicalStatsPrompt,
         prompts: productPrompts.filter((p) => p.context.trim() !== ''),
@@ -503,9 +587,16 @@ Correct name output:
               label="دسته والد"
               name="parent"
               value={formData.parent}
-              onChange={(e) => handleParentChange(e.target.value)}
+              onChange={(e) => setFormData((prev) => ({ ...prev, parent: e.target.value }))}
               options={categories.map((cat) => ({ value: cat._id, label: cat.title }))}
-              placeholder="بدون والد (دسته اصلی)"
+              placeholder="والد را انتخاب کنید"
+            />
+
+            <Select
+            label="بارگذاری از دسته دیگر"
+              onChange={(e) => copyParentFileds(e.target.value)}
+              options={categories.map((cat) => ({ value: cat._id, label: cat.title }))}
+              placeholder="دسته اصلی"
             />
 
             {/* AI Prompts Section */}
@@ -570,17 +661,9 @@ Correct name output:
                   />
                 </div>
 
-                <div className="grid md:grid-cols-2 gap-4">
-                  <Select
-                    label="محل نمایش ویژگی"
-                    value={currentAttribute.type}
-                    onChange={(e) => setCurrentAttribute((p) => ({ ...p, type: e.target.value }))}
-                    options={[
-                      { value: 'string', label: 'جدول ویژگی ها' },
-                      { value: 'select', label: 'لیست انتخابی' },
-                    ]}
-                  />
+                {/* Removed ui type select here: attributes are plain text-only in the UI */}
 
+                <div className="grid md:grid-cols-2 gap-4">
                   <div className="flex items-center gap-3 h-full mt-8">
                     <label className="flex items-center gap-2 text-sm font-bold cursor-pointer select-none">
                       <input
@@ -592,6 +675,13 @@ Correct name output:
                       فیلد الزامی است
                     </label>
                   </div>
+
+                  <Input
+                    label="گزینه‌ها (فقط برای نمایش داخلی، با کاما جدا کنید)"
+                    value={currentAttribute.options}
+                    onChange={(e) => setCurrentAttribute((p) => ({ ...p, options: e.target.value }))}
+                    placeholder="گزینه1, گزینه2 (در صورت نیاز)"
+                  />
                 </div>
 
                 <Textarea
@@ -600,15 +690,6 @@ Correct name output:
                   onChange={(e) => setCurrentAttribute((p) => ({ ...p, prompt: e.target.value }))}
                   placeholder="راهنمای اختصاصی برای این ویژگی جهت استفاده در تولید محتوا توسط AI..."
                 />
-
-                {currentAttribute.type === 'select' && (
-                  <Input
-                    label="گزینه‌های لیست (جدا شده با کاما , )"
-                    value={currentAttribute.options}
-                    onChange={(e) => setCurrentAttribute((p) => ({ ...p, options: e.target.value }))}
-                    placeholder="Option 1, Option 2, Option 3"
-                  />
-                )}
 
                 <div className="flex items-center gap-3 pt-2">
                   <Button
@@ -665,6 +746,110 @@ Correct name output:
               </div>
             </div>
 
+            {/* Variant Attributes Section (NEW) */}
+            <div id="variant-form-anchor" className="border-t pt-8 space-y-6">
+              <div className="flex items-center gap-3">
+                <div className="p-2 rounded-lg bg-blue-50 text-blue-600">
+                  <FiTag size={18} />
+                </div>
+                <div>
+                  <h3 className="text-lg font-bold">ویژگی‌های متغیر (Variant Attributes)</h3>
+                  <p className="text-xs text-neutral-500">برای هر ویژگی واریانت، نوع نمایش (uiType) را انتخاب کنید.</p>
+                </div>
+              </div>
+
+              <div className={`rounded-[var(--radius)] p-6 space-y-5 transition-all duration-300 border-2 ${editingVariantId ? 'bg-blue-50/30 border-blue-200' : 'bg-neutral-50 border-transparent'}`}>
+                <div className="grid md:grid-cols-2 gap-4">
+                  <Input
+                    label="نام سیستمی (انگلیسی)"
+                    value={currentVariantAttr.name}
+                    onChange={(e) => setCurrentVariantAttr(p => ({ ...p, name: e.target.value }))}
+                    placeholder="e.g. color"
+                  />
+                  <Input
+                    label="نام نمایشی (فارسی)"
+                    value={currentVariantAttr.label}
+                    onChange={(e) => setCurrentVariantAttr(p => ({ ...p, label: e.target.value }))}
+                    placeholder="مثال: رنگ"
+                  />
+                </div>
+
+                <div className="grid md:grid-cols-2 gap-4">
+                  <Select
+                    label="نوع نمایش (uiType)"
+                    value={currentVariantAttr.uiType}
+                    onChange={(e) => setCurrentVariantAttr(p => ({ ...p, uiType: e.target.value }))}
+                    options={[
+                      { value: 'dropdown', label: 'لیست انتخابی (dropdown)' },
+                      { value: 'text-input', label: 'متن (text-input)' },
+                      { value: 'number-input', label: 'عدد (number-input)' },
+                      { value: 'swatch', label: 'سواچ (swatch)' },
+                      { value: 'button-toggle', label: 'دکمه انتخاب (button-toggle)' },
+                    ]}
+                  />
+
+                  <div className="flex items-center gap-3 h-full mt-8">
+                    <label className="flex items-center gap-2 text-sm font-bold cursor-pointer select-none">
+                      <input
+                        type="checkbox"
+                        checked={currentVariantAttr.required}
+                        onChange={(e) => setCurrentVariantAttr(p => ({ ...p, required: e.target.checked }))}
+                        className="w-5 h-5 rounded accent-[var(--color-primary)]"
+                      />
+                      فیلد الزامی است
+                    </label>
+                  </div>
+                </div>
+
+                {currentVariantAttr.uiType === 'dropdown' && (
+                  <Input
+                    label="گزینه‌های لیست (جدا شده با کاما , )"
+                    value={currentVariantAttr.options}
+                    onChange={(e) => setCurrentVariantAttr((p) => ({ ...p, options: e.target.value }))}
+                    placeholder="Option 1, Option 2, Option 3"
+                  />
+                )}
+
+                <Textarea
+                  label="راهنمای پرامپت (اختیاری)"
+                  value={currentVariantAttr.prompt}
+                  onChange={(e) => setCurrentVariantAttr((p) => ({ ...p, prompt: e.target.value }))}
+                  placeholder="مثلا: توضیح برای تولید مقدار این ویژگی توسط AI..."
+                />
+
+                <div className="flex items-center gap-3 pt-2">
+                  <Button
+                    type="button"
+                    onClick={handleAddOrUpdateVariant}
+                    className="flex items-center gap-2"
+                  >
+                    {editingVariantId ? <><FiEdit3 /> بروزرسانی واریانت</> : <><FiPlus /> افزودن واریانت</>}
+                  </Button>
+
+                  {editingVariantId && (
+                    <Button type="button" variant="secondary" onClick={resetVariantForm} className="flex items-center gap-2">
+                      <FiX /> انصراف
+                    </Button>
+                  )}
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                {variantAttributes.map((v) => (
+                  <div key={v.id} className="flex items-center justify-between p-3 bg-white border border-neutral-200 rounded-lg shadow-sm">
+                    <div className="flex flex-col">
+                      <span className="font-bold text-sm">{v.label}</span>
+                      <span className="text-[10px] text-neutral-400 font-mono">{v.name} • {v.uiType}</span>
+                    </div>
+                    <div className="flex gap-2">
+                      <button type="button" onClick={() => handleEditVariant(v)} className="p-2 text-blue-500 hover:bg-blue-50 rounded-md transition"><FiEdit3 size={14} /></button>
+                      <button type="button" onClick={() => removeVariant(v.id)} className="p-2 text-red-500 hover:bg-red-50 rounded-md transition"><FiTrash2 size={14} /></button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
             {/* Technical Stats Section (Chart) */}
             <div id="stat-form-anchor" className="border-t pt-8 space-y-6">
               <div className="flex items-center gap-3">
@@ -703,7 +888,6 @@ Correct name output:
                 </Button>
               </div>
 
-              {/* نمایش لیست شاخص‌های اضافه شده */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                 {technicalStats.map((stat) => (
                   <div key={stat.id} className="flex items-center justify-between p-3 bg-white border border-neutral-200 rounded-lg shadow-sm">

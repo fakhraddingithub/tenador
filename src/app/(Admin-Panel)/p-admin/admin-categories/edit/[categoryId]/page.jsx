@@ -60,6 +60,20 @@ function SortableAttribute({ attr, onRemove, onEdit }) {
     opacity: isDragging ? 0.6 : 1,
   };
 
+  const uiTypeLabel = (() => {
+    const t = attr.uiType || attr.type; // uiType for variant attrs, type for legacy
+    switch (t) {
+      case 'text-input': return 'متن';
+      case 'number-input': return 'عدد';
+      case 'dropdown': return 'لیست انتخابی';
+      case 'swatch': return 'سواچ';
+      case 'button-toggle': return 'دکمه انتخاب';
+      case 'string': return 'جدول ویژگی‌ها';
+      case 'select': return 'لیست انتخابی';
+      default: return 'متن';
+    }
+  })();
+
   return (
     <div
       ref={setNodeRef}
@@ -82,7 +96,7 @@ function SortableAttribute({ attr, onRemove, onEdit }) {
           <div className="flex items-center gap-2 mt-1">
             <span className="text-xs text-neutral-500 font-mono">{attr.name}</span>
             <span className="text-xs text-neutral-400">•</span>
-            <span className="text-xs text-neutral-500">{attr.type === "string" ? "جدول ویژگی ها " : attr.type === "select" ? "لیست انتخابی" : "نمودار شاخص"}</span>
+            <span className="text-xs text-neutral-500">{uiTypeLabel}</span>
             <span className="text-xs text-neutral-400">•</span>
             <span className="text-xs text-neutral-500 font-bold">Priority: {attr.order}</span>
           </div>
@@ -132,7 +146,7 @@ export default function EditCategory() {
     'label',
     'shortDescription',
     'longDescription',
-    'suitableFor',
+    'color',
     'basePrice',
     'tag',
   ];
@@ -148,10 +162,22 @@ export default function EditCategory() {
     attributes: [],
   });
 
+  // Attributes (global) - now WITHOUT uiType/type in UI (plain text-oriented)
   const [currentAttribute, setCurrentAttribute] = useState({
     name: '',
     label: '',
-    type: 'string',
+    required: true,
+    options: '',
+    prompt: '',
+  });
+
+  // Variant attributes (new)
+  const [variantAttributes, setVariantAttributes] = useState([]);
+  const [editingVariantId, setEditingVariantId] = useState(null);
+  const [currentVariantAttr, setCurrentVariantAttr] = useState({
+    name: '',
+    label: '',
+    uiType: 'dropdown',
     required: true,
     options: '',
     prompt: '',
@@ -194,18 +220,23 @@ export default function EditCategory() {
           title: cat.title || '',
           name: cat.name || '',
           parent: cat.parent?._id || cat.parent || '',
-          // Ensure every attribute has a unique ID for DnD-Kit even if DB doesn't provide one
           attributes: (cat.attributes || []).map(attr => ({
             ...attr,
             id: attr.id || attr._id || `attr-${Math.random().toString(36).substr(2, 9)}`,
             options: Array.isArray(attr.options) ? attr.options : []
           })),
-          technicalStatsPrompt: cat.technicalStatsPrompt
         });
 
         setTechnicalStats((cat.technicalStats || []).map(stat => ({
           ...stat,
           id: stat.id || stat._id || `stat-${Math.random().toString(36).substr(2, 9)}`
+        })));
+
+        // load variantAttributes if exist
+        setVariantAttributes((cat.variantAttributes || []).map(v => ({
+          ...v,
+          id: v.id || v._id || `vattr-${Math.random().toString(36).substr(2, 9)}`,
+          options: Array.isArray(v.options) ? v.options : []
         })));
 
         // Fill prompts
@@ -259,7 +290,7 @@ export default function EditCategory() {
     setTechnicalStats(prev => prev.filter(s => s.id !== id));
   };
 
-  const handleParentChange = (parentId) => {
+  const copyParentFileds = (parentId) => {
     if (!parentId) {
       setFormData(prev => ({ ...prev, parent: '' }));
       return;
@@ -293,10 +324,8 @@ export default function EditCategory() {
         });
       }
 
-      // ۳. بروزرسانی formData (ترکیب اتریبیوت‌های قدیمی و جدید)
       setFormData(prev => ({
         ...prev,
-        parent: '', // طبق درخواست شما والد ذخیره نمی‌شود
         attributes: [...prev.attributes, ...inheritedAttributes]
       }));
 
@@ -310,6 +339,7 @@ export default function EditCategory() {
     }));
   };
 
+  // ---------- Global attributes handlers (no uiType in UI) ----------
   const handleAddOrUpdateAttribute = () => {
     if (!currentAttribute.name || !currentAttribute.label) {
       showToast.warning('نام و برچسب ویژگی الزامی است');
@@ -319,12 +349,10 @@ export default function EditCategory() {
     const attrData = {
       name: currentAttribute.name,
       label: currentAttribute.label,
-      type: currentAttribute.type,
       required: currentAttribute.required,
-      options: currentAttribute.type === 'select'
-        ? (typeof currentAttribute.options === 'string' ? currentAttribute.options.split(',').map(o => o.trim()).filter(Boolean) : currentAttribute.options)
-        : [],
+      options: currentAttribute.options ? currentAttribute.options.split(',').map(o => o.trim()).filter(Boolean) : [],
       prompt: currentAttribute.prompt || '',
+      // intentionally NOT adding uiType/type here (global attributes are plain)
     };
 
     if (editingId) {
@@ -352,7 +380,7 @@ export default function EditCategory() {
   };
 
   const resetAttributeForm = () => {
-    setCurrentAttribute({ name: '', label: '', type: 'string', required: true, options: '', prompt: '' });
+    setCurrentAttribute({ name: '', label: '', required: true, options: '', prompt: '' });
     setEditingId(null);
   };
 
@@ -361,8 +389,7 @@ export default function EditCategory() {
     setCurrentAttribute({
       name: attr.name,
       label: attr.label,
-      type: attr.type,
-      required: attr.required,
+      required: attr.required ?? true,
       options: Array.isArray(attr.options) ? attr.options.join(', ') : '',
       prompt: attr.prompt || '',
     });
@@ -391,6 +418,69 @@ export default function EditCategory() {
     }
   };
 
+  // ---------- Variant attributes handlers (new) ----------
+  const handleAddOrUpdateVariant = () => {
+    if (!currentVariantAttr.name || !currentVariantAttr.label) {
+      showToast.warning('نام و برچسب ویژگی واریانت الزامی است');
+      return;
+    }
+
+    const variantData = {
+      name: currentVariantAttr.name,
+      label: currentVariantAttr.label,
+      uiType: currentVariantAttr.uiType,
+      required: currentVariantAttr.required,
+      options: currentVariantAttr.uiType === 'dropdown' ? (currentVariantAttr.options ? currentVariantAttr.options.split(',').map(o => o.trim()).filter(Boolean) : []) : [],
+      prompt: currentVariantAttr.prompt || '',
+    };
+
+    if (editingVariantId) {
+      setVariantAttributes(prev => prev.map(v => v.id === editingVariantId ? { ...variantData, id: editingVariantId } : v));
+      setEditingVariantId(null);
+      showToast.success('ویژگی واریانت بروزرسانی شد');
+    } else {
+      const newVariant = {
+        ...variantData,
+        id: `vattr-${Math.random().toString(36).substr(2, 9)}-${Date.now()}`,
+        order: variantAttributes.length + 1,
+      };
+      setVariantAttributes(prev => [...prev, newVariant]);
+      showToast.success('ویژگی واریانت جدید اضافه شد');
+    }
+
+    resetVariantForm();
+  };
+
+  const resetVariantForm = () => {
+    setCurrentVariantAttr({
+      name: '',
+      label: '',
+      uiType: 'text-input',
+      required: true,
+      options: '',
+      prompt: '',
+    });
+    setEditingVariantId(null);
+  };
+
+  const handleEditVariant = (v) => {
+    setEditingVariantId(v.id);
+    setCurrentVariantAttr({
+      name: v.name,
+      label: v.label,
+      uiType: v.uiType || 'text-input',
+      required: v.required ?? true,
+      options: Array.isArray(v.options) ? v.options.join(', ') : '',
+      prompt: v.prompt || '',
+    });
+    document.getElementById('variant-form-anchor')?.scrollIntoView({ behavior: 'smooth' });
+  };
+
+  const removeVariant = (id) => {
+    setVariantAttributes(prev => prev.filter(v => v.id !== id));
+  };
+
+  // ---------- Submit (include variantAttributes) ----------
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
@@ -401,6 +491,7 @@ export default function EditCategory() {
         name: formData.name,
         parent: formData.parent || null,
         attributes: formData.attributes,
+        variantAttributes: variantAttributes,
         technicalStats: technicalStats,
         technicalStatsPrompt: technicalStatsPrompt,
         prompts: productPrompts.filter((p) => p.context.trim() !== ''),
@@ -465,7 +556,14 @@ export default function EditCategory() {
             <Select
               label="دسته والد"
               value={formData.parent}
-              onChange={(e) => handleParentChange(e.target.value)}
+              onChange={(e) => setFormData((prev) => ({ ...prev, parent: e.target.value }))}
+              options={categories.filter(c => c._id !== categoryId).map((cat) => ({ value: cat._id, label: cat.title }))}
+              placeholder="والد را انتخاب کنید"
+            />
+            
+            <Select
+              label="بارگذاری از دسته دیگر"
+              onChange={(e) => copyParentFileds(e.target.value)}
               options={categories.filter(c => c._id !== categoryId).map((cat) => ({ value: cat._id, label: cat.title }))}
               placeholder="دسته اصلی"
             />
@@ -510,26 +608,19 @@ export default function EditCategory() {
                   <Input label="نام انگلیسی" value={currentAttribute.name} onChange={(e) => setCurrentAttribute(p => ({ ...p, name: e.target.value }))} />
                   <Input label="برچسب فارسی" value={currentAttribute.label} onChange={(e) => setCurrentAttribute(p => ({ ...p, label: e.target.value }))} />
                 </div>
+
                 <div className="grid md:grid-cols-2 gap-4">
-                  <Select
-                    label="محل نمایش ویژگی"
-                    value={currentAttribute.type}
-                    onChange={(e) => setCurrentAttribute(p => ({ ...p, type: e.target.value }))}
-                    options={[
-                      { value: 'string', label: 'جدول ویژگی ها' },
-                      { value: 'select', label: 'لیست انتخابی' }
-                    ]}
-                  />
-                  <div className="mt-8">
+                  <div className="mt-4">
                     <label className="flex items-center gap-2 text-sm font-bold cursor-pointer">
                       <input type="checkbox" checked={currentAttribute.required} onChange={(e) => setCurrentAttribute(p => ({ ...p, required: e.target.checked }))} className="w-5 h-5 accent-[var(--color-primary)]" /> الزامی
                     </label>
                   </div>
+
+                  <Input label="گزینه‌ها (در صورت نیاز، با کاما جدا کنید)" value={currentAttribute.options} onChange={(e) => setCurrentAttribute(p => ({ ...p, options: e.target.value }))} />
                 </div>
+
                 <Textarea label="پرامپت ویژگی" value={currentAttribute.prompt} onChange={(e) => setCurrentAttribute(p => ({ ...p, prompt: e.target.value }))} />
-                {currentAttribute.type === 'select' && (
-                  <Input label="گزینه‌ها (کاما ,)" value={currentAttribute.options} onChange={(e) => setCurrentAttribute(p => ({ ...p, options: e.target.value }))} />
-                )}
+
                 <div className="flex gap-3">
                   <Button type="button" onClick={handleAddOrUpdateAttribute}>{editingId ? 'بروزرسانی ویژگی' : 'افزودن به لیست'}</Button>
                   {editingId && <Button type="button" variant="secondary" onClick={resetAttributeForm}><FiX /> انصراف</Button>}
@@ -545,6 +636,109 @@ export default function EditCategory() {
                   </div>
                 </SortableContext>
               </DndContext>
+            </div>
+
+            {/* Variant Attributes Section (NEW) */}
+            <div id="variant-form-anchor" className="border-t pt-8 space-y-6">
+              <div className="flex items-center gap-3">
+                <div className="p-2 rounded-lg bg-blue-50 text-blue-600">
+                  <FiTag size={18} />
+                </div>
+                <div>
+                  <h3 className="text-lg font-bold">ویژگی‌های متغیر (Variant Attributes)</h3>
+                  <p className="text-xs text-neutral-500">برای هر ویژگی واریانت، نوع نمایش (uiType) را انتخاب کنید.</p>
+                </div>
+              </div>
+
+              <div className={`rounded-[var(--radius)] p-6 space-y-5 transition-all duration-300 border-2 ${editingVariantId ? 'bg-blue-50/30 border-blue-200' : 'bg-neutral-50 border-transparent'}`}>
+                <div className="grid md:grid-cols-2 gap-4">
+                  <Input
+                    label="نام سیستمی (انگلیسی)"
+                    value={currentVariantAttr.name}
+                    onChange={(e) => setCurrentVariantAttr(p => ({ ...p, name: e.target.value }))}
+                    placeholder="e.g. color"
+                  />
+                  <Input
+                    label="نام نمایشی (فارسی)"
+                    value={currentVariantAttr.label}
+                    onChange={(e) => setCurrentVariantAttr(p => ({ ...p, label: e.target.value }))}
+                    placeholder="مثال: رنگ"
+                  />
+                </div>
+
+                <div className="grid md:grid-cols-2 gap-4">
+                  <Select
+                    label="نوع نمایش (uiType)"
+                    value={currentVariantAttr.uiType}
+                    onChange={(e) => setCurrentVariantAttr(p => ({ ...p, uiType: e.target.value }))}
+                    options={[
+                      { value: 'dropdown', label: 'لیست انتخابی (dropdown)' },
+                      { value: 'text-input', label: 'متن (text-input)' },
+                      { value: 'number-input', label: 'عدد (number-input)' },
+                      { value: 'swatch', label: 'سواچ (swatch)' },
+                      { value: 'button-toggle', label: 'دکمه انتخاب (button-toggle)' },
+                    ]}
+                  />
+
+                  <div className="mt-4">
+                    <label className="flex items-center gap-2 text-sm font-bold cursor-pointer">
+                      <input type="checkbox" checked={currentVariantAttr.required} onChange={(e) => setCurrentVariantAttr(p => ({ ...p, required: e.target.checked }))} className="w-5 h-5 accent-[var(--color-primary)]" /> الزامی
+                    </label>
+                  </div>
+                </div>
+
+                {currentVariantAttr.uiType === 'dropdown' && (
+                  <Input
+                    label="گزینه‌های لیست (جدا شده با کاما , )"
+                    value={currentVariantAttr.options}
+                    onChange={(e) => setCurrentVariantAttr((p) => ({ ...p, options: e.target.value }))}
+                    placeholder="Option 1, Option 2, Option 3"
+                  />
+                )}
+
+                <Textarea
+                  label="راهنمای پرامپت (اختیاری)"
+                  value={currentVariantAttr.prompt}
+                  onChange={(e) => setCurrentVariantAttr((p) => ({ ...p, prompt: e.target.value }))}
+                  placeholder="مثلا: توضیح برای تولید مقدار این ویژگی توسط AI..."
+                />
+
+                <div className="flex items-center gap-3 pt-2">
+                  <Button
+                    type="button"
+                    onClick={handleAddOrUpdateVariant}
+                    className="flex items-center gap-2"
+                  >
+                    {editingVariantId ? <><FiEdit3 /> بروزرسانی واریانت</> : <><FiPlus /> افزودن واریانت</>}
+                  </Button>
+
+                  {editingVariantId && (
+                    <Button type="button" variant="secondary" onClick={resetVariantForm} className="flex items-center gap-2">
+                      <FiX /> انصراف
+                    </Button>
+                  )}
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                {variantAttributes.map((v) => (
+                  <div key={v.id} className="flex items-center justify-between p-3 bg-white border border-neutral-200 rounded-lg shadow-sm">
+                    <div className="flex flex-col">
+                      <span className="font-bold text-sm">{v.label}</span>
+                      <span className="text-[10px] text-neutral-400 font-mono">{v.name} • {v.uiType}</span>
+                    </div>
+                    <div className="flex gap-2">
+                      <button type="button" onClick={() => handleEditVariant(v)} className="p-2 text-blue-500 hover:bg-blue-50 rounded-md transition"><FiEdit3 size={14} /></button>
+                      <button type="button" onClick={() => removeVariant(v.id)} className="p-2 text-red-500 hover:bg-red-50 rounded-md transition"><FiTrash2 size={14} /></button>
+                    </div>
+                  </div>
+                ))}
+                {variantAttributes.length === 0 && (
+                  <div className="col-span-full text-center py-6 text-neutral-400 text-sm italic border-2 border-dashed rounded-lg">
+                    هیچ ویژگی واریانتی ثبت نشده است.
+                  </div>
+                )}
+              </div>
             </div>
 
             {/* Technical Stats Section (Chart) */}

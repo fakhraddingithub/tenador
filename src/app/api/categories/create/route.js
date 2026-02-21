@@ -7,9 +7,18 @@ export async function POST(req) {
     await connectToDB();
 
     const body = await req.json();
-    const { title, name, parent, prompts, attributes, technicalStats, technicalStatsPrompt } = body;
+    const { 
+      title, 
+      name, 
+      parent, 
+      prompts, 
+      attributes, 
+      variantAttributes, // فیلد جدید اضافه شد
+      technicalStats, 
+      technicalStatsPrompt 
+    } = body;
 
-    // 1. اعتبارسنجی فیلدهای اجباری پایه
+    // ۱. اعتبارسنجی فیلدهای اجباری پایه
     if (!title?.trim()) {
       return Response.json({ error: "عنوان فارسی کتگوری الزامی است" }, { status: 400 });
     }
@@ -20,12 +29,12 @@ export async function POST(req) {
 
     if (!/^[a-zA-Z0-9\s\-_]+$/.test(name)) {
       return Response.json(
-        { error: "نام باید فقط شامل حروف انگلیسی، اعداد و علائم مجاز باشد" },
+        { error: "نام انگلیسی باید فقط شامل حروف انگلیسی، اعداد و علائم مجاز باشد" },
         { status: 400 }
       );
     }
 
-    // 2. بررسی تکراری نبودن (Case-insensitive برای اطمینان بیشتر)
+    // ۲. بررسی تکراری نبودن
     const exists = await Category.findOne({
       $or: [{ title: title.trim() }, { name: name.trim() }]
     });
@@ -34,43 +43,57 @@ export async function POST(req) {
       return Response.json({ error: "کتگوری با این عنوان یا نام قبلاً ثبت شده است" }, { status: 409 });
     }
 
-    // 3. اعتبارسنجی ویژگی‌های عمومی (Attributes)
-    if (attributes && Array.isArray(attributes)) {
-      for (const attr of attributes) {
-        if (!attr.name || !attr.label) {
-          return Response.json({ error: "تمام ویژگی‌های جدول باید name و label داشته باشند" }, { status: 400 });
-        }
-        if (attr.type && !["string", "number", "select"].includes(attr.type)) {
-          return Response.json({ error: `نوع '${attr.type}' برای ویژگی '${attr.label}' غیرمجاز است` }, { status: 400 });
+    // ۳. تابع کمکی برای اعتبارسنجی ویژگی‌ها (Attributes & VariantAttributes)
+    const validateAttrList = (list, label) => {
+      if (list && Array.isArray(list)) {
+        for (const attr of list) {
+          if (!attr.name || !attr.label) {
+            return `تمام ویژگی‌های ${label} باید name و label داشته باشند`;
+          }
+          // اعتبارسنجی بر اساس enum تعریف شده در مدل جدید
+          const validUiTypes = ["text-input", "number-input", "dropdown", "swatch", "button-toggle"];
+          if (attr.uiType && !validUiTypes.includes(attr.uiType)) {
+            return `نوع نمایش '${attr.uiType}' در بخش ${label} غیرمجاز است`;
+          }
         }
       }
-    }
+      return null;
+    };
 
-    // 4. اعتبارسنجی شاخص‌های فنی نمودار (Technical Stats) - جدید
+    // اجرای اعتبارسنجی برای هر دو لیست ویژگی‌ها
+    const attrError = validateAttrList(attributes, "عمومی (Global)");
+    if (attrError) return Response.json({ error: attrError }, { status: 400 });
+
+    const variantError = validateAttrList(variantAttributes, "متغیر (Variant)");
+    if (variantError) return Response.json({ error: variantError }, { status: 400 });
+
+
+    // ۴. اعتبارسنجی شاخص‌های فنی نمودار (Technical Stats) - با دقت کامل
     if (technicalStats && Array.isArray(technicalStats)) {
       for (const stat of technicalStats) {
         if (!stat.name || !stat.label) {
           return Response.json({ error: "تمام شاخص‌های نمودار باید name و label داشته باشند" }, { status: 400 });
         }
-        // بررسی بازه اعداد اگر ارسال شده باشند
-        if (stat.min !== undefined && stat.max !== undefined && stat.min >= stat.max) {
-          return Response.json({ error: `بازه عددی در '${stat.label}' نامعتبر است` }, { status: 400 });
+        // بررسی منطقی بازه اعداد
+        if (stat.min !== undefined && stat.max !== undefined && Number(stat.min) >= Number(stat.max)) {
+          return Response.json({ error: `بازه عددی در شاخص فنی '${stat.label}' نامعتبر است (Min باید کمتر از Max باشد)` }, { status: 400 });
         }
       }
     }
 
-    // 5. ایجاد کتگوری در دیتابیس
+    // ۵. ایجاد کتگوری در دیتابیس (مطابق مدل جدید)
     const created = await Category.create({
       title: title.trim(),
       name: name.trim(),
       parent: parent || null,
       prompts: prompts || [],
-      attributes: attributes || [],
+      attributes: attributes || [],           // ویژگی‌های ثابت (Global)
+      variantAttributes: variantAttributes || [], // ویژگی‌های متغیر
       technicalStats: technicalStats || [],
       technicalStatsPrompt: technicalStatsPrompt || "",
     });
 
-    // 6. ثبت در سیستم اسلاگ‌های مرکزی
+    // ۶. ثبت در سیستم اسلاگ‌های مرکزی
     await registerSlug({
       slug: created.slug,
       type: "category",
@@ -79,7 +102,7 @@ export async function POST(req) {
       filterField: "category",
       filterValue: created._id,
       label: created.title,
-      parentSlug: parent || null, // توجه: اگر parent آی‌دی است، مطمئن شوید registerSlug اسلاگ را پیدا می‌کند
+      parentSlug: parent || null, 
     });
 
     return Response.json(

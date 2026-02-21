@@ -10,7 +10,7 @@ const ProductSchema = new mongoose.Schema(
 
     longDescription: { type: String, required: true },
 
-    suitableFor: { type: String, required: true },
+    color: { type: String },
 
     score: { type: Number, default: 0 },
 
@@ -53,11 +53,10 @@ const ProductSchema = new mongoose.Schema(
       default: null,
     },
 
-    athlete: {
+    athlete:[{
       type: mongoose.Schema.Types.ObjectId,
       ref: "Athlete",
-      default: null,
-    },
+    }],
 
     sport: {
       type: mongoose.Schema.Types.ObjectId,

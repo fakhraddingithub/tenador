@@ -78,24 +78,27 @@ VariantSchema.pre("save", function () {
 // -----------------------------------------------
 VariantSchema.pre("validate", async function () {
   const Category = mongoose.model("Category");
-
   const category = await Category.findById(this.categoryId);
-  if (!category) {
-    throw new Error("Category not found for this variant");
+
+  if (!category) throw new Error("دسته بندی یافت نشد");
+
+  // فقط ویژگی‌هایی که در بخش variantAttributes تعریف شده‌اند مجاز هستند
+  const allowedVariantKeys = category.variantAttributes.map(a => a.name);
+  const currentVariantKeys = Array.from(this.attributes.keys());
+
+  // بررسی فیلدهای اجباری
+  const missingRequired = category.variantAttributes
+    .filter(a => a.required)
+    .filter(a => !currentVariantKeys.includes(a.name));
+
+  if (missingRequired.length > 0) {
+    throw new Error(`ویژگی‌های واریانت اجباری وارد نشده‌اند: ${missingRequired.map(a => a.name).join(", ")}`);
   }
 
-  const requiredAttributes = category.attributes.map((a) => a.name);
-  const variantAttributes = Array.from(this.attributes.keys());
-
-  // Missing required attributes
-  const missing = requiredAttributes.filter(
-    (attr) => !variantAttributes.includes(attr)
-  );
-
-  if (missing.length > 0) {
-    throw new Error(
-      `Missing required attributes: ${missing.join(", ")}`
-    );
+  // (اختیاری) جلوگیری از وارد کردن ویژگی‌های گلوبال در بخش واریانت
+  const forbiddenKeys = currentVariantKeys.filter(key => !allowedVariantKeys.includes(key));
+  if (forbiddenKeys.length > 0) {
+    throw new Error(`ویژگی‌های ${forbiddenKeys.join(", ")} مربوط به مشخصات کل محصول هستند، نه واریانت!`);
   }
 });
 

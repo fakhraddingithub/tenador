@@ -1,69 +1,56 @@
 import mongoose from "mongoose";
 import { createSlug } from "base/utils/slugify";
+
 const AttributeSchema = new mongoose.Schema(
   {
-    name: {
+    name: { type: String, required: true, trim: true },
+    label: { type: String, required: true },
+
+    // این فیلد حالا هم نوع نمایش را تعیین می‌کند و هم به طور ضمنی نوع داده را
+    uiType: {
       type: String,
-      required: true, // مثل: color, size, weight
-      trim: true,
+      enum: [
+        "text-input",
+        "number-input",
+        "dropdown",
+        "swatch",
+        "button-toggle",
+      ],
+      default: "text-input",
     },
 
-    label: {
-      type: String,
-      required: true, // برچسب برای UI مثل "رنگ"
-    },
+    required: { type: Boolean, default: true },
 
-    type: {
-      type: String,
-      enum: ["string", "number", "select"],
-      default: "string",
-    },
+    // همیشه آرایه‌ای از String
+    options: { type: [String], default: [] },
 
-    required: {
-      type: Boolean,
-      default: true,
-    },
-
-    // برای select:
-    // ["Red","Blue","Green"]
-    options: {
-      type: [String],
-      default: [],
-    },
-
-    prompt: {
-      type: String,
-      required: false, // اختیاری
-      trim: true,
-    },
+    prompt: { type: String, trim: true },
   },
-  { _id: false }
+  { _id: false },
 );
 
 const TechnicalStatSchema = new mongoose.Schema(
   {
     name: {
-      type: String, 
+      type: String,
       required: true, // مثلا: power
     },
     label: {
-      type: String, 
+      type: String,
       required: true, // مثلا: قدرت
     },
     description: {
-      type: String, 
+      type: String,
     },
-    
-    min: { type: Number, default: 0 },
-    max: { type: Number, default: 100 }
-  },
-  { _id: false }
-);
 
+    min: { type: Number, default: 0 },
+    max: { type: Number, default: 100 },
+  },
+  { _id: false },
+);
 
 const CategorySchema = new mongoose.Schema(
   {
-
     title: {
       type: String,
       required: true,
@@ -79,8 +66,9 @@ const CategorySchema = new mongoose.Schema(
           // بررسی اینکه فقط حروف انگلیسی و اعداد باشد
           return /^[a-zA-Z0-9\s\-_]+$/.test(v);
         },
-        message: 'نام باید فقط شامل حروف انگلیسی، اعداد، فاصله، خط تیره و زیرخط باشد'
-      }
+        message:
+          "نام باید فقط شامل حروف انگلیسی، اعداد، فاصله، خط تیره و زیرخط باشد",
+      },
     },
 
     slug: {
@@ -93,11 +81,16 @@ const CategorySchema = new mongoose.Schema(
     prompts: [
       {
         field: String,
-        context: String
-      }
+        context: String,
+      },
     ],
 
     attributes: {
+      type: [AttributeSchema],
+      default: [],
+    },
+
+    variantAttributes: {
       type: [AttributeSchema],
       default: [],
     },
@@ -117,10 +110,8 @@ const CategorySchema = new mongoose.Schema(
       default: null, // برای کتگوری‌های چندسطحی
     },
   },
-  { timestamps: true }
+  { timestamps: true },
 );
-
-
 
 // ایجاد اسلاگ اتوماتیک
 CategorySchema.pre("validate", async function () {
@@ -135,11 +126,7 @@ CategorySchema.pre("validate", async function () {
 
     this.slug = slug;
   }
-
 });
-
-
-
 
 export default mongoose.models.Category ||
   mongoose.model("Category", CategorySchema);
