@@ -34,7 +34,8 @@ export default async function EditAthletePage({ params }) {
 
       {/* استفاده از همان فرم با داده‌های اولیه */}
       <AthleteCreateForm 
-        initialData={serializedAthlete} 
+        initialData={serializedAthlete}
+        sports = {serializedSports} 
         isEdit={true} 
       />
     </div>

@@ -1,34 +1,41 @@
-export function buildProductTemplate({ category, brands, sports, rawContent }) {
+export function buildProductTemplate({
+  category,
+  brands,
+  sports,
+  athletes,
+  rawContent,
+}) {
   if (!category) throw new Error("Category is required");
   if (!rawContent || rawContent.trim().length < 50) {
     throw new Error("Raw product content is too short");
   }
 
   // 1. Category attribute rules
-  const attributeInstructions = category.attributes
+  const globalAttributeInstructions = (category.attributes || [])
     .map((attr) => {
-      let line = `- ${attr.name}
-  label: ${attr.label}
-  type: ${attr.type}
-  required: ${attr.required ? "YES" : "NO"}`;
-      if (attr.prompt) {
-        line += `attribute rule: ${attr.prompt}`;
-      }
-      if (attr.type === "select") {
-        line += `allowed values: [${attr.options.join(", ")}]`;
-      }
+      let line = `- ${attr.name} (برچسب: ${attr.label}) | نوع: فیلد متنی/عددی تک‌مقداری`;
+      if (attr.prompt) line += ` | قانون استخراج: ${attr.prompt}`;
+      return line;
+    })
+    .join("\n");
 
+  // ۲. قوانین ویژگی‌های متغیر (Variant Attributes)
+  // این‌ها ویژگی‌هایی هستند که باید تمام مقادیر موجود در متن برایشان استخراج شود (مثل تمام سایزها)
+  const variantAttributeInstructions = (category.variantAttributes || [])
+    .map((attr) => {
+      let line = `- ${attr.name} (برچسب: ${attr.label})`;
+      if (attr.prompt) line += ` | راهنما: ${attr.prompt}`;
+      return line;
+    })
+    .join("\n");
+
+  // 1.1 Technical Stats rules
+  const technicalStatsInstructions = (category.technicalStats || [])
+    .map((stat) => {
+      let line = `- ${stat.name} (Label: ${stat.label})`;
       return line;
     })
     .join("\n\n");
-
-    // 1.1 Technical Stats rules
-  const technicalStatsInstructions = (category.technicalStats || [])
-  .map((stat) => {
-    let line = `- ${stat.name} (Label: ${stat.label})`;
-    return line;
-  })
-  .join("\n\n");
   const globalTechnicalPrompt = category.technicalStatsPrompt || "";
 
   // 2. Brand & Sport & Serie context
@@ -41,14 +48,18 @@ export function buildProductTemplate({ category, brands, sports, rawContent }) {
     id: s._id.toString(),
     name: s.name,
   }));
+  const athleteList = athletes.map((a) => ({
+    id: a._id.toString(),
+    name: a.name,
+  }));
 
   // استخراج تمام سری‌ها از داخل برندهای پاپیولیت شده
-  const serieList = brands.flatMap((b) => 
+  const serieList = brands.flatMap((b) =>
     (b.series || []).map((ser) => ({
       id: ser._id.toString(),
       name: ser.title || ser.name, // اولویت با عنوان فارسی
-      brandName: b.name // برای کمک به AI در تشخیص بهتر
-    }))
+      brandName: b.name, // برای کمک به AI در تشخیص بهتر
+    })),
   );
 
   // 3. Final Prompt
@@ -84,23 +95,23 @@ FIELD RULES (VERY IMPORTANT)
 ===============================
 
 name:
-${category.prompts?.map(prompt => prompt.field === "name" ? prompt.context.toString() : null)}
+${category.prompts?.map((prompt) => (prompt.field === "name" ? prompt.context.toString() : null))}
 
 
 shortDescription:
-${category.prompts?.map(prompt => prompt.field === "shortDescription" ? prompt.context.toString() : null)}
+${category.prompts?.map((prompt) => (prompt.field === "shortDescription" ? prompt.context.toString() : null))}
 
 longDescription:
-${category.prompts?.map(prompt => prompt.field === "longDescription" ? prompt.context.toString() : null)}
+${category.prompts?.map((prompt) => (prompt.field === "longDescription" ? prompt.context.toString() : null))}
 
-suitableFor:
-${category.prompts?.map(prompt => prompt.field === "suitableFor" ? prompt.context.toString() : null)}
+color:
+${category.prompts?.map((prompt) => (prompt.field === "color" ? prompt.context.toString() : null))}
 
 basePrice:
-${category.prompts?.map(prompt => prompt.field === "basePrice" ? prompt.context.toString() : null)}
+${category.prompts?.map((prompt) => (prompt.field === "basePrice" ? prompt.context.toString() : null))}
 
 label:
-${category.prompts?.map(prompt => prompt.field === "label" ? prompt.context.toString() : null)}
+${category.prompts?.map((prompt) => (prompt.field === "label" ? prompt.context.toString() : null))}
 
 score:
 - DO NOT include this field at all
@@ -119,36 +130,27 @@ sport:
 - Choose ONE sportId ONLY from provided list
 - Based on actual product usage
 
+athlete:
+- Pick ALL relevant athlete IDs from the AVAILABLE ATHLETES list as an ARRAY.
+- If no athlete is mentioned, return an empty array [].
+
 category:
 - MUST be exactly: "${category._id}"
 
 attributes:
 - Keys MUST exactly match category attribute names
 - Respect type strictly:
-- string → string
-- number → number
-- select → ARRAY of strings (string[])
-- For select attributes:
-- Output value MUST be an array of strings
-- Each value MUST be one of allowed values
-- If raw content explicitly lists multiple values for a select attribute
-(e.g. "L2L3L4", "L2 / L3 / L4", "Available in L2, L3 and L4"):
-- Output ALL detected values as an array
-- Preserve original order if possible
-- Even single selections MUST be wrapped in an array
+- Format: Object { "key": "value" }
 - If value is NOT found in content:
   - If required → infer logically
   - If not required → omit the key
   
-  Example:
-  Raw content:
-  "Grip sizes: L2L3L4"
-  
-Correct attributes output:
-"attributes": {
-  "grip": ["L2", "L3", "L4"]
-  }
-  
+  variantOptions (Variant Generator):
+- These are attributes that create different product versions (e.g. Size, Color).
+- Format: Object { "key": ["val1", "val2"] }
+- You MUST extract EVERY mentioned value for these keys as an ARRAY of strings.
+- Example: If text says "Available in Red and Blue", result: {"color": ["Red", "Blue"]} 
+
   technicalStats:
 - This field is for technical scoring (Radar Chart).
 - Keys MUST match technicalStats names defined in Category.
@@ -158,7 +160,7 @@ ${globalTechnicalPrompt ? `\nGLOBAL SCORING RULE:\n${globalTechnicalPrompt}\n` :
 - If content doesn't specify a score, estimate logically based on professional knowledge of the product.
  
   tag:
-  ${category.prompts?.map(prompt => prompt.field === "tag" ? prompt.context.toString() : null)}
+  ${category.prompts?.map((prompt) => (prompt.field === "tag" ? prompt.context.toString() : null))}
 
 mainImage:
 - Direct image URL if available
@@ -175,7 +177,10 @@ Category: ${category.title}
 Category ID: ${category._id}
 
 Category Attributes:
-${attributeInstructions}
+${globalAttributeInstructions}
+
+VARIANT ATTRIBUTES (Output in "variantOptions" field):
+${variantAttributeInstructions || "None"}
 
 Category Technical Stats (Radar Chart Scoring):
 ${technicalStatsInstructions || "No technical stats defined for this category."}
@@ -189,6 +194,11 @@ ${JSON.stringify(brandList, null, 2)}
 AVAILABLE SPORTS
 ===============================
 ${JSON.stringify(sportList, null, 2)}
+
+===============================
+AVAILABLE ATHLETES
+===============================
+${JSON.stringify(athleteList, null, 2)}
 
 ===============================
 AVAILABLE SERIES (Mapped from Brands)
@@ -207,15 +217,20 @@ REQUIRED OUTPUT JSON STRUCTURE
   "name": "",
   "shortDescription": "",
   "longDescription": "",
-  "suitableFor": "",
+  "color": "",
   "basePrice": 0,
   "brand": "ID_FROM_BRANDS_LIST",
   "serie": "ID_FROM_SERIES_LIST",
   "sport": "ID_FROM_SPORTS_LIST",
+  "athlete": ["ID1", "ID2"],
   "category": "${category._id}",
   - attributes values MUST conform exactly to rules above
-  - select attributes MUST always be arrays, never strings
-  "attributes": {},
+  "attributes": {
+     "key": "single value"
+  },
+  "variantOptions": {
+     "key": ["value1", "value2"]
+  },
   "technicalStats": {
      "stat_name": 85
   },

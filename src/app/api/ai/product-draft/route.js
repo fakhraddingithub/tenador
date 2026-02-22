@@ -2,6 +2,7 @@ import connectToDB from "base/configs/db";
 import Category from "base/models/Category";
 import Brand from "base/models/Brand";
 import Sport from "base/models/Sport";
+import Athlete from "base/models/Athlete";
 
 import { buildProductTemplate } from "@/lib/buildProductTemplate";
 
@@ -28,6 +29,7 @@ export async function POST(req) {
     // 2. Load ALL brands & sports (real behavior)
     const brands = await Brand.find({}, { name: 1 }).populate("series").lean();
     const sports = await Sport.find({}, { name: 1 }).lean();
+    const athletes = await Athlete.find({}, { name: 1 }).lean();
 
     if (!brands.length || !sports.length) {
       return Response.json(
@@ -41,6 +43,7 @@ export async function POST(req) {
       category,
       brands,
       sports,
+      athletes,
       rawContent,
     });
 
