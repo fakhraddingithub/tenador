@@ -6,6 +6,7 @@ import Brand from "base/models/Brand";
 import Sport from "base/models/Sport";
 import Athlete from "base/models/Athlete";
 import Category from "base/models/Category";
+import Variant from "base/models/Variant";
 
 const modelsMap = {
   Sport,
@@ -22,6 +23,7 @@ export async function getProducts() {
       .populate("sport")
       .populate("athlete")
       .populate("category")
+      .populate("variants")
       .lean();
 
     return JSON.parse(JSON.stringify(products));
@@ -47,6 +49,7 @@ export async function getProductBySlug(slug) {
       .populate("sport")
       .populate("athlete")
       .populate("category")
+      .populate("variants")
       .lean();
 
     if (!product) {

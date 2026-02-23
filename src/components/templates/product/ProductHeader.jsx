@@ -2,6 +2,20 @@
 import { motion } from "framer-motion";
 
 const ProductHeader = ({ name, shortDescription }) => {
+    // تابع هوشمند برای جدا کردن فارسی از انگلیسی و پرانتزها
+    const splitName = (text) => {
+      // پیدا کردن اولین جایی که متن انگلیسی یا پرانتز شروع می‌شود
+      const match = text.match(/[a-zA-Z\(].*/);
+      if (match) {
+        const firstPart = text.substring(0, match.index).trim();
+        const secondPart = match[0].trim();
+        return { farsi: firstPart, english: secondPart };
+      }
+      return { farsi: text, english: "" };
+    };
+  
+    const { farsi, english } = splitName(name);
+    
   return (
     <div className="mb-8 relative rtl text-right" dir="rtl">
 
@@ -21,7 +35,10 @@ const ProductHeader = ({ name, shortDescription }) => {
           mb-4
         "
       >
-        {name}
+        {farsi}
+        <br/>
+        {english}
+
       </motion.h1>
 
       {/* Short Description Container */}

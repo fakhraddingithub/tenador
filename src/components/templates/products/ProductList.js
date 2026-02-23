@@ -46,10 +46,6 @@ export default function ProductList({
         product={selectedProduct}
         isOpen={isModalOpen}
         onClose={closeQuickView}
-        onAddToCart={(prod, qty, size) => {
-          console.log("افزودن به سبد:", prod.name, qty, size);
-          // اینجا لاجیک سبد خریدت رو بنویس
-        }}
       />
     </div>
   );

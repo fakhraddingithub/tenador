@@ -1,5 +1,6 @@
 "use client";
 
+import { useState, useMemo } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { FaEye, FaRegHeart, FaHeart, FaArrowLeft } from "react-icons/fa";
@@ -15,9 +16,41 @@ export default function ProductCard({
   const safePrice = Number(basePrice) || 0;
   const safeDiscount = Number(discountPrice) || null;
 
-  // تابع هوشمند برای جدا کردن فارسی از انگلیسی و پرانتزها
+  // ── Variant image state ──
+  // Collect only variants that actually carry at least one image
+  const variantsWithImages = useMemo(
+    () =>
+      (product.variants || []).filter(
+        (v) => Array.isArray(v.images) && v.images.length > 0
+      ),
+    [product.variants]
+  );
+
+  const hasVariantImages = variantsWithImages.length > 0;
+
+  // activeImage: starts as mainImage, switches when user hovers/clicks a swatch
+  const [activeImage, setActiveImage] = useState(mainImage);
+  const [activeVariantId, setActiveVariantId] = useState(null);
+
+  function handleVariantEnter(variant) {
+    setActiveImage(variant.images[0]);
+    setActiveVariantId(variant._id);
+  }
+
+  function handleVariantLeave() {
+    // Keep selected; only reset if nothing was "clicked-selected"
+    // UX: hover-to-preview, stays on last hovered
+  }
+
+  function handleVariantClick(e, variant) {
+    e.preventDefault();
+    e.stopPropagation();
+    setActiveImage(variant.images[0]);
+    setActiveVariantId(variant._id);
+  }
+
+  // ── Name split ──
   const splitName = (text) => {
-    // پیدا کردن اولین جایی که متن انگلیسی یا پرانتز شروع می‌شود
     const match = text.match(/[a-zA-Z\(].*/);
     if (match) {
       const firstPart = text.substring(0, match.index).trim();
@@ -29,7 +62,6 @@ export default function ProductCard({
 
   const { farsi, english } = splitName(name);
 
-  // ترجمه لیبل‌ها
   const labelMap = {
     new: { text: "جدید", color: "bg-blue-500" },
     limited: { text: "محدود", color: "bg-purple-500" },
@@ -41,7 +73,8 @@ export default function ProductCard({
     <div className="group relative bg-white border border-gray-200 rounded-[6px] transition-all duration-500 hover:shadow-[0_20px_40px_rgba(0,0,0,0.2)] hover:-translate-y-1 overflow-hidden h-full flex flex-col">
       {/* لینک سراسری */}
       <Link href={`/products/${slug}`} className="absolute inset-0 z-0" />
-      {/* لوگوی برند - بالا چپ */}
+
+      {/* لوگوی برند */}
       {product.brand?.icon && (
         <div className="absolute top-3 left-3 z-20">
           <Image
@@ -53,32 +86,69 @@ export default function ProductCard({
           />
         </div>
       )}
-      {/* بج‌های کناری - سمت راست */}
+
+      {/* بج‌های کناری */}
       <div className="absolute top-4 right-0 z-20 flex flex-col gap-1 items-end">
         {label && labelMap[label] && (
           <div
             className={`relative py-1 pr-3 pl-5 text-[10px] font-bold text-white shadow-sm bookmark-tag ${labelMap[label].color}`}
             style={{
               clipPath: "polygon(0 0, 100% 0, 100% 100%, 0 100%, 20% 50%)",
-              WebkitClipPath: "polygon(0 0, 100% 0, 100% 100%, 0 100%, 20% 50%)" // برای پشتیبانی در مرورگرهای قدیمی‌تر
+              WebkitClipPath: "polygon(0 0, 100% 0, 100% 100%, 0 100%, 20% 50%)",
             }}
           >
             {labelMap[label].text}
           </div>
         )}
       </div>
+
       {/* تصویر محصول */}
       <div className="relative w-full aspect-square bg-[#fcfcfc] overflow-hidden">
         <Image
-          src={mainImage}
+          src={activeImage}
           alt={name}
           fill
-          className="object-contain p-8 transition-transform duration-700 group-hover:scale-110"
+          className="object-contain p-8 transition-all duration-500 group-hover:scale-110"
         />
+
+        {/* ── Variant swatches — روی عکس، پایین وسط ── */}
+        {hasVariantImages && (
+          <div className="absolute bottom-3 left-1/2 -translate-x-1/2 z-20 flex items-center gap-1.5">
+            {variantsWithImages.map((variant) => {
+              const isActive = activeVariantId === variant._id;
+              // Swatch thumbnail: first image of the variant
+              return (
+                <button
+                  key={variant._id}
+                  type="button"
+                  onMouseEnter={() => handleVariantEnter(variant)}
+                  onMouseLeave={handleVariantLeave}
+                  onClick={(e) => handleVariantClick(e, variant)}
+                  title={Object.values(variant.attributes || {}).join(" / ")}
+                  className={`
+                    relative w-8 h-8 rounded-[6px] overflow-hidden border-2 transition-all duration-200
+                    ${isActive
+                      ? "border-[#aa4725] scale-110 shadow-md"
+                      : "border-white/70 hover:border-[#aa4725]/60 hover:scale-105 opacity-80 hover:opacity-100"
+                    }
+                  `}
+                >
+                  <Image
+                    src={variant.images[0]}
+                    alt={Object.values(variant.attributes || {}).join("-")}
+                    fill
+                    className="object-cover"
+                  />
+                </button>
+              );
+            })}
+          </div>
+        )}
       </div>
+
       {/* بخش محتوا */}
       <div className="p-4 flex flex-col items-center text-center relative z-10 pointer-events-none flex-1">
-        {/* نام محصول با تفکیک دو خطی */}
+        {/* نام محصول */}
         <div className="mb-4 h-[60px] flex flex-col justify-start">
           <h3 className="text-[14px] font-bold text-gray-800 leading-6 mb-1">
             {farsi}
@@ -88,7 +158,7 @@ export default function ProductCard({
           </p>
         </div>
 
-        {/* بخش قیمت */}
+        {/* قیمت */}
         <div className="mt-auto mb-6 flex flex-col items-center">
           {safeDiscount ? (
             <>
@@ -150,7 +220,6 @@ function ActionButton({ icon, label, onClick }) {
         {label}
         <span className="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent border-t-gray-800"></span>
       </span>
-
       <button
         onClick={onClick}
         className="text-gray-800 hover:text-[#aa4725] transition-colors duration-300 text-[18px]"

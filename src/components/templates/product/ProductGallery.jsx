@@ -1,19 +1,29 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import Image from "next/image";
 import { motion, AnimatePresence } from "framer-motion";
 
 const ProductGallery = ({ images = [] }) => {
   const [activeIndex, setActiveIndex] = useState(0);
 
+  // Reset to first image whenever the images array reference changes
+  // (happens when a variant is selected and images reorder)
+  const prevImagesRef = useRef(images);
+  useEffect(() => {
+    if (prevImagesRef.current !== images) {
+      prevImagesRef.current = images;
+      setActiveIndex(0);
+    }
+  }, [images]);
+
   if (!images || images.length === 0) return null;
 
   return (
-    <div className="flex flex-col gap-4 w-full" dir="rtl">
-      {/* Main Image Container */}
-      <div className="relative group w-full">
-        <div className="relative aspect-square w-full overflow-hidden rounded-[6px] bg-[#fdfdfd] border border-gray-100 shadow-sm">
+    <div className="flex flex-col gap-4 w-full border border-gray-100 shadow-sm" dir="rtl">
+      {/* Main Image */}
+      <div className="relative group w-full ">
+        <div className="relative aspect-square w-full overflow-hidden rounded-[6px] bg-[#fdfdfd]">
           <AnimatePresence mode="wait">
             <motion.div
               key={activeIndex}
@@ -35,21 +45,20 @@ const ProductGallery = ({ images = [] }) => {
         </div>
       </div>
 
-      {/* Thumbnails - نمایش در زیر عکس اصلی */}
+      {/* Thumbnails */}
       <div className="flex flex-wrap gap-3 mt-2">
         {images.map((image, index) => {
           const isActive = index === activeIndex;
-
           return (
             <button
-              key={index}
+              key={image}
               onClick={() => setActiveIndex(index)}
               className={`
-                relative h-20 w-20 shrink-0 
+                relative h-20 w-20 shrink-0
                 rounded-[6px] overflow-hidden transition-all duration-300
                 border-2 group
-                ${isActive 
-                  ? "border-[#aa4725] shadow-md shadow-[#aa4725]/10 scale-105" 
+                ${isActive
+                  ? "border-[#aa4725] shadow-md shadow-[#aa4725]/10 scale-105"
                   : "border-transparent bg-gray-50 hover:bg-white hover:border-gray-200"}
               `}
             >
@@ -62,8 +71,6 @@ const ProductGallery = ({ images = [] }) => {
                   ${isActive ? "scale-100" : "scale-90 opacity-50 group-hover:opacity-100"}
                 `}
               />
-              
-              {/* Overlay برای تمرکز بیشتر روی تصویر فعال */}
               {!isActive && (
                 <div className="absolute inset-0 bg-white/10 group-hover:bg-transparent transition-colors" />
               )}
