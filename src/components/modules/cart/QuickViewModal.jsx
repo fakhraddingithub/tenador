@@ -3,7 +3,12 @@
 import { useState, useMemo } from "react";
 import Image from "next/image";
 import {
-  FaTimes, FaShoppingCart, FaHeart, FaRegHeart, FaPlus, FaMinus,
+  FaTimes,
+  FaShoppingCart,
+  FaHeart,
+  FaRegHeart,
+  FaPlus,
+  FaMinus,
 } from "react-icons/fa";
 import { addToCart } from "@/lib/cart";
 import { toast } from "react-toastify";
@@ -20,7 +25,7 @@ function groupVariantOptions(variants = []) {
     }
   }
   return Object.fromEntries(
-    Object.entries(map).map(([k, s]) => [k, Array.from(s)])
+    Object.entries(map).map(([k, s]) => [k, Array.from(s)]),
   );
 }
 
@@ -58,12 +63,12 @@ export default function QuickViewModal({
   /* ── Label map from category.variantAttributes ── */
   const labelMap = useMemo(
     () => buildLabelMap(product?.category?.variantAttributes),
-    [product?.category]
+    [product?.category],
   );
 
   const variantOptions = useMemo(
     () => groupVariantOptions(product?.variants),
-    [product?.variants]
+    [product?.variants],
   );
 
   const optionKeys = Object.keys(variantOptions);
@@ -71,7 +76,9 @@ export default function QuickViewModal({
   /* ── Gallery: base + all variant images ── */
   const allImages = useMemo(() => {
     if (!product) return [];
-    const base = [product.mainImage, ...(product.gallery || [])].filter(Boolean);
+    const base = [product.mainImage, ...(product.gallery || [])].filter(
+      Boolean,
+    );
     const variantImgs = (product.variants || [])
       .flatMap((v) => v.images || [])
       .filter(Boolean)
@@ -96,7 +103,8 @@ export default function QuickViewModal({
   const [selectedImage, setSelectedImage] = useState(null);
   // Derive the displayed image: if user manually picked a thumb use it,
   // otherwise use the first of activeGalleryImages
-  const displayedImage = selectedImage ?? activeGalleryImages[0] ?? product?.mainImage;
+  const displayedImage =
+    selectedImage ?? activeGalleryImages[0] ?? product?.mainImage;
 
   /* When variant changes, jump gallery to its first image */
   function handleVariantSelect(attrKey, value) {
@@ -121,8 +129,9 @@ export default function QuickViewModal({
 
   /* ── Stock ── */
   const variantStock = selectedVariant?.stock ?? null;
-  const isOutOfStock =
-    hasVariants ? selectedVariant !== null && variantStock === 0 : false;
+  const isOutOfStock = hasVariants
+    ? selectedVariant !== null && variantStock === 0
+    : false;
 
   /* ── Add to cart ── */
   function handleAddToCart() {
@@ -149,7 +158,10 @@ export default function QuickViewModal({
   if (!isOpen || !product) return null;
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4" dir="rtl">
+    <div
+      className="fixed inset-0 z-[100] flex items-center justify-center p-4"
+      dir="rtl"
+    >
       {/* Overlay */}
       <div
         className="absolute inset-0 bg-black/70 backdrop-blur-md transition-opacity"
@@ -158,11 +170,10 @@ export default function QuickViewModal({
 
       {/* Modal */}
       <div className="relative w-full max-w-5xl max-h-[90vh] bg-white rounded-[6px] shadow-2xl overflow-hidden flex flex-col md:flex-row text-right">
-
         {/* دکمه بستن */}
         <button
           onClick={onClose}
-          className="absolute top-4 left-4 z-50 w-10 h-10 flex items-center justify-center rounded-[6px] bg-gray-100/80 hover:bg-red-500 hover:text-white transition-all backdrop-blur-md border border-white/20"
+          className="absolute top-4 left-4 z-50 w-10 h-10 flex items-center justify-center rounded-[6px] bg-gray-100/80 hover:bg-[var(--color-primary)] hover:text-white transition-all backdrop-blur-md border border-white/20"
         >
           <FaTimes size={18} />
         </button>
@@ -193,7 +204,12 @@ export default function QuickViewModal({
                       : "border-transparent opacity-60 hover:opacity-100"
                   }`}
                 >
-                  <Image src={img} alt="thumb" fill className="object-cover p-1" />
+                  <Image
+                    src={img}
+                    alt="thumb"
+                    fill
+                    className="object-cover p-1"
+                  />
                 </button>
               );
             })}
@@ -202,20 +218,44 @@ export default function QuickViewModal({
 
         {/* ── راست: اطلاعات ── */}
         <div className="w-full md:w-[55%] p-8 flex flex-col overflow-y-auto">
-
           {/* برند و عنوان */}
           <div className="mb-6">
-            <div className="flex items-center gap-3 mb-3">
-              <span className="text-[11px] bg-[#aa4725] text-white px-3 py-1 rounded-[4px] font-bold tracking-wider uppercase">
-                {product.brand?.name}
-              </span>
-              <span className="text-[11px] text-gray-400 font-medium">
-                کد کالا: {product.sku}
-              </span>
-            </div>
-            <h2 className="text-2xl font-bold text-[#1a1a1a] leading-tight mb-4">
-              {product.name}
-            </h2>
+            {(() => {
+              const match = product.name.match(/[a-zA-Z\(].*/);
+              const farsi = match
+                ? product.name.substring(0, match.index).trim()
+                : product.name;
+              const english = match ? match[0].trim() : "";
+              return (
+                <div className="flex items-start gap-4 mb-4 mt-4">
+                  <div className="w-[90%]">
+                    <h2 className="text-xl font-bold leading-snug">{farsi}</h2>
+                    {english && (
+                      <p
+                        className="text-xl font-semibold mt-0.5 tracking-wide"
+                        dir="ltr"
+                      >
+                        {english}
+                      </p>
+                    )}
+                  </div>
+                  {product.brand?.logo && (
+                    <a
+                      href={`/brands/${product.brand.slug || product.brand._id}`}
+                      onClick={(e) => e.stopPropagation()}
+                      className="shrink-0 mt-1"
+                      title={product.brand.title || product.brand.name}
+                    >
+                      <img
+                        src={product.brand.logo}
+                        alt={product.brand.title || product.brand.name}
+                        className="h-20 w-auto object-contain opacity-100 hover:opacity-75 transition-opacity"
+                      />
+                    </a>
+                  )}
+                </div>
+              );
+            })()}
             <div className="bg-gray-50/80 border border-gray-100 p-4 rounded-[6px] text-sm text-gray-600 leading-7">
               <div
                 className="line-clamp-4 overflow-y-auto max-h-32"
@@ -251,7 +291,7 @@ export default function QuickViewModal({
                         const hasStock = product.variants.some(
                           (v) =>
                             v.attributes?.[attrKey] === val &&
-                            (v.stock === undefined || v.stock > 0)
+                            (v.stock === undefined || v.stock > 0),
                         );
 
                         return (
@@ -268,8 +308,8 @@ export default function QuickViewModal({
                                 isActive
                                   ? "bg-[#aa4725] text-white border-[#aa4725] shadow-lg shadow-[#aa4725]/30 scale-[1.05]"
                                   : hasStock
-                                  ? "bg-white/40 backdrop-blur-md border-gray-200 text-gray-500 hover:border-[#aa4725]/40 hover:bg-white/60"
-                                  : "bg-gray-50 border-gray-100 text-gray-300 cursor-not-allowed line-through"
+                                    ? "bg-white/40 backdrop-blur-md border-gray-200 text-gray-500 hover:border-[#aa4725]/40 hover:bg-white/60"
+                                    : "bg-gray-50 border-gray-100 text-gray-300 cursor-not-allowed line-through"
                               }
                             `}
                           >
@@ -292,7 +332,9 @@ export default function QuickViewModal({
 
               {/* فیدبک موجودی */}
               {selectedVariant && (
-                <p className={`text-xs font-medium ${isOutOfStock ? "text-red-500" : "text-green-600"}`}>
+                <p
+                  className={`text-xs font-medium ${isOutOfStock ? "text-red-500" : "text-green-600"}`}
+                >
                   {isOutOfStock
                     ? "این واریانت موجود نیست"
                     : `موجودی: ${variantStock} عدد`}
@@ -306,12 +348,16 @@ export default function QuickViewModal({
             <div className="flex items-center justify-between">
               {/* قیمت */}
               <div className="flex flex-col gap-1">
-                <span className="text-xs text-gray-400 font-bold">قیمت نهایی:</span>
+                <span className="text-xs text-gray-400 font-bold">
+                  قیمت نهایی:
+                </span>
                 <div className="flex items-baseline gap-1">
                   <span className="text-3xl font-bold text-[#aa4725]">
                     {displayPrice.toLocaleString()}
                   </span>
-                  <span className="text-sm font-bold text-[#aa4725]">تومان</span>
+                  <span className="text-sm font-bold text-[#aa4725]">
+                    تومان
+                  </span>
                 </div>
               </div>
 
@@ -328,7 +374,7 @@ export default function QuickViewModal({
                 </span>
                 <button
                   onClick={() => setQuantity((q) => Math.max(1, q - 1))}
-                  className="w-10 h-10 flex items-center justify-center bg-white rounded-[4px] shadow-sm hover:text-red-500 transition-all"
+                  className="w-10 h-10 flex items-center justify-center bg-white rounded-[4px] shadow-sm hover:text-[var(--color-primary)] transition-all"
                 >
                   <FaMinus size={12} />
                 </button>
@@ -357,7 +403,11 @@ export default function QuickViewModal({
                     : "bg-white border-gray-100 text-gray-300 hover:border-red-100 hover:text-red-400"
                 }`}
               >
-                {isWishlisted ? <FaHeart size={24} /> : <FaRegHeart size={24} />}
+                {isWishlisted ? (
+                  <FaHeart size={24} />
+                ) : (
+                  <FaRegHeart size={24} />
+                )}
               </button>
             </div>
           </div>

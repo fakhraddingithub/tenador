@@ -26,9 +26,7 @@ export default async function Home() {
   return (
     <>
       <Hero slides={JSON.parse(JSON.stringify(slides))} />
-      
       <SportsGrid categories={JSON.parse(JSON.stringify(sports))} />
-      
       <ComparisonBanner />
       <BestSellers products={products} />
       <BrandsTicker />

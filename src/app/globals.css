@@ -156,3 +156,27 @@
   border-color: var(--color-secondary) !important;
   box-shadow: 0 0 0 3px rgba(0,0,0,0.05);
 }
+
+/* ۱. تنظیم عرض اسکرول‌بار */
+::-webkit-scrollbar {
+  width: 12px;
+}
+
+/* ۲. استایل پس‌زمینه (Track) */
+::-webkit-scrollbar-track {
+  background: #3b3f49; 
+  border-radius: 10px;
+}
+
+/* ۳. استایل خودِ دستگیره اسکرول (Thumb) */
+::-webkit-scrollbar-thumb {
+  background-color: var(--color-primary); 
+  border-radius: 10px;
+  border: 3px solid #ffffff0d; /* ایجاد فاصله بین دستگیره و بدنه */
+}
+
+/* ۴. تغییر رنگ وقتی موس روی آن می‌رود */
+::-webkit-scrollbar-thumb:hover {
+  background-color: var(--color-primary);
+  opacity: .8;
+}

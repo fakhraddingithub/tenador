@@ -8,7 +8,7 @@ export default function ComparisonBanner() {
   return (
     <section className="py-12 container mx-auto px-4">
       <Link href="/compare">
-        <div className="group relative w-full min-h-[300px] lg:min-h-[350px] bg-[#20232a] rounded-[2.5rem] overflow-hidden flex flex-col md:flex-row items-center justify-between px-8 lg:px-20 transition-all duration-500 hover:shadow-[0_40px_80px_-15px_rgba(0,0,0,0.4)]">
+        <div className="group relative w-full min-h-[300px] lg:min-h-[350px] bg-[#20232a] rounded-[6px] overflow-hidden flex flex-col md:flex-row items-center justify-between px-8 lg:px-20 transition-all duration-500 hover:shadow-[0_40px_80px_-15px_rgba(0,0,0,0.1)]">
           
           {/* المان گرافیکی پس‌زمینه (رادار چارت محو) */}
           <div className="absolute inset-0 opacity-10 pointer-events-none z-0 flex justify-center items-center">
@@ -33,7 +33,7 @@ export default function ComparisonBanner() {
               مشخصات فنی را کنار هم بگذارید، نمودارها را تحلیل کنید و بهترین انتخاب را برای بازی خود داشته باشید.
             </p>
 
-            <div className="inline-flex items-center gap-4 bg-white text-[#20232a] px-8 py-4 rounded-2xl font-black text-lg transition-all group-hover:bg-[#aa4725] group-hover:text-white group-hover:scale-105 shadow-xl">
+            <div className="inline-flex items-center gap-4 bg-white text-[#20232a] px-8 py-4 rounded-[6px] fon6pxk text-lg transition-all group-hover:bg-[#aa4725] group-hover:text-white group-hover:scale-105 shadow-xl">
               <span>شروع مقایسه فنی</span>
               <FiChevronLeft size={24} className="group-hover:-translate-x-2 transition-transform" />
             </div>
@@ -43,12 +43,12 @@ export default function ComparisonBanner() {
           <div className="relative z-10 flex-1 flex justify-center items-center h-full min-h-[250px] w-full">
              {/* آیکون بزرگ مقایسه با استایل نئون */}
              <div className="relative">
-                <div className="absolute inset-0 bg-[#aa4725] blur-[80px] opacity-20 rounded-full animate-pulse"></div>
-                <div className="relative bg-[#262932] border border-white/10 p-10 rounded-[3rem] rotate-12 transition-transform duration-700 group-hover:rotate-0">
+                <div className="absolute inset-0 bg-[#aa4725] blur-[80px] opacity-20 rounded-[6px] animat6pxe"></div>
+                <div className="relative bg-[#262932] border border-white/10 p-10 rounded-[6px] rotate-12 transition-transform duration-700 group-hover:rotate-0">
                    <MdCompareArrows size={120} className="text-white opacity-90" />
                 </div>
                 {/* المان‌های معلق */}
-                <div className="absolute -top-4 -left-4 bg-[#aa4725] w-12 h-12 rounded-2xl flex items-center justify-center text-white shadow-lg -rotate-12 group-hover:rotate-0 transition-all">
+                <div className="absolute -top-4 -left-4 bg-[#aa4725] w-12 h-12 rounded-[6px] flex items-center justify-center text-white shadow-lg -rotate-12 group-hover:rotate-0 transition-all">
                    <span className="font-bold">VS</span>
                 </div>
              </div>

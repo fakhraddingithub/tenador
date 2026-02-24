@@ -70,7 +70,7 @@ export default function ProductCard({
   };
 
   return (
-    <div className="group relative bg-white border border-gray-200 rounded-[6px] transition-all duration-500 hover:shadow-[0_20px_40px_rgba(0,0,0,0.2)] hover:-translate-y-1 overflow-hidden h-full flex flex-col">
+    <div className="group relative bg-white border border-gray-200 rounded-[6px] transition-all duration-500 hover:shadow-[0_20px_40px_rgba(0,0,0,0.1)] hover:-translate-y-1 overflow-hidden h-full flex flex-col">
       {/* لینک سراسری */}
       <Link href={`/products/${slug}`} className="absolute inset-0 z-0" />
 
@@ -103,7 +103,7 @@ export default function ProductCard({
       </div>
 
       {/* تصویر محصول */}
-      <div className="relative w-full aspect-square bg-[#fcfcfc] overflow-hidden">
+      <Link href={`/products/${slug}`} className="relative w-full aspect-square bg-[#fcfcfc] overflow-hidden">
         <Image
           src={activeImage}
           alt={name}
@@ -144,7 +144,7 @@ export default function ProductCard({
             })}
           </div>
         )}
-      </div>
+      </Link>
 
       {/* بخش محتوا */}
       <div className="p-4 flex flex-col items-center text-center relative z-10 pointer-events-none flex-1">

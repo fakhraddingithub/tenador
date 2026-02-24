@@ -117,7 +117,7 @@ const ProductInfo = ({ product, selectedVariant, onVariantChange }) => {
     <div className="flex flex-col h-full justify-between gap-6 relative">
       {/* Brand logo */}
       {product.brand?.logo && (
-        <Link href="#" className="self-end absolute top-0 left-0">
+        <Link href={`/brands/${product.brand.slug || product.brand._id}`} className="self-end absolute top-0 left-0">
           <img
             src={product.brand.logo}
             alt={product.brand.title || product.brand.name}
