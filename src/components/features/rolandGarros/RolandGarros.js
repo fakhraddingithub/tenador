@@ -16,7 +16,7 @@ export default function RolandGarros() {
       </div>
 
       <div className="container mx-auto px-4 relative z-10">
-        <div className="flex flex-col lg:flex-row items-center gap-12 lg:gap-0">
+        <div className="flex flex-col lg:flex-row items-center gap-12 lg:gap-0 pr-[3rem]">
           
           {/* بخش محتوا - سمت راست (در حالت دسکتاپ) */}
           <div className="w-full lg:w-1/2 z-20 order-2 lg:order-1">

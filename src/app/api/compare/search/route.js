@@ -23,7 +23,7 @@ export async function GET(request) {
 
     // واکشی سریع محصولات به همراه اطلاعات دسته بندی (برای ساختار شاخص ها)
     const products = await Product.find(query)
-      .select('slug mainImage category technicalStats name') // فقط فیلدهای مورد نیاز
+      .select('slug mainImage category technicalStats name color') // فقط فیلدهای مورد نیاز
       .populate({
         path: 'category',
         select: 'title technicalStats',

@@ -55,6 +55,7 @@ export default function ComparePage() {
     }, [query, lockedCategory]);
 
     const handleSelectProduct = (product) => {
+
         if (selectedProducts.find((p) => p._id === product._id)) {
             setQuery('');
             setResults([]);
@@ -65,10 +66,12 @@ export default function ComparePage() {
             setLockedCategory(product.category); // قفل کردن دسته بندی با محصول اول
         }
 
-        // اضافه کردن رنگ اختصاصی به محصول برای چارت
+        // استفاده از رنگ محصول در صورت وجود، وگرنه پالت پیش‌فرض
+        const resolvedColor = product.color || PRODUCT_COLORS[selectedProducts.length % PRODUCT_COLORS.length];
+
         const productWithColor = {
             ...product,
-            color: PRODUCT_COLORS[selectedProducts.length % PRODUCT_COLORS.length],
+            color: resolvedColor,
         };
 
         setSelectedProducts((prev) => [...prev, productWithColor]);
@@ -85,10 +88,10 @@ export default function ComparePage() {
         if (newProducts.length === 0) {
             setLockedCategory(null);
         } else {
-            // بروزرسانی رنگ ها تا جای خالی پر شود
+            // بروزرسانی رنگ ها: فقط برای محصولاتی که رنگ ندارند، یک رنگ از پالت اختصاص داده شود
             const updatedColors = newProducts.map((p, idx) => ({
                 ...p,
-                color: PRODUCT_COLORS[idx % PRODUCT_COLORS.length]
+                color: p.color || PRODUCT_COLORS[idx % PRODUCT_COLORS.length]
             }));
             setSelectedProducts(updatedColors);
         }
@@ -100,7 +103,7 @@ export default function ComparePage() {
             {/* بخش جستجو: 
         اگر محصولی انتخاب نشده، وسط صفحه است. 
         اگر انتخاب شده، با انیمیشن به بالای صفحه منتقل می شود. 
-      */}
+        */}
             <div
                 className={`w-full max-w-4xl mx-auto px-4 transition-all duration-700 ease-[cubic-bezier(0.87,0,0.13,1)] ${selectedProducts.length === 0
                     ? 'h-screen flex flex-col items-center justify-center'
@@ -139,7 +142,7 @@ export default function ComparePage() {
 
                     {/* دراپ داون پیشنهادات */}
                     {query.length >= 2 && (
-                        <div className="absolute top-full right-0 w-full mt-2 bg-white border border-neutral-100 rounded-xl shadow-xl overflow-hidden0">
+                        <div className="absolute top-full right-0 w-full mt-2 bg-white border border-neutral-100 rounded-xl shadow-xl overflow-hidden z-50">
                             {results.length > 0 ? (
                                 <ul className="max-h-[300px] overflow-y-auto divide-y divide-neutral-100">
                                     {results.map((item) => (
@@ -178,7 +181,7 @@ export default function ComparePage() {
 
             {/* بخش محتوای مقایسه 
         فقط زمانی نمایش داده میشود که حداقل یک محصول انتخاب شده باشد
-      */}
+        */}
             {selectedProducts.length > 0 && (
                 <div className="max-w-7xl mx-auto px-4 pb-20 animate-in fade-in slide-in-from-bottom-10 duration-700">
 
@@ -284,6 +287,21 @@ export default function ComparePage() {
 // کامپوننت نمودار عنکبوتی (Recharts)
 // ==========================================
 function CompareChart({ products, categoryStats }) {
+    const wrapperRef = useRef(null);
+    const [size, setSize] = useState({ width: 0, height: 0 });
+
+    useEffect(() => {
+        const updateSize = () => {
+            if (wrapperRef.current) {
+                const rect = wrapperRef.current.getBoundingClientRect();
+                setSize({ width: rect.width, height: rect.height });
+            }
+        };
+        updateSize();
+        window.addEventListener('resize', updateSize);
+        return () => window.removeEventListener('resize', updateSize);
+    }, []);
+
     if (!categoryStats || categoryStats.length === 0)
         return <div className="h-full flex items-center justify-center text-neutral-400">نمودار برای این دسته تعریف نشده است.</div>;
 
@@ -300,46 +318,87 @@ function CompareChart({ products, categoryStats }) {
         return dataPoint;
     });
 
+    // محاسبه مرکز (cx, cy) برای استفاده در تابع تیک سفارشی
+    const cx = size.width / 2;
+    const cy = size.height / 2;
+    const labelOffset = Math.min(size.width, size.height) * 0.06 || 12; // فاصله لیبل ها از لبه نمودار
+
+    const customTick = (props) => {
+        const { x, y, payload } = props;
+        // اگر مرکز مشخص نشده باشد، از موقعیت پیش‌فرض استفاده کنیم
+        if (!cx || !cy) {
+            return (
+                <text x={x} y={y} textAnchor="middle" dominantBaseline="central" style={{ fill: '#4b5563', fontSize: 13, fontWeight: 700 }}>
+                    {payload.value}
+                </text>
+            );
+        }
+
+        // بردار از مرکز تا نقطه تیک
+        const dx = x - cx;
+        const dy = y - cy;
+        const dist = Math.sqrt(dx * dx + dy * dy) || 1;
+        const nx = x + (dx / dist) * labelOffset;
+        const ny = y + (dy / dist) * labelOffset;
+
+        // تعیین تراز متن بر اساس جهتی که لیبل نسبت به مرکز دارد
+        let textAnchor = 'middle';
+        if (Math.abs(dx) > Math.abs(dy)) {
+            textAnchor = dx > 0 ? 'start' : 'end';
+        } else {
+            textAnchor = 'middle';
+        }
+
+        return (
+            <text x={nx} y={ny} textAnchor={textAnchor} dominantBaseline="central" style={{ fill: '#374151', fontSize: 13, fontWeight: 700, pointerEvents: 'none' }}>
+                {payload.value}
+            </text>
+        );
+    };
+
     return (
-        <ResponsiveContainer width="100%" height="100%">
-            <RadarChart cx="50%" cy="50%" outerRadius="75%" data={chartData}>
-                <PolarGrid stroke="#e5e5e5" />
-                <PolarAngleAxis
-                    dataKey="subject"
-                    tick={{ fill: '#4b5563', fontSize: 13, fontWeight: 'bold' }}
-                />
-                <PolarRadiusAxis angle={30} domain={[0, 100]} tick={{ fill: '#9ca3af' }} />
-                <Tooltip
-                    contentStyle={{
-                        borderRadius: 'var(--radius)',
-                        border: 'none',
-                        boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)',
-                        direction: 'rtl'
-                    }}
-                    formatter={(value, name, props) => {
-                        // value: امتیاز محصول (مثلا 85)
-                        // props.payload.subject: نام شاخص به فارسی (مثلا قدرت)
-                        const label = props.payload.subject;
-                        return [`${value} از 100`, label];
-                    }}
-                    // برای اینکه در بالای تول‌تیپ اسم محصول انتخاب شده را ببینیم
-                    labelFormatter={(value) => {
-                        return `شاخص: ${value}`;
-                    }}
-                />
-                {products.map((product) => (
-                    <Radar
-                        key={product._id}
-                        name={product._id}
-                        dataKey={product._id}
-                        stroke={product.color}
-                        strokeWidth={2}
-                        fill={product.color}
-                        fillOpacity={0.2}
+        <div ref={wrapperRef} style={{ width: '100%', height: '100%' }}>
+            <ResponsiveContainer width="100%" height="100%">
+                <RadarChart cx="50%" cy="50%" outerRadius="75%" data={chartData}>
+                    <PolarGrid stroke="#e5e5e5" />
+                    <PolarAngleAxis
+                        dataKey="subject"
+                        tick={customTick}
+                        tickLine={false}
                     />
-                ))}
-            </RadarChart>
-        </ResponsiveContainer>
+                    <PolarRadiusAxis tickCount={10} angle={30} domain={[0, 100]} tick={{ fill: '#9ca3af', fontSize: 11 }} />
+                    <Tooltip
+                        contentStyle={{
+                            borderRadius: 'var(--radius)',
+                            border: 'none',
+                            boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)',
+                            direction: 'rtl'
+                        }}
+                        formatter={(value, name, props) => {
+                            // value: امتیاز محصول (مثلا 85)
+                            // props.payload.subject: نام شاخص به فارسی (مثلا قدرت)
+                            const label = props.payload.subject;
+                            return [`${value} از 100`, label];
+                        }}
+                        // برای اینکه در بالای تول‌تیپ اسم محصول انتخاب شده را ببینیم
+                        labelFormatter={(value) => {
+                            return `شاخص: ${value}`;
+                        }}
+                    />
+                    {products.map((product) => (
+                        <Radar
+                            key={product._id}
+                            name={product._id}
+                            dataKey={product._id}
+                            stroke={product.color}
+                            strokeWidth={2}
+                            fill={product.color}
+                            fillOpacity={0.2}
+                        />
+                    ))}
+                </RadarChart>
+            </ResponsiveContainer>
+        </div>
     );
 }
 

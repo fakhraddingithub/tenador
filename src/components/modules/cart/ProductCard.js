@@ -16,8 +16,6 @@ export default function ProductCard({
   const safePrice = Number(basePrice) || 0;
   const safeDiscount = Number(discountPrice) || null;
 
-  // ── Variant image state ──
-  // Collect only variants that actually carry at least one image
   const variantsWithImages = useMemo(
     () =>
       (product.variants || []).filter(
@@ -28,7 +26,6 @@ export default function ProductCard({
 
   const hasVariantImages = variantsWithImages.length > 0;
 
-  // activeImage: starts as mainImage, switches when user hovers/clicks a swatch
   const [activeImage, setActiveImage] = useState(mainImage);
   const [activeVariantId, setActiveVariantId] = useState(null);
 
@@ -37,10 +34,7 @@ export default function ProductCard({
     setActiveVariantId(variant._id);
   }
 
-  function handleVariantLeave() {
-    // Keep selected; only reset if nothing was "clicked-selected"
-    // UX: hover-to-preview, stays on last hovered
-  }
+  function handleVariantLeave() {}
 
   function handleVariantClick(e, variant) {
     e.preventDefault();
@@ -49,7 +43,6 @@ export default function ProductCard({
     setActiveVariantId(variant._id);
   }
 
-  // ── Name split ──
   const splitName = (text) => {
     const match = text.match(/[a-zA-Z\(].*/);
     if (match) {
@@ -71,10 +64,8 @@ export default function ProductCard({
 
   return (
     <div className="group relative bg-white border border-gray-200 rounded-[6px] transition-all duration-500 hover:shadow-[0_20px_40px_rgba(0,0,0,0.1)] hover:-translate-y-1 overflow-hidden h-full flex flex-col">
-      {/* لینک سراسری */}
       <Link href={`/products/${slug}`} className="absolute inset-0 z-0" />
 
-      {/* لوگوی برند */}
       {product.brand?.icon && (
         <div className="absolute top-3 left-3 z-20">
           <Image
@@ -87,7 +78,6 @@ export default function ProductCard({
         </div>
       )}
 
-      {/* بج‌های کناری */}
       <div className="absolute top-4 right-0 z-20 flex flex-col gap-1 items-end">
         {label && labelMap[label] && (
           <div
@@ -102,53 +92,54 @@ export default function ProductCard({
         )}
       </div>
 
-      {/* تصویر محصول */}
-      <Link href={`/products/${slug}`} className="relative w-full aspect-square bg-[#fcfcfc] overflow-hidden">
+    {/* تصویر اصلی محصول */}
+    <Link href={`/products/${slug}`} className="relative w-full aspect-square bg-[#fcfcfc] overflow-hidden">
         <Image
           src={activeImage}
           alt={name}
           fill
-          className="object-contain p-8 transition-all duration-500 group-hover:scale-110"
+          className="object-contain p-3 transition-all duration-500 group-hover:scale-110"
         />
-
-        {/* ── Variant swatches — روی عکس، پایین وسط ── */}
-        {hasVariantImages && (
-          <div className="absolute bottom-3 left-1/2 -translate-x-1/2 z-20 flex items-center gap-1.5">
-            {variantsWithImages.map((variant) => {
-              const isActive = activeVariantId === variant._id;
-              // Swatch thumbnail: first image of the variant
-              return (
-                <button
-                  key={variant._id}
-                  type="button"
-                  onMouseEnter={() => handleVariantEnter(variant)}
-                  onMouseLeave={handleVariantLeave}
-                  onClick={(e) => handleVariantClick(e, variant)}
-                  title={Object.values(variant.attributes || {}).join(" / ")}
-                  className={`
-                    relative w-8 h-8 rounded-[6px] overflow-hidden border-2 transition-all duration-200
-                    ${isActive
-                      ? "border-[#aa4725] scale-110 shadow-md"
-                      : "border-white/70 hover:border-[#aa4725]/60 hover:scale-105 opacity-80 hover:opacity-100"
-                    }
-                  `}
-                >
-                  <Image
-                    src={variant.images[0]}
-                    alt={Object.values(variant.attributes || {}).join("-")}
-                    fill
-                    className="object-cover"
-                  />
-                </button>
-              );
-            })}
-          </div>
-        )}
       </Link>
 
+      {/* ── بخش واریانت با ارتفاع ثابت برای هماهنگی تمام کارت‌ها ── */}
+      <div className="relative z-20 flex items-center justify-center gap-1.5 h-[56px] bg-white">
+        {hasVariantImages ? (
+          variantsWithImages.map((variant) => {
+            const isActive = activeVariantId === variant._id;
+            return (
+              <button
+                key={variant._id}
+                type="button"
+                onMouseEnter={() => handleVariantEnter(variant)}
+                onMouseLeave={handleVariantLeave}
+                onClick={(e) => handleVariantClick(e, variant)}
+                title={Object.values(variant.attributes || {}).join(" / ")}
+                className={`
+                  relative w-8 h-8 rounded-[6px] overflow-hidden border-2 transition-all duration-200
+                  ${isActive
+                    ? "border-[#aa4725] scale-110 shadow-md"
+                    : "border-gray-100 hover:border-[#aa4725]/60 hover:scale-105 opacity-80 hover:opacity-100"
+                  }
+                `}
+              >
+                <Image
+                  src={variant.images[0]}
+                  alt={Object.values(variant.attributes || {})}
+                  fill
+                  className="object-cover"
+                />
+              </button>
+            );
+          })
+        ) : (
+          // این بخش باعث می‌شود کارت‌های بدون واریانت هم همان ارتفاع را حفظ کنند
+          <div className="h-8"></div>
+        )}
+      </div>
+
       {/* بخش محتوا */}
-      <div className="p-4 flex flex-col items-center text-center relative z-10 pointer-events-none flex-1">
-        {/* نام محصول */}
+      <div className="p-4 pt-0 flex flex-col items-center text-center relative z-10 pointer-events-none flex-1">
         <div className="mb-4 h-[60px] flex flex-col justify-start">
           <h3 className="text-[14px] font-bold text-gray-800 leading-6 mb-1">
             {farsi}
@@ -158,8 +149,7 @@ export default function ProductCard({
           </p>
         </div>
 
-        {/* قیمت */}
-        <div className="mt-auto mb-6 flex flex-col items-center">
+        <div className="mt-auto flex flex-col items-center">
           {safeDiscount ? (
             <>
               <span className="text-[11px] line-through text-gray-300 mb-0.5">
@@ -178,7 +168,6 @@ export default function ProductCard({
           )}
         </div>
 
-        {/* دکمه‌های عملیاتی */}
         <div className="flex items-center gap-7 pointer-events-auto border-t border-gray-50 pt-4 w-full justify-center">
           <ActionButton
             icon={<FaEye />}

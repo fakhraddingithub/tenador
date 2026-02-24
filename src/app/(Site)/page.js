@@ -29,9 +29,9 @@ export default async function Home() {
       <SportsGrid categories={JSON.parse(JSON.stringify(sports))} />
       <ComparisonBanner />
       <BestSellers products={products} />
-      <BrandsTicker />
       <AmazingOffers products={products} />
       <RolandGarros />
+      <BrandsTicker />
       {/* <Articles /> */}
     </>
   );

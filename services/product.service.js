@@ -107,7 +107,7 @@ export async function getPageDataBySlug(slug) {
     .populate("sport")
     .populate("athlete")
     .populate("category")
-    .lean()
+    .populate("variants")
     .sort({ createdAt: -1 }) // جدیدترین‌ها اول
     .lean();
 
