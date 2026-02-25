@@ -11,7 +11,9 @@ export async function POST(req) {
       title, 
       name, 
       parent, 
-      prompts, 
+      prompts,
+      image,
+      icon,
       attributes, 
       variantAttributes, // فیلد جدید اضافه شد
       technicalStats, 
@@ -87,6 +89,8 @@ export async function POST(req) {
       name: name.trim(),
       parent: parent || null,
       prompts: prompts || [],
+      icon: icon.trim(),
+      image: image.trim(),
       attributes: attributes || [],           // ویژگی‌های ثابت (Global)
       variantAttributes: variantAttributes || [], // ویژگی‌های متغیر
       technicalStats: technicalStats || [],

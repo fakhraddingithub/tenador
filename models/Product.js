@@ -25,6 +25,7 @@ const ProductSchema = new mongoose.Schema(
     category: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "Category",
+      index: true,
       required: true,
     },
 
@@ -44,12 +45,14 @@ const ProductSchema = new mongoose.Schema(
     brand: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "Brand",
+      index: true,
       required: true,
     },
 
     serie: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "Serie",
+      index: true,
       default: null,
     },
 
@@ -61,6 +64,7 @@ const ProductSchema = new mongoose.Schema(
     sport: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "Sport",
+      index: true,
       required: true,
     },
 
@@ -81,7 +85,7 @@ const ProductSchema = new mongoose.Schema(
       default: 0,
     },
 
-    slug: { type: String, unique: true },
+    slug: { type: String, unique: true,index: true, },
 
     variants: [{ type: mongoose.Schema.Types.ObjectId, ref: "Variant" }],
   },
@@ -108,6 +112,7 @@ ProductSchema.virtual("comments", {
   foreignField: "product",
 });
 
+ProductSchema.index({ sport: 1, category: 1, brand: 1 });
 
 export default mongoose.models.Product ||
   mongoose.model("Product", ProductSchema);

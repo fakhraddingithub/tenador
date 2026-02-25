@@ -1,155 +1,325 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { usePathname } from 'next/navigation'
-import { FiSearch, FiShoppingCart, FiUser } from 'react-icons/fi';
+import { useState, useEffect, useRef, useCallback } from 'react';
+import { usePathname } from 'next/navigation';
+import { FiSearch, FiShoppingCart, FiUser, FiX, FiChevronLeft } from 'react-icons/fi';
 import { HiOutlineViewGrid } from 'react-icons/hi';
+import Image from 'next/image';
+import Link from 'next/link';
 import Input from '@/components/ui/Input';
 import IconButton from '@/components/ui/IconButton';
 import Button from '@/components/ui/Button';
-import { SPORTS_CATEGORIES, BRANDS, NAVIGATION_ITEMS } from '@/lib/constants';
-import Image from 'next/image';
-import Link from 'next/link';
 import CartDrawer from '@/components/features/cartDrawer/CartDrawer';
 
-export default function Navbar({ user }) {
-  const [isLoggedIn, setIsLoggedIn] = useState(user);
-  const [cartCount, setCartCount] = useState(3);
-  const [openCart, setOpenCart] = useState(false);
-  const [isCategoryOpen, setIsCategoryOpen] = useState(false);
-  const [hoveredSport, setHoveredSport] = useState(null);
-  const [searchQuery, setSearchQuery] = useState('');
+const NAVIGATION_ITEMS = [
+  { id: 1, label: 'جمعه بازار', href: '/amazing-offers' },
+];
 
-  useEffect(() => {
-    const stored = localStorage.getItem('cart');
-    const items = stored ? JSON.parse(stored) : []
-    const totalItems = items.reduce((sum, i) => sum + i.quantity, 0);
-    setCartCount(totalItems)
-  }, [openCart])
+// ---- Search Result Item ----
+function SearchResultItem({ product, onClick }) {
+  return (
+    <Link
+      href={`/products/${product.slug}`}
+      onClick={onClick}
+      className="flex items-center gap-3 px-4 py-3 hover:bg-white/10 transition-all rounded-lg group"
+    >
+      <div className="w-11 h-11 rounded-lg overflow-hidden bg-white/10 flex-shrink-0">
+        {product.mainImage ? (
+          <img src={product.mainImage} alt={product.name} className="w-full h-full object-cover" />
+        ) : (
+          <div className="w-full h-full flex items-center justify-center text-gray-500">
+            <FiSearch size={14} />
+          </div>
+        )}
+      </div>
+      <div className="flex flex-col min-w-0">
+        <span className="text-white text-sm font-bold truncate group-hover:text-[#aa4725] transition-colors">
+          {product.name}
+        </span>
+        {product.category?.title && (
+          <span className="text-gray-400 text-xs truncate">{product.category.title}</span>
+        )}
+      </div>
+    </Link>
+  );
+}
 
-  const pathname = usePathname()
-  const isHomePage = pathname === '/'
+// ---- Mega Menu ----
+function CategoryMenu({ navData, onClose }) {
+  const [activeSportId, setActiveSportId] = useState(navData[0]?._id || null);
+  const activeSport = navData.find(s => s._id === activeSportId) || navData[0];
 
   return (
-    <>
-      {/* Navbar Fixed Height: 75px & Background: #20232ae6 */}
-      <nav className="fixed top-0 right-0 left-0 z-50 bg-[#20232ae6] backdrop-blur-md border-b border-white/10 h-[75px] transition-all duration-300">
-        <div className="hidden lg:block container mx-auto px-4 h-full">
-          <div className="relative flex items-center justify-between h-full">
-            
-            <div className="flex items-center gap-6">
-              {/* Logo - Always Small */}
-              <div className="scale-75">
-                <Link href="/">
-                  <Image src="/logo/logo.svg" alt="logo" width={100} height={100} />
-                </Link>
-              </div>
+    <div
+      className="absolute top-full right-0 mt-2 w-[640px] bg-[#20232a] border border-white/10 shadow-2xl rounded-[var(--radius)] overflow-hidden z-[100]"
+      onMouseLeave={onClose}
+    >
+      <div className="flex h-[440px]">
 
-              {/* Navigation & Categories */}
-              <div className="flex items-center gap-4">
-                <div className="relative group">
+        {/* ستون چپ: ورزش‌ها */}
+        <div className="w-[38%] border-l border-white/[0.06] p-3 overflow-y-auto bg-white/[0.02]">
+          <p className="text-[11px] font-semibold text-gray-500 mb-3 px-2 uppercase tracking-wider">رشته‌های ورزشی</p>
+          <ul className="space-y-0.5">
+            {navData.map((sport) => {
+              const isActive = activeSportId === sport._id;
+              return (
+                <li key={sport._id}>
                   <button
-                    onMouseEnter={() => setIsCategoryOpen(true)}
-                    className="flex items-center gap-2 px-4 py-2 bg-[#aa4725] text-white rounded-[var(--radius)] whitespace-nowrap text-sm hover:bg-[#aa4725]/90 transition-all"
+                    onMouseEnter={() => setActiveSportId(sport._id)}
+                    onClick={() => window.location.href = `/category/${sport.slug}`}
+                    className={`group w-full flex items-center gap-2.5 px-3 py-2.5 rounded-lg transition-all text-sm text-right ${
+                      isActive
+                        ? 'bg-[#aa4725]/20 text-[#aa4725]'
+                        : 'text-white hover:bg-white/10 hover:text-[#aa4725]'
+                    }`}
                   >
-                    <HiOutlineViewGrid size={20} />
-                    <span>دسته‌بندی محصولات</span>
+                    {sport.icon && (
+                      <img
+                        src={sport.icon}
+                        alt={sport.title}
+                        className="w-4 h-4 object-contain flex-shrink-0 transition-all"
+                        style={{
+                          filter: isActive
+                            ? 'none'
+                            : 'brightness(0) invert(1)',
+                        }}
+                      />
+                    )}
+                    <span className="flex-grow text-right">{sport.title}</span>
+                    <FiChevronLeft size={12} className="flex-shrink-0 opacity-40" />
                   </button>
+                </li>
+              );
+            })}
+          </ul>
+        </div>
 
-                  {/* Dropdown with Background: #20232ae6 */}
-                  {isCategoryOpen && (
-                    <div 
-                      className="absolute top-full right-0 mt-2 w-[600px] bg-[#20232ae6] backdrop-blur-xl border border-white/10 shadow-2xl rounded-[var(--radius)] overflow-hidden z-[100]"
-                      onMouseLeave={() => { setIsCategoryOpen(false); setHoveredSport(null); }}
-                    >
-                      <div className="flex h-[400px]">
-                        {/* Right Column */}
-                        <div className="w-1/2 border-l border-white/5 p-4">
-                          <h3 className="text-sm font-semibold text-gray-400 mb-3 pr-2 text-right">رشته‌های ورزشی</h3>
-                          <ul className="space-y-1">
-                            {SPORTS_CATEGORIES.map((sport) => (
-                              <li key={sport.id} onMouseEnter={() => setHoveredSport(sport.slug)}>
-                                <a href={`/category/${sport.slug}`} className={`block text-right rounded-md px-4 py-2 transition-all ${hoveredSport === sport.slug ? 'bg-[#ffffff1a] text-[#aa4725]' : 'text-white hover:bg-[#ffffff1a]'}`}>
-                                  {sport.name}
-                                </a>
-                              </li>
-                            ))}
-                          </ul>
-                        </div>
-                        {/* Left Column */}
-                        <div className="w-1/2 p-4 bg-white/5">
-                          {hoveredSport ? (
-                            <ul className="space-y-1">
-                              <h3 className="text-sm font-semibold text-gray-400 mb-3 pr-2 text-right">برندهای برتر</h3>
-                              {BRANDS[hoveredSport]?.map((brand, index) => (
-                                <li key={index}>
-                                  <a href={`/brand/${brand}`} className="block text-right rounded-md px-4 py-2 text-white hover:text-[#aa4725] hover:bg-[#ffffff1a] transition-all">{brand}</a>
-                                </li>
-                              ))}
-                            </ul>
-                          ) : (
-                            <div className="flex items-center justify-center h-full text-gray-400 text-sm">یک رشته ورزشی را انتخاب کنید</div>
+        {/* ستون راست: دسته‌بندی‌ها + برندها */}
+        <div className="flex-1 p-4 overflow-y-auto">
+          {activeSport?.categories?.length > 0 ? (
+            <div className="space-y-5">
+              {activeSport.categories.map((cat) => (
+                <div key={cat._id}>
+                  {/* عنوان دسته‌بندی */}
+                  <a
+                    href={`/category/${activeSport.slug}/${cat.slug}`}
+                    className="group flex items-center gap-2 mb-2 hover:text-[#aa4725] transition-colors"
+                  >
+                    {cat.icon && (
+                      <img
+                        src={cat.icon}
+                        alt={cat.title}
+                        className="w-4 h-4 object-contain flex-shrink-0 transition-all"
+                        style={{ filter: 'brightness(0) invert(1)' }}
+                        onMouseOver={e => e.currentTarget.style.filter = 'none'}
+                        onMouseOut={e => e.currentTarget.style.filter = 'brightness(0) invert(1)'}
+                      />
+                    )}
+                    <span className="text-sm font-bold text-white group-hover:text-[#aa4725] transition-colors">
+                      {cat.title}
+                    </span>
+                  </a>
+
+                  {/* برندهای زیر دسته‌بندی */}
+                  {cat.brands?.length > 0 && (
+                    <div className="flex flex-wrap gap-x-4 gap-y-1.5 pr-6">
+                      {cat.brands.map((brand) => (
+                        <a
+                          key={brand._id}
+                          href={`/brand/${brand.slug}`}
+                          className="group flex items-center gap-1.5 text-[11px] text-gray-400 hover:text-[#aa4725] transition-colors"
+                        >
+                          {brand.logo && (
+                            <img
+                              src={brand.logo}
+                              alt={brand.title}
+                              className="w-3.5 h-3.5 object-contain flex-shrink-0 transition-all rounded-sm"
+                              style={{ filter: 'brightness(0) invert(1)' }}
+                              onMouseOver={e => e.currentTarget.style.filter = 'none'}
+                              onMouseOut={e => e.currentTarget.style.filter = 'brightness(0) invert(1)'}
+                            />
                           )}
-                        </div>
-                      </div>
+                          <span>{brand.title}</span>
+                        </a>
+                      ))}
                     </div>
                   )}
                 </div>
+              ))}
+            </div>
+          ) : (
+            <div className="flex items-center justify-center h-full text-gray-500 text-sm">
+              دسته‌بندی‌ای یافت نشد
+            </div>
+          )}
+        </div>
 
-                {/* Nav Links: Color White */}
-                <div className="flex items-center gap-4">
-                  {NAVIGATION_ITEMS.map((item) => (
-                    <a key={item.id} href={item.href} className="text-white hover:text-[#aa4725] transition-colors font-medium text-sm whitespace-nowrap">
-                      {item.label}
-                    </a>
-                  ))}
-                </div>
+      </div>
+    </div>
+  );
+}
+
+// ---- Main Navbar ----
+export default function Navbar({ user }) {
+  const pathname = usePathname();
+  const isHomePage = pathname === '/';
+
+  const [cartCount, setCartCount] = useState(0);
+  const [openCart, setOpenCart] = useState(false);
+  const [isCategoryOpen, setIsCategoryOpen] = useState(false);
+  const [navData, setNavData] = useState([]);
+
+  const [searchQuery, setSearchQuery] = useState('');
+  const [searchResults, setSearchResults] = useState([]);
+  const [isSearching, setIsSearching] = useState(false);
+  const [showSearchDropdown, setShowSearchDropdown] = useState(false);
+  const [mobileSearchOpen, setMobileSearchOpen] = useState(false);
+
+  const searchRef = useRef(null);
+  const debounceRef = useRef(null);
+
+  const firstName = user?.userName?.split(' ')[0] || '';
+
+  useEffect(() => {
+    const stored = localStorage.getItem('cart');
+    const items = stored ? JSON.parse(stored) : [];
+    setCartCount(items.reduce((sum, i) => sum + i.quantity, 0));
+  }, [openCart]);
+
+  useEffect(() => {
+    fetch('/api/navbar')
+      .then(r => r.json())
+      .then(data => setNavData(Array.isArray(data) ?data: []))
+      .catch(console.error);
+  }, []);
+console.log(navData);
+
+  useEffect(() => {
+    const handler = (e) => {
+      if (searchRef.current && !searchRef.current.contains(e.target)) {
+        setShowSearchDropdown(false);
+      }
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, []);
+
+  const handleSearch = useCallback((value) => {
+    setSearchQuery(value);
+    clearTimeout(debounceRef.current);
+
+    if (value.length < 2) {
+      setSearchResults([]);
+      setShowSearchDropdown(false);
+      return;
+    }
+
+    setIsSearching(true);
+    setShowSearchDropdown(true);
+
+    debounceRef.current = setTimeout(async () => {
+      try {
+        const res = await fetch(`/api/compare/search?q=${encodeURIComponent(value)}`);
+        const data = await res.json();
+        setSearchResults(data.products || []);
+      } catch {
+        setSearchResults([]);
+      } finally {
+        setIsSearching(false);
+      }
+    }, 350);
+  }, []);
+
+  const closeSearch = () => {
+    setShowSearchDropdown(false);
+    setSearchQuery('');
+    setSearchResults([]);
+    setMobileSearchOpen(false);
+  };
+
+  return (
+    <>
+      <nav className="fixed top-0 right-0 left-0 z-50 bg-[#20232ae6] backdrop-blur-md border-b border-white/10 h-[75px]">
+
+        {/* ===== DESKTOP ===== */}
+        <div className="hidden lg:block container mx-auto px-4 h-full">
+          <div className="relative flex items-center justify-between h-full gap-6">
+
+            <div className="flex items-center gap-5 flex-shrink-0">
+              <div className="scale-75 origin-right">
+                <Link href="/"><Image src="/logo/logo.svg" alt="logo" width={100} height={100} /></Link>
+              </div>
+
+              <div className="relative">
+                <button
+                  onMouseEnter={() => setIsCategoryOpen(true)}
+                  className="flex items-center gap-2 px-4 py-2 bg-[#aa4725] text-white rounded-[var(--radius)] whitespace-nowrap text-sm hover:bg-[#aa4725]/90 transition-all"
+                >
+                  <HiOutlineViewGrid size={18} />
+                  <span>دسته‌بندی محصولات</span>
+                </button>
+
+                {isCategoryOpen && navData.length > 0 && (
+                  <CategoryMenu navData={navData} onClose={() => setIsCategoryOpen(false)} />
+                )}
+              </div>
+
+              {NAVIGATION_ITEMS.map((item) => (
+                <a key={item.id} href={item.href} className="text-white hover:text-[#aa4725] transition-colors font-medium text-sm whitespace-nowrap">
+                  {item.label}
+                </a>
+              ))}
+            </div>
+
+            {/* Search */}
+            <div className="flex-grow max-w-xl" ref={searchRef}>
+              <div className="relative">
+                <Input
+                  className="rounded-[var(--radius)] bg-white/10 border-white/20 text-white placeholder:text-gray-400"
+                  type="search"
+                  placeholder="جستجو در محصولات..."
+                  value={searchQuery}
+                  onChange={(e) => handleSearch(e.target.value)}
+                  onFocus={() => searchQuery.length >= 2 && setShowSearchDropdown(true)}
+                  icon={<FiSearch size={18} className="text-white" />}
+                />
+
+                {showSearchDropdown && (
+                  <div className="absolute top-full right-0 left-0 mt-2 bg-[#20232a] border border-white/10 rounded-[var(--radius)] shadow-2xl z-[200]">
+                    {isSearching ? (
+                      <p className="text-center text-gray-400 text-sm py-6">در حال جستجو...</p>
+                    ) : searchResults.length > 0 ? (
+                      <div className="p-2 space-y-0.5">
+                        {searchResults.map(p => <SearchResultItem key={p._id} product={p} onClick={closeSearch} />)}
+                      </div>
+                    ) : (
+                      <p className="text-center text-gray-400 text-sm py-6">محصولی یافت نشد</p>
+                    )}
+                  </div>
+                )}
               </div>
             </div>
 
-            {/* Search Bar */}
-            <div className="flex-grow px-8 max-w-xl">
-              <Input
-                className='rounded-[var(--radius)] bg-white/10 border-white/20 text-white placeholder:text-gray-400'
-                type="search"
-                placeholder="جستجو در محصولات..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                icon={<FiSearch size={20} className="text-white" />}
-              />
-            </div>
-
-            {/* Dashboard & Cart Buttons */}
-            <div className="flex items-center gap-3">
-              {isLoggedIn ? (
-                <Link href={"/p-user"}>
-                  <Button 
-                    className="flex items-center gap-1 rounded-[var(--radius)] text-white border-white hover:bg-white hover:text-black transition-all" 
-                    variant="outline" 
-                    size="sm"
-                  >
-                    <FiUser className="ml-1" />
-                    <span>داشبورد</span>
+            {/* User + Cart */}
+            <div className="flex items-center gap-3 flex-shrink-0">
+              {user ? (
+                <Link href="/p-user">
+                  <Button className="flex items-center gap-1.5 rounded-[var(--radius)] text-white border-white hover:bg-white hover:text-black transition-all" variant="outline" size="sm">
+                    <FiUser size={15} />
+                    <span>{firstName}</span>
                   </Button>
                 </Link>
               ) : (
-                <Link href={"/login-register"}>
-                  <Button 
-                    className="rounded-[var(--radius)] text-white border-white hover:bg-white hover:text-black transition-all" 
-                    variant="outline" 
-                    size="sm"
-                  >
-                     ورود | ثبت‌نام
+                <Link href="/login-register">
+                  <Button className="rounded-[var(--radius)] text-white border-white hover:bg-white hover:text-black transition-all" variant="outline" size="sm">
+                    ورود | ثبت‌نام
                   </Button>
                 </Link>
               )}
 
               <div className="relative cursor-pointer" onClick={() => setOpenCart(true)}>
-                <IconButton 
-                   className="bg-transparent border-white hover:bg-white text-white hover:text-black transition-all"
-                   variant="outline"
-                >
-                  <FiShoppingCart size={22} />
+                <IconButton className="bg-transparent border-white hover:bg-white text-white hover:text-black transition-all" variant="outline">
+                  <FiShoppingCart size={20} />
                   {cartCount > 0 && (
                     <span className="absolute -top-1 -right-1 bg-[#aa4725] text-white text-[10px] w-5 h-5 flex items-center justify-center rounded-full">
                       {cartCount}
@@ -158,30 +328,131 @@ export default function Navbar({ user }) {
                 </IconButton>
               </div>
             </div>
-
           </div>
         </div>
 
-        {/* Mobile Navbar */}
+        {/* ===== MOBILE ===== */}
         <div className="lg:hidden flex items-center h-full container mx-auto px-4">
-           <div className="flex items-center justify-between w-full gap-3">
-              <Link href="/">
-                <Image src="/logo/logo.svg" alt="logo" width={60} height={60} />
+          {mobileSearchOpen ? (
+            <div className="flex items-center gap-2 w-full" ref={searchRef}>
+              <div className="flex-grow relative">
+                <input
+                  autoFocus
+                  type="search"
+                  placeholder="جستجو در محصولات..."
+                  value={searchQuery}
+                  onChange={(e) => handleSearch(e.target.value)}
+                  className="w-full bg-white/10 border border-white/20 text-white placeholder:text-gray-400 text-sm rounded-[var(--radius)] px-4 py-2.5 outline-none focus:border-[#aa4725]/60"
+                />
+                {showSearchDropdown && (
+                  <div className="absolute top-full right-0 left-0 mt-2 bg-[#20232a] border border-white/10 rounded-[var(--radius)] shadow-2xl z-[200] max-h-[60vh] overflow-y-auto">
+                    {isSearching ? (
+                      <p className="text-center text-gray-400 text-sm py-5">در حال جستجو...</p>
+                    ) : searchResults.length > 0 ? (
+                      <div className="p-2 space-y-0.5">
+                        {searchResults.map(p => <SearchResultItem key={p._id} product={p} onClick={closeSearch} />)}
+                      </div>
+                    ) : (
+                      <p className="text-center text-gray-400 text-sm py-5">محصولی یافت نشد</p>
+                    )}
+                  </div>
+                )}
+              </div>
+              <button onClick={closeSearch} className="text-white p-1 flex-shrink-0">
+                <FiX size={22} />
+              </button>
+            </div>
+          ) : (
+            <div className="flex items-center justify-between w-full gap-2">
+              <Link href="/" className="flex-shrink-0">
+                <Image src="/logo/logo.svg" alt="logo" width={52} height={52} />
               </Link>
-              <div className="flex-grow">
-                <Input type="search" placeholder="جستجو..." className="py-2 text-xs bg-white/10 border-white/20 text-white" icon={<FiSearch size={16} />} />
+
+              <button
+                onClick={() => setIsCategoryOpen(!isCategoryOpen)}
+                className="flex items-center gap-1.5 px-3 py-2 bg-[#aa4725] text-white rounded-[var(--radius)] text-xs font-bold flex-shrink-0"
+              >
+                <HiOutlineViewGrid size={15} />
+                <span>دسته‌ها</span>
+              </button>
+
+              <div className="flex items-center gap-3 flex-shrink-0">
+                <button onClick={() => setMobileSearchOpen(true)} className="text-white">
+                  <FiSearch size={21} />
+                </button>
+
+                {user ? (
+                  <Link href="/p-user" className="text-white"><FiUser size={21} /></Link>
+                ) : (
+                  <Link href="/login-register" className="text-white text-xs font-bold border border-white/30 px-2 py-1 rounded-[var(--radius)]">
+                    ورود
+                  </Link>
+                )}
+
+                <div className="relative cursor-pointer" onClick={() => setOpenCart(true)}>
+                  <FiShoppingCart size={21} className="text-white" />
+                  {cartCount > 0 && (
+                    <span className="absolute -top-2 -right-2 bg-[#aa4725] text-white text-[9px] w-4 h-4 rounded-full flex items-center justify-center">
+                      {cartCount}
+                    </span>
+                  )}
+                </div>
               </div>
-              <div className="relative" onClick={() => setOpenCart(true)}>
-                <FiShoppingCart size={22} className="text-white" />
-                {cartCount > 0 && <span className="absolute -top-2 -right-2 bg-[#aa4725] text-white text-[9px] w-4 h-4 rounded-full flex items-center justify-center">{cartCount}</span>}
-              </div>
-           </div>
+            </div>
+          )}
+
+          {/* Mobile Category Dropdown */}
+          {isCategoryOpen && !mobileSearchOpen && (
+            <div className="absolute top-[75px] right-0 left-0 bg-[#20232a] border-b border-white/10 z-[100] max-h-[80vh] overflow-y-auto shadow-2xl">
+              {navData.map((sport) => (
+                <div key={sport._id} className="border-b border-white/[0.06]">
+                  <a
+                    href={`/category/${sport.slug}`}
+                    onClick={() => setIsCategoryOpen(false)}
+                    className="group flex items-center gap-3 px-5 py-3.5 text-white font-bold text-sm hover:bg-white/10 hover:text-[#aa4725] transition-colors"
+                  >
+                    {sport.icon && (
+                      <img src={sport.icon} alt={sport.title} className="w-5 h-5 object-contain" style={{ filter: 'brightness(0) invert(1)' }} />
+                    )}
+                    <span>{sport.title}</span>
+                  </a>
+
+                  {sport.categories?.map((cat) => (
+                    <div key={cat._id}>
+                      <a
+                        href={`/category/${sport.slug}/${cat.slug}`}
+                        onClick={() => setIsCategoryOpen(false)}
+                        className="group flex items-center gap-2.5 px-9 py-2.5 text-gray-300 text-sm hover:bg-white/10 hover:text-[#aa4725] transition-colors"
+                      >
+                        {cat.icon && (
+                          <img src={cat.icon} alt={cat.title} className="w-4 h-4 object-contain" style={{ filter: 'brightness(0) invert(1)' }} />
+                        )}
+                        <span>{cat.title}</span>
+                      </a>
+
+                      {cat.brands?.map((brand) => (
+                        <a
+                          key={brand._id}
+                          href={`/brand/${brand.slug}`}
+                          onClick={() => setIsCategoryOpen(false)}
+                          className="group flex items-center gap-2 px-14 py-1.5 text-gray-500 text-xs hover:bg-white/10 hover:text-[#aa4725] transition-colors"
+                        >
+                          {brand.logo && (
+                            <img src={brand.logo} alt={brand.title} className="w-3.5 h-3.5 object-contain rounded-sm" style={{ filter: 'brightness(0) invert(1)' }} />
+                          )}
+                          <span>{brand.title}</span>
+                        </a>
+                      ))}
+                    </div>
+                  ))}
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       </nav>
 
-      {/* Spacer - Fixed Height */}
-      {!isHomePage && <div className="h-[75px]"></div>}
-      
+      {!isHomePage && <div className="h-[75px]" />}
       <CartDrawer isOpen={openCart} onClose={() => setOpenCart(false)} />
     </>
   );

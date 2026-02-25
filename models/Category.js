@@ -84,6 +84,16 @@ const CategorySchema = new mongoose.Schema(
         context: String,
       },
     ],
+    
+    icon: {
+      type: String,
+      default: "",
+    },
+    
+    image: {
+      type: String,
+      default: "",
+    },
 
     attributes: {
       type: [AttributeSchema],
@@ -107,7 +117,7 @@ const CategorySchema = new mongoose.Schema(
     parent: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "Category",
-      default: null, // برای کتگوری‌های چندسطحی
+      default: null,
     },
   },
   { timestamps: true },

@@ -18,6 +18,7 @@ const menuItems = [
   // اینجا تغییر کرد:
   { title: 'دسته‌بندی‌ها', href: '/p-admin/admin-categories', icon: <FaFolderOpen /> }, 
   { title: 'محصولات', href: '/p-admin/admin-products', icon: <FaBoxOpen /> },
+  { title: 'بازار دست دوم', href: '/p-admin/admin-secondHands', icon: <FaBoxOpen /> },
   { title: 'کاربران', href: '/p-admin/users', icon: <FaUsersCog /> },
 ];
 

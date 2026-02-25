@@ -12,7 +12,10 @@ import {
   FiEdit3,
   FiMenu,
   FiX,
-  FiSave
+  FiSave,
+  FiUploadCloud,
+  FiLoader,
+  FiImage,
 } from 'react-icons/fi';
 
 // DnD Kit Imports
@@ -61,7 +64,7 @@ function SortableAttribute({ attr, onRemove, onEdit }) {
   };
 
   const uiTypeLabel = (() => {
-    const t = attr.uiType || attr.type; // uiType for variant attrs, type for legacy
+    const t = attr.uiType || attr.type;
     switch (t) {
       case 'text-input': return 'متن';
       case 'number-input': return 'عدد';
@@ -137,6 +140,7 @@ export default function EditCategory() {
 
   const [loading, setLoading] = useState(false);
   const [fetching, setFetching] = useState(true);
+  const [uploadingField, setUploadingField] = useState(null);
   const [categories, setCategories] = useState([]);
   const [showPromptSection, setShowPromptSection] = useState(false);
   const [editingId, setEditingId] = useState(null);
@@ -160,9 +164,10 @@ export default function EditCategory() {
     name: '',
     parent: '',
     attributes: [],
+    icon: '',
+    image: '',
   });
 
-  // Attributes (global) - now WITHOUT uiType/type in UI (plain text-oriented)
   const [currentAttribute, setCurrentAttribute] = useState({
     name: '',
     label: '',
@@ -171,7 +176,6 @@ export default function EditCategory() {
     prompt: '',
   });
 
-  // Variant attributes (new)
   const [variantAttributes, setVariantAttributes] = useState([]);
   const [editingVariantId, setEditingVariantId] = useState(null);
   const [currentVariantAttr, setCurrentVariantAttr] = useState({
@@ -202,12 +206,10 @@ export default function EditCategory() {
   const fetchInitialData = async () => {
     setFetching(true);
     try {
-      // Fetch all categories for the parent dropdown
       const catsRes = await fetch('/api/categories');
       const catsData = await catsRes.json();
       setCategories(catsData.categories || []);
 
-      // Fetch the specific category to edit
       const res = await fetch(`/api/categories/${categoryId}`);
       const data = await res.json();
 
@@ -225,6 +227,8 @@ export default function EditCategory() {
             id: attr.id || attr._id || `attr-${Math.random().toString(36).substr(2, 9)}`,
             options: Array.isArray(attr.options) ? attr.options : []
           })),
+          icon: cat.icon || '',
+          image: cat.image || '',
         });
 
         setTechnicalStats((cat.technicalStats || []).map(stat => ({
@@ -232,14 +236,12 @@ export default function EditCategory() {
           id: stat.id || stat._id || `stat-${Math.random().toString(36).substr(2, 9)}`
         })));
 
-        // load variantAttributes if exist
         setVariantAttributes((cat.variantAttributes || []).map(v => ({
           ...v,
           id: v.id || v._id || `vattr-${Math.random().toString(36).substr(2, 9)}`,
           options: Array.isArray(v.options) ? v.options : []
         })));
 
-        // Fill prompts
         if (cat.prompts) {
           const updatedPrompts = productFields.map(field => {
             const found = cat.prompts.find(p => p.field === field);
@@ -256,6 +258,28 @@ export default function EditCategory() {
       showError('خطا', 'خطا در دریافت اطلاعات');
     } finally {
       setFetching(false);
+    }
+  };
+
+  // ---------- Upload Handler ----------
+  const uploadFile = async (file, field) => {
+    if (!file) return;
+    setUploadingField(field);
+
+    const fd = new FormData();
+    fd.append('file', file);
+    fd.append('folder', 'categories');
+
+    try {
+      const res = await fetch('/api/upload', { method: 'POST', body: fd });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'خطا در آپلود');
+      setFormData((prev) => ({ ...prev, [field]: data.url }));
+      showToast.success(`${field === 'icon' ? 'آیکون' : 'تصویر'} با موفقیت آپلود شد`);
+    } catch (err) {
+      showError('خطا', err.message);
+    } finally {
+      setUploadingField(null);
     }
   };
 
@@ -309,7 +333,6 @@ export default function EditCategory() {
         setProductPrompts(prevPrompts => {
           return prevPrompts.map(currentPrompt => {
             const parentPrompt = selectedParent.prompts.find(p => p.field === currentPrompt.field);
-
             if (parentPrompt && parentPrompt.context.trim() !== '') {
               const separator = "\n\n------\n";
               if (!currentPrompt.context.includes(parentPrompt.context)) {
@@ -332,6 +355,7 @@ export default function EditCategory() {
       showToast.success(`اطلاعات دسته "${selectedParent.title}" به لیست فعلی اضافه شد`);
     }
   };
+
   const normalizeOrders = (attrs) => {
     return attrs.map((attr, index) => ({
       ...attr,
@@ -339,7 +363,6 @@ export default function EditCategory() {
     }));
   };
 
-  // ---------- Global attributes handlers (no uiType in UI) ----------
   const handleAddOrUpdateAttribute = () => {
     if (!currentAttribute.name || !currentAttribute.label) {
       showToast.warning('نام و برچسب ویژگی الزامی است');
@@ -352,7 +375,6 @@ export default function EditCategory() {
       required: currentAttribute.required,
       options: currentAttribute.options ? currentAttribute.options.split(',').map(o => o.trim()).filter(Boolean) : [],
       prompt: currentAttribute.prompt || '',
-      // intentionally NOT adding uiType/type here (global attributes are plain)
     };
 
     if (editingId) {
@@ -418,7 +440,6 @@ export default function EditCategory() {
     }
   };
 
-  // ---------- Variant attributes handlers (new) ----------
   const handleAddOrUpdateVariant = () => {
     if (!currentVariantAttr.name || !currentVariantAttr.label) {
       showToast.warning('نام و برچسب ویژگی واریانت الزامی است');
@@ -480,7 +501,6 @@ export default function EditCategory() {
     setVariantAttributes(prev => prev.filter(v => v.id !== id));
   };
 
-  // ---------- Submit (include variantAttributes) ----------
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
@@ -490,6 +510,8 @@ export default function EditCategory() {
         title: formData.title,
         name: formData.name,
         parent: formData.parent || null,
+        icon: formData.icon,
+        image: formData.image,
         attributes: formData.attributes,
         variantAttributes: variantAttributes,
         technicalStats: technicalStats,
@@ -537,6 +559,80 @@ export default function EditCategory() {
               </div>
             </div>
 
+            {/* Upload Section */}
+            <div className="grid md:grid-cols-2 gap-6">
+              {/* تصویر اصلی */}
+              <div className="bg-neutral-50 p-6 rounded-[var(--radius)] border border-neutral-200">
+                <label className="flex items-center gap-2 text-sm font-bold mb-4 text-neutral-600">
+                  <FiImage className="text-[var(--color-primary)]" /> تصویر اصلی دسته‌بندی
+                </label>
+                <div className="relative h-48 bg-white rounded-[var(--radius)] overflow-hidden border-2 border-dashed border-neutral-200 flex flex-col items-center justify-center group transition-all hover:border-[var(--color-primary)]/50">
+                  {formData.image ? (
+                    <>
+                      <img src={formData.image} alt="category" className="w-full h-full object-cover" />
+                      <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                        <label htmlFor="cat-image" className="cursor-pointer text-white font-bold text-sm">تغییر تصویر</label>
+                      </div>
+                    </>
+                  ) : (
+                    <label htmlFor="cat-image" className="flex flex-col items-center cursor-pointer text-neutral-400 hover:text-[var(--color-primary)] transition-colors">
+                      <FiUploadCloud size={40} className="mb-2" />
+                      <span className="text-xs font-bold">انتخاب تصویر</span>
+                    </label>
+                  )}
+                  <input
+                    type="file"
+                    id="cat-image"
+                    className="hidden"
+                    onChange={(e) => uploadFile(e.target.files[0], 'image')}
+                    accept="image/*"
+                  />
+                  {uploadingField === 'image' && (
+                    <div className="absolute inset-0 bg-white/80 flex items-center justify-center">
+                      <FiLoader className="animate-spin text-[var(--color-primary)]" size={28} />
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* آیکون */}
+              <div className="bg-neutral-50 p-6 rounded-[var(--radius)] border border-neutral-200 flex flex-col justify-center">
+                <label className="flex items-center gap-2 text-sm font-bold mb-4 text-neutral-600">
+                  <FiTag className="text-[var(--color-primary)]" /> آیکون دسته‌بندی
+                </label>
+                <div className="flex items-center gap-5">
+                  <div className="w-20 h-20 rounded-2xl bg-white border-2 border-dashed border-neutral-200 flex items-center justify-center relative overflow-hidden">
+                    {formData.icon ? (
+                      <img src={formData.icon} alt="icon" className="w-full h-full object-contain p-2" />
+                    ) : (
+                      <FiLayers size={24} className="text-neutral-300" />
+                    )}
+                    {uploadingField === 'icon' && (
+                      <div className="absolute inset-0 bg-white/80 flex items-center justify-center">
+                        <FiLoader className="animate-spin text-[var(--color-primary)]" size={18} />
+                      </div>
+                    )}
+                  </div>
+                  <div className="flex-1">
+                    <label
+                      htmlFor="cat-icon"
+                      className="bg-white border border-neutral-200 hover:border-[var(--color-primary)] px-4 py-2 rounded-lg text-xs font-bold cursor-pointer transition-all inline-block"
+                    >
+                      آپلود آیکون
+                    </label>
+                    <p className="text-[10px] text-neutral-400 mt-2 italic">فرمت PNG یا SVG پیشنهاد می‌شود</p>
+                    <input
+                      type="file"
+                      id="cat-icon"
+                      className="hidden"
+                      onChange={(e) => uploadFile(e.target.files[0], 'icon')}
+                      accept="image/*"
+                    />
+                  </div>
+                </div>
+              </div>
+            </div>
+
             {/* Basic Info */}
             <div className="grid md:grid-cols-2 gap-6">
               <Input
@@ -560,7 +656,7 @@ export default function EditCategory() {
               options={categories.filter(c => c._id !== categoryId).map((cat) => ({ value: cat._id, label: cat.title }))}
               placeholder="والد را انتخاب کنید"
             />
-            
+
             <Select
               label="بارگذاری از دسته دیگر"
               onChange={(e) => copyParentFileds(e.target.value)}
@@ -615,7 +711,6 @@ export default function EditCategory() {
                       <input type="checkbox" checked={currentAttribute.required} onChange={(e) => setCurrentAttribute(p => ({ ...p, required: e.target.checked }))} className="w-5 h-5 accent-[var(--color-primary)]" /> الزامی
                     </label>
                   </div>
-
                   <Input label="گزینه‌ها (در صورت نیاز، با کاما جدا کنید)" value={currentAttribute.options} onChange={(e) => setCurrentAttribute(p => ({ ...p, options: e.target.value }))} />
                 </div>
 
@@ -638,7 +733,7 @@ export default function EditCategory() {
               </DndContext>
             </div>
 
-            {/* Variant Attributes Section (NEW) */}
+            {/* Variant Attributes Section */}
             <div id="variant-form-anchor" className="border-t pt-8 space-y-6">
               <div className="flex items-center gap-3">
                 <div className="p-2 rounded-lg bg-blue-50 text-blue-600">
@@ -704,14 +799,9 @@ export default function EditCategory() {
                 />
 
                 <div className="flex items-center gap-3 pt-2">
-                  <Button
-                    type="button"
-                    onClick={handleAddOrUpdateVariant}
-                    className="flex items-center gap-2"
-                  >
+                  <Button type="button" onClick={handleAddOrUpdateVariant} className="flex items-center gap-2">
                     {editingVariantId ? <><FiEdit3 /> بروزرسانی واریانت</> : <><FiPlus /> افزودن واریانت</>}
                   </Button>
-
                   {editingVariantId && (
                     <Button type="button" variant="secondary" onClick={resetVariantForm} className="flex items-center gap-2">
                       <FiX /> انصراف
@@ -741,7 +831,7 @@ export default function EditCategory() {
               </div>
             </div>
 
-            {/* Technical Stats Section (Chart) */}
+            {/* Technical Stats Section */}
             <div id="stat-form-anchor" className="border-t pt-8 space-y-6">
               <div className="flex items-center gap-3">
                 <div className="p-2 rounded-lg bg-orange-100 text-orange-600">
@@ -779,14 +869,13 @@ export default function EditCategory() {
                     {editingStatId ? 'بروزرسانی شاخص' : 'افزودن شاخص جدید'}
                   </Button>
                   {editingStatId && (
-                    <Button type="button" variant="secondary" onClick={() => { setEditingStatId(null); setCurrentStat({ name: '', label: '', prompt: '', description: '' }) }}>
+                    <Button type="button" variant="secondary" onClick={() => { setEditingStatId(null); setCurrentStat({ name: '', label: '', description: '' }); }}>
                       انصراف
                     </Button>
                   )}
                 </div>
               </div>
 
-              {/* لیست شاخص‌ها */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                 {technicalStats.map((stat) => (
                   <div key={stat.id} className="flex items-center justify-between p-3 bg-white border border-neutral-200 rounded-lg shadow-sm group">
@@ -795,12 +884,8 @@ export default function EditCategory() {
                       <span className="text-[10px] text-neutral-400 font-mono">{stat.name}</span>
                     </div>
                     <div className="flex gap-1">
-                      <button type="button" onClick={() => handleEditStat(stat)} className="p-2 text-blue-500 hover:bg-blue-50 rounded-md transition">
-                        <FiEdit3 size={14} />
-                      </button>
-                      <button type="button" onClick={() => removeStat(stat.id)} className="p-2 text-red-500 hover:bg-red-50 rounded-md transition">
-                        <FiTrash2 size={14} />
-                      </button>
+                      <button type="button" onClick={() => handleEditStat(stat)} className="p-2 text-blue-500 hover:bg-blue-50 rounded-md transition"><FiEdit3 size={14} /></button>
+                      <button type="button" onClick={() => removeStat(stat.id)} className="p-2 text-red-500 hover:bg-red-50 rounded-md transition"><FiTrash2 size={14} /></button>
                     </div>
                   </div>
                 ))}
@@ -810,6 +895,7 @@ export default function EditCategory() {
                   </div>
                 )}
               </div>
+
               {technicalStats.length > 0 && (
                 <div className="mt-6 p-6 bg-orange-50/50 border border-orange-100 rounded-[var(--radius)] space-y-3">
                   <div className="flex items-center gap-2 text-orange-700 font-bold text-sm">

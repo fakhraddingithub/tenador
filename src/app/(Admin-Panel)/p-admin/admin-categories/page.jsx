@@ -9,6 +9,7 @@ import {
   FaPlus, FaFolderOpen, FaTrash, FaEdit, 
   FaBoxOpen, FaSearch, FaArrowRight, FaShapes 
 } from 'react-icons/fa';
+import { FiEdit3, FiTrash2 } from 'react-icons/fi';
 
 export default function AdminCategories() {
   const router = useRouter();
@@ -127,69 +128,77 @@ export default function AdminCategories() {
             <p className="text-gray-400 font-bold text-lg">هیچ دسته‌بندی‌ای یافت نشد</p>
           </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 animate-fadeIn">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 animate-fadeIn">
             {filteredCategories.map((category) => {
-  const count = getProductCount(category._id);
-  return (
-    <div 
-      key={category._id} 
-      // اضافه شدن قابلیت کلیک روی کل کارت
-      onClick={() => router.push(`/p-admin/admin-categories/category-products/${category._id}`)}
-      className="group cursor-pointer bg-white rounded-[var(--radius)] border border-gray-100 p-6 shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all duration-300 relative overflow-hidden"
-    >
-      
-      {/* Decorative Background Icon */}
-      <FaShapes className="absolute -bottom-4 -left-4 text-gray-50 text-6xl group-hover:text-[var(--color-secondary)]/10 transition-colors" />
+              const count = getProductCount(category._id);
+              return (
+                <div
+                  key={category._id}
+                  onClick={() => router.push(`/p-admin/admin-categories/category-products/${category._id}`)}
+                  className="group cursor-pointer bg-white rounded-[var(--radius)] border border-gray-100 shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all duration-300 overflow-hidden"
+                >
+                  {/* تصویر اصلی دسته‌بندی */}
+                  <div className="relative h-44 bg-gray-200 overflow-hidden">
+                    {category.image ? (
+                      <img
+                        src={category.image}
+                        alt={category.title}
+                        className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
+                      />
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center text-gray-300">
+                        <FaShapes size={40} />
+                      </div>
+                    )}
+                  </div>
 
-      <div className="relative z-10">
-        <div className="flex justify-between items-start mb-4">
-          <div className={`p-3 rounded-2xl ${count > 0 ? 'bg-orange-50 text-[var(--color-primary)]' : 'bg-gray-50 text-gray-400'}`}>
-            <FaFolderOpen size={24} />
-          </div>
-          
-          {/* دکمه‌های عملیاتی - توقف انتشار کلیک (stopPropagation) برای اینکه با زدن دکمه حذف، صفحه عوض نشود */}
-          <div className="flex gap-1">
-            <button 
-              onClick={(e) => {
-                e.stopPropagation(); // جلوگیری از رفتن به صفحه دسته هنگام کلیک روی ویرایش
-                router.push(`/p-admin/admin-categories/edit/${category._id}`);
-              }}
-              className="p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-all relative z-20"
-            >
-              <FaEdit size={16} />
-            </button>
-            <button 
-              onClick={(e) => {
-                e.stopPropagation(); // جلوگیری از رفتن به صفحه دسته هنگام کلیک روی حذف
-                handleDelete(category);
-              }}
-              className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-all relative z-20"
-            >
-              <FaTrash size={15} />
-            </button>
-          </div>
-        </div>
+                  {/* محتوای کارت */}
+                  <div className="p-5">
+                    {/* ردیف آیکون و نام دسته‌بندی */}
+                    <div className="flex items-center gap-3 mb-3">
+                      <div className="w-10 h-10 rounded-full overflow-hidden bg-gray-50 border border-gray-100 flex-shrink-0 flex items-center justify-center">
+                        {category.icon ? (
+                          <img src={category.icon} alt="icon" className="w-full h-full object-contain" />
+                        ) : (
+                          <FaFolderOpen className="text-[var(--color-primary)]" />
+                        )}
+                      </div>
+                      <h3 className="text-xl font-bold group-hover:text-[var(--color-primary)] transition-colors truncate">
+                        {category.title}
+                      </h3>
+                    </div>
 
-        <h3 className="text-lg font-bold text-[var(--color-text)] mb-1 group-hover:text-[var(--color-primary)] transition-colors">
-          {category.title}
-        </h3>
-        
-        <div className="flex items-center gap-2 text-xs font-bold text-gray-400">
-          <FaBoxOpen className={count > 0 ? "text-[var(--color-secondary)]" : ""} />
-          <span>{count} محصول ثبت شده</span>
-        </div>
+                    {/* تعداد محصولات */}
+                    <div className="flex items-center gap-2 text-sm text-gray-500 font-medium mb-6 min-h-[40px]">
+                      <FaBoxOpen className={count > 0 ? "text-[var(--color-secondary)]" : "text-gray-300"} />
+                      <span>{count} محصول ثبت شده</span>
+                    </div>
 
-        {/* Progress Bar */}
-        <div className="mt-4 w-full bg-gray-100 h-1.5 rounded-full overflow-hidden">
-          <div 
-            className="bg-[var(--color-primary)] h-full transition-all duration-1000 shadow-[0_0_8px_var(--color-primary)]"
-            style={{ width: `${Math.min(count * 10, 100)}%` }}
-          ></div>
-        </div>
-      </div>
-    </div>
-  );
-})}
+                    {/* دکمه‌ها */}
+                    <div className="flex items-center gap-2 border-t border-gray-50 pt-4">
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          router.push(`/p-admin/admin-categories/edit/${category._id}`);
+                        }}
+                        className="flex-1 flex items-center justify-center gap-2 py-2 rounded-[var(--radius)] bg-gray-50 text-gray-700 hover:bg-[var(--color-secondary)] hover:text-black font-bold text-sm transition-all"
+                      >
+                        <FiEdit3 size={16} /> ویرایش
+                      </button>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleDelete(category);
+                        }}
+                        className="w-10 h-10 flex items-center justify-center rounded-[var(--radius)] bg-red-50 text-red-500 hover:bg-red-500 hover:text-white transition-all shadow-sm"
+                      >
+                        <FiTrash2 size={18} />
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
           </div>
         )}
       </main>

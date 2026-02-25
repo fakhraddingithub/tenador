@@ -37,7 +37,9 @@ export async function PUT(req, { params }) {
       variantAttributes, // فیلد جدید
       technicalStats, 
       technicalStatsPrompt, 
-      prompts 
+      prompts,
+      image,
+      icon
     } = body;
 
     const category = await Category.findById(categoryId);
@@ -105,6 +107,13 @@ export async function PUT(req, { params }) {
 
     if (prompts !== undefined) {
       category.prompts = prompts;
+    }
+
+    if (icon !== undefined) {
+      category.icon = icon;
+    }
+    if (image !== undefined) {
+      category.image = image;
     }
 
     // ذخیره تغییرات (Trigger pre-save hooks)

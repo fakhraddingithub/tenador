@@ -11,7 +11,10 @@ import {
   FiTag,
   FiEdit3,
   FiMenu,
-  FiX
+  FiX,
+  FiUploadCloud,
+  FiLoader,
+  FiImage,
 } from 'react-icons/fi';
 
 // DnD Kit Imports
@@ -43,7 +46,6 @@ import { showToast } from '@/lib/toast';
 import { showError } from '@/lib/swal';
 
 // --- Sortable Item Component ---
-// Updated to support both legacy attr.type and new attr.uiType
 function SortableAttribute({ attr, onRemove, onEdit }) {
   const {
     attributes,
@@ -62,7 +64,7 @@ function SortableAttribute({ attr, onRemove, onEdit }) {
   };
 
   const uiTypeLabel = (() => {
-    const t = attr.uiType || attr.type; // backward compatibility
+    const t = attr.uiType || attr.type;
     switch (t) {
       case 'text-input': return 'متن';
       case 'number-input': return 'عدد';
@@ -134,6 +136,7 @@ function SortableAttribute({ attr, onRemove, onEdit }) {
 export default function AddCategory() {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
+  const [uploadingField, setUploadingField] = useState(null);
   const [categories, setCategories] = useState([]);
   const [showPromptSection, setShowPromptSection] = useState(false);
   const [editingId, setEditingId] = useState(null);
@@ -218,10 +221,10 @@ The color code may appear in formats like:
     name: '',
     parent: '',
     attributes: [],
-    // variantAttributes kept separate (not part of attributes)
+    icon: '',
+    image: '',
   });
 
-  // ---------- Attribute (global) state ----------
   const [currentAttribute, setCurrentAttribute] = useState({
     name: '',
     label: '',
@@ -230,7 +233,6 @@ The color code may appear in formats like:
     prompt: '',
   });
 
-  // ---------- Variant attributes ----------
   const [variantAttributes, setVariantAttributes] = useState([]);
   const [editingVariantId, setEditingVariantId] = useState(null);
   const [currentVariantAttr, setCurrentVariantAttr] = useState({
@@ -242,16 +244,15 @@ The color code may appear in formats like:
     prompt: '',
   });
 
-  const [technicalStats, setTechnicalStats] = useState([]); // لیست شاخص‌های فنی
+  const [technicalStats, setTechnicalStats] = useState([]);
   const [currentStat, setCurrentStat] = useState({ name: '', label: '', description: '' });
   const [technicalStatsPrompt, setTechnicalStatsPrompt] = useState('');
   const [editingStatId, setEditingStatId] = useState(null);
 
-  // DnD Sensors Configuration
   const sensors = useSensors(
     useSensor(PointerSensor, {
       activationConstraint: {
-        distance: 8, // Avoid accidental drags when clicking buttons
+        distance: 8,
       },
     }),
     useSensor(KeyboardSensor, {
@@ -273,7 +274,29 @@ The color code may appear in formats like:
     }
   };
 
-  // ---------- Technical Stats handlers (unchanged) ----------
+  // ---------- Upload Handler ----------
+  const uploadFile = async (file, field) => {
+    if (!file) return;
+    setUploadingField(field);
+
+    const fd = new FormData();
+    fd.append('file', file);
+    fd.append('folder', 'categories');
+
+    try {
+      const res = await fetch('/api/upload', { method: 'POST', body: fd });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'خطا در آپلود');
+      setFormData((prev) => ({ ...prev, [field]: data.url }));
+      showToast.success(`${field === 'icon' ? 'آیکون' : 'تصویر'} با موفقیت آپلود شد`);
+    } catch (err) {
+      showError('خطا', err.message);
+    } finally {
+      setUploadingField(null);
+    }
+  };
+
+  // ---------- Technical Stats handlers ----------
   const handleAddOrUpdateStat = () => {
     if (!currentStat.name || !currentStat.label) {
       showToast.warning('نام و برچسب شاخص فنی الزامی است');
@@ -312,7 +335,7 @@ The color code may appear in formats like:
     setTechnicalStats(prev => prev.filter(s => s.id !== id));
   };
 
-  // ---------- Parent handling (unchanged except keep behavior) ----------
+  // ---------- Parent handling ----------
   const copyParentFileds = (parentId) => {
     if (!parentId) {
       setFormData(prev => ({ ...prev, parent: '' }));
@@ -351,7 +374,7 @@ The color code may appear in formats like:
     }));
   };
 
-  // ---------- Global attributes handlers (modified) ----------
+  // ---------- Global attributes handlers ----------
   const handleAddOrUpdateAttribute = () => {
     if (!currentAttribute.name || !currentAttribute.label) {
       showToast.warning('نام و برچسب ویژگی الزامی است');
@@ -364,7 +387,6 @@ The color code may appear in formats like:
       required: currentAttribute.required,
       options: currentAttribute.options ? currentAttribute.options.split(',').map(o => o.trim()).filter(Boolean) : [],
       prompt: currentAttribute.prompt || '',
-      // NOTE: intentionally NOT sending uiType for global attributes (schema default applies)
     };
 
     if (editingId) {
@@ -426,7 +448,7 @@ The color code may appear in formats like:
     if (editingId === id) resetAttributeForm();
   };
 
-  // ---------- Variant attributes handlers (new) ----------
+  // ---------- Variant attributes handlers ----------
   const handleAddOrUpdateVariant = () => {
     if (!currentVariantAttr.name || !currentVariantAttr.label) {
       showToast.warning('نام و برچسب ویژگی واریانت الزامی است');
@@ -488,7 +510,7 @@ The color code may appear in formats like:
     setVariantAttributes(prev => prev.filter(v => v.id !== id));
   };
 
-  // ---------- Drag end (attributes only) ----------
+  // ---------- Drag end ----------
   const handleDragEnd = (event) => {
     const { active, over } = event;
 
@@ -505,7 +527,7 @@ The color code may appear in formats like:
     }
   };
 
-  // ---------- Submit (include variantAttributes) ----------
+  // ---------- Submit ----------
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
@@ -515,6 +537,8 @@ The color code may appear in formats like:
         title: formData.title,
         name: formData.name,
         parent: formData.parent || null,
+        icon: formData.icon,
+        image: formData.image,
         attributes: formData.attributes,
         variantAttributes: variantAttributes,
         technicalStats: technicalStats,
@@ -561,6 +585,80 @@ The color code may appear in formats like:
               </div>
             </div>
 
+            {/* Upload Section */}
+            <div className="grid md:grid-cols-2 gap-6">
+              {/* تصویر اصلی */}
+              <div className="bg-neutral-50 p-6 rounded-[var(--radius)] border border-neutral-200">
+                <label className="flex items-center gap-2 text-sm font-bold mb-4 text-neutral-600">
+                  <FiImage className="text-[var(--color-primary)]" /> تصویر اصلی دسته‌بندی
+                </label>
+                <div className="relative h-48 bg-white rounded-[var(--radius)] overflow-hidden border-2 border-dashed border-neutral-200 flex flex-col items-center justify-center group transition-all hover:border-[var(--color-primary)]/50">
+                  {formData.image ? (
+                    <>
+                      <img src={formData.image} alt="category" className="w-full h-full object-cover" />
+                      <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                        <label htmlFor="cat-image" className="cursor-pointer text-white font-bold text-sm">تغییر تصویر</label>
+                      </div>
+                    </>
+                  ) : (
+                    <label htmlFor="cat-image" className="flex flex-col items-center cursor-pointer text-neutral-400 hover:text-[var(--color-primary)] transition-colors">
+                      <FiUploadCloud size={40} className="mb-2" />
+                      <span className="text-xs font-bold">انتخاب تصویر</span>
+                    </label>
+                  )}
+                  <input
+                    type="file"
+                    id="cat-image"
+                    className="hidden"
+                    onChange={(e) => uploadFile(e.target.files[0], 'image')}
+                    accept="image/*"
+                  />
+                  {uploadingField === 'image' && (
+                    <div className="absolute inset-0 bg-white/80 flex items-center justify-center">
+                      <FiLoader className="animate-spin text-[var(--color-primary)]" size={28} />
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* آیکون */}
+              <div className="bg-neutral-50 p-6 rounded-[var(--radius)] border border-neutral-200 flex flex-col justify-center">
+                <label className="flex items-center gap-2 text-sm font-bold mb-4 text-neutral-600">
+                  <FiTag className="text-[var(--color-primary)]" /> آیکون دسته‌بندی
+                </label>
+                <div className="flex items-center gap-5">
+                  <div className="w-20 h-20 rounded-2xl bg-white border-2 border-dashed border-neutral-200 flex items-center justify-center relative overflow-hidden">
+                    {formData.icon ? (
+                      <img src={formData.icon} alt="icon" className="w-full h-full object-contain p-2" />
+                    ) : (
+                      <FiLayers size={24} className="text-neutral-300" />
+                    )}
+                    {uploadingField === 'icon' && (
+                      <div className="absolute inset-0 bg-white/80 flex items-center justify-center">
+                        <FiLoader className="animate-spin text-[var(--color-primary)]" size={18} />
+                      </div>
+                    )}
+                  </div>
+                  <div className="flex-1">
+                    <label
+                      htmlFor="cat-icon"
+                      className="bg-white border border-neutral-200 hover:border-[var(--color-primary)] px-4 py-2 rounded-lg text-xs font-bold cursor-pointer transition-all inline-block"
+                    >
+                      آپلود آیکون
+                    </label>
+                    <p className="text-[10px] text-neutral-400 mt-2 italic">فرمت PNG یا SVG پیشنهاد می‌شود</p>
+                    <input
+                      type="file"
+                      id="cat-icon"
+                      className="hidden"
+                      onChange={(e) => uploadFile(e.target.files[0], 'icon')}
+                      accept="image/*"
+                    />
+                  </div>
+                </div>
+              </div>
+            </div>
+
             {/* Basic Info */}
             <div className="grid md:grid-cols-2 gap-6">
               <Input
@@ -593,7 +691,7 @@ The color code may appear in formats like:
             />
 
             <Select
-            label="بارگذاری از دسته دیگر"
+              label="بارگذاری از دسته دیگر"
               onChange={(e) => copyParentFileds(e.target.value)}
               options={categories.map((cat) => ({ value: cat._id, label: cat.title }))}
               placeholder="دسته اصلی"
@@ -614,8 +712,7 @@ The color code may appear in formats like:
               </button>
 
               <div
-                className={`overflow-hidden transition-all duration-500 ${showPromptSection ? 'max-h-[2000px] mt-6' : 'max-h-0'
-                  }`}
+                className={`overflow-hidden transition-all duration-500 ${showPromptSection ? 'max-h-[2000px] mt-6' : 'max-h-0'}`}
               >
                 <div className="grid md:grid-cols-2 gap-5">
                   {productPrompts.map((item, index) => (
@@ -644,7 +741,6 @@ The color code may appear in formats like:
                 </h3>
               </div>
 
-              {/* Attribute Builder Form */}
               <div className={`rounded-[var(--radius)] p-6 space-y-5 transition-all duration-300 border-2 ${editingId ? 'bg-amber-50/30 border-amber-200' : 'bg-neutral-50 border-transparent'}`}>
                 <div className="grid md:grid-cols-2 gap-4">
                   <Input
@@ -660,8 +756,6 @@ The color code may appear in formats like:
                     placeholder="مثال: اندازه"
                   />
                 </div>
-
-                {/* Removed ui type select here: attributes are plain text-only in the UI */}
 
                 <div className="grid md:grid-cols-2 gap-4">
                   <div className="flex items-center gap-3 h-full mt-8">
@@ -708,7 +802,6 @@ The color code may appear in formats like:
                 </div>
               </div>
 
-              {/* Draggable Reordering List */}
               <div className="space-y-4">
                 <div className="flex items-center justify-between px-2">
                   <span className="text-sm text-neutral-500 font-medium">لیست ویژگی‌ها ({formData.attributes.length})</span>
@@ -746,7 +839,7 @@ The color code may appear in formats like:
               </div>
             </div>
 
-            {/* Variant Attributes Section (NEW) */}
+            {/* Variant Attributes Section */}
             <div id="variant-form-anchor" className="border-t pt-8 space-y-6">
               <div className="flex items-center gap-3">
                 <div className="p-2 rounded-lg bg-blue-50 text-blue-600">
@@ -850,7 +943,7 @@ The color code may appear in formats like:
               </div>
             </div>
 
-            {/* Technical Stats Section (Chart) */}
+            {/* Technical Stats Section */}
             <div id="stat-form-anchor" className="border-t pt-8 space-y-6">
               <div className="flex items-center gap-3">
                 <div className="p-2 rounded-lg bg-orange-100 text-orange-600">
@@ -902,6 +995,7 @@ The color code may appear in formats like:
                   </div>
                 ))}
               </div>
+
               {technicalStats.length > 0 && (
                 <div className="mt-6 p-6 bg-orange-50/50 border border-orange-100 rounded-[var(--radius)] space-y-3">
                   <div className="flex items-center gap-2 text-orange-700 font-bold text-sm">
