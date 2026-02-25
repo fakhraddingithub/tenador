@@ -97,7 +97,7 @@ function RecentRow({ item }) {
 
       <div className="flex-grow min-w-0">
         <p className="font-bold text-sm text-neutral-800 truncate group-hover:text-[var(--color-primary)] transition-colors">
-          {item.baseProduct?.name}
+          {item.name}
         </p>
         <p className="text-[11px] text-neutral-400 mt-0.5">{item.baseProduct?.category?.title}</p>
       </div>

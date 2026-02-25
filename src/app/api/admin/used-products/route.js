@@ -46,6 +46,7 @@ export async function POST(req) {
     await connectToDB();
     const body = await req.json();
     const {
+      name,
       baseProduct,
       healthScores = [],
       customFields = [],
@@ -55,6 +56,9 @@ export async function POST(req) {
       status,
     } = body;
 
+    if (!name) {
+      return Response.json({ error: `نام محصول را وارد کنید` }, { status: 400 });
+    }
     if (!baseProduct) {
       return NextResponse.json(
         { error: "محصول پایه الزامی است" },
@@ -90,6 +94,7 @@ export async function POST(req) {
     const overallScore = calcOverallScore(healthScores, customFields);
 
     const item = await UsedProduct.create({
+      name,
       baseProduct,
       healthScores,
       customFields,

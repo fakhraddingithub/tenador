@@ -26,6 +26,9 @@ export default function UsedProductForm({ initialData }) {
   const [productResults, setProductResults] = useState([]);
   const [selectedProduct, setSelectedProduct] = useState(initialData?.baseProduct || null);
 
+  // New state for Editable Name
+  const [name, setName] = useState(initialData?.name || '');
+
   // HealthCard template
   const [template, setTemplate] = useState(null);
   const [templateLoading, setTemplateLoading] = useState(false);
@@ -71,7 +74,6 @@ export default function UsedProductForm({ initialData }) {
           (c.category?._id || c.category) === catId
         );
         setTemplate(card || null);
-        // Initialize healthScores from template
         if (card && !isEdit) {
           setHealthScores(card.fields.map(f => ({ key: f.key, rating: 3, note: '' })));
         }
@@ -83,6 +85,7 @@ export default function UsedProductForm({ initialData }) {
   const selectProduct = (product) => {
     setSelectedProduct(product);
     setProductQuery(product.name);
+    setName(product.name); // پر کردن فیلد نام محصول با نام محصول پایه
     setProductResults([]);
     setHealthScores([]);
     setTemplate(null);
@@ -91,6 +94,7 @@ export default function UsedProductForm({ initialData }) {
   const clearProduct = () => {
     setSelectedProduct(null);
     setProductQuery('');
+    setName(''); // پاک کردن نام
     setHealthScores([]);
     setTemplate(null);
   };
@@ -136,12 +140,14 @@ export default function UsedProductForm({ initialData }) {
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!selectedProduct) return showToast.warning('محصول را انتخاب کنید');
+    if (!name.trim()) return showToast.warning('نام محصول الزامی است');
     if (!price || Number(price) < 0) return showToast.warning('قیمت معتبر وارد کنید');
 
     setLoading(true);
 
     const payload = {
       baseProduct: selectedProduct._id,
+      name, // ارسال نام جدید به بک‌اند
       healthScores,
       customFields: customFields.map(({ _id, ...f }) => f),
       price: Number(price),
@@ -225,6 +231,19 @@ export default function UsedProductForm({ initialData }) {
         )}
       </section>
 
+      {/* ─── Editable Name Field (اضافه شده بعد از محصول پایه) ─── */}
+      {selectedProduct && (
+        <section className="space-y-2">
+          <label className="text-sm font-bold text-neutral-600">نام نمایشی محصول</label>
+          <input
+            value={name}
+            onChange={e => setName(e.target.value)}
+            placeholder="نامی که کاربر می‌بیند..."
+            className="w-full bg-neutral-50 border border-neutral-200 rounded-[var(--radius)] px-4 py-3 text-sm outline-none focus:ring-2 ring-[var(--color-primary)]/20"
+          />
+        </section>
+      )}
+
       {/* ─── HealthCard Scores ─── */}
       {selectedProduct && (
         <section className="space-y-4">
@@ -300,7 +319,6 @@ export default function UsedProductForm({ initialData }) {
           </div>
         ))}
 
-        {/* Add custom field */}
         <div className="flex gap-2 items-center">
           <input
             placeholder="نام فیلد سفارشی"
@@ -400,7 +418,7 @@ export default function UsedProductForm({ initialData }) {
         </button>
         <button
           type="button"
-          onClick={() => router.push('/admin/used-products')}
+          onClick={() => router.push('/p-admin/admin-secondHands/used-products')}
           className="px-6 py-3 rounded-[var(--radius)] border border-neutral-200 text-sm font-bold hover:bg-neutral-50 transition-all"
         >
           انصراف

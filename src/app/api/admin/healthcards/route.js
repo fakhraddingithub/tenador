@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import connectToDB from "base/configs/db";
 import HealthCard from "base/models/HealthCard";
+import Category from "base/models/Category";
 
 export async function GET() {
   try {

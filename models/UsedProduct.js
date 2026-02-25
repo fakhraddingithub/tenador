@@ -20,6 +20,11 @@ const CustomFieldSchema = new mongoose.Schema(
 
 const UsedProductSchema = new mongoose.Schema(
   {
+    name:{
+      type:String,
+      required:true
+    },
+    
     baseProduct: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "Product",

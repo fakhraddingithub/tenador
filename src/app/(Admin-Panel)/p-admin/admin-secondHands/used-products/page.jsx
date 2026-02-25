@@ -123,7 +123,7 @@ export default function UsedProductsPage() {
              </div>
              
              <h3 className="font-bold text-neutral-800 text-base truncate group-hover:text-[var(--color-primary)] transition-colors">
-               {item.baseProduct?.name}
+               {item.name}
              </h3>
          
              <div className="flex items-center gap-4 mt-1">

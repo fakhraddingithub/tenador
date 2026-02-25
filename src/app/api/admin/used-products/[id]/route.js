@@ -3,6 +3,7 @@ import connectToDB from "base/configs/db";
 import UsedProduct from "base/models/UsedProduct";
 import Product from "base/models/Product";
 import { validateHealthScores, calcOverallScore } from "@/lib/healthcard";
+import Category from "base/models/Category";
 
 export async function GET(_, { params }) {
   try {
@@ -11,10 +12,10 @@ export async function GET(_, { params }) {
     const item = await UsedProduct.findById(id)
       .populate({
         path: "baseProduct",
-        select: "name mainImage sku category",
-        populate: { path: "category", select: "title" },
+        populate: { path: "category" },
       })
       .lean();
+      
     if (!item) return NextResponse.json({ error: "یافت نشد" }, { status: 404 });
     return NextResponse.json({ item });
   } catch (err) {
@@ -28,55 +29,26 @@ export async function PUT(req, { params }) {
     await connectToDB();
     const { id } = await params;
     const body = await req.json();
-    const {
-      healthScores = [],
-      customFields = [],
-      price,
-      description,
-      images,
-      status,
-    } = body;
+    const { name, healthScores, customFields, price, description, images, status } = body;
 
-    if (price != null && price < 0) {
-      return NextResponse.json(
-        { error: "قیمت معتبر الزامی است" },
-        { status: 400 },
-      );
-    }
+    // 1. پیدا کردن سند
+    const usedProduct = await UsedProduct.findById(id);
+    if (!usedProduct) return NextResponse.json({ error: "یافت نشد" }, { status: 404 });
 
-    const existing = await UsedProduct.findById(id)
-      .select("baseProduct")
-      .lean();
-    if (!existing)
-      return NextResponse.json({ error: "یافت نشد" }, { status: 404 });
+    // 2. مقداردهی مستقیم فیلدها
+    if (name) usedProduct.name = name;
+    if (healthScores) usedProduct.healthScores = healthScores;
+    if (customFields) usedProduct.customFields = customFields;
+    if (price !== undefined) usedProduct.price = price;
+    if (description !== undefined) usedProduct.description = description;
+    if (images) usedProduct.images = images;
+    if (status) usedProduct.status = status;
 
-    const product = await Product.findById(existing.baseProduct)
-      .select("category")
-      .lean();
+    // 3. ذخیره سازی (این کار باعث اجرای pre-save و محاسبه امتیاز می‌شود)
+    await usedProduct.save();
 
-    const validationError = await validateHealthScores(
-      product.category,
-      healthScores,
-    );
-    if (validationError) {
-      return NextResponse.json({ error: validationError }, { status: 422 });
-    }
-
-    const overallScore = calcOverallScore(healthScores, customFields);
-
-    const updated = await UsedProduct.findByIdAndUpdate(
-      id,
-      {
-        healthScores,
-        customFields,
-        overallScore,
-        price,
-        description,
-        images,
-        status,
-      },
-      { new: true, runValidators: true },
-    ).populate({
+    // 4. بازگرداندن داده با Populate
+    const updated = await UsedProduct.findById(id).populate({
       path: "baseProduct",
       select: "name mainImage sku category",
       populate: { path: "category", select: "title" },
