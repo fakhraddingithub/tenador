@@ -43,7 +43,7 @@ export default function HealthCardsPage() {
       <div className="flex items-center justify-between mb-8">
         <div className="flex items-center gap-3">
           <FiLayers size={24} className="text-[var(--color-primary)]" />
-          <h1 className="text-2xl font-bold">مدیریت HealthCard ها</h1>
+          <h1 className="text-2xl font-bold">مدیریت کارت های سلامت</h1>
         </div>
         <Link
           href="/p-admin/admin-secondHands/healthcards/create"
