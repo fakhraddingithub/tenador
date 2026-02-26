@@ -41,10 +41,13 @@ export async function getProducts() {
 }
 
 export async function getProductBySlug(slug) {
+
+  const decodedSlug = decodeURIComponent(slug);
+  
   try {
     await connectToDB();
 
-    const product = await Product.findOne({ slug })
+    const product = await Product.findOne({ slug: decodedSlug })
       .populate("brand")
       .populate("sport")
       .populate("athlete")
