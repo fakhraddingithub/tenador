@@ -2,6 +2,7 @@ import "@/app/globals.css";
 import { ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import Navbar from "@/components/features/navbar/Navbar";
+import WhatsAppSupport from "@/components/features/WhatsAppSupport/WhatsAppSupport";
 import Footer from "@/components/features/footer/Footer";
 import { cookies } from "next/headers";
 import { verifyToken } from "base/utils/auth";
@@ -35,6 +36,7 @@ export default async function RootLayout({ children }) {
       </head>
       <body className="bg-[var(--color-background)] text-[var(--color-text)]">
         <Navbar user={user} />
+        <WhatsAppSupport />
         <main className="min-h-screen">{children}</main>
         <Footer />
         <ToastContainer
