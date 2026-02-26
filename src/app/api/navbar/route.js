@@ -62,7 +62,7 @@ async function buildNavbarData() {
                   _id: "$brand._id",
                   title: "$brand.title",
                   slug: "$brand.slug",
-                  logo: "$brand.logo",
+                  icon: "$brand.icon",
                 },
               },
             },

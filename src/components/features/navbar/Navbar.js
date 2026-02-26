@@ -12,7 +12,7 @@ import Button from '@/components/ui/Button';
 import CartDrawer from '@/components/features/cartDrawer/CartDrawer';
 
 const NAVIGATION_ITEMS = [
-  { id: 1, label: 'جمعه بازار', href: '/amazing-offers' },
+  { id: 1, label: 'جمعه بازار', href: '/secondHands' },
 ];
 
 // ---- Search Result Item ----
@@ -45,18 +45,31 @@ function SearchResultItem({ product, onClick }) {
 }
 
 // ---- Mega Menu ----
+
 function CategoryMenu({ navData, onClose }) {
   const [activeSportId, setActiveSportId] = useState(navData[0]?._id || null);
   const activeSport = navData.find(s => s._id === activeSportId) || navData[0];
 
+  // استایل مشترک برای آیکون‌ها جهت تغییر رنگ داینامیک
+  const iconMaskStyle = (url) => ({
+    backgroundColor: 'currentColor',
+    maskImage: `url(${url})`,
+    WebkitMaskImage: `url(${url})`,
+    maskRepeat: 'no-repeat',
+    WebkitMaskRepeat: 'no-repeat',
+    maskSize: 'contain',
+    WebkitMaskSize: 'contain',
+  });
+
   return (
     <div
-      className="absolute top-full right-0 mt-2 w-[640px] bg-[#20232a] border border-white/10 shadow-2xl rounded-[var(--radius)] overflow-hidden z-[100]"
+      dir="rtl" // راست‌چین کردن کل منو
+      className="absolute top-full right-0 mt-2 w-[640px] bg-[#20232a] border border-white/10 shadow-2xl rounded-[var(--radius)] overflow-hidden z-[100] text-right"
       onMouseLeave={onClose}
     >
       <div className="flex h-[440px]">
-
-        {/* ستون چپ: ورزش‌ها */}
+        
+        {/* ستون راست (قبلاً چپ بود): ورزش‌ها */}
         <div className="w-[38%] border-l border-white/[0.06] p-3 overflow-y-auto bg-white/[0.02]">
           <p className="text-[11px] font-semibold text-gray-500 mb-3 px-2 uppercase tracking-wider">رشته‌های ورزشی</p>
           <ul className="space-y-0.5">
@@ -67,26 +80,20 @@ function CategoryMenu({ navData, onClose }) {
                   <button
                     onMouseEnter={() => setActiveSportId(sport._id)}
                     onClick={() => window.location.href = `/category/${sport.slug}`}
-                    className={`group w-full flex items-center gap-2.5 px-3 py-2.5 rounded-lg transition-all text-sm text-right ${
+                    className={`group w-full flex items-center gap-2.5 px-3 py-2.5 rounded-lg transition-all text-sm ${
                       isActive
                         ? 'bg-[#aa4725]/20 text-[#aa4725]'
                         : 'text-white hover:bg-white/10 hover:text-[#aa4725]'
                     }`}
                   >
                     {sport.icon && (
-                      <img
-                        src={sport.icon}
-                        alt={sport.title}
-                        className="w-4 h-4 object-contain flex-shrink-0 transition-all"
-                        style={{
-                          filter: isActive
-                            ? 'none'
-                            : 'brightness(0) invert(1)',
-                        }}
+                      <div
+                        style={iconMaskStyle(sport.icon)}
+                        className="w-4 h-4 flex-shrink-0 transition-colors"
                       />
                     )}
                     <span className="flex-grow text-right">{sport.title}</span>
-                    <FiChevronLeft size={12} className="flex-shrink-0 opacity-40" />
+                    <FiChevronLeft size={12} className={`flex-shrink-0 transition-opacity ${isActive ? 'opacity-100' : 'opacity-40'}`} />
                   </button>
                 </li>
               );
@@ -94,7 +101,7 @@ function CategoryMenu({ navData, onClose }) {
           </ul>
         </div>
 
-        {/* ستون راست: دسته‌بندی‌ها + برندها */}
+        {/* ستون چپ (قبلاً راست بود): دسته‌بندی‌ها + برندها */}
         <div className="flex-1 p-4 overflow-y-auto">
           {activeSport?.categories?.length > 0 ? (
             <div className="space-y-5">
@@ -103,43 +110,35 @@ function CategoryMenu({ navData, onClose }) {
                   {/* عنوان دسته‌بندی */}
                   <a
                     href={`/category/${activeSport.slug}/${cat.slug}`}
-                    className="group flex items-center gap-2 mb-2 hover:text-[#aa4725] transition-colors"
+                    className="group flex items-center gap-2 mb-2 text-white hover:text-[#aa4725] transition-colors"
                   >
                     {cat.icon && (
-                      <img
-                        src={cat.icon}
-                        alt={cat.title}
-                        className="w-4 h-4 object-contain flex-shrink-0 transition-all"
-                        style={{ filter: 'brightness(0) invert(1)' }}
-                        onMouseOver={e => e.currentTarget.style.filter = 'none'}
-                        onMouseOut={e => e.currentTarget.style.filter = 'brightness(0) invert(1)'}
+                      <div
+                        style={iconMaskStyle(cat.icon)}
+                        className="w-4 h-4 flex-shrink-0 bg-white group-hover:bg-[#aa4725] transition-colors"
                       />
                     )}
-                    <span className="text-sm font-bold text-white group-hover:text-[#aa4725] transition-colors">
+                    <span className="text-sm font-bold transition-colors">
                       {cat.title}
                     </span>
                   </a>
 
                   {/* برندهای زیر دسته‌بندی */}
                   {cat.brands?.length > 0 && (
-                    <div className="flex flex-wrap gap-x-4 gap-y-1.5 pr-6">
+                    <div className="flex flex-wrap gap-x-5 gap-y-2 pr-2">
                       {cat.brands.map((brand) => (
                         <a
                           key={brand._id}
                           href={`/brand/${brand.slug}`}
-                          className="group flex items-center gap-1.5 text-[11px] text-gray-400 hover:text-[#aa4725] transition-colors"
+                          className="group flex items-center gap-1.5 text-gray-400 hover:text-[#aa4725] transition-colors"
                         >
-                          {brand.logo && (
-                            <img
-                              src={brand.logo}
-                              alt={brand.title}
-                              className="w-3.5 h-3.5 object-contain flex-shrink-0 transition-all rounded-sm"
-                              style={{ filter: 'brightness(0) invert(1)' }}
-                              onMouseOver={e => e.currentTarget.style.filter = 'none'}
-                              onMouseOut={e => e.currentTarget.style.filter = 'brightness(0) invert(1)'}
+                          {brand.icon && (
+                            <div
+                              style={iconMaskStyle(brand.icon)}
+                              className="w-3.5 h-3.5 flex-shrink-0 bg-gray-400 group-hover:bg-[#aa4725] transition-colors"
                             />
                           )}
-                          <span>{brand.title}</span>
+                          <span className="whitespace-nowrap">{brand.title}</span>
                         </a>
                       ))}
                     </div>
@@ -158,6 +157,7 @@ function CategoryMenu({ navData, onClose }) {
     </div>
   );
 }
+
 
 // ---- Main Navbar ----
 export default function Navbar({ user }) {
@@ -192,7 +192,6 @@ export default function Navbar({ user }) {
       .then(data => setNavData(Array.isArray(data) ?data: []))
       .catch(console.error);
   }, []);
-console.log(navData);
 
   useEffect(() => {
     const handler = (e) => {
@@ -437,8 +436,8 @@ console.log(navData);
                           onClick={() => setIsCategoryOpen(false)}
                           className="group flex items-center gap-2 px-14 py-1.5 text-gray-500 text-xs hover:bg-white/10 hover:text-[#aa4725] transition-colors"
                         >
-                          {brand.logo && (
-                            <img src={brand.logo} alt={brand.title} className="w-3.5 h-3.5 object-contain rounded-sm" style={{ filter: 'brightness(0) invert(1)' }} />
+                          {brand.icon && (
+                            <img src={brand.icon} alt={brand.title} className="w-3.5 h-3.5 object-contain rounded-sm" style={{ filter: 'brightness(0) invert(1)' }} />
                           )}
                           <span>{brand.title}</span>
                         </a>

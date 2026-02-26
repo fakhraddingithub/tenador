@@ -5,7 +5,6 @@ import ProductComparisonGraph from "@/components/templates/productCompare/Produc
 
 const ProductAttributesTable = ({ attributes = [], technicalStats }) => {
   if (!attributes || attributes.length === 0) return null;
-console.log(technicalStats);
 
   return (
     <motion.div
