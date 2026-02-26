@@ -71,7 +71,7 @@ export default function HealthCardForm({ initialData, categoryLocked }) {
 
   return (
     <form onSubmit={handleSubmit} className="max-w-2xl mx-auto px-4 py-10 space-y-8">
-      <h1 className="text-2xl font-bold">{initialData ? 'ویرایش HealthCard' : 'ایجاد HealthCard جدید'}</h1>
+      <h1 className="text-2xl font-bold">{initialData ? 'ویرایش کارت سلامت' : 'ایجاد کارت سلامت جدید'}</h1>
 
       {/* Category Select */}
       {!categoryLocked ? (
