@@ -100,7 +100,7 @@ function CategoryMenu({ navData, onClose }) {
             {navData.map((sport) => (
               <li key={sport._id}>
                 <button
-                 onClick={() => window.location.href = `/sports/${sport.slug}}`}
+                 onClick={() => window.location.href = `/sports/${sport.slug}`}
                   onMouseEnter={() => {
                     setActiveSportId(sport._id);
                     setActiveCategoryId(sport.categories?.[0]?._id); // ریست کردن کتگوری با تغییر ورزش
