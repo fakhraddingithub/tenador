@@ -1,13 +1,12 @@
 import { useState } from "react";
 import ProductCard from "@/components/modules/cart/ProductCard";
 import QuickViewModal from "@/components/modules/cart/QuickViewModal";
-
 export default function ProductList({
   products = [],
+  rate,
   onAddToCart,
   onToggleWishlist,
 }) {
-
   const [selectedProduct, setSelectedProduct] = useState(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
 
@@ -35,6 +34,7 @@ export default function ProductList({
         <ProductCard
           key={product._id}
           product={product}
+          rate={rate}
           isWishlisted={product.isWishlisted}
           onQuickView={() => openQuickView(product)}
           onAddToCart={() => onAddToCart?.(product)}

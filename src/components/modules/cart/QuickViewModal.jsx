@@ -48,6 +48,7 @@ function buildLabelMap(variantAttributes = []) {
 ───────────────────────────────────────── */
 export default function QuickViewModal({
   product,
+  rate,
   isOpen,
   onClose,
   onToggleWishlist,
@@ -74,7 +75,9 @@ export default function QuickViewModal({
 
   const allImages = useMemo(() => {
     if (!product) return [];
-    const base = [product.mainImage, ...(product.gallery || [])].filter(Boolean);
+    const base = [product.mainImage, ...(product.gallery || [])].filter(
+      Boolean,
+    );
     const variantImgs = (product.variants || [])
       .flatMap((v) => v.images || [])
       .filter(Boolean)
@@ -115,7 +118,19 @@ export default function QuickViewModal({
     }
   }
 
-  const displayPrice = selectedVariant?.price ?? product?.basePrice ?? 0;
+  // محاسبه قیمت نهایی به تومان (با اولویت واریانت)
+  const finalTomanPrice = useMemo(() => {
+    const eurPrice = selectedVariant
+      ? Number(selectedVariant.price)
+      : Number(product?.basePrice);
+      const rawToman = eurPrice * (rate || 0);
+
+      return Math.floor(rawToman / 1000) * 1000;
+  }, [selectedVariant, product?.basePrice, rate]);
+
+  // متغیر برای نمایش در UI
+  const displayPrice = finalTomanPrice;
+
   const variantStock = selectedVariant?.stock ?? null;
   const isOutOfStock = hasVariants
     ? selectedVariant !== null && variantStock === 0
@@ -135,8 +150,17 @@ export default function QuickViewModal({
         toast.error("این واریانت موجود نیست");
         return;
       }
+
+      const productWithTomanPrice = {
+        ...product,
+        price: finalTomanPrice, // قیمت تبدیل شده را در فیلد price قرار می‌دهیم
+      };
       addToCart(product, quantity, selectedVariant);
     } else {
+      const productWithTomanPrice = {
+        ...product,
+        price: finalTomanPrice,
+      };
       addToCart(product, quantity, null);
     }
     toast.success("به سبد خرید اضافه شد");
@@ -156,7 +180,8 @@ export default function QuickViewModal({
       />
 
       {/* Modal */}
-      <div className="
+      <div
+        className="
         relative w-full bg-white shadow-2xl overflow-hidden
         flex flex-col
         /* Mobile: bottom sheet با rounded-t */
@@ -166,8 +191,8 @@ export default function QuickViewModal({
         /* Desktop: دو ستونی */
         lg:max-w-5xl lg:flex-row lg:max-h-[90vh]
         text-right
-      ">
-
+      "
+      >
         {/* ── دکمه بستن ── */}
         <button
           onClick={onClose}
@@ -192,7 +217,8 @@ export default function QuickViewModal({
             موبایل/تبلت: ردیف افقی بالا
             دسکتاپ: ستون چپ
         ══════════════════════════════════════ */}
-        <div className="
+        <div
+          className="
           shrink-0
           /* موبایل: فضای کوچک بالا */
           flex flex-col gap-2 p-3 bg-[#fcfcfc] border-b border-gray-100
@@ -200,9 +226,11 @@ export default function QuickViewModal({
           sm:p-4 sm:gap-3
           /* دسکتاپ: ستون چپ ثابت */
           lg:w-[42%] lg:border-b-0 lg:border-l lg:p-6 lg:gap-4 lg:overflow-y-auto
-        ">
+        "
+        >
           {/* عکس اصلی */}
-          <div className="
+          <div
+            className="
             relative w-full overflow-hidden rounded-lg bg-white border border-gray-100 group
             /* موبایل: کوچک‌تر */
             aspect-[4/3]
@@ -210,7 +238,8 @@ export default function QuickViewModal({
             sm:aspect-square
             /* دسکتاپ: مربع کامل */
             lg:aspect-square
-          ">
+          "
+          >
             <Image
               src={displayedImage}
               alt={product.name}
@@ -256,14 +285,15 @@ export default function QuickViewModal({
             موبایل/تبلت: اسکرول‌پذیر پایین
             دسکتاپ: ستون راست اسکرول‌پذیر
         ══════════════════════════════════════ */}
-        <div className="
+        <div
+          className="
           flex-1 overflow-y-auto
           flex flex-col
           p-4 gap-4
           sm:p-6 sm:gap-5
           lg:p-8 lg:gap-6
-        ">
-
+        "
+        >
           {/* برند و عنوان */}
           <div className="flex items-start gap-3 mt-1">
             <div className="flex-1 min-w-0">

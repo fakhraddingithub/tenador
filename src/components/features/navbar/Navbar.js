@@ -17,7 +17,7 @@ import IconButton from "@/components/ui/IconButton";
 import Button from "@/components/ui/Button";
 import CartDrawer from "@/components/features/cartDrawer/CartDrawer";
 
-const NAVIGATION_ITEMS = [{ id: 1, label: "جمعه بازار", href: "/secondHands" }];
+const NAVIGATION_ITEMS = [{ id: 1, label: "جمعه بازار", href: "/second-hands" }];
 
 // ---- Search Result Item ----
 function SearchResultItem({ product, onClick }) {
@@ -100,6 +100,7 @@ function CategoryMenu({ navData, onClose }) {
             {navData.map((sport) => (
               <li key={sport._id}>
                 <button
+                 onClick={() => window.location.href = `/sports/${sport.slug}}`}
                   onMouseEnter={() => {
                     setActiveSportId(sport._id);
                     setActiveCategoryId(sport.categories?.[0]?._id); // ریست کردن کتگوری با تغییر ورزش

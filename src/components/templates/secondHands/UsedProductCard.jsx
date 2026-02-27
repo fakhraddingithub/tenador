@@ -16,12 +16,14 @@ export default function UsedProductCard({
   const mainImage = images?.[0] || baseProduct?.mainImage;
   const [activeImage, setActiveImage] = useState(mainImage);
 
-  const imageVariants = useMemo(
-    () => images?.slice(1).map((img, i) => ({ _id: `img-${i}`, src: img })) || [],
-    [images]
-  );
+  // حذف گالری تصاویر و متغیرهای مرتبط
+  // const imageVariants = useMemo(
+  //   () =>
+  //     images?.slice(1).map((img, i) => ({ _id: `img-${i}`, src: img })) || [],
+  //   [images],
+  // );
 
-  const hasVariants = imageVariants.length > 0;
+  // const hasVariants = imageVariants.length > 0;
 
   const splitName = (text = "") => {
     const match = text.match(/[a-zA-Z(].*/);
@@ -39,7 +41,10 @@ export default function UsedProductCard({
   return (
     // کاهش حداکثر عرض کارت برای کنترل اندازه در گرید
     <div className="group relative bg-white border border-gray-200 rounded-[6px] transition-all duration-500 hover:shadow-[0_15px_30px_rgba(0,0,0,0.08)] hover:-translate-y-1 overflow-hidden h-full flex flex-col max-w-[260px] mx-auto">
-      <Link href={`/secondHands/${product._id}`} className="absolute inset-0 z-0" />
+      <Link
+        href={`/second-hands/${product._id}`}
+        className="absolute inset-0 z-0"
+      />
 
       {/* لوگو برند - کوچک شده */}
       {baseProduct?.brand?.logo && (
@@ -47,30 +52,16 @@ export default function UsedProductCard({
           <Image
             src={baseProduct.brand.logo}
             alt={baseProduct.brand.title || "brand"}
-            width={35}
-            height={35}
+            width={40}
+            height={40}
             className="object-contain"
           />
         </div>
       )}
 
-      {/* امتیاز سلامت - فشرده‌تر */}
-      <div className="absolute top-3 right-0 z-20 flex flex-col gap-1 items-end">
-        <div
-          className="relative py-0.5 pr-2.5 pl-4 text-[9px] font-bold text-white shadow-sm flex items-center gap-1 bg-[var(--color-primary)]"
-          style={{
-            clipPath: "polygon(0 0, 100% 0, 100% 100%, 0 100%, 20% 50%)",
-            WebkitClipPath: "polygon(0 0, 100% 0, 100% 100%, 0 100%, 20% 50%)",
-          }}
-        >
-          <FiStar size={9} />
-          {`${overallScore}/10`}
-        </div>
-      </div>
-
       {/* تصویر اصلی */}
       <Link
-        href={`/secondHands/${product._id}`}
+        href={`/second-hands/${product._id}`}
         className="relative w-full aspect-square bg-[#fcfcfc] overflow-hidden"
       >
         <Image
@@ -81,27 +72,12 @@ export default function UsedProductCard({
         />
       </Link>
 
-      {/* واریانت‌های تصویر - کاهش ارتفاع */}
-      <div className="relative z-20 flex items-center justify-center gap-1 h-[44px] bg-white">
-        {hasVariants ? (
-          imageVariants.map((v) => (
-            <button
-              key={v._id}
-              type="button"
-              onMouseEnter={() => setActiveImage(v.src)}
-              onClick={(e) => { e.preventDefault(); e.stopPropagation(); setActiveImage(v.src); }}
-              className={`relative w-7 h-7 rounded-[4px] overflow-hidden border-2 transition-all duration-200 ${
-                activeImage === v.src
-                  ? "border-[#aa4725] scale-105 shadow-sm"
-                  : "border-gray-50 opacity-70 hover:opacity-100"
-              }`}
-            >
-              <Image src={v.src} alt="" fill className="object-cover" />
-            </button>
-          ))
-        ) : (
-          <div className="h-4" />
-        )}
+      <div className="relative z-20 flex items-center justify-center h-[44px]">
+        <div className="flex items-center gap-2 px-3 text-[var(--color-primary)]">
+          <FiStar size={14} className="fill-current" />
+          <span className="text-[12px] font-bold">امتیاز سلامت:</span>
+          <span className="text-[14px] font-black">{`${overallScore}/10`}</span>
+        </div>
       </div>
 
       {/* محتوا - پدینگ کمتر */}
@@ -134,7 +110,10 @@ export default function UsedProductCard({
             }}
           />
 
-          <Link href={`/secondHands/${product._id}`} onClick={(e) => e.stopPropagation()}>
+          <Link
+            href={`/second-hands/${product._id}`}
+            onClick={(e) => e.stopPropagation()}
+          >
             <ActionButton icon={<FaArrowLeft />} label="صفحه محصول" />
           </Link>
 

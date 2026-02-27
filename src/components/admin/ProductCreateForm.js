@@ -653,7 +653,7 @@ export default function ProductCreateForm({ initialData = {} }) {
                   const key = getComboKey(combo);
                   const detail = variantDetails[key] || {
                     price: '',
-                    stock: '',
+                    stock: '3',
                     images: [],
                   };
 

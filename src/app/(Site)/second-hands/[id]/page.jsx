@@ -3,6 +3,7 @@ import UsedProduct from "base/models/UsedProduct";
 import HealthCard from "base/models/HealthCard";
 import UsedProductTemplate from "@/components/templates/secondHand/UsedProductTemplate";
 import { notFound } from "next/navigation";
+import { getCachedRate, eurToToman } from "@/lib/Exchangerate";
 
 export async function generateMetadata({ params }) {
   const { id } = await params;
@@ -32,6 +33,9 @@ export default async function UsedProductPage({ params }) {
 
   if (!raw || !raw.baseProduct) notFound();
 
+
+  const rate = await getCachedRate();
+  const priceInToman = eurToToman(raw.price, rate);
   // HealthCard برای label های healthScores
   const card = await HealthCard.findOne({
     category: raw.baseProduct.category?._id,
@@ -49,7 +53,7 @@ export default async function UsedProductPage({ params }) {
   const product = {
     _id:          raw._id.toString(),
     name:         raw.name,
-    price:        raw.price,
+    price:        priceInToman,
     description:  raw.description || "",
     images:       raw.images || [],
     status:       raw.status,

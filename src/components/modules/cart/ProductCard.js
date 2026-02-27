@@ -7,21 +7,27 @@ import { FaEye, FaRegHeart, FaHeart, FaArrowLeft } from "react-icons/fa";
 
 export default function ProductCard({
   product,
+  rate,
   onQuickView,
   onToggleWishlist,
   isWishlisted = false,
 }) {
   const { mainImage, name, slug, basePrice, discountPrice, label } = product;
 
-  const safePrice = Number(basePrice) || 0;
+  const priceInToman = useMemo(() => {
+    const rawToman = Math.round(Number(basePrice) * rate);
+    return Math.floor(rawToman / 1000) * 1000;
+  }, [basePrice, rate]);
+
+  const safePrice = priceInToman || 0;
   const safeDiscount = Number(discountPrice) || null;
 
   const variantsWithImages = useMemo(
     () =>
       (product.variants || []).filter(
-        (v) => Array.isArray(v.images) && v.images.length > 0
+        (v) => Array.isArray(v.images) && v.images.length > 0,
       ),
-    [product.variants]
+    [product.variants],
   );
 
   const hasVariantImages = variantsWithImages.length > 0;
@@ -33,7 +39,7 @@ export default function ProductCard({
     setActiveImage(variant.images[0]);
     setActiveVariantId(variant._id);
   }
-
+ 
   function handleVariantLeave() {}
 
   function handleVariantClick(e, variant) {
@@ -84,7 +90,8 @@ export default function ProductCard({
             className={`relative py-1 pr-3 pl-5 text-[10px] font-bold text-white shadow-sm bookmark-tag ${labelMap[label].color}`}
             style={{
               clipPath: "polygon(0 0, 100% 0, 100% 100%, 0 100%, 20% 50%)",
-              WebkitClipPath: "polygon(0 0, 100% 0, 100% 100%, 0 100%, 20% 50%)",
+              WebkitClipPath:
+                "polygon(0 0, 100% 0, 100% 100%, 0 100%, 20% 50%)",
             }}
           >
             {labelMap[label].text}
@@ -92,8 +99,11 @@ export default function ProductCard({
         )}
       </div>
 
-    {/* تصویر اصلی محصول */}
-    <Link href={`/products/${slug}`} className="relative w-full aspect-square bg-[#fcfcfc] overflow-hidden">
+      {/* تصویر اصلی محصول */}
+      <Link
+        href={`/products/${slug}`}
+        className="relative w-full aspect-square bg-[#fcfcfc] overflow-hidden"
+      >
         <Image
           src={activeImage}
           alt={name}
@@ -117,9 +127,10 @@ export default function ProductCard({
                 title={Object.values(variant.attributes || {}).join(" / ")}
                 className={`
                   relative w-8 h-8 rounded-[6px] overflow-hidden border-2 transition-all duration-200
-                  ${isActive
-                    ? "border-[#aa4725] scale-110 shadow-md"
-                    : "border-gray-100 hover:border-[#aa4725]/60 hover:scale-105 opacity-80 hover:opacity-100"
+                  ${
+                    isActive
+                      ? "border-[#aa4725] scale-110 shadow-md"
+                      : "border-gray-100 hover:border-[#aa4725]/60 hover:scale-105 opacity-80 hover:opacity-100"
                   }
                 `}
               >

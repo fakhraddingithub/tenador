@@ -5,7 +5,7 @@ import ProductList from "./ProductList";
 import FilterSidebar from "./FilterSidebar"; // این کامپوننت را در ادامه می‌سازیم
 import SearchBar from "./SearchBar";
 
-export default function ProductListClient({ products: initialProducts }) {
+export default function ProductListClient({ products: initialProducts ,rate}) {
   const [searchTerm, setSearchTerm] = useState("");
   const [filters, setFilters] = useState({
     brands: [],      // حتماً آرایه خالی باشد
@@ -70,6 +70,7 @@ export default function ProductListClient({ products: initialProducts }) {
         {filteredProducts.length > 0 ? (
           <ProductList
             products={filteredProducts}
+            rate={rate}
             onAddToCart={(p) => console.log("Added", p)}
             onToggleWishlist={(p) => console.log("Wishlist", p)}
           />

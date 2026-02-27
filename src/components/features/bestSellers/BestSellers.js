@@ -14,6 +14,7 @@ export default function ProductSlider({
   title = "پرفروش‌ترین محصولات", 
   subtitle = "محبوب‌ترین انتخاب‌های مشتریان ما", 
   products = [],
+  rate,
   onToggleWishlist
 }) {
   const [selectedProduct, setSelectedProduct] = useState(null);
@@ -104,6 +105,7 @@ export default function ProductSlider({
                 <div className="h-full hover:-translate-y-1.5 transition-transform duration-500">
                   <ProductCard
                     product={product}
+                    rate={rate}
                     isWishlisted={product.isWishlisted}
                     onQuickView={() => openQuickView(product)}
                     onToggleWishlist={() => onToggleWishlist?.(product)}
@@ -130,6 +132,7 @@ export default function ProductSlider({
 
       <QuickViewModal
         product={selectedProduct}
+        rate={rate}
         isOpen={isModalOpen}
         onClose={closeQuickView}
         onToggleWishlist={() => onToggleWishlist?.(selectedProduct)}

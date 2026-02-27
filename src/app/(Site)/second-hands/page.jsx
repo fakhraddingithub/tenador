@@ -5,6 +5,7 @@ import Category from "base/models/Category";
 import Product from "base/models/Product";
 import HealthCard from "base/models/HealthCard";
 import UsedProductsPageClient from "@/components/templates/secondHands/UsedProductsPageClient";
+import { getCachedRate, eurToToman } from "@/lib/Exchangerate";
 
 export const metadata = {
   title: "بازار دست‌دوم | فروش تجهیزات ورزشی کارکرده",
@@ -26,8 +27,8 @@ export default async function UsedProductsPage() {
     .sort({ createdAt: -1 })
     .lean();
 
+  const rate = await getCachedRate();
   const allHealthCards = await HealthCard.find().lean();
-
   // تبدیل آرایه کارت‌ها به یک آبجکت واحد برای دسترسی سریع
   // خروجی چیزی شبیه این می‌شود: { engine: "وضعیت موتور", body: "سلامت بدنه", ... }
   const cardFieldMap = {};
@@ -51,7 +52,7 @@ export default async function UsedProductsPage() {
           rating: s.rating,
           note: s.note || "",
         })),
-        price: p.price,
+        price: eurToToman(p.price, rate),
         name: p.name,
         description: p.description.trim()
           ? p.description
