@@ -69,37 +69,47 @@ export default function ProductSlider({
 
         {/* اسلایدر */}
         <div className="relative">
-          <Swiper
-            modules={[Navigation, Autoplay, Pagination]}
-            spaceBetween={12} /* فاصله کمتر برای کارت‌های کوچک‌تر */
-            slidesPerView={2} /* نمایش دقیقاً ۲ کارت در موبایل */
-            autoplay={{ delay: 5000, disableOnInteraction: true }}
-            navigation={{ nextEl: '.product-next-btn', prevEl: '.product-prev-btn' }}
-            pagination={{ el: '.slider-pagination', clickable: true }}
-            breakpoints={{
-              /* تبلت‌های کوچک: ۳.۵ کارت */
-              640: { 
-                slidesPerView: 3.5, 
-                spaceBetween: 15 
-              },
-              /* لپ‌تاپ: ۵ کارت */
-              1024: { 
-                slidesPerView: 5, 
-                spaceBetween: 20 
-              },
-              /* دسکتاپ بزرگ: ۶ کارت */
-              1280: { 
-                slidesPerView: 6, 
-                spaceBetween: 20 
-              },
-              /* مانیتورهای خیلی بزرگ: ۷ کارت */
-              1536: { 
-                slidesPerView: 7, 
-                spaceBetween: 25 
-              },
-            }}
-            className="!overflow-visible"
-          >
+        <Swiper
+  modules={[Navigation, Autoplay, Pagination]}
+  spaceBetween={12}
+  slidesPerView={2}
+  centeredSlides={false}
+  watchOverflow={true}
+  autoplay={{
+    delay: 5000,
+    disableOnInteraction: true,
+  }}
+  navigation={{
+    nextEl: '.product-next-btn',
+    prevEl: '.product-prev-btn',
+  }}
+  pagination={{
+    el: '.slider-pagination',
+    clickable: true,
+  }}
+  breakpoints={{
+    640: {
+      slidesPerView: 2.5,
+      spaceBetween: 16,
+    },
+
+    768: {
+      slidesPerView: 3,
+      spaceBetween: 18,
+    },
+
+    1024: {
+      slidesPerView: 4,
+      spaceBetween: 20,
+    },
+
+    1400: {
+      slidesPerView: 4,
+      spaceBetween: 24,
+    },
+  }}
+  className="!overflow-visible"
+>
             {products.map((product, index) => (
               <SwiperSlide key={product._id || index} className="h-auto pb-12">
                 <div className="h-full hover:-translate-y-1.5 transition-transform duration-500">
