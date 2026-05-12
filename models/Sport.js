@@ -1,5 +1,6 @@
 import mongoose from "mongoose";
 import { createSlug } from "base/utils/slugify";
+
 const schema = new mongoose.Schema(
   {
     name: {
@@ -7,17 +8,18 @@ const schema = new mongoose.Schema(
       required: true,
       trim: true,
       validate: {
-        validator: function(v) {
-          // بررسی اینکه فقط حروف انگلیسی و اعداد باشد
+        validator: function (v) {
           return /^[a-zA-Z0-9\s\-_]+$/.test(v);
         },
-        message: 'نام باید فقط شامل حروف انگلیسی، اعداد، فاصله، خط تیره و زیرخط باشد'
-      }
+        message:
+          "نام باید فقط شامل حروف انگلیسی، اعداد، فاصله، خط تیره و زیرخط باشد",
+      },
     },
 
     title: {
       type: String,
       required: true,
+      trim: true,
     },
 
     description: {
@@ -29,7 +31,7 @@ const schema = new mongoose.Schema(
       type: String,
       default: "",
     },
-    
+
     image: {
       type: String,
       default: "",
@@ -39,12 +41,21 @@ const schema = new mongoose.Schema(
       type: String,
       unique: true,
       trim: true,
+      index: true,
+    },
+
+    order: {
+      type: Number,
+      default: 0,
+      index: true,
     },
   },
-  { timestamps: true }
+  {
+    timestamps: true,
+  }
 );
 
-// تبدیل name به slug
+// ساخت slug
 schema.pre("save", async function () {
   if (!this.slug || this.isModified("name")) {
     const baseSlug = createSlug(this.name);
@@ -52,8 +63,12 @@ schema.pre("save", async function () {
     let slug = baseSlug;
     let counter = 1;
 
-    // تا وقتی slug تکراری بود، شماره اضافه کن
-    while (await mongoose.models.Sport.findOne({ slug })) {
+    while (
+      await mongoose.models.Sport.findOne({
+        slug,
+        _id: { $ne: this._id },
+      })
+    ) {
       slug = `${baseSlug}-${counter++}`;
     }
 

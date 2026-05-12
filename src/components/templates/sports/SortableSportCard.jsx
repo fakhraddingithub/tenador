@@ -1,0 +1,145 @@
+"use client";
+
+import Link from "next/link";
+import {
+  FiEdit3,
+  FiTrash2,
+  FiActivity,
+  FiMenu,
+} from "react-icons/fi";
+
+import { useSortable } from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
+
+export default function SortableSportCard({
+  sport,
+  handleDelete,
+}) {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({
+    id: sport._id,
+  });
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+  };
+
+  return (
+    <div
+      ref={setNodeRef}
+      style={style}
+      className={`
+        group bg-white rounded-[var(--radius)] border border-gray-100
+        shadow-sm overflow-hidden transition-all duration-300
+        hover:shadow-xl hover:-translate-y-1
+        ${isDragging ? "opacity-50 scale-[0.98] rotate-1 z-50" : ""}
+      `}
+    >
+      {/* تصویر اصلی */}
+      <div className="relative h-44 bg-gray-200 overflow-hidden">
+        {sport.image ? (
+          <img
+            src={sport.image}
+            alt={sport.name}
+            className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500 pointer-events-none"
+          />
+        ) : (
+          <div className="w-full h-full flex items-center justify-center text-gray-300">
+            <FiActivity size={40} />
+          </div>
+        )}
+
+        {/* Drag Handle */}
+        <button
+          {...attributes}
+          {...listeners}
+          className="
+            absolute top-3 left-3
+            w-10 h-10
+            rounded-xl
+            bg-white/80 backdrop-blur-md
+            border border-white/50
+            shadow-md
+            flex items-center justify-center
+            text-gray-600
+            cursor-grab active:cursor-grabbing
+            hover:bg-[var(--color-primary)]
+            hover:text-white
+            transition-all
+            z-20
+          "
+        >
+          <FiMenu size={18} />
+        </button>
+      </div>
+
+      {/* محتوا */}
+      <div className="p-5">
+        {/* عنوان */}
+        <div className="flex items-center gap-3 mb-3">
+          <div className="w-10 h-10 rounded-full overflow-hidden bg-gray-50 border border-gray-100 flex-shrink-0 flex items-center justify-center">
+            {sport.icon ? (
+              <img
+                src={sport.icon}
+                alt={`${sport.name}-icon`}
+                className="w-full h-full object-contain pointer-events-none"
+              />
+            ) : (
+              <FiActivity className="text-[var(--color-primary)]" />
+            )}
+          </div>
+
+          <h3 className="text-xl font-bold group-hover:text-[var(--color-primary)] transition-colors truncate">
+            {sport.name}
+          </h3>
+        </div>
+
+        {/* توضیحات */}
+        <p className="text-gray-500 text-sm leading-relaxed line-clamp-2 min-h-[40px] mb-6 font-medium">
+          {sport.description ||
+            "توضیحاتی برای این ورزش ثبت نشده است."}
+        </p>
+
+        {/* اکشن‌ها */}
+        <div className="flex items-center gap-2 border-t border-gray-50 pt-4">
+          <Link
+            href={`/p-admin/admin-sports/edit/${sport._id}`}
+            className="
+              flex-1 flex items-center justify-center gap-2
+              py-2 rounded-[var(--radius)]
+              bg-gray-50 text-gray-700
+              hover:bg-[var(--color-secondary)]
+              hover:text-black
+              font-bold text-sm
+              transition-all
+            "
+          >
+            <FiEdit3 size={16} />
+            ویرایش
+          </Link>
+
+          <button
+            onClick={() => handleDelete(sport._id)}
+            className="
+              w-10 h-10
+              flex items-center justify-center
+              rounded-[var(--radius)]
+              bg-red-50 text-red-500
+              hover:bg-red-500 hover:text-white
+              transition-all shadow-sm
+            "
+          >
+            <FiTrash2 size={18} />
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}

@@ -40,7 +40,7 @@ export async function POST(req) {
         { status: 409 }
       );
     }
-
+    const count = await Sport.countDocuments();
     // create sport (slug handled by model)
     const created = await Sport.create({
       name: normalizedName,
@@ -48,6 +48,7 @@ export async function POST(req) {
       description: description.trim(),
       icon: icon.trim(),
       image: image.trim(),
+      order: count,
     });
 
     // register slug

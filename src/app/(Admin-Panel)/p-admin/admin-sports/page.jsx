@@ -4,6 +4,21 @@ import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { FiArrowRight, FiPlus, FiEdit3, FiTrash2, FiActivity, FiSearch } from 'react-icons/fi';
 import Swal from 'sweetalert2';
+import {
+  DndContext,
+  closestCenter,
+  PointerSensor,
+  useSensor,
+  useSensors,
+} from "@dnd-kit/core";
+
+import {
+  SortableContext,
+  rectSortingStrategy,
+  arrayMove,
+} from "@dnd-kit/sortable";
+
+import SortableSportCard from "@/components/templates/sports/SortableSportCard";
 
 export default function AdminSports() {
   const [sports, setSports] = useState([]);
@@ -53,7 +68,54 @@ export default function AdminSports() {
   };
 
   const filteredSports = sports.filter(s => s.name.includes(searchTerm));
+  
+  const sensors = useSensors(
+    useSensor(PointerSensor)
+  );
 
+  const handleDragEnd = async (event) => {
+    const { active, over } = event;
+  
+    if (!over || active.id === over.id) return;
+  
+    const oldIndex = sports.findIndex(
+      (item) => item._id === active.id
+    );
+  
+    const newIndex = sports.findIndex(
+      (item) => item._id === over.id
+    );
+  
+    const reordered = arrayMove(
+      sports,
+      oldIndex,
+      newIndex
+    );
+  
+    const updated = reordered.map((item, index) => ({
+      ...item,
+      order: index,
+    }));
+  
+    setSports(updated);
+  
+    try {
+      await fetch("/api/sports/reorder", {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          sports: updated.map((s) => ({
+            id: s._id,
+            order: s.order,
+          })),
+        }),
+      });
+    } catch (error) {
+      console.error(error);
+    }
+  };
   return (
     <div className="min-h-screen bg-[#fcfcfc] text-[var(--color-text)]" dir="rtl">
       
@@ -100,66 +162,26 @@ export default function AdminSports() {
             <p className="text-gray-400 font-bold text-xl">هیچ ورزشی یافت نشد!</p>
           </div>
         ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-            {filteredSports.map((sport) => (
-              <div 
-                key={sport._id} 
-                className="group bg-white rounded-[var(--radius)] border border-gray-100 shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all duration-300 overflow-hidden"
-              >
-                {/* بخش عکس اصلی ورزش (بزرگ) */}
-                <div className="relative h-44 bg-gray-200 overflow-hidden">
-                  {sport.image ? (
-                    <img
-                      src={sport.image}
-                      alt={sport.name}
-                      className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
-                    />
-                  ) : (
-                    <div className="w-full h-full flex items-center justify-center text-gray-300">
-                      <FiActivity size={40} />
-                    </div>
-                  )}
-                </div>
-
-                {/* محتوای کارت */}
-                <div className="p-5">
-                  {/* ردیف آیکون و نام ورزش */}
-                  <div className="flex items-center gap-3 mb-3">
-                    <div className="w-10 h-10 rounded-full overflow-hidden bg-gray-50 border border-gray-100 flex-shrink-0 flex items-center justify-center">
-                      {sport.icon ? (
-                        <img src={sport.icon} alt="icon" className="w-full h-full object-contain" />
-                      ) : (
-                        <FiActivity className="text-[var(--color-primary)]" />
-                      )}
-                    </div>
-                    <h3 className="text-xl font-bold group-hover:text-[var(--color-primary)] transition-colors truncate">
-                      {sport.name}
-                    </h3>
-                  </div>
-
-                  <p className="text-gray-500 text-sm leading-relaxed line-clamp-2 min-h-[40px] mb-6 font-medium">
-                    {sport.description || 'توضیحاتی برای این ورزش ثبت نشده است.'}
-                  </p>
-
-                  {/* دکمه‌ها */}
-                  <div className="flex items-center gap-2 border-t border-gray-50 pt-4">
-                    <Link
-                      href={`/p-admin/admin-sports/edit/${sport._id}`}
-                      className="flex-1 flex items-center justify-center gap-2 py-2 rounded-[var(--radius)] bg-gray-50 text-gray-700 hover:bg-[var(--color-secondary)] hover:text-black font-bold text-sm transition-all"
-                    >
-                      <FiEdit3 size={16} /> ویرایش
-                    </Link>
-                    <button
-                      onClick={() => handleDelete(sport._id)}
-                      className="w-10 h-10 flex items-center justify-center rounded-[var(--radius)] bg-red-50 text-red-500 hover:bg-red-500 hover:text-white transition-all shadow-sm"
-                    >
-                      <FiTrash2 size={18} />
-                    </button>
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
+          <DndContext
+          sensors={sensors}
+          collisionDetection={closestCenter}
+          onDragEnd={handleDragEnd}
+        >
+          <SortableContext
+            items={filteredSports.map((s) => s._id)}
+            strategy={rectSortingStrategy}
+          >
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+              {filteredSports.map((sport) => (
+                <SortableSportCard
+                  key={sport._id}
+                  sport={sport}
+                  handleDelete={handleDelete}
+                />
+              ))}
+            </div>
+          </SortableContext>
+        </DndContext>
         )}
       </main>
     </div>

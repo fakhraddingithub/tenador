@@ -21,7 +21,9 @@ export default async function Home() {
   const [products, slides, sports] = await Promise.all([
     getProducts(),
     SlideModel.find({ isActive: true }).sort({ priority: 1 }).lean(),
-    SportModel.find({}).lean(),
+    SportModel.find({})
+    .sort({ order: 1 })
+    .lean(),
   ]);
 
   const rate = await getCachedRate();

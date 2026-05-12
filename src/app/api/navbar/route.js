@@ -9,17 +9,16 @@ async function buildNavbarData() {
   await connectToDB();
 
   return Sport.aggregate([
-    // 1️⃣ همه ورزش‌ها
     {
       $project: {
         _id: 1,
         title: 1,
         slug: 1,
         icon: 1,
+        order: 1,
       },
     },
-
-    // 2️⃣ برای هر ورزش، دسته‌بندی‌های مرتبط از طریق Product بگیر
+  
     {
       $lookup: {
         from: "products",
@@ -39,7 +38,7 @@ async function buildNavbarData() {
             },
           },
           { $unwind: "$category" },
-
+  
           {
             $lookup: {
               from: "brands",
@@ -49,14 +48,14 @@ async function buildNavbarData() {
             },
           },
           { $unwind: "$brand" },
-
-          // گروه‌بندی بر اساس category
+  
           {
             $group: {
               _id: "$category._id",
               title: { $first: "$category.title" },
               slug: { $first: "$category.slug" },
               icon: { $first: "$category.icon" },
+  
               brands: {
                 $addToSet: {
                   _id: "$brand._id",
@@ -71,15 +70,14 @@ async function buildNavbarData() {
         as: "categories",
       },
     },
-
-    // اگر محصولی نداشت، categories آرایه خالی باشه
+  
     {
       $addFields: {
         categories: { $ifNull: ["$categories", []] },
       },
     },
-
-    { $sort: { title: 1 } },
+  
+    { $sort: { order: 1 } },
   ]);
 }
 
@@ -94,7 +92,7 @@ const getCachedNavbar = unstable_cache(
 
 export async function GET() {
   const data = await getCachedNavbar();
-  
+
   return Response.json(data);
 }
 

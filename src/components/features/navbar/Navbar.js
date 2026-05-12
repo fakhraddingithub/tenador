@@ -200,7 +200,7 @@ export default function Navbar({ user }) {
       .then((data) => setNavData(Array.isArray(data) ? data : []))
       .catch(console.error);
   }, []);
-
+console.log(navData);
   useEffect(() => {
     const handler = (e) => {
       if (searchRef.current && !searchRef.current.contains(e.target)) {
