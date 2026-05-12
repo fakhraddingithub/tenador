@@ -1,5 +1,6 @@
 import ProductClientSection from "./ProductClientSection";
 import ProductTabs from "./ProductTabs";
+import ProductShare from "./ProductShare";
 
 const ProductTemplate = ({ product }) => {
   const technicalStats = {
@@ -23,6 +24,7 @@ const ProductTemplate = ({ product }) => {
             reviews={[]}
           />
         </div>
+      <ProductShare/>
       </div>
     </div>
   );

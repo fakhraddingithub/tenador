@@ -49,6 +49,7 @@ export async function getProductBySlug(slug) {
 
     const product = await Product.findOne({ slug: decodedSlug })
       .populate("brand")
+      .populate("serie")
       .populate("sport")
       .populate("athlete")
       .populate("category")

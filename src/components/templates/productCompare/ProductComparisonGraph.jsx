@@ -1,4 +1,4 @@
-'use client';
+"use client";
 
 import { useState, useEffect, useRef } from "react";
 import {
@@ -32,24 +32,19 @@ const normalizeColor = (color) => {
   if (!color || typeof color !== "string") return null;
   let c = color.trim();
   if (!c) return null;
-  // hex without #
   if (/^[0-9A-Fa-f]{6}$/.test(c)) return `#${c}`;
-  // valid hex with #
   if (/^#[0-9A-Fa-f]{6}$/.test(c)) return c;
-  // rgb(a)
   if (/^rgba?\(/i.test(c)) return c;
-  // named color (we'll accept it and let the browser handle it)
   return c;
 };
 
 export default function ProductComparisonGraph({ technicalStats = {} }) {
-  const [comparisonProducts, setComparisonProducts] = useState([]); // array of product objects
+  const [comparisonProducts, setComparisonProducts] = useState([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [results, setResults] = useState([]);
   const [isSearching, setIsSearching] = useState(false);
   const searchRef = useRef(null);
 
-  // wrapper ref for computing custom tick offsets
   const wrapperRef = useRef(null);
   const [size, setSize] = useState({ width: 0, height: 0 });
 
@@ -65,7 +60,6 @@ export default function ProductComparisonGraph({ technicalStats = {} }) {
     return () => window.removeEventListener("resize", updateSize);
   }, []);
 
-  // debounce search
   useEffect(() => {
     if (searchQuery.trim().length < 2) {
       setResults([]);
@@ -79,7 +73,6 @@ export default function ProductComparisonGraph({ technicalStats = {} }) {
         const res = await fetch(`/api/compare/search?q=${encodeURIComponent(searchQuery.trim())}`);
         const data = await res.json();
         if (!mounted) return;
-        // Expect data.products array of products. Keep it defensive.
         setResults(data?.products ?? []);
       } catch (err) {
         console.error("search error", err);
@@ -95,13 +88,10 @@ export default function ProductComparisonGraph({ technicalStats = {} }) {
     };
   }, [searchQuery]);
 
-  // current product values from technicalStats
   const productStats = technicalStats.productStats || {};
   const categoryStats = technicalStats.categoryStats || [];
 
-  // helper to assign a usable color to a product object
   const resolveProductColor = (product, fallbackIndex = 0) => {
-    // attempt product.color, product.colors, product.meta?.color ...
     const raw =
       product?.color ??
       product?.colour ??
@@ -113,7 +103,6 @@ export default function ProductComparisonGraph({ technicalStats = {} }) {
     return PRODUCT_COLORS[fallbackIndex % PRODUCT_COLORS.length];
   };
 
-  // Build chart data: each item = { subject: label, current: value, [productId]: value, fullMark: 100 }
   const buildChartData = () => {
     return categoryStats.map((stat, statIndex) => {
       const subject = stat.label ?? stat.name;
@@ -121,7 +110,6 @@ export default function ProductComparisonGraph({ technicalStats = {} }) {
       const point = { subject, current: curVal, fullMark: stat.max ?? 100 };
       comparisonProducts.forEach((p, idx) => {
         const val = Number(p.productStats?.[stat.name] ?? 0);
-        // key uses product id (safe) but to avoid invalid object keys, prefix with 'p_'
         point[`p_${p._id ?? idx}`] = val;
       });
       return point;
@@ -130,21 +118,18 @@ export default function ProductComparisonGraph({ technicalStats = {} }) {
 
   const data = buildChartData();
 
-  // custom tick that moves labels slightly outside the radar polygon
   const cx = size.width / 2 || 0;
   const cy = size.height / 2 || 0;
   const labelOffset = Math.min(size.width, size.height) * 0.06 || 12;
 
   const CustomTick = (props) => {
     const { x, y, payload } = props;
-    // vector from center to tick
     const dx = x - cx;
     const dy = y - cy;
     const dist = Math.sqrt(dx * dx + dy * dy) || 1;
     const nx = x + (dx / dist) * labelOffset;
     const ny = y + (dy / dist) * labelOffset;
 
-    // decide anchor
     let textAnchor = "middle";
     if (Math.abs(dx) > Math.abs(dy)) {
       textAnchor = dx > 0 ? "start" : "end";
@@ -153,19 +138,20 @@ export default function ProductComparisonGraph({ technicalStats = {} }) {
     }
 
     return (
-      <text
-        x={nx}
-        y={ny}
-        textAnchor={textAnchor}
-        dominantBaseline="central"
-        style={{ fill: "#374151", fontSize: 12, fontWeight: 800, pointerEvents: "none" }}
-      >
-        {payload.value}
-      </text>
+      <g>
+        <text
+          x={nx}
+          y={ny}
+          textAnchor={textAnchor}
+          dominantBaseline="central"
+          style={{ fill: "#374151", fontSize: 12, fontWeight: 800, pointerEvents: "none" }}
+        >
+          {payload.value}
+        </text>
+      </g>
     );
   };
 
-  // add searched product to comparisonProducts (prevent duplicates)
   const addComparisonProduct = (product) => {
     if (!product) return;
     if (comparisonProducts.find((p) => p._id === product._id)) {
@@ -174,14 +160,11 @@ export default function ProductComparisonGraph({ technicalStats = {} }) {
       return;
     }
 
-    // Expect product returned from API to include productStats (or technicalStats)
-    // Normalize shape: ensure product.productStats exists
     const normalizedProduct = {
       ...product,
       productStats:
         product.productStats ??
         product.technicalStats ??
-        // maybe API returns technicalStats object
         (product.technicalStats?.productStats ? product.technicalStats.productStats : undefined) ??
         {},
       color: resolveProductColor(product, comparisonProducts.length + 1),
@@ -196,10 +179,9 @@ export default function ProductComparisonGraph({ technicalStats = {} }) {
     setComparisonProducts((prev) => prev.filter((p) => p._id !== id));
   };
 
-  // determine stroke/fill colors
   const currentColor = technicalStats.color || PRODUCT_COLORS[0];
+  
   const renderRadars = () => {
-    // current product radar
     const items = [];
     items.push(
       <Radar
@@ -210,10 +192,12 @@ export default function ProductComparisonGraph({ technicalStats = {} }) {
         strokeWidth={2}
         fill={currentColor}
         fillOpacity={0.45}
+        // اضافه کردن بولت ثابت روی خطوط نمودار اصلی
+        dot={{ r: 4, fill: "#ffffff", stroke: currentColor, strokeWidth: 2, fillOpacity: 1 }}
+        activeDot={{ r: 6, fill: currentColor, stroke: "#ffffff", strokeWidth: 2 }}
       />
     );
 
-    // comparison radars
     comparisonProducts.forEach((p, idx) => {
       const key = `p_${p._id ?? idx}`;
       const color = resolveProductColor(p, idx + 1);
@@ -226,6 +210,9 @@ export default function ProductComparisonGraph({ technicalStats = {} }) {
           strokeWidth={2}
           fill={color}
           fillOpacity={0.25}
+          // اضافه کردن بولت ثابت روی خطوط نمودار مقایسه
+          dot={{ r: 4, fill: "#ffffff", stroke: color, strokeWidth: 2, fillOpacity: 1 }}
+          activeDot={{ r: 6, fill: color, stroke: "#ffffff", strokeWidth: 2 }}
         />
       );
     });
@@ -235,7 +222,6 @@ export default function ProductComparisonGraph({ technicalStats = {} }) {
 
   return (
     <div className="bg-[#fcfcfc] rounded-[6px] p-6 border border-gray-100 h-full">
-      {/* Search Bar */}
       <div className="relative mb-6" ref={searchRef}>
         <div className="absolute inset-y-0 right-4 flex items-center pointer-events-none">
           <FiSearch className="text-gray-400" />
@@ -248,7 +234,6 @@ export default function ProductComparisonGraph({ technicalStats = {} }) {
           onChange={(e) => setSearchQuery(e.target.value)}
         />
 
-        {/* Dropdown suggestions */}
         {searchQuery.trim().length >= 2 && (
           <div className="absolute top-full right-0 w-full mt-2 bg-white border border-neutral-100 rounded-xl shadow-xl z-40 max-h-60 overflow-y-auto">
             {isSearching ? (
@@ -280,7 +265,6 @@ export default function ProductComparisonGraph({ technicalStats = {} }) {
         )}
       </div>
 
-      {/* Added comparison products list */}
       {comparisonProducts.length > 0 && (
         <div className="flex flex-wrap gap-3 items-center mb-4">
           {comparisonProducts.map((p, idx) => (
@@ -297,13 +281,12 @@ export default function ProductComparisonGraph({ technicalStats = {} }) {
         </div>
       )}
 
-      {/* Graph Area */}
       <div ref={wrapperRef} className="h-[420px] w-full bg-white rounded-md p-4">
         <ResponsiveContainer width="100%" height="100%">
           <RadarChart cx="50%" cy="50%" outerRadius="78%" data={data}>
             <PolarGrid stroke="#e5e7eb" />
             <PolarAngleAxis dataKey="subject" tick={<CustomTick />} tickLine={false} />
-            <PolarRadiusAxis tickCount={10} domain={[0, (categoryStats[0]?.max ?? 100)]} tick={{ fill: "#9ca3af", fontSize: 11 }} />
+            <PolarRadiusAxis angle={90} tickCount={10} domain={[0, (categoryStats[0]?.max ?? 100)]} tick={{ fill: "#9ca3af", fontSize: 11 }} />
             <Tooltip
               contentStyle={{
                 borderRadius: 8,
@@ -314,7 +297,6 @@ export default function ProductComparisonGraph({ technicalStats = {} }) {
                 fontWeight: 800,
               }}
               formatter={(value, name, props) => {
-                // find subject from payload
                 const label = props?.payload?.subject ?? "";
                 return [`${value} از ${props?.payload?.fullMark ?? 100}`, label];
               }}

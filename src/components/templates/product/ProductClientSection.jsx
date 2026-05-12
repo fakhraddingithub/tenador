@@ -55,7 +55,7 @@ const ProductClientSection = ({ product }) => {
       {/* Left - Gallery */}
       <div className="order-2 lg:order-1">
         <div className="mx-auto max-w-md lg:max-w-none">
-          <ProductGallery images={galleryImages} />
+          <ProductGallery images={galleryImages} logo={product.brand.icon} />
         </div>
       </div>
 

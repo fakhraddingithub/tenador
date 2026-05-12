@@ -21,6 +21,7 @@ import {
 import { HiOutlineLogout } from "react-icons/hi";
 import { MdOutlineCurrencyExchange } from "react-icons/md";
 import { AiFillProduct } from "react-icons/ai";
+
 const menuItems = [
   { title: "داشبورد", href: "/p-admin", icon: <FaChartPie /> },
   { title: "صفحه اصلی", href: "/p-admin/admin-home", icon: <FaHome /> },
@@ -37,13 +38,21 @@ const menuItems = [
     href: "/p-admin/admin-categories",
     icon: <FaFolderOpen />,
   },
-  { title: "محصولات", href: "/p-admin/admin-products", icon: <AiFillProduct /> },
+  {
+    title: "محصولات",
+    href: "/p-admin/admin-products",
+    icon: <AiFillProduct />,
+  },
   {
     title: "بازار دست دوم",
     href: "/p-admin/admin-secondHands",
     icon: <FaBoxOpen />,
   },
-  { title: "نرخ تبدیل", href: "/p-admin/exchange-rate", icon: <MdOutlineCurrencyExchange /> },
+  {
+    title: "نرخ تبدیل",
+    href: "/p-admin/exchange-rate",
+    icon: <MdOutlineCurrencyExchange />,
+  },
   { title: "کاربران", href: "/p-admin/users", icon: <FaUsersCog /> },
 ];
 
@@ -74,10 +83,13 @@ export default function AdminLayout({ children, title = "داشبورد مدیر
     const fetchPrices = async () => {
       try {
         const res = await fetch(
-          "https://BrsApi.ir/Api/Market/Gold_Currency.php?key=BUjlELnh5HDWl6BDTEEXp5DLf9g9qY7C",
+          "https://brsapi.ir/Api/Market/Gold_Currency.php?key=BUjlELnh5HDWl6BDTEEXp5DLf9g9qY7C",
         );
         const data = await res.json();
-        setPrices({ usd: data.currency[1].price, eur: data.currency[2].price });
+        setPrices({
+          usd: Number(data?.currency?.[1]?.price || 0),
+          eur: Number(data?.currency?.[2]?.price || 0),
+        });
       } catch (error) {
         console.error("Error fetching prices:", error);
       }
@@ -122,8 +134,11 @@ export default function AdminLayout({ children, title = "داشبورد مدیر
           {/* Navigation Links */}
           <nav className="flex-1 px-3 space-y-2 mt-4 relative z-10 overflow-y-auto no-scrollbar">
             {menuItems.map((item) => {
-              const isActive =
-                pathname === item.href || pathname.startsWith(item.href + "/");
+              const isDashboard = item.href === "/p-admin";
+
+              const isActive = isDashboard
+                ? pathname === "/p-admin"
+                : pathname.startsWith(item.href);
               return (
                 <Link
                   key={item.href}
@@ -219,12 +234,12 @@ export default function AdminLayout({ children, title = "داشبورد مدیر
           </div>
 
           {/* Top Actions */}
-          <div className="flex items-center gap-4 p-2  bg-white/60 backdrop-blur-md p-2 rounded-[1.5rem] border border-white shadow-sm">
+          <div className="flex items-center gap-4 p-2  bg-white/60 backdrop-blur-md rounded-[1.5rem] border border-white shadow-sm">
             <div className="flex items-center gap-3 px-3">
               <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-[var(--color-primary)] to-[var(--color-secondary)] p-[2px]">
                 <div className="w-full h-full bg-white rounded-[10px] flex items-center justify-center overflow-hidden">
                   <img
-                    src="https://ui-avatars.com/api/?name=Admin&background=random"
+                    src="https://ui-avatars.com/api/?name=Admin&background=aa4725&color=fff"
                     alt="Admin"
                   />
                 </div>
@@ -244,29 +259,6 @@ export default function AdminLayout({ children, title = "داشبورد مدیر
           </div>
         </main>
       </div>
-
-      <style jsx global>{`
-        .no-scrollbar::-webkit-scrollbar {
-          display: none;
-        }
-        .no-scrollbar {
-          -ms-overflow-style: none;
-          scrollbar-width: none;
-        }
-        @keyframes fadeIn {
-          from {
-            opacity: 0;
-            transform: translateY(10px);
-          }
-          to {
-            opacity: 1;
-            transform: translateY(0);
-          }
-        }
-        .animate-fadeIn {
-          animation: fadeIn 0.6s ease-out forwards;
-        }
-      `}</style>
     </div>
   );
 }

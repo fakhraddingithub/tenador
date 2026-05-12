@@ -4,6 +4,8 @@ import { motion } from "framer-motion";
 const ProductHeader = ({ name, shortDescription }) => {
   // تابع هوشمند برای جدا کردن فارسی از انگلیسی و پرانتزها
   const splitName = (text) => {
+    if (!text) return { farsi: "", english: "" };
+    
     // پیدا کردن اولین جایی که متن انگلیسی یا پرانتز شروع می‌شود
     const match = text.match(/[a-zA-Z\(].*/);
     if (match) {
@@ -17,27 +19,40 @@ const ProductHeader = ({ name, shortDescription }) => {
   const { farsi, english } = splitName(name);
 
   return (
-    <div className="mb-8 relative rtl text-right" dir="rtl">
+    <div className="mb-6 sm:mb-8 md:mb-10 relative rtl text-right" dir="rtl">
       {/* Product Name */}
       <motion.h1
         initial={{ opacity: 0, y: 10 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.1 }}
         className="
-          w-[85%]
+          w-full
+          sm:w-[90%]
+          md:w-[85%]
           text-[#1a1a1a]
-          text-3xl
-          md:text-3xl
-          lg:text-4xl
+          text-2xl
+          sm:text-3xl
+          md:text-4xl
+          lg:text-5xl
           font-bold
-          leading-[1.1]
+          leading-[1.3]
+          md:leading-[1.1]
           tracking-tight
           mb-4
+          md:mb-6
         "
       >
-        {farsi}
-        <br />
-        {english}
+        <span className="block">{farsi}</span>
+        {english && (
+          <span 
+            className="block mt-1 sm:mt-2 text-lg sm:text-3xl
+          md:text-4xl
+          lg:text-5xl  font-bold" 
+            dir="ltr"
+          >
+            {english}
+          </span>
+        )}
       </motion.h1>
 
       {/* Short Description Container */}
@@ -49,17 +64,23 @@ const ProductHeader = ({ name, shortDescription }) => {
           className="relative"
         >
           {/* تزئین سمت راست (خط عمودی مدرن) */}
-          <div className="absolute right-0 top-0 bottom-0 w-[3px] bg-gray-100 rounded-full" />
+          <div className="absolute right-0 top-0 bottom-0 w-[3px] bg-gray-200 md:bg-gray-100 rounded-full" />
 
           <p
             className="
-              pr-5
+              pr-4
+              sm:pr-5
               text-sm
-              md:text-base
-              leading-8
+              sm:text-base
+              md:text-lg
+              leading-7
+              sm:leading-8
+              md:leading-9
               text-gray-500
               font-medium
-              max-w-2xl
+              max-w-full
+              md:max-w-2xl
+              lg:max-w-3xl
             "
           >
             {/* تمیز کردن تگ‌های HTML اگر وجود داشته باشند */}

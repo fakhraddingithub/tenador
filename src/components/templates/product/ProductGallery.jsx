@@ -4,11 +4,9 @@ import { useState, useEffect, useRef } from "react";
 import Image from "next/image";
 import { motion, AnimatePresence } from "framer-motion";
 
-const ProductGallery = ({ images = [] }) => {
+const ProductGallery = ({ images = [], logo }) => {
   const [activeIndex, setActiveIndex] = useState(0);
 
-  // Reset to first image whenever the images array reference changes
-  // (happens when a variant is selected and images reorder)
   const prevImagesRef = useRef(images);
   useEffect(() => {
     if (prevImagesRef.current !== images) {
@@ -21,9 +19,24 @@ const ProductGallery = ({ images = [] }) => {
 
   return (
     <div className="flex flex-col gap-4 w-full border border-gray-100 shadow-sm" dir="rtl">
+      
       {/* Main Image */}
-      <div className="relative group w-full ">
+      <div className="relative group w-full">
         <div className="relative aspect-square w-full overflow-hidden rounded-[6px] bg-[#fdfdfd]">
+
+          {/* Logo */}
+          {logo && (
+            <div className="absolute top-3 left-3 z-30 bg-white/80 backdrop-blur-sm p-2 rounded-md shadow-sm">
+              <Image
+                src={logo}
+                alt="brand logo"
+                width={60}
+                height={60}
+                className="object-contain"
+              />
+            </div>
+          )}
+
           <AnimatePresence mode="wait">
             <motion.div
               key={activeIndex}
