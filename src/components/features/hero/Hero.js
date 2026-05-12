@@ -98,33 +98,6 @@ export default function Hero({ slides = [] }) {
       <div className="absolute bottom-10 inset-x-0 z-30 flex justify-center items-center">
         <div className="hero-custom-pagination flex items-center justify-center gap-3 pointer-events-auto" />
       </div>
-
-      <style jsx global>{`
-        /* تنظیمات بولت‌ها برای قرارگیری در وسط */
-        .hero-custom-pagination {
-          display: flex !important;
-          justify-content: center !important;
-          width: 100% !important;
-        }
-
-        .hero-custom-pagination .swiper-pagination-bullet {
-          width: 10px !important;
-          height: 10px !important;
-          background: rgba(255, 255, 255, 0.6) !important;
-          opacity: 1 !important;
-          cursor: pointer !important;
-          transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1) !important;
-          border-radius: 50% !important;
-          margin: 0 6px !important;
-          box-shadow: 0 2px 5px rgba(0, 0, 0, 0.3);
-        }
-
-        .hero-custom-pagination .swiper-pagination-bullet-active {
-          width: 35px !important;
-          background: #aa4725 !important;
-          border-radius: 5px !important;
-        }
-      `}</style>
     </section>
   );
 }

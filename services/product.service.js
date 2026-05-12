@@ -104,7 +104,6 @@ export async function getPageDataBySlug(slug) {
   const productQuery = {
     [slugData.filterField]: entityInfo._id,
   };
-  console.log(productQuery);
 
   const products = await Product.find(productQuery)
     .populate("brand")

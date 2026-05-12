@@ -49,14 +49,7 @@ export default function WhatsAppSupport() {
         href={url}
         target="_blank"
         rel="noopener noreferrer"
-        className="
-          relative flex items-center justify-center
-          w-14 h-14 rounded-full
-          bg-[#25D366] hover:bg-[#20c15a]
-          shadow-[0_8px_24px_rgba(37,211,102,0.4)]
-          hover:scale-110 active:scale-95
-          transition-all duration-300
-        "
+       className="relative flex items-center justify-center w-14 h-14 rounded-full bg-[#25D366] hover:bg-[#20c15a] shadow-[0_8px_24px_rgba(37,211,102,0.4)] hover:scale-110 active:scale-95 transition-all duration-300"
       >
         <FaWhatsapp size={32} className="text-white" />
         <span className="absolute top-0.5 right-0.5 w-3.5 h-3.5 bg-green-400 border-2 border-white rounded-full" />

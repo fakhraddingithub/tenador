@@ -81,7 +81,7 @@
         }
       }
     };
-console.log(brandData);
+
 
     if (loading) return <div className="p-20 text-center font-bold animate-pulse text-gray-400">CONNECTING TO DATABASE...</div>;
 

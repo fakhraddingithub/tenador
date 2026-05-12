@@ -209,3 +209,54 @@
   -ms-overflow-style: none;
   scrollbar-width: none;
 }
+
+@keyframes shimmer {
+  100% { transform: translateX(100%); }
+}
+
+   /* تنظیمات بولت‌ها برای قرارگیری در وسط */
+   .hero-custom-pagination {
+    display: flex !important;
+    justify-content: center !important;
+    width: 100% !important;
+  }
+
+  .hero-custom-pagination .swiper-pagination-bullet {
+    width: 10px !important;
+    height: 10px !important;
+    background: rgba(255, 255, 255, 0.6) !important;
+    opacity: 1 !important;
+    cursor: pointer !important;
+    transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1) !important;
+    border-radius: 50% !important;
+    margin: 0 6px !important;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.3);
+  }
+
+  .hero-custom-pagination .swiper-pagination-bullet-active {
+    width: 35px !important;
+    background: #aa4725 !important;
+    border-radius: 5px !important;
+  }
+
+  .slider-pagination-2 .swiper-pagination-bullet {
+    width: 8px;
+    height: 8px;
+    background: #e2e8f0;
+    opacity: 1;
+    transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+  .slider-pagination-2 .swiper-pagination-bullet-active {
+    width: 28px;
+    border-radius: 4px;
+    background: #aa4725;
+  }
+  @media (max-width: 640px) {
+    .slider-pagination-2 .swiper-pagination-bullet {
+      width: 6px;
+      height: 6px;
+    }
+    .slider-pagination-2 .swiper-pagination-bullet-active {
+      width: 20px;
+    }
+  }

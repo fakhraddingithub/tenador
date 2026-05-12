@@ -125,29 +125,6 @@ export default function ProductSlider({
         isWishlisted={selectedProduct?.isWishlisted}
       />
 
-      <style jsx global>{`
-        .slider-pagination-2 .swiper-pagination-bullet {
-          width: 8px;
-          height: 8px;
-          background: #e2e8f0;
-          opacity: 1;
-          transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
-        }
-        .slider-pagination-2 .swiper-pagination-bullet-active {
-          width: 28px;
-          border-radius: 4px;
-          background: #aa4725;
-        }
-        @media (max-width: 640px) {
-          .slider-pagination-2 .swiper-pagination-bullet {
-            width: 6px;
-            height: 6px;
-          }
-          .slider-pagination-2 .swiper-pagination-bullet-active {
-            width: 20px;
-          }
-        }
-      `}</style>
     </section>
   );
 }

@@ -47,11 +47,9 @@ export default function SportPageClient({
         />
         <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent z-10" />
         <div className="absolute inset-0 z-20 flex flex-col justify-center items-center text-center px-4">
-          <span className="text-[var(--color-secondary)] font-bold mb-2 tracking-[0.2em] text-sm md:text-base uppercase">
-            تجهیزات تخصصی رشته
-          </span>
-          <h1 className="text-4xl md:text-6xl font-bold text-white mb-4 drop-shadow-xl">
-            {sportInfo.title}
+        
+          <h1 className="text-1xl md:text-4xl font-bold text-white mb-4 drop-shadow-xl">
+           تنادور – فروشگاه تخصصی تجهیزات و لوازم {sportInfo.title}
           </h1>
           <div className="w-20 h-1 bg-[var(--color-primary)] rounded-full mb-4" />
           <p className="text-gray-200 max-w-2xl text-sm md:text-lg font-medium leading-relaxed opacity-90 line-clamp-2">
