@@ -684,7 +684,7 @@ export default function ProductCreateForm({ initialData = {} }) {
                       <div className="grid md:grid-cols-2 gap-4 mb-4">
                         <div>
                           <label className="block text-sm text-gray-600 mb-1 font-medium">
-                            قیمت (تومان)
+                            قیمت (یورو)
                           </label>
                           <input
                             type="number"
@@ -706,7 +706,7 @@ export default function ProductCreateForm({ initialData = {} }) {
                             min="0"
                             className="w-full border rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
                             placeholder="تعداد موجودی…"
-                            value={detail.stock}
+                            value={detail.stock|| 3}
                             onChange={e =>
                               updateVariantDetail(key, 'stock', e.target.value)
                             }

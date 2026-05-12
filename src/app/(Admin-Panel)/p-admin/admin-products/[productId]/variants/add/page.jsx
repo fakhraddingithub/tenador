@@ -134,7 +134,7 @@ export default function AddVariant() {
                 placeholder="مثال: PROD-001"
               />
               <Input
-                label="قیمت (تومان)"
+                label="قیمت (یورو)"
                 name="price"
                 type="number"
                 min="0"

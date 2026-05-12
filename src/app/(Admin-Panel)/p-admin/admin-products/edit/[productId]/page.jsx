@@ -732,7 +732,7 @@ export default function ProductEditPage() {
                       <div className="grid md:grid-cols-2 gap-4 mb-4">
                         <div>
                           <label className="block text-sm text-gray-600 mb-1 font-medium">
-                            قیمت (تومان)
+                            قیمت (یورو)
                           </label>
                           <input
                             type="number"
