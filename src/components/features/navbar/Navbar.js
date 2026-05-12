@@ -125,7 +125,7 @@ function CategoryMenu({ navData, onClose }) {
                 <li key={cat._id}>
                   <button
                     onMouseEnter={() => setActiveCategoryId(cat._id)}
-                    onClick={() => window.location.href = `/category/${activeSport.slug}/${cat.slug}`}
+                    onClick={() => window.location.href = `/categories/${cat.slug}`}
                     className={listButtonStyle(activeCategoryId === cat._id)}
                   >
                     {cat.icon && <div style={iconMaskStyle(cat.icon)} className="w-5 h-5 shrink-0" />}
@@ -148,7 +148,7 @@ function CategoryMenu({ navData, onClose }) {
               {activeCategory.brands.map((brand) => (
                 <li key={brand._id}>
                   <a
-                    href={`/brand/${brand.slug}`}
+                    href={`/brands/${brand.slug}`}
                     className={listButtonStyle(false)}
                   >
                     {brand.icon && <div style={iconMaskStyle(brand.icon)} className="w-5 h-5 shrink-0 opacity-70 group-hover:opacity-100" />}

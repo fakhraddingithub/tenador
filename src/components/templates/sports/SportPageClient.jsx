@@ -9,7 +9,7 @@ import { FiShoppingBag } from "react-icons/fi";
 
 export default function SportPageClient({
   products: initialProducts,
-  sportInfo,
+  pageInfo,
   rate,
   series = [],       // ← جدید
 }) {
@@ -41,19 +41,19 @@ export default function SportPageClient({
       {/* ─── Hero ─── */}
       <div className="relative h-[100px] md:h-[200px] w-full overflow-hidden">
         <img
-          src={sportInfo.image || "/images/default-sport.jpg"}
-          alt={sportInfo.name}
+          src={pageInfo.image || "/images/default-sport.jpg"}
+          alt={pageInfo.name}
           className="w-full h-full object-cover scale-105"
         />
         <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent z-10" />
         <div className="absolute inset-0 z-20 flex flex-col justify-center items-center text-center px-4">
         
           <h1 className="text-1xl md:text-4xl font-bold text-white mb-4 drop-shadow-xl">
-           تنادور – فروشگاه تخصصی تجهیزات و لوازم {sportInfo.title}
+           تنادور – فروشگاه تخصصی تجهیزات و لوازم {pageInfo.title}
           </h1>
           <div className="w-20 h-1 bg-[var(--color-primary)] rounded-full mb-4" />
           <p className="text-gray-200 max-w-2xl text-sm md:text-lg font-medium leading-relaxed opacity-90 line-clamp-2">
-            {sportInfo.description}
+            {pageInfo.description}
           </p>
         </div>
       </div>
@@ -62,8 +62,8 @@ export default function SportPageClient({
       {series.length > 0 && (
         <SeriesSlider
           series={series}
-          sportSlug={sportInfo.slug}
-          sportTitle={sportInfo.title}
+          sportSlug={pageInfo.slug}
+          sportTitle={pageInfo.title}
         />
       )}
 

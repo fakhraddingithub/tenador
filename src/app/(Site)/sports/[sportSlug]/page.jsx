@@ -32,7 +32,7 @@ export default async function DynamicSportPage({ params }) {
 
   return (
     <SportPageClient
-      sportInfo={serializedSportInfo}
+      pageInfo={serializedSportInfo}
       products={serializedProducts}
       rate={rate}
       series={serializedSeries}
