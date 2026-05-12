@@ -1,105 +1,156 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useParams, useRouter } from "next/navigation";
+import { useRouter } from "next/navigation";
 import { toast } from "react-toastify";
 import Swal from "sweetalert2";
-import { 
-  FaSave, FaPalette, FaIdCard, 
-  FaFont, FaQuoteRight, FaEdit, FaArrowRight, FaSync
+
+import {
+  FaSave,
+  FaPalette,
+  FaIdCard,
+  FaFont,
+  FaQuoteRight,
+  FaEdit,
+  FaArrowRight,
+  FaSync,
+  FaTag,
+  FaLayerGroup,
 } from "react-icons/fa";
+
 import ImageUpload from "./ImageUpload";
 
 export default function SerieEditPage({ id }) {
   const router = useRouter();
-  
+
   const [fetching, setFetching] = useState(true);
   const [loading, setLoading] = useState(false);
+
   const [brandName, setBrandName] = useState("");
+  const [allSeries, setAllSeries] = useState([]);
+
   const [formData, setFormData] = useState({
     name: "",
     title: "",
     description: "",
     brand: "",
-    colors: { primary: "#000000", secondary: "#ffffff" },
+
+    parentSerie: "",
+
+    level: 1,
+
+    tag: null,
+
+    colors: {
+      primary: "#000000",
+      secondary: "#ffffff",
+    },
+
     logo: "",
     icon: "",
     image: "",
   });
 
   useEffect(() => {
-    const fetchSerieData = async () => {
+    const fetchData = async () => {
       try {
-        const res = await fetch(`/api/series/${id}`);
-        const result = await res.json();
-        
-        if (res.ok) {
-          const data = result.data || result;
-          setFormData({
-            ...data,
-            brand:data.brand._id,
-            colors: data.colors || { primary: "#000000", secondary: "#ffffff" }
-          });
+        const [serieRes, seriesRes] = await Promise.all([
+          fetch(`/api/series/${id}`),
+          fetch(`/api/series`)
+        ]);
 
-          setBrandName(data?.brand?.title || "مشخص نشده");
-        } else {
-          toast.error("خطا در بارگذاری اطلاعات");
-          router.push("/p-admin/admin-brands");
+        const serieResult = await serieRes.json();
+        const seriesResult = await seriesRes.json();
+
+        if (!serieRes.ok) {
+          toast.error("خطا در دریافت اطلاعات سری");
+          return;
         }
+
+        const data = serieResult.data || serieResult;
+
+        setFormData({
+          ...data,
+
+          brand: data?.brand?._id || "",
+
+          parentSerie: data?.parentSerie?._id || "",
+
+          level: data?.level || 1,
+
+          tag: data?.tag || null,
+
+          colors: data?.colors || {
+            primary: "#000000",
+            secondary: "#ffffff",
+          },
+        });
+
+        setBrandName(data?.brand?.title || "");
+
+        setAllSeries(seriesResult?.data || []);
       } catch (err) {
+        console.error(err);
         toast.error("خطای شبکه");
       } finally {
         setFetching(false);
       }
     };
 
-    if (id) fetchSerieData();
-  }, [id, router]);
+    if (id) fetchData();
+  }, [id]);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
-    setFormData((prev) => ({ ...prev, [name]: value }));
+
+    setFormData((prev) => ({
+      ...prev,
+      [name]: value,
+    }));
   };
 
-  // هندلر اختصاصی برای تغییر رنگ‌ها در آبجکت تو در تو
   const handleColorChange = (type, value) => {
-    setFormData(prev => ({
+    setFormData((prev) => ({
       ...prev,
       colors: {
         ...prev.colors,
-        [type]: value
-      }
+        [type]: value,
+      },
     }));
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+
     setLoading(true);
 
     try {
       const res = await fetch(`/api/series/${id}`, {
         method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        // ارسال کامل formData شامل آبجکت colors
+        headers: {
+          "Content-Type": "application/json",
+        },
         body: JSON.stringify(formData),
       });
 
-      if (res.ok) {
-        Swal.fire({
-          icon: "success",
-          title: "به‌روزرسانی موفق",
-          text: "تغییرات با موفقیت ذخیره شد.",
-          confirmButtonColor: "var(--color-primary)",
-        }).then(() => {
-          // برگشت به صفحه برندها بعد از تایید کاربر
-          router.push(`/p-admin/admin-brands/${formData.brand}`);
-        });
-      } else {
-        const error = await res.json();
-        toast.error(error.message || "خطا در ویرایش");
+      const result = await res.json();
+
+      if (!res.ok) {
+        toast.error(result.error || "خطا در ذخیره");
+        return;
       }
+
+      Swal.fire({
+        icon: "success",
+        title: "ویرایش انجام شد",
+        text: "اطلاعات سری با موفقیت ذخیره شد",
+        confirmButtonColor: "black",
+      }).then(() => {
+        router.push(`/p-admin/admin-brands/${formData.brand}`);
+      });
     } catch (err) {
-      toast.error("خطای سرور؛ دوباره تلاش کنید");
+      console.error(err);
+      toast.error("خطای سرور");
     } finally {
       setLoading(false);
     }
@@ -107,149 +158,232 @@ export default function SerieEditPage({ id }) {
 
   if (fetching) {
     return (
-      <div className="h-96 flex flex-col items-center justify-center gap-4 text-gray-400">
-        <FaSync className="animate-spin text-3xl text-[var(--color-primary)]" />
-        <p className="font-bold italic text-xs uppercase tracking-widest">Loading Serie Data...</p>
+      <div className="h-96 flex flex-col items-center justify-center gap-4">
+        <FaSync className="animate-spin text-3xl" />
+        <p className="text-xs font-bold uppercase">
+          Loading Serie...
+        </p>
       </div>
     );
   }
 
   return (
-    <form onSubmit={handleSubmit} className="max-w-6xl mx-auto space-y-8 pb-20">
-      
+    <form
+      onSubmit={handleSubmit}
+      className="max-w-6xl mx-auto space-y-8 pb-20"
+    >
       {/* Header */}
       <div className="bg-white p-8 rounded-[2.5rem] shadow-sm border border-gray-100 flex justify-between items-center">
         <div className="flex items-center gap-4 text-right">
-            <div className="w-14 h-14 bg-black rounded-2xl flex items-center justify-center text-[var(--color-primary)] shadow-xl">
-                <FaEdit size={24} />
-            </div>
-            <div>
-                <h2 className="text-2xl font-bold italic">ویرایش سری: {formData?.title || "..."}</h2>
-                <p className="text-gray-400 text-[10px] font-bold uppercase tracking-widest mt-1">
-                    برند مرتبط: <span className="text-black">{brandName}</span>
-                </p>
-            </div>
+          <div className="w-14 h-14 bg-black rounded-2xl flex items-center justify-center text-white">
+            <FaEdit size={22} />
+          </div>
+
+          <div>
+            <h2 className="text-2xl font-bold">
+              ویرایش سری
+            </h2>
+
+            <p className="text-xs text-gray-400 mt-1">
+              برند: {brandName}
+            </p>
+          </div>
         </div>
-        <button 
-          type="button" 
-          onClick={() => router.push("/p-admin/admin-brands")}
-          className="p-4 bg-gray-50 text-gray-500 rounded-2xl hover:bg-gray-100 transition-all flex items-center gap-2 font-bold text-[10px]"
+
+        <button
+          type="button"
+          onClick={() =>
+            router.push(`/p-admin/admin-brands/${formData.brand}`)
+          }
+          className="p-4 bg-gray-100 rounded-2xl"
         >
-          بازگشت به برندها <FaArrowRight />
+          <FaArrowRight />
         </button>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
-        
-        {/* ستون چپ: مدیا و رنگ */}
+        {/* ستون چپ */}
         <div className="lg:col-span-4 space-y-6">
           <div className="bg-white p-6 rounded-[3rem] shadow-sm border border-gray-50 space-y-6">
-            <ImageUpload 
-                label="تصویر اصلی" 
-                value={formData?.image} 
-                onChange={(url) => setFormData(p => ({...p, image: url}))}
-                folder="series/covers"
+            <ImageUpload
+              label="تصویر اصلی"
+              value={formData.image}
+              onChange={(url) =>
+                setFormData((p) => ({
+                  ...p,
+                  image: url,
+                }))
+              }
+              folder="series/covers"
             />
+
             <div className="grid grid-cols-2 gap-4">
-                <ImageUpload 
-                    label="لوگو" 
-                    value={formData?.logo} 
-                    onChange={(url) => setFormData(p => ({...p, logo: url}))}
-                    folder="series/logos"
-                />
-                <ImageUpload 
-                    label="آیکون" 
-                    value={formData?.icon} 
-                    onChange={(url) => setFormData(p => ({...p, icon: url}))}
-                    folder="series/icons"
-                />
+              <ImageUpload
+                label="لوگو"
+                value={formData.logo}
+                onChange={(url) =>
+                  setFormData((p) => ({
+                    ...p,
+                    logo: url,
+                  }))
+                }
+                folder="series/logos"
+              />
+
+              <ImageUpload
+                label="آیکون"
+                value={formData.icon}
+                onChange={(url) =>
+                  setFormData((p) => ({
+                    ...p,
+                    icon: url,
+                  }))
+                }
+                folder="series/icons"
+              />
             </div>
           </div>
 
-          <div className="bg-black p-8 rounded-[3rem] shadow-2xl text-white">
-            <h3 className="text-[10px] font-bold uppercase text-gray-500 mb-6 flex items-center gap-2">
-                <FaPalette className="text-[var(--color-primary)]" /> پالت رنگی اختصاصی
+          {/* Colors */}
+          <div className="bg-black p-8 rounded-[3rem] text-white">
+            <h3 className="text-sm font-bold mb-6 flex items-center gap-2">
+              <FaPalette />
+              رنگ‌بندی
             </h3>
+
             <div className="space-y-4">
-                <div className="flex items-center justify-between bg-white/5 p-4 rounded-2xl border border-white/10">
-                    <span className="text-xs font-bold text-gray-300">رنگ اصلی (Primary)</span>
-                    <input 
-                        type="color" 
-                        value={formData?.colors?.primary || "#000000"} 
-                        onChange={(e) => handleColorChange('primary', e.target.value)}
-                        className="w-10 h-10 bg-transparent border-none cursor-pointer"
-                    />
-                </div>
-                <div className="flex items-center justify-between bg-white/5 p-4 rounded-2xl border border-white/10">
-                    <span className="text-xs font-bold text-gray-300">رنگ ثانویه (Secondary)</span>
-                    <input 
-                        type="color" 
-                        value={formData?.colors?.secondary || "#ffffff"} 
-                        onChange={(e) => handleColorChange('secondary', e.target.value)}
-                        className="w-10 h-10 bg-transparent border-none cursor-pointer"
-                    />
-                </div>
+              <div className="flex items-center justify-between">
+                <span>رنگ اصلی</span>
+
+                <input
+                  type="color"
+                  value={formData.colors.primary}
+                  onChange={(e) =>
+                    handleColorChange("primary", e.target.value)
+                  }
+                />
+              </div>
+
+              <div className="flex items-center justify-between">
+                <span>رنگ ثانویه</span>
+
+                <input
+                  type="color"
+                  value={formData.colors.secondary}
+                  onChange={(e) =>
+                    handleColorChange("secondary", e.target.value)
+                  }
+                />
+              </div>
             </div>
           </div>
         </div>
 
-        {/* ستون راست: متن‌ها */}
-        <div className="lg:col-span-8 space-y-8 text-right">
-          <div className="bg-white p-10 rounded-[3.5rem] shadow-sm border border-gray-50 space-y-8">
-            <h3 className="flex flex-row-reverse items-center gap-3 font-bold text-gray-900 italic uppercase">
-                <FaIdCard className="text-[var(--color-primary)]" /> مشخصات فنی
+        {/* ستون راست */}
+        <div className="lg:col-span-8 space-y-8">
+          <div className="bg-white p-10 rounded-[3rem] shadow-sm border border-gray-50 space-y-8">
+            <h3 className="font-bold flex items-center gap-2">
+              <FaIdCard />
+              اطلاعات سری
             </h3>
-            
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div className="space-y-2 text-right">
-                <label className="text-[10px] font-bold text-gray-400 mr-4 uppercase tracking-widest flex items-center gap-2">
-                    <FaFont /> نام سیستمی (Slug)
+
+            {/* name + title */}
+            <div className="grid md:grid-cols-2 gap-6">
+              <div>
+                <label className="text-xs font-bold mb-2 block">
+                  نام انگلیسی
                 </label>
-                <input 
-                    name="name"
-                    value={formData?.name || ""} 
-                    onChange={handleChange}
-                    className="w-full p-5 bg-gray-50 border border-gray-100 rounded-2xl font-bold text-gray-700 dir-ltr focus:ring-2 focus:ring-[var(--color-primary)] outline-none transition-all" 
+
+                <input
+                  name="name"
+                  value={formData.name}
+                  onChange={handleChange}
+                  className="w-full p-4 rounded-2xl bg-gray-50"
                 />
               </div>
 
-              <div className="space-y-2">
-                <label className="text-[10px] font-bold text-gray-400 ml-4 uppercase tracking-widest flex flex-row-reverse items-center gap-2">
-                    عنوان نمایشی (فارسی)
+              <div>
+                <label className="text-xs font-bold mb-2 block">
+                  عنوان فارسی
                 </label>
-                <input 
-                    name="title" 
-                    value={formData?.title || ""} 
-                    onChange={handleChange}
-                    className="w-full p-5 bg-gray-50 border border-gray-100 rounded-2xl font-bold text-gray-900 focus:ring-2 focus:ring-[var(--color-primary)] outline-none transition-all text-right" 
+
+                <input
+                  name="title"
+                  value={formData.title}
+                  onChange={handleChange}
+                  className="w-full p-4 rounded-2xl bg-gray-50"
                 />
               </div>
             </div>
 
-            <div className="space-y-2">
-                <label className="text-[10px] font-bold text-gray-400 ml-4 uppercase tracking-widest flex flex-row-reverse items-center gap-2">
-                    <FaQuoteRight /> توضیحات برند
-                </label>
-                <textarea 
-                    name="description" 
-                    value={formData?.description || ""} 
-                    onChange={handleChange}
-                    rows={8}
-                    className="w-full p-8 bg-gray-50 border border-gray-100 rounded-[2.5rem] font-medium text-gray-700 outline-none focus:ring-2 focus:ring-[var(--color-primary)] transition-all text-right leading-8 shadow-inner" 
-                />
+            {/* parent serie */}
+            <div>
+              <label className="text-xs font-bold mb-2 flex items-center gap-2">
+                <FaLayerGroup />
+                سری والد
+              </label>
+
+              <select
+                name="parentSerie"
+                value={formData.parentSerie || ""}
+                onChange={handleChange}
+                className="w-full p-4 rounded-2xl bg-gray-50"
+              >
+                <option value="">بدون والد</option>
+
+                {allSeries
+                  .filter((s) => s._id !== id)
+                  .map((serie) => (
+                    <option key={serie._id} value={serie._id}>
+                      {serie.title}
+                    </option>
+                  ))}
+              </select>
+            </div>
+
+            {/* tag */}
+            <div>
+              <label className="text-xs font-bold mb-2 flex items-center gap-2">
+                <FaTag />
+                تگ ویژه
+              </label>
+
+              <select
+                name="tag"
+                value={formData.tag || ""}
+                onChange={handleChange}
+                className="w-full p-4 rounded-2xl bg-gray-50"
+              >
+                <option value="">بدون تگ</option>
+
+                <option value="LIMITED_EDITION">
+                  LIMITED EDITION
+                </option>
+              </select>
+            </div>
+
+            {/* description */}
+            <div>
+              <label className="text-xs font-bold mb-2 block">
+                توضیحات
+              </label>
+
+              <textarea
+                name="description"
+                rows={8}
+                value={formData.description}
+                onChange={handleChange}
+                className="w-full p-6 rounded-[2rem] bg-gray-50"
+              />
             </div>
           </div>
 
-          <button 
-            type="submit" 
+          <button
+            type="submit"
             disabled={loading}
-            className="w-full bg-black text-white py-8 rounded-[3rem] font-bold text-xl hover:shadow-2xl hover:-translate-y-1 transition-all flex items-center justify-center gap-4 active:scale-95 disabled:opacity-50"
+            className="w-full bg-black text-white py-6 rounded-[2rem] font-bold"
           >
-            {loading ? (
-              <div className="w-8 h-8 border-4 border-white/30 border-t-white rounded-full animate-spin"></div>
-            ) : (
-              <><FaSave className="text-[var(--color-primary)]" /> ذخیره و بازگشت</>
-            )}
+            {loading ? "در حال ذخیره..." : "ذخیره تغییرات"}
           </button>
         </div>
       </div>

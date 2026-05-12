@@ -1,11 +1,11 @@
-import SerieCreateFlow from "@/components/admin/SerieEditForm";
+import SerieAdminPage from "@/components/admin/SerieAdminPage";
 
 export default async function Page({ params }) {
-    const { serieId } = await params
+    const { serieId,brandId } = await params
 
     return (
         <div className="flex justify-center">
-            <SerieCreateFlow id={serieId} />
+            <SerieAdminPage serieId={serieId} brandId={brandId}/>
         </div>
     );
 }
