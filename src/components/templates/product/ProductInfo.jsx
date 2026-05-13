@@ -94,7 +94,8 @@ const ProductInfo = ({ product, selectedVariant, onVariantChange }) => {
     }
   }
 
-  const basePrice = selectedVariant?.price ?? product.basePrice;
+ // اگر selectedVariant?.price مقدار 0، null، undefined یا false باشد، product.basePrice استفاده می‌شود
+const basePrice = (selectedVariant && selectedVariant.price) || product.basePrice;
 
   // Calculate discounted price if discount label exists
   const discountPercent = hasDiscountLabel ? calculateDiscount(quantity) : 0;
