@@ -311,7 +311,7 @@ export default function SerieChildrenAdminPage({ serieId,brandId }) {
                         e.stopPropagation();
 
                         router.push(
-                          `/p-admin/admin-brands/${serie.brand}/${serie._id}/edit`
+                          `/p-admin/admin-brands/${serie.brand}/${child._id}/edit`
                         );
                       }}
                       className="flex-1 py-4 rounded-2xl bg-gray-50 hover:bg-gray-100 text-gray-500 hover:text-black transition-all"

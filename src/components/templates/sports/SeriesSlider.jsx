@@ -30,163 +30,97 @@ function splitName(name = "") {
 }
 
 /* ─────────────────────────── SerieCard ─────────────────────────── */
+/* ── SVG Filter برای افکت نویز روی متن (این را خارج از کامپوننت بگذار) ── */
+/* ── SVG Filter با نویز شدیدتر ── */
+const GrungeFilter = () => (
+  <svg style={{ position: "absolute", width: 0, height: 0 }}>
+    <filter id="visage-grunge-heavy">
+      {/* افزایش baseFrequency نویز را ریزتر و شدیدتر می‌کند */}
+      <feTurbulence type="fractalNoise" baseFrequency="0.6" numOctaves="4" result="noise" />
+      <feDisplacementMap in="SourceGraphic" in2="noise" scale="6" />
+    </filter>
+  </svg>
+);
+
 function SerieCard({ serie, sportSlug, index }) {
   const [hovered, setHovered] = useState(false);
 
-  const primary   = serie.colors?.primary   || "#c0392b";
-  const secondary = serie.colors?.secondary || primary;
-  const rgb       = hexToRgb(primary);
-  const dark      = darken(rgb, 70);
-  const mid       = darken(rgb, 30);
-  const bright    = lighten(rgb, 50);
-  const words     = splitName(serie.name);
+  const primary = serie.colors?.primary || "#c0392b";
+  const secondary = serie.colors?.secondary || "#e74c3c";
+  const words = splitName(serie.name);
 
-  const gradient = `
-    radial-gradient(ellipse at 70% 20%, ${bright} 0%, transparent 55%),
-    linear-gradient(160deg, ${mid} 0%, ${primary} 40%, ${dark} 100%)
-  `;
+  // گرادینت از پایین (Primary) به بالا (Secondary)
+  const gradient = `linear-gradient(to top, ${primary} 0%, ${secondary} 100%)`;
 
   return (
-    <Link
-      href={`/${sportSlug}/series/${serie.slug}`}
-      onMouseEnter={() => setHovered(true)}
-      onMouseLeave={() => setHovered(false)}
-      className="relative flex-shrink-0 w-[200px] sm:w-[240px] md:w-[275px] rounded-[20px] overflow-hidden cursor-pointer select-none"
-      style={{
-        aspectRatio: "3/4",
-        background:  gradient,
-        boxShadow:   hovered
-          ? `0 24px 50px -8px ${primary}80, 0 0 0 1px ${primary}40`
-          : `0 8px 30px -6px ${primary}50`,
-        transform:   hovered ? "translateY(-6px) scale(1.02)" : "translateY(0) scale(1)",
-        transition:  "transform 0.4s cubic-bezier(.34,1.56,.64,1), box-shadow 0.3s ease",
-      }}
-    >
-      {/* ── نویز texture overlay ── */}
-      <div
-        className="absolute inset-0 z-[1] opacity-[0.08] mix-blend-overlay pointer-events-none"
+    <>
+      <GrungeFilter />
+      <Link
+        href={`/${sportSlug}/series/${serie.slug}`}
+        onMouseEnter={() => setHovered(true)}
+        onMouseLeave={() => setHovered(false)}
+        className="relative flex-shrink-0 w-[240px] sm:w-[280px] md:w-[310px] rounded-[24px] overflow-hidden cursor-pointer select-none shadow-2xl"
         style={{
-          backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E")`,
+          aspectRatio: "2.8/4",
+          background: gradient,
         }}
-      />
-
-      {/* ── خطوط دیاگونال دکوراتیو ── */}
-      <div
-        className="absolute inset-0 z-[1] opacity-10 pointer-events-none"
-        style={{
-          backgroundImage: `repeating-linear-gradient(
-            -45deg,
-            transparent,
-            transparent 12px,
-            rgba(255,255,255,0.15) 12px,
-            rgba(255,255,255,0.15) 13px
-          )`,
-        }}
-      />
-
-      {/* ── هاله نورانی گوشه بالا راست ── */}
-      <div
-        className="absolute -top-10 -right-10 w-40 h-40 rounded-full pointer-events-none z-[2]"
-        style={{
-          background: `radial-gradient(circle, ${bright}90 0%, transparent 70%)`,
-          transform: hovered ? "scale(1.4)" : "scale(1)",
-          transition: "transform 0.5s ease",
-        }}
-      />
-
-      {/* ── لوگوی برند ── */}
-      {serie.brand?.logo && (
-        <div className="absolute top-4 right-4 z-20">
-          <img
-            src={serie.brand.logo}
-            alt={serie.brand.title}
-            className="h-8 sm:h-9 w-auto object-contain drop-shadow-2xl"
-            style={{
-              filter: "brightness(0) invert(1) drop-shadow(0 2px 6px rgba(0,0,0,0.4))",
-            }}
-          />
-        </div>
-      )}
-
-      {/* ── شماره / index دکوراتیو ── */}
-      <div
-        className="absolute top-4 left-4 z-20 w-7 h-7 rounded-full flex items-center justify-center"
-        style={{ background: "rgba(255,255,255,0.15)", backdropFilter: "blur(8px)" }}
       >
-        <span className="text-white/70 text-[10px] font-black">{String(index + 1).padStart(2, "0")}</span>
-      </div>
-
-      {/* ── تصویر محصول ── */}
-      {serie.coverImage && (
-        <div className="absolute inset-0 z-[3] flex items-center justify-center">
-          <img
-            src={serie.coverImage}
-            alt={serie.name}
-            className="w-[80%] h-[65%] object-contain transition-all duration-500"
-            style={{
-              transform:  hovered ? "scale(1.1) translateY(-4px)" : "scale(1) translateY(0)",
-              filter:     "drop-shadow(0 20px 30px rgba(0,0,0,0.5))",
-            }}
-          />
-        </div>
-      )}
-
-      {/* ── گرادینت پایین ── */}
-      <div
-        className="absolute bottom-0 left-0 right-0 h-[55%] z-[4] pointer-events-none"
-        style={{
-          background: `linear-gradient(to top, ${dark}f0 0%, ${dark}90 40%, transparent 100%)`,
-        }}
-      />
-
-      {/* ── متن بزرگ وسط ── */}
-      <div className="absolute inset-0 z-[5] flex flex-col items-center justify-center pb-14 pointer-events-none">
-        {words.map((word, i) => (
-          <span
-            key={i}
-            className="text-white font-black leading-[0.85] select-none"
-            style={{
-              fontSize:      "clamp(1.6rem, 4.5vw, 2.6rem)",
-              letterSpacing: "0.04em",
-              textShadow:    "0 2px 0 rgba(0,0,0,0.3), 0 0 40px rgba(0,0,0,0.2)",
-              opacity:       0.92,
-            }}
-          >
-            {word}
-          </span>
-        ))}
-      </div>
-
-      {/* ── پایین کارت ── */}
-      <div className="absolute bottom-0 left-0 right-0 z-[6] px-4 py-4">
-        {/* عنوان فارسی */}
-        <p
-          className="text-white font-bold text-sm truncate mb-1"
-          style={{ textShadow: "0 1px 4px rgba(0,0,0,0.5)" }}
-        >
-          {serie.title}
-        </p>
-
-        {/* ردیف پایین: تعداد محصول + آیکون */}
-        <div className="flex items-center justify-between">
-          <span
-            className="text-[11px] font-semibold px-2 py-0.5 rounded-full"
-            style={{ background: "rgba(255,255,255,0.15)", color: "rgba(255,255,255,0.85)" }}
-          >
-            {serie.productCount} محصول
-          </span>
-          <div
-            className="w-7 h-7 rounded-full flex items-center justify-center transition-all duration-300"
-            style={{
-              background: hovered ? "rgba(255,255,255,0.9)" : "rgba(255,255,255,0.2)",
-              color:      hovered ? primary : "white",
-            }}
-          >
-            <FiArrowLeft size={13} />
+        {/* ── لوگوی سری (بالا چپ - سفید شده) ── */}
+        {serie.logo && (
+          <div className="absolute top-1 left-6 z-40">
+            <img
+              src={serie.logo}
+              alt="logo"
+              className="h-15 w-auto object-contain"
+              style={{ filter: "brightness(0) invert(1)" }} 
+            />
           </div>
+        )}
+
+        {/* ── تصویر محصول (بسیار بزرگ - ۹۰٪ کارت) ── */}
+        {serie.coverImage && (
+          <div className="absolute inset-0 z-[10] flex items-center justify-center">
+            <img
+              src={serie.coverImage}
+              alt={serie.name}
+              className="w-[100%] h-[100%] object-contain transition-transform duration-500"
+              style={{
+                transform: hovered ? "scale(1.1)" : "scale(1)",
+                filter: "drop-shadow(0 15px 35px rgba(0,0,0,0.3))",
+              }}
+            />
+          </div>
+        )}
+
+        {/* ── متن نویزی (روی عکس قرار گرفته - zIndex 20) ── */}
+        <div className="absolute inset-0 z-[20] flex flex-col items-center justify-center pointer-events-none">
+          {words.map((word, i) => (
+            <span
+              key={i}
+              className="text-white leading-[0.8] text-center uppercase"
+              style={{
+                fontSize: "2.8rem",
+                fontWeight: "1000",
+                WebkitTextStroke: "1.5px rgba(0, 0, 0, 0.5)",
+                textShadow: "0 8px 0 rgba(0, 0, 0, 0.8), 0 3px 2px rgba(0, 0, 0, 0.6)",
+                filter: "url(#visage-grunge-heavy)",
+                opacity: 0.9,
+              }}
+            >
+              {word}
+            </span>
+          ))}
         </div>
-      </div>
-    </Link>
+
+        {/* ── عنوان فارسی (پایین سمت راست) ── */}
+        <div className="absolute bottom-6 right-6 z-30 text-right">
+          <h3 className="text-white font-black text-base"
+              style={{ textShadow: "0 2px 10px rgba(0,0,0,0.6)" }}>
+            {serie.title}
+          </h3>
+        </div>
+      </Link>
+    </>
   );
 }
 

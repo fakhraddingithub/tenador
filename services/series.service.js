@@ -13,67 +13,77 @@ export async function getSeriesBySport(sportSlug) {
   if (!sport) return [];
 
   const results = await Product.aggregate([
-    // محصولات این ورزش که سری دارند
+    // 1. محصولات این ورزش که سری دارند
     {
       $match: {
         sport: sport._id,
         serie: { $exists: true, $ne: null },
       },
     },
-    // join سری
+    // 2. join سری
     {
       $lookup: {
-        from:         "series",
-        localField:   "serie",
+        from: "series",
+        localField: "serie",
         foreignField: "_id",
-        as:           "serieDoc",
+        as: "serieDoc",
       },
     },
     { $unwind: "$serieDoc" },
-    // join برند سری
+    
+    // 3. فیلتر کردن بر اساس سطح (Level)
+    // اگر منظور سری‌های بدون والد است، عدد را به 0 تغییر دهید
+    {
+      $match: {
+        "serieDoc.level": 1, 
+      },
+    },
+
+    // 4. join برند سری
     {
       $lookup: {
-        from:         "brands",
-        localField:   "serieDoc.brand",
+        from: "brands",
+        localField: "serieDoc.brand",
         foreignField: "_id",
-        as:           "brandDoc",
+        as: "brandDoc",
       },
     },
     { $unwind: { path: "$brandDoc", preserveNullAndEmptyArrays: true } },
-    // گروه‌بندی بر اساس سری
+
+    // 5. گروه‌بندی
     {
       $group: {
-        _id:           "$serieDoc._id",
-        name:          { $first: "$serieDoc.name" },
-        title:         { $first: "$serieDoc.title" },
-        slug:          { $first: "$serieDoc.slug" },
-        colors:        { $first: "$serieDoc.colors" },
-        logo:          { $first: "$serieDoc.logo" },
-        icon:          { $first: "$serieDoc.icon" },
-        brandTitle:    { $first: "$brandDoc.title" },
-        brandLogo:     { $first: "$brandDoc.logo" },
-        brandSlug:     { $first: "$brandDoc.slug" },
-        // تصویر اول از اولین محصولی که عکس داره
-        coverImage:    { $first: "$mainImage" },
-        productCount:  { $sum: 1 },
+        _id: "$serieDoc._id",
+        name: { $first: "$serieDoc.name" },
+        title: { $first: "$serieDoc.title" },
+        slug: { $first: "$serieDoc.slug" },
+        colors: { $first: "$serieDoc.colors" },
+        logo: { $first: "$serieDoc.logo" },
+        icon: { $first: "$serieDoc.icon" },
+        // اصلاح این بخش: استفاده از تصویر خودِ سری به جای محصول
+        coverImage: { $first: "$serieDoc.image" }, 
+        brandTitle: { $first: "$brandDoc.title" },
+        brandLogo: { $first: "$brandDoc.logo" },
+        brandSlug: { $first: "$brandDoc.slug" },
+        productCount: { $sum: 1 },
       },
     },
     { $sort: { productCount: -1 } },
   ]);
 
   return results.map((s) => ({
-    _id:          s._id.toString(),
-    name:         s.name,
-    title:        s.title,
-    slug:         s.slug,
-    colors:       s.colors || {},
-    logo:         s.logo || "",
-    coverImage:   s.coverImage || "",
+    _id: s._id.toString(),
+    name: s.name,
+    title: s.title,
+    slug: s.slug,
+    colors: s.colors || {},
+    logo: s.logo || "",
+    coverImage: s.coverImage || "", // تصویر از فیلد image سری می‌آید
     productCount: s.productCount,
     brand: {
       title: s.brandTitle || "",
-      logo:  s.brandLogo  || "",
-      slug:  s.brandSlug  || "",
+      logo: s.brandLogo || "",
+      slug: s.brandSlug || "",
     },
   }));
 }
