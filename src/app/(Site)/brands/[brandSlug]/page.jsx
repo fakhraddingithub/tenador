@@ -32,11 +32,13 @@ export default async function BrandPage({ params }) {
   ]);
 
   if (!data) notFound();
-
+  const pageInfo = JSON.parse(JSON.stringify(data.info));
+  const title = pageInfo.title;
   return (
     <SportPageClient
       pageInfo={JSON.parse(JSON.stringify(data.info))}
       products={JSON.parse(JSON.stringify(data.products))}
+      title={title}
       rate={rate}
     />
   );

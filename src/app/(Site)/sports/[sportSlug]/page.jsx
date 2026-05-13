@@ -29,11 +29,13 @@ export default async function DynamicSportPage({ params }) {
   const serializedSportInfo = JSON.parse(JSON.stringify(data.info));
   const serializedProducts = JSON.parse(JSON.stringify(data.products));
   const serializedSeries = JSON.parse(JSON.stringify(series));
-
+  const title = `تنادور – فروشگاه تخصصی تجهیزات و لوازم ${serializedSportInfo.title}`;
+  
   return (
     <SportPageClient
       pageInfo={serializedSportInfo}
       products={serializedProducts}
+      title={title}
       rate={rate}
       series={serializedSeries}
     />
