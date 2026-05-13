@@ -43,13 +43,28 @@ export default async function ProductPage({ params }) {
     throw new Error("محصول مورد نظر یافت نشد");
   }
 
+  // دریافت نرخ تبدیل
   const rate = await getCachedRate();
+  
+  // تبدیل قیمت پایه محصول
   const priceInToman = eurToToman(fetchProduct.basePrice, rate);
-
-  const product = { ...fetchProduct, basePrice: priceInToman };
+  
+  // تبدیل قیمت تمام واریانت‌ها
+  const convertedVariants = fetchProduct.variants?.map(variant => ({
+    ...variant,
+    price: eurToToman(variant.price, rate)
+  })) || [];
+  
+  // محصول نهایی با قیمت‌های تبدیل شده
+  const product = {
+    ...fetchProduct,
+    basePrice: priceInToman,
+    variants: convertedVariants
+  };
 
   const productSchema = generateProductSchema(product);
   const breadcrumbSchema = generateBreadcrumbSchema(product);
+  
   return (
     <>
       <script

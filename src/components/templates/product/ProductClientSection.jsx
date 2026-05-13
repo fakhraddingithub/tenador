@@ -13,22 +13,14 @@ const ProductClientSection = ({ product }) => {
 
   const hasVariants = Array.isArray(product.variants) && product.variants.length > 0;
 
-  /**
-   * Build the full image list:
-   * 1. mainImage
-   * 2. product gallery
-   * 3. ALL variant images (deduplicated)
-   *
-   * When a variant is selected, its images bubble up to the front
-   * so the gallery jumps to the relevant photos automatically.
-   */
+ 
   const galleryImages = useMemo(() => {
     const base = [
       product.mainImage,
       ...(product.gallery || []),
     ].filter(Boolean);
 
-    // Collect every image from every variant (flat, deduplicated)
+    
     const allVariantImages = (product.variants || [])
       .flatMap(v => v.images || [])
       .filter(Boolean)
