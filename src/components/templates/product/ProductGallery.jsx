@@ -26,12 +26,12 @@ const ProductGallery = ({ images = [], logo }) => {
 
           {/* Logo */}
           {logo && (
-            <div className="absolute top-3 left-3 z-30 bg-white/80 backdrop-blur-sm p-2 rounded-md shadow-sm">
+            <div className="absolute top-3 left-3 z-30">
               <Image
                 src={logo}
                 alt="brand logo"
-                width={60}
-                height={60}
+                width={45}
+                height={45}
                 className="object-contain"
               />
             </div>

@@ -38,23 +38,29 @@ const OrderActions = ({
     const result = await Swal.fire({
       title: "تایید ثبت سفارش",
       html: `
-        <div style="text-align:right;direction:rtl">
-          <p>آیا از ثبت سفارش اطمینان دارید؟</p>
-          <p style="margin-top:8px;font-size:14px;color:#666">
+        <div style="text-align:right; direction:rtl; font-family:var(--font-sans);">
+          <p style="font-size:16px; color:var(--foreground)">آیا از ثبت سفارش اطمینان دارید؟</p>
+          <p style="margin-top:12px; font-size:14px; color:#666; background:rgba(170, 71, 37, 0.05); padding:10px; border-radius:8px; border:1px dashed var(--color-primary);">
             مبلغ قابل پرداخت:
-            <strong style="color:#4f46e5">
+            <strong style="color:var(--color-primary); font-size:16px">
               ${formatPriceWithCurrency(totalPrice)}
             </strong>
           </p>
         </div>
       `,
       icon: "question",
+      iconColor: "var(--color-primary)", // رنگ آیکون علامت سوال
       showCancelButton: true,
       confirmButtonText: "بله، ثبت شود",
       cancelButtonText: "انصراف",
-      confirmButtonColor: "#4f46e5",
+      confirmButtonColor: "#aa4725", // هماهنگ با --color-primary
       cancelButtonColor: "#9ca3af",
       reverseButtons: true,
+      customClass: {
+        popup: 'rounded-2xl', // گرد کردن گوشه‌های الرت مطابق تم سایت
+        confirmButton: 'rounded-lg px-6 py-2',
+        cancelButton: 'rounded-lg px-6 py-2'
+      }
     });
   
     if (!result.isConfirmed) return;

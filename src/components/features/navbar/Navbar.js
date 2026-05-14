@@ -17,7 +17,9 @@ import IconButton from "@/components/ui/IconButton";
 import Button from "@/components/ui/Button";
 import CartDrawer from "@/components/features/cartDrawer/CartDrawer";
 
-const NAVIGATION_ITEMS = [{ id: 1, label: "جمعه بازار", href: "/second-hands" }];
+const NAVIGATION_ITEMS = [
+  { id: 1, label: "جمعه بازار", href: "/second-hands" },
+];
 
 // ---- Search Result Item ----
 function SearchResultItem({ product, onClick }) {
@@ -58,14 +60,19 @@ function SearchResultItem({ product, onClick }) {
 
 function CategoryMenu({ navData, onClose }) {
   const [activeSportId, setActiveSportId] = useState(navData[0]?._id || null);
-  
-  // پیدا کردن ورزش فعال
-  const activeSport = navData.find((s) => s._id === activeSportId) || navData[0];
-  
-  // State برای مدیریت دسته‌بندی فعال (جهت نمایش برندهای ستون سوم)
-  const [activeCategoryId, setActiveCategoryId] = useState(activeSport?.categories?.[0]?._id || null);
 
-  const activeCategory = activeSport?.categories?.find(c => c._id === activeCategoryId) || activeSport?.categories?.[0];
+  // پیدا کردن ورزش فعال
+  const activeSport =
+    navData.find((s) => s._id === activeSportId) || navData[0];
+
+  // State برای مدیریت دسته‌بندی فعال (جهت نمایش برندهای ستون سوم)
+  const [activeCategoryId, setActiveCategoryId] = useState(
+    activeSport?.categories?.[0]?._id || null,
+  );
+
+  const activeCategory =
+    activeSport?.categories?.find((c) => c._id === activeCategoryId) ||
+    activeSport?.categories?.[0];
 
   const iconMaskStyle = (url) => ({
     backgroundColor: "currentColor",
@@ -80,9 +87,11 @@ function CategoryMenu({ navData, onClose }) {
   // تابع کمکی برای استایل دکمه‌های لیست در هر سه ستون (سایز متن و پدینگ بزرگتر شد)
   const listButtonStyle = (isActive) => `
     group w-full flex items-center gap-3 px-4 py-2.5 rounded-lg transition-all text-[15px] font-medium
-    ${isActive 
-      ? "bg-[#ffffff1a] text-[#aa4725]" 
-      : "text-gray-300 hover:bg-[#ffffff1a] hover:text-[#aa4725]"}
+    ${
+      isActive
+        ? "bg-[#ffffff1a] text-[#aa4725]"
+        : "text-gray-300 hover:bg-[#ffffff1a] hover:text-[#aa4725]"
+    }
   `;
 
   return (
@@ -91,58 +100,93 @@ function CategoryMenu({ navData, onClose }) {
       className="absolute top-full right-0 mt-2 w-[950px] bg-[#20232ae6] border border-white/10 shadow-2xl rounded-[var(--radius)] overflow-hidden z-[100] text-right"
       onMouseLeave={onClose}
     >
-      <div className="flex h-[480px]"> {/* ارتفاع کمی بیشتر برای جای دادن متن‌های درشت‌تر */}
-        
+      <div className="flex h-[480px]">
+        {" "}
+        {/* ارتفاع کمی بیشتر برای جای دادن متن‌های درشت‌تر */}
         {/* ستون اول: ورزش‌ها */}
         <div className="w-[30%] border-l border-white/[0.06] p-3 overflow-y-auto bg-white/[0.01]">
-          <p className="text-[11px] font-bold text-gray-500 mb-4 px-2 uppercase tracking-widest">رشته‌های ورزشی</p>
+          <p className="text-[11px] font-bold text-gray-500 mb-4 px-2 uppercase tracking-widest">
+            رشته‌های ورزشی
+          </p>
           <ul className="space-y-1">
             {navData.map((sport) => (
               <li key={sport._id}>
                 <button
-                 onClick={() => window.location.href = `/sports/${sport.slug}`}
+                  onClick={() =>
+                    (window.location.href = `/sports/${sport.slug}`)
+                  }
                   onMouseEnter={() => {
                     setActiveSportId(sport._id);
                     setActiveCategoryId(sport.categories?.[0]?._id); // ریست کردن کتگوری با تغییر ورزش
                   }}
                   className={listButtonStyle(activeSportId === sport._id)}
                 >
-                  {sport.icon && <div style={iconMaskStyle(sport.icon)} className="w-5 h-5 shrink-0" />}
+                  {sport.icon && (
+                    <div
+                      style={iconMaskStyle(sport.icon)}
+                      className="w-5 h-5 shrink-0"
+                    />
+                  )}
                   <span className="flex-grow text-right">{sport.title}</span>
-                  <FiChevronLeft size={16} className={activeSportId === sport._id ? "opacity-100" : "opacity-20"} />
+                  <FiChevronLeft
+                    size={16}
+                    className={
+                      activeSportId === sport._id ? "opacity-100" : "opacity-20"
+                    }
+                  />
                 </button>
               </li>
             ))}
           </ul>
         </div>
-
         {/* ستون دوم: دسته‌بندی‌ها */}
         <div className="w-[35%] border-l border-white/[0.06] p-3 overflow-y-auto">
-          <p className="text-[11px] font-bold text-gray-500 mb-4 px-2 uppercase tracking-widest">دسته‌بندی‌ها</p>
+          <p className="text-[11px] font-bold text-gray-500 mb-4 px-2 uppercase tracking-widest">
+            دسته‌بندی‌ها
+          </p>
           {activeSport?.categories?.length > 0 ? (
             <ul className="space-y-1">
               {activeSport.categories.map((cat) => (
                 <li key={cat._id}>
                   <button
                     onMouseEnter={() => setActiveCategoryId(cat._id)}
-                    onClick={() => window.location.href = `/categories/${cat.slug}`}
+                    onClick={() =>
+                      (window.location.href = `/categories/${cat.slug}`)
+                    }
                     className={listButtonStyle(activeCategoryId === cat._id)}
                   >
-                    {cat.icon && <div style={iconMaskStyle(cat.icon)} className="w-5 h-5 shrink-0" />}
-                    <span className="flex-grow text-right font-bold">{cat.title}</span>
-                    <FiChevronLeft size={16} className={activeCategoryId === cat._id ? "opacity-100" : "opacity-20"} />
+                    {cat.icon && (
+                      <div
+                        style={iconMaskStyle(cat.icon)}
+                        className="w-5 h-5 shrink-0"
+                      />
+                    )}
+                    <span className="flex-grow text-right font-bold">
+                      {cat.title}
+                    </span>
+                    <FiChevronLeft
+                      size={16}
+                      className={
+                        activeCategoryId === cat._id
+                          ? "opacity-100"
+                          : "opacity-20"
+                      }
+                    />
                   </button>
                 </li>
               ))}
             </ul>
           ) : (
-            <div className="text-gray-600 text-[13px] p-4 text-center">موردی یافت نشد</div>
+            <div className="text-gray-600 text-[13px] p-4 text-center">
+              موردی یافت نشد
+            </div>
           )}
         </div>
-
         {/* ستون سوم: برندها */}
         <div className="flex-1 p-3 overflow-y-auto bg-white/[0.01]">
-          <p className="text-[11px] font-bold text-gray-500 mb-4 px-2 uppercase tracking-widest">برندهای مرتبط</p>
+          <p className="text-[11px] font-bold text-gray-500 mb-4 px-2 uppercase tracking-widest">
+            برندهای مرتبط
+          </p>
           {activeCategory?.brands?.length > 0 ? (
             <ul className="space-y-1">
               {activeCategory.brands.map((brand) => (
@@ -151,17 +195,25 @@ function CategoryMenu({ navData, onClose }) {
                     href={`/brands/${brand.slug}`}
                     className={listButtonStyle(false)}
                   >
-                    {brand.icon && <div style={iconMaskStyle(brand.icon)} className="w-5 h-5 shrink-0 opacity-70 group-hover:opacity-100" />}
-                    <span className="flex-grow text-right font-medium">{brand.title}</span>
+                    {brand.icon && (
+                      <div
+                        style={iconMaskStyle(brand.icon)}
+                        className="w-5 h-5 shrink-0 opacity-70 group-hover:opacity-100"
+                      />
+                    )}
+                    <span className="flex-grow text-right font-medium">
+                      {brand.title}
+                    </span>
                   </a>
                 </li>
               ))}
             </ul>
           ) : (
-            <div className="text-gray-600 text-[13px] p-4 text-center">برندی یافت نشد</div>
+            <div className="text-gray-600 text-[13px] p-4 text-center">
+              برندی یافت نشد
+            </div>
           )}
         </div>
-
       </div>
     </div>
   );
@@ -362,6 +414,7 @@ export default function Navbar({ user }) {
               )}
 
               <div
+                id="cart-nav-icon"
                 className="relative cursor-pointer"
                 onClick={() => setOpenCart(true)}
               >
@@ -426,39 +479,44 @@ export default function Navbar({ user }) {
               </button>
             </div>
           ) : (
-            <div className="flex items-center justify-between w-full gap-2">
-              <Link href="/" className="flex-shrink-0">
-                <Image src="/logo/logo.svg" alt="logo" width={52} height={52} />
-              </Link>
+            <div className="flex items-center justify-between w-full">
+              {/* سمت راست: دسته‌بندی (همبرگری) و لوگو */}
+              <div className="flex items-center gap-2 flex-shrink-0">
+                <button
+                  onClick={() => setIsCategoryOpen(!isCategoryOpen)}
+                  className="text-white p-1"
+                >
+                  {isCategoryOpen ? (
+                    <FiX size={24} />
+                  ) : (
+                    <HiOutlineViewGrid size={24} />
+                  )}
+                </button>
+                <Link href="/" className="flex-shrink-0">
+                  <Image
+                    src="/logo/logo.svg"
+                    alt="logo"
+                    width={45}
+                    height={45}
+                  />
+                </Link>
+              </div>
 
-              <button
-                onClick={() => setIsCategoryOpen(!isCategoryOpen)}
-                className="flex items-center gap-1.5 px-3 py-2 bg-[#aa4725] text-white rounded-[var(--radius)] text-xs font-bold flex-shrink-0"
-              >
-                <HiOutlineViewGrid size={15} />
-                <span>دسته‌ها</span>
-              </button>
-
+              {/* سمت چپ: جمعه بازار، سرچ و سبد خرید */}
               <div className="flex items-center gap-3 flex-shrink-0">
+                <Link
+                  href="/second-hands"
+                  className="px-2.5 py-1 border border-[#aa4725] text-[#aa4725] rounded-[var(--radius)] text-[10px] font-bold bg-[#aa4725]/5 hover:bg-[#aa4725] hover:text-white transition-all whitespace-nowrap"
+                >
+                  جمعه بازار
+                </Link>
+
                 <button
                   onClick={() => setMobileSearchOpen(true)}
                   className="text-white"
                 >
                   <FiSearch size={21} />
                 </button>
-
-                {user ? (
-                  <Link href="/p-user" className="text-white">
-                    <FiUser size={21} />
-                  </Link>
-                ) : (
-                  <Link
-                    href="/login-register"
-                    className="text-white text-xs font-bold border border-white/30 px-2 py-1 rounded-[var(--radius)]"
-                  >
-                    ورود
-                  </Link>
-                )}
 
                 <div
                   className="relative cursor-pointer"
@@ -475,68 +533,116 @@ export default function Navbar({ user }) {
             </div>
           )}
 
-          {/* Mobile Category Dropdown */}
-          {isCategoryOpen && !mobileSearchOpen && (
-            <div className="absolute top-[75px] right-0 left-0 bg-[#20232ae6] border-b border-white/10 z-[100] max-h-[80vh] overflow-y-auto shadow-2xl">
-              {navData.map((sport) => (
-                <div key={sport._id} className="border-b border-white/[0.06]">
-                  <a
-                    href={`/category/${sport.slug}`}
+          {isCategoryOpen && (
+            <>
+              {/* Overlay تیره پشت منو */}
+              <div
+                className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[110]"
+                onClick={() => setIsCategoryOpen(false)}
+              />
+
+              {/* محتوای منو که از راست باز می‌شود */}
+              <div className="fixed top-0 right-0 h-full w-[280px] bg-[#1a1c22] z-[120] shadow-2xl transition-transform duration-300 overflow-y-auto">
+                <div className="p-5 border-b border-white/10 flex justify-between items-center bg-[#20232a]">
+                  <span className="text-white font-bold">فهرست محصولات</span>
+                  <button
                     onClick={() => setIsCategoryOpen(false)}
-                    className="group flex items-center gap-3 px-5 py-3.5 text-white font-bold text-sm hover:bg-white/10 hover:text-[#aa4725] transition-colors"
+                    className="text-white"
                   >
-                    {sport.icon && (
-                      <img
-                        src={sport.icon}
-                        alt={sport.title}
-                        className="w-5 h-5 object-contain"
-                        style={{ filter: "brightness(0) invert(1)" }}
-                      />
-                    )}
-                    <span>{sport.title}</span>
-                  </a>
+                    <FiX size={24} />
+                  </button>
+                </div>
 
-                  {sport.categories?.map((cat) => (
-                    <div key={cat._id}>
-                      <a
-                        href={`/category/${sport.slug}/${cat.slug}`}
+                <div className="py-2">
+                  {/* بخش پروفایل سریع در منو */}
+                  <div className="px-5 py-4 border-b border-white/5">
+                    {user ? (
+                      <Link
+                        href="/p-user"
                         onClick={() => setIsCategoryOpen(false)}
-                        className="group flex items-center gap-2.5 px-9 py-2.5 text-gray-300 text-sm hover:bg-white/10 hover:text-[#aa4725] transition-colors"
+                        className="flex items-center gap-3 text-white text-sm"
                       >
-                        {cat.icon && (
-                          <img
-                            src={cat.icon}
-                            alt={cat.title}
-                            className="w-4 h-4 object-contain"
-                            style={{ filter: "brightness(0) invert(1)" }}
-                          />
-                        )}
-                        <span>{cat.title}</span>
-                      </a>
+                        <div className="w-8 h-8 rounded-full bg-[#aa4725] flex items-center justify-center">
+                          <FiUser />
+                        </div>
+                        <span>{firstName} خوش آمدی</span>
+                      </Link>
+                    ) : (
+                      <Link
+                        href="/login-register"
+                        onClick={() => setIsCategoryOpen(false)}
+                        className="text-[#aa4725] text-sm font-bold"
+                      >
+                        ورود یا ثبت‌نام
+                      </Link>
+                    )}
+                  </div>
 
-                      {cat.brands?.map((brand) => (
-                        <a
-                          key={brand._id}
-                          href={`/brand/${brand.slug}`}
-                          onClick={() => setIsCategoryOpen(false)}
-                          className="group flex items-center gap-2 px-14 py-1.5 text-gray-500 text-xs hover:bg-white/10 hover:text-[#aa4725] transition-colors"
-                        >
-                          {brand.icon && (
+                  {/* لیست دسته‌بندی‌های آکاردئونی */}
+                  {navData.map((sport) => (
+                    <details
+                      key={sport._id}
+                      className="group border-b border-white/[0.03]"
+                    >
+                      <summary className="list-none flex items-center justify-between px-5 py-4 text-white cursor-pointer hover:bg-white/5 transition-colors">
+                        <div className="flex items-center gap-3">
+                          {sport.icon && (
                             <img
-                              src={brand.icon}
-                              alt={brand.title}
-                              className="w-3.5 h-3.5 object-contain rounded-sm"
-                              style={{ filter: "brightness(0) invert(1)" }}
+                              src={sport.icon}
+                              alt=""
+                              className="w-5 h-5 invert opacity-80"
                             />
                           )}
-                          <span>{brand.title}</span>
-                        </a>
-                      ))}
-                    </div>
+                          <span className="text-sm font-medium">
+                            {sport.title}
+                          </span>
+                        </div>
+                        <FiChevronLeft className="group-open:-rotate-90 transition-transform text-gray-500" />
+                      </summary>
+
+                      <div className="bg-black/20 pb-2">
+                        <Link
+                          href={`/category/${sport.slug}`}
+                          className="block px-12 py-2 text-xs text-[#aa4725] font-bold"
+                          onClick={() => setIsCategoryOpen(false)}
+                        >
+                          مشاهده صفحه {sport.title}
+                        </Link>
+                        {sport.categories?.map((cat) => (
+                          <div key={cat._id}>
+                            <Link
+                              href={`/category/${sport.slug}/${cat.slug}`}
+                              className="block px-12 py-2 text-gray-300 text-sm hover:text-white"
+                              onClick={() => setIsCategoryOpen(false)}
+                            >
+                              {cat.title}
+                            </Link>
+                          </div>
+                        ))}
+                      </div>
+                    </details>
                   ))}
+
+                  {/* لینک‌های ثابت */}
+                  <div className="mt-4 px-5 space-y-4">
+                    <Link
+                      href="/second-hands"
+                      className="block text-[var(--color-primary)] font-bold text-sm"
+                      onClick={() => setIsCategoryOpen(false)}
+                    >
+                       جمعه بازار (کارکرده)
+                    </Link>
+                    <Link
+                      href="/about-us"
+                      className="block text-gray-400 text-sm"
+                      onClick={() => setIsCategoryOpen(false)}
+                    >
+                      درباره تنادور
+                    </Link>
+                  </div>
                 </div>
-              ))}
-            </div>
+              </div>
+            </>
           )}
         </div>
       </nav>

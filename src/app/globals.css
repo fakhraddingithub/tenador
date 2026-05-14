@@ -1,8 +1,8 @@
 @import "tailwindcss";
 
 :root {
-  --primary: 15 64% 41%;    /* #aa4725 */
-  --secondary: 0 0% 6%;      /* مشکی مخملی */
+  --primary: 15 64% 41%; /* #aa4725 */
+  --secondary: 0 0% 6%; /* مشکی مخملی */
   --background: 0 0% 100%;
   --foreground: 0 0% 10%;
   --border: 0 0% 85%;
@@ -11,19 +11,20 @@
   --color-background: #ffffff;
   --color-text: #0d0d0d;
   --radius: 6px;
-  --font-sans: 'Vazirmatn', system-ui, -apple-system, sans-serif;
+  --font-sans: "Vazirmatn", system-ui, -apple-system, sans-serif;
 }
 
 @layer base {
   * {
     direction: rtl;
   }
-  
+
   body {
     font-family: var(--font-sans);
   }
 
-  a, button {
+  a,
+  button {
     cursor: pointer;
   }
 }
@@ -34,11 +35,11 @@
     backdrop-filter: blur(10px);
     border: 1px solid rgba(255, 255, 255, 0.1);
   }
-  
+
   .diagonal-separator {
     clip-path: polygon(0 0, 100% 0, 100% 100%, 0 85%);
   }
-  
+
   .diagonal-separator-reverse {
     clip-path: polygon(0 15%, 100% 0, 100% 100%, 0 100%);
   }
@@ -56,32 +57,32 @@
    Continuous Marquee Animation
    ================================ */
 
-   @keyframes marquee {
-    0% {
-      transform: translate3d(0, 0, 0);
-    }
-    100% {
-      transform: translate3d(-50%, 0, 0);
-    }
+@keyframes marquee {
+  0% {
+    transform: translate3d(0, 0, 0);
   }
-  
-  /* کلاس انیمیشن */
-  .animate-marquee {
-    animation: marquee 25s linear infinite;
-    will-change: transform;
+  100% {
+    transform: translate3d(-50%, 0, 0);
   }
-  
-  /* توقف حرکت روی hover */
-  .animate-marquee:hover {
-    animation-play-state: paused;
-  }
-  
+}
+
+/* کلاس انیمیشن */
+.animate-marquee {
+  animation: marquee 25s linear infinite;
+  will-change: transform;
+}
+
+/* توقف حرکت روی hover */
+.animate-marquee:hover {
+  animation-play-state: paused;
+}
+
 /* ===== Container ===== */
 .rmdp-wrapper {
   background-color: #ffffff !important;
   border-radius: 1rem !important;
   border: 1px solid #e5e7eb !important; /* gray-200 */
-  box-shadow: 0 10px 30px rgba(0,0,0,0.08) !important;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.08) !important;
   font-family: inherit !important;
 }
 
@@ -121,7 +122,7 @@
 }
 
 .rmdp-day span:hover {
-  opacity: .5;
+  opacity: 0.5;
   background-color: var(--color-primary) !important;
 }
 
@@ -158,7 +159,7 @@
 
 .rmdp-input:focus {
   border-color: var(--color-secondary) !important;
-  box-shadow: 0 0 0 3px rgba(0,0,0,0.05);
+  box-shadow: 0 0 0 3px rgba(0, 0, 0, 0.05);
 }
 
 /* ۱. تنظیم عرض اسکرول‌بار */
@@ -168,13 +169,13 @@
 
 /* ۲. استایل پس‌زمینه (Track) */
 ::-webkit-scrollbar-track {
-  background: #3b3f49; 
+  background: #3b3f49;
   border-radius: 10px;
 }
 
 /* ۳. استایل خودِ دستگیره اسکرول (Thumb) */
 ::-webkit-scrollbar-thumb {
-  background-color: var(--color-primary); 
+  background-color: var(--color-primary);
   border-radius: 10px;
   border: 3px solid #ffffff0d; /* ایجاد فاصله بین دستگیره و بدنه */
 }
@@ -182,7 +183,7 @@
 /* ۴. تغییر رنگ وقتی موس روی آن می‌رود */
 ::-webkit-scrollbar-thumb:hover {
   background-color: var(--color-primary);
-  opacity: .8;
+  opacity: 0.8;
 }
 
 @keyframes fadeIn {
@@ -211,76 +212,114 @@
 }
 
 @keyframes shimmer {
-  100% { transform: translateX(100%); }
+  100% {
+    transform: translateX(100%);
+  }
 }
 
-   /* تنظیمات بولت‌ها برای قرارگیری در وسط */
-   .hero-custom-pagination {
-    display: flex !important;
-    justify-content: center !important;
-    width: 100% !important;
-  }
+/* تنظیمات بولت‌ها برای قرارگیری در وسط */
+.hero-custom-pagination {
+  display: flex !important;
+  justify-content: center !important;
+  width: 100% !important;
+}
 
-  .hero-custom-pagination .swiper-pagination-bullet {
-    width: 10px !important;
-    height: 10px !important;
-    background: rgba(255, 255, 255, 0.6) !important;
-    opacity: 1 !important;
-    cursor: pointer !important;
-    transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1) !important;
-    border-radius: 50% !important;
-    margin: 0 6px !important;
-    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.3);
-  }
+.hero-custom-pagination .swiper-pagination-bullet {
+  width: 10px !important;
+  height: 10px !important;
+  background: rgba(255, 255, 255, 0.6) !important;
+  opacity: 1 !important;
+  cursor: pointer !important;
+  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1) !important;
+  border-radius: 50% !important;
+  margin: 0 6px !important;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.3);
+}
 
-  .hero-custom-pagination .swiper-pagination-bullet-active {
-    width: 35px !important;
-    background: #aa4725 !important;
-    border-radius: 5px !important;
-  }
+.hero-custom-pagination .swiper-pagination-bullet-active {
+  width: 35px !important;
+  background: #aa4725 !important;
+  border-radius: 5px !important;
+}
 
+.slider-pagination-2 .swiper-pagination-bullet {
+  width: 8px;
+  height: 8px;
+  background: #e2e8f0;
+  opacity: 1;
+  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+}
+.slider-pagination-2 .swiper-pagination-bullet-active {
+  width: 28px;
+  border-radius: 4px;
+  background: #aa4725;
+}
+@media (max-width: 640px) {
   .slider-pagination-2 .swiper-pagination-bullet {
-    width: 8px;
-    height: 8px;
-    background: #e2e8f0;
-    opacity: 1;
-    transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+    width: 6px;
+    height: 6px;
   }
   .slider-pagination-2 .swiper-pagination-bullet-active {
-    width: 28px;
-    border-radius: 4px;
-    background: #aa4725;
+    width: 20px;
   }
-  @media (max-width: 640px) {
-    .slider-pagination-2 .swiper-pagination-bullet {
-      width: 6px;
-      height: 6px;
-    }
-    .slider-pagination-2 .swiper-pagination-bullet-active {
-      width: 20px;
-    }
-  }
+}
 
-  @keyframes fadeIn {
-    from { opacity: 0; }
-    to { opacity: 1; }
+@keyframes fadeIn {
+  from {
+    opacity: 0;
   }
-  
-  @keyframes slideInLeft {
-    from {
-      transform: translateX(-100%);
-      opacity: 0;
-    }
-    to {
-      transform: translateX(0);
-      opacity: 1;
-    }
+  to {
+    opacity: 1;
   }
-  
-  .animate-fadeIn {
-    animation: fadeIn 0.2s ease-out;
+}
+
+@keyframes slideInLeft {
+  from {
+    transform: translateX(-100%);
+    opacity: 0;
   }
-  
-  .animate-slideInLeft {
-    animation: slideInLeft 0.3s ease-out;
+  to {
+    transform: translateX(0);
+    opacity: 1;
   }
+}
+
+.animate-fadeIn {
+  animation: fadeIn 0.2s ease-out;
+}
+
+.animate-slideInLeft {
+  animation: slideInLeft 0.3s ease-out;
+}
+
+/* شخصی‌سازی استایل‌های Toastify */
+.Toastify__toast--success {
+  background-color: #f0fdf4 !important; /* سبز خیلی ملایم برای پس‌زمینه */
+  color: #166534 !important;
+  border-right: 4px solid #22c55e; /* نوار کنار */
+}
+
+.Toastify__toast--error {
+  background-color: #fef2f2 !important;
+  color: #991b1b !important;
+  border-right: 4px solid #ef4444;
+}
+
+/* اگر از توست‌های پیش‌فرض یا اینفو استفاده می‌کنید که تم اصلی سایت را داشته باشند */
+.Toastify__toast--info,
+.Toastify__toast--default {
+  background-color: var(--color-background) !important;
+  color: var(--color-primary) !important;
+  border-right: 4px solid var(--color-primary);
+}
+
+.Toastify__progress-bar--info,
+.Toastify__progress-bar--default {
+  background: var(--color-primary) !important;
+}
+
+/* فونت توست‌ها را هم با سایت هماهنگ کنید */
+.Toastify__toast {
+  font-family: var(--font-sans) !important;
+  direction: rtl;
+}

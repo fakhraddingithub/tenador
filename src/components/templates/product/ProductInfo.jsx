@@ -1,19 +1,17 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useRef } from "react";
 import Link from "next/link";
 import ProductHeader from "./ProductHeader";
 import ProductPrice from "./ProductPrice";
 import AddToCartButton from "./AddToCartButton";
 import WishlistButton from "./WishlistButton";
 import { addToCart } from "@/lib/cart";
-import { toast } from "react-toastify";
 
 /* ─────────────────────────────────────────
    Helpers
 ───────────────────────────────────────── */
 
-/** { color: ["سفید","مشکی"], size: ["S","M"] } from variants array */
 function groupVariantOptions(variants = []) {
   const map = {};
   for (const variant of variants) {
@@ -27,7 +25,6 @@ function groupVariantOptions(variants = []) {
   );
 }
 
-/** Exact-match variant on every selected attribute key */
 function findMatchingVariant(variants = [], selection = {}) {
   if (!Object.keys(selection).length) return null;
   return (
@@ -38,19 +35,12 @@ function findMatchingVariant(variants = [], selection = {}) {
   );
 }
 
-/**
- * Build a label map from category.variantAttributes:
- * [{ name: "color", label: "رنگ" }, ...]  →  { color: "رنگ", ... }
- */
 function buildLabelMap(variantAttributes = []) {
   return Object.fromEntries(
     variantAttributes.map((a) => [a.name, a.label])
   );
 }
 
-/**
- * Calculate discount based on quantity
- */
 function calculateDiscount(quantity) {
   if (quantity >= 3) return 15;
   if (quantity >= 2) return 10;
@@ -66,11 +56,11 @@ const ProductInfo = ({ product, selectedVariant, onVariantChange }) => {
 
   const [selection, setSelection] = useState({});
   const [quantity, setQuantity] = useState(1);
+  const [errorMessage, setErrorMessage] = useState(""); // استیت برای مدیریت خطای انتخاب ویژگی
+  const addToCartWrapperRef = useRef(null); // رفرنس برای پیدا کردن مکان دکمه در صفحه
 
-  // Check if product has discount label - بررسی دقیق‌تر
   const hasDiscountLabel = product.label === "discount";
 
-  // Label map derived from category definition — single source of truth
   const labelMap = useMemo(
     () => buildLabelMap(product.category?.variantAttributes),
     [product.category]
@@ -86,6 +76,7 @@ const ProductInfo = ({ product, selectedVariant, onVariantChange }) => {
   function handleSelect(attrKey, value) {
     const newSelection = { ...selection, [attrKey]: value };
     setSelection(newSelection);
+    setErrorMessage(""); // با هر انتخاب جدید، پیام خطا پاک می‌شود
 
     if (optionKeys.every((k) => newSelection[k])) {
       onVariantChange(findMatchingVariant(product.variants, newSelection));
@@ -94,10 +85,7 @@ const ProductInfo = ({ product, selectedVariant, onVariantChange }) => {
     }
   }
 
- // اگر selectedVariant?.price مقدار 0، null، undefined یا false باشد، product.basePrice استفاده می‌شود
-const basePrice = (selectedVariant && selectedVariant.price) || product.basePrice;
-
-  // Calculate discounted price if discount label exists
+  const basePrice = (selectedVariant && selectedVariant.price) || product.basePrice;
   const discountPercent = hasDiscountLabel ? calculateDiscount(quantity) : 0;
   const finalUnitPrice = Math.round(basePrice * (1 - discountPercent / 100));
   const totalPrice = finalUnitPrice * quantity;
@@ -109,14 +97,75 @@ const basePrice = (selectedVariant && selectedVariant.price) || product.basePric
     setQuantity(newQty);
   }
 
+ // فانکشن ساخت انیمیشن پرواز عکس محصول به سبد خرید
+ const triggerFlyToCartAnimation = () => {
+  const cartIcon = document.getElementById("cart-nav-icon");
+  const buttonElem = addToCartWrapperRef.current;
+  
+  // گرفتن آدرس عکس محصول (مطمئن شوید مسیر درست است)
+  const productImgSrc = product.mainImage || product.image; 
+
+  if (!cartIcon || !buttonElem || !productImgSrc) return;
+
+  const btnRect = buttonElem.getBoundingClientRect();
+  const cartRect = cartIcon.getBoundingClientRect();
+
+  // ایجاد المان تصویر برای پرواز
+  const flyer = document.createElement("img");
+  flyer.src = productImgSrc;
+
+  // استایل‌های تصویر متحرک
+  Object.assign(flyer.style, {
+    position: "fixed",
+    top: `${btnRect.top}px`,
+    left: `${btnRect.left + btnRect.width / 2 - 25}px`, // مرکز کردن نسبت به دکمه
+    width: "60px",
+    height: "60px",
+    objectFit: "cover",
+    borderRadius: "12px", // کمی گرد برای زیبایی
+    boxShadow: "0 10px 25px rgba(0,0,0,0.2)",
+    zIndex: "9999",
+    pointerEvents: "none",
+    transition: "all 0.9s cubic-bezier(0.42, 0, 0.58, 1)", // حرکت نرم شتاب‌دار
+    opacity: "1",
+  });
+
+  document.body.appendChild(flyer);
+
+  // شروع انیمیشن
+  requestAnimationFrame(() => {
+    flyer.style.top = `${cartRect.top}px`;
+    flyer.style.left = `${cartRect.left}px`;
+    flyer.style.width = "20px"; // کوچک شدن همزمان با رسیدن به سبد
+    flyer.style.height = "20px";
+    flyer.style.opacity = "0.2";
+    flyer.style.transform = "rotate(360deg)"; // یک چرخش جذاب هنگام پرواز
+  });
+
+  // پاکسازی و افکت لرزش سبد خرید
+  setTimeout(() => {
+    if (document.body.contains(flyer)) {
+      document.body.removeChild(flyer);
+    }
+    // افکت لرزش سبد خرید در هدر
+    cartIcon.classList.add("cart-bounce");
+    setTimeout(() => cartIcon.classList.remove("cart-bounce"), 300);
+  }, 900);
+};
+
   function handleAddToCart() {
     if (hasVariants) {
-      if (optionKeys.some((k) => !selection[k])) {
-        toast.warning("لطفاً تمام ویژگی‌های محصول را انتخاب کنید");
+      // پیدا کردن ویژگی‌هایی که هنوز انتخاب نشده‌اند
+      const missingKeys = optionKeys.filter((k) => !selection[k]);
+      
+      if (missingKeys.length > 0) {
+        // تبدیل کلید ویژگی به لیبل فارسی
+        const missingLabels = missingKeys.map((k) => labelMap[k] || k).join(" و ");
+        setErrorMessage(`لطفاً ${missingLabels} را انتخاب کنید.`);
         return;
       }
       if (!selectedVariant) {
-        toast.error("این ترکیب موجود نیست");
+        setErrorMessage("این ترکیب در حال حاضر موجود نیست.");
         return;
       }
       addToCart(product, quantity, selectedVariant, finalUnitPrice);
@@ -124,18 +173,8 @@ const basePrice = (selectedVariant && selectedVariant.price) || product.basePric
       addToCart(product, quantity, null, finalUnitPrice);
     }
     
-    if (hasDiscountLabel && discountPercent > 0) {
-      toast.success(
-        <div>
-          <div className="font-bold">{quantity} عدد به سبد خرید اضافه شد</div>
-          <div className="text-sm text-green-600 mt-1">
-            🎉 شما {totalSavings.toLocaleString("fa-IR")} تومان صرفه‌جویی کردید!
-          </div>
-        </div>
-      );
-    } else {
-      toast.success(`${quantity} عدد به سبد خرید اضافه شد`);
-    }
+    setErrorMessage(""); // پاک کردن خطا در صورت موفقیت
+    triggerFlyToCartAnimation(); // اجرای انیمیشن پرواز
   }
 
   const handleWishlist = (isWishlisted) => {
@@ -168,10 +207,8 @@ const basePrice = (selectedVariant && selectedVariant.price) || product.basePric
 
       {/* Price Section */}
       <div className="space-y-3">
-        {/* Main Price Display */}
         {hasDiscountLabel && discountPercent > 0 ? (
           <div className="space-y-2">
-            {/* Original Price - Crossed out */}
             <div className="flex items-center gap-2">
               <span className="text-lg text-gray-400 line-through">
                 {basePrice.toLocaleString("fa-IR")} تومان
@@ -181,7 +218,6 @@ const basePrice = (selectedVariant && selectedVariant.price) || product.basePric
               </span>
             </div>
             
-            {/* Discounted Price */}
             <div className="flex items-baseline gap-2">
               <span className="text-3xl font-bold text-[#aa4725]">
                 {finalUnitPrice.toLocaleString("fa-IR")}
@@ -189,7 +225,6 @@ const basePrice = (selectedVariant && selectedVariant.price) || product.basePric
               <span className="text-lg text-gray-600">تومان</span>
             </div>
 
-            {/* Savings Badge */}
             <div className="inline-flex items-center gap-2 px-3 py-1.5 bg-gradient-to-r from-green-50 to-emerald-50 border border-green-200 rounded-lg">
               <svg
                 className="w-4 h-4 text-green-600"
@@ -288,18 +323,8 @@ const basePrice = (selectedVariant && selectedVariant.price) || product.basePric
               disabled={quantity <= 1}
               className="px-4 py-3 bg-gray-50 hover:bg-gray-100 disabled:bg-gray-50 disabled:text-gray-300 transition-colors"
             >
-              <svg
-                className="w-5 h-5"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M20 12H4"
-                />
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 12H4" />
               </svg>
             </button>
             
@@ -316,18 +341,8 @@ const basePrice = (selectedVariant && selectedVariant.price) || product.basePric
               onClick={() => handleQuantityChange(quantity + 1)}
               className="px-4 py-3 bg-gray-50 hover:bg-gray-100 transition-colors"
             >
-              <svg
-                className="w-5 h-5"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M12 4v16m8-8H4"
-                />
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
               </svg>
             </button>
           </div>
@@ -369,7 +384,7 @@ const basePrice = (selectedVariant && selectedVariant.price) || product.basePric
           )}
         </div>
 
-        {/* Discount Tiers Display - فقط برای محصولات با label discount */}
+        {/* Discount Tiers Display */}
         {hasDiscountLabel && (
           <div className="grid grid-cols-3 gap-2">
             {[
@@ -427,6 +442,7 @@ const basePrice = (selectedVariant && selectedVariant.price) || product.basePric
         {/* Price Summary for Discount Products */}
         {hasDiscountLabel && discountPercent > 0 && (
           <div className="bg-gradient-to-br from-gray-50 to-gray-100 border-2 border-gray-200 rounded-xl p-4 space-y-3">
+            {/* بقیه خلاصه‌قیمت دست‌نخورده باقی می‌ماند */}
             <div className="flex items-center justify-between text-sm">
               <span className="text-gray-600">قیمت هر واحد:</span>
               <div className="flex items-center gap-2">
@@ -470,10 +486,25 @@ const basePrice = (selectedVariant && selectedVariant.price) || product.basePric
         )}
       </div>
 
-      {/* CTA */}
-      <div className="flex items-center gap-3 mt-2">
-        <AddToCartButton onAddToCart={handleAddToCart} />
-        <WishlistButton onToggle={handleWishlist} />
+      {/* CTA Section */}
+      <div className="mt-4">
+        {/* نمایش ارور بالا سر دکمه با انیمیشن Pulse در صورت وجود */}
+        {errorMessage && (
+          <div className="flex items-center gap-2 py-2.5 px-4 mb-3 text-sm font-bold text-red-600 bg-red-50 border border-red-200 rounded-lg animate-pulse w-fit">
+            <svg className="w-5 h-5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+              <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+            </svg>
+            <span>{errorMessage}</span>
+          </div>
+        )}
+
+        <div className="flex items-center gap-3">
+          {/* قرار دادن دکمه افزودن به سبد در یک Wrapper برای دریافت موقعیت مختصاتی */}
+          <div className="flex-1" ref={addToCartWrapperRef}>
+            <AddToCartButton onAddToCart={handleAddToCart} />
+          </div>
+          <WishlistButton onToggle={handleWishlist} />
+        </div>
       </div>
     </div>
   );

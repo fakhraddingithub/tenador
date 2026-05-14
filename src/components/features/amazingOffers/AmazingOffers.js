@@ -37,15 +37,9 @@ export default function ProductSlider({
       <div className="absolute top-12 left-6 text-[8rem] md:text-[15rem] font-black text-gray-200/15 select-none pointer-events-none z-0 tracking-tighter uppercase italic leading-none whitespace-nowrap">
         TENADOR
       </div>
-      <div
-        className="absolute inset-0 opacity-[0.02] pointer-events-none z-0"
-        style={{
-          backgroundImage: `url("data:image/svg+xml,%3Csvg width='20' height='20' viewBox='0 0 20 20' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='%23aa4725' fill-opacity='1' fill-rule='evenodd'%3E%3Ccircle cx='3' cy='3' r='3'/%3E%3C/g%3E%3C/svg%3E")`,
-        }}
-      ></div>
 
-      <div className="container mx-auto px-4 relative z-10">
-        {/* هدر اصلاح شده برای موبایل */}
+      <div className="container mx-auto px-4 md:px-16 lg:px-24 xl:px-40 relative z-10">
+        {/* هدر */}
         <div className="relative flex flex-col md:flex-row md:items-end justify-between mb-10 md:mb-16">
           <div className="relative">
             <h2 className="text-2xl md:text-4xl font-black text-gray-900 leading-tight">
@@ -63,7 +57,6 @@ export default function ProductSlider({
             </p>
           </div>
 
-          {/* ناوبری: در موبایل مخفی برای تمیزی بیشتر */}
           <div className="hidden md:flex items-center mt-8 md:mt-0">
             <div className="flex bg-white/80 backdrop-blur-md shadow-xl shadow-black/5 rounded-[16px] p-1 border border-white/50">
               <button className="product-prev-btn-2 w-12 h-12 flex items-center justify-center text-gray-400 hover:text-[#aa4725] hover:bg-[#aa4725]/5 transition-all duration-300 rounded-[12px]">
@@ -77,8 +70,8 @@ export default function ProductSlider({
           </div>
         </div>
 
-        {/* اسلایدر با کارت‌های کوچک‌تر */}
-        <div className="relative">
+        {/* اسلایدر */}
+        <div className="relative overflow-hidden">
           <Swiper
             modules={[Navigation, Autoplay, Pagination]}
             spaceBetween={12}
@@ -102,23 +95,19 @@ export default function ProductSlider({
                 slidesPerView: 2.5,
                 spaceBetween: 16,
               },
-
               768: {
                 slidesPerView: 3,
                 spaceBetween: 18,
               },
-
               1024: {
                 slidesPerView: 4,
                 spaceBetween: 20,
               },
-
               1400: {
                 slidesPerView: 4,
                 spaceBetween: 24,
               },
             }}
-            className="!overflow-visible"
           >
             {products.map((product, index) => (
               <SwiperSlide key={product._id || index} className="h-auto pb-10">
@@ -134,18 +123,18 @@ export default function ProductSlider({
               </SwiperSlide>
             ))}
           </Swiper>
+        </div>
 
-          {/* پیجینیشن و لینک پایین */}
-          <div className="flex flex-col sm:flex-row items-center justify-between gap-6 mt-6">
-            <div className="slider-pagination-2 !w-auto flex gap-2"></div>
-            <Link
-              href="/products"
-              className="group flex items-center gap-2 bg-white px-5 py-2.5 md:px-6 md:py-3 rounded-full shadow-sm border border-gray-100 text-gray-900 font-bold text-xs md:text-sm hover:bg-[#aa4725] hover:text-white transition-all duration-300 w-full sm:w-auto justify-center"
-            >
-              مشاهده کاتالوگ محصولات
-              <FiPlusCircle className="text-lg md:text-xl group-hover:rotate-180 transition-transform duration-500" />
-            </Link>
-          </div>
+        {/* پیجینیشن و لینک پایین */}
+        <div className="flex flex-col sm:flex-row items-center justify-between gap-6 mt-6">
+          <div className="slider-pagination-2 !w-auto flex gap-2"></div>
+          <Link
+            href="/products"
+            className="group flex items-center gap-2 bg-white px-5 py-2.5 md:px-6 md:py-3 rounded-full shadow-sm border border-gray-100 text-gray-900 font-bold text-xs md:text-sm hover:bg-[#aa4725] hover:text-white transition-all duration-300 w-full sm:w-auto justify-center"
+          >
+            مشاهده کاتالوگ محصولات
+            <FiPlusCircle className="text-lg md:text-xl group-hover:rotate-180 transition-transform duration-500" />
+          </Link>
         </div>
       </div>
 

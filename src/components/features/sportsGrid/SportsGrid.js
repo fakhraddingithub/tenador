@@ -29,8 +29,8 @@ export default function SportsGrid({ categories = [] }) {
     <section className="py-20 bg-white text-black">
       <div className="container mx-auto px-4">
         {/* هدر بخش */}
-        <div className="mb-12 flex flex-col md:flex-row justify-between items-end border-b border-gray-100 pb-6">
-          <div className="border-r-4 border-[#aa4725] pr-4">
+        <div className="mb-12 flex flex-col md:flex-row justify-between items-start md:items-end border-b border-gray-100 pb-6 text-right">
+          <div className="border-r-4 border-[#aa4725] pr-4 w-full md:w-auto">
             <h2 className="text-3xl md:text-4xl font-bold text-gray-900 mb-2">
               رشته‌های ورزشی
             </h2>
@@ -122,61 +122,61 @@ function CategoryCard({ category, className }) {
 
       {/* عنوان در حالت عادی (با هاور محو می‌شود) */}
       <div className="absolute inset-x-0 bottom-0 p-6 flex items-center justify-between transition-all duration-500 opacity-100 group-hover:opacity-0 group-hover:translate-y-4">
-  {/* بخش نام و آیکون در یک ردیف */}
-  <div className="flex items-center gap-3">
-    {category.icon && (
-      <div className="w-8 h-8 relative flex-shrink-0">
-        <Image
-          src={category.icon}
-          alt={category.name}
-          fill
-          className="object-contain brightness-0 invert"
-        />
-      </div>
-    )}
-    <h3 className="text-white text-2xl font-bold">{category.title}</h3>
-  </div>
+        {/* بخش نام و آیکون در یک ردیف */}
+        <div className="flex items-center gap-3">
+          {category.icon && (
+            <div className="w-8 h-8 relative flex-shrink-0">
+              <Image
+                src={category.icon}
+                alt={category.name}
+                fill
+                className="object-contain brightness-0 invert"
+              />
+            </div>
+          )}
+          <h3 className="text-white text-2xl font-bold">{category.title}</h3>
+        </div>
 
-  {/* اگر آیکون یا المان دیگری در سمت چپ (مثل فلش) داشتی اینجا قرار می‌گیرد */}
-</div>
+        {/* اگر آیکون یا المان دیگری در سمت چپ (مثل فلش) داشتی اینجا قرار می‌گیرد */}
+      </div>
 
       {/* پنل شیشه‌ای کشویی (در هاور از پایین بالا می‌آید) */}
       <div className="absolute inset-x-0 bottom-0 p-4 translate-y-[120%] group-hover:translate-y-0 transition-transform duration-500 ease-out z-20">
-      <div
-  className="bg-[#20232ae6]/80 backdrop-blur-lg border border-[#20232ae6] p-5 flex justify-between items-center shadow-[0_8px_30px_rgb(0,0,0,0.12)]"
-  style={{ borderRadius: "6px" }}
->
-  <div>
-    <span className="text-white text-[11px] font-bold block mb-1 opacity-90 drop-shadow-md">
-      تجهیزات تخصصی
-    </span>
-    
-    {/* ردیف آیکون و عنوان */}
-    <div className="flex items-center gap-3">
-      {category.icon && (
-        <div className="w-7 h-7 relative flex-shrink-0">
-          <Image
-            src={category.icon}
-            alt={category.name}
-            fill
-            className="object-contain brightness-0 invert"
-          />
-        </div>
-      )}
-      <h3 className="text-white font-bold text-2xl drop-shadow-lg">
-        {category.title}
-      </h3>
-    </div>
-  </div>
+        <div
+          className="bg-[#20232ae6]/80 backdrop-blur-lg border border-[#20232ae6] p-5 flex justify-between items-center shadow-[0_8px_30px_rgb(0,0,0,0.12)]"
+          style={{ borderRadius: "6px" }}
+        >
+          <div>
+            <span className="text-white text-[11px] font-bold block mb-1 opacity-90 drop-shadow-md">
+              تجهیزات تخصصی
+            </span>
 
-  {/* دکمه فلش */}
-  <div
-    className="bg-[#aa4725] text-white p-3 rotate-45 group-hover:rotate-0 transition-transform duration-500 delay-100 shadow-md flex-shrink-0"
-    style={{ borderRadius: "6px" }}
-  >
-    <FiArrowUpLeft size={22} />
-  </div>
-</div>
+            {/* ردیف آیکون و عنوان */}
+            <div className="flex items-center gap-3">
+              {category.icon && (
+                <div className="w-7 h-7 relative flex-shrink-0">
+                  <Image
+                    src={category.icon}
+                    alt={category.name}
+                    fill
+                    className="object-contain brightness-0 invert"
+                  />
+                </div>
+              )}
+              <h3 className="text-white font-bold text-2xl drop-shadow-lg">
+                {category.title}
+              </h3>
+            </div>
+          </div>
+
+          {/* دکمه فلش */}
+          <div
+            className="bg-[#aa4725] text-white p-3 rotate-45 group-hover:rotate-0 transition-transform duration-500 delay-100 shadow-md flex-shrink-0"
+            style={{ borderRadius: "6px" }}
+          >
+            <FiArrowUpLeft size={22} />
+          </div>
+        </div>
       </div>
     </Link>
   );

@@ -1,18 +1,23 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, Suspense } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import AuthForm from '@/components/auth/AuthForm';
 import GoogleButton from '@/components/auth/GoogleButton';
 import { useForgotPassword } from '@/components/auth/useForgotPassword';
 import { showToast } from '@/lib/toast';
 
-export default function LoginRegisterPage() {
+// کامپوننت اصلی که محتوا را رندر می‌کند
+function AuthContent() {
   const [mode, setMode] = useState('login'); // 'login' | 'register'
   const [loading, setLoading] = useState(false);
   const router = useRouter();
   const { forgotPassword } = useForgotPassword();
+
+  // گرفتن آدرس بازگشت از URL (مثلاً /login?callbackUrl=/cart)
+  const searchParams = useSearchParams();
+  const callbackUrl = searchParams.get('callbackUrl') || '/';
 
   const handleSubmit = async (data) => {
     setLoading(true);
@@ -33,14 +38,17 @@ export default function LoginRegisterPage() {
         return;
       }
 
-      showToast.success(mode === 'login' ? 'ورود موفق' : 'ثبت‌نام موفق');
+      showToast.success(mode === 'login' ? 'خوش آمدید!' : 'ثبت‌نام با موفقیت انجام شد');
 
       if (mode === 'login') {
-        router.push('/');
+        // ریدایرکت به صفحه قبلی و تازه‌سازی استیت‌ها
+        router.push(callbackUrl);
+        router.refresh();
       } else {
+        // هدایت به تب لاگین بعد از ثبت‌نام موفق
         setMode('login');
       }
-    } catch {
+    } catch (error) {
       showToast.error('خطا در ارتباط با سرور');
     } finally {
       setLoading(false);
@@ -48,68 +56,95 @@ export default function LoginRegisterPage() {
   };
 
   const handleGoogleLogin = () => {
-    window.location.href = '/api/auth/google';
+    // ارسال callbackUrl به بک‌اندر برای ریدایرکت بعد از تایید گوگل
+    const encodedCallback = encodeURIComponent(callbackUrl);
+    window.location.href = `/api/auth/google?callbackUrl=${encodedCallback}`;
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-[hsl(var(--background))] px-4">
-      <div className="w-full max-w-md bg-white border border-[hsl(var(--border))] rounded-md p-6">
-        {/* Tabs */}
-        <div className="flex justify-center gap-8 mb-5 text-sm font-medium">
-          {['login', 'register'].map((item) => (
-            <button
-              key={item}
-              onClick={() => setMode(item)}
-              className={`pb-1 transition
-                ${
-                  mode === item
-                    ? 'text-[hsl(var(--primary))] border-b-2 border-[hsl(var(--primary))]'
-                    : 'text-gray-400 hover:text-gray-600'
-                }`}
-            >
-              {item === 'login' ? 'ورود' : 'ثبت‌نام'}
-            </button>
-          ))}
-        </div>
-
-        {/* Slider */}
-        <div className="relative overflow-hidden">
-          <AnimatePresence mode="wait">
-            <motion.div
-              key={mode}
-              initial={{ opacity: 0, x: mode === 'login' ? 40 : -40 }}
-              animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: mode === 'login' ? -40 : 40 }}
-              transition={{ duration: 0.2 }}
-            >
-              <AuthForm
-                isLogin={mode === 'login'}
-                onSubmit={handleSubmit}
-                loading={loading}
+    <div className="w-full max-w-md bg-white border border-[hsl(var(--border))] rounded-2xl p-6 shadow-xl shadow-slate-200/50">
+      {/* Tabs */}
+      <div className="flex justify-center gap-10 mb-8 text-sm font-bold relative">
+        {['login', 'register'].map((item) => (
+          <button
+            key={item}
+            onClick={() => setMode(item)}
+            className={`pb-2 transition-all relative
+              ${mode === item 
+                ? 'text-[#aa4725]' 
+                : 'text-slate-400 hover:text-slate-600'
+              }`}
+          >
+            {item === 'login' ? 'ورود به حساب' : 'ایجاد حساب'}
+            {mode === item && (
+              <motion.div 
+                layoutId="activeTab"
+                className="absolute bottom-0 left-0 right-0 h-0.5 bg-[#aa4725]" 
               />
+            )}
+          </button>
+        ))}
+      </div>
 
-              {mode === 'login' && (
+      {/* Form Slider */}
+      <div className="relative overflow-hidden">
+        <AnimatePresence mode="wait">
+          <motion.div
+            key={mode}
+            initial={{ opacity: 0, x: mode === 'login' ? 30 : -30 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: mode === 'login' ? -30 : 30 }}
+            transition={{ duration: 0.3, ease: "easeInOut" }}
+          >
+            <AuthForm
+              isLogin={mode === 'login'}
+              onSubmit={handleSubmit}
+              loading={loading}
+            />
+
+            {mode === 'login' && (
+              <div className="text-right">
                 <button
                   onClick={forgotPassword}
-                  className="mt-3 text-xs text-[hsl(var(--primary))] hover:opacity-80"
+                  className="mt-4 text-xs font-medium text-[#aa4725] hover:underline"
                 >
-                  فراموشی رمز عبور؟
+                  رمز عبور را فراموش کرده‌اید؟
                 </button>
-              )}
-            </motion.div>
-          </AnimatePresence>
-        </div>
-
-        {/* Divider */}
-        <div className="my-5 flex items-center gap-3">
-          <span className="flex-1 h-px bg-[hsl(var(--border))]" />
-          <span className="text-xs text-gray-400">یا</span>
-          <span className="flex-1 h-px bg-[hsl(var(--border))]" />
-        </div>
-
-        {/* Google */}
-        <GoogleButton onClick={handleGoogleLogin} disabled={loading} />
+              </div>
+            )}
+          </motion.div>
+        </AnimatePresence>
       </div>
+
+      {/* Divider */}
+      <div className="my-8 flex items-center gap-4">
+        <span className="flex-1 h-px bg-slate-100" />
+        <span className="text-xs font-medium text-slate-400">یا ورود با</span>
+        <span className="flex-1 h-px bg-slate-100" />
+      </div>
+
+      {/* Google Button */}
+      <GoogleButton onClick={handleGoogleLogin} disabled={loading} />
+
+      <p className="mt-6 text-center text-[10px] text-slate-400">
+        با ورود به سایت، تمامی قوانین و مقررات ما را می‌پذیرید.
+      </p>
+    </div>
+  );
+}
+
+// صفحه اصلی که باید در خروجی باشد
+export default function LoginRegisterPage() {
+  return (
+    <div className="min-h-screen flex items-center justify-center bg-slate-50 px-4 py-10">
+      <Suspense fallback={
+        <div className="flex flex-col items-center gap-4">
+          <div className="w-10 h-10 border-4 border-[#aa4725] border-t-transparent rounded-full animate-spin" />
+          <p className="text-sm text-slate-500">در حال بارگذاری...</p>
+        </div>
+      }>
+        <AuthContent />
+      </Suspense>
     </div>
   );
 }
