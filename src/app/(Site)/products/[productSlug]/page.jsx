@@ -45,26 +45,27 @@ export default async function ProductPage({ params }) {
 
   // دریافت نرخ تبدیل
   const rate = await getCachedRate();
-  
+
   // تبدیل قیمت پایه محصول
   const priceInToman = eurToToman(fetchProduct.basePrice, rate);
-  
+
   // تبدیل قیمت تمام واریانت‌ها
-  const convertedVariants = fetchProduct.variants?.map(variant => ({
-    ...variant,
-    price: eurToToman(variant.price, rate)
-  })) || [];
-  
+  const convertedVariants =
+    fetchProduct.variants?.map((variant) => ({
+      ...variant,
+      price: eurToToman(variant.price, rate),
+    })) || [];
+
   // محصول نهایی با قیمت‌های تبدیل شده
   const product = {
     ...fetchProduct,
     basePrice: priceInToman,
-    variants: convertedVariants
+    variants: convertedVariants,
   };
 
   const productSchema = generateProductSchema(product);
   const breadcrumbSchema = generateBreadcrumbSchema(product);
-  
+
   return (
     <>
       <script
@@ -79,6 +80,25 @@ export default async function ProductPage({ params }) {
           __html: JSON.stringify(breadcrumbSchema),
         }}
       />
+
+<div className="hidden md:block relative h-[200px] w-full overflow-hidden">
+  <img
+    src={product.category.image || "/images/default-category.jpg"}
+    alt={product.category.name}
+    className="w-full h-full object-cover scale-105"
+  />
+  
+  <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent z-10" />
+  
+  <div className="absolute inset-0 z-20 flex flex-col justify-center items-center text-center px-4">
+    <h1 className="text-1xl md:text-4xl font-bold text-white mb-4 drop-shadow-xl">
+      {product.category.title}
+    </h1>
+
+    <div className="w-20 h-1 bg-[var(--color-primary)] rounded-full mb-4" />
+  </div>
+</div>
+
       <div className="max-w-7xl mx-auto px-4 py-8">
         <ProductTemplate product={product} />
       </div>

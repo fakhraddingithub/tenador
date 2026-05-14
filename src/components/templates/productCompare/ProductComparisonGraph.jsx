@@ -286,7 +286,7 @@ export default function ProductComparisonGraph({ technicalStats = {} }) {
           <RadarChart cx="50%" cy="50%" outerRadius="78%" data={data}>
             <PolarGrid stroke="#e5e7eb" />
             <PolarAngleAxis dataKey="subject" tick={<CustomTick />} tickLine={false} />
-            <PolarRadiusAxis angle={90} tickCount={10} domain={[0, (categoryStats[0]?.max ?? 100)]} tick={{ fill: "#9ca3af", fontSize: 11 }} />
+            <PolarRadiusAxis angle={90}  ticks={[20, 40, 60, 80, 100]} domain={[0, (categoryStats[0]?.max ?? 100)]} tick={{ fill: "#9ca3af", fontSize: 11 }} />
             <Tooltip
               contentStyle={{
                 borderRadius: 8,
