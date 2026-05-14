@@ -83,6 +83,8 @@ function generateCombinations(options) {
 /* ----------------------------------
    GET
 ---------------------------------- */
+import { getCachedRate, eurToToman } from "@/lib/Exchangerate"; // آدرس فایل اکسچنج را چک کنید
+
 export async function GET(req, { params }) {
   try {
     await connectToDB();
@@ -102,19 +104,42 @@ export async function GET(req, { params }) {
       return NextResponse.json({ error: "محصول پیدا نشد" }, { status: 404 });
     }
 
-    product.variants = product.variants || [];
-    product.tag = product.tag || [];
-    product.gallery = product.gallery || [];
-    product.attributes = product.attributes || {};
-    product.technicalStats = product.technicalStats || {};
+    // ۱. دریافت نرخ ارز کش شده
+    const rate = await getCachedRate();
 
+    // ۲. تبدیل قیمت پایه محصول به تومان
+    const basePriceInToman = eurToToman(product.basePrice, rate);
+
+    // ۳. دریافت قیمت نهایی از PriceCache و تبدیل آن
     const priceDoc = await PriceCache.findOne({ productId }).lean();
-    const price = priceDoc || {
-      finalPrice: product.basePrice,
-      bestDiscount: 0,
+    
+    // اگر داکیوومنت قیمت وجود داشت تبدیل شود، در غیر این صورت قیمت پایه محصول استفاده شود
+    const finalPriceInEur = priceDoc ? priceDoc.finalPrice : product.basePrice;
+    
+    const price = {
+      finalPrice: eurToToman(finalPriceInEur, rate),
+      bestDiscount: priceDoc?.bestDiscount || 0,
+      basePrice: basePriceInToman, // اضافه کردن قیمت پایه برای نمایش قیمت خط خورده در کلاینت
     };
 
-    return NextResponse.json({ product, price });
+    // ۴. تبدیل قیمت واریانت‌ها (اگر واریانت دارید)
+    const convertedVariants = product.variants?.map(v => ({
+      ...v,
+      price: eurToToman(v.price, rate)
+    })) || [];
+
+    // آماده‌سازی آبجکت محصول نهایی
+    const finalProduct = {
+      ...product,
+      basePrice: basePriceInToman,
+      variants: convertedVariants,
+      tag: product.tag || [],
+      gallery: product.gallery || [],
+      attributes: product.attributes || {},
+      technicalStats: product.technicalStats || {},
+    };
+
+    return NextResponse.json({ product: finalProduct, price });
   } catch (err) {
     console.log(err);
     return NextResponse.json({ error: err.message }, { status: 500 });
