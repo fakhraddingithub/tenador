@@ -33,7 +33,7 @@ export default function Sidebar({ isOpen, setIsOpen }) {
 
   return (
     <aside className={`
-      fixed inset-y-0 right-0 z-40 w-72 border-l border-[hsl(var(--border))] bg-white transition-transform duration-300 ease-in-out lg:static lg:translate-x-0
+      fixed inset-y-0 right-0 z-40 w-72 border-l pt-16 lg:pt-0 border-[hsl(var(--border))] bg-white transition-transform duration-300 ease-in-out lg:static lg:translate-x-0
       ${isOpen ? 'translate-x-0' : 'translate-x-full'}
     `}>
       <div className="flex h-full flex-col p-4 justify-between">
