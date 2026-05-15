@@ -8,10 +8,16 @@ import {
   FaTrash,
   FaCreditCard,
 } from 'react-icons/fa'
+
 import { useState, useEffect } from 'react'
 import { toast } from 'react-toastify'
 import Swal from 'sweetalert2'
-import { getCart, updateQuantity, removeFromCart } from '@/lib/cart'
+
+import {
+  getCart,
+  updateQuantity,
+  removeFromCart,
+} from '@/lib/cart'
 
 const CartModule = () => {
   const [cart, setCart] = useState([])
@@ -28,6 +34,7 @@ const CartModule = () => {
 
   const handleUpdateQuantity = (productId, newQuantity) => {
     if (newQuantity < 1) return
+
     updateQuantity(productId, newQuantity)
     setCart(getCart())
   }
@@ -45,12 +52,13 @@ const CartModule = () => {
     if (result.isConfirmed) {
       removeFromCart(productId)
       setCart(getCart())
+
       toast.success('حذف شد')
     }
   }
 
   const totalAmount = cart.reduce(
-    (sum, item) => sum + item.product.basePrice * item.quantity,
+    (sum, item) => sum + item.finalUnitPrice * item.quantity,
     0
   )
 
@@ -77,6 +85,7 @@ const CartModule = () => {
       {cart.length === 0 ? (
         <div className="rounded-[var(--radius)] border border-[hsl(var(--border))] bg-white p-8 text-center">
           <FaShoppingCart className="mx-auto mb-3 text-3xl opacity-30" />
+
           <p className="text-sm text-[hsl(var(--foreground)/0.6)]">
             سبد خرید شما خالی است
           </p>
@@ -85,9 +94,8 @@ const CartModule = () => {
         <div className="space-y-4">
           {/* Items */}
           {cart.map((item) => (
-            console.log(item),
             <motion.div
-              key={item.product._id}
+              key={item.productId}
               initial={{ opacity: 0, scale: 0.96 }}
               animate={{ opacity: 1, scale: 1 }}
               className="
@@ -97,28 +105,40 @@ const CartModule = () => {
                 bg-white p-4
               "
             >
+              {/* تصویر */}
               <img
-                src={item.product.mainImage || '/placeholder.jpg'}
-                alt={item.product.name}
+                src={item.image || '/placeholder.jpg'}
+                alt={item.name || 'product'}
                 className="h-16 w-16 rounded-[var(--radius)] object-cover"
               />
 
+              {/* اطلاعات */}
               <div className="flex-1 space-y-1">
                 <p className="text-sm font-medium">
-                  {item.product.name}
+                  {item.name || 'محصول بدون نام'}
                 </p>
+
                 <p className="text-xs text-[hsl(var(--foreground)/0.6)]">
-                  {item.product.basePrice.toLocaleString('fa-IR')} تومان
+                  {item.finalUnitPrice.toLocaleString('fa-IR')} تومان
                 </p>
               </div>
 
-              {/* Quantity */}
+              {/* تعداد */}
               <div className="flex items-center gap-1">
                 <button
                   onClick={() =>
-                    handleUpdateQuantity(item.product._id, item.quantity - 1)
+                    handleUpdateQuantity(
+                      item.productId,
+                      item.quantity - 1
+                    )
                   }
-                  className="rounded-[var(--radius)] border px-2 py-1 text-xs hover:bg-[hsl(var(--border)/0.5)]"
+                  className="
+                    rounded-[var(--radius)]
+                    border
+                    px-2 py-1
+                    text-xs
+                    hover:bg-[hsl(var(--border)/0.5)]
+                  "
                 >
                   <FaMinus />
                 </button>
@@ -129,22 +149,42 @@ const CartModule = () => {
 
                 <button
                   onClick={() =>
-                    handleUpdateQuantity(item.product._id, item.quantity + 1)
+                    handleUpdateQuantity(
+                      item.productId,
+                      item.quantity + 1
+                    )
                   }
-                  className="rounded-[var(--radius)] border px-2 py-1 text-xs hover:bg-[hsl(var(--border)/0.5)]"
+                  className="
+                    rounded-[var(--radius)]
+                    border
+                    px-2 py-1
+                    text-xs
+                    hover:bg-[hsl(var(--border)/0.5)]
+                  "
                 >
                   <FaPlus />
                 </button>
               </div>
 
-              {/* Price & remove */}
+              {/* قیمت نهایی */}
               <div className="text-left">
                 <p className="text-sm font-semibold text-[hsl(var(--primary))]">
-                  {(item.product.basePrice * item.quantity).toLocaleString('fa-IR')}
+                  {(
+                    item.finalUnitPrice * item.quantity
+                  ).toLocaleString('fa-IR')}
+                  {' '}
+                  تومان
                 </p>
+
                 <button
-                  onClick={() => handleRemoveFromCart(item.product._id)}
-                  className="mt-1 flex items-center gap-1 text-xs text-red-600 hover:underline"
+                  onClick={() =>
+                    handleRemoveFromCart(item.productId)
+                  }
+                  className="
+                    mt-1 flex items-center gap-1
+                    text-xs text-red-600
+                    hover:underline
+                  "
                 >
                   <FaTrash />
                   حذف
@@ -153,10 +193,11 @@ const CartModule = () => {
             </motion.div>
           ))}
 
-          {/* Summary */}
+          {/* خلاصه */}
           <div className="rounded-[var(--radius)] border border-[hsl(var(--border))] bg-white p-4">
             <div className="mb-3 flex items-center justify-between text-sm">
               <span>مجموع</span>
+
               <span className="font-semibold text-[hsl(var(--primary))]">
                 {totalAmount.toLocaleString('fa-IR')} تومان
               </span>

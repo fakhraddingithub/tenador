@@ -1,48 +1,62 @@
-import '@/app/globals.css';
-import 'react-toastify/dist/ReactToastify.css';
-import { ToastContainer } from 'react-toastify';
-import { cookies } from 'next/headers'
-import { redirect } from 'next/navigation'
-import { verifyToken } from 'base/utils/auth'
+'use client'
+import "@/app/globals.css"
+import { useState } from 'react'
+import { usePathname } from 'next/navigation'
+import { motion, AnimatePresence } from 'framer-motion'
 
-export default async function UserDashboardLayout({ children }) {
-  const cookieStore = await cookies()
-  const token = cookieStore.get('accessToken')?.value
+import Navbar from '@/components/modules/dashboard/Navbar'
+import Sidebar from '@/components/modules/dashboard/Sidebar'
 
-  if (!token) {
-    redirect('/login-register')
-  }
-
-  const user = verifyToken(token)
-  if (!user) {
-    redirect('/login-register')
-  }
+export default function RootLayout({ children }) {
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false)
+  const pathname = usePathname()
 
   return (
-    <html lang="fa-IR" dir="rtl">
-      <head>
-        <link 
-          href="https://cdn.jsdelivr.net/gh/rastikerdar/vazirmatn@v33.003/Vazirmatn-font-face.css" 
-          rel="stylesheet" 
-          type="text/css" 
-        />
-      </head>
-      <body className="bg-[var(--color-background)] text-[var(--color-text)]">
-        <main className="min-h-screen">
-        {children}
-        </main>
-        <ToastContainer
-           position="top-left"
-           autoClose={3000}
-           hideProgressBar={false}
-           newestOnTop={false}
-           closeOnClick
-           rtl={true}
-           pauseOnFocusLoss
-           draggable
-           pauseOnHover
-        />
+    <html lang="fa" dir="rtl">
+      <body>
+        <div className="min-h-screen bg-[#f8fafc] text-slate-800 rtl font-sans">
+
+          {/* منوی بالایی */}
+          <Navbar
+            isSidebarOpen={isSidebarOpen}
+            setIsSidebarOpen={setIsSidebarOpen}
+            userName="احمد علوی"
+          />
+
+          <div className="flex pt-16">
+            {/* منوی کناری */}
+            <Sidebar
+              isOpen={isSidebarOpen}
+              setIsOpen={setIsSidebarOpen}
+            />
+
+            {/* محتوای اصلی صفحات */}
+            <main className="flex-1 min-w-0 p-4 lg:p-8">
+              <div className="max-w-5xl mx-auto">
+                <AnimatePresence mode="wait">
+                  <motion.div
+                    key={pathname}
+                    initial={{ opacity: 0, y: 12 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -12 }}
+                    transition={{ duration: 0.22, ease: 'easeOut' }}
+                  >
+                    {children}
+                  </motion.div>
+                </AnimatePresence>
+              </div>
+            </main>
+          </div>
+
+          {/* بک‌دراپ موبایل */}
+          {isSidebarOpen && (
+            <div
+              className="fixed inset-0 z-30 bg-slate-900/20 backdrop-blur-xs lg:hidden"
+              onClick={() => setIsSidebarOpen(false)}
+            />
+          )}
+        </div>
       </body>
     </html>
-  );
+  )
 }
