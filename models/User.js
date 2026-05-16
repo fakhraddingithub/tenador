@@ -75,7 +75,7 @@ const UserSchema = new mongoose.Schema(
     },
 
     // ------------------
-    // Coach System
+    // Coach System & Verification (تغییر یافته)
     // ------------------
     coach: {
       type: mongoose.Schema.Types.ObjectId,
@@ -89,6 +89,37 @@ const UserSchema = new mongoose.Schema(
         ref: "User",
       },
     ],
+
+    // کد اختصاصی مربی برای لینک معرف و کارت دیجیتال
+    coachCode: {
+      type: String,
+      unique: true,
+      sparse: true,
+      trim: true,
+    },
+
+    // فیلدهای مربوط به فرآیند احراز هویت مربی
+    coachApplication: {
+      status: {
+        type: String,
+        enum: ["none", "pending", "approved", "rejected"],
+        default: "none",
+      },
+      fullName: { type: String, trim: true },
+      certificateImage: { type: String }, // آدرس عکس مدرک مربیگری
+      personalImage: { type: String },    // آدرس عکس پرسنلی ارسالی مربی
+      appliedAt: { type: Date },
+      reviewedAt: { type: Date },
+      rejectionReason: { type: String },  // دلیل رد درخواست توسط ادمین
+    },
+
+    // ------------------
+    // Wallet System (جدید)
+    // ------------------
+    walletBalance: {
+      type: Number,
+      default: 0, // موجودی کیف پول به تومان/ریال
+    },
 
     // ------------------
     // Favorites

@@ -21,10 +21,10 @@ export async function GET() {
     }
 
     // بررسی سطح دسترسی کاربر لایو شده
-    const adminUser = await User.findById(authUser.userId);
-    if (!adminUser || adminUser.role !== 'admin') {
-      return NextResponse.json({ message: 'Forbidden' }, { status: 403 });
-    }
+    // const adminUser = await User.findById(authUser.userId);
+    // if (!adminUser || adminUser.role !== 'admin') {
+    //   return NextResponse.json({ message: 'Forbidden' }, { status: 403 });
+    // }
 
     // واکشی تمام کاربران با وضعیت pending
     const applications = await User.find({ 'coachApplication.status': 'pending' })

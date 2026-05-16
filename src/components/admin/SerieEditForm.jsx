@@ -60,7 +60,7 @@ export default function SerieEditForm({ id }) {
 
       logo: "",
 
-      icon: "",
+      headImage: "",
 
       image: "",
     });
@@ -134,7 +134,7 @@ export default function SerieEditForm({ id }) {
 
           logo: data?.logo || "",
 
-          icon: data?.icon || "",
+          headImage: data?.headImage || "",
 
           image: data?.image || "",
         });
@@ -228,7 +228,7 @@ export default function SerieEditForm({ id }) {
 
       if (res.ok) {
         Swal.fire({
-          icon: "success",
+          headImage: "success",
 
           title:
             "ویرایش انجام شد",
@@ -335,7 +335,7 @@ export default function SerieEditForm({ id }) {
 
             <div className="grid grid-cols-2 gap-4">
               <ImageUpload
-                label="لوگو"
+                label="آیکون"
                 value={formData.logo}
                 onChange={(url) =>
                   setFormData((p) => ({
@@ -348,16 +348,16 @@ export default function SerieEditForm({ id }) {
               />
 
               <ImageUpload
-                label="آیکون"
-                value={formData.icon}
+                label="تصویر هدر"
+                value={formData.headImage}
                 onChange={(url) =>
                   setFormData((p) => ({
                     ...p,
 
-                    icon: url,
+                    headImage: url,
                   }))
                 }
-                folder="series/icons"
+                folder="series/headImages"
               />
             </div>
           </div>

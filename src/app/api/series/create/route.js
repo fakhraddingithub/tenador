@@ -17,7 +17,7 @@ export async function POST(req) {
       description,
       colors,
       logo,
-      icon,
+      headImage,
       image,
 
       brand,
@@ -149,7 +149,7 @@ export async function POST(req) {
       colors,
 
       logo,
-      icon,
+      headImage,
       image,
 
       brand,

@@ -68,8 +68,8 @@ export default function SerieCreateForm({
       logo:
         initialData?.logo || "",
 
-      icon:
-        initialData?.icon || "",
+      headImage:
+        initialData?.headImage || "",
 
       image:
         initialData?.image || "",
@@ -160,7 +160,7 @@ export default function SerieCreateForm({
 
       if (res.ok) {
         Swal.fire({
-          icon: "success",
+          headImage: "success",
 
           title:
             "سری با موفقیت ایجاد شد",
@@ -243,7 +243,7 @@ export default function SerieCreateForm({
 
             <div className="grid grid-cols-2 gap-4">
               <ImageUpload
-                label="لوگو"
+                label="آیکون"
                 value={formData.logo}
                 onChange={(url) =>
                   setFormData((p) => ({
@@ -255,15 +255,15 @@ export default function SerieCreateForm({
               />
 
               <ImageUpload
-                label="آیکون"
-                value={formData.icon}
+                label="تصویر هدر"
+                value={formData.headImage}
                 onChange={(url) =>
                   setFormData((p) => ({
                     ...p,
-                    icon: url,
+                    headImage: url,
                   }))
                 }
-                folder="series/icons"
+                folder="series/headImages"
               />
             </div>
           </div>

@@ -9,62 +9,75 @@ export async function POST(request) {
 
     const { phone, password, name } = await request.json();
 
-    // Validation
+    // ۱. اعتبار سنجی فیلدهای اجباری
     if (!phone || !password) {
-      return NextResponse.json({ message: 'Phone and password are required' }, { status: 400 });
+      return NextResponse.json({ message: 'شماره تلفن و رمز عبور الزامی هستند' }, { status: 400 });
     }
 
     if (!validatePhone(phone)) {
-      return NextResponse.json({ message: 'Invalid phone number' }, { status: 400 });
+      return NextResponse.json({ message: 'شماره تلفن وارد شده معتبر نیست' }, { status: 400 });
     }
 
     if (!validatePassword(password)) {
-      return NextResponse.json({ message: 'Password must be at least 8 characters, include uppercase, lowercase, number, and special character' }, { status: 400 });
+      return NextResponse.json({ 
+        message: 'رمز عبور باید حداقل ۸ کاراکتر و شامل حروف بزرگ، کوچک، عدد و کاراکتر خاص باشد' 
+      }, { status: 400 });
     }
 
-    // Check if user exists (prevent duplicate users across providers)
-    const existingUser = await User.findOne({ phone });
+    // ۲. بررسی تکراری نبودن شماره تلفن
+    const existingUser = await User.findOne({ phone: phone.trim() });
     if (existingUser) {
-      return NextResponse.json({ message: 'User already exists' }, { status: 409 });
+      return NextResponse.json({ message: 'کاربری با این شماره تلفن از قبل وجود دارد' }, { status: 409 });
     }
 
-    // Hash password
+    // ۳. هش کردن رمز عبور
     const hashedPassword = await hasher(password);
 
-    // Create user
+    // ۴. ساخت کاربر جدید بر اساس ساختار اسکیمای اصلاح شده
     const newUser = new User({
       provider: 'local',
-      phone,
+      phone: phone.trim(),
       password: hashedPassword,
-      name: name || '',
+      name: name ? name.trim() : '',
+      role: 'user',       // بر اساس default اسکیما
+      level: 0,          // بر اساس default اسکیما
+      phoneVerified: false // برای ثبت نام لوکال ابتدا تایید نشده است
     });
 
     await newUser.save();
 
-    // Generate tokens
-    const accessToken = tokenGenrator({ userId: newUser._id, phone: newUser.phone });
+    // ۵. تولید توکن‌های داخلی سیستم
+    const accessToken = tokenGenrator({ userId: newUser._id, phone: newUser.phone, role: newUser.role });
     const refreshToken = generateRefreshToken({ userId: newUser._id, phone: newUser.phone });
 
-    // Set cookies
-    const response = NextResponse.json({ message: 'Registration successful', user: { id: newUser._id, phone: newUser.phone, name: newUser.name } }, { status: 201 });
+    // ۶. تنظیم کوکی‌ها و خروجی موفقیت‌آمیز
+    const response = NextResponse.json(
+      { 
+        message: 'ثبت نام با موفقیت انجام شد', 
+        user: { id: newUser._id, phone: newUser.phone, name: newUser.name, role: newUser.role } 
+      }, 
+      { status: 201 }
+    );
 
+    // توکن دسترسی کوتاه‌مدت (۵ دقیقه)
     response.cookies.set('accessToken', accessToken, {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
       sameSite: 'strict',
-      maxAge: 5 * 60, // 5 minutes
+      maxAge: 5 * 60, 
     });
 
+    // توکن نوسازی بلندمدت (۱۵ روز)
     response.cookies.set('refreshToken', refreshToken, {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
       sameSite: 'strict',
-      maxAge: 15 * 24 * 60 * 60, // 15 days
+      maxAge: 15 * 24 * 60 * 60, 
     });
 
     return response;
   } catch (error) {
     console.error('Registration error:', error);
-    return NextResponse.json({ message: 'Internal server error' }, { status: 500 });
+    return NextResponse.json({ message: 'خطای سرور در پردازش ثبت نام' }, { status: 500 });
   }
 }

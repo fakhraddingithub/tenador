@@ -38,7 +38,7 @@ const schema = new mongoose.Schema(
       default: "",
     },
 
-    icon: {
+    headImage: {
       type: String,
       default: "",
     },

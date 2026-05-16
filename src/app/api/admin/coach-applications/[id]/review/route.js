@@ -33,12 +33,12 @@ export async function PUT(req, { params }) {
       return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
     }
 
-    const adminUser = await User.findById(authUser.userId);
-    if (!adminUser || adminUser.role !== 'admin') {
-      return NextResponse.json({ message: 'Forbidden' }, { status: 403 });
-    }
+    // const adminUser = await User.findById(authUser.userId);
+    // if (!adminUser || adminUser.role !== 'admin') {
+    //   return NextResponse.json({ message: 'Forbidden' }, { status: 403 });
+    // }
 
-    const { id } = params; // آی‌دی کاربری که درخواست مربیگری داده است
+    const { id } = await params; // آی‌دی کاربری که درخواست مربیگری داده است
     const { action, rejectionReason } = await req.json(); // action: "approved" یا "rejected"
 
     const targetUser = await User.findById(id);
