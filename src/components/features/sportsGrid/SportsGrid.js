@@ -32,7 +32,9 @@ export default function SportsGrid({ categories = [] }) {
         <div className="mb-12 flex flex-col md:flex-row justify-between items-start md:items-end border-b border-gray-100 pb-6 text-right">
           <div className="border-r-4 border-[#aa4725] pr-4 w-full md:w-auto">
             <h2 className="text-3xl md:text-4xl font-bold text-gray-900 mb-2">
-              رشته‌های ورزشی
+              <span className="text-[#aa4725]">رشته‌های </span>
+              <span>ورزشی</span>
+
             </h2>
             <p className="text-gray-500 text-sm font-medium">
               تجهیزات تخصصی برای هر سبک بازی
