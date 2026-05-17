@@ -43,7 +43,7 @@ export default async function SportDynamicSlugPage({ params }) {
   const slugs = [sportSlug, ...(slug || [])];
 
   const [searchData, rate] = await Promise.all([
-    fetch(`${process.env.NEXT_PUBLIC_SITE_URL}/api/query`, {
+    fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/api/query`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
