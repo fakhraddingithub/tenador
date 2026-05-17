@@ -66,67 +66,163 @@ const GrungeFilter = () => (
 function SerieCard({ serie, sportSlug, index }) {
   const [hovered, setHovered] = useState(false);
 
-  const primary = serie.colors?.primary || "#c0392b";
-  const secondary = serie.colors?.secondary || "#e74c3c";
+  const primary =
+    serie.colors?.primary || "#c0392b";
+
+  const secondary =
+    serie.colors?.secondary || "#e74c3c";
+
   const words = splitName(serie.name);
 
-  // گرادینت از پایین (Primary) به بالا (Secondary)
-  const gradient = `linear-gradient(to top, ${primary} 0%, ${secondary} 100%)`;
+  // گرادینت
+  const gradient = `
+    linear-gradient(
+      to top,
+      ${primary} 0%,
+      ${secondary} 100%
+    )
+  `;
 
   return (
-    <>
-      <GrungeFilter />
-      <Link
-        href={`/${sportSlug}/series/${serie.slug}`}
-        onMouseEnter={() => setHovered(true)}
-        onMouseLeave={() => setHovered(false)}
-        className="relative flex-shrink-0 w-[240px] sm:w-[280px] md:w-[310px] rounded-[24px] overflow-hidden cursor-pointer select-none shadow-2xl"
+    <Link
+      href={`/${sportSlug}/series/${serie.slug}`}
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
+      className="
+        relative
+        block
+        w-full
+        overflow-hidden
+        rounded-[28px]
+        shadow-[0_10px_40px_rgba(0,0,0,0.12)]
+        transition-all
+        duration-500
+        group
+      "
+    >
+      {/* نسبت کارت */}
+      <div
+        className="relative aspect-[2.8/4]"
         style={{
-          aspectRatio: "2.8/4",
           background: gradient,
         }}
       >
-        {/* ── لوگوی سری (بالا چپ - سفید شده) ── */}
+        {/* ───────────────── Logo ───────────────── */}
         {serie.logo && (
-          <div className="absolute top-1 left-6 z-40">
+          <div className="absolute top-4 left-4 z-40">
             <img
               src={serie.logo}
-              alt="logo"
-              className="h-15 w-auto object-contain"
-              style={{ filter: "brightness(0) invert(1)" }}
-            />
-          </div>
-        )}
-
-        {/* ── تصویر محصول (بسیار بزرگ - ۹۰٪ کارت) ── */}
-        {serie.coverImage && (
-          <div className="absolute inset-0 z-[10] flex items-center justify-center">
-            <img
-              src={serie.coverImage}
               alt={serie.name}
-              className="w-[100%] h-[100%] object-contain transition-transform duration-500"
+              className="
+                h-12
+                md:h-14
+                w-auto
+                object-contain
+                opacity-90
+              "
               style={{
-                transform: hovered ? "scale(1.1)" : "scale(1)",
-                filter: "drop-shadow(0 15px 35px rgba(0,0,0,0.3))",
+                filter:
+                  "brightness(0) invert(1)",
               }}
             />
           </div>
         )}
 
-        {/* ── متن نویزی (روی عکس قرار گرفته - zIndex 20) ── */}
-        <div className="absolute inset-0 z-[20] flex flex-col items-center justify-center pointer-events-none">
+        {/* ───────────────── Background Glow ───────────────── */}
+        <div
+          className="
+            absolute
+            inset-0
+            opacity-30
+            blur-3xl
+            scale-125
+          "
+          style={{
+            background: `
+              radial-gradient(
+                circle,
+                ${secondary} 0%,
+                transparent 70%
+              )
+            `,
+          }}
+        />
+
+        {/* ───────────────── Product Image ───────────────── */}
+        {serie.image && (
+          <div
+            className="
+              absolute
+              inset-0
+              z-[10]
+              flex
+              items-center
+              justify-center
+              p-4
+            "
+          >
+            <img
+              src={serie.image}
+              alt={serie.name}
+              className="
+                w-full
+                h-full
+                object-contain
+                transition-all
+                duration-700
+                group-hover:scale-110
+              "
+              style={{
+                filter:
+                  "drop-shadow(0 20px 35px rgba(0,0,0,0.35))",
+              }}
+            />
+          </div>
+        )}
+
+        {/* ───────────────── Big Typography ───────────────── */}
+        <div
+          className="
+            absolute
+            inset-0
+            z-[20]
+            flex
+            flex-col
+            items-center
+            justify-center
+            pointer-events-none
+            px-4
+          "
+        >
           {words.map((word, i) => (
             <span
               key={i}
-              className="text-white leading-[0.8] text-center uppercase"
+              className="
+                text-white
+                uppercase
+                font-black
+                leading-[0.82]
+                tracking-tight
+                text-center
+                select-none
+              "
               style={{
-                fontSize: "2.8rem",
-                fontWeight: "1000",
-                WebkitTextStroke: "1.5px rgba(0, 0, 0, 0.5)",
+                fontSize:
+                  "clamp(2rem,4vw,4rem)",
+
+                WebkitTextStroke:
+                  "1.5px rgba(0,0,0,0.45)",
+
                 textShadow:
-                  "0 8px 0 rgba(0, 0, 0, 0.8), 0 3px 2px rgba(0, 0, 0, 0.6)",
-                filter: "url(#visage-grunge-heavy)",
-                opacity: 0.9,
+                  `
+                  0 4px 10px rgba(0,0,0,0.45),
+                  0 10px 30px rgba(0,0,0,0.25)
+                `,
+
+                filter:
+                  "url(#visage-grunge-heavy)",
+
+                opacity: 0.95,
               }}
             >
               {word}
@@ -134,17 +230,80 @@ function SerieCard({ serie, sportSlug, index }) {
           ))}
         </div>
 
-        {/* ── عنوان فارسی (پایین سمت راست) ── */}
-        <div className="absolute bottom-6 right-6 z-30 text-right">
-          <h3
-            className="text-white font-black text-base"
-            style={{ textShadow: "0 2px 10px rgba(0,0,0,0.6)" }}
+        {/* ───────────────── Overlay ───────────────── */}
+        <div
+          className="
+            absolute
+            inset-0
+            bg-gradient-to-t
+            from-black/60
+            via-transparent
+            to-black/10
+            z-[25]
+          "
+        />
+
+        {/* ───────────────── Bottom Content ───────────────── */}
+        <div
+          className="
+            absolute
+            bottom-0
+            left-0
+            right-0
+            z-30
+            p-5
+            flex
+            items-end
+            justify-between
+          "
+        >
+          <div className="text-right">
+            <h3
+              className="
+                text-white
+                font-black
+                text-lg
+                md:text-xl
+                leading-tight
+              "
+              style={{
+                textShadow:
+                  "0 3px 10px rgba(0,0,0,0.5)",
+              }}
+            >
+              {serie.title}
+            </h3>
+
+            {serie.brand?.title && (
+              <p className="text-white/75 text-xs mt-1 font-medium">
+                {serie.brand.title}
+              </p>
+            )}
+          </div>
+
+          <div
+            className="
+              w-11
+              h-11
+              rounded-2xl
+              bg-white/15
+              backdrop-blur-md
+              border
+              border-white/20
+              flex
+              items-center
+              justify-center
+              text-white
+              group-hover:translate-x-1
+              transition-all
+              duration-300
+            "
           >
-            {serie.title}
-          </h3>
+            <FiChevronLeft size={20} />
+          </div>
         </div>
-      </Link>
-    </>
+      </div>
+    </Link>
   );
 }
 
