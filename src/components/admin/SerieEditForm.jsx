@@ -23,47 +23,42 @@ import { useRouter } from "next/navigation";
 
 import ImageUpload from "./ImageUpload";
 
-export default function SerieEditForm({ id }) {
+export default function SerieEditForm({ id,brandId }) {
   const router = useRouter();
 
-  const [loading, setLoading] =
-    useState(false);
+  const [loading, setLoading] = useState(false);
 
-  const [fetching, setFetching] =
-    useState(true);
+  const [fetching, setFetching] = useState(true);
 
-  const [brandName, setBrandName] =
-    useState("");
+  const [brandName, setBrandName] = useState("");
 
-  const [parentSeries, setParentSeries] =
-    useState([]);
+  const [parentSeries, setParentSeries] = useState([]);
 
-  const [formData, setFormData] =
-    useState({
-      name: "",
+  const [formData, setFormData] = useState({
+    name: "",
 
-      title: "",
+    title: "",
 
-      description: "",
+    description: "",
 
-      brand: "",
+    brand: "",
 
-      parentSerie: "",
+    parentSerie: "",
 
-      isLimitedEdition: false,
+    isLimitedEdition: false,
 
-      colors: {
-        primary: "#000000",
+    colors: {
+      primary: "#000000",
 
-        secondary: "#ffffff",
-      },
+      secondary: "#ffffff",
+    },
 
-      logo: "",
+    logo: "",
 
-      headImage: "",
+    headImage: "",
 
-      image: "",
-    });
+    image: "",
+  });
 
   /*
    |------------------------------------------------------------------
@@ -74,62 +69,41 @@ export default function SerieEditForm({ id }) {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const [serieRes, seriesRes] =
-          await Promise.all([
-            fetch(`/api/series/${id}`),
+        const [serieRes, seriesRes] = await Promise.all([
+          fetch(`/api/series/${id}`),
 
-            fetch(`/api/series`),
-          ]);
+          fetch(`/api/brands/${brandId}`),
+        ]);
 
-        const serieResult =
-          await serieRes.json();
+        const serieResult = await serieRes.json();
 
-        const seriesResult =
-          await seriesRes.json();
+        const seriesResult = await seriesRes.json();
 
         if (!serieRes.ok) {
-          toast.error(
-            "خطا در دریافت اطلاعات سری"
-          );
+          toast.error("خطا در دریافت اطلاعات سری");
 
           return;
         }
 
-        const data =
-          serieResult.data ||
-          serieResult;
+        const data = serieResult.data || serieResult;
 
         setFormData({
           name: data?.name || "",
 
           title: data?.title || "",
 
-          description:
-            data?.description || "",
+          description: data?.description || "",
 
-          brand:
-            data?.brand?._id ||
-            data?.brand ||
-            "",
+          brand: data?.brand?._id || data?.brand || "",
 
-          parentSerie:
-            data?.parentSerie?._id ||
-            data?.parentSerie ||
-            "",
+          parentSerie: data?.parentSerie?._id || data?.parentSerie || "",
 
-          isLimitedEdition:
-            data?.isLimitedEdition ||
-            false,
+          isLimitedEdition: data?.isLimitedEdition || false,
 
           colors: {
-            primary:
-              data?.colors?.primary ||
-              "#000000",
+            primary: data?.colors?.primary || "#000000",
 
-            secondary:
-              data?.colors
-                ?.secondary ||
-              "#ffffff",
+            secondary: data?.colors?.secondary || "#ffffff",
           },
 
           logo: data?.logo || "",
@@ -139,15 +113,15 @@ export default function SerieEditForm({ id }) {
           image: data?.image || "",
         });
 
-        setBrandName(
-          data?.brand?.title || ""
-        );
+        setBrandName(data?.brand?.title || "");
 
+        const rootSeries =
+        seriesResult?.brand?.series?.filter(
+          (serie) => !serie.parentSerie
+        ) || [];
+        
         setParentSeries(
-          (seriesResult?.data || []).filter(
-            (serie) =>
-              serie._id !== id
-          )
+          (rootSeries || []).filter((serie) => serie._id !== id),
         );
       } catch (err) {
         console.error(err);
@@ -170,20 +144,12 @@ export default function SerieEditForm({ id }) {
    */
 
   const handleChange = (e) => {
-    const {
-      name,
-      value,
-      type,
-      checked,
-    } = e.target;
+    const { name, value, type, checked } = e.target;
 
     setFormData((prev) => ({
       ...prev,
 
-      [name]:
-        type === "checkbox"
-          ? checked
-          : value,
+      [name]: type === "checkbox" ? checked : value,
     }));
   };
 
@@ -202,60 +168,42 @@ export default function SerieEditForm({ id }) {
       const payload = {
         ...formData,
 
-        parentSerie:
-          formData.parentSerie ||
-          null,
+        parentSerie: formData.parentSerie || null,
       };
 
-      const res = await fetch(
-        `/api/series/${id}`,
-        {
-          method: "PUT",
+      const res = await fetch(`/api/series/${id}`, {
+        method: "PUT",
 
-          headers: {
-            "Content-Type":
-              "application/json",
-          },
+        headers: {
+          "Content-Type": "application/json",
+        },
 
-          body: JSON.stringify(
-            payload
-          ),
-        }
-      );
+        body: JSON.stringify(payload),
+      });
 
-      const result =
-        await res.json();
+      const result = await res.json();
 
       if (res.ok) {
         Swal.fire({
           headImage: "success",
 
-          title:
-            "ویرایش انجام شد",
+          title: "ویرایش انجام شد",
 
           text: `سری ${formData.title} بروزرسانی شد.`,
 
-          confirmButtonColor:
-            "var(--color-primary)",
+          confirmButtonColor: "var(--color-primary)",
         }).then(() => {
-          router.push(
-            `/p-admin/admin-brands/${formData.brand}`
-          );
+          router.push(`/p-admin/admin-brands/${formData.brand}`);
 
           router.refresh();
         });
       } else {
-        toast.error(
-          result.error ||
-            "خطا در بروزرسانی سری"
-        );
+        toast.error(result.error || "خطا در بروزرسانی سری");
       }
     } catch (err) {
       console.error(err);
 
-      toast.error(
-        "خطای شبکه؛ اتصال اینترنت را بررسی کنید"
-      );
+      toast.error("خطای شبکه؛ اتصال اینترنت را بررسی کنید");
     } finally {
       setLoading(false);
     }
@@ -266,18 +214,13 @@ export default function SerieEditForm({ id }) {
       <div className="h-96 flex items-center justify-center flex-col gap-4">
         <FaSync className="animate-spin text-4xl" />
 
-        <p className="text-xs font-bold uppercase">
-          Loading Serie...
-        </p>
+        <p className="text-xs font-bold uppercase">Loading Serie...</p>
       </div>
     );
   }
 
   return (
-    <form
-      onSubmit={handleSubmit}
-      className="max-w-6xl mx-auto space-y-8 pb-20"
-    >
+    <form onSubmit={handleSubmit} className="max-w-6xl mx-auto space-y-8 pb-20">
       {/* Header */}
 
       <div className="bg-white p-8 rounded-[2.5rem] shadow-sm border border-gray-100 flex justify-between items-center">
@@ -287,26 +230,18 @@ export default function SerieEditForm({ id }) {
           </div>
 
           <div>
-            <h2 className="text-2xl font-bold italic">
-              ویرایش سری محصولات
-            </h2>
+            <h2 className="text-2xl font-bold italic">ویرایش سری محصولات</h2>
 
             <p className="text-gray-400 text-[10px] font-bold uppercase tracking-widest mt-1">
               Brand:
-              <span className="text-black mr-2">
-                {brandName}
-              </span>
+              <span className="text-black mr-2">{brandName}</span>
             </p>
           </div>
         </div>
 
         <button
           type="button"
-          onClick={() =>
-            router.push(
-              `/p-admin/admin-brands/${formData.brand}`
-            )
-          }
+          onClick={() => router.push(`/p-admin/admin-brands/${formData.brand}`)}
           className="p-4 bg-gray-100 rounded-2xl"
         >
           <FaArrowRight />
@@ -321,16 +256,16 @@ export default function SerieEditForm({ id }) {
 
           <div className="bg-white p-6 rounded-[3rem] shadow-sm border border-gray-50 space-y-6">
             <ImageUpload
-              label="تصویر اصلی"
-              value={formData.image}
+              label="تصویر هدر"
+              value={formData.headImage}
               onChange={(url) =>
                 setFormData((p) => ({
                   ...p,
 
-                  image: url,
+                  headImage: url,
                 }))
               }
-              folder="series/covers"
+              folder="series/headImages"
             />
 
             <div className="grid grid-cols-2 gap-4">
@@ -346,18 +281,17 @@ export default function SerieEditForm({ id }) {
                 }
                 folder="series/logos"
               />
-
               <ImageUpload
-                label="تصویر هدر"
-                value={formData.headImage}
+                label="تصویر اصلی"
+                value={formData.image}
                 onChange={(url) =>
                   setFormData((p) => ({
                     ...p,
 
-                    headImage: url,
+                    image: url,
                   }))
                 }
-                folder="series/headImages"
+                folder="series/covers"
               />
             </div>
           </div>
@@ -367,7 +301,6 @@ export default function SerieEditForm({ id }) {
           <div className="bg-black p-8 rounded-[3rem] shadow-2xl text-white">
             <h3 className="text-[10px] font-bold uppercase text-gray-500 mb-6 flex items-center gap-2">
               <FaPalette className="text-[var(--color-primary)]" />
-
               Color Branding
             </h3>
 
@@ -379,9 +312,7 @@ export default function SerieEditForm({ id }) {
 
                 <input
                   type="color"
-                  value={
-                    formData.colors.primary
-                  }
+                  value={formData.colors.primary}
                   onChange={(e) =>
                     setFormData((p) => ({
                       ...p,
@@ -389,8 +320,7 @@ export default function SerieEditForm({ id }) {
                       colors: {
                         ...p.colors,
 
-                        primary:
-                          e.target.value,
+                        primary: e.target.value,
                       },
                     }))
                   }
@@ -405,9 +335,7 @@ export default function SerieEditForm({ id }) {
 
                 <input
                   type="color"
-                  value={
-                    formData.colors.secondary
-                  }
+                  value={formData.colors.secondary}
                   onChange={(e) =>
                     setFormData((p) => ({
                       ...p,
@@ -415,8 +343,7 @@ export default function SerieEditForm({ id }) {
                       colors: {
                         ...p.colors,
 
-                        secondary:
-                          e.target.value,
+                        secondary: e.target.value,
                       },
                     }))
                   }
@@ -435,7 +362,6 @@ export default function SerieEditForm({ id }) {
 
             <h3 className="flex items-center gap-3 font-bold text-gray-900 italic uppercase">
               <FaIdCard className="text-blue-500" />
-
               Identity Info
             </h3>
 
@@ -444,32 +370,22 @@ export default function SerieEditForm({ id }) {
             <div className="space-y-2">
               <label className="text-xs font-bold text-gray-500 flex items-center gap-2">
                 <FaCodeBranch />
-
                 سری والد
               </label>
 
               <select
                 name="parentSerie"
-                value={
-                  formData.parentSerie
-                }
+                value={formData.parentSerie}
                 onChange={handleChange}
                 className="w-full p-5 bg-gray-50 rounded-2xl outline-none"
               >
-                <option value="">
-                  بدون والد (Root Serie)
-                </option>
+                <option value="">بدون والد (Root Serie)</option>
 
-                {parentSeries.map(
-                  (serie) => (
-                    <option
-                      key={serie._id}
-                      value={serie._id}
-                    >
-                      {serie.title}
-                    </option>
-                  )
-                )}
+                {parentSeries.map((serie) => (
+                  <option key={serie._id} value={serie._id}>
+                    {serie.title}
+                  </option>
+                ))}
               </select>
             </div>
 
@@ -480,13 +396,10 @@ export default function SerieEditForm({ id }) {
                 <FaCrown className="text-amber-500" />
 
                 <div>
-                  <h4 className="font-bold text-sm">
-                    Limited Edition
-                  </h4>
+                  <h4 className="font-bold text-sm">Limited Edition</h4>
 
                   <p className="text-xs text-gray-500 mt-1">
-                    این سری به‌عنوان نسخه
-                    محدود ثبت شود
+                    این سری به‌عنوان نسخه محدود ثبت شود
                   </p>
                 </div>
               </div>
@@ -494,9 +407,7 @@ export default function SerieEditForm({ id }) {
               <input
                 type="checkbox"
                 name="isLimitedEdition"
-                checked={
-                  formData.isLimitedEdition
-                }
+                checked={formData.isLimitedEdition}
                 onChange={handleChange}
                 className="w-6 h-6"
               />
@@ -508,7 +419,6 @@ export default function SerieEditForm({ id }) {
               <div className="space-y-2">
                 <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest flex items-center gap-2">
                   <FaFont />
-
                   Name (English Only)
                 </label>
 
@@ -543,15 +453,12 @@ export default function SerieEditForm({ id }) {
             <div className="space-y-2">
               <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest flex items-center gap-2">
                 <FaQuoteRight />
-
                 توضیحات
               </label>
 
               <textarea
                 name="description"
-                value={
-                  formData.description
-                }
+                value={formData.description}
                 onChange={handleChange}
                 rows={6}
                 className="w-full p-8 bg-gray-50 rounded-[2.5rem] leading-8"
@@ -572,7 +479,6 @@ export default function SerieEditForm({ id }) {
             ) : (
               <>
                 ذخیره تغییرات
-
                 <FaRocket className="text-[var(--color-primary)]" />
               </>
             )}

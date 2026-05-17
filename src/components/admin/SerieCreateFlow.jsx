@@ -43,7 +43,11 @@ export default function ModernSerieAIFlow({ brandId, brandName }) {
         if (!brandRes.ok) throw new Error(brandData.error);
 
         setBrand(brandData.brand);
-        setSeries(seriesData.series || []); // ذخیره لیست سری‌ها
+        const rootSeries =
+        seriesData?.series?.filter(
+          (serie) => serie.level === 0
+        ) || [];
+        setSeries(rootSeries || []); // ذخیره لیست سری‌ها
       } catch (err) {
         toast.error("خطا در دریافت اطلاعات دیتابیس");
       } finally {

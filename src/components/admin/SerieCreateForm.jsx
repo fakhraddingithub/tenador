@@ -32,48 +32,33 @@ export default function SerieCreateForm({
 }) {
   const router = useRouter();
 
-  const [loading, setLoading] =
-    useState(false);
+  const [loading, setLoading] = useState(false);
 
-  const [formData, setFormData] =
-    useState({
-      name:
-        initialData?.name || "",
+  const [formData, setFormData] = useState({
+    name: initialData?.name || "",
 
-      title:
-        initialData?.title || "",
+    title: initialData?.title || "",
 
-      description:
-        initialData?.description || "",
+    description: initialData?.description || "",
 
-      brand: brandId,
+    brand: brandId,
 
-      parentSerie:
-        initialData?.parentSerie || "",
+    parentSerie: initialData?.parentSerie || "",
 
-      isLimitedEdition:
-        initialData?.isLimitedEdition ||
-        false,
+    isLimitedEdition: initialData?.isLimitedEdition || false,
 
-      colors: {
-        primary:
-          initialData?.colors?.primary ||
-          "#000000",
+    colors: {
+      primary: initialData?.colors?.primary || "#000000",
 
-        secondary:
-          initialData?.colors
-            ?.secondary || "#ffffff",
-      },
+      secondary: initialData?.colors?.secondary || "#ffffff",
+    },
 
-      logo:
-        initialData?.logo || "",
+    logo: initialData?.logo || "",
 
-      headImage:
-        initialData?.headImage || "",
+    headImage: initialData?.headImage || "",
 
-      image:
-        initialData?.image || "",
-    });
+    image: initialData?.image || "",
+  });
 
   /*
    |--------------------------------------------------------------------------
@@ -91,15 +76,9 @@ export default function SerieCreateForm({
         brand: brandId,
 
         colors: {
-          primary:
-            initialData?.colors
-              ?.primary ||
-            prev.colors.primary,
+          primary: initialData?.colors?.primary || prev.colors.primary,
 
-          secondary:
-            initialData?.colors
-              ?.secondary ||
-            prev.colors.secondary,
+          secondary: initialData?.colors?.secondary || prev.colors.secondary,
         },
       }));
     }
@@ -112,16 +91,12 @@ export default function SerieCreateForm({
    */
 
   const handleChange = (e) => {
-    const { name, value, type, checked } =
-      e.target;
+    const { name, value, type, checked } = e.target;
 
     setFormData((prev) => ({
       ...prev,
 
-      [name]:
-        type === "checkbox"
-          ? checked
-          : value,
+      [name]: type === "checkbox" ? checked : value,
     }));
   };
 
@@ -137,24 +112,19 @@ export default function SerieCreateForm({
     setLoading(true);
 
     try {
-      const res = await fetch(
-        "/api/series/create",
-        {
-          method: "POST",
+      const res = await fetch("/api/series/create", {
+        method: "POST",
 
-          headers: {
-            "Content-Type":
-              "application/json",
-          },
+        headers: {
+          "Content-Type": "application/json",
+        },
 
-          body: JSON.stringify({
-            ...formData,
+        body: JSON.stringify({
+          ...formData,
 
-            parentSerie:
-              formData.parentSerie || null,
-          }),
-        }
-      );
+          parentSerie: formData.parentSerie || null,
+        }),
+      });
 
       const result = await res.json();
 
@@ -162,40 +132,28 @@ export default function SerieCreateForm({
         Swal.fire({
           headImage: "success",
 
-          title:
-            "سری با موفقیت ایجاد شد",
+          title: "سری با موفقیت ایجاد شد",
 
           text: `سری ${formData.title} ایجاد گردید.`,
 
-          confirmButtonColor:
-            "var(--color-primary)",
+          confirmButtonColor: "var(--color-primary)",
         }).then(() => {
-          router.push(
-            `/p-admin/admin-brands/${brandId}`
-          );
+          router.push(`/p-admin/admin-brands/${brandId}`);
 
           router.refresh();
         });
       } else {
-        toast.error(
-          result.error ||
-            "خطا در ثبت سری"
-        );
+        toast.error(result.error || "خطا در ثبت سری");
       }
     } catch (err) {
-      toast.error(
-        "خطای شبکه؛ اتصال اینترنت را بررسی کنید"
-      );
+      toast.error("خطای شبکه؛ اتصال اینترنت را بررسی کنید");
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <form
-      onSubmit={handleSubmit}
-      className="max-w-6xl mx-auto space-y-8 pb-20"
-    >
+    <form onSubmit={handleSubmit} className="max-w-6xl mx-auto space-y-8 pb-20">
       {/* Header */}
 
       <div className="bg-white p-8 rounded-[2.5rem] shadow-sm border border-gray-100 flex justify-between items-center">
@@ -205,15 +163,11 @@ export default function SerieCreateForm({
           </div>
 
           <div>
-            <h2 className="text-2xl font-bold italic">
-              پیکربندی سری محصولات
-            </h2>
+            <h2 className="text-2xl font-bold italic">پیکربندی سری محصولات</h2>
 
             <p className="text-gray-400 text-[10px] font-bold uppercase tracking-widest mt-1">
               Brand:
-              <span className="text-black mr-2">
-                {brandName}
-              </span>
+              <span className="text-black mr-2">{brandName}</span>
             </p>
           </div>
         </div>
@@ -227,18 +181,15 @@ export default function SerieCreateForm({
 
           <div className="bg-white p-6 rounded-[3rem] shadow-sm border border-gray-50 space-y-6">
             <ImageUpload
-              label="تصویر اصلی"
-
-              value={formData.image}
-
+              label="تصویر هدر"
+              value={formData.headImage}
               onChange={(url) =>
                 setFormData((p) => ({
                   ...p,
-                  image: url,
+                  headImage: url,
                 }))
               }
-
-              folder="series/covers"
+              folder="series/headImages"
             />
 
             <div className="grid grid-cols-2 gap-4">
@@ -255,15 +206,15 @@ export default function SerieCreateForm({
               />
 
               <ImageUpload
-                label="تصویر هدر"
-                value={formData.headImage}
+                label="تصویر اصلی"
+                value={formData.image}
                 onChange={(url) =>
                   setFormData((p) => ({
                     ...p,
-                    headImage: url,
+                    image: url,
                   }))
                 }
-                folder="series/headImages"
+                folder="series/covers"
               />
             </div>
           </div>
@@ -273,7 +224,6 @@ export default function SerieCreateForm({
           <div className="bg-black p-8 rounded-[3rem] shadow-2xl text-white">
             <h3 className="text-[10px] font-bold uppercase text-gray-500 mb-6 flex items-center gap-2">
               <FaPalette className="text-[var(--color-primary)]" />
-
               Color Branding
             </h3>
 
@@ -285,9 +235,7 @@ export default function SerieCreateForm({
 
                 <input
                   type="color"
-                  value={
-                    formData.colors.primary
-                  }
+                  value={formData.colors.primary}
                   onChange={(e) =>
                     setFormData((p) => ({
                       ...p,
@@ -295,8 +243,7 @@ export default function SerieCreateForm({
                       colors: {
                         ...p.colors,
 
-                        primary:
-                          e.target.value,
+                        primary: e.target.value,
                       },
                     }))
                   }
@@ -311,9 +258,7 @@ export default function SerieCreateForm({
 
                 <input
                   type="color"
-                  value={
-                    formData.colors.secondary
-                  }
+                  value={formData.colors.secondary}
                   onChange={(e) =>
                     setFormData((p) => ({
                       ...p,
@@ -321,8 +266,7 @@ export default function SerieCreateForm({
                       colors: {
                         ...p.colors,
 
-                        secondary:
-                          e.target.value,
+                        secondary: e.target.value,
                       },
                     }))
                   }
@@ -341,7 +285,6 @@ export default function SerieCreateForm({
 
             <h3 className="flex items-center gap-3 font-bold text-gray-900 italic uppercase">
               <FaIdCard className="text-blue-500" />
-
               Identity Info
             </h3>
 
@@ -350,32 +293,22 @@ export default function SerieCreateForm({
             <div className="space-y-2">
               <label className="text-xs font-bold text-gray-500 flex items-center gap-2">
                 <FaCodeBranch />
-
                 سری والد
               </label>
 
               <select
                 name="parentSerie"
-                value={
-                  formData.parentSerie
-                }
+                value={formData.parentSerie}
                 onChange={handleChange}
                 className="w-full p-5 bg-gray-50 rounded-2xl outline-none"
               >
-                <option value="">
-                  بدون والد (Root Serie)
-                </option>
+                <option value="">بدون والد (Root Serie)</option>
 
-                {parentSeries.map(
-                  (serie) => (
-                    <option
-                      key={serie._id}
-                      value={serie._id}
-                    >
-                      {serie.title}
-                    </option>
-                  )
-                )}
+                {parentSeries.map((serie) => (
+                  <option key={serie._id} value={serie._id}>
+                    {serie.title}
+                  </option>
+                ))}
               </select>
             </div>
 
@@ -386,13 +319,10 @@ export default function SerieCreateForm({
                 <FaCrown className="text-amber-500" />
 
                 <div>
-                  <h4 className="font-bold text-sm">
-                    Limited Edition
-                  </h4>
+                  <h4 className="font-bold text-sm">Limited Edition</h4>
 
                   <p className="text-xs text-gray-500 mt-1">
-                    این سری به‌عنوان نسخه
-                    محدود ثبت شود
+                    این سری به‌عنوان نسخه محدود ثبت شود
                   </p>
                 </div>
               </div>
@@ -400,9 +330,7 @@ export default function SerieCreateForm({
               <input
                 type="checkbox"
                 name="isLimitedEdition"
-                checked={
-                  formData.isLimitedEdition
-                }
+                checked={formData.isLimitedEdition}
                 onChange={handleChange}
                 className="w-6 h-6"
               />
@@ -414,7 +342,6 @@ export default function SerieCreateForm({
               <div className="space-y-2">
                 <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest flex items-center gap-2">
                   <FaFont />
-
                   Name (English Only)
                 </label>
 
@@ -449,7 +376,6 @@ export default function SerieCreateForm({
             <div className="space-y-2">
               <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest flex items-center gap-2">
                 <FaQuoteRight />
-
                 توضیحات
               </label>
 
@@ -476,7 +402,6 @@ export default function SerieCreateForm({
             ) : (
               <>
                 ثبت سری
-
                 <FaRocket className="text-[var(--color-primary)]" />
               </>
             )}
