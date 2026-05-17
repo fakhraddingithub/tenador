@@ -9,7 +9,7 @@ export async function generateMetadata({ params }) {
   const slugs = [sportSlug, ...(slug || [])];
 
   const res = await fetch(
-    `${process.env.NEXT_PUBLIC_SITE_URL}/api/search`,
+    `${process.env.NEXT_PUBLIC_BASE_URL}/api/query`,
     {
       method: "POST",
       headers: {

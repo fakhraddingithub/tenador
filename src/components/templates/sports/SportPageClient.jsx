@@ -54,12 +54,12 @@ export default function SportPageClient({
     // کتگوری + اسپورت
     // راکت تنیس
     if (categoryTitle && !brandTitle) {
-      return `${categoryTitle} ${sportTitle}`;
+      return `${categoryTitle}`;
     }
 
     // کتگوری + اسپورت + برند
     // راکت تنیس ویلسون
-    return `${categoryTitle} ${sportTitle} ${brandTitle}`;
+    return `${categoryTitle} ${brandTitle}`;
   }, [filters, pageInfo]);
 
   // ─────────────────────────────────────────────
