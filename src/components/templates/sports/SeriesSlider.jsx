@@ -66,53 +66,86 @@ const GrungeFilter = () => (
 function SerieCard({ serie, sportSlug, index }) {
   const [hovered, setHovered] = useState(false);
 
-  const primary = serie.colors?.primary || "#c0392b";
-  const secondary = serie.colors?.secondary || "#e74c3c";
+  const primary =
+    serie.colors?.primary || "#c0392b";
+
+  const secondary =
+    serie.colors?.secondary || "#e74c3c";
+
   const words = splitName(serie.name);
 
-  // گرادینت از پایین (Primary) به بالا (Secondary)
-  const gradient = `linear-gradient(to top, ${primary} 0%, ${secondary} 100%)`;
+  const gradient = `
+    linear-gradient(
+      to top,
+      ${primary} 0%,
+      ${secondary} 100%
+    )
+  `;
 
   return (
-    <>
-      <GrungeFilter />
-      <Link
-        href={`/${sportSlug}/series/${serie.slug}`}
+    <Link
+      href={`/${sportSlug}/series/${serie.slug}`}
+      className="block w-full"
+    >
+      <div
         onMouseEnter={() => setHovered(true)}
         onMouseLeave={() => setHovered(false)}
-        className="relative flex-shrink-0 w-full rounded-[24px] overflow-hidden cursor-pointer select-none shadow-2xl aspect-[2.8/4]"
+        className="
+          relative
+          flex-shrink-0
+          w-full
+          rounded-[24px]
+          overflow-hidden
+          cursor-pointer
+          select-none
+          shadow-2xl
+          aspect-[2.8/4]
+        "
         style={{
           background: gradient,
         }}
       >
-        {/* ── لوگوی سری (بالا چپ - سفید شده) ── */}
+        {/* لوگو */}
         {serie.logo && (
           <div className="absolute top-1 left-6 z-40">
             <img
               src={serie.logo}
               alt="logo"
-              className="h-15 w-auto object-contain"
-              style={{ filter: "brightness(0) invert(1)" }}
-            />
-          </div>
-        )}
-
-        {/* ── تصویر محصول (بسیار بزرگ - ۹۰٪ کارت) ── */}
-        {serie.image && (
-          <div className="absolute inset-0 z-[10] flex items-center justify-center">
-            <img
-              src={serie.image}
-              alt={serie.name}
-              className="w-[100%] h-[100%] object-contain transition-transform duration-500"
+              className="h-[60px] w-auto object-contain"
               style={{
-                transform: hovered ? "scale(1.1)" : "scale(1)",
-                filter: "drop-shadow(0 15px 35px rgba(0,0,0,0.3))",
+                filter:
+                  "brightness(0) invert(1)",
               }}
             />
           </div>
         )}
 
-        {/* ── متن نویزی (روی عکس قرار گرفته - zIndex 20) ── */}
+        {/* تصویر */}
+        {serie.image && (
+          <div className="absolute inset-0 z-[10] flex items-center justify-center">
+            <img
+              src={serie.image}
+              alt={serie.name}
+              className="
+                w-full
+                h-full
+                object-contain
+                transition-transform
+                duration-500
+              "
+              style={{
+                transform: hovered
+                  ? "scale(1.1)"
+                  : "scale(1)",
+
+                filter:
+                  "drop-shadow(0 15px 35px rgba(0,0,0,0.3))",
+              }}
+            />
+          </div>
+        )}
+
+        {/* متن */}
         <div className="absolute inset-0 z-[20] flex flex-col items-center justify-center pointer-events-none">
           {words.map((word, i) => (
             <span
@@ -121,10 +154,19 @@ function SerieCard({ serie, sportSlug, index }) {
               style={{
                 fontSize: "2.8rem",
                 fontWeight: "1000",
-                WebkitTextStroke: "1.5px rgba(0, 0, 0, 0.5)",
+
+                WebkitTextStroke:
+                  "1.5px rgba(0, 0, 0, 0.5)",
+
                 textShadow:
-                  "0 8px 0 rgba(0, 0, 0, 0.8), 0 3px 2px rgba(0, 0, 0, 0.6)",
-                filter: "url(#visage-grunge-heavy)",
+                  `
+                  0 8px 0 rgba(0, 0, 0, 0.8),
+                  0 3px 2px rgba(0, 0, 0, 0.6)
+                `,
+
+                filter:
+                  "url(#visage-grunge-heavy)",
+
                 opacity: 0.9,
               }}
             >
@@ -133,17 +175,20 @@ function SerieCard({ serie, sportSlug, index }) {
           ))}
         </div>
 
-        {/* ── عنوان فارسی (پایین سمت راست) ── */}
+        {/* عنوان */}
         <div className="absolute bottom-6 right-6 z-30 text-right">
           <h3
             className="text-white font-black text-base"
-            style={{ textShadow: "0 2px 10px rgba(0,0,0,0.6)" }}
+            style={{
+              textShadow:
+                "0 2px 10px rgba(0,0,0,0.6)",
+            }}
           >
             {serie.title}
           </h3>
         </div>
-      </Link>
-    </>
+      </div>
+    </Link>
   );
 }
 
@@ -180,7 +225,7 @@ export default function SeriesSlider({ series = [], sportSlug, sportTitle }) {
             </h2>
 
             <p className="text-gray-500 mt-2 md:mt-4 text-sm md:text-lg font-light max-w-md border-r-2 md:border-r-4 border-[#aa4725]/20 pr-3 md:pr-4 italic">
-              حرفه‌ای‌ترین کالکشن‌های مرتبط با {sportTitle}
+              حرفه‌ای‌ترین کالکشن‌های 2026
             </p>
           </div>
 
@@ -202,6 +247,7 @@ export default function SeriesSlider({ series = [], sportSlug, sportTitle }) {
 
         {/* ───────────────── Slider ───────────────── */}
         <div className="relative overflow-hidden">
+        <GrungeFilter />
           <Swiper
             modules={[Navigation, Pagination, Autoplay]}
             spaceBetween={12}
