@@ -108,7 +108,7 @@ export default function SportsGrid({ categories = [] }) {
 function CategoryCard({ category, className }) {
   return (
     <Link
-      href={`/sports/${category.slug}`}
+      href={`/${category.slug}`}
       className={`relative group block w-full h-full overflow-hidden bg-gray-100 ${className}`}
       style={{ borderRadius: "6px" }}
     >

@@ -1,4 +1,4 @@
-'use client';
+"use client";
 
 import { useState, useMemo } from "react";
 import ProductList from "@/components/templates/products/ProductList";
@@ -36,14 +36,9 @@ export default function SportPageClient({
       "";
 
     const categoryTitle =
-      filters?.category?.title ||
-      filters?.category?.name ||
-      "";
+      filters?.category?.title || filters?.category?.name || "";
 
-    const brandTitle =
-      filters?.brand?.title ||
-      filters?.brand?.name ||
-      "";
+    const brandTitle = filters?.brand?.title || filters?.brand?.name || "";
 
     // فقط اسپورت
     // تنیس
@@ -74,23 +69,20 @@ export default function SportPageClient({
       const matchesBrand =
         localFilters.brands.length === 0 ||
         localFilters.brands.includes(
-          product.brand?._id?.toString() ||
-            product.brand?.toString()
+          product.brand?._id?.toString() || product.brand?.toString(),
         );
 
       const matchesCategory =
         localFilters.categories.length === 0 ||
         localFilters.categories.includes(
-          product.category?._id?.toString() ||
-            product.category?.toString()
+          product.category?._id?.toString() || product.category?.toString(),
         );
 
       const matchesPrice =
         product.basePrice >= localFilters.minPrice &&
         product.basePrice <= localFilters.maxPrice;
 
-      const matchesStock =
-        !localFilters.onlyInStock || product.stock > 0;
+      const matchesStock = !localFilters.onlyInStock || product.stock > 0;
 
       return (
         matchesSearch &&
@@ -104,7 +96,6 @@ export default function SportPageClient({
 
   return (
     <div className="bg-[#fcfcfc] min-h-screen" dir="rtl">
-
       {/* ───────────────── Hero ───────────────── */}
       <div className="relative h-[100px] md:h-[220px] w-full overflow-hidden">
         <img
@@ -129,11 +120,14 @@ export default function SportPageClient({
       </div>
 
       {/* ───────────────── Series Slider ───────────────── */}
-      {series.length > 0 &&
+      {series.filter((serie) => serie.level !== 0 && !serie.isLimitedEdition)
+        .length > 0 &&
         !filters?.category &&
         !filters?.brand && (
           <SeriesSlider
-            series={series}
+            series={series.filter(
+              (serie) => serie.level !== 0 && !serie.isLimitedEdition,
+            )}
             sportSlug={pageInfo.slug}
             sportTitle={pageInfo.title}
           />
@@ -141,7 +135,6 @@ export default function SportPageClient({
 
       {/* ───────────────── Main Content ───────────────── */}
       <div className="max-w-[1440px] mx-auto px-4 lg:px-8 py-12 flex flex-col lg:flex-row gap-8">
-
         {/* Sidebar */}
         <aside className="w-full lg:w-1/4">
           <div className="sticky top-24">
@@ -156,23 +149,16 @@ export default function SportPageClient({
 
         {/* Products */}
         <main className="w-full lg:w-3/4">
-
           {/* Top Bar */}
           <div className="mb-8 flex flex-col md:flex-row justify-between items-center gap-6 bg-white p-5 rounded-[var(--radius)] border border-gray-100 shadow-sm">
-
             <div className="w-full md:w-2/3">
-              <SearchBar
-                value={searchTerm}
-                onChange={setSearchTerm}
-              />
+              <SearchBar value={searchTerm} onChange={setSearchTerm} />
             </div>
 
             <div className="flex items-center gap-2 text-gray-500 whitespace-nowrap">
               <FiShoppingBag className="text-[var(--color-primary)]" />
 
-              <span className="font-bold">
-                تعداد کالا:
-              </span>
+              <span className="font-bold">تعداد کالا:</span>
 
               <span className="text-[var(--color-text)] font-bold">
                 {filteredProducts.length}
@@ -185,21 +171,13 @@ export default function SportPageClient({
             <ProductList
               products={filteredProducts}
               rate={rate}
-              onAddToCart={(p) =>
-                console.log("Added", p)
-              }
-              onToggleWishlist={(p) =>
-                console.log("Wishlist", p)
-              }
+              onAddToCart={(p) => console.log("Added", p)}
+              onToggleWishlist={(p) => console.log("Wishlist", p)}
             />
           ) : (
             <div className="text-center py-24 bg-white rounded-[var(--radius)] border-2 border-dashed border-gray-100">
-
               <div className="bg-gray-50 w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-4">
-                <FiShoppingBag
-                  size={40}
-                  className="text-gray-300"
-                />
+                <FiShoppingBag size={40} className="text-gray-300" />
               </div>
 
               <p className="text-gray-400 font-bold text-xl">

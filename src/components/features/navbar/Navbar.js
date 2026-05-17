@@ -113,7 +113,7 @@ function CategoryMenu({ navData, onClose }) {
               <li key={sport._id}>
                 <button
                   onClick={() =>
-                    (window.location.href = `/sports/${sport.slug}`)
+                    (window.location.href = `/${sport.slug}`)
                   }
                   onMouseEnter={() => {
                     setActiveSportId(sport._id);
@@ -151,7 +151,7 @@ function CategoryMenu({ navData, onClose }) {
                   <button
                     onMouseEnter={() => setActiveCategoryId(cat._id)}
                     onClick={() =>
-                      (window.location.href = `/categories/${cat.slug}`)
+                      (window.location.href = `/${activeSport.slug}/${cat.slug}`)
                     }
                     className={listButtonStyle(activeCategoryId === cat._id)}
                   >
@@ -192,7 +192,7 @@ function CategoryMenu({ navData, onClose }) {
               {activeCategory.brands.map((brand) => (
                 <li key={brand._id}>
                   <a
-                    href={`/brands/${brand.slug}`}
+                    href={`/${activeSport.slug}/${activeCategory.slug}/${brand.slug}`}
                     className={listButtonStyle(false)}
                   >
                     {brand.icon && (
