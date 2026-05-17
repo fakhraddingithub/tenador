@@ -66,11 +66,9 @@ const GrungeFilter = () => (
 function SerieCard({ serie, sportSlug, index }) {
   const [hovered, setHovered] = useState(false);
 
-  const primary =
-    serie.colors?.primary || "#c0392b";
+  const primary = serie.colors?.primary || "#c0392b";
 
-  const secondary =
-    serie.colors?.secondary || "#e74c3c";
+  const secondary = serie.colors?.secondary || "#e74c3c";
 
   const words = splitName(serie.name);
 
@@ -83,10 +81,7 @@ function SerieCard({ serie, sportSlug, index }) {
   `;
 
   return (
-    <Link
-      href={`/${sportSlug}/series/${serie.slug}`}
-      className="block w-full"
-    >
+    <Link href={`/${sportSlug}/series/${serie.slug}`} className="block w-full">
       <div
         onMouseEnter={() => setHovered(true)}
         onMouseLeave={() => setHovered(false)}
@@ -106,15 +101,14 @@ function SerieCard({ serie, sportSlug, index }) {
         }}
       >
         {/* لوگو */}
-        {serie.logo && (
+        {(serie.logo || serie.brand?.logo) && (
           <div className="absolute top-1 left-6 z-40">
             <img
-              src={serie.logo}
-              alt="logo"
+              src={serie.logo || serie.brand?.logo}
+              alt={serie.title || serie.brand?.title || "logo"}
               className="h-[60px] w-auto object-contain"
               style={{
-                filter:
-                  "brightness(0) invert(1)",
+                filter: "brightness(0) invert(1)",
               }}
             />
           </div>
@@ -134,12 +128,9 @@ function SerieCard({ serie, sportSlug, index }) {
                 duration-500
               "
               style={{
-                transform: hovered
-                  ? "scale(1.1)"
-                  : "scale(1)",
+                transform: hovered ? "scale(1.1)" : "scale(1)",
 
-                filter:
-                  "drop-shadow(0 15px 35px rgba(0,0,0,0.3))",
+                filter: "drop-shadow(0 15px 35px rgba(0,0,0,0.3))",
               }}
             />
           </div>
@@ -155,17 +146,14 @@ function SerieCard({ serie, sportSlug, index }) {
                 fontSize: "2.8rem",
                 fontWeight: "1000",
 
-                WebkitTextStroke:
-                  "1.5px rgba(0, 0, 0, 0.5)",
+                WebkitTextStroke: "1.5px rgba(0, 0, 0, 0.5)",
 
-                textShadow:
-                  `
+                textShadow: `
                   0 8px 0 rgba(0, 0, 0, 0.8),
                   0 3px 2px rgba(0, 0, 0, 0.6)
                 `,
 
-                filter:
-                  "url(#visage-grunge-heavy)",
+                filter: "url(#visage-grunge-heavy)",
 
                 opacity: 0.9,
               }}
@@ -180,8 +168,7 @@ function SerieCard({ serie, sportSlug, index }) {
           <h3
             className="text-white font-black text-base"
             style={{
-              textShadow:
-                "0 2px 10px rgba(0,0,0,0.6)",
+              textShadow: "0 2px 10px rgba(0,0,0,0.6)",
             }}
           >
             {serie.title}
@@ -210,18 +197,8 @@ export default function SeriesSlider({ series = [], sportSlug, sportTitle }) {
         {/* ───────────────── Header ───────────────── */}
         <div className="relative flex flex-col md:flex-row md:items-end justify-between mb-10 md:mb-16">
           <div className="relative">
-            <div className="flex items-center gap-2 mb-3">
-              <div className="w-9 h-9 rounded-2xl bg-[#aa4725]/10 flex items-center justify-center">
-                <FiLayers className="text-[#aa4725]" size={18} />
-              </div>
-
-              <p className="text-xs font-black tracking-[0.25em] text-[#aa4725] uppercase opacity-70">
-                مجموعه‌های ویژه
-              </p>
-            </div>
-
             <h2 className="text-2xl md:text-4xl font-black text-gray-900 leading-tight">
-              سری‌های <span className="text-[#aa4725]">{sportTitle}</span>
+              <span className="text-[#aa4725]">سری های </span> {sportTitle}
             </h2>
 
             <p className="text-gray-500 mt-2 md:mt-4 text-sm md:text-lg font-light max-w-md border-r-2 md:border-r-4 border-[#aa4725]/20 pr-3 md:pr-4 italic">
@@ -247,7 +224,7 @@ export default function SeriesSlider({ series = [], sportSlug, sportTitle }) {
 
         {/* ───────────────── Slider ───────────────── */}
         <div className="relative overflow-hidden">
-        <GrungeFilter />
+          <GrungeFilter />
           <Swiper
             modules={[Navigation, Pagination, Autoplay]}
             spaceBetween={12}

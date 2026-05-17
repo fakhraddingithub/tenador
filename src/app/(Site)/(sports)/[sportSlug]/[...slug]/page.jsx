@@ -39,7 +39,6 @@ export async function generateMetadata({ params }) {
 export default async function SportDynamicSlugPage({ params }) {
   const { sportSlug, slug } = await params;
 
-  // همه اسلاگ‌ها
   const slugs = [sportSlug, ...(slug || [])];
 
   const [searchData, rate] = await Promise.all([
@@ -61,20 +60,22 @@ export default async function SportDynamicSlugPage({ params }) {
     notFound();
   }
 
+  // مهم‌ترین موجودیت پیدا شده
+  const pageInfo =
+    searchData.filters.brand ||
+    searchData.filters.category ||
+    searchData.filters.sport;
+
   return (
     <SportPageClient
-      pageInfo={JSON.parse(
-        JSON.stringify(searchData.filters.sport)
-      )}
-      filters={JSON.parse(
-        JSON.stringify(searchData.filters)
-      )}
-      products={JSON.parse(
-        JSON.stringify(searchData.results)
-      )}
+      pageInfo={JSON.parse(JSON.stringify(pageInfo))}
+      filters={JSON.parse(JSON.stringify(searchData.filters))}
+      products={JSON.parse(JSON.stringify(searchData.results))}
       totalResults={searchData.totalResults}
       rate={rate}
-      title={`تنادور – فروشگاه تخصصی تجهیزات ${searchData.filters.sport.title}`}
+      title={`تنادور – ${
+        pageInfo.title || pageInfo.name || ""
+      }`}
     />
   );
 }
