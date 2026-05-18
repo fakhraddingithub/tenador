@@ -49,10 +49,7 @@ function SerieCard({ serie, sportSlug, limited = false }) {
   `;
 
   return (
-    <Link
-      href={`/${sportSlug}/series/${serie.slug}`}
-      className="block w-full"
-    >
+    <Link href={`/${sportSlug}/series/${serie.slug}`} className="block w-full">
       <div
         onMouseEnter={() => setHovered(true)}
         onMouseLeave={() => setHovered(false)}
@@ -87,34 +84,39 @@ function SerieCard({ serie, sportSlug, limited = false }) {
 
         {/* تصویر */}
         {serie.image && (
-          <div className="absolute inset-0 z-[10] flex items-center justify-center overflow-hidden">
+          <div className="absolute inset-0 z-[10] overflow-hidden">
             <img
               src={serie.image}
               alt={serie.name}
-              className="transition-transform duration-700 object-contain"
+              className="absolute transition-transform duration-700"
               style={{
-                /* ───────────────────────────── */
-                /* فقط برای Limited Edition */
-                /* ───────────────────────────── */
+                /* حالت معمولی */
+                width: limited ? "500%" : "100%",
+                height: limited ? "500%" : "100%",
 
-                width: limited ? "260%" : "100%",
-                height: limited ? "260%" : "100%",
+                objectFit: "contain",
 
-                objectPosition: limited
-                  ? "center center"
-                  : "center",
+                /* دقیقا وسط کارت */
+                top: "50%",
+                left: "50%",
 
+                /* زوم شدید فقط برای Limited */
                 transform: hovered
                   ? limited
-                    ? "scale(1.22)"
-                    : "scale(1.1)"
+                    ? "translate(-50%, -50%) scale(1.08)"
+                    : "translate(-50%, -50%) scale(1.1)"
                   : limited
-                    ? "scale(1.12)"
-                    : "scale(1)",
+                    ? "translate(-50%, -50%) scale(1)"
+                    : "translate(-50%, -50%) scale(1)",
 
+                /* سایه */
                 filter: limited
-                  ? "drop-shadow(0 35px 60px rgba(0,0,0,0.45))"
+                  ? "drop-shadow(0 40px 80px rgba(0,0,0,0.55))"
                   : "drop-shadow(0 15px 35px rgba(0,0,0,0.3))",
+
+                /* مهم */
+                maxWidth: "unset",
+                maxHeight: "unset",
               }}
             />
           </div>
@@ -127,14 +129,13 @@ function SerieCard({ serie, sportSlug, limited = false }) {
               key={i}
               className="text-white leading-[0.8] text-center uppercase"
               style={{
-                fontSize: limited ? "3.4rem" : "2.8rem",
+                fontSize: limited ? "4rem" : "3.4rem",
 
                 fontWeight: "1000",
 
-                WebkitTextStroke:
-                  limited
-                    ? "2px rgba(0,0,0,0.55)"
-                    : "1.5px rgba(0,0,0,0.5)",
+                WebkitTextStroke: limited
+                  ? "2px rgba(0,0,0,0.55)"
+                  : "1.5px rgba(0,0,0,0.5)",
 
                 textShadow: `
                   0 8px 0 rgba(0, 0, 0, 0.8),
@@ -198,7 +199,7 @@ export default function SeriesSlider({ series = [], sportSlug, sportTitle }) {
   // ─────────────────────────────────────────────
   if (isLimitedEdition) {
     return (
-      <section className="py-12 md:py-24 bg-[#fcfcfc] relative overflow-hidden group/section">
+      <section className="py-12 px-4 lg:px-8 md:py-24 bg-[#fcfcfc] relative overflow-hidden group/section">
         <div className="absolute top-[-5%] left-[-5%] w-[250px] md:w-[400px] h-[250px] md:h-[400px] bg-[#aa4725]/5 rounded-full blur-[80px] md:blur-[100px] pointer-events-none" />
 
         <div className="absolute top-12 left-6 text-[8rem] md:text-[15rem] font-black text-gray-200/15 select-none pointer-events-none z-0 tracking-tighter uppercase italic leading-none whitespace-nowrap">
@@ -421,4 +422,4 @@ export default function SeriesSlider({ series = [], sportSlug, sportTitle }) {
       </div>
     </section>
   );
-} 
+}
