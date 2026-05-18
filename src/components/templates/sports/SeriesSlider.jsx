@@ -292,7 +292,7 @@ export default function SeriesSlider({ series = [], sportSlug, sportTitle }) {
             </Swiper>
           </div>
 
-          <div className="px-4 md:px-16 lg:px-24 xl:px-40 flex flex-col sm:flex-row items-center justify-between gap-6 mt-6">
+          <div className="flex flex-col sm:flex-row items-center justify-between gap-6 mt-6">
             <div className="series-pagination !w-auto flex gap-2"></div>
 
             <Link
