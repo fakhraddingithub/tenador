@@ -91,8 +91,8 @@ function SerieCard({ serie, sportSlug, limited = false }) {
               className="absolute transition-transform duration-700"
               style={{
                 /* حالت معمولی */
-                width: limited ? "500%" : "100%",
-                height: limited ? "500%" : "100%",
+                width: limited ? "500%" : "120%",
+                height: limited ? "500%" : "120%",
 
                 objectFit: "contain",
 
