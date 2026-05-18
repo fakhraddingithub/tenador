@@ -49,7 +49,10 @@ function SerieCard({ serie, sportSlug, limited = false }) {
   `;
 
   return (
-    <Link href={`/${sportSlug}/series/${serie.slug}`} className="block w-full">
+    <Link
+      href={`/${sportSlug}/series/${serie.slug}`}
+      className="block w-full"
+    >
       <div
         onMouseEnter={() => setHovered(true)}
         onMouseLeave={() => setHovered(false)}
@@ -68,6 +71,7 @@ function SerieCard({ serie, sportSlug, limited = false }) {
           background: gradient,
         }}
       >
+        {/* لوگو */}
         {(serie.logo || serie.brand?.logo) && (
           <div className="absolute top-1 left-6 z-40">
             <img
@@ -81,41 +85,67 @@ function SerieCard({ serie, sportSlug, limited = false }) {
           </div>
         )}
 
+        {/* تصویر */}
         {serie.image && (
-          <div className="absolute inset-0 z-[10] flex items-center justify-center">
+          <div className="absolute inset-0 z-[10] flex items-center justify-center overflow-hidden">
             <img
               src={serie.image}
               alt={serie.name}
-              className="transition-transform duration-500 object-contain"
+              className="transition-transform duration-700 object-contain"
               style={{
-                width: limited ? "175%" : "100%",
-                height: limited ? "175%" : "100%",
+                /* ───────────────────────────── */
+                /* فقط برای Limited Edition */
+                /* ───────────────────────────── */
+
+                width: limited ? "260%" : "100%",
+                height: limited ? "260%" : "100%",
+
+                objectPosition: limited
+                  ? "center center"
+                  : "center",
+
                 transform: hovered
                   ? limited
-                    ? "scale(1.18)"
+                    ? "scale(1.22)"
                     : "scale(1.1)"
                   : limited
-                    ? "scale(1.08)"
+                    ? "scale(1.12)"
                     : "scale(1)",
-                filter: "drop-shadow(0 15px 35px rgba(0,0,0,0.3))",
+
+                filter: limited
+                  ? "drop-shadow(0 35px 60px rgba(0,0,0,0.45))"
+                  : "drop-shadow(0 15px 35px rgba(0,0,0,0.3))",
               }}
             />
           </div>
         )}
 
+        {/* متن */}
         <div className="absolute inset-0 z-[20] flex flex-col items-center justify-center pointer-events-none">
           {words.map((word, i) => (
             <span
               key={i}
               className="text-white leading-[0.8] text-center uppercase"
               style={{
-                fontSize: "2.8rem",
+                fontSize: limited ? "3.4rem" : "2.8rem",
+
                 fontWeight: "1000",
-                WebkitTextStroke: "1.5px rgba(0, 0, 0, 0.5)",
-                textShadow:
-                  "0 8px 0 rgba(0, 0, 0, 0.8), 0 3px 2px rgba(0, 0, 0, 0.6)",
+
+                WebkitTextStroke:
+                  limited
+                    ? "2px rgba(0,0,0,0.55)"
+                    : "1.5px rgba(0,0,0,0.5)",
+
+                textShadow: `
+                  0 8px 0 rgba(0, 0, 0, 0.8),
+                  0 3px 2px rgba(0, 0, 0, 0.6)
+                `,
+
                 filter: "url(#visage-grunge-heavy)",
-                opacity: 0.9,
+
+                opacity: limited ? 1 : 0.9,
+
+                letterSpacing: limited ? "-0.04em" : "normal",
               }}
             >
               {word}
@@ -123,10 +153,32 @@ function SerieCard({ serie, sportSlug, limited = false }) {
           ))}
         </div>
 
+        {/* گرادینت تاریک روی تصویر فقط برای Limited */}
+        {limited && (
+          <div
+            className="absolute inset-0 z-[15]"
+            style={{
+              background: `
+                linear-gradient(
+                  to top,
+                  rgba(0,0,0,0.55) 0%,
+                  rgba(0,0,0,0.08) 40%,
+                  rgba(0,0,0,0.15) 100%
+                )
+              `,
+            }}
+          />
+        )}
+
+        {/* عنوان */}
         <div className="absolute bottom-6 right-6 z-30 text-right">
           <h3
-            className="text-white font-black text-base"
-            style={{ textShadow: "0 2px 10px rgba(0,0,0,0.6)" }}
+            className={`text-white font-black ${
+              limited ? "text-lg" : "text-base"
+            }`}
+            style={{
+              textShadow: "0 2px 10px rgba(0,0,0,0.6)",
+            }}
           >
             {serie.title}
           </h3>
@@ -154,7 +206,7 @@ export default function SeriesSlider({ series = [], sportSlug, sportTitle }) {
         </div>
 
         <div className="w-full relative z-10">
-          <div className="px-4 md:px-16 lg:px-24 xl:px-40 relative flex flex-col md:flex-row md:items-end justify-between mb-10 md:mb-16">
+          <div className="relative flex flex-col md:flex-row md:items-end justify-between mb-10 md:mb-16">
             <div className="relative">
               <h2 className="text-2xl md:text-4xl font-black text-gray-900 leading-tight">
                 <span className="text-[#aa4725]">لیمیتد ادیشن های </span> 2026
@@ -227,7 +279,7 @@ export default function SeriesSlider({ series = [], sportSlug, sportTitle }) {
             >
               {series.map((serie, index) => (
                 <SwiperSlide key={serie._id || index} className="h-auto pb-10">
-                  <div className="h-full hover:-translate-y-1.5 transition-transform duration-500">
+                  <div className="h-full">
                     <SerieCard
                       serie={serie}
                       sportSlug={sportSlug}
@@ -268,7 +320,7 @@ export default function SeriesSlider({ series = [], sportSlug, sportTitle }) {
         SERIES
       </div>
 
-      <div className="container mx-auto px-4 md:px-16 lg:px-24 xl:px-40 relative z-10">
+      <div className="container mx-auto relative z-10">
         <div className="relative flex flex-col md:flex-row md:items-end justify-between mb-10 md:mb-16">
           <div className="relative">
             <h2 className="text-2xl md:text-4xl font-black text-gray-900 leading-tight">
@@ -341,7 +393,7 @@ export default function SeriesSlider({ series = [], sportSlug, sportTitle }) {
           >
             {series.map((serie, index) => (
               <SwiperSlide key={serie._id || index} className="h-auto pb-10">
-                <div className="h-full hover:-translate-y-1.5 transition-transform duration-500">
+                <div className="h-full">
                   <SerieCard
                     serie={serie}
                     sportSlug={sportSlug}
@@ -369,4 +421,4 @@ export default function SeriesSlider({ series = [], sportSlug, sportTitle }) {
       </div>
     </section>
   );
-}
+} 

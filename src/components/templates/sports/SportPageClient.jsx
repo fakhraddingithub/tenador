@@ -200,6 +200,8 @@ export default function SportPageClient({
               </button>
             </div>
           )}
+        </main>
+      </div>
           {series.filter((serie) => serie.isLimitedEdition).length > 0 &&
             !filters?.category &&
             !filters?.brand && (
@@ -209,8 +211,6 @@ export default function SportPageClient({
                 sportTitle={`لیمیتد ادیشن ${pageInfo.title}`}
               />
             )}
-        </main>
-      </div>
     </div>
   );
 }
