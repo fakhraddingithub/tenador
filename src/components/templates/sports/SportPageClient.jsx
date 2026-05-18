@@ -200,6 +200,15 @@ export default function SportPageClient({
               </button>
             </div>
           )}
+          {series.filter((serie) => serie.isLimitedEdition).length > 0 &&
+            !filters?.category &&
+            !filters?.brand && (
+              <SeriesSlider
+                series={series.filter((serie) => serie.isLimitedEdition)}
+                sportSlug={pageInfo.slug}
+                sportTitle={`لیمیتد ادیشن ${pageInfo.title}`}
+              />
+            )}
         </main>
       </div>
     </div>
