@@ -119,8 +119,8 @@ function SerieCard({ serie, sportSlug, limited = false }) {
                     ? "scale(1.40)"
                     : "scale(1.20)"
                   : limited
-                  ? "scale(1.30)"
-                  : "scale(1.15)",
+                    ? "scale(1.30)"
+                    : "scale(1.15)",
 
                 filter: limited
                   ? "drop-shadow(0 20px 30px rgba(0,0,0,0.5))"
@@ -165,7 +165,9 @@ function SerieCard({ serie, sportSlug, limited = false }) {
         <div className="absolute bottom-3 right-4 left-4 md:bottom-5 md:right-5 md:left-5 z-40 text-right">
           <h3
             className={`text-white font-black truncate transition-transform duration-500 ${
-              limited ? "text-sm sm:text-base md:text-lg" : "text-xs sm:text-sm md:text-base"
+              limited
+                ? "text-sm sm:text-base md:text-lg"
+                : "text-xs sm:text-sm md:text-base"
             }`}
             style={{
               textShadow: "0 2px 10px rgba(0,0,0,0.8)",
@@ -304,7 +306,7 @@ export default function SeriesSlider({ series = [], sportSlug, sportTitle }) {
   items-center 
   justify-between 
   gap-4 
-  mt-6 
+  mt-1
   w-full
 "
         >
