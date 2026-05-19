@@ -53,7 +53,7 @@ function SerieCard({ serie, sportSlug, limited = false }) {
       <div
         onMouseEnter={() => setHovered(true)}
         onMouseLeave={() => setHovered(false)}
-        className="
+        className={`
           relative
           flex-shrink-0
           w-full
@@ -61,10 +61,11 @@ function SerieCard({ serie, sportSlug, limited = false }) {
           overflow-hidden
           cursor-pointer
           select-none
-          aspect-[2.8/4]
+          ${limited ? "aspect-[3.3/4]" : "aspect-[2.8/4]"}
           transition-shadow
           duration-500
-        "
+         
+        `}
         style={{
           background: gradient,
         }}
@@ -86,13 +87,13 @@ function SerieCard({ serie, sportSlug, limited = false }) {
           />
         )}
 
-        {/* لوگو */}
+        {/* لوگو - هماهنگ شده با سایز موبایل */}
         {(serie.logo || serie.brand?.logo) && (
-          <div className="absolute top-4 left-5 z-40">
+          <div className="absolute top-3 left-4 md:top-4 md:left-5 z-40">
             <img
               src={serie.logo || serie.brand?.logo}
               alt={serie.title || serie.brand?.title || "logo"}
-              className="h-[45px] md:h-[55px] w-auto object-contain transition-transform duration-500"
+              className="h-[32px] sm:h-[40px] md:h-[55px] w-auto object-contain transition-transform duration-500"
               style={{
                 filter: "brightness(0) invert(1)",
                 transform: hovered && limited ? "scale(1.05)" : "scale(1)",
@@ -101,7 +102,6 @@ function SerieCard({ serie, sportSlug, limited = false }) {
           </div>
         )}
 
-        {/* تصویر - محصور شده در کادر و بدون بیرون زدگی */}
         {/* تصویر - محصور شده در کادر با زوم واقعی و بدون بیرون زدگی */}
         {serie.image && (
           <div className="absolute inset-0 z-[20] flex items-center justify-center pointer-events-none">
@@ -110,20 +110,18 @@ function SerieCard({ serie, sportSlug, limited = false }) {
               alt={serie.name}
               className="absolute transition-transform duration-500 ease-out"
               style={{
-                /* ابعاد روی ۱۰۰٪ کادر قفل می‌شود تا object-fit درست کار کند */
                 width: "100%",
                 height: "100%",
                 objectFit: "contain",
 
                 transform: hovered
                   ? limited
-                    ? "scale(1.40)" // زوم بیشتر روی هاور لیمیتد
-                    : "scale(1.20)" // زوم بیشتر روی هاور معمولی
+                    ? "scale(1.40)"
+                    : "scale(1.20)"
                   : limited
-                    ? "scale(1.30)" // زوم پایه لیمیتد (همان ۱۳۰٪ مد نظر شما)
-                    : "scale(1.15)", // زوم پایه معمولی (همان ۱۱۰٪ مد نظر شما)
+                  ? "scale(1.30)"
+                  : "scale(1.15)",
 
-                /* سایه متناسب با کارت */
                 filter: limited
                   ? "drop-shadow(0 20px 30px rgba(0,0,0,0.5))"
                   : "drop-shadow(0 15px 25px rgba(0,0,0,0.3))",
@@ -132,22 +130,23 @@ function SerieCard({ serie, sportSlug, limited = false }) {
           </div>
         )}
 
-        {/* متن وسط کارت */}
-        <div className="absolute inset-0 z-[30] flex flex-col items-center justify-center pointer-events-none px-2">
+        {/* متن وسط کارت - بازنویسی بیس فونت‌ها برای جلوگیری از شکستگی در موبایل */}
+        <div className="absolute inset-0 z-[30] flex flex-col items-center justify-center pointer-events-none px-3">
           {words.map((word, i) => (
             <span
               key={i}
-              className="text-white leading-[0.85] text-center uppercase break-words"
+              className="text-white leading-[0.82] text-center uppercase break-words w-full"
               style={{
+                /* کنترل بازه سایز فونت در موبایل و دسکتاپ به کمک clamp متغیر */
                 fontSize: limited
-                  ? "clamp(1.8rem, 3.5vw, 3rem)"
-                  : "clamp(1.4rem, 2.5vw, 2.2rem)",
+                  ? "clamp(1.2rem, 5vw, 2.6rem)"
+                  : "clamp(0.95rem, 4vw, 2rem)",
                 fontWeight: "900",
                 WebkitTextStroke: limited
-                  ? "1.5px rgba(0,0,0,0.6)"
-                  : "1px rgba(0,0,0,0.4)",
+                  ? "clamp(0.8px, 0.2vw, 1.5px) rgba(0,0,0,0.6)"
+                  : "clamp(0.5px, 0.1vw, 1px) rgba(0,0,0,0.4)",
                 textShadow: `
-                  0 8px 0 rgba(0, 0, 0, 0.8),
+                  0 clamp(4px, 1vw, 8px) 0 rgba(0, 0, 0, 0.8),
                   0 3px 3px rgba(0, 0, 0, 0.6)
                 `,
                 filter: "url(#visage-grunge-heavy)",
@@ -162,11 +161,11 @@ function SerieCard({ serie, sportSlug, limited = false }) {
           ))}
         </div>
 
-        {/* عنوان پایین کارت */}
-        <div className="absolute bottom-5 right-5 z-40 text-right left-5">
+        {/* عنوان پایین کارت - پدینگ و سایز کاملاً پویا */}
+        <div className="absolute bottom-3 right-4 left-4 md:bottom-5 md:right-5 md:left-5 z-40 text-right">
           <h3
             className={`text-white font-black truncate transition-transform duration-500 ${
-              limited ? "text-lg" : "text-base"
+              limited ? "text-sm sm:text-base md:text-lg" : "text-xs sm:text-sm md:text-base"
             }`}
             style={{
               textShadow: "0 2px 10px rgba(0,0,0,0.8)",
