@@ -52,40 +52,40 @@ function SerieCard({ serie, sportSlug, limited = false }) {
       <div
         onMouseEnter={() => setHovered(true)}
         onMouseLeave={() => setHovered(false)}
-        className={`
+        className="
           relative
           flex-shrink-0
           w-full
+          rounded-[24px]
+          overflow-hidden
           cursor-pointer
           select-none
+          shadow-lg
           aspect-[2.8/4]
-          transition-all
+          transition-shadow
           duration-500
-          ${hovered && limited ? "z-50" : "z-10"} 
-        `}
+          hover:shadow-2xl
+        "
+        style={{
+          background: gradient,
+        }}
       >
-        {/* لایه بک‌گراند و ماسک (گوشه‌های گرد همیشه حفظ می‌شوند) */}
-        <div
-          className="absolute inset-0 rounded-[24px] shadow-xl transition-shadow duration-500 overflow-hidden group-hover:shadow-2xl"
-          style={{ background: gradient }}
-        >
-          {/* گرادینت تاریک روی تصویر فقط برای Limited */}
-          {limited && (
-            <div
-              className="absolute inset-0 z-[15]"
-              style={{
-                background: `
-                  linear-gradient(
-                    to top,
-                    rgba(0,0,0,0.65) 0%,
-                    rgba(0,0,0,0.05) 40%,
-                    rgba(0,0,0,0.15) 100%
-                  )
-                `,
-              }}
-            />
-          )}
-        </div>
+        {/* گرادینت تاریک روی تصویر فقط برای لیمیتد */}
+        {limited && (
+          <div
+            className="absolute inset-0 z-[15] pointer-events-none"
+            style={{
+              background: `
+                linear-gradient(
+                  to top,
+                  rgba(0,0,0,0.65) 0%,
+                  rgba(0,0,0,0.05) 40%,
+                  rgba(0,0,0,0.15) 100%
+                )
+              `,
+            }}
+          />
+        )}
 
         {/* لوگو */}
         {(serie.logo || serie.brand?.logo) && (
@@ -102,33 +102,29 @@ function SerieCard({ serie, sportSlug, limited = false }) {
           </div>
         )}
 
-        {/* تصویر (قابلیت بیرون زدن فقط برای لیمیتد) */}
+        {/* تصویر - محصور شده در کادر و بدون بیرون زدگی */}
         {serie.image && (
-          <div
-            className={`absolute inset-0 z-[20] flex items-center justify-center pointer-events-none ${
-              limited ? "overflow-visible" : "overflow-hidden rounded-[24px]"
-            }`}
-          >
+          <div className="absolute inset-0 z-[20] flex items-center justify-center pointer-events-none">
             <img
               src={serie.image}
               alt={serie.name}
               className="absolute transition-transform duration-500 ease-out"
               style={{
-                /* معمولی کوچکتر است تا جا برای زوم داشته باشد، لیمیتد کامل پر میکند */
+                /* کارت لیمیتد 100 درصد کادر را میگیرد و کارت معمولی 85 درصد */
                 width: limited ? "130%" : "100%",
                 height: limited ? "130%" : "100%",
                 objectFit: "contain",
 
-                /* زوم شدیدتر برای لیمیتد که از کادر میزند بیرون */
+                /* زوم داخلی موقع هاور */
                 transform: hovered
                   ? limited
-                    ? "scale(1.18) translateY(-2%)"
-                    : "scale(1.06)"
+                    ? "scale(1.15)" // زوم شدید برای لیمیتد داخل کادر
+                    : "scale(1.06)" // زوم ملایم برای معمولی
                   : "scale(1)",
 
-                /* سایه هوشمند که بیرون زدگی را جذاب‌تر می‌کند */
+                /* سایه داخل کادر */
                 filter: limited
-                  ? "drop-shadow(0 30px 40px rgba(0,0,0,0.55))"
+                  ? "drop-shadow(0 20px 30px rgba(0,0,0,0.5))"
                   : "drop-shadow(0 15px 25px rgba(0,0,0,0.3))",
               }}
             />
@@ -142,10 +138,9 @@ function SerieCard({ serie, sportSlug, limited = false }) {
               key={i}
               className="text-white leading-[0.85] text-center uppercase break-words"
               style={{
-                /* فونت واکنش‌گرا: روی موبایل کوچک می‌شود، روی دسکتاپ بزرگ */
                 fontSize: limited
-                  ? "clamp(1.8rem, 4vw, 3.2rem)"
-                  : "clamp(1.4rem, 2.5vw, 2.4rem)",
+                  ? "clamp(1.8rem, 3.5vw, 3rem)"
+                  : "clamp(1.4rem, 2.5vw, 2.2rem)",
                 fontWeight: "900",
                 WebkitTextStroke: limited
                   ? "1.5px rgba(0,0,0,0.6)"
@@ -198,30 +193,36 @@ export default function SeriesSlider({ series = [], sportSlug, sportTitle }) {
     640: { slidesPerView: 2.8, spaceBetween: 18 },
     768: { slidesPerView: 3.2, spaceBetween: 20 },
     1024: { slidesPerView: 4, spaceBetween: 24 }, // دقیقا 4 کارت
-    1280: { slidesPerView: 4, spaceBetween: 28 }, 
+    1280: { slidesPerView: 4, spaceBetween: 28 },
   };
 
   // ─────────────────────────────────────────────
   // تنظیمات اسلایدر برای لیمیتد ادیشن (۳ کارت در دسکتاپ = کارت‌های بزرگتر)
   // ─────────────────────────────────────────────
   const limitedBreakpoints = {
-    0: { slidesPerView: 2.1, spaceBetween: 16 }, // موبایل همچنان ۲ کارت است
+    0: { slidesPerView: 2.1, spaceBetween: 16 },
     640: { slidesPerView: 2.2, spaceBetween: 20 },
     768: { slidesPerView: 2.5, spaceBetween: 24 },
-    1024: { slidesPerView: 3, spaceBetween: 30 }, // دقیقا 3 کارت بزرگ
+    1024: { slidesPerView: 3, spaceBetween: 30 }, // دقیقا 3 کارت بزرگتر
     1280: { slidesPerView: 3, spaceBetween: 36 },
   };
 
   return (
-    <section className="py-12 px-4 lg:px-8 md:py-20 bg-[#fcfcfc] relative overflow-hidden group/section">
+    <section className="py-12 md:py-20 bg-[#fcfcfc] relative overflow-hidden group/section">
+      {/* هاله رنگی بک‌گراند */}
       <div className="absolute top-[-5%] left-[-5%] w-[300px] md:w-[500px] h-[300px] md:h-[500px] bg-[#aa4725]/5 rounded-full blur-[80px] md:blur-[120px] pointer-events-none" />
 
+      {/* تایپوگرافی بزرگ بک‌گراند */}
       <div className="absolute top-8 left-6 text-[6rem] md:text-[12rem] font-black text-gray-200/15 select-none pointer-events-none z-0 tracking-tighter uppercase italic leading-none whitespace-nowrap">
         SERIES
       </div>
 
-      <div className="w-full max-w-[1600px] mx-auto relative z-10">
-        <div className="relative flex flex-row items-end justify-between mb-10 md:mb-14">
+      {/* 
+        اضافه کردن پدینگ‌های متغیر (px-4 تا xl:px-40) به کانتینر برای فشردن اسلایدر 
+        و کنترل ابعاد کارت‌ها در نمایشگرهای بزرگ 
+      */}
+      <div className="w-full max-w-[1800px] mx-auto relative z-10 px-4 sm:px-8 md:px-16 lg:px-24 xl:px-40">
+        <div className="relative flex flex-row items-end justify-between mb-8 md:mb-12">
           <div className="relative">
             <h2 className="text-2xl md:text-4xl font-black text-gray-900 leading-tight">
               {isLimitedEdition ? (
@@ -252,15 +253,9 @@ export default function SeriesSlider({ series = [], sportSlug, sportTitle }) {
           </div>
         </div>
 
-        {/* 
-          برای کارت‌های لیمیتد از !overflow-visible استفاده می‌کنیم 
-          تا موقع هاور عکس‌های پاپ‌آپ از کل کادر اسلایدر کات نشوند.
-          پدینگ عمودی (py-6) هم به اسلایدر فضا می‌دهد تا بیرون‌زدگی به بالا/پایین برخورد نکند.
-        */}
-        <div className={`relative w-full ${isLimitedEdition ? "!overflow-visible" : ""}`}>
+        <div className="relative w-full">
           <GrungeFilter />
           <Swiper
-            className={`${isLimitedEdition ? "!overflow-visible" : ""}`}
             modules={[Navigation, Pagination, Autoplay]}
             watchOverflow={true}
             centeredSlides={false}
@@ -281,7 +276,7 @@ export default function SeriesSlider({ series = [], sportSlug, sportTitle }) {
             }
           >
             {series.map((serie, index) => (
-              <SwiperSlide key={serie._id || index} className="h-auto pb-12 pt-6">
+              <SwiperSlide key={serie._id || index} className="h-auto pb-10 pt-2">
                 <div className="h-full">
                   <SerieCard
                     serie={serie}
@@ -294,7 +289,7 @@ export default function SeriesSlider({ series = [], sportSlug, sportTitle }) {
           </Swiper>
         </div>
 
-        <div className="flex flex-row items-center justify-between gap-4 mt-2 md:mt-6">
+        <div className="flex flex-row items-center justify-between gap-4 mt-2 md:mt-4">
           <div className="series-pagination !w-auto flex gap-1.5"></div>
           <Link
             href={`/${sportSlug}/series`}
