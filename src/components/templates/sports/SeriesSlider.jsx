@@ -111,8 +111,8 @@ function SerieCard({ serie, sportSlug, limited = false }) {
               className="absolute transition-transform duration-500 ease-out"
               style={{
                 /* کارت لیمیتد 100 درصد کادر را میگیرد و کارت معمولی 85 درصد */
-                width: limited ? "130%" : "100%",
-                height: limited ? "130%" : "100%",
+                width: limited ? "100%" : "85%",
+                height: limited ? "100%" : "85%",
                 objectFit: "contain",
 
                 /* زوم داخلی موقع هاور */
@@ -197,7 +197,7 @@ export default function SeriesSlider({ series = [], sportSlug, sportTitle }) {
   };
 
   // ─────────────────────────────────────────────
-  // تنظیمات اسلایدر برای لیمیتد ادیشن (۳ کارت در دسکتاپ = کارت‌های بزرگتر)
+  // تنظیمات اسلایدر برای لیمیتد ادیشن (۳ کارت در دسکتاپ)
   // ─────────────────────────────────────────────
   const limitedBreakpoints = {
     0: { slidesPerView: 2.1, spaceBetween: 16 },
@@ -206,6 +206,13 @@ export default function SeriesSlider({ series = [], sportSlug, sportTitle }) {
     1024: { slidesPerView: 3, spaceBetween: 30 }, // دقیقا 3 کارت بزرگتر
     1280: { slidesPerView: 3, spaceBetween: 36 },
   };
+
+  // شرط اعمال پدینگ کانتینر
+  // برای لیمیتد: پدینگ‌های پلکانی تا ۴۰ (برای محدود کردن فضا و سایز کارت)
+  // برای معمولی: پدینگ ثابت ۶۴ پیکسلی در دسکتاپ (lg:px-[64px])
+  const containerPaddingClass = isLimitedEdition
+    ? "px-4 sm:px-8 md:px-16 lg:px-24 xl:px-40"
+    : "px-4 sm:px-8 lg:px-[64px]";
 
   return (
     <section className="py-12 md:py-20 bg-[#fcfcfc] relative overflow-hidden group/section">
@@ -217,11 +224,7 @@ export default function SeriesSlider({ series = [], sportSlug, sportTitle }) {
         SERIES
       </div>
 
-      {/* 
-        اضافه کردن پدینگ‌های متغیر (px-4 تا xl:px-40) به کانتینر برای فشردن اسلایدر 
-        و کنترل ابعاد کارت‌ها در نمایشگرهای بزرگ 
-      */}
-      <div className="w-full max-w-[1800px] mx-auto relative z-10 px-4 sm:px-8 md:px-16 lg:px-24 xl:px-40">
+      <div className={`w-full max-w-[1800px] mx-auto relative z-10 ${containerPaddingClass}`}>
         <div className="relative flex flex-row items-end justify-between mb-8 md:mb-12">
           <div className="relative">
             <h2 className="text-2xl md:text-4xl font-black text-gray-900 leading-tight">
@@ -276,7 +279,7 @@ export default function SeriesSlider({ series = [], sportSlug, sportTitle }) {
             }
           >
             {series.map((serie, index) => (
-              <SwiperSlide key={serie._id || index} className="h-auto pb-10 pt-2">
+              <SwiperSlide key={serie._id || index} className="h-auto py-2">
                 <div className="h-full">
                   <SerieCard
                     serie={serie}
