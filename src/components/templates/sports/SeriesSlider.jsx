@@ -6,6 +6,7 @@ import {
   FiChevronLeft,
   FiArrowLeft,
   FiArrowRight,
+  FiPlusCircle,
 } from "react-icons/fi";
 
 import { Swiper, SwiperSlide } from "swiper/react";
@@ -56,15 +57,13 @@ function SerieCard({ serie, sportSlug, limited = false }) {
           relative
           flex-shrink-0
           w-full
-          rounded-[24px]
+          rounded-[14px]
           overflow-hidden
           cursor-pointer
           select-none
-          shadow-lg
           aspect-[2.8/4]
           transition-shadow
           duration-500
-          hover:shadow-2xl
         "
         style={{
           background: gradient,
@@ -111,8 +110,8 @@ function SerieCard({ serie, sportSlug, limited = false }) {
               className="absolute transition-transform duration-500 ease-out"
               style={{
                 /* کارت لیمیتد 100 درصد کادر را میگیرد و کارت معمولی 85 درصد */
-                width: limited ? "130%" : "100%",
-                height: limited ? "130%" : "100%",
+                width: limited ? "130%" : "110%",
+                height: limited ? "130%" : "110%",
                 objectFit: "contain",
 
                 /* زوم داخلی موقع هاور */
@@ -189,43 +188,43 @@ export default function SeriesSlider({ series = [], sportSlug, sportTitle }) {
   // تنظیمات اسلایدر برای کارت‌های معمولی (۴ کارت در دسکتاپ)
   // ─────────────────────────────────────────────
   const regularBreakpoints = {
-    0: { slidesPerView: 2.1, spaceBetween: 14 },
-    640: { slidesPerView: 2.8, spaceBetween: 18 },
-    768: { slidesPerView: 3.2, spaceBetween: 20 },
-    1024: { slidesPerView: 4, spaceBetween: 24 }, // دقیقا 4 کارت
-    1280: { slidesPerView: 4, spaceBetween: 28 },
+    0: { slidesPerView: 2.1, spaceBetween: 10 },
+    640: { slidesPerView: 2.8, spaceBetween: 12 },
+    768: { slidesPerView: 3.2, spaceBetween: 14 },
+    1024: { slidesPerView: 4, spaceBetween: 16 },
+    1280: { slidesPerView: 4, spaceBetween: 16 },
   };
 
   // ─────────────────────────────────────────────
   // تنظیمات اسلایدر برای لیمیتد ادیشن (۳ کارت در دسکتاپ)
   // ─────────────────────────────────────────────
   const limitedBreakpoints = {
-    0: { slidesPerView: 2.1, spaceBetween: 16 },
-    640: { slidesPerView: 2.2, spaceBetween: 20 },
-    768: { slidesPerView: 2.5, spaceBetween: 24 },
-    1024: { slidesPerView: 3, spaceBetween: 30 }, // دقیقا 3 کارت بزرگتر
-    1280: { slidesPerView: 3, spaceBetween: 36 },
+    0: { slidesPerView: 2.1, spaceBetween: 14 },
+    640: { slidesPerView: 2.2, spaceBetween: 16 },
+    768: { slidesPerView: 2.5, spaceBetween: 16 },
+    1024: { slidesPerView: 3, spaceBetween: 16 },
+    1280: { slidesPerView: 3, spaceBetween: 16 },
   };
 
   // شرط اعمال پدینگ کانتینر
-  // برای لیمیتد: پدینگ‌های پلکانی تا ۴۰ (برای محدود کردن فضا و سایز کارت)
-  // برای معمولی: پدینگ ثابت ۶۴ پیکسلی در دسکتاپ (lg:px-[64px])
   const containerPaddingClass = isLimitedEdition
-    ? "px-4 sm:px-8 md:px-16 lg:px-24 xl:px-40"
-    : "px-4 sm:px-8 lg:px-[64px]";
+    ? "px-4 sm:px-8 md:px-16 lg:px-[70px]"
+    : "px-4 sm:px-8 md:px-16 lg:px-[70px]";
 
   return (
-    <section className="py-12 md:py-20 bg-[#fcfcfc] relative overflow-hidden group/section">
+    <section className="py-12 md:py-24 bg-[#fcfcfc] relative overflow-hidden group/section">
       {/* هاله رنگی بک‌گراند */}
       <div className="absolute top-[-5%] left-[-5%] w-[300px] md:w-[500px] h-[300px] md:h-[500px] bg-[#aa4725]/5 rounded-full blur-[80px] md:blur-[120px] pointer-events-none" />
 
       {/* تایپوگرافی بزرگ بک‌گراند */}
-      <div className="absolute top-8 left-6 text-[6rem] md:text-[12rem] font-black text-gray-200/15 select-none pointer-events-none z-0 tracking-tighter uppercase italic leading-none whitespace-nowrap">
+      <div className="absolute top-8 left-6 text-[6rem] md:text-[15rem] font-black text-gray-200/15 select-none pointer-events-none z-0 tracking-tighter uppercase italic leading-none whitespace-nowrap">
         SERIES
       </div>
 
       <div className={`w-full max-w-[1800px] mx-auto relative z-10 ${containerPaddingClass}`}>
-        <div className="relative flex flex-row items-end justify-between mb-8 md:mb-12">
+        
+        {/* هدر اورجینال به همراه دکمه‌های قبلی */}
+        <div className="relative flex flex-col md:flex-row md:items-end justify-between mb-10 md:mb-16">
           <div className="relative">
             <h2 className="text-2xl md:text-4xl font-black text-gray-900 leading-tight">
               {isLimitedEdition ? (
@@ -238,19 +237,21 @@ export default function SeriesSlider({ series = [], sportSlug, sportTitle }) {
                 </>
               )}
             </h2>
-            <p className="text-gray-400 mt-2 text-sm md:text-base font-light max-w-md border-r-2 border-[#aa4725]/20 pr-3 md:pr-4 italic">
+            <p className="text-gray-500 mt-2 md:mt-4 text-sm md:text-lg font-light max-w-md border-r-2 md:border-r-4 border-[#aa4725]/20 pr-3 md:pr-4 italic">
               حرفه‌ای‌ترین کالکشن‌های 2026
             </p>
           </div>
 
-          <div className="hidden md:flex items-center">
-            <div className="flex bg-white/80 backdrop-blur-md shadow-lg shadow-black/5 rounded-[14px] p-1.5 border border-white/50">
-              <button className="series-prev-btn w-11 h-11 flex items-center justify-center text-gray-400 hover:text-[#aa4725] hover:bg-[#aa4725]/5 transition-all duration-300 rounded-[10px]">
-                <FiArrowRight size={20} />
+          <div className="hidden md:flex items-center mt-8 md:mt-0">
+            <div className="flex bg-white/80 backdrop-blur-md shadow-xl shadow-black/5 rounded-[16px] p-1 border border-white/50">
+              <button className="series-prev-btn w-12 h-12 flex items-center justify-center text-gray-400 hover:text-[#aa4725] hover:bg-[#aa4725]/5 transition-all duration-300 rounded-[12px]">
+                <FiArrowRight size={22} />
               </button>
-              <div className="w-[1px] h-6 bg-gray-100 self-center mx-2"></div>
-              <button className="series-next-btn w-11 h-11 flex items-center justify-center text-gray-400 hover:text-[#aa4725] hover:bg-[#aa4725]/5 transition-all duration-300 rounded-[10px]">
-                <FiArrowLeft size={20} />
+
+              <div className="w-[1px] h-6 bg-gray-100 self-center mx-1"></div>
+
+              <button className="series-next-btn w-12 h-12 flex items-center justify-center text-gray-400 hover:text-[#aa4725] hover:bg-[#aa4725]/5 transition-all duration-300 rounded-[12px]">
+                <FiArrowLeft size={22} />
               </button>
             </div>
           </div>
@@ -279,7 +280,7 @@ export default function SeriesSlider({ series = [], sportSlug, sportTitle }) {
             }
           >
             {series.map((serie, index) => (
-              <SwiperSlide key={serie._id || index} className="h-auto py-2">
+              <SwiperSlide key={serie._id || index} className="h-auto pb-10">
                 <div className="h-full">
                   <SerieCard
                     serie={serie}
@@ -292,16 +293,15 @@ export default function SeriesSlider({ series = [], sportSlug, sportTitle }) {
           </Swiper>
         </div>
 
-        <div className="flex flex-row items-center justify-between gap-4 mt-2 md:mt-4">
-          <div className="series-pagination !w-auto flex gap-1.5"></div>
+        {/* فوتر اورجینال دکمه‌های پایین */}
+        <div className="flex flex-col sm:flex-row items-center justify-between gap-6 mt-6">
+          <div className="slider-pagination-2 !w-auto flex gap-2"></div>
           <Link
-            href={`/${sportSlug}/series`}
-            className="group flex items-center gap-2 bg-white px-5 py-2.5 md:px-6 md:py-3 rounded-full shadow-sm border border-gray-100 text-gray-900 font-bold text-sm hover:bg-[#aa4725] hover:text-white transition-all duration-300 justify-center"
+            href="/products"
+            className="group flex items-center gap-2 bg-white px-5 py-2.5 md:px-6 md:py-3 rounded-full shadow-sm border border-gray-100 text-gray-900 font-bold text-xs md:text-sm hover:bg-[#aa4725] hover:text-white transition-all duration-300 w-full sm:w-auto justify-center"
           >
-            مشاهده همه سری‌ها
-            <span className="group-hover:-translate-x-1 transition-transform duration-300">
-              <FiChevronLeft className="text-lg md:text-xl" />
-            </span>
+            مشاهده کاتالوگ محصولات
+            <FiPlusCircle className="text-lg md:text-xl group-hover:rotate-180 transition-transform duration-500" />
           </Link>
         </div>
       </div>
