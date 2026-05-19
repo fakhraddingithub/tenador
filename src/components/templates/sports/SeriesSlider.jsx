@@ -102,6 +102,7 @@ function SerieCard({ serie, sportSlug, limited = false }) {
         )}
 
         {/* تصویر - محصور شده در کادر و بدون بیرون زدگی */}
+        {/* تصویر - محصور شده در کادر با زوم واقعی و بدون بیرون زدگی */}
         {serie.image && (
           <div className="absolute inset-0 z-[20] flex items-center justify-center pointer-events-none">
             <img
@@ -109,19 +110,25 @@ function SerieCard({ serie, sportSlug, limited = false }) {
               alt={serie.name}
               className="absolute transition-transform duration-500 ease-out"
               style={{
-                /* کارت لیمیتد 100 درصد کادر را میگیرد و کارت معمولی 85 درصد */
-                width: limited ? "130%" : "110%",
-                height: limited ? "130%" : "110%",
+                /* ابعاد روی ۱۰۰٪ کادر قفل می‌شود تا object-fit درست کار کند */
+                width: "100%",
+                height: "100%",
                 objectFit: "contain",
 
-                /* زوم داخلی موقع هاور */
+                /* 
+          اینجا جادو اتفاق می‌افتد:
+          در حالت عادی عکس لیمیتد را ۱.۳ برابر (۱۳۰٪) و معمولی را ۱.۱ برابر (۱۱۰٪) بزرگ می‌کنیم.
+          موقع هاور، این بزرگ‌نمایی را بیشتر می‌کنیم تا افکت زومِ ثانویه هم داشته باشیم.
+        */
                 transform: hovered
                   ? limited
-                    ? "scale(1.15)" // زوم شدید برای لیمیتد داخل کادر
-                    : "scale(1.06)" // زوم ملایم برای معمولی
-                  : "scale(1)",
+                    ? "scale(1.45)" // زوم بیشتر روی هاور لیمیتد
+                    : "scale(1.22)" // زوم بیشتر روی هاور معمولی
+                  : limited
+                    ? "scale(1.30)" // زوم پایه لیمیتد (همان ۱۳۰٪ مد نظر شما)
+                    : "scale(1.10)", // زوم پایه معمولی (همان ۱۱۰٪ مد نظر شما)
 
-                /* سایه داخل کادر */
+                /* سایه متناسب با کارت */
                 filter: limited
                   ? "drop-shadow(0 20px 30px rgba(0,0,0,0.5))"
                   : "drop-shadow(0 15px 25px rgba(0,0,0,0.3))",
@@ -168,7 +175,8 @@ function SerieCard({ serie, sportSlug, limited = false }) {
             }`}
             style={{
               textShadow: "0 2px 10px rgba(0,0,0,0.8)",
-              transform: hovered && limited ? "translateY(-4px)" : "translateY(0)",
+              transform:
+                hovered && limited ? "translateY(-4px)" : "translateY(0)",
             }}
           >
             {serie.title}
@@ -208,8 +216,8 @@ export default function SeriesSlider({ series = [], sportSlug, sportTitle }) {
 
   // شرط اعمال پدینگ کانتینر
   const containerPaddingClass = isLimitedEdition
-    ? "px-4 sm:px-8 md:px-16 lg:px-[70px]"
-    : "px-4 sm:px-8 md:px-16 lg:px-[70px]";
+    ? "px-4 sm:px-8 md:px-16 lg:px-[90px]"
+    : "px-4 sm:px-8 md:px-16 lg:px-[90px]";
 
   return (
     <section className="py-12 md:py-24 bg-[#fcfcfc] relative overflow-hidden group/section">
@@ -221,8 +229,9 @@ export default function SeriesSlider({ series = [], sportSlug, sportTitle }) {
         SERIES
       </div>
 
-      <div className={`w-full max-w-[1800px] mx-auto relative z-10 ${containerPaddingClass}`}>
-        
+      <div
+        className={`w-full max-w-[1800px] mx-auto relative z-10 ${containerPaddingClass}`}
+      >
         {/* هدر اورجینال به همراه دکمه‌های قبلی */}
         <div className="relative flex flex-col md:flex-row md:items-end justify-between mb-10 md:mb-16">
           <div className="relative">
