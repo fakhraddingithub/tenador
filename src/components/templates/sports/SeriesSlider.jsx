@@ -115,14 +115,9 @@ function SerieCard({ serie, sportSlug, limited = false }) {
                 height: "100%",
                 objectFit: "contain",
 
-                /* 
-          اینجا جادو اتفاق می‌افتد:
-          در حالت عادی عکس لیمیتد را ۱.۳ برابر (۱۳۰٪) و معمولی را ۱.۱ برابر (۱۱۰٪) بزرگ می‌کنیم.
-          موقع هاور، این بزرگ‌نمایی را بیشتر می‌کنیم تا افکت زومِ ثانویه هم داشته باشیم.
-        */
                 transform: hovered
                   ? limited
-                    ? "scale(1.30)" // زوم بیشتر روی هاور لیمیتد
+                    ? "scale(1.40)" // زوم بیشتر روی هاور لیمیتد
                     : "scale(1.20)" // زوم بیشتر روی هاور معمولی
                   : limited
                     ? "scale(1.30)" // زوم پایه لیمیتد (همان ۱۳۰٪ مد نظر شما)
@@ -303,14 +298,49 @@ export default function SeriesSlider({ series = [], sportSlug, sportTitle }) {
         </div>
 
         {/* فوتر اورجینال دکمه‌های پایین */}
-        <div className="flex flex-col sm:flex-row items-center justify-between gap-6 mt-6">
-          <div className="slider-pagination-2 !w-auto flex gap-2"></div>
+        <div
+          className="
+  flex 
+  flex-row             {/* روی موبایل هم در یک خط (افقی) بمانند */}
+  items-center 
+  justify-between 
+  gap-4 
+  mt-6 
+  w-full
+"
+        >
+          {/* پجینیشن اسلایدر */}
+          <div className="slider-pagination-2 !w-auto flex gap-1.5 md:gap-2 flex-shrink-0"></div>
+
+          {/* دکمه کاتالوگ */}
           <Link
             href="/products"
-            className="group flex items-center gap-2 bg-white px-5 py-2.5 md:px-6 md:py-3 rounded-full shadow-sm border border-gray-100 text-gray-900 font-bold text-xs md:text-sm hover:bg-[#aa4725] hover:text-white transition-all duration-300 w-full sm:w-auto justify-center"
+            className="
+      group 
+      flex 
+      items-center 
+      gap-2 
+      bg-white 
+      px-4 py-2          {/* پدینگ جمع‌وجورتر در موبایل */}
+      md:px-6 md:py-3    {/* پدینگ اصلی در دسکتاپ */}
+      rounded-full 
+      shadow-sm 
+      border 
+      border-gray-100 
+      text-gray-900 
+      font-bold 
+      text-[11px]        {/* اندازه فونت بهینه برای موبایل تا متن طولانی خراب نشود */}
+      sm:text-xs 
+      md:text-sm 
+      hover:bg-[#aa4725] 
+      hover:text-white 
+      transition-all 
+      duration-300 
+      whitespace-nowrap  {/* جلوگیری از شکستن متن در موبایل */}
+    "
           >
             مشاهده کاتالوگ محصولات
-            <FiPlusCircle className="text-lg md:text-xl group-hover:rotate-180 transition-transform duration-500" />
+            <FiPlusCircle className="text-base md:text-xl group-hover:rotate-180 transition-transform duration-500 flex-shrink-0" />
           </Link>
         </div>
       </div>
