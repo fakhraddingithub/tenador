@@ -111,8 +111,8 @@ function SerieCard({ serie, sportSlug, limited = false }) {
               className="absolute transition-transform duration-500 ease-out"
               style={{
                 /* کارت لیمیتد 100 درصد کادر را میگیرد و کارت معمولی 85 درصد */
-                width: limited ? "100%" : "85%",
-                height: limited ? "100%" : "85%",
+                width: limited ? "130%" : "100%",
+                height: limited ? "130%" : "100%",
                 objectFit: "contain",
 
                 /* زوم داخلی موقع هاور */
