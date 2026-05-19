@@ -52,91 +52,113 @@ function SerieCard({ serie, sportSlug, limited = false }) {
       <div
         onMouseEnter={() => setHovered(true)}
         onMouseLeave={() => setHovered(false)}
-        className="
+        className={`
           relative
           flex-shrink-0
           w-full
-          rounded-[20px]
-          overflow-hidden
           cursor-pointer
           select-none
-          shadow-xl
-          aspect-[3/4]
-          transition-shadow
-          duration-300
-          hover:shadow-2xl
-        "
-        style={{
-          background: gradient,
-        }}
+          aspect-[2.8/4]
+          transition-all
+          duration-500
+          ${hovered && limited ? "z-50" : "z-10"} 
+        `}
       >
+        {/* لایه بک‌گراند و ماسک (گوشه‌های گرد همیشه حفظ می‌شوند) */}
+        <div
+          className="absolute inset-0 rounded-[24px] shadow-xl transition-shadow duration-500 overflow-hidden group-hover:shadow-2xl"
+          style={{ background: gradient }}
+        >
+          {/* گرادینت تاریک روی تصویر فقط برای Limited */}
+          {limited && (
+            <div
+              className="absolute inset-0 z-[15]"
+              style={{
+                background: `
+                  linear-gradient(
+                    to top,
+                    rgba(0,0,0,0.65) 0%,
+                    rgba(0,0,0,0.05) 40%,
+                    rgba(0,0,0,0.15) 100%
+                  )
+                `,
+              }}
+            />
+          )}
+        </div>
+
         {/* لوگو */}
         {(serie.logo || serie.brand?.logo) && (
-          <div className="absolute top-3 left-4 z-40">
+          <div className="absolute top-4 left-5 z-40">
             <img
               src={serie.logo || serie.brand?.logo}
               alt={serie.title || serie.brand?.title || "logo"}
-              className="h-[40px] md:h-[50px] w-auto object-contain"
+              className="h-[45px] md:h-[55px] w-auto object-contain transition-transform duration-500"
               style={{
                 filter: "brightness(0) invert(1)",
+                transform: hovered && limited ? "scale(1.05)" : "scale(1)",
               }}
             />
           </div>
         )}
 
-        {/* تصویر اصلاح شده */}
+        {/* تصویر (قابلیت بیرون زدن فقط برای لیمیتد) */}
         {serie.image && (
-          <div className={`absolute inset-0 z-[10] ${limited ? "overflow-visible" : "overflow-hidden"}`}>
+          <div
+            className={`absolute inset-0 z-[20] flex items-center justify-center pointer-events-none ${
+              limited ? "overflow-visible" : "overflow-hidden rounded-[24px]"
+            }`}
+          >
             <img
               src={serie.image}
               alt={serie.name}
               className="absolute transition-transform duration-500 ease-out"
               style={{
-                /* ابعاد استاندارد شده و متناسب با کارت */
-                width: limited ? "100%" : "85%",
-                height: limited ? "100%" : "85%",
+                /* معمولی کوچکتر است تا جا برای زوم داشته باشد، لیمیتد کامل پر میکند */
+                width: limited ? "130%" : "100%",
+                height: limited ? "130%" : "100%",
                 objectFit: "contain",
 
-                /* قرارگیری دقیق در مرکز کارت */
-                top: "50%",
-                left: "50%",
-
+                /* زوم شدیدتر برای لیمیتد که از کادر میزند بیرون */
                 transform: hovered
-                  ? "translate(-50%, -50%) scale(1.08)"
-                  : "translate(-50%, -50%) scale(1)",
+                  ? limited
+                    ? "scale(1.18) translateY(-2%)"
+                    : "scale(1.06)"
+                  : "scale(1)",
 
-                /* سایه‌ هوشمند */
+                /* سایه هوشمند که بیرون زدگی را جذاب‌تر می‌کند */
                 filter: limited
-                  ? "drop-shadow(0 25px 40px rgba(0,0,0,0.5))"
-                  : "drop-shadow(0 12px 25px rgba(0,0,0,0.25))",
-
-                maxWidth: "unset",
-                maxHeight: "unset",
+                  ? "drop-shadow(0 30px 40px rgba(0,0,0,0.55))"
+                  : "drop-shadow(0 15px 25px rgba(0,0,0,0.3))",
               }}
             />
           </div>
         )}
 
-        {/* متن روی کارت با سایز استاندارد شده برای جلوگیری از بیرون زدگی */}
-        <div className="absolute inset-0 z-[20] flex flex-col items-center justify-center pointer-events-none px-2">
+        {/* متن وسط کارت */}
+        <div className="absolute inset-0 z-[30] flex flex-col items-center justify-center pointer-events-none px-2">
           {words.map((word, i) => (
             <span
               key={i}
-              className="text-white leading-[0.85] text-center uppercase break-all"
+              className="text-white leading-[0.85] text-center uppercase break-words"
               style={{
-                fontSize: limited ? "2.4rem" : "1.9rem",
+                /* فونت واکنش‌گرا: روی موبایل کوچک می‌شود، روی دسکتاپ بزرگ */
+                fontSize: limited
+                  ? "clamp(1.8rem, 4vw, 3.2rem)"
+                  : "clamp(1.4rem, 2.5vw, 2.4rem)",
                 fontWeight: "900",
                 WebkitTextStroke: limited
-                  ? "1.5px rgba(0,0,0,0.5)"
+                  ? "1.5px rgba(0,0,0,0.6)"
                   : "1px rgba(0,0,0,0.4)",
-
                 textShadow: `
-                  0 6px 0 rgba(0, 0, 0, 0.8),
-                  0 2px 2px rgba(0, 0, 0, 0.6)
+                  0 8px 0 rgba(0, 0, 0, 0.8),
+                  0 3px 3px rgba(0, 0, 0, 0.6)
                 `,
                 filter: "url(#visage-grunge-heavy)",
                 opacity: limited ? 1 : 0.85,
                 letterSpacing: "-0.02em",
+                transform: hovered && limited ? "scale(1.05)" : "scale(1)",
+                transition: "transform 0.5s ease",
               }}
             >
               {word}
@@ -144,31 +166,15 @@ function SerieCard({ serie, sportSlug, limited = false }) {
           ))}
         </div>
 
-        {/* گرادینت تاریک روی تصویر فقط برای Limited */}
-        {limited && (
-          <div
-            className="absolute inset-0 z-[15]"
-            style={{
-              background: `
-                linear-gradient(
-                  to top,
-                  rgba(0,0,0,0.6) 0%,
-                  rgba(0,0,0,0.05) 40%,
-                  rgba(0,0,0,0.1) 100%
-                )
-              `,
-            }}
-          />
-        )}
-
         {/* عنوان پایین کارت */}
-        <div className="absolute bottom-4 right-4 z-30 text-right left-4">
+        <div className="absolute bottom-5 right-5 z-40 text-right left-5">
           <h3
-            className={`text-white font-black truncate ${
-              limited ? "text-base" : "text-sm"
+            className={`text-white font-black truncate transition-transform duration-500 ${
+              limited ? "text-lg" : "text-base"
             }`}
             style={{
-              textShadow: "0 2px 8px rgba(0,0,0,0.7)",
+              textShadow: "0 2px 10px rgba(0,0,0,0.8)",
+              transform: hovered && limited ? "translateY(-4px)" : "translateY(0)",
             }}
           >
             {serie.title}
@@ -184,159 +190,77 @@ export default function SeriesSlider({ series = [], sportSlug, sportTitle }) {
 
   const isLimitedEdition = series.every((s) => s.isLimitedEdition);
 
-  // تنظیمات اسلایدر مشترک و بهینه شده برای هر دو حالت
-  const sliderBreakpoints = {
-    0: {
-      slidesPerView: 2.1, // نمایش ۲ کارت کامل و یک بخش کوچک از کارت سوم در موبایل
-      spaceBetween: 12,
-    },
-    480: {
-      slidesPerView: 2.3,
-      spaceBetween: 14,
-    },
-    640: {
-      slidesPerView: 2.8,
-      spaceBetween: 16,
-    },
-    768: {
-      slidesPerView: 3.2,
-      spaceBetween: 20,
-    },
-    1024: {
-      slidesPerView: 4, // استاندارد شدن ابعاد در دسکتاپ
-      spaceBetween: 24,
-    },
-    1280: {
-      slidesPerView: 4.5,
-      spaceBetween: 24,
-    }
+  // ─────────────────────────────────────────────
+  // تنظیمات اسلایدر برای کارت‌های معمولی (۴ کارت در دسکتاپ)
+  // ─────────────────────────────────────────────
+  const regularBreakpoints = {
+    0: { slidesPerView: 2.1, spaceBetween: 14 },
+    640: { slidesPerView: 2.8, spaceBetween: 18 },
+    768: { slidesPerView: 3.2, spaceBetween: 20 },
+    1024: { slidesPerView: 4, spaceBetween: 24 }, // دقیقا 4 کارت
+    1280: { slidesPerView: 4, spaceBetween: 28 }, 
   };
 
   // ─────────────────────────────────────────────
-  // Limited Edition Layout
+  // تنظیمات اسلایدر برای لیمیتد ادیشن (۳ کارت در دسکتاپ = کارت‌های بزرگتر)
   // ─────────────────────────────────────────────
-  if (isLimitedEdition) {
-    return (
-      <section className="py-10 px-4 lg:px-8 md:py-16 bg-[#fcfcfc] relative overflow-hidden group/section">
-        <div className="absolute top-[-5%] left-[-5%] w-[250px] md:w-[400px] h-[250px] md:h-[400px] bg-[#aa4725]/5 rounded-full blur-[80px] md:blur-[100px] pointer-events-none" />
+  const limitedBreakpoints = {
+    0: { slidesPerView: 2.1, spaceBetween: 16 }, // موبایل همچنان ۲ کارت است
+    640: { slidesPerView: 2.2, spaceBetween: 20 },
+    768: { slidesPerView: 2.5, spaceBetween: 24 },
+    1024: { slidesPerView: 3, spaceBetween: 30 }, // دقیقا 3 کارت بزرگ
+    1280: { slidesPerView: 3, spaceBetween: 36 },
+  };
 
-        <div className="absolute top-6 left-6 text-[5rem] md:text-[10rem] font-black text-gray-200/15 select-none pointer-events-none z-0 tracking-tighter uppercase italic leading-none whitespace-nowrap">
-          SERIES
-        </div>
-
-        <div className="w-full relative z-10">
-          <div className="relative flex flex-row items-end justify-between mb-8 md:mb-12">
-            <div className="relative">
-              <h2 className="text-xl md:text-3xl font-black text-gray-900 leading-tight">
-                <span className="text-[#aa4725]">لیمیتد ادیشن‌های </span> 2026
-              </h2>
-              <p className="text-gray-400 mt-1 md:mt-2 text-xs md:text-sm font-light max-w-md border-r-2 border-[#aa4725]/20 pr-2 italic">
-                حرفه‌ای‌ترین کالکشن‌های 2026
-              </p>
-            </div>
-
-            <div className="hidden md:flex items-center">
-              <div className="flex bg-white/80 backdrop-blur-md shadow-lg shadow-black/5 rounded-[12px] p-1 border border-white/50">
-                <button className="series-prev-btn w-10 h-10 flex items-center justify-center text-gray-400 hover:text-[#aa4725] hover:bg-[#aa4725]/5 transition-all duration-300 rounded-[8px]">
-                  <FiArrowRight size={18} />
-                </button>
-                <div className="w-[1px] h-5 bg-gray-100 self-center mx-1"></div>
-                <button className="series-next-btn w-10 h-10 flex items-center justify-center text-gray-400 hover:text-[#aa4725] hover:bg-[#aa4725]/5 transition-all duration-300 rounded-[8px]">
-                  <FiArrowLeft size={18} />
-                </button>
-              </div>
-            </div>
-          </div>
-
-          <div className="relative w-full">
-            <GrungeFilter />
-            <Swiper
-              modules={[Navigation, Pagination, Autoplay]}
-              watchOverflow={true}
-              centeredSlides={false}
-              autoplay={{
-                delay: 4500,
-                disableOnInteraction: true,
-              }}
-              navigation={{
-                nextEl: ".series-next-btn",
-                prevEl: ".series-prev-btn",
-              }}
-              pagination={{
-                el: ".series-pagination",
-                clickable: true,
-              }}
-              breakpoints={sliderBreakpoints}
-            >
-              {series.map((serie, index) => (
-                <SwiperSlide key={serie._id || index} className="h-auto pb-6">
-                  <div className="h-full">
-                    <SerieCard
-                      serie={serie}
-                      sportSlug={sportSlug}
-                      limited={true}
-                    />
-                  </div>
-                </SwiperSlide>
-              ))}
-            </Swiper>
-          </div>
-
-          <div className="flex flex-row items-center justify-between gap-4 mt-4">
-            <div className="series-pagination !w-auto flex gap-1.5"></div>
-            <Link
-              href={`/${sportSlug}/series`}
-              className="group flex items-center gap-2 bg-white px-4 py-2 md:px-5 md:py-2.5 rounded-full shadow-sm border border-gray-100 text-gray-900 font-bold text-xs md:text-sm hover:bg-[#aa4725] hover:text-white transition-all duration-300 justify-center"
-            >
-              مشاهده همه سری‌ها
-              <span className="group-hover:-translate-x-1 transition-transform duration-300">
-                <FiChevronLeft className="text-base md:text-lg" />
-              </span>
-            </Link>
-          </div>
-        </div>
-      </section>
-    );
-  }
-
-  // ─────────────────────────────────────────────
-  // Regular Series Layout
-  // ─────────────────────────────────────────────
   return (
-    <section className="py-10 px-4 lg:px-8 md:py-16 bg-[#fcfcfc] relative overflow-hidden group/section">
-      <div className="absolute top-[-5%] left-[-5%] w-[250px] md:w-[400px] h-[250px] md:h-[400px] bg-[#aa4725]/5 rounded-full blur-[80px] md:blur-[100px] pointer-events-none" />
+    <section className="py-12 px-4 lg:px-8 md:py-20 bg-[#fcfcfc] relative overflow-hidden group/section">
+      <div className="absolute top-[-5%] left-[-5%] w-[300px] md:w-[500px] h-[300px] md:h-[500px] bg-[#aa4725]/5 rounded-full blur-[80px] md:blur-[120px] pointer-events-none" />
 
-      <div className="absolute top-6 left-6 text-[5rem] md:text-[10rem] font-black text-gray-200/15 select-none pointer-events-none z-0 tracking-tighter uppercase italic leading-none whitespace-nowrap">
+      <div className="absolute top-8 left-6 text-[6rem] md:text-[12rem] font-black text-gray-200/15 select-none pointer-events-none z-0 tracking-tighter uppercase italic leading-none whitespace-nowrap">
         SERIES
       </div>
 
-      <div className="w-full relative z-10">
-        <div className="relative flex flex-row items-end justify-between mb-8 md:mb-12">
+      <div className="w-full max-w-[1600px] mx-auto relative z-10">
+        <div className="relative flex flex-row items-end justify-between mb-10 md:mb-14">
           <div className="relative">
-            <h2 className="text-xl md:text-3xl font-black text-gray-900 leading-tight">
-              <span className="text-[#aa4725]">سری‌های </span> {sportTitle}
+            <h2 className="text-2xl md:text-4xl font-black text-gray-900 leading-tight">
+              {isLimitedEdition ? (
+                <>
+                  <span className="text-[#aa4725]">لیمیتد ادیشن‌های </span> 2026
+                </>
+              ) : (
+                <>
+                  <span className="text-[#aa4725]">سری‌های </span> {sportTitle}
+                </>
+              )}
             </h2>
-            <p className="text-gray-400 mt-1 md:mt-2 text-xs md:text-sm font-light max-w-md border-r-2 border-[#aa4725]/20 pr-2 italic">
+            <p className="text-gray-400 mt-2 text-sm md:text-base font-light max-w-md border-r-2 border-[#aa4725]/20 pr-3 md:pr-4 italic">
               حرفه‌ای‌ترین کالکشن‌های 2026
             </p>
           </div>
 
           <div className="hidden md:flex items-center">
-            <div className="flex bg-white/80 backdrop-blur-md shadow-lg shadow-black/5 rounded-[12px] p-1 border border-white/50">
-              <button className="series-prev-btn w-10 h-10 flex items-center justify-center text-gray-400 hover:text-[#aa4725] hover:bg-[#aa4725]/5 transition-all duration-300 rounded-[8px]">
-                <FiArrowRight size={18} />
+            <div className="flex bg-white/80 backdrop-blur-md shadow-lg shadow-black/5 rounded-[14px] p-1.5 border border-white/50">
+              <button className="series-prev-btn w-11 h-11 flex items-center justify-center text-gray-400 hover:text-[#aa4725] hover:bg-[#aa4725]/5 transition-all duration-300 rounded-[10px]">
+                <FiArrowRight size={20} />
               </button>
-              <div className="w-[1px] h-5 bg-gray-100 self-center mx-1"></div>
-              <button className="series-next-btn w-10 h-10 flex items-center justify-center text-gray-400 hover:text-[#aa4725] hover:bg-[#aa4725]/5 transition-all duration-300 rounded-[8px]">
-                <FiArrowLeft size={18} />
+              <div className="w-[1px] h-6 bg-gray-100 self-center mx-2"></div>
+              <button className="series-next-btn w-11 h-11 flex items-center justify-center text-gray-400 hover:text-[#aa4725] hover:bg-[#aa4725]/5 transition-all duration-300 rounded-[10px]">
+                <FiArrowLeft size={20} />
               </button>
             </div>
           </div>
         </div>
 
-        <div className="relative w-full">
+        {/* 
+          برای کارت‌های لیمیتد از !overflow-visible استفاده می‌کنیم 
+          تا موقع هاور عکس‌های پاپ‌آپ از کل کادر اسلایدر کات نشوند.
+          پدینگ عمودی (py-6) هم به اسلایدر فضا می‌دهد تا بیرون‌زدگی به بالا/پایین برخورد نکند.
+        */}
+        <div className={`relative w-full ${isLimitedEdition ? "!overflow-visible" : ""}`}>
           <GrungeFilter />
           <Swiper
+            className={`${isLimitedEdition ? "!overflow-visible" : ""}`}
             modules={[Navigation, Pagination, Autoplay]}
             watchOverflow={true}
             centeredSlides={false}
@@ -352,15 +276,17 @@ export default function SeriesSlider({ series = [], sportSlug, sportTitle }) {
               el: ".series-pagination",
               clickable: true,
             }}
-            breakpoints={sliderBreakpoints}
+            breakpoints={
+              isLimitedEdition ? limitedBreakpoints : regularBreakpoints
+            }
           >
             {series.map((serie, index) => (
-              <SwiperSlide key={serie._id || index} className="h-auto pb-6">
+              <SwiperSlide key={serie._id || index} className="h-auto pb-12 pt-6">
                 <div className="h-full">
                   <SerieCard
                     serie={serie}
                     sportSlug={sportSlug}
-                    limited={false}
+                    limited={isLimitedEdition}
                   />
                 </div>
               </SwiperSlide>
@@ -368,15 +294,15 @@ export default function SeriesSlider({ series = [], sportSlug, sportTitle }) {
           </Swiper>
         </div>
 
-        <div className="flex flex-row items-center justify-between gap-4 mt-4">
+        <div className="flex flex-row items-center justify-between gap-4 mt-2 md:mt-6">
           <div className="series-pagination !w-auto flex gap-1.5"></div>
           <Link
             href={`/${sportSlug}/series`}
-            className="group flex items-center gap-2 bg-white px-4 py-2 md:px-5 md:py-2.5 rounded-full shadow-sm border border-gray-100 text-gray-900 font-bold text-xs md:text-sm hover:bg-[#aa4725] hover:text-white transition-all duration-300 justify-center"
+            className="group flex items-center gap-2 bg-white px-5 py-2.5 md:px-6 md:py-3 rounded-full shadow-sm border border-gray-100 text-gray-900 font-bold text-sm hover:bg-[#aa4725] hover:text-white transition-all duration-300 justify-center"
           >
             مشاهده همه سری‌ها
             <span className="group-hover:-translate-x-1 transition-transform duration-300">
-              <FiChevronLeft className="text-base md:text-lg" />
+              <FiChevronLeft className="text-lg md:text-xl" />
             </span>
           </Link>
         </div>
