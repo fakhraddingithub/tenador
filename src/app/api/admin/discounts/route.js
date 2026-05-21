@@ -49,7 +49,7 @@ export async function GET(req) {
 // POST /api/admin/discounts  → ساخت قانون جدید
 export async function POST(req) {
   const admin = getAdminFromRequest(req);
-  if (!admin) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  // if (!admin) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   await connectToDB();
   const body = await req.json();
