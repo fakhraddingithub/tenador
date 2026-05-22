@@ -57,7 +57,6 @@ function SearchResultItem({ product, onClick }) {
 }
 
 // ---- Mega Menu ----
-
 function CategoryMenu({ navData, onClose }) {
   const [activeSportId, setActiveSportId] = useState(navData[0]?._id || null);
 
@@ -84,7 +83,7 @@ function CategoryMenu({ navData, onClose }) {
     WebkitMaskSize: "contain",
   });
 
-  // تابع کمکی برای استایل دکمه‌های لیست در هر سه ستون (سایز متن و پدینگ بزرگتر شد)
+  // تابع کمکی برای استایل دکمه‌های لیست در هر سه ستون
   const listButtonStyle = (isActive) => `
     group w-full flex items-center gap-3 px-4 py-2.5 rounded-lg transition-all text-[15px] font-medium
     ${
@@ -101,8 +100,6 @@ function CategoryMenu({ navData, onClose }) {
       onMouseLeave={onClose}
     >
       <div className="flex h-[480px]">
-        {" "}
-        {/* ارتفاع کمی بیشتر برای جای دادن متن‌های درشت‌تر */}
         {/* ستون اول: ورزش‌ها */}
         <div className="w-[30%] border-l border-white/[0.06] p-3 overflow-y-auto bg-white/[0.01]">
           <p className="text-[11px] font-bold text-gray-500 mb-4 px-2 uppercase tracking-widest">
@@ -117,7 +114,7 @@ function CategoryMenu({ navData, onClose }) {
                   }
                   onMouseEnter={() => {
                     setActiveSportId(sport._id);
-                    setActiveCategoryId(sport.categories?.[0]?._id); // ریست کردن کتگوری با تغییر ورزش
+                    setActiveCategoryId(sport.categories?.[0]?._id);
                   }}
                   className={listButtonStyle(activeSportId === sport._id)}
                 >
@@ -502,21 +499,31 @@ export default function Navbar({ user }) {
                 </Link>
               </div>
 
-              {/* سمت چپ: جمعه بازار، سرچ و سبد خرید */}
+              {/* سمت چپ: سرچ، یوزر و سبد خرید */}
               <div className="flex items-center gap-3 flex-shrink-0">
-                <Link
-                  href="/second-hands"
-                  className="px-2.5 py-1 border border-[#aa4725] text-[#aa4725] rounded-[var(--radius)] text-[10px] font-bold bg-[#aa4725]/5 hover:bg-[#aa4725] hover:text-white transition-all whitespace-nowrap"
-                >
-                  جمعه بازار
-                </Link>
-
                 <button
                   onClick={() => setMobileSearchOpen(true)}
-                  className="text-white"
+                  className="text-white flex items-center justify-center"
                 >
                   <FiSearch size={21} />
                 </button>
+
+                {/* دکمه ورود یا پروفایل کاربر در نوبار (جابجا شده از منو) */}
+                {user ? (
+                  <Link
+                    href="/p-user"
+                    className="text-white flex items-center justify-center hover:text-[#aa4725] transition-colors"
+                  >
+                    <FiUser size={21} />
+                  </Link>
+                ) : (
+                  <Link
+                    href="/login-register"
+                    className="text-white text-[11px] font-bold border border-white/20 px-2.5 py-1 rounded-[6px] hover:bg-white hover:text-black transition-all"
+                  >
+                    ورود
+                  </Link>
+                )}
 
                 <div
                   className="relative cursor-pointer"
@@ -554,28 +561,29 @@ export default function Navbar({ user }) {
                 </div>
 
                 <div className="py-2">
-                  {/* بخش پروفایل سریع در منو */}
-                  <div className="px-5 py-4 border-b border-white/5">
-                    {user ? (
-                      <Link
-                        href="/p-user"
-                        onClick={() => setIsCategoryOpen(false)}
-                        className="flex items-center gap-3 text-white text-sm"
-                      >
-                        <div className="w-8 h-8 rounded-full bg-[#aa4725] flex items-center justify-center">
-                          <FiUser />
-                        </div>
-                        <span>{firstName} خوش آمدی</span>
-                      </Link>
-                    ) : (
-                      <Link
-                        href="/login-register"
-                        onClick={() => setIsCategoryOpen(false)}
-                        className="text-[#aa4725] text-sm font-bold"
-                      >
-                        ورود یا ثبت‌نام
-                      </Link>
-                    )}
+                  {/* کارت افقی مدرن جمعه بازار (جایگزین دکمه پروفایل قدیمی در این بخش) */}
+                  <div className="px-4 py-4 border-b border-white/5">
+                    <Link
+                      href="/second-hands"
+                      onClick={() => setIsCategoryOpen(false)}
+                      className="group relative flex items-center justify-between p-4 bg-gradient-to-l from-[#aa4725]/15 to-[#aa4725]/5 border border-[#aa4725]/30 rounded-[6px] overflow-hidden transition-all duration-300 hover:border-[#aa4725]/70 hover:shadow-[0_4px_15px_rgba(170,71,37,0.15)]"
+                    >
+                      {/* پس‌زمینه هاور */}
+                      <div className="absolute inset-0 bg-gradient-to-r from-[#aa4725]/20 to-transparent translate-x-full group-hover:translate-x-0 transition-transform duration-500 ease-out" />
+                      
+                      <div className="relative z-10 flex flex-col gap-1.5">
+                        <span className="text-[#aa4725] text-[15px] font-extrabold tracking-wide">
+                          جمعه بازار
+                        </span>
+                        <span className="text-gray-400 text-[11px] font-medium leading-tight">
+                          دست‌دوم‌های با ارزش و اقتصادی
+                        </span>
+                      </div>
+
+                      <div className="relative z-10 w-9 h-9 rounded-[6px] bg-[#aa4725]/20 flex items-center justify-center text-[#aa4725] group-hover:scale-110 group-hover:bg-[#aa4725] group-hover:text-white transition-all duration-300">
+                        <FiShoppingCart size={16} />
+                      </div>
+                    </Link>
                   </div>
 
                   {/* لیست دسته‌بندی‌های آکاردئونی */}
@@ -622,24 +630,6 @@ export default function Navbar({ user }) {
                       </div>
                     </details>
                   ))}
-
-                  {/* لینک‌های ثابت */}
-                  <div className="mt-4 px-5 space-y-4">
-                    <Link
-                      href="/second-hands"
-                      className="block text-[var(--color-primary)] font-bold text-sm"
-                      onClick={() => setIsCategoryOpen(false)}
-                    >
-                       جمعه بازار (کارکرده)
-                    </Link>
-                    <Link
-                      href="/about-us"
-                      className="block text-gray-400 text-sm"
-                      onClick={() => setIsCategoryOpen(false)}
-                    >
-                      درباره تنادور
-                    </Link>
-                  </div>
                 </div>
               </div>
             </>

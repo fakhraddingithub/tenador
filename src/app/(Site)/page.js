@@ -1,4 +1,5 @@
 import Hero from "@/components/features/hero/Hero";
+import BannerSection from "@/components/banners/BannerSection";
 import SportsGrid from "@/components/features/sportsGrid/SportsGrid";
 import BestSellers from "@/components/features/bestSellers/BestSellers";
 import BrandsTicker from "@/components/features/brandsTicker/BrandsTicker";
@@ -31,6 +32,7 @@ export default async function Home() {
   return (
     <>
       <Hero slides={JSON.parse(JSON.stringify(slides))} />
+      <BannerSection />
       <SportsGrid categories={JSON.parse(JSON.stringify(sports))} />
       <ComparisonBanner />
       <BestSellers products={products} rate={rate} />
