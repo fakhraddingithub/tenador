@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
-import connectToDB from "@/base/configs/db";
-import Banner from "@/base/models/Banner";
+import connectToDB from "base/configs/db";
+import Banner from "base/models/Banner";
 
 // GET - دریافت همه بنرها (فقط فعال‌ها برای فرانت‌اند)
 export async function GET(req) {

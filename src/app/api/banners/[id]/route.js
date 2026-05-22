@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
-import connectToDB from "@/base/configs/db";
-import Banner from "@/base/models/Banner";
+import connectToDB from "base/configs/db";
+import Banner from "base/models/Banner";
 
 // GET یک بنر
 export async function GET(req, { params }) {
