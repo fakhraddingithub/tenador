@@ -3,6 +3,7 @@ import { FiArrowLeft, FiCheck } from 'react-icons/fi';
 import Swal from 'sweetalert2';
 import { toast } from 'react-toastify';
 import { formatPriceWithCurrency } from 'base/utils/formatters';
+import { getCart, clearCart } from '@/lib/cart';
 
 const OrderActions = ({
   cartItems,
@@ -12,7 +13,7 @@ const OrderActions = ({
   discountCode,
   onSuccess
 }) => {
-  
+
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [description, setDescription] = useState('');
 
@@ -34,7 +35,7 @@ const OrderActions = ({
 
   const handleSubmitOrder = async () => {
     if (!validateOrder()) return;
-  
+
     const result = await Swal.fire({
       title: "تایید ثبت سفارش",
       html: `
@@ -49,63 +50,63 @@ const OrderActions = ({
         </div>
       `,
       icon: "question",
-      iconColor: "var(--color-primary)", // رنگ آیکون علامت سوال
+      iconColor: "var(--color-primary)",
       showCancelButton: true,
       confirmButtonText: "بله، ثبت شود",
       cancelButtonText: "انصراف",
-      confirmButtonColor: "#aa4725", // هماهنگ با --color-primary
+      confirmButtonColor: "#aa4725",
       cancelButtonColor: "#9ca3af",
       reverseButtons: true,
       customClass: {
-        popup: 'rounded-2xl', // گرد کردن گوشه‌های الرت مطابق تم سایت
+        popup: 'rounded-2xl',
         confirmButton: 'rounded-lg px-6 py-2',
         cancelButton: 'rounded-lg px-6 py-2'
       }
     });
-  
+
     if (!result.isConfirmed) return;
-  
+
     setIsSubmitting(true);
-  
+
     try {
+      // سبد خرید بدون قیمت ارسال می‌شود — قیمت‌گذاری روی سرور انجام می‌شود
+      const rawCart = getCart(); // [{ productId, variantId, quantity }]
+
       const res = await fetch("/api/orders", {
         method: "POST",
-        credentials: "include", // مهم برای ارسال کوکی
+        credentials: "include",
         headers: {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          items: cartItems.map((item) => ({
-            product: item.productId,
-            quantity: item.quantity,
-            price: item.product.price.finalPrice,
-          })),
-          totalPrice,
-          paymentMethod:selectedPaymentMethod,
+          items: rawCart, // بدون price — سرور خودش محاسبه می‌کند
+          paymentMethod: selectedPaymentMethod,
           addressId: selectedAddress._id,
+          couponCode: discountCode || undefined,
           description,
         }),
       });
-  
+
       const data = await res.json();
-  
+
       if (!res.ok) {
         throw new Error(data.message || "خطا در ثبت سفارش");
       }
-  
-      // اگر پرداخت آنلاین بود میتونی اینجا ریدایرکت بزنی
-      if (selectedPaymentMethod  === "ONLINE") {
-        // window.location.href = data.paymentUrl
+
+      // پرداخت آنلاین — ریدایرکت به درگاه
+      if (selectedPaymentMethod === "ONLINE" && data.paymentUrl) {
+        window.location.href = data.paymentUrl;
+        return;
       }
-  
+
       toast.success("سفارش با موفقیت ثبت شد");
-      
+
       // پاک کردن سبد خرید
-      localStorage.removeItem("cart");
-  
+      clearCart();
+
       // ارسال کد رهگیری به والد
       onSuccess(data.order.trackingCode);
-  
+
     } catch (error) {
       console.error(error);
       toast.error(error.message || "خطا در ثبت سفارش");
@@ -113,7 +114,7 @@ const OrderActions = ({
       setIsSubmitting(false);
     }
   };
-  
+
   const isReady =
     cartItems.length > 0 &&
     selectedAddress &&

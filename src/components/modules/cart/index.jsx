@@ -7,11 +7,13 @@ import {
   FaMinus,
   FaTrash,
   FaCreditCard,
+  FaSpinner,
 } from 'react-icons/fa'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { toast } from 'react-toastify'
 import Swal from 'sweetalert2'
+import { useRouter } from 'next/navigation'
 
 import {
   getCart,
@@ -21,25 +23,81 @@ import {
 
 const CartModule = () => {
   const [cart, setCart] = useState([])
+  const [pricingData, setPricingData] = useState(null)
   const [loading, setLoading] = useState(true)
+  const router = useRouter()
+
+  const fetchCart = useCallback(async () => {
+    setLoading(true)
+    try {
+      const rawCart = getCart()
+
+      if (rawCart.length === 0) {
+        setCart([])
+        setPricingData(null)
+        setLoading(false)
+        return
+      }
+
+      // دریافت اطلاعات نمایشی و قیمت از سرور
+      const [productsRes, priceRes] = await Promise.all([
+        fetch('/api/cart/products', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ items: rawCart }),
+        }),
+        fetch('/api/cart/price', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ items: rawCart }),
+        }),
+      ])
+
+      if (!productsRes.ok || !priceRes.ok) throw new Error('خطا در دریافت اطلاعات')
+
+      const productsData = await productsRes.json()
+      const priceData = await priceRes.json()
+
+      setPricingData(priceData)
+
+      const priceMap = new Map(
+        (priceData.items || []).map((p) => [
+          `${p.productId}-${p.variantId ?? 'null'}`,
+          p,
+        ])
+      )
+
+      const enriched = (productsData.items || []).map((item) => {
+        const key = `${item.productId}-${item.variantId ?? 'null'}`
+        const priceItem = priceMap.get(key)
+        return {
+          ...item,
+          unitPriceToman: priceItem?.unitPriceToman ?? item.displayPriceToman,
+          itemFinalPrice: priceItem?.itemFinalToman ?? (item.displayPriceToman * item.quantity),
+          discountToman: priceItem?.discountToman ?? 0,
+        }
+      })
+
+      setCart(enriched)
+    } catch (e) {
+      console.error('[CartModule]', e)
+      toast.error('خطا در بارگذاری سبد خرید')
+    } finally {
+      setLoading(false)
+    }
+  }, [])
 
   useEffect(() => {
     fetchCart()
-  }, [])
+  }, [fetchCart])
 
-  const fetchCart = () => {
-    setCart(getCart())
-    setLoading(false)
+  const handleUpdateQuantity = (item, delta) => {
+    const newQuantity = Math.max(1, item.quantity + delta)
+    updateQuantity(item.productId, item.variantId, newQuantity)
+    fetchCart()
   }
 
-  const handleUpdateQuantity = (productId, newQuantity) => {
-    if (newQuantity < 1) return
-
-    updateQuantity(productId, newQuantity)
-    setCart(getCart())
-  }
-
-  const handleRemoveFromCart = async (productId) => {
+  const handleRemoveFromCart = async (item) => {
     const result = await Swal.fire({
       title: 'حذف از سبد خرید',
       text: 'آیا مطمئن هستید؟',
@@ -50,17 +108,15 @@ const CartModule = () => {
     })
 
     if (result.isConfirmed) {
-      removeFromCart(productId)
-      setCart(getCart())
-
+      removeFromCart(item.productId, item.variantId)
+      fetchCart()
       toast.success('حذف شد')
     }
   }
 
-  const totalAmount = cart.reduce(
-    (sum, item) => sum + item.finalUnitPrice * item.quantity,
-    0
-  )
+  // قیمت نهایی از سرور
+  const totalAmount = pricingData?.grandTotalToman
+    ?? cart.reduce((sum, item) => sum + item.itemFinalPrice, 0)
 
   if (loading) {
     return (
@@ -95,7 +151,7 @@ const CartModule = () => {
           {/* Items */}
           {cart.map((item) => (
             <motion.div
-              key={item.productId}
+              key={`${item.productId}-${item.variantId || 'no-variant'}`}
               initial={{ opacity: 0, scale: 0.96 }}
               animate={{ opacity: 1, scale: 1 }}
               className="
@@ -107,31 +163,37 @@ const CartModule = () => {
             >
               {/* تصویر */}
               <img
-                src={item.image || '/placeholder.jpg'}
-                alt={item.name || 'product'}
+                src={item.product?.mainImage || '/placeholder.jpg'}
+                alt={item.product?.name || 'product'}
                 className="h-16 w-16 rounded-[var(--radius)] object-cover"
               />
 
               {/* اطلاعات */}
               <div className="flex-1 space-y-1">
                 <p className="text-sm font-medium">
-                  {item.name || 'محصول بدون نام'}
+                  {item.product?.name || 'محصول'}
                 </p>
 
+                {item.variant && (
+                  <div className="flex flex-wrap gap-1">
+                    {Object.entries(item.variant.attributes || {}).map(([k, v]) => (
+                      <span key={k} className="text-xs bg-gray-100 px-1.5 py-0.5 rounded">
+                        {v}
+                      </span>
+                    ))}
+                  </div>
+                )}
+
+                {/* قیمت واحد از سرور */}
                 <p className="text-xs text-[hsl(var(--foreground)/0.6)]">
-                  {item.finalUnitPrice.toLocaleString('fa-IR')} تومان
+                  {item.unitPriceToman.toLocaleString('fa-IR')} تومان
                 </p>
               </div>
 
               {/* تعداد */}
               <div className="flex items-center gap-1">
                 <button
-                  onClick={() =>
-                    handleUpdateQuantity(
-                      item.productId,
-                      item.quantity - 1
-                    )
-                  }
+                  onClick={() => handleUpdateQuantity(item, -1)}
                   className="
                     rounded-[var(--radius)]
                     border
@@ -140,7 +202,7 @@ const CartModule = () => {
                     hover:bg-[hsl(var(--border)/0.5)]
                   "
                 >
-                  <FaMinus />
+                  {item.quantity === 1 ? <FaTrash className="text-red-500" /> : <FaMinus />}
                 </button>
 
                 <span className="min-w-[32px] text-center text-sm">
@@ -148,38 +210,31 @@ const CartModule = () => {
                 </span>
 
                 <button
-                  onClick={() =>
-                    handleUpdateQuantity(
-                      item.productId,
-                      item.quantity + 1
-                    )
-                  }
+                  onClick={() => handleUpdateQuantity(item, 1)}
+                  disabled={!item.inStock}
                   className="
                     rounded-[var(--radius)]
                     border
                     px-2 py-1
                     text-xs
                     hover:bg-[hsl(var(--border)/0.5)]
+                    disabled:opacity-40
                   "
                 >
                   <FaPlus />
                 </button>
               </div>
 
-              {/* قیمت نهایی */}
+              {/* قیمت نهایی آیتم */}
               <div className="text-left">
                 <p className="text-sm font-semibold text-[hsl(var(--primary))]">
-                  {(
-                    item.finalUnitPrice * item.quantity
-                  ).toLocaleString('fa-IR')}
+                  {item.itemFinalPrice.toLocaleString('fa-IR')}
                   {' '}
                   تومان
                 </p>
 
                 <button
-                  onClick={() =>
-                    handleRemoveFromCart(item.productId)
-                  }
+                  onClick={() => handleRemoveFromCart(item)}
                   className="
                     mt-1 flex items-center gap-1
                     text-xs text-red-600
@@ -204,6 +259,7 @@ const CartModule = () => {
             </div>
 
             <button
+              onClick={() => router.push('/p-user/signOrder')}
               className="
                 flex w-full items-center justify-center gap-2
                 rounded-[var(--radius)]

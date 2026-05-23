@@ -1,88 +1,149 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
+import { getCart, updateQuantity as updateLocalQuantity, removeFromCart } from '@/lib/cart';
 
 const CART_STORAGE_KEY = 'cart';
-
-const fetchProduct = async (id) => {
-  const res = await fetch(`/api/product/${id}`);
-  if (!res.ok) throw new Error('خطا در دریافت محصول');
-  return await res.json();
-};
 
 export const useCart = () => {
   const [cartItems, setCartItems] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [pricingData, setPricingData] = useState(null);
+  const [couponError, setCouponError] = useState(null);
+  const [appliedCoupon, setAppliedCoupon] = useState(null);
 
-  const loadCart = useCallback(async () => {
+  /**
+   * مرحله ۱: اطلاعات نمایشی محصولات از /api/cart/products
+   * مرحله ۲: قیمت‌گذاری دقیق از /api/cart/price
+   */
+  const loadCart = useCallback(async (couponCode = null) => {
     if (typeof window === 'undefined') return;
     setIsLoading(true);
+    setError(null);
+
     try {
-      const rawCart = JSON.parse(localStorage.getItem(CART_STORAGE_KEY) || '[]');
-      const enriched = await Promise.all(
-        rawCart.map(async (item) => {
-          const product = await fetchProduct(item.productId);
-          if (!product) return null;
+      const rawCart = getCart(); // [{ productId, variantId, quantity }]
 
-          // محاسبه تخفیف تکی برای این آیتم
-          let discountAmount = 0;
-          let hasStepDiscount = false;
-          const basePrice = product.price.finalPrice;
+      if (rawCart.length === 0) {
+        setCartItems([]);
+        setPricingData(null);
+        setIsLoading(false);
+        return;
+      }
 
-          if (product.label === "discount") {
-            if (item.quantity === 2) {
-              discountAmount = (basePrice * item.quantity) * 0.10;
-              hasStepDiscount = true;
-            } else if (item.quantity >= 3) {
-              discountAmount = (basePrice * item.quantity) * 0.15;
-              hasStepDiscount = true;
-            }
-          }
+      // دریافت اطلاعات نمایشی محصولات
+      const productsRes = await fetch('/api/cart/products', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ items: rawCart }),
+      });
 
-          return {
-            ...item,
-            product,
-            itemTotalBeforeDiscount: basePrice * item.quantity,
-            itemDiscount: discountAmount,
-            itemFinalPrice: (basePrice * item.quantity) - discountAmount,
-            hasStepDiscount
-          };
-        })
+      if (!productsRes.ok) throw new Error('خطا در دریافت اطلاعات محصولات');
+      const productsData = await productsRes.json();
+
+      // دریافت قیمت‌گذاری سرور-ساید
+      const priceRes = await fetch('/api/cart/price', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          items: rawCart,
+          couponCode: couponCode || undefined,
+        }),
+      });
+
+      if (!priceRes.ok) throw new Error('خطا در محاسبه قیمت');
+      const priceData = await priceRes.json();
+
+      setCouponError(priceData.couponError || null);
+
+      // ترکیب اطلاعات نمایشی با قیمت سرور-ساید
+      const priceMap = new Map(
+        (priceData.items || []).map((p) => [
+          `${p.productId}-${p.variantId ?? 'null'}`,
+          p,
+        ])
       );
-      setCartItems(enriched.filter(Boolean));
+
+      const enriched = (productsData.items || []).map((displayItem) => {
+        const key = `${displayItem.productId}-${displayItem.variantId ?? 'null'}`;
+        const priceItem = priceMap.get(key);
+
+        return {
+          ...displayItem,
+          // قیمت‌های واقعی از سرور
+          unitPriceToman: priceItem?.unitPriceToman ?? displayItem.displayPriceToman,
+          basePriceToman: priceItem?.basePriceToman ?? displayItem.displayPriceToman,
+          discountToman: priceItem?.discountToman ?? 0,
+          itemFinalPrice: priceItem?.itemFinalToman ?? (displayItem.displayPriceToman * displayItem.quantity),
+          itemTotalBeforeDiscount: priceItem?.basePriceToman
+            ? priceItem.basePriceToman * displayItem.quantity
+            : displayItem.displayPriceToman * displayItem.quantity,
+          itemDiscount: priceItem?.discountToman ?? 0,
+          hasStepDiscount: (priceItem?.discountToman ?? 0) > 0,
+        };
+      });
+
+      setCartItems(enriched);
+      setPricingData(priceData);
     } catch (e) {
-      setError('خطا در بارگذاری');
+      setError('خطا در بارگذاری سبد خرید');
+      console.error('[useCart]', e);
     } finally {
       setIsLoading(false);
     }
   }, []);
 
-  useEffect(() => { loadCart(); }, [loadCart]);
+  useEffect(() => {
+    loadCart();
+  }, [loadCart]);
 
   const { totalItems, totalPrice, totalRawPrice, totalDiscount } = useMemo(() => {
-    return cartItems.reduce((acc, item) => ({
-      totalItems: acc.totalItems + item.quantity,
-      totalPrice: acc.totalPrice + item.itemFinalPrice,
-      totalRawPrice: acc.totalRawPrice + item.itemTotalBeforeDiscount,
-      totalDiscount: acc.totalDiscount + item.itemDiscount,
-    }), { totalItems: 0, totalPrice: 0, totalRawPrice: 0, totalDiscount: 0 });
-  }, [cartItems]);
+    if (pricingData) {
+      const rawPrice = cartItems.reduce((acc, item) => acc + item.itemTotalBeforeDiscount, 0);
+      const discount = cartItems.reduce((acc, item) => acc + item.itemDiscount, 0);
+      return {
+        totalItems: cartItems.reduce((acc, item) => acc + item.quantity, 0),
+        totalPrice: pricingData.grandTotalToman ?? 0,
+        totalRawPrice: rawPrice,
+        totalDiscount: discount,
+      };
+    }
+    return { totalItems: 0, totalPrice: 0, totalRawPrice: 0, totalDiscount: 0 };
+  }, [cartItems, pricingData]);
 
-  const updateQuantity = (productId, delta) => {
-    setCartItems(prev => {
-      const updated = prev.map(item => 
-        item.productId === productId ? { ...item, quantity: Math.max(1, item.quantity + delta) } : item
-      );
-      localStorage.setItem(CART_STORAGE_KEY, JSON.stringify(updated.map(i => ({ productId: i.productId, quantity: i.quantity }))));
-      loadCart(); // بازخوانی برای محاسبه مجدد تخفیف‌ها
-      return updated;
-    });
+  const updateQuantity = useCallback((productId, delta, variantId = null) => {
+    const rawCart = getCart();
+    const item = rawCart.find(
+      (i) => i.productId === productId && (i.variantId || null) === (variantId || null)
+    );
+    if (!item) return;
+    const newQty = Math.max(1, item.quantity + delta);
+    updateLocalQuantity(productId, variantId, newQty);
+    loadCart(appliedCoupon);
+  }, [loadCart, appliedCoupon]);
+
+  const removeItem = useCallback((productId, variantId = null) => {
+    removeFromCart(productId, variantId);
+    loadCart(appliedCoupon);
+  }, [loadCart, appliedCoupon]);
+
+  const applyCoupon = useCallback((couponCode) => {
+    setAppliedCoupon(couponCode || null);
+    loadCart(couponCode);
+  }, [loadCart]);
+
+  return {
+    cartItems,
+    isLoading,
+    error,
+    updateQuantity,
+    removeItem,
+    applyCoupon,
+    appliedCoupon,
+    couponError,
+    totalItems,
+    totalPrice,
+    totalRawPrice,
+    totalDiscount,
+    refetch: () => loadCart(appliedCoupon),
   };
-
-  const removeItem = (productId) => {
-    const updated = cartItems.filter(i => i.productId !== productId);
-    localStorage.setItem(CART_STORAGE_KEY, JSON.stringify(updated.map(i => ({ productId: i.productId, quantity: i.quantity }))));
-    setCartItems(updated);
-  };
-
-  return { cartItems, isLoading, error, updateQuantity, removeItem, totalItems, totalPrice, totalRawPrice, totalDiscount, refetch: loadCart };
 };

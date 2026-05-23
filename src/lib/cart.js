@@ -1,8 +1,20 @@
+/**
+ * src/lib/cart.js
+ *
+ * مدیریت سبد خرید در localStorage.
+ *
+ * تغییرات مهم نسبت به نسخه قبلی:
+ *  ❌ calculateDiscount و calculateFinalPrice حذف شدند
+ *     (قیمت‌گذاری فقط باید روی سرور از /api/cart/price انجام شود)
+ *  ✅ سبد فقط ساختار { productId, variantId, quantity } را ذخیره می‌کند
+ *  ✅ finalUnitPrice دیگر از localStorage خوانده نمی‌شود — همیشه از API
+ */
+
 const CART_KEY = "cart";
 
-function getCart() {
+/** @returns {Array<{ productId: string, variantId: string|null, quantity: number }>} */
+export function getCart() {
   if (typeof window === "undefined") return [];
-
   try {
     return JSON.parse(localStorage.getItem(CART_KEY) || "[]");
   } catch {
@@ -12,115 +24,58 @@ function getCart() {
 
 function saveCart(cart) {
   if (typeof window === "undefined") return;
-
   localStorage.setItem(CART_KEY, JSON.stringify(cart));
 }
 
 /**
- * محاسبه تخفیف بر اساس تعداد
+ * افزودن به سبد خرید
+ * قیمت ذخیره نمی‌شود — همیشه از سرور دریافت می‌شود
  */
-export function calculateDiscount(quantity) {
-  if (quantity >= 3) return 15;
-  if (quantity >= 2) return 10;
-  return 0;
-}
-
-/**
- * محاسبه قیمت نهایی با تخفیف
- */
-export function calculateFinalPrice(basePrice, quantity, hasDiscountLabel) {
-  if (!hasDiscountLabel) return basePrice;
-  
-  const discountPercent = calculateDiscount(quantity);
-  return Math.round(basePrice * (1 - discountPercent / 100));
-}
-
-/**
- * ساختار سبد خرید:
- * [
- *   {
- *     productId: string,
- *     variantId: string | null,
- *     quantity: number,
- *     finalUnitPrice: number
- *   }
- * ]
- */
-
-export function addToCart(product, quantity = 1, variant = null, finalUnitPrice = null) {
+export function addToCart(productId, quantity = 1, variantId = null) {
   const cart = getCart();
+  const pid = String(productId);
+  const vid = variantId ? String(variantId) : null;
 
-  const productId = String(product._id);
-  const variantId = variant?._id ? String(variant._id) : null;
-  
-  // اگر قیمت نهایی پاس نشده، از قیمت پایه استفاده می‌کنیم
-  const price = finalUnitPrice !== null 
-    ? finalUnitPrice 
-    : (variant?.price ?? product.basePrice);
-
-  const existingItem = cart.find(
-    (item) =>
-      item.productId === productId &&
-      (item.variantId || null) === variantId
+  const existing = cart.find(
+    (i) => i.productId === pid && (i.variantId || null) === vid
   );
 
-  if (existingItem) {
-    existingItem.quantity += quantity;
-    existingItem.finalUnitPrice = price;
+  if (existing) {
+    existing.quantity += quantity;
   } else {
-    cart.push({
-      productId,
-      variantId,
-      quantity,
-      finalUnitPrice: price,
-    });
+    cart.push({ productId: pid, variantId: vid, quantity });
   }
 
   saveCart(cart);
 }
 
 export function removeFromCart(productId, variantId = null) {
-  const normalizedProductId = String(productId);
-  const normalizedVariantId = variantId ? String(variantId) : null;
-
-  const updatedCart = getCart().filter(
-    (item) =>
-      !(
-        item.productId === normalizedProductId &&
-        (item.variantId || null) === normalizedVariantId
-      )
+  const pid = String(productId);
+  const vid = variantId ? String(variantId) : null;
+  saveCart(
+    getCart().filter(
+      (i) => !(i.productId === pid && (i.variantId || null) === vid)
+    )
   );
-
-  saveCart(updatedCart);
 }
 
-export function updateQuantity(productId, variantId = null, quantity, finalUnitPrice) {
-  const normalizedProductId = String(productId);
-  const normalizedVariantId = variantId ? String(variantId) : null;
-
-  const cart = getCart();
-
-  const item = cart.find(
-    (i) =>
-      i.productId === normalizedProductId &&
-      (i.variantId || null) === normalizedVariantId
-  );
-
-  if (!item) return;
+export function updateQuantity(productId, variantId = null, quantity) {
+  const pid = String(productId);
+  const vid = variantId ? String(variantId) : null;
 
   if (quantity <= 0) {
-    removeFromCart(normalizedProductId, normalizedVariantId);
+    removeFromCart(pid, vid);
     return;
   }
 
-  item.quantity = quantity;
-  
-  // همیشه قیمت رو به‌روز می‌کنیم
-  if (finalUnitPrice !== undefined && finalUnitPrice !== null) {
-    item.finalUnitPrice = finalUnitPrice;
+  const cart = getCart();
+  const item = cart.find(
+    (i) => i.productId === pid && (i.variantId || null) === vid
+  );
+  if (item) {
+    item.quantity = quantity;
+    saveCart(cart);
   }
-
-  saveCart(cart);
 }
 
 export function clearCart() {
@@ -128,37 +83,23 @@ export function clearCart() {
 }
 
 export function isInCart(productId, variantId = null) {
-  const normalizedProductId = String(productId);
-  const normalizedVariantId = variantId ? String(variantId) : null;
-
-  const cart = getCart();
-
-  return cart.some(
-    (item) =>
-      item.productId === normalizedProductId &&
-      (item.variantId || null) === normalizedVariantId
+  const pid = String(productId);
+  const vid = variantId ? String(variantId) : null;
+  return getCart().some(
+    (i) => i.productId === pid && (i.variantId || null) === vid
   );
 }
 
 export function getCartItem(productId, variantId = null) {
-  const normalizedProductId = String(productId);
-  const normalizedVariantId = variantId ? String(variantId) : null;
-
-  const cart = getCart();
-
+  const pid = String(productId);
+  const vid = variantId ? String(variantId) : null;
   return (
-    cart.find(
-      (item) =>
-        item.productId === normalizedProductId &&
-        (item.variantId || null) === normalizedVariantId
+    getCart().find(
+      (i) => i.productId === pid && (i.variantId || null) === vid
     ) || null
   );
 }
 
 export function getCartCount() {
-  const cart = getCart();
-
-  return cart.reduce((total, item) => total + item.quantity, 0);
+  return getCart().reduce((total, item) => total + item.quantity, 0);
 }
-
-export { getCart };

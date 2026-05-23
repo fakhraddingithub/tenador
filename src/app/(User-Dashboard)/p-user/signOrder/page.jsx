@@ -22,8 +22,13 @@ const OrderPage = () => {
     isLoading: isCartLoading,
     updateQuantity,
     removeItem,
+    applyCoupon,
+    appliedCoupon,
+    couponError,
     totalItems,
     totalPrice,
+    totalRawPrice,
+    totalDiscount,
   } = useCart();
 
   const { addresses, isLoading: isAddressLoading, addAddress } = useAddresses();
@@ -35,7 +40,6 @@ const OrderPage = () => {
 
   const handleOrderSuccess = (trackingCode) => {
     console.log("Order placed:", trackingCode);
-    localStorage.removeItem("cart");
     window.location.replace(`/p-user/payments/${trackingCode}`);
   };
 
@@ -90,7 +94,7 @@ const OrderPage = () => {
                 text-[#aa4725]
               "
                 >
-                  {totalItems} 
+                  {totalItems}
                 </div>
               )}
             </div>
@@ -136,8 +140,13 @@ const OrderPage = () => {
                 <CartSummary
                   totalItems={totalItems}
                   totalPrice={totalPrice}
+                  totalRawPrice={totalRawPrice}
+                  totalDiscount={totalDiscount}
                   discountCode={discountCode}
                   onDiscountCodeChange={setDiscountCode}
+                  onApplyCoupon={applyCoupon}
+                  couponError={couponError}
+                  appliedCoupon={appliedCoupon}
                 />
               </div>
 
@@ -146,7 +155,7 @@ const OrderPage = () => {
                 totalPrice={totalPrice}
                 selectedAddress={selectedAddress}
                 selectedPaymentMethod={selectedPaymentMethod}
-                discountCode={discountCode}
+                discountCode={appliedCoupon}
                 onSuccess={handleOrderSuccess}
               />
             </div>

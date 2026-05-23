@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import {
     FaTimes,
@@ -14,122 +14,102 @@ import {
     getCart,
     updateQuantity,
     removeFromCart,
-    calculateDiscount,
-    calculateFinalPrice,
 } from '@/lib/cart';
 
 export default function CartDrawer({ isOpen, onClose }) {
     const [items, setItems] = useState([]);
     const [loading, setLoading] = useState(false);
+    const [pricingData, setPricingData] = useState(null);
     const router = useRouter();
 
-    // Load cart items with product details
-    useEffect(() => {
-        if (!isOpen) return;
+    const loadCartItems = useCallback(async () => {
+        setLoading(true);
+        try {
+            const cartData = getCart();
 
-        const loadCartItems = async () => {
-            setLoading(true);
-            try {
-                const cartData = getCart();
-                
-                if (cartData.length === 0) {
-                    setItems([]);
-                    setLoading(false);
-                    return;
-                }
+            if (cartData.length === 0) {
+                setItems([]);
+                setPricingData(null);
+                setLoading(false);
+                return;
+            }
 
-                // Fetch product details from API
-                const response = await fetch('/api/cart/products', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ items: cartData }),
+            // دریافت اطلاعات نمایشی محصولات
+            const productsRes = await fetch('/api/cart/products', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ items: cartData }),
+            });
+
+            // دریافت قیمت‌گذاری سرور-ساید
+            const priceRes = await fetch('/api/cart/price', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ items: cartData }),
+            });
+
+            if (productsRes.ok && priceRes.ok) {
+                const productsData = await productsRes.json();
+                const priceData = await priceRes.json();
+
+                setPricingData(priceData);
+
+                // ترکیب اطلاعات نمایشی با قیمت سرور
+                const priceMap = new Map(
+                    (priceData.items || []).map((p) => [
+                        `${p.productId}-${p.variantId ?? 'null'}`,
+                        p,
+                    ])
+                );
+
+                const enriched = (productsData.items || []).map((displayItem) => {
+                    const key = `${displayItem.productId}-${displayItem.variantId ?? 'null'}`;
+                    const priceItem = priceMap.get(key);
+                    return {
+                        ...displayItem,
+                        unitPriceToman: priceItem?.unitPriceToman ?? displayItem.displayPriceToman,
+                        basePriceToman: priceItem?.basePriceToman ?? displayItem.displayPriceToman,
+                        discountToman: priceItem?.discountToman ?? 0,
+                        itemFinalPrice: priceItem?.itemFinalToman
+                            ?? (displayItem.displayPriceToman * displayItem.quantity),
+                    };
                 });
 
-                if (response.ok) {
-                    const data = await response.json();
-                    setItems(data.items);
-                }
-            } catch (error) {
-                console.error('خطا در بارگذاری سبد خرید:', error);
-            } finally {
-                setLoading(false);
+                setItems(enriched);
             }
-        };
+        } catch (error) {
+            console.error('خطا در بارگذاری سبد خرید:', error);
+        } finally {
+            setLoading(false);
+        }
+    }, []);
 
+    useEffect(() => {
+        if (!isOpen) return;
         loadCartItems();
-    }, [isOpen]);
+    }, [isOpen, loadCartItems]);
 
     const handleQuantityChange = (item, newQuantity) => {
         if (newQuantity < 1) return;
-
-        const hasDiscountLabel = item.product.label === 'discount';
-        const basePrice = item.variant?.price ?? item.product.basePrice;
-        
-        // محاسبه قیمت نهایی با تخفیف جدید
-        const finalPrice = calculateFinalPrice(basePrice, newQuantity, hasDiscountLabel);
-
-        console.log('Base Price:', basePrice);
-        console.log('New Quantity:', newQuantity);
-        console.log('Has Discount:', hasDiscountLabel);
-        console.log('Final Price:', finalPrice);
-
-        // به‌روزرسانی localStorage
-        updateQuantity(item.productId, item.variantId, newQuantity, finalPrice);
-
-        // به‌روزرسانی state محلی
-        setItems(prevItems =>
-            prevItems.map(i => {
-                if (i.productId === item.productId && 
-                    (i.variantId || null) === (item.variantId || null)) {
-                    return { 
-                        ...i, 
-                        quantity: newQuantity, 
-                        finalUnitPrice: finalPrice 
-                    };
-                }
-                return i;
-            })
-        );
+        updateQuantity(item.productId, item.variantId, newQuantity);
+        loadCartItems();
     };
 
     const handleRemove = (item) => {
         removeFromCart(item.productId, item.variantId);
         setItems(prevItems =>
             prevItems.filter(
-                i => !(i.productId === item.productId && 
-                       (i.variantId || null) === (item.variantId || null))
+                i => !(i.productId === item.productId &&
+                    (i.variantId || null) === (item.variantId || null))
             )
         );
     };
 
-    const getItemPrice = (item) => {
-        const hasDiscountLabel = item.product.label === 'discount';
-        const basePrice = item.variant?.price ?? item.product.basePrice;
-        
-        // اگر finalUnitPrice موجود بود از اون استفاده کن، وگرنه محاسبه کن
-        if (item.finalUnitPrice && item.finalUnitPrice > 0) {
-            return item.finalUnitPrice;
-        }
-        
-        return calculateFinalPrice(basePrice, item.quantity, hasDiscountLabel);
-    };
-
-    const calculateItemTotal = (item) => {
-        const finalPrice = getItemPrice(item);
-        return finalPrice * item.quantity;
-    };
-
     const totalItems = items.reduce((sum, item) => sum + item.quantity, 0);
-    const totalPrice = items.reduce((sum, item) => sum + calculateItemTotal(item), 0);
-    const totalSavings = items.reduce((sum, item) => {
-        if (item.product.label !== 'discount') return sum;
-        const basePrice = item.variant?.price ?? item.product.basePrice;
-        const discountPercent = calculateDiscount(item.quantity);
-        if (discountPercent === 0) return sum;
-        const originalTotal = basePrice * item.quantity;
-        const discountedTotal = calculateItemTotal(item);
-        return sum + (originalTotal - discountedTotal);
-    }, 0);
+    // قیمت نهایی از سرور
+    const totalPrice = pricingData?.grandTotalToman
+        ?? items.reduce((sum, item) => sum + item.itemFinalPrice, 0);
+    const totalSavings = items.reduce((sum, item) => sum + (item.discountToman ?? 0), 0);
 
     const handleCheckout = () => {
         router.push('/p-user/signOrder');
@@ -150,7 +130,7 @@ export default function CartDrawer({ isOpen, onClose }) {
             <aside className="fixed left-0 top-0 z-50 h-full w-full max-w-md bg-white shadow-2xl flex flex-col animate-slideInLeft">
                 {/* Header */}
                 <div className="flex items-center justify-between p-4 border-b-2 border-gray-200 bg-gradient-to-r from-[#aa4725]/5 to-transparent">
-                    <button 
+                    <button
                         onClick={onClose}
                         className="p-2 hover:bg-gray-100 rounded-full transition-colors"
                     >
@@ -180,11 +160,10 @@ export default function CartDrawer({ isOpen, onClose }) {
                         </div>
                     ) : (
                         items.map((item) => {
-                            const hasDiscount = item.product.label === 'discount';
-                            const discountPercent = hasDiscount ? calculateDiscount(item.quantity) : 0;
-                            const basePrice = item.variant?.price ?? item.product.basePrice;
-                            const finalPrice = getItemPrice(item);
-                            const itemTotal = calculateItemTotal(item);
+                            const hasDiscount = (item.discountToman ?? 0) > 0;
+                            const basePriceToman = item.basePriceToman ?? item.displayPriceToman;
+                            const unitPriceToman = item.unitPriceToman ?? basePriceToman;
+                            const itemTotal = item.itemFinalPrice;
 
                             return (
                                 <div
@@ -194,8 +173,8 @@ export default function CartDrawer({ isOpen, onClose }) {
                                     <div className="flex gap-4">
                                         {/* Image */}
                                         <img
-                                            src={item.variant?.images?.[0] || item.product.mainImage}
-                                            alt={item.product.name}
+                                            src={item.variant?.images?.[0] || item.product?.mainImage}
+                                            alt={item.product?.name}
                                             className="w-24 h-24 object-cover rounded-lg"
                                         />
 
@@ -204,9 +183,9 @@ export default function CartDrawer({ isOpen, onClose }) {
                                             {/* Product Name */}
                                             <div>
                                                 <p className="font-bold text-gray-800 mb-1">
-                                                    {item.product.name}
+                                                    {item.product?.name}
                                                 </p>
-                                                
+
                                                 {/* Variant Info */}
                                                 {item.variant && (
                                                     <div className="flex flex-wrap gap-1 mb-2">
@@ -222,12 +201,12 @@ export default function CartDrawer({ isOpen, onClose }) {
                                                 )}
 
                                                 {/* Discount Badge */}
-                                                {hasDiscount && discountPercent > 0 && (
+                                                {hasDiscount && (
                                                     <span className="inline-flex items-center gap-1 text-xs bg-green-100 text-green-700 px-2 py-1 rounded-full font-semibold">
                                                         <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
                                                             <path fillRule="evenodd" d="M11.3 1.046A1 1 0 0112 2v5h4a1 1 0 01.82 1.573l-7 10A1 1 0 018 18v-5H4a1 1 0 01-.82-1.573l7-10a1 1 0 011.12-.38z" clipRule="evenodd" />
                                                         </svg>
-                                                        {discountPercent}% تخفیف
+                                                        تخفیف اعمال شد
                                                     </span>
                                                 )}
                                             </div>
@@ -236,18 +215,18 @@ export default function CartDrawer({ isOpen, onClose }) {
                                             <div className="space-y-2">
                                                 {/* Price Display */}
                                                 <div className="flex items-center gap-2">
-                                                    {hasDiscount && discountPercent > 0 ? (
+                                                    {hasDiscount ? (
                                                         <>
                                                             <span className="text-sm text-gray-400 line-through">
-                                                                {basePrice.toLocaleString('fa-IR')}
+                                                                {basePriceToman.toLocaleString('fa-IR')}
                                                             </span>
                                                             <span className="text-base font-bold text-[#aa4725]">
-                                                                {finalPrice.toLocaleString('fa-IR')} تومان
+                                                                {unitPriceToman.toLocaleString('fa-IR')} تومان
                                                             </span>
                                                         </>
                                                     ) : (
                                                         <span className="text-base font-bold text-gray-800">
-                                                            {basePrice.toLocaleString('fa-IR')} تومان
+                                                            {basePriceToman.toLocaleString('fa-IR')} تومان
                                                         </span>
                                                     )}
                                                 </div>
@@ -270,7 +249,8 @@ export default function CartDrawer({ isOpen, onClose }) {
 
                                                         <button
                                                             onClick={() => handleQuantityChange(item, item.quantity + 1)}
-                                                            className="px-2 py-1 bg-gray-50 hover:bg-gray-100 transition-colors"
+                                                            disabled={!item.inStock}
+                                                            className="px-2 py-1 bg-gray-50 hover:bg-gray-100 transition-colors disabled:opacity-40"
                                                         >
                                                             <FaPlus className="text-sm" />
                                                         </button>
@@ -284,7 +264,7 @@ export default function CartDrawer({ isOpen, onClose }) {
                                                                 {itemTotal.toLocaleString('fa-IR')} تومان
                                                             </div>
                                                         </div>
-                                                        
+
                                                         <button
                                                             onClick={() => handleRemove(item)}
                                                             className="p-2 text-red-500 hover:bg-red-50 rounded-lg transition-colors"
@@ -293,15 +273,6 @@ export default function CartDrawer({ isOpen, onClose }) {
                                                         </button>
                                                     </div>
                                                 </div>
-
-                                                {/* Discount Hint */}
-                                                {hasDiscount && (
-                                                    <div className="text-xs text-gray-600 bg-blue-50 px-2 py-1 rounded">
-                                                        {item.quantity === 1 && '💡 با خرید 2 عدد، 10% تخفیف بگیرید!'}
-                                                        {item.quantity === 2 && '✨ با خرید 3 عدد، 15% تخفیف بگیرید!'}
-                                                        {item.quantity >= 3 && '🎉 شما بیشترین تخفیف را دریافت می‌کنید!'}
-                                                    </div>
-                                                )}
                                             </div>
                                         </div>
                                     </div>

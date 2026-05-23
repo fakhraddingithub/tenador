@@ -1,36 +1,126 @@
-// app/api/cart/price/route.js
+/**
+ * POST /api/cart/price
+ *
+ * دریافت لیست آیتم‌های سبد + کوپن (اختیاری) و برگرداندن قیمت نهایی تومانی.
+ * قیمت همیشه سرور-ساید محاسبه می‌شود — هیچ‌وقت به قیمت ارسالی از کلاینت اعتماد نکنید.
+ *
+ * Request Body:
+ * {
+ *   items: [{ productId: string, variantId?: string, quantity: number }],
+ *   couponCode?: string
+ * }
+ *
+ * Response:
+ * {
+ *   items: [...],
+ *   grandTotalToman: number,
+ *   couponError: string | null,
+ *   rate: number
+ * }
+ */
+
+import { NextResponse } from "next/server";
+import { cookies } from "next/headers";
 import connectToDB from "base/configs/db";
-    import Product from "base/models/Product";
-import { calculateFinalPrice } from "base/services/priceCalculator";
+import Product from "base/models/Product";
+import Variant from "base/models/Variant";
+import User from "base/models/User";
+import Order from "base/models/Order";
+import { verifyToken } from "base/utils/auth";
+import { calculateCartTotal, getExchangeRate } from "base/services/pricingService";
 
 export async function POST(req) {
   try {
     await connectToDB();
+
     const body = await req.json();
-    const items = body.items || []; // [{ productId, quantity }]
-    const coupon = body.coupon || null;
-    const user = body.user || null;
+    const { items = [], couponCode = null } = body;
 
-    const ids = items.map(i => i.productId);
-    const products = await Product.find({ _id: { $in: ids } }).lean();
-    const prodMap = new Map(products.map(p => [p._id.toString(), p]));
-    let cartValue = 0;
-    items.forEach(it => {
-      const p = prodMap.get(it.productId);
-      if (p) cartValue += (p.basePrice || 0) * (it.quantity || 1);
-    });
-
-    const results = [];
-    for (const it of items) {
-      const p = prodMap.get(it.productId);
-      if (!p) continue;
-      const res = await calculateFinalPrice(p, { quantity: it.quantity || 1, couponCode: coupon, cartValue, user });
-      results.push({ productId: it.productId, quantity: it.quantity || 1, price: res });
+    if (!Array.isArray(items) || items.length === 0) {
+      return NextResponse.json({ error: "سبد خرید خالی است" }, { status: 400 });
     }
 
-    const total = results.reduce((s, r) => s + r.price.finalPrice, 0);
-    return new Response(JSON.stringify({ items: results, total }), { status: 200 });
+    // ─── احراز هویت (اختیاری — برای تخفیف‌های role/level) ───
+    let user = null;
+    try {
+      const cookieStore = await cookies();
+      const token = cookieStore.get("accessToken")?.value;
+      if (token) {
+        const decoded = verifyToken(token);
+        if (decoded?.userId) {
+          user = await User.findById(decoded.userId).lean();
+        }
+      }
+    } catch (_) {
+      // کاربر لاگین نیست — ادامه بدون تخفیف شخصی
+    }
+
+    // بررسی اولین سفارش
+    let isFirstOrder = false;
+    if (user) {
+      const prevOrders = await Order.countDocuments({ user: user._id });
+      isFirstOrder = prevOrders === 0;
+    }
+
+    // ─── بارگذاری محصولات و واریانت‌ها ───
+    const productIds = items.map((i) => i.productId);
+    const variantIds = items.filter((i) => i.variantId).map((i) => i.variantId);
+
+    const [products, variants] = await Promise.all([
+      Product.find({ _id: { $in: productIds } }).lean(),
+      variantIds.length > 0 ? Variant.find({ _id: { $in: variantIds } }).lean() : [],
+    ]);
+
+    const productMap = new Map(products.map((p) => [p._id.toString(), p]));
+    const variantMap = new Map(variants.map((v) => [v._id.toString(), v]));
+
+    // ─── آماده‌سازی آیتم‌ها ───
+    const cartItems = [];
+    const missingProducts = [];
+
+    for (const item of items) {
+      const product = productMap.get(item.productId);
+      if (!product) {
+        missingProducts.push(item.productId);
+        continue;
+      }
+
+      // بررسی موجودی
+      const variant = item.variantId ? variantMap.get(item.variantId) : null;
+      const availableStock = variant ? variant.stock : product.stock;
+      const quantity = Math.min(item.quantity || 1, availableStock);
+
+      if (quantity <= 0) continue; // ناموجود
+
+      cartItems.push({ product, variant, quantity });
+    }
+
+    if (cartItems.length === 0) {
+      return NextResponse.json(
+        { error: "هیچ محصول موجودی در سبد خرید یافت نشد" },
+        { status: 400 }
+      );
+    }
+
+    // ─── محاسبه قیمت ───
+    const { items: pricedItems, grandTotalToman, couponError } = await calculateCartTotal({
+      cartItems,
+      user,
+      couponCode,
+      isFirstOrder,
+    });
+
+    const rate = await getExchangeRate();
+
+    return NextResponse.json({
+      items: pricedItems,
+      grandTotalToman,
+      couponError,
+      rate,
+      missingProducts: missingProducts.length > 0 ? missingProducts : undefined,
+    });
   } catch (err) {
-    return new Response(JSON.stringify({ error: err.message }), { status: 500 });
+    console.error("[cart/price]", err);
+    return NextResponse.json({ error: err.message || "خطای سرور" }, { status: 500 });
   }
 }
