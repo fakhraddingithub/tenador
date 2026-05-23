@@ -168,9 +168,9 @@ const ProductInfo = ({ product, selectedVariant, onVariantChange }) => {
         setErrorMessage("این ترکیب در حال حاضر موجود نیست.");
         return;
       }
-      addToCart(product, quantity, selectedVariant, finalUnitPrice);
+      addToCart(product._id, quantity, selectedVariant._id, finalUnitPrice);
     } else {
-      addToCart(product, quantity, null, finalUnitPrice);
+      addToCart(product._id, quantity, null, finalUnitPrice);
     }
     
     setErrorMessage(""); // پاک کردن خطا در صورت موفقیت
