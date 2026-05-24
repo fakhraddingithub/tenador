@@ -9,6 +9,9 @@ import connectToDB from "base/configs/db";
 import Order from "base/models/Order";
 import { verifyToken } from "base/utils/auth";
 import { cookies } from "next/headers";
+import Product from "base/models/Product"; 
+import Variant from "base/models/Variant";
+import Payment from "base/models/Payment";
 
 async function getUserFromToken() {
   const cookieStore = await cookies();
