@@ -88,25 +88,25 @@ export async function POST(req) {
     const { default: Product } = await import("base/models/Product");
     const { default: Variant  } = await import("base/models/Variant");
 
-    for (const item of priceResult.items) {
-      if (item.variantId) {
-        const variant = await Variant.findById(item.variantId).select("stock").lean();
-        if (!variant || variant.stock < item.quantity) {
-          return NextResponse.json(
-            { message: `موجودی کافی برای ${item.productName} وجود ندارد` },
-            { status: 409 }
-          );
-        }
-      } else {
-        const product = await Product.findById(item.productId).select("stock").lean();
-        if (!product || product.stock < item.quantity) {
-          return NextResponse.json(
-            { message: `موجودی کافی برای ${item.productName} وجود ندارد` },
-            { status: 409 }
-          );
-        }
-      }
-    }
+    // for (const item of priceResult.items) {
+    //   if (item.variantId) {
+    //     const variant = await Variant.findById(item.variantId).select("stock").lean();
+    //     if (!variant || variant.stock < item.quantity) {
+    //       return NextResponse.json(
+    //         { message: `موجودی کافی برای ${item.productName} وجود ندارد` },
+    //         { status: 409 }
+    //       );
+    //     }
+    //   } else {
+    //     const product = await Product.findById(item.productId).select("stock").lean();
+    //     if (!product || product.stock < item.quantity) {
+    //       return NextResponse.json(
+    //         { message: `موجودی کافی برای ${item.productName} وجود ندارد` },
+    //         { status: 409 }
+    //       );
+    //     }
+    //   }
+    // }
 
     // ─── ساخت سفارش ───
     const orderItems = priceResult.items.map((item) => ({
