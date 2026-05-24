@@ -1,47 +1,10 @@
 /**
- * models/Order.js — نسخه بازنویسی‌شده
+ * models/Order.js
  *
- * تغییرات:
- *  + items حالا unitPriceToman, basePriceToman, discountToman دارد
- *  + فیلد coupon برای ذخیره اطلاعات کوپن اعمال‌شده
- *  + paymentStatus default به UNPAID تغییر کرد (قبلاً PENDING بود که enum نبود)
+ * مدل سفارش — با پشتیبانی کامل از کوپن، تخفیف و قیمت تأیید‌شده سرور
  */
 
 import mongoose from "mongoose";
-
-function generateTrackingCode(date = new Date()) {
-  const yyyy = date.getFullYear();
-  const mm = String(date.getMonth() + 1).padStart(2, "0");
-  const dd = String(date.getDate()).padStart(2, "0");
-  const letters = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
-  const letterPart =
-    letters[Math.floor(Math.random() * 26)] +
-    letters[Math.floor(Math.random() * 26)];
-  const numberPart = String(Math.floor(Math.random() * 1000)).padStart(3, "0");
-  return `${yyyy}${mm}${dd}${letterPart}${numberPart}`;
-}
-
-const OrderItemSchema = new mongoose.Schema(
-  {
-    product: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: "Product",
-      required: true,
-    },
-    variant: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: "Variant",
-      default: null,
-    },
-    quantity: { type: Number, required: true, min: 1 },
-
-    // قیمت‌ها به تومان — ذخیره‌شده در لحظه سفارش
-    basePriceToman: { type: Number, required: true }, // قیمت قبل از تخفیف
-    discountToman: { type: Number, default: 0 },       // مقدار تخفیف per unit
-    unitPriceToman: { type: Number, required: true },  // قیمت نهایی per unit
-  },
-  { _id: false }
-);
 
 const OrderSchema = new mongoose.Schema(
   {
@@ -58,19 +21,52 @@ const OrderSchema = new mongoose.Schema(
       index: true,
     },
 
-    items: [OrderItemSchema],
+    items: [
+      {
+        product: {
+          type: mongoose.Schema.Types.ObjectId,
+          ref: "Product",
+          required: true,
+        },
+        variant: {
+          type: mongoose.Schema.Types.ObjectId,
+          ref: "Variant",
+          default: null,
+        },
+        quantity: { type: Number, required: true, min: 1 },
+        unitPrice: { type: Number, required: true, min: 0 }, // قیمت واحد تأیید‌شده سمت سرور (تومان)
+      },
+    ],
 
-    /** مجموع قیمت نهایی به تومان */
+    // قیمت‌های تومانی تأیید‌شده سمت سرور
+    subtotalPrice: {
+      type: Number,
+      required: true,
+      min: 0,
+    },
+
+    discountAmount: {
+      type: Number,
+      default: 0,
+      min: 0,
+    },
+
+    couponDiscount: {
+      type: Number,
+      default: 0,
+      min: 0,
+    },
+
     totalPrice: {
       type: Number,
       required: true,
+      min: 0,
     },
 
-    /** اطلاعات کوپن اعمال‌شده */
+    // اطلاعات کوپن اعمال‌شده
     coupon: {
-      id: { type: mongoose.Schema.Types.ObjectId, ref: "Coupon", default: null },
       code: { type: String, default: null },
-      discountToman: { type: Number, default: 0 },
+      _id:  { type: mongoose.Schema.Types.ObjectId, ref: "Coupon", default: null },
     },
 
     paymentMethod: {
@@ -98,11 +94,11 @@ const OrderSchema = new mongoose.Schema(
         default: null,
       },
       snapshot: {
-        fullName: String,
-        phone: String,
-        province: String,
-        city: String,
-        postalCode: String,
+        fullName:    String,
+        phone:       String,
+        province:    String,
+        city:        String,
+        postalCode:  String,
         fullAddress: String,
       },
     },
@@ -119,20 +115,45 @@ const OrderSchema = new mongoose.Schema(
       default: Date.now,
     },
 
-    description: { type: String, default: "" },
+    description: {
+      type: String,
+      maxlength: 500,
+      default: "",
+    },
 
-    reviewedAt: { type: Date },
-    reviewedBy: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
+    reviewedAt: Date,
+    reviewedBy: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+    },
   },
   { timestamps: true }
 );
 
+// Virtual: تعداد کل آیتم‌ها
 OrderSchema.virtual("itemsCount").get(function () {
   return this.items.reduce((sum, i) => sum + i.quantity, 0);
 });
 
 OrderSchema.set("toJSON", { virtuals: true });
 OrderSchema.set("toObject", { virtuals: true });
+
+// تولید کد رهگیری یکتا
+function generateTrackingCode(date = new Date()) {
+  const yyyy = date.getFullYear();
+  const mm   = String(date.getMonth() + 1).padStart(2, "0");
+  const dd   = String(date.getDate()).padStart(2, "0");
+  const datePart = `${yyyy}${mm}${dd}`;
+
+  const letters = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+  const letterPart =
+    letters[Math.floor(Math.random() * 26)] +
+    letters[Math.floor(Math.random() * 26)];
+
+  const numberPart = String(Math.floor(Math.random() * 10000)).padStart(4, "0");
+
+  return `${datePart}${letterPart}${numberPart}`;
+}
 
 OrderSchema.pre("save", function () {
   if (!this.trackingCode) {

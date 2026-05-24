@@ -1,11 +1,20 @@
 /**
- * POST /api/payments/bank-receipt
+ * src/app/api/payments/bank-receipt/route.js
  *
- * ثبت پرداخت با رسید بانکی (نقدی یا قسطی).
- * امنیت:
- *  - مبلغ از سفارش خوانده می‌شود، نه از کلاینت
- *  - سفارش باید متعلق به کاربر فعلی باشد
- *  - وضعیت سفارش باید UNPAID یا PARTIALLY_PAID باشد
+ * ثبت پرداخت با رسید بانکی یا تعریف اقساط
+ *
+ * POST body:
+ *  {
+ *    orderId:          string,
+ *    method:           "BANK_RECEIPT" | "INSTALLMENT",
+ *    receiptImageUrl?: string,   // برای BANK_RECEIPT
+ *    installment?: {             // برای INSTALLMENT
+ *      downPaymentAmount:   number,  // پیش‌پرداخت به تومان
+ *      downPaymentReceipt:  string,  // تصویر رسید پیش‌پرداخت
+ *      numberOfChecks:      number,  // تعداد چک
+ *      checks: [{ amount, dueDate, checkNumber? }]
+ *    }
+ *  }
  */
 
 import { NextResponse } from "next/server";
@@ -15,222 +24,171 @@ import { verifyToken } from "base/utils/auth";
 import Order from "base/models/Order";
 import Payment from "base/models/Payment";
 import Installment from "base/models/Installment";
-import mongoose from "mongoose";
 
-async function getAuthUser() {
+async function getUserFromToken() {
   const cookieStore = await cookies();
   const token = cookieStore.get("accessToken")?.value;
   if (!token) return null;
-  const decoded = verifyToken(token);
-  if (!decoded?.userId) return null;
-  return decoded;
+  return verifyToken(token) || null;
 }
 
 export async function POST(req) {
   try {
     await connectToDB();
 
-    const auth = await getAuthUser();
-    if (!auth) {
-      return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
+    const user = await getUserFromToken();
+    if (!user) {
+      return NextResponse.json({ message: "احراز هویت لازم است" }, { status: 401 });
     }
 
     const body = await req.json();
-    const {
-      orderId,
-      receiptImageUrl,
-      // برای اقساط:
-      isInstallment = false,
-      downPaymentAmount, // مبلغ پیش‌پرداخت (تومان) — فقط برای اقساط
-      numberOfChecks,    // تعداد چک
-      checks,            // [{ amount, dueDate }]
-    } = body;
+    const { orderId, method, receiptImageUrl, installment } = body;
 
-    /* ── اعتبارسنجی پایه ── */
-    if (!orderId) {
-      return NextResponse.json({ message: "شناسه سفارش الزامی است" }, { status: 400 });
-    }
-    if (!receiptImageUrl) {
-      return NextResponse.json({ message: "تصویر رسید الزامی است" }, { status: 400 });
+    // ─── اعتبارسنجی ───
+    if (!orderId || !method) {
+      return NextResponse.json({ message: "فیلدهای ضروری ناقص است" }, { status: 400 });
     }
 
-    /* ── یافتن سفارش ── */
-    const order = await Order.findOne({
-      _id: orderId,
-      user: auth.userId,
-    });
+    if (!["BANK_RECEIPT", "INSTALLMENT"].includes(method)) {
+      return NextResponse.json({ message: "روش پرداخت معتبر نیست" }, { status: 400 });
+    }
 
+    // ─── یافتن سفارش متعلق به این کاربر ───
+    const order = await Order.findOne({ _id: orderId, user: user.userId });
     if (!order) {
       return NextResponse.json({ message: "سفارش یافت نشد" }, { status: 404 });
     }
 
-    if (!["UNPAID", "PARTIALLY_PAID"].includes(order.paymentStatus)) {
-      return NextResponse.json(
-        { message: "این سفارش قابل پرداخت نیست" },
-        { status: 400 }
-      );
+    if (order.paymentStatus === "PAID") {
+      return NextResponse.json({ message: "این سفارش قبلاً پرداخت شده است" }, { status: 400 });
     }
 
-    /* ── محاسبه مبلغی که باید پرداخت شود ── */
-    const alreadyPaid = order.payments?.length
-      ? (
-          await Payment.find({
-            _id: { $in: order.payments },
-            status: "PAID",
-          }).lean()
-        ).reduce((s, p) => s + p.amount, 0)
-      : 0;
-
-    const remainingAmount = order.totalPrice - alreadyPaid;
-
-    if (remainingAmount <= 0) {
-      return NextResponse.json(
-        { message: "مبلغ سفارش قبلاً پرداخت شده است" },
-        { status: 400 }
-      );
-    }
-
-    /* ── پرداخت اقساطی ── */
-    if (isInstallment || order.paymentMethod === "INSTALLMENT") {
-      if (!downPaymentAmount || !numberOfChecks || !checks?.length) {
-        return NextResponse.json(
-          { message: "اطلاعات اقساط ناقص است (پیش‌پرداخت، تعداد و اطلاعات چک‌ها)" },
-          { status: 400 }
-        );
+    // ─── رسید بانکی ───
+    if (method === "BANK_RECEIPT") {
+      if (!receiptImageUrl) {
+        return NextResponse.json({ message: "تصویر رسید بانکی الزامی است" }, { status: 400 });
       }
 
-      if (downPaymentAmount > remainingAmount) {
-        return NextResponse.json(
-          { message: "مبلغ پیش‌پرداخت بیشتر از مانده سفارش است" },
-          { status: 400 }
-        );
-      }
-
-      /* بررسی جمع چک‌ها + پیش‌پرداخت = مانده */
-      const checksTotal = checks.reduce((s, c) => s + (c.amount || 0), 0);
-      const expectedTotal = Math.round(downPaymentAmount + checksTotal);
-      if (Math.abs(expectedTotal - remainingAmount) > 10) {
-        // تلرانس ۱۰ تومان برای گرد کردن
-        return NextResponse.json(
-          {
-            message: `جمع پیش‌پرداخت و چک‌ها (${expectedTotal.toLocaleString("fa-IR")} تومان) با مانده سفارش (${remainingAmount.toLocaleString("fa-IR")} تومان) مطابقت ندارد`,
-          },
-          { status: 400 }
-        );
-      }
-
-      if (numberOfChecks !== checks.length) {
-        return NextResponse.json(
-          { message: "تعداد چک‌ها با اطلاعات ارسالی مطابقت ندارد" },
-          { status: 400 }
-        );
-      }
-
-      /* ── شروع تراکنش ── */
-      const session = await mongoose.startSession();
-      session.startTransaction();
-      try {
-        /* پرداخت پیش‌پرداخت */
-        const [downPayment] = await Payment.create(
-          [
-            {
-              order: order._id,
-              method: "BANK_RECEIPT",
-              amount: downPaymentAmount,
-              status: "PENDING",
-              bankReceipt: {
-                imageUrl: receiptImageUrl,
-                uploadedAt: new Date(),
-                reviewStatus: "PENDING",
-              },
-            },
-          ],
-          { session }
-        );
-
-        /* ایجاد رکورد Installment */
-        await Installment.create(
-          [
-            {
-              order: order._id,
-              downPayment: downPayment._id,
-              totalAmount: remainingAmount,
-              numberOfChecks,
-              status: "PENDING",
-              checks: checks.map((c) => ({
-                amount: c.amount,
-                dueDate: new Date(c.dueDate),
-                status: "PENDING",
-              })),
-            },
-          ],
-          { session }
-        );
-
-        /* آپدیت سفارش */
-        order.payments.push(downPayment._id);
-        order.paymentStatus = "PARTIALLY_PAID";
-        await order.save({ session });
-
-        await session.commitTransaction();
-        session.endSession();
-
-        return NextResponse.json(
-          {
-            message: "اقساط با موفقیت ثبت شد",
-            paymentId: downPayment._id,
-          },
-          { status: 201 }
-        );
-      } catch (err) {
-        await session.abortTransaction();
-        session.endSession();
-        throw err;
-      }
-    }
-
-    /* ── پرداخت نقدی کامل ── */
-    const session = await mongoose.startSession();
-    session.startTransaction();
-    try {
-      const [payment] = await Payment.create(
-        [
-          {
-            order: order._id,
-            method: "BANK_RECEIPT",
-            amount: remainingAmount,
-            status: "PENDING",
-            bankReceipt: {
-              imageUrl: receiptImageUrl,
-              uploadedAt: new Date(),
-              reviewStatus: "PENDING",
-            },
-          },
-        ],
-        { session }
-      );
+      const payment = await Payment.create({
+        order:  order._id,
+        method: "BANK_RECEIPT",
+        amount: order.totalPrice,
+        status: "PENDING",
+        bankReceipt: {
+          imageUrl:     receiptImageUrl,
+          uploadedAt:   new Date(),
+          reviewStatus: "PENDING",
+        },
+      });
 
       order.payments.push(payment._id);
-      // وضعیت PAID تنها زمانی تغییر می‌کند که ادمین رسید را تأیید کند
-      await order.save({ session });
+      await order.save();
 
-      await session.commitTransaction();
-      session.endSession();
+      return NextResponse.json(
+        { message: "رسید بانکی با موفقیت ثبت شد و در انتظار تأیید است", payment },
+        { status: 201 }
+      );
+    }
+
+    // ─── پرداخت اقساطی ───
+    if (method === "INSTALLMENT") {
+      if (!installment) {
+        return NextResponse.json({ message: "اطلاعات اقساط ناقص است" }, { status: 400 });
+      }
+
+      const {
+        downPaymentAmount,
+        downPaymentReceipt,
+        numberOfChecks,
+        checks,
+      } = installment;
+
+      // اعتبارسنجی پیش‌پرداخت
+      if (!downPaymentAmount || downPaymentAmount <= 0) {
+        return NextResponse.json({ message: "مبلغ پیش‌پرداخت معتبر نیست" }, { status: 400 });
+      }
+
+      if (downPaymentAmount > order.totalPrice) {
+        return NextResponse.json(
+          { message: "پیش‌پرداخت نمی‌تواند بیشتر از مبلغ کل سفارش باشد" },
+          { status: 400 }
+        );
+      }
+
+      if (!downPaymentReceipt) {
+        return NextResponse.json({ message: "رسید پیش‌پرداخت الزامی است" }, { status: 400 });
+      }
+
+      if (!numberOfChecks || numberOfChecks < 1 || numberOfChecks > 12) {
+        return NextResponse.json(
+          { message: "تعداد اقساط باید بین ۱ تا ۱۲ باشد" },
+          { status: 400 }
+        );
+      }
+
+      if (!Array.isArray(checks) || checks.length !== numberOfChecks) {
+        return NextResponse.json(
+          { message: "تعداد چک‌ها با numberOfChecks مطابقت ندارد" },
+          { status: 400 }
+        );
+      }
+
+      // بررسی مجموع چک‌ها
+      const checksTotal = checks.reduce((s, c) => s + (c.amount || 0), 0);
+      const expectedChecksTotal = order.totalPrice - downPaymentAmount;
+
+      if (Math.abs(checksTotal - expectedChecksTotal) > 100) {
+        return NextResponse.json(
+          {
+            message: `مجموع مبلغ چک‌ها (${checksTotal}) باید برابر با مانده سفارش (${expectedChecksTotal}) باشد`,
+          },
+          { status: 400 }
+        );
+      }
+
+      // ثبت پرداخت پیش‌پرداخت
+      const downPayment = await Payment.create({
+        order:  order._id,
+        method: "BANK_RECEIPT",
+        amount: downPaymentAmount,
+        status: "PENDING",
+        bankReceipt: {
+          imageUrl:     downPaymentReceipt,
+          uploadedAt:   new Date(),
+          reviewStatus: "PENDING",
+        },
+      });
+
+      // ثبت رکورد اقساط
+      const installmentDoc = await Installment.create({
+        order:          order._id,
+        downPayment:    downPayment._id,
+        totalAmount:    order.totalPrice,
+        numberOfChecks,
+        status:         "PENDING",
+        checks: checks.map((c) => ({
+          checkNumber: c.checkNumber ?? null,
+          amount:      c.amount,
+          dueDate:     new Date(c.dueDate),
+          status:      "PENDING",
+        })),
+      });
+
+      order.payments.push(downPayment._id);
+      order.paymentStatus = "PARTIALLY_PAID";
+      await order.save();
 
       return NextResponse.json(
         {
-          message: "رسید بانکی با موفقیت ثبت شد و در انتظار تأیید است",
-          paymentId: payment._id,
+          message:     "درخواست اقساط با موفقیت ثبت شد و در انتظار تأیید پیش‌پرداخت است",
+          installment: installmentDoc,
+          downPayment,
         },
         { status: 201 }
       );
-    } catch (err) {
-      await session.abortTransaction();
-      session.endSession();
-      throw err;
     }
   } catch (error) {
-    console.error("[payments/bank-receipt]", error);
+    console.error("خطا در ثبت پرداخت:", error);
     return NextResponse.json({ message: "خطای داخلی سرور" }, { status: 500 });
   }
 }

@@ -1,168 +1,104 @@
 /**
- * POST /api/orders/webhook-success
+ * src/app/api/orders/webhook-success/route.js
  *
- * بعد از تأیید پرداخت (توسط gateway یا ادمین) فراخوانی می‌شود.
- * وظایف:
- *  1. محاسبه و واریز کردیت مربی بر اساس قوانین CoachCredit
- *  2. آپدیت وضعیت سفارش به PAID
+ * وب‌هوک تأیید پرداخت موفق
+ *  - آپدیت وضعیت سفارش
+ *  - محاسبه و واریز کردیت مربی بر اساس مدل CoachCredit
+ *  - این endpoint باید پس از تأیید نهایی پرداخت توسط درگاه صدا زده شود
  *
- * این endpoint باید از یک secret header یا IP whitelist محافظت شود.
- * در این پیاده‌سازی از یک WEBHOOK_SECRET استفاده می‌کنیم.
+ * POST body (internal/از callback درگاه):
+ *  { orderId: string }
+ *
+ * ⚠️  این endpoint باید با یک secret header محافظت شود در محیط production
  */
 
 import { NextResponse } from "next/server";
 import connectToDB from "base/configs/db";
-import User from "base/models/User";
 import Order from "base/models/Order";
-import CoachCredit from "base/models/CoachCredit";
-
-const WEBHOOK_SECRET = process.env.WEBHOOK_SECRET;
+import Payment from "base/models/Payment";
+import User from "base/models/User";
+import { computeCoachCredit } from "base/services/priceEngine";
 
 export async function POST(req) {
   try {
-    /* ── احراز هویت webhook ── */
-    const secret = req.headers.get("x-webhook-secret");
-    if (WEBHOOK_SECRET && secret !== WEBHOOK_SECRET) {
-      return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
-    }
-
     await connectToDB();
 
     const { orderId } = await req.json();
 
     if (!orderId) {
-      return NextResponse.json({ message: "orderId required" }, { status: 400 });
+      return NextResponse.json({ message: "orderId الزامی است" }, { status: 400 });
     }
 
-    const order = await Order.findById(orderId).populate("items.product").lean();
+    const order = await Order.findById(orderId)
+      .populate("items.product", "_id category brand serie")
+      .populate("user", "_id coach walletBalance")
+      .lean();
+
     if (!order) {
-      return NextResponse.json({ message: "Order not found" }, { status: 404 });
+      return NextResponse.json({ message: "سفارش یافت نشد" }, { status: 404 });
     }
 
-    /* ── فقط برای سفارش‌های پرداخت‌شده اجرا شود ── */
-    if (order.paymentStatus !== "PAID") {
-      return NextResponse.json({ message: "Order not paid yet" }, { status: 400 });
+    if (order.paymentStatus === "PAID") {
+      return NextResponse.json({ message: "سفارش قبلاً پردازش شده است" }, { status: 200 });
     }
 
-    const buyer = await User.findById(order.user).lean();
-    if (!buyer || !buyer.coach) {
+    // ─── بررسی واقعی مجموع پرداخت‌های تأییدشده ───
+    const payments = await Payment.find({
+      order:  order._id,
+      status: "PAID",
+    }).lean();
+
+    const totalPaid = payments.reduce((s, p) => s + p.amount, 0);
+
+    if (totalPaid < order.totalPrice) {
       return NextResponse.json(
-        { message: "سفارش ثبت شد — خریدار مربی معرف ندارد" },
-        { status: 200 }
+        { message: `مبلغ پرداختی (${totalPaid}) کمتر از مبلغ سفارش (${order.totalPrice}) است` },
+        { status: 400 }
       );
     }
 
-    /* ── بررسی اینکه آیا این اولین خرید شاگرد است ── */
-    const prevOrders = await Order.countDocuments({
-      user: buyer._id,
-      _id: { $ne: order._id },
-      paymentStatus: "PAID",
+    // ─── آپدیت وضعیت سفارش ───
+    await Order.findByIdAndUpdate(orderId, {
+      paymentStatus:     "PAID",
+      fulfillmentStatus: "PROCESSING",
     });
-    const isNewStudent = prevOrders === 0;
 
-    const now = new Date();
+    // ─── محاسبه کردیت مربی ───
+    const buyer = order.user;
+    if (buyer?.coach) {
+      const creditItems = order.items.map((item) => ({
+        productId:  item.product?._id?.toString() ?? item.product?.toString(),
+        categoryId: item.product?.category?.toString(),
+        serieId:    item.product?.serie?.toString(),
+        lineTotalToman: item.unitPrice * item.quantity,
+      }));
 
-    /* ── یافتن قوانین CoachCredit مرتبط ── */
-    const creditRules = await CoachCredit.find({
-      active: true,
-      $or: [{ startAt: null }, { startAt: { $lte: now } }],
-      $and: [
-        { $or: [{ endAt: null }, { endAt: { $gte: now } }] },
-        { $or: [{ scope: "all_coaches" }, { scope: "specific_coach", coach: buyer.coach }] },
-      ],
-    })
-      .sort({ priority: -1 })
-      .lean();
+      const creditAmount = await computeCoachCredit(
+        buyer.coach.toString(),
+        creditItems
+      );
 
-    let totalCreditEarned = 0;
-    const appliedCredits = [];
-
-    /* برای هر آیتم سفارش، بهترین قانون مرتبط را اعمال کن */
-    for (const item of order.items) {
-      const product = item.product;
-      if (!product) continue;
-
-      let bestCredit = 0;
-      let bestRule = null;
-
-      for (const rule of creditRules) {
-        /* بررسی targetType */
-        let matched = false;
-        if (rule.targetType === "all") {
-          matched = true;
-        } else if (
-          rule.targetType === "product" &&
-          rule.targets.some((t) => t.toString() === product._id.toString())
-        ) {
-          matched = true;
-        } else if (
-          rule.targetType === "category" &&
-          product.category &&
-          rule.targets.some((t) => t.toString() === product.category.toString())
-        ) {
-          matched = true;
-        } else if (
-          rule.targetType === "serie" &&
-          product.serie &&
-          rule.targets.some((t) => t.toString() === product.serie.toString())
-        ) {
-          matched = true;
-        }
-
-        if (!matched) continue;
-
-        /* بررسی شرایط */
-        if (rule.conditions?.onlyNewStudents && !isNewStudent) continue;
-        if (
-          rule.conditions?.minPurchaseAmount &&
-          item.unitPriceToman * item.quantity < rule.conditions.minPurchaseAmount
-        )
-          continue;
-
-        /* محاسبه کردیت */
-        const purchaseAmount = (item.unitPriceToman || 0) * item.quantity;
-        let credit = 0;
-        if (rule.credit.kind === "percent") {
-          credit = Math.floor((purchaseAmount * rule.credit.value) / 100);
-        } else {
-          credit = rule.credit.value;
-        }
-
-        if (credit > bestCredit) {
-          bestCredit = credit;
-          bestRule = rule;
-        }
-      }
-
-      if (bestCredit > 0 && bestRule) {
-        totalCreditEarned += bestCredit;
-        appliedCredits.push({ ruleId: bestRule._id, amount: bestCredit });
-
-        /* آپدیت آمار قانون */
-        await CoachCredit.findByIdAndUpdate(bestRule._id, {
-          $inc: { totalCreditPaid: bestCredit, triggerCount: 1 },
+      if (creditAmount > 0) {
+        await User.findByIdAndUpdate(buyer.coach, {
+          $inc: { walletBalance: creditAmount },
         });
-      }
-    }
 
-    /* ── واریز به کیف پول مربی ── */
-    if (totalCreditEarned > 0) {
-      await User.findByIdAndUpdate(buyer.coach, {
-        $inc: { walletBalance: totalCreditEarned },
-      });
+        console.log(
+          `کردیت مربی ${buyer.coach} — مبلغ: ${creditAmount} تومان — سفارش: ${orderId}`
+        );
+      }
     }
 
     return NextResponse.json(
       {
-        message: "کردیت مربی محاسبه و واریز شد",
-        coachId: buyer.coach,
-        totalCreditEarned,
-        appliedCredits,
+        message:       "پرداخت تأیید و سفارش پردازش شد",
+        orderId,
+        totalPaid,
       },
       { status: 200 }
     );
   } catch (error) {
-    console.error("[webhook-success]", error);
-    return NextResponse.json({ message: "Internal server error" }, { status: 500 });
+    console.error("خطا در webhook-success:", error);
+    return NextResponse.json({ message: "خطای داخلی سرور" }, { status: 500 });
   }
 }

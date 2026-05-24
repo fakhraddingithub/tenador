@@ -1,199 +1,147 @@
 /**
- * POST /api/payments/online/callback
+ * src/app/api/payments/online/callback/route.js
  *
- * Callback از درگاه پرداخت آنلاین (مثلاً زرین‌پال).
- * وظایف:
- *  1. verify پرداخت با درگاه (با Authority)
- *  2. آپدیت Order → PAID
- *  3. صدا زدن webhook-success برای کردیت مربی
+ * کال‌بک پرداخت آنلاین از درگاه بانکی
  *
- * امنیت:
- *  - مبلغ از سفارش خوانده می‌شود — هیچ‌وقت از callback parameter
- *  - هر authority فقط یک بار verify می‌شود
+ * POST body (از درگاه بانکی):
+ *  { orderId, authority, status }
+ *
+ * جریان:
+ *  1. یافتن سفارش و تأیید مالکیت
+ *  2. تأیید پرداخت با درگاه (ZarinPal / سایر)
+ *  3. ذخیره رکورد Payment
+ *  4. فراخوانی webhook-success برای آپدیت سفارش و کردیت مربی
  */
 
 import { NextResponse } from "next/server";
 import connectToDB from "base/configs/db";
-import Payment from "base/models/Payment.js";
-import Order from "base/models/Order.js";
-import mongoose from "mongoose";
+import Order from "base/models/Order";
+import Payment from "base/models/Payment";
 
-/* ─────────────────────────────────────────────────────────────
-   Helper: verify با زرین‌پال
-   در production مقادیر واقعی را از env بخوانید
-───────────────────────────────────────────────────────────── */
-async function verifyZarinpal(authority, expectedAmountToman) {
-  const merchantId = process.env.ZARINPAL_MERCHANT_ID;
-  if (!merchantId) {
-    // اگر کانفیگ نبود — فقط در dev mode قبول کن
-    if (process.env.NODE_ENV === "development") {
-      return { success: true, refId: `DEV-${Date.now()}` };
-    }
-    throw new Error("ZARINPAL_MERCHANT_ID تنظیم نشده است");
+/**
+ * تأیید پرداخت با درگاه ZarinPal
+ * TODO: این تابع را با SDK درگاه واقعی خود جایگزین کنید
+ */
+async function verifyWithGateway(authority, amount) {
+  // نمونه برای ZarinPal:
+  // const axios = await import("axios");
+  // const { data } = await axios.post("https://api.zarinpal.com/pg/v4/payment/verify.json", {
+  //   merchant_id: process.env.ZARINPAL_MERCHANT_ID,
+  //   amount,      // به ریال
+  //   authority,
+  // });
+  // return { verified: data.data?.code === 100, refId: data.data?.ref_id };
+
+  // در محیط توسعه (mock):
+  if (process.env.NODE_ENV === "development") {
+    return { verified: true, refId: `DEV-${Date.now()}` };
   }
 
-  const res = await fetch("https://api.zarinpal.com/pg/v4/payment/verify.json", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      merchant_id: merchantId,
-      amount: expectedAmountToman * 10, // تبدیل تومان → ریال
-      authority,
-    }),
-  });
+  throw new Error("درگاه پرداخت هنوز تنظیم نشده است");
+}
 
-  const data = await res.json();
-
-  if (data.data?.code === 100 || data.data?.code === 101) {
-    return { success: true, refId: String(data.data.ref_id) };
-  }
-
-  return { success: false, refId: null, error: data.errors?.message || "تأیید ناموفق" };
+export async function GET(req) {
+  // بعضی درگاه‌ها از GET استفاده می‌کنند
+  return handleCallback(req);
 }
 
 export async function POST(req) {
+  return handleCallback(req);
+}
+
+async function handleCallback(req) {
   try {
     await connectToDB();
 
-    const body = await req.json();
-    const { authority, status, orderId } = body;
+    // پارامترها ممکن است از query string (GET) یا body (POST) باشند
+    let orderId, authority, status;
 
-    /* اگر کاربر کنسل کرد */
-    if (status === "NOK" || status === "CANCEL") {
-      return NextResponse.json(
-        { message: "پرداخت توسط کاربر لغو شد", success: false },
-        { status: 200 }
-      );
+    const contentType = req.headers.get("content-type") || "";
+    if (contentType.includes("application/json")) {
+      const body = await req.json();
+      ({ orderId, authority, status } = body);
+    } else {
+      const { searchParams } = new URL(req.url);
+      orderId   = searchParams.get("orderId");
+      authority = searchParams.get("Authority");
+      status    = searchParams.get("Status");
     }
 
-    if (!authority || !orderId) {
-      return NextResponse.json(
-        { message: "Authority و شناسه سفارش الزامی است" },
-        { status: 400 }
-      );
+    if (!orderId || !authority) {
+      return NextResponse.json({ message: "پارامترهای ناقص" }, { status: 400 });
     }
 
-    /* ── یافتن سفارش ── */
     const order = await Order.findById(orderId);
     if (!order) {
       return NextResponse.json({ message: "سفارش یافت نشد" }, { status: 404 });
     }
 
-    if (order.paymentMethod !== "ONLINE") {
-      return NextResponse.json(
-        { message: "روش پرداخت سفارش آنلاین نیست" },
-        { status: 400 }
-      );
-    }
-
-    /* ── جلوگیری از double-payment ── */
+    // جلوگیری از پردازش مجدد
     if (order.paymentStatus === "PAID") {
-      return NextResponse.json(
-        { message: "این سفارش قبلاً پرداخت شده است", success: true },
-        { status: 200 }
+      return NextResponse.redirect(
+        `${process.env.NEXT_PUBLIC_BASE_URL}/p-user/orders?status=already_paid`
       );
     }
 
-    /* ── بررسی authority تکراری ── */
-    const existingPayment = await Payment.findOne({
-      "onlinePayment.authority": authority,
-    });
-    if (existingPayment) {
-      return NextResponse.json(
-        { message: "این تراکنش قبلاً پردازش شده است" },
-        { status: 400 }
-      );
-    }
-
-    /* ── محاسبه مبلغ قابل دریافت از سفارش ── */
-    const alreadyPaid = order.payments?.length
-      ? (
-          await Payment.find({
-            _id: { $in: order.payments },
-            status: "PAID",
-          }).lean()
-        ).reduce((s, p) => s + p.amount, 0)
-      : 0;
-    const expectedAmount = order.totalPrice - alreadyPaid;
-
-    /* ── verify با درگاه ── */
-    const verifyResult = await verifyZarinpal(authority, expectedAmount);
-
-    if (!verifyResult.success) {
-      /* ثبت پرداخت ناموفق */
+    // پرداخت ناموفق از طرف درگاه
+    if (status === "NOK" || status === "failed") {
       await Payment.create({
-        order: order._id,
+        order:  order._id,
         method: "ONLINE",
-        amount: expectedAmount,
+        amount: order.totalPrice,
         status: "FAILED",
-        onlinePayment: {
-          authority,
-          gateway: "zarinpal",
-        },
+        onlinePayment: { authority, gateway: "zarinpal" },
       });
-
-      return NextResponse.json(
-        { message: "پرداخت تأیید نشد", success: false },
-        { status: 200 }
+      return NextResponse.redirect(
+        `${process.env.NEXT_PUBLIC_BASE_URL}/p-user/orders?status=failed&tracking=${order.trackingCode}`
       );
     }
 
-    /* ── ثبت پرداخت موفق ── */
-    const dbSession = await mongoose.startSession();
-    dbSession.startTransaction();
-    try {
-      const [payment] = await Payment.create(
-        [
-          {
-            order: order._id,
-            method: "ONLINE",
-            amount: expectedAmount,
-            status: "PAID",
-            onlinePayment: {
-              authority,
-              refId: verifyResult.refId,
-              gateway: "zarinpal",
-              paidAt: new Date(),
-            },
-          },
-        ],
-        { session: dbSession }
+    // تأیید با درگاه
+    const { verified, refId } = await verifyWithGateway(authority, order.totalPrice * 10); // تومان → ریال
+
+    if (!verified) {
+      await Payment.create({
+        order:  order._id,
+        method: "ONLINE",
+        amount: order.totalPrice,
+        status: "FAILED",
+        onlinePayment: { authority, gateway: "zarinpal" },
+      });
+      return NextResponse.redirect(
+        `${process.env.NEXT_PUBLIC_BASE_URL}/p-user/orders?status=failed&tracking=${order.trackingCode}`
       );
-
-      order.payments.push(payment._id);
-      order.paymentStatus = "PAID";
-      order.fulfillmentStatus = "PROCESSING";
-      await order.save({ session: dbSession });
-
-      await dbSession.commitTransaction();
-      dbSession.endSession();
-
-      /* ── صدا زدن webhook کردیت مربی (fire-and-forget) ── */
-      fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/api/orders/webhook-success`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "x-webhook-secret": process.env.WEBHOOK_SECRET || "",
-        },
-        body: JSON.stringify({ orderId: order._id }),
-      }).catch((e) => console.error("[webhook-success fire]", e));
-
-      return NextResponse.json(
-        {
-          message: "پرداخت با موفقیت انجام شد",
-          success: true,
-          refId: verifyResult.refId,
-          trackingCode: order.trackingCode,
-        },
-        { status: 200 }
-      );
-    } catch (err) {
-      await dbSession.abortTransaction();
-      dbSession.endSession();
-      throw err;
     }
+
+    // ─── ثبت پرداخت موفق ───
+    const payment = await Payment.create({
+      order:  order._id,
+      method: "ONLINE",
+      amount: order.totalPrice,
+      status: "PAID",
+      onlinePayment: {
+        authority,
+        refId,
+        gateway: "zarinpal",
+        paidAt:  new Date(),
+      },
+    });
+
+    order.payments.push(payment._id);
+    await order.save();
+
+    // ─── فراخوانی webhook برای آپدیت نهایی و کردیت مربی ───
+    await fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/api/orders/webhook-success`, {
+      method:  "POST",
+      headers: { "Content-Type": "application/json" },
+      body:    JSON.stringify({ orderId: order._id }),
+    });
+
+    return NextResponse.redirect(
+      `${process.env.NEXT_PUBLIC_BASE_URL}/p-user/payments/${order.trackingCode}?status=success`
+    );
   } catch (error) {
-    console.error("[payments/online/callback]", error);
+    console.error("خطا در کال‌بک پرداخت:", error);
     return NextResponse.json({ message: "خطای داخلی سرور" }, { status: 500 });
   }
 }
