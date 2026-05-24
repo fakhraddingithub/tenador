@@ -95,12 +95,12 @@ export async function POST(req) {
       cartItems.push({ product, variant, quantity });
     }
 
-    if (cartItems.length === 0) {
-      return NextResponse.json(
-        { error: "هیچ محصول موجودی در سبد خرید یافت نشد" },
-        { status: 400 }
-      );
-    }
+    // if (cartItems.length === 0) {
+    //   return NextResponse.json(
+    //     { error: "هیچ محصول موجودی در سبد خرید یافت نشد" },
+    //     { status: 400 }
+    //   );
+    // }
 
     // ─── محاسبه قیمت ───
     const { items: pricedItems, grandTotalToman, couponError } = await calculateCartTotal({
