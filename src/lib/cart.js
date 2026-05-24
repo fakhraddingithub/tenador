@@ -11,7 +11,7 @@
  *  { productId: string, variantId: string|null, quantity: number }
  */
 
-const CART_KEY = "tenador_cart";
+const CART_KEY = "cart";
 
 // ─── خواندن سبد ───
 
