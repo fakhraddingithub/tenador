@@ -83,7 +83,7 @@ const PaymentsModule = () => {
                 rounded-[var(--radius)]
                 border border-[hsl(var(--border))]
                 bg-white
-                px-4 py-3
+                py-3
               "
             >
               {/* Header */}

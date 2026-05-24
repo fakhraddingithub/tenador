@@ -73,7 +73,7 @@ const OrderPage = () => {
       <header className="sticky top-0 z-40 bg-white border-b border-gray-200">
         <div className="container py-4">
           <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3 px-5">
+            <div className="flex items-center gap-3">
               <Link
                 href="/p-user"
                 className="p-2 rounded-md hover:bg-gray-100 transition-colors"

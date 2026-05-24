@@ -31,7 +31,7 @@ export default function RootLayout({ children }) {
             />
 
             {/* محتوای اصلی صفحات */}
-            <main className="flex-1 min-w-0 p-4 lg:p-8">
+            <main className="flex-1 min-w-0 py-4 lg:p-8">
               <div className="max-w-5xl mx-auto">
                 <AnimatePresence mode="wait">
                   <motion.div
