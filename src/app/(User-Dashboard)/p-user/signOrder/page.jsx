@@ -1,20 +1,26 @@
 "use client";
 
+/**
+ * src/app/(User-Dashboard)/p-user/signOrder/page.jsx  (یا مسیر OrderPage شما)
+ *
+ * صفحه ثبت سفارش — همه قیمت‌ها از سرور، هیچ محاسبه‌ای سمت کلاینت نیست
+ */
+
 import { useState } from "react";
 import { ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import { FiShoppingCart, FiArrowRight } from "react-icons/fi";
-
-import CartItems from "@/components/order/CartItems";
-import CartSummary from "@/components/order/CartSummary";
-import AddressSelector from "@/components/order/AddressSelector";
-import AddressModal from "@/components/order/AddressModal";
-import PaymentMethods from "@/components/order/PaymentMethods";
-import OrderActions from "@/components/order/OrderActions";
-
-import { useCart } from "@/hooks/useCart";
-import { useAddresses } from "@/hooks/useAddresses";
 import Link from "next/link";
+
+import CartItems      from "@/components/order/CartItems";
+import CartSummary    from "@/components/order/CartSummary";
+import AddressSelector from "@/components/order/AddressSelector";
+import AddressModal   from "@/components/order/AddressModal";
+import PaymentMethods from "@/components/order/PaymentMethods";
+import OrderActions   from "@/components/order/OrderActions";
+
+import { useCart }      from "@/hooks/useCart";
+import { useAddresses } from "@/hooks/useAddresses";
 
 const OrderPage = () => {
   const {
@@ -23,7 +29,9 @@ const OrderPage = () => {
     updateQuantity,
     removeItem,
     applyCoupon,
+    removeCoupon,
     appliedCoupon,
+    couponDiscount,
     couponError,
     totalItems,
     totalPrice,
@@ -33,13 +41,11 @@ const OrderPage = () => {
 
   const { addresses, isLoading: isAddressLoading, addAddress } = useAddresses();
 
-  const [selectedAddress, setSelectedAddress] = useState(null);
-  const [isAddressModalOpen, setIsAddressModalOpen] = useState(false);
+  const [selectedAddress,       setSelectedAddress]       = useState(null);
+  const [isAddressModalOpen,    setIsAddressModalOpen]    = useState(false);
   const [selectedPaymentMethod, setSelectedPaymentMethod] = useState(null);
-  const [discountCode, setDiscountCode] = useState("");
 
   const handleOrderSuccess = (trackingCode) => {
-    console.log("Order placed:", trackingCode);
     window.location.replace(`/p-user/payments/${trackingCode}`);
   };
 
@@ -69,7 +75,7 @@ const OrderPage = () => {
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3 px-5">
               <Link
-                href={"/p-user"}
+                href="/p-user"
                 className="p-2 rounded-md hover:bg-gray-100 transition-colors"
                 aria-label="بازگشت"
               >
@@ -80,20 +86,9 @@ const OrderPage = () => {
                 <FiShoppingCart className="w-5 h-5 md:w-6 md:h-6 text-[#aa4725]" />
                 ثبت سفارش
               </h1>
+
               {totalItems > 0 && (
-                <div
-                  className="
-                relative
-                bottom-3
-                left-4
-                px-3 py-1
-                rounded-full
-                text-sm
-                font-medium
-                bg-[#ffbf00]/20
-                text-[#aa4725]
-              "
-                >
+                <div className="relative bottom-3 left-4 px-3 py-1 rounded-full text-sm font-medium bg-[#ffbf00]/20 text-[#aa4725]">
                   {totalItems}
                 </div>
               )}
@@ -105,7 +100,8 @@ const OrderPage = () => {
       {/* Main */}
       <main className="container py-6 md:py-10 md:px-6">
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 md:gap-8">
-          {/* Left */}
+
+          {/* ─── ستون چپ ─── */}
           <div className="lg:col-span-2 space-y-8">
             <section className="space-y-4">
               <div className="bg-white border border-gray-200 rounded-[6px] p-4 md:p-6">
@@ -133,33 +129,41 @@ const OrderPage = () => {
             />
           </div>
 
-          {/* Right / Summary */}
+          {/* ─── ستون راست / خلاصه ─── */}
           <div className="space-y-6">
             <div className="lg:sticky lg:top-28 space-y-6">
+
               <div className="bg-white border border-gray-200 rounded-[6px] p-4 md:p-6">
                 <CartSummary
                   totalItems={totalItems}
                   totalPrice={totalPrice}
                   totalRawPrice={totalRawPrice}
                   totalDiscount={totalDiscount}
-                  discountCode={discountCode}
-                  onDiscountCodeChange={setDiscountCode}
-                  onApplyCoupon={applyCoupon}
-                  couponError={couponError}
+                  couponDiscount={couponDiscount}
                   appliedCoupon={appliedCoupon}
+                  couponError={couponError}
+                  onApplyCoupon={applyCoupon}
+                  onRemoveCoupon={removeCoupon}
+                  isLoading={isCartLoading}
                 />
               </div>
 
               <OrderActions
-                cartItems={cartItems}
-                totalPrice={totalPrice}
+                cartItems={cartItems.map((i) => ({
+                  productId: i.productId,
+                  variantId: i.variantId ?? null,
+                  quantity:  i.quantity,
+                }))}
+                finalTotalToman={totalPrice}
                 selectedAddress={selectedAddress}
                 selectedPaymentMethod={selectedPaymentMethod}
-                discountCode={appliedCoupon}
+                couponCode={appliedCoupon?.code ?? null}
                 onSuccess={handleOrderSuccess}
               />
+
             </div>
           </div>
+
         </div>
       </main>
 
@@ -168,12 +172,8 @@ const OrderPage = () => {
         <div className="container py-4">
           <div className="flex flex-col md:flex-row items-center justify-between gap-2 text-sm text-gray-500">
             <div className="flex items-center px-5 gap-4">
-              <a href="#" className="hover:text-[#aa4725] transition-colors">
-                قوانین و مقررات
-              </a>
-              <a href="#" className="hover:text-[#aa4725] transition-colors">
-                پشتیبانی
-              </a>
+              <a href="#" className="hover:text-[#aa4725] transition-colors">قوانین و مقررات</a>
+              <a href="#" className="hover:text-[#aa4725] transition-colors">پشتیبانی</a>
             </div>
           </div>
         </div>
