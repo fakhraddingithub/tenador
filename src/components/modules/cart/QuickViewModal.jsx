@@ -155,13 +155,13 @@ export default function QuickViewModal({
         ...product,
         price: finalTomanPrice, // قیمت تبدیل شده را در فیلد price قرار می‌دهیم
       };
-      addToCart(product, quantity, selectedVariant);
+      addToCart(product._id, quantity, selectedVariant);
     } else {
       const productWithTomanPrice = {
         ...product,
         price: finalTomanPrice,
       };
-      addToCart(product, quantity, null);
+      addToCart(product._id, quantity, null);
     }
     toast.success("به سبد خرید اضافه شد");
   }

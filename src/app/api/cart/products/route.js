@@ -85,7 +85,7 @@ export async function POST(request) {
             ? {
                 _id: variant._id,
                 sku: variant.sku,
-                attributes: Object.fromEntries(variant.attributes || []),
+                attributes: variant.attributes || [],
                 priceToman: variantPriceToman,
                 stock: variant.stock,
               }
