@@ -6,6 +6,7 @@ import BrandsTicker from "@/components/features/brandsTicker/BrandsTicker";
 import AmazingOffers from "@/components/features/amazingOffers/AmazingOffers";
 import RolandGarros from "@/components/features/rolandGarros/RolandGarros";
 import ComparisonBanner from "@/components/features/comparisonBanner/ComparisonBanner";
+import ShowcaseAthletes from "@/components/features/comparisonBanner/ComparisonBanner";
 
 // سرویس‌ها را وارد کنید (فرض بر این است که این سرویس‌ها را دارید یا باید بسازید)
 import { getProducts } from "base/services/product.service";
@@ -39,6 +40,7 @@ export default async function Home() {
       <AmazingOffers products={products} rate={rate} />
       <RolandGarros />
       <BrandsTicker />
+      <ShowcaseAthletes />
       {/* <Articles /> */}
     </>
   );
