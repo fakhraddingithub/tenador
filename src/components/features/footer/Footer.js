@@ -1,26 +1,67 @@
 "use client";
 
-import {
-  FiMail,
-  FiPhone,
-  FiMapPin,
-  FiInstagram,
-  FiTwitter,
-  FiYoutube,
-} from "react-icons/fi";
+import { useState, useEffect } from "react";
+import { FiMail, FiInstagram, FiTwitter, FiYoutube } from "react-icons/fi";
 import { FaTelegram } from "react-icons/fa";
 import { FOOTER_SECTIONS } from "@/lib/constants";
 import Input from "@/components/ui/Input";
 import Button from "@/components/ui/Button";
-import { toast } from "react-toastify";
+import Swal from "sweetalert2";
 import Image from "next/image";
 
 export default function Footer() {
-  const handleNewsletterSubmit = (e) => {
+  const [email, setEmail] = useState("");
+  const [isSubscribed, setIsSubscribed] = useState(false);
+  const [loading, setLoading] = useState(false);
+
+  // بررسی وضعیت کوکی هنگام لود شدن صفحه
+  useEffect(() => {
+    const cookies = document.cookie.split("; ");
+    const hasSubscribed = cookies.find((row) => row.startsWith("newsletter_subscribed="));
+    if (hasSubscribed) {
+      setIsSubscribed(true);
+    }
+  }, []);
+
+  const handleNewsletterSubmit = async (e) => {
     e.preventDefault();
-    toast.success("با موفقیت در خبرنامه عضو شدید", {
-      position: "top-left",
-    });
+    setLoading(true);
+
+    try {
+      const res = await fetch("/api/newsletter", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email }),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) throw new Error(data.error || "خطایی رخ داد");
+
+      setIsSubscribed(true);
+      
+      Swal.fire({
+        icon: "success",
+        title: "عضویت موفق",
+        text: "از همراهی شما سپاسگزاریم!",
+        confirmButtonColor: "#aa4725", // رنگ تم اصلی
+        background: "#20232a",
+        color: "#ffffff"
+      });
+
+      setEmail("");
+    } catch (err) {
+      Swal.fire({
+        icon: "error",
+        title: "خطا",
+        text: err.message,
+        confirmButtonColor: "#aa4725",
+        background: "#20232a",
+        color: "#ffffff"
+      });
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -32,32 +73,42 @@ export default function Footer() {
             <div className="grid md:grid-cols-2 gap-8 items-center">
               <div>
                 <h3 className="text-2xl font-bold mb-2 text-white">
-                  عضویت در خبرنامه
+                  {isSubscribed ? "شما عضو خبرنامه هستید" : "عضویت در خبرنامه"}
                 </h3>
                 <p className="text-gray-400">
-                  از جدیدترین محصولات و تخفیف‌های ویژه با خبر شوید
+                  {isSubscribed 
+                    ? "از اینکه ما را دنبال می‌کنید سپاسگزاریم." 
+                    : "از جدیدترین محصولات و تخفیف‌های ویژه با خبر شوید"}
                 </p>
               </div>
-              <form onSubmit={handleNewsletterSubmit} className="flex gap-3">
-                <Input
-                  type="email"
-                  placeholder="ایمیل خود را وارد کنید"
-                  required
-                  className="flex-grow bg-white/5 border-white/10 text-white placeholder:text-gray-500 focus:border-[#aa4725]"
-                />
-                <Button
-                  type="submit"
-                  variant="primary"
-                  className="bg-[#aa4725] hover:bg-[#c2532d] text-white px-8"
-                >
-                  عضویت
-                </Button>
-              </form>
+
+              {!isSubscribed ? (
+                <form onSubmit={handleNewsletterSubmit} className="flex gap-3">
+                  <Input
+                    type="email"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    placeholder="ایمیل خود را وارد کنید"
+                    required
+                    className="flex-grow bg-white/5 border-white/10 text-white placeholder:text-gray-500 focus:border-[#aa4725]"
+                  />
+                  <Button
+                    type="submit"
+                    disabled={loading}
+                    className="bg-[#aa4725] hover:bg-[#c2532d] text-white px-8"
+                  >
+                    {loading ? "در حال ثبت..." : "عضویت"}
+                  </Button>
+                </form>
+              ) : (
+                <div className="flex items-center justify-center p-4 bg-green-900/20 border border-green-500/30 rounded-2xl text-green-500 font-bold">
+                  ✓ با موفقیت اشتراک فعال شد
+                </div>
+              )}
             </div>
           </div>
         </div>
       </div>
-
       {/* Main Footer Content */}
       <div className="container mx-auto px-4 py-16">
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-12">
