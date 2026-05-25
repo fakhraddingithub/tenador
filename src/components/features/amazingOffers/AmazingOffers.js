@@ -38,11 +38,11 @@ export default function ProductSlider({
         TENADOR
       </div>
 
-      <div className="container mx-auto px-4 md:px-16 lg:px-24 xl:px-40 relative z-10">
+      <div className="container mx-auto px-4 relative z-10">
         {/* هدر */}
         <div className="relative flex flex-col md:flex-row md:items-end justify-between mb-10 md:mb-16">
           <div className="relative">
-            <h2 className="text-2xl md:text-4xl font-black text-gray-900 leading-tight">
+            <h2 className="text-2xl md:text-4xl font-bold text-gray-900 leading-tight">
               {title.split(" ").map((word, i) => (
                 <span
                   key={i}
@@ -125,7 +125,7 @@ export default function ProductSlider({
             href="/products"
             className="group flex items-center gap-1.5 md:gap-2 bg-white px-4 py-2.5 md:px-6 md:py-3 rounded-full shadow-sm border border-gray-100 text-gray-900 font-bold text-[11px] sm:text-xs md:text-sm hover:bg-[#aa4725] hover:text-white transition-all duration-300 w-auto shrink-0 justify-center"
           >
-            <span className="whitespace-nowrap">مشاهده کاتالوگ</span>
+            <span className="whitespace-nowrap">مشاهده کاتالوگ محصولات</span>
             <FiPlusCircle className="text-base md:text-xl group-hover:rotate-180 transition-transform duration-500" />
           </Link>
         </div>
