@@ -16,7 +16,8 @@ export default function AthleteCreateForm({ initialData, sports, isEdit = false 
   const [formData, setFormData] = useState({
     ...initialData,
     sponsors: initialData?.sponsors || [],
-    honors: initialData?.honors || []
+    honors: initialData?.honors || [],
+    gender: initialData?.gender || "" // اضافه شدن مقدار اولیه برای جنسیت
   });
   
   const [loading, setLoading] = useState(false);
@@ -39,7 +40,8 @@ export default function AthleteCreateForm({ initialData, sports, isEdit = false 
         setFormData({
             ...initialData,
             sponsors: initialData.sponsors || [],
-            honors: initialData.honors || []
+            honors: initialData.honors || [],
+            gender: initialData.gender || ""
         });
     }
   }, [initialData]);
@@ -83,6 +85,12 @@ export default function AthleteCreateForm({ initialData, sports, isEdit = false 
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    
+    // اعتبارسنجی اولیه برای جنسیت (اختیاری اما پیشنهاد می‌شود)
+    if (!formData.gender) {
+      return toast.warning("لطفاً جنسیت ورزشکار را انتخاب کنید");
+    }
+
     setLoading(true);
     try {
       const url = isEdit ? `/api/athletes/${formData._id}` : "/api/athletes/create";
@@ -181,6 +189,43 @@ export default function AthleteCreateForm({ initialData, sports, isEdit = false 
                 className="w-full p-4 bg-gray-50 border-none rounded-2xl font-bold outline-none"
                 placeholder="نام فارسی"
               />
+            </div>
+
+            {/* ── انتخاب جنسیت ── */}
+            <div className="space-y-3 mt-2">
+              <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-widest">
+                جنسیت <span className="text-red-400">*</span>
+              </label>
+              <div className="grid grid-cols-2 gap-3">
+                <button
+                  type="button"
+                  onClick={() => setFormData(prev => ({ ...prev, gender: "male" }))}
+                  className={`flex items-center justify-center gap-2 px-4 py-3 rounded-2xl border-2 text-sm font-bold transition-all ${
+                    formData.gender === "male"
+                      ? 'border-blue-500 bg-blue-50 text-blue-700 shadow-sm shadow-blue-100'
+                      : 'border-gray-100 bg-gray-50 text-gray-500 hover:border-blue-200 hover:text-blue-500'
+                  }`}
+                >
+                  {formData.gender === "male" && (
+                    <FaCheckCircle className="text-blue-500 shrink-0" size={14} />
+                  )}
+                  <span>مرد (Male)</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setFormData(prev => ({ ...prev, gender: "female" }))}
+                  className={`flex items-center justify-center gap-2 px-4 py-3 rounded-2xl border-2 text-sm font-bold transition-all ${
+                    formData.gender === "female"
+                      ? 'border-pink-500 bg-pink-50 text-pink-700 shadow-sm shadow-pink-100'
+                      : 'border-gray-100 bg-gray-50 text-gray-500 hover:border-pink-200 hover:text-pink-500'
+                  }`}
+                >
+                  {formData.gender === "female" && (
+                    <FaCheckCircle className="text-pink-500 shrink-0" size={14} />
+                  )}
+                  <span>زن (Female)</span>
+                </button>
+              </div>
             </div>
 
             {/* ── انتخاب رشته ورزشی ── */}

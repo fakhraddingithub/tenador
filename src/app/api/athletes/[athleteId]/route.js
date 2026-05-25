@@ -30,7 +30,7 @@ export async function PUT(req, { params }) {
 
     // استخراج تمام فیلدها از body
     const { 
-      name, title, sport, birthDate, nationality, 
+      name, title, sport, birthDate, gender, nationality, 
       bio, photo, height, weight, honors, sponsors 
     } = body;
 
@@ -54,6 +54,7 @@ export async function PUT(req, { params }) {
 
     if (birthDate !== undefined) athlete.birthDate = birthDate ? new Date(birthDate) : null;
     if (nationality !== undefined) athlete.nationality = nationality;
+    if (gender !== undefined) athlete.gender = gender;
     if (bio !== undefined) athlete.bio = bio;
     if (photo !== undefined) athlete.photo = photo;
 

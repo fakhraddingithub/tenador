@@ -41,6 +41,7 @@ export function buildAthleteAiTemplate({ sports, sponsors, rawContent }) {
   ===============================
   - name: English Slug (e.g. "hadi-choopan")
   - title: Persian Full Name
+  - gender: ONLY "male" or "female" (based on the context of the raw content)
   - birthDate: YYYY-MM-DD
   - height: Number (cm)
   - weight: Number (kg)
@@ -68,6 +69,7 @@ export function buildAthleteAiTemplate({ sports, sponsors, rawContent }) {
   {
     "name": "",
     "title": "",
+    "gender": "",
     "sport": "ID_FROM_LIST",
     "birthDate": "",
     "height": null,

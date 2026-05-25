@@ -1,108 +1,135 @@
 "use client";
 
 import Button from "@/components/ui/Button";
-import { FiArrowLeft, FiAward } from "react-icons/fi";
+import { FiArrowUpLeft, FiPlay, FiStar, FiCheck } from "react-icons/fi";
 import Image from "next/image";
 
 export default function RolandGarros() {
   return (
     <section 
-      className="relative w-full min-h-[85vh] flex items-center justify-center bg-[#1a1c22] py-20 overflow-hidden font-sans" 
+      className="relative w-full min-h-screen bg-[#1a1c22] text-white flex items-center py-20 lg:py-0 overflow-hidden"
       dir="rtl"
     >
-      {/* بک‌گراند مینیمال و نورپردازی محیطی */}
-      <div className="absolute top-0 right-1/4 w-96 h-96 bg-[#aa4725] rounded-full mix-blend-multiply filter blur-[150px] opacity-20 animate-pulse" style={{ animationDuration: '4s' }} />
-      <div className="absolute bottom-0 left-1/4 w-[30rem] h-[30rem] bg-[#20232a] rounded-full filter blur-[120px] opacity-60" />
+      {/* 
+        Background Effects: 
+        نورپردازی‌های ملایم و بافت پس‌زمینه برای عمق‌بخشی 
+      */}
+      <div className="absolute top-0 right-0 w-[40vw] h-[40vw] bg-[#aa4725] rounded-full mix-blend-screen filter blur-[200px] opacity-10 pointer-events-none" />
+      <div className="absolute bottom-[-10%] left-[-10%] w-[50vw] h-[50vw] bg-[#20232a] rounded-full filter blur-[150px] opacity-80 pointer-events-none" />
+
+      {/* متن غول‌پیکر محو به سبک مجلات مد */}
+      <div className="absolute top-1/2 left-0 -translate-y-1/2 -rotate-90 hidden lg:block opacity-[0.02] pointer-events-none select-none z-0">
+        <span className="text-[15rem] font-black tracking-tighter whitespace-nowrap">
+          PARIS 2025
+        </span>
+      </div>
 
       <div className="container mx-auto px-6 md:px-12 relative z-10">
-        <div className="flex flex-col lg:flex-row items-center gap-16 lg:gap-24">
-
-          {/* بخش محتوا - سمت راست */}
-          <div className="w-full lg:w-1/2 flex flex-col items-start z-20">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 lg:gap-8 items-center">
+          
+          {/* =======================
+              بخش محتوا (سمت راست در RTL) 
+              ======================= */}
+          <div className="lg:col-span-5 flex flex-col justify-center space-y-10 relative z-30">
             
-            {/* بج (Badge) مینیمال */}
-            <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-[#20232a]/80 border border-white/5 backdrop-blur-md mb-8 shadow-sm transition-all hover:bg-[#20232a]">
-              <span className="relative flex h-2.5 w-2.5">
-                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#aa4725] opacity-75"></span>
-                <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-[#aa4725]"></span>
-              </span>
-              <span className="text-[#aa4725] text-xs font-bold tracking-widest uppercase mt-0.5">
-                کالکشن رسمی ۲۰۲۵
+            {/* بج کوچک و خاص */}
+            <div className="group w-fit flex items-center gap-3 px-4 py-2 bg-[#20232a]/50 backdrop-blur-md rounded-full border border-white/5 shadow-lg cursor-default">
+              <span className="w-2 h-2 rounded-full bg-[#aa4725] animate-pulse" />
+              <span className="text-gray-300 text-xs font-bold tracking-wider uppercase">
+                نسخه محدود • کالکشن جدید
               </span>
             </div>
 
-            {/* عنوان اصلی با افکت گرادیانت */}
-            <h2 className="text-6xl sm:text-7xl lg:text-[5.5rem] font-black text-white leading-[1.15] mb-6 tracking-tight">
-              رولاند <br />
-              <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#aa4725] to-[#e86a3e]">
+            {/* تایپوگرافی نامتقارن و جذاب */}
+            <div className="flex flex-col relative">
+              <h2 className="text-7xl lg:text-[7rem] font-black leading-[0.9] tracking-tighter text-transparent bg-clip-text bg-gradient-to-b from-white to-gray-400">
+                رولاند
+              </h2>
+              <h2 className="text-6xl lg:text-[6.5rem] font-black leading-[0.9] text-[#aa4725] pr-12 lg:pr-24">
                 گاروس
-              </span>
-            </h2>
+              </h2>
+              
+              {/* خط تزئینی کنار عنوان */}
+              <div className="absolute -right-6 top-4 bottom-4 w-1 bg-gradient-to-b from-[#aa4725] to-transparent rounded-full hidden lg:block" />
+            </div>
 
-            {/* توضیحات با استایل نقل‌قول مدرن */}
-            <p className="text-gray-400 text-lg sm:text-xl font-light leading-relaxed max-w-lg mb-10 border-r-2 border-[#aa4725]/40 pr-5">
-              تجربه‌ای که از قلب پاریس می‌آید. راکت‌ها و اکسسوری‌هایی که مرز بین هنر و ورزش را از بین برده‌اند؛ طراحی شده برای کسانی که به دنبال اصالت هستند.
+            <p className="text-gray-400 text-lg sm:text-xl font-light leading-relaxed max-w-md">
+              شاهکاری از قلب زمین‌های خاکی پاریس. ترکیبی بی‌نظیر از هنر طراحی مدرن و اصالت ورزش تنیس، خلق شده برای قهرمانان.
             </p>
 
-            {/* دکمه‌ها و اکشن‌ها */}
-            <div className="flex flex-col sm:flex-row items-center gap-8 w-full sm:w-auto">
-              <Button className="group relative w-full sm:w-auto flex items-center justify-center gap-3 bg-[#aa4725] hover:bg-[#c9542c] text-white rounded-2xl px-8 py-4 text-lg font-bold transition-all duration-300 shadow-[0_10px_30px_-10px_rgba(170,71,37,0.4)] hover:shadow-[0_15px_40px_-10px_rgba(170,71,37,0.6)] hover:-translate-y-1 overflow-hidden">
-                <span className="relative z-10 mt-0.5">مشاهده محصولات</span>
-                <FiArrowLeft className="relative z-10 transition-transform duration-300 group-hover:-translate-x-2" size={22} />
-                
-                {/* افکت درخشش (Shine) روی دکمه هنگام هاور */}
-                <div className="absolute inset-0 h-full w-full bg-gradient-to-r from-transparent via-white/20 to-transparent -translate-x-[150%] group-hover:animate-[shimmer_1.5s_infinite]"></div>
+            {/* بخش دکمه‌ها و اکشن‌ها */}
+            <div className="flex flex-col sm:flex-row items-start sm:items-center gap-6">
+              <Button className="group relative overflow-hidden bg-white text-[#1a1c22] rounded-full px-8 py-4 text-lg font-black transition-all duration-500 hover:scale-105 hover:shadow-[0_0_40px_-10px_rgba(255,255,255,0.5)] flex items-center gap-3">
+                <span className="relative z-10 mt-1">مشاهده کالکشن</span>
+                <span className="relative z-10 w-8 h-8 rounded-full bg-[#1a1c22] flex items-center justify-center transition-transform duration-500 group-hover:-translate-x-1 group-hover:-rotate-45">
+                  <FiArrowUpLeft className="text-white" size={18} />
+                </span>
+                {/* افکت هاور دکمه */}
+                <div className="absolute inset-0 bg-gray-200 translate-y-full group-hover:translate-y-0 transition-transform duration-500 ease-out" />
               </Button>
 
-              <div className="flex items-center gap-3 text-gray-400 opacity-70 hover:opacity-100 transition-opacity duration-300 cursor-default">
-                <FiAward size={26} className="text-[#aa4725]" />
-                <div className="flex flex-col">
-                  <span className="text-sm font-bold text-white">۱۰۰٪ اورجینال</span>
-                  <span className="text-xs font-light">اصالت تضمین شده</span>
+              {/* دکمه پخش ویدیو (مفهومی) */}
+              <button className="flex items-center gap-4 text-gray-300 hover:text-white transition-colors group">
+                <div className="w-12 h-12 rounded-full border border-gray-600 flex items-center justify-center group-hover:border-[#aa4725] group-hover:bg-[#aa4725]/10 transition-all duration-300">
+                  <FiPlay className="ml-1 group-hover:text-[#aa4725] transition-colors" size={20} />
                 </div>
-              </div>
+                <span className="text-sm font-bold tracking-wide uppercase mt-1">تیزر رسمی</span>
+              </button>
             </div>
           </div>
 
-          {/* بخش تصویر - سمت چپ */}
-          <div className="w-full lg:w-1/2 relative group mt-10 lg:mt-0">
+          {/* =======================
+              بخش تصویر (سمت چپ در RTL)
+              ======================= */}
+          <div className="lg:col-span-7 relative h-full flex justify-end items-center group mt-10 lg:mt-0">
             
-            {/* ویجت شناور مینیمال */}
-            <div className="absolute -right-6 top-12 bg-[#20232a]/90 backdrop-blur-xl border border-white/10 px-5 py-4 rounded-2xl shadow-2xl z-20 transition-transform duration-500 group-hover:-translate-y-3 hidden sm:block">
-              <div className="flex flex-col items-center justify-center text-center">
-                <span className="text-white font-black text-xl tracking-widest italic">PARIS</span>
-                <span className="text-[#aa4725] text-[10px] font-bold uppercase tracking-wider">Tournament</span>
+            {/* باکس پس‌زمینه تصویر (ایجاد عمق 3D) */}
+            <div className="absolute top-10 bottom-10 left-4 right-12 bg-[#20232a] rounded-[3rem] transform -rotate-3 transition-transform duration-700 group-hover:-rotate-6 group-hover:scale-105" />
+
+            {/* تصویر اصلی */}
+            <div className="relative aspect-[4/5] w-full max-w-lg mx-auto lg:mx-0 lg:ml-8 rounded-[2.5rem] overflow-hidden shadow-[0_30px_60px_-15px_rgba(0,0,0,0.8)] border border-white/10 z-20 transform transition-all duration-700 group-hover:scale-[1.02] group-hover:-translate-y-4">
+              <Image
+                src="/images/roland-garros.webp"
+                alt="Roland Garros 2025"
+                fill
+                priority
+                sizes="(max-width: 768px) 100vw, 60vw"
+                className="object-cover transform scale-105 transition-transform duration-[10s] group-hover:scale-110"
+              />
+              
+              {/* گرادیانت داخلی عکس */}
+              <div className="absolute inset-0 bg-gradient-to-t from-[#1a1c22]/90 via-[#1a1c22]/20 to-transparent opacity-80" />
+            </div>
+
+            {/* کارت شناور 1: کیفیت و اصالت */}
+            <div className="absolute top-1/4 -right-4 sm:-right-10 z-30 bg-[#20232a]/80 backdrop-blur-xl border border-white/10 p-4 rounded-2xl shadow-2xl flex items-center gap-4 transform transition-all duration-500 hover:-translate-y-2 lg:group-hover:translate-x-4 animate-[bounce_4s_infinite_ease-in-out]">
+              <div className="w-12 h-12 rounded-full bg-[#aa4725] flex items-center justify-center shadow-inner">
+                <FiCheck size={24} className="text-white" />
+              </div>
+              <div className="flex flex-col">
+                <span className="text-white font-black text-sm">۱۰۰٪ اورجینال</span>
+                <span className="text-gray-400 text-xs mt-0.5">تضمین اصالت کالا</span>
               </div>
             </div>
 
-            {/* کانتینر اصلی تصویر */}
-            <div className="relative aspect-[4/5] w-full max-w-md mx-auto lg:max-w-none rounded-[2.5rem] overflow-hidden bg-[#20232a] border border-white/5 shadow-[0_20px_50px_-20px_rgba(0,0,0,0.7)] transform transition-transform duration-700 group-hover:scale-[1.02]">
-              {/* گرادیانت ملایم روی تصویر برای خوانایی بهتر */}
-              <div className="absolute inset-0 bg-gradient-to-t from-[#1a1c22]/80 via-transparent to-transparent z-10"></div>
-              
-              <Image
-                src="/images/roland-garros.webp"
-                alt="محصولات رولاند گاروس"
-                fill
-                priority
-                sizes="(max-width: 768px) 100vw, 50vw"
-                className="object-cover transition-transform duration-[15s] ease-out group-hover:scale-110"
-              />
+            {/* کارت شناور 2: طراحی شده در پاریس */}
+            <div className="absolute bottom-16 -left-2 sm:-left-8 z-30 bg-white/5 backdrop-blur-md border border-white/10 p-5 rounded-3xl shadow-2xl transform transition-all duration-500 lg:group-hover:-translate-x-6 lg:group-hover:-translate-y-2 delay-100">
+              <div className="flex items-center gap-2 mb-2">
+                <FiStar className="text-[#aa4725] fill-[#aa4725]" size={14} />
+                <FiStar className="text-[#aa4725] fill-[#aa4725]" size={14} />
+                <FiStar className="text-[#aa4725] fill-[#aa4725]" size={14} />
+                <FiStar className="text-[#aa4725] fill-[#aa4725]" size={14} />
+                <FiStar className="text-[#aa4725] fill-[#aa4725]" size={14} />
+              </div>
+              <p className="text-white font-bold text-lg leading-tight">
+                طراحی شده در <br /> <span className="text-[#aa4725] italic font-black text-2xl">پاریس</span>
+              </p>
             </div>
 
-            {/* حلقه تزئینی متحرک دور تصویر */}
-            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[105%] h-[105%] border border-[#aa4725]/20 rounded-[3rem] -z-10 transition-all duration-700 group-hover:rotate-2 group-hover:scale-105 group-hover:border-[#aa4725]/40 pointer-events-none"></div>
           </div>
 
         </div>
       </div>
-
-      {/* استایل داخلی برای انیمیشن Shimmer دکمه */}
-      <style dangerouslySetInnerHTML={{__html: `
-        @keyframes shimmer {
-          100% { transform: translateX(150%); }
-        }
-      `}} />
     </section>
   );
 }

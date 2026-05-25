@@ -29,6 +29,11 @@ const schema = new mongoose.Schema(
       default: null,
     },
     // --- فیلدهای جدید اضافه شده ---
+    gender: {
+      type: String,
+      enum: ["male", "female"], // محدود کردن مقادیر ورودی
+      default: "male",
+    },
     height: {
       type: Number, // بر حسب سانتی‌متر
       default: null,
