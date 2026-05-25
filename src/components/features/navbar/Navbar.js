@@ -305,13 +305,14 @@ export default function Navbar({ user }) {
         <div className="hidden lg:block container mx-auto px-4 h-full">
           <div className="relative flex items-center justify-between h-full gap-6">
             <div className="flex items-center gap-5 flex-shrink-0">
-              <div className="scale-75 origin-right">
+              <div className="origin-right flex-shrink-0">
                 <Link href="/">
                   <Image
                     src="/logo/logo.svg"
                     alt="logo"
-                    width={100}
-                    height={100}
+                    width={160}
+                    height={65}
+                    className="w-auto h-[55px] object-contain"
                   />
                 </Link>
               </div>
@@ -493,28 +494,23 @@ export default function Navbar({ user }) {
                   <Image
                     src="/logo/logo.svg"
                     alt="logo"
-                    width={45}
+                    width={100}
                     height={45}
+                    className="w-auto h-[45px] object-contain"
                   />
                 </Link>
               </div>
 
-              {/* سمت چپ: سرچ، یوزر و سبد خرید */}
+              {/* سمت چپ: یوزر، سرچ و سبد خرید */}
               <div className="flex items-center gap-3 flex-shrink-0">
-                <button
-                  onClick={() => setMobileSearchOpen(true)}
-                  className="text-white flex items-center justify-center"
-                >
-                  <FiSearch size={21} />
-                </button>
-
-                {/* دکمه ورود یا پروفایل کاربر در نوبار (جابجا شده از منو) */}
+                {/* دکمه ورود یا پروفایل کاربر در نوبار (جابجا شده از منو به سمت راست سرچ) */}
                 {user ? (
                   <Link
                     href="/p-user"
-                    className="text-white flex items-center justify-center hover:text-[#aa4725] transition-colors"
+                    className="text-white flex items-center gap-1.5 justify-center hover:text-[#aa4725] transition-colors text-sm"
                   >
                     <FiUser size={21} />
+                    <span className="font-medium">{firstName}</span>
                   </Link>
                 ) : (
                   <Link
@@ -524,6 +520,13 @@ export default function Navbar({ user }) {
                     ورود
                   </Link>
                 )}
+
+                <button
+                  onClick={() => setMobileSearchOpen(true)}
+                  className="text-white flex items-center justify-center"
+                >
+                  <FiSearch size={21} />
+                </button>
 
                 <div
                   className="relative cursor-pointer"
@@ -561,31 +564,6 @@ export default function Navbar({ user }) {
                 </div>
 
                 <div className="py-2">
-                  {/* کارت افقی مدرن جمعه بازار (جایگزین دکمه پروفایل قدیمی در این بخش) */}
-                  <div className="px-4 py-4 border-b border-white/5">
-                    <Link
-                      href="/second-hands"
-                      onClick={() => setIsCategoryOpen(false)}
-                      className="group relative flex items-center justify-between p-4 bg-gradient-to-l from-[#aa4725]/15 to-[#aa4725]/5 border border-[#aa4725]/30 rounded-[6px] overflow-hidden transition-all duration-300 hover:border-[#aa4725]/70 hover:shadow-[0_4px_15px_rgba(170,71,37,0.15)]"
-                    >
-                      {/* پس‌زمینه هاور */}
-                      <div className="absolute inset-0 bg-gradient-to-r from-[#aa4725]/20 to-transparent translate-x-full group-hover:translate-x-0 transition-transform duration-500 ease-out" />
-                      
-                      <div className="relative z-10 flex flex-col gap-1.5">
-                        <span className="text-[#aa4725] text-[15px] font-extrabold tracking-wide">
-                          جمعه بازار
-                        </span>
-                        <span className="text-gray-400 text-[11px] font-medium leading-tight">
-                          دست‌دوم‌های با ارزش و اقتصادی
-                        </span>
-                      </div>
-
-                      <div className="relative z-10 w-9 h-9 rounded-[6px] bg-[#aa4725]/20 flex items-center justify-center text-[#aa4725] group-hover:scale-110 group-hover:bg-[#aa4725] group-hover:text-white transition-all duration-300">
-                        <FiShoppingCart size={16} />
-                      </div>
-                    </Link>
-                  </div>
-
                   {/* لیست دسته‌بندی‌های آکاردئونی */}
                   {navData.map((sport) => (
                     <details
@@ -630,6 +608,31 @@ export default function Navbar({ user }) {
                       </div>
                     </details>
                   ))}
+
+                  {/* کارت افقی مدرن جمعه بازار (منتقل شده به انتهای منو) */}
+                  <div className="px-4 py-4 border-t border-white/5 mt-2">
+                    <Link
+                      href="/second-hands"
+                      onClick={() => setIsCategoryOpen(false)}
+                      className="group relative flex items-center justify-between p-4 bg-gradient-to-l from-[#aa4725]/15 to-[#aa4725]/5 border border-[#aa4725]/30 rounded-[6px] overflow-hidden transition-all duration-300 hover:border-[#aa4725]/70 hover:shadow-[0_4px_15px_rgba(170,71,37,0.15)]"
+                    >
+                      {/* پس‌زمینه هاور */}
+                      <div className="absolute inset-0 bg-gradient-to-r from-[#aa4725]/20 to-transparent translate-x-full group-hover:translate-x-0 transition-transform duration-500 ease-out" />
+                      
+                      <div className="relative z-10 flex flex-col gap-1.5">
+                        <span className="text-[#aa4725] text-[15px] font-bold tracking-wide">
+                          جمعه بازار
+                        </span>
+                        <span className="text-gray-400 text-[11px] font-medium leading-tight">
+                          دست‌دوم‌های با ارزش و اقتصادی
+                        </span>
+                      </div>
+
+                      <div className="relative z-10 w-9 h-9 rounded-[6px] bg-[#aa4725]/20 flex items-center justify-center text-[#aa4725] group-hover:scale-110 group-hover:bg-[#aa4725] group-hover:text-white transition-all duration-300">
+                        <FiShoppingCart size={16} />
+                      </div>
+                    </Link>
+                  </div>
                 </div>
               </div>
             </>
