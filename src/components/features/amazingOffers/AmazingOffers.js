@@ -89,6 +89,9 @@ export default function ProductSlider({
             pagination={{
               el: ".slider-pagination-2",
               clickable: true,
+              renderBullet: function (index, className) {
+                return `<span class="${className} !bg-[#aa4725] !m-0 !w-2.5 !h-2.5"></span>`;
+              },
             }}
             breakpoints={{
               640: {
@@ -127,7 +130,7 @@ export default function ProductSlider({
 
         {/* پیجینیشن و لینک پایین */}
         <div className="flex flex-row items-center justify-between gap-4 sm:gap-6 mt-4">
-          <div className="slider-pagination-2 !w-auto flex gap-2" />
+          <div className="slider-pagination-2 !static !w-auto !transform-none !m-0 flex items-center gap-2" />
 
           <Link
             href="/products"

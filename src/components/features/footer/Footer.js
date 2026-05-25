@@ -75,27 +75,12 @@ export default function Footer() {
             {/* Contact Info */}
             <div className="space-y-4">
               <div className="flex items-center gap-3 text-gray-300 hover:text-white transition-colors group">
-                <FiPhone
-                  className="text-[#aa4725] group-hover:scale-110 transition-transform"
-                  size={20}
-                />
-                <span className="text-sm">021-12345678</span>
-              </div>
-              <div className="flex items-center gap-3 text-gray-300 hover:text-white transition-colors group">
                 <FiMail
                   className="text-[#aa4725] group-hover:scale-110 transition-transform"
                   size={20}
                 />
-                <span className="text-sm">info@racketsport.ir</span>
+                <span className="text-sm">info.tenador@gmail.com</span>
               </div>
-              <div className="flex items-start gap-3 text-gray-300 hover:text-white transition-colors group">
-                <FiMapPin
-                  className="text-[#aa4725] flex-shrink-0 mt-1 group-hover:scale-110 transition-transform"
-                  size={20}
-                />
-                <span className="text-sm">
-                  تهران، خیابان ولیعصر، پلاک 123، طبقه 2
-                </span>
               </div>
             </div>
 
