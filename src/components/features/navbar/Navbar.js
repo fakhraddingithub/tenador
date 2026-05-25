@@ -505,7 +505,7 @@ export default function Navbar({ user }) {
                 {user ? (
                   <Link
                     href="/p-user"
-                    className="rounded-[var(--radius)] text-white border-white px-4 py-2 flex items-center gap-1.5 justify-center hover:text-[#aa4725] transition-colors text-sm"
+                    className="rounded-[var(--radius)] text-white border border-white px-3 py-2 flex items-center gap-1.5 justify-center hover:text-[#aa4725] transition-colors text-sm"
                   >
                     <span className="font-medium">{firstName}</span>
                     <FiUser size={21} />

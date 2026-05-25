@@ -42,97 +42,51 @@ export default function BannerSection() {
 
   if (!banners.wide && !banners.tall1 && !banners.tall2 && !banners.strip) return null;
 
-  return (
-    <section style={{ padding: "24px 0", direction: "rtl", fontFamily: "var(--font-sans, Vazirmatn, sans-serif)" }}>
-      <style>{`
-        .banner-grid {
-          display: grid;
-          grid-template-columns: 2fr 1fr 1fr;
-          grid-template-rows: 320px;
-          gap: 12px;
-          max-width: 1280px;
-          margin: 0 auto;
-          padding: 0 16px;
-        }
-        .banner-cell {
-          border-radius: 12px;
-          overflow: hidden;
-          transition: transform 0.3s ease, box-shadow 0.3s ease;
-        }
-        .banner-cell:hover {
-          transform: translateY(-3px);
-          box-shadow: 0 16px 48px rgba(0,0,0,0.18);
-        }
-        .banner-strip-wrap {
-          max-width: 1280px;
-          margin: 12px auto 0;
-          padding: 0 16px;
-        }
-        .banner-strip {
-          height: 72px;
-          border-radius: 12px;
-          overflow: hidden;
-          transition: transform 0.3s ease, box-shadow 0.3s ease;
-        }
-        .banner-strip:hover {
-          transform: translateY(-2px);
-          box-shadow: 0 8px 24px rgba(0,0,0,0.12);
-        }
-        .banner-placeholder {
-          width: 100%;
-          height: 100%;
-          border-radius: 12px;
-          background: linear-gradient(135deg, #f0f0f0, #e8e8e8);
-          border: 2px dashed #ddd;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          color: #aaa;
-          font-size: 13px;
-        }
-        @media (max-width: 1024px) {
-          .banner-grid {
-            grid-template-columns: 2fr 1fr;
-            grid-template-rows: 280px;
-          }
-          .banner-cell:nth-child(3) {
-            display: none;
-          }
-        }
-        @media (max-width: 640px) {
-          .banner-grid {
-            grid-template-columns: 1fr;
-            grid-template-rows: 220px;
-          }
-          .banner-cell:nth-child(2),
-          .banner-cell:nth-child(3) {
-            display: none;
-          }
-          .banner-strip { height: 60px; }
-        }
-      `}</style>
+  // کلاس‌های مشترک برای خانه‌های بنر (هاور، انیمیشن و استفاده از متغیر گلوبال برای گردی گوشه‌ها)
+  const cellClasses = "rounded-[var(--radius)] overflow-hidden transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_16px_48px_rgba(0,0,0,0.18)]";
+  const placeholderClasses = "w-full h-full bg-gradient-to-br from-[#f0f0f0] to-[#e8e8e8] border-2 border-dashed border-[#ddd] flex items-center justify-center text-[#aaa] text-[13px] rounded-[var(--radius)]";
 
-      <div className="banner-grid">
-        <div className="banner-cell">
-          {banners.wide
-            ? <BannerRenderer banner={banners.wide} />
-            : <div className="banner-placeholder">بنر اصلی</div>}
+  return (
+    <section className="py-6 font-sans" dir="rtl">
+      
+      {/* گرید اصلی: 
+        در موبایل 2 ستون دارد (برای اینکه دو بنر تال کنار هم بیفتند)
+        در دسکتاپ 4 ستون دارد (واید 2 ستون می‌گیرد و هر تال 1 ستون) 
+      */}
+      <div className="max-w-screen-xl mx-auto px-4 grid grid-cols-2 md:grid-cols-4 gap-4">
+        
+        {/* بنر اصلی (Wide) */}
+        <div className={`col-span-2 h-[220px] md:h-[320px] ${cellClasses}`}>
+          {banners.wide ? (
+            <BannerRenderer banner={banners.wide} />
+          ) : (
+            <div className={placeholderClasses}>بنر اصلی</div>
+          )}
         </div>
-        <div className="banner-cell">
-          {banners.tall1
-            ? <BannerRenderer banner={banners.tall1} />
-            : <div className="banner-placeholder">بنر کناری ۱</div>}
+
+        {/* بنر کناری ۱ (Tall 1) */}
+        <div className={`col-span-1 h-[220px] md:h-[320px] ${cellClasses}`}>
+          {banners.tall1 ? (
+            <BannerRenderer banner={banners.tall1} />
+          ) : (
+            <div className={placeholderClasses}>بنر کناری ۱</div>
+          )}
         </div>
-        <div className="banner-cell">
-          {banners.tall2
-            ? <BannerRenderer banner={banners.tall2} />
-            : <div className="banner-placeholder">بنر کناری ۲</div>}
+
+        {/* بنر کناری ۲ (Tall 2) */}
+        <div className={`col-span-1 h-[220px] md:h-[320px] ${cellClasses}`}>
+          {banners.tall2 ? (
+            <BannerRenderer banner={banners.tall2} />
+          ) : (
+            <div className={placeholderClasses}>بنر کناری ۲</div>
+          )}
         </div>
       </div>
 
+      {/* بنر نواری (Strip) */}
       {banners.strip && (
-        <div className="banner-strip-wrap">
-          <div className="banner-strip">
+        <div className="max-w-screen-xl mx-auto px-4 mt-4">
+          <div className={`h-[60px] md:h-[72px] rounded-[var(--radius)] overflow-hidden transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_8px_24px_rgba(0,0,0,0.12)]`}>
             <StripBannerRenderer banner={banners.strip} />
           </div>
         </div>
@@ -141,28 +95,19 @@ export default function BannerSection() {
   );
 }
 
+// کامپوننت اسکلتون با استایل‌های تیلویند
 function BannerSkeleton() {
+  const skelClasses = "rounded-[var(--radius)] bg-gray-200 animate-pulse";
+
   return (
-    <section style={{ padding: "24px 0", direction: "rtl" }}>
-      <style>{`
-        @keyframes shimmer {
-          0% { background-position: -400px 0; }
-          100% { background-position: 400px 0; }
-        }
-        .skel {
-          border-radius: 12px;
-          background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
-          background-size: 800px 100%;
-          animation: shimmer 1.5s infinite;
-        }
-      `}</style>
-      <div style={{ display: "grid", gridTemplateColumns: "2fr 1fr 1fr", gap: "12px", maxWidth: "1280px", margin: "0 auto", padding: "0 16px" }}>
-        <div className="skel" style={{ height: "320px" }} />
-        <div className="skel" style={{ height: "320px" }} />
-        <div className="skel" style={{ height: "320px" }} />
+    <section className="py-6" dir="rtl">
+      <div className="max-w-screen-xl mx-auto px-4 grid grid-cols-2 md:grid-cols-4 gap-4">
+        <div className={`col-span-2 h-[220px] md:h-[320px] ${skelClasses}`} />
+        <div className={`col-span-1 h-[220px] md:h-[320px] ${skelClasses}`} />
+        <div className={`col-span-1 h-[220px] md:h-[320px] ${skelClasses}`} />
       </div>
-      <div style={{ maxWidth: "1280px", margin: "12px auto 0", padding: "0 16px" }}>
-        <div className="skel" style={{ height: "72px" }} />
+      <div className="max-w-screen-xl mx-auto px-4 mt-4">
+        <div className={`h-[60px] md:h-[72px] ${skelClasses}`} />
       </div>
     </section>
   );
