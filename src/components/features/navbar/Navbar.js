@@ -109,9 +109,7 @@ function CategoryMenu({ navData, onClose }) {
             {navData.map((sport) => (
               <li key={sport._id}>
                 <button
-                  onClick={() =>
-                    (window.location.href = `/${sport.slug}`)
-                  }
+                  onClick={() => (window.location.href = `/${sport.slug}`)}
                   onMouseEnter={() => {
                     setActiveSportId(sport._id);
                     setActiveCategoryId(sport.categories?.[0]?._id);
@@ -312,7 +310,7 @@ export default function Navbar({ user }) {
                     alt="logo"
                     width={160}
                     height={65}
-                    className="w-auto h-[55px] object-contain"
+                    className="w-auto h-[55px] object-contain transition-transform duration-300 hover:scale-105"
                   />
                 </Link>
               </div>
@@ -507,10 +505,10 @@ export default function Navbar({ user }) {
                 {user ? (
                   <Link
                     href="/p-user"
-                    className="text-white flex items-center gap-1.5 justify-center hover:text-[#aa4725] transition-colors text-sm"
+                    className="rounded-[var(--radius)] text-white border-white px-4 py-2 flex items-center gap-1.5 justify-center hover:text-[#aa4725] transition-colors text-sm"
                   >
-                    <FiUser size={21} />
                     <span className="font-medium">{firstName}</span>
+                    <FiUser size={21} />
                   </Link>
                 ) : (
                   <Link
@@ -618,7 +616,7 @@ export default function Navbar({ user }) {
                     >
                       {/* پس‌زمینه هاور */}
                       <div className="absolute inset-0 bg-gradient-to-r from-[#aa4725]/20 to-transparent translate-x-full group-hover:translate-x-0 transition-transform duration-500 ease-out" />
-                      
+
                       <div className="relative z-10 flex flex-col gap-1.5">
                         <span className="text-[#aa4725] text-[15px] font-bold tracking-wide">
                           جمعه بازار
