@@ -13,9 +13,7 @@ import { cookies } from "next/headers";
 import { verifyToken } from "base/utils/auth";
 import User from "base/models/User";
 
-const SITE_URL =
-  process.env.NEXT_PUBLIC_SITE_URL ||
-  "https://tenador.com";
+const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || "https://tenador.com";
 
 export const metadata = {
   metadataBase: new URL(SITE_URL),
@@ -91,8 +89,7 @@ export const metadata = {
 
     title: "تنادور | فروشگاه آنلاین تنیس و پدل",
 
-    description:
-      "خرید آنلاین تجهیزات حرفه‌ای تنیس و پدل با ارسال سریع.",
+    description: "خرید آنلاین تجهیزات حرفه‌ای تنیس و پدل با ارسال سریع.",
 
     images: ["/images/og-cover.jpg"],
   },
@@ -109,8 +106,7 @@ export const metadata = {
 export default async function RootLayout({ children }) {
   const cookieStore = await cookies();
 
-  const token =
-    cookieStore.get("accessToken")?.value;
+  const token = cookieStore.get("accessToken")?.value;
 
   let user = false;
 
@@ -118,9 +114,7 @@ export default async function RootLayout({ children }) {
     user = verifyToken(token);
 
     if (user?.userId) {
-      const profile = await User.findById(
-        user.userId
-      ).select("name -_id");
+      const profile = await User.findById(user.userId).select("name -_id");
 
       user = {
         ...user,
@@ -142,21 +136,21 @@ export default async function RootLayout({ children }) {
 
     image: `${SITE_URL}/images/og-cover.jpg`,
 
-    description:
-      "فروشگاه آنلاین لوازم تنیس و پدل",
+    description: "فروشگاه آنلاین لوازم تنیس و پدل",
 
-    sameAs: [
-      "https://instagram.com/tenador",
-    ],
+    sameAs: ["https://instagram.com/tenador"],
   };
 
   return (
     <html lang="fa-IR" dir="rtl">
       <head>
-        <meta
-          name="theme-color"
-          content="#ffffff"
+        <link
+          href="https://cdn.jsdelivr.net/gh/rastikerdar/vazirmatn@v33.003/Vazirmatn-font-face.css"
+          rel="stylesheet"
+          type="text/css"
         />
+
+        <meta name="theme-color" content="#ffffff" />
 
         <script
           type="application/ld+json"
@@ -171,9 +165,7 @@ export default async function RootLayout({ children }) {
 
         <WhatsAppSupport />
 
-        <main className="min-h-screen">
-          {children}
-        </main>
+        <main className="min-h-screen">{children}</main>
 
         <Footer />
 

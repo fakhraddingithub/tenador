@@ -27,12 +27,12 @@ export default function RolandGarros() {
                   fill="#aa4725"
                   size={12}
                 />
-                <span className="text-sm font-black tracking-widest text-[#aa4725] uppercase">
+                <span className="text-sm font-bold tracking-widest text-[#aa4725] uppercase">
                   کالکشن رسمی 2026
                 </span>
               </div>
 
-              <h3 className="mb-6 text-center text-4xl font-black leading-[1.15] text-white sm:text-5xl lg:text-left lg:text-6xl">
+              <h3 className="mb-6 text-center text-4xl font-bold leading-[1.15] text-white sm:text-5xl lg:text-left lg:text-6xl">
                 رولاند <br />
                 <span className="text-[#aa4725]">گاروس</span>
               </h3>
