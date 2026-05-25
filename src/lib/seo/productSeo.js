@@ -1,11 +1,11 @@
-const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL;
+const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || "https://tenador.com";
 
 export function generateProductMetadata(product) {
-  const title = `${product.name} | فروشگاه ورزشی`;
-  
+  const title = product.name;
+
   const description =
-    product.shortDescription?.slice(0, 160) ||
-    "خرید محصول از فروشگاه";
+    product.shortDescription ||
+    `خرید ${product.name} با ضمانت اصالت و ارسال سریع از تنادور`;
 
   const keywords = [
     product.name,
@@ -16,15 +16,12 @@ export function generateProductMetadata(product) {
     .filter(Boolean)
     .join(", ");
 
-  const images = [
-    product.mainImage,
-    ...(product.gallery || []),
-  ].filter(Boolean);
+  const images = [product.mainImage, ...(product.gallery || [])].filter(
+    Boolean,
+  );
 
   const imageUrls = images.map((img) =>
-    img.startsWith("http")
-      ? img
-      : `${SITE_URL}${img}`
+    img.startsWith("http") ? img : `${SITE_URL}${img}`,
   );
 
   const canonicalUrl = `${SITE_URL}/products/${product.slug}`;
@@ -56,7 +53,7 @@ export function generateProductMetadata(product) {
       title,
       description,
       url: canonicalUrl,
-      siteName: "فروشگاه ورزشی",
+      siteName: "تنادور",
       locale: "fa_IR",
       type: "website",
 
