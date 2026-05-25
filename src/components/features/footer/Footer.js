@@ -81,7 +81,6 @@ export default function Footer() {
                 />
                 <span className="text-sm">info.tenador@gmail.com</span>
               </div>
-              </div>
             </div>
 
             {/* Social Media */}
