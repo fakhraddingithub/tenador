@@ -1,7 +1,12 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { FaMars, FaVenus, FaMedal, FaRunning, FaFlag } from "react-icons/fa";
+import { useEffect, useState } from "react";
+import {
+  FaMars,
+  FaVenus,
+  FaRunning,
+  FaFlag,
+} from "react-icons/fa";
 
 export default function ShowcaseAthletes() {
   const [data, setData] = useState({ men: [], women: [] });
@@ -11,12 +16,13 @@ export default function ShowcaseAthletes() {
     const fetchAthletes = async () => {
       try {
         const res = await fetch("/api/athletes/showcase");
+
         if (res.ok) {
           const result = await res.json();
           setData(result);
         }
-      } catch (error) {
-        console.error("خطا در دریافت اطلاعات:", error);
+      } catch (err) {
+        console.error(err);
       } finally {
         setLoading(false);
       }
@@ -25,156 +31,203 @@ export default function ShowcaseAthletes() {
     fetchAthletes();
   }, []);
 
-  // کامپوننت داخلی برای نمایش یک ردیف (کارت ورزشکار)
-  const AthleteCard = ({ athlete, index }) => (
-    <div className="relative group flex items-center gap-4 bg-[var(--color-background)] p-4 md:p-5 rounded-[2rem] shadow-sm border border-[var(--border)] hover:border-[var(--color-primary)] hover:shadow-xl transition-all duration-300 overflow-hidden">
-      
-      {/* بک‌گراند هاور با رنگ Primary به صورت ملایم */}
-      <div className="absolute inset-0 bg-[var(--color-primary)] opacity-0 group-hover:opacity-5 transition-opacity duration-300 pointer-events-none" />
-
-      {/* شماره (ظاهر رنکینگ) */}
-      <div className="w-8 shrink-0 text-center">
-        <span className="text-3xl font-black text-gray-200 group-hover:text-[var(--color-primary)] transition-colors duration-300 italic">
-          {index + 1}
-        </span>
-      </div>
-
-      {/* تصویر آواتار */}
-      <div className="relative w-16 h-16 md:w-20 md:h-20 shrink-0 rounded-full overflow-hidden border-[3px] border-gray-100 group-hover:border-[var(--color-primary)] transition-colors duration-300 shadow-md">
-        <img
-          src={athlete.photo || "/default-avatar.png"} // یک عکس پیش‌فرض در صورت نبود عکس تنظیم کنید
-          alt={athlete.title}
-          className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
-        />
-      </div>
-
-      {/* اطلاعات */}
-      <div className="flex-1 min-w-0">
-        <h4 className="font-bold text-lg text-[var(--color-text)] truncate mb-1">
-          {athlete.title}
-        </h4>
-        <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs font-medium text-gray-500">
-          {athlete.sport && (
-            <span className="flex items-center gap-1 bg-gray-50 px-2 py-1 rounded-lg">
-              <FaRunning className="text-[var(--color-primary)]" />
-              {athlete.sport.name}
-            </span>
-          )}
-          {athlete.nationality && (
-            <span className="flex items-center gap-1 bg-gray-50 px-2 py-1 rounded-lg">
-              <FaFlag className="text-gray-400" />
-              {athlete.nationality}
-            </span>
-          )}
+  const AthleteCard = ({ athlete, index }) => {
+    return (
+      <div className="group relative flex items-center gap-3 overflow-hidden rounded-2xl border border-white/5 bg-white/[0.03] px-3 py-3 transition-all duration-300 hover:border-[var(--color-primary)]/30 hover:bg-white/[0.05]">
+        
+        {/* rank */}
+        <div className="w-6 shrink-0 text-center">
+          <span className="text-sm font-bold italic text-white/20 transition-colors duration-300 group-hover:text-[var(--color-primary)]">
+            0{index + 1}
+          </span>
         </div>
-      </div>
 
-      {/* حامیان مالی (لوگوها) */}
-      {athlete.sponsors && athlete.sponsors.length > 0 && (
-        <div className="hidden sm:flex shrink-0 -space-x-2 -space-x-reverse items-center justify-end">
-          {athlete.sponsors.slice(0, 3).map((sponsor, i) => (
-            <div 
-              key={sponsor._id || i} 
-              className="w-8 h-8 rounded-full bg-white border border-gray-200 overflow-hidden flex items-center justify-center p-1 shadow-sm"
-              title={sponsor.name}
-            >
-              <img src={sponsor.logo} alt={sponsor.name} className="w-full h-full object-contain" />
-            </div>
-          ))}
-          {athlete.sponsors.length > 3 && (
-            <div className="w-8 h-8 rounded-full bg-gray-100 border border-gray-200 flex items-center justify-center text-[9px] font-bold text-gray-500 shadow-sm z-10">
-              +{athlete.sponsors.length - 3}
-            </div>
-          )}
+        {/* avatar */}
+        <div className="relative h-12 w-12 shrink-0 overflow-hidden rounded-full border border-white/10">
+          <img
+            src={athlete.photo || "/default-avatar.png"}
+            alt={athlete.title}
+            className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-110"
+          />
         </div>
-      )}
-    </div>
-  );
 
-  // لودینگ استیت (اسکلتون جذاب)
+        {/* info */}
+        <div className="min-w-0 flex-1">
+          <h4 className="truncate text-sm font-bold text-white">
+            {athlete.title}
+          </h4>
+
+          <div className="mt-1 flex items-center gap-2 text-[11px] text-gray-400">
+            {athlete.sport && (
+              <span className="flex items-center gap-1">
+                <FaRunning
+                  className="text-[var(--color-primary)]"
+                  size={10}
+                />
+                {athlete.sport.name}
+              </span>
+            )}
+
+            {athlete.nationality && (
+              <>
+                <span className="text-white/10">•</span>
+
+                <span className="flex items-center gap-1">
+                  <FaFlag size={9} />
+                  {athlete.nationality}
+                </span>
+              </>
+            )}
+          </div>
+        </div>
+
+        {/* sponsors */}
+        {athlete.sponsors?.length > 0 && (
+          <div className="hidden md:flex items-center -space-x-2 -space-x-reverse">
+            {athlete.sponsors.slice(0, 2).map((sponsor, i) => (
+              <div
+                key={sponsor._id || i}
+                className="h-7 w-7 overflow-hidden rounded-full border border-white/10 bg-white p-1 shadow-sm"
+              >
+                <img
+                  src={sponsor.logo}
+                  alt={sponsor.name}
+                  className="h-full w-full object-contain"
+                />
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* hover glow */}
+        <div className="pointer-events-none absolute inset-0 bg-gradient-to-r from-[var(--color-primary)]/0 via-[var(--color-primary)]/[0.03] to-[var(--color-primary)]/0 opacity-0 transition-opacity duration-500 group-hover:opacity-100" />
+      </div>
+    );
+  };
+
   if (loading) {
     return (
-      <div className="max-w-7xl mx-auto px-4 py-16 animate-pulse">
-        <div className="h-10 bg-gray-200 rounded-xl w-64 mx-auto mb-12"></div>
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 md:gap-12">
-          {[1, 2].map((col) => (
-            <div key={col} className="space-y-4">
-              <div className="h-12 bg-gray-200 rounded-2xl w-48 mb-6"></div>
-              {[1, 2, 3, 4, 5].map((item) => (
-                <div key={item} className="h-24 bg-gray-100 rounded-[2rem] w-full"></div>
-              ))}
-            </div>
-          ))}
+      <section className="bg-[#1a1c22] py-16">
+        <div className="mx-auto max-w-7xl px-4">
+          <div className="mb-10 h-8 w-52 animate-pulse rounded-xl bg-white/10" />
+
+          <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+            {[1, 2].map((col) => (
+              <div key={col} className="space-y-3">
+                {[1, 2, 3, 4].map((item) => (
+                  <div
+                    key={item}
+                    className="h-20 animate-pulse rounded-2xl bg-white/5"
+                  />
+                ))}
+              </div>
+            ))}
+          </div>
         </div>
-      </div>
+      </section>
     );
   }
 
   return (
-    <section className="py-16 md:py-24 bg-gray-50/50">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6">
+    <section className="relative overflow-hidden bg-[#1a1c22] py-16 lg:py-20">
+      
+      {/* ambient bg */}
+      <div className="pointer-events-none absolute inset-0">
+        <div className="absolute left-0 top-0 h-72 w-72 rounded-full bg-[var(--color-primary)]/10 blur-3xl" />
+        <div className="absolute bottom-0 right-0 h-72 w-72 rounded-full bg-white/[0.03] blur-3xl" />
+      </div>
+
+      <div className="relative z-10 mx-auto max-w-7xl px-4 sm:px-6">
         
-        {/* هدر بخش */}
-        <div className="text-center mb-12 md:mb-16">
-          <span className="text-[var(--color-primary)] font-bold tracking-widest uppercase text-xs mb-3 block">
-            Featured Athletes
-          </span>
-          <h2 className="text-3xl md:text-4xl font-black text-[var(--color-text)] flex items-center justify-center gap-3">
-            <FaMedal className="text-[var(--color-secondary)]" /> 
-            ستارگان برتر امروز
-          </h2>
-          <p className="text-gray-500 mt-4 max-w-xl mx-auto text-sm font-medium">
-            نگاهی به برجسته‌ترین قهرمانان و چهره‌های ورزشی که نامشان در دنیای ورزش می‌درخشد.
+        {/* header */}
+        <div className="mb-10 flex flex-col items-center justify-between gap-4 text-center lg:flex-row lg:text-right">
+          <div>
+            <span className="mb-2 block text-[11px] font-bold uppercase tracking-[0.25em] text-[var(--color-primary)]">
+              Featured Athletes
+            </span>
+
+            <h2 className="text-2xl font-bold text-white md:text-3xl">
+              ستارگان منتخب ورزش
+            </h2>
+          </div>
+
+          <p className="max-w-md text-sm leading-7 text-gray-400">
+            برترین ورزشکارانی که با عملکرد، شخصیت و استایل خود در مرکز توجه قرار گرفته‌اند.
           </p>
         </div>
 
-        {/* گرید دو ستونه - در حالت RTL ستون راست (مردان) اول رندر می‌شود */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-16">
+        {/* columns */}
+        <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
           
-          {/* ─── ستون راست: مردان ─── */}
-          <div className="space-y-6">
-            <div className="flex items-center justify-between pb-4 border-b-2 border-gray-100 mb-6">
-              <h3 className="text-2xl font-black text-[var(--color-text)] flex items-center gap-3">
-                <div className="w-10 h-10 rounded-2xl bg-blue-50 text-blue-600 flex items-center justify-center">
-                  <FaMars size={20} />
-                </div>
-                بخش مردان
-              </h3>
+          {/* men */}
+          <div className="rounded-[2rem] border border-white/5 bg-white/[0.03] p-4 backdrop-blur-xl">
+            <div className="mb-4 flex items-center gap-3 border-b border-white/5 pb-4">
+              <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-blue-500/10 text-blue-400">
+                <FaMars size={16} />
+              </div>
+
+              <div>
+                <h3 className="text-lg font-bold text-white">
+                  بخش مردان
+                </h3>
+
+                <span className="text-xs text-gray-500">
+                  Top Male Athletes
+                </span>
+              </div>
             </div>
-            
-            <div className="flex flex-col gap-4">
+
+            <div className="space-y-3">
               {data.men.length > 0 ? (
                 data.men.map((athlete, index) => (
-                  <AthleteCard key={athlete._id} athlete={athlete} index={index} />
+                  <AthleteCard
+                    key={athlete._id}
+                    athlete={athlete}
+                    index={index}
+                  />
                 ))
               ) : (
-                <p className="text-gray-400 text-sm italic text-center py-8">ورزشکاری یافت نشد</p>
+                <p className="py-6 text-center text-sm text-gray-500">
+                  موردی یافت نشد
+                </p>
               )}
             </div>
           </div>
 
-          {/* ─── ستون چپ: زنان ─── */}
-          <div className="space-y-6">
-            <div className="flex items-center justify-between pb-4 border-b-2 border-gray-100 mb-6">
-              <h3 className="text-2xl font-black text-[var(--color-text)] flex items-center gap-3">
-                <div className="w-10 h-10 rounded-2xl bg-pink-50 text-pink-600 flex items-center justify-center">
-                  <FaVenus size={20} />
-                </div>
-                بخش زنان
-              </h3>
+          {/* women */}
+          <div className="rounded-[2rem] border border-white/5 bg-white/[0.03] p-4 backdrop-blur-xl">
+            <div className="mb-4 flex items-center gap-3 border-b border-white/5 pb-4">
+              <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-pink-500/10 text-pink-400">
+                <FaVenus size={16} />
+              </div>
+
+              <div>
+                <h3 className="text-lg font-bold text-white">
+                  بخش زنان
+                </h3>
+
+                <span className="text-xs text-gray-500">
+                  Top Female Athletes
+                </span>
+              </div>
             </div>
-            
-            <div className="flex flex-col gap-4">
+
+            <div className="space-y-3">
               {data.women.length > 0 ? (
                 data.women.map((athlete, index) => (
-                  <AthleteCard key={athlete._id} athlete={athlete} index={index} />
+                  <AthleteCard
+                    key={athlete._id}
+                    athlete={athlete}
+                    index={index}
+                  />
                 ))
               ) : (
-                <p className="text-gray-400 text-sm italic text-center py-8">ورزشکاری یافت نشد</p>
+                <p className="py-6 text-center text-sm text-gray-500">
+                  موردی یافت نشد
+                </p>
               )}
             </div>
           </div>
-
         </div>
       </div>
     </section>
