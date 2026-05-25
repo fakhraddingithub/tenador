@@ -42,7 +42,7 @@ export default function ProductSlider({
         {/* هدر */}
         <div className="relative flex flex-col md:flex-row md:items-end justify-between mb-10 md:mb-16">
           <div className="relative">
-            <h2 className="text-2xl md:text-4xl font-bold text-gray-900 leading-tight">
+            <h2 className="text-2xl md:text-4xl font-black text-gray-900 leading-tight">
               {title.split(" ").map((word, i) => (
                 <span
                   key={i}
@@ -57,7 +57,6 @@ export default function ProductSlider({
             </p>
           </div>
 
-          {/* کنترلرهای ناوبری (مخفی در موبایل برای تمیزی بیشتر، نمایش در تبلت به بالا) */}
           <div className="hidden md:flex items-center mt-8 md:mt-0">
             <div className="flex bg-white/80 backdrop-blur-md shadow-xl shadow-black/5 rounded-xl p-1 border border-white/50">
               <button className="product-prev-btn w-12 h-12 flex items-center justify-center text-gray-400 hover:text-[#aa4725] hover:bg-[#aa4725]/5 transition-all rounded-lg">
@@ -88,32 +87,18 @@ export default function ProductSlider({
               prevEl: ".product-prev-btn",
             }}
             pagination={{
-              el: ".slider-pagination-2",
+              el: ".slider-pagination-1",
               clickable: true,
+              // یکسان‌سازی استایل بولت‌ها با استفاده از Tailwind
               renderBullet: function (index, className) {
-                return `<span class="${className} !bg-[#aa4725] !m-0 !w-2.5 !h-2.5"></span>`;
+                return `<span class="${className} !w-2 !h-2 md:!w-2.5 md:!h-2.5 !bg-[#aa4725] !opacity-30 [&.swiper-pagination-bullet-active]:!opacity-100 !rounded-full transition-all duration-300 !mx-1 cursor-pointer inline-block"></span>`;
               },
             }}
             breakpoints={{
-              640: {
-                slidesPerView: 2.5,
-                spaceBetween: 16,
-              },
-
-              768: {
-                slidesPerView: 3,
-                spaceBetween: 18,
-              },
-
-              1024: {
-                slidesPerView: 4,
-                spaceBetween: 20,
-              },
-
-              1400: {
-                slidesPerView: 4,
-                spaceBetween: 24,
-              },
+              640: { slidesPerView: 2.5, spaceBetween: 16 },
+              768: { slidesPerView: 3, spaceBetween: 18 },
+              1024: { slidesPerView: 4, spaceBetween: 20 },
+              1400: { slidesPerView: 4, spaceBetween: 24 },
             }}
             className="overflow-hidden"
           >
@@ -132,16 +117,16 @@ export default function ProductSlider({
             ))}
           </Swiper>
 
-          {/* بخش زیر اسلایدر: پیجینیشن و دکمه کاتالوگ */}
-          <div className="flex flex-row items-center justify-between gap-4 sm:gap-6 mt-4">
-            <div className="slider-pagination-2 !static !w-auto !transform-none !m-0 flex items-center gap-2" />
+          {/* بخش زیر اسلایدر: پیجینیشن و دکمه کاتالوگ (ریسپانسیو شده برای یک ردیف) */}
+          <div className="flex flex-row items-center justify-between gap-3 mt-4">
+            <div className="slider-pagination-1 !w-auto flex items-center" />
 
             <Link
               href="/products"
-              className="group flex items-center gap-2 bg-white px-4 py-2 md:px-6 md:py-3 rounded-full shadow-sm border border-gray-100 text-gray-900 font-bold text-[11px] sm:text-xs md:text-sm hover:bg-[#aa4725] hover:text-white transition-all duration-300 w-auto justify-center"
+              className="group flex items-center gap-1.5 md:gap-2 bg-white px-4 py-2.5 md:px-6 md:py-3 rounded-full shadow-sm border border-gray-100 text-gray-900 font-bold text-[11px] sm:text-xs md:text-sm hover:bg-[#aa4725] hover:text-white transition-all duration-300 w-auto shrink-0 justify-center"
             >
-              مشاهده کاتالوگ محصولات
-              <FiPlusCircle className="text-base sm:text-lg md:text-xl group-hover:rotate-180 transition-transform duration-500" />
+              <span className="whitespace-nowrap">مشاهده کاتالوگ</span>
+              <FiPlusCircle className="text-base md:text-xl group-hover:rotate-180 transition-transform duration-500" />
             </Link>
           </div>
         </div>

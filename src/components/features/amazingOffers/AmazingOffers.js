@@ -42,7 +42,7 @@ export default function ProductSlider({
         {/* هدر */}
         <div className="relative flex flex-col md:flex-row md:items-end justify-between mb-10 md:mb-16">
           <div className="relative">
-            <h2 className="text-2xl md:text-4xl font-bold text-gray-900 leading-tight">
+            <h2 className="text-2xl md:text-4xl font-black text-gray-900 leading-tight">
               {title.split(" ").map((word, i) => (
                 <span
                   key={i}
@@ -89,27 +89,16 @@ export default function ProductSlider({
             pagination={{
               el: ".slider-pagination-2",
               clickable: true,
+              // یکسان‌سازی استایل بولت‌ها با استفاده از Tailwind (دقیقا مثل اسلایدر اول)
               renderBullet: function (index, className) {
-                return `<span class="${className} !bg-[#aa4725] !m-0 !w-2.5 !h-2.5"></span>`;
+                return `<span class="${className} !w-2 !h-2 md:!w-2.5 md:!h-2.5 !bg-[#aa4725] !opacity-30 [&.swiper-pagination-bullet-active]:!opacity-100 !rounded-full transition-all duration-300 !mx-1 cursor-pointer inline-block"></span>`;
               },
             }}
             breakpoints={{
-              640: {
-                slidesPerView: 2.5,
-                spaceBetween: 16,
-              },
-              768: {
-                slidesPerView: 3,
-                spaceBetween: 18,
-              },
-              1024: {
-                slidesPerView: 4,
-                spaceBetween: 20,
-              },
-              1400: {
-                slidesPerView: 4,
-                spaceBetween: 24,
-              },
+              640: { slidesPerView: 2.5, spaceBetween: 16 },
+              768: { slidesPerView: 3, spaceBetween: 18 },
+              1024: { slidesPerView: 4, spaceBetween: 20 },
+              1400: { slidesPerView: 4, spaceBetween: 24 },
             }}
           >
             {products.map((product, index) => (
@@ -128,16 +117,16 @@ export default function ProductSlider({
           </Swiper>
         </div>
 
-        {/* پیجینیشن و لینک پایین */}
-        <div className="flex flex-row items-center justify-between gap-4 sm:gap-6 mt-4">
-          <div className="slider-pagination-2 !static !w-auto !transform-none !m-0 flex items-center gap-2" />
-
+        {/* پیجینیشن و لینک پایین (ریسپانسیو شده برای یک ردیف) */}
+        <div className="flex flex-row items-center justify-between gap-3 mt-6">
+          <div className="slider-pagination-2 !w-auto flex items-center"></div>
+          
           <Link
             href="/products"
-            className="group flex items-center gap-2 bg-white px-4 py-2 md:px-6 md:py-3 rounded-full shadow-sm border border-gray-100 text-gray-900 font-bold text-[11px] sm:text-xs md:text-sm hover:bg-[#aa4725] hover:text-white transition-all duration-300 w-auto justify-center"
+            className="group flex items-center gap-1.5 md:gap-2 bg-white px-4 py-2.5 md:px-6 md:py-3 rounded-full shadow-sm border border-gray-100 text-gray-900 font-bold text-[11px] sm:text-xs md:text-sm hover:bg-[#aa4725] hover:text-white transition-all duration-300 w-auto shrink-0 justify-center"
           >
-            مشاهده کاتالوگ محصولات
-            <FiPlusCircle className="text-base sm:text-lg md:text-xl group-hover:rotate-180 transition-transform duration-500" />
+            <span className="whitespace-nowrap">مشاهده کاتالوگ</span>
+            <FiPlusCircle className="text-base md:text-xl group-hover:rotate-180 transition-transform duration-500" />
           </Link>
         </div>
       </div>
