@@ -43,7 +43,7 @@ export default function SportPageClient({
     // فقط اسپورت
     // تنیس
     if (!categoryTitle && !brandTitle) {
-      return `تنادور – فروشگاه تخصصی تجهیزات و لوازم ${sportTitle}`;
+      return `فروشگاه تخصصی تجهیزات ${sportTitle}`;
     }
 
     // کتگوری + اسپورت

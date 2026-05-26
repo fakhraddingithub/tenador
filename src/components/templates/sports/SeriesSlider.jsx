@@ -234,17 +234,20 @@ export default function SeriesSlider({ series = [], sportSlug, sportTitle }) {
             <h2 className="text-2xl md:text-4xl font-black text-gray-900 leading-tight">
               {isLimitedEdition ? (
                 <>
-                  <span className="text-[#aa4725]">لیمیتد ادیشن‌های </span> 2026
+                  <span className="text-[#aa4725]">سری های</span>لیمیتد ادیشن
+                  <p className="text-gray-500 mt-2 md:mt-4 text-sm md:text-lg font-light max-w-md border-r-2 md:border-r-4 border-[#aa4725]/20 pr-3 md:pr-4 italic">
+                    کمیاب کالکشن‌های 2026
+                  </p>
                 </>
               ) : (
                 <>
                   <span className="text-[#aa4725]">سری‌های </span> {sportTitle}
+                  <p className="text-gray-500 mt-2 md:mt-4 text-sm md:text-lg font-light max-w-md border-r-2 md:border-r-4 border-[#aa4725]/20 pr-3 md:pr-4 italic">
+                    جدیدترین کالکشن‌های 2026
+                  </p>
                 </>
               )}
             </h2>
-            <p className="text-gray-500 mt-2 md:mt-4 text-sm md:text-lg font-light max-w-md border-r-2 md:border-r-4 border-[#aa4725]/20 pr-3 md:pr-4 italic">
-              حرفه‌ای‌ترین کالکشن‌های 2026
-            </p>
           </div>
 
           <div className="hidden md:flex items-center mt-8 md:mt-0">
