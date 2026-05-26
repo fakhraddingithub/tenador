@@ -14,7 +14,7 @@ export default function RolandGarros() {
         </h2>
       </div>
 
-      <div className="container mx-auto relative z-10 px-4 sm:px-6 lg:px-8">
+      <div className="container mx-auto relative z-10 px-4 sm:px-8 lg:px-10 xl:px-12">
         <div className="flex flex-col items-center justify-center gap-10 lg:flex-row lg:items-center lg:gap-8">
           {/* بخش محتوا */}
           <div className="order-2 w-full max-w-2xl lg:order-1 lg:w-5/12 lg:max-w-none">
