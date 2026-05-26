@@ -27,21 +27,17 @@ export default function SportsGrid({ categories = [] }) {
 
   return (
     <section className="py-20 bg-white text-black">
-      <div className="container mx-auto px-4">
+      <div className="container mx-auto px-4 md:px-12 lg:px-16 xl:px-20">
         {/* هدر بخش */}
-        <div className="mb-12 flex flex-col md:flex-row justify-between items-start md:items-end border-b border-gray-100 pb-6 text-right">
-          <div className="border-r-4 border-[#aa4725] pr-4 w-full md:w-auto">
-            <h2 className="text-3xl md:text-4xl font-bold text-gray-900 mb-2">
-              <span className="text-[#aa4725]">رشته‌های </span>
-              <span>ورزشی</span>
-
-            </h2>
-            <p className="text-gray-500 text-sm font-medium">
-              تجهیزات تخصصی برای هر سبک بازی
-            </p>
-          </div>
+        <div className="relative mb-12">
+          <h2 className="text-2xl md:text-4xl font-black text-gray-900 leading-tight">
+            <span className="text-[#aa4725]">رشته‌های </span>
+            <span>ورزشی</span>
+          </h2>
+          <p className="text-gray-500 mt-2 md:mt-4 text-sm md:text-lg font-light max-w-md border-r-2 md:border-r-4 border-[#aa4725]/20 pr-3 md:pr-4 italic">
+            تجهیزات تخصصی برای هر سبک بازی
+          </p>
         </div>
-
         {/* گرید اصلی (۴ آیتم اول) */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4 auto-rows-[220px] md:auto-rows-[260px]">
           {initialCategories.map((category, index) => (
