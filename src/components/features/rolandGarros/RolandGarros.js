@@ -18,7 +18,7 @@ export default function RolandGarros() {
         <div className="flex flex-col items-center justify-center gap-10 lg:flex-row lg:items-center lg:gap-8">
           {/* بخش محتوا */}
           <div className="order-2 w-full max-w-2xl lg:order-1 lg:w-5/12 lg:max-w-none">
-            <div className="group relative overflow-hidden rounded-[2.5rem] border border-white/10 bg-[#20232ae6] p-6 shadow-2xl backdrop-blur-xl sm:p-8 lg:translate-x-6 lg:p-10 xl:p-12">
+            <div className="group relative overflow-hidden rounded-[14px] border border-white/10 bg-[#20232ae6] p-6 shadow-2xl backdrop-blur-xl sm:p-8 lg:translate-x-6 lg:p-10 xl:p-12">
               <div className="absolute left-0 top-0 h-full w-2 bg-[#aa4725]" />
 
               <div className="mb-6 flex items-center justify-center gap-4 lg:justify-end">
@@ -71,7 +71,7 @@ export default function RolandGarros() {
             <div className="relative mx-auto w-full">
               <div className="absolute -inset-8 rounded-full bg-[#aa4725]/20 blur-[100px] opacity-50" />
 
-              <div className="relative aspect-[4/5] overflow-hidden rounded-[2.5rem] border-4 border-[#20232a] shadow-[0_35px_90px_-20px_rgba(0,0,0,0.5)] sm:aspect-[16/11]">
+              <div className="relative aspect-[4/5] overflow-hidden rounded-[14px] border-4 border-[#20232a] shadow-[0_35px_90px_-20px_rgba(0,0,0,0.5)] sm:aspect-[16/11]">
                 <Image
                   src="/images/roland-garros.webp"
                   alt="محصولات رولاند گاروس"
@@ -83,7 +83,7 @@ export default function RolandGarros() {
                 <div className="absolute inset-0 bg-gradient-to-r from-[#20232a]/60 via-transparent to-transparent" />
               </div>
 
-              <div className="absolute -bottom-5 -right-3 hidden rounded-3xl bg-white p-4 shadow-2xl transition-transform duration-500 md:block lg:-bottom-6 lg:-right-6 lg:p-5">
+              <div className="absolute -bottom-5 -right-3 hidden rounded-[14px] bg-white p-4 shadow-2xl transition-transform duration-500 md:block lg:-bottom-6 lg:-right-6 lg:p-5">
                 <div className="flex flex-col items-center gap-1">
                   <span className="text-3xl font-black italic tracking-tighter text-[#20232a] lg:text-4xl">
                     PARIS

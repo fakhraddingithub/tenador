@@ -39,8 +39,8 @@ export default async function Home() {
       <BestSellers products={products} rate={rate} />
       <AmazingOffers products={products} rate={rate} />
       <RolandGarros />
-      <ShowcaseAthletes />
       <BrandsTicker />
+      <ShowcaseAthletes />
       {/* <Articles /> */}
     </>
   );

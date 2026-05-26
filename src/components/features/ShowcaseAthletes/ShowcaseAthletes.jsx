@@ -30,7 +30,7 @@ export default function ShowcaseAthletes() {
     const sponsors = athlete.sponsors || [];
 
     return (
-      <div className="group relative flex items-center gap-3 overflow-hidden rounded-2xl border border-white/5 bg-white/[0.03] px-3 py-3 transition-all duration-300 hover:border-[var(--color-primary)]/30 hover:bg-white/[0.05]">
+      <div className="group relative flex items-center gap-3 overflow-hidden rounded-[6px] border border-white/5 bg-white/[0.03] px-3 py-3 transition-all duration-300 hover:border-[var(--color-primary)]/30 hover:bg-white/[0.05]">
         {/* rank */}
         <div className="w-6 shrink-0 text-center">
           <span className="text-sm font-bold italic text-white/20 transition-colors duration-300 group-hover:text-[var(--color-primary)]">
@@ -104,7 +104,7 @@ export default function ShowcaseAthletes() {
     return (
       <section className="bg-[#1a1c22] py-16">
         <div className="mx-auto max-w-7xl px-4">
-          <div className="mb-10 h-8 w-52 animate-pulse rounded-xl bg-white/10" />
+          <div className="mb-10 h-8 w-52 animate-pulse rounded-[14px] bg-white/10" />
 
           <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
             {[1, 2].map((col) => (
@@ -112,7 +112,7 @@ export default function ShowcaseAthletes() {
                 {[1, 2, 3, 4].map((item) => (
                   <div
                     key={item}
-                    className="h-20 animate-pulse rounded-2xl bg-white/5"
+                    className="h-20 animate-pulse rounded-[14px] bg-white/5"
                   />
                 ))}
               </div>
@@ -148,7 +148,7 @@ export default function ShowcaseAthletes() {
         </div>
 
         <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-          <div className="rounded-[2rem] border border-white/5 bg-white/[0.03] p-4 backdrop-blur-xl">
+          <div className="rounded-[14px] border border-white/5 bg-white/[0.03] p-4 backdrop-blur-xl">
             <div className="mb-4 flex items-center gap-3 border-b border-white/5 pb-4">
               <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-blue-500/10 text-blue-400">
                 <FaMars size={16} />
@@ -173,7 +173,7 @@ export default function ShowcaseAthletes() {
             </div>
           </div>
 
-          <div className="rounded-[2rem] border border-white/5 bg-white/[0.03] p-4 backdrop-blur-xl">
+          <div className="rounded-[14px] border border-white/5 bg-white/[0.03] p-4 backdrop-blur-xl">
             <div className="mb-4 flex items-center gap-3 border-b border-white/5 pb-4">
               <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-pink-500/10 text-pink-400">
                 <FaVenus size={16} />

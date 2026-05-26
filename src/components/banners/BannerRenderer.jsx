@@ -16,7 +16,6 @@ export default function BannerRenderer({ banner, preview = false }) {
     height: "100%",
     position: "relative",
     overflow: "hidden",
-    borderRadius: "12px",
     cursor: banner.link ? "pointer" : "default",
     fontSize: `${fontSize}rem`,
   };

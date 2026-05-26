@@ -6,9 +6,9 @@ import { MdCompareArrows } from "react-icons/md";
 
 export default function ComparisonBanner() {
   return (
-    <section className="py-12 container mx-auto px-4">
+    <section className="py-12 w-full">
       <Link href="/compare">
-        <div className="group relative w-full min-h-[300px] lg:min-h-[350px] bg-[#20232a] rounded-[6px] overflow-hidden flex flex-col md:flex-row items-center justify-between px-8 lg:px-20 transition-all duration-500 hover:shadow-[0_40px_80px_-15px_rgba(0,0,0,0.1)]">
+        <div className="group relative w-full min-h-[300px] lg:min-h-[350px] bg-[#20232a] overflow-hidden flex flex-col md:flex-row items-center justify-between px-8 lg:px-20 transition-all duration-500 hover:shadow-[0_40px_80px_-15px_rgba(0,0,0,0.1)]">
           
           {/* المان گرافیکی پس‌زمینه (رادار چارت محو) */}
           <div className="absolute inset-0 opacity-10 pointer-events-none z-0 flex justify-center items-center">
@@ -22,14 +22,14 @@ export default function ComparisonBanner() {
           </div>
 
           {/* سمت راست: متن و محتوا */}
-          <div className="relative z-10 flex-1 text-right py-10 md:py-0">
+          <div className="relative z-10 flex-1 text-right py-10 md:py-0 md:pr-20">
             
             <h2 className="text-3xl lg:text-5xl font-black text-white mb-6 leading-tight">
               ابزار هوشمند <br />
               <span className="text-[#aa4725]">مقایسه محصولات</span>
             </h2>
             
-            <p className="text-gray-400 text-lg max-w-md ml-0 mr-auto mb-8 font-light">
+            <p className="text-gray-400 text-lg max-w-md ml-0 ml-auto mb-8 font-light">
               مشخصات فنی را کنار هم بگذارید، نمودارها را تحلیل کنید و بهترین انتخاب را برای بازی خود داشته باشید.
             </p>
 
