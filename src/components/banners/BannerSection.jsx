@@ -85,7 +85,7 @@ export default function BannerSection() {
 
       {/* بنر نواری (Strip) */}
       {banners.strip && (
-        <div className="max-w-screen-xl mx-auto px-4 mt-4">
+        <div className="max-w-screen-xl mx-auto mt-4">
           <div className={`h-[60px] md:h-[72px] rounded-[var(--radius)] overflow-hidden transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_8px_24px_rgba(0,0,0,0.12)]`}>
             <StripBannerRenderer banner={banners.strip} />
           </div>

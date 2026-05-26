@@ -6,10 +6,10 @@ import BannerRenderer from "@/components/banners/BannerRenderer";
 import StripBannerRenderer from "@/components/banners/StripBannerRenderer";
 
 const POSITIONS = [
-  { key: "wide", label: "بنر اصلی", icon: "▬", desc: "بنر عریض سمت راست" },
-  { key: "tall-1", label: "بنر کناری ۱", icon: "▮", desc: "بنر عمودی وسط" },
-  { key: "tall-2", label: "بنر کناری ۲", icon: "▮", desc: "بنر عمودی چپ" },
-  { key: "strip", label: "نوار بنر (strip)", icon: "▬", desc: "نوار باریک" },
+  { key: "wide", label: "بنر اصلی (افقی بزرگ)", icon: "▬", desc: "بنر عریض در سمت راست گرید" },
+  { key: "tall-1", label: "بنر کناری ۱ (عمودی)", icon: "▮", desc: "بنر عمودی وسط" },
+  { key: "tall-2", label: "بنر کناری ۲ (عمودی)", icon: "▮", desc: "بنر عمودی چپ" },
+  { key: "strip", label: "نوار بنر (strip)", icon: "▬", desc: "نوار باریک زیر بنرها" },
 ];
 
 export default function AdminBannersPage() {
@@ -19,7 +19,9 @@ export default function AdminBannersPage() {
   const [creatingPosition, setCreatingPosition] = useState(null);
   const [deleteConfirm, setDeleteConfirm] = useState(null);
 
-  useEffect(() => { fetchBanners(); }, []);
+  useEffect(() => { 
+    fetchBanners(); 
+  }, []);
 
   const fetchBanners = async () => {
     setLoading(true);
@@ -27,29 +29,44 @@ export default function AdminBannersPage() {
       const res = await fetch("/api/banners?admin=true");
       const data = await res.json();
       if (data.success) setBanners(data.banners);
-    } catch (e) { console.error(e); }
-    finally { setLoading(false); }
+    } catch (e) { 
+      console.error(e); 
+    } finally { 
+      setLoading(false); 
+    }
   };
 
   const handleDelete = async (id) => {
     try {
       const res = await fetch(`/api/banners/${id}`, { method: "DELETE" });
-      if ((await res.json()).success) {
+      const data = await res.json();
+      if (data.success) {
         setBanners(prev => prev.filter(b => b._id !== id));
         setDeleteConfirm(null);
       }
-    } catch (e) { console.error(e); }
+    } catch (e) { 
+      console.error(e); 
+    }
   };
 
   const handleToggleActive = async (banner) => {
-    const res = await fetch(`/api/banners/${banner._id}`, {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ isActive: !banner.isActive }),
-    });
-    const data = await res.json();
-    if (data.success) setBanners(prev => prev.map(b => b._id === banner._id ? data.banner : b));
+    try {
+      const res = await fetch(`/api/banners/${banner._id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ isActive: !banner.isActive }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        setBanners(prev => prev.map(b => b._id === banner._id ? data.banner : b));
+      }
+    } catch (e) { 
+      console.error(e); 
+    }
   };
+
+  const getBannerForPosition = (pos) => banners.find(b => b.position === pos && b.isActive);
+  const getAllForPosition = (pos) => banners.filter(b => b.position === pos);
 
   if (editingBanner || creatingPosition) {
     return (
@@ -63,77 +80,146 @@ export default function AdminBannersPage() {
   }
 
   return (
-    <div className="p-4 md:p-8 max-w-6xl mx-auto font-sans" dir="rtl">
-      {/* Header */}
-      <header className="mb-8">
-        <h1 className="text-2xl font-extrabold text-slate-900">مدیریت بنرها</h1>
-        <p className="text-slate-500 mt-1">مدیریت چیدمان بنرهای صفحه اصلی</p>
-      </header>
+    <div className="p-6 max-w-7xl mx-auto" dir="rtl">
+      
+      {/* هدر */}
+      <div className="mb-7">
+        <h1 className="text-2xl font-black text-neutral-950 tracking-tight">مدیریت بنرها</h1>
+        <p className="text-sm text-neutral-400 mt-1">بنرهای صفحه اصلی را مدیریت کنید</p>
+      </div>
 
-      {/* Live Preview */}
-      <section className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm mb-8">
-        <h2 className="text-sm font-bold text-slate-700 mb-4">پیش‌نمایش زنده چیدمان</h2>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 h-auto md:h-48">
+      {/* پیش‌نمایش زنده */}
+      <div className="mb-7 bg-white rounded-2xl p-5 border border-neutral-100 shadow-sm">
+        <h2 className="text-sm font-bold text-neutral-800 mb-4">پیش‌نمایش زنده</h2>
+        
+        {/* گرید با نسبت 2fr 1fr 1fr اصلی با col-span در حالت دسکتاپ */}
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 h-auto md:h-[200px]">
           {["wide", "tall-1", "tall-2"].map(pos => {
-            const b = banners.find(x => x.position === pos && x.isActive);
+            const b = getBannerForPosition(pos);
+            const gridClasses = pos === "wide" ? "md:col-span-2" : "md:col-span-1";
+            
             return (
-              <div key={pos} className="rounded-xl overflow-hidden border border-slate-100 bg-slate-50 flex items-center justify-center text-slate-400 text-xs">
-                {b ? <BannerRenderer banner={b} preview /> : POSITIONS.find(p => p.key === pos).label}
+              <div key={pos} className={`${gridClasses} rounded-lg overflow-hidden bg-neutral-50 border border-neutral-100`}>
+                {b ? (
+                  <BannerRenderer banner={b} preview />
+                ) : (
+                  <div className="w-full h-full min-h-[140px] flex items-center justify-center text-xs text-neutral-300 font-medium">
+                    {POSITIONS.find(p => p.key === pos)?.label}
+                  </div>
+                )}
               </div>
             );
           })}
         </div>
-      </section>
-
-      {/* Grid Positions */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        {POSITIONS.map(pos => (
-          <div key={pos.key} className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm flex flex-col gap-4">
-            <div className="flex items-center gap-3">
-              <span className="text-xl bg-slate-100 p-2 rounded-lg">{pos.icon}</span>
-              <div>
-                <h3 className="font-bold text-slate-900">{pos.label}</h3>
-                <p className="text-xs text-slate-400">{pos.desc}</p>
-              </div>
-            </div>
-
-            <div className="flex flex-col gap-3">
-              {banners.filter(b => b.position === pos.key).map(b => (
-                <div key={b._id} className="group relative border rounded-xl overflow-hidden border-slate-100 hover:border-blue-200 transition-all">
-                  <div className="h-24 bg-slate-100">
-                    <BannerRenderer banner={b} preview />
-                    {!b.isActive && <div className="absolute inset-0 bg-black/40 flex items-center justify-center text-white text-xs font-bold">غیرفعال</div>}
-                  </div>
-                  <div className="p-3 flex justify-between items-center bg-slate-50">
-                    <span className="text-xs font-medium text-slate-600 truncate">{b.title || "بدون عنوان"}</span>
-                    <div className="flex gap-2">
-                      <button onClick={() => setEditingBanner(b)} className="text-blue-600 hover:bg-blue-50 px-2 py-1 rounded text-xs">ویرایش</button>
-                      <button onClick={() => handleToggleActive(b)} className={`${b.isActive ? "text-green-600" : "text-amber-600"} text-xs`}>
-                        {b.isActive ? "فعال" : "غیرفعال"}
-                      </button>
-                      <button onClick={() => setDeleteConfirm(b._id)} className="text-red-500 hover:bg-red-50 px-2 py-1 rounded text-xs">حذف</button>
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-
-            <button onClick={() => setCreatingPosition(pos.key)} className="w-full mt-auto py-2 border-2 border-dashed border-slate-200 rounded-xl text-slate-400 hover:text-blue-600 hover:border-blue-200 transition-all text-sm font-semibold">
-              + افزودن بنر جدید
-            </button>
+        
+        {/* نوار بنر پایین گرید پیش‌نمایش */}
+        {getBannerForPosition("strip") && (
+          <div className="mt-3.5 h-14 rounded-lg overflow-hidden border border-neutral-100">
+            <StripBannerRenderer banner={getBannerForPosition("strip")} />
           </div>
-        ))}
+        )}
       </div>
 
-      {/* Delete Modal */}
+      {/* لیست موقعیت‌ها */}
+      <div className="flex flex-col gap-5">
+        {POSITIONS.map(pos => {
+          const items = getAllForPosition(pos.key);
+          return (
+            <div key={pos.key} className="bg-neutral-50 border-2 border-dashed border-neutral-200 rounded-2xl p-4">
+              
+              {/* هدر موقعیت */}
+              <div className="flex items-center gap-2 mb-3">
+                <span className="text-xl leading-none">{pos.icon}</span>
+                <div>
+                  <div className="font-bold text-sm text-neutral-800">{pos.label}</div>
+                  <div className="text-[11px] text-neutral-400 mt-0.5">{pos.desc}</div>
+                </div>
+              </div>
+
+              {items.length === 0 && (
+                <div className="text-center py-5 text-neutral-400 text-xs font-medium">
+                  هنوز بنری برای این موقعیت ثبت نشده
+                </div>
+              )}
+
+              {/* لیست کارت‌های بنر */}
+              <div className="flex flex-col gap-2.5">
+                {items.map(b => (
+                  <div 
+                    key={b._id} 
+                    className="bg-white border border-neutral-200/60 rounded-xl overflow-hidden shadow-sm transition-opacity"
+                    style={{ opacity: b.isActive ? 1 : 0.6 }}
+                  >
+                    {/* تصویر بنر */}
+                    <div className="relative bg-neutral-100" style={{ height: pos.key === "strip" ? "56px" : "140px" }}>
+                      {pos.key === "strip" 
+                        ? <StripBannerRenderer banner={b} />
+                        : <BannerRenderer banner={b} preview />
+                      }
+                      {!b.isActive && (
+                        <div className="absolute inset-0 bg-black/35 flex items-center justify-center color text-white text-xs font-bold">
+                          غیرفعال
+                        </div>
+                      )}
+                    </div>
+                    
+                    {/* اطلاعات */}
+                    <div className="p-3">
+                      <div className="text-xs font-bold text-neutral-800">{b.title || "(بدون عنوان)"}</div>
+                      <div className="text-[10px] text-neutral-400 mt-0.5">تمپلیت: {b.template}</div>
+                    </div>
+                    
+                    {/* عملیات */}
+                    <div className="flex gap-2 p-3 bg-neutral-50/50 border-t border-neutral-100">
+                      <button className="py-1.5 px-3.5 rounded-md bg-blue-50 text-blue-600 font-semibold text-xs transition-colors hover:bg-blue-100" onClick={() => setEditingBanner(b)}>ویرایش</button>
+                      <button 
+                        className={`py-1.5 px-3.5 rounded-md font-semibold text-xs transition-colors ${
+                          !b.isActive 
+                            ? "bg-amber-50 text-amber-600 hover:bg-amber-100" 
+                            : "bg-emerald-50 text-emerald-600 hover:bg-emerald-100"
+                        }`} 
+                        onClick={() => handleToggleActive(b)}
+                      >
+                        {b.isActive ? "غیرفعال کن" : "فعال کن"}
+                      </button>
+                      <button className="py-1.5 px-3.5 rounded-md bg-rose-50 text-rose-600 font-semibold text-xs transition-colors hover:bg-rose-100" onClick={() => setDeleteConfirm(b._id)}>حذف</button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              {/* دکمه افزودن */}
+              <button 
+                className="w-full mt-2 py-2.5 rounded-md bg-[#aa4725] hover:bg-[#933d1f] text-white font-semibold text-xs transition-colors" 
+                onClick={() => setCreatingPosition(pos.key)}
+              >
+                + افزودن بنر جدید برای این موقعیت
+              </button>
+            </div>
+          );
+        })}
+      </div>
+
+      {/* مودال تایید حذف */}
       {deleteConfirm && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-white p-6 rounded-2xl max-w-sm w-full text-center shadow-2xl">
-            <h3 className="text-lg font-bold mb-2">آیا مطمئن هستید؟</h3>
-            <p className="text-slate-500 mb-6 text-sm">این بنر برای همیشه حذف خواهد شد.</p>
-            <div className="flex gap-3">
-              <button onClick={() => handleDelete(deleteConfirm)} className="flex-1 bg-red-600 text-white py-2 rounded-xl font-bold">حذف</button>
-              <button onClick={() => setDeleteConfirm(null)} className="flex-1 bg-slate-100 py-2 rounded-xl font-bold">انصراف</button>
+        <div className="fixed inset-0 bg-black/50 z-[999] flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl p-7 max-w-xs w-full text-center">
+            <div className="text-3xl mb-3">🗑️</div>
+            <h3 className="text-base font-bold text-neutral-900 mb-2">حذف بنر؟</h3>
+            <p className="text-xs text-neutral-50 mb-5 leading-relaxed">این عملیات قابل بازگشت نیست.</p>
+            <div className="flex gap-2 justify-center">
+              <button 
+                className="py-2 px-5 rounded-lg bg-rose-50 text-rose-600 hover:bg-rose-100 font-bold text-xs transition-colors"
+                onClick={() => handleDelete(deleteConfirm)}
+              >
+                بله، حذف شود
+              </button>
+              <button 
+                className="py-2 px-5 rounded-lg bg-neutral-100 text-neutral-700 hover:bg-neutral-200 font-bold text-xs transition-colors"
+                onClick={() => setDeleteConfirm(null)}
+              >
+                انصراف
+              </button>
             </div>
           </div>
         </div>

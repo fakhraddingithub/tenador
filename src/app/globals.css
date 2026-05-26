@@ -14,6 +14,13 @@
   --font-sans: "Vazirmatn", system-ui, -apple-system, sans-serif;
 }
 
+@font-face {
+  font-family: "Heralgliph";
+  src: url("/fonts/Heralgliph.ttf") format("truetype");
+  font-weight: normal;
+  font-style: normal;
+}
+
 @layer base {
   * {
     direction: rtl;

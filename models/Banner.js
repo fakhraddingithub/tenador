@@ -11,16 +11,6 @@ const BannerSchema = new mongoose.Schema(
     // تمپلیت انتخاب‌شده
     template: {
       type: String,
-      enum: [
-        "flame",
-        "luxury",
-        "geometric",
-        "neon",
-        "organic",
-        "editorial",
-        "brutalist",
-        "gradient-wave",
-      ],
       required: true,
     },
     // محتوا
