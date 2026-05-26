@@ -27,7 +27,7 @@ export default function ShowcaseAthletes() {
   }, []);
 
   const AthleteCard = ({ athlete, index }) => {
-    const sponsors = athlete.sponsors?.slice(0, 2) || [];
+    const sponsors = athlete.sponsors || [];
 
     return (
       <div className="group relative flex items-center gap-3 overflow-hidden rounded-2xl border border-white/5 bg-white/[0.03] px-3 py-3 transition-all duration-300 hover:border-[var(--color-primary)]/30 hover:bg-white/[0.05]">
@@ -47,24 +47,7 @@ export default function ShowcaseAthletes() {
           />
         </div>
 
-        {/* sponsors */}
-        {sponsors.length > 0 && (
-          <div className="flex shrink-0 items-center -space-x-2 -space-x-reverse">
-            {sponsors.map((sponsor, i) => (
-              <div
-                key={sponsor._id || i}
-                className="h-7 w-7 overflow-hidden rounded-full border border-white/10 bg-white p-1 shadow-sm"
-                title={sponsor.name}
-              >
-                <img
-                  src={sponsor.logo}
-                  alt={sponsor.name}
-                  className="h-full w-full object-contain"
-                />
-              </div>
-            ))}
-          </div>
-        )}
+      
 
         {/* info */}
         <div className="min-w-0 flex-1">
@@ -91,6 +74,25 @@ export default function ShowcaseAthletes() {
             )}
           </div>
         </div>
+
+          {/* sponsors */}
+          {sponsors.length > 0 && (
+          <div className="flex shrink-0 items-center -space-x-2 -space-x-reverse">
+            {sponsors.map((sponsor, i) => (
+              <div
+                key={sponsor._id || i}
+                className="h-7 w-7 overflow-hidden rounded-full border border-white/10 bg-white p-1 shadow-sm"
+                title={sponsor.name}
+              >
+                <img
+                  src={sponsor.logo}
+                  alt={sponsor.name}
+                  className="h-full w-full object-contain"
+                />
+              </div>
+            ))}
+          </div>
+        )}
 
         {/* hover glow */}
         <div className="pointer-events-none absolute inset-0 bg-gradient-to-r from-[var(--color-primary)]/0 via-[var(--color-primary)]/[0.03] to-[var(--color-primary)]/0 opacity-0 transition-opacity duration-500 group-hover:opacity-100" />

@@ -57,12 +57,10 @@ const schema = new mongoose.Schema(
         description: { type: String }
       }
     ],
-    sponsors: [
-      {
-        type: String, // نام برند یا شرکت
-        trim: true
-      }
-    ],
+    sponsors: [{
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Brand"
+    }],
     // ----------------------------
     photo: {
       type: String, 
