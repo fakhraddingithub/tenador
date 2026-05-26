@@ -47,13 +47,13 @@ export default function BannerSection() {
   const placeholderClasses = "w-full h-full bg-gradient-to-br from-[#f0f0f0] to-[#e8e8e8] border-2 border-dashed border-[#ddd] flex items-center justify-center text-[#aaa] text-[13px] rounded-[var(--radius)]";
 
   return (
-    <section className="py-6 md:px-12 lg:px-16 xl:px-20 font-sans" dir="rtl">
+    <section className="container mx-auto py-6 px-4 md:px-12 lg:px-16 xl:px-20 font-sans" dir="rtl">
       
       {/* گرید اصلی: 
         در موبایل 2 ستون دارد (برای اینکه دو بنر تال کنار هم بیفتند)
         در دسکتاپ 4 ستون دارد (واید 2 ستون می‌گیرد و هر تال 1 ستون) 
       */}
-      <div className="max-w-screen-xl mx-auto px-4 grid grid-cols-2 md:grid-cols-4 gap-4">
+      <div className="max-w-screen-xl mx-auto grid grid-cols-2 md:grid-cols-4 gap-4">
         
         {/* بنر اصلی (Wide) */}
         <div className={`col-span-2 h-[220px] md:h-[320px] ${cellClasses}`}>
