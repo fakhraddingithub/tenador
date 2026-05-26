@@ -170,7 +170,7 @@ function SerieCard({ serie, sportSlug, limited = false }) {
                 : "text-xs sm:text-sm md:text-base"
             }`}
             style={{
-              textShadow: "0 2px 10px rgba(0,0,0,0.8)",
+              textShadow: "0 2px 6px rgba(0,0,0,.65)",
               transform:
                 hovered && limited ? "translateY(-4px)" : "translateY(0)",
             }}

@@ -9,7 +9,7 @@ export async function generateMetadata({ params }) {
   const data = await getPageDataBySlug(sportSlug);
   if (!data) return { title: "صفحه پیدا نشد" };
   return {
-    title: `خرید تجهیزات ${data.info.title || data.info.name} | فروشگاه تنادور`,
+    title: `خرید تجهیزات و لوازم ${data.info.title || data.info.name} `,
     description:
       data.info.description || `بهترین قیمت تجهیزات تخصصی ${data.info.title}`,
   };
