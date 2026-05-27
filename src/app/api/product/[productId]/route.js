@@ -23,7 +23,8 @@ async function getUserFromToken() {
 
 export async function GET(request, { params }) {
   try {
-    const { productId } = params;
+    const param = await params
+    const { productId } = param;
 
     if (!productId) {
       return NextResponse.json({ error: "شناسه محصول الزامی است" }, { status: 400 });
@@ -82,6 +83,50 @@ export async function GET(request, { params }) {
     });
   } catch (err) {
     console.error("خطا در دریافت قیمت محصول:", err);
+    return NextResponse.json({ error: err.message }, { status: 500 });
+  }
+}
+
+export async function DELETE(request, { params }) {
+  try {
+    const param = await params
+    const { productId } = param;
+
+    if (!productId) {
+      return NextResponse.json({ error: "شناسه محصول الزامی است" }, { status: 400 });
+    }
+
+    // ۱. بررسی احراز هویت کاربر برای سطح دسترسی حذف
+    const user = await getUserFromToken();
+    if (!user) {
+      return NextResponse.json({ error: "لطفاً ابتدا وارد حساب کاربری خود شوید" }, { status: 401 });
+    }
+
+    // نکته اختیاری: اگر فیلد role دارید، می‌توانید دسترسی ادمین را اینجا چک کنید:
+    // if (user.role !== "ADMIN") return NextResponse.json({ error: "شما دسترسی لازم را ندارید" }, { status: 403 });
+
+    await connectToDB();
+
+    // ۲. پیدا کردن محصول برای دسترسی به لیست واریانت‌ها قبل از حذف نهایی
+    const product = await Product.findById(productId);
+    if (!product) {
+      return NextResponse.json({ error: "محصولی با این شناسه یافت نشد" }, { status: 404 });
+    }
+
+    // ۳. حذف تمام واریانت‌های متصل به این محصول (برای جلوگیری از باقی ماندن دیتای یتیم در دیتابیس)
+    if (product.variants && product.variants.length > 0) {
+      await Variant.deleteMany({ _id: { $in: product.variants } });
+    }
+
+    // ۴. حذف خود محصول
+    await Product.findByIdAndDelete(productId);
+
+    return NextResponse.json(
+      { message: "محصول و تمامی واریانت‌های مربوط به آن با موفقیت حذف شدند" },
+      { status: 200 }
+    );
+  } catch (err) {
+    console.error("خطا در حذف محصول:", err);
     return NextResponse.json({ error: err.message }, { status: 500 });
   }
 }
