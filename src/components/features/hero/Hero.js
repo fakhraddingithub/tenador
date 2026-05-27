@@ -3,7 +3,7 @@
 import { Swiper, SwiperSlide } from "swiper/react";
 import { Autoplay, Pagination, Navigation } from "swiper/modules";
 import { motion } from "framer-motion";
-import { FiChevronLeft, FiChevronRight } from "react-icons/fi";
+import { FiArrowLeft, FiChevronLeft, FiChevronRight } from "react-icons/fi";
 import Link from "next/link";
 
 // Styles
@@ -39,9 +39,8 @@ export default function Hero({ slides = [] }) {
         {slides.map((slide) => (
           <SwiperSlide key={slide.id}>
             {({ isActive }) => (
-              <Link
-                href={slide.link || "#"}
-                className="block relative w-full h-full cursor-pointer"
+              <div
+                className="block relative w-full h-full"
               >
                 {/* Background Image */}
                 <div className="absolute inset-0 z-0">
@@ -72,14 +71,34 @@ export default function Hero({ slides = [] }) {
                       {slide.title}
                     </h2>
                     <p
-                      className="text-base md:text-xl lg:text-2xl text-gray-100 max-w-2xl leading-relaxed line-clamp-2 md:line-clamp-none"
+                      className="text-base md:text-xl lg:text-2xl text-gray-100 max-w-2xl leading-relaxed line-clamp-2 md:line-clamp-none border-r-2 md:border-r-4 border-[#aa4725]/20 pr-3 md:pr-4 mb-6"
                       style={{ textShadow: "1px 1px 5px rgba(0,0,0,0.5)" }}
                     >
                       {slide.subtitle}
                     </p>
+                    <Link
+                      href={slide.link || "#"}
+                      className="group inline-flex items-center justify-center gap-2 
+                      w-40 h-11 sm:w-48 sm:h-12 mr-2 
+                      bg-transparent border-double border-2 border-white text-white rounded-[6px]
+                      font-bold text-sm sm:text-base whitespace-nowrap select-none
+                      transition-all duration-300 ease-in-out 
+                      hover:bg-white hover:text-[var(--color-primary)] 
+                      hover:shadow-[0_0_20px_rgba(255,255,255,0.6)] hover:scale-[1.02]"
+                    >
+                      {/* متن دکمه */}
+                      <span>مشاهده بیشتر</span>
+
+                      {/* آیکون با حرکت نرم به سمت چپ در حالت هاور */}
+                      <FiArrowLeft
+                        className="text-lg sm:text-xl transition-transform duration-300 ease-in-out 
+                        group-hover:-translate-x-1.5"
+                      />
+                    </Link>
+                    );
                   </motion.div>
                 </div>
-              </Link>
+              </div>
             )}
           </SwiperSlide>
         ))}
