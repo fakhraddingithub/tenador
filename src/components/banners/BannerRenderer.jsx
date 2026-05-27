@@ -78,10 +78,7 @@ export default function BannerRenderer({ banner, preview = false }) {
         />
   
         {/* Dark overlay */}
-        <div className="absolute inset-0 bg-black/45 z-[1]" />
-  
-        {/* Soft blur */}
-        <div className="absolute inset-0 backdrop-blur-[1px] z-[2]" />
+        <div className="absolute inset-0 bg-black/30 z-[1]" />
   
         {/* Cinematic gradient */}
         <div
