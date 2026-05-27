@@ -4,6 +4,8 @@ import connectToDB from "base/configs/db";
 
 import Serie from "base/models/Serie";
 import Brand from "base/models/Brand";
+// ۱. ایمپورت کردن اکشن رجیستر اسلاگ
+import { registerSlug } from "base/actions/registerSlug";
 
 export async function POST(req) {
   try {
@@ -31,6 +33,7 @@ export async function POST(req) {
      |--------------------------------------------------------------------------
      | Validation
      |--------------------------------------------------------------------------
+     |
      */
 
     if (!name || !title || !brand) {
@@ -47,6 +50,7 @@ export async function POST(req) {
      |--------------------------------------------------------------------------
      | Brand Check
      |--------------------------------------------------------------------------
+     |
      */
 
     const existingBrand = await Brand.findById(brand);
@@ -65,6 +69,7 @@ export async function POST(req) {
      |--------------------------------------------------------------------------
      | Parent Serie Check
      |--------------------------------------------------------------------------
+     |
      */
 
     let parentSerieDoc = null;
@@ -86,8 +91,7 @@ export async function POST(req) {
       if (parentSerieDoc.brand.toString() !== brand) {
         return NextResponse.json(
           {
-            error:
-              "سری والد باید متعلق به همان برند باشد",
+            error: "سری والد باید متعلق به همان برند باشد",
           },
 
           { status: 400 }
@@ -117,8 +121,7 @@ export async function POST(req) {
     if (duplicateSerie) {
       return NextResponse.json(
         {
-          error:
-            "سری با این نام قبلاً ثبت شده است",
+          error: "سری با این نام قبلاً ثبت شده است",
         },
 
         { status: 409 }
@@ -129,16 +132,16 @@ export async function POST(req) {
      |--------------------------------------------------------------------------
      | Level Calculation
      |--------------------------------------------------------------------------
+     |
      */
 
-    const level = parentSerieDoc
-      ? parentSerieDoc.level + 1
-      : 0;
+    const level = parentSerieDoc ? parentSerieDoc.level + 1 : 0;
 
     /*
      |--------------------------------------------------------------------------
      | Create Serie
      |--------------------------------------------------------------------------
+     |
      */
 
     const newSerie = await Serie.create({
@@ -163,8 +166,28 @@ export async function POST(req) {
 
     /*
      |--------------------------------------------------------------------------
+     | Register Slug
+     |--------------------------------------------------------------------------
+     |
+     */
+
+    // ۲. ثبت اسلاگ سری جدید در جدول اسلاگ‌ها
+    await registerSlug({
+      slug: newSerie.slug,
+      type: "serie",
+      model: "Serie",
+      refId: newSerie._id,
+      filterField: "serie",
+      filterValue: newSerie._id,
+      label: newSerie.name || newSerie.title,
+      parentSlug: parentSerieDoc ? parentSerieDoc.slug : null, // اگر والد داشت، اسلاگ والد پاس داده می‌شود
+    });
+
+    /*
+     |--------------------------------------------------------------------------
      | Push To Brand
      |--------------------------------------------------------------------------
+     |
      */
 
     await Brand.findByIdAndUpdate(brand, {
@@ -177,12 +200,12 @@ export async function POST(req) {
      |--------------------------------------------------------------------------
      | Response
      |--------------------------------------------------------------------------
+     |
      */
 
     return NextResponse.json(
       {
-        message:
-          "سری جدید با موفقیت ایجاد شد",
+        message: "سری جدید با موفقیت ایجاد شد",
 
         data: newSerie,
       },
@@ -190,21 +213,17 @@ export async function POST(req) {
       { status: 201 }
     );
   } catch (error) {
-    console.error(
-      "❌ Error in Serie Creation:",
-      error
-    );
+    console.error("❌ Error in Serie Creation:", error);
 
     /*
      |--------------------------------------------------------------------------
      | Mongoose Validation
      |--------------------------------------------------------------------------
+     |
      */
 
     if (error.name === "ValidationError") {
-      const messages = Object.values(
-        error.errors
-      ).map((err) => err.message);
+      const messages = Object.values(error.errors).map((err) => err.message);
 
       return NextResponse.json(
         {
@@ -219,12 +238,12 @@ export async function POST(req) {
      |--------------------------------------------------------------------------
      | General Error
      |--------------------------------------------------------------------------
+     |
      */
 
     return NextResponse.json(
       {
-        error:
-          "خطای داخلی سرور در هنگام ایجاد سری",
+        error: "خطای داخلی سرور در هنگام ایجاد سری",
       },
 
       { status: 500 }

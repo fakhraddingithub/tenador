@@ -22,17 +22,20 @@ export async function POST(req) {
       sport: null,
       athlete: null,
       category: null,
+      serie: null, // ✨ اضافه شد
       product: null,
     };
 
     // ----------- ۱) پردازش Query Params (اولویت اول) -----------
     const { searchParams } = new URL(req.url);
-    const entities = ["brand", "sport", "athlete", "category", "product"];
+    // ✨ "serie" به آرایه entities اضافه شد
+    const entities = ["brand", "sport", "athlete", "category", "serie", "product"]; 
     const models = { 
       brand: Brand, 
       sport: Sport, 
       athlete: Athlete, 
       category: Category, 
+      serie: Serie, // ✨ اضافه شد
       product: Product 
     };
 
@@ -93,6 +96,7 @@ export async function POST(req) {
     if (search.sport) finalFilter.sport = search.sport._id;
     if (search.athlete) finalFilter.athlete = search.athlete._id;
     if (search.category) finalFilter.category = search.category._id;
+    if (search.serie) finalFilter.serie = search.serie._id; // ✨ اضافه شد
     if (search.product) finalFilter._id = search.product._id;
 
     // ----------- ۵) اجرای کوئری نهایی محصولات -----------
@@ -108,6 +112,7 @@ export async function POST(req) {
         sport: search.sport,
         athlete: search.athlete,
         category: search.category,
+        serie: search.serie, // ✨ اضافه شد
         product: search.product,
       },
       results: products,
