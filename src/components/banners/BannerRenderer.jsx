@@ -1332,10 +1332,10 @@ function ElegantOverlayTemplate({ banner, style, onClick, c }) {
         className="absolute inset-0 bg-cover bg-center scale-[1.02]"
         style={{ backgroundImage: `url(${data.imageUrl})` }}
       />
-
+  
       {/* Dark overlay */}
       <div className="absolute inset-0 bg-black/40 z-[1]" />
-
+  
       {/* Cinematic gradient */}
       <div
         className="absolute inset-0 z-[3]"
@@ -1344,55 +1344,66 @@ function ElegantOverlayTemplate({ banner, style, onClick, c }) {
             "linear-gradient(to bottom, rgba(0,0,0,.24) 0%, rgba(0,0,0,.10) 42%, rgba(0,0,0,.40) 100%)",
         }}
       />
-
+  
       {/* Content */}
-      <div className="relative z-10 h-full flex flex-col items-center justify-center px-6 text-center">
+      {/* پدینگ افقی در موبایل کمی جمع‌تر شد (px-4) تا فضا بازتر شود */}
+      <div className="relative z-10 h-full flex flex-col items-center justify-center px-4 sm:px-6 text-center select-none">
+        
         {/* Top script text */}
+        {/* استفاده از clamp برای حفظ فونت کشیده و فانتزی در ابعاد متناسب */}
         <h3
-          className="
-              text-white
-              text-[26px]
-              md:text-[32px]
-              leading-none
-              mb-[2px]
-              drop-shadow-[0_3px_12px_rgba(0,0,0,.4)]
-              select-none
-            "
+        className="
+        text-white
+        text-[clamp(13px,4.2vw,26px)] /* سایز این را هم متناسب با تایتل کوچک کردیم */
+        leading-none
+        whitespace-nowrap   /* مانع دو خطه شدن در موبایل‌های خیلی باریک */
+        mb-1.5
+        drop-shadow-[0_3px_12px_rgba(0,0,0,.4)]
+      "
           style={{ fontFamily: '"Heralgliph", cursive' }}
         >
           {data.badge}
         </h3>
-
+  
         {/* Main title */}
+        {/* تغییر max-w به درصد در موبایل تا متن‌های طولانی به زیبایی بشکنند و فشرده نشوند */}
         <h2
-          className="
-              text-white
-              text-[32px]
-              md:text-[42px]
-              leading-[0.95]
-              tracking-[-1px]
-              font-light
-              max-w-[230px]
-              drop-shadow-[0_4px_18px_rgba(0,0,0,.45)]
-              select-none
-            "
+         className="
+         text-white
+         text-[clamp(16px,5.2vw,36px)] /* سایز مینیمم را از ۲۴ به ۱۶ رساندیم */
+         leading-none
+         tracking-[-0.5px]
+         font-light
+         w-full              /* عرض کامل بهش دادیم */
+         whitespace-nowrap   /* غول مرحله آخر: متن را مجبور می‌کند فقط در یک خط بماند */
+         drop-shadow-[0_4px_18px_rgba(0,0,0,.45)]
+         mb-3
+       "
           style={{ fontFamily: "'Cormorant Garamond', serif" }}
         >
           {data.title}
         </h2>
-
+  
         {/* Divider */}
-        <div className="flex items-center gap-4 w-[170px] opacity-90">
-          <div className="flex-1 h-[1px] bg-white/55" />
-
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
+        {/* مشکل اصلی اینجا بود: w-[170px] ثابت به عرض منعطف با لایه‌ محافظ max-w تبدیل شد */}
+        <div className="flex items-center gap-3 sm:gap-4 w-full max-w-[120px] sm:max-w-[170px] opacity-90 transition-all duration-300">
+          {/* خط سمت راست */}
+          <div className="flex-1 h-[1px] bg-white/40" />
+  
+          {/* ستاره میانی - مجهز به shrink-0 و سایز متناسب با موبایل */}
+          <svg 
+            className="w-3 h-3 sm:w-3.5 sm:h-3.5 shrink-0" 
+            viewBox="0 0 24 24" 
+            fill="none"
+          >
             <path
               d="M12 2L13.8 10.2L22 12L13.8 13.8L12 22L10.2 13.8L2 12L10.2 10.2L12 2Z"
               fill="white"
             />
           </svg>
-
-          <div className="flex-1 h-[1px] bg-white/55" />
+  
+          {/* خط سمت چپ */}
+          <div className="flex-1 h-[1px] bg-white/40" />
         </div>
       </div>
     </div>
@@ -1469,11 +1480,11 @@ export function AdventureShoesTemplate({ banner, style, onClick, c = {} }) {
 
       {/* رعد و برق‌ها — هلالی دور محصول با فاصله ثابت با استفاده از آیکون CgBolt */}
       {[
-        { top: "20%", left: "15%", rotate: "-40deg", size: "3.2vw" },
-        { top: "20%", left: "10%", rotate: "-60deg", size: "3.5vw" },
-        { top: "25%", left: "6%", rotate: "-70deg", size: "4.2vw" },
-        { top: "35%", left: "6%", rotate: "-90deg", size: "3.8vw" },
-        { top: "45%", left: "7%", rotate: "-110deg", size: "3.3vw" },
+        { top: "20%", left: "15%", rotate: "-40deg", size: "clamp(30px, 3.2vw, 45px)" },
+        { top: "20%", left: "10%", rotate: "-60deg", size: "clamp(35px, 3.5vw, 50px)" },
+        { top: "25%", left: "6%", rotate: "-70deg", size: "clamp(40px, 4.2vw, 60px)" },
+        { top: "35%", left: "6%", rotate: "-90deg", size: "clamp(35px, 3.8vw, 55px)" },
+        { top: "45%", left: "7%", rotate: "-110deg", size: "clamp(30px, 3.3vw, 45px)" },
       ].map((b, i) => (
         <div
           key={i}
@@ -1484,9 +1495,9 @@ export function AdventureShoesTemplate({ banner, style, onClick, c = {} }) {
         </div>
       ))}
 
-          {/* دایره تخفیف - ۱۰ درصد بزرگتر شده، دایره بدون افکت متنی و فونت کوچک‌تر */}
+      {/* دایره تخفیف - ۱۰ درصد بزرگتر شده، دایره بدون افکت متنی و فونت کوچک‌تر */}
       <div className="absolute left-[30%] top-[18%] w-[12%] aspect-square rounded-full bg-[#464243] flex items-center justify-center z-40 shadow-[0_8px_20px_rgba(0,0,0,0.15)]">
-        <div className="text-white -rotate-[7deg] font-['Cooper_Black',_Georgia,_serif] font-black italic text-center leading-[0.95] text-[1.8vw] whitespace-pre-line">
+        <div className="text-white -rotate-[7deg] font-['Cooper_Black',_Georgia,_serif] font-black italic text-center leading-[0.95] text-[clamp(16px,1.8vw,24px)] whitespace-pre-line">
           {saleText}
         </div>
       </div>
@@ -1511,7 +1522,7 @@ export function AdventureShoesTemplate({ banner, style, onClick, c = {} }) {
       <div className="absolute left-[46%] top-[35%] -rotate-[7deg] origin-left z-40 pointer-events-none">
         <h2
           style={{ color: yellow }}
-          className="m-0 font-['Gagalin',_Impact,_sans-serif] text-[4vw] leading-none tracking-[-0.01em] uppercase"
+          className="m-0 font-['Gagalin',_Impact,_sans-serif] text-[clamp(36px,4vw,64px)] leading-none tracking-[-0.01em] uppercase"
         >
           {mainTitle}
         </h2>
@@ -1521,27 +1532,11 @@ export function AdventureShoesTemplate({ banner, style, onClick, c = {} }) {
       <div className="absolute left-[66%] top-[55%] -rotate-[8deg] origin-left z-40 pointer-events-none">
         <h3
           style={{ color: brown }}
-          className="m-0 font-['Gagalin',_Impact,_sans-serif] text-[2.8vw] leading-none tracking-[-0.01em] uppercase"
+          className="m-0 font-['Gagalin',_Impact,_sans-serif] text-[clamp(26px,2.8vw,42px)] leading-none tracking-[-0.01em] uppercase"
         >
           {bottomTitle}
         </h3>
       </div>
     </div>
-  );
-}
-function Bolt({ className, style, fill = "#3f3f3f" }) {
-  return (
-    <svg
-      viewBox="0 0 60 120"
-      aria-hidden="true"
-      className={className}
-      style={style}
-      preserveAspectRatio="xMidYMid meet"
-    >
-      <polygon
-        fill={fill}
-        points="38,0 14,52 32,48 10,120 58,44 36,50 52,0"
-      />
-    </svg>
   );
 }
