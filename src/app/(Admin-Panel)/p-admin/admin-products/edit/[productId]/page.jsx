@@ -146,7 +146,7 @@ export default function ProductEditPage() {
           categoriesRes.json(),
           productRes.json(),
         ]);
-
+        
         setSports(sportsData.sports || []);
         setBrands(brandsData.brands || []);
         setCategories(categoriesData.categories || []);
