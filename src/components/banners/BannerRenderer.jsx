@@ -1413,7 +1413,28 @@ function ElegantOverlayTemplate({ banner, style, onClick, c }) {
 // Add this case to BannerRenderer switch:
 
 
-import { CgBolt } from "react-icons/cg"; // ایمپورت آیکون جدید
+import { useRef, useEffect, useState } from "react";
+import { CgBolt } from "react-icons/cg";
+
+function useFitText(text) {
+  const containerRef = useRef(null);
+  const [fontSize, setFontSize] = useState(64);
+
+  useEffect(() => {
+    if (!containerRef.current) return;
+    const container = containerRef.current;
+    let size = 64;
+    container.style.fontSize = size + "px";
+
+    while (container.scrollWidth > container.offsetWidth && size > 10) {
+      size -= 1;
+      container.style.fontSize = size + "px";
+    }
+    setFontSize(size);
+  }, [text]);
+
+  return { containerRef, fontSize };
+}
 
 export function AdventureShoesTemplate({ banner, style, onClick, c = {} }) {
   const bg = banner?.backgroundUrl || banner?.imageUrl || banner?.image1Url || "";
@@ -1429,6 +1450,8 @@ export function AdventureShoesTemplate({ banner, style, onClick, c = {} }) {
   const yellow = c.secondary || "#ffe36a";
   const brown = c.accent || "#7a5538";
   const dark = c.text || "#3f3f3f";
+
+  const { containerRef, fontSize } = useFitText(mainTitle);
 
   return (
     <div
@@ -1469,22 +1492,22 @@ export function AdventureShoesTemplate({ banner, style, onClick, c = {} }) {
       {/* سایه زیر کفش */}
       <div className="absolute left-[11%] top-[90%] w-[36%] h-[10%] rounded-full bg-[#59637c]/22 blur-xl z-10 pointer-events-none" />
 
-      {/* تصویر محصول - چرخش ۴۵ درجه ساعت‌گرد */}
+      {/* تصویر محصول */}
       {product && (
         <img
           src={product}
           alt="Boot"
-          className="absolute left-[10%] top-[40%] w-[38%] h-auto rotate-[15deg] drop-shadow-[0_15px_20px_rgba(0,0,0,0.15)] z-30"
+          className="absolute left-[6%] top-[30%] w-[38%] -rotate-[7deg] h-auto drop-shadow-[0_15px_20px_rgba(0,0,0,0.15)] z-30"
         />
       )}
 
-      {/* رعد و برق‌ها — هلالی دور محصول با فاصله ثابت با استفاده از آیکون CgBolt */}
+      {/* رعد و برق‌ها — هلالی دور محصول */}
       {[
-        { top: "20%", left: "15%", rotate: "-40deg", size: "clamp(30px, 3.2vw, 45px)" },
-        { top: "20%", left: "10%", rotate: "-60deg", size: "clamp(35px, 3.5vw, 50px)" },
-        { top: "25%", left: "6%", rotate: "-70deg", size: "clamp(40px, 4.2vw, 60px)" },
-        { top: "35%", left: "6%", rotate: "-90deg", size: "clamp(35px, 3.8vw, 55px)" },
-        { top: "45%", left: "7%", rotate: "-110deg", size: "clamp(30px, 3.3vw, 45px)" },
+        { top: "20%", left: "15%", rotate: "-40deg",  size: "clamp(30px, 3.2vw, 45px)" },
+        { top: "20%", left: "10%", rotate: "-60deg",  size: "clamp(35px, 3.5vw, 50px)" },
+        { top: "25%", left: "6%",  rotate: "-70deg",  size: "clamp(40px, 4.2vw, 60px)" },
+        { top: "35%", left: "6%",  rotate: "-90deg",  size: "clamp(35px, 3.8vw, 55px)" },
+        { top: "45%", left: "7%",  rotate: "-110deg", size: "clamp(30px, 3.3vw, 45px)" },
       ].map((b, i) => (
         <div
           key={i}
@@ -1495,20 +1518,20 @@ export function AdventureShoesTemplate({ banner, style, onClick, c = {} }) {
         </div>
       ))}
 
-      {/* دایره تخفیف - ۱۰ درصد بزرگتر شده، دایره بدون افکت متنی و فونت کوچک‌تر */}
+      {/* دایره تخفیف */}
       <div className="absolute left-[30%] top-[18%] w-[12%] aspect-square rounded-full bg-[#464243] flex items-center justify-center z-40 shadow-[0_8px_20px_rgba(0,0,0,0.15)]">
-        <div className="text-white -rotate-[7deg] font-['Cooper_Black',_Georgia,_serif] font-black italic text-center leading-[0.95] text-[clamp(16px,1.8vw,24px)] whitespace-pre-line">
+        <div className="text-white font-['Cooper_Black',_Georgia,_serif] font-black italic text-center leading-[0.95] text-[clamp(16px,1.8vw,24px)] whitespace-pre-line">
           {saleText}
         </div>
       </div>
 
-      {/* بک‌گراند براش آبی رنگ - ۴۰ درصد بزرگتر شده */}
-      <div className="absolute left-[30%] top-[32%] w-[74%] h-[32%] -rotate-[7deg] origin-left z-20 pointer-events-none">
+      {/* براش آبی پس‌زمینه عنوان */}
+      <div className="absolute left-[30%] top-[32%] w-[67%] h-[32%] -rotate-[7deg] origin-left z-20 pointer-events-none">
         {brush ? (
           <img
             src={brush}
             alt=""
-            className="w-full h-full object-contain object-center saturate-[1.12] contrast-[1.05]"
+            className="w-full h-full object-fill saturate-[1.12] contrast-[1.05]"
           />
         ) : (
           <div
@@ -1518,17 +1541,22 @@ export function AdventureShoesTemplate({ banner, style, onClick, c = {} }) {
         )}
       </div>
 
-      {/* تیتر اصلی: ADVENTURE - بدون هیچ افکت متنی (Stroke/Shadow) و سایز کوچک‌تر */}
-      <div className="absolute left-[46%] top-[35%] -rotate-[7deg] origin-left z-40 pointer-events-none">
+      {/* تیتر اصلی — داخل براش، auto-fit */}
+      <div className="absolute left-[30%] top-[32%] w-[67%] h-[32%] -rotate-[7deg] origin-left z-40 pointer-events-none flex items-center px-[3%] overflow-hidden">
         <h2
-          style={{ color: yellow }}
-          className="m-0 font-['Gagalin',_Impact,_sans-serif] text-[clamp(36px,4vw,64px)] leading-none tracking-[-0.01em] uppercase"
+          ref={containerRef}
+          style={{
+            color: yellow,
+            fontSize: fontSize + "px",
+            fontFamily: "'Gagalin', Impact, sans-serif",
+          }}
+          className="m-0 w-full leading-none tracking-[-0.01em] uppercase whitespace-nowrap"
         >
           {mainTitle}
         </h2>
       </div>
 
-      {/* تیتر فرعی: SHOES - بدون هیچ افکت متنی و سایز کوچک‌تر */}
+      {/* تیتر فرعی */}
       <div className="absolute left-[66%] top-[55%] -rotate-[8deg] origin-left z-40 pointer-events-none">
         <h3
           style={{ color: brown }}
@@ -1538,5 +1566,22 @@ export function AdventureShoesTemplate({ banner, style, onClick, c = {} }) {
         </h3>
       </div>
     </div>
+  );
+}
+
+function Bolt({ className, style, fill = "#3f3f3f" }) {
+  return (
+    <svg
+      viewBox="0 0 60 120"
+      aria-hidden="true"
+      className={className}
+      style={style}
+      preserveAspectRatio="xMidYMid meet"
+    >
+      <polygon
+        fill={fill}
+        points="38,0 14,52 32,48 10,120 58,44 36,50 52,0"
+      />
+    </svg>
   );
 }
