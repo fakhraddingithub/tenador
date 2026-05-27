@@ -3,22 +3,12 @@
 import { useState, useRef } from "react";
 import BannerRenderer from "@/components/banners/BannerRenderer";
 import StripBannerRenderer from "@/components/banners/StripBannerRenderer";
+import { getSlotsForTemplate } from "@/components/banners/templateImageSlots";
 
+// ─────────────────────────────────────────────────────────────
+// برای اضافه کردن تمپلیت جدید فقط همین آرایه رو گسترش بده
+// ─────────────────────────────────────────────────────────────
 const TEMPLATES = [
-  {
-    key: "elegant-overlay",
-    label: "پرمیوم (شیشه‌ای)",
-    emoji: "💎",
-    desc: "افکت گلس‌مورفیسم مدرن همراه با درخشش Shimmer متحرک",
-    defaultColors: { bg: "#0d0d11", primary: "#16161a", secondary: "#aa4725", text: "#ffffff", textSecondary: "#e4e4e7", accent: "#ffbf00" },
-  },
-  {
-    key: "symmetric",
-    label: "سیمتریک - نوار",
-    emoji: "💎",
-    desc: "افکت گلس‌مورفیسم مدرن همراه با درخشش Shimmer متحرک",
-    defaultColors: { bg: "#0d0d11", primary: "#16161a", secondary: "#aa4725", text: "#ffffff", textSecondary: "#e4e4e7", accent: "#ffbf00" },
-  },
   {
     key: "flame",
     label: "آتشین",
@@ -75,6 +65,35 @@ const TEMPLATES = [
     desc: "مدرن و روشن برای برندهای خلاق",
     defaultColors: { bg: "#1a0533", primary: "#aa4725", secondary: "#ffbf00", text: "#ffffff", textSecondary: "rgba(255,255,255,0.7)", accent: "#ffbf00" },
   },
+  {
+    key: "elegant-overlay",
+    label: "اورلی ظریف",
+    emoji: "🖼️",
+    desc: "عکس پس‌زمینه با متن روی آن — سبک مجله",
+    defaultColors: { bg: "#6b6560", primary: "#aa4725", secondary: "#ffbf00", text: "#ffffff", textSecondary: "rgba(255,255,255,0.7)", accent: "#ffffff" },
+  },
+  {
+    key: "symmetric",
+    label: "سیمتریک - نوار",
+    emoji: "💎",
+    desc: "افکت گلس‌مورفیسم مدرن همراه با درخشش Shimmer متحرک",
+    defaultColors: { bg: "#0d0d11", primary: "#16161a", secondary: "#aa4725", text: "#ffffff", textSecondary: "#e4e4e7", accent: "#ffbf00" },
+  },
+  {
+    key: "adventure-shoes",
+    label: "ادونچر شوز",
+    emoji: "🥾",
+    desc: "بنر تبلیغاتی اکشن با براش آبی و تایپوگرافی بولد",
+    defaultColors: {
+      bg: "#dcecff",
+      primary: "#0f57c9",
+      secondary: "#ffe36a",
+      text: "#3f3f3f",
+      textSecondary: "#6b7280",
+      accent: "#7a5538",
+    },
+  },
+  // ── تمپلیت جدید؟ فقط یه آبجکت اینجا اضافه کن ──
 ];
 
 const COLOR_FIELDS = [
@@ -87,59 +106,20 @@ const COLOR_FIELDS = [
 ];
 
 const defaultForm = {
-  title: "",
-  subtitle: "",
-  badge: "",
-  ctaText: "",
-  link: "/",
-  imageUrl: "",
-  imagePublicId: "",
-  template: "elegant-overlay", // اصلاح شد از "premium"
-  colors: TEMPLATES[0].defaultColors,
-  isActive: true,
-  order: 0,
+  title: "", subtitle: "", badge: "", ctaText: "", link: "/",
+  template: "flame", colors: TEMPLATES[0].defaultColors,
+  images: {}, imagePids: {},
+  isActive: true, order: 0,
 };
 
-export default function BannerEditor({ banner, position, onClose, onSave }) {
-  const isEdit = !!banner;
-  const isStrip = position === "strip"; // برای استفاده در مقدار اولیه استیت به خط بالا منتقل شد
-
-  const [step, setStep] = useState(isEdit ? 2 : 1);
-  
-  // انتخاب هوشمند تمپلیت پیش‌فرض بر اساس موقعیت بنر
-  const defaultTemplateKey = isStrip ? "symmetric" : "elegant-overlay";
-  const defaultTemplate = TEMPLATES.find(t => t.key === defaultTemplateKey) || TEMPLATES[0];
-
-  const [form, setForm] = useState(
-    isEdit
-      ? { ...banner, colors: { ...TEMPLATES.find(t => t.key === banner.template)?.defaultColors, ...banner.colors } }
-      : { ...defaultForm, position, template: defaultTemplateKey, colors: { ...defaultTemplate.defaultColors } }
-  );
+// ─────────────────────────────────────────────────────────────
+// ImageSlotUploader — کامپوننت آپلود داینامیک برای هر slot
+// ─────────────────────────────────────────────────────────────
+function ImageSlotUploader({ slot, value, onChange }) {
   const [uploading, setUploading] = useState(false);
-  const [saving, setSaving] = useState(false);
-  const [activeTab, setActiveTab] = useState("content"); // content | colors
-  const fileInputRef = useRef(null);
+  const inputRef = useRef(null);
 
-  const selectedTemplate = TEMPLATES.find(t => t.key === form.template) || TEMPLATES[0];
-
-  const handleTemplateSelect = (tpl) => {
-    setForm(prev => ({
-      ...prev,
-      template: tpl.key,
-      colors: { ...tpl.defaultColors },
-    }));
-    setStep(2);
-  };
-
-  const handleField = (key, val) => {
-    setForm(prev => ({ ...prev, [key]: val }));
-  };
-
-  const handleColor = (key, val) => {
-    setForm(prev => ({ ...prev, colors: { ...prev.colors, [key]: val } }));
-  };
-
-  const handleImageUpload = async (e) => {
+  const handleUpload = async (e) => {
     const file = e.target.files?.[0];
     if (!file) return;
     setUploading(true);
@@ -149,17 +129,131 @@ export default function BannerEditor({ banner, position, onClose, onSave }) {
       fd.append("folder", "banners");
       const res = await fetch("/api/upload", { method: "POST", body: fd });
       const data = await res.json();
-      if (data.url) {
-        setForm(prev => ({ ...prev, imageUrl: data.url, imagePublicId: data.publicId || "" }));
-      } else {
-        alert(data.error || "خطا در آپلود تصویر");
-      }
-    } catch (err) {
+      if (data.url) onChange(slot.key, data.url, data.publicId || "");
+      else alert(data.error || "خطا در آپلود تصویر");
+    } catch {
       alert("خطا در آپلود تصویر");
     } finally {
       setUploading(false);
     }
   };
+
+  return (
+    <div style={{ marginBottom: "14px" }}>
+      <label style={{ display: "block", fontSize: "0.82rem", fontWeight: 600, color: "#555", marginBottom: "5px" }}>
+        {slot.label}
+        {slot.required && <span style={{ color: "#e53e3e", marginRight: "4px" }}>*</span>}
+      </label>
+      {slot.hint && (
+        <p style={{ fontSize: "0.72rem", color: "#aaa", margin: "0 0 6px" }}>{slot.hint}</p>
+      )}
+
+      {value ? (
+        <div style={{ position: "relative", borderRadius: "8px", overflow: "hidden" }}>
+          <img
+            src={value}
+            alt=""
+            style={{ width: "100%", height: "110px", objectFit: "cover", display: "block", background: "#111" }}
+          />
+          <button
+            onClick={() => onChange(slot.key, "", "")}
+            style={{
+              position: "absolute", top: "6px", left: "6px",
+              background: "rgba(0,0,0,0.65)", color: "#fff", border: "none",
+              borderRadius: "50%", width: "24px", height: "24px",
+              cursor: "pointer", fontSize: "12px",
+            }}
+          >✕</button>
+          <button
+            onClick={() => inputRef.current?.click()}
+            style={{
+              position: "absolute", bottom: "6px", left: "6px",
+              background: "rgba(0,0,0,0.65)", color: "#fff", border: "none",
+              borderRadius: "6px", padding: "3px 10px",
+              cursor: "pointer", fontSize: "11px", fontFamily: "inherit",
+            }}
+          >تغییر</button>
+        </div>
+      ) : (
+        <div
+          onClick={() => inputRef.current?.click()}
+          style={{
+            border: "2px dashed #ddd", borderRadius: "10px", padding: "18px",
+            textAlign: "center", cursor: "pointer", transition: "all 0.2s",
+          }}
+          onMouseOver={e => { e.currentTarget.style.borderColor = "#aa4725"; e.currentTarget.style.background = "#fff5f2"; }}
+          onMouseOut={e => { e.currentTarget.style.borderColor = "#ddd"; e.currentTarget.style.background = ""; }}
+        >
+          {uploading ? (
+            <div style={{ color: "#888", fontSize: "0.85rem" }}>در حال آپلود...</div>
+          ) : (
+            <>
+              <div style={{ fontSize: "1.6rem", marginBottom: "4px" }}>📷</div>
+              <div style={{ fontSize: "0.8rem", color: "#888" }}>کلیک کنید تا آپلود شود</div>
+              <div style={{ fontSize: "0.7rem", color: "#bbb", marginTop: "2px" }}>حداکثر ۲ مگابایت</div>
+            </>
+          )}
+        </div>
+      )}
+      <input ref={inputRef} type="file" accept="image/*" style={{ display: "none" }} onChange={handleUpload} />
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────
+// BannerEditor — کامپوننت اصلی
+// ─────────────────────────────────────────────────────────────
+export default function BannerEditor({ banner, position, onClose, onSave }) {
+  const isEdit = !!banner;
+
+  const [step, setStep] = useState(isEdit ? 2 : 1);
+  const [form, setForm] = useState(() => {
+    if (isEdit) {
+      // images از MongoDB به‌صورت Map برمی‌گرده — به plain object تبدیل کن
+      const imgs = banner.images instanceof Map
+        ? Object.fromEntries(banner.images)
+        : (banner.images || {});
+      const pids = banner.imagePids instanceof Map
+        ? Object.fromEntries(banner.imagePids)
+        : (banner.imagePids || {});
+      const cols = banner.colors instanceof Map
+        ? Object.fromEntries(banner.colors)
+        : (banner.colors || {});
+      return {
+        ...banner,
+        images: imgs,
+        imagePids: pids,
+        colors: { ...TEMPLATES.find(t => t.key === banner.template)?.defaultColors, ...cols },
+      };
+    }
+    return { ...defaultForm, position, template: "flame", colors: { ...TEMPLATES[0].defaultColors } };
+  });
+  const [saving, setSaving] = useState(false);
+  const [activeTab, setActiveTab] = useState("content");
+
+  const selectedTemplate = TEMPLATES.find(t => t.key === form.template) || TEMPLATES[0];
+  const imageSlots = getSlotsForTemplate(form.template);
+
+  const handleTemplateSelect = (tpl) => {
+    setForm(prev => ({ ...prev, template: tpl.key, colors: { ...tpl.defaultColors } }));
+    setStep(2);
+  };
+
+  const handleField = (key, val) => setForm(prev => ({ ...prev, [key]: val }));
+  const handleColor = (key, val) => setForm(prev => ({ ...prev, colors: { ...prev.colors, [key]: val } }));
+
+  // ذخیره عکس داخل images map
+  const handleImageChange = (slotKey, url, publicId) => {
+    const pidKey = slotKey.replace("Url", "PublicId");
+    setForm(prev => ({
+      ...prev,
+      images:    { ...prev.images,    [slotKey]: url },
+      imagePids: { ...prev.imagePids, [pidKey]:  publicId },
+    }));
+  };
+
+  // ImageSlotUploader باید مقدار رو از images map بخونه
+  const getImageValue = (slotKey) => form.images?.[slotKey] || "";
 
   const handleSave = async () => {
     setSaving(true);
@@ -173,12 +267,9 @@ export default function BannerEditor({ banner, position, onClose, onSave }) {
         body: JSON.stringify(payload),
       });
       const data = await res.json();
-      if (data.success) {
-        onSave();
-      } else {
-        alert(data.error || "خطا در ذخیره بنر");
-      }
-    } catch (err) {
+      if (data.success) onSave();
+      else alert(data.error || "خطا در ذخیره بنر");
+    } catch {
       alert("خطا در ارتباط با سرور");
     } finally {
       setSaving(false);
@@ -186,243 +277,182 @@ export default function BannerEditor({ banner, position, onClose, onSave }) {
   };
 
   const previewBanner = { ...form, position };
+  const isStrip = position === "strip";
 
   return (
-    <div className="min-h-screen bg-neutral-50 p-5" dir="rtl">
-      
-      {/* هدر ناوبری */}
-      <div className="flex items-center gap-3 mb-6 max-w-7xl mx-auto">
-        <button 
-          onClick={onClose} 
-          className="bg-white border border-neutral-200 rounded-xl w-9 h-9 cursor-pointer text-base flex items-center justify-center shadow-sm hover:bg-neutral-50 transition-colors"
-        >
+    <div style={{
+      minHeight: "100vh", background: "#f5f5f5", direction: "rtl",
+      fontFamily: "var(--font-sans, Vazirmatn, sans-serif)", padding: "20px",
+    }}>
+      <style>{`
+        .editor-card { background: #fff; border-radius: 16px; border: 1px solid #eee; box-shadow: 0 2px 12px rgba(0,0,0,0.04); }
+        .form-group { margin-bottom: 14px; }
+        .form-label { display: block; font-size: 0.82rem; font-weight: 600; color: #555; margin-bottom: 5px; }
+        .form-input { width: 100%; padding: 9px 12px; border: 1.5px solid #e5e5e5; border-radius: 8px; font-size: 0.88rem; font-family: inherit; outline: none; transition: border-color 0.2s; box-sizing: border-box; }
+        .form-input:focus { border-color: var(--color-primary, #aa4725); }
+        .tab-btn { padding: 8px 18px; border: none; border-radius: 8px; font-size: 0.85rem; font-weight: 600; cursor: pointer; font-family: inherit; transition: all 0.2s; }
+        .tab-btn.active { background: var(--color-primary, #aa4725); color: #fff; }
+        .tab-btn:not(.active) { background: #f0f0f0; color: #555; }
+        .tpl-card { border: 2px solid #eee; border-radius: 12px; padding: 14px; cursor: pointer; transition: all 0.2s; text-align: center; }
+        .tpl-card:hover { border-color: var(--color-primary, #aa4725); transform: translateY(-2px); box-shadow: 0 4px 16px rgba(170,71,37,0.15); }
+        .tpl-card.selected { border-color: var(--color-primary, #aa4725); background: #fff5f2; }
+        .color-row { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
+        .color-swatch { width: 36px; height: 36px; border-radius: 8px; border: 1.5px solid #ddd; cursor: pointer; overflow: hidden; flex-shrink: 0; }
+        .color-swatch input[type=color] { width: 150%; height: 150%; margin: -25%; border: none; cursor: pointer; }
+        .save-btn { width: 100%; padding: 13px; background: var(--color-primary, #aa4725); color: #fff; border: none; border-radius: 10px; font-size: 1rem; font-weight: 700; cursor: pointer; font-family: inherit; transition: opacity 0.2s; }
+        .save-btn:disabled { opacity: 0.6; cursor: not-allowed; }
+        .slots-divider { font-size: 0.72rem; font-weight: 700; color: #aaa; text-transform: uppercase; letter-spacing: 0.08em; margin: 16px 0 10px; padding-bottom: 6px; border-bottom: 1px dashed #eee; }
+      `}</style>
+
+      {/* هدر */}
+      <div style={{ display: "flex", alignItems: "center", gap: "12px", marginBottom: "20px" }}>
+        <button onClick={onClose} style={{ background: "#fff", border: "1.5px solid #ddd", borderRadius: "8px", width: "36px", height: "36px", cursor: "pointer", fontSize: "1.1rem", display: "flex", alignItems: "center", justifyContent: "center" }}>
           ←
         </button>
         <div>
-          <h1 className="m-0 text-lg font-black text-neutral-900">
+          <h1 style={{ margin: 0, fontSize: "1.3rem", fontWeight: 900 }}>
             {isEdit ? "ویرایش بنر" : "ساخت بنر جدید"}
           </h1>
-          <p className="m-0 text-xs text-neutral-400 mt-0.5">
-            موقعیت جایگذاری: <span className="font-bold text-neutral-600">{position}</span>
-          </p>
+          <p style={{ margin: 0, fontSize: "0.8rem", color: "#888" }}>موقعیت: {position}</p>
         </div>
         {step === 2 && !isEdit && (
-          <button 
-            onClick={() => setStep(1)} 
-            className="mr-auto bg-neutral-200/70 hover:bg-neutral-200 text-neutral-700 border-none rounded-lg px-4 py-1.5 cursor-pointer text-xs font-bold transition-colors"
-          >
-            تغییر تمپلیت واقعه
+          <button onClick={() => setStep(1)} style={{ marginRight: "auto", background: "#f0f0f0", border: "none", borderRadius: "8px", padding: "6px 14px", cursor: "pointer", fontFamily: "inherit", fontSize: "0.82rem", fontWeight: 600 }}>
+            تغییر تمپلیت
           </button>
         )}
       </div>
 
-      <div className="max-w-7xl mx-auto">
-        {/* مرحله ۱: انتخاب تمپلیت هندسی/بصری */}
-        {step === 1 && (
-          <div className="bg-white border border-neutral-100 rounded-2xl shadow-sm p-6">
-            <h2 className="m-0 mb-5 text-sm font-black text-neutral-800">تمپلیت طراحی بنر خود را انتخاب کنید</h2>
-            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
-              {TEMPLATES.map(tpl => (
-                <div 
-                  key={tpl.key} 
-                  className={`border-2 rounded-xl p-4 cursor-pointer transition-all text-center hover:-translate-y-0.5 hover:shadow-md ${
-                    form.template === tpl.key 
-                      ? "border-[#aa4725] bg-orange-50/20" 
-                      : "border-neutral-100 hover:border-[#aa4725]/40"
-                  }`} 
-                  onClick={() => handleTemplateSelect(tpl)}
-                >
-                  <div className="text-3xl mb-2">{tpl.emoji}</div>
-                  <div className="font-black text-xs text-neutral-800 mb-1">{tpl.label}</div>
-                  <div className="text-[10px] text-neutral-400 leading-relaxed">{tpl.desc}</div>
+      {/* مرحله ۱: انتخاب تمپلیت */}
+      {step === 1 && (
+        <div className="editor-card" style={{ padding: "20px" }}>
+          <h2 style={{ margin: "0 0 16px", fontSize: "1rem", fontWeight: 700 }}>تمپلیت بنر را انتخاب کنید</h2>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(150px, 1fr))", gap: "12px" }}>
+            {TEMPLATES.map(tpl => (
+              <div key={tpl.key} className={`tpl-card ${form.template === tpl.key ? "selected" : ""}`} onClick={() => handleTemplateSelect(tpl)}>
+                <div style={{ fontSize: "2rem", marginBottom: "6px" }}>{tpl.emoji}</div>
+                <div style={{ fontWeight: 700, fontSize: "0.88rem", marginBottom: "4px" }}>{tpl.label}</div>
+                <div style={{ fontSize: "0.72rem", color: "#888", lineHeight: 1.4 }}>{tpl.desc}</div>
+                {/* نشانگر تعداد عکس‌ها */}
+                <div style={{ marginTop: "6px", fontSize: "0.68rem", color: "#bbb" }}>
+                  {getSlotsForTemplate(tpl.key).length} تصویر
                 </div>
-              ))}
-            </div>
+              </div>
+            ))}
           </div>
-        )}
+        </div>
+      )}
 
-        {/* مرحله ۲: ویرایش محتوا و کدهای رنگی */}
-        {step === 2 && (
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 items-start">
-            
-            {/* ستون چپ: پیش‌نمایش زنده کامپوننت */}
-            <div className="lg:col-span-7 bg-white border border-neutral-100 rounded-2xl shadow-sm p-5 lg:sticky lg:top-5">
-              <div className="flex items-center gap-2.5 mb-4">
-                <span className="text-xl bg-neutral-50 w-8 h-8 rounded-lg flex items-center justify-center border border-neutral-100">{selectedTemplate.emoji}</span>
+      {/* مرحله ۲: ویرایش */}
+      {step === 2 && (
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 380px", gap: "16px" }}>
+
+          {/* پیش‌نمایش */}
+          <div>
+            <div className="editor-card" style={{ padding: "16px" }}>
+              <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "12px" }}>
+                <span style={{ fontSize: "1.2rem" }}>{selectedTemplate.emoji}</span>
                 <div>
-                  <div className="font-black text-xs text-neutral-800">پیش‌نمایش زنده تمپلیت «{selectedTemplate.label}»</div>
-                  <div className="text-[10px] text-neutral-400 mt-0.5">{selectedTemplate.desc}</div>
+                  <div style={{ fontWeight: 700, fontSize: "0.9rem" }}>«{selectedTemplate.label}»</div>
+                  <div style={{ fontSize: "0.72rem", color: "#999" }}>{selectedTemplate.desc}</div>
                 </div>
               </div>
-
-              <div className="rounded-xl overflow-hidden border border-neutral-100 bg-neutral-50">
-                {isStrip ? (
-                  <div className="h-14">
-                    <StripBannerRenderer banner={previewBanner} />
-                  </div>
-                ) : (
-                  <div className="h-[240px]">
-                    <BannerRenderer banner={previewBanner} preview />
-                  </div>
-                )}
+              <div style={{ borderRadius: "10px", overflow: "hidden", border: "1px solid #eee" }}>
+                {isStrip
+                  ? <div style={{ height: "64px" }}><StripBannerRenderer banner={previewBanner} /></div>
+                  : <div style={{ height: "260px" }}><BannerRenderer banner={previewBanner} preview /></div>
+                }
               </div>
-              <p className="m-0 mt-3 text-[10px] text-neutral-300 text-center font-medium">خروجی نهایی متناسب با ابعاد سایدبار یا گرید اصلی مچ می‌شود</p>
-            </div>
-
-            {/* ستون راست: پنل فرم تنظیمات */}
-            <div className="lg:col-span-5 flex flex-col gap-4">
-              <div className="bg-white border border-neutral-100 rounded-2xl shadow-sm p-5">
-                
-                {/* دکمه‌های ناوبری تب‌ها */}
-                <div className="flex gap-2 mb-5 bg-neutral-100 p-1 rounded-xl">
-                  <button 
-                    className={`flex-1 py-2 text-xs font-bold rounded-lg transition-all border-none cursor-pointer ${activeTab === "content" ? "bg-[#aa4725] text-white shadow-sm" : "text-neutral-500 hover:text-neutral-800 bg-transparent"}`} 
-                    onClick={() => setActiveTab("content")}
-                  >
-                    محتوای متنی بنر
-                  </button>
-                  <button 
-                    className={`flex-1 py-2 text-xs font-bold rounded-lg transition-all border-none cursor-pointer ${activeTab === "colors" ? "bg-[#aa4725] text-white shadow-sm" : "text-neutral-500 hover:text-neutral-800 bg-transparent"}`} 
-                    onClick={() => setActiveTab("colors")}
-                  >
-                    پالت رنگی سفارشی
-                  </button>
-                </div>
-
-                {/* تب محتوا */}
-                {activeTab === "content" && (
-                  <div className="flex flex-col gap-4">
-                    {/* ساختار آپلود مدیا مالتی کلودینری */}
-                    <div>
-                      <label className="block text-xs font-bold text-neutral-600 mb-1.5">تصویر پس‌زمینه بنر</label>
-                      {form.imageUrl ? (
-                        <div className="relative rounded-xl overflow-hidden border border-neutral-100 shadow-sm">
-                          <img src={form.imageUrl} alt="" className="w-full h-28 object-cover block" />
-                          <button 
-                            onClick={() => setForm(p => ({ ...p, imageUrl: "", imagePublicId: "" }))} 
-                            className="absolute top-2 left-2 bg-black/70 hover:bg-black text-white border-none rounded-full w-6 h-6 cursor-pointer text-[10px] flex items-center justify-center transition-colors"
-                          >
-                            ✕
-                          </button>
-                        </div>
-                      ) : (
-                        <div 
-                          className="border-2 border-dashed border-neutral-200 hover:border-[#aa4725] hover:bg-orange-50/10 rounded-xl p-5 text-center cursor-pointer transition-all"
-                          onClick={() => fileInputRef.current?.click()}
-                        >
-                          {uploading ? (
-                            <div className="text-neutral-400 text-xs font-semibold animate-pulse">در حال آپلود سورس مدیا...</div>
-                          ) : (
-                            <>
-                              <div className="text-2xl mb-1">📷</div>
-                              <div className="text-xs font-bold text-neutral-500">انتخاب و آپلود تصویر بنر</div>
-                              <div className="text-[10px] text-neutral-300 mt-1">حداکثر حجم مجاز ۲ مگابایت (JPG, PNG, WebP)</div>
-                            </>
-                          )}
-                        </div>
-                      )}
-                      <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={handleImageUpload} />
-                    </div>
-
-                    {/* رندر فیلدهای داینامیک */}
-                    {[
-                      { key: "badge", label: "بج اختصاصی بالای بنر (مثال: پیشنهاد ویژه رولند گاروس)" },
-                      { key: "title", label: "عنوان اصلی بنر" },
-                      { key: "subtitle", label: "کپشن / زیرعنوان توضیحات" },
-                      { key: "ctaText", label: "متن دکمه اکشن (CTA)" },
-                      { key: "link", label: "لینک URL مقصد دکمه" },
-                    ].map(field => (
-                      <div key={field.key}>
-                        <label className="block text-xs font-bold text-neutral-600 mb-1.5">{field.label}</label>
-                        <input
-                          className="w-full px-3.5 py-2 border border-neutral-200 focus:border-[#aa4725] rounded-xl text-xs font-bold text-neutral-800 outline-none transition-colors"
-                          value={form[field.key] || ""}
-                          onChange={e => handleField(field.key, e.target.value)}
-                          placeholder={field.label}
-                          dir="auto"
-                        />
-                      </div>
-                    ))}
-
-                    {/* فیلدها و ساختار اوردر و سورتینگ */}
-                    <div className="flex gap-3">
-                      <div className="flex-1">
-                        <label className="block text-xs font-bold text-neutral-600 mb-1.5">ترتیب اولویت نمایش</label>
-                        <input 
-                          className="w-full px-3.5 py-2 border border-neutral-200 focus:border-[#aa4725] rounded-xl text-xs font-bold text-neutral-800 outline-none transition-colors" 
-                          type="number" 
-                          value={form.order} 
-                          onChange={e => handleField("order", Number(e.target.value))} 
-                        />
-                      </div>
-                      <div className="flex-1 flex flex-col justify-end pb-2">
-                        <label className="flex items-center gap-2 cursor-pointer select-none">
-                          <input 
-                            type="checkbox" 
-                            checked={form.isActive} 
-                            onChange={e => handleField("isActive", e.target.checked)} 
-                            className="w-4 h-4 rounded border-neutral-300 text-[#aa4725] focus:ring-[#aa4725] accent-[#aa4725]" 
-                          />
-                          <span className="text-xs font-black text-neutral-700">وضعیت انتشار بنر فعال باشد</span>
-                        </label>
-                      </div>
-                    </div>
-                  </div>
-                )}
-
-                {/* تب پالت رنگی (Hex values) */}
-                {activeTab === "colors" && (
-                  <div className="flex flex-col gap-3">
-                    <p className="text-[11px] font-medium text-neutral-400 mb-2">
-                      تمامی کدهای هگز یا گرادیانت کدهای استایل تمپلیت را مستقیماً شخصی‌سازی کنید:
-                    </p>
-                    {COLOR_FIELDS.map(field => (
-                      <div key={field.key} className="flex items-center gap-3 border border-neutral-100 rounded-xl p-2 bg-neutral-50/50">
-                        <div className="w-9 h-9 rounded-xl border border-neutral-200 cursor-pointer overflow-hidden shrink-0 relative shadow-sm">
-                          <input 
-                            type="color" 
-                            className="absolute scale-150 cursor-pointer border-none p-0 m-0 w-full h-full"
-                            value={
-                              (form.colors?.[field.key] || "#000000").startsWith("rgba") || (form.colors?.[field.key] || "#000000").includes("linear-gradient")
-                                ? "#aa4725"
-                                : (form.colors?.[field.key] || "#000000")
-                            } 
-                            onChange={e => handleColor(field.key, e.target.value)} 
-                          />
-                        </div>
-                        <div className="flex-1">
-                          <div className="text-[11px] font-black text-neutral-700">{field.label}</div>
-                          <input
-                            className="w-full mt-1 px-2.5 py-1.5 bg-white border border-neutral-200 focus:border-[#aa4725] rounded-lg text-[11px] font-mono font-medium outline-none transition-colors"
-                            value={form.colors?.[field.key] || ""}
-                            onChange={e => handleColor(field.key, e.target.value)}
-                            placeholder="مثال: #aa4725 یا rgba(0,0,0,0.5)"
-                          />
-                        </div>
-                      </div>
-                    ))}
-                    <button
-                      onClick={() => setForm(prev => ({ ...prev, colors: { ...selectedTemplate.defaultColors } }))}
-                      className="w-full mt-2 py-2 bg-neutral-100 hover:bg-neutral-200/80 text-neutral-600 rounded-xl font-bold text-xs border-none cursor-pointer transition-colors"
-                    >
-                      ریست و بازگشت به پالت پیش‌فرض تمپلیت
-                    </button>
-                  </div>
-                )}
-              </div>
-
-              {/* کلید نهایی ثبت فیلدها */}
-              <button 
-                className="w-full py-3.5 bg-[#aa4725] hover:bg-[#933d1f] disabled:opacity-50 text-white rounded-2xl text-sm font-black transition-colors shadow-md active:scale-[0.99]" 
-                disabled={saving} 
-                onClick={handleSave}
-              >
-                {saving ? "در حال اعتبارسنجی و ذخیره..." : isEdit ? "ذخیره تغییرات اعمال شده" : "ساخت و انتشار بنر نهایی"}
-              </button>
+              <p style={{ margin: "8px 0 0", fontSize: "0.75rem", color: "#aaa", textAlign: "center" }}>پیش‌نمایش زنده</p>
             </div>
           </div>
-        )}
-      </div>
+
+          {/* فرم */}
+          <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
+            <div className="editor-card" style={{ padding: "12px" }}>
+              <div style={{ display: "flex", gap: "8px", marginBottom: "16px" }}>
+                <button className={`tab-btn ${activeTab === "content" ? "active" : ""}`} onClick={() => setActiveTab("content")}>محتوا</button>
+                <button className={`tab-btn ${activeTab === "colors" ? "active" : ""}`} onClick={() => setActiveTab("colors")}>رنگ‌ها</button>
+              </div>
+
+              {activeTab === "content" && (
+                <div>
+                  {/* ── تصاویر — داینامیک از templateImageSlots ── */}
+                  <div className="slots-divider">
+                    تصاویر ({imageSlots.length} مورد)
+                  </div>
+                  {imageSlots.map(slot => (
+                    <ImageSlotUploader
+                      key={slot.key}
+                      slot={slot}
+                      value={getImageValue(slot.key)}
+                      onChange={handleImageChange}
+                    />
+                  ))}
+
+                  {/* ── فیلدهای متنی ── */}
+                  <div className="slots-divider">متن‌ها</div>
+                  {[
+                    { key: "badge",   label: "بج / برچسب" },
+                    { key: "title",   label: "عنوان اصلی" },
+                    { key: "subtitle",label: "زیرعنوان" },
+                    { key: "ctaText", label: "متن دکمه (CTA)" },
+                    { key: "link",    label: "لینک مقصد" },
+                  ].map(field => (
+                    <div key={field.key} className="form-group">
+                      <label className="form-label">{field.label}</label>
+                      <input className="form-input" value={form[field.key] || ""} onChange={e => handleField(field.key, e.target.value)} placeholder={field.label} dir="auto" />
+                    </div>
+                  ))}
+
+                  {/* ── تنظیمات ── */}
+                  <div className="slots-divider">تنظیمات</div>
+                  <div style={{ display: "flex", gap: "12px" }}>
+                    <div className="form-group" style={{ flex: 1 }}>
+                      <label className="form-label">ترتیب نمایش</label>
+                      <input className="form-input" type="number" value={form.order} onChange={e => handleField("order", Number(e.target.value))} />
+                    </div>
+                    <div className="form-group" style={{ flex: 1, display: "flex", flexDirection: "column" }}>
+                      <label className="form-label">وضعیت</label>
+                      <label style={{ display: "flex", alignItems: "center", gap: "8px", marginTop: "8px", cursor: "pointer" }}>
+                        <input type="checkbox" checked={form.isActive} onChange={e => handleField("isActive", e.target.checked)} style={{ width: "18px", height: "18px", accentColor: "var(--color-primary, #aa4725)" }} />
+                        <span style={{ fontSize: "0.85rem", fontWeight: 600 }}>فعال</span>
+                      </label>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {activeTab === "colors" && (
+                <div>
+                  <p style={{ fontSize: "0.8rem", color: "#888", margin: "0 0 14px" }}>رنگ‌های تمپلیت را سفارشی کنید</p>
+                  {COLOR_FIELDS.map(field => (
+                    <div key={field.key} className="color-row">
+                      <div className="color-swatch">
+                        <input type="color"
+                          value={(form.colors?.[field.key] || "#000000").startsWith("rgba") ? "#888888" : (form.colors?.[field.key] || "#000000")}
+                          onChange={e => handleColor(field.key, e.target.value)}
+                        />
+                      </div>
+                      <div style={{ flex: 1 }}>
+                        <div style={{ fontSize: "0.82rem", fontWeight: 600, color: "#333" }}>{field.label}</div>
+                        <input className="form-input" value={form.colors?.[field.key] || ""} onChange={e => handleColor(field.key, e.target.value)} style={{ marginTop: "4px", fontSize: "0.75rem", fontFamily: "monospace" }} placeholder="#aa4725" />
+                      </div>
+                    </div>
+                  ))}
+                  <button onClick={() => setForm(prev => ({ ...prev, colors: { ...selectedTemplate.defaultColors } }))}
+                    style={{ width: "100%", padding: "8px", background: "#f5f5f5", border: "1.5px solid #ddd", borderRadius: "8px", fontFamily: "inherit", fontSize: "0.82rem", fontWeight: 600, cursor: "pointer", marginTop: "8px" }}>
+                    بازگشت به رنگ‌های پیش‌فرض
+                  </button>
+                </div>
+              )}
+            </div>
+
+            <button className="save-btn" disabled={saving} onClick={handleSave}>
+              {saving ? "در حال ذخیره..." : isEdit ? "ذخیره تغییرات" : "ساخت بنر"}
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -21,6 +21,13 @@
   font-style: normal;
 }
 
+@font-face {
+  font-family: "Gagalin";
+  src: url("/fonts/Gagalin.otf") format("opentype");
+  font-weight: normal;
+  font-style: normal;
+}
+
 @layer base {
   * {
     direction: rtl;

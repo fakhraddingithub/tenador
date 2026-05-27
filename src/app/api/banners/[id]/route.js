@@ -6,8 +6,8 @@ import Banner from "base/models/Banner";
 export async function GET(req, { params }) {
   try {
     await connectToDB();
-    const bannerId = await params
-    const banner = await Banner.findById(bannerId.id);
+    const param = await params
+    const banner = await Banner.findById(param.id);
     if (!banner) {
       return NextResponse.json(
         { success: false, error: "بنر یافت نشد" },
@@ -28,9 +28,9 @@ export async function PUT(req, { params }) {
   try {
     await connectToDB();
     const body = await req.json();
-    const bannerId = await params
+    const param = await params
     const banner = await Banner.findByIdAndUpdate(
-      bannerId.id,
+      param.id,
       { $set: body },
       { new: true, runValidators: true }
     );
@@ -56,9 +56,8 @@ export async function PUT(req, { params }) {
 export async function DELETE(req, { params }) {
   try {
     await connectToDB();
-
-    const bannerId = await params
-    const banner = await Banner.findById(bannerId.id);
+    const param = await params
+    const banner = await Banner.findByIdAndDelete(param.id);
 
     if (!banner) {
       return NextResponse.json(
