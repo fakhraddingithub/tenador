@@ -65,7 +65,10 @@ function rebuildVariantState(variants = []) {
 
   for (const v of variants) {
     const attrs = v.attributes || {};
-    const key = Object.values(attrs).join('-');
+    const key = Object.entries(attrs)
+  .sort(([a], [b]) => a.localeCompare(b))
+  .map(([, v]) => v)
+  .join('-');
 
     // Collect unique values per attribute key
     for (const [attrKey, attrVal] of Object.entries(attrs)) {
@@ -146,7 +149,7 @@ export default function ProductEditPage() {
           categoriesRes.json(),
           productRes.json(),
         ]);
-        
+
         setSports(sportsData.sports || []);
         setBrands(brandsData.brands || []);
         setCategories(categoriesData.categories || []);
@@ -161,25 +164,37 @@ export default function ProductEditPage() {
           } else if (p.athlete) {
             athleteIds = [typeof p.athlete === 'object' ? p.athlete._id : p.athlete];
           }
-
-          setFormData({
-            name: p.name || '',
-            shortDescription: p.shortDescription || '',
-            longDescription: p.longDescription || '',
-            color: p.color || '',
-            basePrice: p.basePrice ?? '',
-            category: p.category?._id || p.category || '',
-            tag: Array.isArray(p.tag) ? p.tag.join(', ') : (p.tag || ''),
-            mainImage: p.mainImage || '',
-            gallery: p.gallery || [],
-            brand: p.brand?._id || p.brand || '',
-            serie: p.serie?._id || p.serie || '',
-            sport: p.sport?._id || p.sport || '',
-            athlete: athleteIds,
-            attributes: p.attributes || {},
-            technicalStats: p.technicalStats || {},
-            label: p.label || 'none',
-          });
+          const matchedCategory =
+          categoriesData.categories?.find(
+            c => c._id === (p.category?._id || p.category)
+          );
+        
+        setFormData({
+          name: p.name || '',
+          shortDescription: p.shortDescription || '',
+          longDescription: p.longDescription || '',
+          color: p.color || '',
+          basePrice: p.basePrice ?? '',
+          category: p.category?._id || p.category || '',
+          tag: Array.isArray(p.tag)
+            ? p.tag.join(', ')
+            : (p.tag || ''),
+          mainImage: p.mainImage || '',
+          gallery: p.gallery || [],
+          brand: p.brand?._id || p.brand || '',
+          serie: p.serie?._id || p.serie || '',
+          sport: p.sport?._id || p.sport || '',
+          athlete: athleteIds,
+        
+          attributes: normalizeInitialAttributes(
+            p.attributes || {},
+            matchedCategory?.attributes || []
+          ),
+        
+          technicalStats: p.technicalStats || {},
+        
+          label: p.label || 'none',
+        });;
 
           // Rebuild variant state from populated variants array
           const { variantOptions: vOpts, variantDetails: vDetails } =
@@ -574,11 +589,10 @@ export default function ProductEditPage() {
               return (
                 <label
                   key={a._id}
-                  className={`flex items-center gap-2 p-2 rounded-lg cursor-pointer border transition-colors select-none ${
-                    selected
+                  className={`flex items-center gap-2 p-2 rounded-lg cursor-pointer border transition-colors select-none ${selected
                       ? 'bg-[var(--color-primary)]/10 border-[var(--color-primary)] text-[var(--color-primary)]'
                       : 'border-gray-200 hover:bg-gray-50 text-gray-700'
-                  }`}
+                    }`}
                 >
                   <input
                     type="checkbox"
