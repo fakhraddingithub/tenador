@@ -81,7 +81,7 @@ export async function GET(request, { params }) {
 
 export async function PUT(request, { params }) {
   try {
-    const { productId } = params;
+    const { productId } =await params;
 
     if (!productId) {
       return NextResponse.json(
@@ -194,18 +194,20 @@ export async function PUT(request, { params }) {
         const detail = variantDetails?.[comboKey] || {};
 
         const variant = await Variant.create({
-          product: product._id,
-
+          productId: product._id,
+        
+          categoryId: category,
+        
           attributes: combo,
-
+        
           price: Number(detail.price) || 0,
-
+        
           stock: Number(detail.stock) || 0,
-
+        
           images: Array.isArray(detail.images)
             ? detail.images
             : [],
-
+        
           sku: `${product._id}-${comboKey}`
             .replace(/\s+/g, "")
             .toUpperCase(),
