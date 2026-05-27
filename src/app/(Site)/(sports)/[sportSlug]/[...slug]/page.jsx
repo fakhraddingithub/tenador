@@ -28,11 +28,17 @@ export async function generateMetadata({ params }) {
     };
   }
 
+  const activeEntity = 
+    data.filters.serie || 
+    data.filters.brand || 
+    data.filters.category || 
+    data.filters.sport;
+
   return {
-    title: `خرید تجهیزات ${data.filters.sport.title || data.filters.sport.name}`,
+    title: `خرید تجهیزات ${activeEntity.title || activeEntity.name}`,
     description:
-      data.filters.sport.description ||
-      `بهترین قیمت تجهیزات ${data.filters.sport.title}`,
+      activeEntity.description ||
+      `بهترین قیمت تجهیزات ${activeEntity.title || activeEntity.name}`,
   };
 }
 
@@ -60,8 +66,8 @@ export default async function SportDynamicSlugPage({ params }) {
     notFound();
   }
 
-  // مهم‌ترین موجودیت پیدا شده
   const pageInfo =
+    searchData.filters.serie ||
     searchData.filters.brand ||
     searchData.filters.category ||
     searchData.filters.sport;

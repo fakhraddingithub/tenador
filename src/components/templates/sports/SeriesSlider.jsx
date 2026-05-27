@@ -49,7 +49,7 @@ function SerieCard({ serie, sportSlug, limited = false }) {
   `;
 
   return (
-    <Link href={`/${sportSlug}/series/${serie.slug}`} className="block w-full">
+    <Link href={`/${sportSlug}/${serie.brand.slug}/${serie.slug}`} className="block w-full">
       <div
         onMouseEnter={() => setHovered(true)}
         onMouseLeave={() => setHovered(false)}

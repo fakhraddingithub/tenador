@@ -19,6 +19,7 @@ export default function SportPageClient({
   const [localFilters, setLocalFilters] = useState({
     brands: [],
     categories: [],
+    series: [], // ✨ اضافه شد: آمادگی برای فیلتر کردن کلاینت‌ساید بر اساس سری
     minPrice: 0,
     maxPrice: 50000000,
     onlyInStock: false,
@@ -39,6 +40,14 @@ export default function SportPageClient({
       filters?.category?.title || filters?.category?.name || "";
 
     const brandTitle = filters?.brand?.title || filters?.brand?.name || "";
+    
+    const serieTitle = filters?.serie?.title || filters?.serie?.name || ""; // ✨ اضافه شد
+
+    if (serieTitle) {
+      // مقدارهایی که وجود دارند را با یک فاصله به هم می‌چسبانیم
+      const parts = [categoryTitle, brandTitle, serieTitle].filter(Boolean);
+      return parts.join(" ");
+    }
 
     // فقط اسپورت
     // تنیس
@@ -78,6 +87,13 @@ export default function SportPageClient({
           product.category?._id?.toString() || product.category?.toString(),
         );
 
+      const matchesSerie =
+        !localFilters.series ||
+        localFilters.series.length === 0 ||
+        localFilters.series.includes(
+          product.serie?._id?.toString() || product.serie?.toString(),
+        );
+
       const matchesPrice =
         product.basePrice >= localFilters.minPrice &&
         product.basePrice <= localFilters.maxPrice;
@@ -88,6 +104,7 @@ export default function SportPageClient({
         matchesSearch &&
         matchesBrand &&
         matchesCategory &&
+        matchesSerie && 
         matchesPrice &&
         matchesStock
       );
@@ -99,7 +116,7 @@ export default function SportPageClient({
       {/* ───────────────── Hero ───────────────── */}
       <div className="relative h-[100px] md:h-[220px] w-full overflow-hidden">
         <img
-          src={pageInfo.image || "/images/default-sport.jpg"}
+          src={pageInfo.headImage || pageInfo.image || "/images/default-sport.jpg"}
           alt={dynamicTitle}
           className="w-full h-full object-cover scale-105"
         />
@@ -113,9 +130,6 @@ export default function SportPageClient({
 
           <div className="w-20 h-1 bg-[var(--color-primary)] rounded-full mb-4" />
 
-          <p className="text-gray-200 max-w-2xl text-sm md:text-lg font-medium leading-relaxed opacity-90 line-clamp-2">
-            {pageInfo.description}
-          </p>
         </div>
       </div>
 
@@ -123,7 +137,8 @@ export default function SportPageClient({
       {series.filter((serie) => serie.level !== 0 && !serie.isLimitedEdition)
         .length > 0 &&
         !filters?.category &&
-        !filters?.brand && (
+        !filters?.brand && 
+        !filters?.serie && ( 
           <SeriesSlider
             series={series.filter(
               (serie) => serie.level !== 0 && !serie.isLimitedEdition,
@@ -189,6 +204,7 @@ export default function SportPageClient({
                   setLocalFilters({
                     brands: [],
                     categories: [],
+                    series: [], 
                     minPrice: 0,
                     maxPrice: 50000000,
                     onlyInStock: false,
@@ -202,15 +218,18 @@ export default function SportPageClient({
           )}
         </main>
       </div>
-          {series.filter((serie) => serie.isLimitedEdition).length > 0 &&
-            !filters?.category &&
-            !filters?.brand && (
-              <SeriesSlider
-                series={series.filter((serie) => serie.isLimitedEdition)}
-                sportSlug={pageInfo.slug}
-                sportTitle={`لیمیتد ادیشن ${pageInfo.title}`}
-              />
-            )}
+
+      {/* Limited Edition Series Slider */}
+      {series.filter((serie) => serie.isLimitedEdition).length > 0 &&
+        !filters?.category &&
+        !filters?.brand && 
+        !filters?.serie && ( 
+          <SeriesSlider
+            series={series.filter((serie) => serie.isLimitedEdition)}
+            sportSlug={pageInfo.slug}
+            sportTitle={`لیمیتد ادیشن ${pageInfo.title}`}
+          />
+        )}
     </div>
   );
 }
