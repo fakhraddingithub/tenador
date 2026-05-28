@@ -64,7 +64,7 @@
 }
 @font-face {
   font-family: "Astron-Valley";
-  src: url("/public/fonts/Astron-Valley.otf") format("opentype");
+  src: url("/fonts/Astron-Valley.otf") format("opentype");
   font-weight: normal;
   font-style: normal;
 }
