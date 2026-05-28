@@ -66,9 +66,9 @@ function rebuildVariantState(variants = []) {
   for (const v of variants) {
     const attrs = v.attributes || {};
     const key = Object.entries(attrs)
-  .sort(([a], [b]) => a.localeCompare(b))
-  .map(([, v]) => v)
-  .join('-');
+      .sort(([a], [b]) => a.localeCompare(b))
+      .map(([, v]) => v)
+      .join('-');
 
     // Collect unique values per attribute key
     for (const [attrKey, attrVal] of Object.entries(attrs)) {
@@ -165,36 +165,36 @@ export default function ProductEditPage() {
             athleteIds = [typeof p.athlete === 'object' ? p.athlete._id : p.athlete];
           }
           const matchedCategory =
-          categoriesData.categories?.find(
-            c => c._id === (p.category?._id || p.category)
-          );
-        
-        setFormData({
-          name: p.name || '',
-          shortDescription: p.shortDescription || '',
-          longDescription: p.longDescription || '',
-          color: p.color || '',
-          basePrice: p.basePrice ?? '',
-          category: p.category?._id || p.category || '',
-          tag: Array.isArray(p.tag)
-            ? p.tag.join(', ')
-            : (p.tag || ''),
-          mainImage: p.mainImage || '',
-          gallery: p.gallery || [],
-          brand: p.brand?._id || p.brand || '',
-          serie: p.serie?._id || p.serie || '',
-          sport: p.sport?._id || p.sport || '',
-          athlete: athleteIds,
-        
-          attributes: normalizeInitialAttributes(
-            p.attributes || {},
-            matchedCategory?.attributes || []
-          ),
-        
-          technicalStats: p.technicalStats || {},
-        
-          label: p.label || 'none',
-        });;
+            categoriesData.categories?.find(
+              c => c._id === (p.category?._id || p.category)
+            );
+
+          setFormData({
+            name: p.name || '',
+            shortDescription: p.shortDescription || '',
+            longDescription: p.longDescription || '',
+            color: p.color || '',
+            basePrice: p.basePrice ?? '',
+            category: p.category?._id || p.category || '',
+            tag: Array.isArray(p.tag)
+              ? p.tag.join(', ')
+              : (p.tag || ''),
+            mainImage: p.mainImage || '',
+            gallery: p.gallery || [],
+            brand: p.brand?._id || p.brand || '',
+            serie: p.serie?._id || p.serie || '',
+            sport: p.sport?._id || p.sport || '',
+            athlete: athleteIds,
+
+            attributes: normalizeInitialAttributes(
+              p.attributes || {},
+              matchedCategory?.attributes || []
+            ),
+
+            technicalStats: p.technicalStats || {},
+
+            label: p.label || 'none',
+          });;
 
           // Rebuild variant state from populated variants array
           const { variantOptions: vOpts, variantDetails: vDetails } =
@@ -590,8 +590,8 @@ export default function ProductEditPage() {
                 <label
                   key={a._id}
                   className={`flex items-center gap-2 p-2 rounded-lg cursor-pointer border transition-colors select-none ${selected
-                      ? 'bg-[var(--color-primary)]/10 border-[var(--color-primary)] text-[var(--color-primary)]'
-                      : 'border-gray-200 hover:bg-gray-50 text-gray-700'
+                    ? 'bg-[var(--color-primary)]/10 border-[var(--color-primary)] text-[var(--color-primary)]'
+                    : 'border-gray-200 hover:bg-gray-50 text-gray-700'
                     }`}
                 >
                   <input
@@ -664,7 +664,7 @@ export default function ProductEditPage() {
                 <div className="flex gap-2 mb-3">
                   <input
                     type="text"
-                    className="flex-1 border rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-400"
+                    className="flex-1 border rounded-[var(--radius)] px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-400"
                     placeholder={`مقدار جدید برای ${attr.label}…`}
                     value={variantInputBuffer[attr.name] || ''}
                     onChange={e =>
@@ -680,7 +680,7 @@ export default function ProductEditPage() {
                   <button
                     type="button"
                     onClick={() => addVariantValue(attr.name)}
-                    className="px-4 py-2 bg-purple-600 text-white rounded-xl text-sm hover:bg-purple-700 transition-colors"
+                    className="px-4 py-2 bg-purple-600 text-white rounded-[var(--radius)] text-sm hover:bg-purple-700 transition-colors"
                   >
                     + افزودن
                   </button>
@@ -751,7 +751,7 @@ export default function ProductEditPage() {
                           <input
                             type="number"
                             min="0"
-                            className="w-full border rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
+                            className="w-full border rounded-[var(--radius)] px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
                             placeholder="قیمت این ترکیب…"
                             value={detail.price}
                             onChange={e => updateVariantDetail(key, 'price', e.target.value)}
@@ -764,7 +764,7 @@ export default function ProductEditPage() {
                           <input
                             type="number"
                             min="0"
-                            className="w-full border rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
+                            className="w-full border rounded-[var(--radius)] px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
                             placeholder="تعداد موجودی…"
                             value={detail.stock}
                             onChange={e => updateVariantDetail(key, 'stock', e.target.value)}

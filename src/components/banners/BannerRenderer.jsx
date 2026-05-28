@@ -1321,6 +1321,11 @@ function ElegantOverlayTemplate({ banner, style, onClick, c }) {
     imageUrl: banner.imageUrl,
   };
 
+  const isPersian = (text) => /[\u0600-\u06FF]/.test(text);
+
+  const badgeIsFa = isPersian(data.badge);
+  const titleIsFa = isPersian(data.title);
+
   return (
     <div
       style={style}
@@ -1352,15 +1357,23 @@ function ElegantOverlayTemplate({ banner, style, onClick, c }) {
         {/* Top script text */}
         {/* استفاده از clamp برای حفظ فونت کشیده و فانتزی در ابعاد متناسب */}
         <h3
-        className="
-        text-white
-        text-[clamp(13px,4.2vw,26px)] /* سایز این را هم متناسب با تایتل کوچک کردیم */
-        leading-none
-        whitespace-nowrap   /* مانع دو خطه شدن در موبایل‌های خیلی باریک */
-        mb-1.5
-        drop-shadow-[0_3px_12px_rgba(0,0,0,.4)]
-      "
-          style={{ fontFamily: '"Heralgliph", cursive' }}
+          className={`
+            text-white
+            leading-none
+            whitespace-nowrap
+            mb-1.5
+            drop-shadow-[0_3px_12px_rgba(0,0,0,.4)]
+            ${
+              badgeIsFa
+                ? "text-[clamp(15px,4.8vw,28px)]"
+                : "text-[clamp(13px,4.2vw,26px)]"
+            }
+          `}
+          style={{
+            fontFamily: badgeIsFa
+              ? "'IranNastaliq', sans-serif"
+              : '"Heralgliph", cursive',
+          }}
         >
           {data.badge}
         </h3>
@@ -1368,18 +1381,25 @@ function ElegantOverlayTemplate({ banner, style, onClick, c }) {
         {/* Main title */}
         {/* تغییر max-w به درصد در موبایل تا متن‌های طولانی به زیبایی بشکنند و فشرده نشوند */}
         <h2
-         className="
-         text-white
-         text-[clamp(16px,5.2vw,36px)] /* سایز مینیمم را از ۲۴ به ۱۶ رساندیم */
-         leading-none
-         tracking-[-0.5px]
-         font-light
-         w-full              /* عرض کامل بهش دادیم */
-         whitespace-nowrap   /* غول مرحله آخر: متن را مجبور می‌کند فقط در یک خط بماند */
-         drop-shadow-[0_4px_18px_rgba(0,0,0,.45)]
-         mb-3
-       "
-          style={{ fontFamily: "'Cormorant Garamond', serif" }}
+          className={`
+            text-white
+            leading-none
+            tracking-[-0.5px]
+            w-full
+            whitespace-nowrap
+            drop-shadow-[0_4px_18px_rgba(0,0,0,.45)]
+            mb-3
+            ${
+              titleIsFa
+                ? "text-[clamp(20px,6vw,42px)] font-black"
+                : "text-[clamp(16px,5.2vw,36px)] font-light"
+            }
+          `}
+          style={{
+            fontFamily: titleIsFa
+              ? "'Lotos-Bold', sans-serif"
+              : "'Cormorant Garamond', serif",
+          }}
         >
           {data.title}
         </h2>
@@ -1450,6 +1470,12 @@ export function AdventureShoesTemplate({ banner, style, onClick, c = {} }) {
   const yellow = c.secondary || "#ffe36a";
   const brown = c.accent || "#7a5538";
   const dark = c.text || "#3f3f3f";
+
+  const isPersian = (text) => /[\u0600-\u06FF]/.test(text);
+
+  const mainIsFa = isPersian(mainTitle);
+  const bottomIsFa = isPersian(bottomTitle);
+  const saleIsFa = isPersian(saleText);
 
   const { containerRef, fontSize } = useFitText(mainTitle);
 
@@ -1548,7 +1574,9 @@ export function AdventureShoesTemplate({ banner, style, onClick, c = {} }) {
           style={{
             color: yellow,
             fontSize: fontSize + "px",
-            fontFamily: "'Gagalin', Impact, sans-serif",
+            fontFamily:mainIsFa
+            ? "'Lalezar', sans-serif"
+            : "'Gagalin', Impact, sans-serif",
           }}
           className="m-0 w-full leading-none tracking-[-0.01em] uppercase whitespace-nowrap"
         >
@@ -1559,29 +1587,17 @@ export function AdventureShoesTemplate({ banner, style, onClick, c = {} }) {
       {/* تیتر فرعی */}
       <div className="absolute left-[66%] top-[55%] -rotate-[8deg] origin-left z-40 pointer-events-none">
         <h3
-          style={{ color: brown }}
+           style={{
+            color: brown,
+            fontFamily: bottomIsFa
+              ? "'Lalezar', sans-serif"
+              : "'Gagalin', Impact, sans-serif",
+          }}
           className="m-0 font-['Gagalin',_Impact,_sans-serif] text-[clamp(26px,2.8vw,42px)] leading-none tracking-[-0.01em] uppercase"
         >
           {bottomTitle}
         </h3>
       </div>
     </div>
-  );
-}
-
-function Bolt({ className, style, fill = "#3f3f3f" }) {
-  return (
-    <svg
-      viewBox="0 0 60 120"
-      aria-hidden="true"
-      className={className}
-      style={style}
-      preserveAspectRatio="xMidYMid meet"
-    >
-      <polygon
-        fill={fill}
-        points="38,0 14,52 32,48 10,120 58,44 36,50 52,0"
-      />
-    </svg>
   );
 }

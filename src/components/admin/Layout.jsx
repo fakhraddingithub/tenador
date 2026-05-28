@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { motion, AnimatePresence } from "framer-motion";
 import {
   FaChartPie,
   FaRunning,
@@ -11,8 +12,6 @@ import {
   FaFolderOpen,
   FaBoxOpen,
   FaUsersCog,
-  FaBars,
-  FaTimes,
   FaHome,
   FaDollarSign,
   FaEuroSign,
@@ -21,49 +20,30 @@ import {
 import { HiOutlineLogout } from "react-icons/hi";
 import { MdOutlineCurrencyExchange } from "react-icons/md";
 import { AiFillProduct } from "react-icons/ai";
+import { RiMenuFoldLine, RiMenuUnfoldLine } from "react-icons/ri";
 
 const menuItems = [
-  { title: "داشبورد", href: "/p-admin", icon: <FaChartPie /> },
-  { title: "صفحه اصلی", href: "/p-admin/admin-home", icon: <FaHome /> },
-  { title: "ورزش‌ها", href: "/p-admin/admin-sports", icon: <FaRunning /> },
-  { title: "برندها", href: "/p-admin/admin-brands", icon: <FaBold /> },
-  {
-    title: "ورزشکاران",
-    href: "/p-admin/admin-athletes",
-    icon: <FaUserAstronaut />,
-  },
-  // اینجا تغییر کرد:
-  {
-    title: "دسته‌بندی‌ها",
-    href: "/p-admin/admin-categories",
-    icon: <FaFolderOpen />,
-  },
-  {
-    title: "محصولات",
-    href: "/p-admin/admin-products",
-    icon: <AiFillProduct />,
-  },
-  {
-    title: "بازار دست دوم",
-    href: "/p-admin/admin-secondHands",
-    icon: <FaBoxOpen />,
-  },
-  {
-    title: "نرخ تبدیل",
-    href: "/p-admin/exchange-rate",
-    icon: <MdOutlineCurrencyExchange />,
-  },
-  { title: "کاربران", href: "/p-admin/users", icon: <FaUsersCog /> },
+  { title: "داشبورد", href: "/p-admin", icon: FaChartPie },
+  { title: "صفحه اصلی", href: "/p-admin/admin-home", icon: FaHome },
+  { title: "ورزش‌ها", href: "/p-admin/admin-sports", icon: FaRunning },
+  { title: "برندها", href: "/p-admin/admin-brands", icon: FaBold },
+  { title: "ورزشکاران", href: "/p-admin/admin-athletes", icon: FaUserAstronaut },
+  { title: "دسته‌بندی‌ها", href: "/p-admin/admin-categories", icon: FaFolderOpen },
+  { title: "محصولات", href: "/p-admin/admin-products", icon: AiFillProduct },
+  { title: "بازار دست دوم", href: "/p-admin/admin-secondHands", icon: FaBoxOpen },
+  { title: "نرخ تبدیل", href: "/p-admin/exchange-rate", icon: MdOutlineCurrencyExchange },
+  { title: "کاربران", href: "/p-admin/users", icon: FaUsersCog },
 ];
 
-export default function AdminLayout({ children, title = "داشبورد مدیریت" }) {
+export default function AdminLayout({ children }) {
   const pathname = usePathname();
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [prices, setPrices] = useState({ usd: "---", eur: "---" });
   const [time, setTime] = useState("");
+  const [mounted, setMounted] = useState(false);
 
-  // ۱. مدیریت ساعت (آپدیت هر ثانیه)
   useEffect(() => {
+    setMounted(true);
     const timer = setInterval(() => {
       const now = new Date();
       setTime(
@@ -72,18 +52,17 @@ export default function AdminLayout({ children, title = "داشبورد مدیر
           minute: "2-digit",
           second: "2-digit",
           timeZone: "Asia/Tehran",
-        }).format(now),
+        }).format(now)
       );
     }, 1000);
     return () => clearInterval(timer);
   }, []);
 
-  // ۲. دریافت قیمت ارز (نمونه)
   useEffect(() => {
     const fetchPrices = async () => {
       try {
         const res = await fetch(
-          "https://brsapi.ir/Api/Market/Gold_Currency.php?key=BUjlELnh5HDWl6BDTEEXp5DLf9g9qY7C",
+          "https://brsapi.ir/Api/Market/Gold_Currency.php?key=BUjlELnh5HDWl6BDTEEXp5DLf9g9qY7C"
         );
         const data = await res.json();
         setPrices({
@@ -95,170 +74,301 @@ export default function AdminLayout({ children, title = "داشبورد مدیر
       }
     };
     fetchPrices();
-    const priceInterval = setInterval(fetchPrices, 600000); // آپدیت هر ۱۰ دقیقه
+    const priceInterval = setInterval(fetchPrices, 600000);
     return () => clearInterval(priceInterval);
   }, []);
 
   const farsiNumber = new Intl.NumberFormat("fa-IR");
-  const sidebarWidth = sidebarOpen ? "280px" : "90px";
+  const sidebarWidth = sidebarOpen ? 260 : 76;
 
   return (
-    <div className="min-h-screen bg-[#F4F7FE] flex" dir="rtl">
-      {/* --- Sidebar --- */}
-      <aside
-        className={`fixed right-0 top-0 h-screen z-50 transition-all duration-500 ease-in-out p-4`}
-        style={{ width: sidebarWidth }}
-      >
-        <div className="h-full bg-white/70 backdrop-blur-xl border border-white shadow-[0_8px_30px_rgb(0,0,0,0.04)] rounded-[2.5rem] flex flex-col overflow-hidden relative group">
-          {/* Decorative Gradient Background */}
-          <div className="absolute -top-24 -left-24 w-48 h-48 bg-[var(--color-primary)]/5 blur-[80px] rounded-full" />
+    <div
+      className="min-h-screen flex"
+      dir="rtl"
+      style={{ background: "var(--admin-bg)", fontFamily: "var(--font-sans)" }}
+    >
+      <style>{`
+        :root {
+          --admin-bg: #f5f3f0;
+          --admin-sidebar-bg: #0d0d0d;
+          --admin-card: #ffffff;
+          --admin-border: #e8e4df;
+          --admin-text-muted: #9c9189;
+          --color-primary: #aa4725;
+          --color-secondary: #ffbf00;
+          --font-sans: "Vazirmatn", system-ui, -apple-system, sans-serif;
+        }
+        .admin-scrollbar::-webkit-scrollbar { width: 3px; }
+        .admin-scrollbar::-webkit-scrollbar-track { background: transparent; }
+        .admin-scrollbar::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 10px; }
+        .nav-item-active::before {
+          content: '';
+          position: absolute;
+          left: 0; top: 50%; transform: translateY(-50%);
+          width: 3px; height: 60%;
+          background: var(--color-secondary);
+          border-radius: 0 4px 4px 0;
+        }
+      `}</style>
 
-          {/* Logo Section */}
-          <div className="h-24 flex items-center justify-between px-6 relative z-10">
+      {/* ─── Sidebar ─── */}
+      <motion.aside
+        initial={false}
+        animate={{ width: sidebarWidth }}
+        transition={{ duration: 0.35, ease: [0.4, 0, 0.2, 1] }}
+        className="fixed right-0 top-0 h-screen z-50 flex flex-col overflow-hidden"
+        style={{ background: "var(--admin-sidebar-bg)" }}
+      >
+        {/* Subtle texture overlay */}
+        <div
+          className="absolute inset-0 pointer-events-none opacity-[0.03]"
+          style={{
+            backgroundImage: `radial-gradient(circle at 1px 1px, white 1px, transparent 0)`,
+            backgroundSize: "20px 20px",
+          }}
+        />
+
+        {/* Top accent line */}
+        <div
+          className="absolute top-0 left-0 right-0 h-[2px]"
+          style={{ background: "linear-gradient(90deg, var(--color-primary), var(--color-secondary))" }}
+        />
+
+        {/* Logo area */}
+        <div className="relative z-10 flex items-center justify-between px-4 py-5 border-b border-white/[0.06]">
+          <AnimatePresence>
             {sidebarOpen && (
-              <div className="flex flex-col">
-                <span className="text-xl font-bold text-gray-800 tracking-tighter">
-                  TENADOR{" "}
-                  <span className="text-[var(--color-primary)]">ADMIN</span>
-                </span>
-              </div>
-            )}
-            <button
-              onClick={() => setSidebarOpen(!sidebarOpen)}
-              className="w-10 h-10 flex items-center justify-center rounded-xl bg-gray-50 text-gray-600 hover:bg-[var(--color-primary)] hover:text-white transition-all duration-300 shadow-sm"
-            >
-              {sidebarOpen ? <FaTimes /> : <FaBars />}
-            </button>
-          </div>
-
-          {/* Navigation Links */}
-          <nav className="flex-1 px-3 space-y-2 mt-4 relative z-10 overflow-y-auto no-scrollbar">
-            {menuItems.map((item) => {
-              const isDashboard = item.href === "/p-admin";
-
-              const isActive = isDashboard
-                ? pathname === "/p-admin"
-                : pathname.startsWith(item.href);
-              return (
-                <Link
-                  key={item.href}
-                  href={item.href}
-                  className={`relative flex items-center gap-4 px-4 py-4 rounded-2xl transition-all duration-300 group/item ${
-                    isActive
-                      ? "bg-[var(--color-primary)] text-white shadow-lg shadow-[#aa472533]"
-                      : "text-gray-500 hover:bg-gray-50"
-                  } ${!sidebarOpen ? "justify-center" : ""}`}
-                  title={!sidebarOpen ? item.title : ""}
+              <motion.div
+                initial={{ opacity: 0, x: 10 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: 10 }}
+                transition={{ duration: 0.2 }}
+                className="flex items-center gap-2.5"
+              >
+                <div
+                  className="w-8 h-8 rounded-[var(--radius)] flex items-center justify-center text-white text-xs font-black"
+                  style={{ background: "var(--color-primary)" }}
                 >
-                  <span
-                    className={`text-xl transition-transform duration-300 ${isActive ? "scale-110" : "group-hover/item:scale-120"}`}
-                  >
-                    {item.icon}
-                  </span>
+                  T
+                </div>
+                <div>
+                  <p className="text-white font-black text-sm tracking-wider leading-none">TENADOR</p>
+                  <p className="text-[10px] font-bold tracking-[0.2em] mt-0.5" style={{ color: "var(--color-secondary)" }}>
+                    ADMIN
+                  </p>
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+          {!sidebarOpen && (
+            <div
+              className="w-8 h-8 rounded-lg flex items-center justify-center text-white text-xs font-black mx-auto"
+              style={{ background: "var(--color-primary)" }}
+            >
+              T
+            </div>
+          )}
+          {sidebarOpen && (
+            <button
+              onClick={() => setSidebarOpen(false)}
+              className="w-8 h-8 flex items-center justify-center rounded-lg text-white/40 hover:text-white hover:bg-white/10 transition-all"
+            >
+              <RiMenuFoldLine size={18} />
+            </button>
+          )}
+        </div>
 
-                  {sidebarOpen && (
-                    <span className="font-bold text-sm whitespace-nowrap">
-                      {item.title}
-                    </span>
-                  )}
-
-                  {/* Active Indicator Light */}
-                  {isActive && (
-                    <div className="absolute left-2 w-1.5 h-6 bg-white/40 rounded-full blur-[1px]" />
-                  )}
-                </Link>
-              );
-            })}
-          </nav>
-
-          {/* Logout Section */}
-          <div className="p-4 border-t border-gray-50 relative z-10">
-            <button className="w-full flex items-center gap-4 px-4 py-4 text-red-400 hover:bg-red-50 rounded-2xl transition-all font-bold">
-              <HiOutlineLogout size={22} />
-              {sidebarOpen && <span>خروج از پنل</span>}
+        {/* Toggle when collapsed */}
+        {!sidebarOpen && (
+          <div className="relative z-10 flex justify-center py-3 border-b border-white/[0.06]">
+            <button
+              onClick={() => setSidebarOpen(true)}
+              className="w-8 h-8 flex items-center justify-center rounded-lg text-white/40 hover:text-white hover:bg-white/10 transition-all"
+            >
+              <RiMenuUnfoldLine size={18} />
             </button>
           </div>
+        )}
+
+        {/* Nav */}
+        <nav className="relative z-10 flex-1 overflow-y-auto admin-scrollbar py-4 px-2 space-y-0.5">
+          {menuItems.map((item) => {
+            const Icon = item.icon;
+            const isDashboard = item.href === "/p-admin";
+            const isActive = isDashboard
+              ? pathname === "/p-admin"
+              : pathname.startsWith(item.href);
+
+            return (
+              <Link
+                key={item.href}
+                href={item.href}
+                title={!sidebarOpen ? item.title : ""}
+                className={`relative flex items-center gap-3 px-3 py-2.5 rounded-[var(--radius)] transition-all duration-200 group
+                  ${isActive
+                    ? "nav-item-active text-white"
+                    : "text-white/40 hover:text-white/80 hover:bg-white/[0.05]"
+                  }`}
+                style={isActive ? { background: "rgba(170,71,37,0.15)" } : {}}
+              >
+                <span
+                  className={`flex-shrink-0 transition-all duration-200 ${isActive ? "text-[var(--color-secondary)]" : "group-hover:scale-110"}`}
+                >
+                  <Icon size={16} />
+                </span>
+                <AnimatePresence>
+                  {sidebarOpen && (
+                    <motion.span
+                      initial={{ opacity: 0, width: 0 }}
+                      animate={{ opacity: 1, width: "auto" }}
+                      exit={{ opacity: 0, width: 0 }}
+                      transition={{ duration: 0.2 }}
+                      className="text-sm font-bold whitespace-nowrap overflow-hidden"
+                    >
+                      {item.title}
+                    </motion.span>
+                  )}
+                </AnimatePresence>
+              </Link>
+            );
+          })}
+        </nav>
+
+        {/* Logout */}
+        <div className="relative z-10 p-2 border-t border-white/[0.06]">
+          <button
+            className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-[var(--radius)] text-red-400/70 hover:text-red-400 hover:bg-red-500/10 transition-all duration-200 ${!sidebarOpen ? "justify-center" : ""}`}
+          >
+            <HiOutlineLogout size={18} />
+            <AnimatePresence>
+              {sidebarOpen && (
+                <motion.span
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  className="text-sm font-bold whitespace-nowrap"
+                >
+                  خروج از پنل
+                </motion.span>
+              )}
+            </AnimatePresence>
+          </button>
         </div>
-      </aside>
+      </motion.aside>
 
-      {/* --- Main Content --- */}
-      <div
-        className="flex-1 transition-all duration-500 ease-in-out"
-        style={{
-          marginRight: sidebarWidth,
-        }}
+      {/* ─── Main ─── */}
+      <motion.div
+        animate={{ marginRight: sidebarWidth }}
+        transition={{ duration: 0.35, ease: [0.4, 0, 0.2, 1] }}
+        className="flex-1 flex flex-col min-h-screen"
       >
-        {/* Modern Header */}
-        <header className="h-24 flex items-center justify-end px-8 sticky top-0 z-40">
-          {/* بخش جدید: قیمت ارز و ساعت */}
-          <div className="flex pl-5 items-center gap-4">
-            {/* باکس ساعت */}
-            <div className="flex items-center gap-3 px-5 py-3 bg-[var(--color-primary)]/10 backdrop-blur-md rounded-[1.5rem] border border-[var(--color-primary)]/20 shadow-sm text-[var(--color-primary)]">
-              <FaClock className="animate-pulse" />
-              <span className="text-sm font-bold tracking-widest tabular-nums">
-                {time}
-              </span>
-            </div>
-          </div>
-          {/* باکس قیمت‌ها */}
-          <div className="flex items-center gap-6 px-6 py-3 ml-5 bg-white/40 backdrop-blur-md rounded-[1.5rem] border border-white/50 shadow-sm text-gray-700">
-            <div className="flex items-center gap-2">
-              <div className="w-7 h-7 bg-green-100 text-green-600 rounded-full flex items-center justify-center text-xs">
-                <FaDollarSign />
-              </div>
-              <div className="flex flex-col">
-                <span className="text-[10px] text-gray-400 font-bold">
-                  دلار (تومان)
-                </span>
-                <span className="text-sm font-bold tabular-nums">
-                  {farsiNumber.format(prices.usd)}
-                </span>
-              </div>
-            </div>
-
-            <div className="w-[1px] h-8 bg-gray-200" />
-
-            <div className="flex items-center gap-2">
-              <div className="w-7 h-7 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center text-xs">
-                <FaEuroSign />
-              </div>
-              <div className="flex flex-col">
-                <span className="text-[10px] text-gray-400 font-bold">
-                  یورو (تومان)
-                </span>
-                <span className="text-sm font-bold tabular-nums">
-                  {farsiNumber.format(prices.eur)}
-                </span>
-              </div>
-            </div>
+        {/* Header */}
+        <header
+          className="sticky top-0 z-40 flex items-center justify-between px-6 py-3 border-b"
+          style={{
+            background: "rgba(245,243,240,0.85)",
+            backdropFilter: "blur(16px)",
+            borderColor: "var(--admin-border)",
+          }}
+        >
+          {/* Left: title breadcrumb */}
+          <div className="flex items-center gap-2">
+            <span className="text-xs font-bold" style={{ color: "var(--admin-text-muted)" }}>
+              پنل مدیریت
+            </span>
+            <span style={{ color: "var(--admin-border)" }}>/</span>
+            <span
+              className="text-xs font-black"
+              style={{ color: "var(--color-primary)" }}
+            >
+              {menuItems.find(m =>
+                m.href === "/p-admin"
+                  ? pathname === "/p-admin"
+                  : pathname.startsWith(m.href)
+              )?.title || "داشبورد"}
+            </span>
           </div>
 
-          {/* Top Actions */}
-          <div className="flex items-center gap-4 p-2  bg-white/60 backdrop-blur-md rounded-[1.5rem] border border-white shadow-sm">
-            <div className="flex items-center gap-3 px-3">
-              <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-[var(--color-primary)] to-[var(--color-secondary)] p-[2px]">
-                <div className="w-full h-full bg-white rounded-[10px] flex items-center justify-center overflow-hidden">
-                  <img
-                    src="https://ui-avatars.com/api/?name=Admin&background=aa4725&color=fff"
-                    alt="Admin"
-                  />
+          {/* Right: clock + prices + user */}
+          <div className="flex items-center gap-3">
+            {/* Clock */}
+            <div
+              className="flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-black tabular-nums"
+              style={{
+                background: "rgba(170,71,37,0.08)",
+                color: "var(--color-primary)",
+              }}
+            >
+              <FaClock size={11} className="animate-pulse" />
+              {mounted ? time : "--:--:--"}
+            </div>
+
+            {/* Prices */}
+            <div
+              className="hidden md:flex items-center gap-4 px-4 py-1.5 rounded-lg border text-xs"
+              style={{
+                background: "var(--admin-card)",
+                borderColor: "var(--admin-border)",
+              }}
+            >
+              <div className="flex items-center gap-1.5">
+                <div className="w-5 h-5 bg-green-100 text-green-600 rounded-full flex items-center justify-center">
+                  <FaDollarSign size={9} />
+                </div>
+                <div>
+                  <p style={{ color: "var(--admin-text-muted)" }} className="text-[10px] font-bold">دلار</p>
+                  <p className="font-black text-gray-800">{farsiNumber.format(prices.usd)}</p>
                 </div>
               </div>
+              <div className="w-px h-6 bg-gray-100" />
+              <div className="flex items-center gap-1.5">
+                <div className="w-5 h-5 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center">
+                  <FaEuroSign size={9} />
+                </div>
+                <div>
+                  <p style={{ color: "var(--admin-text-muted)" }} className="text-[10px] font-bold">یورو</p>
+                  <p className="font-black text-gray-800">{farsiNumber.format(prices.eur)}</p>
+                </div>
+              </div>
+            </div>
+
+            {/* Admin avatar */}
+            <div
+              className="flex items-center gap-2 px-3 py-1.5 rounded-lg border cursor-pointer hover:shadow-sm transition-all"
+              style={{ background: "var(--admin-card)", borderColor: "var(--admin-border)" }}
+            >
+              <div
+                className="w-7 h-7 rounded-lg overflow-hidden flex items-center justify-center text-white text-xs font-black"
+                style={{ background: "var(--color-primary)" }}
+              >
+                <img
+                  src="https://ui-avatars.com/api/?name=Admin&background=aa4725&color=fff&size=56"
+                  alt="Admin"
+                  className="w-full h-full object-cover"
+                />
+              </div>
               <div className="hidden md:block">
-                <p className="text-xs font-bold text-gray-800">مدیریت کل</p>
-                <p className="text-[10px] text-gray-400 font-bold">خوش آمدید</p>
+                <p className="text-xs font-black text-gray-800 leading-none">مدیریت</p>
+                <p className="text-[10px] font-bold mt-0.5" style={{ color: "var(--admin-text-muted)" }}>
+                  خوش آمدید
+                </p>
               </div>
             </div>
           </div>
         </header>
 
-        {/* Page Container */}
-        <main className="px-8 pb-12">
-          <div className="animate-fadeIn transition-opacity duration-700">
+        {/* Page Content */}
+        <main className="flex-1 p-6">
+          <motion.div
+            key={pathname}
+            initial={{ opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.3, ease: "easeOut" }}
+          >
             {children}
-          </div>
+          </motion.div>
         </main>
-      </div>
+      </motion.div>
     </div>
   );
 }

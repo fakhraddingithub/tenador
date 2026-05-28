@@ -24,9 +24,9 @@ function SectionCard({ icon: Icon, title, desc, href, createHref, accent, stats 
   const router = useRouter();
   const isOrange = accent === 'orange';
 
-  const base  = isOrange ? 'text-[var(--color-primary)]' : 'text-blue-500';
+  const base = isOrange ? 'text-[var(--color-primary)]' : 'text-blue-500';
   const light = isOrange ? 'bg-orange-50' : 'bg-blue-50';
-  const btn   = isOrange
+  const btn = isOrange
     ? 'bg-[var(--color-primary)] hover:bg-[var(--color-primary)]/90'
     : 'bg-blue-500 hover:bg-blue-600';
   const addBtn = isOrange
@@ -40,7 +40,7 @@ function SectionCard({ icon: Icon, title, desc, href, createHref, accent, stats 
       <div className="p-7 flex flex-col flex-grow">
 
         <div className="flex items-start justify-between mb-5">
-          <div className={`p-3 ${light} rounded-xl`}>
+          <div className={`p-3 ${light} rounded-[var(--radius)]`}>
             <Icon size={22} className={base} />
           </div>
           <button
@@ -58,7 +58,7 @@ function SectionCard({ icon: Icon, title, desc, href, createHref, accent, stats 
         {stats?.length > 0 && (
           <div className="grid grid-cols-3 gap-2 mb-6">
             {stats.map((s, i) => (
-              <div key={i} className="text-center bg-neutral-50 rounded-xl py-2.5">
+              <div key={i} className="text-center bg-neutral-50 rounded-[var(--radius)] py-2.5">
                 <p className="text-base font-bold text-neutral-700">{s.value ?? '—'}</p>
                 <p className="text-[10px] text-neutral-400 mt-0.5">{s.label}</p>
               </div>
@@ -88,7 +88,7 @@ function RecentRow({ item }) {
       href={`/p-admin/admin-secondHands/used-products/${item._id}/edit`}
       className="flex items-center gap-4 px-6 py-4 hover:bg-neutral-50 transition-all group"
     >
-      <div className="w-11 h-11 rounded-xl overflow-hidden bg-neutral-100 flex-shrink-0">
+      <div className="w-11 h-11 rounded-[var(--radius)] overflow-hidden bg-neutral-100 flex-shrink-0">
         {item.baseProduct?.mainImage
           ? <img src={item.baseProduct.mainImage} alt="" className="w-full h-full object-cover" />
           : <FiPackage className="w-full h-full p-2.5 text-neutral-300" />
@@ -114,9 +114,8 @@ function RecentRow({ item }) {
         <p className="text-[10px] text-neutral-400">تومان</p>
       </div>
 
-      <div className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-bold flex-shrink-0 ${
-        isAvailable ? 'bg-green-50 text-green-600' : 'bg-red-50 text-red-400'
-      }`}>
+      <div className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-bold flex-shrink-0 ${isAvailable ? 'bg-green-50 text-green-600' : 'bg-red-50 text-red-400'
+        }`}>
         {isAvailable ? <FiCheck size={10} /> : <FiTag size={10} />}
         {isAvailable ? 'موجود' : 'فروخته‌شده'}
       </div>
@@ -128,9 +127,9 @@ function RecentRow({ item }) {
 
 /* ─── صفحه اصلی Hub ─── */
 export default function UsedProductsHubPage() {
-  const [stats, setStats]         = useState(null);
-  const [recentItems, setRecent]  = useState([]);
-  const [loading, setLoading]     = useState(true);
+  const [stats, setStats] = useState(null);
+  const [recentItems, setRecent] = useState([]);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     Promise.all([
@@ -140,14 +139,14 @@ export default function UsedProductsHubPage() {
       .then(([usedData, cardData]) => {
         const items = usedData.items || [];
         setStats({
-          total:     usedData.total || 0,
+          total: usedData.total || 0,
           available: items.filter(i => i.status === 'available').length,
-          sold:      items.filter(i => i.status === 'sold').length,
-          cards:     (cardData.cards || []).length,
+          sold: items.filter(i => i.status === 'sold').length,
+          cards: (cardData.cards || []).length,
         });
         setRecent(items.slice(0, 6));
       })
-      .catch(() => {})
+      .catch(() => { })
       .finally(() => setLoading(false));
   }, []);
 
@@ -161,12 +160,12 @@ export default function UsedProductsHubPage() {
             <div className="flex items-center gap-3">
               <Link
                 href="/p-admin"
-                className="p-2 hover:bg-neutral-100 rounded-xl transition-all text-neutral-400 hover:text-neutral-700"
+                className="p-2 hover:bg-neutral-100 rounded-[var(--radius)] transition-all text-neutral-400 hover:text-neutral-700"
               >
                 <FiArrowRight size={19} />
               </Link>
               <div className="flex items-center gap-3">
-                <div className="p-2.5 bg-[var(--color-primary)]/10 rounded-xl">
+                <div className="p-2.5 bg-[var(--color-primary)]/10 rounded-[var(--radius)]">
                   <FaBoxOpen size={20} className="text-[var(--color-primary)]" />
                 </div>
                 <div>
@@ -191,15 +190,15 @@ export default function UsedProductsHubPage() {
         {/* ─── آمار ─── */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           {loading ? (
-            [1,2,3,4].map(i => (
+            [1, 2, 3, 4].map(i => (
               <div key={i} className="h-20 bg-neutral-100 animate-pulse rounded-[var(--radius)]" />
             ))
           ) : (
             <>
               <StatCard label="کل محصولات" value={stats?.total} color="text-neutral-800" />
-              <StatCard label="موجود"       value={stats?.available} color="text-green-600" />
-              <StatCard label="فروخته شده"  value={stats?.sold}      color="text-red-500" />
-              <StatCard label="کارت سلامت"  value={stats?.cards}     color="text-blue-500" />
+              <StatCard label="موجود" value={stats?.available} color="text-green-600" />
+              <StatCard label="فروخته شده" value={stats?.sold} color="text-red-500" />
+              <StatCard label="کارت سلامت" value={stats?.cards} color="text-blue-500" />
             </>
           )}
         </div>
@@ -214,9 +213,9 @@ export default function UsedProductsHubPage() {
             createHref="/p-admin/admin-secondHands/used-products/create"
             accent="orange"
             stats={[
-              { label: 'کل',           value: stats?.total },
-              { label: 'موجود',        value: stats?.available },
-              { label: 'فروخته‌شده',   value: stats?.sold },
+              { label: 'کل', value: stats?.total },
+              { label: 'موجود', value: stats?.available },
+              { label: 'فروخته‌شده', value: stats?.sold },
             ]}
           />
           <SectionCard
@@ -251,9 +250,9 @@ export default function UsedProductsHubPage() {
 
           {loading ? (
             <div className="divide-y divide-neutral-50">
-              {[1,2,3,4].map(i => (
+              {[1, 2, 3, 4].map(i => (
                 <div key={i} className="flex items-center gap-4 px-6 py-4">
-                  <div className="w-11 h-11 rounded-xl bg-neutral-100 animate-pulse flex-shrink-0" />
+                  <div className="w-11 h-11 rounded-[var(--radius)] bg-neutral-100 animate-pulse flex-shrink-0" />
                   <div className="flex-grow space-y-2">
                     <div className="h-3 bg-neutral-100 animate-pulse rounded w-40" />
                     <div className="h-2 bg-neutral-100 animate-pulse rounded w-24" />

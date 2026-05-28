@@ -264,7 +264,7 @@ function SymmetricStrip({ banner, style, onClick, c }) {
             className="m-0 text-[2rem] font-black tracking-[2px] sm:tracking-[4px] uppercase leading-none whitespace-nowrap"
             style={{
               color: c.text || defaultText,
-              fontFamily: "'Orbitron', 'Inter', sans-serif",
+              fontFamily: "'Astron-Valley', 'Inter', sans-serif",
             }}
           >
             <span style={{ color: c.primary || defaultPrimary }}>{firstWord}</span>
@@ -276,7 +276,7 @@ function SymmetricStrip({ banner, style, onClick, c }) {
             className="m-0 mt-1 text-[8px] sm:text-[10px] font-bold tracking-[0.18em] sm:tracking-[0.28em] uppercase opacity-90 leading-none whitespace-nowrap"
             style={{
               color: c.textSecondary || defaultTextSecondary,
-              fontFamily: "'Inter', sans-serif",
+              fontFamily: "'Nevera', sans-serif",
             }}
           >
             {banner.subtitle}

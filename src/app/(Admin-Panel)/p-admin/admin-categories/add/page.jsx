@@ -832,7 +832,7 @@ The color code may appear in formats like:
                 </DndContext>
 
                 {formData.attributes.length === 0 && (
-                  <div className="text-center py-12 border-2 border-dashed border-neutral-100 rounded-xl text-neutral-400 italic">
+                  <div className="text-center py-12 border-2 border-dashed border-neutral-100 rounded-[var(--radius)] text-neutral-400 italic">
                     هیچ ویژگی اختصاصی برای این دسته تعریف نشده است.
                   </div>
                 )}

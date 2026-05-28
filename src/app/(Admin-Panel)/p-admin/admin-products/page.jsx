@@ -2,29 +2,26 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import { motion } from 'framer-motion';
 import { ProductCard } from '@/components/admin';
 import { showToast } from '@/lib/toast';
 import { confirmDelete, showError } from '@/lib/swal';
-import { FiPlus, FiBox, FiActivity, FiSearch, FiLayers, FiZap } from 'react-icons/fi';
+import { FiPlus, FiBox, FiSearch } from 'react-icons/fi';
 
 export default function AdminProducts() {
   const router = useRouter();
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [search, setSearch] = useState('');
 
-  useEffect(() => {
-    fetchProducts();
-  }, []);
+  useEffect(() => { fetchProducts(); }, []);
 
   const fetchProducts = async () => {
     try {
       const res = await fetch('/api/product');
       if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
       const text = await res.text();
-      if (!text) {
-        setProducts([]);
-        return;
-      }
+      if (!text) { setProducts([]); return; }
       const data = JSON.parse(text);
       setProducts(data.products || []);
     } catch (error) {
@@ -37,131 +34,123 @@ export default function AdminProducts() {
   };
 
   const handleDelete = async (product) => {
-    const confirmed = await confirmDelete(
-      'حذف محصول',
-      `آیا مطمئن هستید که می‌خواهید "${product.name}" را حذف کنید؟`
-    );
+    const confirmed = await confirmDelete('حذف محصول', `آیا مطمئن هستید که می‌خواهید "${product.name}" را حذف کنید؟`);
     if (!confirmed) return;
-
     try {
       const res = await fetch(`/api/product/${product._id}`, { method: 'DELETE' });
-      if (res.ok) {
-        showToast.success('محصول با موفقیت حذف شد');
-        fetchProducts();
-      } else {
-        const data = await res.json();
-        showError('خطا', data.error || 'خطا در حذف محصول');
-      }
-    } catch (error) {
-      showError('خطا', 'خطا در حذف محصول');
-    }
+      if (res.ok) { showToast.success('محصول با موفقیت حذف شد'); fetchProducts(); }
+      else { const data = await res.json(); showError('خطا', data.error || 'خطا در حذف'); }
+    } catch { showError('خطا', 'خطا در حذف محصول'); }
   };
 
   const handleEdit = (product) => router.push(`/p-admin/admin-products/edit/${product._id}`);
   const handleViewVariants = (product) => router.push(`/p-admin/admin-products/${product._id}/variants`);
 
+  const filtered = products.filter(p =>
+    !search || p.name?.toLowerCase().includes(search.toLowerCase())
+  );
+
   return (
-    <div className="min-h-screen bg-[#f8fafc] pb-20">
-      {/* Background Decor */}
-      <div className="fixed inset-0 overflow-hidden pointer-events-none">
-        <div className="absolute -top-[5%] right-[10%] w-[30%] h-[30%] bg-blue-500/5 blur-[120px] rounded-full" />
-        <div className="absolute bottom-[10%] left-[5%] w-[25%] h-[25%] bg-orange-500/5 blur-[100px] rounded-full" />
-      </div>
-
-      <main className="relative max-w-[1600px] mx-auto px-6 pt-10">
-        
-        {/* Top Action Bar */}
-        <header className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-12 bg-white/70 backdrop-blur-2xl p-8 rounded-[3rem] border border-white shadow-xl shadow-gray-200/40">
-          <div className="flex items-center gap-5">
-            <div className="w-16 h-16 bg-gray-900 rounded-[1.8rem] flex items-center justify-center text-white shadow-2xl shadow-gray-400 rotate-3">
-              <FiBox size={32} />
-            </div>
-            <div>
-              <div className="flex items-center gap-2 text-[var(--color-primary)] font-bold text-[10px] uppercase tracking-[0.3em] mb-1">
-                <FiActivity /> Inventory Management
-              </div>
-              <h1 className="text-3xl font-bold text-gray-900 tracking-tight">
-                لیست <span className="text-transparent bg-clip-text bg-gradient-to-r from-gray-900 to-gray-500">محصولات</span>
-              </h1>
-            </div>
+    <div dir="rtl">
+      {/* Header */}
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
+        <div className="flex items-center gap-4">
+          <div
+            className="w-12 h-12 rounded-2xl flex items-center justify-center text-white shadow-lg"
+            style={{ background: '#0d0d0d' }}
+          >
+            <FiBox size={22} />
           </div>
-
-          <div className="flex items-center gap-4">
-            <div className="hidden lg:flex items-center gap-3 px-6 py-4 bg-gray-100/50 rounded-2xl border border-gray-100 group focus-within:bg-white transition-all">
-              <FiSearch className="text-gray-400" />
-              <input type="text" placeholder="جستجو در انبار..." className="bg-transparent border-none outline-none text-sm font-bold w-48" />
-            </div>
-            
-            <button
-              onClick={() => router.push('/p-admin/admin-products/add')}
-              className="flex items-center gap-3 bg-gradient-to-r from-[var(--color-primary)] to-orange-500 text-white px-8 py-4 rounded-[1.5rem] font-bold shadow-lg shadow-orange-200 hover:-translate-y-1 transition-all active:scale-95"
-            >
-              <FiPlus size={20} />
-              <span>افزودن محصول جدید</span>
-            </button>
-          </div>
-        </header>
-
-        {/* Stats Strip */}
-        <div className="flex gap-4 mb-10 overflow-x-auto no-scrollbar pb-2">
-          <div className="flex-none px-6 py-3 bg-white border border-white rounded-2xl shadow-sm flex items-center gap-3">
-             <span className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
-             <span className="text-xs font-bold text-gray-500 uppercase tracking-tighter">Total Products:</span>
-             <span className="text-sm font-bold text-gray-900">{products.length}</span>
-          </div>
-          <div className="flex-none px-6 py-3 bg-white border border-white rounded-2xl shadow-sm flex items-center gap-3 text-gray-400">
-             <FiLayers size={14} />
-             <span className="text-xs font-bold italic">Sorted by Latest</span>
+          <div>
+            <p className="text-[10px] font-bold uppercase tracking-[0.2em] mb-0.5" style={{ color: 'var(--color-primary)' }}>
+              مدیریت انبار
+            </p>
+            <h1 className="text-xl font-bold text-gray-900">لیست محصولات</h1>
           </div>
         </div>
+        <div className="flex items-center gap-2">
+          <div className="relative hidden md:block">
+            <FiSearch className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400" size={15} />
+            <input
+              type="text"
+              placeholder="جستجو در انبار..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="pr-9 pl-4 py-2.5 text-sm font-bold bg-white border-2 border-gray-200 rounded-[var(--radius)] w-56 focus:outline-none focus:border-[var(--color-primary)] transition-all"
+            />
+          </div>
+          <button
+            onClick={() => router.push('/p-admin/admin-products/add')}
+            className="flex items-center gap-2 px-4 py-2.5 rounded-[var(--radius)] text-sm font-bold text-white hover:shadow-lg hover:shadow-[var(--color-primary)]/25 hover:-translate-y-0.5 active:scale-95 transition-all"
+            style={{ background: 'var(--color-primary)' }}
+          >
+            <FiPlus size={16} /> افزودن محصول
+          </button>
+        </div>
+      </div>
 
-        {/* Main Content Area */}
-        {loading ? (
-          <div className="flex flex-col items-center justify-center h-[50vh] gap-4">
-            <div className="relative">
-              <div className="w-20 h-20 border-4 border-gray-100 border-t-[var(--color-primary)] rounded-full animate-spin" />
-              <FiZap className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-[var(--color-primary)] animate-pulse" size={24} />
-            </div>
-            <span className="text-gray-400 font-bold text-xs uppercase tracking-[0.4em]">Synchronizing Data...</span>
-          </div>
-        ) : products.length === 0 ? (
-          <div className="bg-white/50 backdrop-blur-md rounded-[4rem] border-4 border-dashed border-white p-24 text-center">
-            <div className="inline-flex p-8 bg-gray-100 rounded-full mb-6">
-              <FiBox size={48} className="text-gray-300" />
-            </div>
-            <h3 className="text-2xl font-bold text-gray-800 mb-2">انبار خالی است!</h3>
-            <p className="text-gray-400 font-medium mb-8">هنوز هیچ محصولی به سیستم اضافه نشده است.</p>
-            <button 
-              onClick={() => router.push('/p-admin/admin-products/add')}
-              className="text-[var(--color-primary)] font-bold uppercase text-sm tracking-widest hover:underline"
-            >
-              + Create First Product
-            </button>
-          </div>
-        ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8">
-            {products.map((product, index) => (
-              <div 
-                key={product._id} 
-                className="group transition-all duration-700 hover:-translate-y-2"
-                style={{ animationDelay: `${index * 50}ms` }}
-              >
-                <ProductCard
-                  product={product}
-                  onEdit={handleEdit}
-                  onDelete={handleDelete}
-                  onViewVariants={handleViewVariants}
-                />
-              </div>
-            ))}
+      {/* Stats strip */}
+      <div className="flex items-center gap-3 mb-6">
+        <div className="flex items-center gap-2 px-4 py-2 bg-white rounded-[var(--radius)] border border-gray-100 text-sm">
+          <span className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
+          <span className="font-bold text-gray-500">کل محصولات:</span>
+          <span className="font-bold text-gray-900">{products.length}</span>
+        </div>
+        {search && (
+          <div className="flex items-center gap-2 px-4 py-2 bg-orange-50 rounded-[var(--radius)] border border-orange-100 text-sm">
+            <span className="font-bold text-gray-500">نتایج جستجو:</span>
+            <span className="font-bold" style={{ color: 'var(--color-primary)' }}>{filtered.length}</span>
           </div>
         )}
-      </main>
-      
-      {/* Footer Branding */}
-      <footer className="mt-20 px-6 py-10 border-t border-gray-200/50 flex flex-col items-center opacity-30 italic">
-         <div className="text-4xl font-bold text-gray-200 select-none tracking-tighter uppercase">Product Grid System v3.0</div>
-      </footer>
+      </div>
+
+      {/* Content */}
+      {loading ? (
+        <div className="flex flex-col items-center justify-center h-48 gap-3">
+          <div className="w-10 h-10 border-2 border-gray-200 border-t-[var(--color-primary)] rounded-full animate-spin" />
+          <span className="text-sm font-bold text-gray-400">در حال بارگذاری...</span>
+        </div>
+      ) : filtered.length === 0 ? (
+        <div className="bg-white rounded-2xl border-2 border-dashed border-gray-200 py-20 text-center">
+          <div className="w-14 h-14 bg-gray-50 rounded-2xl flex items-center justify-center mx-auto mb-4 text-gray-300">
+            <FiBox size={28} />
+          </div>
+          <h3 className="text-base font-bold text-gray-700 mb-1">
+            {search ? 'محصولی یافت نشد' : 'انبار خالی است'}
+          </h3>
+          <p className="text-sm text-gray-400 font-bold mb-5">
+            {search ? 'عبارت جستجو را تغییر دهید' : 'هنوز هیچ محصولی اضافه نشده'}
+          </p>
+          {!search && (
+            <button
+              onClick={() => router.push('/p-admin/admin-products/add')}
+              className="text-sm font-bold px-5 py-2.5 rounded-[var(--radius)] text-white transition-all"
+              style={{ background: 'var(--color-primary)' }}
+            >
+              افزودن اولین محصول
+            </button>
+          )}
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
+          {filtered.map((product, index) => (
+            <motion.div
+              key={product._id}
+              initial={{ opacity: 0, y: 12 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: index * 0.04, duration: 0.3 }}
+              className="hover:-translate-y-1 transition-transform duration-300"
+            >
+              <ProductCard
+                product={product}
+                onEdit={handleEdit}
+                onDelete={handleDelete}
+                onViewVariants={handleViewVariants}
+              />
+            </motion.div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }

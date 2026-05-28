@@ -22,8 +22,49 @@
 }
 
 @font-face {
+  font-family: "IranNastaliq";
+  src: url("/fonts/IranNastaliq.ttf") format("truetype");
+  font-weight: normal;
+  font-style: normal;
+}
+
+@font-face {
+  font-family: "Savery";
+  src: url("/fonts/Savery.ttf") format("truetype");
+  font-weight: normal;
+  font-style: normal;
+}
+
+@font-face {
+  font-family: "Lalezar";
+  src: url("/fonts/Lalezar-Regular.ttf") format("truetype");
+  font-weight: normal;
+  font-style: normal;
+}
+
+@font-face {
+  font-family: "Lotos-Bold";
+  src: url("/fonts/Lotos-Bold.otf") format("opentype");
+  font-weight: normal;
+  font-style: normal;
+}
+
+@font-face {
+  font-family: "Nevera";
+  src: url("/fonts/Nevera-Regular.otf") format("opentype");
+  font-weight: normal;
+  font-style: normal;
+}
+
+@font-face {
   font-family: "Gagalin";
   src: url("/fonts/Gagalin.otf") format("opentype");
+  font-weight: normal;
+  font-style: normal;
+}
+@font-face {
+  font-family: "Astron-Valley";
+  src: url("/public/fonts/Astron-Valley.otf") format("opentype");
   font-weight: normal;
   font-style: normal;
 }

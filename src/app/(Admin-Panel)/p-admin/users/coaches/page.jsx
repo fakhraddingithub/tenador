@@ -131,7 +131,7 @@ export default function AdminCoachesManagement() {
       {/* هدر صفحه و تب‌ها */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between bg-white p-4 rounded-2xl border border-slate-100 shadow-xs">
         <div className="space-y-0.5">
-          <h1 className="text-lg font-black text-slate-800 flex items-center gap-2">
+          <h1 className="text-lg font-bold text-slate-800 flex items-center gap-2">
             <GraduationCap className="text-[var(--color-primary)]" size={22} />
             مدیریت و ارزیابی مربیان
           </h1>
@@ -141,7 +141,7 @@ export default function AdminCoachesManagement() {
         </div>
 
         {/* سوییچ تب‌ها */}
-        <div className="flex bg-slate-100 p-1 rounded-xl border border-slate-200/60 self-start">
+        <div className="flex bg-slate-100 p-1 rounded-[var(--radius)] border border-slate-200/60 self-start">
           <button
             onClick={() => {
               setActiveTab("list");
@@ -229,150 +229,150 @@ export default function AdminCoachesManagement() {
             ) : (
               /* لایوت بخش بررسی درخواست‌های متقاضیان */
               <div className="space-y-5">
-              {applications.length > 0 ? applications.map(app => (
-                <div 
-                  key={app._id} 
-                  className="bg-white border border-slate-100 rounded-2xl p-6 shadow-[0_8px_30px_rgb(0,0,0,0.02)] hover:shadow-[0_8px_30px_rgb(0,0,0,0.05)] transition-all duration-300 space-y-5 relative overflow-hidden group"
-                >
-                  {/* نوار رنگی تزئینی سمت راست کارت */}
-                  <div className="absolute right-0 top-0 bottom-0 w-1 bg-gradient-to-b from-[var(--color-primary)] to-amber-400 opacity-70 group-hover:opacity-100 transition-opacity" />
-            
-                  <div className="flex flex-col sm:flex-row sm:items-center justify-between border-b border-slate-100 pb-4 gap-4">
-                    <div className="space-y-1.5">
-                      <div className="flex items-center gap-2">
-                        <div className="h-2 w-2 rounded-full bg-amber-500 animate-pulse" />
-                        <h3 className="text-sm font-black text-slate-800">
-                          {app.coachApplication?.fullName || app.name}
-                        </h3>
+                {applications.length > 0 ? applications.map(app => (
+                  <div
+                    key={app._id}
+                    className="bg-white border border-slate-100 rounded-2xl p-6 shadow-[0_8px_30px_rgb(0,0,0,0.02)] hover:shadow-[0_8px_30px_rgb(0,0,0,0.05)] transition-all duration-300 space-y-5 relative overflow-hidden group"
+                  >
+                    {/* نوار رنگی تزئینی سمت راست کارت */}
+                    <div className="absolute right-0 top-0 bottom-0 w-1 bg-gradient-to-b from-[var(--color-primary)] to-amber-400 opacity-70 group-hover:opacity-100 transition-opacity" />
+
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between border-b border-slate-100 pb-4 gap-4">
+                      <div className="space-y-1.5">
+                        <div className="flex items-center gap-2">
+                          <div className="h-2 w-2 rounded-full bg-amber-500 animate-pulse" />
+                          <h3 className="text-sm font-bold text-slate-800">
+                            {app.coachApplication?.fullName || app.name}
+                          </h3>
+                        </div>
+                        <p className="text-xs text-slate-500 font-mono flex flex-wrap items-center gap-2">
+                          <span className="bg-slate-100 px-2 py-0.5 rounded-md text-slate-600">{app.phone}</span>
+                          <span className="text-slate-300">|</span>
+                          <span className="text-slate-400">{app.email}</span>
+                        </p>
                       </div>
-                      <p className="text-xs text-slate-500 font-mono flex flex-wrap items-center gap-2">
-                        <span className="bg-slate-100 px-2 py-0.5 rounded-md text-slate-600">{app.phone}</span>
-                        <span className="text-slate-300">|</span>
-                        <span className="text-slate-400">{app.email}</span>
-                      </p>
-                    </div>
-            
-                    {/* دکمه‌های عملیاتی */}
-                    <div className="flex items-center gap-2 self-end sm:self-center">
-                      <button 
-                        type="button"
-                        onClick={() => handleApprove(app._id)}
-                        className="flex items-center gap-1.5 px-4 py-2 bg-emerald-50 hover:bg-emerald-600 text-emerald-700 hover:text-white border border-emerald-200/60 rounded-xl text-xs font-bold transition-all duration-200 shadow-2xs cursor-pointer"
-                      >
-                        <Check size={14} /> تایید مربیگری
-                      </button>
-                      
-                      {/* دکمه رد درخواست */}
-                      <button 
-                        type="button"
-                        onClick={() => {
-                          console.log("کلیک شد روی کاربر:", app._id); // برای اطمینان در کنسول مرورگر
-                          setRejectingAppId(app._id);
-                        }}
-                        className="flex items-center gap-1.5 px-4 py-2 bg-rose-50 hover:bg-rose-600 text-rose-700 hover:text-white border border-rose-200/60 rounded-xl text-xs font-bold transition-all duration-200 shadow-2xs cursor-pointer"
-                      >
-                        <X size={14} /> رد درخواست
-                      </button>
-                    </div>
-                  </div>
-            
-                  {/* تصاویر مدارک */}
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-1">
-                    <div className="space-y-2 bg-slate-50/50 p-3 rounded-xl border border-slate-100">
-                      <span className="text-[11px] text-slate-500 block font-bold">تصویر پرسنلی متقاضی</span>
-                      {app.coachApplication?.personalImage ? (
-                        <div 
-                          onClick={() => setPreviewImage({ url: app.coachApplication.personalImage, title: `عکس پرسنلی - ${app.coachApplication?.fullName || app.name}` })}
-                          className="relative h-28 w-28 mx-auto rounded-xl overflow-hidden border border-slate-200 group/img cursor-pointer shadow-2xs"
+
+                      {/* دکمه‌های عملیاتی */}
+                      <div className="flex items-center gap-2 self-end sm:self-center">
+                        <button
+                          type="button"
+                          onClick={() => handleApprove(app._id)}
+                          className="flex items-center gap-1.5 px-4 py-2 bg-emerald-50 hover:bg-emerald-600 text-emerald-700 hover:text-white border border-emerald-200/60 rounded-[var(--radius)] text-xs font-bold transition-all duration-200 shadow-2xs cursor-pointer"
                         >
-                          <img src={app.coachApplication.personalImage} className="h-full w-full object-cover group-hover/img:scale-105 transition-transform duration-300" alt="پرسنلی"/>
-                          <div className="absolute inset-0 bg-slate-900/40 opacity-0 group-hover/img:opacity-100 transition-opacity duration-200 flex items-center justify-center">
-                            <ZoomIn className="text-white backdrop-blur-xs p-1 rounded-lg bg-white/20" size={24} />
-                          </div>
-                        </div>
-                      ) : (
-                        <div className="mx-auto h-28 w-28 bg-slate-100 rounded-xl flex items-center justify-center text-[10px] text-slate-400 border border-dashed border-slate-200">بدون تصویر پرسنلی</div>
-                      )}
-                    </div>
-            
-                    <div className="space-y-2 bg-slate-50/50 p-3 rounded-xl border border-slate-100">
-                      <span className="text-[11px] text-slate-500 block font-bold">حکم یا مدرک رسمی مربیگری</span>
-                      {app.coachApplication?.certificateImage ? (
-                        <div 
-                          onClick={() => setPreviewImage({ url: app.coachApplication.certificateImage, title: `مدرک مربیگری - ${app.coachApplication?.fullName || app.name}` })}
-                          className="relative h-28 w-full max-w-[200px] mx-auto rounded-xl overflow-hidden border border-slate-200 group/img cursor-pointer shadow-2xs"
+                          <Check size={14} /> تایید مربیگری
+                        </button>
+
+                        {/* دکمه رد درخواست */}
+                        <button
+                          type="button"
+                          onClick={() => {
+                            console.log("کلیک شد روی کاربر:", app._id); // برای اطمینان در کنسول مرورگر
+                            setRejectingAppId(app._id);
+                          }}
+                          className="flex items-center gap-1.5 px-4 py-2 bg-rose-50 hover:bg-rose-600 text-rose-700 hover:text-white border border-rose-200/60 rounded-[var(--radius)] text-xs font-bold transition-all duration-200 shadow-2xs cursor-pointer"
                         >
-                          <img src={app.coachApplication.certificateImage} className="h-full w-full object-cover group-hover/img:scale-105 transition-transform duration-300" alt="مدرک"/>
-                          <div className="absolute inset-0 bg-slate-900/40 opacity-0 group-hover/img:opacity-100 transition-opacity duration-200 flex items-center justify-center">
-                            <ZoomIn className="text-white backdrop-blur-xs p-1 rounded-lg bg-white/20" size={24} />
-                          </div>
-                        </div>
-                      ) : (
-                        <div className="mx-auto h-28 w-full max-w-[200px] bg-slate-100 rounded-xl flex items-center justify-center text-[10px] text-slate-400 border border-dashed border-slate-200">بدون مدرک آپلود شده</div>
-                      )}
+                          <X size={14} /> رد درخواست
+                        </button>
+                      </div>
                     </div>
-                  </div>
-            
-                  {/* انتقال مودال به داخل حلقه مپ جهت دسترسی مستقیم بدون تداخل */}
-                  <AnimatePresence>
-                    {rejectingAppId === app._id && (
-                      <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-                        <motion.div 
-                          initial={{ opacity: 0 }} 
-                          animate={{ opacity: 1 }} 
-                          exit={{ opacity: 0 }} 
-                          onClick={() => setRejectingAppId(null)} 
-                          className="absolute inset-0 bg-slate-950/40 backdrop-blur-xs" 
-                        />
-                        <motion.div 
-                          initial={{ opacity: 0, scale: 0.95, y: 10 }} 
-                          animate={{ opacity: 1, scale: 1, y: 0 }} 
-                          exit={{ opacity: 0, scale: 0.95, y: 10 }} 
-                          className="bg-white rounded-2xl p-5 max-w-sm w-full z-10 space-y-4 relative border border-slate-100 shadow-2xl"
-                        >
-                          <div className="flex items-center gap-1.5 text-rose-600 font-bold text-sm border-b border-slate-100 pb-2.5">
-                            <MessageSquare size={16} />
-                            <span>ثبت دلیل رد درخواست {app.coachApplication?.fullName || app.name}</span>
-                          </div>
-                          
-                          <div className="space-y-3">
-                            <textarea
-                              rows="3"
-                              placeholder="علت رد شدن درخواست را بنویسید (این پیام به کاربر نمایش داده می‌شود)..."
-                              value={rejectReason}
-                              onChange={(e) => setRejectReason(e.target.value)}
-                              className="w-full rounded-xl border border-slate-200 p-3 text-xs font-medium focus:border-rose-500 focus:outline-none focus:ring-1 focus:ring-rose-500 text-right"
-                            />
-                            <div className="flex gap-2 justify-end">
-                              <button 
-                                type="button"
-                                onClick={(e) => handleRejectSubmit(e)} 
-                                className="px-4 py-2 bg-rose-600 hover:bg-rose-700 text-white rounded-lg text-xs font-bold transition-colors cursor-pointer"
-                              >
-                                ثبت و رد درخواست
-                              </button>
-                              <button 
-                                type="button" 
-                                onClick={() => { setRejectingAppId(null); setRejectReason(''); }} 
-                                className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-lg text-xs font-semibold transition-colors cursor-pointer"
-                              >
-                                انصراف
-                              </button>
+
+                    {/* تصاویر مدارک */}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-1">
+                      <div className="space-y-2 bg-slate-50/50 p-3 rounded-[var(--radius)] border border-slate-100">
+                        <span className="text-[11px] text-slate-500 block font-bold">تصویر پرسنلی متقاضی</span>
+                        {app.coachApplication?.personalImage ? (
+                          <div
+                            onClick={() => setPreviewImage({ url: app.coachApplication.personalImage, title: `عکس پرسنلی - ${app.coachApplication?.fullName || app.name}` })}
+                            className="relative h-28 w-28 mx-auto rounded-[var(--radius)] overflow-hidden border border-slate-200 group/img cursor-pointer shadow-2xs"
+                          >
+                            <img src={app.coachApplication.personalImage} className="h-full w-full object-cover group-hover/img:scale-105 transition-transform duration-300" alt="پرسنلی" />
+                            <div className="absolute inset-0 bg-slate-900/40 opacity-0 group-hover/img:opacity-100 transition-opacity duration-200 flex items-center justify-center">
+                              <ZoomIn className="text-white backdrop-blur-xs p-1 rounded-lg bg-white/20" size={24} />
                             </div>
                           </div>
-                        </motion.div>
+                        ) : (
+                          <div className="mx-auto h-28 w-28 bg-slate-100 rounded-[var(--radius)] flex items-center justify-center text-[10px] text-slate-400 border border-dashed border-slate-200">بدون تصویر پرسنلی</div>
+                        )}
                       </div>
-                    )}
-                  </AnimatePresence>
-            
-                </div>
-              )) : (
-                <div className="bg-white p-12 border border-slate-100 rounded-2xl text-center space-y-3 shadow-2xs">
-                  <ClipboardList className="mx-auto text-slate-300" size={40} />
-                  <p className="text-xs text-slate-400 font-bold">در حال حاضر هیچ درخواست مربیگری جدیدی در صف انتظار نیست.</p>
-                </div>
-              )}
-            </div>
+
+                      <div className="space-y-2 bg-slate-50/50 p-3 rounded-[var(--radius)] border border-slate-100">
+                        <span className="text-[11px] text-slate-500 block font-bold">حکم یا مدرک رسمی مربیگری</span>
+                        {app.coachApplication?.certificateImage ? (
+                          <div
+                            onClick={() => setPreviewImage({ url: app.coachApplication.certificateImage, title: `مدرک مربیگری - ${app.coachApplication?.fullName || app.name}` })}
+                            className="relative h-28 w-full max-w-[200px] mx-auto rounded-[var(--radius)] overflow-hidden border border-slate-200 group/img cursor-pointer shadow-2xs"
+                          >
+                            <img src={app.coachApplication.certificateImage} className="h-full w-full object-cover group-hover/img:scale-105 transition-transform duration-300" alt="مدرک" />
+                            <div className="absolute inset-0 bg-slate-900/40 opacity-0 group-hover/img:opacity-100 transition-opacity duration-200 flex items-center justify-center">
+                              <ZoomIn className="text-white backdrop-blur-xs p-1 rounded-lg bg-white/20" size={24} />
+                            </div>
+                          </div>
+                        ) : (
+                          <div className="mx-auto h-28 w-full max-w-[200px] bg-slate-100 rounded-[var(--radius)] flex items-center justify-center text-[10px] text-slate-400 border border-dashed border-slate-200">بدون مدرک آپلود شده</div>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* انتقال مودال به داخل حلقه مپ جهت دسترسی مستقیم بدون تداخل */}
+                    <AnimatePresence>
+                      {rejectingAppId === app._id && (
+                        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+                          <motion.div
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            exit={{ opacity: 0 }}
+                            onClick={() => setRejectingAppId(null)}
+                            className="absolute inset-0 bg-slate-950/40 backdrop-blur-xs"
+                          />
+                          <motion.div
+                            initial={{ opacity: 0, scale: 0.95, y: 10 }}
+                            animate={{ opacity: 1, scale: 1, y: 0 }}
+                            exit={{ opacity: 0, scale: 0.95, y: 10 }}
+                            className="bg-white rounded-2xl p-5 max-w-sm w-full z-10 space-y-4 relative border border-slate-100 shadow-2xl"
+                          >
+                            <div className="flex items-center gap-1.5 text-rose-600 font-bold text-sm border-b border-slate-100 pb-2.5">
+                              <MessageSquare size={16} />
+                              <span>ثبت دلیل رد درخواست {app.coachApplication?.fullName || app.name}</span>
+                            </div>
+
+                            <div className="space-y-3">
+                              <textarea
+                                rows="3"
+                                placeholder="علت رد شدن درخواست را بنویسید (این پیام به کاربر نمایش داده می‌شود)..."
+                                value={rejectReason}
+                                onChange={(e) => setRejectReason(e.target.value)}
+                                className="w-full rounded-[var(--radius)] border border-slate-200 p-3 text-xs font-medium focus:border-rose-500 focus:outline-none focus:ring-1 focus:ring-rose-500 text-right"
+                              />
+                              <div className="flex gap-2 justify-end">
+                                <button
+                                  type="button"
+                                  onClick={(e) => handleRejectSubmit(e)}
+                                  className="px-4 py-2 bg-rose-600 hover:bg-rose-700 text-white rounded-lg text-xs font-bold transition-colors cursor-pointer"
+                                >
+                                  ثبت و رد درخواست
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => { setRejectingAppId(null); setRejectReason(''); }}
+                                  className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-lg text-xs font-semibold transition-colors cursor-pointer"
+                                >
+                                  انصراف
+                                </button>
+                              </div>
+                            </div>
+                          </motion.div>
+                        </div>
+                      )}
+                    </AnimatePresence>
+
+                  </div>
+                )) : (
+                  <div className="bg-white p-12 border border-slate-100 rounded-2xl text-center space-y-3 shadow-2xs">
+                    <ClipboardList className="mx-auto text-slate-300" size={40} />
+                    <p className="text-xs text-slate-400 font-bold">در حال حاضر هیچ درخواست مربیگری جدیدی در صف انتظار نیست.</p>
+                  </div>
+                )}
+              </div>
             )}
           </div>
 
@@ -398,7 +398,7 @@ export default function AdminCoachesManagement() {
                     </button>
                   </div>
 
-                  <div className="bg-slate-50 p-4 rounded-xl text-center space-y-2 border border-slate-100">
+                  <div className="bg-slate-50 p-4 rounded-[var(--radius)] text-center space-y-2 border border-slate-100">
                     {selectedCoach.avatar ? (
                       <img
                         src={selectedCoach.avatar}
@@ -406,7 +406,7 @@ export default function AdminCoachesManagement() {
                         alt={selectedCoach.name}
                       />
                     ) : (
-                      <div className="h-14 w-14 rounded-full bg-[var(--color-primary)] text-white mx-auto flex items-center justify-center font-black text-lg shadow-sm">
+                      <div className="h-14 w-14 rounded-full bg-[var(--color-primary)] text-white mx-auto flex items-center justify-center font-bold text-lg shadow-sm">
                         {selectedCoach.name
                           ? selectedCoach.name.charAt(0)
                           : "م"}
@@ -440,7 +440,7 @@ export default function AdminCoachesManagement() {
                         {students.map((std) => (
                           <div
                             key={std._id}
-                            className="p-2.5 bg-slate-50/60 rounded-xl border border-slate-100 text-right space-y-0.5"
+                            className="p-2.5 bg-slate-50/60 rounded-[var(--radius)] border border-slate-100 text-right space-y-0.5"
                           >
                             <span className="text-xs font-bold text-slate-700 block">
                               {std.name}
@@ -449,15 +449,15 @@ export default function AdminCoachesManagement() {
                               {std.phone} | عضویت:{" "}
                               {std.createdAt
                                 ? new Date(std.createdAt).toLocaleDateString(
-                                    "fa-IR",
-                                  )
+                                  "fa-IR",
+                                )
                                 : "نامشخص"}
                             </span>
                           </div>
                         ))}
                       </div>
                     ) : (
-                      <div className="text-center py-6 text-[11px] text-slate-400 bg-slate-50/50 rounded-xl">
+                      <div className="text-center py-6 text-[11px] text-slate-400 bg-slate-50/50 rounded-[var(--radius)]">
                         این مربی هنوز هیچ شاگردی با کد معرف خود ندارد.
                       </div>
                     )}

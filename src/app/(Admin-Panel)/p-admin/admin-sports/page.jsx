@@ -2,32 +2,43 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
+import { motion } from 'framer-motion';
 import { FiArrowRight, FiPlus, FiEdit3, FiTrash2, FiActivity, FiSearch } from 'react-icons/fi';
 import Swal from 'sweetalert2';
 import {
-  DndContext,
-  closestCenter,
-  PointerSensor,
-  useSensor,
-  useSensors,
+  DndContext, closestCenter, PointerSensor, useSensor, useSensors,
 } from "@dnd-kit/core";
-
 import {
-  SortableContext,
-  rectSortingStrategy,
-  arrayMove,
+  SortableContext, rectSortingStrategy, arrayMove,
 } from "@dnd-kit/sortable";
-
 import SortableSportCard from "@/components/templates/sports/SortableSportCard";
+
+/* ─── Page Header pattern (reused across pages) ─── */
+function PageHeader({ title, subtitle, backHref = '/p-admin', actions }) {
+  return (
+    <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
+      <div>
+        <Link
+          href={backHref}
+          className="inline-flex items-center gap-1.5 text-xs font-bold mb-2 transition-all hover:gap-2.5"
+          style={{ color: 'var(--color-primary)' }}
+        >
+          <FiArrowRight size={13} /> بازگشت به داشبورد
+        </Link>
+        <h1 className="text-xl font-bold text-gray-900">{title}</h1>
+        {subtitle && <p className="text-sm font-bold text-gray-400 mt-0.5">{subtitle}</p>}
+      </div>
+      {actions && <div className="flex items-center gap-2">{actions}</div>}
+    </div>
+  );
+}
 
 export default function AdminSports() {
   const [sports, setSports] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
 
-  useEffect(() => {
-    fetchSports();
-  }, []);
+  useEffect(() => { fetchSports(); }, []);
 
   const fetchSports = async () => {
     try {
@@ -47,11 +58,16 @@ export default function AdminSports() {
       text: "تمام داده‌های مربوط به این ورزش پاک خواهد شد!",
       icon: 'warning',
       showCancelButton: true,
-      confirmButtonColor: '#aa4725',
-      cancelButtonColor: '#d33',
+      confirmButtonColor: 'var(--color-primary)',
+      cancelButtonColor: '#9ca3af',
       confirmButtonText: 'بله، حذف کن',
       cancelButtonText: 'لغو',
       rtl: true,
+      customClass: {
+        popup: 'rounded-2xl font-[Vazirmatn]',
+        confirmButton: 'rounded-[var(--radius)] font-bold',
+        cancelButton: 'rounded-[var(--radius)] font-bold',
+      },
     });
 
     if (result.isConfirmed) {
@@ -59,131 +75,101 @@ export default function AdminSports() {
         const res = await fetch(`/api/sports/${id}`, { method: 'DELETE' });
         if (res.ok) {
           setSports(prev => prev.filter(s => s._id !== id));
-          Swal.fire({ title: 'حذف شد!', icon: 'success', confirmButtonColor: '#aa4725' });
+          Swal.fire({
+            title: 'حذف شد!',
+            icon: 'success',
+            confirmButtonColor: 'var(--color-primary)',
+            customClass: { popup: 'rounded-2xl font-[Vazirmatn]', confirmButton: 'rounded-[var(--radius)] font-bold' },
+          });
         }
-      } catch (error) {
-        Swal.fire('خطا در حذف!', '', 'error');
+      } catch {
+        Swal.fire({
+          title: 'خطا در حذف!', icon: 'error',
+          customClass: { popup: 'rounded-2xl font-[Vazirmatn]', confirmButton: 'rounded-[var(--radius)] font-bold' },
+        });
       }
     }
   };
 
   const filteredSports = sports.filter(s => s.name.includes(searchTerm));
-  
-  const sensors = useSensors(
-    useSensor(PointerSensor)
-  );
+
+  const sensors = useSensors(useSensor(PointerSensor));
 
   const handleDragEnd = async (event) => {
     const { active, over } = event;
-  
     if (!over || active.id === over.id) return;
-  
-    const oldIndex = sports.findIndex(
-      (item) => item._id === active.id
-    );
-  
-    const newIndex = sports.findIndex(
-      (item) => item._id === over.id
-    );
-  
-    const reordered = arrayMove(
-      sports,
-      oldIndex,
-      newIndex
-    );
-  
-    const updated = reordered.map((item, index) => ({
-      ...item,
-      order: index,
-    }));
-  
+    const oldIndex = sports.findIndex((item) => item._id === active.id);
+    const newIndex = sports.findIndex((item) => item._id === over.id);
+    const reordered = arrayMove(sports, oldIndex, newIndex);
+    const updated = reordered.map((item, index) => ({ ...item, order: index }));
     setSports(updated);
-  
     try {
       await fetch("/api/sports/reorder", {
         method: "PUT",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          sports: updated.map((s) => ({
-            id: s._id,
-            order: s.order,
-          })),
-        }),
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ sports: updated.map((s) => ({ id: s._id, order: s.order })) }),
       });
-    } catch (error) {
-      console.error(error);
-    }
+    } catch (error) { console.error(error); }
   };
-  return (
-    <div className="min-h-screen bg-[#fcfcfc] text-[var(--color-text)]" dir="rtl">
-      
-      <header className="bg-white/80 backdrop-blur-md sticky top-0 z-30 border-b border-gray-100">
-        <div className="max-w-7xl mx-auto px-4 lg:px-8 py-6">
-          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-            <div>
-              <Link href="/p-admin" className="text-[var(--color-primary)] hover:gap-2 flex items-center gap-1 transition-all text-sm font-bold mb-2">
-                <FiArrowRight /> بازگشت به پنل مدیریت
-              </Link>
-              <h1 className="text-3xl font-bold tracking-tight">مدیریت ورزش‌ها</h1>
-            </div>
-            
-            <div className="flex items-center gap-3">
-               <div className="relative hidden sm:block">
-                  <FiSearch className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400" />
-                  <input 
-                    type="text"
-                    placeholder="جستجوی ورزش..."
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                    className="pr-10 pl-4 py-2.5 bg-gray-100 rounded-[var(--radius)] border-none focus:ring-2 ring-[var(--color-primary)]/20 transition-all outline-none w-64 text-sm"
-                  />
-               </div>
-               <Link
-                href="/p-admin/admin-sports/add"
-                className="bg-[var(--color-primary)] text-white px-6 py-3 rounded-[var(--radius)] font-bold flex items-center gap-2 hover:shadow-lg hover:shadow-[var(--color-primary)]/30 transition-all active:scale-95"
-              >
-                <FiPlus size={20} /> افزودن ورزش
-              </Link>
-            </div>
-          </div>
-        </div>
-      </header>
 
-      <main className="max-w-7xl mx-auto px-4 lg:px-8 py-10">
-        {loading ? (
-          <div className="flex flex-col items-center justify-center py-24 gap-4">
-            <div className="w-12 h-12 border-4 border-gray-200 border-t-[var(--color-primary)] rounded-full animate-spin"></div>
-            <p className="text-gray-500 font-bold">در حال بارگذاری...</p>
+  return (
+    <div dir="rtl">
+      <PageHeader
+        title="مدیریت ورزش‌ها"
+        subtitle={`${sports.length} رشته ورزشی در سیستم`}
+        actions={
+          <>
+            <div className="relative">
+              <FiSearch className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400" size={15} />
+              <input
+                type="text"
+                placeholder="جستجوی ورزش..."
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="pr-9 pl-4 py-2.5 text-sm font-bold bg-white border-2 border-gray-200 rounded-[var(--radius)] w-56 focus:outline-none focus:border-[var(--color-primary)] transition-all"
+              />
+            </div>
+            <Link
+              href="/p-admin/admin-sports/add"
+              className="flex items-center gap-2 px-4 py-2.5 rounded-[var(--radius)] text-sm font-bold text-white transition-all hover:shadow-lg hover:shadow-[var(--color-primary)]/25 hover:-translate-y-0.5 active:scale-95"
+              style={{ background: 'var(--color-primary)' }}
+            >
+              <FiPlus size={16} /> افزودن ورزش
+            </Link>
+          </>
+        }
+      />
+
+      {loading ? (
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+          {[1, 2, 3, 4, 5, 6, 7, 8].map(i => (
+            <div key={i} className="h-32 bg-white rounded-2xl animate-pulse border border-gray-100" />
+          ))}
+        </div>
+      ) : filteredSports.length === 0 ? (
+        <div className="bg-white rounded-2xl border-2 border-dashed border-gray-200 py-20 text-center">
+          <div className="w-14 h-14 bg-gray-50 rounded-2xl flex items-center justify-center mx-auto mb-4 text-gray-300">
+            <FiActivity size={26} />
           </div>
-        ) : filteredSports.length === 0 ? (
-          <div className="bg-white rounded-[var(--radius)] border-2 border-dashed border-gray-200 p-20 text-center">
-            <FiActivity size={60} className="mx-auto text-gray-200 mb-4" />
-            <p className="text-gray-400 font-bold text-xl">هیچ ورزشی یافت نشد!</p>
-          </div>
-        ) : (
-          <DndContext
-          sensors={sensors}
-          collisionDetection={closestCenter}
-          onDragEnd={handleDragEnd}
-        >
-          <SortableContext
-            items={filteredSports.map((s) => s._id)}
-            strategy={rectSortingStrategy}
-          >
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-              {filteredSports.map((sport) => (
-                <SortableSportCard
+          <p className="text-gray-400 font-bold">هیچ ورزشی یافت نشد</p>
+        </div>
+      ) : (
+        <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+          <SortableContext items={filteredSports.map((s) => s._id)} strategy={rectSortingStrategy}>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+              {filteredSports.map((sport, i) => (
+                <motion.div
                   key={sport._id}
-                  sport={sport}
-                  handleDelete={handleDelete}
-                />
+                  initial={{ opacity: 0, y: 12 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: i * 0.04, duration: 0.3 }}
+                >
+                  <SortableSportCard sport={sport} handleDelete={handleDelete} />
+                </motion.div>
               ))}
             </div>
           </SortableContext>
         </DndContext>
-        )}
-      </main>
+      )}
     </div>
   );
 }

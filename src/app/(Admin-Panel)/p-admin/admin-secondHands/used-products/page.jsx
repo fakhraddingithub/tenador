@@ -82,7 +82,7 @@ export default function UsedProductsPage() {
 
       {loading ? (
         <div className="space-y-3">
-          {[1,2,3,4].map(i => <div key={i} className="h-20 bg-neutral-100 animate-pulse rounded-[var(--radius)]" />)}
+          {[1, 2, 3, 4].map(i => <div key={i} className="h-20 bg-neutral-100 animate-pulse rounded-[var(--radius)]" />)}
         </div>
       ) : items.length === 0 ? (
         <div className="text-center py-20 border-2 border-dashed border-neutral-200 rounded-[var(--radius)] text-neutral-400">
@@ -91,84 +91,84 @@ export default function UsedProductsPage() {
       ) : (
         <div className="space-y-3">
           {items.map(item => (
-           <div 
-           key={item._id} 
-           className="group flex flex-col md:flex-row items-start md:items-center gap-5 bg-white border border-neutral-100 rounded-2xl p-4 hover:shadow-[0_8px_30px_rgb(0,0,0,0.04)] hover:border-blue-100 transition-all duration-300 relative overflow-hidden"
-         >
-           {/* یک لاین تزئینی در لبه کارت که هنگام هاور ظاهر می‌شود */}
-           <div className="absolute left-0 top-0 bottom-0 w-1 bg-[var(--color-primary)] opacity-0 group-hover:opacity-100 transition-opacity" />
-         
-           {/* Image Section */}
-           <div className="relative w-20 h-20 md:w-16 md:h-16 rounded-xl overflow-hidden bg-neutral-50 flex-shrink-0 border border-neutral-100">
-             {item.baseProduct?.mainImage ? (
-               <img 
-                 src={item.baseProduct.mainImage} 
-                 alt={item.baseProduct?.name} 
-                 className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" 
-               />
-             ) : (
-               <FiPackage className="w-full h-full p-4 text-neutral-300" />
-             )}
-           </div>
-         
-           {/* Info Section */}
-           <div className="flex-grow min-w-0 flex flex-col gap-1">
-             <div className="flex flex-wrap items-center gap-2">
-               <span className="text-[10px] uppercase tracking-wider font-bold text-[var(--color-primary)] bg-[var(--color-primary)]/10 px-2 py-0.5 rounded-md">
-                 {item.baseProduct?.category?.title || 'دسته‌بندی'}
-               </span>
-               <span className={`text-[10px] px-2 py-0.5 rounded-md font-bold ring-1 ring-inset ${STATUS_COLOR[item.status]} ring-opacity-20`}>
-                 {STATUS_LABEL[item.status]}
-               </span>
-             </div>
-             
-             <h3 className="font-bold text-neutral-800 text-base truncate group-hover:text-[var(--color-primary)] transition-colors">
-               {item.name}
-             </h3>
-         
-             <div className="flex items-center gap-4 mt-1">
-               {item.overallScore != null && (
-                 <div className="flex items-center gap-1">
-                   <span className="text-orange-500 text-sm">★</span>
-                   <span className="text-xs font-bold text-neutral-600">{item.overallScore}</span>
-                   <span className="text-[10px] text-neutral-400">/۱۰</span>
-                 </div>
-               )}
-               <span className="text-[11px] text-neutral-400 flex items-center gap-1">
-                 <div className="w-1 h-1 rounded-full bg-neutral-300" />
-                 کد محصول: {item._id.slice(-6)}
-               </span>
-             </div>
-           </div>
-         
-           {/* Price & Actions Section */}
-           <div className="flex md:flex-col items-end justify-between w-full md:w-auto gap-3 pt-3 md:pt-0 border-t md:border-t-0 border-neutral-50">
-             <div className="text-right">
-               <span className="block text-[10px] text-neutral-400 font-medium mb-0.5">قیمت فروش</span>
-               <p className="font-bold text-lg text-neutral-900">
-                 {item.price?.toLocaleString('fa-IR')} 
-                 <span className="text-[10px] mr-1 font-normal text-neutral-500"></span>
-               </p>
-             </div>
-         
-             <div className="flex gap-1">
-               <Link 
-                 href={`/p-admin/admin-secondHands/used-products/${item._id}/edit`} 
-                 className="p-2.5 text-neutral-500 hover:text-[var(--color-primary)] hover:bg-blue-50 rounded-xl transition-all"
-                 title="ویرایش"
-               >
-                 <FiEdit3 size={18} />
-               </Link>
-               <button 
-                 onClick={() => handleDelete(item)} 
-                 className="p-2.5 text-neutral-500 hover:text-red-600 hover:bg-red-50 rounded-xl transition-all"
-                 title="حذف"
-               >
-                 <FiTrash2 size={18} />
-               </button>
-             </div>
-           </div>
-         </div>
+            <div
+              key={item._id}
+              className="group flex flex-col md:flex-row items-start md:items-center gap-5 bg-white border border-neutral-100 rounded-2xl p-4 hover:shadow-[0_8px_30px_rgb(0,0,0,0.04)] hover:border-blue-100 transition-all duration-300 relative overflow-hidden"
+            >
+              {/* یک لاین تزئینی در لبه کارت که هنگام هاور ظاهر می‌شود */}
+              <div className="absolute left-0 top-0 bottom-0 w-1 bg-[var(--color-primary)] opacity-0 group-hover:opacity-100 transition-opacity" />
+
+              {/* Image Section */}
+              <div className="relative w-20 h-20 md:w-16 md:h-16 rounded-[var(--radius)] overflow-hidden bg-neutral-50 flex-shrink-0 border border-neutral-100">
+                {item.baseProduct?.mainImage ? (
+                  <img
+                    src={item.baseProduct.mainImage}
+                    alt={item.baseProduct?.name}
+                    className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
+                  />
+                ) : (
+                  <FiPackage className="w-full h-full p-4 text-neutral-300" />
+                )}
+              </div>
+
+              {/* Info Section */}
+              <div className="flex-grow min-w-0 flex flex-col gap-1">
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="text-[10px] uppercase tracking-wider font-bold text-[var(--color-primary)] bg-[var(--color-primary)]/10 px-2 py-0.5 rounded-md">
+                    {item.baseProduct?.category?.title || 'دسته‌بندی'}
+                  </span>
+                  <span className={`text-[10px] px-2 py-0.5 rounded-md font-bold ring-1 ring-inset ${STATUS_COLOR[item.status]} ring-opacity-20`}>
+                    {STATUS_LABEL[item.status]}
+                  </span>
+                </div>
+
+                <h3 className="font-bold text-neutral-800 text-base truncate group-hover:text-[var(--color-primary)] transition-colors">
+                  {item.name}
+                </h3>
+
+                <div className="flex items-center gap-4 mt-1">
+                  {item.overallScore != null && (
+                    <div className="flex items-center gap-1">
+                      <span className="text-orange-500 text-sm">★</span>
+                      <span className="text-xs font-bold text-neutral-600">{item.overallScore}</span>
+                      <span className="text-[10px] text-neutral-400">/۱۰</span>
+                    </div>
+                  )}
+                  <span className="text-[11px] text-neutral-400 flex items-center gap-1">
+                    <div className="w-1 h-1 rounded-full bg-neutral-300" />
+                    کد محصول: {item._id.slice(-6)}
+                  </span>
+                </div>
+              </div>
+
+              {/* Price & Actions Section */}
+              <div className="flex md:flex-col items-end justify-between w-full md:w-auto gap-3 pt-3 md:pt-0 border-t md:border-t-0 border-neutral-50">
+                <div className="text-right">
+                  <span className="block text-[10px] text-neutral-400 font-medium mb-0.5">قیمت فروش</span>
+                  <p className="font-bold text-lg text-neutral-900">
+                    {item.price?.toLocaleString('fa-IR')}
+                    <span className="text-[10px] mr-1 font-normal text-neutral-500"></span>
+                  </p>
+                </div>
+
+                <div className="flex gap-1">
+                  <Link
+                    href={`/p-admin/admin-secondHands/used-products/${item._id}/edit`}
+                    className="p-2.5 text-neutral-500 hover:text-[var(--color-primary)] hover:bg-blue-50 rounded-[var(--radius)] transition-all"
+                    title="ویرایش"
+                  >
+                    <FiEdit3 size={18} />
+                  </Link>
+                  <button
+                    onClick={() => handleDelete(item)}
+                    className="p-2.5 text-neutral-500 hover:text-red-600 hover:bg-red-50 rounded-[var(--radius)] transition-all"
+                    title="حذف"
+                  >
+                    <FiTrash2 size={18} />
+                  </button>
+                </div>
+              </div>
+            </div>
           ))}
         </div>
       )}
@@ -180,9 +180,8 @@ export default function UsedProductsPage() {
             <button
               key={p}
               onClick={() => setPage(p)}
-              className={`w-9 h-9 rounded-lg text-sm font-bold transition-all ${
-                p === page ? 'bg-[var(--color-primary)] text-white' : 'bg-white border border-neutral-200 hover:border-[var(--color-primary)] text-neutral-600'
-              }`}
+              className={`w-9 h-9 rounded-lg text-sm font-bold transition-all ${p === page ? 'bg-[var(--color-primary)] text-white' : 'bg-white border border-neutral-200 hover:border-[var(--color-primary)] text-neutral-600'
+                }`}
             >
               {p}
             </button>
