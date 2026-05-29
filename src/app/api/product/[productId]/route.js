@@ -302,7 +302,7 @@ export async function PUT(request, { params }) {
 
 export async function DELETE(request, { params }) {
   try {
-    const { productId } = params;
+    const { productId } =await params;
 
     if (!productId) {
       return NextResponse.json(

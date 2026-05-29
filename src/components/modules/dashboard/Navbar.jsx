@@ -78,8 +78,7 @@ function CategoryMenu({ navData, onClose }) {
   return (
     <div
       dir="rtl"
-      className="absolute top-full right-0 mt-2 w-[950px] bg-white border border-slate-200 shadow-2xl rounded-[var(--radius)] overflow-hidden z-[100] text-right"
-      onMouseLeave={onClose}
+      className="w-[950px] bg-white border border-slate-200 shadow-2xl rounded-[var(--radius)] overflow-hidden z-[100] text-right"
     >
       <div className="flex h-[480px]">
         {/* ستون اول */}
@@ -180,6 +179,7 @@ export default function Navbar({ user, isSidebarOpen, setIsSidebarOpen }) {
 
   const searchRef = useRef(null);
   const debounceRef = useRef(null);
+  const categoryRef = useRef(null);
 
   const firstName = user?.userName?.split(" ")[0] || "";
 
@@ -200,6 +200,17 @@ export default function Navbar({ user, isSidebarOpen, setIsSidebarOpen }) {
     const handler = (e) => {
       if (searchRef.current && !searchRef.current.contains(e.target)) {
         setShowSearchDropdown(false);
+      }
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, []);
+
+  // بستن منوی دسته‌بندی با کلیک بیرون
+  useEffect(() => {
+    const handler = (e) => {
+      if (categoryRef.current && !categoryRef.current.contains(e.target)) {
+        setIsCategoryOpen(false);
       }
     };
     document.addEventListener("mousedown", handler);
@@ -243,7 +254,6 @@ export default function Navbar({ user, isSidebarOpen, setIsSidebarOpen }) {
     <>
       <nav
         dir="rtl"
-        onMouseLeave={() => setIsCategoryOpen(false)}
         className="fixed top-0 right-0 left-0 z-50 bg-white border-b border-slate-200 shadow-sm h-[75px]"
       >
         {/* ===== DESKTOP ===== */}
@@ -263,9 +273,9 @@ export default function Navbar({ user, isSidebarOpen, setIsSidebarOpen }) {
               </Link>
 
               {/* دکمه دسته‌بندی */}
-              <div className="relative">
+              <div className="relative" ref={categoryRef}>
                 <button
-                  onMouseEnter={() => setIsCategoryOpen(true)}
+                  onClick={() => setIsCategoryOpen((v) => !v)}
                   className="flex items-center gap-2 px-4 py-2 bg-[#aa4725] text-white rounded-[var(--radius)] whitespace-nowrap text-sm hover:bg-[#aa4725]/90 transition-all"
                 >
                   <HiOutlineViewGrid size={18} />
@@ -273,7 +283,9 @@ export default function Navbar({ user, isSidebarOpen, setIsSidebarOpen }) {
                 </button>
 
                 {isCategoryOpen && navData.length > 0 && (
-                  <CategoryMenu navData={navData} onClose={() => setIsCategoryOpen(false)} />
+                  <div className="absolute top-full right-0 pt-2">
+                    <CategoryMenu navData={navData} onClose={() => setIsCategoryOpen(false)} />
+                  </div>
                 )}
               </div>
 

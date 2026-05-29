@@ -23,7 +23,7 @@ export default function RootLayout({ children }) {
             userName="احمد علوی"
           />
 
-          <div className="flex pt-16">
+          <div className="flex">
             {/* منوی کناری */}
             <Sidebar
               isOpen={isSidebarOpen}
