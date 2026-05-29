@@ -146,13 +146,13 @@ export default function AdminLayout({ children }) {
                 className="flex items-center gap-2.5"
               >
                 <div
-                  className="w-8 h-8 rounded-[var(--radius)] flex items-center justify-center text-white text-xs font-black"
+                  className="w-8 h-8 rounded-[var(--radius)] flex items-center justify-center text-white text-xs font-bold"
                   style={{ background: "var(--color-primary)" }}
                 >
                   T
                 </div>
                 <div>
-                  <p className="text-white font-black text-sm tracking-wider leading-none">TENADOR</p>
+                  <p className="text-white font-bold text-sm tracking-wider leading-none">TENADOR</p>
                   <p className="text-[10px] font-bold tracking-[0.2em] mt-0.5" style={{ color: "var(--color-secondary)" }}>
                     ADMIN
                   </p>
@@ -162,7 +162,7 @@ export default function AdminLayout({ children }) {
           </AnimatePresence>
           {!sidebarOpen && (
             <div
-              className="w-8 h-8 rounded-lg flex items-center justify-center text-white text-xs font-black mx-auto"
+              className="w-8 h-8 rounded-lg flex items-center justify-center text-white text-xs font-bold mx-auto"
               style={{ background: "var(--color-primary)" }}
             >
               T
@@ -278,7 +278,7 @@ export default function AdminLayout({ children }) {
             </span>
             <span style={{ color: "var(--admin-border)" }}>/</span>
             <span
-              className="text-xs font-black"
+              className="text-xs font-bold"
               style={{ color: "var(--color-primary)" }}
             >
               {menuItems.find(m =>
@@ -293,7 +293,7 @@ export default function AdminLayout({ children }) {
           <div className="flex items-center gap-3">
             {/* Clock */}
             <div
-              className="flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-black tabular-nums"
+              className="flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-bold tabular-nums"
               style={{
                 background: "rgba(170,71,37,0.08)",
                 color: "var(--color-primary)",
@@ -317,7 +317,7 @@ export default function AdminLayout({ children }) {
                 </div>
                 <div>
                   <p style={{ color: "var(--admin-text-muted)" }} className="text-[10px] font-bold">دلار</p>
-                  <p className="font-black text-gray-800">{farsiNumber.format(prices.usd)}</p>
+                  <p className="font-bold text-gray-800">{farsiNumber.format(prices.usd)}</p>
                 </div>
               </div>
               <div className="w-px h-6 bg-gray-100" />
@@ -327,7 +327,7 @@ export default function AdminLayout({ children }) {
                 </div>
                 <div>
                   <p style={{ color: "var(--admin-text-muted)" }} className="text-[10px] font-bold">یورو</p>
-                  <p className="font-black text-gray-800">{farsiNumber.format(prices.eur)}</p>
+                  <p className="font-bold text-gray-800">{farsiNumber.format(prices.eur)}</p>
                 </div>
               </div>
             </div>
@@ -338,7 +338,7 @@ export default function AdminLayout({ children }) {
               style={{ background: "var(--admin-card)", borderColor: "var(--admin-border)" }}
             >
               <div
-                className="w-7 h-7 rounded-lg overflow-hidden flex items-center justify-center text-white text-xs font-black"
+                className="w-7 h-7 rounded-lg overflow-hidden flex items-center justify-center text-white text-xs font-bold"
                 style={{ background: "var(--color-primary)" }}
               >
                 <img
@@ -348,7 +348,7 @@ export default function AdminLayout({ children }) {
                 />
               </div>
               <div className="hidden md:block">
-                <p className="text-xs font-black text-gray-800 leading-none">مدیریت</p>
+                <p className="text-xs font-bold text-gray-800 leading-none">مدیریت</p>
                 <p className="text-[10px] font-bold mt-0.5" style={{ color: "var(--admin-text-muted)" }}>
                   خوش آمدید
                 </p>

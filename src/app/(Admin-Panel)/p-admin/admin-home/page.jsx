@@ -1,87 +1,133 @@
-"use client";
+'use client';
 
-import Link from "next/link";
-import { 
-  FiLayout, FiImage, FiChevronLeft, 
-  FiSettings, FiGrid, FiLayers 
-} from "react-icons/fi";
+import Link from 'next/link';
+import { motion } from 'framer-motion';
+import {
+  FiLayout, FiImage, FiChevronLeft, FiLayers,
+  FiGrid, FiTrendingUp,
+} from 'react-icons/fi';
+import { FaArrowRight } from 'react-icons/fa';
+
+const sections = [
+  {
+    href: '/p-admin/admin-home/slider',
+    icon: FiImage,
+    title: 'اسلایدر اصلی',
+    desc: 'مدیریت تصاویر، متون، لینک‌ها و ترتیب نمایش اسلایدهای صفحه اول سایت.',
+    badge: 'فعال',
+    badgeColor: 'bg-green-50 text-green-600',
+  },
+  {
+    href: '/p-admin/admin-home/banners',
+    icon: FiGrid,
+    title: 'بنرهای گرید',
+    desc: 'ویرایش بنر افقی بزرگ، بنرهای عمودی کناری و نوار پایین صفحه.',
+    badge: 'فعال',
+    badgeColor: 'bg-green-50 text-green-600',
+  },
+  {
+    href: '#',
+    icon: FiLayers,
+    title: 'سایر بخش‌ها',
+    desc: 'بلوک‌های اضافی قابل پیکربندی برای صفحه اصلی.',
+    badge: 'به‌زودی',
+    badgeColor: 'bg-amber-50 text-amber-600',
+    disabled: true,
+  },
+];
 
 export default function AdminHomeManager() {
   return (
-    <div className="min-h-screen bg-[var(--color-background)] text-[var(--color-text)] p-4 lg:p-10">
-      <div className="max-w-5xl mx-auto">
-        
-        {/* هدر ساده و شیک */}
-        <header className="mb-12">
-          <h1 className="text-3xl font-bold flex items-center gap-3">
-            <FiLayout className="text-[var(--color-primary)]" />
-            مدیریت ویترین
-          </h1>
-          <p className="text-gray-500 mt-2">بخش مورد نظر برای ویرایش را انتخاب کنید</p>
-        </header>
-
-        {/* شبکه مدیریت بخش‌ها */}
-        <div className="grid md:grid-cols-2 gap-6">
-          
-          {/* کارت مدیریت اسلایدر اصلی - مقصد شما */}
-          <Link href="/p-admin/admin-home/slider">
-            <div className="group bg-white border border-gray-100 p-8 rounded-[var(--radius)] shadow-sm hover:shadow-xl hover:border-[var(--color-primary)] transition-all duration-300 relative overflow-hidden h-full">
-              {/* المان دکوراتیو پس‌زمینه کارت */}
-              <div className="absolute -right-6 -bottom-6 opacity-[0.03] group-hover:opacity-[0.08] transition-opacity">
-                <FiImage size={180} />
-              </div>
-
-              <div className="flex flex-col h-full">
-                <div className="w-14 h-14 bg-[var(--color-primary)]/10 rounded-[var(--radius)] flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
-                  <FiImage className="text-[var(--color-primary)] text-2xl" />
-                </div>
-                
-                <h3 className="text-xl font-bold mb-3">مدیریت اسلایدر اصلی</h3>
-                <p className="text-gray-500 text-sm leading-relaxed mb-8">
-                  تغییر تصاویر، متون، لینک‌ها و اولویت‌بندی اسلایدهای بنر اصلی سایت.
-                </p>
-
-                <div className="mt-auto flex items-center gap-2 text-[var(--color-primary)] font-bold text-sm">
-                  ورود به بخش مدیریت اسلایدر
-                  <FiChevronLeft className="group-hover:-translate-x-2 transition-transform" />
-                </div>
-              </div>
-            </div>
-          </Link>
-          <Link href="/p-admin/admin-home/banners">
-            <div className="group bg-white border border-gray-100 p-8 rounded-[var(--radius)] shadow-sm hover:shadow-xl hover:border-[var(--color-primary)] transition-all duration-300 relative overflow-hidden h-full">
-              {/* المان دکوراتیو پس‌زمینه کارت */}
-              <div className="absolute -right-6 -bottom-6 opacity-[0.03] group-hover:opacity-[0.08] transition-opacity">
-                <FiImage size={180} />
-              </div>
-
-              <div className="flex flex-col h-full">
-                <div className="w-14 h-14 bg-[var(--color-primary)]/10 rounded-[var(--radius)] flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
-                  <FiImage className="text-[var(--color-primary)] text-2xl" />
-                </div>
-                
-                <h3 className="text-xl font-bold mb-3">مدیریت بنرها</h3>
-                <p className="text-gray-500 text-sm leading-relaxed mb-8">
-                  تغییر تصاویر، متون، لینک‌ها و بنر های اصلی سایت.
-                </p>
-
-                <div className="mt-auto flex items-center gap-2 text-[var(--color-primary)] font-bold text-sm">
-                  ورود به بخش مدیریت بنرها
-                  <FiChevronLeft className="group-hover:-translate-x-2 transition-transform" />
-                </div>
-              </div>
-            </div>
-          </Link>
-
-          {/* نمونه کارت‌های دیگر برای سایر بخش‌ها (بصورت غیرفعال یا فعال) */}
-          <div className="opacity-60 cursor-not-allowed bg-gray-50 border border-dashed border-gray-200 p-8 rounded-[var(--radius)] flex flex-col justify-center items-center text-center">
-             <FiLayers size={40} className="text-gray-300 mb-4" />
-             <p className="text-gray-400 font-bold">مدیریت سایر بخش‌ها</p>
-             <span className="text-[10px] bg-gray-200 px-2 py-1 rounded mt-2">بزودی</span>
+    <div dir="rtl">
+      {/* Header */}
+      <div className="flex items-center gap-3 mb-6">
+        <Link
+          href="/p-admin"
+          className="inline-flex items-center gap-1.5 text-xs font-bold hover:gap-2.5 transition-all"
+          style={{ color: 'var(--color-primary)' }}
+        >
+          <FaArrowRight size={11} /> بازگشت
+        </Link>
+        <div className="h-4 w-px bg-gray-200" />
+        <div className="flex items-center gap-3">
+          <div
+            className="w-9 h-9 rounded-xl flex items-center justify-center"
+            style={{ background: 'rgba(170,71,37,0.1)' }}
+          >
+            <FiLayout size={17} style={{ color: 'var(--color-primary)' }} />
           </div>
-
+          <div>
+            <h1 className="text-base font-bold text-gray-900">مدیریت ویترین</h1>
+            <p className="text-xs font-bold text-gray-400">بخش موردنظر را برای ویرایش انتخاب کنید</p>
+          </div>
         </div>
+      </div>
 
+      {/* Grid */}
+      <div className="grid md:grid-cols-2 gap-5 max-w-3xl">
+        {sections.map((sec, i) => (
+          <motion.div
+            key={sec.href + i}
+            initial={{ opacity: 0, y: 12 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: i * 0.06, duration: 0.3 }}
+          >
+            <Link
+              href={sec.disabled ? '#' : sec.href}
+              className={`group block bg-white rounded-2xl border overflow-hidden transition-all duration-300 ${
+                sec.disabled
+                  ? 'opacity-60 cursor-not-allowed'
+                  : 'hover:shadow-xl hover:-translate-y-1'
+              }`}
+              style={{ borderColor: '#e8e4df' }}
+              onClick={sec.disabled ? (e) => e.preventDefault() : undefined}
+            >
+              {/* top accent */}
+              <div
+                className="h-1 w-full transition-all duration-300"
+                style={{
+                  background: sec.disabled
+                    ? '#e5e7eb'
+                    : 'linear-gradient(90deg, var(--color-primary), var(--color-secondary))',
+                }}
+              />
+
+              <div className="p-6">
+                <div className="flex items-start justify-between mb-4">
+                  <div
+                    className="w-11 h-11 rounded-xl flex items-center justify-center transition-transform duration-300 group-hover:scale-110"
+                    style={{
+                      background: sec.disabled ? '#f3f4f6' : 'rgba(170,71,37,0.08)',
+                      color: sec.disabled ? '#9ca3af' : 'var(--color-primary)',
+                    }}
+                  >
+                    <sec.icon size={20} />
+                  </div>
+                  <span className={`text-[10px] font-bold px-2.5 py-1 rounded-full border ${sec.badgeColor} border-transparent`}>
+                    {sec.badge}
+                  </span>
+                </div>
+
+                <h3 className="text-sm font-bold text-gray-800 mb-2 group-hover:text-[var(--color-primary)] transition-colors">
+                  {sec.title}
+                </h3>
+                <p className="text-xs font-bold text-gray-400 leading-relaxed mb-4">
+                  {sec.desc}
+                </p>
+
+                {!sec.disabled && (
+                  <div
+                    className="flex items-center gap-1.5 text-xs font-bold group-hover:gap-3 transition-all"
+                    style={{ color: 'var(--color-primary)' }}
+                  >
+                    ورود به بخش
+                    <FiChevronLeft size={13} />
+                  </div>
+                )}
+              </div>
+            </Link>
+          </motion.div>
+        ))}
       </div>
     </div>
   );

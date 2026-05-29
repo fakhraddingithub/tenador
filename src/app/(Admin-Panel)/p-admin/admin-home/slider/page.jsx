@@ -1,272 +1,251 @@
-"use client";
+'use client';
 
-import { useState, useEffect } from "react";
-import { DragDropContext, Droppable, Draggable } from "@hello-pangea/dnd";
+import { useState, useEffect } from 'react';
+import Link from 'next/link';
+import Image from 'next/image';
+import { motion, AnimatePresence } from 'framer-motion';
+import { DragDropContext, Droppable, Draggable } from '@hello-pangea/dnd';
 import {
-  FiPlus,
-  FiEdit2,
-  FiTrash2,
-  FiMove,
-  FiSave,
-  FiLoader,
-} from "react-icons/fi";
-import Image from "next/image";
-import { ToastContainer, toast } from "react-toastify";
-import "react-toastify/dist/ReactToastify.css";
-import Link from "next/link";
+  FiPlus, FiEdit2, FiTrash2, FiMove,
+  FiArrowRight, FiImage, FiLoader,
+} from 'react-icons/fi';
+import { MdOutlineDragIndicator } from 'react-icons/md';
 import Swal from 'sweetalert2';
+
+const swalTheme = {
+  confirmButtonColor: 'var(--color-primary)',
+  cancelButtonColor: '#9ca3af',
+  customClass: {
+    popup: 'rounded-2xl font-[Vazirmatn] text-right',
+    confirmButton: 'rounded-xl font-bold',
+    cancelButton: 'rounded-xl font-bold',
+  },
+  rtl: true,
+};
 
 export default function SliderManagement() {
   const [slides, setSlides] = useState([]);
   const [loading, setLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
 
-  // ۱. دریافت اسلایدها
-  useEffect(() => {
-    fetchSlides();
-  }, []);
+  useEffect(() => { fetchSlides(); }, []);
 
   const fetchSlides = async () => {
     try {
-      const res = await fetch("/api/slides?position=home");
+      const res = await fetch('/api/slides?position=home');
       const data = await res.json();
       setSlides(data);
-    } catch (error) {
-      toast.error("خطا در بارگذاری اطلاعات!", {
-        position: "top-center",
-        rtl: true,
-      });
+    } catch {
+      Swal.fire({ ...swalTheme, title: 'خطا در بارگذاری', icon: 'error' });
     } finally {
       setLoading(false);
     }
   };
 
-  // ۲. هندل کردن جابجایی و Reorder
   const onDragEnd = async (result) => {
     if (!result.destination) return;
-
     const items = Array.from(slides);
-    const [reorderedItem] = items.splice(result.source.index, 1);
-    items.splice(result.destination.index, 0, reorderedItem);
-
+    const [reordered] = items.splice(result.source.index, 1);
+    items.splice(result.destination.index, 0, reordered);
     setSlides(items);
-
     setIsSaving(true);
     try {
-      const res = await fetch("/api/slides/reorder", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          position: "home",
-          orderedIds: items.map((s) => s._id),
-        }),
+      await fetch('/api/slides/reorder', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ position: 'home', orderedIds: items.map((s) => s._id) }),
       });
-
-      if (res.ok) {
-        toast.success("ترتیب با موفقیت بروزرسانی شد", {
-          toastId: "reorder-success", // ای‌دی ثابت برای جلوگیری از تکرار
-          position: "top-left",
-          rtl: true,
-          theme: "colored",
-          autoClose: 2000,
-          style: { backgroundColor: "var(--color-primary)" },
-        });
-      }
-    } catch (error) {
-      toast.error("خطا در ذخیره‌سازی ترتیب جدید");
+    } catch {
       fetchSlides();
     } finally {
       setIsSaving(false);
     }
   };
 
-const handleDelete = async (id) => {
-  // ۱. نمایش پنجره تایید با استایل سفارشی
-  const result = await Swal.fire({
-    title: 'آیا مطمئن هستید؟',
-    text: "این اسلاید برای همیشه پاک خواهد شد و قابل بازیابی نیست!",
-    icon: 'warning',
-    showCancelButton: true,
-    confirmButtonColor: '#aa4725', // استفاده از متغیر رنگی سایت شما
-    cancelButtonColor: '#d33',
-    confirmButtonText: 'بله، حذفش کن!',
-    cancelButtonText: 'انصراف',
-    reverseButtons: true, // برای اینکه در فارسی دکمه تایید سمت راست باشد
-    background: '#ffffff',
-    color: '#0d0d0d',
-    customClass: {
-      popup: 'rounded-[var(--radius)]', // هماهنگی با شعاع لبه‌های سایت شما
-    }
-  });
-
-  // ۲. اگر کاربر تایید کرد
-  if (result.isConfirmed) {
-    // نمایش لودینگ روی دکمه یا کل صفحه
-    Swal.fire({
-      title: 'در حال حذف...',
-      allowOutsideClick: false,
-      didOpen: () => {
-        Swal.showLoading();
-      }
+  const handleDelete = async (id) => {
+    const result = await Swal.fire({
+      ...swalTheme,
+      title: 'حذف اسلاید؟',
+      text: 'این اسلاید برای همیشه پاک خواهد شد و قابل بازیابی نیست.',
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonText: 'بله، حذف کن',
+      cancelButtonText: 'انصراف',
     });
 
+    if (!result.isConfirmed) return;
+
+    Swal.fire({ ...swalTheme, title: 'در حال حذف...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
     try {
-      const res = await fetch(`/api/slides/${id}`, {
-        method: "DELETE",
-      });
-
+      const res = await fetch(`/api/slides/${id}`, { method: 'DELETE' });
       if (res.ok) {
-        // حذف موفقیت‌آمیز از استیت
-        setSlides((prev) => prev.filter((slide) => slide._id !== id));
-
-        // اطلاع‌رسانی نهایی
-        Swal.fire({
-          title: 'حذف شد!',
-          text: 'اسلاید با موفقیت از سیستم حذف گردید.',
-          icon: 'success',
-          confirmButtonColor: '#aa4725',
-          confirmButtonText: 'تایید',
-          customClass: {
-            popup: 'rounded-[var(--radius)]',
-          }
-        });
-      } else {
-        throw new Error("خطا در حذف از دیتابیس");
-      }
-    } catch (error) {
-      Swal.fire({
-        title: 'خطا!',
-        text: 'مشکلی در عملیات حذف پیش آمد. دوباره تلاش کنید.',
-        icon: 'error',
-        confirmButtonColor: '#aa4725',
-      });
+        setSlides((prev) => prev.filter((s) => s._id !== id));
+        Swal.fire({ ...swalTheme, title: 'اسلاید حذف شد', icon: 'success' });
+      } else throw new Error();
+    } catch {
+      Swal.fire({ ...swalTheme, title: 'خطا در حذف', icon: 'error' });
     }
-  }
-};
+  };
 
   return (
-    <div className="min-h-screen bg-gray-50 p-4 lg:p-10 " dir="rtl">
-      {/* کامپوننت توستیفای */}
-      <ToastContainer />
-
-      <div className="max-w-5xl mx-auto">
-        {/* هدر صفحه */}
-        <header className="flex justify-between items-center mb-10 bg-white p-6 rounded-[var(--radius)] shadow-sm border border-gray-100">
-          <div>
-            <h1 className="text-2xl font-bold text-[var(--color-text)]">
-              مدیریت اسلایدر
-            </h1>
-            <p className="text-sm text-gray-400 mt-1">
-              ترتیب نمایش را با کشیدن و رها کردن تغییر دهید
-            </p>
-          </div>
-          <Link href={"/p-admin/admin-home/slider/create"}>
-            <button className="flex items-center gap-2 bg-[var(--color-primary)] text-white px-6 py-3 rounded-[var(--radius)] font-bold hover:scale-105 transition-all shadow-lg shadow-[var(--color-primary)]/20">
-              <FiPlus size={22} />
-              افزودن اسلاید
-            </button>
+    <div dir="rtl">
+      {/* Header */}
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
+        <div>
+          <Link
+            href="/p-admin/admin-home"
+            className="inline-flex items-center gap-1.5 text-xs font-bold mb-2 hover:gap-2.5 transition-all"
+            style={{ color: 'var(--color-primary)' }}
+          >
+            <FiArrowRight size={12} /> بازگشت
           </Link>
-        </header>
-
-        {loading ? (
-          <div className="flex flex-col items-center justify-center py-20 gap-4">
-            <FiLoader className="animate-spin text-4xl text-[var(--color-primary)]" />
-            <span className="text-gray-400 font-bold">
-              در حال بارگذاری اسلایدها...
-            </span>
-          </div>
-        ) : (
-          <DragDropContext onDragEnd={onDragEnd}>
-            <Droppable droppableId="slides">
-              {(provided) => (
-                <div
-                  {...provided.droppableProps}
-                  ref={provided.innerRef}
-                  className="space-y-3"
-                >
-                  {slides.map((slide, index) => (
-                    <Draggable
-                      key={slide._id}
-                      draggableId={slide._id}
-                      index={index}
-                    >
-                      {(provided, snapshot) => (
-                        <div
-                          ref={provided.innerRef}
-                          {...provided.draggableProps}
-                          className={`bg-white p-3 rounded-[var(--radius)] border-2 transition-all flex items-center gap-4 ${
-                            snapshot.isDragging
-                              ? "border-[var(--color-primary)] shadow-2xl scale-[1.02] z-50"
-                              : "border-gray-50 shadow-sm"
-                          }`}
-                        >
-                          {/* دستگیره جابجایی */}
-                          <div
-                            {...provided.dragHandleProps}
-                            className="text-gray-300 hover:text-[var(--color-primary)] p-2"
-                          >
-                            <FiMove size={20} />
-                          </div>
-
-                          {/* تصویر بندانگشتی */}
-                          <div className="relative w-24 h-14 rounded-[4px] overflow-hidden bg-gray-100 flex-shrink-0 border border-gray-100">
-                            <Image
-                              src={slide.image || "/images/placeholder.jpg"}
-                              alt={slide.title}
-                              fill
-                              className="object-cover"
-                            />
-                          </div>
-
-                          {/* اطلاعات اسلاید */}
-                          <div className="flex-1 min-w-0">
-                            <h3 className="font-bold text-[var(--color-text)] truncate text-base">
-                              {slide.title}
-                            </h3>
-                            <p className="text-[10px] text-gray-400 truncate mt-1 font-mono">
-                              {slide.link || "بدون لینک هدایت کننده"}
-                            </p>
-                          </div>
-
-                          {/* دکمه‌های کنترلی */}
-                          <div className="flex items-center gap-1">
-                            {/* دکمه ویرایش - هدایت به صفحه ادیت با آی‌دی اسلاید */}
-                            <Link
-                              href={`/p-admin/admin-home/slider/edit/${slide._id}`}
-                              className="w-10 h-10 flex items-center justify-center text-gray-400 hover:bg-gray-100 hover:text-[var(--color-text)] rounded-[var(--radius)] transition-all"
-                            >
-                              <FiEdit2 size={16} />
-                            </Link>
-
-                            {/* دکمه حذف - فراخوانی تابع حذف */}
-                            <button
-                              onClick={() => handleDelete(slide._id)}
-                              className="w-10 h-10 flex items-center justify-center text-gray-400 hover:bg-red-50 hover:text-red-500 rounded-[var(--radius)] transition-all"
-                            >
-                              <FiTrash2 size={16} />
-                            </button>
-                          </div>
-                        </div>
-                      )}
-                    </Draggable>
-                  ))}
-                  {provided.placeholder}
-                </div>
-              )}
-            </Droppable>
-          </DragDropContext>
-        )}
-
-        {/* فیدبک ذخیره‌سازی ترتیب */}
-        {isSaving && (
-          <div className="fixed bottom-8 left-8 bg-[var(--color-text)] text-white px-5 py-3 rounded-[var(--radius)] flex items-center gap-3 shadow-2xl z-50 border border-white/10">
-            <FiLoader className="animate-spin text-[var(--color-secondary)]" />
-            <span className="text-xs font-bold tracking-tighter">
-              در حال ذخیره چیدمان...
-            </span>
-          </div>
-        )}
+          <h1 className="text-xl font-bold text-gray-900 flex items-center gap-2">
+            <FiImage style={{ color: 'var(--color-secondary)' }} />
+            مدیریت اسلایدر
+          </h1>
+          <p className="text-xs font-bold text-gray-400 mt-0.5">
+            ترتیب نمایش را با کشیدن و رها کردن تغییر دهید
+          </p>
+        </div>
+        <Link
+          href="/p-admin/admin-home/slider/create"
+          className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-bold text-white hover:shadow-lg hover:shadow-[var(--color-primary)]/25 hover:-translate-y-0.5 active:scale-95 transition-all"
+          style={{ background: 'var(--color-primary)' }}
+        >
+          <FiPlus size={16} /> افزودن اسلاید
+        </Link>
       </div>
+
+      {/* Slides list */}
+      {loading ? (
+        <div className="flex items-center justify-center h-48 gap-3">
+          <div className="w-8 h-8 border-2 border-gray-200 border-t-[var(--color-primary)] rounded-full animate-spin" />
+          <span className="text-sm font-bold text-gray-400">در حال بارگذاری...</span>
+        </div>
+      ) : slides.length === 0 ? (
+        <div className="bg-white rounded-2xl border-2 border-dashed border-gray-200 py-20 text-center">
+          <div className="w-14 h-14 bg-gray-50 rounded-2xl flex items-center justify-center mx-auto mb-4 text-gray-300">
+            <FiImage size={28} />
+          </div>
+          <p className="text-gray-400 font-bold text-sm">هنوز اسلایدی اضافه نشده</p>
+          <Link
+            href="/p-admin/admin-home/slider/create"
+            className="inline-flex items-center gap-1.5 mt-3 text-xs font-bold hover:underline"
+            style={{ color: 'var(--color-primary)' }}
+          >
+            <FiPlus size={12} /> افزودن اولین اسلاید
+          </Link>
+        </div>
+      ) : (
+        <DragDropContext onDragEnd={onDragEnd}>
+          <Droppable droppableId="slides">
+            {(provided) => (
+              <div
+                {...provided.droppableProps}
+                ref={provided.innerRef}
+                className="space-y-2"
+              >
+                {slides.map((slide, index) => (
+                  <Draggable key={slide._id} draggableId={slide._id} index={index}>
+                    {(provided, snapshot) => (
+                      <div
+                        ref={provided.innerRef}
+                        {...provided.draggableProps}
+                        className={`bg-white rounded-2xl border-2 transition-all flex items-center gap-4 p-3 group ${
+                          snapshot.isDragging
+                            ? 'border-[var(--color-primary)] shadow-2xl scale-[1.01] z-50'
+                            : 'border-gray-100 hover:border-gray-200 shadow-sm'
+                        }`}
+                      >
+                        {/* drag handle */}
+                        <div
+                          {...provided.dragHandleProps}
+                          className="text-gray-300 hover:text-gray-500 p-1 cursor-grab active:cursor-grabbing flex-shrink-0"
+                        >
+                          <MdOutlineDragIndicator size={20} />
+                        </div>
+
+                        {/* order number */}
+                        <div className="flex-shrink-0 w-6 h-6 rounded-lg bg-gray-50 flex items-center justify-center text-[10px] font-bold text-gray-400">
+                          {index + 1}
+                        </div>
+
+                        {/* thumbnail */}
+                        <div className="relative w-28 h-16 rounded-xl overflow-hidden bg-gray-100 flex-shrink-0 border border-gray-100">
+                          <Image
+                            src={slide.image || '/images/placeholder.jpg'}
+                            alt={slide.title}
+                            fill
+                            className="object-cover"
+                          />
+                        </div>
+
+                        {/* info */}
+                        <div className="flex-1 min-w-0">
+                          <h3 className="font-bold text-sm text-gray-800 truncate group-hover:text-[var(--color-primary)] transition-colors">
+                            {slide.title || '(بدون عنوان)'}
+                          </h3>
+                          {slide.subtitle && (
+                            <p className="text-xs text-gray-400 font-bold truncate mt-0.5">
+                              {slide.subtitle}
+                            </p>
+                          )}
+                          {slide.link && (
+                            <p className="text-[10px] text-gray-300 font-mono truncate mt-0.5">
+                              {slide.link}
+                            </p>
+                          )}
+                        </div>
+
+                        {/* active badge */}
+                        <div className="flex-shrink-0 hidden sm:flex items-center gap-1.5">
+                          <span className={`text-[10px] font-bold px-2.5 py-1 rounded-full flex items-center gap-1 ${slide.isActive ? 'bg-green-50 text-green-600' : 'bg-red-50 text-red-500'}`}>
+                            <span className={`w-1.5 h-1.5 rounded-full ${slide.isActive ? 'bg-green-500 animate-pulse' : 'bg-red-400'}`} />
+                            {slide.isActive ? 'فعال' : 'غیرفعال'}
+                          </span>
+                        </div>
+
+                        {/* actions */}
+                        <div className="flex items-center gap-1 flex-shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
+                          <Link
+                            href={`/p-admin/admin-home/slider/edit/${slide._id}`}
+                            className="w-8 h-8 flex items-center justify-center rounded-lg bg-gray-100 text-gray-500 hover:bg-[var(--color-primary)] hover:text-white transition-all"
+                          >
+                            <FiEdit2 size={13} />
+                          </Link>
+                          <button
+                            onClick={() => handleDelete(slide._id)}
+                            className="w-8 h-8 flex items-center justify-center rounded-lg bg-red-50 text-red-400 hover:bg-red-500 hover:text-white transition-all"
+                          >
+                            <FiTrash2 size={13} />
+                          </button>
+                        </div>
+                      </div>
+                    )}
+                  </Draggable>
+                ))}
+                {provided.placeholder}
+              </div>
+            )}
+          </Droppable>
+        </DragDropContext>
+      )}
+
+      {/* saving indicator */}
+      <AnimatePresence>
+        {isSaving && (
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 20 }}
+            className="fixed bottom-6 left-6 text-white px-4 py-2.5 rounded-xl flex items-center gap-2 shadow-xl z-50 text-xs font-bold"
+            style={{ background: '#0d0d0d' }}
+          >
+            <FiLoader className="animate-spin" size={13} style={{ color: 'var(--color-secondary)' }} />
+            در حال ذخیره چیدمان...
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }
