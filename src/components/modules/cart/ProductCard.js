@@ -62,7 +62,7 @@ export default function ProductCard({
   const { farsi, english } = splitName(name);
 
   const labelMap = {
-    new: { text: "جدید", color: "bg-blue-500" },
+    new: { text: "جدید", color: "bg-[#01a281]" },
     limited: { text: "محدود", color: "bg-purple-500" },
     discount: { text: "تخفیف", color: "bg-red-500" },
     hot: { text: "پرفروش", color: "bg-amber-500" },
@@ -173,7 +173,7 @@ export default function ProductCard({
             </>
           ) : (
             <span className="text-[18px] font-black text-[#aa4725]">
-              {safePrice.toLocaleString()}{" "}
+              {safePrice.toLocaleString("fa-IR")}{" "}
               <small className="text-[10px] font-bold">تومان</small>
             </span>
           )}

@@ -27,7 +27,7 @@ const AddToCartButton = ({ onAddToCart }) => {
     <button
       onClick={handleClick}
       disabled={isLoading}
-      className="relative flex-1 group outline-none"
+      className="relative w-full flex-1 group outline-none"
     >
       <motion.div
         animate={{
