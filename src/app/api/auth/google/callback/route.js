@@ -85,12 +85,11 @@ export async function GET(request) {
     // ۵. تنظیم کوکی‌ها و هدایت به صفحه اصلی (ری‌دایرکت)
     const response = NextResponse.redirect(new URL('/', request.url));
 
-    // هماهنگ‌سازی زمان انقضای اکسس توکن با متد لوکال (۵ دقیقه) برای امنیت بالاتر
     response.cookies.set('accessToken', accessToken, {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
       sameSite: 'strict',
-      maxAge: 5 * 60, 
+      maxAge: 15 * 24 * 60 * 60, 
     });
 
     response.cookies.set('refreshToken', refreshToken, {
