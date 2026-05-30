@@ -62,23 +62,24 @@ const AddressModal = ({
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!validateForm()) return;
-
+  
     setIsSubmitting(true);
-
+  
     const newAddress = await onAddAddress({
       ...formData,
       saveAddress,
     });
-
+  
+    setIsSubmitting(false);
+  
+    // فقط در صورت موفقیت‌آمیز بودن عملیات، فرم بازنشانی و مودال بسته می‌شود
     if (newAddress) {
       onSelectAddress(newAddress);
       setFormData(initialFormState);
       setShowForm(false);
       toast.success('آدرس با موفقیت اضافه شد');
+      onClose(); // جابجایی به داخل شرط موفقیت
     }
-
-    setIsSubmitting(false);
-    onClose();
   };
 
   const handleSelectAndClose = (address) => {

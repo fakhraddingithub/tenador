@@ -162,7 +162,7 @@ const CartSummary = ({
       <div className="pt-4 border-t border-slate-200">
         <div className="flex items-center justify-between">
           <span className="text-sm font-bold text-slate-800">مبلغ قابل پرداخت</span>
-          <span className="text-lg md:text-xl font-extrabold text-[var(--color-primary)]">
+          <span className="text-lg md:text-xl font-bold text-[var(--color-primary)]">
             {formatPriceWithCurrency(totalPrice)}
           </span>
         </div>

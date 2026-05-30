@@ -144,7 +144,7 @@ const CartItems = ({ items, onUpdateQuantity, onRemoveItem, isLoading }) => {
                     </div>
                   )}
 
-                  <div className="text-sm md:text-base font-extrabold text-indigo-600">
+                  <div className="text-sm md:text-base font-bold text-indigo-600">
                     {formatPriceWithCurrency(item.itemFinalPrice)}
                   </div>
 

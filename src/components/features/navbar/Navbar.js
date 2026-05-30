@@ -235,11 +235,33 @@ export default function Navbar({ user }) {
 
   const firstName = user?.userName?.split(" ")[0] || "";
 
-  useEffect(() => {
-    const stored = localStorage.getItem("cart");
-    const items = stored ? JSON.parse(stored) : [];
-    setCartCount(items.reduce((sum, i) => sum + i.quantity, 0));
-  }, [openCart]);
+ // تابع کمکی برای خواندن تعداد آیتم‌ها از LocalStorage
+const updateCartCount = () => {
+  const stored = localStorage.getItem("cart");
+  const items = stored ? JSON.parse(stored) : [];
+  setCartCount(items.reduce((sum, i) => sum + i.quantity, 0));
+};
+
+// ۱. اجرای اولیه و گوش دادن به تغییرات سبد خرید
+useEffect(() => {
+  updateCartCount(); // خواندن مقدار اولیه هنگام لود صفحه
+
+  // گوش دادن به رویداد سفارشی برای تغییرات سبد خرید در همان صفحه
+  window.addEventListener("cart-changed", updateCartCount);
+  
+  // گوش دادن به رویداد استاندار برای زمان‌هایی که در تپ‌های دیگر تغییر ایجاد می‌شود
+  window.addEventListener("storage", updateCartCount);
+
+  return () => {
+    window.removeEventListener("cart-changed", updateCartCount);
+    window.removeEventListener("storage", updateCartCount);
+  };
+}, []);
+
+// ۲. این یوزافکت را هم برای زمانی که دراور باز/بسته می‌شود حفظ کنید (جهت اطمینان بیشتر)
+useEffect(() => {
+  updateCartCount();
+}, [openCart]);
 
   useEffect(() => {
     fetch("/api/navbar")

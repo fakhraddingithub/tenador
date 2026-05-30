@@ -46,6 +46,7 @@ function saveCart(cart) {
     quantity:  Math.max(1, Math.floor(quantity)),
   }));
   localStorage.setItem(CART_KEY, JSON.stringify(clean));
+  window.dispatchEvent(new Event("cart-changed"));
 }
 
 // ─── افزودن به سبد ───

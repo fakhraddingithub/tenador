@@ -8,14 +8,11 @@ import GoogleButton from '@/components/auth/GoogleButton';
 import { useForgotPassword } from '@/components/auth/useForgotPassword';
 import { showToast } from '@/lib/toast';
 
-// کامپوننت اصلی که محتوا را رندر می‌کند
 function AuthContent() {
   const [mode, setMode] = useState('login'); // 'login' | 'register'
   const [loading, setLoading] = useState(false);
-  const router = useRouter();
   const { forgotPassword } = useForgotPassword();
 
-  // گرفتن آدرس بازگشت از URL (مثلاً /login?callbackUrl=/cart)
   const searchParams = useSearchParams();
   const callbackUrl = searchParams.get('callbackUrl') || '/';
 
@@ -38,14 +35,12 @@ function AuthContent() {
         return;
       }
 
-      showToast.success(mode === 'login' ? 'خوش آمدید!' : 'ثبت‌نام با موفقیت انجام شد');
-
       if (mode === 'login') {
-        // ریدایرکت به صفحه قبلی و تازه‌سازی استیت‌ها
-        router.push(callbackUrl);
-        router.refresh();
+        showToast.success('خوش آمدید!');
+        // استفاده از این متد کش کامپوننت‌های کلاینتی نوبار را برای سشن جدید نوسازی می‌کند
+        window.location.href = callbackUrl;
       } else {
-        // هدایت به تب لاگین بعد از ثبت‌نام موفق
+        showToast.success('ثبت‌نام با موفقیت انجام شد');
         setMode('login');
       }
     } catch (error) {
@@ -56,7 +51,6 @@ function AuthContent() {
   };
 
   const handleGoogleLogin = () => {
-    // ارسال callbackUrl به بک‌اندر برای ریدایرکت بعد از تایید گوگل
     const encodedCallback = encodeURIComponent(callbackUrl);
     window.location.href = `/api/auth/google?callbackUrl=${encodedCallback}`;
   };
@@ -133,7 +127,6 @@ function AuthContent() {
   );
 }
 
-// صفحه اصلی که باید در خروجی باشد
 export default function LoginRegisterPage() {
   return (
     <div className="min-h-screen flex items-center justify-center bg-slate-50 px-4 py-10">

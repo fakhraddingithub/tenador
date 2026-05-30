@@ -33,7 +33,7 @@ const OrderPage = () => {
     appliedCoupon,
     couponDiscount,
     couponError,
-    totalItems,
+    totalItems, 
     totalPrice,
     totalRawPrice,
     totalDiscount,
