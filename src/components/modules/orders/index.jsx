@@ -121,7 +121,7 @@ const OrdersModule = () => {
                   {order.items?.slice(0, 3).map((item, index) => (
                     <div key={index} className="flex items-center gap-3">
                       <img
-                        src={item.product?.images?.[0] || '/placeholder.jpg'}
+                        src={item.product?.mainImage || '/placeholder.jpg'}
                         alt={item.product?.name}
                         className="h-11 w-11 rounded-[var(--radius)] object-cover"
                       />

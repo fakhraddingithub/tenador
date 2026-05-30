@@ -21,6 +21,7 @@ const TYPE_LABELS = {
   userRole: "نقش کاربر",
   userLevel: "سطح کاربر",
   cartValue: "حداقل سبد",
+  variant: "واریانت",
 };
 
 export default function DiscountManager() {

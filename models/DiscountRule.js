@@ -27,6 +27,7 @@ const DiscountRuleSchema = new mongoose.Schema(
         "userRole",
         "userLevel",
         "cartValue",
+        "variant",
       ],
       required: true,
       index: true,

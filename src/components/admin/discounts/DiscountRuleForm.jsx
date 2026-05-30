@@ -7,6 +7,7 @@ const TYPES = [
   { value: "global", label: "همه محصولات", hasTargets: false },
   { value: "product", label: "محصول خاص", hasTargets: true, placeholder: "آی‌دی محصولات را با کاما جدا کنید" },
   { value: "category", label: "دسته‌بندی", hasTargets: true, placeholder: "آی‌دی دسته‌بندی‌ها" },
+  { value: "variant", label: "واریانت خاص", hasTargets: true, placeholder: "آی‌دی واریانت‌ها را با کاما جدا کنید" },
   { value: "serie", label: "سری محصولات", hasTargets: true, placeholder: "آی‌دی سری‌ها" },
   { value: "brand", label: "برند", hasTargets: true, placeholder: "آی‌دی برندها" },
   { value: "userRole", label: "نقش کاربر", hasTargets: false },

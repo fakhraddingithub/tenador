@@ -10,6 +10,7 @@ const TYPE_COLORS = {
   userRole: "bg-pink-50 text-pink-700 border-pink-200",
   userLevel: "bg-yellow-50 text-yellow-700 border-yellow-200",
   cartValue: "bg-teal-50 text-teal-700 border-teal-200",
+  variant: "bg-cyan-50 text-cyan-700 border-cyan-200",  
 };
 
 function formatDate(d) {

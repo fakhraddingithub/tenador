@@ -19,8 +19,8 @@ export async function calculateDiscount({ product, user, cartTotal = 0, isFirstO
     { type: "product", targets: product._id },
     { type: "category", targets: product.category },
     { type: "brand", targets: product.brand },
+    ...(product.variantId ? [{ type: "variant", targets: product.variantId }] : []),
   ];
-
   if (product.serie) {
     orConditions.push({ type: "serie", targets: product.serie });
   }

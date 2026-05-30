@@ -130,7 +130,7 @@ const PaymentPage = ({ trackingCode }) => {
         confirmButtonColor: '#aa4725',
       });
 
-      router.push('/p-user/success');
+      router.push(`/p-user/orders/success/${trackingCode}`);
     } catch (error) {
       console.error(error);
       toast.error('خطایی در ثبت اطلاعات رخ داد. مجدداً تلاش کنید.');
