@@ -11,24 +11,31 @@ export const metadata = {
 export default function RootLayout({ children }) {
   return (
     <html lang="fa-IR" dir="rtl" className="scroll-smooth">
-      <body 
+      <head>
+        <link
+          href="https://cdn.jsdelivr.net/gh/rastikerdar/vazirmatn@v33.003/Vazirmatn-font-face.css"
+          rel="stylesheet"
+          type="text/css"
+        />
+      </head>
+      <body
         className="min-h-screen bg-[var(--color-background)] text-[var(--color-text)] antialiased selection:bg-[var(--color-primary)] selection:text-white"
         style={{ fontFamily: 'var(--font-sans)' }}
       >
         <main className="min-h-screen overflow-x-hidden">
           <AdminLayout>{children}</AdminLayout>
         </main>
-        
+
         <ToastContainer
-           position="top-left"
-           autoClose={3000}
-           hideProgressBar={false}
-           newestOnTop={true}
-           closeOnClick
-           rtl={true}
-           pauseOnFocusLoss
-           draggable
-           pauseOnHover
+          position="top-left"
+          autoClose={3000}
+          hideProgressBar={false}
+          newestOnTop={true}
+          closeOnClick
+          rtl={true}
+          pauseOnFocusLoss
+          draggable
+          pauseOnHover
         />
       </body>
     </html>

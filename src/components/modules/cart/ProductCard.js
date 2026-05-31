@@ -41,16 +41,24 @@ export default function ProductCard({
       })
       .catch(() => {});
 
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+    };
   }, [product?._id]);
 
-  const hasDiscount = discountData !== null && discountData.finalPriceToman < basePriceToman;
-  const finalPriceToman = hasDiscount ? discountData.finalPriceToman : basePriceToman;
+  const hasDiscount =
+    discountData !== null && discountData.finalPriceToman < basePriceToman;
+  const finalPriceToman = hasDiscount
+    ? discountData.finalPriceToman
+    : basePriceToman;
 
   // ── واریانت‌ها ──────────────────────────────────────────────────────────────
   const variantsWithImages = useMemo(
-    () => (product.variants || []).filter((v) => Array.isArray(v.images) && v.images.length > 0),
-    [product.variants]
+    () =>
+      (product.variants || []).filter(
+        (v) => Array.isArray(v.images) && v.images.length > 0,
+      ),
+    [product.variants],
   );
   const hasVariantImages = variantsWithImages.length > 0;
   const [activeImage, setActiveImage] = useState(mainImage);
@@ -59,7 +67,10 @@ export default function ProductCard({
   const splitName = (text) => {
     const match = text.match(/[a-zA-Z\(].*/);
     if (match) {
-      return { farsi: text.substring(0, match.index).trim(), english: match[0].trim() };
+      return {
+        farsi: text.substring(0, match.index).trim(),
+        english: match[0].trim(),
+      };
     }
     return { farsi: text, english: "" };
   };
@@ -78,7 +89,13 @@ export default function ProductCard({
 
       {product.brand?.icon && (
         <div className="absolute top-3 left-3 z-20">
-          <Image src={product.brand.icon} alt="brand" width={30} height={30} className="object-contain" />
+          <Image
+            src={product.brand.icon}
+            alt="brand"
+            width={30}
+            height={30}
+            className="object-contain"
+          />
         </div>
       )}
 
@@ -87,14 +104,18 @@ export default function ProductCard({
         {hasDiscount && discountData.discountPercent > 0 ? (
           <div
             className="relative py-1 pr-3 pl-5 text-[10px] font-bold text-white shadow-sm bg-red-500"
-            style={{ clipPath: "polygon(0 0, 100% 0, 100% 100%, 0 100%, 20% 50%)" }}
+            style={{
+              clipPath: "polygon(0 0, 100% 0, 100% 100%, 0 100%, 20% 50%)",
+            }}
           >
-            {discountData.discountPercent}٪ تخفیف
+            {discountData.discountPercent}٪{" "}
           </div>
         ) : label && labelMap[label] ? (
           <div
             className={`relative py-1 pr-3 pl-5 text-[10px] font-bold text-white shadow-sm ${labelMap[label].color}`}
-            style={{ clipPath: "polygon(0 0, 100% 0, 100% 100%, 0 100%, 20% 50%)" }}
+            style={{
+              clipPath: "polygon(0 0, 100% 0, 100% 100%, 0 100%, 20% 50%)",
+            }}
           >
             {labelMap[label].text}
           </div>
@@ -102,7 +123,10 @@ export default function ProductCard({
       </div>
 
       {/* ── تصویر ── */}
-      <Link href={`/products/${slug}`} className="relative w-full aspect-square bg-[#fcfcfc] overflow-hidden">
+      <Link
+        href={`/products/${slug}`}
+        className="relative w-full aspect-square bg-[#fcfcfc] overflow-hidden"
+      >
         <Image
           src={activeImage}
           alt={name}
@@ -120,14 +144,29 @@ export default function ProductCard({
               <button
                 key={variant._id}
                 type="button"
-                onMouseEnter={() => { setActiveImage(variant.images[0]); setActiveVariantId(variant._id); }}
-                onClick={(e) => { e.preventDefault(); e.stopPropagation(); setActiveImage(variant.images[0]); setActiveVariantId(variant._id); }}
+                onMouseEnter={() => {
+                  setActiveImage(variant.images[0]);
+                  setActiveVariantId(variant._id);
+                }}
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  setActiveImage(variant.images[0]);
+                  setActiveVariantId(variant._id);
+                }}
                 title={Object.values(variant.attributes || {}).join(" / ")}
                 className={`relative w-8 h-8 rounded-[6px] overflow-hidden border-2 transition-all duration-200 ${
-                  isActive ? "border-[#aa4725] scale-110 shadow-md" : "border-gray-100 hover:border-[#aa4725]/60 hover:scale-105 opacity-80 hover:opacity-100"
+                  isActive
+                    ? "border-[#aa4725] scale-110 shadow-md"
+                    : "border-gray-100 hover:border-[#aa4725]/60 hover:scale-105 opacity-80 hover:opacity-100"
                 }`}
               >
-                <Image src={variant.images[0]} alt="" fill className="object-cover" />
+                <Image
+                  src={variant.images[0]}
+                  alt=""
+                  fill
+                  className="object-cover"
+                />
               </button>
             );
           })
@@ -139,8 +178,12 @@ export default function ProductCard({
       {/* ── محتوا ── */}
       <div className="p-4 pt-0 flex flex-col items-center text-center relative z-10 pointer-events-none flex-1">
         <div className="mb-4 h-[60px] flex flex-col justify-start">
-          <h3 className="text-[14px] font-bold text-gray-800 leading-6 mb-1">{farsi}</h3>
-          <p className="text-[12px] text-gray-800 font-medium leading-4 line-clamp-2 dir-ltr">{english}</p>
+          <h3 className="text-[14px] font-bold text-gray-800 leading-6 mb-1">
+            {farsi}
+          </h3>
+          <p className="text-[12px] text-gray-800 font-medium leading-4 line-clamp-2 dir-ltr">
+            {english}
+          </p>
         </div>
 
         {/* ── قیمت ── */}
@@ -167,14 +210,30 @@ export default function ProductCard({
         </div>
 
         <div className="flex items-center gap-7 pointer-events-auto border-t border-gray-50 pt-4 w-full justify-center">
-          <ActionButton icon={<FaEye />} label="نمایش سریع" onClick={(e) => { e.preventDefault(); onQuickView(); }} />
+          <ActionButton
+            icon={<FaEye />}
+            label="نمایش سریع"
+            onClick={(e) => {
+              e.preventDefault();
+              onQuickView();
+            }}
+          />
           <Link href={`/products/${slug}`} onClick={(e) => e.stopPropagation()}>
             <ActionButton icon={<FaArrowLeft />} label="صفحه محصول" />
           </Link>
           <ActionButton
-            icon={isWishlisted ? <FaHeart className="text-red-500" /> : <FaRegHeart />}
+            icon={
+              isWishlisted ? (
+                <FaHeart className="text-red-500" />
+              ) : (
+                <FaRegHeart />
+              )
+            }
             label={isWishlisted ? "حذف از لیست" : "افزودن به علاقه مندی"}
-            onClick={(e) => { e.preventDefault(); onToggleWishlist(); }}
+            onClick={(e) => {
+              e.preventDefault();
+              onToggleWishlist();
+            }}
           />
         </div>
       </div>
@@ -189,7 +248,10 @@ function ActionButton({ icon, label, onClick }) {
         {label}
         <span className="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent border-t-gray-800" />
       </span>
-      <button onClick={onClick} className="text-gray-800 hover:text-[#aa4725] transition-colors duration-300 text-[18px]">
+      <button
+        onClick={onClick}
+        className="text-gray-800 hover:text-[#aa4725] transition-colors duration-300 text-[18px]"
+      >
         {icon}
       </button>
     </div>

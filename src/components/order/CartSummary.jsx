@@ -21,7 +21,7 @@ const CartSummary = ({
   isLoading,
 }) => {
   const [couponInput, setCouponInput] = useState('');
-  const [isApplying,  setIsApplying]  = useState(false);
+  const [isApplying, setIsApplying] = useState(false);
 
   const handleApply = async () => {
     if (!couponInput.trim()) return;
@@ -138,7 +138,7 @@ const CartSummary = ({
           <div className="flex items-center justify-between">
             <span className="text-slate-500">تخفیف</span>
             <span className="font-medium text-emerald-600">
-              − {formatPriceWithCurrency(totalDiscount)}
+              {formatPriceWithCurrency(totalDiscount)}
             </span>
           </div>
         )}
