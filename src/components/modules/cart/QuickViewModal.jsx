@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import Image from "next/image";
 import {
   FaTimes,
@@ -118,34 +118,50 @@ export default function QuickViewModal({
     }
   }
 
-  // محاسبه قیمت پایه به تومان (با اولویت واریانت)
-  const finalTomanPrice = useMemo(() => {
+  // ── قیمت پایه به تومان ────────────────────────────────────────────────────
+  const baseTomanPrice = useMemo(() => {
     const eurPrice = selectedVariant
       ? Number(selectedVariant.price)
       : Number(product?.basePrice);
-      const rawToman = eurPrice * (rate || 0);
-
-      return Math.floor(rawToman / 1000) * 1000;
+    return Math.floor(Math.round(eurPrice * (rate || 0)) / 1000) * 1000;
   }, [selectedVariant, product?.basePrice, rate]);
 
-  // محاسبه قیمت تخفیف‌دار برای واریانت انتخاب‌شده یا محصول
-  const discountedTomanPrice = useMemo(() => {
-    // اگر واریانت انتخاب شده و از سرور finalPriceToman آمده
-    if (selectedVariant?.finalPriceToman != null) {
-      return selectedVariant.finalPriceToman;
-    }
-    // اگر محصول discountPrice دارد (از listing enrichment)
-    if (!selectedVariant && product?.discountPrice) {
-      return Number(product.discountPrice);
-    }
-    return null;
-  }, [selectedVariant, product?.discountPrice]);
+  // ── دریافت داده‌های تخفیف از price API ─────────────────────────────────────
+  const [priceApiData, setPriceApiData] = useState(null);
 
-  const hasDiscount =
-    discountedTomanPrice !== null && discountedTomanPrice < finalTomanPrice;
+  useEffect(() => {
+    if (!product?._id || !rate) return;
+    let cancelled = false;
+    setPriceApiData(null);
+    fetch(`/api/product/${product._id}/price`)
+      .then((r) => r.json())
+      .then((data) => { if (!cancelled && !data.error) setPriceApiData(data); })
+      .catch(() => {});
+    return () => { cancelled = true; };
+  }, [product?._id, rate]);
 
-  // قیمت نمایشی نهایی (بعد از تخفیف یا بدون تخفیف)
-  const displayPrice = hasDiscount ? discountedTomanPrice : finalTomanPrice;
+  // ── قیمت نهایی و تخفیف (با توجه به واریانت انتخاب‌شده) ────────────────────
+  const { finalTomanPrice, discountPercent, hasDiscount } = useMemo(() => {
+    if (!priceApiData) return { finalTomanPrice: baseTomanPrice, discountPercent: 0, hasDiscount: false };
+
+    if (selectedVariant) {
+      // پیدا کردن واریانت در داده price API
+      const vData = priceApiData.variants?.find((v) => String(v._id) === String(selectedVariant._id));
+      if (vData && vData.finalPriceToman < vData.basePriceToman) {
+        return { finalTomanPrice: vData.finalPriceToman, discountPercent: vData.discountPercent || 0, hasDiscount: true };
+      }
+      return { finalTomanPrice: baseTomanPrice, discountPercent: 0, hasDiscount: false };
+    }
+
+    // بدون واریانت: تخفیف کلی محصول
+    if (priceApiData.finalPriceToman < priceApiData.basePriceToman) {
+      return { finalTomanPrice: priceApiData.finalPriceToman, discountPercent: priceApiData.discountPercent || 0, hasDiscount: true };
+    }
+    return { finalTomanPrice: baseTomanPrice, discountPercent: 0, hasDiscount: false };
+  }, [priceApiData, selectedVariant, baseTomanPrice]);
+
+  // displayPrice همان قیمت نهایی است (برای سازگاری با کدهای زیر)
+  const displayPrice = finalTomanPrice;
 
   const variantStock = selectedVariant?.stock ?? null;
   const isOutOfStock = hasVariants
@@ -451,14 +467,19 @@ export default function QuickViewModal({
                 </span>
                 {hasDiscount ? (
                   <>
-                    {/* قیمت اصلی خط‌خورده و کمرنگ */}
+                    {/* قیمت اصلی خط‌خورده */}
                     <div className="flex items-baseline gap-1">
                       <span className="text-sm text-gray-300 line-through">
-                        {finalTomanPrice.toLocaleString()}
+                        {baseTomanPrice.toLocaleString()}
                       </span>
                       <span className="text-[10px] text-gray-300 line-through">تومان</span>
+                      {discountPercent > 0 && (
+                        <span className="text-[10px] font-bold text-white bg-red-500 px-1.5 py-0.5 rounded-full">
+                          {discountPercent}٪
+                        </span>
+                      )}
                     </div>
-                    {/* قیمت تخفیف‌خورده با استایل فعال */}
+                    {/* قیمت تخفیف‌خورده */}
                     <div className="flex items-baseline gap-1">
                       <span className="text-2xl sm:text-3xl font-bold text-[#aa4725]">
                         {displayPrice.toLocaleString()}
