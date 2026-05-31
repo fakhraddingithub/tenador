@@ -62,3 +62,75 @@ export async function GET(req, { params }) {
     );
   }
 }
+
+/**
+ * src/app/api/orders/[orderId]/route.js
+ *
+ * DELETE → حذف سفارش (فقط سفارش‌های UNPAID)
+ *
+ * قوانین:
+ *  - سفارش باید متعلق به کاربر جاری باشد
+ *  - وضعیت پرداخت باید UNPAID باشد
+ *  - موجودی کالاها برگردانده می‌شود
+ */
+
+export async function DELETE(req, { params }) {
+  try {
+    await connectToDB();
+
+    const user = await getUserFromToken();
+    if (!user) {
+      return NextResponse.json({ message: "احراز هویت لازم است" }, { status: 401 });
+    }
+
+    const { trackingCode } = await params;
+
+    if (!trackingCode) {
+      return NextResponse.json(
+        { message: "Tracking code is required" },
+        { status: 400 }
+      );
+    }
+
+    const order = await Order.findOne({ trackingCode })
+
+    if (!order) {
+      return NextResponse.json({ message: "سفارش یافت نشد" }, { status: 404 });
+    }
+
+    // فقط سفارش‌های پرداخت نشده قابل حذف هستند
+    if (order.paymentStatus !== "UNPAID") {
+      return NextResponse.json(
+        { message: "فقط سفارش‌های پرداخت‌نشده قابل حذف هستند" },
+        { status: 400 }
+      );
+    }
+
+    // ─── بازگرداندن موجودی ───
+    for (const item of order.items ?? []) {
+      try {
+        if (item.variant) {
+          await Variant.findByIdAndUpdate(item.variant, {
+            $inc: { stock: item.quantity },
+          });
+        } else {
+          await Product.findByIdAndUpdate(item.product, {
+            $inc: { stock: item.quantity },
+          });
+        }
+      } catch (stockErr) {
+        console.warn("خطا در بازگرداندن موجودی:", stockErr);
+      }
+    }
+
+    await Order.findByIdAndDelete(order._id);
+
+    return NextResponse.json(
+      { message: "سفارش با موفقیت حذف شد" },
+      { status: 200 }
+    );
+  } catch (error) {
+    console.error("خطا در حذف سفارش:", error);
+    return NextResponse.json({ message: "خطای داخلی سرور" }, { status: 500 });
+  }
+}
