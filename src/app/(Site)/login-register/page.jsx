@@ -47,7 +47,9 @@ function AuthContent() {
         showToast.success('ثبت‌نام با موفقیت انجام شد');
         setMode('login');
       }
-    } catch (error) {
+    }catch (error) {
+      // redirect() در Next.js یه error خاص throw میکنه — نباید بهش دست بزنیم
+      if (error?.digest?.startsWith('NEXT_REDIRECT')) throw error;
       showToast.error('خطا در ارتباط با سرور');
     } finally {
       setLoading(false);
@@ -55,8 +57,8 @@ function AuthContent() {
   };
 
   const handleGoogleLogin = () => {
-    const encodedCallback = encodeURIComponent(callbackUrl);
-    window.location.href = `/api/auth/google?callbackUrl=${encodedCallback}`;
+    document.cookie = `oauth_callback=${encodeURIComponent(callbackUrl)}; path=/; SameSite=Lax; Max-Age=300`;
+    window.location.href = `/api/auth/google?callbackUrl=${encodeURIComponent(callbackUrl)}`;
   };
 
   return (
