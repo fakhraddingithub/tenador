@@ -1,7 +1,7 @@
 /**
  * src/components/order/CartItems.jsx
  *
- * نمایش آیتم‌های سبد خرید با قیمت‌های تومانی از سرور
+ * نمایش آیتم‌های سبد خرید — فونت و استایل هماهنگ با صفحه محصول
  */
 
 import { FiPlus, FiMinus, FiTrash2 } from 'react-icons/fi';
@@ -41,11 +41,31 @@ const CartItems = ({ items, onUpdateQuantity, onRemoveItem, isLoading }) => {
   return (
     <div className="space-y-4">
       {items.map((item, index) => {
-        const productName  = item.product?.product?.name       ?? item.product?.name;
-        const productImage = item.product?.product?.mainImage  ?? item.product?.mainImage;
-        const productDesc  = item.product?.product?.shortDescription ?? '';
+        const productName  = item.product?.product?.name      ?? item.product?.name;
+        const productImage = item.product?.product?.mainImage ?? item.product?.mainImage;
         const stock        = item.stock ?? item.product?.stock ?? 0;
         const hasDiscount  = (item.discountToman ?? 0) > 0;
+
+        // واریانت: از variantAttributes یا variant.attributes
+        const variantAttrs =
+          item.variantAttributes ||
+          item.product?.variant?.attributes ||
+          null;
+
+        // جداسازی بخش فارسی و انگلیسی نام (مثل صفحه محصول)
+        const splitName = (text) => {
+          if (!text) return { farsi: '', english: '' };
+          const match = text.match(/[a-zA-Z(].*/);
+          if (match) {
+            return {
+              farsi:   text.substring(0, match.index).trim(),
+              english: match[0].trim(),
+            };
+          }
+          return { farsi: text, english: '' };
+        };
+
+        const { farsi, english } = splitName(productName);
 
         return (
           <div
@@ -61,9 +81,8 @@ const CartItems = ({ items, onUpdateQuantity, onRemoveItem, isLoading }) => {
                   alt={productName}
                   className="w-full h-full object-cover rounded-xl border border-slate-100"
                 />
-                {/* بج تخفیف */}
                 {hasDiscount && (
-                  <div className="absolute -top-2 -right-2 bg-red-500 text-white text-[10px] font-bold px-2 py-1 rounded-lg shadow-sm">
+                  <div className="absolute -top-2 -right-2 bg-[#aa4725] text-white text-[10px] font-bold px-2 py-1 rounded-lg shadow-sm">
                     تخفیف
                   </div>
                 )}
@@ -71,21 +90,38 @@ const CartItems = ({ items, onUpdateQuantity, onRemoveItem, isLoading }) => {
 
               {/* اطلاعات */}
               <div className="flex-1 min-w-0 flex flex-col">
-                <h3 className="text-sm md:text-base font-bold text-slate-800 line-clamp-2 mb-1">
-                  {productName}
-                </h3>
+                {/* نام محصول — هماهنگ با ProductHeader */}
+                <div className="mb-1.5">
+                  {farsi && (
+                    <h3 className="text-sm md:text-base font-bold text-[#1a1a1a] leading-snug tracking-tight">
+                      {farsi}
+                    </h3>
+                  )}
+                  {english && (
+                    <span
+                      className="block text-xs md:text-sm font-bold text-[#1a1a1a] tracking-tight mt-0.5"
+                      dir="ltr"
+                    >
+                      {english}
+                    </span>
+                  )}
+                  {/* اگر نام فقط انگلیسی بود */}
+                  {!farsi && !english && productName && (
+                    <h3 className="text-sm md:text-base font-bold text-[#1a1a1a] leading-snug tracking-tight">
+                      {productName}
+                    </h3>
+                  )}
+                </div>
 
-                {productDesc && (
-                  <p className="text-xs text-slate-500 w-[70%] line-clamp-1 mb-3">
-                    {productDesc}
-                  </p>
-                )}
-
-                {/* واریانت */}
-                {item.variantId && item.variantAttributes && (
-                  <div className="flex flex-wrap gap-1 mb-2">
-                    {Object.entries(item.variantAttributes).map(([key, val]) => (
-                      <span key={key} className="text-xs bg-gray-100 px-2 py-1 rounded">
+                {/* واریانت — زیر نام محصول */}
+                {variantAttrs && Object.keys(variantAttrs).length > 0 && (
+                  <div className="flex flex-wrap gap-1.5 mb-2">
+                    {Object.entries(variantAttrs).map(([key, val]) => (
+                      <span
+                        key={key}
+                        className="inline-flex items-center gap-1 text-xs bg-[#aa4725]/8 text-[#aa4725] border border-[#aa4725]/20 px-2.5 py-0.5 rounded-full font-medium"
+                      >
+                        <span className="text-slate-500 text-[10px]">{key}:</span>
                         {val}
                       </span>
                     ))}
@@ -112,7 +148,7 @@ const CartItems = ({ items, onUpdateQuantity, onRemoveItem, isLoading }) => {
                       )}
                     </button>
 
-                    <span className="w-8 text-center font-semibold text-slate-800">
+                    <span className="w-8 text-center font-bold text-[#1a1a1a] text-sm">
                       {item.quantity}
                     </span>
 
@@ -127,8 +163,8 @@ const CartItems = ({ items, onUpdateQuantity, onRemoveItem, isLoading }) => {
                 </div>
               </div>
 
-              {/* ناحیه قیمت */}
-              <div className="flex flex-col items-end justify-between min-w-[100px]">
+              {/* ناحیه قیمت — هماهنگ با ProductPrice */}
+              <div className="flex flex-col items-end justify-between min-w-[110px]">
                 <button
                   onClick={() => onRemoveItem(item.productId, item.variantId)}
                   className="md:hidden p-1 text-slate-400 hover:text-red-500 transition"
@@ -137,20 +173,28 @@ const CartItems = ({ items, onUpdateQuantity, onRemoveItem, isLoading }) => {
                 </button>
 
                 <div className="text-left">
-                  {/* قیمت خط خورده */}
+                  {/* قیمت خط‌خورده */}
                   {hasDiscount && (
-                    <div className="text-[10px] md:text-xs text-slate-400 line-through decoration-red-300 mb-0">
+                    <div className="text-[10px] md:text-xs text-slate-400 line-through decoration-red-300 mb-0.5">
                       {formatPriceWithCurrency(item.itemTotalBeforeDiscount)}
                     </div>
                   )}
 
-                  <div className="text-sm md:text-base font-bold text-indigo-600">
-                    {formatPriceWithCurrency(item.itemFinalPrice)}
+                  {/* قیمت نهایی — استایل مشابه ProductPrice */}
+                  <div className="flex items-baseline gap-1 justify-end">
+                    <span className="text-base md:text-lg font-bold text-[#1a1a1a] tracking-tight">
+                      {new Intl.NumberFormat('fa-IR').format(item.itemFinalPrice)}
+                    </span>
+                    <span className="text-[10px] font-bold text-slate-500">تومان</span>
                   </div>
 
                   {item.quantity > 1 && (
-                    <div className="text-[10px] text-slate-500">
-                      هر عدد {formatPriceWithCurrency(item.unitPriceToman)}
+                    <div className="text-[10px] text-slate-500 text-left mt-0.5">
+                      هر عدد{' '}
+                      <span className="font-semibold text-slate-600">
+                        {new Intl.NumberFormat('fa-IR').format(item.unitPriceToman)}
+                      </span>{' '}
+                      ت
                     </div>
                   )}
                 </div>

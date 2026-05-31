@@ -4,7 +4,7 @@
  * وب‌هوک تأیید پرداخت موفق
  *  - آپدیت وضعیت سفارش
  *  - محاسبه و واریز کردیت مربی بر اساس مدل CoachCredit
- *  - این endpoint باید پس از تأیید نهایی پرداخت توسط درگاه صدا زده شود
+ *  - ارسال ایمیل فاکتور به مشتری و ادمین
  *
  * POST body (internal/از callback درگاه):
  *  { orderId: string }
@@ -18,6 +18,7 @@ import Order from "base/models/Order";
 import Payment from "base/models/Payment";
 import User from "base/models/User";
 import { computeCoachCredit } from "base/services/priceEngine";
+import { sendOrderConfirmationEmail } from "@/lib/emailService";
 
 export async function POST(req) {
   try {
@@ -30,8 +31,9 @@ export async function POST(req) {
     }
 
     const order = await Order.findById(orderId)
-      .populate("items.product", "_id category brand serie")
-      .populate("user", "_id coach walletBalance")
+      .populate("items.product", "_id name mainImage category brand serie")
+      .populate("items.variant", "_id attributes images sku")
+      .populate("user", "_id coach walletBalance email phone")
       .lean();
 
     if (!order) {
@@ -63,6 +65,15 @@ export async function POST(req) {
       fulfillmentStatus: "PROCESSING",
     });
 
+    // ─── ارسال ایمیل فاکتور ───
+    try {
+      const customerEmail = order.user?.email ?? null;
+      await sendOrderConfirmationEmail(order, customerEmail);
+    } catch (emailErr) {
+      // خطای ایمیل نباید روند اصلی را متوقف کند
+      console.error("خطا در ارسال ایمیل:", emailErr);
+    }
+
     // ─── محاسبه کردیت مربی ───
     const buyer = order.user;
     if (buyer?.coach) {
@@ -91,7 +102,7 @@ export async function POST(req) {
 
     return NextResponse.json(
       {
-        message:       "پرداخت تأیید و سفارش پردازش شد",
+        message:   "پرداخت تأیید و سفارش پردازش شد",
         orderId,
         totalPaid,
       },

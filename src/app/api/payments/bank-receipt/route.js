@@ -2,6 +2,7 @@
  * src/app/api/payments/bank-receipt/route.js
  *
  * ثبت پرداخت با رسید بانکی یا تعریف اقساط
+ * + ارسال ایمیل تأیید سفارش پس از ثبت رسید
  *
  * POST body:
  *  {
@@ -9,9 +10,9 @@
  *    method:           "BANK_RECEIPT" | "INSTALLMENT",
  *    receiptImageUrl?: string,   // برای BANK_RECEIPT
  *    installment?: {             // برای INSTALLMENT
- *      downPaymentAmount:   number,  // پیش‌پرداخت به تومان
- *      downPaymentReceipt:  string,  // تصویر رسید پیش‌پرداخت
- *      numberOfChecks:      number,  // تعداد چک
+ *      downPaymentAmount:   number,
+ *      downPaymentReceipt:  string,
+ *      numberOfChecks:      number,
  *      checks: [{ amount, dueDate, checkNumber? }]
  *    }
  *  }
@@ -24,6 +25,8 @@ import { verifyToken } from "base/utils/auth";
 import Order from "base/models/Order";
 import Payment from "base/models/Payment";
 import Installment from "base/models/Installment";
+import User from "base/models/User";
+import { sendOrderConfirmationEmail } from "@/lib/emailService";
 
 async function getUserFromToken() {
   const cookieStore = await cookies();
@@ -84,6 +87,20 @@ export async function POST(req) {
       order.payments.push(payment._id);
       await order.save();
 
+      // ─── ارسال ایمیل فاکتور ───
+      try {
+        // سفارش را با populate کامل بارگذاری می‌کنیم
+        const populatedOrder = await Order.findById(order._id)
+          .populate("items.product", "_id name mainImage")
+          .populate("items.variant", "_id attributes images sku")
+          .lean();
+
+        const userDoc = await User.findById(user.userId).select("email").lean();
+        await sendOrderConfirmationEmail(populatedOrder, userDoc?.email ?? null);
+      } catch (emailErr) {
+        console.error("خطا در ارسال ایمیل:", emailErr);
+      }
+
       return NextResponse.json(
         { message: "رسید بانکی با موفقیت ثبت شد و در انتظار تأیید است", payment },
         { status: 201 }
@@ -103,7 +120,6 @@ export async function POST(req) {
         checks,
       } = installment;
 
-      // اعتبارسنجی پیش‌پرداخت
       if (!downPaymentAmount || downPaymentAmount <= 0) {
         return NextResponse.json({ message: "مبلغ پیش‌پرداخت معتبر نیست" }, { status: 400 });
       }
@@ -133,7 +149,6 @@ export async function POST(req) {
         );
       }
 
-      // بررسی مجموع چک‌ها
       const checksTotal = checks.reduce((s, c) => s + (c.amount || 0), 0);
       const expectedChecksTotal = order.totalPrice - downPaymentAmount;
 
@@ -146,7 +161,6 @@ export async function POST(req) {
         );
       }
 
-      // ثبت پرداخت پیش‌پرداخت
       const downPayment = await Payment.create({
         order:  order._id,
         method: "BANK_RECEIPT",
@@ -159,7 +173,6 @@ export async function POST(req) {
         },
       });
 
-      // ثبت رکورد اقساط
       const installmentDoc = await Installment.create({
         order:          order._id,
         downPayment:    downPayment._id,
@@ -177,6 +190,19 @@ export async function POST(req) {
       order.payments.push(downPayment._id);
       order.paymentStatus = "PARTIALLY_PAID";
       await order.save();
+
+      // ─── ارسال ایمیل فاکتور برای اقساط ───
+      try {
+        const populatedOrder = await Order.findById(order._id)
+          .populate("items.product", "_id name mainImage")
+          .populate("items.variant", "_id attributes images sku")
+          .lean();
+
+        const userDoc = await User.findById(user.userId).select("email").lean();
+        await sendOrderConfirmationEmail(populatedOrder, userDoc?.email ?? null);
+      } catch (emailErr) {
+        console.error("خطا در ارسال ایمیل:", emailErr);
+      }
 
       return NextResponse.json(
         {
