@@ -7,39 +7,43 @@ import AuthForm from '@/components/auth/AuthForm';
 import GoogleButton from '@/components/auth/GoogleButton';
 import { useForgotPassword } from '@/components/auth/useForgotPassword';
 import { showToast } from '@/lib/toast';
+import { loginAction } from 'base/actions/authActions';
 
 function AuthContent() {
-  const [mode, setMode] = useState('login'); // 'login' | 'register'
+  const [mode, setMode] = useState('login');
   const [loading, setLoading] = useState(false);
   const { forgotPassword } = useForgotPassword();
 
+  const router = useRouter();
   const searchParams = useSearchParams();
   const callbackUrl = searchParams.get('callbackUrl') || '/';
 
   const handleSubmit = async (data) => {
     setLoading(true);
     try {
-      const res = await fetch(
-        mode === 'login' ? '/api/auth/login' : '/api/auth/register',
-        {
+      if (mode === 'login') {
+        // Server Action — کوکی + revalidate + redirect همه سمت سرور
+        const result = await loginAction({ ...data, callbackUrl });
+
+        // اگر result برگشت، یعنی خطا داشتیم (redirect نشد)
+        if (result?.error) {
+          showToast.error(result.error);
+        }
+        // اگر موفق باشه، redirect در Server Action انجام میشه و به اینجا نمیرسیم
+      } else {
+        const res = await fetch('/api/auth/register', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(data),
+        });
+
+        const result = await res.json();
+
+        if (!res.ok) {
+          showToast.error(result.message || 'خطا در عملیات');
+          return;
         }
-      );
 
-      const result = await res.json();
-
-      if (!res.ok) {
-        showToast.error(result.message || 'خطا در عملیات');
-        return;
-      }
-
-      if (mode === 'login') {
-        showToast.success('خوش آمدید!');
-        // استفاده از این متد کش کامپوننت‌های کلاینتی نوبار را برای سشن جدید نوسازی می‌کند
-        window.location.href = callbackUrl;
-      } else {
         showToast.success('ثبت‌نام با موفقیت انجام شد');
         setMode('login');
       }
@@ -64,16 +68,16 @@ function AuthContent() {
             key={item}
             onClick={() => setMode(item)}
             className={`pb-2 transition-all relative
-              ${mode === item 
-                ? 'text-[#aa4725]' 
+              ${mode === item
+                ? 'text-[#aa4725]'
                 : 'text-slate-400 hover:text-slate-600'
               }`}
           >
             {item === 'login' ? 'ورود به حساب' : 'ایجاد حساب'}
             {mode === item && (
-              <motion.div 
+              <motion.div
                 layoutId="activeTab"
-                className="absolute bottom-0 left-0 right-0 h-0.5 bg-[#aa4725]" 
+                className="absolute bottom-0 left-0 right-0 h-0.5 bg-[#aa4725]"
               />
             )}
           </button>
@@ -117,7 +121,6 @@ function AuthContent() {
         <span className="flex-1 h-px bg-slate-100" />
       </div>
 
-      {/* Google Button */}
       <GoogleButton onClick={handleGoogleLogin} disabled={loading} />
 
       <p className="mt-6 text-center text-[10px] text-slate-400">

@@ -661,7 +661,7 @@ useEffect(() => {
       </nav>
 
       {!isHomePage && <div className="h-[75px]" />}
-      <CartDrawer isOpen={openCart} onClose={() => setOpenCart(false)} />
+      <CartDrawer isOpen={openCart} onClose={() => setOpenCart(false)} user={user} />
     </>
   );
 }

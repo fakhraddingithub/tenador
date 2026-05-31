@@ -18,10 +18,10 @@ import {
 } from 'react-icons/fa';
 import { getCart, updateQuantity, removeFromCart } from '@/lib/cart';
 
-export default function CartDrawer({ isOpen, onClose }) {
-    const [items, setItems]           = useState([]);
-    const [totals, setTotals]         = useState({ grand: 0, savings: 0 });
-    const [loading, setLoading]       = useState(false);
+export default function CartDrawer({ isOpen, onClose, user }) {
+    const [items, setItems] = useState([]);
+    const [totals, setTotals] = useState({ grand: 0, savings: 0 });
+    const [loading, setLoading] = useState(false);
     const [updatingId, setUpdatingId] = useState(null); // آیتمی که در حال آپدیت است
     const router = useRouter();
 
@@ -39,9 +39,9 @@ export default function CartDrawer({ isOpen, onClose }) {
 
             // یک fetch واحد — همه داده‌های نمایشی + قیمت
             const res = await fetch('/api/cart/products', {
-                method:  'POST',
+                method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body:    JSON.stringify({ items: cartData }),
+                body: JSON.stringify({ items: cartData }),
             });
 
             if (!res.ok) throw new Error('خطا در دریافت سبد خرید');
@@ -50,7 +50,7 @@ export default function CartDrawer({ isOpen, onClose }) {
 
             setItems(data.items || []);
             setTotals({
-                grand:   data.grandTotalToman    ?? 0,
+                grand: data.grandTotalToman ?? 0,
                 savings: data.grandDiscountToman ?? 0,
             });
         } catch (error) {
@@ -77,12 +77,12 @@ export default function CartDrawer({ isOpen, onClose }) {
         setItems((prev) =>
             prev.map((i) =>
                 i.productId === item.productId &&
-                (i.variantId ?? null) === (item.variantId ?? null)
+                    (i.variantId ?? null) === (item.variantId ?? null)
                     ? {
-                          ...i,
-                          quantity:      newQty,
-                          itemFinalToman: i.unitPriceToman * newQty,
-                      }
+                        ...i,
+                        quantity: newQty,
+                        itemFinalToman: i.unitPriceToman * newQty,
+                    }
                     : i
             )
         );
@@ -91,15 +91,15 @@ export default function CartDrawer({ isOpen, onClose }) {
         try {
             const cartData = getCart();
             const res = await fetch('/api/cart/products', {
-                method:  'POST',
+                method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body:    JSON.stringify({ items: cartData }),
+                body: JSON.stringify({ items: cartData }),
             });
             if (res.ok) {
                 const data = await res.json();
                 setItems(data.items || []);
                 setTotals({
-                    grand:   data.grandTotalToman    ?? 0,
+                    grand: data.grandTotalToman ?? 0,
                     savings: data.grandDiscountToman ?? 0,
                 });
             }
@@ -115,12 +115,12 @@ export default function CartDrawer({ isOpen, onClose }) {
         const remaining = items.filter(
             (i) =>
                 !(i.productId === item.productId &&
-                  (i.variantId ?? null) === (item.variantId ?? null))
+                    (i.variantId ?? null) === (item.variantId ?? null))
         );
         setItems(remaining);
 
         // محاسبه مجدد totals از آیتم‌های باقیمانده
-        const newGrand   = remaining.reduce((s, i) => s + (i.itemFinalToman ?? 0), 0);
+        const newGrand = remaining.reduce((s, i) => s + (i.itemFinalToman ?? 0), 0);
         const newSavings = remaining.reduce((s, i) => s + (i.discountToman ?? 0) * i.quantity, 0);
         setTotals({ grand: newGrand, savings: newSavings });
     };
@@ -128,10 +128,15 @@ export default function CartDrawer({ isOpen, onClose }) {
     // ─── محاسبه تعداد کل ───
     const totalItems = items.reduce((sum, i) => sum + i.quantity, 0);
 
+    // ۲. handleCheckout را اینطور تغییر بده
     const handleCheckout = () => {
-        router.push('/p-user/signOrder');
         onClose();
-    };
+        if (!user) {
+            router.push('/login-register?callbackUrl=/p-user/signOrder');
+            return;
+        }
+        router.push('/p-user/signOrder');
+    };  
 
     if (!isOpen) return null;
 
@@ -178,12 +183,12 @@ export default function CartDrawer({ isOpen, onClose }) {
                         </div>
                     ) : (
                         items.map((item) => {
-                            const key          = `${item.productId}-${item.variantId ?? 'no-variant'}`;
-                            const isUpdating   = updatingId === `${item.productId}-${item.variantId ?? 'null'}`;
-                            const baseToman    = item.basePriceToman  ?? 0;
-                            const unitToman    = item.unitPriceToman  ?? baseToman;
-                            const itemTotal    = item.itemFinalToman  ?? unitToman * item.quantity;
-                            const hasDiscount  = (item.discountToman ?? 0) > 0;
+                            const key = `${item.productId}-${item.variantId ?? 'no-variant'}`;
+                            const isUpdating = updatingId === `${item.productId}-${item.variantId ?? 'null'}`;
+                            const baseToman = item.basePriceToman ?? 0;
+                            const unitToman = item.unitPriceToman ?? baseToman;
+                            const itemTotal = item.itemFinalToman ?? unitToman * item.quantity;
+                            const hasDiscount = (item.discountToman ?? 0) > 0;
                             const productImage = item.variant?.images?.[0] || item.product?.mainImage;
 
                             return (

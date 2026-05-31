@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { revalidatePath } from 'next/cache';
 import connectToDB from 'base/configs/db';
 import User from 'base/models/User';
 import { passwordValidator, tokenGenrator, generateRefreshToken, validatePhone } from 'base/utils/auth';
@@ -9,7 +10,6 @@ export async function POST(request) {
 
     const { phone, password } = await request.json();
 
-    // Validation
     if (!phone || !password) {
       return NextResponse.json({ message: 'Phone and password are required' }, { status: 400 });
     }
@@ -18,37 +18,39 @@ export async function POST(request) {
       return NextResponse.json({ message: 'Invalid phone number' }, { status: 400 });
     }
 
-    // Find user (only local provider)
     const user = await User.findOne({ phone, provider: 'local' });
     if (!user) {
       return NextResponse.json({ message: 'User not found or not a local user' }, { status: 404 });
     }
 
-    // Validate password
     const isValid = await passwordValidator(password, user.password);
     if (!isValid) {
       return NextResponse.json({ message: 'Invalid password' }, { status: 401 });
     }
 
-    // Generate tokens
     const accessToken = tokenGenrator({ userId: user._id, phone: user.phone });
     const refreshToken = generateRefreshToken({ userId: user._id, phone: user.phone });
 
-    // Set cookies
-    const response = NextResponse.json({ message: 'Login successful', user: { id: user._id, phone: user.phone, name: user.name } }, { status: 200 });
+    // ← کش تمام layout‌ها باطل میشه تا Navbar اسم کاربر رو نشون بده
+    revalidatePath('/', 'layout');
+
+    const response = NextResponse.json(
+      { message: 'Login successful', user: { id: user._id, phone: user.phone, name: user.name } },
+      { status: 200 }
+    );
 
     response.cookies.set('accessToken', accessToken, {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
       sameSite: 'strict',
-      maxAge: 15 * 24 * 60 * 60, 
+      maxAge: 15 * 24 * 60 * 60,
     });
 
     response.cookies.set('refreshToken', refreshToken, {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
       sameSite: 'strict',
-      maxAge: 15 * 24 * 60 * 60, // 15 days
+      maxAge: 15 * 24 * 60 * 60,
     });
 
     return response;
