@@ -137,7 +137,7 @@ export async function POST(req) {
           province:    addressDoc.province,
           city:        addressDoc.city,
           postalCode:  addressDoc.postalCode,
-          fullAddress: addressDoc.fullAddress,
+          addressLine: addressDoc.addressLine,
         },
       },
       description: description?.slice(0, 500) ?? "",

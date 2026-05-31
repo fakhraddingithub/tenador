@@ -99,7 +99,7 @@ const OrderSchema = new mongoose.Schema(
         province:    String,
         city:        String,
         postalCode:  String,
-        fullAddress: String,
+        addressLine: String,
       },
     },
 

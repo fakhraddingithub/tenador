@@ -213,7 +213,7 @@ function buildEmailHtml(order, isAdmin = false) {
             </tr>` : ''}
             <tr>
               <td style="padding:10px 16px; color:#888; border-left:1px solid #f0ece8;">آدرس</td>
-              <td style="padding:10px 16px; color:#1a1a1a; line-height:1.6;">${addressSnap.fullAddress ?? '—'}</td>
+              <td style="padding:10px 16px; color:#1a1a1a; line-height:1.6;">${addressSnap.addressLine ?? '—'}</td>
             </tr>
           </table>
         </div>

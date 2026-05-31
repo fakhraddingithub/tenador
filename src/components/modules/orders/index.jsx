@@ -200,7 +200,7 @@ function OrderDetailModal({ order, onClose }) {
                   )}
                   <div className="flex gap-2">
                     <span className="text-gray-400 w-20 flex-shrink-0 text-xs mt-0.5">آدرس:</span>
-                    <span className="text-[#1a1a1a] leading-relaxed text-sm">{addressSnap.fullAddress}</span>
+                    <span className="text-[#1a1a1a] leading-relaxed text-sm">{addressSnap.addressLine}</span>
                   </div>
                   {addressSnap.postalCode && (
                     <div className="flex gap-2">

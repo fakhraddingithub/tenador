@@ -255,7 +255,7 @@ export default function PaymentSuccessPage({ trackingCode }) {
                                     )}
                                     <div className="flex gap-2">
                                         <span className="text-gray-500 w-24 flex-shrink-0">آدرس:</span>
-                                        <span className="text-[#1a1a1a] leading-relaxed">{order.address.snapshot.fullAddress}</span>
+                                        <span className="text-[#1a1a1a] leading-relaxed">{order.address.snapshot.addressLine}</span>
                                     </div>
                                 </div>
                             </div>
