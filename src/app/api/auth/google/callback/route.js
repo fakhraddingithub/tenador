@@ -21,14 +21,11 @@ export async function GET(request) {
     }
 
     const { tokens } = await client.getToken(code);
-    if (!tokens.access_token) {
-      throw new Error('No access token received from Google');
-    }
+    if (!tokens.access_token) throw new Error('No access token received from Google');
 
     const userinfoRes = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
       headers: { Authorization: `Bearer ${tokens.access_token}` },
     });
-
     if (!userinfoRes.ok) throw new Error('Failed to fetch Google user info');
 
     const { sub, email, name, picture } = await userinfoRes.json();
@@ -37,7 +34,6 @@ export async function GET(request) {
     await connectToDB();
 
     let user = await User.findOne({ googleId: sub });
-
     if (!user) {
       user = await User.findOne({ email: email.toLowerCase().trim() });
       if (user) {
@@ -61,14 +57,16 @@ export async function GET(request) {
     const accessToken = tokenGenrator({ userId: user._id, email: user.email, role: user.role });
     const refreshToken = generateRefreshToken({ userId: user._id, email: user.email });
 
-    // ← callbackUrl از کوکی موقت خونده میشه
+    // callbackUrl از کوکی موقت خونده میشه
     const rawCallback = request.cookies.get('oauth_callback')?.value;
-    const callbackUrl = rawCallback ? decodeURIComponent(rawCallback) : '/';
+    const finalUrl = rawCallback ? decodeURIComponent(rawCallback) : '/';
 
-    // ← باطل کردن کش layout تا Navbar آپدیت بشه
     revalidatePath('/', 'layout');
 
-    const response = NextResponse.redirect(new URL(callbackUrl, request.url));
+    // ← به جای redirect مستقیم، از صفحه intermediate رد میشیم
+    const response = NextResponse.redirect(
+      new URL(`/auth/success?next=${encodeURIComponent(finalUrl)}`, request.url)
+    );
 
     response.cookies.set('accessToken', accessToken, {
       httpOnly: true,
@@ -84,7 +82,6 @@ export async function GET(request) {
       maxAge: 15 * 24 * 60 * 60,
     });
 
-    // ← کوکی موقت پاک میشه
     response.cookies.delete('oauth_callback');
 
     return response;
