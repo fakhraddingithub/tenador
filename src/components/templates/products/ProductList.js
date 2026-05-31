@@ -1,6 +1,9 @@
+"use client";
+
 import { useState } from "react";
 import ProductCard from "@/components/modules/cart/ProductCard";
 import QuickViewModal from "@/components/modules/cart/QuickViewModal";
+
 export default function ProductList({
   products = [],
   rate,
@@ -42,8 +45,10 @@ export default function ProductList({
         />
       ))}
 
+      {/* rate به مودال پاس داده می‌شود تا قیمت صفر نشود */}
       <QuickViewModal
         product={selectedProduct}
+        rate={rate}
         isOpen={isModalOpen}
         onClose={closeQuickView}
       />

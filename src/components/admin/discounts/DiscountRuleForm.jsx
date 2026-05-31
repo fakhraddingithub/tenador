@@ -1,15 +1,17 @@
 "use client";
-// components/admin/discounts/DiscountRuleForm.jsx
-import { useState, useEffect } from "react";
+// src/components/admin/discounts/DiscountRuleForm.jsx
+// فرم قوانین تخفیف با جستجوی اسمی (بدون نیاز به وارد کردن آی‌دی)
+
+import { useState, useEffect, useRef, useCallback } from "react";
 import { toast } from "react-toastify";
 
 const TYPES = [
   { value: "global", label: "همه محصولات", hasTargets: false },
-  { value: "product", label: "محصول خاص", hasTargets: true, placeholder: "آی‌دی محصولات را با کاما جدا کنید" },
-  { value: "category", label: "دسته‌بندی", hasTargets: true, placeholder: "آی‌دی دسته‌بندی‌ها" },
-  { value: "variant", label: "واریانت خاص", hasTargets: true, placeholder: "آی‌دی واریانت‌ها را با کاما جدا کنید" },
-  { value: "serie", label: "سری محصولات", hasTargets: true, placeholder: "آی‌دی سری‌ها" },
-  { value: "brand", label: "برند", hasTargets: true, placeholder: "آی‌دی برندها" },
+  { value: "product", label: "محصول خاص", hasTargets: true, searchType: "product" },
+  { value: "category", label: "دسته‌بندی", hasTargets: false }, // دسته‌بندی بدون search (نگه می‌داریم ساده)
+  { value: "variant", label: "واریانت خاص", hasTargets: true, searchType: "variant" },
+  { value: "serie", label: "سری محصولات", hasTargets: true, searchType: "serie" },
+  { value: "brand", label: "برند", hasTargets: true, searchType: "brand" },
   { value: "userRole", label: "نقش کاربر", hasTargets: false },
   { value: "userLevel", label: "سطح کاربر", hasTargets: false },
   { value: "cartValue", label: "حداقل سبد خرید", hasTargets: false },
@@ -45,9 +47,393 @@ const defaultForm = {
   note: "",
 };
 
+// ─── Autocomplete Dropdown Hook ──────────────────────────────────────────────
+function useSearchDropdown(searchType) {
+  const [query, setQuery] = useState("");
+  const [results, setResults] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [open, setOpen] = useState(false);
+  const timerRef = useRef(null);
+
+  const search = useCallback(
+    async (q) => {
+      if (!q || !searchType) {
+        setResults([]);
+        setOpen(false);
+        return;
+      }
+      setLoading(true);
+      try {
+        const res = await fetch(
+          `/api/admin/discounts/search?type=${searchType}&q=${encodeURIComponent(q)}`
+        );
+        const data = await res.json();
+        setResults(data.items || []);
+        setOpen(true);
+      } catch {
+        setResults([]);
+      } finally {
+        setLoading(false);
+      }
+    },
+    [searchType]
+  );
+
+  const handleQueryChange = (val) => {
+    setQuery(val);
+    clearTimeout(timerRef.current);
+    if (!val.trim()) {
+      setResults([]);
+      setOpen(false);
+      return;
+    }
+    timerRef.current = setTimeout(() => search(val), 300);
+  };
+
+  const reset = () => {
+    setQuery("");
+    setResults([]);
+    setOpen(false);
+  };
+
+  return { query, handleQueryChange, results, loading, open, setOpen, reset };
+}
+
+// ─── TargetSearch Component ──────────────────────────────────────────────────
+// برای product / brand / serie
+function TargetSearchField({ searchType, selectedItems, onAdd, onRemove }) {
+  const { query, handleQueryChange, results, loading, open, setOpen, reset } =
+    useSearchDropdown(searchType);
+  const wrapRef = useRef(null);
+
+  // بستن dropdown با کلیک بیرون
+  useEffect(() => {
+    function handler(e) {
+      if (wrapRef.current && !wrapRef.current.contains(e.target)) {
+        setOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, [setOpen]);
+
+  function handleSelect(item) {
+    if (!selectedItems.find((s) => s._id === String(item._id))) {
+      onAdd({ _id: String(item._id), label: item.label, image: item.image });
+    }
+    reset();
+    setOpen(false);
+  }
+
+  return (
+    <div className="space-y-2">
+      {/* تگ‌های انتخاب‌شده */}
+      {selectedItems.length > 0 && (
+        <div className="flex flex-wrap gap-1.5">
+          {selectedItems.map((item) => (
+            <span
+              key={item._id}
+              className="inline-flex items-center gap-1 bg-[#aa4725]/10 border border-[#aa4725]/30 text-[#aa4725] text-xs px-2.5 py-1 rounded-full"
+            >
+              {item.image && (
+                <img
+                  src={item.image}
+                  alt=""
+                  className="w-4 h-4 rounded-full object-cover"
+                />
+              )}
+              {item.label}
+              <button
+                type="button"
+                onClick={() => onRemove(item._id)}
+                className="text-[#aa4725]/60 hover:text-[#aa4725] ml-0.5 font-bold leading-none"
+              >
+                ×
+              </button>
+            </span>
+          ))}
+        </div>
+      )}
+
+      {/* فیلد جستجو */}
+      <div className="relative" ref={wrapRef}>
+        <input
+          type="text"
+          value={query}
+          onChange={(e) => handleQueryChange(e.target.value)}
+          onFocus={() => query && results.length && setOpen(true)}
+          className={inputCls}
+          placeholder="نام را تایپ کنید..."
+          autoComplete="off"
+        />
+        {loading && (
+          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs text-gray-400">
+            جستجو...
+          </span>
+        )}
+
+        {open && (
+          <ul className="absolute z-50 w-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg max-h-52 overflow-y-auto">
+            {results.length === 0 ? (
+              <li className="px-4 py-3 text-sm text-gray-400 text-right">
+                همچین آیتمی وجود ندارد
+              </li>
+            ) : (
+              results.map((item) => (
+                <li
+                  key={String(item._id)}
+                  onMouseDown={() => handleSelect(item)}
+                  className="flex items-center gap-2.5 px-3 py-2.5 hover:bg-gray-50 cursor-pointer transition-colors border-b border-gray-50 last:border-none"
+                >
+                  {item.image ? (
+                    <img
+                      src={item.image}
+                      alt=""
+                      className="w-8 h-8 rounded object-cover flex-shrink-0"
+                    />
+                  ) : (
+                    <div className="w-8 h-8 rounded bg-gray-100 flex-shrink-0" />
+                  )}
+                  <div className="text-right">
+                    <p className="text-sm font-medium text-gray-800">
+                      {item.label}
+                    </p>
+                    {item.sub && (
+                      <p className="text-xs text-gray-400">{item.sub}</p>
+                    )}
+                  </div>
+                </li>
+              ))
+            )}
+          </ul>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ─── VariantSearchField ──────────────────────────────────────────────────────
+// جستجو با اسم محصول → انتخاب محصول → نمایش واریانت‌هایش
+function VariantSearchField({ selectedItems, onAdd, onRemove }) {
+  // مرحله ۱: سرچ محصول
+  const productSearch = useSearchDropdown("variant"); // type=variant بدون productId → محصول برمیگرداند
+  const wrapRef = useRef(null);
+
+  // مرحله ۲: انتخاب محصول و نمایش واریانت‌ها
+  const [selectedProduct, setSelectedProduct] = useState(null);
+  const [variants, setVariants] = useState([]);
+  const [loadingVariants, setLoadingVariants] = useState(false);
+
+  useEffect(() => {
+    function handler(e) {
+      if (wrapRef.current && !wrapRef.current.contains(e.target)) {
+        productSearch.setOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, [productSearch]);
+
+  async function handleSelectProduct(item) {
+    setSelectedProduct(item);
+    productSearch.reset();
+    productSearch.setOpen(false);
+    setLoadingVariants(true);
+    try {
+      const res = await fetch(
+        `/api/admin/discounts/search?type=variant&productId=${item._id}`
+      );
+      const data = await res.json();
+      setVariants(data.items || []);
+    } catch {
+      setVariants([]);
+      toast.error("خطا در دریافت واریانت‌ها");
+    } finally {
+      setLoadingVariants(false);
+    }
+  }
+
+  function handleSelectVariant(variant) {
+    if (!selectedItems.find((s) => s._id === String(variant._id))) {
+      onAdd({
+        _id: String(variant._id),
+        label: `${selectedProduct?.label} | ${variant.label}`,
+        image: variant.image,
+      });
+    }
+  }
+
+  return (
+    <div className="space-y-3">
+      {/* تگ‌های واریانت انتخاب شده */}
+      {selectedItems.length > 0 && (
+        <div className="flex flex-wrap gap-1.5">
+          {selectedItems.map((item) => (
+            <span
+              key={item._id}
+              className="inline-flex items-center gap-1 bg-[#aa4725]/10 border border-[#aa4725]/30 text-[#aa4725] text-xs px-2.5 py-1 rounded-full"
+            >
+              {item.image && (
+                <img
+                  src={item.image}
+                  alt=""
+                  className="w-4 h-4 rounded-full object-cover"
+                />
+              )}
+              {item.label}
+              <button
+                type="button"
+                onClick={() => onRemove(item._id)}
+                className="text-[#aa4725]/60 hover:text-[#aa4725] ml-0.5 font-bold leading-none"
+              >
+                ×
+              </button>
+            </span>
+          ))}
+        </div>
+      )}
+
+      {/* مرحله ۱: جستجوی محصول */}
+      <div>
+        <p className="text-xs text-gray-500 mb-1">
+          ابتدا محصول مورد نظر را جستجو کنید:
+        </p>
+        <div className="relative" ref={wrapRef}>
+          <input
+            type="text"
+            value={productSearch.query}
+            onChange={(e) => productSearch.handleQueryChange(e.target.value)}
+            onFocus={() =>
+              productSearch.query &&
+              productSearch.results.length &&
+              productSearch.setOpen(true)
+            }
+            className={inputCls}
+            placeholder="نام محصول را تایپ کنید..."
+            autoComplete="off"
+          />
+          {productSearch.loading && (
+            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs text-gray-400">
+              جستجو...
+            </span>
+          )}
+
+          {productSearch.open && (
+            <ul className="absolute z-50 w-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg max-h-52 overflow-y-auto">
+              {productSearch.results.length === 0 ? (
+                <li className="px-4 py-3 text-sm text-gray-400 text-right">
+                  همچین آیتمی وجود ندارد
+                </li>
+              ) : (
+                productSearch.results.map((item) => (
+                  <li
+                    key={String(item._id)}
+                    onMouseDown={() => handleSelectProduct(item)}
+                    className="flex items-center gap-2.5 px-3 py-2.5 hover:bg-gray-50 cursor-pointer transition-colors border-b border-gray-50 last:border-none"
+                  >
+                    {item.image ? (
+                      <img
+                        src={item.image}
+                        alt=""
+                        className="w-8 h-8 rounded object-cover flex-shrink-0"
+                      />
+                    ) : (
+                      <div className="w-8 h-8 rounded bg-gray-100 flex-shrink-0" />
+                    )}
+                    <div className="text-right">
+                      <p className="text-sm font-medium text-gray-800">
+                        {item.label}
+                      </p>
+                    </div>
+                  </li>
+                ))
+              )}
+            </ul>
+          )}
+        </div>
+      </div>
+
+      {/* مرحله ۲: واریانت‌های محصول انتخاب‌شده */}
+      {selectedProduct && (
+        <div className="border border-gray-100 rounded-lg p-3 bg-gray-50/50">
+          <div className="flex items-center justify-between mb-2">
+            <p className="text-xs font-medium text-gray-700">
+              واریانت‌های{" "}
+              <span className="text-[#aa4725]">{selectedProduct.label}</span>:
+            </p>
+            <button
+              type="button"
+              onClick={() => {
+                setSelectedProduct(null);
+                setVariants([]);
+              }}
+              className="text-xs text-gray-400 hover:text-gray-600"
+            >
+              × بستن
+            </button>
+          </div>
+
+          {loadingVariants ? (
+            <p className="text-xs text-gray-400 text-center py-2">
+              در حال بارگذاری...
+            </p>
+          ) : variants.length === 0 ? (
+            <p className="text-xs text-gray-400 text-center py-2">
+              واریانتی برای این محصول یافت نشد
+            </p>
+          ) : (
+            <div className="space-y-1.5 max-h-48 overflow-y-auto">
+              {variants.map((variant) => {
+                const isSelected = selectedItems.some(
+                  (s) => s._id === String(variant._id)
+                );
+                return (
+                  <label
+                    key={String(variant._id)}
+                    className={`flex items-center gap-2 p-2 rounded-lg cursor-pointer transition-colors ${
+                      isSelected
+                        ? "bg-[#aa4725]/10 border border-[#aa4725]/30"
+                        : "bg-white border border-gray-100 hover:border-[#aa4725]/30"
+                    }`}
+                  >
+                    <input
+                      type="checkbox"
+                      checked={isSelected}
+                      onChange={(e) => {
+                        if (e.target.checked) handleSelectVariant(variant);
+                        else onRemove(String(variant._id));
+                      }}
+                      className="accent-[#aa4725]"
+                    />
+                    {variant.image && (
+                      <img
+                        src={variant.image}
+                        alt=""
+                        className="w-8 h-8 rounded object-cover"
+                      />
+                    )}
+                    <div className="text-right flex-1">
+                      <p className="text-xs font-medium text-gray-800">
+                        {variant.label}
+                      </p>
+                      <p className="text-[10px] text-gray-400">{variant.sub}</p>
+                    </div>
+                  </label>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─── Main Form ───────────────────────────────────────────────────────────────
 export default function DiscountRuleForm({ initial, onSuccess, onCancel }) {
   const [form, setForm] = useState(defaultForm);
-  const [targetsText, setTargetsText] = useState("");
+  // selectedTargets: آرایه‌ای از { _id, label, image }
+  const [selectedTargets, setSelectedTargets] = useState([]);
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
@@ -57,11 +443,24 @@ export default function DiscountRuleForm({ initial, onSuccess, onCancel }) {
         ...initial,
         discount: initial.discount || defaultForm.discount,
         conditions: { ...defaultForm.conditions, ...initial.conditions },
-        startAt: initial.startAt ? new Date(initial.startAt).toISOString().slice(0, 16) : "",
-        endAt: initial.endAt ? new Date(initial.endAt).toISOString().slice(0, 16) : "",
+        startAt: initial.startAt
+          ? new Date(initial.startAt).toISOString().slice(0, 16)
+          : "",
+        endAt: initial.endAt
+          ? new Date(initial.endAt).toISOString().slice(0, 16)
+          : "",
         usageLimit: initial.usageLimit ?? "",
       });
-      setTargetsText((initial.targets || []).join(", "));
+      // targets موجود را به صورت آبجکت ساده نگه می‌داریم (هنگام ویرایش آی‌دی داریم)
+      if (initial.targets?.length) {
+        setSelectedTargets(
+          initial.targets.map((id) => ({
+            _id: String(id),
+            label: String(id),
+            image: null,
+          }))
+        );
+      }
     }
   }, [initial]);
 
@@ -69,9 +468,23 @@ export default function DiscountRuleForm({ initial, onSuccess, onCancel }) {
     setForm((prev) => {
       const parts = path.split(".");
       if (parts.length === 1) return { ...prev, [path]: value };
-      return { ...prev, [parts[0]]: { ...prev[parts[0]], [parts[1]]: value } };
+      return {
+        ...prev,
+        [parts[0]]: { ...prev[parts[0]], [parts[1]]: value },
+      };
     });
   };
+
+  function addTarget(item) {
+    setSelectedTargets((prev) => {
+      if (prev.find((t) => t._id === item._id)) return prev;
+      return [...prev, item];
+    });
+  }
+
+  function removeTarget(id) {
+    setSelectedTargets((prev) => prev.filter((t) => t._id !== id));
+  }
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -79,18 +492,22 @@ export default function DiscountRuleForm({ initial, onSuccess, onCancel }) {
 
     const payload = {
       ...form,
-      targets: targetsText ? targetsText.split(",").map((s) => s.trim()).filter(Boolean) : [],
+      targets: selectedTargets.map((t) => t._id),
       discount: { ...form.discount, value: Number(form.discount.value) },
       conditions: {
         ...form.conditions,
         minCartValue: Number(form.conditions.minCartValue) || 0,
-        maxUsagePerUser: form.conditions.maxUsagePerUser ? Number(form.conditions.maxUsagePerUser) : null,
+        maxUsagePerUser: form.conditions.maxUsagePerUser
+          ? Number(form.conditions.maxUsagePerUser)
+          : null,
       },
       priority: Number(form.priority),
       usageLimit: form.usageLimit ? Number(form.usageLimit) : null,
     };
 
-    const url = initial ? `/api/admin/discounts/${initial._id}` : "/api/admin/discounts";
+    const url = initial
+      ? `/api/admin/discounts/${initial._id}`
+      : "/api/admin/discounts";
     const method = initial ? "PATCH" : "POST";
 
     try {
@@ -129,26 +546,38 @@ export default function DiscountRuleForm({ initial, onSuccess, onCancel }) {
       <Field label="نوع تخفیف *">
         <select
           value={form.type}
-          onChange={(e) => set("type", e.target.value)}
+          onChange={(e) => {
+            set("type", e.target.value);
+            setSelectedTargets([]); // ریست targets هنگام تغییر نوع
+          }}
           className={inputCls}
           required
         >
           {TYPES.map((t) => (
-            <option key={t.value} value={t.value}>{t.label}</option>
+            <option key={t.value} value={t.value}>
+              {t.label}
+            </option>
           ))}
         </select>
       </Field>
 
-      {/* Targets */}
-      {selectedType?.hasTargets && (
-        <Field label="آی‌دی‌های هدف">
-          <input
-            value={targetsText}
-            onChange={(e) => setTargetsText(e.target.value)}
-            className={inputCls}
-            placeholder={selectedType.placeholder}
-          />
-          <p className="text-xs text-gray-400 mt-1">آی‌دی‌ها را با کاما جدا کنید</p>
+      {/* Targets با جستجوی اسمی */}
+      {selectedType?.hasTargets && selectedType.searchType && (
+        <Field label="انتخاب هدف">
+          {form.type === "variant" ? (
+            <VariantSearchField
+              selectedItems={selectedTargets}
+              onAdd={addTarget}
+              onRemove={removeTarget}
+            />
+          ) : (
+            <TargetSearchField
+              searchType={selectedType.searchType}
+              selectedItems={selectedTargets}
+              onAdd={addTarget}
+              onRemove={removeTarget}
+            />
+          )}
         </Field>
       )}
 
@@ -157,7 +586,10 @@ export default function DiscountRuleForm({ initial, onSuccess, onCancel }) {
         <Field label="نقش‌های هدف">
           <div className="flex flex-wrap gap-2">
             {USER_ROLES.map((r) => (
-              <label key={r.value} className="flex items-center gap-1.5 cursor-pointer">
+              <label
+                key={r.value}
+                className="flex items-center gap-1.5 cursor-pointer"
+              >
                 <input
                   type="checkbox"
                   checked={form.targetRoles.includes(r.value)}
@@ -181,7 +613,10 @@ export default function DiscountRuleForm({ initial, onSuccess, onCancel }) {
         <Field label="سطوح هدف">
           <div className="flex flex-wrap gap-2">
             {USER_LEVELS.map((l) => (
-              <label key={l.value} className="flex items-center gap-1.5 cursor-pointer">
+              <label
+                key={l.value}
+                className="flex items-center gap-1.5 cursor-pointer"
+              >
                 <input
                   type="checkbox"
                   checked={form.targetLevels.includes(l.value)}
@@ -277,7 +712,9 @@ export default function DiscountRuleForm({ initial, onSuccess, onCancel }) {
             <input
               type="checkbox"
               checked={form.conditions.onlyFirstOrders}
-              onChange={(e) => set("conditions.onlyFirstOrders", e.target.checked)}
+              onChange={(e) =>
+                set("conditions.onlyFirstOrders", e.target.checked)
+              }
               className="accent-[#aa4725]"
             />
             فقط اولین سفارش
@@ -327,7 +764,7 @@ export default function DiscountRuleForm({ initial, onSuccess, onCancel }) {
         />
       </Field>
 
-      {/* Buttons */}
+      {/* دکمه‌ها */}
       <div className="flex gap-3 pt-2">
         <button
           type="submit"
@@ -351,7 +788,9 @@ export default function DiscountRuleForm({ initial, onSuccess, onCancel }) {
 function Field({ label, children }) {
   return (
     <div>
-      <label className="block text-sm font-medium text-gray-700 mb-1">{label}</label>
+      <label className="block text-sm font-medium text-gray-700 mb-1">
+        {label}
+      </label>
       {children}
     </div>
   );

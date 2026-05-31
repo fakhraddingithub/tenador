@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo, useRef } from "react";
+import { useState, useMemo, useRef, useEffect } from "react";
 import Link from "next/link";
 import ProductHeader from "./ProductHeader";
 import ProductPrice from "./ProductPrice";
@@ -56,10 +56,61 @@ const ProductInfo = ({ product, selectedVariant, onVariantChange }) => {
 
   const [selection, setSelection] = useState({});
   const [quantity, setQuantity] = useState(1);
-  const [errorMessage, setErrorMessage] = useState(""); // استیت برای مدیریت خطای انتخاب ویژگی
-  const addToCartWrapperRef = useRef(null); // رفرنس برای پیدا کردن مکان دکمه در صفحه
+  const [errorMessage, setErrorMessage] = useState("");
+  const addToCartWrapperRef = useRef(null);
 
-  const hasDiscountLabel = product.label === "discount";
+  // ── داده‌های تخفیف واقعی از Price API ────────────────────────────────────
+  const [priceData, setPriceData] = useState(null);
+
+  useEffect(() => {
+    if (!product?._id) return;
+    fetch(`/api/product/${product._id}/price`)
+      .then((r) => r.json())
+      .then((data) => {
+        if (!data.error) setPriceData(data);
+      })
+      .catch(() => {});
+  }, [product?._id]);
+
+  // قیمت پایه (تومان) — از page.jsx از قبل convert شده
+  const basePrice = (selectedVariant && selectedVariant.price) || product.basePrice;
+
+  // اطلاعات تخفیف از price API
+  const apiVariantData = useMemo(() => {
+    if (!priceData || !selectedVariant) return null;
+    return priceData.variants?.find(
+      (v) => String(v._id) === String(selectedVariant._id)
+    ) || null;
+  }, [priceData, selectedVariant]);
+
+  // قیمت نهایی با تخفیف (اگر موجود باشد)
+  const discountedPrice = useMemo(() => {
+    if (selectedVariant && apiVariantData) {
+      return apiVariantData.finalPriceToman < apiVariantData.basePriceToman
+        ? apiVariantData.finalPriceToman
+        : null;
+    }
+    if (!selectedVariant && priceData) {
+      return priceData.finalPriceToman < priceData.basePriceToman
+        ? priceData.finalPriceToman
+        : null;
+    }
+    return null;
+  }, [selectedVariant, apiVariantData, priceData]);
+
+  const discountPercent = useMemo(() => {
+    if (selectedVariant && apiVariantData) return apiVariantData.discountPercent || 0;
+    if (!selectedVariant && priceData) return priceData.discountPercent || 0;
+    return 0;
+  }, [selectedVariant, apiVariantData, priceData]);
+
+  const hasRealDiscount = discountedPrice !== null && discountedPrice < basePrice;
+
+  // قیمت واحد نهایی برای افزودن به سبد
+  const finalUnitPrice = hasRealDiscount ? discountedPrice : basePrice;
+  const totalPrice = finalUnitPrice * quantity;
+  const originalTotalPrice = basePrice * quantity;
+  const totalSavings = originalTotalPrice - totalPrice;
 
   const labelMap = useMemo(
     () => buildLabelMap(product.category?.variantAttributes),
@@ -76,22 +127,15 @@ const ProductInfo = ({ product, selectedVariant, onVariantChange }) => {
   function handleSelect(attrKey, value) {
     const newSelection = { ...selection, [attrKey]: value };
     setSelection(newSelection);
-    setErrorMessage(""); // با هر انتخاب جدید، پیام خطا پاک می‌شود
-
+    setErrorMessage("");
+  
     if (optionKeys.every((k) => newSelection[k])) {
       onVariantChange(findMatchingVariant(product.variants, newSelection));
     } else {
       onVariantChange(null);
     }
   }
-
-  const basePrice = (selectedVariant && selectedVariant.price) || product.basePrice;
-  const discountPercent = hasDiscountLabel ? calculateDiscount(quantity) : 0;
-  const finalUnitPrice = Math.round(basePrice * (1 - discountPercent / 100));
-  const totalPrice = finalUnitPrice * quantity;
-  const originalTotalPrice = basePrice * quantity;
-  const totalSavings = originalTotalPrice - totalPrice;
-
+  
   function handleQuantityChange(newQty) {
     if (newQty < 1) return;
     setQuantity(newQty);
@@ -207,40 +251,44 @@ const ProductInfo = ({ product, selectedVariant, onVariantChange }) => {
 
       {/* Price Section */}
       <div className="space-y-3">
-        {hasDiscountLabel && discountPercent > 0 ? (
+        {hasRealDiscount ? (
           <div className="space-y-2">
             <div className="flex items-center gap-2">
               <span className="text-lg text-gray-400 line-through">
                 {basePrice.toLocaleString("fa-IR")} تومان
               </span>
-              <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-bold bg-red-100 text-red-700">
-                {discountPercent}٪ تخفیف
-              </span>
+              {discountPercent > 0 && (
+                <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-bold bg-red-100 text-red-700">
+                  {discountPercent}٪ تخفیف
+                </span>
+              )}
             </div>
             
             <div className="flex items-baseline gap-2">
               <span className="text-3xl font-bold text-[#aa4725]">
-                {finalUnitPrice.toLocaleString("fa-IR")}
+                {discountedPrice.toLocaleString("fa-IR")}
               </span>
               <span className="text-lg text-gray-600">تومان</span>
             </div>
 
-            <div className="inline-flex items-center gap-2 px-3 py-1.5 bg-gradient-to-r from-green-50 to-emerald-50 border border-green-200 rounded-lg">
-              <svg
-                className="w-4 h-4 text-green-600"
-                fill="currentColor"
-                viewBox="0 0 20 20"
-              >
-                <path
-                  fillRule="evenodd"
-                  d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
-                  clipRule="evenodd"
-                />
-              </svg>
-              <span className="text-sm font-semibold text-green-700">
-                صرفه‌جویی {totalSavings.toLocaleString("fa-IR")} تومانی
-              </span>
-            </div>
+            {totalSavings > 0 && (
+              <div className="inline-flex items-center gap-2 px-3 py-1.5 bg-gradient-to-r from-green-50 to-emerald-50 border border-green-200 rounded-lg">
+                <svg
+                  className="w-4 h-4 text-green-600"
+                  fill="currentColor"
+                  viewBox="0 0 20 20"
+                >
+                  <path
+                    fillRule="evenodd"
+                    d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
+                    clipRule="evenodd"
+                  />
+                </svg>
+                <span className="text-sm font-semibold text-green-700">
+                  صرفه‌جویی {totalSavings.toLocaleString("fa-IR")} تومانی
+                </span>
+              </div>
+            )}
           </div>
         ) : (
           <ProductPrice
@@ -304,7 +352,7 @@ const ProductInfo = ({ product, selectedVariant, onVariantChange }) => {
       <div className="space-y-4">
         <div className="flex items-center justify-between">
           <p className="text-sm font-semibold text-gray-700">تعداد</p>
-          {hasDiscountLabel && (
+          {hasRealDiscount && (
             <div className="flex items-center gap-1 text-xs">
               <svg className="w-4 h-4 text-amber-500" fill="currentColor" viewBox="0 0 20 20">
                 <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
@@ -348,7 +396,7 @@ const ProductInfo = ({ product, selectedVariant, onVariantChange }) => {
           </div>
 
           {/* Discount Hint */}
-          {hasDiscountLabel && (
+          {hasRealDiscount && (
             <div className="flex-1">
               {quantity === 1 && (
                 <div className="flex items-start gap-2 p-2 bg-blue-50 border border-blue-200 rounded-lg">
@@ -385,7 +433,7 @@ const ProductInfo = ({ product, selectedVariant, onVariantChange }) => {
         </div>
 
         {/* Discount Tiers Display */}
-        {hasDiscountLabel && (
+        {hasRealDiscount && (
           <div className="grid grid-cols-3 gap-2">
             {[
               { qty: 1, discount: 0, label: "عادی" },
@@ -440,7 +488,7 @@ const ProductInfo = ({ product, selectedVariant, onVariantChange }) => {
         )}
 
         {/* Price Summary for Discount Products */}
-        {hasDiscountLabel && discountPercent > 0 && (
+        {hasRealDiscount && discountPercent > 0 && (
           <div className="bg-gradient-to-br from-gray-50 to-gray-100 border-2 border-gray-200 rounded-xl p-4 space-y-3">
             {/* بقیه خلاصه‌قیمت دست‌نخورده باقی می‌ماند */}
             <div className="flex items-center justify-between text-sm">

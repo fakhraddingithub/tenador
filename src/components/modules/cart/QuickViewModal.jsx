@@ -118,7 +118,7 @@ export default function QuickViewModal({
     }
   }
 
-  // محاسبه قیمت نهایی به تومان (با اولویت واریانت)
+  // محاسبه قیمت پایه به تومان (با اولویت واریانت)
   const finalTomanPrice = useMemo(() => {
     const eurPrice = selectedVariant
       ? Number(selectedVariant.price)
@@ -128,8 +128,24 @@ export default function QuickViewModal({
       return Math.floor(rawToman / 1000) * 1000;
   }, [selectedVariant, product?.basePrice, rate]);
 
-  // متغیر برای نمایش در UI
-  const displayPrice = finalTomanPrice;
+  // محاسبه قیمت تخفیف‌دار برای واریانت انتخاب‌شده یا محصول
+  const discountedTomanPrice = useMemo(() => {
+    // اگر واریانت انتخاب شده و از سرور finalPriceToman آمده
+    if (selectedVariant?.finalPriceToman != null) {
+      return selectedVariant.finalPriceToman;
+    }
+    // اگر محصول discountPrice دارد (از listing enrichment)
+    if (!selectedVariant && product?.discountPrice) {
+      return Number(product.discountPrice);
+    }
+    return null;
+  }, [selectedVariant, product?.discountPrice]);
+
+  const hasDiscount =
+    discountedTomanPrice !== null && discountedTomanPrice < finalTomanPrice;
+
+  // قیمت نمایشی نهایی (بعد از تخفیف یا بدون تخفیف)
+  const displayPrice = hasDiscount ? discountedTomanPrice : finalTomanPrice;
 
   const variantStock = selectedVariant?.stock ?? null;
   const isOutOfStock = hasVariants
@@ -433,14 +449,35 @@ export default function QuickViewModal({
                 <span className="text-[11px] sm:text-xs text-gray-400 font-bold">
                   قیمت نهایی:
                 </span>
-                <div className="flex items-baseline gap-1">
-                  <span className="text-2xl sm:text-3xl font-bold text-[#aa4725]">
-                    {displayPrice.toLocaleString()}
-                  </span>
-                  <span className="text-xs sm:text-sm font-bold text-[#aa4725]">
-                    تومان
-                  </span>
-                </div>
+                {hasDiscount ? (
+                  <>
+                    {/* قیمت اصلی خط‌خورده و کمرنگ */}
+                    <div className="flex items-baseline gap-1">
+                      <span className="text-sm text-gray-300 line-through">
+                        {finalTomanPrice.toLocaleString()}
+                      </span>
+                      <span className="text-[10px] text-gray-300 line-through">تومان</span>
+                    </div>
+                    {/* قیمت تخفیف‌خورده با استایل فعال */}
+                    <div className="flex items-baseline gap-1">
+                      <span className="text-2xl sm:text-3xl font-bold text-[#aa4725]">
+                        {displayPrice.toLocaleString()}
+                      </span>
+                      <span className="text-xs sm:text-sm font-bold text-[#aa4725]">
+                        تومان
+                      </span>
+                    </div>
+                  </>
+                ) : (
+                  <div className="flex items-baseline gap-1">
+                    <span className="text-2xl sm:text-3xl font-bold text-[#aa4725]">
+                      {displayPrice.toLocaleString()}
+                    </span>
+                    <span className="text-xs sm:text-sm font-bold text-[#aa4725]">
+                      تومان
+                    </span>
+                  </div>
+                )}
               </div>
 
               {/* تعداد */}
