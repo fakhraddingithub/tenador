@@ -19,7 +19,7 @@ import {
   connectWarehouseDB,
   getItemTrackingModel,
   getWarehouseModel,
-} from "base/configs/warehouseDb";
+} from "@/lib/warehouseDb";
 import { verifyToken } from "base/utils/auth";
 import Order from "base/models/Order";
 
