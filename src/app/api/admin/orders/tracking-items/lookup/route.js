@@ -33,7 +33,7 @@ export async function GET(req) {
 
     if (!code)
       return NextResponse.json(
-        { message: "کد الزامی است", found: false },
+        { message: ".کد الزامی است", found: false },
         { status: 400 }
       );
 
