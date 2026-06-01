@@ -22,39 +22,48 @@ export async function POST(req) {
       sport: null,
       athlete: null,
       category: null,
-      serie: null, // ✨ اضافه شد
+      serie: null,
       product: null,
     };
 
     // ----------- ۱) پردازش Query Params (اولویت اول) -----------
     const { searchParams } = new URL(req.url);
-    // ✨ "serie" به آرایه entities اضافه شد
     const entities = ["brand", "sport", "athlete", "category", "serie", "product"]; 
     const models = { 
       brand: Brand, 
       sport: Sport, 
       athlete: Athlete, 
       category: Category, 
-      serie: Serie, // ✨ اضافه شد
+      serie: Serie, 
       product: Product 
     };
 
     for (const entity of entities) {
       const querySlug = searchParams.get(entity);
       if (querySlug) {
-        search[entity] = await models[entity].findOne({ slug: querySlug }).lean();
+        const conditions = { slug: querySlug };
+        // ✨ اگر موجودیت درخواستی محصول بود، حتماً باید فعال باشد
+        if (entity === "product") {
+          conditions.isActive = true;
+        }
+        search[entity] = await models[entity].findOne(conditions).lean();
       }
     }
 
     // ----------- ۲) پردازش Slugs هوشمند (اولویت دوم) -----------
-    // این بخش به ترتیب اسلاگ‌های آرایه را در مدل‌های مختلف جستجو می‌کند
     for (const slug of slugArray) {
       for (const entity of entities) {
         if (!search[entity]) {
-          const doc = await models[entity].findOne({ slug }).lean();
+          const conditions = { slug };
+          // ✨ در جستجوی هوشمند اسلاگ نیز فقط محصولات فعال بررسی شوند
+          if (entity === "product") {
+            conditions.isActive = true;
+          }
+          
+          const doc = await models[entity].findOne(conditions).lean();
           if (doc) {
             search[entity] = doc;
-            break; // اگر در این مدل پیدا شد، برو سراغ اسلاگ بعدی در آرایه اصلی
+            break; 
           }
         }
       }
@@ -65,17 +74,24 @@ export async function POST(req) {
 
     if (search.brand) {
       // الف) شمارش کل محصولات متعلق به این برند
-      const totalBrandProducts = await Product.countDocuments({ brand: search.brand._id });
+      // ✨ شرط isActive: true اضافه شد تا محصولات غیرفعال شمرده نشوند
+      const totalBrandProducts = await Product.countDocuments({ 
+        brand: search.brand._id, 
+        isActive: true 
+      });
 
       // ب) دریافت تمام سری‌های این برند و شمارش محصولات هر کدام
-      // ما برند را دوباره پیدا می‌کنیم تا سری‌های populate شده را بگیریم
       const fullBrand = await Brand.findById(search.brand._id)
         .populate("series")
         .lean();
 
       const seriesWithCounts = await Promise.all(
         (fullBrand.series || []).map(async (serie) => {
-          const count = await Product.countDocuments({ serie: serie._id });
+          // ✨ شرط isActive: true برای شمارش دقیق محصولات فعال هر سری اضافه شد
+          const count = await Product.countDocuments({ 
+            serie: serie._id, 
+            isActive: true 
+          });
           return {
             ...serie,
             productCount: count
@@ -91,12 +107,15 @@ export async function POST(req) {
     }
 
     // ----------- ۴) ساخت فیلتر نهایی برای کوئری محصولات -----------
-    const finalFilter = {};
+    const finalFilter = {
+      isActive: true // ✨ فیلتر اصلی همیشه روی محصولات فعال (true) قفل شد
+    };
+    
     if (search.brand) finalFilter.brand = search.brand._id;
     if (search.sport) finalFilter.sport = search.sport._id;
     if (search.athlete) finalFilter.athlete = search.athlete._id;
     if (search.category) finalFilter.category = search.category._id;
-    if (search.serie) finalFilter.serie = search.serie._id; // ✨ اضافه شد
+    if (search.serie) finalFilter.serie = search.serie._id; 
     if (search.product) finalFilter._id = search.product._id;
 
     // ----------- ۵) اجرای کوئری نهایی محصولات -----------
@@ -112,7 +131,7 @@ export async function POST(req) {
         sport: search.sport,
         athlete: search.athlete,
         category: search.category,
-        serie: search.serie, // ✨ اضافه شد
+        serie: search.serie, 
         product: search.product,
       },
       results: products,

@@ -1,13 +1,3 @@
-/**
- * POST /api/admin/payments/[id]/approve
- *
- * ادمین رسید بانکی را تأیید می‌کند.
- * بعد از تأیید:
- *  1. Payment → PAID
- *  2. Order → PAID (اگر کل مبلغ پرداخت شده باشد)
- *  3. webhook کردیت مربی
- */
-
 import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
 import { verifyToken } from "base/utils/auth";
@@ -16,12 +6,11 @@ import Payment from "base/models/Payment";
 import Order from "base/models/Order";
 import mongoose from "mongoose";
 
-async function getAuthUser() {
+async function getAdminUser() {
   const cookieStore = await cookies();
   const token = cookieStore.get("accessToken")?.value;
   if (!token) return null;
   const decoded = verifyToken(token);
-  if (!decoded?.userId) return null;
   return decoded;
 }
 
@@ -29,12 +18,25 @@ export async function POST(req, { params }) {
   try {
     await connectToDB();
 
-    const auth = await getAuthUser();
-    if (!auth || auth.role !== "admin") {
-      return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
+    const { id: paymentId } = await params;
+    const body = await req.json();
+    const { confirmedAmount } = body;
+
+    // اعتبارسنجی مبلغ
+    if (confirmedAmount === undefined || confirmedAmount === null) {
+      return NextResponse.json(
+        { message: "مبلغ تأیید‌شده الزامی است" },
+        { status: 400 },
+      );
     }
 
-    const { id: paymentId } = params;
+    const parsedAmount = Number(confirmedAmount);
+    if (isNaN(parsedAmount) || parsedAmount <= 0) {
+      return NextResponse.json(
+        { message: "مبلغ تأیید‌شده باید عددی مثبت باشد" },
+        { status: 400 },
+      );
+    }
 
     const payment = await Payment.findById(paymentId);
     if (!payment) {
@@ -44,77 +46,90 @@ export async function POST(req, { params }) {
     if (payment.method !== "BANK_RECEIPT") {
       return NextResponse.json(
         { message: "فقط پرداخت‌های رسید بانکی را می‌توان تأیید کرد" },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
     if (payment.status === "PAID") {
       return NextResponse.json(
         { message: "این پرداخت قبلاً تأیید شده است" },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
     const order = await Order.findById(payment.order);
     if (!order) {
-      return NextResponse.json({ message: "سفارش یافت نشد" }, { status: 404 });
+      return NextResponse.json(
+        { message: "سفارش مرتبط یافت نشد" },
+        { status: 404 },
+      );
     }
 
-    /* محاسبه مجموع پرداختی‌های تأیید شده */
-    const approvedPayments = await Payment.find({
-      _id: { $in: order.payments },
+    // محاسبه مجموع پرداخت‌های قبلی تأییدشده (به‌جز همین پرداخت)
+    const previousApproved = await Payment.find({
+      _id: { $in: order.payments, $ne: payment._id },
       status: "PAID",
     }).lean();
-    const alreadyPaid = approvedPayments.reduce((s, p) => s + p.amount, 0);
-    const newTotal = alreadyPaid + payment.amount;
+    const alreadyPaidTotal = previousApproved.reduce((s, p) => s + p.amount, 0);
+    const newTotal = alreadyPaidTotal + parsedAmount;
+    const isFullyPaid = newTotal >= order.totalPrice;
 
-    const dbSession = await mongoose.startSession();
-    dbSession.startTransaction();
+    const session = await mongoose.startSession();
+    session.startTransaction();
+
+    const admin = await getAdminUser();
+
     try {
+      // بروزرسانی پرداخت با مبلغ تأیید‌شده
+      payment.amount = parsedAmount;
       payment.status = "PAID";
       payment.bankReceipt.reviewStatus = "APPROVED";
-      payment.bankReceipt.reviewedBy = auth.userId;
+      payment.bankReceipt.reviewedBy = admin.userId;
       payment.bankReceipt.reviewedAt = new Date();
-      await payment.save({ session: dbSession });
+      await payment.save({ session });
 
-      const isFullyPaid = newTotal >= order.totalPrice;
-
+      // بروزرسانی سفارش
+      order.paymentStatus = isFullyPaid ? "PAID" : "PARTIALLY_PAID";
       if (isFullyPaid) {
-        order.paymentStatus = "PAID";
         order.fulfillmentStatus = "PROCESSING";
-        order.reviewedBy = auth.userId;
-        order.reviewedAt = new Date();
-      } else {
-        order.paymentStatus = "PARTIALLY_PAID";
       }
+      order.reviewedBy = admin.userId;
+      order.reviewedAt = new Date();
+      await order.save({ session });
 
-      await order.save({ session: dbSession });
+      await session.commitTransaction();
+      session.endSession();
 
-      await dbSession.commitTransaction();
-      dbSession.endSession();
-
-      /* webhook کردیت مربی */
+      // webhook کردیت مربی (پس از commit)
       if (isFullyPaid) {
-        fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/api/orders/webhook-success`, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            "x-webhook-secret": process.env.WEBHOOK_SECRET || "",
+        fetch(
+          `${process.env.NEXT_PUBLIC_BASE_URL}/api/orders/webhook-success`,
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              "x-webhook-secret": process.env.WEBHOOK_SECRET || "",
+            },
+            body: JSON.stringify({ orderId: order._id }),
           },
-          body: JSON.stringify({ orderId: order._id }),
-        }).catch((e) => console.error("[approve webhook]", e));
+        ).catch((e) => console.error("[approve webhook]", e));
       }
 
       return NextResponse.json(
         {
           message: "پرداخت با موفقیت تأیید شد",
+          confirmedAmount: parsedAmount,
           paymentStatus: order.paymentStatus,
+          fulfillmentStatus: order.fulfillmentStatus,
+          isFullyPaid,
+          totalPaid: newTotal,
+          orderTotal: order.totalPrice,
         },
-        { status: 200 }
+        { status: 200 },
       );
     } catch (err) {
-      await dbSession.abortTransaction();
-      dbSession.endSession();
+      await session.abortTransaction();
+      session.endSession();
       throw err;
     }
   } catch (error) {

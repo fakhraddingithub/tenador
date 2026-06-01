@@ -18,7 +18,9 @@ const modelsMap = {
 export async function getProducts() {
   try {
     await connectToDB();
-    const products = await Product.find({})
+    
+    // ✨ شرط { isActive: true } برای فیلتر محصولات غیرفعال اضافه شد
+    const products = await Product.find({ isActive: true })
       .populate("brand")
       .populate("sport")
       .populate("athlete")
@@ -41,13 +43,13 @@ export async function getProducts() {
 }
 
 export async function getProductBySlug(slug) {
-
   const decodedSlug = decodeURIComponent(slug);
   
   try {
     await connectToDB();
 
-    const product = await Product.findOne({ slug: decodedSlug })
+    // ✨ شرط isActive: true اضافه شد تا اگر کاربر لینک مستقیم محصول غیرفعال را زد، خطای ۴۰۴ بگیرد
+    const product = await Product.findOne({ slug: decodedSlug, isActive: true })
       .populate("brand")
       .populate("serie")
       .populate("sport")
@@ -57,7 +59,7 @@ export async function getProductBySlug(slug) {
       .lean();
 
     if (!product) {
-      return { error: "محصول پیدا نشد", status: 404 };
+      return { error: "محصول پیدا نشد یا غیرفعال است", status: 404 };
     }
 
     const mergedAttributes = product.category.attributes.map((attr) => ({
@@ -89,7 +91,6 @@ export async function getPageDataBySlug(slug) {
   }
 
   // ۲. پیدا کردن اطلاعات خودِ موجودیت (مثلاً اطلاعات ورزش یا برند)
-  // از آنجایی که نام مدل را در دیتابیس ذخیره کردیم، داینامیک عمل می‌کنیم
   const EntityModel = modelsMap[slugData.model];
 
   if (!EntityModel) {
@@ -100,9 +101,10 @@ export async function getPageDataBySlug(slug) {
   const entityInfo = await EntityModel.findOne({ slug }).lean();
 
   // ۳. پیدا کردن محصولات مرتبط
-  // از filterField و filterValue که در رجیستری ذخیره شده استفاده می‌کنیم
+  // ✨ فیلد isActive: true به آبجکت کوئری اضافه شد تا در صفحات برند/ورزش هم محصول غیرفعال نیاید
   const productQuery = {
     [slugData.filterField]: entityInfo._id,
+    isActive: true, 
   };
 
   const products = await Product.find(productQuery)

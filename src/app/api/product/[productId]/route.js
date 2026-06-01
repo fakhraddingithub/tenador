@@ -61,6 +61,17 @@ export async function GET(request, { params }) {
       );
     }
 
+    // ✨ اضافه شد: اگر محصول غیرفعال بود، فقط به ادمین (کاربر لاگین شده) اجازه مشاهده بده
+    if (product.isActive === false) {
+      const user = await getUserFromToken();
+      if (!user) {
+        return NextResponse.json(
+          { error: "این محصول غیرفعال شده است و امکان مشاهده آن وجود ندارد" },
+          { status: 404 }
+        );
+      }
+    }
+
     return NextResponse.json(
       { product },
       { status: 200 }
@@ -81,7 +92,7 @@ export async function GET(request, { params }) {
 
 export async function PUT(request, { params }) {
   try {
-    const { productId } =await params;
+    const { productId } = await params;
 
     if (!productId) {
       return NextResponse.json(
@@ -121,6 +132,7 @@ export async function PUT(request, { params }) {
       attributes,
       technicalStats,
       label,
+      isActive, // ✨ اضافه شد: دریافت وضعیت فعال/غیرفعال از فرانت‌اند
       variantOptions,
       variantDetails,
     } = body;
@@ -195,19 +207,11 @@ export async function PUT(request, { params }) {
 
         const variant = await Variant.create({
           productId: product._id,
-        
           categoryId: category,
-        
           attributes: combo,
-        
           price: Number(detail.price) || 0,
-        
           stock: Number(detail.stock) || 0,
-        
-          images: Array.isArray(detail.images)
-            ? detail.images
-            : [],
-        
+          images: Array.isArray(detail.images) ? detail.images : [],
           sku: `${product._id}-${comboKey}`
             .replace(/\s+/g, "")
             .toUpperCase(),
@@ -224,43 +228,27 @@ export async function PUT(request, { params }) {
     product.name = name || "";
     product.shortDescription = shortDescription || "";
     product.longDescription = longDescription || "";
-
     product.color = color || "";
-
     product.basePrice = Number(basePrice) || 0;
-
     product.category = category || null;
-
     product.tag = Array.isArray(tag) ? tag : [];
-
     product.mainImage = mainImage || "";
-
-    product.gallery = Array.isArray(gallery)
-      ? gallery
-      : [];
-
+    product.gallery = Array.isArray(gallery) ? gallery : [];
     product.brand = brand || null;
-
     product.serie = serie || null;
-
     product.sport = sport || null;
-
-    product.athlete = Array.isArray(athlete)
-      ? athlete
-      : [];
-
+    product.athlete = Array.isArray(athlete) ? athlete : [];
+    
     product.attributes =
-      attributes && typeof attributes === "object"
-        ? attributes
-        : {};
+      attributes && typeof attributes === "object" ? attributes : {};
 
     product.technicalStats =
-      technicalStats &&
-      typeof technicalStats === "object"
-        ? technicalStats
-        : {};
+      technicalStats && typeof technicalStats === "object" ? technicalStats : {};
 
     product.label = label || "none";
+
+    // ✨ اضافه شد: اگر isActive فرستاده شده بود مقدار را به‌روزرسانی کن، در غیر این صورت مقدار قبلی را حفظ کن
+    product.isActive = typeof isActive === "boolean" ? isActive : product.isActive;
 
     product.variants = generatedVariants;
 
@@ -302,7 +290,7 @@ export async function PUT(request, { params }) {
 
 export async function DELETE(request, { params }) {
   try {
-    const { productId } =await params;
+    const { productId } = await params;
 
     if (!productId) {
       return NextResponse.json(
@@ -343,8 +331,7 @@ export async function DELETE(request, { params }) {
 
     return NextResponse.json(
       {
-        message:
-          "محصول و تمامی واریانت‌های مربوطه حذف شدند",
+        message: "محصول و تمامی واریانت‌های مربوطه حذف شدند",
       },
       { status: 200 }
     );

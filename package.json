@@ -26,6 +26,7 @@
     "cloudinary": "^2.8.0",
     "framer-motion": "^12.23.26",
     "google-auth-library": "^10.5.0",
+    "html5-qrcode": "^2.3.8",
     "jsonwebtoken": "^9.0.3",
     "lucide-react": "^1.16.0",
     "mongoose": "^9.0.0",

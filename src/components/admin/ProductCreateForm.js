@@ -88,6 +88,7 @@ export default function ProductCreateForm({ initialData = {} }) {
     attributes: {},
     technicalStats: {},
     label: 'none',
+    isActive: true, // ✨ اضافه شد: مقدار پیش‌فرض روی فعال (true) است
     ...initialData,
     // Override athlete to guarantee array form
     athlete: initialAthletes,
@@ -481,6 +482,17 @@ export default function ProductCreateForm({ initialData = {} }) {
             { value: 'limited', label: 'تعداد محدود' },
           ]}
         />
+
+        {/* ✨ اضافه شد: انتخابگر وضعیت فعال/غیرفعال محصول */}
+        <Select
+          label="وضعیت نمایش محصول"
+          value={formData.isActive ? 'true' : 'false'}
+          onChange={e => updateField('isActive', e.target.value === 'true')}
+          options={[
+            { value: 'true', label: 'فعال (نمایش در سایت)' },
+            { value: 'false', label: 'غیرفعال (مخفی در سایت)' },
+          ]}
+        />
       </div>
 
       {/* ── Color Picker (replaces suitableFor) ── */}
@@ -706,7 +718,7 @@ export default function ProductCreateForm({ initialData = {} }) {
                             min="0"
                             className="w-full border rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
                             placeholder="تعداد موجودی…"
-                            value={detail.stock|| 3}
+                            value={detail.stock || 3}
                             onChange={e =>
                               updateVariantDetail(key, 'stock', e.target.value)
                             }

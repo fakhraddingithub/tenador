@@ -121,6 +121,7 @@ export default function ProductEditPage() {
     attributes: {},
     technicalStats: {},
     label: 'none',
+    isActive: true, // ✨ اضافه شد: مقدار اولیه وضعیت فعال بودن
   });
 
   // Variant state — separate for clarity
@@ -194,7 +195,8 @@ export default function ProductEditPage() {
             technicalStats: p.technicalStats || {},
 
             label: p.label || 'none',
-          });;
+            isActive: p.isActive ?? true, // ✨ اضافه شد: دریافت وضعیت فعلی محصول از دیتابیس
+          });
 
           // Rebuild variant state from populated variants array
           const { variantOptions: vOpts, variantDetails: vDetails } =
@@ -390,6 +392,7 @@ export default function ProductEditPage() {
         attributes: normalizedAttributes,
         technicalStats: normalizedStats,
         label: formData.label,
+        isActive: formData.isActive, // ✨ اضافه شد: ارسال وضعیت محصول در ریکوئست آپدیت
         // Always send variantOptions so backend can sync
         variantOptions,
         variantDetails: normalizedVariantDetails,
@@ -565,6 +568,17 @@ export default function ProductEditPage() {
               { value: 'hot', label: 'پرطرفدار' },
               { value: 'discount', label: 'تخفیف ویژه' },
               { value: 'limited', label: 'تعداد محدود' },
+            ]}
+          />
+          
+          {/* ✨ اضافه شد: انتخابگر وضعیت فعال/غیرفعال محصول در گرید ارتباطات */}
+          <Select
+            label="وضعیت نمایش محصول"
+            value={formData.isActive ? 'true' : 'false'}
+            onChange={e => updateField('isActive', e.target.value === 'true')}
+            options={[
+              { value: 'true', label: 'فعال (نمایش در سایت)' },
+              { value: 'false', label: 'غیرفعال (مخفی در سایت)' },
             ]}
           />
         </div>

@@ -1,15 +1,24 @@
 import { NextResponse } from "next/server";
 import connectToDB from "base/configs/db";
 import Product from "base/models/Product";
-import  "base/models/Brand";
-import  "base/models/Sport";
-import  "base/models/Athlete";
-import  "base/models/Category";
+import "base/models/Brand";
+import "base/models/Sport";
+import "base/models/Athlete";
+import "base/models/Category";
 
 export async function GET(req) {
   try {
     await connectToDB();
-    const products = await Product.find({})
+
+    // ۱. استخراج پارامترهای آدرس URL
+    const { searchParams } = new URL(req.url);
+    const isAdmin = searchParams.get("isAdmin") === "true";
+
+    // ۲. شرط داینامیک دیتابیس: 
+    // اگر ادمین بود آبجکت خالی {} (یعنی همه محصولات) و اگر نبود فقط { isActive: true }
+    const query = isAdmin ? {} : { isActive: true };
+    
+    const products = await Product.find(query)
       .populate('brand')
       .populate('sport')
       .populate('athlete')
@@ -31,4 +40,3 @@ export async function GET(req) {
     );
   }
 }
-

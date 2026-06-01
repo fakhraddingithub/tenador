@@ -18,7 +18,7 @@ export default function AdminProducts() {
 
   const fetchProducts = async () => {
     try {
-      const res = await fetch('/api/product');
+      const res = await fetch('/api/product?isAdmin=true');
       if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
       const text = await res.text();
       if (!text) { setProducts([]); return; }

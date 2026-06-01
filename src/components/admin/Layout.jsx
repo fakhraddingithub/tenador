@@ -21,6 +21,8 @@ import { HiOutlineLogout } from "react-icons/hi";
 import { MdOutlineCurrencyExchange } from "react-icons/md";
 import { AiFillProduct } from "react-icons/ai";
 import { RiMenuFoldLine, RiMenuUnfoldLine } from "react-icons/ri";
+import { ShoppingCart } from "lucide-react";
+
 
 const menuItems = [
   { title: "داشبورد", href: "/p-admin", icon: FaChartPie },
@@ -31,6 +33,7 @@ const menuItems = [
   { title: "دسته‌بندی‌ها", href: "/p-admin/admin-categories", icon: FaFolderOpen },
   { title: "محصولات", href: "/p-admin/admin-products", icon: AiFillProduct },
   { title: "بازار دست دوم", href: "/p-admin/admin-secondHands", icon: FaBoxOpen },
+  { title: "سفارشات", href: "/p-admin/admin-orders", icon: ShoppingCart },
   { title: "نرخ تبدیل", href: "/p-admin/exchange-rate", icon: MdOutlineCurrencyExchange },
   { title: "کاربران", href: "/p-admin/users", icon: FaUsersCog },
 ];

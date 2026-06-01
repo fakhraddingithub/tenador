@@ -5,7 +5,6 @@ const ProductSchema = new mongoose.Schema(
   {
     name: { type: String, required: true },
 
-
     shortDescription: { type: String, required: true },
 
     longDescription: { type: String, required: true },
@@ -15,11 +14,11 @@ const ProductSchema = new mongoose.Schema(
     score: { type: Number, default: 0 },
 
     basePrice: { type: Number, default: 0 },
-    
+
     label: {
-      type: String, 
-      enum: ["none", "new", "hot", "discount", "limited"], 
-      default: "none"
+      type: String,
+      enum: ["none", "new", "hot", "discount", "limited"],
+      default: "none",
     },
 
     category: {
@@ -56,10 +55,12 @@ const ProductSchema = new mongoose.Schema(
       default: null,
     },
 
-    athlete:[{
-      type: mongoose.Schema.Types.ObjectId,
-      ref: "Athlete",
-    }],
+    athlete: [
+      {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "Athlete",
+      },
+    ],
 
     sport: {
       type: mongoose.Schema.Types.ObjectId,
@@ -71,13 +72,11 @@ const ProductSchema = new mongoose.Schema(
     attributes: {
       type: Object,
       default: {},
-
     },
-    
+
     technicalStats: {
       type: Object,
       default: {},
-
     },
 
     stock: {
@@ -85,13 +84,18 @@ const ProductSchema = new mongoose.Schema(
       default: 0,
     },
 
-    slug: { type: String, unique: true,index: true, },
+    slug: { type: String, unique: true, index: true },
+
+    isActive: {
+      type: Boolean,
+      default: true,
+      index: true,
+    },
 
     variants: [{ type: mongoose.Schema.Types.ObjectId, ref: "Variant" }],
   },
-  { timestamps: true }
+  { timestamps: true },
 );
-
 
 // ---------------------
 // 🔥 Slug Generator
@@ -102,7 +106,6 @@ ProductSchema.pre("save", function () {
   }
 });
 
-
 // ---------------------
 // 🔥 Virtual Comment
 // ---------------------
@@ -112,7 +115,7 @@ ProductSchema.virtual("comments", {
   foreignField: "product",
 });
 
-ProductSchema.index({ sport: 1, category: 1, brand: 1 });
+ProductSchema.index({ sport: 1, category: 1, brand: 1, isActive: 1 });
 
 export default mongoose.models.Product ||
   mongoose.model("Product", ProductSchema);

@@ -42,7 +42,7 @@ export default function CategoryProductsClient({ categoryId }) {
 
   const fetchProducts = async () => {
     try {
-      const res = await fetch("/api/product");
+      const res = await fetch("/api/product?isAdmin=true");
       if (!res.ok) throw new Error();
       const data = await res.json();
       setProducts(data.products || []);

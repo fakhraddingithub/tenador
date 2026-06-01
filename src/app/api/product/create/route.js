@@ -1,7 +1,7 @@
 import connectToDB from "base/configs/db";
 import Product from "base/models/Product";
 import Category from "base/models/Category";
-import Variant from "base/models/Variant"; // حتماً مدل واریانت اضافه شود
+import Variant from "base/models/Variant"; 
 import { createSlug } from "base/utils/slugify";
 import { v2 as cloudinary } from "cloudinary";
 
@@ -72,7 +72,6 @@ function generateCombinations(options) {
     const key = keys[index];
     const values = options[key];
     
-    // اگر مقداری برای این ویژگی ارسال نشده بود، از آن عبور می‌کنیم
     if (Array.isArray(values) && values.length > 0) {
       for (const val of values) {
         currentCombo[key] = val;
@@ -107,18 +106,19 @@ export async function POST(req) {
       gallery,
       brand,
       serie,
-      athlete, // اکنون قرار است آرایه باشد
+      athlete, 
       sport,
       attributes,
       technicalStats,
       label,
-      variantOptions, // { weight: ["300g", "350g"], color: ["Red", "Blue"] }
+      isActive, // ✨ اضافه شد: دریافت وضعیت فعال بودن از فرانت‌اند
+      variantOptions, 
       variantDetails
     } = body;
 
     /* -------------------------------
-       Validate Required Fields
-    ------------------------------- */
+        Validate Required Fields
+     ------------------------------- */
     const requiredFields = { name, shortDescription, longDescription, category, mainImage, brand, sport };
 
     for (const key in requiredFields) {
@@ -128,17 +128,16 @@ export async function POST(req) {
     }
 
     /* -------------------------------
-       Validate Category
-    ------------------------------- */
+        Validate Category
+     ------------------------------- */
     const foundCategory = await Category.findById(category);
     if (!foundCategory) {
       return Response.json({ error: "Category not found" }, { status: 404 });
     }
 
     /* -------------------------------
-       Validate Attributes & Tech Stats
-    ------------------------------- */
-    // بررسی ویژگی‌های ثابت
+        Validate Attributes & Tech Stats
+     ------------------------------- */
     const allowedAttrs = foundCategory.attributes.map(a => a.name);
     if (attributes) {
       for (const key of Object.keys(attributes)) {
@@ -153,7 +152,6 @@ export async function POST(req) {
       }
     }
 
-    // بررسی شاخص‌های فنی
     const allowedStats = foundCategory.technicalStats ? foundCategory.technicalStats.map(s => s.name) : [];
     if (technicalStats) {
       for (const key of Object.keys(technicalStats)) {
@@ -168,8 +166,8 @@ export async function POST(req) {
     }
 
     /* -------------------------------
-       Generate SKU & Rename Images
-    ------------------------------- */
+        Generate SKU & Rename Images
+     ------------------------------- */
     const sku = await generateUniqueSKU(name);
     const normalizedMainImage = await renameCloudinaryImage(mainImage, sku);
     const normalizedGallery = Array.isArray(gallery)
@@ -177,11 +175,10 @@ export async function POST(req) {
       : [];
 
     /* -------------------------------
-       Format Arrays (Tag & Athlete)
-    ------------------------------- */
+        Format Arrays (Tag & Athlete)
+     ------------------------------- */
     const formattedTags = Array.isArray(tag) ? tag : typeof tag === "string" ? tag.split(",").map(t => t.trim()) : [];
     
-    // تبدیل ورزشکار به آرایه ایمن
     let formattedAthletes = [];
     if (Array.isArray(athlete)) {
       formattedAthletes = athlete;
@@ -190,8 +187,8 @@ export async function POST(req) {
     }
 
     /* -------------------------------
-       Create Product
-    ------------------------------- */
+        Create Product
+     ------------------------------- */
     const product = await Product.create({
       name,
       shortDescription,
@@ -210,37 +207,33 @@ export async function POST(req) {
       attributes: attributes || {},
       technicalStats: technicalStats || {},
       label: label || "none",
+      isActive: isActive !== undefined ? isActive : true, // ✨ اضافه شد: اگر ارسال نشود به صورت پیش‌فرض true خواهد بود
     });
 
     /* -------------------------------
-       🔥 Generate & Create Variants
-    ------------------------------- */
+        Generate & Create Variants
+     ------------------------------- */
     if (variantOptions && Object.keys(variantOptions).length > 0) {
-      // تولید تمام ترکیب‌های ممکن
       const combinations = generateCombinations(variantOptions);
       
       if (combinations.length > 0) {
-        // ایجاد اسناد واریانت با استفاده از Promise.all برای اجرای pre-validate و pre-save
         const variantPromises = combinations.map(async (combo, index) => {
-          const variantSku = `${product.sku}-V${index + 1}`; // مثال: RACKET-ABCD-V1
+          const variantSku = `${product.sku}-V${index + 1}`;
 
           let specificImages = [];
           let specificPrice = Number(basePrice) || 0;
           let specificStock = 0;
 
           if (variantDetails) {
-            // پیدا کردن مچ شدن با کلیدهای ترکیبی (مثلاً "Red-300g") یا تکی (مثلاً "Red")
             const comboValues = Object.values(combo);
             const exactKey = comboValues.join("-");
             
-            // اولویت با کلید دقیق است، اگر نبود مقادیر تکی را چک می‌کنیم (معمولاً تصاویر بر اساس رنگ هستند)
             const matchedDetail = variantDetails[exactKey] || comboValues.reduce((acc, val) => acc || variantDetails[val], null);
 
             if (matchedDetail) {
               if (matchedDetail.price) specificPrice = Number(matchedDetail.price);
               if (matchedDetail.stock) specificStock = Number(matchedDetail.stock);
               if (Array.isArray(matchedDetail.images) && matchedDetail.images.length > 0) {
-                // Rename تصاویر واریانت در کلودینری بر اساس SKU واریانت
                 specificImages = await Promise.all(
                   matchedDetail.images.map((imgUrl, i) => renameCloudinaryImage(imgUrl, variantSku, i + 1))
                 );
@@ -254,14 +247,12 @@ export async function POST(req) {
             attributes: combo,
             price: specificPrice,
             stock: specificStock,
-            images: specificImages, // تصاویر پردازش شده به مدل اضافه شد
+            images: specificImages,
           });
         });
 
-        // صبر کردن تا ذخیره تمام واریانت‌ها
         const createdVariants = await Promise.all(variantPromises);
         
-        // استخراج آیدی واریانت‌ها و آپدیت محصول اصلی
         const variantIds = createdVariants.map(v => v._id);
         product.variants = variantIds;
         await product.save();
