@@ -170,7 +170,7 @@ const tabs = [
   { id: "health",      label: "کارت سلامت",      icon: "🛡️" },
   { id: "description", label: "توضیحات تخصصی",   icon: "📄" },
   { id: "attributes",  label: "مشخصات فنی",       icon: "⚙️" },
-  { id: "reviews",     label: "نظرات کاربران",    icon: "💬" },
+  { id: "reviews",     label: "پرسش و پاسخ",    icon: "💬" },
 ];
 
 const UsedProductTabs = ({

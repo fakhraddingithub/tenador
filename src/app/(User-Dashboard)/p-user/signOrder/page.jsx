@@ -1,9 +1,9 @@
 "use client";
 
 /**
- * src/app/(User-Dashboard)/p-user/signOrder/page.jsx  (یا مسیر OrderPage شما)
+ * src/app/(User-Dashboard)/p-user/signOrder/page.jsx
  *
- * صفحه ثبت سفارش — همه قیمت‌ها از سرور، هیچ محاسبه‌ای سمت کلاینت نیست
+ * صفحه ثبت سفارش — اصلاح فیلدهای ارسالی سبد خرید برای پشتیبانی از محصولات دست‌دوم
  */
 
 import { useState } from "react";
@@ -12,14 +12,14 @@ import "react-toastify/dist/ReactToastify.css";
 import { FiShoppingCart, FiArrowRight } from "react-icons/fi";
 import Link from "next/link";
 
-import CartItems      from "@/components/order/CartItems";
-import CartSummary    from "@/components/order/CartSummary";
+import CartItems from "@/components/order/CartItems";
+import CartSummary from "@/components/order/CartSummary";
 import AddressSelector from "@/components/order/AddressSelector";
-import AddressModal   from "@/components/order/AddressModal";
+import AddressModal from "@/components/order/AddressModal";
 import PaymentMethods from "@/components/order/PaymentMethods";
-import OrderActions   from "@/components/order/OrderActions";
+import OrderActions from "@/components/order/OrderActions";
 
-import { useCart }      from "@/hooks/useCart";
+import { useCart } from "@/hooks/useCart";
 import { useAddresses } from "@/hooks/useAddresses";
 
 const OrderPage = () => {
@@ -33,7 +33,7 @@ const OrderPage = () => {
     appliedCoupon,
     couponDiscount,
     couponError,
-    totalItems, 
+    totalItems,
     totalPrice,
     totalRawPrice,
     totalDiscount,
@@ -41,8 +41,8 @@ const OrderPage = () => {
 
   const { addresses, isLoading: isAddressLoading, addAddress } = useAddresses();
 
-  const [selectedAddress,       setSelectedAddress]       = useState(null);
-  const [isAddressModalOpen,    setIsAddressModalOpen]    = useState(false);
+  const [selectedAddress, setSelectedAddress] = useState(null);
+  const [isAddressModalOpen, setIsAddressModalOpen] = useState(false);
   const [selectedPaymentMethod, setSelectedPaymentMethod] = useState(null);
 
   const handleOrderSuccess = (trackingCode) => {
@@ -148,11 +148,15 @@ const OrderPage = () => {
                 />
               </div>
 
+              {/* 🛡️ اصلاح شد: انتقال کامل و امن کلیدهای محصولات نو و دست‌دوم */}
               <OrderActions
                 cartItems={cartItems.map((i) => ({
-                  productId: i.productId,
+                  // 🛡️ اگر محصول اصلی وجود داشت آن را بگذارد، در غیر این صورت آیدی دست‌دوم را به عنوان پشتیبان قرار دهد
+                  productId: i.productId || i.usedProductId || null,
                   variantId: i.variantId ?? null,
-                  quantity:  i.quantity,
+                  usedProductId: i.usedProductId || null,
+                  itemType: i.itemType || 'product',
+                  quantity: i.quantity,
                 }))}
                 finalTotalToman={totalPrice}
                 selectedAddress={selectedAddress}

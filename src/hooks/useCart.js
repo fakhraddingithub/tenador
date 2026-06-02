@@ -2,7 +2,7 @@
  * src/hooks/useCart.js
  *
  * قیمت‌ها کاملاً از سرور دریافت می‌شوند — هیچ محاسبه‌ای سمت کلاینت نیست
- * از API /api/cart/products (داده نمایشی + قیمت) و /api/cart/price (کوپن) استفاده می‌کند
+ * اصلاح‌شده: پشتیبانی کامل از فیلدهای محصولات دست‌دوم (usedProductId و itemType)
  */
 
 import { useState, useEffect, useCallback, useRef } from 'react';
@@ -84,39 +84,47 @@ export const useCart = () => {
       }
 
       // ساخت آیتم‌های غنی‌شده برای CartItems
-      const enriched = (productsData.items || []).map((item) => ({
-        // شناسه‌ها
-        productId: item.productId,
-        variantId: item.variantId ?? null,
-        quantity:  item.quantity,
+      const enriched = (productsData.items || []).map((item, index) => {
+        // 🛡️ برای امنیت بیشتر، آیتم متناظر را بر اساس ایندکس از LocalCart پیدا میکنیم تا فیلدها حتماً حفظ شوند
+        const localItem = localCart[index] || {};
+        const isSameProduct = localItem.productId === item.productId;
 
-        // داده نمایشی (سازگار با CartItems)
-        product: {
+        return {
+          // شناسه‌ها (اصلاح شد ⚠️)
+          productId: item.productId,
+          variantId: item.variantId ?? null,
+          usedProductId: item.usedProductId || (isSameProduct ? localItem.usedProductId : null) || null,
+          itemType: item.itemType || (isSameProduct ? localItem.itemType : 'product') || 'product',
+          quantity:  item.quantity,
+
+          // داده نمایشی (سازگار با CartItems)
           product: {
-            name:             item.product?.name,
-            mainImage:        item.product?.mainImage,
-            shortDescription: item.product?.shortDescription ?? '',
+            product: {
+              name:             item.product?.name,
+              mainImage:        item.product?.mainImage,
+              shortDescription: item.product?.shortDescription ?? '',
+            },
+            price: {
+              finalPrice: item.unitPriceToman, 
+            },
+            stock: item.stock ?? 0,
           },
-          price: {
-            finalPrice: item.unitPriceToman, // قیمت واحد نهایی تومان
-          },
-          stock: item.stock ?? 0,
-        },
 
-        // موجودی
-        inStock: item.inStock,
-        stock:   item.stock ?? 0,
+          // موجودی
+          inStock: item.inStock,
+          stock:   item.stock ?? 0,
 
-        // قیمت‌گذاری (همه به تومان)
-        basePriceToman:          item.basePriceToman,
-        unitPriceToman:          item.unitPriceToman,
-        discountToman:           item.discountToman,
-        itemTotalBeforeDiscount: item.basePriceToman * item.quantity,
-        itemDiscount:            item.discountToman  * item.quantity,
-        itemFinalPrice:          item.itemFinalToman,
-        hasStepDiscount:         item.appliedRules?.length > 0,
-        appliedRules:            item.appliedRules ?? [],
-      }));
+          // قیمت‌گذاری (همه به تومان)
+          basePriceToman:          item.basePriceToman,
+          unitPriceToman:          item.unitPriceToman,
+          discountToman:           item.discountToman,
+          itemTotalBeforeDiscount: item.basePriceToman * item.quantity,
+          itemDiscount:            item.discountToman  * item.quantity,
+          itemFinalPrice:          item.itemFinalToman,
+          hasStepDiscount:         item.appliedRules?.length > 0,
+          appliedRules:            item.appliedRules ?? [],
+        };
+      });
 
       const rawTotal      = enriched.reduce((s, i) => s + i.itemTotalBeforeDiscount, 0);
       const ruleDiscount  = enriched.reduce((s, i) => s + i.itemDiscount, 0);
@@ -131,11 +139,9 @@ export const useCart = () => {
       setTotalPrice(Math.max(0, grandTotal));
 
       if (couponCode !== null) {
-        // فراخوانی صریح applyCoupon
         setAppliedCoupon(validatedCoupon);
         setCouponError(couponErr);
       } else if (appliedCoupon?.code) {
-        // حفظ کوپن قبلی با داده‌های به‌روز
         setAppliedCoupon(validatedCoupon ?? appliedCoupon);
         setCouponError(couponErr);
       }
@@ -152,26 +158,28 @@ export const useCart = () => {
   // بارگذاری اولیه
   useEffect(() => {
     loadCart();
-    // sync با تغییرات localStorage از cartDrawer
     const handleCartChange = () => loadCart(appliedCoupon?.code ?? null);
     window.addEventListener('cartchange', handleCartChange);
     return () => window.removeEventListener('cartchange', handleCartChange);
   }, []); // eslint-disable-line
 
-  // ─── تغییر تعداد ───
-  const updateQuantity = useCallback((productId, delta, variantId = null) => {
+  // ─── تغییر تعداد (بهبود یافته برای تفکیک محصول دست‌دوم) ───
+  const updateQuantity = useCallback((productId, delta, variantId = null, usedProductId = null, itemType = 'product') => {
     const current = getCart().find(
-      (i) => i.productId === productId && (i.variantId ?? null) === variantId
+      (i) => i.productId === productId && 
+             (i.variantId ?? null) === variantId &&
+             (i.usedProductId ?? null) === usedProductId &&
+             (i.itemType ?? 'product') === itemType
     );
     if (!current) return;
     const newQty = Math.max(1, current.quantity + delta);
-    updateLocalQuantity(productId, variantId, newQty);
+    updateLocalQuantity(productId, variantId, newQty, usedProductId, itemType);
     loadCart(appliedCoupon?.code ?? null);
   }, [appliedCoupon, loadCart]);
 
-  // ─── حذف آیتم ───
-  const removeItem = useCallback((productId, variantId = null) => {
-    removeFromCart(productId, variantId);
+  // ─── حذف آیتم (بهبود یافته برای تفکیک محصول دست‌دوم) ───
+  const removeItem = useCallback((productId, variantId = null, usedProductId = null, itemType = 'product') => {
+    removeFromCart(productId, variantId, usedProductId, itemType);
     loadCart(appliedCoupon?.code ?? null);
   }, [appliedCoupon, loadCart]);
 

@@ -1,14 +1,16 @@
 /**
  * src/app/api/cart/price/route.js
  *
- * محاسبه قیمت نهایی سبد خرید + اعمال کوپن
+ * محاسبه قیمت نهایی سبد خرید — با پشتیبانی از محصولات دست‌دوم
  *
  * POST body:
- *  { items: [{ productId, variantId?, quantity }], couponCode?: string }
- *
- * Response:
- *  { items, subtotalToman, discountToman, couponDiscountToman, finalTotalToman,
- *    coupon, couponError, rate }
+ *  {
+ *    items: [
+ *      { productId, variantId?, quantity }
+ *      { usedProductId, quantity: 1, itemType: "used_product" }
+ *    ],
+ *    couponCode?
+ *  }
  */
 
 import { NextResponse } from "next/server";
@@ -29,15 +31,29 @@ export async function POST(req) {
     const items      = body.items      || [];
     const couponCode = body.couponCode || body.coupon || null;
 
-    if (!Array.isArray(items) || items.length === 0) {
-      return NextResponse.json(
-        { error: "سبد خرید خالی است" },
-        { status: 400 }
-      );
-    }
+    if (!Array.isArray(items) || items.length === 0)
+      return NextResponse.json({ error: "سبد خرید خالی است" }, { status: 400 });
+
+    // normalize
+    const normalizedItems = items.map((i) => {
+      if (i.itemType === "used_product" || i.usedProductId) {
+        return { usedProductId: String(i.usedProductId), quantity: 1, itemType: "used" };
+      }
+      return {
+        productId: i.productId,
+        variantId: i.variantId ?? null,
+        quantity:  Math.max(1, Math.floor(i.quantity || 1)),
+      };
+    });
 
     const user = await getUserFromToken();
-    const result = await computeCartPrice(items, user, couponCode);
+
+    let result;
+    try {
+      result = await computeCartPrice(normalizedItems, user, couponCode);
+    } catch (err) {
+      return NextResponse.json({ error: err.message || "خطا در محاسبه قیمت" }, { status: 400 });
+    }
 
     return NextResponse.json(result);
   } catch (err) {

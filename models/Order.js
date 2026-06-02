@@ -1,7 +1,7 @@
 /**
  * models/Order.js
  *
- * مدل سفارش — با پشتیبانی کامل از کوپن، تخفیف و قیمت تأیید‌شده سرور
+ * مدل سفارش — با پشتیبانی از محصولات معمولی و دست‌دوم
  */
 
 import mongoose from "mongoose";
@@ -23,22 +23,37 @@ const OrderSchema = new mongoose.Schema(
 
     items: [
       {
+        // محصول معمولی (Product)
         product: {
           type: mongoose.Schema.Types.ObjectId,
           ref: "Product",
-          required: true,
+          default: null,
         },
         variant: {
           type: mongoose.Schema.Types.ObjectId,
           ref: "Variant",
           default: null,
         },
-        quantity: { type: Number, required: true, min: 1 },
+
+        // محصول دست‌دوم (UsedProduct)
+        usedProduct: {
+          type: mongoose.Schema.Types.ObjectId,
+          ref: "UsedProduct",
+          default: null,
+        },
+
+        // نوع آیتم
+        itemType: {
+          type: String,
+          enum: ["product", "used_product"],
+          default: "product",
+        },
+
+        quantity:  { type: Number, required: true, min: 1 },
         unitPrice: { type: Number, required: true, min: 0 }, // قیمت واحد تأیید‌شده سمت سرور (تومان)
       },
     ],
 
-    // قیمت‌های تومانی تأیید‌شده سمت سرور
     subtotalPrice: {
       type: Number,
       required: true,
@@ -63,7 +78,6 @@ const OrderSchema = new mongoose.Schema(
       min: 0,
     },
 
-    // اطلاعات کوپن اعمال‌شده
     coupon: {
       code: { type: String, default: null },
       _id:  { type: mongoose.Schema.Types.ObjectId, ref: "Coupon", default: null },
@@ -130,7 +144,6 @@ const OrderSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
-// Virtual: تعداد کل آیتم‌ها
 OrderSchema.virtual("itemsCount").get(function () {
   return this.items.reduce((sum, i) => sum + i.quantity, 0);
 });
@@ -138,7 +151,6 @@ OrderSchema.virtual("itemsCount").get(function () {
 OrderSchema.set("toJSON", { virtuals: true });
 OrderSchema.set("toObject", { virtuals: true });
 
-// تولید کد رهگیری یکتا
 function generateTrackingCode(date = new Date()) {
   const yyyy = date.getFullYear();
   const mm   = String(date.getMonth() + 1).padStart(2, "0");

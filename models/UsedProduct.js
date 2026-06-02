@@ -1,30 +1,36 @@
+/**
+ * models/UsedProduct.js
+ *
+ * مدل محصول دست‌دوم — با پشتیبانی کامل از سفارش و سیستم ترکینگ
+ */
+
 import mongoose from "mongoose";
 
 const HealthScoreSchema = new mongoose.Schema(
   {
-    key: { type: String, required: true, trim: true },
+    key:    { type: String, required: true, trim: true },
     rating: { type: Number, required: true, min: 1, max: 5 },
-    note: { type: String, trim: true, default: "" },
+    note:   { type: String, trim: true, default: "" },
   },
   { _id: false }
 );
 
 const CustomFieldSchema = new mongoose.Schema(
   {
-    label: { type: String, required: true, trim: true },
+    label:  { type: String, required: true, trim: true },
     rating: { type: Number, required: true, min: 1, max: 5 },
-    note: { type: String, trim: true, default: "" },
+    note:   { type: String, trim: true, default: "" },
   },
   { _id: false }
 );
 
 const UsedProductSchema = new mongoose.Schema(
   {
-    name:{
-      type:String,
-      required:true
+    name: {
+      type: String,
+      required: true,
     },
-    
+
     baseProduct: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "Product",
@@ -50,6 +56,7 @@ const UsedProductSchema = new mongoose.Schema(
       default: null,
     },
 
+    // قیمت به یورو (مثل محصولات معمولی — برای سازگاری با priceEngine)
     price: {
       type: Number,
       required: true,
@@ -69,9 +76,36 @@ const UsedProductSchema = new mongoose.Schema(
 
     status: {
       type: String,
-      enum: ["available", "sold"],
+      enum: ["available", "reserved", "sold"],
       default: "available",
       index: true,
+    },
+
+    // سفارش مرتبط — وقتی سفارش ثبت می‌شود پر می‌شود
+    order: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Order",
+      default: null,
+      index: true,
+    },
+
+    // tracking item در warehouse DB
+    // مقدار string چون از DB دیگری است
+    warehouseTrackingId: {
+      type: String,
+      default: null,
+    },
+
+    // بارکد اختصاص‌یافته در سیستم ترکینگ
+    assignedBarcode: {
+      type: String,
+      default: null,
+    },
+
+    // ترکینگ ID (tracking code در سیستم انبار)
+    assignedTrackingCode: {
+      type: String,
+      default: null,
     },
   },
   { timestamps: true }

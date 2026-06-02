@@ -19,7 +19,7 @@ function formatToman(amount) {
 }
 
 const OrderActions = ({
-  cartItems,           // [{ productId, variantId?, quantity }]
+  cartItems,           // [{ productId, variantId?, usedProductId?, itemType, quantity }]
   finalTotalToman,     // مبلغ نمایشی (از سرور)
   selectedAddress,
   selectedPaymentMethod,
@@ -28,7 +28,7 @@ const OrderActions = ({
 }) => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [description, setDescription] = useState('');
-
+  
   const validateOrder = () => {
     if (!cartItems?.length) {
       toast.error('سبد خرید شما خالی است');
@@ -84,17 +84,39 @@ const OrderActions = ({
     setIsSubmitting(true);
 
     try {
-      // ارسال فقط شناسه‌ها و تعداد — قیمت توسط سرور محاسبه می‌شود
+      // ─── آماده‌سازی هوشمند و اصلاح‌شده آیتم‌ها برای ارسال به سرور ───
+      const preparedItems = cartItems.map((item) => {
+        // تشخیص همه‌جانبه دست‌دوم بودن آیتم از روی ساختار سبد خرید فرانت‌اند
+        const isUsed = 
+          item.itemType === 'used_product' || 
+          item.itemType === 'used' || 
+          item.isUsed === true || 
+          !!item.usedProductId;
+
+        if (isUsed) {
+          // در حالت دست‌دوم، آی‌دی محصول دست‌دوم را استخراج کرده و تایپ را دقیقاً "used_product" می‌فرستیم
+          return {
+            usedProductId: item.usedProductId || item.productId || item._id, 
+            itemType: 'used_product',
+            quantity: 1, // محصولات دست‌دوم همیشه ۱ عدد هستند
+          };
+        }
+
+        // محصولات معمولی
+        return {
+          productId: item.productId || item._id || null,
+          variantId: item.variantId || null,
+          itemType: 'product',
+          quantity: item.quantity || 1,
+        };
+      });
+
       const res = await fetch('/api/orders', {
         method: 'POST',
         credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          items: cartItems.map((item) => ({
-            productId: item.productId,
-            variantId: item.variantId ?? null,
-            quantity:  item.quantity,
-          })),
+          items: preparedItems,
           addressId:     selectedAddress._id,
           paymentMethod: selectedPaymentMethod,
           couponCode:    couponCode || null,
@@ -106,6 +128,11 @@ const OrderActions = ({
 
       if (!res.ok) {
         throw new Error(data.message || 'خطا در ثبت سفارش');
+      }
+
+      // لایه محافظتی برای اطمینان از وجود تراکینگ کد
+      if (!data?.order?.trackingCode) {
+        throw new Error('کد پیگیری سفارش از سرور دریافت نشد، اما سفارش ممکن است ثبت شده باشد.');
       }
 
       toast.success('سفارش با موفقیت ثبت شد');
@@ -172,7 +199,7 @@ const OrderActions = ({
       >
         {[
           { ok: cartItems?.length > 0, label: `سبد خرید (${cartItems?.length || 'خالی'})`, index: '۱' },
-          { ok: !!selectedAddress,      label: 'آدرس تحویل',                                index: '۲' },
+          { ok: !!selectedAddress,      label: 'آدرس تحویل',                               index: '۲' },
           { ok: !!selectedPaymentMethod,label: 'روش پرداخت',                               index: '۳' },
         ].map((item, i) => (
           <div key={i} className="flex items-center gap-3 text-sm">
@@ -195,7 +222,7 @@ const OrderActions = ({
         ))}
       </div>
 
-      {/* CTA */}
+      {/* CTA Button */}
       <button
         onClick={handleSubmitOrder}
         disabled={!isReady || isSubmitting}

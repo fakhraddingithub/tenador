@@ -361,31 +361,49 @@ export async function computeCartPrice(cartItems, user = null, couponCode = null
   // import داینامیک برای جلوگیری از circular dependency
   const { default: Product } = await import("base/models/Product");
   const { default: Variant  } = await import("base/models/Variant");
+  const { default: UsedProduct } = await import("base/models/UsedProduct"); // 💡 اضافه شدن مدل دست‌دوم
 
-  // بارگذاری محصولات و واریانت‌ها
+  // تفکیک و بارگذاری شناسه محصولات، واریانت‌ها و محصولات دست‌دوم
   const productIds = [...new Set(cartItems.map((i) => i.productId))];
   const variantIds = cartItems.filter((i) => i.variantId).map((i) => i.variantId);
+  
+  // استخراج شناسه‌های محصولات دست‌دوم
+  const usedProductIds = cartItems
+    .filter((i) => i.itemType === "used_product" || i.usedProductId)
+    .map((i) => i.usedProductId || i.productId);
 
-  const [products, variants] = await Promise.all([
+  const [products, variants, usedProducts] = await Promise.all([
     Product.find({ _id: { $in: productIds } })
       .populate("brand", "_id")
       .populate("category", "_id")
       .populate("serie", "_id")
       .lean(),
     variantIds.length ? Variant.find({ _id: { $in: variantIds } }).lean() : Promise.resolve([]),
+    usedProductIds.length ? UsedProduct.find({ _id: { $in: usedProductIds } }).lean() : Promise.resolve([]), // 💡 واکشی موازی دست‌دوم‌ها
   ]);
 
   const productMap = new Map(products.map((p) => [p._id.toString(), p]));
   const variantMap = new Map(variants.map((v) => [v._id.toString(), v]));
+  const usedProductMap = new Map(usedProducts.map((up) => [up._id.toString(), up])); // 💡 مپ کردن دست‌دوم‌ها
 
   // محاسبه موقت subtotal برای قوانین cartValue
   let subtotalToman = 0;
   for (const ci of cartItems) {
-    const p = productMap.get(ci.productId);
-    if (!p) continue;
-    const v = ci.variantId ? variantMap.get(ci.variantId) : null;
-    const eurPrice = v?.price ?? p.basePrice ?? 0;
-    subtotalToman += eurToToman(eurPrice, rate) * (ci.quantity || 1);
+    const isUsed = ci.itemType === "used_product" || !!ci.usedProductId;
+
+    if (isUsed) {
+      const usedId = ci.usedProductId || ci.productId;
+      const up = usedProductMap.get(usedId);
+      if (!up) continue;
+      const eurPrice = up.price ?? 0;
+      subtotalToman += eurToToman(eurPrice, rate) * 1; // تعداد دست‌دوم همیشه ۱ است
+    } else {
+      const p = productMap.get(ci.productId);
+      if (!p) continue;
+      const v = ci.variantId ? variantMap.get(ci.variantId) : null;
+      const eurPrice = v?.price ?? p.basePrice ?? 0;
+      subtotalToman += eurToToman(eurPrice, rate) * (ci.quantity || 1);
+    }
   }
 
   // محاسبه قیمت هر آیتم
@@ -393,50 +411,83 @@ export async function computeCartPrice(cartItems, user = null, couponCode = null
   let totalDiscount = 0;
 
   for (const ci of cartItems) {
-    const p = productMap.get(ci.productId);
-    if (!p) continue;
+    const isUsed = ci.itemType === "used_product" || !!ci.usedProductId;
 
-    const v = ci.variantId ? variantMap.get(ci.variantId) : null;
-    const eurPrice = v?.price ?? p.basePrice ?? 0;
-    const basePriceToman = eurToToman(eurPrice, rate);
-    const qty = Math.max(1, ci.quantity || 1);
+    if (isUsed) {
+      // ─── حالت الف: پردازش محصول دست‌دوم ───
+      const usedId = ci.usedProductId || ci.productId;
+      const up = usedProductMap.get(usedId);
+      if (!up) continue;
 
-    // محاسبه تخفیف برای این محصول
-    const priceResult = await computeProductPrice(p, rate, user, subtotalToman);
+      // دریافت اطلاعات محصول پدر (برای استخراج دسته‌بندی/برند جهت اعمال احتمالی کوپن)
+      const parentId = up.product?.toString() || ci.productId;
+      const p = productMap.get(parentId);
 
-    // اگر واریانت قیمت خودش را دارد، discount را روی قیمت واریانت محاسبه می‌کنیم
-    let unitFinalPrice = priceResult.finalPriceToman;
-    let unitDiscount   = priceResult.discountAmount;
-    if (v?.price != null) {
-      // درصد تخفیف را روی قیمت واریانت اعمال می‌کنیم
-      const variantBase = eurToToman(v.price, rate);
-      unitDiscount   = Math.min(
-        Math.floor(variantBase * (priceResult.discountPercent / 100)),
-        variantBase
-      );
-      unitFinalPrice = variantBase - unitDiscount;
+      const eurPrice = up.price ?? 0;
+      const basePriceToman = eurToToman(eurPrice, rate); // 💎 تبدیل بومی قیمت یورو به تومان با نرخ موتور
+
+      enrichedItems.push({
+        productId:     parentId,
+        usedProductId: usedId,
+        variantId:     null,
+        productName:   up.name || p?.name || "محصول دست دوم",
+        sku:           p?.sku || "",
+        quantity:      1,
+        basePriceToman,
+        unitFinalPrice: basePriceToman, // محصولات دست دوم مشمول قوانین تخفیف داینامیک انبار نمی‌شوند
+        unitDiscount:   0,
+        lineTotalToman: basePriceToman,
+        appliedRules:  [],
+        itemType:      "used_product",
+        categoryId:    p ? (p.category?._id ?? p.category)?.toString() ?? null : null,
+        brandId:       p ? (p.brand?._id ?? p.brand)?.toString() ?? null : null,
+        serieId:       p ? (p.serie?._id ?? p.serie)?.toString() ?? null : null,
+      });
+
+    } else {
+      // ─── حالت ب: پردازش محصول معمولی (کد اصلی خودتان بدون تغییر) ───
+      const p = productMap.get(ci.productId);
+      if (!p) continue;
+
+      const v = ci.variantId ? variantMap.get(ci.variantId) : null;
+      const eurPrice = v?.price ?? p.basePrice ?? 0;
+      const basePriceToman = eurToToman(eurPrice, rate);
+      const qty = Math.max(1, ci.quantity || 1);
+
+      const priceResult = await computeProductPrice(p, rate, user, subtotalToman);
+
+      let unitFinalPrice = priceResult.finalPriceToman;
+      let unitDiscount   = priceResult.discountAmount;
+      if (v?.price != null) {
+        const variantBase = eurToToman(v.price, rate);
+        unitDiscount   = Math.min(
+          Math.floor(variantBase * (priceResult.discountPercent / 100)),
+          variantBase
+        );
+        unitFinalPrice = variantBase - unitDiscount;
+      }
+
+      const lineTotal  = unitFinalPrice * qty;
+      const lineDiscount = unitDiscount * qty;
+      totalDiscount += lineDiscount;
+
+      enrichedItems.push({
+        productId:     p._id.toString(),
+        variantId:     v?._id?.toString() ?? null,
+        productName:   p.name,
+        sku:           v?.sku ?? p.sku,
+        quantity:      qty,
+        basePriceToman,
+        unitFinalPrice,
+        unitDiscount,
+        lineTotalToman: lineTotal,
+        appliedRules:  priceResult.appliedRules,
+        itemType:      "product",
+        categoryId:    (p.category?._id ?? p.category)?.toString() ?? null,
+        brandId:       (p.brand?._id ?? p.brand)?.toString() ?? null,
+        serieId:       (p.serie?._id ?? p.serie)?.toString() ?? null,
+      });
     }
-
-    const lineTotal  = unitFinalPrice * qty;
-    const lineDiscount = unitDiscount * qty;
-    totalDiscount += lineDiscount;
-
-    enrichedItems.push({
-      productId:     p._id.toString(),
-      variantId:     v?._id?.toString() ?? null,
-      productName:   p.name,
-      sku:           v?.sku ?? p.sku,
-      quantity:      qty,
-      basePriceToman,
-      unitFinalPrice,
-      unitDiscount,
-      lineTotalToman: lineTotal,
-      appliedRules:  priceResult.appliedRules,
-      // داده‌های لازم برای کوپن و کردیت مربی
-      categoryId:    (p.category?._id ?? p.category)?.toString() ?? null,
-      brandId:       (p.brand?._id ?? p.brand)?.toString() ?? null,
-      serieId:       (p.serie?._id ?? p.serie)?.toString() ?? null,
-    });
   }
 
   const subtotalAfterRules = enrichedItems.reduce((s, i) => s + i.lineTotalToman, 0);
@@ -464,7 +515,7 @@ export async function computeCartPrice(cartItems, user = null, couponCode = null
   const finalTotalToman = Math.max(0, subtotalAfterRules - couponDiscount);
 
   return {
-    items:                enrichedItems,
+    items:               enrichedItems,
     subtotalToman:        enrichedItems.reduce((s, i) => s + i.basePriceToman * i.quantity, 0),
     discountToman:        totalDiscount,
     couponDiscountToman:  couponDiscount,

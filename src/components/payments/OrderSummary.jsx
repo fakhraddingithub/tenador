@@ -1,9 +1,3 @@
-/**
- * src/components/payments/OrderSummary.jsx
- *
- * خلاصه سفارش در صفحه پرداخت — فونت و استایل هماهنگ با صفحه محصول
- */
-
 import React from 'react';
 import { MdOutlineConfirmationNumber, MdOutlineReceiptLong, MdOutlinePayment } from 'react-icons/md';
 
@@ -11,7 +5,7 @@ const OrderSummary = ({ order }) => {
   const formatPrice = (price) =>
     new Intl.NumberFormat('fa-IR').format(price) + ' تومان';
 
-  // جداسازی نام فارسی و انگلیسی (مثل ProductHeader)
+  // جداسازی نام فارسی و انگلیسی
   const splitName = (text) => {
     if (!text) return { farsi: '', english: '' };
     const match = text.match(/[a-zA-Z(].*/);
@@ -59,15 +53,19 @@ const OrderSummary = ({ order }) => {
         <span className="text-gray-500 text-xs block mb-3">اقلام سفارش:</span>
 
         {order.items.map((item, idx) => {
-          const productName  = item.product?.name;
-          const productImage = item.product?.mainImage;
+          // ۱. تشخیص هوشمند کالا دست‌دوم
+          const isUsed = item.itemType === 'used_product' || !!item.usedProduct;
+
+          // ۲. اولویت‌دهی به نام و عکس محصول دست‌دوم در صورت وجود
+          const productName  = isUsed ? (item.usedProduct?.name || item.product?.name) : item.product?.name;
+          const productImage = isUsed ? (item.usedProduct?.mainImage || item.usedProduct?.images?.[0] || item.product?.mainImage) : item.product?.mainImage;
+          
           const { farsi, english } = splitName(productName);
-          // واریانت
           const variantAttrs = item.variant?.attributes ?? null;
 
           return (
             <div
-              key={item.product?._id ?? idx}
+              key={item.usedProduct?._id || item.product?._id || idx}
               className="flex gap-3 py-4 border-b border-[var(--color-primary)]/20 last:border-0"
             >
               {/* تصویر */}
@@ -85,6 +83,13 @@ const OrderSummary = ({ order }) => {
               <div className="flex-1 min-w-0">
                 {/* نام محصول */}
                 <div className="mb-1">
+                  {/* لیبل دست دوم برای تفکیک ظاهری */}
+                  {isUsed && (
+                    <span className="inline-block bg-amber-100 text-amber-800 text-[10px] px-1.5 py-0.5 rounded font-bold mb-1 ml-1">
+                      دست دوم
+                    </span>
+                  )}
+                  
                   {farsi && (
                     <p className="text-sm font-bold text-[#1a1a1a] leading-snug tracking-tight line-clamp-1">
                       {farsi}
@@ -105,8 +110,8 @@ const OrderSummary = ({ order }) => {
                   )}
                 </div>
 
-                {/* واریانت — زیر نام */}
-                {variantAttrs && Object.keys(variantAttrs).length > 0 && (
+                {/* واریانت — زیر نام (مخصوص کالای نو) */}
+                {!isUsed && variantAttrs && Object.keys(variantAttrs).length > 0 && (
                   <div className="flex flex-wrap gap-1 mb-1.5">
                     {Object.entries(variantAttrs).map(([key, val]) => (
                       <span
