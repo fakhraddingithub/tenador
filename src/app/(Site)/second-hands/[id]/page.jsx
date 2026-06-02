@@ -24,13 +24,17 @@ export default async function UsedProductPage({ params }) {
     .populate({
       path: "baseProduct",
       populate: [
-        { path: "brand",    select: "title slug logo icon" },
+        { path: "brand", select: "title slug logo icon" },
         {
           path: "category",
           select: "title slug technicalStats attributes variantAttributes",
           populate: { path: "technicalStats" },
         },
       ],
+    })
+    .populate({
+      path: "baseVariant",
+      select: "sku price stock attributes images",
     })
     .lean();
 
@@ -52,6 +56,15 @@ export default async function UsedProductPage({ params }) {
     value: raw.baseProduct.attributes?.[attr.name] ?? null,
   }));
 
+  // attributes توی Variant به صورت Map ذخیره می‌شه — باید به Object تبدیل بشه
+  const variantAttributes = raw.baseVariant?.attributes
+    ? Object.fromEntries(
+        raw.baseVariant.attributes instanceof Map
+          ? raw.baseVariant.attributes
+          : Object.entries(raw.baseVariant.attributes)
+      )
+    : null;
+
   const product = {
     _id:          raw._id.toString(),
     name:         raw.name,
@@ -72,6 +85,16 @@ export default async function UsedProductPage({ params }) {
       rating: f.rating,
       note:   f.note || "",
     })),
+    baseVariant: raw.baseVariant
+      ? {
+          _id:        raw.baseVariant._id.toString(),
+          sku:        raw.baseVariant.sku,
+          price:      raw.baseVariant.price,
+          stock:      raw.baseVariant.stock,
+          images:     raw.baseVariant.images || [],
+          attributes: variantAttributes,
+        }
+      : null,
     baseProduct: {
       _id:              raw.baseProduct._id.toString(),
       name:             raw.baseProduct.name,

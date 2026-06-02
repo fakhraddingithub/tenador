@@ -15,12 +15,11 @@ const SCORE_STYLE = (s) => {
 };
 
 const UsedProductInfo = ({ product }) => {
-  const { _id, name, price, description, overallScore, status, baseProduct } = product;
+  const { _id, name, price, description, overallScore, status, baseProduct, baseVariant } = product;
   const scoreStyle = SCORE_STYLE(overallScore);
 
   const [inCart, setInCart] = useState(false);
 
-  // sync with localStorage on mount
   useEffect(() => {
     setInCart(isUsedInCart(_id));
     const handler = () => setInCart(isUsedInCart(_id));
@@ -70,6 +69,26 @@ const UsedProductInfo = ({ product }) => {
         name={name}
         shortDescription={baseProduct.shortDescription}
       />
+
+      {/* واریانت تعیین‌شده */}
+      {baseVariant && (
+        <div className="flex flex-wrap gap-2">
+          {Object.entries(baseVariant.attributes || {}).map(([key, value]) => {
+            const label =
+              baseProduct?.category?.variantAttributes?.find((a) => a.name === key)?.label || key;
+
+            return (
+              <div
+                key={key}
+                className="flex items-center gap-1.5 px-3 py-1.5 bg-neutral-100 border border-neutral-200 rounded-lg text-sm"
+              >
+                <span className="text-neutral-400 text-xs">{label}:</span>
+                <span className="font-bold text-neutral-700">{value}</span>
+              </div>
+            );
+          })}
+        </div>
+      )}
 
       {/* امتیاز سلامت کلی */}
       {overallScore != null && (

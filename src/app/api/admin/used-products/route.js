@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import connectToDB from "base/configs/db";
 import UsedProduct from "base/models/UsedProduct";
 import Product from "base/models/Product";
+import Variant from "base/models/Variant";
 import { validateHealthScores, calcOverallScore } from "@/lib/healthcard";
 
 export async function GET(req) {
@@ -21,6 +22,10 @@ export async function GET(req) {
           path: "baseProduct",
           select: "name mainImage category sku",
           populate: { path: "category", select: "title" },
+        })
+        .populate({
+          path: "baseVariant",
+          select: "size color sku price",
         })
         .sort({ createdAt: -1 })
         .skip((page - 1) * limit)
@@ -48,6 +53,7 @@ export async function POST(req) {
     const {
       name,
       baseProduct,
+      baseVariant = null,
       healthScores = [],
       customFields = [],
       price,
@@ -57,30 +63,33 @@ export async function POST(req) {
     } = body;
 
     if (!name) {
-      return Response.json({ error: `نام محصول را وارد کنید` }, { status: 400 });
+      return NextResponse.json({ error: "نام محصول را وارد کنید" }, { status: 400 });
     }
     if (!baseProduct) {
-      return NextResponse.json(
-        { error: "محصول پایه الزامی است" },
-        { status: 400 },
-      );
+      return NextResponse.json({ error: "محصول پایه الزامی است" }, { status: 400 });
     }
     if (price == null || price < 0) {
-      return NextResponse.json(
-        { error: "قیمت معتبر الزامی است" },
-        { status: 400 },
-      );
+      return NextResponse.json({ error: "قیمت معتبر الزامی است" }, { status: 400 });
     }
 
-    // Get product's category for validation
     const product = await Product.findById(baseProduct)
-      .select("category")
+      .select("category variants")
       .lean();
     if (!product) {
-      return NextResponse.json(
-        { error: "محصول پایه یافت نشد" },
-        { status: 404 },
+      return NextResponse.json({ error: "محصول پایه یافت نشد" }, { status: 404 });
+    }
+
+    // اگر واریانت ارسال شده، بررسی کن متعلق به همین محصول باشه
+    if (baseVariant) {
+      const variantExists = product.variants.some(
+        (v) => v.toString() === baseVariant,
       );
+      if (!variantExists) {
+        return NextResponse.json(
+          { error: "واریانت انتخاب‌شده متعلق به محصول پایه نیست" },
+          { status: 422 },
+        );
+      }
     }
 
     const validationError = await validateHealthScores(
@@ -96,6 +105,7 @@ export async function POST(req) {
     const item = await UsedProduct.create({
       name,
       baseProduct,
+      baseVariant,
       healthScores,
       customFields,
       overallScore,

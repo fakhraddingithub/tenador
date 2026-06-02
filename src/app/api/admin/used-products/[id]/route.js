@@ -11,8 +11,9 @@ import { cookies } from "next/headers";
 import connectToDB from "base/configs/db";
 import UsedProduct from "base/models/UsedProduct";
 import Product from "base/models/Product";
+import Variant from "base/models/Variant"; 
+import Order from "base/models/Order";
 import { validateHealthScores, calcOverallScore } from "@/lib/healthcard";
-import Category from "base/models/Category";
 import { verifyToken } from "base/utils/auth";
 
 async function getAdminUser() {
@@ -31,6 +32,10 @@ export async function GET(_, { params }) {
       .populate({
         path: "baseProduct",
         populate: { path: "category" },
+      })
+      .populate({
+        path: "baseVariant",
+        select: "size color sku price",
       })
       .populate({
         path: "order",
@@ -53,21 +58,49 @@ export async function PUT(req, { params }) {
 
     const { id } = await params;
     const body = await req.json();
-    const { name, healthScores, customFields, price, description, images, status } = body;
+    const {
+      name,
+      baseVariant,
+      healthScores,
+      customFields,
+      price,
+      description,
+      images,
+      status,
+    } = body;
 
     const usedProduct = await UsedProduct.findById(id);
     if (!usedProduct) return NextResponse.json({ error: "یافت نشد" }, { status: 404 });
 
-    if (name)                    usedProduct.name = name;
-    if (healthScores)            usedProduct.healthScores = healthScores;
-    if (customFields)            usedProduct.customFields = customFields;
-    if (price !== undefined)     usedProduct.price = price;
-    if (description !== undefined) usedProduct.description = description;
-    if (images)                  usedProduct.images = images;
+    // اگه واریانت تغییر کرده، بررسی کن متعلق به همین محصول پایه باشه
+    if (baseVariant !== undefined) {
+      if (baseVariant === null) {
+        usedProduct.baseVariant = null;
+      } else {
+        const product = await Product.findById(usedProduct.baseProduct)
+          .select("variants")
+          .lean();
+        const variantExists = product?.variants.some(
+          (v) => v.toString() === baseVariant,
+        );
+        if (!variantExists) {
+          return NextResponse.json(
+            { error: "واریانت انتخاب‌شده متعلق به محصول پایه نیست" },
+            { status: 422 },
+          );
+        }
+        usedProduct.baseVariant = baseVariant;
+      }
+    }
 
-    // تغییر وضعیت با بررسی logic
+    if (name)                      usedProduct.name = name;
+    if (healthScores)              usedProduct.healthScores = healthScores;
+    if (customFields)              usedProduct.customFields = customFields;
+    if (price !== undefined)       usedProduct.price = price;
+    if (description !== undefined) usedProduct.description = description;
+    if (images)                    usedProduct.images = images;
+
     if (status) {
-      // اگر قراره از reserved به available برگرده، سفارش رو هم null کن
       if (status === "available" && usedProduct.status === "reserved") {
         usedProduct.order = null;
       }
@@ -76,11 +109,16 @@ export async function PUT(req, { params }) {
 
     await usedProduct.save();
 
-    const updated = await UsedProduct.findById(id).populate({
-      path: "baseProduct",
-      select: "name mainImage sku category",
-      populate: { path: "category", select: "title" },
-    });
+    const updated = await UsedProduct.findById(id)
+      .populate({
+        path: "baseProduct",
+        select: "name mainImage sku category",
+        populate: { path: "category", select: "title" },
+      })
+      .populate({
+        path: "baseVariant",
+        select: "size color sku price",
+      });
 
     return NextResponse.json({ item: updated });
   } catch (err) {
@@ -100,7 +138,10 @@ export async function DELETE(req, { params }) {
     if (!item) return NextResponse.json({ error: "یافت نشد" }, { status: 404 });
 
     if (item.status === "sold")
-      return NextResponse.json({ error: "محصول فروخته‌شده قابل حذف نیست" }, { status: 400 });
+      return NextResponse.json(
+        { error: "محصول فروخته‌شده قابل حذف نیست" },
+        { status: 400 },
+      );
 
     await UsedProduct.findByIdAndDelete(id);
     return NextResponse.json({ success: true });

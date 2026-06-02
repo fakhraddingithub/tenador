@@ -38,6 +38,14 @@ const UsedProductSchema = new mongoose.Schema(
       index: true,
     },
 
+    baseVariant: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Variant",
+      required: false,
+      default: null,
+      index: true,
+    },
+
     healthScores: {
       type: [HealthScoreSchema],
       default: [],
@@ -111,16 +119,31 @@ const UsedProductSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
-// Auto-calculate overallScore before save
-UsedProductSchema.pre("save", function () {
+// Auto-calculate overallScore + validate baseVariant before save
+UsedProductSchema.pre("save", async function () {
+  // --- overallScore calculation ---
   const all = [...this.healthScores, ...this.customFields];
   if (all.length === 0) {
     this.overallScore = null;
-    return;
+  } else {
+    const avg = all.reduce((sum, s) => sum + s.rating, 0) / all.length;
+    this.overallScore = Math.round(((avg - 1) / 4) * 9 + 1);
   }
-  const avg = all.reduce((sum, s) => sum + s.rating, 0) / all.length;
-  // convert 1-5 scale → 1-10
-  this.overallScore = Math.round(((avg - 1) / 4) * 9 + 1);
+
+  // --- Variant ownership validation ---
+  if (this.baseVariant && this.isModified("baseVariant")) {
+    const Variant = mongoose.model("Variant");
+    const variant = await Variant.findById(this.baseVariant)
+      .select("productId")  // ✅ productId نه product
+      .lean();
+
+    if (!variant) {
+      throw new Error("Variant not found");
+    }
+    if (variant.productId.toString() !== this.baseProduct.toString()) {  // ✅
+      throw new Error("baseVariant does not belong to baseProduct");
+    }
+  }
 });
 
 export default mongoose.models.UsedProduct ||

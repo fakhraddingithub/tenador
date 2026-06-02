@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
-import { FiPlus, FiX, FiSave, FiUploadCloud, FiLoader } from 'react-icons/fi';
+import { FiPlus, FiX, FiSave, FiUploadCloud, FiLoader, FiCheck } from 'react-icons/fi';
 import { showToast } from '@/lib/toast';
 import { showError } from '@/lib/swal';
 import StarRating from './StarRating';
@@ -12,6 +12,13 @@ function calcScore(healthScores, customFields) {
   if (all.length === 0) return null;
   const avg = all.reduce((s, i) => s + i.rating, 0) / all.length;
   return Math.round(((avg - 1) / 4) * 9 + 1);
+}
+
+// نمایش خلاصه attributes یه واریانت
+function formatVariantAttrs(attributes) {
+  if (!attributes) return '—';
+  const entries = Object.entries(attributes);
+  return entries.map(([k, v]) => `${k}: ${v}`).join(' / ');
 }
 
 export default function UsedProductForm({ initialData }) {
@@ -26,7 +33,12 @@ export default function UsedProductForm({ initialData }) {
   const [productResults, setProductResults] = useState([]);
   const [selectedProduct, setSelectedProduct] = useState(initialData?.baseProduct || null);
 
-  // New state for Editable Name
+  // Variant
+  const [variants, setVariants] = useState([]);
+  const [variantsLoading, setVariantsLoading] = useState(false);
+  const [selectedVariant, setSelectedVariant] = useState(initialData?.baseVariant || null);
+
+  // Name
   const [name, setName] = useState(initialData?.name || '');
 
   // HealthCard template
@@ -61,6 +73,21 @@ export default function UsedProductForm({ initialData }) {
     return () => clearTimeout(t);
   }, [productQuery, selectedProduct]);
 
+  // Fetch variants when product selected
+  useEffect(() => {
+    if (!selectedProduct?._id) return;
+    setVariantsLoading(true);
+    setVariants([]);
+    // اگه isEdit نباشه، واریانت قبلی رو پاک کن
+    if (!isEdit) setSelectedVariant(null);
+
+    fetch(`/api/admin/variants?productId=${selectedProduct._id}`)
+      .then(r => r.json())
+      .then(d => setVariants(d.variants || []))
+      .catch(() => setVariants([]))
+      .finally(() => setVariantsLoading(false));
+  }, [selectedProduct?._id]);
+
   // Fetch HealthCard template when product selected
   useEffect(() => {
     if (!selectedProduct?.category?._id && !selectedProduct?.category) return;
@@ -70,9 +97,7 @@ export default function UsedProductForm({ initialData }) {
     fetch(`/api/admin/healthcards?category=${catId}`)
       .then(r => r.json())
       .then(d => {
-        const card = d.cards?.find(c =>
-          (c.category?._id || c.category) === catId
-        );
+        const card = d.cards?.find(c => (c.category?._id || c.category) === catId);
         setTemplate(card || null);
         if (card && !isEdit) {
           setHealthScores(card.fields.map(f => ({ key: f.key, rating: 3, note: '' })));
@@ -85,18 +110,21 @@ export default function UsedProductForm({ initialData }) {
   const selectProduct = (product) => {
     setSelectedProduct(product);
     setProductQuery(product.name);
-    setName(product.name); // پر کردن فیلد نام محصول با نام محصول پایه
+    setName(product.name);
     setProductResults([]);
     setHealthScores([]);
     setTemplate(null);
+    setSelectedVariant(null);
   };
 
   const clearProduct = () => {
     setSelectedProduct(null);
     setProductQuery('');
-    setName(''); // پاک کردن نام
+    setName('');
     setHealthScores([]);
     setTemplate(null);
+    setVariants([]);
+    setSelectedVariant(null);
   };
 
   const updateHealthScore = (key, field, value) => {
@@ -147,7 +175,8 @@ export default function UsedProductForm({ initialData }) {
 
     const payload = {
       baseProduct: selectedProduct._id,
-      name, // ارسال نام جدید به بک‌اند
+      baseVariant: selectedVariant?._id || null,
+      name,
       healthScores,
       customFields: customFields.map(({ _id, ...f }) => f),
       price: Number(price),
@@ -231,7 +260,68 @@ export default function UsedProductForm({ initialData }) {
         )}
       </section>
 
-      {/* ─── Editable Name Field (اضافه شده بعد از محصول پایه) ─── */}
+      {/* ─── Variant Selector ─── */}
+      {selectedProduct && (
+        <section className="space-y-3">
+          <div className="flex items-center justify-between">
+            <label className="text-sm font-bold text-neutral-600">واریانت</label>
+            {selectedVariant && (
+              <button
+                type="button"
+                onClick={() => setSelectedVariant(null)}
+                className="text-xs text-neutral-400 hover:text-red-500 transition-colors flex items-center gap-1"
+              >
+                <FiX size={13} /> حذف انتخاب
+              </button>
+            )}
+          </div>
+
+          {variantsLoading ? (
+            <div className="text-center py-4 text-neutral-400 text-sm">
+              <FiLoader className="animate-spin inline ml-2" />
+              در حال بارگذاری واریانت‌ها...
+            </div>
+          ) : variants.length === 0 ? (
+            <p className="text-sm text-neutral-400 bg-neutral-50 px-4 py-3 rounded-[var(--radius)] border border-neutral-100">
+              این محصول واریانتی ندارد.
+            </p>
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+              {variants.map(v => {
+                const isSelected = selectedVariant?._id === v._id;
+                // attributes ممکنه Object یا Map باشه — هر دو رو هندل می‌کنیم
+                const attrs = v.attributes instanceof Map
+                  ? Object.fromEntries(v.attributes)
+                  : v.attributes || {};
+
+                return (
+                  <button
+                    key={v._id}
+                    type="button"
+                    onClick={() => setSelectedVariant(isSelected ? null : v)}
+                    className={`flex items-center justify-between px-4 py-3 rounded-[var(--radius)] border text-right transition-all text-sm ${
+                      isSelected
+                        ? 'border-[var(--color-primary)] bg-[var(--color-primary)]/5 text-[var(--color-primary)]'
+                        : 'border-neutral-200 bg-white hover:border-neutral-300'
+                    }`}
+                  >
+                    <div className="space-y-0.5">
+                      <p className="font-bold text-xs text-neutral-400 font-mono">{v.sku}</p>
+                      <p className="text-sm">{formatVariantAttrs(attrs)}</p>
+                      <p className="text-xs text-neutral-400">
+                        موجودی: {v.stock} · قیمت پایه: {v.price?.toLocaleString('fa-IR')} ت
+                      </p>
+                    </div>
+                    {isSelected && <FiCheck size={16} className="shrink-0 mr-2" />}
+                  </button>
+                );
+              })}
+            </div>
+          )}
+        </section>
+      )}
+
+      {/* ─── Editable Name Field ─── */}
       {selectedProduct && (
         <section className="space-y-2">
           <label className="text-sm font-bold text-neutral-600">نام نمایشی محصول</label>
