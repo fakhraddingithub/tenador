@@ -88,7 +88,7 @@ export default function ProductCreateForm({ initialData = {} }) {
     attributes: {},
     technicalStats: {},
     label: 'none',
-    isActive: true, // ✨ اضافه شد: مقدار پیش‌فرض روی فعال (true) است
+    isActive: true, 
     ...initialData,
     // Override athlete to guarantee array form
     athlete: initialAthletes,
@@ -199,6 +199,11 @@ export default function ProductCreateForm({ initialData = {} }) {
   function updateField(key, value) {
     setFormData(prev => ({ ...prev, [key]: value }));
   }
+
+  // Helper to validate hex color format safely for HTML input[type=color]
+  const isValidHex = (hex) => {
+    return typeof hex === 'string' && /^#[0-9A-F]{6}$/i.test(hex);
+  };
 
   function updateAttribute(key, value) {
     setFormData(prev => ({
@@ -389,7 +394,14 @@ export default function ProductCreateForm({ initialData = {} }) {
         <Select
           label="برند"
           value={formData.brand}
-          onChange={e => updateField('brand', e.target.value)}
+          onChange={e => {
+            setFormData(prev => ({
+              ...prev,
+              brand: e.target.value,
+              serie: '',
+              color: ''
+            }));
+          }}
           options={brands.map(b => ({ value: b._id, label: b.name }))}
         />
 
@@ -397,7 +409,18 @@ export default function ProductCreateForm({ initialData = {} }) {
           <Select
             label="سری (Series)"
             value={formData.serie}
-            onChange={e => updateField('serie', e.target.value)}
+            onChange={e => {
+              const selectedSerieId = e.target.value;
+              const currentBrand = brands.find(b => b._id === formData.brand);
+              const selectedSerie = currentBrand?.series?.find(s => s._id === selectedSerieId);
+              const primaryColor = selectedSerie?.colors?.primary || '';
+              
+              setFormData(prev => ({
+                ...prev,
+                serie: selectedSerieId,
+                color: primaryColor // Auto-fill on selection change
+              }));
+            }}
             options={
               brands
                 .find(b => b._id === formData.brand)
@@ -454,7 +477,7 @@ export default function ProductCreateForm({ initialData = {} }) {
         </div>
       )}
 
-      {/* ── Category / Price / Label ── */}
+      {/* ── Category / Price / Label / Color ── */}
       <div className="grid md:grid-cols-2 gap-6">
         <Select
           label="دسته‌بندی"
@@ -470,6 +493,25 @@ export default function ProductCreateForm({ initialData = {} }) {
           onChange={e => updateField('basePrice', e.target.value)}
         />
 
+        {/* Dynamic & Editable Color Field */}
+        <div className="flex gap-2 items-end">
+          <div className="flex-1">
+            <Input
+              label="رنگ محصول (کد Hex)"
+              value={formData.color}
+              onChange={e => updateField('color', e.target.value)}
+              placeholder="مثال: #ff0000"
+            />
+          </div>
+          <input
+            type="color"
+            value={isValidHex(formData.color) ? formData.color : '#ffffff'}
+            onChange={e => updateField('color', e.target.value)}
+            className="w-12 h-10 p-1 border rounded bg-white cursor-pointer mb-1 shadow-sm transition-transform hover:scale-105"
+            title="انتخابگر رنگ کمکی"
+          />
+        </div>
+
         <Select
           label="برچسب محصول (Label)"
           value={formData.label}
@@ -483,7 +525,6 @@ export default function ProductCreateForm({ initialData = {} }) {
           ]}
         />
 
-        {/* ✨ اضافه شد: انتخابگر وضعیت فعال/غیرفعال محصول */}
         <Select
           label="وضعیت نمایش محصول"
           value={formData.isActive ? 'true' : 'false'}
@@ -493,42 +534,6 @@ export default function ProductCreateForm({ initialData = {} }) {
             { value: 'false', label: 'غیرفعال (مخفی در سایت)' },
           ]}
         />
-      </div>
-
-      {/* ── Color Picker (replaces suitableFor) ── */}
-      <div className="border rounded-lg p-4">
-        <label className="block font-medium text-gray-700 mb-3">
-          رنگ محصول
-        </label>
-        <div className="flex items-center gap-4 flex-wrap">
-          {/* Native color wheel */}
-          <input
-            type="color"
-            value={formData.color || '#000000'}
-            onChange={e => updateField('color', e.target.value)}
-            className="w-12 h-10 rounded cursor-pointer border border-gray-300 p-0.5"
-            title="انتخاب رنگ"
-          />
-          {/* Hex input — stays in sync */}
-          <div className="w-36">
-            <Input
-              placeholder="#000000"
-              value={formData.color || ''}
-              onChange={e => updateField('color', e.target.value)}
-            />
-          </div>
-          {/* Color preview swatch */}
-          {formData.color && (
-            <span
-              className="inline-block w-10 h-10 rounded-full border-2 border-gray-300 shadow-sm"
-              style={{ backgroundColor: formData.color }}
-              title={formData.color}
-            />
-          )}
-          {formData.color && (
-            <span className="text-sm text-gray-500">{formData.color}</span>
-          )}
-        </div>
       </div>
 
       {/* ── Category Attributes (fixed) ── */}
