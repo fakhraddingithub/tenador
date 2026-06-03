@@ -20,7 +20,7 @@ export default async function UsedProductsPage() {
       path: "baseProduct",
       select: "name mainImage shortDescription basePrice brand category sku",
       populate: [
-        { path: "brand", select: "title slug logo" },
+        { path: "brand", select: "title slug logo icon" },
         { path: "category", select: "title slug" },
       ],
     })
@@ -72,6 +72,7 @@ export default async function UsedProductsPage() {
                 title: p.baseProduct.brand.title,
                 slug: p.baseProduct.brand.slug,
                 logo: p.baseProduct.brand.logo,
+                icon: p.baseProduct.brand.icon,
               }
             : null,
           category: p.baseProduct.category

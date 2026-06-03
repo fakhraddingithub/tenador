@@ -14,12 +14,12 @@ const ProductClientSection = ({ product }) => {
   const hasVariants = Array.isArray(product.variants) && product.variants.length > 0;
 
   const galleryImages = useMemo(() => {
-    // 1. بررسی اینکه آیا حداقل یکی از واریانت‌ها عکس دارد یا خیر
+    // ۱. بررسی اینکه آیا حداقل یکی از واریانت‌ها عکس دارد یا خیر
     const anyVariantHasImages = (product.variants || []).some(
       v => Array.isArray(v.images) && v.images.length > 0
     );
 
-    // 2. اگر هیچ واریانتی عکس نداشت، mainImage اضافه می‌شود؛ در غیر این صورت حذف می‌شود
+    // ۲. اگر هیچ واریانتی عکس نداشت، mainImage اضافه می‌شود؛ در غیر این صورت حذف می‌شود
     const base = [
       ...(!anyVariantHasImages ? [product.mainImage] : []),
       ...(product.gallery || []),
@@ -49,22 +49,20 @@ const ProductClientSection = ({ product }) => {
 
   return (
     <div className="grid gap-6 sm:gap-8 lg:grid-cols-[1fr_1.5fr] lg:gap-12 xl:gap-16">
-      {/* Left - Gallery */}
-      <div className="order-2 lg:order-1">
+      {/* Top on Mobile / Left on Desktop - Gallery */}
+      <div className="w-full">
         <div className="mx-auto max-w-md lg:max-w-none">
           <ProductGallery images={galleryImages} logo={product?.brand?.icon} />
         </div>
       </div>
 
-      {/* Right - Info */}
-      <div className="order-1 lg:order-2">
-        <div className="order-1 lg:order-2">
-          <ProductInfo
-            product={product}
-            selectedVariant={selectedVariant}
-            onVariantChange={setSelectedVariant}
-          />
-        </div>
+      {/* Bottom on Mobile / Right on Desktop - Info */}
+      <div className="w-full">
+        <ProductInfo
+          product={product}
+          selectedVariant={selectedVariant}
+          onVariantChange={setSelectedVariant}
+        />
       </div>
     </div>
   );
