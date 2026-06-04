@@ -22,8 +22,8 @@ const PaymentPage = ({ trackingCode }) => {
   const [order,         setOrder]         = useState(null);
   const [user,          setUser]          = useState(null);
 
-  // ReceiptUploader حالا URL آپلودشده را مستقیماً برمی‌گرداند
-  const [receiptUrl,    setReceiptUrl]    = useState(null);
+  // آرایه URLهای آپلودشده (از ReceiptUploader)
+  const [receiptUrls,   setReceiptUrls]   = useState([]);
 
   const [email,         setEmail]         = useState('');
   const [rulesChecked,  setRulesChecked]  = useState(false);
@@ -46,19 +46,16 @@ const PaymentPage = ({ trackingCode }) => {
           return;
         }
 
-        // سفارش‌های ONLINE که قبلاً پرداخت شده‌اند → صفحه موفقیت
         if (fetchedOrder.paymentMethod === 'ONLINE' && fetchedOrder.paymentStatus === 'PAID') {
           router.replace('/p-user/success');
           return;
         }
 
-        // سفارش‌های ONLINE که هنوز پرداخت نشده‌اند → ارسال به درگاه
         if (fetchedOrder.paymentMethod === 'ONLINE' && fetchedOrder.paymentStatus !== 'PAID') {
           router.replace(`/p-user/checkout/online/${trackingCode}`);
           return;
         }
 
-        // BANK_RECEIPT یا INSTALLMENT که قبلاً تأیید شده → موفقیت
         if (fetchedOrder.paymentStatus === 'PAID') {
           router.replace('/p-user/success');
           return;
@@ -79,7 +76,6 @@ const PaymentPage = ({ trackingCode }) => {
     loadOrder();
   }, [trackingCode]); // eslint-disable-line
 
-  // ─── اعتبارسنجی ایمیل ───
   const validateEmail = (val) => {
     if (!val) return true;
     return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(val);
@@ -87,35 +83,35 @@ const PaymentPage = ({ trackingCode }) => {
 
   // ─── ارسال فرم ───
   const handleSubmit = async () => {
-    if (order.paymentMethod === 'BANK_RECEIPT' && !receiptUrl) {
-      toast.error('لطفاً تصویر فیش واریزی را بارگذاری کنید.');
+    
+    if (order.paymentMethod === 'BANK_RECEIPT' && receiptUrls.length === 0) {
+      toast.error('لطفاً حداقل یک تصویر فیش واریزی بارگذاری کنید.');
       return;
     }
-
+    
     if (!rulesChecked) {
       toast.error('پذیرش قوانین الزامی است.');
       return;
     }
-
+    
     if (email && !validateEmail(email)) {
       toast.error('فرمت ایمیل وارد شده صحیح نیست.');
       return;
     }
-
+    
     setSubmitLoading(true);
-
+    
     try {
-      // ذخیره ایمیل در صورت وارد کردن
       if (email) {
         await editProfile({ email });
       }
-
+      
       if (order.paymentMethod === 'BANK_RECEIPT') {
         const result = await submitPaymentReceipt({
-          orderId:         order._id,
-          receiptImageUrl: receiptUrl,   // ✅ از state — نه متغیر تعریف‌نشده
+          orderId:          order._id,
+          receiptImageUrls: receiptUrls,   // ← آرایه
         });
-
+        
         if (!result.success) {
           toast.error(result.error || 'خطا در ثبت رسید');
           return;
@@ -123,10 +119,10 @@ const PaymentPage = ({ trackingCode }) => {
       }
 
       await Swal.fire({
-        title:             'پرداخت با موفقیت ثبت شد',
-        text:              'اطلاعات شما در حال بررسی است و نتیجه تا ساعاتی دیگر اعلام خواهد شد.',
-        icon:              'success',
-        confirmButtonText: 'متوجه شدم',
+        title:              'پرداخت با موفقیت ثبت شد',
+        text:               'اطلاعات شما در حال بررسی است و نتیجه تا ساعاتی دیگر اعلام خواهد شد.',
+        icon:               'success',
+        confirmButtonText:  'متوجه شدم',
         confirmButtonColor: '#aa4725',
       });
 
@@ -158,17 +154,15 @@ const PaymentPage = ({ trackingCode }) => {
   return (
     <div className="animate-in fade-in slide-in-from-bottom-4 duration-500 flex flex-col md:flex-row md:flex-row-reverse">
 
-      {/* خلاصه سفارش — ستون چپ، sticky */}
       <div className="md:w-1/3 md:sticky md:top-0 md:h-screen md:overflow-y-auto">
         <OrderSummary order={order} />
       </div>
 
-      {/* فرم پرداخت — ستون راست */}
       <div className="md:w-2/3 flex flex-col gap-6 md:px-6">
         <BankInfoBox />
 
-        {/* onFileChange حالا URL آپلودشده را دریافت می‌کند */}
-        <ReceiptUploader onFileChange={setReceiptUrl} />
+        {/* onFileChange حالا آرایه URLها را دریافت می‌کند */}
+        <ReceiptUploader onFileChange={setReceiptUrls} />
 
         <EmailBox
           show={!user?.email}
@@ -184,7 +178,7 @@ const PaymentPage = ({ trackingCode }) => {
         <SubmitPaymentButton
           loading={submitLoading}
           disabled={
-            (order.paymentMethod === 'BANK_RECEIPT' && !receiptUrl) ||
+            (order.paymentMethod === 'BANK_RECEIPT' && receiptUrls.length === 0) ||
             !rulesChecked
           }
           onClick={handleSubmit}

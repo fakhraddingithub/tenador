@@ -22,10 +22,10 @@ export const fetchOrder = async (trackingCode) => {
 
 // ─── ارسال رسید بانکی ───
 // ⚠️  amount حذف شد — مبلغ از سرور و از روی سفارش خوانده می‌شود
-export const submitPaymentReceipt = async ({ orderId, receiptImageUrl }) => {
+export const submitPaymentReceipt = async ({ orderId, receiptImageUrls }) => {
   try {
     if (!orderId)         throw new Error('orderId الزامی است');
-    if (!receiptImageUrl) throw new Error('تصویر رسید الزامی است');
+    if (!receiptImageUrls) throw new Error('تصویر رسید الزامی است');
 
     const res = await fetch('/api/payments/bank-receipt', {
       method:      'POST',
@@ -34,7 +34,7 @@ export const submitPaymentReceipt = async ({ orderId, receiptImageUrl }) => {
       body: JSON.stringify({
         orderId,
         method:          'BANK_RECEIPT',
-        receiptImageUrl,
+        receiptImageUrls,
       }),
     });
 

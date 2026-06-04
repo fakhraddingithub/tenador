@@ -34,7 +34,7 @@ const PaymentSchema = new mongoose.Schema(
     },
 
     bankReceipt: {
-      imageUrl: String,
+      imageUrls: [{ type: String }],
       uploadedAt: Date,
       reviewStatus: {
         type: String,

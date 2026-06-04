@@ -19,40 +19,40 @@ import {
 /* ─── Constants ─────────────────────────────────────────────────────── */
 
 const PAYMENT_STATUS = {
-  UNPAID:         { label: "پرداخت نشده",  color: "bg-red-50 text-red-600 border-red-200",       dot: "bg-red-500",    icon: XCircle },
-  PARTIALLY_PAID: { label: "پرداخت ناقص",  color: "bg-amber-50 text-amber-600 border-amber-200", dot: "bg-amber-500",  icon: Clock },
-  PAID:           { label: "پرداخت کامل",  color: "bg-green-50 text-green-600 border-green-200", dot: "bg-green-500",  icon: CheckCircle },
+  UNPAID: { label: "پرداخت نشده", color: "bg-red-50 text-red-600 border-red-200", dot: "bg-red-500", icon: XCircle },
+  PARTIALLY_PAID: { label: "پرداخت ناقص", color: "bg-amber-50 text-amber-600 border-amber-200", dot: "bg-amber-500", icon: Clock },
+  PAID: { label: "پرداخت کامل", color: "bg-green-50 text-green-600 border-green-200", dot: "bg-green-500", icon: CheckCircle },
 };
 
 const FULFILLMENT_STATUS = {
-  WAITING:    { label: "در انتظار",       color: "bg-gray-50 text-gray-500 border-gray-200",        dot: "bg-gray-400",   icon: Clock },
-  PROCESSING: { label: "در حال پردازش",  color: "bg-blue-50 text-blue-600 border-blue-200",         dot: "bg-blue-500",   icon: Package },
-  SENT:       { label: "ارسال شده",       color: "bg-purple-50 text-purple-600 border-purple-200",  dot: "bg-purple-500", icon: Truck },
-  DELIVERED:  { label: "تحویل داده شد",  color: "bg-teal-50 text-teal-600 border-teal-200",         dot: "bg-teal-500",   icon: Home },
-  CANCELED:   { label: "لغو شده",         color: "bg-red-50 text-red-500 border-red-200",           dot: "bg-red-400",    icon: Ban },
+  WAITING: { label: "در انتظار", color: "bg-gray-50 text-gray-500 border-gray-200", dot: "bg-gray-400", icon: Clock },
+  PROCESSING: { label: "در حال پردازش", color: "bg-blue-50 text-blue-600 border-blue-200", dot: "bg-blue-500", icon: Package },
+  SENT: { label: "ارسال شده", color: "bg-purple-50 text-purple-600 border-purple-200", dot: "bg-purple-500", icon: Truck },
+  DELIVERED: { label: "تحویل داده شد", color: "bg-teal-50 text-teal-600 border-teal-200", dot: "bg-teal-500", icon: Home },
+  CANCELED: { label: "لغو شده", color: "bg-red-50 text-red-500 border-red-200", dot: "bg-red-400", icon: Ban },
 };
 
 const PAYMENT_METHOD = {
-  ONLINE:       { label: "پرداخت آنلاین", icon: CreditCard },
-  BANK_RECEIPT: { label: "رسید بانکی",    icon: Receipt },
-  INSTALLMENT:  { label: "اقساطی",        icon: Calendar },
+  ONLINE: { label: "پرداخت آنلاین", icon: CreditCard },
+  BANK_RECEIPT: { label: "رسید بانکی", icon: Receipt },
+  INSTALLMENT: { label: "اقساطی", icon: Calendar },
 };
 
 const RECEIPT_STATUS = {
-  PENDING:  { label: "در انتظار بررسی", color: "bg-amber-50 text-amber-600 border-amber-200" },
-  APPROVED: { label: "تأیید شده",        color: "bg-green-50 text-green-600 border-green-200" },
-  REJECTED: { label: "رد شده",           color: "bg-red-50 text-red-600 border-red-200" },
+  PENDING: { label: "در انتظار بررسی", color: "bg-amber-50 text-amber-600 border-amber-200" },
+  APPROVED: { label: "تأیید شده", color: "bg-green-50 text-green-600 border-green-200" },
+  REJECTED: { label: "رد شده", color: "bg-red-50 text-red-600 border-red-200" },
 };
 
 const TRACKING_STATUS_LABELS = {
-  FR_WAREHOUSE:   "انبار فرانسه",
-  READY_TO_SHIP:  "آماده ارسال",
-  IN_TRANSIT:     "در راه",
-  CUSTOMS_HOLD:   "گمرک",
-  IR_WAREHOUSE:   "انبار ایران",
-  SOLD:           "فروخته شده",
-  DELIVERED:      "تحویل داده شده",
-  RETURNED:       "مرجوعی",
+  FR_WAREHOUSE: "انبار فرانسه",
+  READY_TO_SHIP: "آماده ارسال",
+  IN_TRANSIT: "در راه",
+  CUSTOMS_HOLD: "گمرک",
+  IR_WAREHOUSE: "انبار ایران",
+  SOLD: "فروخته شده",
+  DELIVERED: "تحویل داده شده",
+  RETURNED: "مرجوعی",
 };
 
 const swalTheme = {
@@ -248,7 +248,7 @@ function BarcodeScanner({ onScan, onClose }) {
         back ? back.id : devices[0].id,
         { fps: 15, qrbox: { width: 240, height: 140 }, aspectRatio: 1.6 },
         (decoded) => { if (!processingRef.current) handleScanResult(decoded); },
-        () => {}
+        () => { }
       );
       setPhase("scanning");
     } catch (err) {
@@ -259,7 +259,7 @@ function BarcodeScanner({ onScan, onClose }) {
 
   const stopScanner = async () => {
     if (scannerRef.current) {
-      try { await scannerRef.current.stop(); scannerRef.current.clear(); } catch {}
+      try { await scannerRef.current.stop(); scannerRef.current.clear(); } catch { }
       scannerRef.current = null;
     }
     processingRef.current = false;
@@ -638,7 +638,7 @@ function ScanModal({ item, orderItemIndex, orderId, onSuccess, onClose }) {
               {!scanning && (
                 <BarcodeScanner
                   onScan={handleScan}
-                  onClose={() => {}}
+                  onClose={() => { }}
                 />
               )}
 
@@ -662,9 +662,21 @@ function PaymentCard({ payment, orderTotal, onViewReceipt, onApprove, onReject }
   const receiptStatus = payment.bankReceipt?.reviewStatus;
   const receiptCfg = RECEIPT_STATUS[receiptStatus] || RECEIPT_STATUS.PENDING;
 
+  // ─── چند عکس: هم imageUrls (آرایه جدید) هم imageUrl (تکی قدیمی) پشتیبانی می‌شه
+  const images = payment.bankReceipt?.imageUrls?.length
+    ? payment.bankReceipt.imageUrls
+    : payment.bankReceipt?.imageUrl
+      ? [payment.bankReceipt.imageUrl]
+      : [];
+
+
   return (
     <div className={`rounded-xl border p-3.5 space-y-3 transition
-      ${isPending && isBankReceipt ? "border-amber-300 bg-amber-50/50" : "border-gray-200 bg-gray-50/50"}`}>
+      ${isPending && isBankReceipt
+        ? "border-amber-300 bg-amber-50/50"
+        : "border-gray-200 bg-gray-50/50"}`}
+    >
+      {/* ردیف اول: نوع پرداخت + مبلغ */}
       <div className="flex items-start justify-between gap-2">
         <div className="flex items-center gap-2">
           <div className={`w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0
@@ -681,16 +693,21 @@ function PaymentCard({ payment, orderTotal, onViewReceipt, onApprove, onReject }
             <p className="text-[10px] text-gray-400">{toFarsiDate(payment.createdAt)}</p>
           </div>
         </div>
-        <div className="text-left">
+
+        <div className="text-left space-y-0.5">
           <p className="text-sm font-black text-gray-800">{formatPrice(payment.amount)}</p>
-          <p className="text-[10px] text-gray-400">تومان</p>
+          <p className="text-[10px] text-gray-400">تومان پرداخت شده</p>
         </div>
       </div>
 
+
+      {/* ─── رسید بانکی ─── */}
       {isBankReceipt && (
         <div className="space-y-2">
+
+          {/* وضعیت رسید */}
           {receiptStatus && (
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 flex-wrap">
               <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${receiptCfg.color}`}>
                 {receiptCfg.label}
               </span>
@@ -701,15 +718,42 @@ function PaymentCard({ payment, orderTotal, onViewReceipt, onApprove, onReject }
               )}
             </div>
           )}
-          {payment.bankReceipt?.imageUrl && (
-            <button onClick={() => onViewReceipt(payment.bankReceipt.imageUrl)}
-              className="w-full flex items-center gap-2 bg-white border border-gray-200 rounded-xl px-3 py-2.5
-                hover:border-[#aa4725] hover:bg-[#aa4725]/5 transition text-xs font-bold text-gray-600 hover:text-[#aa4725]">
-              <ImageIcon size={13} />
-              <span>مشاهده تصویر رسید</span>
-              <ExternalLink size={11} className="mr-auto" />
-            </button>
+
+          {/* ─── گالری تصاویر ─── */}
+          {images.length > 0 && (
+            <div className={`grid gap-2 ${images.length === 1 ? "grid-cols-1" : "grid-cols-2 sm:grid-cols-3"}`}>
+              {images.map((url, idx) => (
+                <button
+                  key={idx}
+                  onClick={() => onViewReceipt(url)}
+                  className="group relative rounded-xl overflow-hidden border border-gray-200
+                    hover:border-[#aa4725] transition aspect-video bg-gray-100"
+                >
+                  <img
+                    src={url}
+                    alt={`رسید ${idx + 1}`}
+                    className="w-full h-full object-cover group-hover:scale-105 transition duration-300"
+                  />
+                  {/* overlay */}
+                  <div className="absolute inset-0 bg-black/0 group-hover:bg-black/30 transition flex items-center justify-center">
+                    <ExternalLink
+                      size={18}
+                      className="text-white opacity-0 group-hover:opacity-100 transition drop-shadow"
+                    />
+                  </div>
+                  {/* شماره عکس */}
+                  {images.length > 1 && (
+                    <span className="absolute top-1.5 right-1.5 bg-black/50 text-white text-[10px] font-bold
+                      px-1.5 py-0.5 rounded-full">
+                      {idx + 1}
+                    </span>
+                  )}
+                </button>
+              ))}
+            </div>
           )}
+
+          {/* دکمه‌های تأیید/رد */}
           {isPending && (
             <div className="flex gap-2 pt-1">
               <button onClick={onApprove}
@@ -724,6 +768,7 @@ function PaymentCard({ payment, orderTotal, onViewReceipt, onApprove, onReject }
               </button>
             </div>
           )}
+
           {isPaid && payment.bankReceipt?.reviewedAt && (
             <p className="text-[10px] text-green-600 font-medium">
               تأیید شده در {toFarsiDate(payment.bankReceipt.reviewedAt)}
@@ -758,11 +803,11 @@ function TrackingItemBadge({ trackingItem, onRemove }) {
               ${trackingItem.procurementStatus === "IN_STOCK"
                 ? "bg-green-50 text-green-600 border border-green-200"
                 : trackingItem.procurementStatus === "TO_PURCHASE"
-                ? "bg-amber-50 text-amber-600 border border-amber-200"
-                : "bg-blue-50 text-blue-600 border border-blue-200"}`}>
+                  ? "bg-amber-50 text-amber-600 border border-amber-200"
+                  : "bg-blue-50 text-blue-600 border border-blue-200"}`}>
               {trackingItem.procurementStatus === "IN_STOCK" ? "انبار"
                 : trackingItem.procurementStatus === "TO_PURCHASE" ? "خرید"
-                : "خریداری شد"}
+                  : "خریداری شد"}
             </span>
           )}
           <span className="text-[10px] text-gray-400">
@@ -844,11 +889,10 @@ function TrackingPanel({ orderId, orderFulfillmentStatus, onStatusChange }) {
   return (
     <div className="space-y-4">
       {/* Summary */}
-      <div className={`rounded-2xl p-4 border ${
-        allComplete
+      <div className={`rounded-2xl p-4 border ${allComplete
           ? "bg-green-50 border-green-200"
           : "bg-blue-50 border-blue-200"
-      }`}>
+        }`}>
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             {allComplete
@@ -886,9 +930,8 @@ function TrackingPanel({ orderId, orderFulfillmentStatus, onStatusChange }) {
 
         return (
           <div key={item.index}
-            className={`border rounded-2xl overflow-hidden transition ${
-              isComplete ? "border-green-200" : "border-gray-200"
-            }`}>
+            className={`border rounded-2xl overflow-hidden transition ${isComplete ? "border-green-200" : "border-gray-200"
+              }`}>
             {/* Item header */}
             <button
               onClick={() => setExpanded((e) => ({ ...e, [item.index]: !isExpanded }))}
@@ -903,13 +946,12 @@ function TrackingPanel({ orderId, orderFulfillmentStatus, onStatusChange }) {
                 <p className="text-xs text-gray-400 font-mono">{item.product?.sku}</p>
               </div>
               <div className="flex items-center gap-2 flex-shrink-0">
-                <span className={`text-xs font-black px-2.5 py-1 rounded-full ${
-                  isComplete
+                <span className={`text-xs font-black px-2.5 py-1 rounded-full ${isComplete
                     ? "bg-green-100 text-green-700"
                     : item.scannedCount > 0
-                    ? "bg-blue-100 text-blue-700"
-                    : "bg-gray-100 text-gray-500"
-                }`}>
+                      ? "bg-blue-100 text-blue-700"
+                      : "bg-gray-100 text-gray-500"
+                  }`}>
                   {new Intl.NumberFormat("fa-IR").format(item.scannedCount)}/
                   {new Intl.NumberFormat("fa-IR").format(item.quantity)}
                 </span>
@@ -1331,6 +1373,7 @@ export default function AdminOrderDetailClient({ orderId }) {
                   <ReceiptText size={14} className="text-[#aa4725]" />
                   رسیدها و پرداخت‌ها
                 </h3>
+
                 <div className="space-y-3">
                   {order.payments.map((payment, i) => (
                     <PaymentCard
@@ -1343,6 +1386,32 @@ export default function AdminOrderDetailClient({ orderId }) {
                     />
                   ))}
                 </div>
+
+                {/* ─── خلاصه مالی ─── */}
+                {(() => {
+                  const totalPaid = order.payments
+                    .filter((p) => p.status === "PAID")
+                    .reduce((sum, p) => sum + (p.amount || 0), 0);
+                  const remaining = order.totalPrice - totalPaid;
+
+                  return (
+                    <div className="border-t border-gray-100 pt-3 space-y-2 text-xs">
+                      <div className="flex justify-between text-gray-500">
+                        <span>مبلغ کل سفارش</span>
+                        <span className="font-bold text-gray-700">{formatPrice(order.totalPrice)} تومان</span>
+                      </div>
+                      <div className="flex justify-between text-gray-500">
+                        <span>مجموع پرداخت‌های تأییدشده</span>
+                        <span className="font-bold text-green-600">{formatPrice(totalPaid)} تومان</span>
+                      </div>
+                      <div className={`flex justify-between font-black text-sm pt-1 border-t border-gray-100
+            ${remaining > 0 ? "text-red-600" : "text-green-600"}`}>
+                        <span>{remaining > 0 ? "مانده پرداخت" : "تسویه کامل"}</span>
+                        <span>{formatPrice(remaining)} تومان</span>
+                      </div>
+                    </div>
+                  );
+                })()}
               </div>
             )}
 

@@ -117,10 +117,12 @@ const OrderActions = ({
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           items: preparedItems,
-          addressId:     selectedAddress._id,
-          paymentMethod: selectedPaymentMethod,
-          couponCode:    couponCode || null,
-          description:   description || '',
+          // اگر آدرس ذخیره‌شده باشه _id داره، اگر موقت باشه snapshot میفرستیم
+          addressId:       selectedAddress._id || null,
+          addressSnapshot: !selectedAddress._id ? selectedAddress : null,
+          paymentMethod:   selectedPaymentMethod,
+          couponCode:      couponCode || null,
+          description:     description || '',
         }),
       });
 
