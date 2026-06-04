@@ -1,9 +1,10 @@
 "use client";
 
 import Link from "next/link";
-import { useState, useEffect } from "react";
-import { FiShield, FiTag, FiShoppingCart, FiCheck, FiX } from "react-icons/fi";
+import { useState, useEffect, useRef } from "react";
+import { FiShield, FiTag, FiX } from "react-icons/fi";
 import ProductHeader from "@/components/templates/product/ProductHeader";
+import AddToCartButton from "@/components/templates/product/AddToCartButton";
 import { addUsedToCart, removeUsedFromCart, isUsedInCart } from "@/lib/cart";
 import { toast } from "react-toastify";
 
@@ -18,21 +19,76 @@ const UsedProductInfo = ({ product }) => {
   const { _id, name, price, description, overallScore, status, baseProduct, baseVariant } = product;
   const scoreStyle = SCORE_STYLE(overallScore);
 
-  const [inCart, setInCart] = useState(false);
+  const [inCart, setInCart]           = useState(false);
+  const addToCartWrapperRef           = useRef(null);
 
   useEffect(() => {
     setInCart(isUsedInCart(_id));
     const handler = () => setInCart(isUsedInCart(_id));
-    window.addEventListener("cartchange", handler);
+    window.addEventListener("cartchange",   handler);
     window.addEventListener("cart-changed", handler);
     return () => {
-      window.removeEventListener("cartchange", handler);
+      window.removeEventListener("cartchange",   handler);
       window.removeEventListener("cart-changed", handler);
     };
   }, [_id]);
 
-  const handleCartToggle = () => {
+  // ─── همان انیمیشن پرواز عکس به سبد ───
+  const triggerFlyToCartAnimation = () => {
+    const cartIcon   = document.getElementById("cart-nav-icon");
+    const buttonElem = addToCartWrapperRef.current;
+
+    // عکس محصول دست‌دوم از آرایه images یا فیلد image
+    const productImgSrc =
+      (product.images && product.images[0]) ||
+      product.image ||
+      baseProduct?.mainImage ||
+      null;
+
+    if (!cartIcon || !buttonElem || !productImgSrc) return;
+
+    const btnRect  = buttonElem.getBoundingClientRect();
+    const cartRect = cartIcon.getBoundingClientRect();
+
+    const flyer = document.createElement("img");
+    flyer.src = productImgSrc;
+
+    Object.assign(flyer.style, {
+      position:     "fixed",
+      top:          `${btnRect.top}px`,
+      left:         `${btnRect.left + btnRect.width / 2 - 25}px`,
+      width:        "60px",
+      height:       "60px",
+      objectFit:    "cover",
+      borderRadius: "12px",
+      boxShadow:    "0 10px 25px rgba(0,0,0,0.2)",
+      zIndex:       "9999",
+      pointerEvents:"none",
+      transition:   "all 0.9s cubic-bezier(0.42, 0, 0.58, 1)",
+      opacity:      "1",
+    });
+
+    document.body.appendChild(flyer);
+
+    requestAnimationFrame(() => {
+      flyer.style.top       = `${cartRect.top}px`;
+      flyer.style.left      = `${cartRect.left}px`;
+      flyer.style.width     = "20px";
+      flyer.style.height    = "20px";
+      flyer.style.opacity   = "0.2";
+      flyer.style.transform = "rotate(360deg)";
+    });
+
+    setTimeout(() => {
+      if (document.body.contains(flyer)) document.body.removeChild(flyer);
+      cartIcon.classList.add("cart-bounce");
+      setTimeout(() => cartIcon.classList.remove("cart-bounce"), 300);
+    }, 900);
+  };
+
+  const handleAddToCart = () => {
     if (status !== "available") return;
+
     if (inCart) {
       removeUsedFromCart(_id);
       toast.info("محصول از سبد خرید حذف شد");
@@ -41,6 +97,7 @@ const UsedProductInfo = ({ product }) => {
       addUsedToCart(_id);
       toast.success("محصول به سبد خرید اضافه شد");
       setInCart(true);
+      triggerFlyToCartAnimation();
     }
   };
 
@@ -76,7 +133,6 @@ const UsedProductInfo = ({ product }) => {
           {Object.entries(baseVariant.attributes || {}).map(([key, value]) => {
             const label =
               baseProduct?.category?.variantAttributes?.find((a) => a.name === key)?.label || key;
-
             return (
               <div
                 key={key}
@@ -90,7 +146,7 @@ const UsedProductInfo = ({ product }) => {
         </div>
       )}
 
-      {/* امتیاز سلامت کلی */}
+      {/* امتیاز سلامت */}
       {overallScore != null && (
         <div className={`flex items-center gap-3 px-4 py-3 rounded-xl border ${scoreStyle.bg}`}>
           <FiShield size={20} className={scoreStyle.color} />
@@ -116,7 +172,7 @@ const UsedProductInfo = ({ product }) => {
         </div>
       )}
 
-      {/* وضعیت */}
+      {/* وضعیت + برچسب دست‌دوم */}
       <div className="flex items-center gap-2 flex-wrap">
         <span className={`flex items-center gap-1.5 text-xs font-bold px-3 py-1.5 rounded-full ${
           isSold     ? "bg-red-50 text-red-500" :
@@ -139,28 +195,11 @@ const UsedProductInfo = ({ product }) => {
         </p>
       </div>
 
-      {/* دکمه افزودن به سبد */}
+      {/* دکمه افزودن به سبد — دقیقاً همان کامپوننت محصول معمولی */}
       {!isSold && !isReserved && (
-        <button
-          onClick={handleCartToggle}
-          className={`w-full flex items-center justify-center gap-2 py-3.5 rounded-[6px] font-bold text-sm transition-all
-            ${inCart
-              ? "bg-gray-100 border-2 border-gray-300 text-gray-600 hover:bg-red-50 hover:border-red-300 hover:text-red-600"
-              : "bg-[var(--color-primary)] text-white hover:opacity-90 shadow-lg shadow-[var(--color-primary)]/25"
-            }`}
-        >
-          {inCart ? (
-            <>
-              <FiCheck size={16} />
-              در سبد خرید — کلیک برای حذف
-            </>
-          ) : (
-            <>
-              <FiShoppingCart size={16} />
-              افزودن به سبد خرید
-            </>
-          )}
-        </button>
+        <div ref={addToCartWrapperRef}>
+        <AddToCartButton onAddToCart={handleAddToCart} inCart={inCart} />
+      </div>
       )}
 
       {isSold && (
@@ -177,6 +216,7 @@ const UsedProductInfo = ({ product }) => {
           رزرو شده — در انتظار پرداخت
         </div>
       )}
+
     </div>
   );
 };
