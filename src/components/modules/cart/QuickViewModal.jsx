@@ -10,8 +10,8 @@ import {
   FaPlus,
   FaMinus,
 } from "react-icons/fa";
-import { addToCart } from "@/lib/cart";
 import { toast } from "react-toastify";
+import { useOrderFlowCart } from "@/components/modules/orderFlow/useOrderFlowCart";
 
 /* ─────────────────────────────────────────
    Helpers
@@ -57,6 +57,9 @@ export default function QuickViewModal({
   const [quantity, setQuantity] = useState(1);
   const [selection, setSelection] = useState({});
   const [selectedVariant, setSelectedVariant] = useState(null);
+
+  // افزودن به سبد با پشتیبانی از فرایند سفارش
+  const { requestAddToCart, flowModal } = useOrderFlowCart();
 
   const hasVariants =
     Array.isArray(product?.variants) && product.variants.length > 0;
@@ -169,6 +172,8 @@ export default function QuickViewModal({
     : false;
 
   function handleAddToCart() {
+    let variantId = null;
+
     if (hasVariants) {
       if (optionKeys.some((k) => !selection[k])) {
         toast.warning("لطفاً تمام ویژگی‌های محصول را انتخاب کنید");
@@ -182,20 +187,16 @@ export default function QuickViewModal({
         toast.error("این واریانت موجود نیست");
         return;
       }
-
-      const productWithTomanPrice = {
-        ...product,
-        price: finalTomanPrice, // قیمت تبدیل شده را در فیلد price قرار می‌دهیم
-      };
-      addToCart(product._id, quantity, selectedVariant);
-    } else {
-      const productWithTomanPrice = {
-        ...product,
-        price: finalTomanPrice,
-      };
-      addToCart(product._id, quantity, null);
+      variantId = selectedVariant._id;
     }
-    toast.success("به سبد خرید اضافه شد");
+
+    // اگر دسته‌بندی فرایند داشته باشد مودال باز می‌شود، وگرنه مستقیم افزوده می‌شود
+    requestAddToCart({
+      product,
+      quantity,
+      variantId,
+      onAdded: () => toast.success("به سبد خرید اضافه شد"),
+    });
   }
 
   if (!isOpen || !product) return null;
@@ -565,6 +566,9 @@ export default function QuickViewModal({
           </div>
         </div>
       </div>
+
+      {/* مودال فرایند سفارش */}
+      {flowModal}
     </div>
   );
 }

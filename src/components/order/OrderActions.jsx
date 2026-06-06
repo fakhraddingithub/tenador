@@ -108,6 +108,7 @@ const OrderActions = ({
           variantId: item.variantId || null,
           itemType: 'product',
           quantity: item.quantity || 1,
+          flowSelections: item.flowSelections ?? [],
         };
       });
 

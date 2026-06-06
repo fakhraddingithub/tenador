@@ -6,8 +6,10 @@
 
 import { FiPlus, FiMinus, FiTrash2 } from 'react-icons/fi';
 import { formatPriceWithCurrency } from 'base/utils/formatters';
+import { flowSignature } from '@/lib/cart';
+import FlowSelectionsList from '@/components/modules/orderFlow/FlowSelectionsList';
 
-const CartItems = ({ items, onUpdateQuantity, onRemoveItem, isLoading }) => {
+const CartItems = ({ items, onUpdateQuantity, onRemoveItem, onRemoveFlowSelection, isLoading }) => {
 
   if (isLoading) {
     return (
@@ -69,7 +71,7 @@ const CartItems = ({ items, onUpdateQuantity, onRemoveItem, isLoading }) => {
 
         return (
           <div
-            key={`${item.productId}-${item.variantId ?? 'base'}`}
+            key={`${item.productId}-${item.variantId ?? 'base'}-${flowSignature(item.flowSelections)}`}
             style={{ animationDelay: `${index * 60}ms` }}
             className="rounded-2xl border border-slate-200 bg-white p-4 transition-all duration-200 hover:shadow-lg hover:shadow-slate-200/40 animate-slide-up"
           >
@@ -128,8 +130,20 @@ const CartItems = ({ items, onUpdateQuantity, onRemoveItem, isLoading }) => {
                   </div>
                 )}
 
+                {/* انتخاب‌های فرایند سفارش */}
+                {item.flowSelections?.length > 0 && (
+                  <FlowSelectionsList
+                    flowSelections={item.flowSelections}
+                    onRemove={
+                      onRemoveFlowSelection
+                        ? (sel) => onRemoveFlowSelection(item, sel)
+                        : undefined
+                    }
+                  />
+                )}
+
                 {hasDiscount && (
-                  <p className="text-[10px] text-green-600 font-bold mb-2">
+                  <p className="text-[10px] text-green-600 font-bold mb-2 mt-2">
                     ✓ تخفیف اعمال شد
                   </p>
                 )}
@@ -138,7 +152,7 @@ const CartItems = ({ items, onUpdateQuantity, onRemoveItem, isLoading }) => {
                 <div className="flex items-center justify-between mt-auto">
                   <div className="flex items-center gap-2">
                     <button
-                      onClick={() => onUpdateQuantity(item.productId, -1, item.variantId)}
+                      onClick={() => onUpdateQuantity(item, -1)}
                       className="w-8 h-8 rounded-lg border border-slate-300 flex items-center justify-center hover:bg-slate-100 transition"
                     >
                       {item.quantity === 1 ? (
@@ -153,7 +167,7 @@ const CartItems = ({ items, onUpdateQuantity, onRemoveItem, isLoading }) => {
                     </span>
 
                     <button
-                      onClick={() => onUpdateQuantity(item.productId, 1, item.variantId)}
+                      onClick={() => onUpdateQuantity(item, 1)}
                       disabled={stock > 0 && item.quantity >= stock}
                       className="w-8 h-8 rounded-lg border border-slate-300 flex items-center justify-center hover:bg-slate-100 transition disabled:opacity-40"
                     >
@@ -166,7 +180,7 @@ const CartItems = ({ items, onUpdateQuantity, onRemoveItem, isLoading }) => {
               {/* ناحیه قیمت — هماهنگ با ProductPrice */}
               <div className="flex flex-col items-end justify-between min-w-[110px]">
                 <button
-                  onClick={() => onRemoveItem(item.productId, item.variantId)}
+                  onClick={() => onRemoveItem(item)}
                   className="md:hidden p-1 text-slate-400 hover:text-red-500 transition"
                 >
                   <FiTrash2 className="w-4 h-4" />
@@ -200,7 +214,7 @@ const CartItems = ({ items, onUpdateQuantity, onRemoveItem, isLoading }) => {
                 </div>
 
                 <button
-                  onClick={() => onRemoveItem(item.productId, item.variantId)}
+                  onClick={() => onRemoveItem(item)}
                   className="hidden md:flex items-center gap-1 text-xs font-medium text-red-400 hover:text-red-600 transition"
                 >
                   <FiTrash2 className="w-3.5 h-3.5" />

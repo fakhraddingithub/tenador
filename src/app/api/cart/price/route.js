@@ -43,6 +43,9 @@ export async function POST(req) {
         productId: i.productId,
         variantId: i.variantId ?? null,
         quantity:  Math.max(1, Math.floor(i.quantity || 1)),
+        ...(Array.isArray(i.flowSelections) && i.flowSelections.length > 0
+          ? { flowSelections: i.flowSelections }
+          : {}),
       };
     });
 

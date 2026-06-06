@@ -6,6 +6,37 @@
 
 import mongoose from "mongoose";
 
+// انتخاب‌های فرایند سفارش برای هر آیتم (خدمات + محصولات انتخاب‌شده)
+const OrderFlowSelectionSchema = new mongoose.Schema(
+  {
+    nodeId:    { type: String },
+    nodeLabel: { type: String, default: "" },
+    nodeType:  { type: String, enum: ["service", "category"] },
+
+    // نود نوع service
+    serviceLabel: { type: String, default: "" },
+    serviceValue: { type: String, default: "" },
+
+    // نود نوع category
+    selectedProduct: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Product",
+      default: null,
+    },
+    selectedVariant: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Variant",
+      default: null,
+    },
+    selectedProductName:  { type: String, default: "" },
+    selectedVariantLabel: { type: String, default: null },
+
+    // افزوده‌ی قیمت این انتخاب (تومان، تأییدشده سمت سرور)
+    addonToman: { type: Number, default: 0 },
+  },
+  { _id: false }
+);
+
 const OrderSchema = new mongoose.Schema(
   {
     trackingCode: {
@@ -50,7 +81,10 @@ const OrderSchema = new mongoose.Schema(
         },
 
         quantity:  { type: Number, required: true, min: 1 },
-        unitPrice: { type: Number, required: true, min: 0 }, // قیمت واحد تأیید‌شده سمت سرور (تومان)
+        unitPrice: { type: Number, required: true, min: 0 }, // قیمت واحد تأیید‌شده سمت سرور (تومان) — شامل افزوده‌ی فرایند
+
+        // انتخاب‌های فرایند سفارش (خدمات و محصولات مرتبط)
+        flowSelections: { type: [OrderFlowSelectionSchema], default: [] },
       },
     ],
 

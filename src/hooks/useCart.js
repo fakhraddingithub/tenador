@@ -6,7 +6,14 @@
  */
 
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { getCart, updateQuantity as updateLocalQuantity, removeFromCart } from '@/lib/cart';
+import {
+  getCart,
+  updateQuantity as updateLocalQuantity,
+  removeFromCart,
+  removeUsedFromCart,
+  removeFlowSelectionFromCart,
+  flowSignature,
+} from '@/lib/cart';
 
 export const useCart = () => {
   const [cartItems,    setCartItems]    = useState([]);
@@ -123,6 +130,10 @@ export const useCart = () => {
           itemFinalPrice:          item.itemFinalToman,
           hasStepDiscount:         item.appliedRules?.length > 0,
           appliedRules:            item.appliedRules ?? [],
+
+          // فرایند سفارش
+          flowSelections:          item.flowSelections ?? [],
+          flowAddonToman:          item.flowAddonToman ?? 0,
         };
       });
 
@@ -163,23 +174,54 @@ export const useCart = () => {
     return () => window.removeEventListener('cartchange', handleCartChange);
   }, []); // eslint-disable-line
 
-  // ─── تغییر تعداد (بهبود یافته برای تفکیک محصول دست‌دوم) ───
-  const updateQuantity = useCallback((productId, delta, variantId = null, usedProductId = null, itemType = 'product') => {
+  // ─── تغییر تعداد — ورودی: کل آیتم سبد (پشتیبانی از فرایند سفارش و دست‌دوم) ───
+  const updateQuantity = useCallback((item, delta) => {
+    if (!item) return;
+    const itemType = item.itemType || 'product';
+    if (itemType === 'used_product') return; // تعداد دست‌دوم همیشه ۱ است
+
+    const productId = item.productId;
+    const variantId = item.variantId ?? null;
+    const flowSelections = item.flowSelections ?? null;
+    const sig = flowSignature(flowSelections);
+
     const current = getCart().find(
-      (i) => i.productId === productId && 
-             (i.variantId ?? null) === variantId &&
-             (i.usedProductId ?? null) === usedProductId &&
-             (i.itemType ?? 'product') === itemType
+      (i) =>
+        i.itemType !== 'used_product' &&
+        i.productId === productId &&
+        (i.variantId ?? null) === variantId &&
+        flowSignature(i.flowSelections) === sig
     );
     if (!current) return;
+
     const newQty = Math.max(1, current.quantity + delta);
-    updateLocalQuantity(productId, variantId, newQty, usedProductId, itemType);
+    updateLocalQuantity(productId, variantId, newQty, flowSelections);
     loadCart(appliedCoupon?.code ?? null);
   }, [appliedCoupon, loadCart]);
 
-  // ─── حذف آیتم (بهبود یافته برای تفکیک محصول دست‌دوم) ───
-  const removeItem = useCallback((productId, variantId = null, usedProductId = null, itemType = 'product') => {
-    removeFromCart(productId, variantId, usedProductId, itemType);
+  // ─── حذف آیتم — ورودی: کل آیتم سبد ───
+  const removeItem = useCallback((item) => {
+    if (!item) return;
+    const itemType = item.itemType || 'product';
+
+    if (itemType === 'used_product') {
+      removeUsedFromCart(item.usedProductId);
+    } else {
+      removeFromCart(item.productId, item.variantId ?? null, item.flowSelections ?? null);
+    }
+    loadCart(appliedCoupon?.code ?? null);
+  }, [appliedCoupon, loadCart]);
+
+  // ─── حذف یک انتخابِ فرایند از یک آیتم ───
+  const removeFlowSelection = useCallback((item, sel) => {
+    if (!item || !sel) return;
+    if ((item.itemType || 'product') === 'used_product') return;
+    removeFlowSelectionFromCart(
+      item.productId,
+      item.variantId ?? null,
+      item.flowSelections ?? null,
+      sel.nodeId
+    );
     loadCart(appliedCoupon?.code ?? null);
   }, [appliedCoupon, loadCart]);
 
@@ -204,6 +246,7 @@ export const useCart = () => {
     error,
     updateQuantity,
     removeItem,
+    removeFlowSelection,
     applyCoupon,
     removeCoupon,
     appliedCoupon,

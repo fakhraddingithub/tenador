@@ -107,6 +107,11 @@ export async function GET(req, { params }) {
         model: "Variant",
         select: "sku attributes images",
       })
+      .populate({
+        path: "items.flowSelections.selectedProduct",
+        model: "Product",
+        select: "name mainImage",
+      })
       .lean();
 
     if (!fullOrder) {
@@ -210,6 +215,11 @@ export async function PATCH(req, { params }) {
         path: "items.variant",
         model: "Variant",
         select: "sku attributes images",
+      })
+      .populate({
+        path: "items.flowSelections.selectedProduct",
+        model: "Product",
+        select: "name mainImage",
       })
       .lean();
 

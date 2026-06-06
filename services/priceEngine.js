@@ -333,6 +333,132 @@ export async function computeCoachCredit(coachId, items) {
 }
 
 // ---------------------------------------------------------------------------
+// 5.5 افزوده‌ی قیمتِ فرایند سفارش (خدمات + محصولات انتخاب‌شده)
+// ---------------------------------------------------------------------------
+
+/**
+ * سازنده‌ی resolver برای محاسبه‌ی افزوده‌ی قیمتِ فرایند سفارش به ازای هر آیتم سبد.
+ * داده‌های لازم (محصولات/واریانت‌های انتخاب‌شده و تعریف فرایندها) را یک‌بار به‌صورت
+ * batch واکشی می‌کند و یک تابع برمی‌گرداند که برای هر آیتم { addonToman, enriched } می‌دهد.
+ *
+ * ⚠️ قیمت خدمات (priceModifier) از روی تعریف فرایند بازخوانی می‌شود، نه از کلاینت.
+ *
+ * @param {Object[]} cartItems  آیتم‌های سبد (می‌توانند flowSelections داشته باشند)
+ * @param {Map} productMap      نقشه‌ی محصولات اصلی (id → product با category)
+ * @param {number} rate         نرخ تبدیل یورو → تومان
+ * @returns {Promise<(ci:Object)=>{addonToman:number, enriched:Object[]}>}
+ */
+export async function buildFlowAddonResolver(cartItems, productMap, rate) {
+  const { default: Product } = await import("base/models/Product");
+  const { default: Variant } = await import("base/models/Variant");
+  const { default: OrderFlow } = await import("base/models/OrderFlow");
+
+  const addonProductIds = new Set();
+  const addonVariantIds = new Set();
+  const flowCategoryIds = new Set();
+
+  for (const ci of cartItems) {
+    if (!Array.isArray(ci.flowSelections) || ci.flowSelections.length === 0) continue;
+    for (const sel of ci.flowSelections) {
+      if (sel?.nodeType === "category") {
+        if (sel.selectedProductId) addonProductIds.add(String(sel.selectedProductId));
+        if (sel.selectedVariantId) addonVariantIds.add(String(sel.selectedVariantId));
+      }
+    }
+    const p = productMap.get(ci.productId);
+    const catId = p?.category?._id ?? p?.category;
+    if (catId) flowCategoryIds.add(String(catId));
+  }
+
+  // هیچ آیتمی فرایند ندارد → resolver خنثی
+  if (!addonProductIds.size && !addonVariantIds.size && !flowCategoryIds.size) {
+    return () => ({ addonToman: 0, enriched: [] });
+  }
+
+  const [addonProducts, addonVariants, orderFlows] = await Promise.all([
+    addonProductIds.size
+      ? Product.find({ _id: { $in: [...addonProductIds] } })
+          .select("_id name mainImage basePrice")
+          .lean()
+      : Promise.resolve([]),
+    addonVariantIds.size
+      ? Variant.find({ _id: { $in: [...addonVariantIds] } })
+          .select("_id price attributes")
+          .lean()
+      : Promise.resolve([]),
+    flowCategoryIds.size
+      ? OrderFlow.find({ rootCategory: { $in: [...flowCategoryIds] }, isActive: true }).lean()
+      : Promise.resolve([]),
+  ]);
+
+  const addonProductMap = new Map(addonProducts.map((p) => [p._id.toString(), p]));
+  const addonVariantMap = new Map(addonVariants.map((v) => [v._id.toString(), v]));
+  const flowByCategory = new Map(orderFlows.map((f) => [f.rootCategory.toString(), f]));
+
+  return (ci) => {
+    if (!Array.isArray(ci.flowSelections) || ci.flowSelections.length === 0) {
+      return { addonToman: 0, enriched: [] };
+    }
+    const p = productMap.get(ci.productId);
+    const catId = p ? String(p.category?._id ?? p.category) : null;
+    const flow = catId ? flowByCategory.get(catId) : null;
+
+    let addonToman = 0;
+    const enriched = [];
+
+    for (const sel of ci.flowSelections) {
+      if (sel?.nodeType === "service") {
+        const node = flow?.nodes?.find((n) => n.id === sel.nodeId && n.type === "service");
+        const option = node?.serviceOptions?.find(
+          (o) => String(o.value) === String(sel.serviceOption?.value)
+        );
+        const priceModifier = option ? Number(option.priceModifier) || 0 : 0;
+        addonToman += priceModifier;
+        enriched.push({
+          nodeId: sel.nodeId,
+          nodeType: "service",
+          nodeLabel: node?.label ?? sel.nodeLabel ?? "",
+          required: Boolean(node?.required),
+          serviceOption: {
+            label: option?.label ?? sel.serviceOption?.label ?? "",
+            value: String(sel.serviceOption?.value ?? ""),
+            priceModifier,
+          },
+          addonToman: priceModifier,
+        });
+      } else if (sel?.nodeType === "category") {
+        const node = flow?.nodes?.find(
+          (n) => n.id === sel.nodeId && n.type === "category"
+        );
+        const ap = sel.selectedProductId
+          ? addonProductMap.get(String(sel.selectedProductId))
+          : null;
+        const av = sel.selectedVariantId
+          ? addonVariantMap.get(String(sel.selectedVariantId))
+          : null;
+        const eur = av?.price ?? ap?.basePrice ?? 0;
+        const toman = eurToToman(eur, rate);
+        addonToman += toman;
+        enriched.push({
+          nodeId: sel.nodeId,
+          nodeType: "category",
+          nodeLabel: node?.label ?? sel.nodeLabel ?? "",
+          required: Boolean(node?.required),
+          selectedProductId: sel.selectedProductId ?? null,
+          selectedVariantId: sel.selectedVariantId ?? null,
+          selectedProductName: ap?.name ?? sel.selectedProductName ?? "",
+          selectedProductImage: ap?.mainImage ?? sel.selectedProductImage ?? null,
+          selectedVariantLabel: sel.selectedVariantLabel ?? null,
+          addonToman: toman,
+        });
+      }
+    }
+
+    return { addonToman, enriched };
+  };
+}
+
+// ---------------------------------------------------------------------------
 // 6. تابع اصلی — محاسبه قیمت کامل سبد خرید (server-side)
 // ---------------------------------------------------------------------------
 
@@ -386,6 +512,9 @@ export async function computeCartPrice(cartItems, user = null, couponCode = null
   const variantMap = new Map(variants.map((v) => [v._id.toString(), v]));
   const usedProductMap = new Map(usedProducts.map((up) => [up._id.toString(), up])); // 💡 مپ کردن دست‌دوم‌ها
 
+  // resolver افزوده‌ی فرایند سفارش (یک‌بار batch می‌گیرد)
+  const resolveFlowAddon = await buildFlowAddonResolver(cartItems, productMap, rate);
+
   // محاسبه موقت subtotal برای قوانین cartValue
   let subtotalToman = 0;
   for (const ci of cartItems) {
@@ -402,7 +531,8 @@ export async function computeCartPrice(cartItems, user = null, couponCode = null
       if (!p) continue;
       const v = ci.variantId ? variantMap.get(ci.variantId) : null;
       const eurPrice = v?.price ?? p.basePrice ?? 0;
-      subtotalToman += eurToToman(eurPrice, rate) * (ci.quantity || 1);
+      const { addonToman } = resolveFlowAddon(ci);
+      subtotalToman += (eurToToman(eurPrice, rate) + addonToman) * (ci.quantity || 1);
     }
   }
 
@@ -467,6 +597,11 @@ export async function computeCartPrice(cartItems, user = null, couponCode = null
         unitFinalPrice = variantBase - unitDiscount;
       }
 
+      // افزوده‌ی فرایند سفارش روی قیمت واحد (بدون تخفیف)
+      const { addonToman: flowAddonToman, enriched: flowSelectionsEnriched } =
+        resolveFlowAddon(ci);
+      unitFinalPrice += flowAddonToman;
+
       const lineTotal  = unitFinalPrice * qty;
       const lineDiscount = unitDiscount * qty;
       totalDiscount += lineDiscount;
@@ -486,6 +621,8 @@ export async function computeCartPrice(cartItems, user = null, couponCode = null
         categoryId:    (p.category?._id ?? p.category)?.toString() ?? null,
         brandId:       (p.brand?._id ?? p.brand)?.toString() ?? null,
         serieId:       (p.serie?._id ?? p.serie)?.toString() ?? null,
+        flowAddonToman,
+        flowSelections: flowSelectionsEnriched,
       });
     }
   }
@@ -516,7 +653,10 @@ export async function computeCartPrice(cartItems, user = null, couponCode = null
 
   return {
     items:               enrichedItems,
-    subtotalToman:        enrichedItems.reduce((s, i) => s + i.basePriceToman * i.quantity, 0),
+    subtotalToman:        enrichedItems.reduce(
+      (s, i) => s + (i.basePriceToman + (i.flowAddonToman || 0)) * i.quantity,
+      0
+    ),
     discountToman:        totalDiscount,
     couponDiscountToman:  couponDiscount,
     finalTotalToman,

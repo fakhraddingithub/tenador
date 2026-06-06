@@ -5,6 +5,7 @@ import "base/models/Brand";
 import "base/models/Sport";
 import "base/models/Athlete";
 import "base/models/Category";
+import "base/models/Variant";
 
 export async function GET(req) {
   try {
@@ -13,18 +14,24 @@ export async function GET(req) {
     // ۱. استخراج پارامترهای آدرس URL
     const { searchParams } = new URL(req.url);
     const isAdmin = searchParams.get("isAdmin") === "true";
+    const categoryId = searchParams.get("category"); // فیلتر بر اساس دسته‌بندی
+    const withVariants = searchParams.get("withVariants") === "true"; // populate واریانت‌ها
 
-    // ۲. شرط داینامیک دیتابیس: 
+    // ۲. شرط داینامیک دیتابیس:
     // اگر ادمین بود آبجکت خالی {} (یعنی همه محصولات) و اگر نبود فقط { isActive: true }
     const query = isAdmin ? {} : { isActive: true };
-    
-    const products = await Product.find(query)
+    if (categoryId) query.category = categoryId;
+
+    let productsQuery = Product.find(query)
       .populate('brand')
       .populate('sport')
       .populate('athlete')
-      .populate('category')
-      .lean();
-    
+      .populate('category');
+
+    if (withVariants) productsQuery = productsQuery.populate('variants');
+
+    const products = await productsQuery.lean();
+
     return NextResponse.json({
       products: products || [],
     });

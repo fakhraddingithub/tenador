@@ -53,6 +53,53 @@ function renderVariant(variantAttrs) {
     .join(' / ');
 }
 
+function escapeHtml(str) {
+  return String(str ?? '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;');
+}
+
+// رندر انتخاب‌های فرایند سفارش (خدمات + محصولات انتخاب‌شده) زیر هر آیتم
+function renderFlowSelections(flowSelections) {
+  if (!Array.isArray(flowSelections) || flowSelections.length === 0) return '';
+
+  const rows = flowSelections.map((sel) => {
+    const isService = sel.nodeType === 'service';
+    const productImage = sel.selectedProduct?.mainImage || sel.selectedProductImage || '';
+    const productName  = sel.selectedProductName || sel.selectedProduct?.name || '';
+    const valueText = isService
+      ? sel.serviceLabel
+      : `${productName}${sel.selectedVariantLabel ? ` (${sel.selectedVariantLabel})` : ''}`;
+    const addon = Number(sel.addonToman) || 0;
+    const addonCell = addon > 0
+      ? `<td style="text-align:left;white-space:nowrap;vertical-align:middle;"><span style="display:inline-block;color:#aa4725;font-weight:700;font-size:11px;background:rgba(170,71,37,0.1);border-radius:6px;padding:3px 8px;">+ ${formatPrice(addon)}</span></td>`
+      : '<td></td>';
+
+    const thumbCell = (!isService && productImage)
+      ? `<td width="40" style="vertical-align:middle;padding-left:8px;"><img src="${productImage}" alt="${escapeHtml(productName)}" width="36" height="36" style="border-radius:6px;object-fit:cover;border:1px solid #eee;display:block;background:#fff;"></td>`
+      : `<td width="40" style="vertical-align:middle;padding-left:8px;"><div style="width:36px;height:36px;border-radius:6px;border:1px solid #eee;background:#fff;text-align:center;line-height:36px;color:#aa4725;font-size:16px;">${isService ? '⚙' : '🏷'}</div></td>`;
+
+    return `
+      <tr>
+        ${thumbCell}
+        <td style="vertical-align:middle;padding:4px 0;">
+          <div style="font-size:10px;color:#999;line-height:1.4;">${escapeHtml(sel.nodeLabel)}</div>
+          <div style="font-size:12px;color:#333;font-weight:700;line-height:1.5;">${escapeHtml(valueText)}</div>
+        </td>
+        ${addonCell}
+      </tr>`;
+  }).join('');
+
+  return `
+    <div style="margin-top:8px;border:1px solid rgba(170,71,37,0.2);background:rgba(170,71,37,0.04);border-radius:8px;padding:8px 10px;">
+      <div style="font-size:11px;font-weight:700;color:#aa4725;margin-bottom:6px;">موارد انتخاب‌شده برای این محصول</div>
+      <table width="100%" cellpadding="0" cellspacing="0" style="border-collapse:collapse;">
+        ${rows}
+      </table>
+    </div>`;
+}
+
 const PAYMENT_LABEL = {
   BANK_RECEIPT: 'فیش بانکی',
   INSTALLMENT:  'اقساطی',
@@ -90,6 +137,7 @@ function buildEmailHtml(order, isAdmin = false) {
             ${!farsi && !english ? `<span>${productName}</span>` : ''}
           </div>
           ${variantText ? `<div style="margin-top:4px;font-size:11px;color:#aa4725;background:#aa4725/8;border:1px solid rgba(170,71,37,0.2);border-radius:12px;padding:2px 8px;display:inline-block;">${variantText}</div>` : ''}
+          ${renderFlowSelections(item.flowSelections)}
         </td>
         <td style="padding:12px 8px; text-align:center; font-size:13px; color:#555; white-space:nowrap;">
           ${new Intl.NumberFormat('fa-IR').format(item.quantity ?? 1)} عدد

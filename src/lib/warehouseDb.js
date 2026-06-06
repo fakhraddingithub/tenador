@@ -88,6 +88,17 @@ export function getItemTrackingModel(conn) {
         enum: ["IN_STOCK", "TO_PURCHASE", "PURCHASED"],
         default: null,
       },
+      // ربط دقیق به خطِ سفارش: ایندکس آیتم در order.items
+      orderItemIndex: {
+        type: Number,
+        default: null,
+      },
+      // اگر این آیتم برای یک «انتخابِ فرایند سفارش» (نود category) باشد، شناسه‌ی آن نود
+      // مقدار null یعنی این tracking برای خودِ محصول اصلی است نه انتخاب‌های فرایند
+      flowNodeId: {
+        type: String,
+        default: null,
+      },
       history: [
         {
           status: { type: String, required: true },

@@ -144,6 +144,7 @@ export async function POST(req) {
         const populatedOrder = await Order.findById(order._id)
           .populate("items.product", "_id name mainImage")
           .populate("items.variant", "_id attributes images sku")
+          .populate("items.flowSelections.selectedProduct", "_id name mainImage")
           .lean();
 
         const userDoc = await User.findById(user.userId)
@@ -287,6 +288,7 @@ export async function POST(req) {
         const populatedOrder = await Order.findById(order._id)
           .populate("items.product", "_id name mainImage")
           .populate("items.variant", "_id attributes images sku")
+          .populate("items.flowSelections.selectedProduct", "_id name mainImage")
           .lean();
 
         const userDoc = await User.findById(user.userId)

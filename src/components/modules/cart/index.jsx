@@ -19,7 +19,10 @@ import {
   getCart,
   updateQuantity,
   removeFromCart,
+  removeFlowSelectionFromCart,
+  flowSignature,
 } from '@/lib/cart'
+import FlowSelectionsList from '@/components/modules/orderFlow/FlowSelectionsList'
 
 const CartModule = () => {
   const [cart, setCart] = useState([])
@@ -62,13 +65,13 @@ const CartModule = () => {
 
       const priceMap = new Map(
         (priceData.items || []).map((p) => [
-          `${p.productId}-${p.variantId ?? 'null'}`,
+          `${p.productId}-${p.variantId ?? 'null'}-${flowSignature(p.flowSelections)}`,
           p,
         ])
       )
 
       const enriched = (productsData.items || []).map((item) => {
-        const key = `${item.productId}-${item.variantId ?? 'null'}`
+        const key = `${item.productId}-${item.variantId ?? 'null'}-${flowSignature(item.flowSelections)}`
         const priceItem = priceMap.get(key)
         return {
           ...item,
@@ -93,7 +96,17 @@ const CartModule = () => {
 
   const handleUpdateQuantity = (item, delta) => {
     const newQuantity = Math.max(1, item.quantity + delta)
-    updateQuantity(item.productId, item.variantId, newQuantity)
+    updateQuantity(item.productId, item.variantId, newQuantity, item.flowSelections)
+    fetchCart()
+  }
+
+  const handleRemoveFlowSelection = (item, sel) => {
+    removeFlowSelectionFromCart(
+      item.productId,
+      item.variantId,
+      item.flowSelections,
+      sel.nodeId
+    )
     fetchCart()
   }
 
@@ -108,7 +121,7 @@ const CartModule = () => {
     })
 
     if (result.isConfirmed) {
-      removeFromCart(item.productId, item.variantId)
+      removeFromCart(item.productId, item.variantId, item.flowSelections)
       fetchCart()
       toast.success('حذف شد')
     }
@@ -151,7 +164,7 @@ const CartModule = () => {
           {/* Items */}
           {cart.map((item) => (
             <motion.div
-              key={`${item.productId}-${item.variantId || 'no-variant'}`}
+              key={`${item.productId}-${item.variantId || 'no-variant'}-${flowSignature(item.flowSelections)}`}
               initial={{ opacity: 0, scale: 0.96 }}
               animate={{ opacity: 1, scale: 1 }}
               className="
@@ -188,6 +201,14 @@ const CartModule = () => {
                 <p className="text-xs text-[hsl(var(--foreground)/0.6)]">
                   {item.unitPriceToman.toLocaleString('fa-IR')} تومان
                 </p>
+
+                {/* انتخاب‌های فرایند سفارش */}
+                {item.flowSelections?.length > 0 && (
+                  <FlowSelectionsList
+                    flowSelections={item.flowSelections}
+                    onRemove={(sel) => handleRemoveFlowSelection(item, sel)}
+                  />
+                )}
               </div>
 
               {/* تعداد */}

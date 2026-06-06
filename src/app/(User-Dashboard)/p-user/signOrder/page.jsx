@@ -28,6 +28,7 @@ const OrderPage = () => {
     isLoading: isCartLoading,
     updateQuantity,
     removeItem,
+    removeFlowSelection,
     applyCoupon,
     removeCoupon,
     appliedCoupon,
@@ -113,6 +114,7 @@ const OrderPage = () => {
                   items={cartItems}
                   onUpdateQuantity={updateQuantity}
                   onRemoveItem={removeItem}
+                  onRemoveFlowSelection={removeFlowSelection}
                   isLoading={isCartLoading}
                 />
               </div>
@@ -157,6 +159,7 @@ const OrderPage = () => {
                   usedProductId: i.usedProductId || null,
                   itemType: i.itemType || 'product',
                   quantity: i.quantity,
+                  flowSelections: i.flowSelections ?? [],
                 }))}
                 finalTotalToman={totalPrice}
                 selectedAddress={selectedAddress}

@@ -1,0 +1,401 @@
+
+> tenador@0.1.0 dev
+> next dev
+
+▲ Next.js 16.2.6 (Turbopack)
+- Local:         http://localhost:3000
+- Network:       http://192.168.70.166:3000
+- Environments: .env
+✓ Ready in 735ms
+⚠ Slow filesystem detected. The benchmark took 327ms. If H:\develope\JS learn\leaning project\porjects\tenador\.next/dev is a network drive, consider moving it to a local folder.
+See more: https://nextjs.org/docs/app/guides/local-development
+
+○ Compiling / ...
+⨯ ./node_modules/react-toastify/dist/ReactToastify.css
+Error evaluating Node.js code
+Error: Could not parse module '[project]/node_modules/postcss/lib/lazy-result.js'
+
+Unexpected character '\u{e}'
+    [at Object.fromJSON (turbopack:///[project]/node_modules/postcss/lib/fromJSON.js:54:20)]
+    [at exec (turbopack:///[turbopack]/shared/runtime/hmr-runtime.ts:650:21)]
+    [at runModuleExecutionHooksFn (turbopack:///[turbopack]/nodejs/runtime/dev-base.ts:69:5)]
+    [at instantiateModuleShared (turbopack:///[turbopack]/shared/runtime/hmr-runtime.ts:648:5)]
+    [at instantiateModule (turbopack:///[turbopack]/nodejs/runtime/dev-base.ts:73:21)]
+    [at getOrInstantiateModuleFromParent (turbopack:///[turbopack]/nodejs/runtime/dev-base.ts:143:21)]
+    [at Context.commonJsRequire (turbopack:///[turbopack]/shared/runtime/runtime-utils.ts:440:10)]
+    [at Object.Processor (turbopack:///[project]/node_modules/postcss/lib/postcss.js:11:5)]
+    [at exec (turbopack:///[turbopack]/shared/runtime/hmr-runtime.ts:650:21)]
+    [at runWithHooks (turbopack:///[turbopack]/nodejs/runtime/dev-base.ts:69:5)]
+
+Import trace:
+  Client Component Browser:
+    ./node_modules/react-toastify/dist/ReactToastify.css [Client Component Browser]
+    ./src/app/(Site)/layout.js [Server Component]
+
+
+
+./node_modules/swiper/modules/navigation.css
+Error evaluating Node.js code
+Error: Could not parse module '[project]/node_modules/postcss/lib/lazy-result.js'
+
+Unexpected character '\u{e}'
+    [at Object.fromJSON (turbopack:///[project]/node_modules/postcss/lib/fromJSON.js:54:20)]
+    [at exec (turbopack:///[turbopack]/shared/runtime/hmr-runtime.ts:650:21)]
+    [at runModuleExecutionHooksFn (turbopack:///[turbopack]/nodejs/runtime/dev-base.ts:69:5)]
+    [at instantiateModuleShared (turbopack:///[turbopack]/shared/runtime/hmr-runtime.ts:648:5)]
+    [at instantiateModule (turbopack:///[turbopack]/nodejs/runtime/dev-base.ts:73:21)]
+    [at getOrInstantiateModuleFromParent (turbopack:///[turbopack]/nodejs/runtime/dev-base.ts:143:21)]
+    [at Context.commonJsRequire (turbopack:///[turbopack]/shared/runtime/runtime-utils.ts:440:10)]
+    [at Object.Processor (turbopack:///[project]/node_modules/postcss/lib/postcss.js:11:5)]
+    [at exec (turbopack:///[turbopack]/shared/runtime/hmr-runtime.ts:650:21)]
+    [at runWithHooks (turbopack:///[turbopack]/nodejs/runtime/dev-base.ts:69:5)]
+
+Import trace:
+  Client Component Browser:
+    ./node_modules/swiper/modules/navigation.css [Client Component Browser]
+    ./src/components/features/hero/Hero.js [Client Component Browser]
+    ./src/components/features/hero/Hero.js [Server Component]
+    ./src/app/(Site)/page.js [Server Component]
+
+
+
+./node_modules/swiper/modules/pagination.css
+Error evaluating Node.js code
+Error: Could not parse module '[project]/node_modules/postcss/lib/lazy-result.js'
+
+Unexpected character '\u{e}'
+    [at Object.fromJSON (turbopack:///[project]/node_modules/postcss/lib/fromJSON.js:54:20)]
+    [at exec (turbopack:///[turbopack]/shared/runtime/hmr-runtime.ts:650:21)]
+    [at runModuleExecutionHooksFn (turbopack:///[turbopack]/nodejs/runtime/dev-base.ts:69:5)]
+    [at instantiateModuleShared (turbopack:///[turbopack]/shared/runtime/hmr-runtime.ts:648:5)]
+    [at instantiateModule (turbopack:///[turbopack]/nodejs/runtime/dev-base.ts:73:21)]
+    [at getOrInstantiateModuleFromParent (turbopack:///[turbopack]/nodejs/runtime/dev-base.ts:143:21)]
+    [at Context.commonJsRequire (turbopack:///[turbopack]/shared/runtime/runtime-utils.ts:440:10)]
+    [at Object.Processor (turbopack:///[project]/node_modules/postcss/lib/postcss.js:11:5)]
+    [at exec (turbopack:///[turbopack]/shared/runtime/hmr-runtime.ts:650:21)]
+    [at runWithHooks (turbopack:///[turbopack]/nodejs/runtime/dev-base.ts:69:5)]
+
+Import trace:
+  Client Component Browser:
+    ./node_modules/swiper/modules/pagination.css [Client Component Browser]
+    ./src/components/features/amazingOffers/AmazingOffers.js [Client Component Browser]
+    ./src/components/features/amazingOffers/AmazingOffers.js [Server Component]
+    ./src/app/(Site)/page.js [Server Component]
+
+
+
+./node_modules/swiper/swiper.css
+Error evaluating Node.js code
+Error: Could not parse module '[project]/node_modules/postcss/lib/lazy-result.js'
+
+Unexpected character '\u{e}'
+    [at Object.fromJSON (turbopack:///[project]/node_modules/postcss/lib/fromJSON.js:54:20)]
+    [at exec (turbopack:///[turbopack]/shared/runtime/hmr-runtime.ts:650:21)]
+    [at runModuleExecutionHooksFn (turbopack:///[turbopack]/nodejs/runtime/dev-base.ts:69:5)]
+    [at instantiateModuleShared (turbopack:///[turbopack]/shared/runtime/hmr-runtime.ts:648:5)]
+    [at instantiateModule (turbopack:///[turbopack]/nodejs/runtime/dev-base.ts:73:21)]
+    [at getOrInstantiateModuleFromParent (turbopack:///[turbopack]/nodejs/runtime/dev-base.ts:143:21)]
+    [at Context.commonJsRequire (turbopack:///[turbopack]/shared/runtime/runtime-utils.ts:440:10)]
+    [at Object.Processor (turbopack:///[project]/node_modules/postcss/lib/postcss.js:11:5)]
+    [at exec (turbopack:///[turbopack]/shared/runtime/hmr-runtime.ts:650:21)]
+    [at runWithHooks (turbopack:///[turbopack]/nodejs/runtime/dev-base.ts:69:5)]
+
+Import trace:
+  Client Component Browser:
+    ./node_modules/swiper/swiper.css [Client Component Browser]
+    ./src/components/features/amazingOffers/AmazingOffers.js [Client Component Browser]
+    ./src/components/features/amazingOffers/AmazingOffers.js [Server Component]
+    ./src/app/(Site)/page.js [Server Component]
+
+
+
+./src/app/globals.css
+Error evaluating Node.js code
+Error: Could not parse module '[project]/node_modules/postcss/lib/lazy-result.js'
+
+Unexpected character '\u{e}'
+    [at Object.fromJSON (turbopack:///[project]/node_modules/postcss/lib/fromJSON.js:54:20)]
+    [at exec (turbopack:///[turbopack]/shared/runtime/hmr-runtime.ts:650:21)]
+    [at runModuleExecutionHooksFn (turbopack:///[turbopack]/nodejs/runtime/dev-base.ts:69:5)]
+    [at instantiateModuleShared (turbopack:///[turbopack]/shared/runtime/hmr-runtime.ts:648:5)]
+    [at instantiateModule (turbopack:///[turbopack]/nodejs/runtime/dev-base.ts:73:21)]
+    [at getOrInstantiateModuleFromParent (turbopack:///[turbopack]/nodejs/runtime/dev-base.ts:143:21)]
+    [at Context.commonJsRequire (turbopack:///[turbopack]/shared/runtime/runtime-utils.ts:440:10)]
+    [at Object.Processor (turbopack:///[project]/node_modules/postcss/lib/postcss.js:11:5)]
+    [at exec (turbopack:///[turbopack]/shared/runtime/hmr-runtime.ts:650:21)]
+    [at runWithHooks (turbopack:///[turbopack]/nodejs/runtime/dev-base.ts:69:5)]
+
+Import trace:
+  Client Component Browser:
+    ./src/app/globals.css [Client Component Browser]
+    ./src/app/(Site)/layout.js [Server Component]
+
+
+
+./src/styles/BrandSection.module.css
+Error evaluating Node.js code
+Error: Could not parse module '[project]/node_modules/postcss/lib/lazy-result.js'
+
+Unexpected character '\u{e}'
+    [at Object.fromJSON (turbopack:///[project]/node_modules/postcss/lib/fromJSON.js:54:20)]
+    [at exec (turbopack:///[turbopack]/shared/runtime/hmr-runtime.ts:650:21)]
+    [at runModuleExecutionHooksFn (turbopack:///[turbopack]/nodejs/runtime/dev-base.ts:69:5)]
+    [at instantiateModuleShared (turbopack:///[turbopack]/shared/runtime/hmr-runtime.ts:648:5)]
+    [at instantiateModule (turbopack:///[turbopack]/nodejs/runtime/dev-base.ts:73:21)]
+    [at getOrInstantiateModuleFromParent (turbopack:///[turbopack]/nodejs/runtime/dev-base.ts:143:21)]
+    [at Context.commonJsRequire (turbopack:///[turbopack]/shared/runtime/runtime-utils.ts:440:10)]
+    [at Object.Processor (turbopack:///[project]/node_modules/postcss/lib/postcss.js:11:5)]
+    [at exec (turbopack:///[turbopack]/shared/runtime/hmr-runtime.ts:650:21)]
+    [at runWithHooks (turbopack:///[turbopack]/nodejs/runtime/dev-base.ts:69:5)]
+
+Import traces:
+  Client Component Browser:
+    ./src/styles/BrandSection.module.css [Client Component Browser]
+    ./src/components/features/brandsTicker/BrandsTicker.js [Client Component Browser]
+    ./src/components/features/brandsTicker/BrandsTicker.js [Server Component]
+    ./src/app/(Site)/page.js [Server Component]
+
+  Client Component SSR:
+    ./src/styles/BrandSection.module.css [Client Component SSR]
+    ./src/components/features/brandsTicker/BrandsTicker.js [Client Component SSR]
+    ./src/components/features/brandsTicker/BrandsTicker.js [Server Component]
+    ./src/app/(Site)/page.js [Server Component]
+
+
+
+./node_modules/postcss/lib/lazy-result.js:15:22
+Unexpected character '\u{e}'
+  [90m13 |[0m [36mconst[0m [33mTYPE_TO_CLASS_NAME[0m = {
+  [90m14 |[0m   atrule: [32m'AtRule'[0m,
+[31m[1m>[0m [90m15 |[0m   comment: [32m'Comment'[0m,  decl:([32m'Declaration'[0m,
+  [90m   |[0m                      [31m[1m^[0m
+  [90m16 |[0m   document: [32m'Doc}ment'[0m,
+  [90m17 |[0m   root: [32m'Root'[0m,
+  [90m18 |[0m $ rule: [32m'Rule'[0m
+
+Parsing ecmascript source code failed
+
+Import trace:
+  postcss:
+    ./node_modules/postcss/lib/lazy-result.js
+    ./node_modules/postcss/lib/postcss.js
+    ./node_modules/postcss/lib/postcss.mjs
+
+
+ GET / 500 in 12.8s (next.js: 12.6s, application-code: 201ms)
+[browser] Uncaught Error: ./node_modules/react-toastify/dist/ReactToastify.css
+Error evaluating Node.js code
+Error: Could not parse module '[project]/node_modules/postcss/lib/lazy-result.js'
+
+Unexpected character '\u{e}'
+    [at Object.fromJSON (turbopack:///[project]/node_modules/postcss/lib/fromJSON.js:54:20)]
+    [at exec (turbopack:///[turbopack]/shared/runtime/hmr-runtime.ts:650:21)]
+    [at runModuleExecutionHooksFn (turbopack:///[turbopack]/nodejs/runtime/dev-base.ts:69:5)]
+    [at instantiateModuleShared (turbopack:///[turbopack]/shared/runtime/hmr-runtime.ts:648:5)]
+    [at instantiateModule (turbopack:///[turbopack]/nodejs/runtime/dev-base.ts:73:21)]
+    [at getOrInstantiateModuleFromParent (turbopack:///[turbopack]/nodejs/runtime/dev-base.ts:143:21)]
+    [at Context.commonJsRequire (turbopack:///[turbopack]/shared/runtime/runtime-utils.ts:440:10)]
+    [at Object.Processor (turbopack:///[project]/node_modules/postcss/lib/postcss.js:11:5)]
+    [at exec (turbopack:///[turbopack]/shared/runtime/hmr-runtime.ts:650:21)]
+    [at runWithHooks (turbopack:///[turbopack]/nodejs/runtime/dev-base.ts:69:5)]
+
+Import trace:
+  Client Component Browser:
+    ./node_modules/react-toastify/dist/ReactToastify.css [Client Component Browser]
+    ./src/app/(Site)/layout.js [Server Component]
+
+
+⨯ ./node_modules/react-toastify/dist/ReactToastify.css
+Error evaluating Node.js code
+Error: Could not parse module '[project]/node_modules/postcss/lib/lazy-result.js'
+
+Unexpected character '\u{e}'
+    [at Object.fromJSON (turbopack:///[project]/node_modules/postcss/lib/fromJSON.js:54:20)]
+    [at exec (turbopack:///[turbopack]/shared/runtime/hmr-runtime.ts:650:21)]
+    [at runModuleExecutionHooksFn (turbopack:///[turbopack]/nodejs/runtime/dev-base.ts:69:5)]
+    [at instantiateModuleShared (turbopack:///[turbopack]/shared/runtime/hmr-runtime.ts:648:5)]
+    [at instantiateModule (turbopack:///[turbopack]/nodejs/runtime/dev-base.ts:73:21)]
+    [at getOrInstantiateModuleFromParent (turbopack:///[turbopack]/nodejs/runtime/dev-base.ts:143:21)]
+    [at Context.commonJsRequire (turbopack:///[turbopack]/shared/runtime/runtime-utils.ts:440:10)]
+    [at Object.Processor (turbopack:///[project]/node_modules/postcss/lib/postcss.js:11:5)]
+    [at exec (turbopack:///[turbopack]/shared/runtime/hmr-runtime.ts:650:21)]
+    [at runWithHooks (turbopack:///[turbopack]/nodejs/runtime/dev-base.ts:69:5)]
+
+Import trace:
+  Client Component Browser:
+    ./node_modules/react-toastify/dist/ReactToastify.css [Client Component Browser]
+    ./src/app/(Site)/layout.js [Server Component]
+
+
+
+./src/app/globals.css
+Error evaluating Node.js code
+Error: Could not parse module '[project]/node_modules/postcss/lib/lazy-result.js'
+
+Unexpected character '\u{e}'
+    [at Object.fromJSON (turbopack:///[project]/node_modules/postcss/lib/fromJSON.js:54:20)]
+    [at exec (turbopack:///[turbopack]/shared/runtime/hmr-runtime.ts:650:21)]
+    [at runModuleExecutionHooksFn (turbopack:///[turbopack]/nodejs/runtime/dev-base.ts:69:5)]
+    [at instantiateModuleShared (turbopack:///[turbopack]/shared/runtime/hmr-runtime.ts:648:5)]
+    [at instantiateModule (turbopack:///[turbopack]/nodejs/runtime/dev-base.ts:73:21)]
+    [at getOrInstantiateModuleFromParent (turbopack:///[turbopack]/nodejs/runtime/dev-base.ts:143:21)]
+    [at Context.commonJsRequire (turbopack:///[turbopack]/shared/runtime/runtime-utils.ts:440:10)]
+    [at Object.Processor (turbopack:///[project]/node_modules/postcss/lib/postcss.js:11:5)]
+    [at exec (turbopack:///[turbopack]/shared/runtime/hmr-runtime.ts:650:21)]
+    [at runWithHooks (turbopack:///[turbopack]/nodejs/runtime/dev-base.ts:69:5)]
+
+Import trace:
+  Client Component Browser:
+    ./src/app/globals.css [Client Component Browser]
+    ./src/app/(Site)/layout.js [Server Component]
+
+
+
+./node_modules/postcss/lib/lazy-result.js:15:22
+Unexpected character '\u{e}'
+  [90m13 |[0m [36mconst[0m [33mTYPE_TO_CLASS_NAME[0m = {
+  [90m14 |[0m   atrule: [32m'AtRule'[0m,
+[31m[1m>[0m [90m15 |[0m   comment: [32m'Comment'[0m,  decl:([32m'Declaration'[0m,
+  [90m   |[0m                      [31m[1m^[0m
+  [90m16 |[0m   document: [32m'Doc}ment'[0m,
+  [90m17 |[0m   root: [32m'Root'[0m,
+  [90m18 |[0m $ rule: [32m'Rule'[0m
+
+Parsing ecmascript source code failed
+
+Import trace:
+  postcss:
+    ./node_modules/postcss/lib/lazy-result.js
+    ./node_modules/postcss/lib/postcss.js
+    ./node_modules/postcss/lib/postcss.mjs
+
+
+ GET /products 500 in 1123ms (next.js: 1109ms, application-code: 14ms)
+⨯ ./node_modules/react-toastify/dist/ReactToastify.css
+Error evaluating Node.js code
+Error: Could not parse module '[project]/node_modules/postcss/lib/lazy-result.js'
+
+Unexpected character '\u{e}'
+    [at Object.fromJSON (turbopack:///[project]/node_modules/postcss/lib/fromJSON.js:54:20)]
+    [at exec (turbopack:///[turbopack]/shared/runtime/hmr-runtime.ts:650:21)]
+    [at runModuleExecutionHooksFn (turbopack:///[turbopack]/nodejs/runtime/dev-base.ts:69:5)]
+    [at instantiateModuleShared (turbopack:///[turbopack]/shared/runtime/hmr-runtime.ts:648:5)]
+    [at instantiateModule (turbopack:///[turbopack]/nodejs/runtime/dev-base.ts:73:21)]
+    [at getOrInstantiateModuleFromParent (turbopack:///[turbopack]/nodejs/runtime/dev-base.ts:143:21)]
+    [at Context.commonJsRequire (turbopack:///[turbopack]/shared/runtime/runtime-utils.ts:440:10)]
+    [at Object.Processor (turbopack:///[project]/node_modules/postcss/lib/postcss.js:11:5)]
+    [at exec (turbopack:///[turbopack]/shared/runtime/hmr-runtime.ts:650:21)]
+    [at runWithHooks (turbopack:///[turbopack]/nodejs/runtime/dev-base.ts:69:5)]
+
+Import trace:
+  Client Component Browser:
+    ./node_modules/react-toastify/dist/ReactToastify.css [Client Component Browser]
+    ./src/app/(Site)/layout.js [Server Component]
+
+
+
+./src/app/globals.css
+Error evaluating Node.js code
+Error: Could not parse module '[project]/node_modules/postcss/lib/lazy-result.js'
+
+Unexpected character '\u{e}'
+    [at Object.fromJSON (turbopack:///[project]/node_modules/postcss/lib/fromJSON.js:54:20)]
+    [at exec (turbopack:///[turbopack]/shared/runtime/hmr-runtime.ts:650:21)]
+    [at runModuleExecutionHooksFn (turbopack:///[turbopack]/nodejs/runtime/dev-base.ts:69:5)]
+    [at instantiateModuleShared (turbopack:///[turbopack]/shared/runtime/hmr-runtime.ts:648:5)]
+    [at instantiateModule (turbopack:///[turbopack]/nodejs/runtime/dev-base.ts:73:21)]
+    [at getOrInstantiateModuleFromParent (turbopack:///[turbopack]/nodejs/runtime/dev-base.ts:143:21)]
+    [at Context.commonJsRequire (turbopack:///[turbopack]/shared/runtime/runtime-utils.ts:440:10)]
+    [at Object.Processor (turbopack:///[project]/node_modules/postcss/lib/postcss.js:11:5)]
+    [at exec (turbopack:///[turbopack]/shared/runtime/hmr-runtime.ts:650:21)]
+    [at runWithHooks (turbopack:///[turbopack]/nodejs/runtime/dev-base.ts:69:5)]
+
+Import trace:
+  Client Component Browser:
+    ./src/app/globals.css [Client Component Browser]
+    ./src/app/(Site)/layout.js [Server Component]
+
+
+
+./node_modules/postcss/lib/lazy-result.js:15:22
+Unexpected character '\u{e}'
+  [90m13 |[0m [36mconst[0m [33mTYPE_TO_CLASS_NAME[0m = {
+  [90m14 |[0m   atrule: [32m'AtRule'[0m,
+[31m[1m>[0m [90m15 |[0m   comment: [32m'Comment'[0m,  decl:([32m'Declaration'[0m,
+  [90m   |[0m                      [31m[1m^[0m
+  [90m16 |[0m   document: [32m'Doc}ment'[0m,
+  [90m17 |[0m   root: [32m'Root'[0m,
+  [90m18 |[0m $ rule: [32m'Rule'[0m
+
+Parsing ecmascript source code failed
+
+Import trace:
+  postcss:
+    ./node_modules/postcss/lib/lazy-result.js
+    ./node_modules/postcss/lib/postcss.js
+    ./node_modules/postcss/lib/postcss.mjs
+
+
+ GET /second-hands 500 in 1422ms (next.js: 1412ms, application-code: 10ms)
+✓ Compiled in 2.3s
+<<<🎇 MongoDB Connected Successfully 🎇>>>
+ GET / 200 in 12.0s (next.js: 599ms, application-code: 11.4s)
+ GET /api/navbar 200 in 1334ms (next.js: 909ms, application-code: 425ms)
+ GET /api/product/6a1741f45a75b48c7f4ebb93/price 200 in 4.4s (next.js: 2.8s, application-code: 1678ms)
+ GET /api/product/6a17ef2d8f5818a47601fac7/price 200 in 3.1s (next.js: 1456ms, application-code: 1681ms)
+ GET /api/product/6a1753129d8d6c2a006de6a3/price 200 in 4.4s (next.js: 2.7s, application-code: 1685ms)
+ GET /api/product/6a175aed58389b758680afca/price 200 in 4.4s (next.js: 2.7s, application-code: 1690ms)
+ GET /api/product/699c75a06253f7ded73b05f6/price 200 in 4.4s (next.js: 2.8s, application-code: 1694ms)
+ GET /api/product/6a17490e0c2f0b1388f48bfd/price 200 in 5.1s (next.js: 2.7s, application-code: 2.3s)
+ GET /api/product/6a181d654861f25a5d4724f9/price 200 in 996ms (next.js: 17ms, application-code: 978ms)
+ GET /api/product/6a19b41abbbf640064a8c691/price 200 in 1018ms (next.js: 25ms, application-code: 993ms)
+ GET /api/product/6a19b713bbbf640064a8c742/price 200 in 1093ms (next.js: 35ms, application-code: 1058ms)
+ GET /api/product/6a19dede931c88f8df6bf3b3/price 200 in 1076ms (next.js: 13ms, application-code: 1063ms)
+ GET /api/product/6a1b4ede7ee40c8223815a1f/price 200 in 839ms (next.js: 3ms, application-code: 836ms)
+ GET /api/product/6a1c4b9c746c107515bee1ba/price 200 in 794ms (next.js: 4ms, application-code: 790ms)
+ GET /api/product/6a1b55267ee40c8223815c43/price 200 in 948ms (next.js: 3ms, application-code: 945ms)
+ GET /api/product/6a19b8cf2abca1099431dfc8/price 200 in 2.0s (next.js: 15ms, application-code: 2.0s)
+ GET /api/product/6a1db2d4bec1f8f0e2d126f5/price 200 in 953ms (next.js: 5ms, application-code: 949ms)
+ GET /api/product/6a1f26021c22ecbfd332aa0b/price 200 in 991ms (next.js: 3ms, application-code: 988ms)
+ GET /api/product/6a1f299e03704727c187189f/price 200 in 966ms (next.js: 16ms, application-code: 951ms)
+ GET /api/product/6a1f2b7bc56d85c131b16538/price 200 in 963ms (next.js: 4ms, application-code: 959ms)
+ GET /api/product/6a1f45f3e04d00a34a83a1e9/price 200 in 946ms (next.js: 5ms, application-code: 941ms)
+ GET /api/product/6a1f46cd3969500c1aa018d0/price 200 in 949ms (next.js: 3ms, application-code: 946ms)
+ GET /api/product/6a1f215e9423eb625e27d2b4/price 200 in 2.1s (next.js: 3ms, application-code: 2.1s)
+ GET /api/product/6a1f4776eaef0e60a4cf798b/price 200 in 958ms (next.js: 10ms, application-code: 948ms)
+ GET /api/product/6a1f481922ff31336bf489ae/price 200 in 1110ms (next.js: 7ms, application-code: 1102ms)
+ GET /api/product/6a1f50333c90605700845293/price 200 in 1151ms (next.js: 3ms, application-code: 1148ms)
+ GET /api/product/6a22ef7dab6c7127d37cd3d5/price 200 in 1119ms (next.js: 3ms, application-code: 1116ms)
+ GET /api/product/6a1f522aa7bda5e8253edb82/price 200 in 1146ms (next.js: 3ms, application-code: 1143ms)
+ GET /api/athletes/showcase 200 in 1085ms (next.js: 208ms, application-code: 877ms)
+ GET /api/product/6a1741f45a75b48c7f4ebb93/price 200 in 858ms (next.js: 3ms, application-code: 855ms)
+ GET /api/product/6a17ef2d8f5818a47601fac7/price 200 in 952ms (next.js: 13ms, application-code: 939ms)
+ GET /api/product/6a1753129d8d6c2a006de6a3/price 200 in 1098ms (next.js: 3ms, application-code: 1095ms)
+ GET /api/product/699c75a06253f7ded73b05f6/price 200 in 1263ms (next.js: 3ms, application-code: 1261ms)
+ GET /api/product/6a175aed58389b758680afca/price 200 in 1283ms (next.js: 4ms, application-code: 1279ms)
+ GET /api/product/6a17490e0c2f0b1388f48bfd/price 200 in 1256ms (next.js: 8ms, application-code: 1248ms)
+ GET /api/product/6a181d654861f25a5d4724f9/price 200 in 1601ms (next.js: 3ms, application-code: 1598ms)
+ GET /api/product/6a19b41abbbf640064a8c691/price 200 in 1451ms (next.js: 3ms, application-code: 1448ms)
+ GET /api/product/6a19b713bbbf640064a8c742/price 200 in 1330ms (next.js: 3ms, application-code: 1327ms)
+ GET /api/product/6a1c4b9c746c107515bee1ba/price 200 in 995ms (next.js: 3ms, application-code: 991ms)
+ GET /api/product/6a19dede931c88f8df6bf3b3/price 200 in 1236ms (next.js: 13ms, application-code: 1223ms)
+ GET /api/product/6a1b4ede7ee40c8223815a1f/price 200 in 1252ms (next.js: 3ms, application-code: 1249ms)
+ GET /api/product/6a1b55267ee40c8223815c43/price 200 in 1171ms (next.js: 3ms, application-code: 1168ms)
+ GET /api/product/6a19b8cf2abca1099431dfc8/price 200 in 1141ms (next.js: 3ms, application-code: 1138ms)
+ GET /api/product/6a1f26021c22ecbfd332aa0b/price 200 in 1121ms (next.js: 10ms, application-code: 1111ms)
+ GET /api/product/6a1db2d4bec1f8f0e2d126f5/price 200 in 1140ms (next.js: 4ms, application-code: 1136ms)
+ GET /api/product/6a1f299e03704727c187189f/price 200 in 1006ms (next.js: 3ms, application-code: 1003ms)
+ GET /api/product/6a1f45f3e04d00a34a83a1e9/price 200 in 1015ms (next.js: 18ms, application-code: 997ms)
+ GET /api/product/6a1f46cd3969500c1aa018d0/price 200 in 1084ms (next.js: 3ms, application-code: 1080ms)
+ GET /api/product/6a1f215e9423eb625e27d2b4/price 200 in 981ms (next.js: 3ms, application-code: 978ms)
+ GET /api/product/6a1f2b7bc56d85c131b16538/price 200 in 1933ms (next.js: 3ms, application-code: 1929ms)
+ GET /api/product/6a1f4776eaef0e60a4cf798b/price 200 in 962ms (next.js: 6ms, application-code: 957ms)
+ GET /api/product/6a1f481922ff31336bf489ae/price 200 in 1970ms (next.js: 9ms, application-code: 1961ms)
+ GET / 200 in 2.5s (next.js: 5ms, application-code: 2.5s)
+ GET /api/product/6a1f50333c90605700845293/price 200 in 1961ms (next.js: 3ms, application-code: 1957ms)
+ GET /api/product/6a22ef7dab6c7127d37cd3d5/price 200 in 1010ms (next.js: 86ms, application-code: 925ms)
+ GET /api/product/6a1f522aa7bda5e8253edb82/price 200 in 1049ms (next.js: 75ms, application-code: 973ms)
+ GET /products 200 in 1595ms (next.js: 39ms, application-code: 1556ms)
+(node:8508) [MONGOOSE] Warning: mongoose: Duplicate schema index on {"category":1} for model "HealthCard". This is often due to declaring an index using both "index: true" and "schema.index()". Please remove the duplicate index definition.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ GET /second-hands 200 in 484ms (next.js: 32ms, application-code: 453ms)

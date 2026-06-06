@@ -9,7 +9,34 @@ import { verifyToken } from "base/utils/auth";
 import Order from "base/models/Order";
 import Address from "base/models/Address";
 import UsedProduct from "base/models/UsedProduct";
+import Product from "base/models/Product";
+import Variant from "base/models/Variant";
 import { computeCartPrice } from "base/services/priceEngine";
+import { autoAssignUsedProductTracking } from "@/lib/usedTrackingAuto";
+
+// تبدیل انتخاب فرایندِ غنی‌شده (از پرایس‌انجین) به شکل ذخیره‌سازی در سفارش
+function mapFlowSelectionToOrder(sel) {
+  if (sel?.nodeType === "service") {
+    return {
+      nodeId: sel.nodeId,
+      nodeLabel: sel.nodeLabel ?? "",
+      nodeType: "service",
+      serviceLabel: sel.serviceOption?.label ?? "",
+      serviceValue: String(sel.serviceOption?.value ?? ""),
+      addonToman: Number(sel.addonToman) || 0,
+    };
+  }
+  return {
+    nodeId: sel.nodeId,
+    nodeLabel: sel.nodeLabel ?? "",
+    nodeType: "category",
+    selectedProduct: sel.selectedProductId || null,
+    selectedVariant: sel.selectedVariantId || null,
+    selectedProductName: sel.selectedProductName ?? "",
+    selectedVariantLabel: sel.selectedVariantLabel ?? null,
+    addonToman: Number(sel.addonToman) || 0,
+  };
+}
 
 async function getUserFromToken() {
   const cookieStore = await cookies();
@@ -134,6 +161,9 @@ export async function POST(req) {
         variantId: i.variantId ?? null,
         quantity:  Math.max(1, Math.floor(i.quantity || 1)),
         itemType:  "product",
+        ...(Array.isArray(i.flowSelections) && i.flowSelections.length > 0
+          ? { flowSelections: i.flowSelections }
+          : {}),
       };
     });
 
@@ -164,6 +194,62 @@ export async function POST(req) {
         { message: "مبلغ سفارش نامعتبر است" },
         { status: 400 },
       );
+    }
+
+    // ─── ۳.۵ اعتبارسنجی موجودی محصولات انتخاب‌شده در فرایند (نود category) ───
+    const addonVariantNeeds = new Map(); // variantId → تعداد موردنیاز
+    const addonProductNeeds = new Map(); // productId (بدون واریانت) → تعداد موردنیاز
+    for (const item of priceResult.items) {
+      if (!Array.isArray(item.flowSelections)) continue;
+      const qty = item.quantity || 1;
+      for (const sel of item.flowSelections) {
+        if (sel.nodeType !== "category") continue;
+        if (sel.selectedVariantId) {
+          addonVariantNeeds.set(
+            String(sel.selectedVariantId),
+            (addonVariantNeeds.get(String(sel.selectedVariantId)) || 0) + qty,
+          );
+        } else if (sel.selectedProductId) {
+          addonProductNeeds.set(
+            String(sel.selectedProductId),
+            (addonProductNeeds.get(String(sel.selectedProductId)) || 0) + qty,
+          );
+        }
+      }
+    }
+
+    if (addonVariantNeeds.size || addonProductNeeds.size) {
+      const [addonVariants, addonProducts] = await Promise.all([
+        addonVariantNeeds.size
+          ? Variant.find({ _id: { $in: [...addonVariantNeeds.keys()] } })
+              .select("_id stock")
+              .lean()
+          : Promise.resolve([]),
+        addonProductNeeds.size
+          ? Product.find({ _id: { $in: [...addonProductNeeds.keys()] } })
+              .select("_id name stock")
+              .lean()
+          : Promise.resolve([]),
+      ]);
+
+      for (const v of addonVariants) {
+        const need = addonVariantNeeds.get(v._id.toString()) || 0;
+        if ((v.stock ?? 0) < need) {
+          return NextResponse.json(
+            { message: "یکی از موارد انتخاب‌شده در سفارش‌سازی موجودی کافی ندارد" },
+            { status: 409 },
+          );
+        }
+      }
+      for (const p of addonProducts) {
+        const need = addonProductNeeds.get(p._id.toString()) || 0;
+        if ((p.stock ?? 0) < need) {
+          return NextResponse.json(
+            { message: `محصول «${p.name}» انتخاب‌شده در سفارش‌سازی موجودی کافی ندارد` },
+            { status: 409 },
+          );
+        }
+      }
     }
 
     // ─── ۴. ساخت orderItems ───
@@ -199,6 +285,9 @@ export async function POST(req) {
         itemType:  "product",
         quantity:  item.quantity  || originalItem?.quantity  || 1,
         unitPrice: item.unitFinalPrice || item.unitPrice,
+        flowSelections: Array.isArray(item.flowSelections)
+          ? item.flowSelections.map(mapFlowSelectionToOrder)
+          : [],
       };
     });
 
@@ -222,6 +311,14 @@ export async function POST(req) {
       },
       description: description || "",
     });
+
+    // ─── ۵.۵ اختصاص خودکار tracking انبار به محصولات دست‌دوم (منحصربه‌فرد) ───
+    // خطاها روند ثبت سفارش را متوقف نمی‌کنند.
+    try {
+      await autoAssignUsedProductTracking(order);
+    } catch (err) {
+      console.warn("خطا در اختصاص خودکار tracking محصول دست‌دوم:", err?.message);
+    }
 
     return NextResponse.json(
       {
@@ -265,6 +362,11 @@ export async function GET() {
         path:   "items.usedProduct",
         model:  "UsedProduct",
         select: "name images price priceToman status",
+      })
+      .populate({
+        path:   "items.flowSelections.selectedProduct",
+        model:  "Product",
+        select: "name mainImage",
       })
       .sort({ createdAt: -1 })
       .lean();

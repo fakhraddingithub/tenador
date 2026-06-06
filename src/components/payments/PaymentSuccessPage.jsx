@@ -9,6 +9,7 @@ import {
     FiMapPin,
 } from "react-icons/fi";
 import { useEffect, useState } from "react";
+import OrderFlowSelectionsView from "@/components/order/OrderFlowSelectionsView";
 
 // جداسازی نام فارسی و انگلیسی
 function splitName(text) {
@@ -183,6 +184,10 @@ export default function PaymentSuccessPage({ trackingCode }) {
                                                                 </span>
                                                             ))}
                                                         </div>
+                                                    )}
+                                                    {/* انتخاب‌های فرایند سفارش */}
+                                                    {item.flowSelections?.length > 0 && (
+                                                        <OrderFlowSelectionsView flowSelections={item.flowSelections} />
                                                     )}
                                                     {/* قیمت و تعداد */}
                                                     <div className="flex items-center justify-between mt-1.5">

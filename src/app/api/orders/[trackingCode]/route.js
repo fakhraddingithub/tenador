@@ -45,6 +45,7 @@ export async function GET(req, { params }) {
       .populate("items.product", "name mainImage sku")
       .populate("items.variant", "sku attributes images")
       .populate("items.usedProduct", "name images status") // پاپولیت فیلدهای مورد نیاز محصول دست‌دوم
+      .populate("items.flowSelections.selectedProduct", "name mainImage") // تصویر محصولات انتخابی فرایند
       .populate("payments", "method amount status createdAt")
       .lean();
 

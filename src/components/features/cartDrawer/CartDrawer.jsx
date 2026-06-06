@@ -16,7 +16,8 @@ import {
     FaShoppingCart,
     FaSpinner,
 } from 'react-icons/fa';
-import { getCart, updateQuantity, removeFromCart } from '@/lib/cart';
+import { getCart, updateQuantity, removeFromCart, flowSignature } from '@/lib/cart';
+import FlowSelectionsList from '@/components/modules/orderFlow/FlowSelectionsList';
 
 export default function CartDrawer({ isOpen, onClose, user }) {
     const [items, setItems] = useState([]);
@@ -67,17 +68,19 @@ export default function CartDrawer({ isOpen, onClose, user }) {
     // ─── تغییر تعداد ───
     const handleQuantityChange = async (item, newQty) => {
         if (newQty < 1) return;
-        const key = `${item.productId}-${item.variantId ?? 'null'}`;
+        const sig = flowSignature(item.flowSelections);
+        const key = `${item.productId}-${item.variantId ?? 'null'}-${sig}`;
         setUpdatingId(key);
 
         // آپدیت فوری localStorage
-        updateQuantity(item.productId, item.variantId, newQty);
+        updateQuantity(item.productId, item.variantId, newQty, item.flowSelections);
 
         // آپدیت state محلی (optimistic)
         setItems((prev) =>
             prev.map((i) =>
                 i.productId === item.productId &&
-                    (i.variantId ?? null) === (item.variantId ?? null)
+                    (i.variantId ?? null) === (item.variantId ?? null) &&
+                    flowSignature(i.flowSelections) === sig
                     ? {
                         ...i,
                         quantity: newQty,
@@ -110,12 +113,14 @@ export default function CartDrawer({ isOpen, onClose, user }) {
 
     // ─── حذف آیتم ───
     const handleRemove = (item) => {
-        removeFromCart(item.productId, item.variantId);
+        const sig = flowSignature(item.flowSelections);
+        removeFromCart(item.productId, item.variantId, item.flowSelections);
 
         const remaining = items.filter(
             (i) =>
                 !(i.productId === item.productId &&
-                    (i.variantId ?? null) === (item.variantId ?? null))
+                    (i.variantId ?? null) === (item.variantId ?? null) &&
+                    flowSignature(i.flowSelections) === sig)
         );
         setItems(remaining);
 
@@ -183,8 +188,9 @@ export default function CartDrawer({ isOpen, onClose, user }) {
                         </div>
                     ) : (
                         items.map((item) => {
-                            const key = `${item.productId}-${item.variantId ?? 'no-variant'}`;
-                            const isUpdating = updatingId === `${item.productId}-${item.variantId ?? 'null'}`;
+                            const sig = flowSignature(item.flowSelections);
+                            const key = `${item.productId}-${item.variantId ?? 'no-variant'}-${sig}`;
+                            const isUpdating = updatingId === `${item.productId}-${item.variantId ?? 'null'}-${sig}`;
                             const baseToman = item.basePriceToman ?? 0;
                             const unitToman = item.unitPriceToman ?? baseToman;
                             const itemTotal = item.itemFinalToman ?? unitToman * item.quantity;
@@ -235,6 +241,11 @@ export default function CartDrawer({ isOpen, onClose, user }) {
                                                         </svg>
                                                         تخفیف اعمال شد
                                                     </span>
+                                                )}
+
+                                                {/* انتخاب‌های فرایند سفارش */}
+                                                {item.flowSelections?.length > 0 && (
+                                                    <FlowSelectionsList flowSelections={item.flowSelections} compact />
                                                 )}
                                             </div>
 

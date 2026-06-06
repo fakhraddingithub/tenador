@@ -15,6 +15,7 @@ import {
   ShoppingBag, Warehouse, Plus, Trash2, AlertTriangle,
   ChevronDown, ChevronUp,
 } from "lucide-react";
+import OrderFlowSelectionsView from "@/components/order/OrderFlowSelectionsView";
 
 /* ─── Constants ─────────────────────────────────────────────────────── */
 
@@ -425,7 +426,9 @@ function ProcurementModal({ item, onConfirm, onClose }) {
 }
 
 /* ─── Scan Modal (combined procurement + scan) ──────────────────────── */
-function ScanModal({ item, orderItemIndex, orderId, onSuccess, onClose }) {
+// target: { productName, productImage, productSku, expectedProductId,
+//           orderItemIndex, flowNodeId, quantity }
+function ScanModal({ target, orderId, onSuccess, onClose }) {
   const [step, setStep] = useState("procurement"); // "procurement" | "scan"
   const [procurementStatus, setProcurementStatus] = useState(null);
   const [scanning, setScanning] = useState(false);
@@ -461,7 +464,7 @@ function ScanModal({ item, orderItemIndex, orderId, onSuccess, onClose }) {
       }
 
       // بررسی محصول
-      if (lookupData.item.productRef?.toString() !== item.product?._id?.toString()) {
+      if (lookupData.item.productRef?.toString() !== target.expectedProductId?.toString()) {
         setScanResult({
           success: false,
           message: "این بارکد متعلق به محصول دیگری است. بارکد محصول درست را اسکن کنید.",
@@ -476,7 +479,8 @@ function ScanModal({ item, orderItemIndex, orderId, onSuccess, onClose }) {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           barcode: code,
-          orderItemIndex,
+          orderItemIndex: target.orderItemIndex,
+          flowNodeId: target.flowNodeId || null,
           procurementStatus: effectiveProcurement || procurementStatus,
         }),
       });
@@ -536,7 +540,7 @@ function ScanModal({ item, orderItemIndex, orderId, onSuccess, onClose }) {
                 {step === "procurement" ? "وضعیت تأمین" : "اسکن بارکد"}
               </p>
               <p className="text-white/50 text-xs truncate max-w-[200px]">
-                {item.product?.name}
+                {target.productName}
               </p>
             </div>
           </div>
@@ -548,14 +552,16 @@ function ScanModal({ item, orderItemIndex, orderId, onSuccess, onClose }) {
         <div className="p-5 space-y-4">
           {/* Product info */}
           <div className="flex items-center gap-3 bg-gray-50 rounded-xl p-3">
-            {item.product?.mainImage && (
-              <img src={item.product.mainImage} alt="" className="w-12 h-12 rounded-xl object-cover border border-gray-200" />
+            {target.productImage && (
+              <img src={target.productImage} alt="" className="w-12 h-12 rounded-xl object-cover border border-gray-200" />
             )}
             <div className="flex-1 min-w-0">
-              <p className="text-sm font-bold text-gray-800 truncate">{item.product?.name}</p>
-              <p className="text-xs text-gray-400 font-mono">{item.product?.sku}</p>
+              <p className="text-sm font-bold text-gray-800 truncate">{target.productName}</p>
+              {target.productSku && (
+                <p className="text-xs text-gray-400 font-mono">{target.productSku}</p>
+              )}
               <p className="text-xs text-gray-500 mt-0.5">
-                تعداد مورد نیاز: <strong>{item.quantity}</strong> عدد
+                تعداد مورد نیاز: <strong>{target.quantity}</strong> عدد
               </p>
             </div>
           </div>
@@ -873,6 +879,52 @@ function TrackingPanel({ orderId, orderFulfillmentStatus, onStatusChange }) {
     }
   };
 
+  // بلوک نمایش بارکدهای اسکن‌شده + دکمه افزودن، برای یک خط (اصلی یا انتخاب فرایند)
+  const renderTrackingBlock = ({
+    trackingItems,
+    scannedCount,
+    quantity,
+    remainingCount,
+    onAddScan,
+    addLabel = "اسکن بارکد",
+  }) => {
+    const complete = scannedCount >= quantity;
+    return (
+      <div className="space-y-2">
+        {trackingItems.length > 0 && (
+          <div className="space-y-2">
+            {trackingItems.map((t) => (
+              <TrackingItemBadge
+                key={t._id}
+                trackingItem={t}
+                onRemove={handleRemoveTracking}
+              />
+            ))}
+          </div>
+        )}
+
+        {!complete && (
+          <button
+            onClick={onAddScan}
+            className="w-full flex items-center justify-center gap-2 py-2.5 border-2 border-dashed
+              border-[#aa4725]/40 hover:border-[#aa4725] rounded-xl text-sm font-bold
+              text-[#aa4725]/70 hover:text-[#aa4725] bg-[#aa4725]/5 hover:bg-[#aa4725]/10 transition"
+          >
+            <Plus size={16} />
+            {addLabel} ({new Intl.NumberFormat("fa-IR").format(remainingCount)} عدد باقی‌مانده)
+          </button>
+        )}
+
+        {complete && (
+          <div className="flex items-center gap-2 text-xs text-green-600 font-bold">
+            <CheckCircle size={13} />
+            تمام {new Intl.NumberFormat("fa-IR").format(quantity)} عدد شناسایی شد
+          </div>
+        )}
+      </div>
+    );
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center py-8 gap-2 text-sm text-gray-400">
@@ -925,7 +977,13 @@ function TrackingPanel({ orderId, orderFulfillmentStatus, onStatusChange }) {
 
       {/* Per-item tracking */}
       {data.itemsWithTracking.map((item) => {
-        const isComplete = item.scannedCount >= item.quantity;
+        const flowList = item.flowTracking || [];
+        const mainRequired = item.isUsed ? 1 : item.quantity;
+        const itemRequired =
+          mainRequired + flowList.reduce((s, f) => s + f.quantity, 0);
+        const itemScanned =
+          item.scannedCount + flowList.reduce((s, f) => s + f.scannedCount, 0);
+        const isComplete = itemScanned >= itemRequired && itemRequired > 0;
         const isExpanded = expanded[item.index] !== false; // default open
 
         return (
@@ -942,18 +1000,25 @@ function TrackingPanel({ orderId, orderFulfillmentStatus, onStatusChange }) {
                   className="w-10 h-10 rounded-xl object-cover border border-gray-200 flex-shrink-0" />
               )}
               <div className="flex-1 min-w-0">
-                <p className="text-sm font-bold text-gray-800 truncate">{item.product?.name}</p>
+                <p className="text-sm font-bold text-gray-800 truncate flex items-center gap-1.5">
+                  {item.product?.name}
+                  {item.isUsed && (
+                    <span className="text-[10px] font-bold text-amber-600 bg-amber-50 border border-amber-200 px-1.5 py-0.5 rounded-full shrink-0">
+                      دست‌دوم
+                    </span>
+                  )}
+                </p>
                 <p className="text-xs text-gray-400 font-mono">{item.product?.sku}</p>
               </div>
               <div className="flex items-center gap-2 flex-shrink-0">
                 <span className={`text-xs font-black px-2.5 py-1 rounded-full ${isComplete
                     ? "bg-green-100 text-green-700"
-                    : item.scannedCount > 0
+                    : itemScanned > 0
                       ? "bg-blue-100 text-blue-700"
                       : "bg-gray-100 text-gray-500"
                   }`}>
-                  {new Intl.NumberFormat("fa-IR").format(item.scannedCount)}/
-                  {new Intl.NumberFormat("fa-IR").format(item.quantity)}
+                  {new Intl.NumberFormat("fa-IR").format(itemScanned)}/
+                  {new Intl.NumberFormat("fa-IR").format(itemRequired)}
                 </span>
                 {isExpanded ? <ChevronUp size={14} className="text-gray-400" /> : <ChevronDown size={14} className="text-gray-400" />}
               </div>
@@ -969,39 +1034,99 @@ function TrackingPanel({ orderId, orderFulfillmentStatus, onStatusChange }) {
                   transition={{ duration: 0.2 }}
                   className="overflow-hidden"
                 >
-                  <div className="p-4 space-y-3 border-t border-gray-100">
-                    {/* Scanned items */}
-                    {item.trackingItems.length > 0 && (
-                      <div className="space-y-2">
-                        {item.trackingItems.map((t) => (
-                          <TrackingItemBadge
-                            key={t._id}
-                            trackingItem={t}
-                            onRemove={handleRemoveTracking}
-                          />
-                        ))}
-                      </div>
-                    )}
+                  <div className="p-4 space-y-4 border-t border-gray-100">
+                    {/* ─── خط محصول اصلی ─── */}
+                    <div className="space-y-2">
+                      <p className="text-xs font-bold text-gray-500 flex items-center gap-1.5">
+                        <Package size={12} className="text-[#aa4725]" />
+                        محصول اصلی
+                      </p>
 
-                    {/* Add more button */}
-                    {item.scannedCount < item.quantity && (
-                      <button
-                        onClick={() => setScanModal({ item, itemIndex: item.index })}
-                        className="w-full flex items-center justify-center gap-2 py-2.5 border-2 border-dashed
-                          border-[#aa4725]/40 hover:border-[#aa4725] rounded-xl text-sm font-bold
-                          text-[#aa4725]/70 hover:text-[#aa4725] bg-[#aa4725]/5 hover:bg-[#aa4725]/10 transition"
-                      >
-                        <Plus size={16} />
-                        اسکن بارکد ({item.remainingCount} عدد باقی‌مانده)
-                      </button>
-                    )}
+                      {item.isUsed ? (
+                        // محصول دست‌دوم — اختصاص خودکار، فقط نمایش
+                        item.trackingItems.length > 0 ? (
+                          <div className="space-y-2">
+                            {item.trackingItems.map((t) => (
+                              <TrackingItemBadge
+                                key={t._id}
+                                trackingItem={t}
+                                onRemove={handleRemoveTracking}
+                              />
+                            ))}
+                            <p className="flex items-center gap-1.5 text-[11px] text-green-600 font-medium">
+                              <CheckCircle size={12} />
+                              کد رهگیری به‌صورت خودکار اختصاص یافت
+                            </p>
+                          </div>
+                        ) : (
+                          <div className="flex items-center gap-2 text-xs text-amber-600 bg-amber-50 border border-amber-200 rounded-xl px-3 py-2.5">
+                            <AlertTriangle size={13} className="shrink-0" />
+                            کد رهگیری انبار برای این محصول دست‌دوم هنوز ثبت/اختصاص نشده است
+                          </div>
+                        )
+                      ) : (
+                        renderTrackingBlock({
+                          trackingItems: item.trackingItems,
+                          scannedCount: item.scannedCount,
+                          quantity: item.quantity,
+                          remainingCount: item.remainingCount,
+                          addLabel: "اسکن بارکد",
+                          onAddScan: () =>
+                            setScanModal({
+                              productName: item.product?.name,
+                              productImage: item.product?.mainImage,
+                              productSku: item.product?.sku,
+                              expectedProductId: item.product?._id,
+                              orderItemIndex: item.index,
+                              flowNodeId: null,
+                              quantity: item.quantity,
+                            }),
+                        })
+                      )}
+                    </div>
 
-                    {isComplete && (
-                      <div className="flex items-center gap-2 text-xs text-green-600 font-bold">
-                        <CheckCircle size={13} />
-                        تمام {new Intl.NumberFormat("fa-IR").format(item.quantity)} عدد شناسایی شد
+                    {/* ─── خطوط انتخاب‌های فرایند سفارش ─── */}
+                    {flowList.map((f) => (
+                      <div key={f.nodeId} className="space-y-2 border-t border-gray-100 pt-3">
+                        <div className="flex items-center gap-2">
+                          {f.product?.mainImage ? (
+                            <img src={f.product.mainImage} alt=""
+                              className="w-8 h-8 rounded-lg object-cover border border-gray-200 shrink-0" />
+                          ) : (
+                            <span className="w-8 h-8 rounded-lg bg-[#aa4725]/10 flex items-center justify-center shrink-0">
+                              <Tag size={13} className="text-[#aa4725]" />
+                            </span>
+                          )}
+                          <div className="min-w-0">
+                            <p className="text-[11px] text-gray-400 leading-tight">
+                              {f.nodeLabel} <span className="text-[#aa4725]">(انتخاب فرایند)</span>
+                            </p>
+                            <p className="text-xs font-bold text-gray-700 truncate leading-snug">
+                              {f.product?.name}
+                              {f.variantLabel ? ` (${f.variantLabel})` : ""}
+                            </p>
+                          </div>
+                        </div>
+
+                        {renderTrackingBlock({
+                          trackingItems: f.trackingItems,
+                          scannedCount: f.scannedCount,
+                          quantity: f.quantity,
+                          remainingCount: f.remainingCount,
+                          addLabel: "اسکن بارکد این مورد",
+                          onAddScan: () =>
+                            setScanModal({
+                              productName: `${f.product?.name || ""}${f.variantLabel ? ` (${f.variantLabel})` : ""}`,
+                              productImage: f.product?.mainImage,
+                              productSku: f.product?.sku,
+                              expectedProductId: f.product?._id,
+                              orderItemIndex: item.index,
+                              flowNodeId: f.nodeId,
+                              quantity: f.quantity,
+                            }),
+                        })}
                       </div>
-                    )}
+                    ))}
                   </div>
                 </motion.div>
               )}
@@ -1014,8 +1139,7 @@ function TrackingPanel({ orderId, orderFulfillmentStatus, onStatusChange }) {
       <AnimatePresence>
         {scanModal && (
           <ScanModal
-            item={scanModal.item}
-            orderItemIndex={scanModal.itemIndex}
+            target={scanModal}
             orderId={orderId}
             onSuccess={() => { fetchTracking(); }}
             onClose={() => setScanModal(null)}
@@ -1326,7 +1450,7 @@ export default function AdminOrderDetailClient({ orderId }) {
               </h3>
               <div className="space-y-2">
                 {order.items?.map((item, i) => (
-                  <div key={i} className="flex items-center gap-3 p-3 bg-gray-50 rounded-xl">
+                  <div key={i} className="flex items-start gap-3 p-3 bg-gray-50 rounded-xl">
                     {item.product?.mainImage && (
                       <img src={item.product.mainImage} alt={item.product.name}
                         className="w-12 h-12 rounded-xl object-cover border border-gray-200 flex-shrink-0" />
@@ -1337,6 +1461,9 @@ export default function AdminOrderDetailClient({ orderId }) {
                       </p>
                       {item.product?.sku && (
                         <p className="text-xs text-gray-400 font-mono">{item.product.sku}</p>
+                      )}
+                      {item.flowSelections?.length > 0 && (
+                        <OrderFlowSelectionsView flowSelections={item.flowSelections} />
                       )}
                     </div>
                     <div className="text-left flex-shrink-0 text-xs text-gray-500 space-y-0.5">

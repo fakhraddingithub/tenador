@@ -10,6 +10,7 @@ import { MdOutlinePayment, MdOutlineConfirmationNumber } from 'react-icons/md'
 import { useState, useEffect } from 'react'
 import { toast } from 'react-toastify'
 import Swal from 'sweetalert2'
+import OrderFlowSelectionsView from '@/components/order/OrderFlowSelectionsView'
 
 /* ─── Helpers ─────────────────────────────────────────────────────── */
 
@@ -141,6 +142,9 @@ function OrderDetailModal({ order, onClose }) {
                               </span>
                             ))}
                           </div>
+                        )}
+                        {item.flowSelections?.length > 0 && (
+                          <OrderFlowSelectionsView flowSelections={item.flowSelections} />
                         )}
                         <div className="flex items-center justify-between mt-1.5">
                           <span className="text-[11px] text-gray-400">{item.quantity} × {formatPrice(item.unitPrice)} ت</span>

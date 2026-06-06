@@ -33,6 +33,7 @@ export async function POST(req) {
     const order = await Order.findById(orderId)
       .populate("items.product", "_id name mainImage category brand serie")
       .populate("items.variant", "_id attributes images sku")
+      .populate("items.flowSelections.selectedProduct", "_id name mainImage")
       .populate("user", "_id coach walletBalance email phone")
       .lean();
 

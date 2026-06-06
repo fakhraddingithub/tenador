@@ -2,6 +2,12 @@ import { unstable_cache } from "next/cache";
 import connectToDB from "base/configs/db";
 import { ExchangeRate } from "base/models/ExchangeRate";
 
+// توابع خالص فرمت/تبدیل از ماژول client-safe دوباره export می‌شوند
+// تا importهای سروریِ موجود بدون تغییر کار کنند.
+// ⚠️ کامپوننت‌های client باید مستقیماً از "@/lib/currency" import کنند،
+// چون این فایل getCachedRate (وابسته به mongoose/next-cache) را هم دارد.
+export { eurToToman, formatToman, convertAndFormat } from "@/lib/currency";
+
 /**
  * نرخ تبدیل کش‌شده — revalidate هر ۱۰ دقیقه یا با تگ "exchange-rate"
  * در سمت سرور استفاده میشه
@@ -15,31 +21,3 @@ export const getCachedRate = unstable_cache(
   ["exchange-rate"],
   { revalidate: 600, tags: ["exchange-rate"] }
 );
-
-/**
- * تبدیل یورو به تومان
- * @param {number} eurPrice - قیمت به یورو
- * @param {number} rate     - نرخ تبدیل (از getCachedRate)
- * @returns {number}
- */
-export function eurToToman(eurPrice, rate) {
-  if (!rate || !eurPrice) return 0;
-  const rawToman = Math.round(Number(eurPrice) * rate);
-  return Math.floor(rawToman / 1000) * 1000;
-}
-
-/**
- * فرمت قیمت تومان برای نمایش
- * @param {number} toman
- * @returns {string}
- */
-export function formatToman(toman) {
-  return Number(toman).toLocaleString("fa-IR");
-}
-
-/**
- * تبدیل و فرمت یکجا
- */
-export function convertAndFormat(eurPrice, rate) {
-  return formatToman(eurToToman(eurPrice, rate));
-}

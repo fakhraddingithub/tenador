@@ -4,8 +4,8 @@ import connectToDB from "base/configs/db";
 import { verifyToken } from "base/utils/auth";
 import Product from "base/models/Product";
 import Variant from "base/models/Variant";
-import UsedProduct from "base/models/UsedProduct"; 
-import { getRate, computeProductPrice } from "base/services/priceEngine";
+import UsedProduct from "base/models/UsedProduct";
+import { getRate, computeProductPrice, buildFlowAddonResolver } from "base/services/priceEngine";
 import { eurToToman } from "@/lib/Exchangerate";
 import { calculateDiscount } from "base/utils/discountCalculator";
 
@@ -75,7 +75,10 @@ export async function POST(request) {
     const variantMap = new Map(variants.map((v) => [v._id.toString(), v]));
     const usedProductMap = new Map(usedProducts.map((up) => [up._id.toString(), up]));
 
-    // ۳. محاسبه اولیه subtotal تومان
+    // ───── فرایند سفارش: resolver افزوده‌ی قیمت (واکشی batch محصولات/واریانت/فرایندها) ─────
+    const resolveFlowAddon = await buildFlowAddonResolver(items, productMap, rate);
+
+    // ۳. محاسبه اولیه subtotal تومان (شامل افزوده‌ی فرایند برای آستانه‌ی تخفیف)
     let subtotalToman = 0;
     for (const ci of items) {
       if (ci.itemType === "used_product") {
@@ -87,7 +90,8 @@ export async function POST(request) {
         if (!p) continue;
         const v = ci.variantId ? variantMap.get(ci.variantId) : null;
         const eurPrice = v?.price ?? p.basePrice ?? 0;
-        subtotalToman += eurToToman(eurPrice, rate) * (ci.quantity || 1);
+        const { addonToman } = resolveFlowAddon(ci);
+        subtotalToman += (eurToToman(eurPrice, rate) + addonToman) * (ci.quantity || 1);
       }
     }
 
@@ -121,6 +125,12 @@ export async function POST(request) {
         let unitDiscount = 0;
         let appliedRules = [];
 
+        // افزوده‌ی فرایند سفارش (خدمات + محصولات انتخاب‌شده) — معتبرسازی‌شده در سرور
+        const { addonToman: flowAddonToman, enriched: flowSelectionsEnriched } =
+          ci.itemType !== "used_product"
+            ? resolveFlowAddon(ci)
+            : { addonToman: 0, enriched: [] };
+
         if (ci.itemType !== "used_product" && p) {
           const priceResult = await computeProductPrice(p, rate, user, subtotalToman);
           unitFinalPrice = priceResult.finalPriceToman;
@@ -151,6 +161,9 @@ export async function POST(request) {
             unitFinalPrice = variantBase - unitDiscount;
           }
         }
+
+        // افزوده‌ی فرایند روی قیمت واحدِ نهایی اعمال می‌شود (مشمول تخفیف نمی‌شود)
+        unitFinalPrice += flowAddonToman;
 
         const lineTotalToman = unitFinalPrice * qty;
         const lineDiscountToman = unitDiscount * qty;
@@ -206,11 +219,15 @@ export async function POST(request) {
           stock,
 
           basePriceToman,
-          unitPriceToman: unitFinalPrice, 
+          unitPriceToman: unitFinalPrice,
           discountToman: unitDiscount,
           itemFinalToman: lineTotalToman,
           appliedRules,
           hasDiscount: unitDiscount > 0,
+
+          // فرایند سفارش
+          flowSelections: flowSelectionsEnriched,
+          flowAddonToman,
         };
       }),
     );

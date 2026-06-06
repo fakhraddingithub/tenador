@@ -42,6 +42,8 @@ export async function GET(req, { params }) {
     const order = await Order.findById(orderId)
       .populate("items.product", "name mainImage sku")
       .populate("items.variant", "sku attributes")
+      .populate("items.usedProduct", "name images sku")
+      .populate("items.flowSelections.selectedProduct", "name mainImage sku")
       .lean();
 
     if (!order)
@@ -58,28 +60,91 @@ export async function GET(req, { params }) {
       .populate({ path: "currentWarehouse", model: Warehouse })
       .lean();
 
-    // ساختار خروجی: برای هر آیتم سفارش، tracking items مرتبط
+    // tracking مربوط به خطِ اصلی هر آیتم:
+    //  - ترجیحاً با orderItemIndex صریح تطبیق داده می‌شود
+    //  - برای داده‌های قدیمی (بدون orderItemIndex) با productRef تطبیق می‌خورد
+    //  - آیتم‌های متعلق به انتخاب‌های فرایند (flowNodeId غیرنال) هرگز اینجا شمرده نمی‌شوند
+    const matchMainTracking = (item, index) =>
+      trackingItems.filter((t) => {
+        if (t.flowNodeId) return false;
+        if (t.orderItemIndex !== null && t.orderItemIndex !== undefined) {
+          return t.orderItemIndex === index;
+        }
+        // fallback قدیمی فقط برای محصولات معمولی
+        if (item.itemType === "used_product") return false;
+        const productMatch =
+          t.productRef?.toString() === item.product?._id?.toString();
+        const variantMatch = item.variant
+          ? t.variantRef?.toString() === item.variant?._id?.toString()
+          : true;
+        return productMatch && variantMatch;
+      });
+
+    // ساختار خروجی: برای هر آیتم سفارش، tracking خطِ اصلی + خطوط انتخاب‌های فرایند
     const itemsWithTracking = order.items.map((item, index) => {
-      // tracking items مرتبط با این آیتم (بر اساس productRef)
-      const related = trackingItems.filter(
-        (t) =>
-          t.productRef?.toString() === item.product?._id?.toString() &&
-          (item.variant
-            ? t.variantRef?.toString() === item.variant?._id?.toString()
-            : true)
-      );
+      const isUsed = item.itemType === "used_product";
+      const mainRelated = matchMainTracking(item, index);
+      const mainRequired = isUsed ? 1 : item.quantity;
+
+      // خطوط انتخاب فرایند (فقط نودهای category که محصول فیزیکی دارند)
+      const flowTracking = (item.flowSelections || [])
+        .filter((s) => s.nodeType === "category" && s.selectedProduct)
+        .map((s) => {
+          const sp = s.selectedProduct;
+          const spIsObj = sp && typeof sp === "object";
+          const related = trackingItems.filter(
+            (t) => t.flowNodeId === s.nodeId && t.orderItemIndex === index
+          );
+          return {
+            nodeId: s.nodeId,
+            nodeLabel: s.nodeLabel || "",
+            product: {
+              _id: (spIsObj ? sp._id : sp)?.toString() ?? null,
+              name: (spIsObj ? sp.name : null) || s.selectedProductName || "",
+              mainImage: spIsObj ? sp.mainImage || null : null,
+              sku: spIsObj ? sp.sku || null : null,
+            },
+            variantId: s.selectedVariant ? s.selectedVariant.toString() : null,
+            variantLabel: s.selectedVariantLabel || null,
+            quantity: item.quantity,
+            scannedCount: related.length,
+            remainingCount: item.quantity - related.length,
+            trackingItems: related,
+          };
+        });
+
+      const product = isUsed
+        ? {
+            _id: item.usedProduct?._id ?? item.product?._id ?? null,
+            name: item.usedProduct?.name || item.product?.name || "محصول دست‌دوم",
+            mainImage:
+              item.usedProduct?.images?.[0] || item.product?.mainImage || null,
+            sku: item.usedProduct?.sku || "USED-ITEM",
+            isUsed: true,
+          }
+        : item.product;
 
       return {
         index,
-        product: item.product,
+        itemType: item.itemType || "product",
+        isUsed,
+        product,
         variant: item.variant,
         quantity: item.quantity,
         unitPrice: item.unitPrice,
-        scannedCount: related.length,
-        remainingCount: item.quantity - related.length,
-        trackingItems: related,
+        scannedCount: mainRelated.length,
+        remainingCount: mainRequired - mainRelated.length,
+        trackingItems: mainRelated,
+        flowTracking,
       };
     });
+
+    // مجموع موردنیاز = خطوط اصلی (دست‌دوم=۱) + خطوط فرایند (به‌ازای هر واحدِ آیتم)
+    const totalRequired = itemsWithTracking.reduce((s, it) => {
+      const main = it.isUsed ? 1 : it.quantity;
+      const flow = (it.flowTracking || []).reduce((fs, f) => fs + f.quantity, 0);
+      return s + main + flow;
+    }, 0);
 
     return NextResponse.json(
       {
@@ -91,7 +156,7 @@ export async function GET(req, { params }) {
         },
         itemsWithTracking,
         totalScanned: trackingItems.length,
-        totalRequired: order.items.reduce((s, i) => s + i.quantity, 0),
+        totalRequired,
       },
       { status: 200 }
     );
@@ -112,6 +177,8 @@ export async function POST(req, { params }) {
     const { orderId } = await params;
     const body = await req.json();
     const { barcode, orderItemIndex, procurementStatus } = body;
+    // flowNodeId: اگر مقدار داشته باشد، بارکد برای یک «انتخابِ فرایند» (نود category) ثبت می‌شود
+    const flowNodeId = body.flowNodeId || null;
 
     if (!barcode?.trim())
       return NextResponse.json(
@@ -175,10 +242,38 @@ export async function POST(req, { params }) {
       );
     }
 
-    // بررسی که محصول این بارکد با آیتم سفارش مطابقت داشته باشد
+    // ─── تعیین هدف: محصول اصلی یا یک انتخابِ فرایند (نود category) ───
+    let expectedProductId;
+    let expectedVariantId = null;
+    let requiredCount;
+    let label;
+
+    if (flowNodeId) {
+      const selection = (targetItem.flowSelections || []).find(
+        (s) => s.nodeId === flowNodeId && s.nodeType === "category"
+      );
+      if (!selection || !selection.selectedProduct) {
+        return NextResponse.json(
+          { message: "انتخابِ فرایند موردنظر در این آیتم یافت نشد" },
+          { status: 400 }
+        );
+      }
+      expectedProductId = selection.selectedProduct.toString();
+      expectedVariantId = selection.selectedVariant
+        ? selection.selectedVariant.toString()
+        : null;
+      requiredCount = targetItem.quantity;
+      label = `انتخاب فرایند «${selection.nodeLabel || ""}»`;
+    } else {
+      expectedProductId = targetItem.product?._id?.toString();
+      expectedVariantId = targetItem.variant?._id?.toString() || null;
+      requiredCount = targetItem.quantity;
+      label = "محصول اصلی";
+    }
+
+    // بررسی تطبیق محصول
     const productIdMatch =
-      trackingItem.productRef?.toString() ===
-      targetItem.product?._id?.toString();
+      trackingItem.productRef?.toString() === expectedProductId;
 
     if (!productIdMatch) {
       return NextResponse.json(
@@ -186,34 +281,64 @@ export async function POST(req, { params }) {
           message: "این بارکد متعلق به محصول دیگری است",
           mismatch: true,
           trackingProductId: trackingItem.productRef?.toString(),
-          expectedProductId: targetItem.product?._id?.toString(),
+          expectedProductId,
         },
         { status: 400 }
       );
     }
 
-    // بررسی تعداد: چقدر از این محصول اسکن شده
-    const alreadyScanned = await ItemTracking.countDocuments({
-      tenadorOrderId: orderId.toString(),
-      productRef: targetItem.product?._id,
-      ...(targetItem.variant
-        ? { variantRef: targetItem.variant?._id }
-        : {}),
-    });
-
-    if (alreadyScanned >= targetItem.quantity) {
+    // تطبیق واریانت (در صورت وجود واریانتِ موردانتظار و ثبت واریانت روی بارکد)
+    if (
+      expectedVariantId &&
+      trackingItem.variantRef &&
+      trackingItem.variantRef.toString() !== expectedVariantId
+    ) {
       return NextResponse.json(
         {
-          message: `تعداد مجاز برای این محصول (${targetItem.quantity} عدد) تکمیل شده`,
+          message: "این بارکد متعلق به واریانت دیگری از این محصول است",
+          variantMismatch: true,
+        },
+        { status: 400 }
+      );
+    }
+
+    // بررسی تعداد اسکن‌شده برای همین خط (اصلی یا همین نودِ فرایند)
+    const quotaFilter = flowNodeId
+      ? {
+          tenadorOrderId: orderId.toString(),
+          orderItemIndex,
+          flowNodeId,
+        }
+      : {
+          tenadorOrderId: orderId.toString(),
+          flowNodeId: null,
+          $or: [
+            { orderItemIndex },
+            {
+              orderItemIndex: null,
+              productRef: targetItem.product?._id,
+              ...(targetItem.variant ? { variantRef: targetItem.variant?._id } : {}),
+            },
+          ],
+        };
+
+    const alreadyScanned = await ItemTracking.countDocuments(quotaFilter);
+
+    if (alreadyScanned >= requiredCount) {
+      return NextResponse.json(
+        {
+          message: `تعداد مجاز برای این ${label} (${requiredCount} عدد) تکمیل شده`,
           quotaFull: true,
         },
         { status: 400 }
       );
     }
 
-    // اختصاص دادن بارکد به سفارش
+    // اختصاص دادن بارکد به سفارش — با ربط دقیق به خط سفارش
     trackingItem.tenadorOrderId = orderId.toString();
     trackingItem.relatedOrder = order._id;
+    trackingItem.orderItemIndex = orderItemIndex;
+    trackingItem.flowNodeId = flowNodeId;
     if (procurementStatus) {
       trackingItem.procurementStatus = procurementStatus;
     }
@@ -222,7 +347,7 @@ export async function POST(req, { params }) {
     trackingItem.history.push({
       status: trackingItem.status,
       locationName: "سفارش پنل ادمین تنادور",
-      note: `اختصاص به سفارش ${order.trackingCode} | ${
+      note: `اختصاص به سفارش ${order.trackingCode} | ${label} | ${
         procurementStatus === "TO_PURCHASE"
           ? "باید خریداری شود"
           : procurementStatus === "PURCHASED"
@@ -246,7 +371,7 @@ export async function POST(req, { params }) {
           procurementStatus: trackingItem.procurementStatus,
         },
         scannedCount: alreadyScanned + 1,
-        remainingCount: targetItem.quantity - alreadyScanned - 1,
+        remainingCount: requiredCount - alreadyScanned - 1,
       },
       { status: 200 }
     );
@@ -294,6 +419,8 @@ export async function DELETE(req, { params }) {
     item.tenadorOrderId = null;
     item.relatedOrder = null;
     item.procurementStatus = null;
+    item.orderItemIndex = null;
+    item.flowNodeId = null;
     item.history.push({
       status: item.status,
       locationName: "پنل ادمین تنادور",

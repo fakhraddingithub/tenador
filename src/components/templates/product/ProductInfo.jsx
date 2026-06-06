@@ -6,7 +6,7 @@ import ProductHeader from "./ProductHeader";
 import ProductPrice from "./ProductPrice";
 import AddToCartButton from "./AddToCartButton";
 import WishlistButton from "./WishlistButton";
-import { addToCart } from "@/lib/cart";
+import { useOrderFlowCart } from "@/components/modules/orderFlow/useOrderFlowCart";
 
 /* ─────────────────────────────────────────
    Helpers
@@ -58,6 +58,9 @@ const ProductInfo = ({ product, selectedVariant, onVariantChange }) => {
   const [quantity, setQuantity] = useState(1);
   const [errorMessage, setErrorMessage] = useState(""); // استیت برای مدیریت خطای انتخاب ویژگی
   const addToCartWrapperRef = useRef(null); // رفرنس برای پیدا کردن مکان دکمه در صفحه
+
+  // افزودن به سبد با پشتیبانی از فرایند سفارش
+  const { requestAddToCart, flowModal } = useOrderFlowCart();
 
   const hasDiscountLabel = product.label === "discount"; // نگه می‌داریم برای سازگاری با بقیه کدها
 
@@ -189,10 +192,12 @@ const ProductInfo = ({ product, selectedVariant, onVariantChange }) => {
 };
 
   function handleAddToCart() {
+    let variantId = null;
+
     if (hasVariants) {
       // پیدا کردن ویژگی‌هایی که هنوز انتخاب نشده‌اند
       const missingKeys = optionKeys.filter((k) => !selection[k]);
-      
+
       if (missingKeys.length > 0) {
         // تبدیل کلید ویژگی به لیبل فارسی
         const missingLabels = missingKeys.map((k) => labelMap[k] || k).join(" و ");
@@ -203,13 +208,19 @@ const ProductInfo = ({ product, selectedVariant, onVariantChange }) => {
         setErrorMessage("این ترکیب در حال حاضر موجود نیست.");
         return;
       }
-      addToCart(product._id, quantity, selectedVariant._id, finalUnitPrice);
-    } else {
-      addToCart(product._id, quantity, null, finalUnitPrice);
+      variantId = selectedVariant._id;
     }
-    
-    setErrorMessage(""); // پاک کردن خطا در صورت موفقیت
-    triggerFlyToCartAnimation(); // اجرای انیمیشن پرواز
+
+    // اگر دسته‌بندی فرایند داشته باشد مودال باز می‌شود، وگرنه مستقیم افزوده می‌شود
+    requestAddToCart({
+      product,
+      quantity,
+      variantId,
+      onAdded: () => {
+        setErrorMessage(""); // پاک کردن خطا در صورت موفقیت
+        triggerFlyToCartAnimation(); // اجرای انیمیشن پرواز
+      },
+    });
   }
 
   const handleWishlist = (isWishlisted) => {
@@ -538,6 +549,9 @@ const ProductInfo = ({ product, selectedVariant, onVariantChange }) => {
           <WishlistButton onToggle={handleWishlist} />
         </div>
       </div>
+
+      {/* مودال فرایند سفارش */}
+      {flowModal}
     </div>
   );
 };
