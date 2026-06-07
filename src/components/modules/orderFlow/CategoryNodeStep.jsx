@@ -53,7 +53,13 @@ function getNodeCategoryId(node) {
  *    selectedProductId, selectedProductName, selectedProductImage,
  *    selectedVariantId, selectedVariantLabel, displayPriceToman }
  */
-export default function CategoryNodeStep({ node, value, onChange }) {
+export default function CategoryNodeStep({
+  node,
+  value,
+  onChange,
+  showError = false,
+  onIncompleteChange,
+}) {
   const categoryId = useMemo(() => getNodeCategoryId(node), [node]);
   const allowVariant = node?.allowVariantSelection !== false;
 
@@ -125,6 +131,20 @@ export default function CategoryNodeStep({ node, value, onChange }) {
     if (!optionKeys.every((k) => variantSelection[k])) return null;
     return findMatchingVariant(productVariants, variantSelection);
   }, [hasVariants, optionKeys, variantSelection, productVariants]);
+
+  // ویژگی‌هایی که هنوز انتخاب نشده‌اند (برای پیام اعتبارسنجی)
+  const missingVariantKeys = useMemo(
+    () => (hasVariants ? optionKeys.filter((k) => !variantSelection[k]) : []),
+    [hasVariants, optionKeys, variantSelection]
+  );
+
+  // محصول واریانت‌دار انتخاب شده ولی واریانتش کامل/معتبر نیست
+  const isIncomplete = Boolean(selectedProduct) && hasVariants && !matchedVariant;
+
+  // وضعیت ناقص بودن را به والد گزارش بده تا ناوبری را کنترل کند
+  useEffect(() => {
+    onIncompleteChange?.(isIncomplete);
+  }, [isIncomplete, onIncompleteChange]);
 
   // ─── محاسبه‌ی قیمت نمایشی ───
   const computeDisplayPrice = (product, variant) => {
@@ -270,6 +290,15 @@ export default function CategoryNodeStep({ node, value, onChange }) {
           <p className="text-xs font-semibold text-gray-700">
             ویژگی‌های «{selectedProduct.name}»
           </p>
+
+          {/* پیام اعتبارسنجی — وقتی کاربر بدون انتخاب کامل واریانت قصد ادامه دارد */}
+          {showError && missingVariantKeys.length > 0 && (
+            <p className="text-xs font-medium text-red-600 bg-red-50 border border-red-200 rounded-md px-3 py-2">
+              لطفاً {missingVariantKeys.map((k) => labelMap[k] || k).join(" و ")} را
+              انتخاب کنید
+            </p>
+          )}
+
           {optionKeys.map((attrKey) => {
             const values = variantOptions[attrKey];
             const label = labelMap[attrKey] || attrKey;

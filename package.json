@@ -9,6 +9,7 @@
     "lint": "eslint",
     "test": "jest",
     "test:db": "node scripts/test-db-connection.js",
+    "migrate:used-products": "node scripts/migrateUsedProductsHealthScale.js",
     "check:mongodb": "node scripts/check-mongodb.js",
     "worker:prices": "node workers/priceWorker.js",
     "worker:discounts": "node workers/discountWorker.js"

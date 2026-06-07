@@ -7,26 +7,6 @@ import ProductAttributesTable from "@/components/templates/product/ProductAttrib
 import ProductReviews from "@/components/templates/product/ProductReviews";
 import { FiCheckCircle, FiInfo, FiStar } from 'react-icons/fi';
 
-/* ── ستاره‌ی رنگ پریمری ── */
-function StarRow({ rating, max = 5 }) {
-  return (
-    <div className="flex gap-0.5">
-      {Array.from({ length: max }).map((_, i) => (
-        <svg
-          key={i}
-          viewBox="0 0 20 20"
-          className={`w-4 h-4 transition-colors ${
-            i < rating ? "fill-[var(--color-primary)]" : "fill-gray-200"
-          }`}
-          xmlns="http://www.w3.org/2000/svg"
-        >
-          <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
-        </svg>
-      ))}
-    </div>
-  );
-}
-
 /* ── تب کارت سلامت ── */
 
 function HealthCardTab({ healthScores, customFields, overallScore }) {
@@ -118,28 +98,20 @@ function HealthCardTab({ healthScores, customFields, overallScore }) {
             className="group relative bg-white border border-neutral-100 rounded-[6px] p-5 hover:border-[var(--color-primary)]/30 hover:shadow-xl hover:shadow-neutral-500/5 transition-all duration-300"
           >
             <div className="flex justify-between items-start mb-4">
-              <div className="space-y-1">
-                <p className="text-[15px] font-extrabold text-neutral-800 group-hover:text-[var(--color-primary)] transition-colors">
-                  {field.label || field.key}
-                </p>
-                <div className="flex gap-0.5">
-                    {[...Array(5)].map((_, index) => (
-                        <FiStar 
-                            key={index} 
-                            size={12} 
-                            className={`${index < field.rating ? 'fill-orange-400 text-orange-400' : 'text-neutral-200'}`}
-                        />
-                    ))}
-                </div>
-              </div>
-              <span className="text-xs font-black text-neutral-300">0{field.rating} / 05</span>
+              <p className="text-[15px] font-extrabold text-neutral-800 group-hover:text-[var(--color-primary)] transition-colors">
+                {field.label || field.key}
+              </p>
+              <span className="flex items-center gap-1 text-sm font-black text-[var(--color-primary)] shrink-0">
+                <FiStar size={13} className="fill-[var(--color-primary)]" />
+                {field.rating}/10
+              </span>
             </div>
 
             {/* نوار وضعیت مدرن */}
             <div className="relative h-1.5 w-full bg-neutral-100 rounded-full overflow-hidden">
               <div
                 className="absolute top-0 right-0 h-full bg-gradient-to-l from-[var(--color-primary)] to-[var(--color-primary)]/60 rounded-full transition-all duration-700"
-                style={{ width: `${(field.rating / 5) * 100}%` }}
+                style={{ width: `${(field.rating / 10) * 100}%` }}
               />
             </div>
 

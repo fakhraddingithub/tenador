@@ -18,7 +18,7 @@ import Button from "@/components/ui/Button";
 import CartDrawer from "@/components/features/cartDrawer/CartDrawer";
 
 const NAVIGATION_ITEMS = [
-  { id: 1, label: "جمعه بازار", href: "/second-hands" },
+  { id: 1, label: "جمعه بازار", href: "/second-hand" },
 ];
 
 // ---- Search Result Item ----
@@ -632,7 +632,7 @@ useEffect(() => {
                   {/* کارت افقی مدرن جمعه بازار (منتقل شده به انتهای منو) */}
                   <div className="px-4 py-4 border-t border-white/5 mt-2">
                     <Link
-                      href="/second-hands"
+                      href="/second-hand"
                       onClick={() => setIsCategoryOpen(false)}
                       className="group relative flex items-center justify-between p-4 bg-gradient-to-l from-[#aa4725]/15 to-[#aa4725]/5 border border-[#aa4725]/30 rounded-[6px] overflow-hidden transition-all duration-300 hover:border-[#aa4725]/70 hover:shadow-[0_4px_15px_rgba(170,71,37,0.15)]"
                     >

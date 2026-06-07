@@ -245,10 +245,10 @@ export default function UsedQuickViewModal({
                   <div className="flex-1 bg-gray-200 rounded-full h-1.5">
                     <div
                       className="h-1.5 rounded-full bg-[#aa4725] transition-all"
-                      style={{ width: `${(s.rating / 5) * 100}%` }}
+                      style={{ width: `${(s.rating / 10) * 100}%` }}
                     />
                   </div>
-                  <span className="text-xs font-bold text-gray-600 w-8 text-left">{s.rating}/5</span>
+                  <span className="text-xs font-bold text-gray-600 w-10 text-left">{s.rating}/10</span>
                 </div>
               ))}
             </div>
@@ -278,7 +278,7 @@ export default function UsedQuickViewModal({
             {/* دکمه‌ها */}
             <div className="flex gap-2 sm:gap-3">
               <Link
-                href={`/secondHands/${product._id}`}
+                href={`/second-hand/${product.slug || product._id}`}
                 onClick={onClose}
                 className="
                   flex-[5] h-12 sm:h-13 lg:h-14

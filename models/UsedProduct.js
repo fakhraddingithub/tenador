@@ -5,11 +5,12 @@
  */
 
 import mongoose from "mongoose";
+import { createSlug } from "base/utils/slugify";
 
 const HealthScoreSchema = new mongoose.Schema(
   {
     key:    { type: String, required: true, trim: true },
-    rating: { type: Number, required: true, min: 1, max: 5 },
+    rating: { type: Number, required: true, min: 1, max: 10 },
     note:   { type: String, trim: true, default: "" },
   },
   { _id: false }
@@ -18,7 +19,7 @@ const HealthScoreSchema = new mongoose.Schema(
 const CustomFieldSchema = new mongoose.Schema(
   {
     label:  { type: String, required: true, trim: true },
-    rating: { type: Number, required: true, min: 1, max: 5 },
+    rating: { type: Number, required: true, min: 1, max: 10 },
     note:   { type: String, trim: true, default: "" },
   },
   { _id: false }
@@ -29,6 +30,16 @@ const UsedProductSchema = new mongoose.Schema(
     name: {
       type: String,
       required: true,
+    },
+
+    // اسلاگ یکتا برای آدرس‌دهی صفحه محصول دست‌دوم (مثل محصولات معمولی)
+    slug: {
+      type: String,
+      unique: true,
+      sparse: true,
+      index: true,
+      trim: true,
+      lowercase: true,
     },
 
     baseProduct: {
@@ -119,15 +130,27 @@ const UsedProductSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
-// Auto-calculate overallScore + validate baseVariant before save
+// Auto-generate slug + calculate overallScore + validate baseVariant before save
 UsedProductSchema.pre("save", async function () {
-  // --- overallScore calculation ---
+  // --- slug generation (once on creation, then kept stable) ---
+  if (!this.slug) {
+    const base = createSlug(this.name) || "used";
+    let slug = base;
+    let i = 2;
+    // تضمین یکتایی اسلاگ (محصولات دست‌دوم می‌توانند نام تکراری داشته باشند)
+    while (await this.constructor.exists({ slug, _id: { $ne: this._id } })) {
+      slug = `${base}-${i++}`;
+    }
+    this.slug = slug;
+  }
+
+  // --- overallScore calculation (ratings are already out of 10) ---
   const all = [...this.healthScores, ...this.customFields];
   if (all.length === 0) {
     this.overallScore = null;
   } else {
     const avg = all.reduce((sum, s) => sum + s.rating, 0) / all.length;
-    this.overallScore = Math.round(((avg - 1) / 4) * 9 + 1);
+    this.overallScore = Math.round(avg);
   }
 
   // --- Variant ownership validation ---

@@ -44,6 +44,7 @@ export default async function UsedProductsPage() {
       const currentHealthScores = p.healthScores || [];
       return {
         _id: p._id.toString(),
+        slug: p.slug || null,
         overallScore: p.overallScore,
         healthScores: currentHealthScores.map((s) => ({
           key: s.key,

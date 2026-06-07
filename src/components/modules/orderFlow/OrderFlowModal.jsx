@@ -32,6 +32,10 @@ export default function OrderFlowModal({
   const [currentIndex, setCurrentIndex] = useState(0);
   const [selections, setSelections] = useState({}); // { [nodeId]: selection }
   const [submitting, setSubmitting] = useState(false);
+  // نود جاری محصول واریانت‌دار دارد ولی واریانتش کامل نشده
+  const [currentIncomplete, setCurrentIncomplete] = useState(false);
+  // نمایش پیام اعتبارسنجی در مرحله‌ی جاری (پس از تلاش برای ادامه)
+  const [showStepError, setShowStepError] = useState(false);
 
   // شناسه‌ی دسته‌بندی محصول (category ممکن است object یا string باشد)
   const categoryId = useMemo(() => {
@@ -107,6 +111,12 @@ export default function OrderFlowModal({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOpen, categoryId, flowProp]);
 
+  // با تغییر مرحله، وضعیت اعتبارسنجی ریست می‌شود
+  useEffect(() => {
+    setCurrentIncomplete(false);
+    setShowStepError(false);
+  }, [currentIndex]);
+
   if (!isOpen) return null;
 
   // ─── به‌روزرسانی انتخاب نود جاری ───
@@ -115,18 +125,30 @@ export default function OrderFlowModal({
   };
 
   const currentSelection = currentNode ? selections[currentNode.id] : null;
+  // دکمه‌ی «بعدی» وقتی فعال است که انتخاب کامل باشد، یا محصولی انتخاب شده ولی
+  // واریانتش ناقص است (تا با کلیک، پیام اعتبارسنجی نمایش داده شود).
   const canProceed =
     !currentNode ||
     !currentNode.required ||
-    Boolean(currentSelection);
+    Boolean(currentSelection) ||
+    currentIncomplete;
 
   // ─── ناوبری ───
-  const goNext = () => {
+  const advance = () => {
     if (isLastStep) {
       finalize();
     } else {
       setCurrentIndex((i) => Math.min(i + 1, steps.length - 1));
     }
+  };
+
+  const goNext = () => {
+    // محصول انتخاب شده ولی واریانت کامل نشده → ادامه نده و پیام را نشان بده
+    if (currentIncomplete) {
+      setShowStepError(true);
+      return;
+    }
+    advance();
   };
 
   const goBack = () => setCurrentIndex((i) => Math.max(i - 1, 0));
@@ -139,7 +161,7 @@ export default function OrderFlowModal({
         return next;
       });
     }
-    goNext();
+    advance(); // رد کردن، اعتبارسنجی واریانت را دور می‌زند
   };
 
   // ─── تایید نهایی: ساخت آرایه‌ی انتخاب‌ها به ترتیب مراحل ───
@@ -226,6 +248,8 @@ export default function OrderFlowModal({
               node={currentNode}
               value={currentSelection}
               onChange={(selection) => setSelectionFor(currentNode.id, selection)}
+              showError={showStepError}
+              onIncompleteChange={setCurrentIncomplete}
             />
           ) : null}
         </div>
@@ -279,12 +303,20 @@ export default function OrderFlowModal({
 /**
  * بدنه‌ی هر مرحله بر اساس نوع نود.
  */
-function StepBody({ node, value, onChange }) {
+function StepBody({ node, value, onChange, showError, onIncompleteChange }) {
   if (node.type === "service") {
     return <ServiceNodeStep node={node} value={value} onChange={onChange} />;
   }
   if (node.type === "category") {
-    return <CategoryNodeStep node={node} value={value} onChange={onChange} />;
+    return (
+      <CategoryNodeStep
+        node={node}
+        value={value}
+        onChange={onChange}
+        showError={showError}
+        onIncompleteChange={onIncompleteChange}
+      />
+    );
   }
   return null;
 }

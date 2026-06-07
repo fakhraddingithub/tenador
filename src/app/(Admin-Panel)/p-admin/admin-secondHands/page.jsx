@@ -208,7 +208,7 @@ export default function UsedProductsHubPage() {
           <SectionCard
             icon={FiPackage}
             title="محصولات دست‌دوم"
-            desc="ثبت، ویرایش و قیمت‌گذاری محصولات کارکرده به همراه ارزیابی وضعیت با ستاره‌دهی"
+            desc="ثبت، ویرایش و قیمت‌گذاری محصولات کارکرده به همراه ارزیابی وضعیت با امتیاز از ۱۰"
             href="/p-admin/admin-secondHands/used-products"
             createHref="/p-admin/admin-secondHands/used-products/create"
             accent="orange"

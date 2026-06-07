@@ -1,3 +1,4 @@
+import mongoose from "mongoose";
 import connectToDB from "base/configs/db";
 import UsedProduct from "base/models/UsedProduct";
 import HealthCard from "base/models/HealthCard";
@@ -8,19 +9,36 @@ import UsedProductTemplate from "@/components/templates/secondHand/UsedProductTe
 import { notFound } from "next/navigation";
 import { getCachedRate, eurToToman } from "@/lib/Exchangerate";
 
+// اسلاگ‌های فارسی در URL به صورت percent-encoded می‌آیند — قبل از کوئری دیکد می‌کنیم
+function decodeSlug(slug) {
+  try {
+    return decodeURIComponent(slug);
+  } catch {
+    return slug;
+  }
+}
+
+// آدرس‌دهی با اسلاگ — برای رکوردهای قدیمی بدون اسلاگ، fallback به ObjectId
+function buildLookup(rawSlug) {
+  const slug = decodeSlug(rawSlug);
+  return mongoose.Types.ObjectId.isValid(slug)
+    ? { $or: [{ slug }, { _id: slug }] }
+    : { slug };
+}
+
 export async function generateMetadata({ params }) {
-  const { id } = await params;
+  const { slug } = await params;
   await connectToDB();
-  const item = await UsedProduct.findById(id).select("name").lean();
+  const item = await UsedProduct.findOne(buildLookup(slug)).select("name").lean();
   return { title: item?.name || "محصول دست‌دوم" };
 }
 
 export default async function UsedProductPage({ params }) {
-  const { id } = await params;
+  const { slug } = await params;
 
   await connectToDB();
 
-  const raw = await UsedProduct.findById(id)
+  const raw = await UsedProduct.findOne(buildLookup(slug))
     .populate({
       path: "baseProduct",
       populate: [

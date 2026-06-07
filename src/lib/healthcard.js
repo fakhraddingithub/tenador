@@ -41,11 +41,12 @@ export async function validateHealthScores(categoryId, healthScores) {
 }
 
 /**
- * Calculates overallScore from healthScores + customFields (1-5 → 1-10).
+ * Calculates overallScore from healthScores + customFields.
+ * Ratings are scored out of 10, so the overall score is the rounded average.
  */
 export function calcOverallScore(healthScores, customFields) {
   const all = [...healthScores, ...customFields];
   if (all.length === 0) return null;
   const avg = all.reduce((sum, s) => sum + s.rating, 0) / all.length;
-  return Math.round(((avg - 1) / 4) * 9 + 1);
+  return Math.round(avg);
 }

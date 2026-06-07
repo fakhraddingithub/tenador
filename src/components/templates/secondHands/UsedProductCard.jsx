@@ -32,7 +32,7 @@ export default function UsedProductCard({
   return (
     <div className="group relative bg-white border border-gray-200 rounded-[6px] transition-all duration-500 hover:shadow-[0_20px_40px_rgba(0,0,0,0.1)] hover:-translate-y-1 overflow-hidden h-full flex flex-col">
       <Link
-        href={`/second-hands/${product._id}`}
+        href={`/second-hand/${product.slug || product._id}`}
         className="absolute inset-0 z-0"
       />
 
@@ -51,7 +51,7 @@ export default function UsedProductCard({
 
       {/* تصویر اصلی - پدینگ و افکت هاور بروزرسانی شد */}
       <Link
-        href={`/second-hands/${product._id}`}
+        href={`/second-hand/${product.slug || product._id}`}
         className="relative w-full aspect-square bg-[#fcfcfc] overflow-hidden"
       >
         <Image
@@ -102,7 +102,7 @@ export default function UsedProductCard({
           />
 
           <Link
-            href={`/second-hands/${product._id}`}
+            href={`/second-hand/${product.slug || product._id}`}
             onClick={(e) => e.stopPropagation()}
           >
             <ActionButton icon={<FaArrowLeft />} label="صفحه محصول" />

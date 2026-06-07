@@ -10,8 +10,9 @@ import StarRating from './StarRating';
 function calcScore(healthScores, customFields) {
   const all = [...healthScores, ...customFields];
   if (all.length === 0) return null;
+  // امتیازها از ۱۰ هستند — نمره کلی میانگین گردشده است
   const avg = all.reduce((s, i) => s + i.rating, 0) / all.length;
-  return Math.round(((avg - 1) / 4) * 9 + 1);
+  return Math.round(avg);
 }
 
 // نمایش خلاصه attributes یه واریانت
@@ -50,7 +51,7 @@ export default function UsedProductForm({ initialData }) {
   const [customFields, setCustomFields] = useState(
     initialData?.customFields?.map(f => ({ ...f, _id: crypto.randomUUID() })) || []
   );
-  const [newCustom, setNewCustom] = useState({ label: '', rating: 3, note: '' });
+  const [newCustom, setNewCustom] = useState({ label: '', rating: 5, note: '' });
 
   // Other fields
   const [price, setPrice] = useState(initialData?.price || '');
@@ -100,7 +101,7 @@ export default function UsedProductForm({ initialData }) {
         const card = d.cards?.find(c => (c.category?._id || c.category) === catId);
         setTemplate(card || null);
         if (card && !isEdit) {
-          setHealthScores(card.fields.map(f => ({ key: f.key, rating: 3, note: '' })));
+          setHealthScores(card.fields.map(f => ({ key: f.key, rating: 5, note: '' })));
         }
       })
       .catch(() => setTemplate(null))
@@ -134,7 +135,7 @@ export default function UsedProductForm({ initialData }) {
   const addCustomField = () => {
     if (!newCustom.label.trim()) return showToast.warning('برچسب الزامی است');
     setCustomFields(prev => [...prev, { ...newCustom, _id: crypto.randomUUID() }]);
-    setNewCustom({ label: '', rating: 3, note: '' });
+    setNewCustom({ label: '', rating: 5, note: '' });
   };
 
   const removeCustomField = (id) => {
