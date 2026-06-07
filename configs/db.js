@@ -28,8 +28,10 @@ const connectToDB = async () => {
       // اگر اتصال برقرار نیست، کوئری‌ها را صف نکن و بلافاصله خطا بده
       // (به‌جای بافر کردن و timeout شدن بعد از ۱۰ ثانیه)
       bufferCommands: false,
-      // سقف کانکشن‌ها در هر instance — جلوی پر شدن حد اتصال کلاستر M0 را می‌گیرد
-      maxPoolSize: 10,
+      // سقف کانکشن‌ها در هر instance. روی M0 (سقف ۵۰۰ کانکشن) و معماری serverless
+      // که هر invocation یک pool جدا می‌سازد، عمداً کوچک نگه داشته می‌شود تا
+      // total = instances × maxPoolSize زیر حد کلاستر بماند.
+      maxPoolSize: 5,
       minPoolSize: 0,
       // اگر کانکشن idle بماند بسته شود تا اتصال‌ها آزاد شوند
       maxIdleTimeMS: 30000,

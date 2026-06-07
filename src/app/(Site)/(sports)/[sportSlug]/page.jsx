@@ -4,12 +4,10 @@ import SportPageClient from "@/components/templates/sports/SportPageClient";
 import { notFound } from "next/navigation";
 import { getCachedRate } from "@/lib/Exchangerate";
 
-export const revalidate = 300;
-
-// on-demand ISR: اولین بازدید رندر/کش، بازدیدهای بعدی از کش
-export async function generateStaticParams() {
-  return [];
-}
+// ⚠️ اسلاگ‌های فارسی با هدر x-next-cache-tags ناسازگارند (باگ Next: کاراکتر
+// غیر-ASCII در هدر → ERR_INVALID_CHAR → خطای ۵۰۰). داینامیک رندر می‌شود تا هدر
+// کش روت ساخته نشود؛ کوئری‌ها همچنان با unstable_cache کش می‌مانند.
+export const dynamic = "force-dynamic";
 
 export async function generateMetadata({ params }) {
   const { sportSlug } = await params;

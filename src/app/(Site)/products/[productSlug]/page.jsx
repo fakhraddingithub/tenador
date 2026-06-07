@@ -5,13 +5,13 @@ import { generateProductMetadata } from "@/lib/seo/productSeo";
 import { generateProductSchema } from "@/lib/seo/productSchema";
 import { generateBreadcrumbSchema } from "@/lib/seo/breadcrumbSchema";
 
-export const revalidate = 300;
-
-// صفحات محصول به‌صورت on-demand ISR کش می‌شوند: اولین بازدید رندر و کش می‌شود،
-// بازدیدهای بعدی تا پایان بازه‌ی revalidate از کش سرو می‌شوند (بدون رندر مجدد).
-export async function generateStaticParams() {
-  return [];
-}
+// ⚠️ اسلاگ‌های فارسی در URL با کش روتِ Next ناسازگارند: Next مسیرِ دیکدشده را
+// خام داخل هدر x-next-cache-tags می‌گذارد و کاراکتر غیر-ASCII باعث
+// «ERR_INVALID_CHAR / Invalid character in header content» و خطای ۵۰۰ می‌شود
+// (باگ Next در lib/implicit-tags.js). راه‌حل: این مسیر داینامیک رندر شود تا هدر
+// کش روت ساخته نشود. هزینه‌ی دیتابیس همچنان با unstable_cache در لایه‌ی سرویس
+// کش می‌ماند، پس مشکلِ اتصال برنمی‌گردد.
+export const dynamic = "force-dynamic";
 
 // --------------------
 // Dynamic Metadata

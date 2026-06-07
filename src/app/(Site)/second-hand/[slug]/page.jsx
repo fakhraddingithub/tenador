@@ -9,12 +9,10 @@ import UsedProductTemplate from "@/components/templates/secondHand/UsedProductTe
 import { notFound } from "next/navigation";
 import { getCachedRate, eurToToman } from "@/lib/Exchangerate";
 
-export const revalidate = 300;
-
-// on-demand ISR: اولین بازدید رندر/کش، بازدیدهای بعدی از کش
-export async function generateStaticParams() {
-  return [];
-}
+// ⚠️ اسلاگ‌های فارسی با هدر x-next-cache-tags ناسازگارند (باگ Next: کاراکتر
+// غیر-ASCII در هدر → ERR_INVALID_CHAR → خطای ۵۰۰). داینامیک رندر می‌شود تا هدر
+// کش روت ساخته نشود؛ کوئری‌ها همچنان با unstable_cache کش می‌مانند.
+export const dynamic = "force-dynamic";
 
 // اسلاگ‌های فارسی در URL به صورت percent-encoded می‌آیند — قبل از کوئری دیکد می‌کنیم
 function decodeSlug(slug) {
