@@ -9,7 +9,7 @@ import ComparisonBanner from "@/components/features/comparisonBanner/ComparisonB
 import ShowcaseAthletes from "@/components/features/ShowcaseAthletes/ShowcaseAthletes";
 
 // سرویس‌ها را وارد کنید (فرض بر این است که این سرویس‌ها را دارید یا باید بسازید)
-import { getProducts } from "base/services/product.service";
+import { getHomeProducts } from "base/services/product.service";
 import connectToDB from "base/configs/db";
 import SlideModel from "base/models/Slide";
 import SportModel from "base/models/Sport";
@@ -24,13 +24,15 @@ export default async function Home() {
   await connectToDB();
 
   // ۲. دریافت موازی همه داده‌ها برای افزایش سرعت (Parallel Fetching)
-  const [products, slides, sports, athletes, rate] = await Promise.all([
-    getProducts(),
+  //    فقط ۱۰ محصول برای هر اسلایدر — نه کل کاتالوگ
+  const [homeProducts, slides, sports, athletes, rate] = await Promise.all([
+    getHomeProducts(),
     SlideModel.find({ isActive: true }).sort({ priority: 1 }).lean(),
     SportModel.find({}).sort({ order: 1 }).lean(),
     getShowcaseAthletes(),
     getCachedRate(),
   ]);
+  const { bestSellers, offers } = homeProducts;
 
   return (
     <>
@@ -38,8 +40,8 @@ export default async function Home() {
       <BannerSection />
       <SportsGrid categories={JSON.parse(JSON.stringify(sports))} />
       <ComparisonBanner />
-      <BestSellers products={products} rate={rate} />
-      <AmazingOffers products={products} rate={rate} />
+      <BestSellers products={bestSellers} rate={rate} />
+      <AmazingOffers products={offers} rate={rate} />
       <RolandGarros />
       <BrandsTicker />
       <ShowcaseAthletes data={athletes} />

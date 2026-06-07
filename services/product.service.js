@@ -7,12 +7,15 @@ import Sport from "base/models/Sport";
 import Athlete from "base/models/Athlete";
 import Category from "base/models/Category";
 import Variant from "base/models/Variant";
+import { getCachedRate } from "@/lib/Exchangerate";
+import { attachListingPrices } from "base/services/priceEngine";
 
 const modelsMap = { Sport, Brand, Athlete, Category };
 
 export const getProducts = unstable_cache(
   async () => {
     await connectToDB();
+    const rate = await getCachedRate();
     const products = await Product.find({ isActive: true })
       .populate("brand")
       .populate("sport")
@@ -20,9 +23,42 @@ export const getProducts = unstable_cache(
       .populate("category")
       .populate("variants")
       .lean();
-    return JSON.parse(JSON.stringify(products));
+    // قیمت‌ها سمت سرور و به‌صورت دسته‌ای محاسبه می‌شوند تا کارت‌ها دیگر هیچ
+    // درخواست price-API نزنند (ریشه‌ی پر شدن کانکشن‌های دیتابیس)
+    const priced = await attachListingPrices(products, rate);
+    return JSON.parse(JSON.stringify(priced));
   },
   ["all-products"],
+  { revalidate: 60, tags: ["products"] }
+);
+
+/**
+ * داده‌ی صفحه‌ی اصلی — فقط ۱۰ محصول برای هر اسلایدر (پرفروش‌ها و پیشنهادهای شگفت‌انگیز)
+ * به‌جای واکشی کل محصولات. قیمت‌ها از قبل محاسبه و چسبانده شده‌اند.
+ */
+export const getHomeProducts = unstable_cache(
+  async () => {
+    await connectToDB();
+    const rate = await getCachedRate();
+
+    // فقط ۲۰ محصول اخیر را می‌گیریم و از همان‌ها دو لیست ۱۰‌تایی می‌سازیم
+    const products = await Product.find({ isActive: true })
+      .sort({ createdAt: -1 })
+      .limit(20)
+      .populate("brand")
+      .populate("category")
+      .populate("variants")
+      .lean();
+
+    const priced = await attachListingPrices(products, rate);
+
+    const bestSellers = priced.slice(0, 10);
+    const discounted = priced.filter((p) => p.discountPercent > 0);
+    const offers = (discounted.length ? discounted : priced).slice(0, 10);
+
+    return JSON.parse(JSON.stringify({ bestSellers, offers }));
+  },
+  ["home-products"],
   { revalidate: 60, tags: ["products"] }
 );
 
@@ -81,6 +117,7 @@ export const getPageDataBySlug = unstable_cache(
     const entityInfo = await EntityModel.findOne({ slug }).lean();
 
     const productQuery = { [slugData.filterField]: entityInfo._id, isActive: true };
+    const rate = await getCachedRate();
     const products = await Product.find(productQuery)
       .populate("brand")
       .populate("sport")
@@ -90,11 +127,13 @@ export const getPageDataBySlug = unstable_cache(
       .sort({ createdAt: -1 })
       .lean();
 
+    const priced = await attachListingPrices(products, rate);
+
     return JSON.parse(
       JSON.stringify({
         type: slugData.type,
         info: entityInfo,
-        products,
+        products: priced,
         label: slugData.label,
         slugData,
       })

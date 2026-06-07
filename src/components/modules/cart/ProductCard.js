@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { FaEye, FaRegHeart, FaHeart, FaArrowLeft } from "react-icons/fa";
@@ -8,31 +8,16 @@ import { FaEye, FaRegHeart, FaHeart, FaArrowLeft } from "react-icons/fa";
 export default function ProductCard({ product, rate, onQuickView, onToggleWishlist, isWishlisted = false }) {
   const { mainImage, name, slug, basePrice, label } = product;
 
-  // ── قیمت پایه به تومان ────────────────────────────────────────────────────
+  // ── قیمت‌ها از سرور می‌آیند (attachListingPrices) — دیگر هیچ درخواست price-API
+  //    به ازای هر کارت زده نمی‌شود. در صورت نبودِ مقدار سروری، fallback محلی. ──
   const basePriceToman = useMemo(() => {
+    if (product.basePriceToman != null) return product.basePriceToman;
     return Math.floor(Math.round(Number(basePrice) * (rate || 1)) / 1000) * 1000;
-  }, [basePrice, rate]);
+  }, [product.basePriceToman, basePrice, rate]);
 
-  // ── دریافت تخفیف از price API ─────────────────────────────────────────────
-  const [discountData, setDiscountData] = useState(null);
-
-  useEffect(() => {
-    if (!product?._id) return;
-    let cancelled = false;
-    fetch(`/api/product/${product._id}/price`)
-      .then((r) => r.json())
-      .then((data) => {
-        if (cancelled || data.error) return;
-        if (data.finalPriceToman < data.basePriceToman) {
-          setDiscountData({ finalPriceToman: data.finalPriceToman, discountPercent: data.discountPercent || 0 });
-        }
-      })
-      .catch(() => {});
-    return () => { cancelled = true; };
-  }, [product?._id]);
-
-  const hasDiscount    = discountData !== null;
-  const finalPriceToman = hasDiscount ? discountData.finalPriceToman : basePriceToman;
+  const finalPriceToman = product.finalPriceToman != null ? product.finalPriceToman : basePriceToman;
+  const discountPercent = product.discountPercent ?? 0;
+  const hasDiscount = finalPriceToman < basePriceToman;
 
   // ── واریانت‌ها ──────────────────────────────────────────────────────────────
   const variantsWithImages = useMemo(
@@ -63,10 +48,10 @@ export default function ProductCard({ product, rate, onQuickView, onToggleWishli
 
       {/* Badge */}
       <div className="absolute top-4 right-0 z-20 flex flex-col gap-1 items-end">
-        {hasDiscount && discountData.discountPercent > 0 ? (
+        {hasDiscount && discountPercent > 0 ? (
           <div className="relative py-1 pr-3 pl-5 text-[10px] font-bold text-white shadow-sm bg-red-500"
             style={{ clipPath: "polygon(0 0, 100% 0, 100% 100%, 0 100%, 20% 50%)" }}>
-            {discountData.discountPercent} ٪
+            {discountPercent} ٪
           </div>
         ) : label && labelMap[label] ? (
           <div className={`relative py-1 pr-3 pl-5 text-[10px] font-bold text-white shadow-sm ${labelMap[label].color}`}

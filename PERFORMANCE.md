@@ -122,6 +122,47 @@ How it works now:
 
 ---
 
+## 3.5 Hotfix — DB connection exhaustion + per-card price storm (June 2026)
+
+**Symptoms (Vercel logs / Atlas alerts):** product pages failing to load;
+`MongooseError: Operation \`products.findOne()\` buffering timed out after 10000ms`;
+`SSL alert number 80`; Atlas M0 "connections nearing limit" emails.
+
+**Root causes**
+1. **`configs/db.js` was unsafe for serverless.** It did `if (readyState >= 1) return;`
+   then `try { connect } catch { console.error; /* swallow */ }`. On a failed/slow
+   connect it returned anyway, so every caller proceeded and its queries **buffered
+   until the 10s timeout**. It also cached nothing and set **no `maxPoolSize`** (Mongoose
+   default 100), so each serverless invocation opened its own large pool → the M0
+   connection limit was exceeded → the SSL/buffering cascade.
+2. **Every `ProductCard` fetched `/api/product/[id]/price` in a `useEffect`.** A catalog
+   page with N products fired **N price requests = N DB connections** on every view.
+
+**Fixes**
+- **`configs/db.js` rewritten** with the standard cached-global-promise pattern
+  (`global._mongooseCache`), `maxPoolSize: 10`, `minPoolSize: 0`, `maxIdleTimeMS: 30000`,
+  `bufferCommands: false`, and it now **throws** on connect failure instead of swallowing
+  it (so callers don't proceed into a buffering timeout, and `unstable_cache` won't cache
+  a broken result). Concurrent cold-start calls share one in-flight promise.
+- **Server-side batch pricing.** New `attachListingPrices(products, rate)` in
+  `services/priceEngine.js` computes the **anonymous** final price (FlashSale + global/
+  product/brand/category/serie discount rules) for an **entire list in just 2 queries**
+  and bundles `basePriceToman / finalPriceToman / discountAmount / discountPercent` onto
+  each product. It's applied inside the cached reads: `getProducts`, `getHomeProducts`,
+  `getPageDataBySlug`, `queryBySlugs`.
+- **`ProductCard` no longer fetches.** It reads the baked `*Toman` fields (with a local
+  `basePrice * rate` fallback). Result: a catalog page now makes **0** price requests
+  instead of N. Per-user accurate pricing still happens on the **product detail page**
+  (`ProductInfo`, 1 request) and lazily in `QuickViewModal` (only when opened).
+- **Home sliders limited to 10 each.** New `getHomeProducts()` fetches the 20 newest
+  products once, prices them, and returns `{ bestSellers: 10, offers: 10 }` (offers =
+  discounted first, else newest). The home page no longer pulls the whole catalog.
+- **Pagination.** `ProductList` now paginates client-side at **20 items / page**
+  (5 rows × 4 cols) with numbered controls, so `/products` and every `/[sportSlug]/**`
+  page render one page at a time instead of the full result set. (Client-side paging keeps
+  the existing instant filter/search UX; revisit with server-side paging only if the
+  catalog grows very large.)
+
 ## 4. API audit (consumption)
 
 | API | Finding | Action |

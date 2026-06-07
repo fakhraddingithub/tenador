@@ -187,6 +187,126 @@ export async function computeProductPrice(product, rate, user = null, cartValueT
 }
 
 // ---------------------------------------------------------------------------
+// 3.5 قیمت‌گذاری دسته‌ای برای لیست‌ها (server-side, anonymous)
+// ---------------------------------------------------------------------------
+
+/**
+ * آیا این قانون تخفیف روی این محصول اعمال می‌شود؟ (نسخه in-memory)
+ */
+function ruleMatchesProduct(rule, product) {
+  if (rule.type === "global") return true;
+  const targets = (rule.targets || []).map((t) => t.toString());
+  if (rule.type === "product")  return targets.includes(product._id.toString());
+  if (rule.type === "brand")    return targets.includes(String(product.brand?._id ?? product.brand));
+  if (rule.type === "category") return targets.includes(String(product.category?._id ?? product.category));
+  if (rule.type === "serie")    return targets.includes(String(product.serie?._id ?? product.serie));
+  return false;
+}
+
+/**
+ * قیمت نهایی (تومان) را برای یک *لیست* محصول به صورت دسته‌ای محاسبه می‌کند و
+ * فیلدهای basePriceToman / finalPriceToman / discountAmount / discountPercent را
+ * به هر محصول می‌چسباند.
+ *
+ * ⚠️ این تابع قیمتِ «کاربر مهمان» را محاسبه می‌کند (FlashSale + قوانین
+ * global/product/brand/category/serie). تخفیف‌های مخصوص نقش/سطح کاربر اینجا
+ * اعمال نمی‌شوند چون نتیجه روی همه‌ی بازدیدکننده‌ها cache می‌شود؛ صفحه‌ی جزئیات
+ * محصول در صورت لاگین‌بودن کاربر قیمت دقیق را از price API می‌گیرد.
+ *
+ * هدف اصلی: حذف N درخواست price-API به ازای N کارت محصول — کل لیست با فقط
+ * ۲ کوئری (FlashSale + DiscountRule) قیمت‌گذاری می‌شود.
+ *
+ * @param {Object[]} products - lean products (basePrice به یورو، با brand/category/serie)
+ * @param {number} rate - نرخ یورو → تومان
+ * @returns {Promise<Object[]>}
+ */
+export async function attachListingPrices(products, rate) {
+  if (!Array.isArray(products) || products.length === 0) return products || [];
+
+  const now = new Date();
+  const toId = (v) => new mongoose.Types.ObjectId(v.toString());
+
+  const productIds = products.map((p) => toId(p._id));
+  const collect = (key) => [
+    ...new Set(
+      products
+        .map((p) => p[key]?._id ?? p[key])
+        .filter(Boolean)
+        .map(String)
+    ),
+  ];
+  const brandIds    = collect("brand").map(toId);
+  const categoryIds = collect("category").map(toId);
+  const serieIds    = collect("serie").map(toId);
+
+  const [flashes, rules] = await Promise.all([
+    FlashSale.find({
+      productId: { $in: productIds },
+      active: true,
+      startsAt: { $lte: now },
+      endsAt:   { $gte: now },
+    }).lean(),
+    DiscountRule.find({
+      active: true,
+      startAt: { $lte: now },
+      endAt:   { $gte: now },
+      $or: [
+        { type: "global" },
+        { type: "product",  targets: { $in: productIds } },
+        { type: "brand",    targets: { $in: brandIds } },
+        { type: "category", targets: { $in: categoryIds } },
+        { type: "serie",    targets: { $in: serieIds } },
+      ],
+    })
+      .sort({ priority: 1 })
+      .lean(),
+  ]);
+
+  const flashByProduct = new Map(flashes.map((f) => [f.productId.toString(), f]));
+
+  return products.map((p) => {
+    const basePriceToman = eurToToman(p.basePrice || 0, rate);
+    const flash = flashByProduct.get(p._id.toString());
+
+    let finalPriceToman = basePriceToman;
+    let discountAmount = 0;
+
+    if (flash) {
+      const flashPriceToman = eurToToman(flash.flashPrice, rate);
+      finalPriceToman = flashPriceToman;
+      discountAmount = Math.max(0, basePriceToman - flashPriceToman);
+    } else {
+      const matched = rules.filter((r) => ruleMatchesProduct(r, p));
+      let total = 0;
+      matched.forEach((r, idx) => {
+        if (idx === 0 || r.combinable) {
+          const amt =
+            r.discount.kind === "percent"
+              ? Math.min(
+                  Math.floor(basePriceToman * (r.discount.value / 100)),
+                  r.discount.maxAmount ?? Infinity
+                )
+              : eurToToman(r.discount.value, rate);
+          total += Math.max(0, amt);
+        }
+      });
+      total = Math.min(total, basePriceToman);
+      finalPriceToman = basePriceToman - total;
+      discountAmount = total;
+    }
+
+    return {
+      ...p,
+      basePriceToman,
+      finalPriceToman,
+      discountAmount,
+      discountPercent:
+        basePriceToman > 0 ? Math.round((discountAmount / basePriceToman) * 100) : 0,
+    };
+  });
+}
+
+// ---------------------------------------------------------------------------
 // 4. اعمال کوپن
 // ---------------------------------------------------------------------------
 

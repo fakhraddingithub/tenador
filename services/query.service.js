@@ -13,6 +13,8 @@ import Athlete from "base/models/Athlete";
 import Product from "base/models/Product";
 import Category from "base/models/Category";
 import Serie from "base/models/Serie";
+import { getCachedRate } from "@/lib/Exchangerate";
+import { attachListingPrices } from "base/services/priceEngine";
 
 const entities = ["brand", "sport", "athlete", "category", "serie", "product"];
 const modelMap = { brand: Brand, sport: Sport, athlete: Athlete, category: Category, serie: Serie, product: Product };
@@ -66,6 +68,10 @@ async function _queryBySlugs(slugs) {
     .sort({ createdAt: -1 })
     .lean();
 
+  // قیمت‌ها سمت سرور و دسته‌ای محاسبه می‌شوند تا کارت‌ها price-API نزنند
+  const rate = await getCachedRate();
+  const priced = await attachListingPrices(products, rate);
+
   return JSON.parse(
     JSON.stringify({
       filters: {
@@ -76,8 +82,8 @@ async function _queryBySlugs(slugs) {
         serie: search.serie,
         product: search.product,
       },
-      results: products,
-      totalResults: products.length,
+      results: priced,
+      totalResults: priced.length,
     })
   );
 }
