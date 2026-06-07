@@ -4,6 +4,7 @@ import connectToDB from "base/configs/db";
 
 import Serie from "base/models/Serie";
 import Brand from "base/models/Brand";
+import { revalidateContent } from "@/lib/revalidate";
 
 export async function GET(req, { params }) {
   try {
@@ -182,6 +183,8 @@ export async function PUT(req, { params }) {
 
     await serie.save();
 
+    revalidateContent(["navbar", "series", "brands"]);
+
     return NextResponse.json(
       {
         message:
@@ -279,6 +282,8 @@ export async function DELETE(req, { params }) {
         }
       );
     }
+
+    revalidateContent(["navbar", "series", "brands"]);
 
     return NextResponse.json(
       {

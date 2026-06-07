@@ -4,6 +4,13 @@ import SportPageClient from "@/components/templates/sports/SportPageClient";
 import { notFound } from "next/navigation";
 import { getCachedRate } from "@/lib/Exchangerate";
 
+export const revalidate = 300;
+
+// on-demand ISR: اولین بازدید رندر/کش، بازدیدهای بعدی از کش
+export async function generateStaticParams() {
+  return [];
+}
+
 export async function generateMetadata({ params }) {
   const { sportSlug } = await params;
   const data = await getPageDataBySlug(sportSlug);

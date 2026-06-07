@@ -1,6 +1,7 @@
 import connectToDB from "base/configs/db";
 import Sport from "base/models/Sport";
 import { NextResponse } from "next/server";
+import { revalidateContent } from "@/lib/revalidate";
 
 export async function GET(req, { params }) {
   try {
@@ -54,6 +55,8 @@ export async function PUT(req, { params }) {
 
     await sport.save();
 
+    revalidateContent(["navbar", "sports"]);
+
     return NextResponse.json({
       message: "ورزش با موفقیت به‌روزرسانی شد",
       sport,
@@ -78,6 +81,8 @@ export async function DELETE(req, { params }) {
         { status: 404 }
       );
     }
+
+    revalidateContent(["navbar", "sports"]);
 
     return NextResponse.json({
       message: "ورزش با موفقیت حذف شد",

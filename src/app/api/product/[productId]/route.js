@@ -11,6 +11,7 @@ import Product from "base/models/Product";
 import Variant from "base/models/Variant";
 
 import { verifyToken } from "base/utils/auth";
+import { revalidateContent } from "@/lib/revalidate";
 
 // --------------------------------------------------
 // Helpers
@@ -267,6 +268,8 @@ export async function PUT(request, { params }) {
       .populate("variants")
       .lean();
 
+    revalidateContent();
+
     return NextResponse.json(
       {
         message: "محصول با موفقیت ویرایش شد",
@@ -328,6 +331,8 @@ export async function DELETE(request, { params }) {
 
     // حذف محصول
     await Product.findByIdAndDelete(productId);
+
+    revalidateContent();
 
     return NextResponse.json(
       {

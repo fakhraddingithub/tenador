@@ -4,28 +4,26 @@ import { getCachedRate, eurToToman } from "@/lib/Exchangerate";
 import { generateProductMetadata } from "@/lib/seo/productSeo";
 import { generateProductSchema } from "@/lib/seo/productSchema";
 import { generateBreadcrumbSchema } from "@/lib/seo/breadcrumbSchema";
-import Product from "base/models/Product";
-import connectToDB from "base/configs/db";
+
+export const revalidate = 300;
+
+// صفحات محصول به‌صورت on-demand ISR کش می‌شوند: اولین بازدید رندر و کش می‌شود،
+// بازدیدهای بعدی تا پایان بازه‌ی revalidate از کش سرو می‌شوند (بدون رندر مجدد).
+export async function generateStaticParams() {
+  return [];
+}
 
 // --------------------
 // Dynamic Metadata
 // --------------------
 export async function generateMetadata({ params }) {
-  await connectToDB();
+  const { productSlug } = await params;
 
-  const resolvedParams = await params;
+  // از همان سرویس کش‌شده استفاده می‌شود تا کوئری دوباره به دیتابیس نخورد
+  const product = await getProductBySlug(productSlug);
 
-  const product = await Product.findOne({
-    slug: resolvedParams.productSlug,
-  })
-    .populate("brand")
-    .populate("category")
-    .lean();
-
-  if (!product) {
-    return {
-      title: "محصول پیدا نشد",
-    };
+  if (!product || product.error) {
+    return { title: "محصول پیدا نشد" };
   }
 
   return generateProductMetadata(product);
@@ -39,7 +37,7 @@ export default async function ProductPage({ params }) {
   }
 
   const fetchProduct = await getProductBySlug(productSlug);
-  if (!fetchProduct) {
+  if (!fetchProduct || fetchProduct.error) {
     throw new Error("محصول مورد نظر یافت نشد");
   }
 

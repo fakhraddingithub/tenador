@@ -1,8 +1,6 @@
 'use server';
 
 import { cookies } from 'next/headers';
-import { redirect } from 'next/navigation';
-import { revalidatePath } from 'next/cache';
 import connectToDB from 'base/configs/db';
 import User from 'base/models/User';
 import {
@@ -13,8 +11,6 @@ import {
 } from 'base/utils/auth';
 
 export async function loginAction({ phone, password, callbackUrl = '/' }) {
-  let redirectUrl = callbackUrl;
-
   try {
     await connectToDB();
 
@@ -54,15 +50,13 @@ export async function loginAction({ phone, password, callbackUrl = '/' }) {
       sameSite: 'strict',
       maxAge: 15 * 24 * 60 * 60,
     });
-
-    // باطل کردن کش layout از سمت سرور
-    revalidatePath('/', 'layout');
-
   } catch (error) {
     console.error('Login action error:', error);
     return { error: 'خطا در سرور' };
   }
 
-  // redirect باید خارج از try/catch باشه
-  redirect(redirectUrl);
+  // به‌جای redirect سروری (soft-nav) موفقیت را برمی‌گردانیم تا کلاینت یک
+  // hard-navigation انجام دهد؛ این‌طور جزیره‌ی UserProvider با وضعیت جدید مانت
+  // می‌شود و نام کاربر بلافاصله در نوبار ظاهر می‌شود. (صفحات عمومی static باقی می‌مانند)
+  return { success: true, redirectUrl: callbackUrl };
 }

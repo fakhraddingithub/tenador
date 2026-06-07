@@ -9,9 +9,8 @@ import Navbar from "@/components/features/navbar/Navbar";
 import WhatsAppSupport from "@/components/features/WhatsAppSupport/WhatsAppSupport";
 import Footer from "@/components/features/footer/Footer";
 
-import { cookies } from "next/headers";
-import { verifyToken } from "base/utils/auth";
-import User from "base/models/User";
+import { getCachedNavbar } from "@/lib/navbarService";
+import { UserProvider } from "@/components/features/auth/UserContext";
 
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || "https://tenador.com";
 
@@ -104,24 +103,9 @@ export const metadata = {
 };
 
 export default async function RootLayout({ children }) {
-  const cookieStore = await cookies();
-
-  const token = cookieStore.get("accessToken")?.value;
-
-  let user = false;
-
-  if (token) {
-    user = verifyToken(token);
-
-    if (user?.userId) {
-      const profile = await User.findById(user.userId).select("name -_id");
-
-      user = {
-        ...user,
-        userName: profile?.name || "",
-      };
-    }
-  }
+  // ⚠️ هیچ `cookies()`/`headers()` در این layout صدا زده نمی‌شود تا کل درخت `(Site)`
+  // بتواند static/ISR باقی بماند. وضعیت کاربر در جزیره‌ی کلاینت `UserProvider` مدیریت می‌شود.
+  const navData = await getCachedNavbar();
 
   const jsonLd = {
     "@context": "https://schema.org",
@@ -161,13 +145,15 @@ export default async function RootLayout({ children }) {
       </head>
 
       <body className="bg-[var(--color-background)] text-[var(--color-text)]">
-        <Navbar user={user} />
+        <UserProvider>
+          <Navbar navData={navData} />
 
-        <WhatsAppSupport />
+          <WhatsAppSupport />
 
-        <main className="min-h-screen">{children}</main>
+          <main className="min-h-screen">{children}</main>
 
-        <Footer />
+          <Footer />
+        </UserProvider>
 
         <ToastContainer
           position="top-left"

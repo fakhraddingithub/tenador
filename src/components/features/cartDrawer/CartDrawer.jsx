@@ -18,8 +18,10 @@ import {
 } from 'react-icons/fa';
 import { getCart, updateQuantity, removeFromCart, flowSignature } from '@/lib/cart';
 import FlowSelectionsList from '@/components/modules/orderFlow/FlowSelectionsList';
+import { useUser } from '@/components/features/auth/UserContext';
 
-export default function CartDrawer({ isOpen, onClose, user }) {
+export default function CartDrawer({ isOpen, onClose }) {
+    const { user } = useUser();
     const [items, setItems] = useState([]);
     const [totals, setTotals] = useState({ grand: 0, savings: 0 });
     const [loading, setLoading] = useState(false);

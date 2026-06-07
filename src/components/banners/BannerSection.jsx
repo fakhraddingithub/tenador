@@ -1,34 +1,21 @@
 // این فایل دیگر "use client" نیست و به صورت پیش‌فرض Server Component است
 import BannerRenderer from "./BannerRenderer";
 import StripBannerRenderer from "./StripBannerRenderer";
+import { getActiveBanners } from "@/lib/bannerService";
 
-// یک تابع کمکی برای گرفتن داده‌ها در سرور
+// مستقیماً از دیتابیس (کش‌شده) خوانده می‌شود — بدون round-trip شبکه‌ای به API خودی
 async function getBanners() {
-  try {
-    // نکته: در سرور کامپوننت‌ها باید آدرس کامل (Absolute URL) بدهید یا مستقیماً به دیتابیس وصل شوید
-    // اگر از Next.js 13/14 استفاده می‌کنید، می‌توانید مستقیما از دیتابیس هم کوئری بگیرید
-    const res = await fetch(`${process.env.NEXT_PUBLIC_SITE_URL}/api/banners`, {
-      next: { revalidate: 3600 }, // کش کردن داده‌ها برای ۱ ساعت (بسیار مهم برای سرعت)
-    });
-    
-    if (!res.ok) return null;
-    
-    const data = await res.json();
-    if (data.success) {
-      const map = { wide: null, tall1: null, tall2: null, strip: null };
-      data.banners.forEach((b) => {
-        if (b.position === "wide" && !map.wide) map.wide = b;
-        if (b.position === "tall-1" && !map.tall1) map.tall1 = b;
-        if (b.position === "tall-2" && !map.tall2) map.tall2 = b;
-        if (b.position === "strip" && !map.strip) map.strip = b;
-      });
-      return map;
-    }
-  } catch (err) {
-    console.error("Error fetching banners:", err);
-    return null;
-  }
-  return null;
+  const banners = await getActiveBanners();
+  if (!banners?.length) return null;
+
+  const map = { wide: null, tall1: null, tall2: null, strip: null };
+  banners.forEach((b) => {
+    if (b.position === "wide" && !map.wide) map.wide = b;
+    if (b.position === "tall-1" && !map.tall1) map.tall1 = b;
+    if (b.position === "tall-2" && !map.tall2) map.tall2 = b;
+    if (b.position === "strip" && !map.strip) map.strip = b;
+  });
+  return map;
 }
 
 /**

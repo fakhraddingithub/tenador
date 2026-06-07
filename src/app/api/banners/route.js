@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import connectToDB from "base/configs/db";
 import Banner from "base/models/Banner";
+import { revalidateContent } from "@/lib/revalidate";
 
 export async function GET(req) {
   try {
@@ -37,6 +38,8 @@ export async function POST(req) {
       isActive: isActive !== undefined ? isActive : true,
       order: order || 0,
     });
+
+    revalidateContent(["banners"]);
 
     return NextResponse.json({ success: true, banner }, { status: 201 });
   } catch (error) {

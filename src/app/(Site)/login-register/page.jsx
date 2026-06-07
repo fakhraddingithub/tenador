@@ -22,14 +22,16 @@ function AuthContent() {
     setLoading(true);
     try {
       if (mode === 'login') {
-        // Server Action — کوکی + revalidate + redirect همه سمت سرور
+        // Server Action — کوکی سمت سرور ست می‌شود، سپس کلاینت hard-navigation می‌کند
         const result = await loginAction({ ...data, callbackUrl });
 
-        // اگر result برگشت، یعنی خطا داشتیم (redirect نشد)
         if (result?.error) {
           showToast.error(result.error);
+        } else if (result?.success) {
+          // hard navigation: جزیره‌ی UserProvider با وضعیت جدید مانت می‌شود
+          window.location.href = result.redirectUrl || '/';
+          return;
         }
-        // اگر موفق باشه، redirect در Server Action انجام میشه و به اینجا نمیرسیم
       } else {
         const res = await fetch('/api/auth/register', {
           method: 'POST',

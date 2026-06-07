@@ -1,31 +1,8 @@
 "use client";
 
-import { useEffect, useState } from "react";
 import { FaMars, FaVenus, FaRunning, FaFlag } from "react-icons/fa";
 
-export default function ShowcaseAthletes() {
-  const [data, setData] = useState({ men: [], women: [] });
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    const fetchAthletes = async () => {
-      try {
-        const res = await fetch("/api/athletes/showcase");
-
-        if (res.ok) {
-          const result = await res.json();
-          setData(result);
-        }
-      } catch (err) {
-        console.error(err);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchAthletes();
-  }, []);
-
+export default function ShowcaseAthletes({ data = { men: [], women: [] } }) {
   const AthleteCard = ({ athlete, index }) => {
     const sponsors = athlete.sponsors || [];
 
@@ -99,29 +76,6 @@ export default function ShowcaseAthletes() {
       </div>
     );
   };
-
-  if (loading) {
-    return (
-      <section className="bg-[#1a1c22] py-16">
-        <div className="mx-auto max-w-7xl px-4">
-          <div className="mb-10 h-8 w-52 animate-pulse rounded-[14px] bg-white/10" />
-
-          <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-            {[1, 2].map((col) => (
-              <div key={col} className="space-y-3">
-                {[1, 2, 3, 4].map((item) => (
-                  <div
-                    key={item}
-                    className="h-20 animate-pulse rounded-[14px] bg-white/5"
-                  />
-                ))}
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-    );
-  }
 
   return (
     <section className="relative overflow-hidden bg-[#1a1c22] py-16 lg:py-20">

@@ -1,6 +1,7 @@
 import connectToDB from "base/configs/db";
 import Category from "base/models/Category";
 import { NextResponse } from "next/server";
+import { revalidateContent } from "@/lib/revalidate";
 
 // ---------------------------------------------------------
 // GET: دریافت جزئیات یک کتگوری
@@ -119,6 +120,8 @@ export async function PUT(req, { params }) {
     // ذخیره تغییرات (Trigger pre-save hooks)
     await category.save();
 
+    revalidateContent(["navbar", "categories"]);
+
     return NextResponse.json({
       message: "دسته‌بندی با موفقیت به‌روزرسانی شد",
       category,
@@ -144,6 +147,8 @@ export async function DELETE(req, { params }) {
     if (!category) {
       return NextResponse.json({ error: "دسته‌بندی پیدا نشد" }, { status: 404 });
     }
+
+    revalidateContent(["navbar", "categories"]);
 
     return NextResponse.json({ message: "دسته‌بندی با موفقیت حذف شد" });
   } catch (error) {

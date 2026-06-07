@@ -16,6 +16,7 @@ import Input from "@/components/ui/Input";
 import IconButton from "@/components/ui/IconButton";
 import Button from "@/components/ui/Button";
 import CartDrawer from "@/components/features/cartDrawer/CartDrawer";
+import { useUser } from "@/components/features/auth/UserContext";
 
 const NAVIGATION_ITEMS = [
   { id: 1, label: "جمعه بازار", href: "/second-hand" },
@@ -108,8 +109,10 @@ function CategoryMenu({ navData, onClose }) {
           <ul className="space-y-1">
             {navData.map((sport) => (
               <li key={sport._id}>
-                <button
-                  onClick={() => (window.location.href = `/${sport.slug}`)}
+                <Link
+                  href={`/${sport.slug}`}
+                  prefetch
+                  onClick={onClose}
                   onMouseEnter={() => {
                     setActiveSportId(sport._id);
                     setActiveCategoryId(sport.categories?.[0]?._id);
@@ -129,7 +132,7 @@ function CategoryMenu({ navData, onClose }) {
                       activeSportId === sport._id ? "opacity-100" : "opacity-20"
                     }
                   />
-                </button>
+                </Link>
               </li>
             ))}
           </ul>
@@ -143,11 +146,11 @@ function CategoryMenu({ navData, onClose }) {
             <ul className="space-y-1">
               {activeSport.categories.map((cat) => (
                 <li key={cat._id}>
-                  <button
+                  <Link
+                    href={`/${activeSport.slug}/${cat.slug}`}
+                    prefetch
+                    onClick={onClose}
                     onMouseEnter={() => setActiveCategoryId(cat._id)}
-                    onClick={() =>
-                      (window.location.href = `/${activeSport.slug}/${cat.slug}`)
-                    }
                     className={listButtonStyle(activeCategoryId === cat._id)}
                   >
                     {cat.icon && (
@@ -167,7 +170,7 @@ function CategoryMenu({ navData, onClose }) {
                           : "opacity-20"
                       }
                     />
-                  </button>
+                  </Link>
                 </li>
               ))}
             </ul>
@@ -186,8 +189,10 @@ function CategoryMenu({ navData, onClose }) {
             <ul className="space-y-1">
               {activeCategory.brands.map((brand) => (
                 <li key={brand._id}>
-                  <a
+                  <Link
                     href={`/${activeSport.slug}/${activeCategory.slug}/${brand.slug}`}
+                    prefetch
+                    onClick={onClose}
                     className={listButtonStyle(false)}
                   >
                     {brand.icon && (
@@ -199,7 +204,7 @@ function CategoryMenu({ navData, onClose }) {
                     <span className="flex-grow text-right font-medium">
                       {brand.title}
                     </span>
-                  </a>
+                  </Link>
                 </li>
               ))}
             </ul>
@@ -215,14 +220,17 @@ function CategoryMenu({ navData, onClose }) {
 }
 
 // ---- Main Navbar ----
-export default function Navbar({ user }) {
+export default function Navbar({ navData: initialNavData = [] }) {
   const pathname = usePathname();
   const isHomePage = pathname === "/";
+
+  // وضعیت کاربر از جزیره‌ی کلاینت (به‌جای prop سروری) خوانده می‌شود
+  const { user } = useUser();
 
   const [cartCount, setCartCount] = useState(0);
   const [openCart, setOpenCart] = useState(false);
   const [isCategoryOpen, setIsCategoryOpen] = useState(false);
-  const [navData, setNavData] = useState([]);
+  const navData = Array.isArray(initialNavData) ? initialNavData : [];
 
   const [searchQuery, setSearchQuery] = useState("");
   const [searchResults, setSearchResults] = useState([]);
@@ -233,7 +241,8 @@ export default function Navbar({ user }) {
   const searchRef = useRef(null);
   const debounceRef = useRef(null);
 
-  const firstName = user?.userName?.split(" ")[0] || "";
+  const firstName =
+    (user?.name || user?.userName)?.split(" ")[0] || "";
 
  // تابع کمکی برای خواندن تعداد آیتم‌ها از LocalStorage
 const updateCartCount = () => {
@@ -262,13 +271,6 @@ useEffect(() => {
 useEffect(() => {
   updateCartCount();
 }, [openCart]);
-
-  useEffect(() => {
-    fetch("/api/navbar")
-      .then((r) => r.json())
-      .then((data) => setNavData(Array.isArray(data) ? data : []))
-      .catch(console.error);
-  }, []);
 
   useEffect(() => {
     const handler = (e) => {
@@ -355,13 +357,14 @@ useEffect(() => {
               </div>
 
               {NAVIGATION_ITEMS.map((item) => (
-                <a
+                <Link
                   key={item.id}
                   href={item.href}
+                  prefetch
                   className="text-white hover:text-[#aa4725] transition-colors font-medium text-sm whitespace-nowrap"
                 >
                   {item.label}
-                </a>
+                </Link>
               ))}
             </div>
 
@@ -661,7 +664,7 @@ useEffect(() => {
       </nav>
 
       {!isHomePage && <div className="h-[75px]" />}
-      <CartDrawer isOpen={openCart} onClose={() => setOpenCart(false)} user={user} />
+      <CartDrawer isOpen={openCart} onClose={() => setOpenCart(false)} />
     </>
   );
 }

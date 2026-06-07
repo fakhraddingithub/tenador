@@ -1,6 +1,7 @@
 import connectToDB from "base/configs/db";
 import Brand from "base/models/Brand";
 import { NextResponse } from "next/server";
+import { revalidateContent } from "@/lib/revalidate";
 
 export async function GET(req, { params }) {
   try {
@@ -73,6 +74,8 @@ export async function PUT(req, { params }) {
 
     await brand.save();
 
+    revalidateContent(["navbar", "brands"]);
+
     return NextResponse.json({
       message: "برند با موفقیت به‌روزرسانی شد",
       brand,
@@ -97,6 +100,8 @@ export async function DELETE(req, { params }) {
         { status: 404 }
       );
     }
+
+    revalidateContent(["navbar", "brands"]);
 
     return NextResponse.json({
       message: "برند با موفقیت حذف شد",

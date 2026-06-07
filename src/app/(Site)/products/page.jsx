@@ -2,6 +2,8 @@ import ProductListClient from "@/components/templates/products/ProductListClient
 import { getProducts } from "base/services/product.service";
 import { getCachedRate } from "@/lib/Exchangerate";
 
+export const revalidate = 60;
+
 export default async function ProductsPage() {
   
   const products = await getProducts();

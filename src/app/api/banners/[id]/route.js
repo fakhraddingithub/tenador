@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import connectToDB from "base/configs/db";
 import Banner from "base/models/Banner";
+import { revalidateContent } from "@/lib/revalidate";
 
 // GET یک بنر
 export async function GET(req, { params }) {
@@ -42,6 +43,8 @@ export async function PUT(req, { params }) {
       );
     }
 
+    revalidateContent(["banners"]);
+
     return NextResponse.json({ success: true, banner });
   } catch (error) {
     console.error("UPDATE BANNER ERROR:", error);
@@ -65,6 +68,8 @@ export async function DELETE(req, { params }) {
         { status: 404 }
       );
     }
+
+    revalidateContent(["banners"]);
 
     return NextResponse.json({ success: true, message: "بنر حذف شد" });
   } catch (error) {

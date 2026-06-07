@@ -14,21 +14,23 @@ import connectToDB from "base/configs/db";
 import SlideModel from "base/models/Slide";
 import SportModel from "base/models/Sport";
 import { getCachedRate } from "@/lib/Exchangerate";
+import { getShowcaseAthletes } from "@/lib/athleteService";
+
+// ISR: صفحه اصلی هر ۶۰ ثانیه در پس‌زمینه بازتولید می‌شود
+export const revalidate = 60;
 
 export default async function Home() {
   // ۱. اتصال به دیتابیس
   await connectToDB();
 
-  // ۲. دریافت موازی داده‌ها برای افزایش سرعت (Parallel Fetching)
-  const [products, slides, sports] = await Promise.all([
+  // ۲. دریافت موازی همه داده‌ها برای افزایش سرعت (Parallel Fetching)
+  const [products, slides, sports, athletes, rate] = await Promise.all([
     getProducts(),
     SlideModel.find({ isActive: true }).sort({ priority: 1 }).lean(),
-    SportModel.find({})
-    .sort({ order: 1 })
-    .lean(),
+    SportModel.find({}).sort({ order: 1 }).lean(),
+    getShowcaseAthletes(),
+    getCachedRate(),
   ]);
-
-  const rate = await getCachedRate();
 
   return (
     <>
@@ -40,7 +42,7 @@ export default async function Home() {
       <AmazingOffers products={products} rate={rate} />
       <RolandGarros />
       <BrandsTicker />
-      <ShowcaseAthletes />
+      <ShowcaseAthletes data={athletes} />
       {/* <Articles /> */}
     </>
   );

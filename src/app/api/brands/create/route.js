@@ -1,6 +1,7 @@
 import connectToDB from "base/configs/db";
 import Brand from "base/models/Brand";
 import { registerSlug } from "base/actions/registerSlug";
+import { revalidateContent } from "@/lib/revalidate";
 
 export async function POST(req) {
   try {
@@ -89,6 +90,8 @@ export async function POST(req) {
       label: created.title,
       parentSlug: null,
     });
+
+    revalidateContent(["navbar", "brands"]);
 
     return Response.json(
       {

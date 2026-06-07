@@ -1,6 +1,7 @@
 import connectToDB from "base/configs/db";
 import Category from "base/models/Category";
 import { registerSlug } from "base/actions/registerSlug";
+import { revalidateContent } from "@/lib/revalidate";
 
 export async function POST(req) {
   try {
@@ -108,6 +109,8 @@ export async function POST(req) {
       label: created.title,
       parentSlug: parent || null, 
     });
+
+    revalidateContent(["navbar", "categories"]);
 
     return Response.json(
       { message: "کتگوری با موفقیت ایجاد شد", category: created },

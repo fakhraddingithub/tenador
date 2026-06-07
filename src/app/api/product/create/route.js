@@ -1,9 +1,10 @@
 import connectToDB from "base/configs/db";
 import Product from "base/models/Product";
 import Category from "base/models/Category";
-import Variant from "base/models/Variant"; 
+import Variant from "base/models/Variant";
 import { createSlug } from "base/utils/slugify";
 import { v2 as cloudinary } from "cloudinary";
+import { revalidateContent } from "@/lib/revalidate";
 
 /* ----------------------------------
    Cloudinary config
@@ -258,6 +259,9 @@ export async function POST(req) {
         await product.save();
       }
     }
+
+    // باطل‌سازی کش محتوا تا محصول جدید بلافاصله در صفحات نمایش داده شود
+    revalidateContent();
 
     return Response.json(
       { message: "Product and variants created successfully", product },

@@ -6,6 +6,7 @@ import Serie from "base/models/Serie";
 import Brand from "base/models/Brand";
 // ۱. ایمپورت کردن اکشن رجیستر اسلاگ
 import { registerSlug } from "base/actions/registerSlug";
+import { revalidateContent } from "@/lib/revalidate";
 
 export async function POST(req) {
   try {
@@ -202,6 +203,8 @@ export async function POST(req) {
      |--------------------------------------------------------------------------
      |
      */
+
+    revalidateContent(["navbar", "series", "brands"]);
 
     return NextResponse.json(
       {

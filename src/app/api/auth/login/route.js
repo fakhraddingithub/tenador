@@ -1,5 +1,4 @@
 import { NextResponse } from 'next/server';
-import { revalidatePath } from 'next/cache';
 import connectToDB from 'base/configs/db';
 import User from 'base/models/User';
 import { passwordValidator, tokenGenrator, generateRefreshToken, validatePhone } from 'base/utils/auth';
@@ -30,9 +29,6 @@ export async function POST(request) {
 
     const accessToken = tokenGenrator({ userId: user._id, phone: user.phone });
     const refreshToken = generateRefreshToken({ userId: user._id, phone: user.phone });
-
-    // ← کش تمام layout‌ها باطل میشه تا Navbar اسم کاربر رو نشون بده
-    revalidatePath('/', 'layout');
 
     const response = NextResponse.json(
       { message: 'Login successful', user: { id: user._id, phone: user.phone, name: user.name } },

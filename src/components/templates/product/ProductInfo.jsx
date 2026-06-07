@@ -107,8 +107,9 @@ const ProductInfo = ({ product, selectedVariant, onVariantChange }) => {
   // ── قیمت نهایی با توجه به واریانت و تخفیف ──────────────────────────────────
   const { basePriceToman, finalPriceToman, discountPercent, hasDiscount } = useMemo(() => {
     if (!priceApiData) {
-      // قبل از load: محاسبه ساده بدون تخفیف
-      const raw = Math.floor(Math.round(basePrice * (priceApiData?.rate || 0)) / 1000) * 1000;
+      // قبل از load: قیمت پایه از سرور همین حالا تومان است؛ بدون تخفیف نمایش بده
+      // (تخفیف/حراج پس از پاسخ price API روی همین مقدار اعمال می‌شود)
+      const raw = Math.floor(basePrice / 1000) * 1000;
       return { basePriceToman: raw, finalPriceToman: raw, discountPercent: 0, hasDiscount: false };
     }
 

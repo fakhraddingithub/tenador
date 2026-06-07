@@ -9,6 +9,13 @@ import UsedProductTemplate from "@/components/templates/secondHand/UsedProductTe
 import { notFound } from "next/navigation";
 import { getCachedRate, eurToToman } from "@/lib/Exchangerate";
 
+export const revalidate = 300;
+
+// on-demand ISR: اولین بازدید رندر/کش، بازدیدهای بعدی از کش
+export async function generateStaticParams() {
+  return [];
+}
+
 // اسلاگ‌های فارسی در URL به صورت percent-encoded می‌آیند — قبل از کوئری دیکد می‌کنیم
 function decodeSlug(slug) {
   try {

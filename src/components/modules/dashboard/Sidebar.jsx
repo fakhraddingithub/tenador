@@ -25,6 +25,8 @@ export default function Sidebar({ isOpen, setIsOpen }) {
   const handleLogout = async () => {
     try {
       await fetch('/api/auth/logout', { method: 'POST' })
+      // پاک‌کردن کش وضعیت کاربر تا پس از ریلود، نام کاربر قدیمی لحظه‌ای نمایش داده نشود
+      try { localStorage.removeItem('authUser') } catch {}
       window.location.href = '/'
     } catch {
       console.error('خطا در خروج')

@@ -1,3 +1,4 @@
+import { unstable_cache } from "next/cache";
 import connectToDB from "base/configs/db";
 import Product from "base/models/Product";
 import Sport from "base/models/Sport";
@@ -6,7 +7,7 @@ import Sport from "base/models/Sport";
  * دریافت سری‌های مرتبط با یک ورزش
  * فقط سری‌هایی که حداقل یک محصول دارند
  */
-export async function getSeriesBySport(sportSlug) {
+async function _getSeriesBySport(sportSlug) {
   await connectToDB();
 
   const sport = await Sport.findOne({
@@ -211,3 +212,9 @@ export async function getSeriesBySport(sportSlug) {
       : null,
   }));
 }
+
+export const getSeriesBySport = unstable_cache(
+  _getSeriesBySport,
+  ["series-by-sport"],
+  { revalidate: 300, tags: ["products", "series", "sports"] }
+);
