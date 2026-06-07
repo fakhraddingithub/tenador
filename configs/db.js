@@ -1,4 +1,6 @@
 import mongoose from "mongoose";
+// ثبت همه‌ی اسکیماها به صورت side-effect تا populate دچار MissingSchemaError نشود
+import "base/models/registerModels";
 
 const url = process.env.MONGODB_URI_TENADOR;
 
