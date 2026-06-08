@@ -8,6 +8,7 @@
 
 import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
+import { revalidatePath } from "next/cache";
 import connectToDB from "base/configs/db";
 import UsedProduct from "base/models/UsedProduct";
 import Product from "base/models/Product";
@@ -67,6 +68,7 @@ export async function PUT(req, { params }) {
       description,
       images,
       status,
+      tested,
     } = body;
 
     const usedProduct = await UsedProduct.findById(id);
@@ -99,6 +101,7 @@ export async function PUT(req, { params }) {
     if (price !== undefined)       usedProduct.price = price;
     if (description !== undefined) usedProduct.description = description;
     if (images)                    usedProduct.images = images;
+    if (tested !== undefined)      usedProduct.tested = !!tested;
 
     if (status) {
       if (status === "available" && usedProduct.status === "reserved") {
@@ -119,6 +122,11 @@ export async function PUT(req, { params }) {
         path: "baseVariant",
         select: "size color sku price",
       });
+
+    try {
+      revalidatePath("/second-hand");
+      if (usedProduct.slug) revalidatePath(`/second-hand/${usedProduct.slug}`);
+    } catch {}
 
     return NextResponse.json({ item: updated });
   } catch (err) {

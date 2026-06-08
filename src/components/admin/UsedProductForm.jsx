@@ -3,6 +3,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { FiPlus, FiX, FiSave, FiUploadCloud, FiLoader, FiCheck } from 'react-icons/fi';
+import { MdVerified } from 'react-icons/md';
 import { showToast } from '@/lib/toast';
 import { showError } from '@/lib/swal';
 import StarRating from './StarRating';
@@ -58,6 +59,7 @@ export default function UsedProductForm({ initialData }) {
   const [description, setDescription] = useState(initialData?.description || '');
   const [images, setImages] = useState(initialData?.images || []);
   const [status, setStatus] = useState(initialData?.status || 'available');
+  const [tested, setTested] = useState(initialData?.tested || false);
 
   const overallScore = useMemo(() => calcScore(healthScores, customFields), [healthScores, customFields]);
 
@@ -184,6 +186,7 @@ export default function UsedProductForm({ initialData }) {
       description,
       images,
       status,
+      tested,
     };
 
     const url = isEdit ? `/api/admin/used-products/${initialData._id}` : '/api/admin/used-products';
@@ -464,6 +467,41 @@ export default function UsedProductForm({ initialData }) {
           placeholder="وضعیت کلی، نقص‌ها یا ویژگی‌های خاص را شرح دهید..."
           className="w-full bg-neutral-50 border border-neutral-200 rounded-[var(--radius)] px-4 py-3 text-sm outline-none focus:ring-2 ring-[var(--color-primary)]/20 resize-none"
         />
+      </section>
+
+      {/* ─── Tested ─── */}
+      <section className="space-y-2">
+        <label className="text-sm font-bold text-neutral-600">تست‌شده</label>
+        <button
+          type="button"
+          onClick={() => setTested(v => !v)}
+          className={`flex items-center justify-between w-full px-4 py-3 rounded-[var(--radius)] border transition-all ${
+            tested
+              ? 'border-[#1d9bf0] bg-[#1d9bf0]/5'
+              : 'border-neutral-200 bg-neutral-50 hover:border-neutral-300'
+          }`}
+        >
+          <div className="flex items-center gap-2.5">
+            <MdVerified size={22} className={tested ? 'text-[#1d9bf0]' : 'text-neutral-300'} />
+            <span className={`text-sm font-bold ${tested ? 'text-[#1d9bf0]' : 'text-neutral-500'}`}>
+              {tested ? 'این محصول تست شده است' : 'محصول تست نشده'}
+            </span>
+          </div>
+          <span
+            className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+              tested ? 'bg-[#1d9bf0]' : 'bg-neutral-300'
+            }`}
+          >
+            <span
+              className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                tested ? 'translate-x-1' : 'translate-x-6'
+              }`}
+            />
+          </span>
+        </button>
+        <p className="text-xs text-neutral-400">
+          با فعال‌سازی، نشان تأیید (تیک آبی) روی کارت و گالری محصول نمایش داده می‌شود.
+        </p>
       </section>
 
       {/* ─── Images ─── */}

@@ -3,8 +3,9 @@
 import { useState, useEffect, useRef } from "react";
 import Image from "next/image";
 import { motion, AnimatePresence } from "framer-motion";
+import VerifiedBadge from "@/components/ui/VerifiedBadge";
 
-const ProductGallery = ({ images = [], logo }) => {
+const ProductGallery = ({ images = [], logo, verified = false }) => {
   const [activeIndex, setActiveIndex] = useState(0);
 
   const prevImagesRef = useRef(images);
@@ -23,6 +24,13 @@ const ProductGallery = ({ images = [], logo }) => {
       {/* Main Image */}
       <div className="relative group w-full">
         <div className="relative aspect-square w-full overflow-hidden rounded-[6px] bg-[#fdfdfd]">
+
+          {/* نشان تست‌شده - گوشه بالا راست تصویر گالری */}
+          {verified && (
+            <div className="absolute top-3 right-3 z-30">
+              <VerifiedBadge size={28} />
+            </div>
+          )}
 
           {/* Logo */}
           {logo && (

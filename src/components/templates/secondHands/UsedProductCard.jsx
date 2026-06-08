@@ -5,6 +5,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { FaEye, FaRegHeart, FaHeart, FaArrowLeft } from "react-icons/fa";
 import { FiStar } from "react-icons/fi";
+import VerifiedBadge from "@/components/ui/VerifiedBadge";
 
 export default function UsedProductCard({
   product,
@@ -12,7 +13,7 @@ export default function UsedProductCard({
   onToggleWishlist,
   isWishlisted = false,
 }) {
-  const { name, price, overallScore, images, baseProduct } = product;
+  const { name, price, overallScore, images, baseProduct, tested } = product;
   const mainImage = images?.[0] || baseProduct?.mainImage;
   const [activeImage] = useState(mainImage);
 
@@ -35,6 +36,13 @@ export default function UsedProductCard({
         href={`/second-hand/${product.slug || product._id}`}
         className="absolute inset-0 z-0"
       />
+
+      {/* نشان تست‌شده - گوشه بالا راست تصویر */}
+      {tested && (
+        <div className="absolute top-3 right-3 z-20">
+          <VerifiedBadge size={24} />
+        </div>
+      )}
 
       {/* لوگو برند - هماهنگ با سایز کارت اصلی */}
       {baseProduct?.brand?.icon && (

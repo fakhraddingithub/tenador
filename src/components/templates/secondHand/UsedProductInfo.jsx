@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useState, useEffect, useRef } from "react";
 import { FiShield, FiTag, FiX } from "react-icons/fi";
+import VerifiedBadge from "@/components/ui/VerifiedBadge";
 import ProductHeader from "@/components/templates/product/ProductHeader";
 import AddToCartButton from "@/components/templates/product/AddToCartButton";
 import { addUsedToCart, removeUsedFromCart, isUsedInCart } from "@/lib/cart";
@@ -16,7 +17,7 @@ const SCORE_STYLE = (s) => {
 };
 
 const UsedProductInfo = ({ product }) => {
-  const { _id, name, price, description, overallScore, status, baseProduct, baseVariant } = product;
+  const { _id, name, price, description, overallScore, status, baseProduct, baseVariant, tested } = product;
   const scoreStyle = SCORE_STYLE(overallScore);
 
   const [inCart, setInCart]           = useState(false);
@@ -169,6 +170,19 @@ const UsedProductInfo = ({ product }) => {
       {description && (
         <div className="bg-gray-50/80 border border-gray-100 p-4 rounded-lg text-sm text-gray-600 leading-7 whitespace-pre-line">
           {description}
+        </div>
+      )}
+
+      {/* برچسب تست‌شده — هم‌سبک با نشان تأیید روی تصاویر */}
+      {tested && (
+        <div className="flex items-center gap-2.5 px-4 py-3 rounded-xl border border-[#1d9bf0]/20 bg-[#1d9bf0]/5">
+          <VerifiedBadge size={22} />
+          <div>
+            <p className="text-sm font-black text-[#1d9bf0]">تست‌شده</p>
+            <p className="text-xs text-gray-500 font-semibold">
+              این محصول توسط کارشناسان ما تست و تأیید شده است
+            </p>
+          </div>
         </div>
       )}
 

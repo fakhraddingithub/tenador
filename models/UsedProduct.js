@@ -88,6 +88,12 @@ const UsedProductSchema = new mongoose.Schema(
       default: "",
     },
 
+    // محصول تست‌شده — نشان تأیید (تیک آبی) روی کارت و گالری نمایش داده می‌شود
+    tested: {
+      type: Boolean,
+      default: false,
+    },
+
     images: {
       type: [String],
       default: [],

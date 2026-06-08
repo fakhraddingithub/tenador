@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { revalidatePath } from "next/cache";
 import connectToDB from "base/configs/db";
 import UsedProduct from "base/models/UsedProduct";
 import Product from "base/models/Product";
@@ -60,6 +61,7 @@ export async function POST(req) {
       description,
       images,
       status,
+      tested = false,
     } = body;
 
     if (!name) {
@@ -113,7 +115,10 @@ export async function POST(req) {
       description,
       images: images || [],
       status: status || "available",
+      tested: !!tested,
     });
+
+    try { revalidatePath("/second-hand"); } catch {}
 
     return NextResponse.json({ item }, { status: 201 });
   } catch (err) {

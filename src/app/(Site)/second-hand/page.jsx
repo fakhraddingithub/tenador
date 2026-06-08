@@ -4,8 +4,11 @@ import Brand from "base/models/Brand";
 import Category from "base/models/Category";
 import Product from "base/models/Product";
 import HealthCard from "base/models/HealthCard";
+import SiteSetting from "base/models/SiteSetting";
 import UsedProductsPageClient from "@/components/templates/secondHands/UsedProductsPageClient";
 import { getCachedRate, eurToToman } from "@/lib/Exchangerate";
+
+export const revalidate = 300;
 
 export const metadata = {
   title: "بازار دست‌دوم | فروش تجهیزات ورزشی کارکرده",
@@ -28,6 +31,10 @@ export default async function UsedProductsPage() {
     .lean();
 
   const rate = await getCachedRate();
+  const headerSetting = await SiteSetting.findOne({
+    key: "secondhand_header_image",
+  }).lean();
+  const headerImage = headerSetting?.value || null;
   const allHealthCards = await HealthCard.find().lean();
   // تبدیل آرایه کارت‌ها به یک آبجکت واحد برای دسترسی سریع
   // خروجی چیزی شبیه این می‌شود: { engine: "وضعیت موتور", body: "سلامت بدنه", ... }
@@ -45,6 +52,7 @@ export default async function UsedProductsPage() {
       return {
         _id: p._id.toString(),
         slug: p.slug || null,
+        tested: !!p.tested,
         overallScore: p.overallScore,
         healthScores: currentHealthScores.map((s) => ({
           key: s.key,
@@ -86,5 +94,5 @@ export default async function UsedProductsPage() {
         },
       };
     });
-  return <UsedProductsPageClient products={products} />;
+  return <UsedProductsPageClient products={products} headerImage={headerImage} />;
 }

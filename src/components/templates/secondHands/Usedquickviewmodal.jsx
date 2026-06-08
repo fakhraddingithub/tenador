@@ -10,6 +10,7 @@ import {
   FaArrowLeft,
 } from "react-icons/fa";
 import { FiShield, FiTag } from "react-icons/fi";
+import VerifiedBadge from "@/components/ui/VerifiedBadge";
 
 /* ─────────────────────────────────────────
    Helpers
@@ -63,7 +64,7 @@ export default function UsedQuickViewModal({
 
   if (!isOpen || !product) return null;
 
-  const { name, price, overallScore, description, baseProduct, healthScores, customFields } = product;
+  const { name, price, overallScore, description, baseProduct, healthScores, customFields, tested } = product;
   const score = SCORE_STYLE(overallScore);
   const allScores = [...(healthScores || []), ...(customFields || [])];
 
@@ -143,10 +144,13 @@ export default function UsedQuickViewModal({
               </div>
             )}
 
-            {/* badge دست‌دوم */}
-            <span className="absolute top-3 right-3 bg-[#aa4725] text-white text-[10px] font-black px-2.5 py-1 rounded-full flex items-center gap-1">
-              <FiTag size={9} /> دست‌دوم
-            </span>
+            {/* badge دست‌دوم + نشان تست‌شده */}
+            <div className="absolute top-3 right-3 flex items-center gap-1.5">
+              {tested && <VerifiedBadge size={22} />}
+              <span className="bg-[#aa4725] text-white text-[10px] font-black px-2.5 py-1 rounded-full flex items-center gap-1">
+                <FiTag size={9} /> دست‌دوم
+              </span>
+            </div>
           </div>
 
           {/* Thumbnails */}

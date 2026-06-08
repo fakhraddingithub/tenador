@@ -96,6 +96,7 @@ export default async function UsedProductPage({ params }) {
     description:  raw.description || "",
     images:       raw.images || [],
     status:       raw.status,
+    tested:       !!raw.tested,
     overallScore: raw.overallScore,
     healthScores: (raw.healthScores || []).map((s) => ({
       key:    s.key,

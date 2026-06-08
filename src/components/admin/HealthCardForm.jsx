@@ -2,9 +2,52 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { FiPlus, FiX, FiSave } from 'react-icons/fi';
+import { FiPlus, FiX, FiSave, FiMenu } from 'react-icons/fi';
+import {
+  DndContext, closestCenter, PointerSensor, useSensor, useSensors,
+} from '@dnd-kit/core';
+import {
+  SortableContext, verticalListSortingStrategy, arrayMove, useSortable,
+} from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
 import { showToast } from '@/lib/toast';
 import { showError } from '@/lib/swal';
+
+/* ─── ردیف فیلد قابل جابه‌جایی با درگ ─── */
+function SortableFieldRow({ field, onRemove }) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } =
+    useSortable({ id: field.key });
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+  };
+
+  return (
+    <div
+      ref={setNodeRef}
+      style={style}
+      className={`flex items-center gap-3 bg-white border border-neutral-200 rounded-[var(--radius)] px-4 py-3 ${
+        isDragging ? 'opacity-50 shadow-lg z-10 relative' : ''
+      }`}
+    >
+      <button
+        type="button"
+        {...attributes}
+        {...listeners}
+        className="text-neutral-300 hover:text-[var(--color-primary)] cursor-grab active:cursor-grabbing transition-colors shrink-0"
+        title="جابه‌جایی"
+      >
+        <FiMenu size={16} />
+      </button>
+      <span className="font-mono text-xs bg-neutral-100 px-2 py-1 rounded text-neutral-500">{field.key}</span>
+      <span className="flex-grow text-sm font-bold text-neutral-700">{field.label}</span>
+      <button type="button" onClick={() => onRemove(field.key)} className="text-red-400 hover:text-red-600 transition-colors shrink-0">
+        <FiX size={16} />
+      </button>
+    </div>
+  );
+}
 
 // props: initialData (for edit), onSubmit(payload) → Promise<{ok, error}>
 export default function HealthCardForm({ initialData, categoryLocked }) {
@@ -37,6 +80,19 @@ export default function HealthCardForm({ initialData, categoryLocked }) {
 
   const removeField = (key) => {
     setFields(prev => prev.filter(f => f.key !== key));
+  };
+
+  const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }));
+
+  const handleDragEnd = (event) => {
+    const { active, over } = event;
+    if (!over || active.id === over.id) return;
+    setFields(prev => {
+      const oldIndex = prev.findIndex(f => f.key === active.id);
+      const newIndex = prev.findIndex(f => f.key === over.id);
+      if (oldIndex === -1 || newIndex === -1) return prev;
+      return arrayMove(prev, oldIndex, newIndex);
+    });
   };
 
   const handleSubmit = async (e) => {
@@ -107,15 +163,17 @@ export default function HealthCardForm({ initialData, categoryLocked }) {
           </div>
         )}
 
-        {fields.map((field) => (
-          <div key={field.key} className="flex items-center gap-3 bg-white border border-neutral-200 rounded-[var(--radius)] px-4 py-3">
-            <span className="font-mono text-xs bg-neutral-100 px-2 py-1 rounded text-neutral-500">{field.key}</span>
-            <span className="flex-grow text-sm font-bold text-neutral-700">{field.label}</span>
-            <button type="button" onClick={() => removeField(field.key)} className="text-red-400 hover:text-red-600 transition-colors">
-              <FiX size={16} />
-            </button>
-          </div>
-        ))}
+        {fields.length > 0 && (
+          <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+            <SortableContext items={fields.map(f => f.key)} strategy={verticalListSortingStrategy}>
+              <div className="space-y-3">
+                {fields.map((field) => (
+                  <SortableFieldRow key={field.key} field={field} onRemove={removeField} />
+                ))}
+              </div>
+            </SortableContext>
+          </DndContext>
+        )}
 
         {/* Add new field */}
         <div className="flex gap-2 pt-2">

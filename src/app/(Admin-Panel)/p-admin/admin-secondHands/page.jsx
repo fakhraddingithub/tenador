@@ -8,6 +8,7 @@ import {
   FiChevronLeft, FiCheck, FiTag,
 } from 'react-icons/fi';
 import { FaBoxOpen } from 'react-icons/fa';
+import SecondHandHeaderUploader from '@/components/admin/SecondHandHeaderUploader';
 
 /* ─── کارت آمار ─── */
 function StatCard({ label, value, color = 'text-neutral-800' }) {
@@ -232,6 +233,9 @@ export default function UsedProductsHubPage() {
             ]}
           />
         </div>
+
+        {/* ─── تصویر هدر صفحه دست‌دوم ─── */}
+        <SecondHandHeaderUploader />
 
         {/* ─── آخرین محصولات ─── */}
         <div className="bg-white border border-neutral-100 rounded-[var(--radius)] shadow-sm overflow-hidden">

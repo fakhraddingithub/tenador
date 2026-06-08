@@ -39,6 +39,7 @@ import "base/models/Payment";
 import "base/models/PriceCache";
 import "base/models/Product";
 import "base/models/Serie";
+import "base/models/SiteSetting";
 import "base/models/Slide";
 import "base/models/SlugRegistery";
 import "base/models/Sport";

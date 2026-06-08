@@ -14,7 +14,7 @@ const DEFAULT_FILTERS = {
   onlyInStock: false,
 };
 
-export default function UsedProductsPageClient({ products: initialProducts }) {
+export default function UsedProductsPageClient({ products: initialProducts, headerImage }) {
   const [searchTerm, setSearchTerm] = useState('');
   const [filters, setFilters]       = useState(DEFAULT_FILTERS);
 
@@ -83,7 +83,7 @@ export default function UsedProductsPageClient({ products: initialProducts }) {
       {/* ─── Hero ─── */}
       <div className="relative h-[120px] md:h-[220px] w-full overflow-hidden">
         <img
-          src="/images/used-products-hero.jpg"
+          src={headerImage || "/images/used-products-hero.jpg"}
           alt="بازار دست‌دوم"
           className="w-full h-full object-cover scale-105"
           onError={e => { e.target.style.display = 'none'; }}

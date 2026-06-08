@@ -18,6 +18,7 @@ const UsedProductClientSection = ({ product }) => {
           <ProductGallery
             images={galleryImages}
             logo={product?.baseProduct?.brand?.icon || null}
+            verified={!!product?.tested}
           />
         </div>
       </div>
