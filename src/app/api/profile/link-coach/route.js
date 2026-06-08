@@ -25,8 +25,9 @@ export async function POST(req) {
       return NextResponse.json({ message: 'کد مربی الزامی است' }, { status: 400 });
     }
 
-    // پیدا کردن مربی بر اساس کدی که شاگرد وارد کرده
-    const coach = await User.findOne({ coachCode: coachCode.trim().toUpperCase(), role: 'coach' });
+    // پیدا کردن مربی بر اساس کدی که شاگرد وارد کرده (حذف خط تیره و فاصله برای سازگاری با فرمت قدیمی)
+    const normalizedCode = coachCode.replace(/[\s-]/g, '').toUpperCase();
+    const coach = await User.findOne({ coachCode: normalizedCode, role: 'coach' });
     if (!coach) {
       return NextResponse.json({ message: 'مربی با این کد معرف یافت نشد' }, { status: 404 });
     }

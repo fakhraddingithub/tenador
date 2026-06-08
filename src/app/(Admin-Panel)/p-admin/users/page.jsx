@@ -1,26 +1,25 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { useRouter } from 'next/navigation'
 import { motion, AnimatePresence } from 'framer-motion'
-import Swal from 'sweetalert2'
+import { toast } from 'react-toastify'
 import {
   Users, UserCheck, UserX, ShieldAlert, Search, Filter,
   MoreVertical, Shield, Ban, CheckCircle, ArrowLeftRight,
-  GraduationCap, Award, Key
+  GraduationCap, Award, Key, Eye
 } from 'lucide-react'
 
-const swalTheme = {
-  confirmButtonColor: 'var(--color-primary)',
-  cancelButtonColor: '#9ca3af',
-  customClass: {
-    popup: 'rounded-2xl font-[Vazirmatn] text-right',
-    confirmButton: 'rounded-[var(--radius)] font-bold',
-    cancelButton: 'rounded-[var(--radius)] font-bold',
-  },
-  rtl: true,
-};
+const roleLabels = {
+  admin: 'مدیر کل',
+  coach: 'مربی',
+  seller: 'فروشنده',
+  national_player: 'ورزشکار ملی',
+  user: 'کاربر عادی',
+}
 
 export default function AdminUsersManagement() {
+  const router = useRouter()
   const [users, setUsers] = useState([])
   const [loading, setLoading] = useState(true)
   const [searchQuery, setSearchQuery] = useState('')
@@ -29,58 +28,83 @@ export default function AdminUsersManagement() {
   const [activeMenu, setActiveMenu] = useState(null)
   const [stats, setStats] = useState({ total: 0, active: 0, coaches: 0, banned: 0 })
 
-  useEffect(() => { fetchUsersData() }, [])
-
   const fetchUsersData = async () => {
     try {
-      const mockUsers = [
-        { id: 1, name: 'علیرضا محمدی', email: 'alireza@gmail.com', phone: '09123456789', role: 'user', isCoach: false, status: 'active', createdAt: '۱۴۰۲/۱۰/۱۲' },
-        { id: 2, name: 'سارا احمدی', email: 'sara@yahoo.com', phone: '09112223344', role: 'coach', isCoach: true, coachCode: 'TR-4921', status: 'active', createdAt: '۱۴۰۱/۰۵/۲۰' },
-        { id: 3, name: 'رضا کریمی', email: 'karimi@gmail.com', phone: '09355556677', role: 'user', isCoach: false, status: 'banned', createdAt: '۱۴۰۲/۱۱/۰۱' },
-        { id: 4, name: 'مهسا امینی', email: 'mahsa@gmail.com', phone: '09198887766', role: 'admin', isCoach: false, status: 'active', createdAt: '۱۴۰۰/۰۱/۱۵' },
-        { id: 5, name: 'حسین حسینی', email: 'hossein@gmail.com', phone: '09301112233', role: 'user', isCoach: true, coachCode: 'TR-8812', status: 'active', createdAt: '۱۴۰۳/۰۲/۱۰' },
-      ]
-      setUsers(mockUsers)
-      calculateStats(mockUsers)
-    } catch { /* handle */ } finally { setLoading(false) }
+      const res = await fetch('/api/admin/users')
+      const data = await res.json()
+      if (res.ok) {
+        setUsers(data.users || [])
+        setStats(data.stats || { total: 0, active: 0, coaches: 0, banned: 0 })
+      } else {
+        toast.error(data.message || 'خطا در دریافت کاربران')
+      }
+    } catch {
+      toast.error('خطا در ارتباط با سرور')
+    } finally {
+      setLoading(false)
+    }
   }
 
-  const calculateStats = (data) => {
-    setStats({
-      total: data.length,
-      active: data.filter(u => u.status === 'active').length,
-      coaches: data.filter(u => u.isCoach).length,
-      banned: data.filter(u => u.status === 'banned').length,
+  useEffect(() => { fetchUsersData() }, [])
+
+  const patchUser = async (userId, payload) => {
+    const res = await fetch(`/api/admin/users/${userId}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
     })
+    const data = await res.json()
+    if (!res.ok) throw new Error(data.message || 'خطا در بروزرسانی')
+    return data
   }
 
-  const handleToggleBlock = (userId, currentStatus) => {
-    const nextStatus = currentStatus === 'active' ? 'banned' : 'active'
-    const updated = users.map(u => u.id === userId ? { ...u, status: nextStatus } : u)
-    setUsers(updated)
-    calculateStats(updated)
+  const handleToggleBlock = async (user) => {
     setActiveMenu(null)
+    const nextBanned = !user.isBanned
+    try {
+      await patchUser(user._id, { isBanned: nextBanned })
+      const updated = users.map(u => u._id === user._id ? { ...u, isBanned: nextBanned } : u)
+      setUsers(updated)
+      setStats(s => ({
+        ...s,
+        active: s.active + (nextBanned ? -1 : 1),
+        banned: s.banned + (nextBanned ? 1 : -1),
+      }))
+      toast.success(nextBanned ? 'حساب کاربر مسدود شد' : 'مسدودیت حساب برداشته شد')
+    } catch (err) {
+      toast.error(err.message)
+    }
   }
 
-  const handleChangeRole = (userId, currentRole) => {
-    const nextRole = currentRole === 'admin' ? 'user' : 'admin'
-    const updated = users.map(u => u.id === userId ? { ...u, role: nextRole } : u)
-    setUsers(updated)
+  const handleChangeRole = async (user) => {
     setActiveMenu(null)
+    const nextRole = user.role === 'admin' ? 'user' : 'admin'
+    try {
+      await patchUser(user._id, { role: nextRole })
+      const updated = users.map(u => u._id === user._id ? { ...u, role: nextRole } : u)
+      setUsers(updated)
+      toast.success(nextRole === 'admin' ? 'کاربر به مدیر ارتقا یافت' : 'کاربر به حالت عادی تغییر یافت')
+    } catch (err) {
+      toast.error(err.message)
+    }
   }
+
+  const openDetails = (userId) => router.push(`/p-admin/users/${userId}`)
 
   const filteredUsers = users.filter(user => {
+    const q = searchQuery.toLowerCase()
     const matchesSearch =
-      user.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      user.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      user.phone.includes(searchQuery) ||
-      (user.coachCode && user.coachCode.toLowerCase().includes(searchQuery.toLowerCase()))
+      (user.name || '').toLowerCase().includes(q) ||
+      (user.email || '').toLowerCase().includes(q) ||
+      (user.phone || '').includes(searchQuery) ||
+      (user.coachCode && user.coachCode.toLowerCase().includes(q))
     const matchesRole =
       roleFilter === 'all' ||
       (roleFilter === 'admin' && user.role === 'admin') ||
-      (roleFilter === 'coach' && user.isCoach) ||
-      (roleFilter === 'user' && user.role === 'user' && !user.isCoach)
-    const matchesStatus = statusFilter === 'all' || user.status === statusFilter
+      (roleFilter === 'coach' && user.role === 'coach') ||
+      (roleFilter === 'user' && user.role === 'user')
+    const status = user.isBanned ? 'banned' : 'active'
+    const matchesStatus = statusFilter === 'all' || status === statusFilter
     return matchesSearch && matchesRole && matchesStatus
   })
 
@@ -112,7 +136,7 @@ export default function AdminUsersManagement() {
           <p className="text-xs font-bold text-gray-400">دسترسی کامل به نقش‌ها، سطوح دسترسی و وضعیت حساب‌ها</p>
         </div>
         <button
-          onClick={() => window.location.href = '/p-admin/users/coaches'}
+          onClick={() => router.push('/p-admin/users/coaches')}
           className="inline-flex items-center gap-2 text-white text-xs font-bold px-4 py-2.5 rounded-[var(--radius)] transition-all hover:shadow-lg hover:-translate-y-0.5 active:scale-95"
           style={{ background: '#0d0d0d' }}
         >
@@ -198,18 +222,26 @@ export default function AdminUsersManagement() {
             </thead>
             <tbody className="divide-y" style={{ borderColor: '#f5f3f0' }}>
               {filteredUsers.length > 0 ? filteredUsers.map((user) => (
-                <tr key={user.id} className="hover:bg-gray-50/60 transition-colors group">
+                <tr
+                  key={user._id}
+                  onClick={() => openDetails(user._id)}
+                  className="hover:bg-gray-50/60 transition-colors group cursor-pointer"
+                >
                   <td className="p-4">
                     <div className="flex items-center gap-3">
-                      <div
-                        className="w-9 h-9 rounded-[var(--radius)] flex items-center justify-center font-bold text-xs text-white flex-shrink-0"
-                        style={{ background: 'var(--color-primary)' }}
-                      >
-                        {user.name.charAt(0)}
-                      </div>
+                      {user.avatar ? (
+                        <img src={user.avatar} alt={user.name} className="w-9 h-9 rounded-[var(--radius)] object-cover flex-shrink-0" />
+                      ) : (
+                        <div
+                          className="w-9 h-9 rounded-[var(--radius)] flex items-center justify-center font-bold text-xs text-white flex-shrink-0"
+                          style={{ background: 'var(--color-primary)' }}
+                        >
+                          {(user.name || '؟').charAt(0)}
+                        </div>
+                      )}
                       <div>
-                        <span className="font-bold text-gray-800 text-xs block">{user.name}</span>
-                        {user.isCoach && (
+                        <span className="font-bold text-gray-800 text-xs block">{user.name || 'بدون نام'}</span>
+                        {user.role === 'coach' && user.coachCode && (
                           <span className="inline-flex items-center gap-1 text-[9px] bg-amber-50 border border-amber-200 text-amber-700 px-1.5 py-0.5 rounded-lg font-bold font-mono mt-0.5">
                             {user.coachCode}
                           </span>
@@ -218,27 +250,29 @@ export default function AdminUsersManagement() {
                     </div>
                   </td>
                   <td className="p-4 text-xs font-bold space-y-0.5">
-                    <span className="block text-gray-600 font-mono">{user.email}</span>
-                    <span className="block text-gray-400 font-mono">{user.phone}</span>
+                    <span className="block text-gray-600 font-mono">{user.email || '—'}</span>
+                    <span className="block text-gray-400 font-mono">{user.phone || '—'}</span>
                   </td>
                   <td className="p-4">
                     {user.role === 'admin' ? (
                       <span className="inline-flex items-center gap-1 text-xs font-bold text-purple-700 bg-purple-50 px-2.5 py-1 rounded-[var(--radius)] border border-purple-100">
                         <Shield size={11} /> مدیر کل
                       </span>
-                    ) : user.isCoach ? (
+                    ) : user.role === 'coach' ? (
                       <span className="inline-flex items-center gap-1 text-xs font-bold text-amber-700 bg-amber-50 px-2.5 py-1 rounded-[var(--radius)] border border-amber-100">
                         <GraduationCap size={11} /> مربی
                       </span>
                     ) : (
                       <span className="inline-flex items-center gap-1 text-xs font-bold text-gray-600 bg-gray-100 px-2.5 py-1 rounded-[var(--radius)]">
-                        کاربر عادی
+                        {roleLabels[user.role] || 'کاربر عادی'}
                       </span>
                     )}
                   </td>
-                  <td className="p-4 text-xs font-bold text-gray-400 font-mono">{user.createdAt}</td>
+                  <td className="p-4 text-xs font-bold text-gray-400 font-mono">
+                    {user.createdAt ? new Date(user.createdAt).toLocaleDateString('fa-IR') : '—'}
+                  </td>
                   <td className="p-4">
-                    {user.status === 'active' ? (
+                    {!user.isBanned ? (
                       <span className="inline-flex items-center gap-1.5 text-xs font-bold text-emerald-700 bg-emerald-50 px-2.5 py-1 rounded-full">
                         <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" /> فعال
                       </span>
@@ -248,15 +282,15 @@ export default function AdminUsersManagement() {
                       </span>
                     )}
                   </td>
-                  <td className="p-4 relative">
+                  <td className="p-4 relative" onClick={(e) => e.stopPropagation()}>
                     <button
-                      onClick={() => setActiveMenu(activeMenu === user.id ? null : user.id)}
+                      onClick={() => setActiveMenu(activeMenu === user._id ? null : user._id)}
                       className="w-8 h-8 flex items-center justify-center rounded-[var(--radius)] hover:bg-gray-100 text-gray-400 hover:text-gray-600 transition-all opacity-0 group-hover:opacity-100"
                     >
                       <MoreVertical size={15} />
                     </button>
                     <AnimatePresence>
-                      {activeMenu === user.id && (
+                      {activeMenu === user._id && (
                         <>
                           <div className="fixed inset-0 z-10" onClick={() => setActiveMenu(null)} />
                           <motion.div
@@ -264,18 +298,25 @@ export default function AdminUsersManagement() {
                             animate={{ opacity: 1, scale: 1, y: 0 }}
                             exit={{ opacity: 0, scale: 0.95, y: -4 }}
                             transition={{ duration: 0.15 }}
-                            className="absolute left-4 top-12 bg-white border border-gray-100 shadow-xl rounded-2xl p-1.5 z-20 min-w-[160px] text-right"
+                            className="absolute left-4 top-12 bg-white border border-gray-100 shadow-xl rounded-2xl p-1.5 z-20 min-w-[170px] text-right"
                             style={{ borderColor: '#e8e4df' }}
                           >
                             <button
-                              onClick={() => handleToggleBlock(user.id, user.status)}
-                              className={`w-full flex items-center gap-2 px-3 py-2 text-xs font-bold rounded-[var(--radius)] transition-colors ${user.status === 'active' ? 'text-red-600 hover:bg-red-50' : 'text-emerald-600 hover:bg-emerald-50'}`}
+                              onClick={() => openDetails(user._id)}
+                              className="w-full flex items-center gap-2 px-3 py-2 text-xs font-bold text-gray-700 hover:bg-gray-50 rounded-[var(--radius)] transition-colors"
                             >
-                              {user.status === 'active' ? <Ban size={13} /> : <CheckCircle size={13} />}
-                              {user.status === 'active' ? 'مسدودسازی' : 'رفع مسدودیت'}
+                              <Eye size={13} className="text-gray-400" />
+                              مشاهده جزئیات
                             </button>
                             <button
-                              onClick={() => handleChangeRole(user.id, user.role)}
+                              onClick={() => handleToggleBlock(user)}
+                              className={`w-full flex items-center gap-2 px-3 py-2 text-xs font-bold rounded-[var(--radius)] transition-colors ${!user.isBanned ? 'text-red-600 hover:bg-red-50' : 'text-emerald-600 hover:bg-emerald-50'}`}
+                            >
+                              {!user.isBanned ? <Ban size={13} /> : <CheckCircle size={13} />}
+                              {!user.isBanned ? 'مسدودسازی' : 'رفع مسدودیت'}
+                            </button>
+                            <button
+                              onClick={() => handleChangeRole(user)}
                               className="w-full flex items-center gap-2 px-3 py-2 text-xs font-bold text-gray-700 hover:bg-gray-50 rounded-[var(--radius)] transition-colors"
                             >
                               <Key size={13} className="text-gray-400" />

@@ -11,13 +11,13 @@ async function getUserFromToken() {
   return verifyToken(token);
 }
 
-// تابع کمکی برای ساخت کد منحصربه‌فرد مربیگری (مانند: TR-4921)
+// تابع کمکی برای ساخت کد منحصربه‌فرد مربیگری (مانند: TR4921)
 async function generateUniqueCoachCode() {
   let isUnique = false;
   let code = "";
   while (!isUnique) {
     const randomDigits = Math.floor(1000 + Math.random() * 9000);
-    code = `TR-${randomDigits}`;
+    code = `TR${randomDigits}`;
     const exists = await User.findOne({ coachCode: code });
     if (!exists) isUnique = true;
   }

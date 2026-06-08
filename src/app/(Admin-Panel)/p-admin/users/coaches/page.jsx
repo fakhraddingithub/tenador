@@ -57,7 +57,7 @@ export default function AdminCoachesManagement() {
   // لود کردن شاگردان یک مربی مشخص
   const handleViewCoachDetails = async (coach) => {
     setSelectedCoach(coach);
-    loadingStudents(true);
+    setLoadingStudents(true);
     try {
       const res = await fetch(`/api/admin/coaches?id=${coach._id}`);
       const data = await res.json();

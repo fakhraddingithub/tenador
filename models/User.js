@@ -75,6 +75,14 @@ const UserSchema = new mongoose.Schema(
     },
 
     // ------------------
+    // Account status (مسدودسازی حساب توسط ادمین)
+    // ------------------
+    isBanned: {
+      type: Boolean,
+      default: false,
+    },
+
+    // ------------------
     // Coach System & Verification (تغییر یافته)
     // ------------------
     coach: {

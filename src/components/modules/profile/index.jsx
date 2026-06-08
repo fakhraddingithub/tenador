@@ -21,6 +21,10 @@ export default function ProfileModule() {
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [coachCodeInput, setCoachCodeInput] = useState('')
   const [linkLoading, setLinkLoading] = useState(false)
+
+  // استیت‌های مودال تایید انتخاب مربی با کد معرف
+  const [coachPreview, setCoachPreview] = useState(null) // اطلاعات مربی پیدا شده
+  const [confirmLoading, setConfirmLoading] = useState(false)
   const [uploading, setUploading] = useState({ certificateImage: false, personalImage: false })
   const [applyFormData, setApplyFormData] = useState({ fullName: '', certificateImage: '', personalImage: '' })
   const [submitLoading, setSubmitLoading] = useState(false)
@@ -117,30 +121,52 @@ export default function ProfileModule() {
     }
   };
 
-  // ۳. متصل شدن به مربی با کد معرف
-  const handleLinkCoach = async () => {
+  // ۳. جستجوی مربی با کد معرف و باز کردن مودال تایید
+  const handleLookupCoach = async () => {
     if (!coachCodeInput.trim()) return toast.warn('کد مربی را وارد کنید');
     setLinkLoading(true);
 
     try {
-      const res = await fetch('/api/profile/link-coach', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ coachCode: coachCodeInput })
-      });
+      const res = await fetch(`/api/profile/coach-lookup?code=${encodeURIComponent(coachCodeInput.trim())}`);
       const data = await res.json();
 
       if (res.ok) {
-        toast.success(data.message);
-        fetchUserProfile(); // گرفتن اطلاعات جدید کاربر و دیتای مربی متصل شده
-        setCoachCodeInput('');
+        setCoachPreview(data.coach); // باز شدن مودال با اطلاعات مربی
       } else {
-        toast.error(data.message || 'کد مربی معتبر نیست');
+        toast.error(data.message || 'مربی با این کد یافت نشد');
       }
     } catch {
       toast.error('خطای ارتباط با سرور');
     } finally {
       setLinkLoading(false);
+    }
+  };
+
+  // ۴. تایید نهایی و اتصال به مربی انتخاب شده
+  const handleConfirmCoach = async () => {
+    if (!coachPreview) return;
+    setConfirmLoading(true);
+
+    try {
+      const res = await fetch('/api/profile/link-coach', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ coachCode: coachPreview.coachCode })
+      });
+      const data = await res.json();
+
+      if (res.ok) {
+        toast.success(data.message);
+        setCoachPreview(null);
+        setCoachCodeInput('');
+        fetchUserProfile(); // گرفتن اطلاعات جدید کاربر و دیتای مربی متصل شده
+      } else {
+        toast.error(data.message || 'خطا در ثبت مربی');
+      }
+    } catch {
+      toast.error('خطای ارتباط با سرور');
+    } finally {
+      setConfirmLoading(false);
     }
   };
 
@@ -342,7 +368,7 @@ export default function ProfileModule() {
                 <div className="text-right">
                   <span className="text-[9px] text-neutral-500 block">کد اختصاصی مربی</span>
                   <span className="text-xs font-mono font-bold text-[#ffbf00] tracking-wider">
-                    {user?.coachCode || 'TR-XXXX'}
+                    {user?.coachCode || 'TRXXXX'}
                   </span>
                 </div>
                 <div className="text-left">
@@ -414,17 +440,18 @@ export default function ProfileModule() {
                 <div className="flex gap-2">
                   <input
                     type="text"
-                    placeholder="مثال: TR-4921"
+                    placeholder="مثال: TR4921"
                     value={coachCodeInput}
                     onChange={(e) => setCoachCodeInput(e.target.value)}
+                    onKeyDown={(e) => { if (e.key === 'Enter') handleLookupCoach() }}
                     className="flex-1 text-center font-mono uppercase rounded-[var(--radius)] border border-[hsl(var(--border))] bg-slate-50 px-3 py-2 text-sm focus:border-[var(--color-primary)] focus:bg-white focus:outline-none"
                   />
                   <button
-                    onClick={handleLinkCoach}
+                    onClick={handleLookupCoach}
                     disabled={linkLoading}
                     className="px-4 py-2 bg-slate-900 text-white hover:bg-slate-800 text-xs font-bold rounded-[var(--radius)] transition-colors disabled:opacity-50 flex items-center justify-center min-w-[70px]"
                   >
-                    {linkLoading ? <Loader2 size={14} className="animate-spin" /> : 'ثبت مربی'}
+                    {linkLoading ? <Loader2 size={14} className="animate-spin" /> : 'جستجوی مربی'}
                   </button>
                 </div>
               </div>
@@ -595,6 +622,80 @@ export default function ProfileModule() {
                   ارسال درخواست و مدارک به مدیریت
                 </button>
               </form>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* ========================================================
+          مودال تایید انتخاب مربی با کد معرف (نمایش اطلاعات مربی پیدا شده)
+      ======================================================== */}
+      <AnimatePresence>
+        {coachPreview && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => !confirmLoading && setCoachPreview(null)}
+              className="absolute inset-0 bg-black/60 backdrop-blur-xs"
+            />
+
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 10 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 10 }}
+              className="relative w-full max-w-sm overflow-hidden rounded-2xl bg-white p-6 shadow-2xl border border-slate-100 z-10 space-y-5 text-center"
+            >
+              <button
+                onClick={() => !confirmLoading && setCoachPreview(null)}
+                className="absolute left-4 top-4 rounded-full p-1 text-slate-400 hover:bg-slate-50 hover:text-slate-600 transition-colors"
+              >
+                <X size={18} />
+              </button>
+
+              <div className="space-y-1 pt-1">
+                <h3 className="text-sm font-bold text-slate-800">تایید انتخاب مربی</h3>
+                <p className="text-[11px] text-slate-400">اطلاعات مربی زیر را بررسی و در صورت صحت تایید کنید.</p>
+              </div>
+
+              <div className="flex flex-col items-center gap-3 bg-slate-50 p-5 rounded-[var(--radius)] border border-slate-100">
+                <div className="h-20 w-20 overflow-hidden rounded-full border-2 border-[var(--color-primary)] bg-white shadow-sm">
+                  <img
+                    src={coachPreview.avatar || "https://ui-avatars.com/api/?name=" + (coachPreview.name || "Coach") + "&background=101010&color=ffbf00"}
+                    alt={coachPreview.name}
+                    className="h-full w-full object-cover"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <h4 className="text-base font-bold text-slate-800">{coachPreview.name}</h4>
+                  <span className="inline-block text-[11px] font-mono font-bold text-amber-600 bg-amber-50 px-2 py-0.5 rounded-md border border-amber-100">
+                    {coachPreview.coachCode}
+                  </span>
+                </div>
+                <div className="flex items-center gap-1.5 text-[11px] text-slate-500 font-semibold pt-1">
+                  <Users size={13} className="text-slate-400" />
+                  {(coachPreview.studentsCount ?? 0).toLocaleString('fa-IR')} شاگرد فعال
+                </div>
+              </div>
+
+              <div className="flex gap-2">
+                <button
+                  onClick={handleConfirmCoach}
+                  disabled={confirmLoading}
+                  className="flex-1 py-2.5 bg-[var(--color-primary)] text-white font-bold text-xs rounded-[var(--radius)] hover:opacity-90 transition-opacity disabled:opacity-50 flex items-center justify-center gap-2"
+                >
+                  {confirmLoading ? <Loader2 size={14} className="animate-spin" /> : <CheckCircle2 size={14} />}
+                  بله، این مربی من است
+                </button>
+                <button
+                  onClick={() => setCoachPreview(null)}
+                  disabled={confirmLoading}
+                  className="px-4 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-600 text-xs font-bold rounded-[var(--radius)] transition-colors disabled:opacity-50"
+                >
+                  انصراف
+                </button>
+              </div>
             </motion.div>
           </div>
         )}

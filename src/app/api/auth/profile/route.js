@@ -21,7 +21,9 @@ export async function GET(req) {
       return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
     }
 
-    const user = await User.findById(authUser.userId).select('-password');
+    const user = await User.findById(authUser.userId)
+      .select('-password')
+      .populate('coach', 'name avatar coachCode');
     if (!user) {
       return NextResponse.json({ message: 'User not found' }, { status: 404 });
     }
@@ -43,6 +45,7 @@ export async function GET(req) {
           coachCode: user.coachCode,
           walletBalance: user.walletBalance || 0,
           coachApplicationStatus: user.coachApplication?.status || 'none',
+          coach: user.coach || null,
           referralLink: referralLink,
           createdAt: user.createdAt,
         },
