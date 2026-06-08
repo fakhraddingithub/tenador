@@ -5,13 +5,15 @@ import { generateProductMetadata } from "@/lib/seo/productSeo";
 import { generateProductSchema } from "@/lib/seo/productSchema";
 import { generateBreadcrumbSchema } from "@/lib/seo/breadcrumbSchema";
 
-// ⚠️ اسلاگ‌های فارسی در URL با کش روتِ Next ناسازگارند: Next مسیرِ دیکدشده را
-// خام داخل هدر x-next-cache-tags می‌گذارد و کاراکتر غیر-ASCII باعث
-// «ERR_INVALID_CHAR / Invalid character in header content» و خطای ۵۰۰ می‌شود
-// (باگ Next در lib/implicit-tags.js). راه‌حل: این مسیر داینامیک رندر شود تا هدر
-// کش روت ساخته نشود. هزینه‌ی دیتابیس همچنان با unstable_cache در لایه‌ی سرویس
-// کش می‌ماند، پس مشکلِ اتصال برنمی‌گردد.
-export const dynamic = "force-dynamic";
+// اسلاگ‌های فارسی این مسیر قبلاً باعث خطای ۵۰۰ می‌شدند (باگ Next: کاراکترِ
+// غیر-ASCII در هدر x-next-cache-tags → ERR_INVALID_CHAR). با پچِ
+// patches/next+16.2.6.patch مسیر با encodeURI امن شد، پس ISR دوباره فعال است.
+export const revalidate = 300;
+
+// مسیرها on-demand ساخته می‌شوند؛ در زمان build هیچ‌کدام pre-render نمی‌شوند
+export async function generateStaticParams() {
+  return [];
+}
 
 // --------------------
 // Dynamic Metadata

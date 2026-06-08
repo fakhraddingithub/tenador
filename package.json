@@ -6,6 +6,7 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
+    "postinstall": "patch-package",
     "lint": "eslint",
     "test": "jest",
     "test:db": "node scripts/test-db-connection.js",
