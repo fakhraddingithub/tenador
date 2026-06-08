@@ -6,27 +6,11 @@
  */
 
 import { NextResponse } from "next/server";
-import { cookies } from "next/headers";
 import connectToDB from "base/configs/db";
-import { verifyToken } from "base/utils/auth";
 import User from "base/models/User";
-
-async function getAdminUser() {
-  const cookieStore = await cookies();
-  const token = cookieStore.get("accessToken")?.value;
-  if (!token) return null;
-  const decoded = verifyToken(token);
-  if (!decoded?.userId || decoded.role !== "admin") return null;
-  return decoded;
-}
 
 export async function GET(req) {
   try {
-    const admin = await getAdminUser();
-    if (!admin) {
-      return NextResponse.json({ message: "دسترسی غیرمجاز" }, { status: 403 });
-    }
-
     await connectToDB();
 
     const { searchParams } = new URL(req.url);
