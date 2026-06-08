@@ -211,7 +211,6 @@ export async function PUT(request, { params }) {
           categoryId: category,
           attributes: combo,
           price: Number(detail.price) || 0,
-          stock: Number(detail.stock) || 0,
           images: Array.isArray(detail.images) ? detail.images : [],
           sku: `${product._id}-${comboKey}`
             .replace(/\s+/g, "")

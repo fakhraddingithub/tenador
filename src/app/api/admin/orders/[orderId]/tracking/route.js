@@ -31,6 +31,37 @@ async function getAdminUser() {
   return decoded;
 }
 
+/**
+ * تنظیم وضعیت تأمین یک خطِ سفارش (محصول اصلی یا یک انتخابِ فرایند) روی خود سند سفارش
+ */
+async function setOrderLineProcurement(orderId, index, flowNodeId, status) {
+  if (flowNodeId) {
+    await Order.updateOne(
+      { _id: orderId },
+      { $set: { [`items.${index}.flowSelections.$[fs].procurementStatus`]: status } },
+      { arrayFilters: [{ "fs.nodeId": flowNodeId }] }
+    );
+  } else {
+    await Order.updateOne(
+      { _id: orderId },
+      { $set: { [`items.${index}.procurementStatus`]: status } }
+    );
+  }
+}
+
+/**
+ * آیا سفارش هنوز خطی دارد که «باید خریداری شود» و خریداری نشده؟
+ */
+function orderHasPendingPurchase(order) {
+  for (const it of order.items || []) {
+    if (it.procurementStatus === "TO_PURCHASE") return true;
+    for (const s of it.flowSelections || []) {
+      if (s.procurementStatus === "TO_PURCHASE") return true;
+    }
+  }
+  return false;
+}
+
 /* ─── GET: لیست tracking items مرتبط با سفارش ──────────────────── */
 export async function GET(req, { params }) {
   try {
@@ -106,6 +137,7 @@ export async function GET(req, { params }) {
             },
             variantId: s.selectedVariant ? s.selectedVariant.toString() : null,
             variantLabel: s.selectedVariantLabel || null,
+            procurementStatus: s.procurementStatus || null,
             quantity: item.quantity,
             scannedCount: related.length,
             remainingCount: item.quantity - related.length,
@@ -130,6 +162,7 @@ export async function GET(req, { params }) {
         isUsed,
         product,
         variant: item.variant,
+        procurementStatus: item.procurementStatus || null,
         quantity: item.quantity,
         unitPrice: item.unitPrice,
         scannedCount: mainRelated.length,
@@ -179,12 +212,8 @@ export async function POST(req, { params }) {
     const { barcode, orderItemIndex, procurementStatus } = body;
     // flowNodeId: اگر مقدار داشته باشد، بارکد برای یک «انتخابِ فرایند» (نود category) ثبت می‌شود
     const flowNodeId = body.flowNodeId || null;
-
-    if (!barcode?.trim())
-      return NextResponse.json(
-        { message: "بارکد یا کد رهگیری الزامی است" },
-        { status: 400 }
-      );
+    // action: "scan" (پیش‌فرض) یا "mark_purchase" (علامت‌گذاری «باید خریداری شود» بدون بارکد)
+    const action = body.action || "scan";
 
     const order = await Order.findById(orderId)
       .populate("items.product", "name mainImage sku _id")
@@ -205,6 +234,44 @@ export async function POST(req, { params }) {
       );
 
     const targetItem = order.items[orderItemIndex];
+
+    // ─── علامت‌گذاری «باید خریداری شود» (بدون بارکد) ───
+    // محصول هنوز خریداری نشده و بارکدی ندارد؛ فقط خطِ سفارش علامت می‌خورد و
+    // وضعیت کل سفارش به «باید خریداری شود» تغییر می‌کند تا در لیست سفارش‌ها قابل شناسایی باشد.
+    if (action === "mark_purchase") {
+      if (flowNodeId) {
+        const selection = (targetItem.flowSelections || []).find(
+          (s) => s.nodeId === flowNodeId && s.nodeType === "category"
+        );
+        if (!selection || !selection.selectedProduct) {
+          return NextResponse.json(
+            { message: "انتخابِ فرایند موردنظر در این آیتم یافت نشد" },
+            { status: 400 }
+          );
+        }
+      }
+
+      await setOrderLineProcurement(orderId, orderItemIndex, flowNodeId, "TO_PURCHASE");
+      await Order.updateOne(
+        { _id: orderId, fulfillmentStatus: { $nin: ["DELIVERED", "CANCELED"] } },
+        { $set: { fulfillmentStatus: "NEEDS_PURCHASE" } }
+      );
+
+      return NextResponse.json(
+        {
+          message: "به عنوان «باید خریداری شود» علامت‌گذاری شد و وضعیت سفارش بروزرسانی شد",
+          marked: true,
+          fulfillmentStatus: "NEEDS_PURCHASE",
+        },
+        { status: 200 }
+      );
+    }
+
+    if (!barcode?.trim())
+      return NextResponse.json(
+        { message: "بارکد یا کد رهگیری الزامی است" },
+        { status: 400 }
+      );
 
     // اتصال به warehouse DB
     const warehouseConn = await connectWarehouseDB();
@@ -360,6 +427,31 @@ export async function POST(req, { params }) {
 
     await trackingItem.save();
 
+    // ─── بروزرسانی وضعیت تأمینِ خطِ سفارش روی خود سند سفارش ───
+    // اگر این خط قبلاً «باید خریداری شود» بوده، حالا «خریداری شد» می‌شود؛ در غیر این صورت
+    // مقدار ارسالی از کلاینت (IN_STOCK / PURCHASED) ثبت می‌شود.
+    const lineProcurement = procurementStatus || "IN_STOCK";
+    await setOrderLineProcurement(orderId, orderItemIndex, flowNodeId, lineProcurement);
+
+    // اگر سفارش در وضعیت «باید خریداری شود» بوده و دیگر هیچ خطی منتظر خرید نیست،
+    // وضعیت سفارش به «در حال پردازش» تغییر می‌کند.
+    let updatedFulfillment = order.fulfillmentStatus;
+    const freshOrder = await Order.findById(orderId)
+      .select("fulfillmentStatus items.procurementStatus items.flowSelections.procurementStatus")
+      .lean();
+    if (
+      freshOrder?.fulfillmentStatus === "NEEDS_PURCHASE" &&
+      !orderHasPendingPurchase(freshOrder)
+    ) {
+      await Order.updateOne(
+        { _id: orderId },
+        { $set: { fulfillmentStatus: "PROCESSING" } }
+      );
+      updatedFulfillment = "PROCESSING";
+    } else if (freshOrder?.fulfillmentStatus) {
+      updatedFulfillment = freshOrder.fulfillmentStatus;
+    }
+
     return NextResponse.json(
       {
         message: "بارکد با موفقیت به سفارش اختصاص داده شد",
@@ -372,6 +464,7 @@ export async function POST(req, { params }) {
         },
         scannedCount: alreadyScanned + 1,
         remainingCount: requiredCount - alreadyScanned - 1,
+        fulfillmentStatus: updatedFulfillment,
       },
       { status: 200 }
     );

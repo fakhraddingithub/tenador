@@ -112,14 +112,12 @@ export const useCart = () => {
               shortDescription: item.product?.shortDescription ?? '',
             },
             price: {
-              finalPrice: item.unitPriceToman, 
+              finalPrice: item.unitPriceToman,
             },
-            stock: item.stock ?? 0,
           },
 
-          // موجودی
+          // موجودی (فقط برای کالای دست‌دوم معنا دارد)
           inStock: item.inStock,
-          stock:   item.stock ?? 0,
 
           // قیمت‌گذاری (همه به تومان)
           basePriceToman:          item.basePriceToman,

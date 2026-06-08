@@ -196,62 +196,6 @@ export async function POST(req) {
       );
     }
 
-    // ─── ۳.۵ اعتبارسنجی موجودی محصولات انتخاب‌شده در فرایند (نود category) ───
-    const addonVariantNeeds = new Map(); // variantId → تعداد موردنیاز
-    const addonProductNeeds = new Map(); // productId (بدون واریانت) → تعداد موردنیاز
-    for (const item of priceResult.items) {
-      if (!Array.isArray(item.flowSelections)) continue;
-      const qty = item.quantity || 1;
-      for (const sel of item.flowSelections) {
-        if (sel.nodeType !== "category") continue;
-        if (sel.selectedVariantId) {
-          addonVariantNeeds.set(
-            String(sel.selectedVariantId),
-            (addonVariantNeeds.get(String(sel.selectedVariantId)) || 0) + qty,
-          );
-        } else if (sel.selectedProductId) {
-          addonProductNeeds.set(
-            String(sel.selectedProductId),
-            (addonProductNeeds.get(String(sel.selectedProductId)) || 0) + qty,
-          );
-        }
-      }
-    }
-
-    if (addonVariantNeeds.size || addonProductNeeds.size) {
-      const [addonVariants, addonProducts] = await Promise.all([
-        addonVariantNeeds.size
-          ? Variant.find({ _id: { $in: [...addonVariantNeeds.keys()] } })
-              .select("_id stock")
-              .lean()
-          : Promise.resolve([]),
-        addonProductNeeds.size
-          ? Product.find({ _id: { $in: [...addonProductNeeds.keys()] } })
-              .select("_id name stock")
-              .lean()
-          : Promise.resolve([]),
-      ]);
-
-      for (const v of addonVariants) {
-        const need = addonVariantNeeds.get(v._id.toString()) || 0;
-        if ((v.stock ?? 0) < need) {
-          return NextResponse.json(
-            { message: "یکی از موارد انتخاب‌شده در سفارش‌سازی موجودی کافی ندارد" },
-            { status: 409 },
-          );
-        }
-      }
-      for (const p of addonProducts) {
-        const need = addonProductNeeds.get(p._id.toString()) || 0;
-        if ((p.stock ?? 0) < need) {
-          return NextResponse.json(
-            { message: `محصول «${p.name}» انتخاب‌شده در سفارش‌سازی موجودی کافی ندارد` },
-            { status: 409 },
-          );
-        }
-      }
-    }
-
     // ─── ۴. ساخت orderItems ───
     const orderItems = priceResult.items.map((item, idx) => {
       const originalItem = items[idx];

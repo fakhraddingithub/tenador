@@ -62,7 +62,6 @@ export async function GET(request, { params }) {
           _id:            v._id,
           sku:            v.sku,
           attributes:     v.attributes || [],
-          stock:          v.stock,
           basePriceToman: variantBaseToman,
           finalPriceToman: variantBaseToman - unitDiscount,
           discountAmount:  unitDiscount,

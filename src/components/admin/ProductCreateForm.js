@@ -99,7 +99,7 @@ export default function ProductCreateForm({ initialData = {} }) {
     initialData.variantOptions || {}
   );
   const [variantInputBuffer, setVariantInputBuffer] = useState({});
-  // { "Red-300g": { price: "", stock: "", images: [] } }
+  // { "Red-300g": { price: "", images: [] } }
   const [variantDetails, setVariantDetails] = useState(
     initialData.variantDetails || {}
   );
@@ -187,7 +187,7 @@ export default function ProductCreateForm({ initialData = {} }) {
       const next = {};
       for (const combo of combinations) {
         const key = getComboKey(combo);
-        next[key] = prev[key] || { price: '', stock: '', images: [] };
+        next[key] = prev[key] || { price: '', images: [] };
       }
       return next;
     });
@@ -262,7 +262,7 @@ export default function ProductCreateForm({ initialData = {} }) {
     setVariantDetails(prev => ({
       ...prev,
       [comboKey]: {
-        ...(prev[comboKey] || { price: '', stock: '', images: [] }),
+        ...(prev[comboKey] || { price: '', images: [] }),
         [field]: value,
       },
     }));
@@ -303,12 +303,11 @@ export default function ProductCreateForm({ initialData = {} }) {
         }
       }
 
-      // Normalize variant details (price/stock → numbers)
+      // Normalize variant details (price → number)
       const normalizedVariantDetails = {};
       for (const [key, detail] of Object.entries(variantDetails)) {
         normalizedVariantDetails[key] = {
           price: Number(detail.price) || 0,
-          stock: Number(detail.stock) || 0,
           images: detail.images || [],
         };
       }
@@ -670,7 +669,6 @@ export default function ProductCreateForm({ initialData = {} }) {
                   const key = getComboKey(combo);
                   const detail = variantDetails[key] || {
                     price: '',
-                    stock: '3',
                     images: [],
                   };
 
@@ -697,38 +695,21 @@ export default function ProductCreateForm({ initialData = {} }) {
                         </span>
                       </div>
 
-                      {/* Price + Stock */}
-                      <div className="grid md:grid-cols-2 gap-4 mb-4">
-                        <div>
-                          <label className="block text-sm text-gray-600 mb-1 font-medium">
-                            قیمت (یورو)
-                          </label>
-                          <input
-                            type="number"
-                            min="0"
-                            className="w-full border rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
-                            placeholder="قیمت این ترکیب…"
-                            value={detail.price}
-                            onChange={e =>
-                              updateVariantDetail(key, 'price', e.target.value)
-                            }
-                          />
-                        </div>
-                        <div>
-                          <label className="block text-sm text-gray-600 mb-1 font-medium">
-                            موجودی
-                          </label>
-                          <input
-                            type="number"
-                            min="0"
-                            className="w-full border rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
-                            placeholder="تعداد موجودی…"
-                            value={detail.stock || 3}
-                            onChange={e =>
-                              updateVariantDetail(key, 'stock', e.target.value)
-                            }
-                          />
-                        </div>
+                      {/* Price */}
+                      <div className="mb-4">
+                        <label className="block text-sm text-gray-600 mb-1 font-medium">
+                          قیمت (یورو)
+                        </label>
+                        <input
+                          type="number"
+                          min="0"
+                          className="w-full border rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
+                          placeholder="قیمت این ترکیب…"
+                          value={detail.price}
+                          onChange={e =>
+                            updateVariantDetail(key, 'price', e.target.value)
+                          }
+                        />
                       </div>
 
                       {/* Images for this combination */}

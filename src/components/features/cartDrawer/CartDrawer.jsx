@@ -293,7 +293,7 @@ export default function CartDrawer({ isOpen, onClose }) {
 
                                                         <button
                                                             onClick={() => handleQuantityChange(item, item.quantity + 1)}
-                                                            disabled={!item.inStock || item.quantity >= item.stock || isUpdating}
+                                                            disabled={!item.inStock || isUpdating}
                                                             className="px-2 py-1 bg-gray-50 hover:bg-gray-100 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
                                                         >
                                                             <FaPlus className="text-sm" />

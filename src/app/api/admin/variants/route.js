@@ -15,7 +15,7 @@ export async function GET(req) {
     }
 
     const variants = await Variant.find({ productId })
-      .select("sku price stock attributes images")
+      .select("sku price attributes images")
       .lean();
 
     return NextResponse.json({ variants });

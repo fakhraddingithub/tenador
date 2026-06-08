@@ -79,15 +79,6 @@ export default function ProductVariants() {
       render: (value) => `${(value || 0).toLocaleString('fa-IR')} تومان`,
     },
     {
-      header: 'موجودی',
-      accessor: 'stock',
-      render: (value) => (
-        <span className={value > 0 ? 'text-green-600' : 'text-red-600'}>
-          {value || 0}
-        </span>
-      ),
-    },
-    {
       header: 'ویژگی‌ها',
       accessor: 'attributes',
       render: (value) => {

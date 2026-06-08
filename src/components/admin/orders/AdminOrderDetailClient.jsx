@@ -27,6 +27,7 @@ const PAYMENT_STATUS = {
 
 const FULFILLMENT_STATUS = {
   WAITING: { label: "در انتظار", color: "bg-gray-50 text-gray-500 border-gray-200", dot: "bg-gray-400", icon: Clock },
+  NEEDS_PURCHASE: { label: "باید خریداری شود", color: "bg-amber-50 text-amber-600 border-amber-200", dot: "bg-amber-500", icon: ShoppingBag },
   PROCESSING: { label: "در حال پردازش", color: "bg-blue-50 text-blue-600 border-blue-200", dot: "bg-blue-500", icon: Package },
   SENT: { label: "ارسال شده", color: "bg-purple-50 text-purple-600 border-purple-200", dot: "bg-purple-500", icon: Truck },
   DELIVERED: { label: "تحویل داده شد", color: "bg-teal-50 text-teal-600 border-teal-200", dot: "bg-teal-500", icon: Home },
@@ -428,24 +429,43 @@ function ProcurementModal({ item, onConfirm, onClose }) {
 /* ─── Scan Modal (combined procurement + scan) ──────────────────────── */
 // target: { productName, productImage, productSku, expectedProductId,
 //           orderItemIndex, flowNodeId, quantity }
-function ScanModal({ target, orderId, onSuccess, onClose }) {
-  const [step, setStep] = useState("procurement"); // "procurement" | "scan"
-  const [procurementStatus, setProcurementStatus] = useState(null);
+// mode: "choose" → ابتدا انتخاب وضعیت تأمین | "scan_purchased" → مستقیم اسکن بارکدِ خریداری‌شده
+function ScanModal({ target, orderId, mode = "choose", onSuccess, onClose }) {
+  const [step, setStep] = useState(mode === "scan_purchased" ? "scan" : "procurement");
+  const [procurementStatus, setProcurementStatus] = useState(
+    mode === "scan_purchased" ? "PURCHASED" : null
+  );
   const [scanning, setScanning] = useState(false);
+  const [marking, setMarking] = useState(false);
   const [scanResult, setScanResult] = useState(null); // null | {success, message, item}
 
-  const handleProcurementChoice = (choice) => {
-    // اگه باید خریداری بشه و قبلاً یه بارکد برای محصول اسکن شده
-    // یا موجود، مستقیم بره به اسکن
-    setProcurementStatus(choice);
-    setStep("scan");
+  // علامت‌گذاری «باید خریداری شود» — بدون نیاز به بارکد
+  const handleMarkToPurchase = async () => {
+    setMarking(true);
+    try {
+      const res = await fetch(`/api/admin/orders/${orderId}/tracking`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "mark_purchase",
+          orderItemIndex: target.orderItemIndex,
+          flowNodeId: target.flowNodeId || null,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        toast.error(data.message || "خطا در علامت‌گذاری");
+        setMarking(false);
+        return;
+      }
+      toast.success(data.message || "به عنوان «باید خریداری شود» علامت‌گذاری شد");
+      onSuccess();
+      onClose();
+    } catch (err) {
+      toast.error("خطا در اتصال به سرور");
+      setMarking(false);
+    }
   };
-
-  // اگه محصول باید خریداری بشه و قبلاً اسکن شده، نشون بده "PURCHASED"
-  const effectiveProcurement =
-    procurementStatus === "TO_PURCHASE" && scanResult?.success
-      ? "PURCHASED"
-      : procurementStatus;
 
   const handleScan = async (code) => {
     setScanning(true);
@@ -481,7 +501,7 @@ function ScanModal({ target, orderId, onSuccess, onClose }) {
           barcode: code,
           orderItemIndex: target.orderItemIndex,
           flowNodeId: target.flowNodeId || null,
-          procurementStatus: effectiveProcurement || procurementStatus,
+          procurementStatus: procurementStatus || "IN_STOCK",
         }),
       });
       const assignData = await assignRes.json();
@@ -572,24 +592,34 @@ function ScanModal({ target, orderId, onSuccess, onClose }) {
               <p className="text-sm font-bold text-gray-700">این محصول از چه طریقی تأمین می‌شود؟</p>
               <div className="grid grid-cols-2 gap-3">
                 <button
-                  onClick={() => handleProcurementChoice("IN_STOCK")}
+                  onClick={() => { setProcurementStatus("IN_STOCK"); setStep("scan"); }}
+                  disabled={marking}
                   className="flex flex-col items-center gap-2 p-4 rounded-xl border-2 border-gray-200
-                    hover:border-green-400 hover:bg-green-50 transition font-bold text-sm text-gray-600 hover:text-green-700"
+                    hover:border-green-400 hover:bg-green-50 transition font-bold text-sm text-gray-600 hover:text-green-700
+                    disabled:opacity-50"
                 >
                   <Warehouse size={24} className="text-green-500" />
                   موجود در انبار
                   <span className="text-[10px] text-gray-400 font-normal">بارکد از انبار اسکن شود</span>
                 </button>
                 <button
-                  onClick={() => handleProcurementChoice("TO_PURCHASE")}
+                  onClick={handleMarkToPurchase}
+                  disabled={marking}
                   className="flex flex-col items-center gap-2 p-4 rounded-xl border-2 border-gray-200
-                    hover:border-amber-400 hover:bg-amber-50 transition font-bold text-sm text-gray-600 hover:text-amber-700"
+                    hover:border-amber-400 hover:bg-amber-50 transition font-bold text-sm text-gray-600 hover:text-amber-700
+                    disabled:opacity-50"
                 >
-                  <ShoppingBag size={24} className="text-amber-500" />
+                  {marking
+                    ? <Loader2 size={24} className="animate-spin text-amber-500" />
+                    : <ShoppingBag size={24} className="text-amber-500" />}
                   باید خریداری شود
-                  <span className="text-[10px] text-gray-400 font-normal">بعد از خرید بارکد اسکن شود</span>
+                  <span className="text-[10px] text-gray-400 font-normal">وضعیت سفارش بروزرسانی می‌شود</span>
                 </button>
               </div>
+              <p className="text-[11px] text-gray-400 leading-relaxed">
+                با انتخاب «باید خریداری شود» این سفارش در لیست سفارش‌ها با وضعیت «باید خریداری شود»
+                نشان داده می‌شود تا بعداً پس از خرید، بارکد آن اسکن شود.
+              </p>
             </div>
           )}
 
@@ -600,10 +630,10 @@ function ScanModal({ target, orderId, onSuccess, onClose }) {
               <div className={`flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-bold
                 ${procurementStatus === "IN_STOCK"
                   ? "bg-green-50 text-green-700 border border-green-200"
-                  : "bg-amber-50 text-amber-700 border border-amber-200"}`}>
+                  : "bg-blue-50 text-blue-700 border border-blue-200"}`}>
                 {procurementStatus === "IN_STOCK"
                   ? <><Warehouse size={13} /> موجود در انبار — بارکد را اسکن کنید</>
-                  : <><ShoppingBag size={13} /> باید خریداری شود — بعد از خرید بارکد را اسکن کنید</>
+                  : <><ShoppingBag size={13} /> خریداری‌شده — بارکد محصول خریداری‌شده را اسکن کنید</>
                 }
               </div>
 
@@ -648,10 +678,12 @@ function ScanModal({ target, orderId, onSuccess, onClose }) {
                 />
               )}
 
-              <button onClick={() => setStep("procurement")}
-                className="text-xs text-gray-400 hover:text-gray-600 flex items-center gap-1 transition">
-                <ChevronRight size={12} /> برگشت به انتخاب تأمین
-              </button>
+              {mode === "choose" && (
+                <button onClick={() => setStep("procurement")}
+                  className="text-xs text-gray-400 hover:text-gray-600 flex items-center gap-1 transition">
+                  <ChevronRight size={12} /> برگشت به انتخاب تأمین
+                </button>
+              )}
             </div>
           )}
         </div>
@@ -880,15 +912,20 @@ function TrackingPanel({ orderId, orderFulfillmentStatus, onStatusChange }) {
   };
 
   // بلوک نمایش بارکدهای اسکن‌شده + دکمه افزودن، برای یک خط (اصلی یا انتخاب فرایند)
+  // target: داده‌ی موردنیاز برای باز کردن ScanModal
+  // procurementStatus: وضعیت تأمینِ این خط روی سفارش (TO_PURCHASE یعنی منتظر خرید)
   const renderTrackingBlock = ({
     trackingItems,
     scannedCount,
     quantity,
     remainingCount,
-    onAddScan,
+    procurementStatus,
+    target,
     addLabel = "اسکن بارکد",
   }) => {
     const complete = scannedCount >= quantity;
+    const isToPurchase = procurementStatus === "TO_PURCHASE";
+    const remainText = new Intl.NumberFormat("fa-IR").format(remainingCount);
     return (
       <div className="space-y-2">
         {trackingItems.length > 0 && (
@@ -903,15 +940,34 @@ function TrackingPanel({ orderId, orderFulfillmentStatus, onStatusChange }) {
           </div>
         )}
 
-        {!complete && (
+        {/* خطی که «باید خریداری شود» علامت خورده و هنوز خریداری/اسکن نشده */}
+        {!complete && isToPurchase && (
+          <div className="space-y-2">
+            <div className="flex items-center gap-2 text-xs font-bold text-amber-700 bg-amber-50
+              border border-amber-200 rounded-xl px-3 py-2">
+              <ShoppingBag size={13} className="shrink-0" />
+              باید خریداری شود — پس از خرید، بارکد را وارد/اسکن کنید
+            </div>
+            <button
+              onClick={() => setScanModal({ ...target, mode: "scan_purchased" })}
+              className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl text-sm font-bold
+                bg-amber-500 hover:bg-amber-600 text-white transition"
+            >
+              <Scan size={16} />
+              خریداری شد — ثبت بارکد ({remainText} عدد باقی‌مانده)
+            </button>
+          </div>
+        )}
+
+        {!complete && !isToPurchase && (
           <button
-            onClick={onAddScan}
+            onClick={() => setScanModal({ ...target, mode: "choose" })}
             className="w-full flex items-center justify-center gap-2 py-2.5 border-2 border-dashed
               border-[#aa4725]/40 hover:border-[#aa4725] rounded-xl text-sm font-bold
               text-[#aa4725]/70 hover:text-[#aa4725] bg-[#aa4725]/5 hover:bg-[#aa4725]/10 transition"
           >
             <Plus size={16} />
-            {addLabel} ({new Intl.NumberFormat("fa-IR").format(remainingCount)} عدد باقی‌مانده)
+            {addLabel} ({remainText} عدد باقی‌مانده)
           </button>
         )}
 
@@ -1070,17 +1126,17 @@ function TrackingPanel({ orderId, orderFulfillmentStatus, onStatusChange }) {
                           scannedCount: item.scannedCount,
                           quantity: item.quantity,
                           remainingCount: item.remainingCount,
+                          procurementStatus: item.procurementStatus,
                           addLabel: "اسکن بارکد",
-                          onAddScan: () =>
-                            setScanModal({
-                              productName: item.product?.name,
-                              productImage: item.product?.mainImage,
-                              productSku: item.product?.sku,
-                              expectedProductId: item.product?._id,
-                              orderItemIndex: item.index,
-                              flowNodeId: null,
-                              quantity: item.quantity,
-                            }),
+                          target: {
+                            productName: item.product?.name,
+                            productImage: item.product?.mainImage,
+                            productSku: item.product?.sku,
+                            expectedProductId: item.product?._id,
+                            orderItemIndex: item.index,
+                            flowNodeId: null,
+                            quantity: item.quantity,
+                          },
                         })
                       )}
                     </div>
@@ -1113,17 +1169,17 @@ function TrackingPanel({ orderId, orderFulfillmentStatus, onStatusChange }) {
                           scannedCount: f.scannedCount,
                           quantity: f.quantity,
                           remainingCount: f.remainingCount,
+                          procurementStatus: f.procurementStatus,
                           addLabel: "اسکن بارکد این مورد",
-                          onAddScan: () =>
-                            setScanModal({
-                              productName: `${f.product?.name || ""}${f.variantLabel ? ` (${f.variantLabel})` : ""}`,
-                              productImage: f.product?.mainImage,
-                              productSku: f.product?.sku,
-                              expectedProductId: f.product?._id,
-                              orderItemIndex: item.index,
-                              flowNodeId: f.nodeId,
-                              quantity: f.quantity,
-                            }),
+                          target: {
+                            productName: `${f.product?.name || ""}${f.variantLabel ? ` (${f.variantLabel})` : ""}`,
+                            productImage: f.product?.mainImage,
+                            productSku: f.product?.sku,
+                            expectedProductId: f.product?._id,
+                            orderItemIndex: item.index,
+                            flowNodeId: f.nodeId,
+                            quantity: f.quantity,
+                          },
                         })}
                       </div>
                     ))}
@@ -1140,8 +1196,9 @@ function TrackingPanel({ orderId, orderFulfillmentStatus, onStatusChange }) {
         {scanModal && (
           <ScanModal
             target={scanModal}
+            mode={scanModal.mode || "choose"}
             orderId={orderId}
-            onSuccess={() => { fetchTracking(); }}
+            onSuccess={() => { fetchTracking(); onStatusChange?.(); }}
             onClose={() => setScanModal(null)}
           />
         )}
@@ -1461,6 +1518,18 @@ export default function AdminOrderDetailClient({ orderId }) {
                       </p>
                       {item.product?.sku && (
                         <p className="text-xs text-gray-400 font-mono">{item.product.sku}</p>
+                      )}
+                      {item.variant?.attributes && Object.keys(item.variant.attributes).length > 0 && (
+                        <div className="flex flex-wrap gap-1.5 mt-1.5">
+                          {Object.entries(item.variant.attributes).map(([k, v]) => (
+                            <span key={k}
+                              className="inline-flex items-center gap-1 text-[11px] bg-[#aa4725]/8 text-[#aa4725]
+                                border border-[#aa4725]/20 px-2 py-0.5 rounded-full font-medium">
+                              <span className="text-gray-400">{k}:</span>
+                              {v}
+                            </span>
+                          ))}
+                        </div>
                       )}
                       {item.flowSelections?.length > 0 && (
                         <OrderFlowSelectionsView flowSelections={item.flowSelections} />

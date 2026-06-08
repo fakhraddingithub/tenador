@@ -166,11 +166,6 @@ export default function QuickViewModal({
   // displayPrice همان قیمت نهایی است (برای سازگاری با کدهای زیر)
   const displayPrice = finalTomanPrice;
 
-  const variantStock = selectedVariant?.stock ?? null;
-  const isOutOfStock = hasVariants
-    ? selectedVariant !== null && variantStock === 0
-    : false;
-
   function handleAddToCart() {
     let variantId = null;
 
@@ -181,10 +176,6 @@ export default function QuickViewModal({
       }
       if (!selectedVariant) {
         toast.error("این ترکیب موجود نیست");
-        return;
-      }
-      if (isOutOfStock) {
-        toast.error("این واریانت موجود نیست");
         return;
       }
       variantId = selectedVariant._id;
@@ -400,19 +391,13 @@ export default function QuickViewModal({
                     <div className="flex flex-wrap gap-2">
                       {values.map((val) => {
                         const isActive = selection[attrKey] === val;
-                        const hasStock = product.variants.some(
-                          (v) =>
-                            v.attributes?.[attrKey] === val &&
-                            (v.stock === undefined || v.stock > 0),
-                        );
 
                         return (
                           <button
                             key={val}
                             type="button"
-                            disabled={!hasStock}
                             onClick={() => handleVariantSelect(attrKey, val)}
-                            title={!hasStock ? "ناموجود" : val}
+                            title={val}
                             className={`
                               relative min-w-[52px] sm:min-w-[60px] px-3 sm:px-4
                               h-9 sm:h-10 lg:h-11
@@ -422,9 +407,7 @@ export default function QuickViewModal({
                               ${
                                 isActive
                                   ? "bg-[#aa4725] text-white border-[#aa4725] shadow-lg shadow-[#aa4725]/30 scale-[1.05]"
-                                  : hasStock
-                                    ? "bg-white/40 backdrop-blur-md border-gray-200 text-gray-500 hover:border-[#aa4725]/40 hover:bg-white/60"
-                                    : "bg-gray-50 border-gray-100 text-gray-300 cursor-not-allowed line-through"
+                                  : "bg-white/40 backdrop-blur-md border-gray-200 text-gray-500 hover:border-[#aa4725]/40 hover:bg-white/60"
                               }
                             `}
                           >
@@ -432,11 +415,6 @@ export default function QuickViewModal({
                               <span className="w-1.5 h-1.5 bg-white rounded-full animate-pulse shrink-0" />
                             )}
                             {val}
-                            {!hasStock && (
-                              <span className="absolute inset-0 pointer-events-none rounded-lg overflow-hidden">
-                                <span className="absolute inset-0 bg-gradient-to-br from-transparent via-gray-200/40 to-transparent" />
-                              </span>
-                            )}
                           </button>
                         );
                       })}
@@ -444,17 +422,6 @@ export default function QuickViewModal({
                   </div>
                 );
               })}
-
-              {/* فیدبک موجودی */}
-              {selectedVariant && (
-                <p
-                  className={`text-xs font-medium ${isOutOfStock ? "text-red-500" : "text-green-600"}`}
-                >
-                  {isOutOfStock
-                    ? "این واریانت موجود نیست"
-                    : `موجودی: ${variantStock} عدد`}
-                </p>
-              )}
             </div>
           )}
 
@@ -526,18 +493,13 @@ export default function QuickViewModal({
             <div className="flex gap-2 sm:gap-3">
               <button
                 onClick={handleAddToCart}
-                disabled={isOutOfStock}
-                className={`
+                className="
                   flex-[5] h-12 sm:h-13 lg:h-14
                   rounded-lg font-bold text-sm sm:text-base lg:text-lg
                   flex items-center justify-center gap-2 sm:gap-3
                   transition-all shadow-xl active:scale-95
-                  ${
-                    isOutOfStock
-                      ? "bg-gray-200 text-gray-400 cursor-not-allowed shadow-none"
-                      : "bg-[#aa4725] text-white hover:bg-[#8e3b1e] shadow-[#aa4725]/20"
-                  }
-                `}
+                  bg-[#aa4725] text-white hover:bg-[#8e3b1e] shadow-[#aa4725]/20
+                "
               >
                 <FaShoppingCart size={17} />
                 افزودن به سبد خرید

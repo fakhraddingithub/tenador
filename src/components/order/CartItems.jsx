@@ -45,7 +45,6 @@ const CartItems = ({ items, onUpdateQuantity, onRemoveItem, onRemoveFlowSelectio
       {items.map((item, index) => {
         const productName  = item.product?.product?.name      ?? item.product?.name;
         const productImage = item.product?.product?.mainImage ?? item.product?.mainImage;
-        const stock        = item.stock ?? item.product?.stock ?? 0;
         const hasDiscount  = (item.discountToman ?? 0) > 0;
 
         // واریانت: از variantAttributes یا variant.attributes
@@ -168,7 +167,6 @@ const CartItems = ({ items, onUpdateQuantity, onRemoveItem, onRemoveFlowSelectio
 
                     <button
                       onClick={() => onUpdateQuantity(item, 1)}
-                      disabled={stock > 0 && item.quantity >= stock}
                       className="w-8 h-8 rounded-lg border border-slate-300 flex items-center justify-center hover:bg-slate-100 transition disabled:opacity-40"
                     >
                       <FiPlus className="w-4 h-4" />

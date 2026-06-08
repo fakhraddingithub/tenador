@@ -28,7 +28,6 @@ export default function FilterSidebar({
       sports: [],
       minPrice: 0,
       maxPrice: 50000000,
-      onlyInStock: false,
     });
 
   return (
@@ -112,25 +111,6 @@ export default function FilterSidebar({
                 setFilters({ ...filters, maxPrice: Number(e.target.value) })
               }
               className="w-full accent-[#aa4725] h-1 bg-gray-100 rounded-lg appearance-none cursor-pointer"
-            />
-          </div>
-        </div>
-
-        {/* سوئیچ موجودی */}
-        <div
-          className="p-5 flex items-center justify-between group cursor-pointer"
-          onClick={() =>
-            setFilters({ ...filters, onlyInStock: !filters.onlyInStock })
-          }
-        >
-          <span className="text-sm font-bold text-gray-700">
-            فقط کالاهای موجود
-          </span>
-          <div
-            className={`w-10 h-5 rounded-full p-1 transition-all ${filters.onlyInStock ? "bg-[#aa4725]" : "bg-gray-200"}`}
-          >
-            <div
-              className={`w-3 h-3 bg-white rounded-full transition-all ${filters.onlyInStock ? "translate-x-0" : "-translate-x-5"}`}
             />
           </div>
         </div>

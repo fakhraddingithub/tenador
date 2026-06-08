@@ -76,11 +76,11 @@ export async function GET(req) {
     // ── واریانت ───────────────────────────────────────────────────────────────
     if (type === "variant") {
       if (productId) {
-        const variants = await Variant.find({ productId }).select("_id sku attributes price images stock").lean();
+        const variants = await Variant.find({ productId }).select("_id sku attributes price images").lean();
         return NextResponse.json({
           items: variants.map((v) => {
             const attrStr = Object.entries(v.attributes || {}).map(([k, val]) => `${k}: ${val}`).join(" | ");
-            return { _id: v._id, label: attrStr || v.sku, sub: `SKU: ${v.sku} | قیمت: ${v.price}`, stock: v.stock, image: v.images?.[0] || null };
+            return { _id: v._id, label: attrStr || v.sku, sub: `SKU: ${v.sku} | قیمت: ${v.price}`, image: v.images?.[0] || null };
           }),
         });
       }
