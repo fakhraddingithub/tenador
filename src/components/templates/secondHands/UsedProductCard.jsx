@@ -81,13 +81,20 @@ export default function UsedProductCard({
 
       {/* محتوا و متون کالا */}
       <div className="p-4 pt-0 flex flex-col items-center text-center relative z-10 pointer-events-none flex-1">
-        <div className="mb-4 h-[60px] flex flex-col justify-start">
-          <h3 className="text-[14px] font-bold text-gray-800 leading-6 mb-1">
-            {farsi}
-          </h3>
-          <p className="text-[12px] text-gray-800 font-medium leading-4 line-clamp-2 dir-ltr">
-            {english}
-          </p>
+        <div className="mb-4 min-h-[60px] flex flex-col justify-start">
+          {farsi && (
+            <h3 className="text-[14px] font-bold text-gray-800 leading-6 mb-1 line-clamp-2">
+              {farsi}
+            </h3>
+          )}
+          {english && (
+            <p
+              dir="ltr"
+              className="text-[12px] text-gray-800 font-medium leading-4 break-words"
+            >
+              {english}
+            </p>
+          )}
         </div>
 
         {/* قیمت به همراه اعداد فارسی */}
