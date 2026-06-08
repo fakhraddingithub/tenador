@@ -127,7 +127,7 @@ export async function DELETE(req, { params }) {
       return NextResponse.json({ message: "دسترسی غیرمجاز" }, { status: 403 });
     }
 
-    // ─── بازگرداندن هوشمند موجودی انبار بر اساس ساختار مدل Order شما ───
+    // ─── بازگرداندن کالاهای دست‌دوم به چرخه فروش ───
     for (const item of order.items ?? []) {
       try {
         if (item.itemType === "used_product" && item.usedProduct) {
@@ -136,19 +136,9 @@ export async function DELETE(req, { params }) {
             status: "available",
             $unset: { order: "" }, // حذف رفرنس این سفارش از روی کالای دست‌دوم
           });
-        } else if (item.variant) {
-          // اگر واریانت محصول معمولی بود
-          await Variant.findByIdAndUpdate(item.variant, {
-            $inc: { stock: item.quantity },
-          });
-        } else if (item.product) {
-          // اگر محصول معمولی بدون واریانت بود
-          await Product.findByIdAndUpdate(item.product, {
-            $inc: { stock: item.quantity },
-          });
         }
-      } catch (stockErr) {
-        console.warn("خطا در بازگرداندن موجودی کالا:", stockErr);
+      } catch (restoreErr) {
+        console.warn("خطا در بازگرداندن کالای دست‌دوم:", restoreErr);
       }
     }
 

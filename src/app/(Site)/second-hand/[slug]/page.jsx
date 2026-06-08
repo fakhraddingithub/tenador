@@ -57,7 +57,7 @@ export default async function UsedProductPage({ params }) {
     })
     .populate({
       path: "baseVariant",
-      select: "sku price stock attributes images",
+      select: "sku price attributes images",
     })
     .lean();
 
@@ -123,7 +123,6 @@ export default async function UsedProductPage({ params }) {
           _id:        raw.baseVariant._id.toString(),
           sku:        raw.baseVariant.sku,
           price:      raw.baseVariant.price,
-          stock:      raw.baseVariant.stock,
           images:     raw.baseVariant.images || [],
           attributes: variantAttributes,
         }

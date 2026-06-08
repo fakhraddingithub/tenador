@@ -33,6 +33,13 @@ const OrderFlowSelectionSchema = new mongoose.Schema(
 
     // افزوده‌ی قیمت این انتخاب (تومان، تأییدشده سمت سرور)
     addonToman: { type: Number, default: 0 },
+
+    // وضعیت تأمین این انتخاب فرایند: موجود در انبار / باید خریداری شود / خریداری شد
+    procurementStatus: {
+      type: String,
+      enum: ["IN_STOCK", "TO_PURCHASE", "PURCHASED"],
+      default: null,
+    },
   },
   { _id: false }
 );
@@ -83,6 +90,13 @@ const OrderSchema = new mongoose.Schema(
         quantity:  { type: Number, required: true, min: 1 },
         unitPrice: { type: Number, required: true, min: 0 }, // قیمت واحد تأیید‌شده سمت سرور (تومان) — شامل افزوده‌ی فرایند
 
+        // وضعیت تأمین محصول اصلی این آیتم: موجود در انبار / باید خریداری شود / خریداری شد
+        procurementStatus: {
+          type: String,
+          enum: ["IN_STOCK", "TO_PURCHASE", "PURCHASED"],
+          default: null,
+        },
+
         // انتخاب‌های فرایند سفارش (خدمات و محصولات مرتبط)
         flowSelections: { type: [OrderFlowSelectionSchema], default: [] },
       },
@@ -131,7 +145,7 @@ const OrderSchema = new mongoose.Schema(
 
     fulfillmentStatus: {
       type: String,
-      enum: ["WAITING", "PROCESSING", "SENT", "DELIVERED", "CANCELED"],
+      enum: ["WAITING", "NEEDS_PURCHASE", "PROCESSING", "SENT", "DELIVERED", "CANCELED"],
       default: "WAITING",
     },
 

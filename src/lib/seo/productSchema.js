@@ -48,10 +48,7 @@ export function generateProductSchema(product) {
 
       price: product.basePrice,
 
-      availability:
-        product.stock > 0
-          ? "https://schema.org/InStock"
-          : "https://schema.org/OutOfStock",
+      availability: "https://schema.org/InStock",
 
       itemCondition:
         "https://schema.org/NewCondition",

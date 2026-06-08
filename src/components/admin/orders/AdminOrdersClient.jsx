@@ -9,7 +9,7 @@ import {
   Eye, CheckCircle, XCircle, Clock, Package, Truck,
   Home, AlertCircle, RefreshCw, Receipt, CreditCard,
   TrendingUp, Users, BadgeCheck, ChevronDown, Ban, Loader2,
-  ReceiptText, Inbox, Sparkles, Bell
+  ReceiptText, Inbox, Sparkles, Bell, ShoppingBag
 } from "lucide-react";
 
 /* ─── Constants ─────────────────────────────────────────────────────── */
@@ -21,7 +21,8 @@ const PAYMENT_STATUS = {
 };
 
 const FULFILLMENT_STATUS = {
-  WAITING:    { label: "در انتظار",       color: "bg-gray-50 text-gray-500 border-gray-200",        dot: "bg-gray-400",   icon: Clock },
+  WAITING:        { label: "در انتظار",        color: "bg-gray-50 text-gray-500 border-gray-200",        dot: "bg-gray-400",   icon: Clock },
+  NEEDS_PURCHASE: { label: "باید خریداری شود", color: "bg-amber-50 text-amber-600 border-amber-200",     dot: "bg-amber-500",  icon: ShoppingBag },
   PROCESSING: { label: "در حال پردازش",  color: "bg-blue-50 text-blue-600 border-blue-200",         dot: "bg-blue-500",   icon: Package },
   SENT:       { label: "ارسال شده",       color: "bg-purple-50 text-purple-600 border-purple-200",  dot: "bg-purple-500", icon: Truck },
   DELIVERED:  { label: "تحویل داده شد",  color: "bg-teal-50 text-teal-600 border-teal-200",         dot: "bg-teal-500",   icon: Home },

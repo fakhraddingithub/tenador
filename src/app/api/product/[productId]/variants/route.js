@@ -31,7 +31,7 @@ export async function POST(req, { params }) {
     const productId = resolvedParams.productId || resolvedParams.id;
     const body = await req.json();
 
-    const { sku, price, stock = 0, images = [], attributes } = body;
+    const { sku, price, images = [], attributes } = body;
 
     if (!sku || !price || !attributes) {
       return NextResponse.json(
@@ -83,7 +83,6 @@ export async function POST(req, { params }) {
       categoryId: category._id,
       sku,
       price,
-      stock,
       images,
       attributes,
     });

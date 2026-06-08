@@ -30,13 +30,26 @@ async function getAdminUser() {
   return decoded || null;
 }
 
+// تبدیل attributes واریانت (Map) به آبجکت ساده تا در JSON درست سریالایز شود
+function normalizeVariant(variant) {
+  if (!variant) return variant;
+  const attrs =
+    variant.attributes instanceof Map
+      ? Object.fromEntries(variant.attributes)
+      : variant.attributes || {};
+  return { ...variant, attributes: attrs };
+}
+
 function normalizeOrderItems(items = []) {
   return items.map((item) => {
+    const variant = normalizeVariant(item.variant);
+
     if (item?.itemType === "used_product") {
       const usedProduct = item.usedProduct || null;
 
       return {
         ...item,
+        variant,
         usedProduct,
         product: {
           _id: usedProduct?._id || item.product?._id || null,
@@ -47,7 +60,7 @@ function normalizeOrderItems(items = []) {
       };
     }
 
-    return item;
+    return { ...item, variant };
   });
 }
 
@@ -161,6 +174,7 @@ export async function PATCH(req, { params }) {
     const VALID_PAYMENT_STATUSES = ["UNPAID", "PARTIALLY_PAID", "PAID"];
     const VALID_FULFILLMENT_STATUSES = [
       "WAITING",
+      "NEEDS_PURCHASE",
       "PROCESSING",
       "SENT",
       "DELIVERED",

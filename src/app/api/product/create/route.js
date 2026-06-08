@@ -223,17 +223,15 @@ export async function POST(req) {
 
           let specificImages = [];
           let specificPrice = Number(basePrice) || 0;
-          let specificStock = 0;
 
           if (variantDetails) {
             const comboValues = Object.values(combo);
             const exactKey = comboValues.join("-");
-            
+
             const matchedDetail = variantDetails[exactKey] || comboValues.reduce((acc, val) => acc || variantDetails[val], null);
 
             if (matchedDetail) {
               if (matchedDetail.price) specificPrice = Number(matchedDetail.price);
-              if (matchedDetail.stock) specificStock = Number(matchedDetail.stock);
               if (Array.isArray(matchedDetail.images) && matchedDetail.images.length > 0) {
                 specificImages = await Promise.all(
                   matchedDetail.images.map((imgUrl, i) => renameCloudinaryImage(imgUrl, variantSku, i + 1))
@@ -247,7 +245,6 @@ export async function POST(req) {
             sku: variantSku,
             attributes: combo,
             price: specificPrice,
-            stock: specificStock,
             images: specificImages,
           });
         });

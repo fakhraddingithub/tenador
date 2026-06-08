@@ -22,7 +22,6 @@ export default function SportPageClient({
     series: [], // ✨ اضافه شد: آمادگی برای فیلتر کردن کلاینت‌ساید بر اساس سری
     minPrice: 0,
     maxPrice: 50000000,
-    onlyInStock: false,
   });
 
   // ─────────────────────────────────────────────
@@ -98,15 +97,12 @@ export default function SportPageClient({
         product.basePrice >= localFilters.minPrice &&
         product.basePrice <= localFilters.maxPrice;
 
-      const matchesStock = !localFilters.onlyInStock || product.stock > 0;
-
       return (
         matchesSearch &&
         matchesBrand &&
         matchesCategory &&
-        matchesSerie && 
-        matchesPrice &&
-        matchesStock
+        matchesSerie &&
+        matchesPrice
       );
     });
   }, [searchTerm, localFilters, initialProducts]);
@@ -204,10 +200,9 @@ export default function SportPageClient({
                   setLocalFilters({
                     brands: [],
                     categories: [],
-                    series: [], 
+                    series: [],
                     minPrice: 0,
                     maxPrice: 50000000,
-                    onlyInStock: false,
                   })
                 }
                 className="mt-4 text-[var(--color-primary)] font-bold underline"

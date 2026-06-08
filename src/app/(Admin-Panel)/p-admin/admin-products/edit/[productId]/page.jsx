@@ -80,7 +80,6 @@ function rebuildVariantState(variants = []) {
 
     variantDetails[key] = {
       price: v.price ?? '',
-      stock: v.stock ?? '',
       images: v.images || [],
     };
   }
@@ -253,7 +252,7 @@ export default function ProductEditPage() {
       const next = {};
       for (const combo of combinations) {
         const key = getComboKey(combo);
-        next[key] = prev[key] || { price: '', stock: '', images: [] };
+        next[key] = prev[key] || { price: '', images: [] };
       }
       return next;
     });
@@ -318,7 +317,7 @@ export default function ProductEditPage() {
     setVariantDetails(prev => ({
       ...prev,
       [comboKey]: {
-        ...(prev[comboKey] || { price: '', stock: '', images: [] }),
+        ...(prev[comboKey] || { price: '', images: [] }),
         [field]: value,
       },
     }));
@@ -364,7 +363,6 @@ export default function ProductEditPage() {
       for (const [key, detail] of Object.entries(variantDetails)) {
         normalizedVariantDetails[key] = {
           price: Number(detail.price) || 0,
-          stock: Number(detail.stock) || 0,
           images: detail.images || [],
         };
       }
@@ -736,7 +734,7 @@ export default function ProductEditPage() {
               <div className="space-y-4">
                 {combinations.map(combo => {
                   const key = getComboKey(combo);
-                  const detail = variantDetails[key] || { price: '', stock: '', images: [] };
+                  const detail = variantDetails[key] || { price: '', images: [] };
 
                   return (
                     <div key={key} className="border rounded-2xl p-5 bg-white shadow-sm">
@@ -756,34 +754,19 @@ export default function ProductEditPage() {
                         </span>
                       </div>
 
-                      {/* Price + Stock */}
-                      <div className="grid md:grid-cols-2 gap-4 mb-4">
-                        <div>
-                          <label className="block text-sm text-gray-600 mb-1 font-medium">
-                            قیمت (یورو)
-                          </label>
-                          <input
-                            type="number"
-                            min="0"
-                            className="w-full border rounded-[var(--radius)] px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
-                            placeholder="قیمت این ترکیب…"
-                            value={detail.price}
-                            onChange={e => updateVariantDetail(key, 'price', e.target.value)}
-                          />
-                        </div>
-                        <div>
-                          <label className="block text-sm text-gray-600 mb-1 font-medium">
-                            موجودی
-                          </label>
-                          <input
-                            type="number"
-                            min="0"
-                            className="w-full border rounded-[var(--radius)] px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
-                            placeholder="تعداد موجودی…"
-                            value={detail.stock}
-                            onChange={e => updateVariantDetail(key, 'stock', e.target.value)}
-                          />
-                        </div>
+                      {/* Price */}
+                      <div className="mb-4">
+                        <label className="block text-sm text-gray-600 mb-1 font-medium">
+                          قیمت (یورو)
+                        </label>
+                        <input
+                          type="number"
+                          min="0"
+                          className="w-full border rounded-[var(--radius)] px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
+                          placeholder="قیمت این ترکیب…"
+                          value={detail.price}
+                          onChange={e => updateVariantDetail(key, 'price', e.target.value)}
+                        />
                       </div>
 
                       {/* Images */}

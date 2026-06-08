@@ -311,23 +311,15 @@ export default function CategoryNodeStep({
                 <div className="flex flex-wrap gap-2">
                   {values.map((val) => {
                     const isActive = variantSelection[attrKey] === val;
-                    const hasStock = productVariants.some(
-                      (v) =>
-                        v.attributes?.[attrKey] === val &&
-                        (v.stock === undefined || v.stock > 0)
-                    );
                     return (
                       <button
                         key={val}
                         type="button"
-                        disabled={!hasStock}
                         onClick={() => handleVariantSelect(attrKey, val)}
                         className={`min-w-[48px] px-3 h-9 rounded-md text-xs font-medium border transition ${
                           isActive
                             ? "bg-[#aa4725] text-white border-[#aa4725]"
-                            : hasStock
-                            ? "bg-white border-gray-200 text-gray-600 hover:border-[#aa4725]/50"
-                            : "bg-gray-50 border-gray-100 text-gray-300 cursor-not-allowed line-through"
+                            : "bg-white border-gray-200 text-gray-600 hover:border-[#aa4725]/50"
                         }`}
                       >
                         {val}

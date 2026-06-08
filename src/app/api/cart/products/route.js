@@ -171,15 +171,14 @@ export async function POST(request) {
         grandTotalToman += lineTotalToman;
         grandDiscountToman += lineDiscountToman;
 
-        let stock = 0;
         let inStock = false;
 
         if (ci.itemType === "used_product" && up) {
+          // کالای دست‌دوم تک‌نسخه است و فقط در صورت available بودن قابل سفارش است
           inStock = up.status === "available";
-          stock = inStock ? 1 : 0;
         } else if (p) {
-          stock = v ? (v.stock ?? 0) : (p.stock ?? 0);
-          inStock = stock > 0;
+          // محصولات نو همیشه قابل سفارش هستند (مفهوم موجودی حذف شده)
+          inStock = true;
         }
 
         return {
@@ -203,7 +202,6 @@ export async function POST(request) {
             sku: v.sku,
             attributes: v.attributes instanceof Map ? Object.fromEntries(v.attributes) : v.attributes || {},
             images: v.images || [],
-            stock: v.stock ?? 0,
           } : null,
 
           usedProduct: up ? {
@@ -216,7 +214,6 @@ export async function POST(request) {
           } : null,
 
           inStock,
-          stock,
 
           basePriceToman,
           unitPriceToman: unitFinalPrice,

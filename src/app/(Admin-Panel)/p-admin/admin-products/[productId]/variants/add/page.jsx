@@ -20,7 +20,6 @@ export default function AddVariant() {
   const [formData, setFormData] = useState({
     sku: '',
     price: '',
-    stock: '',
     images: [],
     attributes: {},
   });
@@ -69,7 +68,6 @@ export default function AddVariant() {
       const payload = {
         sku: formData.sku,
         price: parseFloat(formData.price) || 0,
-        stock: parseInt(formData.stock) || 0,
         images: formData.images || [],
         attributes: formData.attributes,
       };
@@ -141,15 +139,6 @@ export default function AddVariant() {
                 step="0.01"
                 value={formData.price}
                 onChange={(e) => setFormData((prev) => ({ ...prev, price: e.target.value }))}
-                required
-              />
-              <Input
-                label="موجودی"
-                name="stock"
-                type="number"
-                min="0"
-                value={formData.stock}
-                onChange={(e) => setFormData((prev) => ({ ...prev, stock: e.target.value }))}
                 required
               />
             </div>

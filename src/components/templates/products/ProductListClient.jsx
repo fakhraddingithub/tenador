@@ -13,7 +13,6 @@ export default function ProductListClient({ products: initialProducts ,rate}) {
     sports: [],      // حتماً آرایه خالی باشد
     minPrice: 0,
     maxPrice: 50000000,
-    onlyInStock: false,
   });
 
   // منطق فیلترینگ فوق حرفه‌ای
@@ -36,11 +35,8 @@ export default function ProductListClient({ products: initialProducts ,rate}) {
   
       // فیلتر قیمت
       const matchesPrice = product.basePrice >= filters.minPrice && product.basePrice <= filters.maxPrice;
-  
-      // فیلتر موجودی
-      const matchesStock = !filters.onlyInStock || product.stock > 0;
-  
-      return matchesSearch && matchesBrand && matchesSport && matchesCategory && matchesPrice && matchesStock;
+
+      return matchesSearch && matchesBrand && matchesSport && matchesCategory && matchesPrice;
     });
   }, [searchTerm, filters, initialProducts]);
 

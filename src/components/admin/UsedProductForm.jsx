@@ -313,7 +313,7 @@ export default function UsedProductForm({ initialData }) {
                       <p className="font-bold text-xs text-neutral-400 font-mono">{v.sku}</p>
                       <p className="text-sm">{formatVariantAttrs(attrs)}</p>
                       <p className="text-xs text-neutral-400">
-                        موجودی: {v.stock} · قیمت پایه: {v.price?.toLocaleString('fa-IR')} ت
+                        قیمت پایه: {v.price?.toLocaleString('fa-IR')} ت
                       </p>
                     </div>
                     {isSelected && <FiCheck size={16} className="shrink-0 mr-2" />}

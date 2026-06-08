@@ -50,11 +50,6 @@ const VariantSchema = new mongoose.Schema(
       type: [String],
       default: [],
     },
-
-    stock: {
-      type: Number,
-      default: 3,
-    },
   },
   { timestamps: true }
 );
