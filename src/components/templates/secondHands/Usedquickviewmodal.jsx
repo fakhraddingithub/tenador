@@ -214,6 +214,19 @@ export default function UsedQuickViewModal({
             )}
           </div>
 
+          {/* برچسب تست‌شده — هم‌سبک با نشان تأیید روی تصاویر */}
+          {tested && (
+            <div className="flex items-center gap-2.5 px-4 py-3 rounded-xl border border-[#1d9bf0]/20 bg-[#1d9bf0]/5">
+              <VerifiedBadge size={22} />
+              <div>
+                <p className="text-sm font-black text-[#1d9bf0]">تست‌شده</p>
+                <p className="text-xs text-gray-500 font-semibold">
+                  این محصول توسط کارشناسان ما تست و تأیید شده است
+                </p>
+              </div>
+            </div>
+          )}
+
           {/* امتیاز سلامت کلی */}
           {score && (
             <div className={`flex items-center gap-2 px-4 py-3 rounded-xl border ${

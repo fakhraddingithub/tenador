@@ -39,9 +39,15 @@ export default async function UsedProductsPage() {
   // تبدیل آرایه کارت‌ها به یک آبجکت واحد برای دسترسی سریع
   // خروجی چیزی شبیه این می‌شود: { engine: "وضعیت موتور", body: "سلامت بدنه", ... }
   const cardFieldMap = {};
+  // ترتیب فیلدهای هر کارت سلامت (بر اساس دسته‌بندی) تا نمایش امتیازها هم‌ترتیب باشد
+  const cardOrderByCat = {};
   allHealthCards.forEach((card) => {
-    card.fields.forEach((field) => {
+    const catId = card.category?.toString();
+    card.fields.forEach((field, i) => {
       cardFieldMap[field.key] = field.label;
+      if (catId) {
+        (cardOrderByCat[catId] ||= {})[field.key] = i;
+      }
     });
   });
   // حذف محصولاتی که baseProduct آنها null است
@@ -49,18 +55,23 @@ export default async function UsedProductsPage() {
     .filter((p) => p.baseProduct)
     .map((p) => {
       const currentHealthScores = p.healthScores || [];
+      // ترتیب نمایش امتیازها بر اساس ترتیب فیلدها در کارت سلامتِ همان دسته‌بندی
+      const orderMap = cardOrderByCat[p.baseProduct.category?._id?.toString()] || {};
+      const orderOf = (key) => (key in orderMap ? orderMap[key] : Infinity);
       return {
         _id: p._id.toString(),
         slug: p.slug || null,
         tested: !!p.tested,
         overallScore: p.overallScore,
-        healthScores: currentHealthScores.map((s) => ({
-          key: s.key,
-          // اگر در نقشه کارت سلامت بود، لیبل فارسی را بگذار، وگرنه خودِ کلید را
-          label: cardFieldMap[s.key] || s.key,
-          rating: s.rating,
-          note: s.note || "",
-        })),
+        healthScores: currentHealthScores
+          .map((s) => ({
+            key: s.key,
+            // اگر در نقشه کارت سلامت بود، لیبل فارسی را بگذار، وگرنه خودِ کلید را
+            label: cardFieldMap[s.key] || s.key,
+            rating: s.rating,
+            note: s.note || "",
+          }))
+          .sort((a, b) => orderOf(a.key) - orderOf(b.key)),
         price: eurToToman(p.price, rate),
         name: p.name,
         description: p.description.trim()

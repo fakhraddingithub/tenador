@@ -74,6 +74,13 @@ export default async function UsedProductPage({ params }) {
     (card?.fields || []).map((f) => [f.key, f.label])
   );
 
+  // ترتیب فیلدها در کارت سلامت تعیین‌کننده‌ی ترتیب نمایش در صفحه‌ی محصول است
+  const cardFieldOrder = new Map(
+    (card?.fields || []).map((f, i) => [f.key, i])
+  );
+  const orderOf = (key) =>
+    cardFieldOrder.has(key) ? cardFieldOrder.get(key) : Infinity;
+
   const mergedAttributes = (raw.baseProduct.category?.attributes || []).map((attr) => ({
     ...attr,
     value: raw.baseProduct.attributes?.[attr.name] ?? null,
@@ -98,12 +105,14 @@ export default async function UsedProductPage({ params }) {
     status:       raw.status,
     tested:       !!raw.tested,
     overallScore: raw.overallScore,
-    healthScores: (raw.healthScores || []).map((s) => ({
-      key:    s.key,
-      label:  cardFieldMap[s.key] || s.key,
-      rating: s.rating,
-      note:   s.note || "",
-    })),
+    healthScores: (raw.healthScores || [])
+      .map((s) => ({
+        key:    s.key,
+        label:  cardFieldMap[s.key] || s.key,
+        rating: s.rating,
+        note:   s.note || "",
+      }))
+      .sort((a, b) => orderOf(a.key) - orderOf(b.key)),
     customFields: (raw.customFields || []).map((f) => ({
       label:  f.label,
       rating: f.rating,

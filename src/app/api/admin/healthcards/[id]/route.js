@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { revalidatePath } from "next/cache";
 import connectToDB from "base/configs/db";
 import HealthCard from "base/models/HealthCard";
 
@@ -36,6 +37,10 @@ export async function PUT(req, { params }) {
     ).populate("category", "title slug");
 
     if (!card) return NextResponse.json({ error: "یافت نشد" }, { status: 404 });
+
+    // ترتیب جدید فیلدها روی صفحه‌ی لیست دست‌دوم (ISR) بازتاب پیدا کند
+    try { revalidatePath("/second-hand"); } catch {}
+
     return NextResponse.json({ card });
   } catch (err) {
     console.error(err);

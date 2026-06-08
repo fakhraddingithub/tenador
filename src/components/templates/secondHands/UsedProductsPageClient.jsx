@@ -88,8 +88,7 @@ export default function UsedProductsPageClient({ products: initialProducts, head
           className="w-full h-full object-cover scale-105"
           onError={e => { e.target.style.display = 'none'; }}
         />
-        <div className="absolute inset-0 bg-gradient-to-br from-neutral-900 via-neutral-800 to-[var(--color-primary)]/60" />
-        <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/30 to-transparent z-10" />
+        <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent z-10" />
 
         <div className="absolute inset-0 z-20 flex flex-col justify-center items-center text-center px-4">
           <span className="text-[var(--color-secondary)] font-bold mb-2 tracking-[0.2em] text-sm uppercase flex items-center gap-2">
