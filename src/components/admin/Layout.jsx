@@ -16,9 +16,9 @@ import {
   FaDollarSign,
   FaEuroSign,
   FaClock,
+  FaMoneyBillWave,
 } from "react-icons/fa";
 import { HiOutlineLogout } from "react-icons/hi";
-import { MdOutlineCurrencyExchange } from "react-icons/md";
 import { AiFillProduct } from "react-icons/ai";
 import { RiMenuFoldLine, RiMenuUnfoldLine } from "react-icons/ri";
 import { FiGitBranch } from "react-icons/fi";
@@ -36,7 +36,7 @@ const menuItems = [
   { title: "محصولات", href: "/p-admin/admin-products", icon: AiFillProduct },
   { title: "بازار دست دوم", href: "/p-admin/admin-secondHands", icon: FaBoxOpen },
   { title: "سفارشات", href: "/p-admin/admin-orders", icon: ShoppingCart },
-  { title: "نرخ تبدیل", href: "/p-admin/exchange-rate", icon: MdOutlineCurrencyExchange },
+  { title: "مدیریت مالی", href: "/p-admin/financial", icon: FaMoneyBillWave },
   { title: "کاربران", href: "/p-admin/users", icon: FaUsersCog },
 ];
 
