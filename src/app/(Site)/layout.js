@@ -122,7 +122,7 @@ export default async function RootLayout({ children }) {
 
     description: "فروشگاه آنلاین لوازم تنیس و پدل",
 
-    sameAs: ["https://instagram.com/tenador"],
+    sameAs: ["https://instagram.com/tenador.shop"],
   };
 
   return (

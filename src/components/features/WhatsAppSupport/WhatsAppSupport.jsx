@@ -4,7 +4,7 @@ import { useState } from "react";
 import { FaWhatsapp } from "react-icons/fa";
 import { FiX } from "react-icons/fi";
 
-const WHATSAPP_NUMBER = "989123456789";
+const WHATSAPP_NUMBER = "33743649300";
 const DEFAULT_MESSAGE = "سلام، می‌خواستم در مورد محصولات سوال بپرسم.";
 
 export default function WhatsAppSupport() {

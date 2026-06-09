@@ -139,7 +139,7 @@ export default function Footer() {
               {[
                 {
                   icon: <FiInstagram size={24} />,
-                  href: "https://instagram.com",
+                  href: "https://www.instagram.com/tenador.shop",
                 },
                 {
                   icon: <FaTelegram size={24} />,
