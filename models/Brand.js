@@ -72,6 +72,12 @@ const schema = new mongoose.Schema(
       unique: true,
       trim: true,
     },
+
+    order: {
+      type: Number,
+      default: 0,
+      index: true,
+    },
   },
   { timestamps: true }
 );

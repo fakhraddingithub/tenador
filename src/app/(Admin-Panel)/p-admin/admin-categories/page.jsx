@@ -7,10 +7,15 @@ import { motion } from 'framer-motion';
 import { showToast } from '@/lib/toast';
 import { confirmDelete, showError } from '@/lib/swal';
 import {
-  FaPlus, FaFolderOpen, FaTrash,
-  FaBoxOpen, FaSearch, FaArrowRight, FaShapes
+  FaPlus, FaFolderOpen, FaSearch, FaArrowRight, FaShapes
 } from 'react-icons/fa';
-import { FiEdit3, FiTrash2 } from 'react-icons/fi';
+import {
+  DndContext, closestCenter, PointerSensor, useSensor, useSensors,
+} from "@dnd-kit/core";
+import {
+  SortableContext, rectSortingStrategy, arrayMove,
+} from "@dnd-kit/sortable";
+import SortableCategoryCard from "@/components/admin/SortableCategoryCard";
 
 export default function AdminCategories() {
   const router = useRouter();
@@ -50,6 +55,25 @@ export default function AdminCategories() {
   };
 
   const filtered = categories.filter(c => c.title?.toLowerCase().includes(searchTerm.toLowerCase()));
+
+  const sensors = useSensors(useSensor(PointerSensor));
+
+  const handleDragEnd = async (event) => {
+    const { active, over } = event;
+    if (!over || active.id === over.id) return;
+    const oldIndex = categories.findIndex((item) => item._id === active.id);
+    const newIndex = categories.findIndex((item) => item._id === over.id);
+    const reordered = arrayMove(categories, oldIndex, newIndex);
+    const updated = reordered.map((item, index) => ({ ...item, order: index }));
+    setCategories(updated);
+    try {
+      await fetch("/api/categories/reorder", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ categories: updated.map((c) => ({ id: c._id, order: c.order })) }),
+      });
+    } catch (error) { console.error(error); }
+  };
 
   return (
     <div dir="rtl">
@@ -100,82 +124,26 @@ export default function AdminCategories() {
           <p className="text-gray-400 font-bold">هیچ دسته‌بندی‌ای یافت نشد</p>
         </div>
       ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
-          {filtered.map((category, i) => {
-            const count = getProductCount(category._id);
-            return (
-              <motion.div
-                key={category._id}
-                initial={{ opacity: 0, y: 12 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: i * 0.05, duration: 0.3 }}
-                onClick={() => router.push(`/p-admin/admin-categories/category-products/${category._id}`)}
-                className="group cursor-pointer bg-white rounded-2xl border overflow-hidden hover:shadow-xl hover:-translate-y-1 transition-all duration-300"
-                style={{ borderColor: '#e8e4df' }}
-              >
-                {/* Image */}
-                <div className="relative h-40 bg-gray-100 overflow-hidden">
-                  {category.image ? (
-                    <img
-                      src={category.image}
-                      alt={category.title}
-                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-                    />
-                  ) : (
-                    <div className="w-full h-full flex items-center justify-center text-gray-200">
-                      <FaShapes size={36} />
-                    </div>
-                  )}
-                  {/* Product count badge */}
-                  <div className="absolute top-3 left-3">
-                    <span
-                      className="flex items-center gap-1 px-2 py-1 rounded-lg text-[10px] font-bold"
-                      style={{
-                        background: count > 0 ? 'rgba(170,71,37,0.9)' : 'rgba(0,0,0,0.5)',
-                        color: 'white',
-                        backdropFilter: 'blur(4px)',
-                      }}
-                    >
-                      <FaBoxOpen size={9} /> {count} محصول
-                    </span>
-                  </div>
-                </div>
-
-                {/* Content */}
-                <div className="p-4">
-                  <div className="flex items-center gap-2.5 mb-4">
-                    <div className="w-8 h-8 rounded-[var(--radius)] overflow-hidden bg-gray-50 border border-gray-100 flex-shrink-0 flex items-center justify-center">
-                      {category.icon ? (
-                        <img src={category.icon} alt="icon" className="w-full h-full object-contain" />
-                      ) : (
-                        <FaFolderOpen size={14} style={{ color: 'var(--color-primary)' }} />
-                      )}
-                    </div>
-                    <h3 className="text-sm font-bold text-gray-800 group-hover:text-[var(--color-primary)] transition-colors truncate">
-                      {category.title}
-                    </h3>
-                  </div>
-
-                  {/* Actions */}
-                  <div className="flex items-center gap-2 pt-3 border-t border-gray-50">
-                    <button
-                      onClick={(e) => { e.stopPropagation(); router.push(`/p-admin/admin-categories/edit/${category._id}`); }}
-                      className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-[var(--radius)] bg-gray-50 text-gray-700 hover:bg-gray-900 hover:text-white font-bold text-xs transition-all"
-                    >
-                      <FiEdit3 size={13} /> ویرایش
-                    </button>
-                    <button
-                      onClick={(e) => { e.stopPropagation(); handleDelete(category); }}
-                      className="w-9 h-9 flex items-center justify-center rounded-[var(--radius)] bg-red-50 text-red-400 hover:bg-red-500 hover:text-white transition-all border border-red-100"
-                    >
-                      <FiTrash2 size={14} />
-                    </button>
-                  </div>
-                </div>
-              </motion.div>
-            );
-          })}
-        </div>
+        <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+          <SortableContext items={filtered.map((c) => c._id)} strategy={rectSortingStrategy}>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
+              {filtered.map((category, i) => (
+                <motion.div
+                  key={category._id}
+                  initial={{ opacity: 0, y: 12 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: i * 0.05, duration: 0.3 }}
+                >
+                  <SortableCategoryCard
+                    category={category}
+                    count={getProductCount(category._id)}
+                    handleDelete={handleDelete}
+                  />
+                </motion.div>
+              ))}
+            </div>
+          </SortableContext>
+        </DndContext>
       )}
     </div>
   );

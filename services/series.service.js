@@ -49,11 +49,15 @@ async function _getSeriesBySport(sportSlug) {
     },
 
     // ─────────────────────────────────────────
-    // فقط level 1
+    // فقط سری‌هایی که برای اسلایدرها علامت خورده‌اند
+    // (جدید یا لیمیتد ادیشن) — سطح سری دیگر ملاک نیست
     // ─────────────────────────────────────────
     {
       $match: {
-        "serieDoc.level": 1,
+        $or: [
+          { "serieDoc.isNewSerie": true },
+          { "serieDoc.isLimitedEdition": true },
+        ],
       },
     },
 
@@ -122,6 +126,10 @@ async function _getSeriesBySport(sportSlug) {
           $first: "$serieDoc.isLimitedEdition",
         },
 
+        isNewSerie: {
+          $first: "$serieDoc.isNewSerie",
+        },
+
         createdAt: { $first: "$serieDoc.createdAt" },
         updatedAt: { $first: "$serieDoc.updatedAt" },
 
@@ -186,6 +194,8 @@ async function _getSeriesBySport(sportSlug) {
 
     isLimitedEdition:
       serie.isLimitedEdition || false,
+
+    isNewSerie: serie.isNewSerie || false,
 
     productCount: serie.productCount || 0,
 

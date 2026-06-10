@@ -119,6 +119,12 @@ const CategorySchema = new mongoose.Schema(
       ref: "Category",
       default: null,
     },
+
+    order: {
+      type: Number,
+      default: 0,
+      index: true,
+    },
   },
   { timestamps: true },
 );

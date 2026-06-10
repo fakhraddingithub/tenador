@@ -10,10 +10,15 @@ export default function FilterSidebar({
   const getUniqueItems = (products, key) => {
     const items = products.map((p) => p[key]).filter(Boolean);
     // استفاده از Map برای حذف تکراری‌ها بر اساس _id
+    // و مرتب‌سازی بر اساس ترتیب دستی ادمین (order)
     return Array.from(
       new Map(
         items.map((item) => [item._id?.toString() || item, item]),
       ).values(),
+    ).sort(
+      (a, b) =>
+        (a.order ?? Number.MAX_SAFE_INTEGER) -
+        (b.order ?? Number.MAX_SAFE_INTEGER),
     );
   };
 

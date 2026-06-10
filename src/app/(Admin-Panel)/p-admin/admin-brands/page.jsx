@@ -4,10 +4,16 @@ import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { motion } from 'framer-motion';
 import {
-  FaPlus, FaEdit, FaTrash, FaGlobeAmericas,
-  FaCalendarCheck, FaSearch, FaArrowRight, FaShieldAlt
+  FaPlus, FaSearch, FaArrowRight, FaShieldAlt
 } from 'react-icons/fa';
 import Swal from 'sweetalert2';
+import {
+  DndContext, closestCenter, PointerSensor, useSensor, useSensors,
+} from "@dnd-kit/core";
+import {
+  SortableContext, rectSortingStrategy, arrayMove,
+} from "@dnd-kit/sortable";
+import SortableBrandCard from "@/components/admin/SortableBrandCard";
 
 const swalTheme = {
   confirmButtonColor: 'var(--color-primary)',
@@ -64,6 +70,25 @@ export default function AdminBrands() {
     b.name?.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
+  const sensors = useSensors(useSensor(PointerSensor));
+
+  const handleDragEnd = async (event) => {
+    const { active, over } = event;
+    if (!over || active.id === over.id) return;
+    const oldIndex = brands.findIndex((item) => item._id === active.id);
+    const newIndex = brands.findIndex((item) => item._id === over.id);
+    const reordered = arrayMove(brands, oldIndex, newIndex);
+    const updated = reordered.map((item, index) => ({ ...item, order: index }));
+    setBrands(updated);
+    try {
+      await fetch("/api/brands/reorder", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ brands: updated.map((b) => ({ id: b._id, order: b.order })) }),
+      });
+    } catch (error) { console.error(error); }
+  };
+
   return (
     <div dir="rtl">
       {/* Header */}
@@ -116,68 +141,22 @@ export default function AdminBrands() {
           <p className="text-gray-400 font-bold">هیچ برندی ثبت نشده</p>
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
-          {filteredBrands.map((brand, i) => (
-            <motion.div
-              key={brand._id}
-              initial={{ opacity: 0, y: 14 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: i * 0.05, duration: 0.3 }}
-              className="group bg-white rounded-2xl border overflow-hidden hover:shadow-xl hover:-translate-y-1 transition-all duration-300"
-              style={{ borderColor: '#e8e4df' }}
-            >
-              {/* Top accent */}
-              <div className="h-1 w-full" style={{ background: 'var(--color-primary)' }} />
-
-              {/* Logo */}
-              <Link href={`admin-brands/${brand._id}`} className="block px-6 pt-7 pb-4">
-                <div className="flex justify-center">
-                  <div className="w-20 h-20 bg-gray-50 rounded-2xl border border-gray-100 flex items-center justify-center overflow-hidden p-3 group-hover:scale-105 transition-transform">
-                    {brand.logo ? (
-                      <img src={brand.logo} alt={brand.name} className="w-full h-full object-contain" />
-                    ) : (
-                      <span className="text-2xl font-bold text-gray-200">{brand.name?.[0]}</span>
-                    )}
-                  </div>
-                </div>
-              </Link>
-
-              {/* Info */}
-              <div className="px-6 pb-5">
-                <h2 className="text-base font-bold text-gray-800 text-center mb-3 group-hover:text-[var(--color-primary)] transition-colors">
-                  {brand.name}
-                </h2>
-                <div className="flex items-center justify-center gap-4 text-[11px] font-bold text-gray-400 mb-4">
-                  <span className="flex items-center gap-1">
-                    <FaGlobeAmericas style={{ color: 'var(--color-secondary)' }} />
-                    {brand.country || 'Global'}
-                  </span>
-                  <span className="w-1 h-1 bg-gray-200 rounded-full" />
-                  <span className="flex items-center gap-1">
-                    <FaCalendarCheck style={{ color: 'var(--color-secondary)' }} />
-                    {brand.foundedYear || '---'}
-                  </span>
-                </div>
-
-                {/* Actions */}
-                <div className="flex gap-2">
-                  <Link
-                    href={`/p-admin/admin-brands/edit/${brand._id}`}
-                    className="flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-[var(--radius)] text-xs font-bold bg-gray-50 text-gray-700 hover:bg-gray-900 hover:text-white transition-all"
-                  >
-                    <FaEdit size={12} /> ویرایش
-                  </Link>
-                  <button
-                    onClick={() => handleDelete(brand)}
-                    className="w-10 h-10 flex items-center justify-center rounded-[var(--radius)] bg-red-50 text-red-400 hover:bg-red-500 hover:text-white transition-all border border-red-100"
-                  >
-                    <FaTrash size={13} />
-                  </button>
-                </div>
-              </div>
-            </motion.div>
-          ))}
-        </div>
+        <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+          <SortableContext items={filteredBrands.map((b) => b._id)} strategy={rectSortingStrategy}>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
+              {filteredBrands.map((brand, i) => (
+                <motion.div
+                  key={brand._id}
+                  initial={{ opacity: 0, y: 14 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: i * 0.05, duration: 0.3 }}
+                >
+                  <SortableBrandCard brand={brand} handleDelete={handleDelete} />
+                </motion.div>
+              ))}
+            </div>
+          </SortableContext>
+        </DndContext>
       )}
     </div>
   );

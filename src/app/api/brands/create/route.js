@@ -66,8 +66,14 @@ export async function POST(req) {
       );
     }
 
-    // create brand
+    // create brand (در انتهای ترتیب نمایش قرار می‌گیرد)
+    const lastBrand = await Brand.findOne({})
+      .sort({ order: -1 })
+      .select("order")
+      .lean();
+
     const created = await Brand.create({
+      order: (lastBrand?.order ?? -1) + 1,
       name: normalizedName,
       title: title.trim(),
       country,

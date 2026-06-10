@@ -28,6 +28,8 @@ export async function POST(req) {
       parentSerie = null,
 
       isLimitedEdition = false,
+
+      isNewSerie = false,
     } = body;
 
     /*
@@ -163,6 +165,8 @@ export async function POST(req) {
       level,
 
       isLimitedEdition,
+
+      isNewSerie,
     });
 
     /*

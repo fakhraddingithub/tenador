@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import connectToDB from "base/configs/db";
-import Sport from "base/models/Sport";
+import Brand from "base/models/Brand";
 import { revalidateContent } from "@/lib/revalidate";
 
 export async function PUT(req) {
@@ -9,9 +9,9 @@ export async function PUT(req) {
 
     const body = await req.json();
 
-    const sports = body.sports;
+    const brands = body.brands;
 
-    if (!Array.isArray(sports)) {
+    if (!Array.isArray(brands)) {
       return NextResponse.json(
         { success: false, message: "Invalid data" },
         { status: 400 }
@@ -19,14 +19,14 @@ export async function PUT(req) {
     }
 
     await Promise.all(
-      sports.map((item) =>
-        Sport.findByIdAndUpdate(item.id, {
+      brands.map((item) =>
+        Brand.findByIdAndUpdate(item.id, {
           order: item.order,
         })
       )
     );
 
-    revalidateContent(["navbar", "sports"]);
+    revalidateContent(["navbar", "brands"]);
 
     return NextResponse.json({
       success: true,

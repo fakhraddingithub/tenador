@@ -16,6 +16,7 @@ import {
   FaRocket,
   FaCrown,
   FaCodeBranch,
+  FaStar,
 } from "react-icons/fa";
 
 import { useRouter } from "next/navigation";
@@ -46,6 +47,8 @@ export default function SerieCreateForm({
     parentSerie: initialData?.parentSerie || "",
 
     isLimitedEdition: initialData?.isLimitedEdition || false,
+
+    isNewSerie: initialData?.isNewSerie || false,
 
     colors: {
       primary: initialData?.colors?.primary || "#000000",
@@ -331,6 +334,30 @@ export default function SerieCreateForm({
                 type="checkbox"
                 name="isLimitedEdition"
                 checked={formData.isLimitedEdition}
+                onChange={handleChange}
+                className="w-6 h-6"
+              />
+            </div>
+
+            {/* New Serie */}
+
+            <div className="bg-emerald-50 border border-emerald-100 rounded-3xl p-5 flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <FaStar className="text-emerald-500" />
+
+                <div>
+                  <h4 className="font-bold text-sm">New</h4>
+
+                  <p className="text-xs text-gray-500 mt-1">
+                    این سری به‌عنوان سری جدید در اسلایدر صفحه ورزش نمایش داده شود
+                  </p>
+                </div>
+              </div>
+
+              <input
+                type="checkbox"
+                name="isNewSerie"
+                checked={formData.isNewSerie}
                 onChange={handleChange}
                 className="w-6 h-6"
               />

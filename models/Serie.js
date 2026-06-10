@@ -72,6 +72,12 @@ const schema = new mongoose.Schema(
       default: false,
     },
 
+    // "isNew" در Mongoose رزرو شده است؛ به همین دلیل isNewSerie نام‌گذاری شد
+    isNewSerie: {
+      type: Boolean,
+      default: false,
+    },
+
     slug: {
       type: String,
       unique: true,

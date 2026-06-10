@@ -85,7 +85,14 @@ export async function POST(req) {
     }
 
     // ۵. ایجاد کتگوری در دیتابیس (مطابق مدل جدید)
+    // کتگوری جدید در انتهای ترتیب نمایش قرار می‌گیرد
+    const lastCategory = await Category.findOne({})
+      .sort({ order: -1 })
+      .select("order")
+      .lean();
+
     const created = await Category.create({
+      order: (lastCategory?.order ?? -1) + 1,
       title: title.trim(),
       name: name.trim(),
       parent: parent || null,

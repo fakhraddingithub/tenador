@@ -17,6 +17,7 @@ import {
   FaSync,
   FaArrowRight,
   FaEdit,
+  FaStar,
 } from "react-icons/fa";
 
 import { useRouter } from "next/navigation";
@@ -46,6 +47,8 @@ export default function SerieEditForm({ id,brandId }) {
     parentSerie: "",
 
     isLimitedEdition: false,
+
+    isNewSerie: false,
 
     colors: {
       primary: "#000000",
@@ -99,6 +102,8 @@ export default function SerieEditForm({ id,brandId }) {
           parentSerie: data?.parentSerie?._id || data?.parentSerie || "",
 
           isLimitedEdition: data?.isLimitedEdition || false,
+
+          isNewSerie: data?.isNewSerie || false,
 
           colors: {
             primary: data?.colors?.primary || "#000000",
@@ -408,6 +413,30 @@ export default function SerieEditForm({ id,brandId }) {
                 type="checkbox"
                 name="isLimitedEdition"
                 checked={formData.isLimitedEdition}
+                onChange={handleChange}
+                className="w-6 h-6"
+              />
+            </div>
+
+            {/* New Serie */}
+
+            <div className="bg-emerald-50 border border-emerald-100 rounded-3xl p-5 flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <FaStar className="text-emerald-500" />
+
+                <div>
+                  <h4 className="font-bold text-sm">New</h4>
+
+                  <p className="text-xs text-gray-500 mt-1">
+                    این سری به‌عنوان سری جدید در اسلایدر صفحه ورزش نمایش داده شود
+                  </p>
+                </div>
+              </div>
+
+              <input
+                type="checkbox"
+                name="isNewSerie"
+                checked={formData.isNewSerie}
                 onChange={handleChange}
                 className="w-6 h-6"
               />

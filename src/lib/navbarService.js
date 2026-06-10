@@ -2,10 +2,14 @@ import { unstable_cache } from "next/cache";
 import connectToDB from "base/configs/db";
 import Sport from "base/models/Sport";
 
+// ترتیب دستی ادمین؛ آیتم‌های بدون order در انتها قرار می‌گیرند
+const byOrder = (a, b) =>
+  (a.order ?? Number.MAX_SAFE_INTEGER) - (b.order ?? Number.MAX_SAFE_INTEGER);
+
 async function buildNavbarData() {
   await connectToDB();
 
-  return Sport.aggregate([
+  const sports = await Sport.aggregate([
     {
       $project: { _id: 1, title: 1, slug: 1, icon: 1, order: 1 },
     },
@@ -39,12 +43,14 @@ async function buildNavbarData() {
               title: { $first: "$category.title" },
               slug: { $first: "$category.slug" },
               icon: { $first: "$category.icon" },
+              order: { $first: "$category.order" },
               brands: {
                 $addToSet: {
                   _id: "$brand._id",
                   title: "$brand.title",
                   slug: "$brand.slug",
                   icon: "$brand.icon",
+                  order: "$brand.order",
                 },
               },
             },
@@ -56,6 +62,18 @@ async function buildNavbarData() {
     { $addFields: { categories: { $ifNull: ["$categories", []] } } },
     { $sort: { order: 1 } },
   ]);
+
+  // اعمال ترتیب دستی ادمین روی دسته‌ها و برندهای هر ورزش
+  // ($group و $addToSet ترتیب مشخصی برنمی‌گردانند)
+  for (const sport of sports) {
+    sport.categories.sort(byOrder);
+
+    for (const category of sport.categories) {
+      category.brands?.sort(byOrder);
+    }
+  }
+
+  return sports;
 }
 
 export const getCachedNavbar = unstable_cache(

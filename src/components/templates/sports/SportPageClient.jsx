@@ -129,15 +129,15 @@ export default function SportPageClient({
         </div>
       </div>
 
-      {/* ───────────────── Series Slider ───────────────── */}
-      {series.filter((serie) => serie.level !== 0 && !serie.isLimitedEdition)
+      {/* ───────────────── Series Slider (سری‌های جدید) ───────────────── */}
+      {series.filter((serie) => serie.isNewSerie && !serie.isLimitedEdition)
         .length > 0 &&
         !filters?.category &&
-        !filters?.brand && 
-        !filters?.serie && ( 
+        !filters?.brand &&
+        !filters?.serie && (
           <SeriesSlider
             series={series.filter(
-              (serie) => serie.level !== 0 && !serie.isLimitedEdition,
+              (serie) => serie.isNewSerie && !serie.isLimitedEdition,
             )}
             sportSlug={pageInfo.slug}
             sportTitle={pageInfo.title}
