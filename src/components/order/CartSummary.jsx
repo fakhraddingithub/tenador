@@ -19,6 +19,8 @@ const CartSummary = ({
   onApplyCoupon,    // async (code) => void
   onRemoveCoupon,   // () => void
   isLoading,
+  // کد تخفیف در صفحه پرداخت وارد می‌شود؛ این بخش در صفحه ثبت سفارش مخفی است
+  showCoupon = true,
 }) => {
   const [couponInput, setCouponInput] = useState('');
   const [isApplying, setIsApplying] = useState(false);
@@ -63,6 +65,7 @@ const CartSummary = ({
       </div>
 
       {/* کوپن */}
+      {showCoupon && (
       <div className="rounded-xl border border-[var(--color-primary)]/30 bg-[var(--color-primary)]/5 p-4 space-y-3">
         <label className="text-sm font-semibold text-slate-700">کد تخفیف</label>
 
@@ -124,6 +127,7 @@ const CartSummary = ({
           </div>
         )}
       </div>
+      )}
 
       {/* تفکیک قیمت */}
       <div className="space-y-3 text-sm">

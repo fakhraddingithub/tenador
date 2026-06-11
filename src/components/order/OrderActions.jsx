@@ -24,7 +24,6 @@ const OrderActions = ({
   finalTotalToman,     // مبلغ نمایشی (از سرور)
   selectedAddress,
   selectedPaymentMethod,
-  couponCode,
   onProceed,           // () => void — هدایت به صفحه پرداخت
 }) => {
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -92,11 +91,11 @@ const OrderActions = ({
     try {
       // هیچ سفارشی در این مرحله ساخته نمی‌شود — فقط اطلاعات مرحله ثبت سفارش
       // ذخیره و کاربر به صفحه پرداخت هدایت می‌شود
+      // (کد تخفیف در خود صفحه پرداخت وارد و اعمال می‌شود)
       savePendingCheckout({
         addressId:       selectedAddress._id || null,
         addressSnapshot: !selectedAddress._id ? selectedAddress : null,
         paymentMethod:   selectedPaymentMethod,
-        couponCode:      couponCode || null,
         description:     description || '',
       });
 

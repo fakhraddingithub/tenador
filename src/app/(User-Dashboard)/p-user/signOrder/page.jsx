@@ -23,17 +23,13 @@ import { useCart } from "@/hooks/useCart";
 import { useAddresses } from "@/hooks/useAddresses";
 
 const OrderPage = () => {
+  // کد تخفیف در صفحه پرداخت وارد و اعمال می‌شود (نه اینجا)
   const {
     cartItems,
     isLoading: isCartLoading,
     updateQuantity,
     removeItem,
     removeFlowSelection,
-    applyCoupon,
-    removeCoupon,
-    appliedCoupon,
-    couponDiscount,
-    couponError,
     totalItems,
     totalPrice,
     totalRawPrice,
@@ -143,12 +139,8 @@ const OrderPage = () => {
                   totalPrice={totalPrice}
                   totalRawPrice={totalRawPrice}
                   totalDiscount={totalDiscount}
-                  couponDiscount={couponDiscount}
-                  appliedCoupon={appliedCoupon}
-                  couponError={couponError}
-                  onApplyCoupon={applyCoupon}
-                  onRemoveCoupon={removeCoupon}
                   isLoading={isCartLoading}
+                  showCoupon={false}
                 />
               </div>
 
@@ -166,7 +158,6 @@ const OrderPage = () => {
                 finalTotalToman={totalPrice}
                 selectedAddress={selectedAddress}
                 selectedPaymentMethod={selectedPaymentMethod}
-                couponCode={appliedCoupon?.code ?? null}
                 onProceed={handleProceedToPayment}
               />
 

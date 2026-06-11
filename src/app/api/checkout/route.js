@@ -242,6 +242,16 @@ export async function POST(req) {
       return badRequest("مبلغ سفارش نامعتبر است");
     }
 
+    // ─── محافظت از مبلغ نهایی: اگر کد تخفیف ارسال شده ولی سرور آن را نپذیرفته،
+    // سفارش ساخته نمی‌شود تا مبلغ نمایش‌داده‌شده به کاربر با مبلغ سفارش یکی بماند
+    // (مثلاً انقضای کد یا پر شدن ظرفیت بین نمایش و ثبت) ───
+    if (couponCode && !priceResult.coupon) {
+      return badRequest(
+        priceResult.couponError ||
+          "کد تخفیف دیگر معتبر نیست؛ آن را حذف یا اصلاح کنید و دوباره تلاش کنید",
+      );
+    }
+
     const totalPrice = priceResult.finalTotalToman;
 
     // ─── اعتبارسنجی داده‌های پرداخت (قبل از ساخت سفارش) ───

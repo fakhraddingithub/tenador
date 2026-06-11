@@ -21,6 +21,7 @@ import { FiArrowRight } from 'react-icons/fi';
 import Link from 'next/link';
 
 import OrderSummary from '@/components/payments/OrderSummary';
+import PaymentCouponBox from '@/components/payments/PaymentCouponBox';
 import BankInfoBox from '@/components/payments/BankInfoBox';
 import ReceiptUploader from '@/components/payments/ReceiptUploader';
 import EmailBox from '@/components/payments/EmailBox';
@@ -59,8 +60,10 @@ const CheckoutPaymentPage = () => {
     cartItems,
     isLoading: isCartLoading,
     applyCoupon,
+    removeCoupon,
     appliedCoupon,
     couponDiscount,
+    couponError,
     totalPrice,
     totalRawPrice,
     totalDiscount,
@@ -88,6 +91,7 @@ const CheckoutPaymentPage = () => {
     setCheckout(pending);
     setCheckoutReady(true);
 
+    // سازگاری با نشست‌های قدیمی که کد تخفیف را از صفحه ثبت سفارش آورده‌اند
     if (pending.couponCode) {
       applyCoupon(pending.couponCode);
     }
@@ -113,7 +117,8 @@ const CheckoutPaymentPage = () => {
         addressId:       checkout.addressId,
         addressSnapshot: checkout.addressSnapshot,
         paymentMethod:   checkout.paymentMethod,
-        couponCode:      checkout.couponCode,
+        // کد تخفیفِ اعمال‌شده در همین صفحه — سرور دوباره اعتبارسنجی می‌کند
+        couponCode:      appliedCoupon?.code ?? null,
         description:     checkout.description,
         ...paymentFields,
       }),
@@ -264,11 +269,23 @@ const CheckoutPaymentPage = () => {
     </Link>
   );
 
+  // ─── باکس کد تخفیف — اعمال آن مبلغ قابل پرداخت را همان لحظه بازمحاسبه می‌کند ───
+  const couponBox = (
+    <PaymentCouponBox
+      appliedCoupon={appliedCoupon}
+      couponDiscount={couponDiscount}
+      couponError={couponError}
+      onApply={applyCoupon}
+      onRemove={removeCoupon}
+    />
+  );
+
   // ─── اقساط ───
   if (checkout.paymentMethod === 'INSTALLMENT') {
     return (
       <div>
         {backLink}
+        {couponBox}
         <InstallmentPage
           user={user}
           order={pseudoOrder}
@@ -289,6 +306,8 @@ const CheckoutPaymentPage = () => {
         </div>
 
         <div className="md:w-2/3 flex flex-col gap-6 md:px-6">
+          {couponBox}
+
           <BankInfoBox />
 
           <ReceiptUploader onFileChange={setReceiptUrls} />
