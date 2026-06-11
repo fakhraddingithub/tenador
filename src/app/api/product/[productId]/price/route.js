@@ -53,7 +53,8 @@ export async function GET(request, { params }) {
     if (product.variants?.length) {
       const rawVariants = await Variant.find({ _id: { $in: product.variants } }).lean();
       variants = rawVariants.map((v) => {
-        const variantBaseToman = eurToToman(v.price, rate);
+        // قیمت ۰ یا خالی واریانت → قیمت پایه محصول (پشتیبانی از داده‌های قدیمی)
+        const variantBaseToman = eurToToman(v.price || product.basePrice || 0, rate);
         const unitDiscount = Math.min(
           Math.floor(variantBaseToman * (priceResult.discountPercent / 100)),
           variantBaseToman

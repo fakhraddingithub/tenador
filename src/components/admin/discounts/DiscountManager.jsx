@@ -6,9 +6,12 @@ import DiscountRuleForm from "./DiscountRuleForm";
 import CoachCreditForm from "./CoachCreditForm";
 import DiscountRuleCard from "./DiscountRuleCard";
 import CoachCreditCard from "./CoachCreditCard";
+import CouponForm from "./CouponForm";
+import CouponCard from "./CouponCard";
 
 const TABS = [
   { id: "discounts", label: "قوانین تخفیف" },
+  { id: "coupons", label: "کدهای تخفیف" },
   { id: "coachCredits", label: "کردیت مربیان" },
 ];
 
@@ -27,6 +30,7 @@ const TYPE_LABELS = {
 export default function DiscountManager() {
   const [activeTab, setActiveTab] = useState("discounts");
   const [discounts, setDiscounts] = useState([]);
+  const [coupons, setCoupons] = useState([]);
   const [coachCredits, setCoachCredits] = useState([]);
   const [loading, setLoading] = useState(false);
   const [showForm, setShowForm] = useState(false);
@@ -63,40 +67,66 @@ export default function DiscountManager() {
     }
   }, []);
 
+  const fetchCoupons = useCallback(async () => {
+    setLoading(true);
+    try {
+      const res = await fetch("/api/admin/coupons");
+      const data = await res.json();
+      setCoupons(data.coupons || []);
+    } catch {
+      toast.error("خطا در دریافت کدهای تخفیف");
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
   useEffect(() => {
     if (activeTab === "discounts") fetchDiscounts();
+    else if (activeTab === "coupons") fetchCoupons();
     else fetchCoachCredits();
-  }, [activeTab, fetchDiscounts, fetchCoachCredits]);
+  }, [activeTab, fetchDiscounts, fetchCoupons, fetchCoachCredits]);
+
+  const API_BASE = {
+    discount: "/api/admin/discounts",
+    coupon: "/api/admin/coupons",
+    credit: "/api/admin/coach-credits",
+  };
+
+  const refreshByType = (type) => {
+    if (type === "discount") fetchDiscounts();
+    else if (type === "coupon") fetchCoupons();
+    else fetchCoachCredits();
+  };
 
   const handleDelete = async (id, type) => {
     if (!confirm("آیا مطمئن هستید؟")) return;
-    const url = type === "discount" ? `/api/admin/discounts/${id}` : `/api/admin/coach-credits/${id}`;
-    const res = await fetch(url, { method: "DELETE" });
+    const res = await fetch(`${API_BASE[type]}/${id}`, { method: "DELETE" });
     if (res.ok) {
       toast.success("حذف شد");
-      type === "discount" ? fetchDiscounts() : fetchCoachCredits();
+      refreshByType(type);
     } else {
       toast.error("خطا در حذف");
     }
   };
 
   const handleToggleActive = async (id, current, type) => {
-    const url = type === "discount" ? `/api/admin/discounts/${id}` : `/api/admin/coach-credits/${id}`;
-    const res = await fetch(url, {
+    const res = await fetch(`${API_BASE[type]}/${id}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ active: !current }),
     });
     if (res.ok) {
       toast.success(current ? "غیرفعال شد" : "فعال شد");
-      type === "discount" ? fetchDiscounts() : fetchCoachCredits();
+      refreshByType(type);
     }
   };
 
   const handleFormSuccess = () => {
     setShowForm(false);
     setEditItem(null);
-    activeTab === "discounts" ? fetchDiscounts() : fetchCoachCredits();
+    if (activeTab === "discounts") fetchDiscounts();
+    else if (activeTab === "coupons") fetchCoupons();
+    else fetchCoachCredits();
   };
 
   return (
@@ -162,7 +192,11 @@ export default function DiscountManager() {
           className="flex items-center gap-2 bg-[#aa4725] text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-[#8f3a1e] transition-colors shadow-sm"
         >
           <span className="text-lg leading-none">+</span>
-          {activeTab === "discounts" ? "تخفیف جدید" : "کردیت جدید"}
+          {activeTab === "discounts"
+            ? "تخفیف جدید"
+            : activeTab === "coupons"
+              ? "کد تخفیف جدید"
+              : "کردیت جدید"}
         </button>
       </div>
 
@@ -173,7 +207,11 @@ export default function DiscountManager() {
             <div className="flex items-center justify-between p-5 border-b border-gray-100">
               <h2 className="font-bold text-gray-800">
                 {editItem ? "ویرایش" : "ایجاد"}{" "}
-                {activeTab === "discounts" ? "قانون تخفیف" : "قانون کردیت مربی"}
+                {activeTab === "discounts"
+                  ? "قانون تخفیف"
+                  : activeTab === "coupons"
+                    ? "کد تخفیف"
+                    : "قانون کردیت مربی"}
               </h2>
               <button
                 onClick={() => { setShowForm(false); setEditItem(null); }}
@@ -185,6 +223,12 @@ export default function DiscountManager() {
             <div className="p-5">
               {activeTab === "discounts" ? (
                 <DiscountRuleForm
+                  initial={editItem}
+                  onSuccess={handleFormSuccess}
+                  onCancel={() => { setShowForm(false); setEditItem(null); }}
+                />
+              ) : activeTab === "coupons" ? (
+                <CouponForm
                   initial={editItem}
                   onSuccess={handleFormSuccess}
                   onCancel={() => { setShowForm(false); setEditItem(null); }}
@@ -219,6 +263,22 @@ export default function DiscountManager() {
                 onEdit={(item) => { setEditItem(item); setShowForm(true); }}
                 onDelete={(id) => handleDelete(id, "discount")}
                 onToggle={(id, current) => handleToggleActive(id, current, "discount")}
+              />
+            ))
+          )}
+        </div>
+      ) : activeTab === "coupons" ? (
+        <div className="grid gap-3">
+          {coupons.length === 0 ? (
+            <EmptyState text="هیچ کد تخفیفی تعریف نشده است — کاربر این کد را هنگام ثبت سفارش وارد می‌کند" />
+          ) : (
+            coupons.map((coupon) => (
+              <CouponCard
+                key={coupon._id}
+                coupon={coupon}
+                onEdit={(item) => { setEditItem(item); setShowForm(true); }}
+                onDelete={(id) => handleDelete(id, "coupon")}
+                onToggle={(id, current) => handleToggleActive(id, current, "coupon")}
               />
             ))
           )}

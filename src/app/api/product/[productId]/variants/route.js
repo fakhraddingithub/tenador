@@ -33,9 +33,9 @@ export async function POST(req, { params }) {
 
     const { sku, price, images = [], attributes } = body;
 
-    if (!sku || !price || !attributes) {
+    if (!sku || !attributes) {
       return NextResponse.json(
-        { error: "sku, price و attributes الزامی هستند" },
+        { error: "sku و attributes الزامی هستند" },
         { status: 400 }
       );
     }
@@ -48,6 +48,9 @@ export async function POST(req, { params }) {
         { status: 404 }
       );
     }
+
+    // قیمت ۰ یا خالی → قیمت پایه محصول
+    const finalPrice = Number(price) || Number(product.basePrice) || 0;
 
     // پیدا کردن کتگوری محصول
     const category = await Category.findById(product.category).lean();
@@ -82,7 +85,7 @@ export async function POST(req, { params }) {
       productId,
       categoryId: category._id,
       sku,
-      price,
+      price: finalPrice,
       images,
       attributes,
     });

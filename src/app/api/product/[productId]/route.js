@@ -213,7 +213,8 @@ export async function PUT(request, { params }) {
           productId: product._id,
           categoryId: category,
           attributes: combo,
-          price: Number(detail.price) || 0,
+          // قیمت ۰ یا خالی → قیمت پایه محصول ذخیره می‌شود
+          price: Number(detail.price) || Number(basePrice) || 0,
           images: Array.isArray(detail.images) ? detail.images : [],
           sku: `${product._id}-${comboKey}`
             .replace(/\s+/g, "")

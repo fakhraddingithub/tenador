@@ -89,7 +89,8 @@ export async function POST(request) {
         const p = productMap.get(ci.productId);
         if (!p) continue;
         const v = ci.variantId ? variantMap.get(ci.variantId) : null;
-        const eurPrice = v?.price ?? p.basePrice ?? 0;
+        // قیمت ۰ یا خالی واریانت → قیمت پایه محصول (پشتیبانی از داده‌های قدیمی)
+        const eurPrice = v?.price || p.basePrice || 0;
         const { addonToman } = resolveFlowAddon(ci);
         subtotalToman += (eurToToman(eurPrice, rate) + addonToman) * (ci.quantity || 1);
       }
@@ -115,7 +116,8 @@ export async function POST(request) {
           p = productMap.get(ci.productId);
           if (!p) return null;
           v = ci.variantId ? variantMap.get(ci.variantId) : null;
-          eurPrice = v?.price ?? p.basePrice ?? 0;
+          // قیمت ۰ یا خالی واریانت → قیمت پایه محصول (پشتیبانی از داده‌های قدیمی)
+          eurPrice = v?.price || p.basePrice || 0;
         }
 
         const qty = Math.max(1, Math.floor(ci.quantity || 1));
@@ -137,7 +139,7 @@ export async function POST(request) {
           unitDiscount = priceResult.discountAmount;
           appliedRules = priceResult.appliedRules;
 
-          if (v?.price != null) {
+          if (v?.price) {
             const variantBase = eurToToman(v.price, rate);
             const productDiscount = Math.floor(variantBase * (priceResult.discountPercent / 100));
 
@@ -188,11 +190,12 @@ export async function POST(request) {
           itemType: ci.itemType,
           quantity: qty,
 
-          // اصلاح نام محصول بر اساس دست‌دوم یا نو بودن کالا
+          // اصلاح نام و تصویر محصول بر اساس دست‌دوم یا نو بودن کالا
           product: p ? {
             _id: p._id.toString(),
             name: up ? up.name : p.name, // اگر دست‌دوم بود نام خود دست‌دوم، در غیر این صورت نام اصلی
-            mainImage: p.mainImage,
+            // برای دست‌دوم اولین تصویر گالری خودش نمایش داده می‌شود نه تصویر محصول پایه
+            mainImage: up ? (up.images?.[0] || p.mainImage) : p.mainImage,
             sku: p.sku,
             brand: p.brand?.name ?? null,
           } : null,

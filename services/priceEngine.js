@@ -556,7 +556,8 @@ export async function buildFlowAddonResolver(cartItems, productMap, rate) {
         const av = sel.selectedVariantId
           ? addonVariantMap.get(String(sel.selectedVariantId))
           : null;
-        const eur = av?.price ?? ap?.basePrice ?? 0;
+        // قیمت ۰ یا خالی واریانت → قیمت پایه محصول انتخاب‌شده
+        const eur = av?.price || ap?.basePrice || 0;
         const toman = eurToToman(eur, rate);
         addonToman += toman;
         enriched.push({
@@ -650,7 +651,8 @@ export async function computeCartPrice(cartItems, user = null, couponCode = null
       const p = productMap.get(ci.productId);
       if (!p) continue;
       const v = ci.variantId ? variantMap.get(ci.variantId) : null;
-      const eurPrice = v?.price ?? p.basePrice ?? 0;
+      // قیمت ۰ یا خالی واریانت → قیمت پایه محصول (پشتیبانی از داده‌های قدیمی)
+      const eurPrice = v?.price || p.basePrice || 0;
       const { addonToman } = resolveFlowAddon(ci);
       subtotalToman += (eurToToman(eurPrice, rate) + addonToman) * (ci.quantity || 1);
     }
@@ -700,7 +702,8 @@ export async function computeCartPrice(cartItems, user = null, couponCode = null
       if (!p) continue;
 
       const v = ci.variantId ? variantMap.get(ci.variantId) : null;
-      const eurPrice = v?.price ?? p.basePrice ?? 0;
+      // قیمت ۰ یا خالی واریانت → قیمت پایه محصول (پشتیبانی از داده‌های قدیمی)
+      const eurPrice = v?.price || p.basePrice || 0;
       const basePriceToman = eurToToman(eurPrice, rate);
       const qty = Math.max(1, ci.quantity || 1);
 
@@ -708,7 +711,7 @@ export async function computeCartPrice(cartItems, user = null, couponCode = null
 
       let unitFinalPrice = priceResult.finalPriceToman;
       let unitDiscount   = priceResult.discountAmount;
-      if (v?.price != null) {
+      if (v?.price) {
         const variantBase = eurToToman(v.price, rate);
         unitDiscount   = Math.min(
           Math.floor(variantBase * (priceResult.discountPercent / 100)),
