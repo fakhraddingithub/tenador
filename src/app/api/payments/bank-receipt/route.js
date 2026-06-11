@@ -29,6 +29,7 @@ import Installment from "base/models/Installment";
 import UsedProduct from "base/models/UsedProduct";
 import User from "base/models/User";
 import { sendOrderConfirmationEmail } from "@/lib/emailService";
+import { INSTALLMENT_MONTHLY_INTEREST_RATE } from "@/lib/constants";
 
 async function getUserFromToken() {
   const cookieStore = await cookies();
@@ -237,13 +238,16 @@ export async function POST(req) {
         );
       }
 
-      const checksTotal = checks.reduce((s, c) => s + (c.amount || 0), 0);
-      const expectedChecksTotal = order.totalPrice - downPaymentAmount;
+      // مانده + سود ماهانه — همان فرمول ماشین‌حساب اقساط سمت کلاینت (تومان)
+      const remaining = order.totalPrice - downPaymentAmount;
+      const checksTotal = checks.reduce((s, c) => s + (Number(c.amount) || 0), 0);
+      const expectedChecksTotal =
+        remaining + remaining * INSTALLMENT_MONTHLY_INTEREST_RATE * numberOfChecks;
 
       if (Math.abs(checksTotal - expectedChecksTotal) > 100) {
         return NextResponse.json(
           {
-            message: `مجموع مبلغ چک‌ها (${checksTotal}) باید برابر با مانده سفارش (${expectedChecksTotal}) باشد`,
+            message: `مجموع مبلغ چک‌ها (${Math.round(checksTotal)}) باید برابر با مانده سفارش به‌همراه سود (${Math.round(expectedChecksTotal)}) باشد`,
           },
           { status: 400 },
         );
@@ -269,10 +273,11 @@ export async function POST(req) {
         numberOfChecks,
         status:         "PENDING",
         checks: checks.map((c) => ({
-          checkNumber: c.checkNumber ?? null,
-          amount:      c.amount,
-          dueDate:     new Date(c.dueDate),
-          status:      "PENDING",
+          checkNumber:     c.checkNumber ?? null,
+          amount:          Number(c.amount),
+          dueDate:         new Date(c.dueDate),
+          status:          "PENDING",
+          receiptImageUrl: c.receiptImageUrl ?? null,
         })),
       });
 

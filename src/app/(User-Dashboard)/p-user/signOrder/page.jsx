@@ -46,8 +46,10 @@ const OrderPage = () => {
   const [isAddressModalOpen, setIsAddressModalOpen] = useState(false);
   const [selectedPaymentMethod, setSelectedPaymentMethod] = useState(null);
 
-  const handleOrderSuccess = (trackingCode) => {
-    window.location.replace(`/p-user/payments/${trackingCode}`);
+  // سفارش در این مرحله ساخته نمی‌شود؛ کاربر به صفحه پرداخت می‌رود و
+  // سفارش فقط پس از ثبت موفق پرداخت/اقساط ایجاد خواهد شد
+  const handleProceedToPayment = () => {
+    window.location.href = '/p-user/payments/checkout';
   };
 
   return (
@@ -165,7 +167,7 @@ const OrderPage = () => {
                 selectedAddress={selectedAddress}
                 selectedPaymentMethod={selectedPaymentMethod}
                 couponCode={appliedCoupon?.code ?? null}
-                onSuccess={handleOrderSuccess}
+                onProceed={handleProceedToPayment}
               />
 
             </div>

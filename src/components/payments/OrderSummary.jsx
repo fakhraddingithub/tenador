@@ -36,7 +36,11 @@ const OrderSummary = ({ order }) => {
           <span className="text-gray-500 text-xs mb-1">کد پیگیری:</span>
           <div className="flex items-center gap-2 font-mono text-gray-800 font-bold bg-gray-50 px-3 py-1.5 rounded border border-gray-100 w-fit text-sm">
             <MdOutlineConfirmationNumber className="text-gray-400" />
-            {order.trackingCode}
+            {order.trackingCode || (
+              <span className="font-sans text-[11px] text-gray-400">
+                پس از تکمیل پرداخت صادر می‌شود
+              </span>
+            )}
           </div>
         </div>
         <div className="flex flex-col">

@@ -145,9 +145,43 @@ const PaymentPage = ({ trackingCode }) => {
     );
   }
 
-  // ─── اقساط ───
+  // ─── اقساط (سفارش موجود — payload اقساط به API پرداخت سفارش ارسال می‌شود) ───
+  const handleInstallmentSubmit = async (installmentPayload) => {
+    const res = await fetch('/api/payments/bank-receipt', {
+      method: 'POST',
+      credentials: 'include',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        orderId: order._id,
+        method: 'INSTALLMENT',
+        installment: installmentPayload,
+      }),
+    });
+
+    const data = await res.json();
+    if (!res.ok) {
+      throw new Error(data.message || 'خطا در ثبت درخواست اقساط');
+    }
+
+    await Swal.fire({
+      title: 'درخواست اقساط ثبت شد',
+      text: 'طرح اقساطی شما در حال بررسی است و نتیجه تا ساعاتی دیگر اعلام خواهد شد.',
+      icon: 'success',
+      confirmButtonText: 'متوجه شدم',
+      confirmButtonColor: '#aa4725',
+    });
+
+    router.push(`/p-user/orders/success/${trackingCode}`);
+  };
+
   if (order.paymentMethod === 'INSTALLMENT') {
-    return <InstallmentPage user={user} order={order} />;
+    return (
+      <InstallmentPage
+        user={user}
+        order={order}
+        onFinalSubmit={handleInstallmentSubmit}
+      />
+    );
   }
 
   // ─── رسید بانکی ───

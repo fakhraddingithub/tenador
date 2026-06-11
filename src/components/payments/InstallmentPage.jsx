@@ -1,7 +1,20 @@
 "use client";
 
+/**
+ * src/components/payments/InstallmentPage.jsx
+ *
+ * صفحه تنظیم و ثبت طرح اقساطی.
+ *
+ * این کامپوننت خودش سفارش/پرداخت نمی‌سازد؛ پس از اعتبارسنجی و آپلود تصاویر،
+ * payload اقساط را به onFinalSubmit (از صفحه والد) می‌دهد:
+ *  - صفحه پرداختِ پیش از سفارش (CheckoutPaymentPage) → POST /api/checkout
+ *  - صفحه پرداخت سفارش‌های موجود (PaymentPage)        → POST /api/payments/bank-receipt
+ *
+ * همه مبالغ به تومان هستند.
+ */
+
 import React, { useState, useEffect, useMemo } from 'react';
-import { ToastContainer, toast } from 'react-toastify';
+import { toast } from 'react-toastify';
 import Swal from 'sweetalert2';
 import DateObject from "react-date-object";
 import persian from "react-date-object/calendars/persian";
@@ -13,23 +26,64 @@ import InstallmentCalculator from './InstallmentCalculator.jsx';
 import DownPaymentSection from './DownPaymentSection.jsx';
 import InstallmentResult from './InstallmentResult.jsx';
 import CheckUploadSection from './CheckUploadSection.jsx';
+import ReceiptUploader from './ReceiptUploader.jsx';
 import EmailBox from './EmailBox.jsx';
 import RulesAgreement from './RulesAgreement.jsx';
 import { editProfile } from '@/hooks/useProfile';
 import SubmitPaymentButton from './SubmitPaymentButton.jsx';
+import { INSTALLMENT_MONTHLY_INTEREST_RATE } from '@/lib/constants';
 
-const InstallmentPage = ({ order, user }) => {
+// تبدیل تاریخ چک (DateObject یا رشته شمسی YYYY-MM-DD) به ISO میلادی برای سرور
+const checkDateToISO = (date) => {
+  if (!date) return null;
+  if (typeof date === 'object' && typeof date.toDate === 'function') {
+    return date.toDate().toISOString();
+  }
+  const obj = new DateObject({
+    date: String(date),
+    format: 'YYYY-MM-DD',
+    calendar: persian,
+    locale: persian_fa,
+  });
+  return obj.isValid ? obj.toDate().toISOString() : null;
+};
+
+// آپلود تصویر چک (data URL) و دریافت URL نهایی
+const uploadCheckImage = async (dataUrl, index) => {
+  // اگر از قبل URL آپلودشده باشد (نه data URL)، همان را برگردان
+  if (typeof dataUrl === 'string' && !dataUrl.startsWith('data:')) {
+    return dataUrl;
+  }
+
+  const blob = await (await fetch(dataUrl)).blob();
+  const formData = new FormData();
+  formData.append(
+    'file',
+    new File([blob], `check-${index + 1}-${Date.now()}.png`, {
+      type: blob.type || 'image/png',
+    }),
+  );
+  formData.append('folder', 'checks');
+
+  const res = await fetch('/api/upload', { method: 'POST', body: formData });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.error || `خطا در آپلود تصویر چک شماره ${index + 1}`);
+  return data.url;
+};
+
+const InstallmentPage = ({ order, user, onFinalSubmit }) => {
   const [downPayment, setDownPayment] = useState(0);
+  const [downPaymentReceipts, setDownPaymentReceipts] = useState([]);
   const [installmentCount, setInstallmentCount] = useState(1);
   const [checks, setChecks] = useState([]);
   const [email, setEmail] = useState('');
   const [rulesChecked, setRulesChecked] = useState(false);
   const [submitLoading, setSubmitLoading] = useState(false);
-  // Dynamic Calculations
+
+  // Dynamic Calculations — همه مبالغ تومان
   const calculations = useMemo(() => {
     const remaining = Math.max(0, order.totalPrice - downPayment);
-    const monthlyInterestRate = 0.04;
-    const totalInterest = remaining * monthlyInterestRate * installmentCount;
+    const totalInterest = remaining * INSTALLMENT_MONTHLY_INTEREST_RATE * installmentCount;
     const totalWithInterest = remaining + totalInterest;
     const monthlyInstallment = totalWithInterest / installmentCount;
 
@@ -44,33 +98,30 @@ const InstallmentPage = ({ order, user }) => {
   // Sync check fields with installment count
   useEffect(() => {
     const defaultCheckAmount = Math.floor(calculations.monthlyInstallment);
-  
+
     setChecks(prevChecks => {
       return Array.from({ length: installmentCount }, (_, i) => {
         const existing = prevChecks[i];
-  
+
         // ساخت تاریخ شمسی + ذخیره استاندارد YYYY-MM-DD
         const installmentDate = new DateObject({
           calendar: persian,
           locale: persian_fa
         }).add(i + 1, "month");
-  
+
         return {
           id: existing?.id || Date.now() + i,
           image: existing?.image || null,
           number: existing?.number || '',
-          amount: defaultCheckAmount*10, // همیشه sync شود
+          amount: defaultCheckAmount, // تومان — همیشه sync شود
           date: existing?.date || installmentDate // اگر قبلا داشت نگه دار
         };
       });
     });
-  
+
   }, [installmentCount, calculations.monthlyInstallment]);
-  
-  
 
   const handleUpdateCheck = (index, field, value) => {
-    
     const updated = [...checks];
     updated[index] = { ...updated[index], [field]: value };
     setChecks(updated);
@@ -90,9 +141,15 @@ const InstallmentPage = ({ order, user }) => {
   };
 
   const handleFinalSubmit = async () => {
-    // Validation logic
-    if (downPayment > order.totalPrice) {
-      return toast.error('مبلغ پیش‌پرداخت نمی‌تواند بیشتر از کل مبلغ سفارش باشد');
+    // ─── اعتبارسنجی ───
+    if (!downPayment || downPayment <= 0) {
+      return toast.error('مبلغ پیش‌پرداخت الزامی است');
+    }
+    if (downPayment >= order.totalPrice) {
+      return toast.error('پیش‌پرداخت باید کمتر از مبلغ کل سفارش باشد');
+    }
+    if (downPaymentReceipts.length === 0) {
+      return toast.error('لطفاً حداقل یک تصویر رسید پیش‌پرداخت بارگذاری کنید');
     }
 
     const isAllFilled = checks.every(c => c.image && c.number && c.amount && c.date);
@@ -103,7 +160,7 @@ const InstallmentPage = ({ order, user }) => {
     const totalCheckAmount = checks.reduce((acc, curr) => acc + Number(curr.amount), 0);
     // Tolerance for rounding
     if (Math.abs(totalCheckAmount - calculations.totalWithInterest) > 100) {
-      return toast.error(`مجموع مبالغ چک‌ها باید برابر با ${calculations.totalWithInterest.toLocaleString()} ریال باشد`);
+      return toast.error(`مجموع مبالغ چک‌ها باید برابر با ${Math.round(calculations.totalWithInterest).toLocaleString()} تومان باشد`);
     }
     if (!rulesChecked) {
       toast.error('پذیرش قوانین الزامی است.');
@@ -114,9 +171,14 @@ const InstallmentPage = ({ order, user }) => {
       return;
     }
 
+    const dueDates = checks.map((c) => checkDateToISO(c.date));
+    if (dueDates.some((d) => !d)) {
+      return toast.error('تاریخ سررسید همه چک‌ها باید معتبر باشد');
+    }
+
     const result = await Swal.fire({
       title: 'آیا از تایید نهایی اطمینان دارید؟',
-      text: 'پس از تایید، طرح اقساطی شما ثبت و برای بازبینی ارسال خواهد شد.',
+      text: 'پس از تایید، سفارش شما ثبت و طرح اقساطی برای بازبینی ارسال خواهد شد.',
       icon: 'question',
       showCancelButton: true,
       confirmButtonText: 'بله، تایید می‌کنم',
@@ -124,22 +186,36 @@ const InstallmentPage = ({ order, user }) => {
       confirmButtonColor: 'var(--color-primary)',
     });
 
-    if (result.isConfirmed) {
-      setSubmitLoading(true)
-      try {
-        if (email) await editProfile(email);
+    if (!result.isConfirmed) return;
 
+    setSubmitLoading(true);
+    try {
+      if (email) await editProfile({ email });
 
+      // آپلود تصاویر چک‌ها و ساخت payload نهایی
+      const checkImageUrls = await Promise.all(
+        checks.map((c, i) => uploadCheckImage(c.image, i)),
+      );
 
-        toast.success('طرح اقساطی شما با موفقیت ثبت شد!');
-        router.push('/p-user/success');
-      } catch (error) {
-        toast.error('خطایی در ثبت اطلاعات رخ داد. مجدداً تلاش کنید.');
-      } finally {
-        setSubmitLoading(false);
-      }
-      // Simulate API Call
-      console.log('Submitting Plan:', { orderId: order.id, downPayment, installmentCount, checks });
+      const payload = {
+        downPaymentAmount:      downPayment,
+        downPaymentReceiptUrls: downPaymentReceipts,
+        numberOfChecks:         installmentCount,
+        checks: checks.map((c, i) => ({
+          checkNumber:     c.number,
+          amount:          Number(c.amount),
+          dueDate:         dueDates[i],
+          receiptImageUrl: checkImageUrls[i],
+        })),
+      };
+
+      // ثبت نهایی — صفحه والد مسئول ساخت سفارش/پرداخت و هدایت پس از موفقیت است
+      await onFinalSubmit(payload);
+    } catch (error) {
+      console.error(error);
+      toast.error(error.message || 'خطایی در ثبت اطلاعات رخ داد. مجدداً تلاش کنید.');
+    } finally {
+      setSubmitLoading(false);
     }
   };
 
@@ -175,6 +251,14 @@ const InstallmentPage = ({ order, user }) => {
                 </div>
               </section>
 
+              {/* رسید واریز پیش‌پرداخت — برای ثبت درخواست الزامی است */}
+              <section>
+                <h3 className="text-lg font-bold text-gray-800 border-b border-gray-100 pb-2 mb-4">
+                  رسید واریز پیش‌پرداخت
+                </h3>
+                <ReceiptUploader onFileChange={setDownPaymentReceipts} />
+              </section>
+
               <InstallmentResult calculations={calculations} />
 
               <CheckUploadSection
@@ -185,7 +269,7 @@ const InstallmentPage = ({ order, user }) => {
               />
 
               <EmailBox
-                show={!user.email}
+                show={!user?.email}
                 email={email}
                 setEmail={setEmail}
               />
@@ -203,7 +287,6 @@ const InstallmentPage = ({ order, user }) => {
           </main>
         </div>
       </div>
-      <ToastContainer position="bottom-left" rtl />
     </div>
   );
 };

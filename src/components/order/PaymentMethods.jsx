@@ -5,7 +5,9 @@ const paymentOptions = [
     method: 'ONLINE',
     title: 'پرداخت آنلاین',
     description: 'پرداخت امن از طریق درگاه بانکی',
-    icon: 'credit-card'
+    icon: 'credit-card',
+    disabled: true,
+    disabledLabel: 'در حال حاضر غیرفعال'
   },
   {
     method: 'BANK_RECEIPT',
@@ -59,11 +61,14 @@ const PaymentMethods = ({ selectedMethod, onSelectMethod }) => {
         {paymentOptions.map((option, index) => {
           const Icon = getIcon(option.icon);
           const isSelected = selectedMethod === option.method;
+          const isDisabled = option.disabled === true;
 
           return (
             <button
               key={option.method}
-              onClick={() => onSelectMethod(option.method)}
+              type="button"
+              disabled={isDisabled}
+              onClick={() => !isDisabled && onSelectMethod(option.method)}
               style={{ animationDelay: `${index * 60}ms` }}
               className={`
                 text-right w-full
@@ -71,11 +76,12 @@ const PaymentMethods = ({ selectedMethod, onSelectMethod }) => {
                 p-4
                 transition-all duration-200
                 animate-slide-up
-                ${isSelected
-                  ? 'border-[var(--color-primary)] bg-[var(--color-primary)]/10 shadow-md'
-                  : 'border-slate-200 bg-white hover:border-[var(--color-primary)]/30 hover:bg-[var(--color-primary)]/5'
+                ${isDisabled
+                  ? 'border-slate-200 bg-slate-50 opacity-60 cursor-not-allowed'
+                  : isSelected
+                    ? 'border-[var(--color-primary)] bg-[var(--color-primary)]/10 shadow-md active:scale-[0.98]'
+                    : 'border-slate-200 bg-white hover:border-[var(--color-primary)]/30 hover:bg-[var(--color-primary)]/5 active:scale-[0.98]'
                 }
-                active:scale-[0.98]
               `}
             >
               <div className="flex items-start gap-3">
@@ -86,7 +92,7 @@ const PaymentMethods = ({ selectedMethod, onSelectMethod }) => {
                     flex items-center justify-center
                     flex-shrink-0
                     transition-colors
-                    ${isSelected
+                    ${isSelected && !isDisabled
                       ? 'bg-[var(--color-primary)] text-white'
                       : 'bg-slate-100 text-slate-500'
                     }
@@ -101,22 +107,33 @@ const PaymentMethods = ({ selectedMethod, onSelectMethod }) => {
                     <h3
                       className={`
                         text-sm font-bold
-                        ${isSelected ? 'text-[var(--color-primary)]' : 'text-slate-800'}
+                        ${isDisabled
+                          ? 'text-slate-400'
+                          : isSelected
+                            ? 'text-[var(--color-primary)]'
+                            : 'text-slate-800'
+                        }
                       `}
                     >
                       {option.title}
                     </h3>
 
-                    {isSelected && (
+                    {isSelected && !isDisabled && (
                       <div className="w-5 h-5 rounded-full bg-[var(--color-primary)] flex items-center justify-center">
                         <FiCheck className="w-3 h-3 text-white" />
                       </div>
                     )}
                   </div>
 
-                  <p className="text-xs text-slate-500 leading-relaxed">
-                    {option.description}
-                  </p>
+                  {isDisabled ? (
+                    <span className="inline-block text-[11px] font-bold text-amber-700 bg-amber-100 border border-amber-200 px-2 py-0.5 rounded-full">
+                      {option.disabledLabel || 'در حال حاضر غیرفعال'}
+                    </span>
+                  ) : (
+                    <p className="text-xs text-slate-500 leading-relaxed">
+                      {option.description}
+                    </p>
+                  )}
                 </div>
               </div>
             </button>

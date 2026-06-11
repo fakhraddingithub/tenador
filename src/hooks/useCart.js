@@ -116,6 +116,9 @@ export const useCart = () => {
             },
           },
 
+          // واریانت (برای نمایش ویژگی‌ها در صفحه پرداخت)
+          variant: item.variant ?? null,
+
           // موجودی (فقط برای کالای دست‌دوم معنا دارد)
           inStock: item.inStock,
 

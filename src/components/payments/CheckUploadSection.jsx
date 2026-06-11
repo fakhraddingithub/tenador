@@ -83,7 +83,7 @@ const CheckUploadSection = ({ checks, onUpdate, onRemove, remainingBalance }) =>
                   />
                 </div>
                 <div className="space-y-1">
-                  <label className="text-[10px] text-gray-500 mr-1">مبلغ چک (ریال)</label>
+                  <label className="text-[10px] text-gray-500 mr-1">مبلغ چک (تومان)</label>
                   <input
                     type="text"
                     value={check.amount.toLocaleString()}

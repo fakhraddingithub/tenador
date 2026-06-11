@@ -1,3 +1,6 @@
+// نرخ سود ماهانه پرداخت اقساطی — هم در ماشین‌حساب کلاینت و هم در اعتبارسنجی سرور استفاده می‌شود
+export const INSTALLMENT_MONTHLY_INTEREST_RATE = 0.04;
+
 export const SPORTS_CATEGORIES = [
   { id: 1, name: 'تنیس', slug: 'tennis', image: '/images/tennis.webp' },
   { id: 2, name: 'پدل', slug: 'padel', image: '/images/padel.webp' },
