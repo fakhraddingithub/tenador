@@ -17,6 +17,8 @@
  */
 
 import "base/models/Address";
+import "base/models/Admin";
+import "base/models/AdminRole";
 import "base/models/Athlete";
 import "base/models/Ban";
 import "base/models/Banner";

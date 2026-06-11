@@ -135,15 +135,26 @@ export default function AdminUsersManagement() {
           </h1>
           <p className="text-xs font-bold text-gray-400">دسترسی کامل به نقش‌ها، سطوح دسترسی و وضعیت حساب‌ها</p>
         </div>
-        <button
-          onClick={() => router.push('/p-admin/users/coaches')}
-          className="inline-flex items-center gap-2 text-white text-xs font-bold px-4 py-2.5 rounded-[var(--radius)] transition-all hover:shadow-lg hover:-translate-y-0.5 active:scale-95"
-          style={{ background: '#0d0d0d' }}
-        >
-          <GraduationCap size={15} style={{ color: 'var(--color-secondary)' }} />
-          مدیریت مربیان
-          <ArrowLeftRight size={13} className="opacity-50" />
-        </button>
+        <div className="flex flex-wrap items-center gap-2">
+          <button
+            onClick={() => router.push('/p-admin/users/admins')}
+            className="inline-flex items-center gap-2 text-white text-xs font-bold px-4 py-2.5 rounded-[var(--radius)] transition-all hover:shadow-lg hover:-translate-y-0.5 active:scale-95"
+            style={{ background: 'var(--color-primary)' }}
+          >
+            <Shield size={15} />
+            مدیریت ادمین‌ها
+            <ArrowLeftRight size={13} className="opacity-50" />
+          </button>
+          <button
+            onClick={() => router.push('/p-admin/users/coaches')}
+            className="inline-flex items-center gap-2 text-white text-xs font-bold px-4 py-2.5 rounded-[var(--radius)] transition-all hover:shadow-lg hover:-translate-y-0.5 active:scale-95"
+            style={{ background: '#0d0d0d' }}
+          >
+            <GraduationCap size={15} style={{ color: 'var(--color-secondary)' }} />
+            مدیریت مربیان
+            <ArrowLeftRight size={13} className="opacity-50" />
+          </button>
+        </div>
       </div>
 
       {/* KPI Cards */}
