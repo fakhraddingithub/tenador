@@ -59,6 +59,19 @@ export default function ProductCard({ product, rate, onQuickView, onToggleWishli
             {labelMap[label].text}
           </div>
         ) : null}
+
+        {/* بج همکاری (مثل Roland Garros) — وقتی محصول عضو یک همکاری است */}
+        {product.collaboration?.title && (
+          <div
+            className="relative py-1 pr-3 pl-5 text-[10px] font-bold text-white shadow-sm"
+            style={{
+              clipPath: "polygon(0 0, 100% 0, 100% 100%, 0 100%, 20% 50%)",
+              background: product.collaboration.colors?.primary || "#0d0d0d",
+            }}
+          >
+            {product.collaboration.title}
+          </div>
+        )}
       </div>
 
       {/* تصویر */}

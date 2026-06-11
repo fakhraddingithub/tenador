@@ -55,6 +55,15 @@ const ProductSchema = new mongoose.Schema(
       default: null,
     },
 
+    // همکاری/رویداد (مثل Roland Garros) — مستقل از سری؛ محصول می‌تواند
+    // هم‌زمان عضو یک سری و یک همکاری باشد
+    collaboration: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Collaboration",
+      index: true,
+      default: null,
+    },
+
     athlete: [
       {
         type: mongoose.Schema.Types.ObjectId,

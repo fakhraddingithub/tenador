@@ -13,16 +13,17 @@ import Athlete from "base/models/Athlete";
 import Product from "base/models/Product";
 import Category from "base/models/Category";
 import Serie from "base/models/Serie";
+import Collaboration from "base/models/Collaboration";
 import { getCachedRate } from "@/lib/Exchangerate";
 import { attachListingPrices } from "base/services/priceEngine";
 
-const entities = ["brand", "sport", "athlete", "category", "serie", "product"];
-const modelMap = { brand: Brand, sport: Sport, athlete: Athlete, category: Category, serie: Serie, product: Product };
+const entities = ["brand", "sport", "athlete", "category", "serie", "collaboration", "product"];
+const modelMap = { brand: Brand, sport: Sport, athlete: Athlete, category: Category, serie: Serie, collaboration: Collaboration, product: Product };
 
 async function _queryBySlugs(slugs) {
   await connectToDB();
 
-  const search = { brand: null, sport: null, athlete: null, category: null, serie: null, product: null };
+  const search = { brand: null, sport: null, athlete: null, category: null, serie: null, collaboration: null, product: null };
 
   for (const slug of slugs) {
     for (const entity of entities) {
@@ -61,10 +62,11 @@ async function _queryBySlugs(slugs) {
   if (search.athlete) finalFilter.athlete = search.athlete._id;
   if (search.category) finalFilter.category = search.category._id;
   if (search.serie) finalFilter.serie = search.serie._id;
+  if (search.collaboration) finalFilter.collaboration = search.collaboration._id;
   if (search.product) finalFilter._id = search.product._id;
 
   const products = await Product.find(finalFilter)
-    .populate("brand sport athlete category serie")
+    .populate("brand sport athlete category serie collaboration")
     .sort({ createdAt: -1 })
     .lean();
 
@@ -80,6 +82,7 @@ async function _queryBySlugs(slugs) {
         athlete: search.athlete,
         category: search.category,
         serie: search.serie,
+        collaboration: search.collaboration,
         product: search.product,
       },
       results: priced,
@@ -91,5 +94,5 @@ async function _queryBySlugs(slugs) {
 export const queryBySlugs = unstable_cache(
   _queryBySlugs,
   ["query-by-slugs"],
-  { revalidate: 60, tags: ["products", "sports", "categories", "brands", "series"] }
+  { revalidate: 60, tags: ["products", "sports", "categories", "brands", "series", "collaborations"] }
 );

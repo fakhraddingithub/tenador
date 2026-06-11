@@ -16,6 +16,7 @@ const CONTENT_TAGS = [
   "categories",
   "brands",
   "series",
+  "collaborations",
 ];
 
 export function revalidateContent(tags = CONTENT_TAGS) {

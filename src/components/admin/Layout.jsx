@@ -17,6 +17,7 @@ import {
   FaEuroSign,
   FaClock,
   FaMoneyBillWave,
+  FaCalendarAlt,
 } from "react-icons/fa";
 import { HiOutlineLogout } from "react-icons/hi";
 import { AiFillProduct } from "react-icons/ai";
@@ -34,6 +35,7 @@ const menuItems = [
   { title: "دسته‌بندی‌ها", href: "/p-admin/admin-categories", icon: FaFolderOpen },
   { title: "فرایند سفارش", href: "/p-admin/admin-order-flows", icon: FiGitBranch },
   { title: "محصولات", href: "/p-admin/admin-products", icon: AiFillProduct },
+  { title: "رویدادها", href: "/p-admin/admin-events", icon: FaCalendarAlt },
   { title: "بازار دست دوم", href: "/p-admin/admin-secondHands", icon: FaBoxOpen },
   { title: "سفارشات", href: "/p-admin/admin-orders", icon: ShoppingCart },
   { title: "مدیریت مالی", href: "/p-admin/financial", icon: FaMoneyBillWave },

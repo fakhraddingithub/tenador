@@ -3,6 +3,7 @@ export function buildProductTemplate({
   brands,
   sports,
   athletes,
+  collaborations = [],
   rawContent,
 }) {
   if (!category) throw new Error("Category is required");
@@ -61,6 +62,13 @@ export function buildProductTemplate({
       brandName: b.name, // برای کمک به AI در تشخیص بهتر
     })),
   );
+
+  // همکاری‌ها/رویدادها (مثل Roland Garros) — سراسری و مستقل از برند
+  const collaborationList = collaborations.map((c) => ({
+    id: c._id.toString(),
+    name: c.name,
+    title: c.title,
+  }));
 
   // 3. Final Prompt
   return `
@@ -125,6 +133,16 @@ serie:
 - **CRITICAL RULE**: The chosen "serie" MUST belong to the "brand" you selected. 
 - You ARE NOT ALLOWED to pick a series that has a different "parentBrandId" than your selected "brand".
 - If a series is mentioned in text but doesn't match the selected brand, prioritize the Brand and leave serie as an empty string "".
+
+collaboration:
+- Collaborations are special-event partnerships (e.g. "Roland Garros") that products
+  from ANY brand or serie can belong to.
+- Choose ONE collaborationId ONLY from provided AVAILABLE COLLABORATIONS list.
+- Pick a collaboration ONLY if the raw content clearly mentions that event/partnership
+  (e.g. product name contains "Roland Garros").
+- If no collaboration is mentioned, return an empty string "".
+- Do NOT confuse a collaboration with a serie: a product can have BOTH a serie
+  (e.g. Blade) and a collaboration (e.g. Roland Garros) at the same time.
 
 sport:
 - Choose ONE sportId ONLY from provided list
@@ -206,6 +224,11 @@ AVAILABLE SERIES (Mapped from Brands)
 ${JSON.stringify(serieList, null, 2)}
 
 ===============================
+AVAILABLE COLLABORATIONS (Event Partnerships)
+===============================
+${JSON.stringify(collaborationList, null, 2)}
+
+===============================
 RAW PRODUCT CONTENT
 ===============================
 ${rawContent}
@@ -221,6 +244,7 @@ REQUIRED OUTPUT JSON STRUCTURE
   "basePrice": 0,
   "brand": "ID_FROM_BRANDS_LIST",
   "serie": "ID_FROM_SERIES_LIST",
+  "collaboration": "ID_FROM_COLLABORATIONS_LIST_OR_EMPTY_STRING",
   "sport": "ID_FROM_SPORTS_LIST",
   "athlete": ["ID1", "ID2"],
   "category": "${category._id}",

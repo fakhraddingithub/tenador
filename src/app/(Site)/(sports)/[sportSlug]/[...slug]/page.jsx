@@ -20,6 +20,7 @@ export async function generateMetadata({ params }) {
 
   const activeEntity =
     data.filters.serie ||
+    data.filters.collaboration ||
     data.filters.brand ||
     data.filters.category ||
     data.filters.sport;
@@ -47,6 +48,7 @@ export default async function SportDynamicSlugPage({ params }) {
 
   const pageInfo =
     searchData.filters.serie ||
+    searchData.filters.collaboration ||
     searchData.filters.brand ||
     searchData.filters.category ||
     searchData.filters.sport;

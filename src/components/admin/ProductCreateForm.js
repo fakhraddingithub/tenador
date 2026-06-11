@@ -64,6 +64,7 @@ export default function ProductCreateForm({ initialData = {} }) {
   const [brands, setBrands] = useState([]);
   const [athletes, setAthletes] = useState([]);
   const [categories, setCategories] = useState([]);
+  const [collaborations, setCollaborations] = useState([]);
 
   // Normalize athlete from initialData to always be an array
   const initialAthletes = Array.isArray(initialData.athlete)
@@ -84,11 +85,12 @@ export default function ProductCreateForm({ initialData = {} }) {
     gallery: [],
     brand: '',
     serie: '',
+    collaboration: '',
     sport: '',
     attributes: {},
     technicalStats: {},
     label: 'none',
-    isActive: true, 
+    isActive: true,
     ...initialData,
     // Override athlete to guarantee array form
     athlete: initialAthletes,
@@ -118,19 +120,22 @@ export default function ProductCreateForm({ initialData = {} }) {
 
   async function fetchBaseData() {
     try {
-      const [sportsRes, brandsRes, categoriesRes] = await Promise.all([
+      const [sportsRes, brandsRes, categoriesRes, collaborationsRes] = await Promise.all([
         fetch('/api/sports'),
         fetch('/api/brands'),
         fetch('/api/categories'),
+        fetch('/api/collaborations'),
       ]);
-      const [sportsData, brandsData, categoriesData] = await Promise.all([
+      const [sportsData, brandsData, categoriesData, collaborationsData] = await Promise.all([
         sportsRes.json(),
         brandsRes.json(),
         categoriesRes.json(),
+        collaborationsRes.json(),
       ]);
       setSports(sportsData.sports || []);
       setBrands(brandsData.brands || []);
       setCategories(categoriesData.categories || []);
+      setCollaborations(collaborationsData.collaborations || []);
     } catch (err) {
       showError('خطا', 'خطا در بارگذاری داده‌های پایه');
     }
@@ -433,6 +438,20 @@ export default function ProductCreateForm({ initialData = {} }) {
           value={formData.sport}
           onChange={e => updateField('sport', e.target.value)}
           options={sports.map(s => ({ value: s._id, label: s.name }))}
+        />
+
+        {/* همکاری/رویداد — مستقل از برند و سری (مثل Roland Garros) */}
+        <Select
+          label="همکاری (Collaboration)"
+          value={formData.collaboration}
+          onChange={e => updateField('collaboration', e.target.value)}
+          options={[
+            { value: '', label: 'بدون همکاری' },
+            ...collaborations.map(c => ({
+              value: c._id,
+              label: c.title || c.name,
+            })),
+          ]}
         />
       </div>
 

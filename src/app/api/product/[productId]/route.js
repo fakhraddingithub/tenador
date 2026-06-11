@@ -9,6 +9,7 @@ import connectToDB from "base/configs/db";
 
 import Product from "base/models/Product";
 import Variant from "base/models/Variant";
+import "base/models/Collaboration";
 
 import { verifyToken } from "base/utils/auth";
 import { revalidateContent } from "@/lib/revalidate";
@@ -47,6 +48,7 @@ export async function GET(request, { params }) {
       .populate("brand")
       .populate("category")
       .populate("serie")
+      .populate("collaboration")
       .populate("sport")
       .populate("athlete")
       .populate({
@@ -128,6 +130,7 @@ export async function PUT(request, { params }) {
       gallery,
       brand,
       serie,
+      collaboration,
       sport,
       athlete,
       attributes,
@@ -236,6 +239,7 @@ export async function PUT(request, { params }) {
     product.gallery = Array.isArray(gallery) ? gallery : [];
     product.brand = brand || null;
     product.serie = serie || null;
+    product.collaboration = collaboration || null;
     product.sport = sport || null;
     product.athlete = Array.isArray(athlete) ? athlete : [];
     
@@ -262,6 +266,7 @@ export async function PUT(request, { params }) {
       .populate("brand")
       .populate("category")
       .populate("serie")
+      .populate("collaboration")
       .populate("sport")
       .populate("athlete")
       .populate("variants")

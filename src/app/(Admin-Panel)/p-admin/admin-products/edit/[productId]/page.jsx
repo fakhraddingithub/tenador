@@ -102,6 +102,7 @@ export default function ProductEditPage() {
   const [brands, setBrands] = useState([]);
   const [athletes, setAthletes] = useState([]);
   const [categories, setCategories] = useState([]);
+  const [collaborations, setCollaborations] = useState([]);
 
   const [formData, setFormData] = useState({
     name: '',
@@ -115,6 +116,7 @@ export default function ProductEditPage() {
     gallery: [],
     brand: '',
     serie: '',
+    collaboration: '',
     sport: '',
     athlete: [],   // always array
     attributes: {},
@@ -136,23 +138,26 @@ export default function ProductEditPage() {
 
     async function fetchData() {
       try {
-        const [sportsRes, brandsRes, categoriesRes, productRes] = await Promise.all([
+        const [sportsRes, brandsRes, categoriesRes, collaborationsRes, productRes] = await Promise.all([
           fetch('/api/sports'),
           fetch('/api/brands'),
           fetch('/api/categories'),
+          fetch('/api/collaborations'),
           fetch(`/api/product/${id}`),
         ]);
 
-        const [sportsData, brandsData, categoriesData, productData] = await Promise.all([
+        const [sportsData, brandsData, categoriesData, collaborationsData, productData] = await Promise.all([
           sportsRes.json(),
           brandsRes.json(),
           categoriesRes.json(),
+          collaborationsRes.json(),
           productRes.json(),
         ]);
 
         setSports(sportsData.sports || []);
         setBrands(brandsData.brands || []);
         setCategories(categoriesData.categories || []);
+        setCollaborations(collaborationsData.collaborations || []);
 
         if (productData.product) {
           const p = productData.product;
@@ -183,6 +188,7 @@ export default function ProductEditPage() {
             gallery: p.gallery || [],
             brand: p.brand?._id || p.brand || '',
             serie: p.serie?._id || p.serie || '',
+            collaboration: p.collaboration?._id || p.collaboration || '',
             sport: p.sport?._id || p.sport || '',
             athlete: athleteIds,
 
@@ -385,6 +391,7 @@ export default function ProductEditPage() {
         gallery: formData.gallery,
         brand: formData.brand,
         serie: formData.serie,
+        collaboration: formData.collaboration,
         sport: formData.sport,
         athlete: Array.isArray(formData.athlete) ? formData.athlete : [],
         attributes: normalizedAttributes,
@@ -538,6 +545,19 @@ export default function ProductEditPage() {
               }
             />
           )}
+          {/* همکاری/رویداد — مستقل از برند و سری (مثل Roland Garros) */}
+          <Select
+            label="همکاری (Collaboration)"
+            value={formData.collaboration}
+            onChange={e => updateField('collaboration', e.target.value)}
+            options={[
+              { value: '', label: 'بدون همکاری' },
+              ...collaborations.map(c => ({
+                value: c._id,
+                label: c.title || c.name,
+              })),
+            ]}
+          />
           <Select
             label="دسته‌بندی"
             value={formData.category}

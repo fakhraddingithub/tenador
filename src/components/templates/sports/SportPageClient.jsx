@@ -5,6 +5,7 @@ import ProductList from "@/components/templates/products/ProductList";
 import FilterSidebar from "@/components/templates/products/FilterSidebar";
 import SearchBar from "@/components/templates/products/SearchBar";
 import SeriesSlider from "@/components/templates/sports/SeriesSlider";
+import CollaborationsStrip from "@/components/templates/sports/CollaborationsStrip";
 import { FiShoppingBag } from "react-icons/fi";
 
 export default function SportPageClient({
@@ -39,12 +40,20 @@ export default function SportPageClient({
       filters?.category?.title || filters?.category?.name || "";
 
     const brandTitle = filters?.brand?.title || filters?.brand?.name || "";
-    
+
     const serieTitle = filters?.serie?.title || filters?.serie?.name || ""; // ✨ اضافه شد
 
-    if (serieTitle) {
+    const collaborationTitle =
+      filters?.collaboration?.title || filters?.collaboration?.name || "";
+
+    if (serieTitle || collaborationTitle) {
       // مقدارهایی که وجود دارند را با یک فاصله به هم می‌چسبانیم
-      const parts = [categoryTitle, brandTitle, serieTitle].filter(Boolean);
+      const parts = [
+        categoryTitle,
+        brandTitle,
+        serieTitle,
+        collaborationTitle,
+      ].filter(Boolean);
       return parts.join(" ");
     }
 
@@ -64,6 +73,20 @@ export default function SportPageClient({
     // راکت تنیس ویلسون
     return `${categoryTitle} ${brandTitle}`;
   }, [filters, pageInfo]);
+
+  // ─────────────────────────────────────────────
+  // همکاری‌های موجود بین محصولات این صفحه (برای نوار همکاری‌ها در صفحه سری)
+  // ─────────────────────────────────────────────
+  const pageCollaborations = useMemo(() => {
+    const map = new Map();
+    for (const product of initialProducts) {
+      const collab = product.collaboration;
+      if (collab && typeof collab === "object" && collab._id && collab.slug) {
+        map.set(collab._id.toString(), collab);
+      }
+    }
+    return Array.from(map.values());
+  }, [initialProducts]);
 
   // ─────────────────────────────────────────────
   // Product Filtering
@@ -134,7 +157,8 @@ export default function SportPageClient({
         .length > 0 &&
         !filters?.category &&
         !filters?.brand &&
-        !filters?.serie && (
+        !filters?.serie &&
+        !filters?.collaboration && (
           <SeriesSlider
             series={series.filter(
               (serie) => serie.isNewSerie && !serie.isLimitedEdition,
@@ -143,6 +167,14 @@ export default function SportPageClient({
             sportTitle={pageInfo.title}
           />
         )}
+
+      {/* ───────── همکاری‌های موجود در این سری (مثل Roland Garros) ───────── */}
+      {filters?.serie && !filters?.collaboration && (
+        <CollaborationsStrip
+          collaborations={pageCollaborations}
+          sportSlug={filters?.sport?.slug}
+        />
+      )}
 
       {/* ───────────────── Main Content ───────────────── */}
       <div className="max-w-[1440px] mx-auto px-4 lg:px-8 py-12 flex flex-col lg:flex-row gap-8">
@@ -217,8 +249,9 @@ export default function SportPageClient({
       {/* Limited Edition Series Slider */}
       {series.filter((serie) => serie.isLimitedEdition).length > 0 &&
         !filters?.category &&
-        !filters?.brand && 
-        !filters?.serie && ( 
+        !filters?.brand &&
+        !filters?.serie &&
+        !filters?.collaboration && (
           <SeriesSlider
             series={series.filter((serie) => serie.isLimitedEdition)}
             sportSlug={pageInfo.slug}

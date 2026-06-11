@@ -72,6 +72,7 @@ export const getProductBySlug = unstable_cache(
       const product = await Product.findOne({ slug: decodedSlug, isActive: true })
         .populate("brand")
         .populate("serie")
+        .populate("collaboration")
         .populate("sport")
         .populate("athlete")
         .populate("category")

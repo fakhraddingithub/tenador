@@ -3,6 +3,7 @@ import Category from "base/models/Category";
 import Brand from "base/models/Brand";
 import Sport from "base/models/Sport";
 import Athlete from "base/models/Athlete";
+import Collaboration from "base/models/Collaboration";
 
 import { buildProductTemplate } from "@/lib/buildProductTemplate";
 
@@ -30,6 +31,7 @@ export async function POST(req) {
     const brands = await Brand.find({}, { name: 1 }).populate("series").lean();
     const sports = await Sport.find({}, { name: 1 }).lean();
     const athletes = await Athlete.find({}, { name: 1 }).lean();
+    const collaborations = await Collaboration.find({}, { name: 1, title: 1 }).lean();
 
     if (!brands.length || !sports.length) {
       return Response.json(
@@ -44,6 +46,7 @@ export async function POST(req) {
       brands,
       sports,
       athletes,
+      collaborations,
       rawContent,
     });
 
