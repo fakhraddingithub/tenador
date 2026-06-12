@@ -8,7 +8,7 @@
  * پرداخت هدایت می‌شود. سفارش فقط پس از ثبت موفق پرداخت ساخته خواهد شد.
  */
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { FiArrowLeft, FiCheck } from 'react-icons/fi';
 import Swal from 'sweetalert2';
 import { toast } from 'react-toastify';
@@ -28,7 +28,17 @@ const OrderActions = ({
 }) => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [description, setDescription] = useState('');
-  
+
+  // اگر صفحه از bfcache مرورگر (دکمه بازگشت) بازیابی شود، state قبلی عیناً
+  // برمی‌گردد و دکمه در حالت «در حال انتقال به پرداخت» گیر می‌کند — ریست شود
+  useEffect(() => {
+    const handlePageShow = (e) => {
+      if (e.persisted) setIsSubmitting(false);
+    };
+    window.addEventListener('pageshow', handlePageShow);
+    return () => window.removeEventListener('pageshow', handlePageShow);
+  }, []);
+
   const validateOrder = () => {
     if (!cartItems?.length) {
       toast.error('سبد خرید شما خالی است');
@@ -91,7 +101,7 @@ const OrderActions = ({
     try {
       // هیچ سفارشی در این مرحله ساخته نمی‌شود — فقط اطلاعات مرحله ثبت سفارش
       // ذخیره و کاربر به صفحه پرداخت هدایت می‌شود
-      // (کد تخفیف در خود صفحه پرداخت وارد و اعمال می‌شود)
+      // (کد تخفیف جداگانه در storage سبد نگه داشته می‌شود — useCart)
       savePendingCheckout({
         addressId:       selectedAddress._id || null,
         addressSnapshot: !selectedAddress._id ? selectedAddress : null,

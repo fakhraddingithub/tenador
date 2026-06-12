@@ -7,6 +7,7 @@
  */
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import { FiShoppingCart, FiArrowRight } from "react-icons/fi";
@@ -23,13 +24,20 @@ import { useCart } from "@/hooks/useCart";
 import { useAddresses } from "@/hooks/useAddresses";
 
 const OrderPage = () => {
-  // کد تخفیف در صفحه پرداخت وارد و اعمال می‌شود (نه اینجا)
+  const router = useRouter();
+
+  // کد تخفیف همین‌جا اعمال می‌شود و در storage تا پایان پرداخت فعال می‌ماند
   const {
     cartItems,
     isLoading: isCartLoading,
     updateQuantity,
     removeItem,
     removeFlowSelection,
+    applyCoupon,
+    removeCoupon,
+    appliedCoupon,
+    couponDiscount,
+    couponError,
     totalItems,
     totalPrice,
     totalRawPrice,
@@ -43,9 +51,11 @@ const OrderPage = () => {
   const [selectedPaymentMethod, setSelectedPaymentMethod] = useState(null);
 
   // سفارش در این مرحله ساخته نمی‌شود؛ کاربر به صفحه پرداخت می‌رود و
-  // سفارش فقط پس از ثبت موفق پرداخت/اقساط ایجاد خواهد شد
+  // سفارش فقط پس از ثبت موفق پرداخت/اقساط ایجاد خواهد شد.
+  // ناوبری کلاینتی است تا بازگشت با دکمه مرورگر، صفحه را از bfcache با
+  // state کهنه (دکمه در حال بارگذاری) برنگرداند.
   const handleProceedToPayment = () => {
-    window.location.href = '/p-user/payments/checkout';
+    router.push('/p-user/payments/checkout');
   };
 
   return (
@@ -139,8 +149,12 @@ const OrderPage = () => {
                   totalPrice={totalPrice}
                   totalRawPrice={totalRawPrice}
                   totalDiscount={totalDiscount}
+                  couponDiscount={couponDiscount}
+                  appliedCoupon={appliedCoupon}
+                  couponError={couponError}
+                  onApplyCoupon={applyCoupon}
+                  onRemoveCoupon={removeCoupon}
                   isLoading={isCartLoading}
-                  showCoupon={false}
                 />
               </div>
 

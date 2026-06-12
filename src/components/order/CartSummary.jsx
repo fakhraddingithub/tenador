@@ -5,7 +5,7 @@
  */
 
 import { useState } from 'react';
-import { FiTag, FiCheck, FiX, FiShoppingBag, FiRefreshCw } from 'react-icons/fi';
+import { FiTag, FiCheck, FiX, FiShoppingBag, FiRefreshCw, FiTrash2 } from 'react-icons/fi';
 import { formatPriceWithCurrency, toPersianNumbers } from 'base/utils/formatters';
 
 const CartSummary = ({
@@ -16,21 +16,20 @@ const CartSummary = ({
   couponDiscount,   // تخفیف کوپن
   appliedCoupon,    // { code } یا null
   couponError,
-  onApplyCoupon,    // async (code) => void
+  onApplyCoupon,    // async (code) => boolean — اعمال موفق true برمی‌گرداند
   onRemoveCoupon,   // () => void
   isLoading,
-  // کد تخفیف در صفحه پرداخت وارد می‌شود؛ این بخش در صفحه ثبت سفارش مخفی است
   showCoupon = true,
 }) => {
   const [couponInput, setCouponInput] = useState('');
   const [isApplying, setIsApplying] = useState(false);
 
   const handleApply = async () => {
-    if (!couponInput.trim()) return;
+    if (!couponInput.trim() || isApplying) return;
     setIsApplying(true);
     try {
-      await onApplyCoupon(couponInput.trim().toUpperCase());
-      if (!couponError) setCouponInput('');
+      const ok = await onApplyCoupon(couponInput.trim().toUpperCase());
+      if (ok) setCouponInput('');
     } finally {
       setIsApplying(false);
     }
@@ -120,8 +119,10 @@ const CartSummary = ({
             </div>
             <button
               onClick={handleRemove}
-              className="text-xs text-slate-400 hover:text-red-500 transition"
+              aria-label="حذف کد تخفیف"
+              className="flex items-center gap-1 text-xs text-slate-400 hover:text-red-500 transition"
             >
+              <FiTrash2 className="w-4 h-4 text-red-500" />
               حذف
             </button>
           </div>

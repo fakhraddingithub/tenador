@@ -13,6 +13,9 @@ import {
   removeUsedFromCart,
   removeFlowSelectionFromCart,
   flowSignature,
+  getStoredCouponCode,
+  storeCouponCode,
+  clearStoredCouponCode,
 } from '@/lib/cart';
 
 export const useCart = () => {
@@ -26,16 +29,22 @@ export const useCart = () => {
   const [totalRawPrice, setTotalRawPrice] = useState(0); // قیمت بدون هیچ تخفیفی
   const [totalDiscount, setTotalDiscount] = useState(0); // تخفیف rule/flash
 
-  // کوپن
+  // کوپن — کد در storage نگه داشته می‌شود تا در کل فرایند خرید فعال بماند
   const [appliedCoupon,  setAppliedCoupon]  = useState(null);  // { code, _id }
   const [couponDiscount, setCouponDiscount] = useState(0);
   const [couponError,    setCouponError]    = useState('');
+
+  // مرجع همگام کد تخفیف — جلوگیری از closure کهنه در loadCart
+  const couponCodeRef = useRef(getStoredCouponCode());
+
+  // جمع کل بدون کوپن (از /api/cart/products) — برای حذف فوری کوپن بدون fetch
+  const baseTotalRef = useRef(0);
 
   // برای جلوگیری از race condition در درخواست‌های پشت سرهم
   const abortRef = useRef(null);
 
   // ─── بارگذاری آیتم‌ها از سرور ───
-  const loadCart = useCallback(async (couponCode = null) => {
+  const loadCart = useCallback(async () => {
     const localCart = getCart();
 
     if (localCart.length === 0) {
@@ -45,6 +54,10 @@ export const useCart = () => {
       setTotalRawPrice(0);
       setTotalDiscount(0);
       setCouponDiscount(0);
+      // کد در storage می‌ماند؛ با افزودن دوباره کالا خودکار بازاعتبارسنجی می‌شود
+      setAppliedCoupon(null);
+      setCouponError('');
+      baseTotalRef.current = 0;
       setIsLoading(false);
       return;
     }
@@ -71,22 +84,29 @@ export const useCart = () => {
 
       // اگر کوپن داریم، قیمت نهایی با کوپن را هم بگیر
       let couponDiscountAmount = 0;
-      let validatedCoupon      = null;
-      let couponErr            = '';
+      let finalWithCoupon      = null;
 
-      if (couponCode || appliedCoupon?.code) {
-        const code = couponCode ?? appliedCoupon.code;
+      if (couponCodeRef.current) {
         const priceRes = await fetch('/api/cart/price', {
           method:  'POST',
           headers: { 'Content-Type': 'application/json' },
-          body:    JSON.stringify({ items: localCart, couponCode: code }),
+          body:    JSON.stringify({ items: localCart, couponCode: couponCodeRef.current }),
           signal:  controller.signal,
         });
         if (priceRes.ok) {
           const priceData = await priceRes.json();
-          couponDiscountAmount = priceData.couponDiscountToman ?? 0;
-          validatedCoupon      = priceData.coupon ?? null;
-          couponErr            = priceData.couponError ?? '';
+          if (priceData.coupon) {
+            couponDiscountAmount = priceData.couponDiscountToman ?? 0;
+            finalWithCoupon      = priceData.finalTotalToman ?? null;
+            setAppliedCoupon(priceData.coupon);
+            setCouponError('');
+          } else {
+            // کد با ترکیب فعلی سبد دیگر معتبر نیست — حذف و اطلاع به کاربر
+            couponCodeRef.current = null;
+            clearStoredCouponCode();
+            setAppliedCoupon(null);
+            setCouponError(priceData.couponError || 'کد تخفیف دیگر معتبر نیست');
+          }
         }
       }
 
@@ -140,23 +160,17 @@ export const useCart = () => {
 
       const rawTotal      = enriched.reduce((s, i) => s + i.itemTotalBeforeDiscount, 0);
       const ruleDiscount  = enriched.reduce((s, i) => s + i.itemDiscount, 0);
-      const grandTotal    = (productsData.grandTotalToman ?? 0) - couponDiscountAmount;
+      const baseTotal     = productsData.grandTotalToman ?? 0;
       const itemsCount    = enriched.reduce((s, i) => s + i.quantity, 0);
+
+      baseTotalRef.current = baseTotal;
 
       setCartItems(enriched);
       setTotalItems(itemsCount);
       setTotalRawPrice(rawTotal);
       setTotalDiscount(ruleDiscount);
       setCouponDiscount(couponDiscountAmount);
-      setTotalPrice(Math.max(0, grandTotal));
-
-      if (couponCode !== null) {
-        setAppliedCoupon(validatedCoupon);
-        setCouponError(couponErr);
-      } else if (appliedCoupon?.code) {
-        setAppliedCoupon(validatedCoupon ?? appliedCoupon);
-        setCouponError(couponErr);
-      }
+      setTotalPrice(Math.max(0, finalWithCoupon ?? (baseTotal - couponDiscountAmount)));
 
     } catch (e) {
       if (e.name === 'AbortError') return;
@@ -165,12 +179,12 @@ export const useCart = () => {
     } finally {
       setIsLoading(false);
     }
-  }, [appliedCoupon]);
+  }, []);
 
   // بارگذاری اولیه
   useEffect(() => {
     loadCart();
-    const handleCartChange = () => loadCart(appliedCoupon?.code ?? null);
+    const handleCartChange = () => loadCart();
     window.addEventListener('cartchange', handleCartChange);
     return () => window.removeEventListener('cartchange', handleCartChange);
   }, []); // eslint-disable-line
@@ -197,8 +211,8 @@ export const useCart = () => {
 
     const newQty = Math.max(1, current.quantity + delta);
     updateLocalQuantity(productId, variantId, newQty, flowSelections);
-    loadCart(appliedCoupon?.code ?? null);
-  }, [appliedCoupon, loadCart]);
+    loadCart();
+  }, [loadCart]);
 
   // ─── حذف آیتم — ورودی: کل آیتم سبد ───
   const removeItem = useCallback((item) => {
@@ -210,8 +224,8 @@ export const useCart = () => {
     } else {
       removeFromCart(item.productId, item.variantId ?? null, item.flowSelections ?? null);
     }
-    loadCart(appliedCoupon?.code ?? null);
-  }, [appliedCoupon, loadCart]);
+    loadCart();
+  }, [loadCart]);
 
   // ─── حذف یک انتخابِ فرایند از یک آیتم ───
   const removeFlowSelection = useCallback((item, sel) => {
@@ -223,23 +237,66 @@ export const useCart = () => {
       item.flowSelections ?? null,
       sel.nodeId
     );
-    loadCart(appliedCoupon?.code ?? null);
-  }, [appliedCoupon, loadCart]);
-
-  // ─── اعمال کوپن ───
-  const applyCoupon = useCallback(async (code) => {
-    if (!code?.trim()) return;
-    await loadCart(code.trim().toUpperCase());
+    loadCart();
   }, [loadCart]);
 
+  // ─── اعمال کوپن ───
+  // فقط /api/cart/price صدا زده می‌شود؛ آیتم‌ها و isLoading دست نمی‌خورند تا
+  // صفحه وارد حالت بارگذاری نشود. خروجی: true در صورت اعمال موفق.
+  const applyCoupon = useCallback(async (rawCode) => {
+    const code = rawCode?.trim().toUpperCase();
+    if (!code) return false;
+
+    const localCart = getCart();
+    if (localCart.length === 0) {
+      setCouponError('سبد خرید شما خالی است');
+      return false;
+    }
+
+    try {
+      const res = await fetch('/api/cart/price', {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body:    JSON.stringify({ items: localCart, couponCode: code }),
+      });
+      const data = await res.json();
+
+      if (!res.ok) {
+        setCouponError(data.error || 'خطا در بررسی کد تخفیف');
+        return false;
+      }
+
+      if (!data.coupon) {
+        setCouponError(data.couponError || 'کد تخفیف معتبر نیست');
+        return false;
+      }
+
+      couponCodeRef.current = code;
+      storeCouponCode(code);
+
+      const discount = data.couponDiscountToman ?? 0;
+      setAppliedCoupon(data.coupon);
+      setCouponDiscount(discount);
+      setCouponError('');
+      setTotalPrice(Math.max(0, data.finalTotalToman ?? (baseTotalRef.current - discount)));
+      return true;
+    } catch (e) {
+      console.error(e);
+      setCouponError('خطا در بررسی کد تخفیف؛ دوباره تلاش کنید');
+      return false;
+    }
+  }, []);
+
   // ─── حذف کوپن ───
+  // فوری و بدون fetch — جمع کل به مبلغ بدون کوپن (baseTotal) برمی‌گردد
   const removeCoupon = useCallback(() => {
+    couponCodeRef.current = null;
+    clearStoredCouponCode();
     setAppliedCoupon(null);
     setCouponDiscount(0);
     setCouponError('');
-    setTotalPrice((prev) => prev + couponDiscount);
-    loadCart(null);
-  }, [couponDiscount, loadCart]);
+    setTotalPrice(Math.max(0, baseTotalRef.current));
+  }, []);
 
   return {
     cartItems,
@@ -257,6 +314,6 @@ export const useCart = () => {
     totalPrice,
     totalRawPrice,
     totalDiscount,
-    refetch: () => loadCart(appliedCoupon?.code ?? null),
+    refetch: () => loadCart(),
   };
 };

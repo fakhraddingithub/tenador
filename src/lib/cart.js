@@ -19,6 +19,34 @@
  */
 
 const CART_KEY = "cart";
+const COUPON_KEY = "cartCouponCode";
+
+// ─── کد تخفیف اعمال‌شده ───
+// کد در storage نگه داشته می‌شود تا در کل فرایند خرید (ثبت سفارش → پرداخت)
+// فعال بماند؛ اعتبارسنجی و محاسبه مبلغ همیشه در سرور انجام می‌شود.
+
+export function getStoredCouponCode() {
+  if (typeof window === "undefined") return null;
+  try {
+    return localStorage.getItem(COUPON_KEY) || null;
+  } catch {
+    return null;
+  }
+}
+
+export function storeCouponCode(code) {
+  if (typeof window === "undefined") return;
+  try {
+    localStorage.setItem(COUPON_KEY, String(code).trim().toUpperCase());
+  } catch {}
+}
+
+export function clearStoredCouponCode() {
+  if (typeof window === "undefined") return;
+  try {
+    localStorage.removeItem(COUPON_KEY);
+  } catch {}
+}
 
 // ─── ابزار flowSelections ───
 
@@ -324,6 +352,7 @@ export function updateQuantity(productId, variantId = null, quantity, flowSelect
 // ─── خالی کردن سبد ───
 
 export function clearCart() {
+  clearStoredCouponCode();
   saveCart([]);
 }
 
