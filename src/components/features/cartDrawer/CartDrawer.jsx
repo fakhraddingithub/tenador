@@ -20,9 +20,12 @@ import { getCart, updateQuantity, removeFromCart, flowSignature } from '@/lib/ca
 import FlowSelectionsList from '@/components/modules/orderFlow/FlowSelectionsList';
 import { useUser } from '@/components/features/auth/UserContext';
 
-// اعلان موجودی داخل سبد — در هر نشست فقط یک‌بار نمایش داده می‌شود
-const STOCK_NOTICE_KEY = 'cartStockNoticeDismissed';
-const SUPPORT_WHATSAPP_URL = 'https://wa.me/33743649300';
+// اعلان موجودی داخل سبد — تا بستن دستی می‌ماند؛ پس از بستن در همان نشست تکرار نمی‌شود
+// (v2: کلید قبلی ممکن است با کلیک روی toast نامرئیِ باگ قبلی ست شده باشد)
+const STOCK_NOTICE_KEY = 'cartStockNoticeDismissed.v2';
+const SUPPORT_WHATSAPP_URL =
+    'https://wa.me/33743649300?text=' +
+    encodeURIComponent('سلام، لطفاً موجودی کالاهای سبد خرید من را بررسی کنید.');
 
 export default function CartDrawer({ isOpen, onClose }) {
     const { user } = useUser();
@@ -34,7 +37,11 @@ export default function CartDrawer({ isOpen, onClose }) {
     const [stockNoticeVisible, setStockNoticeVisible] = useState(false); // انیمیشن slide-up
     const router = useRouter();
 
-    // ─── اعلان «موجودی کالاها» — تا وقتی کاربر نبندد می‌ماند؛ بعد از بستن در همان نشست دیگر نمایش داده نمی‌شود ───
+    // ─── اعلان «موجودی کالاها» ───
+    // افکت ۱: تصمیم نمایش. افکت ۲ (جدا): انیمیشن slide-up.
+    // ⚠️ این دو عمداً از هم جدا هستند — اگر تایمر انیمیشن داخل همین افکت باشد،
+    // re-run شدن افکت بعد از setShowStockNotice(true) همان تایمر را در cleanup
+    // پاک می‌کند و toast برای همیشه در حالت opacity-0 نامرئی می‌ماند.
     useEffect(() => {
         if (!isOpen || loading || items.length === 0) return;
 
@@ -43,13 +50,21 @@ export default function CartDrawer({ isOpen, onClose }) {
             dismissed = sessionStorage.getItem(STOCK_NOTICE_KEY) === '1';
         } catch { /* sessionStorage در دسترس نیست */ }
 
-        if (dismissed || showStockNotice) return;
+        if (!dismissed) setShowStockNotice(true);
+    }, [isOpen, loading, items.length]);
 
-        setShowStockNotice(true);
-        // فریم بعد، کلاس visible اضافه می‌شود تا transition (slide-up) اجرا شود
-        const t = setTimeout(() => setStockNoticeVisible(true), 30);
-        return () => clearTimeout(t);
-    }, [isOpen, loading, items.length, showStockNotice]);
+    // اجرای transition پس از اینکه toast با حالت پنهان paint شد (double rAF)
+    useEffect(() => {
+        if (!showStockNotice) return;
+        let raf2 = null;
+        const raf1 = requestAnimationFrame(() => {
+            raf2 = requestAnimationFrame(() => setStockNoticeVisible(true));
+        });
+        return () => {
+            cancelAnimationFrame(raf1);
+            if (raf2 !== null) cancelAnimationFrame(raf2);
+        };
+    }, [showStockNotice]);
 
     const dismissStockNotice = () => {
         setStockNoticeVisible(false);
@@ -58,10 +73,6 @@ export default function CartDrawer({ isOpen, onClose }) {
         } catch { /* ignore */ }
         // پس از پایان انیمیشن از DOM حذف شود
         setTimeout(() => setShowStockNotice(false), 300);
-    };
-
-    const openSupportWhatsApp = () => {
-        window.open(SUPPORT_WHATSAPP_URL, '_blank', 'noopener,noreferrer');
     };
 
     // ─── بارگذاری آیتم‌ها از سرور ───
@@ -364,20 +375,24 @@ export default function CartDrawer({ isOpen, onClose }) {
                 </div>
 
                 {/* ─── اعلان موجودی — toast مینیمال که از پایین سایدبار بالا می‌آید ─── */}
+                {/* لینک واقعی است تا در موبایل/مرورگرهای داخل اپ هم مطمئن باز شود */}
                 {showStockNotice && items.length > 0 && (
-                    <div
+                    <a
+                        href={SUPPORT_WHATSAPP_URL}
+                        target="_blank"
+                        rel="noopener noreferrer"
                         role="status"
-                        onClick={openSupportWhatsApp}
+                        aria-live="polite"
                         className={`
-                            absolute bottom-3 inset-x-3 z-20
+                            absolute bottom-3 inset-x-3 z-40
                             flex items-center gap-3
                             bg-[#1f1f1f]/95 backdrop-blur-sm text-white
                             rounded-xl shadow-2xl px-4 py-3
-                            cursor-pointer select-none
+                            cursor-pointer select-none no-underline
                             transition-all duration-300 ease-out
                             ${stockNoticeVisible
-                                ? 'translate-y-0 opacity-100'
-                                : 'translate-y-6 opacity-0'}
+                                ? 'translate-y-0 opacity-100 pointer-events-auto'
+                                : 'translate-y-6 opacity-0 pointer-events-none'}
                         `}
                     >
                         {/* آیکن واتس‌اپ */}
@@ -399,6 +414,7 @@ export default function CartDrawer({ isOpen, onClose }) {
                             type="button"
                             aria-label="بستن اعلان"
                             onClick={(e) => {
+                                e.preventDefault();
                                 e.stopPropagation();
                                 dismissStockNotice();
                             }}
@@ -406,7 +422,7 @@ export default function CartDrawer({ isOpen, onClose }) {
                         >
                             <FaTimes size={12} />
                         </button>
-                    </div>
+                    </a>
                 )}
                 </div>
 
