@@ -39,6 +39,7 @@ export async function GET(req, { params }) {
     })
       .populate("brand")
       .sort({
+        order: 1,
         createdAt: -1,
       })
       .lean();

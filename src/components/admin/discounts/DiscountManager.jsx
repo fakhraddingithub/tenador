@@ -8,9 +8,13 @@ import DiscountRuleCard from "./DiscountRuleCard";
 import CoachCreditCard from "./CoachCreditCard";
 import CouponForm from "./CouponForm";
 import CouponCard from "./CouponCard";
+import QuantityDiscountForm from "./QuantityDiscountForm";
+import QuantityDiscountCard from "./QuantityDiscountCard";
+import AdminLoader from "@/components/admin/AdminLoader";
 
 const TABS = [
   { id: "discounts", label: "قوانین تخفیف" },
+  { id: "quantity", label: "تخفیف تعدادی" },
   { id: "coupons", label: "کدهای تخفیف" },
   { id: "coachCredits", label: "کردیت مربیان" },
 ];
@@ -30,6 +34,7 @@ const TYPE_LABELS = {
 export default function DiscountManager() {
   const [activeTab, setActiveTab] = useState("discounts");
   const [discounts, setDiscounts] = useState([]);
+  const [quantityDiscounts, setQuantityDiscounts] = useState([]);
   const [coupons, setCoupons] = useState([]);
   const [coachCredits, setCoachCredits] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -80,20 +85,36 @@ export default function DiscountManager() {
     }
   }, []);
 
+  const fetchQuantityDiscounts = useCallback(async () => {
+    setLoading(true);
+    try {
+      const res = await fetch("/api/admin/quantity-discounts");
+      const data = await res.json();
+      setQuantityDiscounts(data.items || []);
+    } catch {
+      toast.error("خطا در دریافت تخفیف‌های تعدادی");
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
   useEffect(() => {
     if (activeTab === "discounts") fetchDiscounts();
+    else if (activeTab === "quantity") fetchQuantityDiscounts();
     else if (activeTab === "coupons") fetchCoupons();
     else fetchCoachCredits();
-  }, [activeTab, fetchDiscounts, fetchCoupons, fetchCoachCredits]);
+  }, [activeTab, fetchDiscounts, fetchQuantityDiscounts, fetchCoupons, fetchCoachCredits]);
 
   const API_BASE = {
     discount: "/api/admin/discounts",
+    quantity: "/api/admin/quantity-discounts",
     coupon: "/api/admin/coupons",
     credit: "/api/admin/coach-credits",
   };
 
   const refreshByType = (type) => {
     if (type === "discount") fetchDiscounts();
+    else if (type === "quantity") fetchQuantityDiscounts();
     else if (type === "coupon") fetchCoupons();
     else fetchCoachCredits();
   };
@@ -125,6 +146,7 @@ export default function DiscountManager() {
     setShowForm(false);
     setEditItem(null);
     if (activeTab === "discounts") fetchDiscounts();
+    else if (activeTab === "quantity") fetchQuantityDiscounts();
     else if (activeTab === "coupons") fetchCoupons();
     else fetchCoachCredits();
   };
@@ -194,9 +216,11 @@ export default function DiscountManager() {
           <span className="text-lg leading-none">+</span>
           {activeTab === "discounts"
             ? "تخفیف جدید"
-            : activeTab === "coupons"
-              ? "کد تخفیف جدید"
-              : "کردیت جدید"}
+            : activeTab === "quantity"
+              ? "تخفیف تعدادی جدید"
+              : activeTab === "coupons"
+                ? "کد تخفیف جدید"
+                : "کردیت جدید"}
         </button>
       </div>
 
@@ -209,9 +233,11 @@ export default function DiscountManager() {
                 {editItem ? "ویرایش" : "ایجاد"}{" "}
                 {activeTab === "discounts"
                   ? "قانون تخفیف"
-                  : activeTab === "coupons"
-                    ? "کد تخفیف"
-                    : "قانون کردیت مربی"}
+                  : activeTab === "quantity"
+                    ? "تخفیف تعدادی"
+                    : activeTab === "coupons"
+                      ? "کد تخفیف"
+                      : "قانون کردیت مربی"}
               </h2>
               <button
                 onClick={() => { setShowForm(false); setEditItem(null); }}
@@ -223,6 +249,12 @@ export default function DiscountManager() {
             <div className="p-5">
               {activeTab === "discounts" ? (
                 <DiscountRuleForm
+                  initial={editItem}
+                  onSuccess={handleFormSuccess}
+                  onCancel={() => { setShowForm(false); setEditItem(null); }}
+                />
+              ) : activeTab === "quantity" ? (
+                <QuantityDiscountForm
                   initial={editItem}
                   onSuccess={handleFormSuccess}
                   onCancel={() => { setShowForm(false); setEditItem(null); }}
@@ -247,9 +279,7 @@ export default function DiscountManager() {
 
       {/* Content */}
       {loading ? (
-        <div className="flex justify-center items-center h-48">
-          <div className="w-8 h-8 border-4 border-[#aa4725] border-t-transparent rounded-full animate-spin" />
-        </div>
+        <AdminLoader />
       ) : activeTab === "discounts" ? (
         <div className="grid gap-3">
           {discounts.length === 0 ? (
@@ -263,6 +293,22 @@ export default function DiscountManager() {
                 onEdit={(item) => { setEditItem(item); setShowForm(true); }}
                 onDelete={(id) => handleDelete(id, "discount")}
                 onToggle={(id, current) => handleToggleActive(id, current, "discount")}
+              />
+            ))
+          )}
+        </div>
+      ) : activeTab === "quantity" ? (
+        <div className="grid gap-3">
+          {quantityDiscounts.length === 0 ? (
+            <EmptyState text="هیچ تخفیف تعدادی‌ای تعریف نشده است — مثلاً «۲ عدد به بالا ۱۰٪ تخفیف»" />
+          ) : (
+            quantityDiscounts.map((item) => (
+              <QuantityDiscountCard
+                key={item._id}
+                item={item}
+                onEdit={(it) => { setEditItem(it); setShowForm(true); }}
+                onDelete={(id) => handleDelete(id, "quantity")}
+                onToggle={(id, current) => handleToggleActive(id, current, "quantity")}
               />
             ))
           )}

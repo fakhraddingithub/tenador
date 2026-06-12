@@ -43,7 +43,9 @@ async function _queryBySlugs(slugs) {
   if (search.brand) {
     const [totalBrandProducts, fullBrand] = await Promise.all([
       Product.countDocuments({ brand: search.brand._id, isActive: true }),
-      Brand.findById(search.brand._id).populate("series").lean(),
+      Brand.findById(search.brand._id)
+        .populate({ path: "series", options: { sort: { order: 1, createdAt: -1 } } })
+        .lean(),
     ]);
 
     const seriesWithCounts = await Promise.all(

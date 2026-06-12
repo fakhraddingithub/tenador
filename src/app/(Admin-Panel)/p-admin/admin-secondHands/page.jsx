@@ -9,6 +9,7 @@ import {
 } from 'react-icons/fi';
 import { FaBoxOpen } from 'react-icons/fa';
 import SecondHandHeaderUploader from '@/components/admin/SecondHandHeaderUploader';
+import AdminLoader from '@/components/admin/AdminLoader';
 
 /* ─── کارت آمار ─── */
 function StatCard({ label, value, color = 'text-neutral-800' }) {
@@ -190,11 +191,7 @@ export default function UsedProductsHubPage() {
 
         {/* ─── آمار ─── */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          {loading ? (
-            [1, 2, 3, 4].map(i => (
-              <div key={i} className="h-20 bg-neutral-100 animate-pulse rounded-[var(--radius)]" />
-            ))
-          ) : (
+          {loading ? null : (
             <>
               <StatCard label="کل محصولات" value={stats?.total} color="text-neutral-800" />
               <StatCard label="موجود" value={stats?.available} color="text-green-600" />
@@ -253,17 +250,7 @@ export default function UsedProductsHubPage() {
           </div>
 
           {loading ? (
-            <div className="divide-y divide-neutral-50">
-              {[1, 2, 3, 4].map(i => (
-                <div key={i} className="flex items-center gap-4 px-6 py-4">
-                  <div className="w-11 h-11 rounded-[var(--radius)] bg-neutral-100 animate-pulse flex-shrink-0" />
-                  <div className="flex-grow space-y-2">
-                    <div className="h-3 bg-neutral-100 animate-pulse rounded w-40" />
-                    <div className="h-2 bg-neutral-100 animate-pulse rounded w-24" />
-                  </div>
-                </div>
-              ))}
-            </div>
+            <AdminLoader />
           ) : recentItems.length === 0 ? (
             <div className="text-center py-16 text-neutral-400">
               <FiPackage size={32} className="mx-auto mb-3 opacity-20" />

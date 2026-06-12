@@ -538,7 +538,6 @@ export default function ProductCreateForm({ initialData = {} }) {
             { value: 'none', label: 'بدون برچسب' },
             { value: 'new', label: 'جدید' },
             { value: 'hot', label: 'پرطرفدار' },
-            { value: 'discount', label: 'تخفیف ویژه' },
             { value: 'limited', label: 'تعداد محدود' },
           ]}
         />

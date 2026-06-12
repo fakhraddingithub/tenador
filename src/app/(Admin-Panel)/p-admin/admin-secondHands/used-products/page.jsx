@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { FiPlus, FiEdit3, FiTrash2, FiPackage } from 'react-icons/fi';
 import { showToast } from '@/lib/toast';
 import { confirmDelete } from '@/lib/swal';
+import AdminLoader from '@/components/admin/AdminLoader';
 
 const STATUS_LABEL = { available: 'موجود', sold: 'فروخته شده' };
 const STATUS_COLOR = { available: 'bg-green-50 text-green-600', sold: 'bg-red-50 text-red-500' };
@@ -81,9 +82,7 @@ export default function UsedProductsPage() {
       </div>
 
       {loading ? (
-        <div className="space-y-3">
-          {[1, 2, 3, 4].map(i => <div key={i} className="h-20 bg-neutral-100 animate-pulse rounded-[var(--radius)]" />)}
-        </div>
+        <AdminLoader />
       ) : items.length === 0 ? (
         <div className="text-center py-20 border-2 border-dashed border-neutral-200 rounded-[var(--radius)] text-neutral-400">
           آیتمی یافت نشد

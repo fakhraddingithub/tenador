@@ -83,6 +83,13 @@ const schema = new mongoose.Schema(
       unique: true,
       trim: true,
     },
+
+    // ترتیب نمایش (drag & drop در پنل ادمین) — عدد کمتر = جلوتر
+    order: {
+      type: Number,
+      default: 0,
+      index: true,
+    },
   },
 
   { timestamps: true }

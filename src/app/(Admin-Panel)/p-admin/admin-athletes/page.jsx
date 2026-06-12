@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { motion } from 'framer-motion';
 import Swal from 'sweetalert2';
+import AdminLoader from '@/components/admin/AdminLoader';
 import {
   FaPlus, FaEdit, FaTrash, FaArrowRight,
   FaUserCircle, FaGlobe, FaSearch,
@@ -103,11 +104,7 @@ export default function AdminAthletes() {
 
       {/* Grid */}
       {loading ? (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-          {[1, 2, 3].map(i => (
-            <div key={i} className="h-72 bg-white rounded-2xl animate-pulse border border-gray-100" />
-          ))}
-        </div>
+        <AdminLoader />
       ) : filteredAthletes.length === 0 ? (
         <div className="bg-white rounded-2xl border-2 border-dashed border-gray-200 py-20 text-center">
           <p className="text-gray-400 font-bold">لیست قهرمانان خالی است</p>

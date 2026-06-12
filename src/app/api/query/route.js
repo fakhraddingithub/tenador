@@ -82,7 +82,7 @@ export async function POST(req) {
 
       // ب) دریافت تمام سری‌های این برند و شمارش محصولات هر کدام
       const fullBrand = await Brand.findById(search.brand._id)
-        .populate("series")
+        .populate({ path: "series", options: { sort: { order: 1, createdAt: -1 } } })
         .lean();
 
       const seriesWithCounts = await Promise.all(

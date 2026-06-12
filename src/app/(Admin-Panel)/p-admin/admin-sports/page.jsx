@@ -12,6 +12,7 @@ import {
   SortableContext, rectSortingStrategy, arrayMove,
 } from "@dnd-kit/sortable";
 import SortableSportCard from "@/components/templates/sports/SortableSportCard";
+import AdminLoader from "@/components/admin/AdminLoader";
 
 /* ─── Page Header pattern (reused across pages) ─── */
 function PageHeader({ title, subtitle, backHref = '/p-admin', actions }) {
@@ -140,11 +141,7 @@ export default function AdminSports() {
       />
 
       {loading ? (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-          {[1, 2, 3, 4, 5, 6, 7, 8].map(i => (
-            <div key={i} className="h-32 bg-white rounded-2xl animate-pulse border border-gray-100" />
-          ))}
-        </div>
+        <AdminLoader />
       ) : filteredSports.length === 0 ? (
         <div className="bg-white rounded-2xl border-2 border-dashed border-gray-200 py-20 text-center">
           <div className="w-14 h-14 bg-gray-50 rounded-2xl flex items-center justify-center mx-auto mb-4 text-gray-300">

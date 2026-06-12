@@ -43,6 +43,14 @@ function buildLabelMap(variantAttributes = []) {
   return Object.fromEntries(variantAttributes.map((a) => [a.name, a.label]));
 }
 
+// نمایش مقدار تخفیف یک پله تعدادی (درصد یا مبلغ ثابت تومان)
+function formatTierValue(tier) {
+  if (!tier) return "";
+  return tier.kind === "percent"
+    ? `${tier.value}٪`
+    : `${Number(tier.value).toLocaleString("fa-IR")} تومان`;
+}
+
 /* ─────────────────────────────────────────
    Component
 ───────────────────────────────────────── */
@@ -163,8 +171,39 @@ export default function QuickViewModal({
     return { finalTomanPrice: baseTomanPrice, discountPercent: 0, hasDiscount: false };
   }, [priceApiData, selectedVariant, baseTomanPrice]);
 
-  // displayPrice همان قیمت نهایی است (برای سازگاری با کدهای زیر)
-  const displayPrice = finalTomanPrice;
+  // ── تخفیف تعدادی (از سیستم مدیریت تخفیف‌ها — price API) ────────────────────
+  const quantityDiscount = priceApiData?.quantityDiscount ?? null;
+  const hasQuantityTiers = Boolean(quantityDiscount?.tiers?.length);
+
+  // بهترین پله‌ای که تعداد فعلی به آن رسیده است (هم‌منطق با priceEngine سرور)
+  const activeQuantityTier = useMemo(() => {
+    if (!hasQuantityTiers) return null;
+    let best = null;
+    for (const t of quantityDiscount.tiers) {
+      if (quantity >= t.minQty && (!best || t.minQty > best.minQty)) best = t;
+    }
+    return best;
+  }, [quantityDiscount, hasQuantityTiers, quantity]);
+
+  const qtyDiscountPerUnit = activeQuantityTier
+    ? Math.max(
+        0,
+        Math.min(
+          activeQuantityTier.kind === "percent"
+            ? Math.floor((finalTomanPrice * activeQuantityTier.value) / 100)
+            : Math.floor(activeQuantityTier.value),
+          finalTomanPrice
+        )
+      )
+    : 0;
+
+  // قیمت واحد نمایشی پس از همه تخفیف‌ها (شامل تخفیف تعدادی)
+  const displayPrice = finalTomanPrice - qtyDiscountPerUnit;
+  const effectiveHasDiscount = hasDiscount || qtyDiscountPerUnit > 0;
+  const effectiveDiscountPercent =
+    baseTomanPrice > 0
+      ? Math.round(((baseTomanPrice - displayPrice) / baseTomanPrice) * 100)
+      : 0;
 
   function handleAddToCart() {
     let variantId = null;
@@ -425,6 +464,39 @@ export default function QuickViewModal({
             </div>
           )}
 
+          {/* ── تخفیف تعدادی ── */}
+          {hasQuantityTiers && (
+            <div className="bg-purple-50/70 border border-purple-100 rounded-lg p-3 space-y-2">
+              <p className="text-xs font-bold text-purple-700">
+                تخفیف خرید تعدادی
+                {activeQuantityTier && (
+                  <span className="mr-1.5 font-medium text-purple-500">
+                    ({formatTierValue(activeQuantityTier)} تخفیف فعال شد)
+                  </span>
+                )}
+              </p>
+              <div className="flex flex-wrap gap-1.5">
+                {[...quantityDiscount.tiers]
+                  .sort((a, b) => a.minQty - b.minQty)
+                  .map((t) => {
+                    const isActive = activeQuantityTier?.minQty === t.minQty;
+                    return (
+                      <span
+                        key={t.minQty}
+                        className={`text-[11px] font-bold px-2.5 py-1 rounded-full border transition-colors ${
+                          isActive
+                            ? "bg-purple-600 text-white border-purple-600"
+                            : "bg-white text-purple-700 border-purple-200"
+                        }`}
+                      >
+                        {t.minQty}+ عدد → {formatTierValue(t)}
+                      </span>
+                    );
+                  })}
+              </div>
+            </div>
+          )}
+
           {/* ── قیمت و خرید ── */}
           <div className="mt-auto pt-4 sm:pt-5 border-t border-gray-100 flex flex-col gap-3 sm:gap-4">
             <div className="flex items-center justify-between">
@@ -433,7 +505,7 @@ export default function QuickViewModal({
                 <span className="text-[11px] sm:text-xs text-gray-400 font-bold">
                   قیمت نهایی:
                 </span>
-                {hasDiscount ? (
+                {effectiveHasDiscount ? (
                   <>
                     {/* قیمت اصلی خط‌خورده */}
                     <div className="flex items-baseline gap-1">
@@ -441,9 +513,9 @@ export default function QuickViewModal({
                         {baseTomanPrice.toLocaleString()}
                       </span>
                       <span className="text-[10px] text-gray-300 line-through">تومان</span>
-                      {discountPercent > 0 && (
+                      {effectiveDiscountPercent > 0 && (
                         <span className="text-[10px] font-bold text-white bg-red-500 px-1.5 py-0.5 rounded-full">
-                          {discountPercent}٪
+                          {effectiveDiscountPercent}٪
                         </span>
                       )}
                     </div>

@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { toast } from "react-toastify";
+import AdminLoader from "@/components/admin/AdminLoader";
 import {
   GraduationCap,
   Users,
@@ -166,12 +167,7 @@ export default function AdminCoachesManagement() {
       </div>
 
       {loading ? (
-        <div className="flex h-64 items-center justify-center">
-          <Loader2
-            className="animate-spin text-[var(--color-primary)]"
-            size={32}
-          />
-        </div>
+        <AdminLoader />
       ) : (
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* ستون اصلی سمت راست (لیست‌ها) */}

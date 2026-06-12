@@ -34,7 +34,11 @@ export default function ProductCard({ product, rate, onQuickView, onToggleWishli
   };
   const { farsi, english } = splitName(name);
 
-  const labelMap = { new: { text: "جدید", color: "bg-[#01a281]" }, limited: { text: "محدود", color: "bg-purple-500" }, discount: { text: "تخفیف", color: "bg-red-500" }, hot: { text: "پرفروش", color: "bg-amber-500" } };
+  // بج «تخفیف» (label === "discount") حذف شد — جای آن بج «ویژه» برای محصولاتی
+  // که تخفیف تعدادی فعال دارند نمایش داده می‌شود
+  const labelMap = { new: { text: "جدید", color: "bg-[#01a281]" }, limited: { text: "محدود", color: "bg-purple-500" }, hot: { text: "پرفروش", color: "bg-amber-500" } };
+
+  const badgeShape = { clipPath: "polygon(0 0, 100% 0, 100% 100%, 0 100%, 20% 50%)" };
 
   return (
     <div className="group relative bg-white border border-gray-200 rounded-[6px] transition-all duration-500 hover:shadow-[0_20px_40px_rgba(0,0,0,0.1)] hover:-translate-y-1 overflow-hidden h-full flex flex-col">
@@ -46,26 +50,38 @@ export default function ProductCard({ product, rate, onQuickView, onToggleWishli
         </div>
       )}
 
-      {/* Badge */}
+      {/* Badges — همه از گوشه بالا-راست شروع و چسبیده به لبه راست روی هم می‌چینند */}
       <div className="absolute top-4 right-0 z-20 flex flex-col gap-1 items-end">
-        {hasDiscount && discountPercent > 0 ? (
+        {/* درصد تخفیف */}
+        {hasDiscount && discountPercent > 0 && (
           <div className="relative py-1 pr-3 pl-5 text-[10px] font-bold text-white shadow-sm bg-red-500"
-            style={{ clipPath: "polygon(0 0, 100% 0, 100% 100%, 0 100%, 20% 50%)" }}>
+            style={badgeShape}>
             {discountPercent} ٪
           </div>
-        ) : label && labelMap[label] ? (
+        )}
+
+        {/* بج «ویژه» — محصول تخفیف تعدادی فعال دارد */}
+        {product.hasQuantityDiscount && (
+          <div className="relative py-1 pr-3 pl-5 text-[10px] font-bold text-white shadow-sm bg-purple-600"
+            style={badgeShape}>
+            ویژه
+          </div>
+        )}
+
+        {/* لیبل محصول (جدید / محدود / پرفروش) */}
+        {label && labelMap[label] && (
           <div className={`relative py-1 pr-3 pl-5 text-[10px] font-bold text-white shadow-sm ${labelMap[label].color}`}
-            style={{ clipPath: "polygon(0 0, 100% 0, 100% 100%, 0 100%, 20% 50%)" }}>
+            style={badgeShape}>
             {labelMap[label].text}
           </div>
-        ) : null}
+        )}
 
         {/* بج همکاری (مثل Roland Garros) — وقتی محصول عضو یک همکاری است */}
         {product.collaboration?.title && (
           <div
             className="relative py-1 pr-3 pl-5 text-[10px] font-bold text-white shadow-sm"
             style={{
-              clipPath: "polygon(0 0, 100% 0, 100% 100%, 0 100%, 20% 50%)",
+              ...badgeShape,
               background: product.collaboration.colors?.primary || "#0d0d0d",
             }}
           >

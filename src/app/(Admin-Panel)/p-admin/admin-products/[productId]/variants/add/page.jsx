@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import AdminLayout from '@/components/admin/Layout';
+import AdminLoader from '@/components/admin/AdminLoader';
 import Button from '@/components/admin/Button';
 import Input from '@/components/admin/Input';
 import ImageUpload from '@/components/admin/ImageUpload';
@@ -99,9 +100,7 @@ export default function AddVariant() {
   if (loading) {
     return (
       <AdminLayout title="افزودن واریانت">
-        <div className="flex items-center justify-center h-64">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
-        </div>
+        <AdminLoader />
       </AdminLayout>
     );
   }

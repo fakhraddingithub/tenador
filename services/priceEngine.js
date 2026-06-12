@@ -21,6 +21,7 @@ import FlashSale from "base/models/FlashSale";
 import Coupon from "base/models/Coupon";
 import CoachCredit from "base/models/CoachCredit";
 import Order from "base/models/Order";
+import QuantityDiscount from "base/models/QuantityDiscount";
 
 // ---------------------------------------------------------------------------
 // 1. نرخ ارز
@@ -239,7 +240,7 @@ export async function attachListingPrices(products, rate) {
   const categoryIds = collect("category").map(toId);
   const serieIds    = collect("serie").map(toId);
 
-  const [flashes, rules] = await Promise.all([
+  const [flashes, rules, quantityDiscountMap] = await Promise.all([
     FlashSale.find({
       productId: { $in: productIds },
       active: true,
@@ -260,6 +261,7 @@ export async function attachListingPrices(products, rate) {
     })
       .sort({ priority: 1 })
       .lean(),
+    loadQuantityDiscountMap(productIds),
   ]);
 
   const flashByProduct = new Map(flashes.map((f) => [f.productId.toString(), f]));
@@ -302,8 +304,66 @@ export async function attachListingPrices(products, rate) {
       discountAmount,
       discountPercent:
         basePriceToman > 0 ? Math.round((discountAmount / basePriceToman) * 100) : 0,
+      // برای بج «ویژه» روی کارت محصول — محصول تخفیف تعدادی فعال دارد
+      hasQuantityDiscount: quantityDiscountMap.has(p._id.toString()),
     };
   });
+}
+
+// ---------------------------------------------------------------------------
+// 3.7 تخفیف تعدادی (پلکانی) — مدیریت‌شده در بخش «تخفیف‌ها»ی ادمین
+// ---------------------------------------------------------------------------
+
+/**
+ * بارگذاری دسته‌ای تخفیف‌های تعدادی فعال برای لیست محصولات
+ *
+ * @param {Array<string|Object>} productIds
+ * @returns {Promise<Map<string, Object>>} productId → سند QuantityDiscount
+ */
+export async function loadQuantityDiscountMap(productIds) {
+  const ids = (productIds || []).filter(Boolean).map(String);
+  if (!ids.length) return new Map();
+
+  const now = new Date();
+  const docs = await QuantityDiscount.find({
+    product: { $in: ids },
+    active: true,
+    $and: [
+      { $or: [{ startAt: null }, { startAt: { $lte: now } }] },
+      { $or: [{ endAt: null }, { endAt: { $gte: now } }] },
+    ],
+  }).lean();
+
+  return new Map(
+    docs
+      .filter((d) => Array.isArray(d.tiers) && d.tiers.length > 0)
+      .map((d) => [d.product.toString(), d])
+  );
+}
+
+/**
+ * بهترین پله‌ای که این تعداد به آن رسیده است (بزرگ‌ترین minQty ≤ qty)
+ */
+export function quantityTierFor(qd, qty) {
+  if (!qd || !Array.isArray(qd.tiers) || !qd.tiers.length) return null;
+  let best = null;
+  for (const t of qd.tiers) {
+    if (qty >= t.minQty && (!best || t.minQty > best.minQty)) best = t;
+  }
+  return best;
+}
+
+/**
+ * مبلغ تخفیف تعدادی به ازای هر واحد (تومان) — روی قیمت واحدِ پس از سایر
+ * تخفیف‌ها اعمال می‌شود و هرگز از خود قیمت بیشتر نمی‌شود.
+ */
+export function quantityDiscountPerUnit(tier, unitPriceToman) {
+  if (!tier || unitPriceToman <= 0) return 0;
+  const amt =
+    tier.discount.kind === "percent"
+      ? Math.floor(unitPriceToman * (tier.discount.value / 100))
+      : Math.floor(tier.discount.value); // مبلغ ثابت به تومان
+  return Math.max(0, Math.min(amt, unitPriceToman));
 }
 
 // ---------------------------------------------------------------------------
@@ -633,6 +693,9 @@ export async function computeCartPrice(cartItems, user = null, couponCode = null
   const variantMap = new Map(variants.map((v) => [v._id.toString(), v]));
   const usedProductMap = new Map(usedProducts.map((up) => [up._id.toString(), up])); // 💡 مپ کردن دست‌دوم‌ها
 
+  // تخفیف‌های تعدادی فعال (یک‌بار batch)
+  const quantityDiscountMap = await loadQuantityDiscountMap(productIds);
+
   // resolver افزوده‌ی فرایند سفارش (یک‌بار batch می‌گیرد)
   const resolveFlowAddon = await buildFlowAddonResolver(cartItems, productMap, rate);
 
@@ -711,6 +774,7 @@ export async function computeCartPrice(cartItems, user = null, couponCode = null
 
       let unitFinalPrice = priceResult.finalPriceToman;
       let unitDiscount   = priceResult.discountAmount;
+      const appliedRules = [...priceResult.appliedRules];
       if (v?.price) {
         const variantBase = eurToToman(v.price, rate);
         unitDiscount   = Math.min(
@@ -718,6 +782,20 @@ export async function computeCartPrice(cartItems, user = null, couponCode = null
           variantBase
         );
         unitFinalPrice = variantBase - unitDiscount;
+      }
+
+      // تخفیف تعدادی — روی قیمت واحدِ پس از سایر تخفیف‌ها (قبل از افزوده‌ی فرایند)
+      const qd = quantityDiscountMap.get(ci.productId);
+      const tier = quantityTierFor(qd, qty);
+      const qtyDiscountPerUnit = quantityDiscountPerUnit(tier, unitFinalPrice);
+      if (qtyDiscountPerUnit > 0) {
+        unitFinalPrice -= qtyDiscountPerUnit;
+        unitDiscount += qtyDiscountPerUnit;
+        appliedRules.push({
+          id: qd._id.toString(),
+          type: "quantity",
+          title: qd.title || `تخفیف تعدادی (${tier.minQty}+ عدد)`,
+        });
       }
 
       // افزوده‌ی فرایند سفارش روی قیمت واحد (بدون تخفیف)
@@ -739,7 +817,7 @@ export async function computeCartPrice(cartItems, user = null, couponCode = null
         unitFinalPrice,
         unitDiscount,
         lineTotalToman: lineTotal,
-        appliedRules:  priceResult.appliedRules,
+        appliedRules,
         itemType:      "product",
         categoryId:    (p.category?._id ?? p.category)?.toString() ?? null,
         brandId:       (p.brand?._id ?? p.brand)?.toString() ?? null,

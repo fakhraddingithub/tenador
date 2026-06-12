@@ -8,6 +8,7 @@ import {
   FaArrowRight, FaHandshake, FaEdit, FaLayerGroup, FaBoxOpen,
 } from 'react-icons/fa';
 import { toast } from 'react-toastify';
+import AdminLoader from '@/components/admin/AdminLoader';
 
 /**
  * صفحه جزئیات همکاری — تمام محصولات عضو این همکاری در همه سری‌ها،
@@ -71,11 +72,7 @@ export default function CollaborationDetailPage() {
   }, [products]);
 
   if (loading) {
-    return (
-      <div className="h-[70vh] flex items-center justify-center">
-        <div className="w-16 h-16 border-4 border-black/10 border-t-black rounded-full animate-spin" />
-      </div>
-    );
+    return <AdminLoader />;
   }
 
   if (!collaboration) {

@@ -41,10 +41,12 @@ function buildLabelMap(variantAttributes = []) {
   );
 }
 
-function calculateDiscount(quantity) {
-  if (quantity >= 3) return 15;
-  if (quantity >= 2) return 10;
-  return 0;
+// نمایش مقدار تخفیف یک پله (درصد یا مبلغ ثابت تومان)
+function formatTierValue(tier) {
+  if (!tier) return "";
+  return tier.kind === "percent"
+    ? `${tier.value}%`
+    : `${Number(tier.value).toLocaleString("fa-IR")} تومان`;
 }
 
 /* ─────────────────────────────────────────
@@ -61,8 +63,6 @@ const ProductInfo = ({ product, selectedVariant, onVariantChange }) => {
 
   // افزودن به سبد با پشتیبانی از فرایند سفارش
   const { requestAddToCart, flowModal } = useOrderFlowCart();
-
-  const hasDiscountLabel = product.label === "discount"; // نگه می‌داریم برای سازگاری با بقیه کدها
 
   const labelMap = useMemo(
     () => buildLabelMap(product.category?.variantAttributes),
@@ -126,10 +126,68 @@ const ProductInfo = ({ product, selectedVariant, onVariantChange }) => {
     return { basePriceToman: priceApiData.basePriceToman, finalPriceToman: priceApiData.finalPriceToman, discountPercent: priceApiData.discountPercent || 0, hasDiscount: hasD };
   }, [priceApiData, selectedVariant, basePrice]);
 
-  const finalUnitPrice    = hasDiscount ? finalPriceToman : basePriceToman;
+  const finalUnitPrice = hasDiscount ? finalPriceToman : basePriceToman;
+
+  // ── تخفیف تعدادی (از سیستم مدیریت تخفیف‌ها — price API) ────────────────────
+  const quantityDiscount = priceApiData?.quantityDiscount ?? null;
+  const hasQuantityTiers = Boolean(quantityDiscount?.tiers?.length);
+
+  // پله‌های نمایشی: پله «عادی» (۱ عدد، بدون تخفیف) + پله‌های تعریف‌شده ادمین
+  const displayTiers = useMemo(() => {
+    if (!hasQuantityTiers) return [];
+    const labels = ["خوب", "عالی", "ویژه", "استثنایی"];
+    return [
+      { qty: 1, kind: "percent", value: 0, label: "عادی" },
+      ...quantityDiscount.tiers.map((t, i) => ({
+        qty: t.minQty,
+        kind: t.kind,
+        value: t.value,
+        label: labels[Math.min(i, labels.length - 1)],
+      })),
+    ];
+  }, [quantityDiscount, hasQuantityTiers]);
+
+  // بهترین پله‌ای که تعداد فعلی به آن رسیده است (هم‌منطق با سرور)
+  const activeQuantityTier = useMemo(() => {
+    if (!hasQuantityTiers) return null;
+    let best = null;
+    for (const t of quantityDiscount.tiers) {
+      if (quantity >= t.minQty && (!best || t.minQty > best.minQty)) best = t;
+    }
+    return best;
+  }, [quantityDiscount, hasQuantityTiers, quantity]);
+
+  // اولین پله‌ای که هنوز به آن نرسیده‌ایم (برای پیام تشویقی)
+  const nextQuantityTier = useMemo(() => {
+    if (!hasQuantityTiers) return null;
+    return (
+      [...quantityDiscount.tiers]
+        .sort((a, b) => a.minQty - b.minQty)
+        .find((t) => quantity < t.minQty) || null
+    );
+  }, [quantityDiscount, hasQuantityTiers, quantity]);
+
+  // تخفیف تعدادی روی قیمت واحدِ پس از سایر تخفیف‌ها — دقیقاً مثل priceEngine سرور
+  const qtyDiscountPerUnit = activeQuantityTier
+    ? Math.max(
+        0,
+        Math.min(
+          activeQuantityTier.kind === "percent"
+            ? Math.floor((finalUnitPrice * activeQuantityTier.value) / 100)
+            : Math.floor(activeQuantityTier.value),
+          finalUnitPrice
+        )
+      )
+    : 0;
+
+  const effectiveUnitPrice = finalUnitPrice - qtyDiscountPerUnit;
   const originalTotalPrice = basePriceToman * quantity;
-  const totalPrice         = finalUnitPrice * quantity;
+  const totalPrice         = effectiveUnitPrice * quantity;
   const totalSavings       = originalTotalPrice - totalPrice;
+  const combinedDiscountPercent =
+    basePriceToman > 0
+      ? Math.round(((basePriceToman - effectiveUnitPrice) / basePriceToman) * 100)
+      : 0;
 
   function handleQuantityChange(newQty) {
     if (newQty < 1) return;
@@ -348,7 +406,7 @@ const ProductInfo = ({ product, selectedVariant, onVariantChange }) => {
       <div className="space-y-4">
         <div className="flex items-center justify-between">
           <p className="text-sm font-semibold text-gray-700">تعداد</p>
-          {hasDiscountLabel && (
+          {hasQuantityTiers && (
             <div className="flex items-center gap-1 text-xs">
               <svg className="w-4 h-4 text-amber-500" fill="currentColor" viewBox="0 0 20 20">
                 <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
@@ -392,35 +450,37 @@ const ProductInfo = ({ product, selectedVariant, onVariantChange }) => {
           </div>
 
           {/* Discount Hint */}
-          {hasDiscountLabel && (
+          {hasQuantityTiers && (
             <div className="flex-1">
-              {quantity === 1 && (
+              {!activeQuantityTier && nextQuantityTier && (
                 <div className="flex items-start gap-2 p-2 bg-blue-50 border border-blue-200 rounded-lg">
                   <svg className="w-4 h-4 text-blue-600 mt-0.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
                     <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
                   </svg>
                   <p className="text-xs text-blue-700 leading-relaxed">
-                    با خرید <strong>2 عدد</strong>، 10% تخفیف بگیرید
+                    با خرید <strong>{nextQuantityTier.minQty} عدد</strong>،{" "}
+                    {formatTierValue(nextQuantityTier)} تخفیف بگیرید
                   </p>
                 </div>
               )}
-              {quantity === 2 && (
+              {activeQuantityTier && nextQuantityTier && (
                 <div className="flex items-start gap-2 p-2 bg-green-50 border border-green-200 rounded-lg">
                   <svg className="w-4 h-4 text-green-600 mt-0.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
                     <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
                   </svg>
                   <p className="text-xs text-green-700 leading-relaxed">
-                    <strong>10% تخفیف فعال!</strong> با یک عدد بیشتر، 15% تخفیف بگیرید
+                    <strong>{formatTierValue(activeQuantityTier)} تخفیف فعال!</strong>{" "}
+                    با خرید {nextQuantityTier.minQty} عدد، {formatTierValue(nextQuantityTier)} تخفیف بگیرید
                   </p>
                 </div>
               )}
-              {quantity >= 3 && (
+              {activeQuantityTier && !nextQuantityTier && (
                 <div className="flex items-start gap-2 p-2 bg-gradient-to-r from-amber-50 to-orange-50 border border-orange-200 rounded-lg">
                   <svg className="w-4 h-4 text-orange-600 mt-0.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
                     <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
                   </svg>
                   <p className="text-xs text-orange-700 leading-relaxed font-medium">
-                    🎉 تبریک! شما بیشترین تخفیف (15%) را دریافت می‌کنید
+                    🎉 تبریک! شما بیشترین تخفیف ({formatTierValue(activeQuantityTier)}) را دریافت می‌کنید
                   </p>
                 </div>
               )}
@@ -429,16 +489,16 @@ const ProductInfo = ({ product, selectedVariant, onVariantChange }) => {
         </div>
 
         {/* Discount Tiers Display */}
-        {hasDiscountLabel && (
-          <div className="grid grid-cols-3 gap-2">
-            {[
-              { qty: 1, discount: 0, label: "عادی" },
-              { qty: 2, discount: 10, label: "خوب" },
-              { qty: 3, discount: 15, label: "عالی" }
-            ].map((tier) => {
-              const isActive = quantity >= tier.qty && (tier.qty === 3 ? true : quantity < (tier.qty + 1));
-              const isPassed = quantity > tier.qty;
-              
+        {hasQuantityTiers && (
+          <div
+            className="grid gap-2"
+            style={{ gridTemplateColumns: `repeat(${displayTiers.length}, minmax(0, 1fr))` }}
+          >
+            {displayTiers.map((tier, index) => {
+              const next = displayTiers[index + 1] || null;
+              const isActive = quantity >= tier.qty && (!next || quantity < next.qty);
+              const isPassed = Boolean(next && quantity >= next.qty);
+
               return (
                 <div
                   key={tier.qty}
@@ -474,7 +534,7 @@ const ProductInfo = ({ product, selectedVariant, onVariantChange }) => {
                       {tier.qty}+ عدد
                     </div>
                     <div className={`text-xs font-semibold ${isActive ? 'text-[#aa4725]' : isPassed ? 'text-green-600' : 'text-gray-500'}`}>
-                      {tier.discount > 0 ? `${tier.discount}% تخفیف` : 'بدون تخفیف'}
+                      {tier.value > 0 ? `${formatTierValue(tier)} تخفیف` : 'بدون تخفیف'}
                     </div>
                   </div>
                 </div>
@@ -483,41 +543,40 @@ const ProductInfo = ({ product, selectedVariant, onVariantChange }) => {
           </div>
         )}
 
-        {/* Price Summary for Discount Products */}
-        {hasDiscountLabel && discountPercent > 0 && (
+        {/* Price Summary for Quantity Discounts */}
+        {hasQuantityTiers && totalSavings > 0 && (
           <div className="bg-gradient-to-br from-gray-50 to-gray-100 border-2 border-gray-200 rounded-xl p-4 space-y-3">
-            {/* بقیه خلاصه‌قیمت دست‌نخورده باقی می‌ماند */}
             <div className="flex items-center justify-between text-sm">
               <span className="text-gray-600">قیمت هر واحد:</span>
               <div className="flex items-center gap-2">
                 <span className="text-gray-400 line-through text-xs">
-                  {basePrice.toLocaleString("fa-IR")}
+                  {basePriceToman.toLocaleString("fa-IR")}
                 </span>
                 <span className="font-bold text-[#aa4725]">
-                  {finalUnitPrice.toLocaleString("fa-IR")} تومان
+                  {effectiveUnitPrice.toLocaleString("fa-IR")} تومان
                 </span>
               </div>
             </div>
-            
+
             <div className="flex items-center justify-between text-sm">
               <span className="text-gray-600">تعداد:</span>
               <span className="font-bold text-gray-800">{quantity} عدد</span>
             </div>
-            
+
             <div className="flex items-center justify-between text-sm pt-2 border-t border-gray-300">
               <span className="text-gray-600">جمع اولیه:</span>
               <span className="font-semibold text-gray-500">
                 {originalTotalPrice.toLocaleString("fa-IR")} تومان
               </span>
             </div>
-            
+
             <div className="flex items-center justify-between text-sm">
-              <span className="text-green-600 font-medium">تخفیف شما ({discountPercent}%):</span>
+              <span className="text-green-600 font-medium">تخفیف شما ({combinedDiscountPercent}%):</span>
               <span className="font-bold text-green-600">
                 - {totalSavings.toLocaleString("fa-IR")} تومان
               </span>
             </div>
-            
+
             <div className="flex items-center justify-between pt-3 border-t-2 border-gray-300">
               <span className="text-base font-bold text-gray-800">
                 قیمت نهایی:

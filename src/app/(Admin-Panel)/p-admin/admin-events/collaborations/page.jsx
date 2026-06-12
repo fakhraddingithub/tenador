@@ -9,6 +9,7 @@ import {
 } from 'react-icons/fa';
 import Swal from 'sweetalert2';
 import { toast } from 'react-toastify';
+import AdminLoader from '@/components/admin/AdminLoader';
 
 export default function AdminCollaborations() {
   const router = useRouter();
@@ -117,11 +118,7 @@ export default function AdminCollaborations() {
 
       {/* Grid */}
       {loading ? (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
-          {[1, 2, 3, 4].map((i) => (
-            <div key={i} className="h-60 bg-white rounded-2xl animate-pulse border border-gray-100" />
-          ))}
-        </div>
+        <AdminLoader />
       ) : filtered.length === 0 ? (
         <div className="bg-white rounded-2xl border-2 border-dashed border-gray-200 py-20 text-center">
           <div className="w-14 h-14 bg-gray-50 rounded-2xl flex items-center justify-center mx-auto mb-4 text-gray-200">

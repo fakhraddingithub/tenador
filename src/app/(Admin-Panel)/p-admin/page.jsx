@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
+import AdminLoader from '@/components/admin/AdminLoader';
 import { motion } from 'framer-motion';
 import {
   FaRunning, FaBold, FaUserAstronaut,
@@ -46,15 +47,7 @@ export default function AdminDashboard() {
   };
 
   if (loading) {
-    return (
-      <div className="flex flex-col items-center justify-center h-[70vh] gap-3">
-        <div className="relative w-12 h-12">
-          <div className="absolute inset-0 border-2 border-gray-200 rounded-full" />
-          <div className="absolute inset-0 border-2 border-[var(--color-primary)] border-t-transparent rounded-full animate-spin" />
-        </div>
-        <p className="text-sm font-bold text-gray-400 animate-pulse">در حال بارگذاری آمار...</p>
-      </div>
-    );
+    return <AdminLoader />;
   }
 
   const chartBars = [40, 70, 45, 90, 65, 80, 55];

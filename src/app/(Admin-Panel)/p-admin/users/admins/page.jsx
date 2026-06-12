@@ -19,6 +19,7 @@ import {
 } from 'lucide-react'
 
 import RolesManager from '@/components/admin/admins/RolesManager'
+import AdminLoader from '@/components/admin/AdminLoader'
 
 export default function AdminAdminsManagement() {
   const router = useRouter()
@@ -133,11 +134,7 @@ export default function AdminAdminsManagement() {
   ]
 
   if (loading) {
-    return (
-      <div className="flex items-center justify-center h-64">
-        <div className="w-8 h-8 border-2 border-gray-200 border-t-[var(--color-primary)] rounded-full animate-spin" />
-      </div>
-    )
+    return <AdminLoader />
   }
 
   return (

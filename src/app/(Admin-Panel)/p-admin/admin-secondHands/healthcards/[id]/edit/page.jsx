@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useParams } from 'next/navigation';
 import HealthCardForm from '@/components/admin/HealthCardForm';
+import AdminLoader from '@/components/admin/AdminLoader';
 
 export default function EditHealthCardPage() {
   const { id } = useParams();
@@ -16,7 +17,7 @@ export default function EditHealthCardPage() {
       .finally(() => setLoading(false));
   }, [id]);
 
-  if (loading) return <div className="flex items-center justify-center min-h-screen text-neutral-400">در حال بارگذاری...</div>;
+  if (loading) return <AdminLoader fullScreen />;
   if (!card) return <div className="flex items-center justify-center min-h-screen text-red-400">یافت نشد</div>;
 
   return <HealthCardForm initialData={card} categoryLocked />;

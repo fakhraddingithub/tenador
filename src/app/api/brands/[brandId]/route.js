@@ -8,7 +8,10 @@ export async function GET(req, { params }) {
     await connectToDB();
     const { brandId } = await params;
     
-    const brand = await Brand.findById(brandId).populate("series");
+    const brand = await Brand.findById(brandId).populate({
+      path: "series",
+      options: { sort: { order: 1, createdAt: -1 } },
+    });
     
     if (!brand) {
       return NextResponse.json(

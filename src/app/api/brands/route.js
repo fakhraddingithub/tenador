@@ -7,7 +7,7 @@ export async function GET(req) {
   await connectToDB();
   const brands = await Brand.find({})
     .sort({ order: 1, createdAt: 1 })
-    .populate("series");
+    .populate({ path: "series", options: { sort: { order: 1, createdAt: -1 } } });
   return NextResponse.json({
     brands,
   });

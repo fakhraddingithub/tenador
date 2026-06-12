@@ -17,6 +17,20 @@ import { useRouter } from "next/navigation";
 import Swal from "sweetalert2";
 import { toast } from "react-toastify";
 import Link from "next/link";
+import AdminLoader from "@/components/admin/AdminLoader";
+import SortableGridItem from "@/components/admin/SortableGridItem";
+import {
+  DndContext,
+  closestCenter,
+  PointerSensor,
+  useSensor,
+  useSensors,
+} from "@dnd-kit/core";
+import {
+  SortableContext,
+  rectSortingStrategy,
+  arrayMove,
+} from "@dnd-kit/sortable";
 
 export default function SerieChildrenAdminPage({ serieId,brandId }) {
   const router = useRouter();
@@ -69,6 +83,40 @@ export default function SerieChildrenAdminPage({ serieId,brandId }) {
     }
   };
 
+  // ─── جابه‌جایی زیرسری‌ها (drag & drop) — ترتیب در دیتابیس ذخیره می‌شود ───
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 5 } })
+  );
+
+  const handleDragEnd = async (event) => {
+    const { active, over } = event;
+    if (!over || active.id === over.id) return;
+
+    const oldIndex = children.findIndex((c) => c._id === active.id);
+    const newIndex = children.findIndex((c) => c._id === over.id);
+    if (oldIndex === -1 || newIndex === -1) return;
+
+    const reordered = arrayMove(children, oldIndex, newIndex).map(
+      (item, index) => ({ ...item, order: index })
+    );
+
+    setChildren(reordered);
+
+    try {
+      const res = await fetch("/api/series/reorder", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          series: reordered.map((c) => ({ id: c._id, order: c.order })),
+        }),
+      });
+      if (!res.ok) throw new Error();
+    } catch {
+      toast.error("خطا در ذخیره ترتیب زیرسری‌ها");
+      fetchSerieData();
+    }
+  };
+
   const handleDeleteSerie = async (childSerieId) => {
     const result = await Swal.fire({
       title: "حذف زیرسری؟",
@@ -98,18 +146,7 @@ export default function SerieChildrenAdminPage({ serieId,brandId }) {
     }
   };
 
-  if (loading) {
-    return (
-      <div className="h-[70vh] flex items-center justify-center">
-        <div className="text-center space-y-4">
-          <div className="w-16 h-16 border-4 border-black/10 border-t-black rounded-full animate-spin mx-auto"></div>
-          <p className="text-gray-400 text-xs font-bold tracking-[0.3em] uppercase">
-            Loading Serie Structure...
-          </p>
-        </div>
-      </div>
-    );
-  }
+  if (loading) return <AdminLoader />;
 
   return (
     <div className="max-w-7xl mx-auto p-6 space-y-10 pb-20">
@@ -227,10 +264,19 @@ export default function SerieChildrenAdminPage({ serieId,brandId }) {
             </Link>
           </div>
         ) : (
+          <DndContext
+            sensors={sensors}
+            collisionDetection={closestCenter}
+            onDragEnd={handleDragEnd}
+          >
+          <SortableContext
+            items={children.map((c) => c._id)}
+            strategy={rectSortingStrategy}
+          >
           <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-8">
             {children.map((child) => (
+              <SortableGridItem key={child._id} id={child._id}>
               <div
-                key={child._id}
                 onClick={() =>
                   router.push(`/admin/series/${child._id}`)
                 }
@@ -332,8 +378,11 @@ export default function SerieChildrenAdminPage({ serieId,brandId }) {
                   </div>
                 </div>
               </div>
+              </SortableGridItem>
             ))}
           </div>
+          </SortableContext>
+          </DndContext>
         )}
       </div>
     </div>

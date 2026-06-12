@@ -16,6 +16,20 @@ import { useRouter } from "next/navigation";
 import Swal from "sweetalert2";
 import { toast } from "react-toastify";
 import Link from "next/link";
+import AdminLoader from "@/components/admin/AdminLoader";
+import SortableGridItem from "@/components/admin/SortableGridItem";
+import {
+  DndContext,
+  closestCenter,
+  PointerSensor,
+  useSensor,
+  useSensors,
+} from "@dnd-kit/core";
+import {
+  SortableContext,
+  rectSortingStrategy,
+  arrayMove,
+} from "@dnd-kit/sortable";
 
 export default function BrandAdminPage({ brandId }) {
   const router = useRouter();
@@ -77,6 +91,41 @@ export default function BrandAdminPage({ brandId }) {
     });
   };
 
+  // ─── جابه‌جایی سری‌ها (drag & drop) — ترتیب در دیتابیس ذخیره می‌شود ───
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 5 } })
+  );
+
+  const handleDragEnd = async (event) => {
+    const { active, over } = event;
+    if (!over || active.id === over.id) return;
+
+    const series = brand?.series || [];
+    const oldIndex = series.findIndex((s) => s._id === active.id);
+    const newIndex = series.findIndex((s) => s._id === over.id);
+    if (oldIndex === -1 || newIndex === -1) return;
+
+    const reordered = arrayMove(series, oldIndex, newIndex).map(
+      (item, index) => ({ ...item, order: index })
+    );
+
+    setBrand((prev) => ({ ...prev, series: reordered }));
+
+    try {
+      const res = await fetch("/api/series/reorder", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          series: reordered.map((s) => ({ id: s._id, order: s.order })),
+        }),
+      });
+      if (!res.ok) throw new Error();
+    } catch {
+      toast.error("خطا در ذخیره ترتیب سری‌ها");
+      fetchBrandData();
+    }
+  };
+
   const handleDeleteSerie = async (serieId) => {
     const result = await Swal.fire({
       title: "حذف سری؟",
@@ -106,12 +155,7 @@ export default function BrandAdminPage({ brandId }) {
     }
   };
 
-  if (loading)
-    return (
-      <div className="p-20 text-center font-bold animate-pulse text-gray-400">
-        CONNECTING TO DATABASE...
-      </div>
-    );
+  if (loading) return <AdminLoader />;
 
   return (
     <div className="max-w-7xl mx-auto p-6 space-y-10 pb-20">
@@ -241,10 +285,19 @@ export default function BrandAdminPage({ brandId }) {
           </Link>
         </div>
 
+        <DndContext
+          sensors={sensors}
+          collisionDetection={closestCenter}
+          onDragEnd={handleDragEnd}
+        >
+        <SortableContext
+          items={(brand?.series || []).map((s) => s._id)}
+          strategy={rectSortingStrategy}
+        >
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
           {brand?.series?.map((serie) => (
+            <SortableGridItem key={serie._id} id={serie._id}>
             <div
-              key={serie._id}
               onClick={() =>
                 router.push(`/p-admin/admin-brands/${brandId}/${serie._id}`)
               }
@@ -311,8 +364,11 @@ export default function BrandAdminPage({ brandId }) {
                 </div>
               </div>
             </div>
+            </SortableGridItem>
           ))}
         </div>
+        </SortableContext>
+        </DndContext>
       </div>
     </div>
   );

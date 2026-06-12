@@ -5,7 +5,14 @@ import { verifyToken } from "base/utils/auth";
 import Product from "base/models/Product";
 import Variant from "base/models/Variant";
 import UsedProduct from "base/models/UsedProduct";
-import { getRate, computeProductPrice, buildFlowAddonResolver } from "base/services/priceEngine";
+import {
+  getRate,
+  computeProductPrice,
+  buildFlowAddonResolver,
+  loadQuantityDiscountMap,
+  quantityTierFor,
+  quantityDiscountPerUnit,
+} from "base/services/priceEngine";
 import { eurToToman } from "@/lib/Exchangerate";
 import { calculateDiscount } from "base/utils/discountCalculator";
 
@@ -74,6 +81,9 @@ export async function POST(request) {
     const productMap = new Map(products.map((p) => [p._id.toString(), p]));
     const variantMap = new Map(variants.map((v) => [v._id.toString(), v]));
     const usedProductMap = new Map(usedProducts.map((up) => [up._id.toString(), up]));
+
+    // تخفیف‌های تعدادی فعال (یک‌بار batch)
+    const quantityDiscountMap = await loadQuantityDiscountMap(productIds);
 
     // ───── فرایند سفارش: resolver افزوده‌ی قیمت (واکشی batch محصولات/واریانت/فرایندها) ─────
     const resolveFlowAddon = await buildFlowAddonResolver(items, productMap, rate);
@@ -161,6 +171,23 @@ export async function POST(request) {
               variantBase,
             );
             unitFinalPrice = variantBase - unitDiscount;
+          }
+
+          // تخفیف تعدادی — روی قیمت واحدِ پس از سایر تخفیف‌ها (قبل از افزوده‌ی فرایند)
+          const qd = quantityDiscountMap.get(ci.productId);
+          const tier = quantityTierFor(qd, qty);
+          const qtyDiscountPerUnit = quantityDiscountPerUnit(tier, unitFinalPrice);
+          if (qtyDiscountPerUnit > 0) {
+            unitFinalPrice -= qtyDiscountPerUnit;
+            unitDiscount += qtyDiscountPerUnit;
+            appliedRules = [
+              ...appliedRules,
+              {
+                id: qd._id.toString(),
+                type: "quantity",
+                title: qd.title || `تخفیف تعدادی (${tier.minQty}+ عدد)`,
+              },
+            ];
           }
         }
 

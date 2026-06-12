@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { motion, AnimatePresence } from 'framer-motion'
 import { toast } from 'react-toastify'
+import AdminLoader from '@/components/admin/AdminLoader'
 import {
   Users, UserCheck, UserX, ShieldAlert, Search, Filter,
   MoreVertical, Shield, Ban, CheckCircle, ArrowLeftRight,
@@ -116,11 +117,7 @@ export default function AdminUsersManagement() {
   ]
 
   if (loading) {
-    return (
-      <div className="flex items-center justify-center h-64">
-        <div className="w-8 h-8 border-2 border-gray-200 border-t-[var(--color-primary)] rounded-full animate-spin" />
-      </div>
-    )
+    return <AdminLoader />
   }
 
   return (

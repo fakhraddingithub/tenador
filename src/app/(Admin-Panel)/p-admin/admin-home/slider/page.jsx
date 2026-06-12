@@ -11,6 +11,7 @@ import {
 } from 'react-icons/fi';
 import { MdOutlineDragIndicator } from 'react-icons/md';
 import Swal from 'sweetalert2';
+import AdminLoader from '@/components/admin/AdminLoader';
 
 const swalTheme = {
   confirmButtonColor: 'var(--color-primary)',
@@ -118,10 +119,7 @@ export default function SliderManagement() {
 
       {/* Slides list */}
       {loading ? (
-        <div className="flex items-center justify-center h-48 gap-3">
-          <div className="w-8 h-8 border-2 border-gray-200 border-t-[var(--color-primary)] rounded-full animate-spin" />
-          <span className="text-sm font-bold text-gray-400">در حال بارگذاری...</span>
-        </div>
+        <AdminLoader />
       ) : slides.length === 0 ? (
         <div className="bg-white rounded-2xl border-2 border-dashed border-gray-200 py-20 text-center">
           <div className="w-14 h-14 bg-gray-50 rounded-2xl flex items-center justify-center mx-auto mb-4 text-gray-300">

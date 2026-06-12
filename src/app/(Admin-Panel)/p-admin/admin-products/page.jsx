@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
 import { ProductCard } from '@/components/admin';
+import AdminLoader from '@/components/admin/AdminLoader';
 import { showToast } from '@/lib/toast';
 import { confirmDelete, showError } from '@/lib/swal';
 import { FiPlus, FiBox, FiSearch } from 'react-icons/fi';
@@ -106,10 +107,7 @@ export default function AdminProducts() {
 
       {/* Content */}
       {loading ? (
-        <div className="flex flex-col items-center justify-center h-48 gap-3">
-          <div className="w-10 h-10 border-2 border-gray-200 border-t-[var(--color-primary)] rounded-full animate-spin" />
-          <span className="text-sm font-bold text-gray-400">در حال بارگذاری...</span>
-        </div>
+        <AdminLoader />
       ) : filtered.length === 0 ? (
         <div className="bg-white rounded-2xl border-2 border-dashed border-gray-200 py-20 text-center">
           <div className="w-14 h-14 bg-gray-50 rounded-2xl flex items-center justify-center mx-auto mb-4 text-gray-300">

@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useMemo } from 'react';
 import { useRouter, useParams } from 'next/navigation';
+import AdminLoader from '@/components/admin/AdminLoader';
 import {
   FiPlus,
   FiTrash2,
@@ -540,7 +541,7 @@ export default function EditCategory() {
     }
   };
 
-  if (fetching) return <div className="flex items-center justify-center min-h-screen">در حال بارگذاری...</div>;
+  if (fetching) return <AdminLoader fullScreen />;
 
   return (
     <div className="min-h-screen bg-[var(--color-background)] font-[var(--font-sans)] text-[var(--color-text)] pb-20">

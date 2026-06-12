@@ -20,13 +20,49 @@ import { getCart, updateQuantity, removeFromCart, flowSignature } from '@/lib/ca
 import FlowSelectionsList from '@/components/modules/orderFlow/FlowSelectionsList';
 import { useUser } from '@/components/features/auth/UserContext';
 
+// اعلان موجودی داخل سبد — در هر نشست فقط یک‌بار نمایش داده می‌شود
+const STOCK_NOTICE_KEY = 'cartStockNoticeDismissed';
+const SUPPORT_WHATSAPP_URL = 'https://wa.me/33743649300';
+
 export default function CartDrawer({ isOpen, onClose }) {
     const { user } = useUser();
     const [items, setItems] = useState([]);
     const [totals, setTotals] = useState({ grand: 0, savings: 0 });
     const [loading, setLoading] = useState(false);
     const [updatingId, setUpdatingId] = useState(null); // آیتمی که در حال آپدیت است
+    const [showStockNotice, setShowStockNotice] = useState(false);   // در DOM هست؟
+    const [stockNoticeVisible, setStockNoticeVisible] = useState(false); // انیمیشن slide-up
     const router = useRouter();
+
+    // ─── اعلان «موجودی کالاها» — تا وقتی کاربر نبندد می‌ماند؛ بعد از بستن در همان نشست دیگر نمایش داده نمی‌شود ───
+    useEffect(() => {
+        if (!isOpen || loading || items.length === 0) return;
+
+        let dismissed = false;
+        try {
+            dismissed = sessionStorage.getItem(STOCK_NOTICE_KEY) === '1';
+        } catch { /* sessionStorage در دسترس نیست */ }
+
+        if (dismissed || showStockNotice) return;
+
+        setShowStockNotice(true);
+        // فریم بعد، کلاس visible اضافه می‌شود تا transition (slide-up) اجرا شود
+        const t = setTimeout(() => setStockNoticeVisible(true), 30);
+        return () => clearTimeout(t);
+    }, [isOpen, loading, items.length, showStockNotice]);
+
+    const dismissStockNotice = () => {
+        setStockNoticeVisible(false);
+        try {
+            sessionStorage.setItem(STOCK_NOTICE_KEY, '1');
+        } catch { /* ignore */ }
+        // پس از پایان انیمیشن از DOM حذف شود
+        setTimeout(() => setShowStockNotice(false), 300);
+    };
+
+    const openSupportWhatsApp = () => {
+        window.open(SUPPORT_WHATSAPP_URL, '_blank', 'noopener,noreferrer');
+    };
 
     // ─── بارگذاری آیتم‌ها از سرور ───
     const loadCartItems = useCallback(async () => {
@@ -178,6 +214,7 @@ export default function CartDrawer({ isOpen, onClose }) {
                 </div>
 
                 {/* ─── Items ─── */}
+                <div className="flex-1 relative min-h-0 flex flex-col">
                 <div className="flex-1 overflow-y-auto p-4 space-y-4">
                     {loading ? (
                         <div className="flex items-center justify-center h-full">
@@ -324,6 +361,53 @@ export default function CartDrawer({ isOpen, onClose }) {
                             );
                         })
                     )}
+                </div>
+
+                {/* ─── اعلان موجودی — toast مینیمال که از پایین سایدبار بالا می‌آید ─── */}
+                {showStockNotice && items.length > 0 && (
+                    <div
+                        role="status"
+                        onClick={openSupportWhatsApp}
+                        className={`
+                            absolute bottom-3 inset-x-3 z-20
+                            flex items-center gap-3
+                            bg-[#1f1f1f]/95 backdrop-blur-sm text-white
+                            rounded-xl shadow-2xl px-4 py-3
+                            cursor-pointer select-none
+                            transition-all duration-300 ease-out
+                            ${stockNoticeVisible
+                                ? 'translate-y-0 opacity-100'
+                                : 'translate-y-6 opacity-0'}
+                        `}
+                    >
+                        {/* آیکن واتس‌اپ */}
+                        <span className="w-9 h-9 flex-shrink-0 rounded-full bg-[#25D366]/15 text-[#25D366] flex items-center justify-center">
+                            <svg viewBox="0 0 24 24" fill="currentColor" className="w-5 h-5">
+                                <path d="M12.04 2c-5.46 0-9.91 4.45-9.91 9.91 0 1.75.46 3.45 1.32 4.95L2.05 22l5.25-1.38a9.87 9.87 0 0 0 4.74 1.21c5.46 0 9.91-4.45 9.91-9.91S17.5 2 12.04 2zm0 18.03a8.1 8.1 0 0 1-4.13-1.13l-.3-.18-3.12.82.83-3.04-.2-.31a8.07 8.07 0 0 1-1.24-4.28c0-4.47 3.64-8.1 8.16-8.1 4.47 0 8.1 3.63 8.1 8.1s-3.63 8.12-8.1 8.12zm4.44-6.07c-.24-.12-1.44-.71-1.66-.79-.22-.08-.39-.12-.55.12-.16.24-.63.79-.77.95-.14.16-.28.18-.53.06-.24-.12-1.03-.38-1.96-1.21-.72-.64-1.21-1.43-1.35-1.68-.14-.24-.02-.37.11-.5.11-.11.24-.28.37-.42.12-.14.16-.24.24-.4.08-.16.04-.3-.02-.42-.06-.12-.55-1.32-.75-1.81-.2-.48-.4-.41-.55-.42h-.47c-.16 0-.42.06-.65.3-.22.24-.85.83-.85 2.03s.87 2.36 1 2.52c.12.16 1.72 2.62 4.16 3.68.58.25 1.04.4 1.39.51.58.19 1.12.16 1.54.1.47-.07 1.44-.59 1.65-1.16.2-.57.2-1.06.14-1.16-.06-.1-.22-.16-.47-.28z" />
+                            </svg>
+                        </span>
+
+                        <p className="flex-1 text-xs leading-6 text-gray-100">
+                            لطفاً از موجود بودن کالاهای سبد خریدتان اطمینان حاصل کنید.
+                            <span className="block text-[10px] text-gray-400 mt-0.5">
+                                برای استعلام موجودی، با پشتیبانی واتس‌اپ در تماس باشید
+                            </span>
+                        </p>
+
+                        {/* بستن — فقط اعلان را می‌بندد و واتس‌اپ باز نمی‌شود */}
+                        <button
+                            type="button"
+                            aria-label="بستن اعلان"
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                dismissStockNotice();
+                            }}
+                            className="w-7 h-7 flex-shrink-0 flex items-center justify-center rounded-full text-gray-400 hover:text-white hover:bg-white/10 transition-colors"
+                        >
+                            <FaTimes size={12} />
+                        </button>
+                    </div>
+                )}
                 </div>
 
                 {/* ─── Footer ─── */}

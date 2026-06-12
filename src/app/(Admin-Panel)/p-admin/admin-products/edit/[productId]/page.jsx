@@ -4,6 +4,7 @@ import { useState, useEffect, useMemo } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import { FaEdit, FaBox, FaImages, FaTags, FaCogs, FaPalette, FaRunning, FaLayerGroup } from 'react-icons/fa';
 import Button from '@/components/admin/Button';
+import AdminLoader from '@/components/admin/AdminLoader';
 import Input from '@/components/admin/Input';
 import Textarea from '@/components/admin/Textarea';
 import Select from '@/components/admin/Select';
@@ -428,11 +429,7 @@ export default function ProductEditPage() {
   // Loading state
   // ---------------------------
   if (loading) {
-    return (
-      <div className="p-20 text-center font-bold animate-pulse text-gray-400">
-        در حال بارگذاری اطلاعات محصول...
-      </div>
-    );
+    return <AdminLoader />;
   }
 
   // ---------------------------
@@ -584,7 +581,6 @@ export default function ProductEditPage() {
               { value: 'none', label: 'بدون برچسب' },
               { value: 'new', label: 'جدید' },
               { value: 'hot', label: 'پرطرفدار' },
-              { value: 'discount', label: 'تخفیف ویژه' },
               { value: 'limited', label: 'تعداد محدود' },
             ]}
           />

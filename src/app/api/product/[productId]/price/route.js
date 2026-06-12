@@ -11,7 +11,11 @@ import connectToDB from "base/configs/db";
 import { verifyToken } from "base/utils/auth";
 import Product from "base/models/Product";
 import Variant from "base/models/Variant";
-import { getRate, computeProductPrice } from "base/services/priceEngine";
+import {
+  getRate,
+  computeProductPrice,
+  loadQuantityDiscountMap,
+} from "base/services/priceEngine";
 import { eurToToman } from "@/lib/Exchangerate";
 
 async function getUserFromToken() {
@@ -71,6 +75,22 @@ export async function GET(request, { params }) {
       });
     }
 
+    // تخفیف تعدادی فعال (برای نمایش پله‌ها در صفحه محصول/مودال)
+    const qdMap = await loadQuantityDiscountMap([product._id]);
+    const qd = qdMap.get(product._id.toString());
+    const quantityDiscount = qd
+      ? {
+          title: qd.title || "",
+          tiers: [...qd.tiers]
+            .sort((a, b) => a.minQty - b.minQty)
+            .map((t) => ({
+              minQty: t.minQty,
+              kind: t.discount.kind,
+              value: t.discount.value,
+            })),
+        }
+      : null;
+
     return NextResponse.json({
       productId:      product._id,
       basePriceToman: priceResult.basePriceToman,
@@ -78,6 +98,7 @@ export async function GET(request, { params }) {
       discountAmount:  priceResult.discountAmount,
       discountPercent: priceResult.discountPercent,
       appliedRules:    priceResult.appliedRules,
+      quantityDiscount,
       variants,
       rate,
     });

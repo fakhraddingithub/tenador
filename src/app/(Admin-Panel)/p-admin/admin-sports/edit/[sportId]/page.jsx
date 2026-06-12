@@ -6,6 +6,7 @@ import Link from 'next/link';
 import { FiArrowRight, FiUploadCloud, FiSave, FiLoader, FiType, FiFileText, FiImage, FiGrid, FiActivity } from 'react-icons/fi';
 import { toast, ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
+import AdminLoader from '@/components/admin/AdminLoader';
 
 export default function EditSport() {
   const router = useRouter();
@@ -105,12 +106,7 @@ export default function EditSport() {
     }
   };
 
-  if (loading) return (
-    <div className="min-h-screen bg-gray-50 flex flex-col items-center justify-center gap-4">
-      <div className="w-12 h-12 border-4 border-gray-200 border-t-[var(--color-primary)] rounded-full animate-spin"></div>
-      <p className="text-gray-500 font-bold">در حال فراخوانی اطلاعات...</p>
-    </div>
-  );
+  if (loading) return <AdminLoader fullScreen />;
 
   return (
     <div className="min-h-screen bg-[#fcfcfc] text-[var(--color-text)] pb-20" dir="rtl">

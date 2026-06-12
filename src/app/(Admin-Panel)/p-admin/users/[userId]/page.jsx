@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { motion } from 'framer-motion'
 import { toast } from 'react-toastify'
+import AdminLoader from '@/components/admin/AdminLoader'
 import {
   ArrowRight, User, Mail, Phone, Calendar, Save, Edit3, X,
   Shield, GraduationCap, Wallet, Ban, CheckCircle2, MapPin,
@@ -139,11 +140,7 @@ export default function AdminUserDetailsPage() {
   }
 
   if (loading) {
-    return (
-      <div className="flex items-center justify-center h-64">
-        <Loader2 className="animate-spin text-[var(--color-primary)]" size={32} />
-      </div>
-    )
+    return <AdminLoader />
   }
 
   if (!data?.user) {

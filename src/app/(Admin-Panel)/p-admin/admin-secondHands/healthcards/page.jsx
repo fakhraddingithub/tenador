@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { FiPlus, FiEdit3, FiTrash2, FiLayers } from 'react-icons/fi';
 import { showToast } from '@/lib/toast';
 import { confirmDelete } from '@/lib/swal';
+import AdminLoader from '@/components/admin/AdminLoader';
 
 export default function HealthCardsPage() {
   const [cards, setCards] = useState([]);
@@ -54,9 +55,7 @@ export default function HealthCardsPage() {
       </div>
 
       {loading ? (
-        <div className="space-y-3">
-          {[1,2,3].map(i => <div key={i} className="h-16 bg-neutral-100 animate-pulse rounded-[var(--radius)]" />)}
-        </div>
+        <AdminLoader />
       ) : cards.length === 0 ? (
         <div className="text-center py-20 border-2 border-dashed border-neutral-200 rounded-[var(--radius)] text-neutral-400">
           هیچ HealthCard ای ثبت نشده است
