@@ -20,9 +20,7 @@ import { getCart, updateQuantity, removeFromCart, flowSignature } from '@/lib/ca
 import FlowSelectionsList from '@/components/modules/orderFlow/FlowSelectionsList';
 import { useUser } from '@/components/features/auth/UserContext';
 
-// اعلان موجودی داخل سبد — تا بستن دستی می‌ماند؛ پس از بستن در همان نشست تکرار نمی‌شود
-// (v2: کلید قبلی ممکن است با کلیک روی toast نامرئیِ باگ قبلی ست شده باشد)
-const STOCK_NOTICE_KEY = 'cartStockNoticeDismissed.v2';
+// اعلان موجودی داخل سبد — تا بستن دستی می‌ماند و با هر بار باز شدن سبد دوباره نمایش داده می‌شود
 const SUPPORT_WHATSAPP_URL =
     'https://wa.me/33743649300?text=' +
     encodeURIComponent('سلام، لطفاً موجودی کالاهای سبد خرید من را بررسی کنید.');
@@ -35,23 +33,27 @@ export default function CartDrawer({ isOpen, onClose }) {
     const [updatingId, setUpdatingId] = useState(null); // آیتمی که در حال آپدیت است
     const [showStockNotice, setShowStockNotice] = useState(false);   // در DOM هست؟
     const [stockNoticeVisible, setStockNoticeVisible] = useState(false); // انیمیشن slide-up
+    const [stockNoticeDismissed, setStockNoticeDismissed] = useState(false); // فقط برای همین بار باز بودن سبد
     const router = useRouter();
 
     // ─── اعلان «موجودی کالاها» ───
+    // با بسته شدن سبد، وضعیت اعلان ریست می‌شود تا دفعه بعد دوباره نمایش داده شود
+    useEffect(() => {
+        if (!isOpen) {
+            setShowStockNotice(false);
+            setStockNoticeVisible(false);
+            setStockNoticeDismissed(false);
+        }
+    }, [isOpen]);
+
     // افکت ۱: تصمیم نمایش. افکت ۲ (جدا): انیمیشن slide-up.
     // ⚠️ این دو عمداً از هم جدا هستند — اگر تایمر انیمیشن داخل همین افکت باشد،
     // re-run شدن افکت بعد از setShowStockNotice(true) همان تایمر را در cleanup
     // پاک می‌کند و toast برای همیشه در حالت opacity-0 نامرئی می‌ماند.
     useEffect(() => {
-        if (!isOpen || loading || items.length === 0) return;
-
-        let dismissed = false;
-        try {
-            dismissed = sessionStorage.getItem(STOCK_NOTICE_KEY) === '1';
-        } catch { /* sessionStorage در دسترس نیست */ }
-
-        if (!dismissed) setShowStockNotice(true);
-    }, [isOpen, loading, items.length]);
+        if (!isOpen || loading || items.length === 0 || stockNoticeDismissed) return;
+        setShowStockNotice(true);
+    }, [isOpen, loading, items.length, stockNoticeDismissed]);
 
     // اجرای transition پس از اینکه toast با حالت پنهان paint شد (double rAF)
     useEffect(() => {
@@ -68,9 +70,8 @@ export default function CartDrawer({ isOpen, onClose }) {
 
     const dismissStockNotice = () => {
         setStockNoticeVisible(false);
-        try {
-            sessionStorage.setItem(STOCK_NOTICE_KEY, '1');
-        } catch { /* ignore */ }
+        // فقط برای همین بار باز بودن سبد — بار بعد دوباره نمایش داده می‌شود
+        setStockNoticeDismissed(true);
         // پس از پایان انیمیشن از DOM حذف شود
         setTimeout(() => setShowStockNotice(false), 300);
     };
