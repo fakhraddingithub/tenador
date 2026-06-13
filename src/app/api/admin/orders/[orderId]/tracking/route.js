@@ -18,6 +18,7 @@ import connectToDB from "base/configs/db";
 import {
   connectWarehouseDB,
   getItemTrackingModel,
+  getUsedItemTrackingModel,
   getWarehouseModel,
 } from "@/lib/warehouseDb";
 import { verifyToken } from "base/utils/auth";
@@ -94,6 +95,37 @@ export async function GET(req, { params }) {
       .populate({ path: "currentWarehouse", model: Warehouse })
       .lean();
 
+    // ─── tracking محصولات دست‌دوم (کالکشن جداگانه UsedItemTracking) ───
+    // محصولات دست‌دوم در پروژه انبار در کالکشن دیگری با کلید usedProductRef
+    // نگهداری می‌شوند؛ این‌جا بر اساس سفارش و/یا شناسه‌ی محصولات دست‌دومِ سفارش واکشی می‌شوند.
+    const usedProductIds = (order.items || [])
+      .filter((it) => it.itemType === "used_product" && it.usedProduct?._id)
+      .map((it) => it.usedProduct._id.toString());
+
+    let usedTrackingItems = [];
+    if (usedProductIds.length > 0) {
+      const UsedItemTracking = getUsedItemTrackingModel(warehouseConn);
+      const raw = await UsedItemTracking.find({
+        $or: [
+          { tenadorOrderId: orderId.toString() },
+          { usedProductRef: { $in: usedProductIds } },
+        ],
+      })
+        .populate({ path: "currentWarehouse", model: Warehouse })
+        .lean();
+      // علامت‌گذاری منبع تا کلاینت/DELETE بتواند کالکشن درست را تشخیص دهد
+      usedTrackingItems = raw.map((t) => ({ ...t, isUsedItemTracking: true }));
+    }
+
+    // نگاشت usedProductRef → tracking های دست‌دومِ آن محصول
+    const usedTrackingByProduct = new Map();
+    for (const t of usedTrackingItems) {
+      const key = t.usedProductRef?.toString();
+      if (!key) continue;
+      if (!usedTrackingByProduct.has(key)) usedTrackingByProduct.set(key, []);
+      usedTrackingByProduct.get(key).push(t);
+    }
+
     // tracking مربوط به خطِ اصلی هر آیتم:
     //  - ترجیحاً با orderItemIndex صریح تطبیق داده می‌شود (محصول معمولی و دست‌دوم)
     //  - محصول دست‌دوم بدون orderItemIndex (داده‌های قدیمی): با شناسه/بارکد/کدِ
@@ -134,7 +166,12 @@ export async function GET(req, { params }) {
     // ساختار خروجی: برای هر آیتم سفارش، tracking خطِ اصلی + خطوط انتخاب‌های فرایند
     const itemsWithTracking = order.items.map((item, index) => {
       const isUsed = item.itemType === "used_product";
-      const mainRelated = matchMainTracking(item, index);
+      // برای محصول دست‌دوم: tracking از کالکشن UsedItemTracking (بر اساس usedProductRef)
+      // به‌علاوه‌ی هر tracking قدیمیِ احتمالی در ItemTracking
+      const usedRelated = isUsed
+        ? usedTrackingByProduct.get(item.usedProduct?._id?.toString()) || []
+        : [];
+      const mainRelated = [...matchMainTracking(item, index), ...usedRelated];
       const mainRequired = isUsed ? 1 : item.quantity;
 
       // خطوط انتخاب فرایند (فقط نودهای category که محصول فیزیکی دارند)
@@ -199,6 +236,12 @@ export async function GET(req, { params }) {
       return s + main + flow;
     }, 0);
 
+    // مجموع اسکن‌شده — شامل خطوط اصلی (محصول معمولی + دست‌دوم) و خطوط فرایند
+    const totalScanned = itemsWithTracking.reduce((s, it) => {
+      const flow = (it.flowTracking || []).reduce((fs, f) => fs + f.scannedCount, 0);
+      return s + it.scannedCount + flow;
+    }, 0);
+
     return NextResponse.json(
       {
         order: {
@@ -208,7 +251,7 @@ export async function GET(req, { params }) {
           paymentStatus: order.paymentStatus,
         },
         itemsWithTracking,
-        totalScanned: trackingItems.length,
+        totalScanned,
         totalRequired,
       },
       { status: 200 }
@@ -515,7 +558,15 @@ export async function DELETE(req, { params }) {
     const warehouseConn = await connectWarehouseDB();
     const ItemTracking = getItemTrackingModel(warehouseConn);
 
-    const item = await ItemTracking.findById(trackingItemId);
+    // ابتدا در ItemTracking (محصولات معمولی)، سپس در UsedItemTracking (دست‌دوم)
+    let item = await ItemTracking.findById(trackingItemId);
+    let isUsedItem = false;
+    if (!item) {
+      const UsedItemTracking = getUsedItemTrackingModel(warehouseConn);
+      item = await UsedItemTracking.findById(trackingItemId);
+      isUsedItem = true;
+    }
+
     if (!item)
       return NextResponse.json(
         { message: "آیتم یافت نشد" },
@@ -530,10 +581,13 @@ export async function DELETE(req, { params }) {
 
     // جدا کردن از سفارش (نه حذف از دیتابیس)
     item.tenadorOrderId = null;
-    item.relatedOrder = null;
-    item.procurementStatus = null;
-    item.orderItemIndex = null;
-    item.flowNodeId = null;
+    // فیلدهای زیر فقط در ItemTracking وجود دارند (محصولات معمولی)
+    if (!isUsedItem) {
+      item.relatedOrder = null;
+      item.procurementStatus = null;
+      item.orderItemIndex = null;
+      item.flowNodeId = null;
+    }
     item.history.push({
       status: item.status,
       locationName: "پنل ادمین تنادور",
