@@ -50,8 +50,9 @@ export default function ProductCard({ product, rate, onQuickView, onToggleWishli
         </div>
       )}
 
-      {/* Badges — همه از گوشه بالا-راست شروع و چسبیده به لبه راست روی هم می‌چینند */}
-      <div className="absolute top-4 right-0 z-20 flex flex-col gap-1 items-end">
+      {/* Badges — لبه‌ی راستِ همه‌ی بج‌ها روی لبه‌ی راستِ کارت قفل می‌شود؛
+          dir=rtl + items-start یعنی inline-start = سمت راست (مستقل از طول متن) */}
+      <div dir="rtl" className="absolute top-4 right-0 z-20 flex flex-col gap-1 items-start">
         {/* درصد تخفیف */}
         {hasDiscount && discountPercent > 0 && (
           <div className="relative py-1 pr-3 pl-5 text-[10px] font-bold text-white shadow-sm bg-red-500"
@@ -60,10 +61,10 @@ export default function ProductCard({ product, rate, onQuickView, onToggleWishli
           </div>
         )}
 
-        {/* بج «ویژه» — محصول تخفیف تعدادی فعال دارد */}
+        {/* بج «ویژه» — محصول تخفیف تعدادی فعال دارد (رنگ ثانویه‌ی برند) */}
         {product.hasQuantityDiscount && (
-          <div className="relative py-1 pr-3 pl-5 text-[10px] font-bold text-white shadow-sm bg-purple-600"
-            style={badgeShape}>
+          <div className="relative py-1 pr-3 pl-5 text-[10px] font-bold text-[#1a1a1a] shadow-sm"
+            style={{ ...badgeShape, background: "var(--color-secondary)" }}>
             ویژه
           </div>
         )}
