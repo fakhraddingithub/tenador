@@ -352,29 +352,18 @@ export default function BrandGroupedView({
                   id={`serie-section-${section.key}`}
                   className="scroll-mt-24"
                 >
-                  {/* هدر بخشِ سری */}
-                  <div className="flex items-center gap-3 mb-5 pb-3 border-b-2 border-gray-100">
-                    {section.serie?.logo || section.serie?.image ? (
-                      <div className="w-10 h-10 rounded-[6px] bg-gray-50 border border-gray-100 flex items-center justify-center overflow-hidden p-1.5 shrink-0">
-                        <img
-                          src={section.serie.logo || section.serie.image}
-                          alt={section.serie.title}
-                          className="w-full h-full object-contain"
-                        />
-                      </div>
-                    ) : (
-                      <span className="w-10 h-10 rounded-[6px] bg-[var(--color-primary)]/10 flex items-center justify-center shrink-0">
-                        <FiLayers className="text-[var(--color-primary)]" />
-                      </span>
+                  {/* هدر بخشِ سری — کانتینرِ ظریف، مرکز‌چین، فقط لوگوی برند + نام سری */}
+                  <div className="mb-7 flex flex-col items-center gap-3 text-center rounded-[var(--radius)] bg-white border border-gray-100 shadow-sm py-7 px-4">
+                    {pageInfo?.logo && (
+                      <img
+                        src={pageInfo.logo}
+                        alt={brandTitle}
+                        className="h-9 md:h-10 w-auto object-contain opacity-90"
+                      />
                     )}
-                    <div className="min-w-0">
-                      <h2 className="text-lg md:text-xl font-bold text-[#1a1a1a] truncate">
-                        {section.serie?.title}
-                      </h2>
-                      <span className="text-xs font-bold text-gray-400">
-                        {section.productCount.toLocaleString("fa-IR")} محصول
-                      </span>
-                    </div>
+                    <h2 className="text-2xl md:text-3xl font-bold text-[#1a1a1a] tracking-tight">
+                      {section.serie?.title}
+                    </h2>
                   </div>
 
                   {/* محصولات بخش */}
