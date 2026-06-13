@@ -1,3 +1,36 @@
+/**
+ * buildProductTemplate.js
+ *
+ * Generates a structured AI prompt for extracting product data from raw content.
+ * Returns a prompt string that instructs the AI to output valid, consistent JSON.
+ */
+
+/**
+ * Extracts the context string for a given field from category.prompts array.
+ * Safely handles null/undefined and returns a clean string.
+ *
+ * @param {Array}  prompts  - category.prompts array
+ * @param {string} field    - field name to look up
+ * @returns {string}
+ */
+function getPromptContext(prompts, field) {
+  if (!Array.isArray(prompts)) return "No specific rule defined.";
+  const match = prompts.find((p) => p?.field === field);
+  return match?.context?.toString().trim() || "No specific rule defined.";
+}
+
+/**
+ * Builds the full AI prompt for product data extraction.
+ *
+ * @param {Object} params
+ * @param {Object}   params.category        - Populated category document
+ * @param {Array}    params.brands           - Populated brand documents (with .series)
+ * @param {Array}    params.sports           - Sport documents
+ * @param {Array}    params.athletes         - Athlete documents
+ * @param {Array}   [params.collaborations]  - Collaboration/event documents (optional)
+ * @param {string}   params.rawContent       - Raw text to extract product data from
+ * @returns {string} - The complete prompt string
+ */
 export function buildProductTemplate({
   category,
   brands,
@@ -6,40 +39,44 @@ export function buildProductTemplate({
   collaborations = [],
   rawContent,
 }) {
-  if (!category) throw new Error("Category is required");
-  if (!rawContent || rawContent.trim().length < 50) {
-    throw new Error("Raw product content is too short");
+  // ─── Input Validation ─────────────────────────────────────────────────────
+  if (!category) throw new Error("category is required");
+  if (!category._id) throw new Error("category._id is required");
+  if (!Array.isArray(brands)) throw new Error("brands must be an array");
+  if (!Array.isArray(sports)) throw new Error("sports must be an array");
+  if (!Array.isArray(athletes)) throw new Error("athletes must be an array");
+  if (typeof rawContent !== "string" || rawContent.trim().length < 50) {
+    throw new Error("rawContent is too short (minimum 50 characters)");
   }
 
-  // 1. Category attribute rules
+  // ─── Category Global Attributes ───────────────────────────────────────────
+  // These produce single-value fields in "attributes" object.
+  // The KEY the AI must use is attr.name (English). The label (Persian) is shown for context only.
   const globalAttributeInstructions = (category.attributes || [])
     .map((attr) => {
-      let line = `- ${attr.name} (برچسب: ${attr.label}) | نوع: فیلد متنی/عددی تک‌مقداری`;
-      if (attr.prompt) line += ` | قانون استخراج: ${attr.prompt}`;
-      return line;
+      const rule = attr.prompt ? ` | Extraction Rule: ${attr.prompt}` : "";
+      return `  - KEY: "${attr.name}" | Persian Label (context only): ${attr.label} | Type: single string or number${rule}`;
     })
     .join("\n");
 
-  // ۲. قوانین ویژگی‌های متغیر (Variant Attributes)
-  // این‌ها ویژگی‌هایی هستند که باید تمام مقادیر موجود در متن برایشان استخراج شود (مثل تمام سایزها)
+  // ─── Variant Attributes ───────────────────────────────────────────────────
+  // These produce array-value fields in "variantOptions" object.
+  // All values mentioned in the raw content must be collected.
   const variantAttributeInstructions = (category.variantAttributes || [])
     .map((attr) => {
-      let line = `- ${attr.name} (برچسب: ${attr.label})`;
-      if (attr.prompt) line += ` | راهنما: ${attr.prompt}`;
-      return line;
+      const rule = attr.prompt ? ` | Guide: ${attr.prompt}` : "";
+      return `  - KEY: "${attr.name}" | Persian Label (context only): ${attr.label} | Type: array of strings${rule}`;
     })
     .join("\n");
 
-  // 1.1 Technical Stats rules
+  // ─── Technical Stats ──────────────────────────────────────────────────────
   const technicalStatsInstructions = (category.technicalStats || [])
-    .map((stat) => {
-      let line = `- ${stat.name} (Label: ${stat.label})`;
-      return line;
-    })
-    .join("\n\n");
-  const globalTechnicalPrompt = category.technicalStatsPrompt || "";
+    .map((stat) => `  - KEY: "${stat.name}" | Label: ${stat.label}`)
+    .join("\n");
 
-  // 2. Brand & Sport & Serie context
+  const globalTechnicalPrompt = (category.technicalStatsPrompt || "").trim();
+
+  // ─── Reference Lists ──────────────────────────────────────────────────────
   const brandList = brands.map((b) => ({
     id: b._id.toString(),
     name: b.name,
@@ -49,214 +86,230 @@ export function buildProductTemplate({
     id: s._id.toString(),
     name: s.name,
   }));
+
   const athleteList = athletes.map((a) => ({
     id: a._id.toString(),
     name: a.name,
   }));
 
-  // استخراج تمام سری‌ها از داخل برندهای پاپیولیت شده
+  // Series are nested inside brands — we flatten them and include parentBrandId
+  // so the AI can enforce the brand↔serie relationship constraint.
   const serieList = brands.flatMap((b) =>
     (b.series || []).map((ser) => ({
       id: ser._id.toString(),
-      name: ser.title || ser.name, // اولویت با عنوان فارسی
-      brandName: b.name, // برای کمک به AI در تشخیص بهتر
-    })),
+      name: ser.title || ser.name,
+      parentBrandId: b._id.toString(),
+      parentBrandName: b.name,
+    }))
   );
 
-  // همکاری‌ها/رویدادها (مثل Roland Garros) — سراسری و مستقل از برند
+  // Collaborations are global events (e.g. Roland Garros) independent of brand.
   const collaborationList = collaborations.map((c) => ({
     id: c._id.toString(),
-    name: c.name,
-    title: c.title,
+    name: c.name || c.title,
   }));
 
-  // 3. Final Prompt
+  // ─── Per-field Prompt Contexts ────────────────────────────────────────────
+  const fieldRules = {
+    name: getPromptContext(category.prompts, "name"),
+    shortDescription: getPromptContext(category.prompts, "shortDescription"),
+    longDescription: getPromptContext(category.prompts, "longDescription"),
+    color: getPromptContext(category.prompts, "color"),
+    basePrice: getPromptContext(category.prompts, "basePrice"),
+    label: getPromptContext(category.prompts, "label"),
+    tag: getPromptContext(category.prompts, "tag"),
+  };
+
+  // ─── Build Prompt ─────────────────────────────────────────────────────────
   return `
 You are a senior Persian e-commerce product manager AI.
 
-Your task is to READ the raw product content
-and GENERATE a complete Product JSON object.
+Your task:
+- READ the raw product content provided below.
+- EXTRACT and GENERATE a complete product JSON object.
+- OUTPUT only the JSON — nothing else.
 
-===============================
-GLOBAL RULES (ABSOLUTE)
-===============================
-- Output ONLY valid JSON
-- NO explanations
-- NO comments
-- NO extra fields
-- Language: PERSIAN (fa-IR)
-- Think carefully before choosing brand, sport and serie
-- Do NOT hallucinate information
+=================================================================
+CRITICAL OUTPUT FORMAT RULES — NEVER VIOLATE THESE
+=================================================================
+1. Output ONLY raw JSON. Start with { and end with }.
+2. NO markdown code fences (no \`\`\`json, no \`\`\`).
+3. NO explanations, comments, or text before or after the JSON.
+4. NO trailing commas anywhere.
+5. ALL string values must be wrapped in balanced double quotes.
+6. Validate JSON structure mentally before responding.
+7. If you detect any syntax error in your output, fix it before responding.
+8. Treat this output as production data — not a draft.
 
-===============================
-JSON SAFETY RULES (CRITICAL)
-===============================
-- Output MUST be valid JSON
-- All strings MUST have balanced double quotes
-- No trailing commas
-- Validate JSON structure before final output
-- If any syntax error exists, fix it before returning
-- Treat output as production data, not a draft
+=================================================================
+LANGUAGE RULE
+=================================================================
+- All human-readable content (name, descriptions, tag, etc.) → PERSIAN (fa-IR)
+- JSON keys → Exactly as specified in the rules below (English)
+- Attribute keys → MUST be the English KEY shown in "Category Attributes" section
+  DO NOT use Persian labels as keys — they are provided for context only.
 
-===============================
-FIELD RULES (VERY IMPORTANT)
-===============================
+=================================================================
+FIELD RULES
+=================================================================
 
 name:
-${category.prompts?.map((prompt) => (prompt.field === "name" ? prompt.context.toString() : null))}
-
+${fieldRules.name}
 
 shortDescription:
-${category.prompts?.map((prompt) => (prompt.field === "shortDescription" ? prompt.context.toString() : null))}
+${fieldRules.shortDescription}
 
 longDescription:
-${category.prompts?.map((prompt) => (prompt.field === "longDescription" ? prompt.context.toString() : null))}
+${fieldRules.longDescription}
 
 color:
-${category.prompts?.map((prompt) => (prompt.field === "color" ? prompt.context.toString() : null))}
+${fieldRules.color}
 
 basePrice:
-${category.prompts?.map((prompt) => (prompt.field === "basePrice" ? prompt.context.toString() : null))}
+${fieldRules.basePrice}
 
 label:
-${category.prompts?.map((prompt) => (prompt.field === "label" ? prompt.context.toString() : null))}
+${fieldRules.label}
+- Allowed values: "new" | "discount" | "best_seller" | "" (empty string if none)
 
 score:
-- DO NOT include this field at all
+- DO NOT include this field at all.
 
 brand:
-- Choose ONE brandId ONLY from provided list
-- Match by semantic meaning, NOT guessing
+- Choose exactly ONE id from AVAILABLE BRANDS.
+- Match by semantic meaning. Do NOT guess.
 
 serie:
-- Choose ONE serieId ONLY from provided AVAILABLE SERIES list.
-- **CRITICAL RULE**: The chosen "serie" MUST belong to the "brand" you selected. 
-- You ARE NOT ALLOWED to pick a series that has a different "parentBrandId" than your selected "brand".
-- If a series is mentioned in text but doesn't match the selected brand, prioritize the Brand and leave serie as an empty string "".
+- Choose exactly ONE id from AVAILABLE SERIES — OR an empty string "" if none matches.
+- CRITICAL: The chosen serie's "parentBrandId" MUST match your selected brand's id.
+- If a series is mentioned in the text but belongs to a different brand, ignore it and return "".
+- A product can only have a serie from its own brand.
 
 collaboration:
-- Collaborations are special-event partnerships (e.g. "Roland Garros") that products
-  from ANY brand or serie can belong to.
-- Choose ONE collaborationId ONLY from provided AVAILABLE COLLABORATIONS list.
-- Pick a collaboration ONLY if the raw content clearly mentions that event/partnership
-  (e.g. product name contains "Roland Garros").
-- If no collaboration is mentioned, return an empty string "".
-- Do NOT confuse a collaboration with a serie: a product can have BOTH a serie
-  (e.g. Blade) and a collaboration (e.g. Roland Garros) at the same time.
+- Collaborations are global event partnerships (e.g. Roland Garros). Any brand can have them.
+- Choose exactly ONE id from AVAILABLE COLLABORATIONS — OR an empty string "" if none applies.
+- Only pick a collaboration if the raw content clearly and explicitly mentions it.
+- A product can have BOTH a serie and a collaboration at the same time.
 
 sport:
-- Choose ONE sportId ONLY from provided list
-- Based on actual product usage
+- Choose exactly ONE id from AVAILABLE SPORTS based on actual product usage.
 
 athlete:
-- Pick ALL relevant athlete IDs from the AVAILABLE ATHLETES list as an ARRAY.
-- If no athlete is mentioned, return an empty array [].
+- Pick ALL relevant athlete ids from AVAILABLE ATHLETES as a JSON array.
+- If none mentioned → return [].
 
 category:
 - MUST be exactly: "${category._id}"
+- Do NOT change this value.
 
 attributes:
-- Keys MUST exactly match category attribute names
-- Respect type strictly:
-- Format: Object { "key": "value" }
-- If value is NOT found in content:
-  - If required → infer logically
-  - If not required → omit the key
-  
-  variantOptions (Variant Generator):
-- These are attributes that create different product versions (e.g. Size, Color).
-- Format: Object { "key": ["val1", "val2"] }
-- You MUST extract EVERY mentioned value for these keys as an ARRAY of strings.
-- Example: If text says "Available in Red and Blue", result: {"color": ["Red", "Blue"]} 
+- This is a flat JSON object of single string or number values.
+- Keys MUST be the exact English "KEY" field defined in "Category Attributes" below.
+  ✗ Wrong: { "اندازه صفحه": "100" }
+  ✓ Correct: { "Head Size": "100" }
+- If a value is NOT found in raw content:
+  - If the attribute is logically required → infer it from professional knowledge.
+  - If it is optional → omit the key entirely.
 
-  technicalStats:
-- This field is for technical scoring (Radar Chart).
-- Keys MUST match technicalStats names defined in Category.
+variantOptions:
+- This is a flat JSON object where each value is an ARRAY of strings.
+- Keys MUST be the exact English "KEY" field defined in "Variant Attributes" below.
+- Extract EVERY value mentioned in the raw content for each key.
+  Example: { "Grip": ["L2", "L3", "L4"] }
+- If no variant attributes are defined → return {}.
+
+technicalStats:
+- A flat JSON object for radar chart scoring.
+- Keys MUST exactly match the names in "Category Technical Stats" below.
 - Values MUST be integers between 0 and 100.
-${globalTechnicalPrompt ? `\nGLOBAL SCORING RULE:\n${globalTechnicalPrompt}\n` : ""}
-- Use your senior judgment based on raw content and "Technical Stats Rules" below.
-- If content doesn't specify a score, estimate logically based on professional knowledge of the product.
- 
-  tag:
-  ${category.prompts?.map((prompt) => (prompt.field === "tag" ? prompt.context.toString() : null))}
+- Use professional judgment when the raw content does not explicitly state a score.
+${globalTechnicalPrompt ? `\nScoring Guidance:\n${globalTechnicalPrompt}` : ""}
+- If no technical stats are defined for this category → return {}.
+
+tag:
+${fieldRules.tag}
+- Must be a JSON array of Persian strings.
+- If none → return [].
 
 mainImage:
-- Direct image URL if available
-- If not available, return empty string ""
+- A direct image URL string if available in raw content.
+- If not found → return "".
 
 gallery:
-- Array of image URLs
-- Can be empty []
+- An array of direct image URL strings.
+- If none found → return [].
 
-===============================
+=================================================================
 CATEGORY DEFINITION
-===============================
-Category: ${category.title}
-Category ID: ${category._id}
+=================================================================
+Category Name : ${category.title}
+Category ID   : ${category._id}
 
-Category Attributes:
-${globalAttributeInstructions}
+Category Attributes (single-value fields → output in "attributes"):
+${globalAttributeInstructions || "  (none defined)"}
 
-VARIANT ATTRIBUTES (Output in "variantOptions" field):
-${variantAttributeInstructions || "None"}
+Variant Attributes (array-value fields → output in "variantOptions"):
+${variantAttributeInstructions || "  (none defined)"}
 
-Category Technical Stats (Radar Chart Scoring):
-${technicalStatsInstructions || "No technical stats defined for this category."}
+Category Technical Stats (integer 0–100 → output in "technicalStats"):
+${technicalStatsInstructions || "  (none defined)"}
 
-===============================
+=================================================================
 AVAILABLE BRANDS
-===============================
+=================================================================
 ${JSON.stringify(brandList, null, 2)}
 
-===============================
+=================================================================
 AVAILABLE SPORTS
-===============================
+=================================================================
 ${JSON.stringify(sportList, null, 2)}
 
-===============================
+=================================================================
 AVAILABLE ATHLETES
-===============================
+=================================================================
 ${JSON.stringify(athleteList, null, 2)}
 
-===============================
-AVAILABLE SERIES (Mapped from Brands)
-===============================
+=================================================================
+AVAILABLE SERIES
+=================================================================
 ${JSON.stringify(serieList, null, 2)}
 
-===============================
-AVAILABLE COLLABORATIONS (Event Partnerships)
-===============================
+=================================================================
+AVAILABLE COLLABORATIONS
+=================================================================
 ${JSON.stringify(collaborationList, null, 2)}
 
-===============================
+=================================================================
 RAW PRODUCT CONTENT
-===============================
-${rawContent}
+=================================================================
+${rawContent.trim()}
 
-===============================
-REQUIRED OUTPUT JSON STRUCTURE
-===============================
+=================================================================
+REQUIRED JSON OUTPUT STRUCTURE
+=================================================================
+Output exactly this structure with no extra fields:
+
 {
-  "name": "",
-  "shortDescription": "",
-  "longDescription": "",
-  "color": "",
+  "name": "Persian product name",
+  "shortDescription": "Persian HTML short description",
+  "longDescription": "Persian HTML long description",
+  "color": "#hexcode",
   "basePrice": 0,
+  "label": "",
   "brand": "ID_FROM_BRANDS_LIST",
-  "serie": "ID_FROM_SERIES_LIST",
+  "serie": "ID_FROM_SERIES_LIST_OR_EMPTY_STRING",
   "collaboration": "ID_FROM_COLLABORATIONS_LIST_OR_EMPTY_STRING",
   "sport": "ID_FROM_SPORTS_LIST",
-  "athlete": ["ID1", "ID2"],
+  "athlete": [],
   "category": "${category._id}",
-  - attributes values MUST conform exactly to rules above
   "attributes": {
-     "key": "single value"
+    "English_key": "single value"
   },
   "variantOptions": {
-     "key": ["value1", "value2"]
+    "English_key": ["value1", "value2"]
   },
   "technicalStats": {
-     "stat_name": 85
+    "stat_name": 85
   },
   "tag": [],
   "mainImage": "",
