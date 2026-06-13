@@ -70,7 +70,9 @@ export default function ProfileModule() {
   }
 
   // ۱. آپلود تصویر در بستر اختصاصی API پروژه
-  const uploadImage = async (file, field) => {
+  // پشتیبانی از جایگزینی: هر بار آپلود، فقط URL همان فیلد بازنویسی می‌شود (بدون فایل تکراری).
+  // ورودیِ فایل پس از انتخاب reset می‌شود تا انتخاب دوباره‌ی همان فایل هم رویداد بدهد.
+  const uploadImage = async (file, field, inputEl) => {
     if (!file) return;
     setUploading((p) => ({ ...p, [field]: true }));
     const fd = new FormData();
@@ -87,6 +89,8 @@ export default function ProfileModule() {
       toast.error('آپلود تصویر ناموفق بود');
     } finally {
       setUploading((p) => ({ ...p, [field]: false }));
+      // ریست مقدار اینپوت تا انتخاب مجددِ همان فایل هم onChange را اجرا کند
+      if (inputEl) inputEl.value = '';
     }
   };
 
@@ -555,9 +559,27 @@ export default function ProfileModule() {
                   <label className="text-xs font-semibold text-slate-600 block">تصویر پرسنلی مربی</label>
                   <div className="relative flex items-center justify-center border border-dashed border-slate-200 rounded-[var(--radius)] bg-slate-50/50 p-4 transition-colors hover:bg-slate-50">
                     {applyFormData.personalImage ? (
-                      <div className="flex items-center justify-between w-full text-xs text-emerald-600 font-bold bg-emerald-50 p-2 rounded-lg">
+                      <div className="flex items-center justify-between gap-2 w-full text-xs text-emerald-600 font-bold bg-emerald-50 p-2 rounded-lg">
                         <span className="flex items-center gap-1"><CheckCircle2 size={14}/> عکس پرسنلی آپلود شد</span>
-                        <img src={applyFormData.personalImage} className="h-8 w-8 rounded-full object-cover border"/>
+                        <div className="flex items-center gap-2">
+                          <img src={applyFormData.personalImage} className="h-8 w-8 rounded-full object-cover border"/>
+                          {/* امکان جایگزینی فایل */}
+                          <label className="flex items-center gap-1 cursor-pointer text-[11px] font-bold text-[var(--color-primary)] hover:opacity-80 transition-opacity whitespace-nowrap">
+                            {uploading.personalImage ? (
+                              <Loader2 size={13} className="animate-spin"/>
+                            ) : (
+                              <Upload size={13} />
+                            )}
+                            تغییر تصویر
+                            <input
+                              type="file"
+                              accept="image/*"
+                              className="hidden"
+                              disabled={uploading.personalImage}
+                              onChange={(e) => uploadImage(e.target.files[0], 'personalImage', e.target)}
+                            />
+                          </label>
+                        </div>
                       </div>
                     ) : (
                       <label className="flex flex-col items-center gap-1 cursor-pointer w-full">
@@ -569,12 +591,12 @@ export default function ProfileModule() {
                             <span className="text-xs text-slate-500">انتخاب فایل تصویر پرسنلی</span>
                           </>
                         )}
-                        <input 
-                          type="file" 
-                          accept="image/*" 
-                          className="hidden" 
+                        <input
+                          type="file"
+                          accept="image/*"
+                          className="hidden"
                           disabled={uploading.personalImage}
-                          onChange={(e) => uploadImage(e.target.files[0], 'personalImage')}
+                          onChange={(e) => uploadImage(e.target.files[0], 'personalImage', e.target)}
                         />
                       </label>
                     )}
@@ -586,9 +608,27 @@ export default function ProfileModule() {
                   <label className="text-xs font-semibold text-slate-600 block">تصویر مدرک یا حکم مربیگری معتبر</label>
                   <div className="relative flex items-center justify-center border border-dashed border-slate-200 rounded-[var(--radius)] bg-slate-50/50 p-4 transition-colors hover:bg-slate-50">
                     {applyFormData.certificateImage ? (
-                      <div className="flex items-center justify-between w-full text-xs text-emerald-600 font-bold bg-emerald-50 p-2 rounded-lg">
+                      <div className="flex items-center justify-between gap-2 w-full text-xs text-emerald-600 font-bold bg-emerald-50 p-2 rounded-lg">
                         <span className="flex items-center gap-1"><CheckCircle2 size={14}/> حکم مربیگری آپلود شد</span>
-                        <img src={applyFormData.certificateImage} className="h-8 w-12 rounded object-cover border"/>
+                        <div className="flex items-center gap-2">
+                          <img src={applyFormData.certificateImage} className="h-8 w-12 rounded object-cover border"/>
+                          {/* امکان جایگزینی فایل */}
+                          <label className="flex items-center gap-1 cursor-pointer text-[11px] font-bold text-[var(--color-primary)] hover:opacity-80 transition-opacity whitespace-nowrap">
+                            {uploading.certificateImage ? (
+                              <Loader2 size={13} className="animate-spin"/>
+                            ) : (
+                              <Upload size={13} />
+                            )}
+                            تغییر تصویر
+                            <input
+                              type="file"
+                              accept="image/*"
+                              className="hidden"
+                              disabled={uploading.certificateImage}
+                              onChange={(e) => uploadImage(e.target.files[0], 'certificateImage', e.target)}
+                            />
+                          </label>
+                        </div>
                       </div>
                     ) : (
                       <label className="flex flex-col items-center gap-1 cursor-pointer w-full">
@@ -600,12 +640,12 @@ export default function ProfileModule() {
                             <span className="text-xs text-slate-500">انتخاب فایل حکم مربیگری</span>
                           </>
                         )}
-                        <input 
-                          type="file" 
-                          accept="image/*" 
-                          className="hidden" 
+                        <input
+                          type="file"
+                          accept="image/*"
+                          className="hidden"
                           disabled={uploading.certificateImage}
-                          onChange={(e) => uploadImage(e.target.files[0], 'certificateImage')}
+                          onChange={(e) => uploadImage(e.target.files[0], 'certificateImage', e.target)}
                         />
                       </label>
                     )}

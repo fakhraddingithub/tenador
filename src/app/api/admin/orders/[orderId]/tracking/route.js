@@ -73,7 +73,10 @@ export async function GET(req, { params }) {
     const order = await Order.findById(orderId)
       .populate("items.product", "name mainImage sku")
       .populate("items.variant", "sku attributes")
-      .populate("items.usedProduct", "name images sku")
+      .populate(
+        "items.usedProduct",
+        "name images sku warehouseTrackingId assignedBarcode assignedTrackingCode"
+      )
       .populate("items.flowSelections.selectedProduct", "name mainImage sku")
       .lean();
 
@@ -92,17 +95,34 @@ export async function GET(req, { params }) {
       .lean();
 
     // tracking مربوط به خطِ اصلی هر آیتم:
-    //  - ترجیحاً با orderItemIndex صریح تطبیق داده می‌شود
-    //  - برای داده‌های قدیمی (بدون orderItemIndex) با productRef تطبیق می‌خورد
+    //  - ترجیحاً با orderItemIndex صریح تطبیق داده می‌شود (محصول معمولی و دست‌دوم)
+    //  - محصول دست‌دوم بدون orderItemIndex (داده‌های قدیمی): با شناسه/بارکد/کدِ
+    //    رهگیریِ ذخیره‌شده روی خودِ محصول دست‌دوم تطبیق می‌خورد — دقیق و بدون ابهام
+    //    حتی اگر چند محصول دست‌دومِ هم‌پایه در یک سفارش باشند
+    //  - محصول معمولی بدون orderItemIndex (داده‌های قدیمی): با productRef + variantRef
     //  - آیتم‌های متعلق به انتخاب‌های فرایند (flowNodeId غیرنال) هرگز اینجا شمرده نمی‌شوند
     const matchMainTracking = (item, index) =>
       trackingItems.filter((t) => {
         if (t.flowNodeId) return false;
+
+        // ۱) تطبیق صریح با ایندکس خطِ سفارش
         if (t.orderItemIndex !== null && t.orderItemIndex !== undefined) {
           return t.orderItemIndex === index;
         }
-        // fallback قدیمی فقط برای محصولات معمولی
-        if (item.itemType === "used_product") return false;
+
+        // ۲) محصول دست‌دوم: تطبیق دقیق با tracking ثبت‌شده روی خود محصول دست‌دوم
+        if (item.itemType === "used_product") {
+          const up = item.usedProduct;
+          if (!up) return false;
+          const trackId = up.warehouseTrackingId?.toString();
+          if (trackId && t._id?.toString() === trackId) return true;
+          if (up.assignedBarcode && t.barcode === up.assignedBarcode) return true;
+          if (up.assignedTrackingCode && t.trackingId === up.assignedTrackingCode)
+            return true;
+          return false;
+        }
+
+        // ۳) fallback قدیمی فقط برای محصولات معمولی
         const productMatch =
           t.productRef?.toString() === item.product?._id?.toString();
         const variantMatch = item.variant

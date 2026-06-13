@@ -19,6 +19,7 @@ import AddressSelector from "@/components/order/AddressSelector";
 import AddressModal from "@/components/order/AddressModal";
 import PaymentMethods from "@/components/order/PaymentMethods";
 import OrderActions from "@/components/order/OrderActions";
+import StockReminderToast from "@/components/order/StockReminderToast";
 
 import { useCart } from "@/hooks/useCart";
 import { useAddresses } from "@/hooks/useAddresses";
@@ -157,6 +158,9 @@ const OrderPage = () => {
                   isLoading={isCartLoading}
                 />
               </div>
+
+              {/* اعلان بررسی موجودی — همان toast سبد خرید، زیر خلاصه سفارش */}
+              <StockReminderToast active={totalItems > 0} />
 
               {/* 🛡️ اصلاح شد: انتقال کامل و امن کلیدهای محصولات نو و دست‌دوم */}
               <OrderActions

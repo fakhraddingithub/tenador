@@ -74,6 +74,14 @@ export async function POST(req) {
     if (!order)
       return NextResponse.json({ message: "سفارش یافت نشد" }, { status: 404 });
 
+    // ربط دقیق به خطِ سفارش: ایندکس آیتمِ این محصول دست‌دوم در order.items
+    // بدون این ایندکس، بخش سفارش‌ها نمی‌تواند بارکد دست‌دوم را به خطِ درست نسبت دهد
+    const usedOrderItemIndex = (order.items || []).findIndex(
+      (it) =>
+        it.itemType === "used_product" &&
+        it.usedProduct?.toString() === usedProductId.toString()
+    );
+
     const warehouseConn = await connectWarehouseDB();
     const ItemTracking  = getItemTrackingModel(warehouseConn);
     const Warehouse     = getWarehouseModel(warehouseConn);
@@ -100,6 +108,9 @@ export async function POST(req) {
       item.tenadorOrderId   = orderId.toString();
       item.relatedOrder     = order._id;
       item.procurementStatus = "IN_STOCK";
+      // ربط دقیق به خطِ سفارش تا بخش سفارش‌ها بتواند بارکد را پیدا کند
+      if (usedOrderItemIndex >= 0) item.orderItemIndex = usedOrderItemIndex;
+      item.flowNodeId = null; // خطِ اصلی است نه انتخابِ فرایند
 
       // ربط دادن به usedProduct (از طریق productRef)
       if (usedProduct.baseProduct?._id) {
@@ -158,6 +169,9 @@ export async function POST(req) {
         relatedOrder:      order._id,
         tenadorOrderId:    orderId.toString(),
         procurementStatus: "IN_STOCK",
+        // ربط دقیق به خطِ سفارش تا بخش سفارش‌ها بتواند بارکد را پیدا کند
+        orderItemIndex:    usedOrderItemIndex >= 0 ? usedOrderItemIndex : null,
+        flowNodeId:        null,
         history: [{
           status:       "IR_WAREHOUSE",
           locationName: warehouse.name,
