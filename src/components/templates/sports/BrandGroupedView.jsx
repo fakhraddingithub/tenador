@@ -352,18 +352,21 @@ export default function BrandGroupedView({
                   id={`serie-section-${section.key}`}
                   className="scroll-mt-24"
                 >
-                  {/* هدر بخشِ سری — کانتینرِ ظریف، مرکز‌چین، فقط لوگوی برند + نام سری */}
-                  <div className="mb-7 flex flex-col items-center gap-3 text-center rounded-[var(--radius)] bg-white border border-gray-100 shadow-sm py-7 px-4">
+                  {/* هدر بخشِ سری — لوگوی برند سمت چپ، نام سری مرکز‌چین با خط زیرین رنگ اصلی */}
+                  <div className="relative mb-7 flex items-center justify-center rounded-[var(--radius)] bg-white border border-gray-100 shadow-sm py-7 px-16">
                     {pageInfo?.logo && (
                       <img
                         src={pageInfo.logo}
                         alt={brandTitle}
-                        className="h-9 md:h-10 w-auto object-contain opacity-90"
+                        className="absolute left-4 top-1/2 -translate-y-1/2 h-9 md:h-10 w-auto object-contain opacity-90"
                       />
                     )}
-                    <h2 className="text-2xl md:text-3xl font-bold text-[#1a1a1a] tracking-tight">
-                      {section.serie?.title}
-                    </h2>
+                    <div className="flex flex-col items-center gap-2">
+                      <h2 className="text-2xl md:text-3xl font-bold text-[#1a1a1a] tracking-tight text-center">
+                        {section.serie?.title}
+                      </h2>
+                      <span className="block w-12 h-1 rounded-full bg-[var(--color-primary)]" />
+                    </div>
                   </div>
 
                   {/* محصولات بخش */}
