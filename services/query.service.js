@@ -20,7 +20,12 @@ import { attachListingPrices } from "base/services/priceEngine";
 const entities = ["brand", "sport", "athlete", "category", "serie", "collaboration", "product"];
 const modelMap = { brand: Brand, sport: Sport, athlete: Athlete, category: Category, serie: Serie, collaboration: Collaboration, product: Product };
 
-async function _queryBySlugs(slugs) {
+/**
+ * تشخیص موجودیت‌های صفحه از روی اسلاگ‌ها + آمار برند (سری‌ها و تعداد محصول).
+ * محصولات را بارگذاری نمی‌کند — سبک و مناسب برای تصمیم‌گیری نوع صفحه.
+ * خروجی شاملِ search (داکیومنت‌های خام با ObjectId) و filters (شیِ نمایشی) است.
+ */
+async function _resolveContext(slugs) {
   await connectToDB();
 
   const search = { brand: null, sport: null, athlete: null, category: null, serie: null, collaboration: null, product: null };
@@ -58,6 +63,22 @@ async function _queryBySlugs(slugs) {
     brandStats = { ...search.brand, totalProductCount: totalBrandProducts, series: seriesWithCounts };
   }
 
+  const filters = {
+    brand: brandStats || search.brand,
+    sport: search.sport,
+    athlete: search.athlete,
+    category: search.category,
+    serie: search.serie,
+    collaboration: search.collaboration,
+    product: search.product,
+  };
+
+  return { search, filters };
+}
+
+async function _queryBySlugs(slugs) {
+  const { search, filters } = await _resolveContext(slugs);
+
   const finalFilter = { isActive: true };
   if (search.brand) finalFilter.brand = search.brand._id;
   if (search.sport) finalFilter.sport = search.sport._id;
@@ -78,15 +99,7 @@ async function _queryBySlugs(slugs) {
 
   return JSON.parse(
     JSON.stringify({
-      filters: {
-        brand: brandStats || search.brand,
-        sport: search.sport,
-        athlete: search.athlete,
-        category: search.category,
-        serie: search.serie,
-        collaboration: search.collaboration,
-        product: search.product,
-      },
+      filters,
       results: priced,
       totalResults: priced.length,
     })
@@ -96,5 +109,19 @@ async function _queryBySlugs(slugs) {
 export const queryBySlugs = unstable_cache(
   _queryBySlugs,
   ["query-by-slugs"],
+  { revalidate: 60, tags: ["products", "sports", "categories", "brands", "series", "collaborations"] }
+);
+
+/**
+ * فقط موجودیت‌های صفحه (filters) — بدون بارگذاری محصولات.
+ * برای صفحه‌ی برند (نمای گروه‌بندی‌شده + infinite scroll) استفاده می‌شود تا
+ * بارِ اولیه سبک بماند و همه‌ی محصولات یک‌جا لود نشوند.
+ */
+export const resolvePageContext = unstable_cache(
+  async (slugs) => {
+    const { filters } = await _resolveContext(slugs);
+    return JSON.parse(JSON.stringify(filters));
+  },
+  ["resolve-page-context"],
   { revalidate: 60, tags: ["products", "sports", "categories", "brands", "series", "collaborations"] }
 );
