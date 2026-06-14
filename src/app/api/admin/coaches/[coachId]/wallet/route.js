@@ -1,6 +1,6 @@
 /**
  * POST /api/admin/coaches/[coachId]/wallet
- * Adds credit (Tomans) to a coach's walletBalance.
+ * Adds credit (Tomans) to a coach's walletBalance and records the transaction.
  */
 
 import { NextResponse } from "next/server";
@@ -10,6 +10,8 @@ import mongoose from "mongoose";
 import connectToDB from "base/configs/db";
 import { verifyToken } from "base/utils/auth";
 import User from "base/models/User";
+import Order from "base/models/Order";
+import CoachWalletTransaction from "base/models/CoachWalletTransaction";
 
 async function getAdminUser() {
   const cookieStore = await cookies();
@@ -50,6 +52,18 @@ export async function POST(req, { params }) {
       );
     }
 
+    // Resolve student from orderId for transaction tracking
+    let studentId = null;
+    const orderId = body.orderId && mongoose.Types.ObjectId.isValid(body.orderId)
+      ? body.orderId
+      : null;
+
+    if (orderId) {
+      const order = await Order.findById(orderId, "user").lean();
+      studentId = order?.user || null;
+    }
+
+    // Increment wallet balance
     const coach = await User.findOneAndUpdate(
       { _id: coachId, role: "coach" },
       { $inc: { walletBalance: amount } },
@@ -62,6 +76,16 @@ export async function POST(req, { params }) {
         { status: 404 }
       );
     }
+
+    // Record transaction for coach dashboard visibility
+    await CoachWalletTransaction.create({
+      coach: coachId,
+      student: studentId,
+      order: orderId,
+      amount,
+      addedBy: admin.userId,
+      note: body.note || "",
+    });
 
     return NextResponse.json({
       message: "کردیت با موفقیت به کیف پول مربی افزوده شد",
