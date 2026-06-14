@@ -1,17 +1,17 @@
 /**
  * src/app/api/admin/quantity-discounts/route.js
  *
- * GET  → لیست تخفیف‌های تعدادی (با اطلاعات محصول)
- * POST → ساخت تخفیف تعدادی جدید برای یک محصول
+ * GET  → لیست قوانین تخفیف تعدادی
+ * POST → ساخت قانون تخفیف تعدادی جدید
  *
- * اعمال تخفیف هنگام خرید در priceEngine (loadQuantityDiscountMap /
- * quantityTierFor) انجام می‌شود؛ این روت‌ها فقط مدیریت ادمین هستند.
+ * قوانین تخفیف تعدادی مانند قوانین تخفیف معمولی بر اساس نوع هدف
+ * (global / product / brand / serie / category) اعمال می‌شوند.
+ * اعمال هنگام خرید در priceEngine (loadQuantityDiscountMap) انجام می‌شود.
  */
 
 import { NextResponse } from "next/server";
 import connectToDB from "base/configs/db";
 import QuantityDiscount from "base/models/QuantityDiscount";
-import Product from "base/models/Product";
 import { revalidateContent } from "@/lib/revalidate";
 import {
   validateQuantityDiscountPayload,
@@ -23,7 +23,6 @@ export async function GET() {
     await connectToDB();
 
     const items = await QuantityDiscount.find({})
-      .populate("product", "name mainImage sku basePrice")
       .sort({ createdAt: -1 })
       .lean();
 
@@ -47,24 +46,9 @@ export async function POST(req) {
       return NextResponse.json({ message: errors[0], errors }, { status: 400 });
     }
 
-    const product = await Product.findById(body.product).select("_id name");
-    if (!product) {
-      return NextResponse.json(
-        { message: "محصول انتخاب‌شده یافت نشد" },
-        { status: 404 }
-      );
-    }
-
-    const duplicate = await QuantityDiscount.findOne({ product: product._id });
-    if (duplicate) {
-      return NextResponse.json(
-        { message: "برای این محصول قبلاً تخفیف تعدادی تعریف شده است؛ همان را ویرایش کنید" },
-        { status: 409 }
-      );
-    }
-
     const created = await QuantityDiscount.create({
-      product: product._id,
+      type: body.type,
+      targets: body.type !== "global" ? (body.targets || []) : [],
       title: String(body.title || "").trim(),
       tiers: normalizeTiers(body.tiers),
       active: body.active !== false,

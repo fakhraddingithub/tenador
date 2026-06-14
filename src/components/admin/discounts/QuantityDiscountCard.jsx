@@ -1,7 +1,21 @@
 "use client";
 // src/components/admin/discounts/QuantityDiscountCard.jsx
-//
-// کارت نمایش یک تخفیف تعدادی در لیست بخش «تخفیف‌ها» — هم‌خانواده با CouponCard.
+
+const TYPE_LABELS = {
+  global:   "همه محصولات",
+  product:  "محصول خاص",
+  brand:    "برند",
+  serie:    "سری",
+  category: "دسته‌بندی",
+};
+
+const TYPE_COLORS = {
+  global:   "bg-green-50 text-green-700 border-green-200",
+  product:  "bg-blue-50 text-blue-700 border-blue-200",
+  brand:    "bg-orange-50 text-orange-700 border-orange-200",
+  serie:    "bg-indigo-50 text-indigo-700 border-indigo-200",
+  category: "bg-purple-50 text-purple-700 border-purple-200",
+};
 
 function formatTier(t) {
   const amount =
@@ -23,26 +37,30 @@ function statusOf(item) {
 
 export default function QuantityDiscountCard({ item, onEdit, onDelete, onToggle }) {
   const status = statusOf(item);
-  const product = item.product || {};
+  const targetsCount = (item.targets || []).length;
 
   return (
     <div className="bg-white border border-gray-200 rounded-xl p-4 flex flex-col md:flex-row md:items-center gap-4 hover:shadow-sm transition-shadow">
-      {/* محصول */}
-      <div className="flex items-center gap-3 md:w-72 flex-shrink-0 min-w-0">
-        {product.mainImage ? (
-          <img
-            src={product.mainImage}
-            alt=""
-            className="w-12 h-12 rounded-lg object-cover border border-gray-100 flex-shrink-0"
-          />
-        ) : (
-          <div className="w-12 h-12 rounded-lg bg-gray-100 flex-shrink-0" />
-        )}
+      {/* نوع + هدف */}
+      <div className="flex items-center gap-3 md:w-64 flex-shrink-0 min-w-0">
         <div className="min-w-0">
-          <p className="text-sm font-bold text-gray-800 truncate">
-            {product.name || "محصول حذف‌شده"}
-          </p>
-          {item.title && <p className="text-xs text-gray-400 truncate">{item.title}</p>}
+          <div className="flex items-center gap-2 mb-1">
+            <span
+              className={`text-xs font-bold px-2 py-0.5 rounded-full border ${
+                TYPE_COLORS[item.type] || "bg-gray-50 text-gray-600 border-gray-200"
+              }`}
+            >
+              {TYPE_LABELS[item.type] || item.type}
+            </span>
+            {item.type !== "global" && targetsCount > 0 && (
+              <span className="text-[10px] text-gray-400">
+                {targetsCount} مورد
+              </span>
+            )}
+          </div>
+          {item.title && (
+            <p className="text-sm font-bold text-gray-800 truncate">{item.title}</p>
+          )}
         </div>
       </div>
 

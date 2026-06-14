@@ -1,9 +1,9 @@
 // base/models/QuantityDiscount.js
 //
-// تخفیف تعدادی (پلکانی) روی یک محصول مشخص — در بخش «تخفیف‌ها»ی پنل ادمین
-// مدیریت می‌شود و در priceEngine روی قیمت واحدِ نهایی اعمال می‌گردد.
+// تخفیف تعدادی (پلکانی) — قابل اعمال روی محصول خاص، برند، سری، دسته‌بندی یا همه‌ی محصولات.
+// در بخش «تخفیف‌ها»ی پنل ادمین مدیریت می‌شود و در priceEngine روی قیمت واحدِ نهایی اعمال می‌گردد.
 //
-// هر محصول حداکثر یک سند تخفیف تعدادی دارد و هر سند چند پله (tier) دارد:
+// هر سند چند پله (tier) دارد:
 //   مثال: ۲ عدد به بالا → ۱۰٪ ، ۳ عدد به بالا → ۱۵٪
 // بهترین پله‌ای که تعداد سبد به آن رسیده باشد اعمال می‌شود.
 
@@ -25,12 +25,18 @@ const TierSchema = new mongoose.Schema(
 
 const QuantityDiscountSchema = new mongoose.Schema(
   {
-    product: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: "Product",
+    // نوع هدف: همه محصولات / محصول خاص / برند / سری / دسته‌بندی
+    type: {
+      type: String,
+      enum: ["global", "product", "brand", "serie", "category"],
       required: true,
-      unique: true,
       index: true,
+    },
+
+    // آی‌دی‌های هدف (برای نوع‌های غیر global)
+    targets: {
+      type: [{ type: mongoose.Schema.Types.ObjectId }],
+      default: [],
     },
 
     title: { type: String, default: "", trim: true },

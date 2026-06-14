@@ -6,12 +6,31 @@
 
 import mongoose from "mongoose";
 
+const VALID_TYPES = ["global", "product", "brand", "serie", "category"];
+
 export function validateQuantityDiscountPayload(body, { partial = false } = {}) {
   const errors = [];
 
-  if (!partial || body.product !== undefined) {
-    if (!body.product || !mongoose.Types.ObjectId.isValid(body.product)) {
-      errors.push("انتخاب محصول الزامی است");
+  if (!partial || body.type !== undefined) {
+    if (!body.type || !VALID_TYPES.includes(body.type)) {
+      errors.push("نوع تخفیف تعدادی معتبر نیست");
+    }
+  }
+
+  // برای نوع‌های غیر global، انتخاب هدف الزامی است
+  if (!partial || body.targets !== undefined) {
+    const type = body.type;
+    if (type && type !== "global") {
+      if (!Array.isArray(body.targets) || body.targets.length === 0) {
+        errors.push("انتخاب حداقل یک هدف برای نوع انتخاب‌شده الزامی است");
+      } else {
+        for (const id of body.targets) {
+          if (!mongoose.Types.ObjectId.isValid(id)) {
+            errors.push("شناسه‌ی یکی از اهداف معتبر نیست");
+            break;
+          }
+        }
+      }
     }
   }
 

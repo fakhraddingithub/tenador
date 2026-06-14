@@ -3,6 +3,7 @@ import connectToDB from "base/configs/db";
 import Product from "base/models/Product";
 import Brand from "base/models/Brand";
 import Serie from "base/models/Serie";
+import Category from "base/models/Category";
 import Variant from "base/models/Variant";
 import { NextResponse } from "next/server";
 
@@ -33,6 +34,10 @@ export async function GET(req) {
       if (type === "serie") {
         const items = await Serie.find({ _id: { $in: ids } }).select("_id name title logo brand").populate("brand", "title").lean();
         return NextResponse.json({ items: items.map((s) => ({ _id: s._id, label: s.title || s.name, sub: s.brand?.title || "", image: s.logo || null })) });
+      }
+      if (type === "category") {
+        const items = await Category.find({ _id: { $in: ids } }).select("_id name title icon image").lean();
+        return NextResponse.json({ items: items.map((c) => ({ _id: c._id, label: c.title || c.name, image: c.icon || c.image || null })) });
       }
       if (type === "variant") {
         const variants = await Variant.find({ _id: { $in: ids } }).select("_id sku attributes price images productId").lean();
@@ -71,6 +76,18 @@ export async function GET(req) {
       const items = await Serie.find({ $or: [{ title: { $regex: q, $options: "i" } }, { name: { $regex: q, $options: "i" } }] })
         .select("_id name title logo brand").populate("brand", "title").limit(10).lean();
       return NextResponse.json({ items: items.map((s) => ({ _id: s._id, label: s.title || s.name, sub: s.brand?.title || "", image: s.logo || null })) });
+    }
+
+    // ── دسته‌بندی ─────────────────────────────────────────────────────────────
+    if (type === "category") {
+      if (!q) return NextResponse.json({ items: [] });
+      const items = await Category.find({
+        $or: [{ title: { $regex: q, $options: "i" } }, { name: { $regex: q, $options: "i" } }],
+      })
+        .select("_id name title icon image")
+        .limit(10)
+        .lean();
+      return NextResponse.json({ items: items.map((c) => ({ _id: c._id, label: c.title || c.name, image: c.icon || c.image || null })) });
     }
 
     // ── واریانت ───────────────────────────────────────────────────────────────

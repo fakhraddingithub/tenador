@@ -15,6 +15,7 @@
  */
 
 import { useState, useRef, useEffect, useCallback } from "react";
+import Link from "next/link";
 import ProductCard from "@/components/modules/cart/ProductCard";
 import QuickViewModal from "@/components/modules/cart/QuickViewModal";
 import SearchBar from "@/components/templates/products/SearchBar";
@@ -36,6 +37,8 @@ export default function BrandGroupedView({
   const categoryTitle = filters?.category?.title || filters?.category?.name || "";
   const brandTitle =
     filters?.brand?.title || filters?.brand?.name || pageInfo?.title || pageInfo?.name || "";
+  const sportSlug = filters?.sport?.slug || "";
+  const brandSlug = pageInfo?.slug || filters?.brand?.slug || "";
   const headTitle = [categoryTitle, brandTitle].filter(Boolean).join(" ") || brandTitle;
 
   // ─── State ───
@@ -271,20 +274,35 @@ export default function BrandGroupedView({
                   سری‌ها
                 </h4>
                 <div className="flex flex-col gap-1 max-h-72 overflow-y-auto custom-scrollbar">
-                  {index.map((entry) => (
-                    <button
-                      key={entry.key}
-                      onClick={() => jumpTo(entry.key)}
-                      className="flex items-center justify-between gap-2 px-3 py-2 rounded-[6px] text-right hover:bg-gray-50 transition-colors group"
-                    >
-                      <span className="text-xs font-bold text-gray-600 group-hover:text-[var(--color-primary)] truncate">
-                        {entry.title}
-                      </span>
-                      <span className="text-[10px] font-bold text-gray-400 bg-gray-100 rounded-full px-2 py-0.5 shrink-0">
-                        {entry.productCount.toLocaleString("fa-IR")}
-                      </span>
-                    </button>
-                  ))}
+                  {index.map((entry) =>
+                    entry.slug && sportSlug && brandSlug ? (
+                      <Link
+                        key={entry.key}
+                        href={`/${sportSlug}/${brandSlug}/${entry.slug}`}
+                        className="flex items-center justify-between gap-2 px-3 py-2 rounded-[6px] text-right hover:bg-gray-50 transition-colors group"
+                      >
+                        <span className="text-xs font-bold text-gray-600 group-hover:text-[var(--color-primary)] truncate">
+                          {entry.title}
+                        </span>
+                        <span className="text-[10px] font-bold text-gray-400 bg-gray-100 rounded-full px-2 py-0.5 shrink-0">
+                          {entry.productCount.toLocaleString("fa-IR")}
+                        </span>
+                      </Link>
+                    ) : (
+                      <button
+                        key={entry.key}
+                        onClick={() => jumpTo(entry.key)}
+                        className="flex items-center justify-between gap-2 px-3 py-2 rounded-[6px] text-right hover:bg-gray-50 transition-colors group"
+                      >
+                        <span className="text-xs font-bold text-gray-600 group-hover:text-[var(--color-primary)] truncate">
+                          {entry.title}
+                        </span>
+                        <span className="text-[10px] font-bold text-gray-400 bg-gray-100 rounded-full px-2 py-0.5 shrink-0">
+                          {entry.productCount.toLocaleString("fa-IR")}
+                        </span>
+                      </button>
+                    )
+                  )}
                 </div>
               </div>
             )}
@@ -362,9 +380,18 @@ export default function BrandGroupedView({
                       />
                     )}
                     <div className="flex flex-col items-center gap-2">
-                      <h2 className="text-2xl md:text-3xl font-bold text-[#1a1a1a] tracking-tight text-center">
-                        {section.serie?.title}
-                      </h2>
+                      {section.serie?.slug && sportSlug && brandSlug ? (
+                        <Link
+                          href={`/${sportSlug}/${brandSlug}/${section.serie.slug}`}
+                          className="text-2xl md:text-3xl font-bold text-[#1a1a1a] tracking-tight text-center hover:text-[var(--color-primary)] transition-colors"
+                        >
+                          {section.serie.title}
+                        </Link>
+                      ) : (
+                        <h2 className="text-2xl md:text-3xl font-bold text-[#1a1a1a] tracking-tight text-center">
+                          {section.serie?.title}
+                        </h2>
+                      )}
                       <span className="block w-12 h-1 rounded-full bg-[var(--color-primary)]" />
                     </div>
                   </div>

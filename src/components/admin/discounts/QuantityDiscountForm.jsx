@@ -1,9 +1,9 @@
 "use client";
 // src/components/admin/discounts/QuantityDiscountForm.jsx
 //
-// فرم ساخت/ویرایش تخفیف تعدادی — هم‌خانواده با CouponForm.
-// ادمین یک محصول را انتخاب می‌کند و پله‌های تخفیف (حداقل تعداد + درصد/مبلغ)
-// را تعریف می‌کند. اعمال تخفیف هنگام خرید در priceEngine انجام می‌شود.
+// فرم ساخت/ویرایش قانون تخفیف تعدادی.
+// مانند قوانین تخفیف معمولی، قابل اعمال روی همه محصولات، محصول خاص،
+// برند، سری یا دسته‌بندی است.
 
 import { useState, useEffect, useRef, useCallback } from "react";
 import { toast } from "react-toastify";
@@ -11,41 +11,35 @@ import { toast } from "react-toastify";
 const inputCls =
   "w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-[#aa4725] focus:ring-1 focus:ring-[#aa4725]/20 transition-colors bg-white";
 
+const QTY_TYPES = [
+  { value: "global",   label: "همه محصولات",   hasTargets: false },
+  { value: "product",  label: "محصول خاص",     hasTargets: true, searchType: "product" },
+  { value: "brand",    label: "برند",           hasTargets: true, searchType: "brand" },
+  { value: "serie",    label: "سری محصولات",    hasTargets: true, searchType: "serie" },
+  { value: "category", label: "دسته‌بندی",      hasTargets: true, searchType: "category" },
+];
+
 const emptyTier = () => ({ minQty: 2, discount: { kind: "percent", value: "" } });
 
-// ─── انتخاب محصول (جستجوی تکی) ───────────────────────────────────────────────
-function ProductSearchField({ selected, onSelect }) {
+// ─── Autocomplete hook ────────────────────────────────────────────────────────
+function useSearchDropdown(searchType) {
   const [query, setQuery] = useState("");
   const [results, setResults] = useState([]);
   const [loading, setLoading] = useState(false);
   const [open, setOpen] = useState(false);
   const timer = useRef(null);
-  const wrapRef = useRef(null);
-
-  useEffect(() => {
-    const h = (e) => {
-      if (wrapRef.current && !wrapRef.current.contains(e.target)) setOpen(false);
-    };
-    document.addEventListener("mousedown", h);
-    return () => document.removeEventListener("mousedown", h);
-  }, []);
 
   const search = useCallback(async (q) => {
-    if (!q) { setResults([]); setOpen(false); return; }
+    if (!q || !searchType) { setResults([]); setOpen(false); return; }
     setLoading(true);
     try {
-      const res = await fetch(
-        `/api/admin/discounts/search?type=product&q=${encodeURIComponent(q)}`
-      );
+      const res = await fetch(`/api/admin/discounts/search?type=${searchType}&q=${encodeURIComponent(q)}`);
       const data = await res.json();
       setResults(data.items || []);
       setOpen(true);
-    } catch {
-      setResults([]);
-    } finally {
-      setLoading(false);
-    }
-  }, []);
+    } catch { setResults([]); }
+    finally { setLoading(false); }
+  }, [searchType]);
 
   const handleQueryChange = (val) => {
     setQuery(val);
@@ -54,76 +48,86 @@ function ProductSearchField({ selected, onSelect }) {
     timer.current = setTimeout(() => search(val), 300);
   };
 
-  if (selected) {
-    return (
-      <div className="flex items-center justify-between gap-3 border border-[#aa4725]/30 bg-[#aa4725]/5 rounded-lg px-3 py-2.5">
-        <div className="flex items-center gap-2.5 min-w-0">
-          {selected.image ? (
-            <img src={selected.image} alt="" className="w-9 h-9 rounded object-cover flex-shrink-0" />
-          ) : (
-            <div className="w-9 h-9 rounded bg-gray-100 flex-shrink-0" />
-          )}
-          <p className="text-sm font-medium text-gray-800 truncate">{selected.label}</p>
-        </div>
-        <button
-          type="button"
-          onClick={() => onSelect(null)}
-          className="text-xs font-bold text-[#aa4725]/70 hover:text-[#aa4725] flex-shrink-0"
-        >
-          تغییر محصول
-        </button>
-      </div>
-    );
-  }
+  const reset = () => { setQuery(""); setResults([]); setOpen(false); };
+  return { query, handleQueryChange, results, loading, open, setOpen, reset };
+}
+
+// ─── انتخاب چند هدف با Autocomplete ─────────────────────────────────────────
+function TargetSearchField({ searchType, selectedItems, onAdd, onRemove }) {
+  const dd = useSearchDropdown(searchType);
+  const wrapRef = useRef(null);
+
+  useEffect(() => {
+    const h = (e) => { if (wrapRef.current && !wrapRef.current.contains(e.target)) dd.setOpen(false); };
+    document.addEventListener("mousedown", h);
+    return () => document.removeEventListener("mousedown", h);
+  }, [dd]);
+
+  const handleSelect = (item) => {
+    if (!selectedItems.find((s) => s._id === String(item._id)))
+      onAdd({ _id: String(item._id), label: item.label, image: item.image || null });
+    dd.reset();
+  };
 
   return (
-    <div className="relative" ref={wrapRef}>
-      <input
-        type="text"
-        value={query}
-        onChange={(e) => handleQueryChange(e.target.value)}
-        onFocus={() => query && results.length && setOpen(true)}
-        className={inputCls}
-        placeholder="نام محصول را تایپ کنید..."
-        autoComplete="off"
-      />
-      {loading && (
-        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs text-gray-400">
-          جستجو...
-        </span>
+    <div className="space-y-2">
+      {selectedItems.length > 0 && (
+        <div className="flex flex-wrap gap-1.5">
+          {selectedItems.map((item) => (
+            <span key={item._id} className="inline-flex items-center gap-1 bg-[#aa4725]/10 border border-[#aa4725]/30 text-[#aa4725] text-xs px-2.5 py-1 rounded-full">
+              {item.image && <img src={item.image} alt="" className="w-4 h-4 rounded-full object-cover" />}
+              {item.label}
+              <button type="button" onClick={() => onRemove(item._id)} className="text-[#aa4725]/60 hover:text-[#aa4725] font-bold leading-none">×</button>
+            </span>
+          ))}
+        </div>
       )}
-      {open && (
-        <ul className="absolute z-50 w-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg max-h-52 overflow-y-auto">
-          {results.length === 0 ? (
-            <li className="px-4 py-3 text-sm text-gray-400 text-right">محصولی یافت نشد</li>
-          ) : (
-            results.map((item) => (
-              <li
-                key={String(item._id)}
-                onMouseDown={() => {
-                  onSelect({ _id: String(item._id), label: item.label, image: item.image || null });
-                  setQuery("");
-                  setResults([]);
-                  setOpen(false);
-                }}
-                className="flex items-center gap-2.5 px-3 py-2.5 hover:bg-gray-50 cursor-pointer transition-colors border-b border-gray-50 last:border-none"
-              >
-                {item.image ? (
-                  <img src={item.image} alt="" className="w-8 h-8 rounded object-cover flex-shrink-0" />
-                ) : (
-                  <div className="w-8 h-8 rounded bg-gray-100 flex-shrink-0" />
-                )}
-                <div className="text-right">
-                  <p className="text-sm font-medium text-gray-800">{item.label}</p>
-                  {item.sub && <p className="text-xs text-gray-400">{item.sub}</p>}
-                </div>
-              </li>
-            ))
-          )}
-        </ul>
-      )}
+      <div className="relative" ref={wrapRef}>
+        <input
+          type="text" value={dd.query}
+          onChange={(e) => dd.handleQueryChange(e.target.value)}
+          onFocus={() => dd.query && dd.results.length && dd.setOpen(true)}
+          className={inputCls} placeholder="نام را تایپ کنید..." autoComplete="off"
+        />
+        {dd.loading && <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs text-gray-400">جستجو...</span>}
+        {dd.open && (
+          <ul className="absolute z-50 w-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg max-h-52 overflow-y-auto">
+            {dd.results.length === 0
+              ? <li className="px-4 py-3 text-sm text-gray-400 text-right">همچین آیتمی وجود ندارد</li>
+              : dd.results.map((item) => (
+                <li key={String(item._id)} onMouseDown={() => handleSelect(item)}
+                  className="flex items-center gap-2.5 px-3 py-2.5 hover:bg-gray-50 cursor-pointer transition-colors border-b border-gray-50 last:border-none">
+                  {item.image
+                    ? <img src={item.image} alt="" className="w-8 h-8 rounded object-cover flex-shrink-0" />
+                    : <div className="w-8 h-8 rounded bg-gray-100 flex-shrink-0" />}
+                  <div className="text-right">
+                    <p className="text-sm font-medium text-gray-800">{item.label}</p>
+                    {item.sub && <p className="text-xs text-gray-400">{item.sub}</p>}
+                  </div>
+                </li>
+              ))
+            }
+          </ul>
+        )}
+      </div>
     </div>
   );
+}
+
+// resolve کردن اسم اهداف هنگام ویرایش
+async function resolveTargetLabels(searchType, ids) {
+  if (!ids?.length || !searchType) return [];
+  try {
+    const res = await fetch(`/api/admin/discounts/search?type=${searchType}&ids=${ids.join(",")}`);
+    const data = await res.json();
+    if (data.items?.length) {
+      return ids.map((id) => {
+        const found = data.items.find((i) => String(i._id) === String(id));
+        return found ? { _id: String(id), label: found.label, image: found.image || null } : { _id: String(id), label: String(id), image: null };
+      });
+    }
+  } catch { /* fallback */ }
+  return ids.map((id) => ({ _id: String(id), label: String(id), image: null }));
 }
 
 // تبدیل Date → مقدار input[type=datetime-local]
@@ -136,15 +140,9 @@ function toLocalInput(value) {
 }
 
 export default function QuantityDiscountForm({ initial, onSuccess, onCancel }) {
-  const [product, setProduct] = useState(
-    initial?.product
-      ? {
-          _id: String(initial.product._id || initial.product),
-          label: initial.product.name || "محصول انتخاب‌شده",
-          image: initial.product.mainImage || null,
-        }
-      : null
-  );
+  const [type, setType] = useState(initial?.type || "global");
+  const [selectedTargets, setSelectedTargets] = useState([]);
+  const [resolvingTargets, setResolvingTargets] = useState(false);
   const [title, setTitle] = useState(initial?.title || "");
   const [tiers, setTiers] = useState(
     initial?.tiers?.length
@@ -162,15 +160,31 @@ export default function QuantityDiscountForm({ initial, onSuccess, onCancel }) {
   const [endAt, setEndAt] = useState(toLocalInput(initial?.endAt));
   const [submitting, setSubmitting] = useState(false);
 
+  // resolve اهداف هنگام ویرایش
+  useEffect(() => {
+    if (!initial) return;
+    const selectedType = QTY_TYPES.find((t) => t.value === initial.type);
+    if (selectedType?.hasTargets && initial.targets?.length) {
+      setResolvingTargets(true);
+      resolveTargetLabels(selectedType.searchType, initial.targets.map(String))
+        .then(setSelectedTargets)
+        .finally(() => setResolvingTargets(false));
+    }
+  }, [initial]);
+
+  const handleTypeChange = (newType) => {
+    setType(newType);
+    setSelectedTargets([]);
+  };
+
+  const addTarget    = (item) => setSelectedTargets((prev) => prev.find((t) => t._id === item._id) ? prev : [...prev, item]);
+  const removeTarget = (id)   => setSelectedTargets((prev) => prev.filter((t) => t._id !== id));
+
   const updateTier = (index, patch) => {
     setTiers((prev) =>
       prev.map((t, i) =>
         i === index
-          ? {
-              ...t,
-              ...patch,
-              discount: { ...t.discount, ...(patch.discount || {}) },
-            }
+          ? { ...t, ...patch, discount: { ...t.discount, ...(patch.discount || {}) } }
           : t
       )
     );
@@ -179,8 +193,9 @@ export default function QuantityDiscountForm({ initial, onSuccess, onCancel }) {
   const handleSubmit = async (e) => {
     e.preventDefault();
 
-    if (!product?._id) {
-      toast.error("ابتدا محصول را انتخاب کنید");
+    const selectedTypeDef = QTY_TYPES.find((t) => t.value === type);
+    if (selectedTypeDef?.hasTargets && selectedTargets.length === 0) {
+      toast.error("حداقل یک هدف انتخاب کنید");
       return;
     }
     if (!tiers.length) {
@@ -191,7 +206,8 @@ export default function QuantityDiscountForm({ initial, onSuccess, onCancel }) {
     setSubmitting(true);
     try {
       const payload = {
-        product: product._id,
+        type,
+        targets: type !== "global" ? selectedTargets.map((t) => t._id) : [],
         title: title.trim(),
         tiers: tiers.map((t) => ({
           minQty: Number(t.minQty),
@@ -228,14 +244,10 @@ export default function QuantityDiscountForm({ initial, onSuccess, onCancel }) {
     }
   };
 
+  const selectedTypeDef = QTY_TYPES.find((t) => t.value === type);
+
   return (
     <form onSubmit={handleSubmit} className="space-y-5">
-      {/* محصول */}
-      <div className="space-y-1.5">
-        <label className="text-sm font-medium text-gray-700">محصول هدف *</label>
-        <ProductSearchField selected={product} onSelect={setProduct} />
-      </div>
-
       {/* عنوان */}
       <div className="space-y-1.5">
         <label className="text-sm font-medium text-gray-700">عنوان (اختیاری)</label>
@@ -244,9 +256,41 @@ export default function QuantityDiscountForm({ initial, onSuccess, onCancel }) {
           value={title}
           onChange={(e) => setTitle(e.target.value)}
           className={inputCls}
-          placeholder="مثلاً: تخفیف خرید عمده راکت"
+          placeholder="مثلاً: تخفیف عمده برند ویلسون"
         />
       </div>
+
+      {/* نوع */}
+      <div className="space-y-1.5">
+        <label className="text-sm font-medium text-gray-700">نوع هدف *</label>
+        <select
+          value={type}
+          onChange={(e) => handleTypeChange(e.target.value)}
+          className={inputCls}
+          required
+        >
+          {QTY_TYPES.map((t) => (
+            <option key={t.value} value={t.value}>{t.label}</option>
+          ))}
+        </select>
+      </div>
+
+      {/* انتخاب هدف */}
+      {selectedTypeDef?.hasTargets && (
+        <div className="space-y-1.5">
+          <label className="text-sm font-medium text-gray-700">انتخاب هدف *</label>
+          {resolvingTargets ? (
+            <div className="text-xs text-gray-400 py-2">در حال بارگذاری...</div>
+          ) : (
+            <TargetSearchField
+              searchType={selectedTypeDef.searchType}
+              selectedItems={selectedTargets}
+              onAdd={addTarget}
+              onRemove={removeTarget}
+            />
+          )}
+        </div>
+      )}
 
       {/* پله‌ها */}
       <div className="space-y-2">
@@ -282,9 +326,7 @@ export default function QuantityDiscountForm({ initial, onSuccess, onCancel }) {
                 <span className="text-[11px] text-gray-500">نوع تخفیف</span>
                 <select
                   value={tier.discount.kind}
-                  onChange={(e) =>
-                    updateTier(index, { discount: { kind: e.target.value } })
-                  }
+                  onChange={(e) => updateTier(index, { discount: { kind: e.target.value } })}
                   className={inputCls}
                 >
                   <option value="percent">درصد</option>
@@ -300,9 +342,7 @@ export default function QuantityDiscountForm({ initial, onSuccess, onCancel }) {
                   min={1}
                   max={tier.discount.kind === "percent" ? 100 : undefined}
                   value={tier.discount.value}
-                  onChange={(e) =>
-                    updateTier(index, { discount: { value: e.target.value } })
-                  }
+                  onChange={(e) => updateTier(index, { discount: { value: e.target.value } })}
                   className={inputCls}
                   required
                 />

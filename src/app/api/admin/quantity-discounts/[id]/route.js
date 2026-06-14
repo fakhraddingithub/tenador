@@ -1,15 +1,14 @@
 /**
  * src/app/api/admin/quantity-discounts/[id]/route.js
  *
- * PATCH  → ویرایش جزئی (پله‌ها، وضعیت، بازه زمانی، محصول)
- * DELETE → حذف تخفیف تعدادی
+ * PATCH  → ویرایش جزئی (پله‌ها، نوع هدف، وضعیت، بازه زمانی)
+ * DELETE → حذف قانون تخفیف تعدادی
  */
 
 import { NextResponse } from "next/server";
 import mongoose from "mongoose";
 import connectToDB from "base/configs/db";
 import QuantityDiscount from "base/models/QuantityDiscount";
-import Product from "base/models/Product";
 import { revalidateContent } from "@/lib/revalidate";
 import {
   validateQuantityDiscountPayload,
@@ -40,27 +39,9 @@ export async function PATCH(req, { params }) {
       return NextResponse.json({ message: errors[0], errors }, { status: 400 });
     }
 
-    if (body.product !== undefined && String(body.product) !== String(item.product)) {
-      const product = await Product.findById(body.product).select("_id");
-      if (!product) {
-        return NextResponse.json(
-          { message: "محصول انتخاب‌شده یافت نشد" },
-          { status: 404 }
-        );
-      }
-      const duplicate = await QuantityDiscount.findOne({
-        product: product._id,
-        _id: { $ne: item._id },
-      });
-      if (duplicate) {
-        return NextResponse.json(
-          { message: "برای این محصول قبلاً تخفیف تعدادی تعریف شده است" },
-          { status: 409 }
-        );
-      }
-      item.product = product._id;
-    }
-
+    if (body.type !== undefined) item.type = body.type;
+    if (body.targets !== undefined)
+      item.targets = item.type !== "global" ? (body.targets || []) : [];
     if (body.title !== undefined) item.title = String(body.title || "").trim();
     if (body.tiers !== undefined) item.tiers = normalizeTiers(body.tiers);
     if (body.active !== undefined) item.active = Boolean(body.active);

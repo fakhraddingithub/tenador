@@ -13,10 +13,40 @@ export async function generateMetadata({ params }) {
   const { sportSlug } = await params;
   const data = await getPageDataBySlug(sportSlug);
   if (!data) return { title: "صفحه پیدا نشد" };
+
+  const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || "https://tenador.com";
+  const title = `خرید تجهیزات و لوازم ${data.info.title || data.info.name}`;
+  const description =
+    data.info.description || `بهترین قیمت تجهیزات تخصصی ${data.info.title}`;
+  const pageUrl = `${SITE_URL}/${sportSlug}`;
+  const rawImage = data.info.image;
+  const imageUrl = rawImage
+    ? rawImage.startsWith("http")
+      ? rawImage
+      : `${SITE_URL}${rawImage}`
+    : null;
+
   return {
-    title: `خرید تجهیزات و لوازم ${data.info.title || data.info.name} `,
-    description:
-      data.info.description || `بهترین قیمت تجهیزات تخصصی ${data.info.title}`,
+    title,
+    description,
+    metadataBase: new URL(SITE_URL),
+    openGraph: {
+      title,
+      description,
+      url: pageUrl,
+      siteName: "تنادور",
+      locale: "fa_IR",
+      type: "website",
+      ...(imageUrl && {
+        images: [{ url: imageUrl, width: 1200, height: 630, alt: title }],
+      }),
+    },
+    twitter: {
+      card: imageUrl ? "summary_large_image" : "summary",
+      title,
+      description,
+      ...(imageUrl && { images: [imageUrl] }),
+    },
   };
 }
 

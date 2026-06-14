@@ -261,7 +261,7 @@ export async function attachListingPrices(products, rate) {
     })
       .sort({ priority: 1 })
       .lean(),
-    loadQuantityDiscountMap(productIds),
+    loadQuantityDiscountMap(products),
   ]);
 
   const flashByProduct = new Map(flashes.map((f) => [f.productId.toString(), f]));
@@ -315,18 +315,21 @@ export async function attachListingPrices(products, rate) {
 // ---------------------------------------------------------------------------
 
 /**
- * بارگذاری دسته‌ای تخفیف‌های تعدادی فعال برای لیست محصولات
+ * بارگذاری تخفیف‌های تعدادی فعال و تطبیق با هر محصول از لیست.
  *
- * @param {Array<string|Object>} productIds
- * @returns {Promise<Map<string, Object>>} productId → سند QuantityDiscount
+ * قوانین تخفیف تعدادی مانند قوانین تخفیف معمولی بر اساس نوع هدف
+ * (global / product / brand / serie / category) اعمال می‌شوند.
+ * مشخص‌ترین قانون (product > serie > brand > category > global) انتخاب می‌شود.
+ *
+ * @param {Object[]} products  لیست اشیاء محصول (با brand / category / serie پر‌شده یا خام ObjectId)
+ * @returns {Promise<Map<string, Object>>} productId → بهترین سند QuantityDiscount منطبق
  */
-export async function loadQuantityDiscountMap(productIds) {
-  const ids = (productIds || []).filter(Boolean).map(String);
-  if (!ids.length) return new Map();
+export async function loadQuantityDiscountMap(products) {
+  const items = (products || []).filter(Boolean);
+  if (!items.length) return new Map();
 
   const now = new Date();
-  const docs = await QuantityDiscount.find({
-    product: { $in: ids },
+  const rules = await QuantityDiscount.find({
     active: true,
     $and: [
       { $or: [{ startAt: null }, { startAt: { $lte: now } }] },
@@ -334,11 +337,34 @@ export async function loadQuantityDiscountMap(productIds) {
     ],
   }).lean();
 
-  return new Map(
-    docs
-      .filter((d) => Array.isArray(d.tiers) && d.tiers.length > 0)
-      .map((d) => [d.product.toString(), d])
-  );
+  const validRules = rules.filter((r) => Array.isArray(r.tiers) && r.tiers.length > 0);
+  if (!validRules.length) return new Map();
+
+  // مشخص‌ترین نوع = کمترین عدد اولویت
+  const SPECIFICITY = { product: 0, serie: 1, brand: 2, category: 3, global: 4 };
+  validRules.sort((a, b) => (SPECIFICITY[a.type] ?? 5) - (SPECIFICITY[b.type] ?? 5));
+
+  const map = new Map();
+  for (const p of items) {
+    const pid = p._id.toString();
+    const bid = (p.brand?._id ?? p.brand)?.toString() || null;
+    const cid = (p.category?._id ?? p.category)?.toString() || null;
+    const sid = p.serie ? (p.serie?._id ?? p.serie)?.toString() || null : null;
+
+    const matched = validRules.find((r) => {
+      if (r.type === "global") return true;
+      const targets = (r.targets || []).map((t) => t.toString());
+      if (r.type === "product")   return targets.includes(pid);
+      if (r.type === "serie")     return sid  && targets.includes(sid);
+      if (r.type === "brand")     return bid  && targets.includes(bid);
+      if (r.type === "category")  return cid  && targets.includes(cid);
+      return false;
+    });
+
+    if (matched) map.set(pid, matched);
+  }
+
+  return map;
 }
 
 /**
@@ -693,8 +719,8 @@ export async function computeCartPrice(cartItems, user = null, couponCode = null
   const variantMap = new Map(variants.map((v) => [v._id.toString(), v]));
   const usedProductMap = new Map(usedProducts.map((up) => [up._id.toString(), up])); // 💡 مپ کردن دست‌دوم‌ها
 
-  // تخفیف‌های تعدادی فعال (یک‌بار batch)
-  const quantityDiscountMap = await loadQuantityDiscountMap(productIds);
+  // تخفیف‌های تعدادی فعال (یک‌بار batch — با اشیاء کامل محصول برای تطبیق نوع هدف)
+  const quantityDiscountMap = await loadQuantityDiscountMap(Array.from(productMap.values()));
 
   // resolver افزوده‌ی فرایند سفارش (یک‌بار batch می‌گیرد)
   const resolveFlowAddon = await buildFlowAddonResolver(cartItems, productMap, rate);

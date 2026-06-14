@@ -40,11 +40,40 @@ export async function generateMetadata({ params }) {
     filters.category ||
     filters.sport;
 
+  const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || "https://tenador.com";
+  const title = `خرید تجهیزات ${activeEntity.title || activeEntity.name}`;
+  const description =
+    activeEntity.description ||
+    `بهترین قیمت تجهیزات ${activeEntity.title || activeEntity.name}`;
+  const pageUrl = `${SITE_URL}/${slugs.join("/")}`;
+  const rawImage = activeEntity.headImage || activeEntity.image;
+  const imageUrl = rawImage
+    ? rawImage.startsWith("http")
+      ? rawImage
+      : `${SITE_URL}${rawImage}`
+    : null;
+
   return {
-    title: `خرید تجهیزات ${activeEntity.title || activeEntity.name}`,
-    description:
-      activeEntity.description ||
-      `بهترین قیمت تجهیزات ${activeEntity.title || activeEntity.name}`,
+    title,
+    description,
+    metadataBase: new URL(SITE_URL),
+    openGraph: {
+      title,
+      description,
+      url: pageUrl,
+      siteName: "تنادور",
+      locale: "fa_IR",
+      type: "website",
+      ...(imageUrl && {
+        images: [{ url: imageUrl, width: 1200, height: 630, alt: title }],
+      }),
+    },
+    twitter: {
+      card: imageUrl ? "summary_large_image" : "summary",
+      title,
+      description,
+      ...(imageUrl && { images: [imageUrl] }),
+    },
   };
 }
 
