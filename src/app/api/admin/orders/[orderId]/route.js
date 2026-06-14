@@ -101,7 +101,11 @@ export async function GET(req, { params }) {
     );
 
     const fullOrder = await Order.findById(orderId)
-      .populate("user", "name phone email")
+      .populate({
+        path: "user",
+        select: "name phone email coach",
+        populate: { path: "coach", model: "User", select: "name _id" },
+      })
       .populate({
         path: "payments",
         select: "method amount status bankReceipt onlinePayment createdAt meta",
@@ -211,7 +215,11 @@ export async function PATCH(req, { params }) {
       { $set: update },
       { new: true }
     )
-      .populate("user", "name phone email")
+      .populate({
+        path: "user",
+        select: "name phone email coach",
+        populate: { path: "coach", model: "User", select: "name _id" },
+      })
       .populate({
         path: "payments",
         select: "method amount status bankReceipt onlinePayment createdAt meta",

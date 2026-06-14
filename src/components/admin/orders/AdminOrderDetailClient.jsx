@@ -13,7 +13,7 @@ import {
   ExternalLink, MapPin, Phone, Mail, Hash, Calendar, Tag,
   ArrowLeft, Scan, QrCode, Barcode, CheckSquare, Square,
   ShoppingBag, Warehouse, Plus, Trash2, AlertTriangle,
-  ChevronDown, ChevronUp,
+  ChevronDown, ChevronUp, GraduationCap,
 } from "lucide-react";
 import OrderFlowSelectionsView from "@/components/order/OrderFlowSelectionsView";
 
@@ -1482,6 +1482,19 @@ export default function AdminOrderDetailClient({ orderId }) {
                 {order.user?.name && <InfoRow icon={Users} label="نام" value={order.user.name} />}
                 {order.user?.phone && <InfoRow icon={Phone} label="تلفن" value={order.user.phone} />}
                 {order.user?.email && <InfoRow icon={Mail} label="ایمیل" value={order.user.email} />}
+                {order.user?.coach?.name && (
+                  <div className="flex items-center gap-2 text-xs">
+                    <GraduationCap size={12} className="text-gray-400 flex-shrink-0" />
+                    <span className="text-gray-400 w-14 flex-shrink-0">مربی:</span>
+                    <button
+                      type="button"
+                      onClick={() => router.push(`/p-admin/users/coaches/${order.user.coach._id}/credit/${order._id}`)}
+                      className="font-semibold text-[#aa4725] hover:underline truncate"
+                    >
+                      {order.user.coach.name}
+                    </button>
+                  </div>
+                )}
               </div>
               {order.address?.snapshot && (
                 <div className="border-t border-gray-100 pt-3">

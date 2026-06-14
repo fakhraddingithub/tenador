@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import { toast } from "react-toastify";
 import AdminLoader from "@/components/admin/AdminLoader";
@@ -17,6 +18,7 @@ import {
 } from "lucide-react";
 
 export default function AdminCoachesManagement() {
+  const router = useRouter();
   const [activeTab, setActiveTab] = useState("list"); // list | applications
   const [coaches, setCoaches] = useState([]);
   const [applications, setApplications] = useState([]);
@@ -207,7 +209,7 @@ export default function AdminCoachesManagement() {
                           </div>
                         </div>
                         <button
-                          onClick={() => handleViewCoachDetails(coach)}
+                          onClick={() => router.push(`/p-admin/users/coaches/${coach._id}`)}
                           className="flex items-center gap-1 px-3 py-1.5 bg-slate-100 hover:bg-slate-200/80 rounded-lg text-xs font-semibold text-slate-700 transition-colors"
                         >
                           <Eye size={14} />
