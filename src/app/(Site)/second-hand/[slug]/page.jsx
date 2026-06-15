@@ -31,11 +31,44 @@ function buildLookup(rawSlug) {
     : { slug };
 }
 
+const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || "https://tenador.com";
+
 export async function generateMetadata({ params }) {
   const { slug } = await params;
   await connectToDB();
-  const item = await UsedProduct.findOne(buildLookup(slug)).select("name").lean();
-  return { title: item?.name || "محصول دست‌دوم" };
+  const item = await UsedProduct.findOne(buildLookup(slug))
+    .select("name images")
+    .populate({ path: "baseProduct", select: "mainImage" })
+    .lean();
+
+  const name = item?.name || "محصول دست‌دوم";
+  const description = `خرید ${name} دست‌دوم با ضمانت اصالت و ارسال سریع از تنادور`;
+  const rawImage = item?.images?.[0] || item?.baseProduct?.mainImage || null;
+  const imageUrl = rawImage
+    ? rawImage.startsWith("http") ? rawImage : `${SITE_URL}${rawImage}`
+    : null;
+
+  return {
+    title: name,
+    description,
+    metadataBase: new URL(SITE_URL),
+    openGraph: {
+      title: name,
+      description,
+      siteName: "تنادور",
+      locale: "fa_IR",
+      type: "website",
+      ...(imageUrl && {
+        images: [{ url: imageUrl, width: 1200, height: 630, alt: name }],
+      }),
+    },
+    twitter: {
+      card: imageUrl ? "summary_large_image" : "summary",
+      title: name,
+      description,
+      ...(imageUrl && { images: [imageUrl] }),
+    },
+  };
 }
 
 export default async function UsedProductPage({ params }) {

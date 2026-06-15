@@ -10,10 +10,41 @@ import { getCachedRate, eurToToman } from "@/lib/Exchangerate";
 
 export const revalidate = 300;
 
-export const metadata = {
-  title: "بازار دست‌دوم | فروش تجهیزات ورزشی کارکرده",
-  description: "خرید و فروش تجهیزات ورزشی دست‌دوم با کارت سلامت معتبر",
-};
+const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || "https://tenador.com";
+const PAGE_TITLE = "بازار دست‌دوم | فروش تجهیزات ورزشی کارکرده";
+const PAGE_DESC = "خرید و فروش تجهیزات ورزشی دست‌دوم با کارت سلامت معتبر";
+
+export async function generateMetadata() {
+  await connectToDB();
+  const headerSetting = await SiteSetting.findOne({ key: "secondhand_header_image" }).lean();
+  const rawImage = headerSetting?.value || null;
+  const imageUrl = rawImage
+    ? rawImage.startsWith("http") ? rawImage : `${SITE_URL}${rawImage}`
+    : null;
+
+  return {
+    title: PAGE_TITLE,
+    description: PAGE_DESC,
+    metadataBase: new URL(SITE_URL),
+    openGraph: {
+      title: PAGE_TITLE,
+      description: PAGE_DESC,
+      url: `${SITE_URL}/second-hand`,
+      siteName: "تنادور",
+      locale: "fa_IR",
+      type: "website",
+      ...(imageUrl && {
+        images: [{ url: imageUrl, width: 1200, height: 630, alt: PAGE_TITLE }],
+      }),
+    },
+    twitter: {
+      card: imageUrl ? "summary_large_image" : "summary",
+      title: PAGE_TITLE,
+      description: PAGE_DESC,
+      ...(imageUrl && { images: [imageUrl] }),
+    },
+  };
+}
 
 export default async function UsedProductsPage() {
   await connectToDB();

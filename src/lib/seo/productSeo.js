@@ -16,13 +16,12 @@ export function generateProductMetadata(product) {
     .filter(Boolean)
     .join(", ");
 
-  const images = [product.mainImage, ...(product.gallery || [])].filter(
-    Boolean,
-  );
-
-  const imageUrls = images.map((img) =>
-    img.startsWith("http") ? img : `${SITE_URL}${img}`,
-  );
+  const rawMainImage = product.mainImage || null;
+  const mainImageUrl = rawMainImage
+    ? rawMainImage.startsWith("http")
+      ? rawMainImage
+      : `${SITE_URL}${rawMainImage}`
+    : null;
 
   const canonicalUrl = `${SITE_URL}/products/${product.slug}`;
 
@@ -56,20 +55,16 @@ export function generateProductMetadata(product) {
       siteName: "تنادور",
       locale: "fa_IR",
       type: "website",
-
-      images: imageUrls.map((url) => ({
-        url,
-        width: 1200,
-        height: 630,
-        alt: product.name,
-      })),
+      ...(mainImageUrl && {
+        images: [{ url: mainImageUrl, width: 1200, height: 630, alt: product.name }],
+      }),
     },
 
     twitter: {
-      card: "summary_large_image",
+      card: mainImageUrl ? "summary_large_image" : "summary",
       title,
       description,
-      images: imageUrls,
+      ...(mainImageUrl && { images: [mainImageUrl] }),
     },
 
     category: product.category?.name,

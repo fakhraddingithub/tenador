@@ -1,9 +1,11 @@
 import { notFound } from "next/navigation";
 import SportPageClient from "@/components/templates/sports/SportPageClient";
 import BrandGroupedView from "@/components/templates/sports/BrandGroupedView";
+import SerieGroupedView from "@/components/templates/sports/SerieGroupedView";
 import { getCachedRate } from "@/lib/Exchangerate";
 import { queryBySlugs, resolvePageContext } from "base/services/query.service";
 import { getBrandGroupedSections } from "base/services/brandGrouped.service";
+import { getSerieGroupedSections } from "base/services/serieGrouped.service";
 
 // تعداد بخش‌های سری در بارگذاری اولیه‌ی سرور (SSR) — سبک برای SEO و سرعت
 const INITIAL_SECTIONS = 2;
@@ -14,6 +16,15 @@ function isBrandPage(filters) {
     !!filters?.brand &&
     !filters?.serie &&
     !filters?.collaboration &&
+    !filters?.product
+  );
+}
+
+// آیا این صفحه، یک سری ریشه (level 0) است که باید به صورت گروه‌بندی‌شده نمایش داده شود؟
+function isParentSeriePage(filters) {
+  return (
+    !!filters?.serie &&
+    filters.serie.level === 0 &&
     !filters?.product
   );
 }
@@ -121,7 +132,40 @@ export default async function SportDynamicSlugPage({ params }) {
     );
   }
 
-  // ─── سایر صفحات (ورزش، دسته، سری، همکاری): همان رفتار قبلی ───
+  // ─── صفحه‌ی سری ریشه (level 0): نمای گروه‌بندی‌شده بر اساس زیرسری‌های مستقیم ───
+  if (isParentSeriePage(filters)) {
+    const serieId = filters.serie._id;
+    const sportId = filters.sport?._id || null;
+    const categoryId = filters.category?._id || null;
+    const brandSlug = filters.brand?.slug || "";
+
+    const initialData = await getSerieGroupedSections({
+      serieId,
+      sportId,
+      categoryId,
+      offset: 0,
+      limit: INITIAL_SECTIONS,
+      withIndex: true,
+    });
+
+    const pageInfo = filters.serie;
+
+    return (
+      <SerieGroupedView
+        pageInfo={pageInfo}
+        filters={filters}
+        rate={rate}
+        serieId={serieId}
+        sportId={sportId}
+        categoryId={categoryId}
+        brandSlug={brandSlug}
+        initialData={initialData}
+        title={`تنادور – ${pageInfo.title || pageInfo.name || ""}`}
+      />
+    );
+  }
+
+  // ─── سایر صفحات (ورزش، دسته، زیرسری، همکاری): همان رفتار قبلی ───
   const searchData = await queryBySlugs(slugs);
 
   const pageInfo =
