@@ -64,7 +64,7 @@ export default function ProductCreateForm({ initialData = {} }) {
   const [brands, setBrands] = useState([]);
   const [athletes, setAthletes] = useState([]);
   const [categories, setCategories] = useState([]);
-  const [collaborations, setCollaborations] = useState([]);
+  const [limitedEditions, setLimitedEditions] = useState([]);
 
   // Normalize athlete from initialData to always be an array
   const initialAthletes = Array.isArray(initialData.athlete)
@@ -85,7 +85,7 @@ export default function ProductCreateForm({ initialData = {} }) {
     gallery: [],
     brand: '',
     serie: '',
-    collaboration: '',
+    limitedEdition: '',
     sport: '',
     attributes: {},
     technicalStats: {},
@@ -120,22 +120,22 @@ export default function ProductCreateForm({ initialData = {} }) {
 
   async function fetchBaseData() {
     try {
-      const [sportsRes, brandsRes, categoriesRes, collaborationsRes] = await Promise.all([
+      const [sportsRes, brandsRes, categoriesRes, limitedEditionsRes] = await Promise.all([
         fetch('/api/sports'),
         fetch('/api/brands'),
         fetch('/api/categories'),
-        fetch('/api/collaborations'),
+        fetch('/api/limited-editions'),
       ]);
-      const [sportsData, brandsData, categoriesData, collaborationsData] = await Promise.all([
+      const [sportsData, brandsData, categoriesData, limitedEditionsData] = await Promise.all([
         sportsRes.json(),
         brandsRes.json(),
         categoriesRes.json(),
-        collaborationsRes.json(),
+        limitedEditionsRes.json(),
       ]);
       setSports(sportsData.sports || []);
       setBrands(brandsData.brands || []);
       setCategories(categoriesData.categories || []);
-      setCollaborations(collaborationsData.collaborations || []);
+      setLimitedEditions(limitedEditionsData.limitedEditions || []);
     } catch (err) {
       showError('خطا', 'خطا در بارگذاری داده‌های پایه');
     }
@@ -403,6 +403,7 @@ export default function ProductCreateForm({ initialData = {} }) {
               ...prev,
               brand: e.target.value,
               serie: '',
+              limitedEdition: '',
               color: ''
             }));
           }}
@@ -440,19 +441,23 @@ export default function ProductCreateForm({ initialData = {} }) {
           options={sports.map(s => ({ value: s._id, label: s.name }))}
         />
 
-        {/* همکاری/رویداد — مستقل از برند و سری (مثل Roland Garros) */}
-        <Select
-          label="همکاری (Collaboration)"
-          value={formData.collaboration}
-          onChange={e => updateField('collaboration', e.target.value)}
-          options={[
-            { value: '', label: 'بدون همکاری' },
-            ...collaborations.map(c => ({
-              value: c._id,
-              label: c.title || c.name,
-            })),
-          ]}
-        />
+        {/* لیمیتد ادیشن — مخصوص برند انتخاب‌شده (مثل Roland Garros) */}
+        {formData.brand && (
+          <Select
+            label="لیمیتد ادیشن (Limited Edition)"
+            value={formData.limitedEdition}
+            onChange={e => updateField('limitedEdition', e.target.value)}
+            options={[
+              { value: '', label: 'بدون لیمیتد ادیشن' },
+              ...limitedEditions
+                .filter(c => (c.brand?._id || c.brand) === formData.brand)
+                .map(c => ({
+                  value: c._id,
+                  label: c.title || c.name,
+                })),
+            ]}
+          />
+        )}
       </div>
 
       {/* ── Athletes (multi-select checkboxes) ── */}

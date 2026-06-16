@@ -13,12 +13,12 @@ import Athlete from "base/models/Athlete";
 import Product from "base/models/Product";
 import Category from "base/models/Category";
 import Serie from "base/models/Serie";
-import Collaboration from "base/models/Collaboration";
+import LimitedEdition from "base/models/LimitedEdition";
 import { getCachedRate } from "@/lib/Exchangerate";
 import { attachListingPrices } from "base/services/priceEngine";
 
-const entities = ["brand", "sport", "athlete", "category", "serie", "collaboration", "product"];
-const modelMap = { brand: Brand, sport: Sport, athlete: Athlete, category: Category, serie: Serie, collaboration: Collaboration, product: Product };
+const entities = ["brand", "sport", "athlete", "category", "serie", "limitedEdition", "product"];
+const modelMap = { brand: Brand, sport: Sport, athlete: Athlete, category: Category, serie: Serie, limitedEdition: LimitedEdition, product: Product };
 
 /**
  * تشخیص موجودیت‌های صفحه از روی اسلاگ‌ها + آمار برند (سری‌ها و تعداد محصول).
@@ -28,7 +28,7 @@ const modelMap = { brand: Brand, sport: Sport, athlete: Athlete, category: Categ
 async function _resolveContext(slugs) {
   await connectToDB();
 
-  const search = { brand: null, sport: null, athlete: null, category: null, serie: null, collaboration: null, product: null };
+  const search = { brand: null, sport: null, athlete: null, category: null, serie: null, limitedEdition: null, product: null };
 
   for (const slug of slugs) {
     for (const entity of entities) {
@@ -69,7 +69,7 @@ async function _resolveContext(slugs) {
     athlete: search.athlete,
     category: search.category,
     serie: search.serie,
-    collaboration: search.collaboration,
+    limitedEdition: search.limitedEdition,
     product: search.product,
   };
 
@@ -85,11 +85,11 @@ async function _queryBySlugs(slugs) {
   if (search.athlete) finalFilter.athlete = search.athlete._id;
   if (search.category) finalFilter.category = search.category._id;
   if (search.serie) finalFilter.serie = search.serie._id;
-  if (search.collaboration) finalFilter.collaboration = search.collaboration._id;
+  if (search.limitedEdition) finalFilter.limitedEdition = search.limitedEdition._id;
   if (search.product) finalFilter._id = search.product._id;
 
   const products = await Product.find(finalFilter)
-    .populate("brand sport athlete category serie collaboration")
+    .populate("brand sport athlete category serie limitedEdition")
     .sort({ createdAt: -1 })
     .lean();
 
@@ -109,7 +109,7 @@ async function _queryBySlugs(slugs) {
 export const queryBySlugs = unstable_cache(
   _queryBySlugs,
   ["query-by-slugs"],
-  { revalidate: 60, tags: ["products", "sports", "categories", "brands", "series", "collaborations"] }
+  { revalidate: 60, tags: ["products", "sports", "categories", "brands", "series", "limited-editions"] }
 );
 
 /**
@@ -123,5 +123,5 @@ export const resolvePageContext = unstable_cache(
     return JSON.parse(JSON.stringify(filters));
   },
   ["resolve-page-context"],
-  { revalidate: 60, tags: ["products", "sports", "categories", "brands", "series", "collaborations"] }
+  { revalidate: 60, tags: ["products", "sports", "categories", "brands", "series", "limited-editions"] }
 );

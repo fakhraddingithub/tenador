@@ -11,6 +11,7 @@ import {
   FaGlobeAmericas,
   FaCalendarAlt,
   FaChevronLeft,
+  FaCrown,
 } from "react-icons/fa";
 import { useRouter } from "next/navigation";
 import Swal from "sweetalert2";
@@ -37,10 +38,51 @@ export default function BrandAdminPage({ brandId }) {
   const [brand, setBrand] = useState(null);
   const [loading, setLoading] = useState(true);
   const [brandData, setBrandData] = useState([]);
+  const [limitedEditions, setLimitedEditions] = useState([]);
 
   useEffect(() => {
     fetchBrandData();
+    fetchLimitedEditions();
   }, [brandId]);
+
+  // لیمیتد ادیشن‌های مخصوص همین برند
+  const fetchLimitedEditions = async () => {
+    try {
+      const res = await fetch(`/api/limited-editions?brand=${brandId}`);
+      const data = await res.json();
+      setLimitedEditions(data.limitedEditions || []);
+    } catch {
+      /* نمایش لیمیتد ادیشن‌ها اختیاری است */
+    }
+  };
+
+  const handleDeleteLimitedEdition = async (limitedEdition) => {
+    const result = await Swal.fire({
+      title: "حذف لیمیتد ادیشن؟",
+      text: `محصولات حذف نمی‌شوند؛ فقط ارتباطشان با «${limitedEdition.title}» برداشته می‌شود.`,
+      icon: "warning",
+      showCancelButton: true,
+      confirmButtonColor: "#ef4444",
+      confirmButtonText: "بله، حذف کن",
+      cancelButtonText: "انصراف",
+    });
+    if (!result.isConfirmed) return;
+
+    try {
+      const res = await fetch(`/api/limited-editions/${limitedEdition._id}`, {
+        method: "DELETE",
+      });
+      if (res.ok) {
+        toast.success("لیمیتد ادیشن حذف شد");
+        fetchLimitedEditions();
+      } else {
+        const data = await res.json();
+        toast.error(data.error || "خطا در حذف");
+      }
+    } catch {
+      toast.error("خطا در ارتباط با سرور");
+    }
+  };
 
   const fetchBrandData = async () => {
     try {
@@ -369,6 +411,94 @@ export default function BrandAdminPage({ brandId }) {
         </div>
         </SortableContext>
         </DndContext>
+      </div>
+
+      {/* 4. Limited Editions (لیمیتد ادیشن‌های این برند) */}
+      <div className="space-y-8">
+        <div className="flex justify-between items-end px-4">
+          <div>
+            <h3 className="text-2xl font-bold text-gray-900 italic underline underline-offset-8 decoration-4 decoration-[var(--color-primary)]">
+              لیمیتد ادیشن‌ها
+            </h3>
+            <p className="text-gray-400 font-bold text-xs mt-2">
+              {limitedEditions.length} لیمیتد ادیشن برای این برند ثبت شده
+            </p>
+          </div>
+
+          <Link href={`/p-admin/admin-brands/${brandId}/limited-editions/add`}>
+            <button className="bg-black text-white px-7 py-3.5 rounded-2xl font-bold text-xs flex items-center gap-2 hover:scale-105 active:scale-95 transition-all shadow-lg shadow-gray-200">
+              <FaPlus /> افزودن لیمیتد ادیشن
+            </button>
+          </Link>
+        </div>
+
+        {limitedEditions.length === 0 ? (
+          <div className="bg-white rounded-[3rem] border-2 border-dashed border-gray-200 py-16 text-center">
+            <div className="w-14 h-14 bg-gray-50 rounded-2xl flex items-center justify-center mx-auto mb-4 text-gray-200">
+              <FaCrown size={26} />
+            </div>
+            <p className="text-gray-400 font-bold">
+              هنوز لیمیتد ادیشنی برای این برند ثبت نشده
+            </p>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+            {limitedEditions.map((le) => (
+              <div
+                key={le._id}
+                className="group relative bg-white rounded-[2.5rem] border border-gray-100 overflow-hidden hover:shadow-xl hover:-translate-y-1 transition-all duration-300"
+              >
+                {/* نوار رنگی لیمیتد ادیشن */}
+                <div
+                  className="h-1.5 w-full"
+                  style={{
+                    background: `linear-gradient(to left, ${le.colors?.primary || "var(--color-primary)"}, ${le.colors?.secondary || "var(--color-secondary)"})`,
+                  }}
+                />
+
+                <div className="px-6 pt-7 pb-4 flex justify-center">
+                  <div className="w-20 h-20 bg-gray-50 rounded-2xl border border-gray-100 flex items-center justify-center overflow-hidden p-3 group-hover:scale-105 transition-transform">
+                    {le.logo || le.image ? (
+                      <img
+                        src={le.logo || le.image}
+                        alt={le.name}
+                        className="w-full h-full object-contain pointer-events-none"
+                      />
+                    ) : (
+                      <span className="text-2xl font-bold text-gray-200">
+                        {le.name?.[0]}
+                      </span>
+                    )}
+                  </div>
+                </div>
+
+                <div className="px-6 pb-5">
+                  <h2 className="text-base font-bold text-gray-800 text-center group-hover:text-[var(--color-primary)] transition-colors">
+                    {le.title}
+                  </h2>
+                  <p className="text-[10px] font-bold uppercase tracking-widest text-gray-300 text-center mb-4">
+                    {le.name}
+                  </p>
+
+                  <div className="flex gap-2">
+                    <Link
+                      href={`/p-admin/admin-brands/${brandId}/limited-editions/${le._id}/edit`}
+                      className="flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-2xl text-xs font-bold bg-gray-50 text-gray-700 hover:bg-gray-900 hover:text-white transition-all"
+                    >
+                      <FaEdit size={12} /> ویرایش
+                    </Link>
+                    <button
+                      onClick={() => handleDeleteLimitedEdition(le)}
+                      className="w-10 h-10 flex items-center justify-center rounded-2xl bg-red-50 text-red-400 hover:bg-red-500 hover:text-white transition-all border border-red-100"
+                    >
+                      <FaTrash size={13} />
+                    </button>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
     </div>
   );

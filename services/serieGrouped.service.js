@@ -220,7 +220,7 @@ async function _getSerieGroupedSections(params) {
     }
 
     const raw = await Product.find(productFilter)
-      .populate("brand sport athlete category serie collaboration")
+      .populate("brand sport athlete category serie limitedEdition")
       .sort({ createdAt: -1 })
       .lean();
 

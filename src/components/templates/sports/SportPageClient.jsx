@@ -5,7 +5,7 @@ import ProductList from "@/components/templates/products/ProductList";
 import FilterSidebar from "@/components/templates/products/FilterSidebar";
 import SearchBar from "@/components/templates/products/SearchBar";
 import SeriesSlider from "@/components/templates/sports/SeriesSlider";
-import CollaborationsStrip from "@/components/templates/sports/CollaborationsStrip";
+import LimitedEditionsStrip from "@/components/templates/sports/LimitedEditionsStrip";
 import { FiShoppingBag } from "react-icons/fi";
 
 export default function SportPageClient({
@@ -43,16 +43,16 @@ export default function SportPageClient({
 
     const serieTitle = filters?.serie?.title || filters?.serie?.name || ""; // ✨ اضافه شد
 
-    const collaborationTitle =
-      filters?.collaboration?.title || filters?.collaboration?.name || "";
+    const limitedEditionTitle =
+      filters?.limitedEdition?.title || filters?.limitedEdition?.name || "";
 
-    if (serieTitle || collaborationTitle) {
+    if (serieTitle || limitedEditionTitle) {
       // مقدارهایی که وجود دارند را با یک فاصله به هم می‌چسبانیم
       const parts = [
         categoryTitle,
         brandTitle,
         serieTitle,
-        collaborationTitle,
+        limitedEditionTitle,
       ].filter(Boolean);
       return parts.join(" ");
     }
@@ -75,14 +75,14 @@ export default function SportPageClient({
   }, [filters, pageInfo]);
 
   // ─────────────────────────────────────────────
-  // همکاری‌های موجود بین محصولات این صفحه (برای نوار همکاری‌ها در صفحه سری)
+  // لیمیتد ادیشن‌های موجود بین محصولات این صفحه (برای نوار لیمیتد ادیشن در صفحه سری)
   // ─────────────────────────────────────────────
-  const pageCollaborations = useMemo(() => {
+  const pageLimitedEditions = useMemo(() => {
     const map = new Map();
     for (const product of initialProducts) {
-      const collab = product.collaboration;
-      if (collab && typeof collab === "object" && collab._id && collab.slug) {
-        map.set(collab._id.toString(), collab);
+      const le = product.limitedEdition;
+      if (le && typeof le === "object" && le._id && le.slug) {
+        map.set(le._id.toString(), le);
       }
     }
     return Array.from(map.values());
@@ -158,7 +158,7 @@ export default function SportPageClient({
         !filters?.category &&
         !filters?.brand &&
         !filters?.serie &&
-        !filters?.collaboration && (
+        !filters?.limitedEdition && (
           <SeriesSlider
             series={series.filter(
               (serie) => serie.isNewSerie && !serie.isLimitedEdition,
@@ -168,10 +168,10 @@ export default function SportPageClient({
           />
         )}
 
-      {/* ───────── همکاری‌های موجود در این سری (مثل Roland Garros) ───────── */}
-      {filters?.serie && !filters?.collaboration && (
-        <CollaborationsStrip
-          collaborations={pageCollaborations}
+      {/* ───────── لیمیتد ادیشن‌های موجود در این سری (مثل Roland Garros) ───────── */}
+      {filters?.serie && !filters?.limitedEdition && (
+        <LimitedEditionsStrip
+          limitedEditions={pageLimitedEditions}
           sportSlug={filters?.sport?.slug}
         />
       )}
@@ -251,7 +251,7 @@ export default function SportPageClient({
         !filters?.category &&
         !filters?.brand &&
         !filters?.serie &&
-        !filters?.collaboration && (
+        !filters?.limitedEdition && (
           <SeriesSlider
             series={series.filter((serie) => serie.isLimitedEdition)}
             sportSlug={pageInfo.slug}

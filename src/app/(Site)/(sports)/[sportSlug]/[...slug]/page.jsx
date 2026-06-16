@@ -10,12 +10,12 @@ import { getSerieGroupedSections } from "base/services/serieGrouped.service";
 // تعداد بخش‌های سری در بارگذاری اولیه‌ی سرور (SSR) — سبک برای SEO و سرعت
 const INITIAL_SECTIONS = 2;
 
-// آیا این صفحه، صفحه‌ی برند است (عمیق‌ترین موجودیت برند است، نه سری/همکاری/محصول)؟
+// آیا این صفحه، صفحه‌ی برند است (عمیق‌ترین موجودیت برند است، نه سری/لیمیتد ادیشن/محصول)؟
 function isBrandPage(filters) {
   return (
     !!filters?.brand &&
     !filters?.serie &&
-    !filters?.collaboration &&
+    !filters?.limitedEdition &&
     !filters?.product
   );
 }
@@ -46,7 +46,7 @@ export async function generateMetadata({ params }) {
 
   const activeEntity =
     filters.serie ||
-    filters.collaboration ||
+    filters.limitedEdition ||
     filters.brand ||
     filters.category ||
     filters.sport;
@@ -165,12 +165,12 @@ export default async function SportDynamicSlugPage({ params }) {
     );
   }
 
-  // ─── سایر صفحات (ورزش، دسته، زیرسری، همکاری): همان رفتار قبلی ───
+  // ─── سایر صفحات (ورزش، دسته، زیرسری، لیمیتد ادیشن): همان رفتار قبلی ───
   const searchData = await queryBySlugs(slugs);
 
   const pageInfo =
     searchData.filters.serie ||
-    searchData.filters.collaboration ||
+    searchData.filters.limitedEdition ||
     searchData.filters.brand ||
     searchData.filters.category ||
     searchData.filters.sport;

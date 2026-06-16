@@ -1,12 +1,12 @@
 "use client";
 
 /**
- * src/components/admin/CollaborationForm.jsx
+ * src/components/admin/LimitedEditionForm.jsx
  *
- * فرم ساخت و ویرایش همکاری (Collaboration) — ساختار مشابه فرم سری‌ها،
- * بدون برند/سری والد چون همکاری سراسری است.
+ * فرم ساخت و ویرایش لیمیتد ادیشن — ساختار مشابه فرم سری‌ها، اما به یک برند
+ * خاص محدود است (brandId الزامی). مدیریت از صفحه‌ی همان برند انجام می‌شود.
  *
- * اگر collaborationId داده شود فرم در حالت ویرایش است (fetch + PUT)،
+ * اگر limitedEditionId داده شود فرم در حالت ویرایش است (fetch + PUT)،
  * در غیر این صورت حالت ساخت (POST).
  */
 
@@ -18,7 +18,7 @@ import Swal from "sweetalert2";
 
 import {
   FaSave,
-  FaHandshake,
+  FaCrown,
   FaPalette,
   FaIdCard,
   FaFont,
@@ -43,10 +43,10 @@ const emptyForm = {
   image: "",
 };
 
-export default function CollaborationForm({ collaborationId = null }) {
+export default function LimitedEditionForm({ brandId, limitedEditionId = null }) {
   const router = useRouter();
 
-  const isEdit = !!collaborationId;
+  const isEdit = !!limitedEditionId;
 
   const [loading, setLoading] = useState(false);
   const [fetching, setFetching] = useState(isEdit);
@@ -62,17 +62,17 @@ export default function CollaborationForm({ collaborationId = null }) {
   useEffect(() => {
     if (!isEdit) return;
 
-    const loadCollaboration = async () => {
+    const loadLimitedEdition = async () => {
       try {
-        const res = await fetch(`/api/collaborations/${collaborationId}`);
+        const res = await fetch(`/api/limited-editions/${limitedEditionId}`);
         const data = await res.json();
 
         if (!res.ok) {
-          toast.error(data.error || "خطا در دریافت اطلاعات همکاری");
+          toast.error(data.error || "خطا در دریافت اطلاعات لیمیتد ادیشن");
           return;
         }
 
-        const c = data.collaboration;
+        const c = data.limitedEdition;
 
         setFormData({
           name: c?.name || "",
@@ -93,8 +93,8 @@ export default function CollaborationForm({ collaborationId = null }) {
       }
     };
 
-    loadCollaboration();
-  }, [collaborationId, isEdit]);
+    loadLimitedEdition();
+  }, [limitedEditionId, isEdit]);
 
   /*
    |--------------------------------------------------------------------------
@@ -125,14 +125,15 @@ export default function CollaborationForm({ collaborationId = null }) {
     try {
       const res = await fetch(
         isEdit
-          ? `/api/collaborations/${collaborationId}`
-          : "/api/collaborations/create",
+          ? `/api/limited-editions/${limitedEditionId}`
+          : "/api/limited-editions/create",
         {
           method: isEdit ? "PUT" : "POST",
           headers: {
             "Content-Type": "application/json",
           },
-          body: JSON.stringify(formData),
+          // برند فقط هنگام ساخت ارسال می‌شود تا لیمیتد ادیشن به همین برند محدود شود
+          body: JSON.stringify(isEdit ? formData : { ...formData, brand: brandId }),
         }
       );
 
@@ -142,16 +143,16 @@ export default function CollaborationForm({ collaborationId = null }) {
         Swal.fire({
           icon: "success",
           title: isEdit
-            ? "همکاری با موفقیت ویرایش شد"
-            : "همکاری با موفقیت ایجاد شد",
-          text: `همکاری ${formData.title} ${isEdit ? "به‌روزرسانی" : "ایجاد"} گردید.`,
+            ? "لیمیتد ادیشن با موفقیت ویرایش شد"
+            : "لیمیتد ادیشن با موفقیت ایجاد شد",
+          text: `لیمیتد ادیشن ${formData.title} ${isEdit ? "به‌روزرسانی" : "ایجاد"} گردید.`,
           confirmButtonColor: "var(--color-primary)",
         }).then(() => {
-          router.push("/p-admin/admin-events/collaborations");
+          router.push(`/p-admin/admin-brands/${brandId}`);
           router.refresh();
         });
       } else {
-        toast.error(result.error || "خطا در ثبت همکاری");
+        toast.error(result.error || "خطا در ثبت لیمیتد ادیشن");
       }
     } catch {
       toast.error("خطای شبکه؛ اتصال اینترنت را بررسی کنید");
@@ -175,16 +176,16 @@ export default function CollaborationForm({ collaborationId = null }) {
       <div className="bg-white p-8 rounded-[2.5rem] shadow-sm border border-gray-100 flex justify-between items-center">
         <div className="flex items-center gap-4">
           <div className="w-14 h-14 bg-black rounded-2xl flex items-center justify-center text-[var(--color-primary)] shadow-xl">
-            <FaHandshake size={24} />
+            <FaCrown size={24} />
           </div>
 
           <div>
             <h2 className="text-2xl font-bold italic">
-              {isEdit ? "ویرایش همکاری" : "پیکربندی همکاری جدید"}
+              {isEdit ? "ویرایش لیمیتد ادیشن" : "پیکربندی لیمیتد ادیشن جدید"}
             </h2>
 
             <p className="text-gray-400 text-[10px] font-bold uppercase tracking-widest mt-1">
-              Events / Collaborations
+              Brand / Limited Edition
             </p>
           </div>
         </div>
@@ -206,7 +207,7 @@ export default function CollaborationForm({ collaborationId = null }) {
                   headImage: url,
                 }))
               }
-              folder="collaborations/headImages"
+              folder="limited-editions/headImages"
             />
 
             <div className="grid grid-cols-2 gap-4">
@@ -219,7 +220,7 @@ export default function CollaborationForm({ collaborationId = null }) {
                     logo: url,
                   }))
                 }
-                folder="collaborations/logos"
+                folder="limited-editions/logos"
               />
 
               <ImageUpload
@@ -231,7 +232,7 @@ export default function CollaborationForm({ collaborationId = null }) {
                     image: url,
                   }))
                 }
-                folder="collaborations/covers"
+                folder="limited-editions/covers"
               />
             </div>
           </div>
@@ -354,7 +355,7 @@ export default function CollaborationForm({ collaborationId = null }) {
                 onChange={handleChange}
                 rows={6}
                 className="w-full p-8 bg-gray-50 rounded-[2.5rem] leading-8"
-                placeholder="توضیحات این همکاری/رویداد..."
+                placeholder="توضیحات این لیمیتد ادیشن..."
               />
             </div>
           </div>
@@ -370,7 +371,7 @@ export default function CollaborationForm({ collaborationId = null }) {
               <div className="w-8 h-8 border-4 border-white/20 border-t-white rounded-full animate-spin" />
             ) : (
               <>
-                {isEdit ? "ذخیره تغییرات" : "ثبت همکاری"}
+                {isEdit ? "ذخیره تغییرات" : "ثبت لیمیتد ادیشن"}
                 {isEdit ? (
                   <FaSave className="text-[var(--color-primary)]" />
                 ) : (

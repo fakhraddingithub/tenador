@@ -103,7 +103,7 @@ export default function ProductEditPage() {
   const [brands, setBrands] = useState([]);
   const [athletes, setAthletes] = useState([]);
   const [categories, setCategories] = useState([]);
-  const [collaborations, setCollaborations] = useState([]);
+  const [limitedEditions, setLimitedEditions] = useState([]);
 
   const [formData, setFormData] = useState({
     name: '',
@@ -117,7 +117,7 @@ export default function ProductEditPage() {
     gallery: [],
     brand: '',
     serie: '',
-    collaboration: '',
+    limitedEdition: '',
     sport: '',
     athlete: [],   // always array
     attributes: {},
@@ -139,26 +139,26 @@ export default function ProductEditPage() {
 
     async function fetchData() {
       try {
-        const [sportsRes, brandsRes, categoriesRes, collaborationsRes, productRes] = await Promise.all([
+        const [sportsRes, brandsRes, categoriesRes, limitedEditionsRes, productRes] = await Promise.all([
           fetch('/api/sports'),
           fetch('/api/brands'),
           fetch('/api/categories'),
-          fetch('/api/collaborations'),
+          fetch('/api/limited-editions'),
           fetch(`/api/product/${id}`),
         ]);
 
-        const [sportsData, brandsData, categoriesData, collaborationsData, productData] = await Promise.all([
+        const [sportsData, brandsData, categoriesData, limitedEditionsData, productData] = await Promise.all([
           sportsRes.json(),
           brandsRes.json(),
           categoriesRes.json(),
-          collaborationsRes.json(),
+          limitedEditionsRes.json(),
           productRes.json(),
         ]);
 
         setSports(sportsData.sports || []);
         setBrands(brandsData.brands || []);
         setCategories(categoriesData.categories || []);
-        setCollaborations(collaborationsData.collaborations || []);
+        setLimitedEditions(limitedEditionsData.limitedEditions || []);
 
         if (productData.product) {
           const p = productData.product;
@@ -189,7 +189,7 @@ export default function ProductEditPage() {
             gallery: p.gallery || [],
             brand: p.brand?._id || p.brand || '',
             serie: p.serie?._id || p.serie || '',
-            collaboration: p.collaboration?._id || p.collaboration || '',
+            limitedEdition: p.limitedEdition?._id || p.limitedEdition || '',
             sport: p.sport?._id || p.sport || '',
             athlete: athleteIds,
 
@@ -392,7 +392,7 @@ export default function ProductEditPage() {
         gallery: formData.gallery,
         brand: formData.brand,
         serie: formData.serie,
-        collaboration: formData.collaboration,
+        limitedEdition: formData.limitedEdition,
         sport: formData.sport,
         athlete: Array.isArray(formData.athlete) ? formData.athlete : [],
         attributes: normalizedAttributes,
@@ -527,6 +527,7 @@ export default function ProductEditPage() {
             onChange={e => {
               updateField('brand', e.target.value);
               updateField('serie', '');
+              updateField('limitedEdition', '');
             }}
             options={brands.map(b => ({ value: b._id, label: b.name }))}
           />
@@ -542,19 +543,23 @@ export default function ProductEditPage() {
               }
             />
           )}
-          {/* همکاری/رویداد — مستقل از برند و سری (مثل Roland Garros) */}
-          <Select
-            label="همکاری (Collaboration)"
-            value={formData.collaboration}
-            onChange={e => updateField('collaboration', e.target.value)}
-            options={[
-              { value: '', label: 'بدون همکاری' },
-              ...collaborations.map(c => ({
-                value: c._id,
-                label: c.title || c.name,
-              })),
-            ]}
-          />
+          {/* لیمیتد ادیشن — مخصوص برند انتخاب‌شده (مثل Roland Garros) */}
+          {formData.brand && (
+            <Select
+              label="لیمیتد ادیشن (Limited Edition)"
+              value={formData.limitedEdition}
+              onChange={e => updateField('limitedEdition', e.target.value)}
+              options={[
+                { value: '', label: 'بدون لیمیتد ادیشن' },
+                ...limitedEditions
+                  .filter(c => (c.brand?._id || c.brand) === formData.brand)
+                  .map(c => ({
+                    value: c._id,
+                    label: c.title || c.name,
+                  })),
+              ]}
+            />
+          )}
           <Select
             label="دسته‌بندی"
             value={formData.category}

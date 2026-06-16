@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 
 import connectToDB from "base/configs/db";
 
-import Collaboration from "base/models/Collaboration";
+import LimitedEdition from "base/models/LimitedEdition";
 import Product from "base/models/Product";
 import { revalidateContent } from "@/lib/revalidate";
 
@@ -12,20 +12,20 @@ export async function GET(req, { params }) {
 
     const { id } = await params;
 
-    const collaboration = await Collaboration.findById(id).lean();
+    const limitedEdition = await LimitedEdition.findById(id).lean();
 
-    if (!collaboration) {
+    if (!limitedEdition) {
       return NextResponse.json(
-        { error: "همکاری مورد نظر یافت نشد" },
+        { error: "لیمیتد ادیشن مورد نظر یافت نشد" },
         { status: 404 }
       );
     }
 
-    return NextResponse.json({ collaboration }, { status: 200 });
+    return NextResponse.json({ limitedEdition }, { status: 200 });
   } catch (error) {
-    console.error("GET Single Collaboration Error:", error);
+    console.error("GET Single LimitedEdition Error:", error);
     return NextResponse.json(
-      { error: "خطا در بازیابی اطلاعات همکاری" },
+      { error: "خطا در بازیابی اطلاعات لیمیتد ادیشن" },
       { status: 500 }
     );
   }
@@ -38,47 +38,47 @@ export async function PUT(req, { params }) {
     const { id } = await params;
     const body = await req.json();
 
-    const collaboration = await Collaboration.findById(id);
+    const limitedEdition = await LimitedEdition.findById(id);
 
-    if (!collaboration) {
+    if (!limitedEdition) {
       return NextResponse.json(
-        { error: "همکاری مورد نظر یافت نشد" },
+        { error: "لیمیتد ادیشن مورد نظر یافت نشد" },
         { status: 404 }
       );
     }
 
     // در صورت تغییر نام، یکتا بودن آن بررسی می‌شود
-    if (body.name && body.name !== collaboration.name) {
-      const duplicate = await Collaboration.findOne({
+    if (body.name && body.name !== limitedEdition.name) {
+      const duplicate = await LimitedEdition.findOne({
         name: { $regex: new RegExp(`^${body.name}$`, "i") },
         _id: { $ne: id },
       });
 
       if (duplicate) {
         return NextResponse.json(
-          { error: "همکاری با این نام قبلاً ثبت شده است" },
+          { error: "لیمیتد ادیشن با این نام قبلاً ثبت شده است" },
           { status: 409 }
         );
       }
     }
 
     Object.keys(body).forEach((key) => {
-      collaboration[key] = body[key];
+      limitedEdition[key] = body[key];
     });
 
-    await collaboration.save();
+    await limitedEdition.save();
 
-    revalidateContent(["collaborations", "products"]);
+    revalidateContent(["limited-editions", "products"]);
 
     return NextResponse.json(
       {
         message: "به‌روزرسانی با موفقیت انجام شد",
-        data: collaboration,
+        data: limitedEdition,
       },
       { status: 200 }
     );
   } catch (error) {
-    console.error("PUT Collaboration Error:", error);
+    console.error("PUT LimitedEdition Error:", error);
     return NextResponse.json(
       { error: "خطا در ویرایش اطلاعات" },
       { status: 500 }
@@ -92,31 +92,31 @@ export async function DELETE(req, { params }) {
 
     const { id } = await params;
 
-    const collaboration = await Collaboration.findById(id);
+    const limitedEdition = await LimitedEdition.findById(id);
 
-    if (!collaboration) {
+    if (!limitedEdition) {
       return NextResponse.json(
-        { error: "همکاری یافت نشد" },
+        { error: "لیمیتد ادیشن یافت نشد" },
         { status: 404 }
       );
     }
 
-    // محصولات حذف نمی‌شوند؛ فقط ارتباطشان با این همکاری برداشته می‌شود
+    // محصولات حذف نمی‌شوند؛ فقط ارتباطشان با این لیمیتد ادیشن برداشته می‌شود
     await Product.updateMany(
-      { collaboration: id },
-      { $set: { collaboration: null } }
+      { limitedEdition: id },
+      { $set: { limitedEdition: null } }
     );
 
-    await Collaboration.findByIdAndDelete(id);
+    await LimitedEdition.findByIdAndDelete(id);
 
-    revalidateContent(["collaborations", "products"]);
+    revalidateContent(["limited-editions", "products"]);
 
     return NextResponse.json(
-      { message: "همکاری با موفقیت حذف شد" },
+      { message: "لیمیتد ادیشن با موفقیت حذف شد" },
       { status: 200 }
     );
   } catch (error) {
-    console.error("DELETE Collaboration Error:", error);
+    console.error("DELETE LimitedEdition Error:", error);
     return NextResponse.json(
       { error: "خطا در عملیات حذف" },
       { status: 500 }

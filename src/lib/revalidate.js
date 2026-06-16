@@ -16,7 +16,7 @@ const CONTENT_TAGS = [
   "categories",
   "brands",
   "series",
-  "collaborations",
+  "limited-editions",
   "events",
 ];
 

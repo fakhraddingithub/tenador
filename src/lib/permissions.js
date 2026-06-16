@@ -119,13 +119,13 @@ export const PERMISSION_MODULES = [
   },
   {
     key: "events",
-    title: "رویدادها و همکاری‌ها",
-    description: "همکاری‌های مشترک مثل Roland Garros",
+    title: "لیمیتد ادیشن",
+    description: "لیمیتد ادیشن‌های هر برند مثل Roland Garros",
     permissions: [
-      { key: "view", title: "مشاهده همکاری‌ها" },
-      { key: "create", title: "ایجاد همکاری" },
-      { key: "edit", title: "ویرایش همکاری" },
-      { key: "delete", title: "حذف همکاری" },
+      { key: "view", title: "مشاهده لیمیتد ادیشن‌ها" },
+      { key: "create", title: "ایجاد لیمیتد ادیشن" },
+      { key: "edit", title: "ویرایش لیمیتد ادیشن" },
+      { key: "delete", title: "حذف لیمیتد ادیشن" },
     ],
   },
   {

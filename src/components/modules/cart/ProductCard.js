@@ -80,16 +80,16 @@ export default function ProductCard({ product, rate, onQuickView, onToggleWishli
           </div>
         )}
 
-        {/* بج همکاری (مثل Roland Garros) — وقتی محصول عضو یک همکاری است */}
-        {product.collaboration?.title && (
+        {/* بج لیمیتد ادیشن (مثل Roland Garros) — وقتی محصول عضو یک لیمیتد ادیشن است */}
+        {product.limitedEdition?.title && (
           <div
             className="relative py-1 pr-3 pl-5 text-[10px] font-bold text-white shadow-sm"
             style={{
               ...badgeShape,
-              background: product.collaboration.colors?.primary || "#0d0d0d",
+              background: product.limitedEdition.colors?.primary || "#0d0d0d",
             }}
           >
-            {product.collaboration.title}
+            {product.limitedEdition.title}
           </div>
         )}
       </div>

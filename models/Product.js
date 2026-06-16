@@ -55,11 +55,11 @@ const ProductSchema = new mongoose.Schema(
       default: null,
     },
 
-    // همکاری/رویداد (مثل Roland Garros) — مستقل از سری؛ محصول می‌تواند
-    // هم‌زمان عضو یک سری و یک همکاری باشد
-    collaboration: {
+    // لیمیتد ادیشن (مثل Roland Garros) — وابسته به برند؛ محصول می‌تواند
+    // هم‌زمان عضو یک سری و یک لیمیتد ادیشن باشد
+    limitedEdition: {
       type: mongoose.Schema.Types.ObjectId,
-      ref: "Collaboration",
+      ref: "LimitedEdition",
       index: true,
       default: null,
     },

@@ -27,7 +27,7 @@ function getPromptContext(prompts, field) {
  * @param {Array}    params.brands           - Populated brand documents (with .series)
  * @param {Array}    params.sports           - Sport documents
  * @param {Array}    params.athletes         - Athlete documents
- * @param {Array}   [params.collaborations]  - Collaboration/event documents (optional)
+ * @param {Array}   [params.limitedEditions] - Limited edition documents (optional)
  * @param {string}   params.rawContent       - Raw text to extract product data from
  * @returns {string} - The complete prompt string
  */
@@ -36,7 +36,7 @@ export function buildProductTemplate({
   brands,
   sports,
   athletes,
-  collaborations = [],
+  limitedEditions = [],
   rawContent,
 }) {
   // ─── Input Validation ─────────────────────────────────────────────────────
@@ -103,8 +103,8 @@ export function buildProductTemplate({
     }))
   );
 
-  // Collaborations are global events (e.g. Roland Garros) independent of brand.
-  const collaborationList = collaborations.map((c) => ({
+  // Limited editions belong to a specific brand (e.g. Roland Garros).
+  const limitedEditionList = limitedEditions.map((c) => ({
     id: c._id.toString(),
     name: c.name || c.title,
   }));
@@ -185,11 +185,11 @@ serie:
 - If a series is mentioned in the text but belongs to a different brand, ignore it and return "".
 - A product can only have a serie from its own brand.
 
-collaboration:
-- Collaborations are global event partnerships (e.g. Roland Garros). Any brand can have them.
-- Choose exactly ONE id from AVAILABLE COLLABORATIONS — OR an empty string "" if none applies.
-- Only pick a collaboration if the raw content clearly and explicitly mentions it.
-- A product can have BOTH a serie and a collaboration at the same time.
+limitedEdition:
+- Limited editions are brand-specific special releases (e.g. Roland Garros).
+- Choose exactly ONE id from AVAILABLE LIMITED EDITIONS — OR an empty string "" if none applies.
+- Only pick a limited edition if the raw content clearly and explicitly mentions it.
+- A product can have BOTH a serie and a limited edition at the same time.
 
 sport:
 - Choose exactly ONE id from AVAILABLE SPORTS based on actual product usage.
@@ -275,9 +275,9 @@ AVAILABLE SERIES
 ${JSON.stringify(serieList, null, 2)}
 
 =================================================================
-AVAILABLE COLLABORATIONS
+AVAILABLE LIMITED EDITIONS
 =================================================================
-${JSON.stringify(collaborationList, null, 2)}
+${JSON.stringify(limitedEditionList, null, 2)}
 
 =================================================================
 RAW PRODUCT CONTENT
@@ -298,7 +298,7 @@ Output exactly this structure with no extra fields:
   "label": "",
   "brand": "ID_FROM_BRANDS_LIST",
   "serie": "ID_FROM_SERIES_LIST_OR_EMPTY_STRING",
-  "collaboration": "ID_FROM_COLLABORATIONS_LIST_OR_EMPTY_STRING",
+  "limitedEdition": "ID_FROM_LIMITED_EDITIONS_LIST_OR_EMPTY_STRING",
   "sport": "ID_FROM_SPORTS_LIST",
   "athlete": [],
   "category": "${category._id}",

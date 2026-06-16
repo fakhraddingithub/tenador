@@ -1,22 +1,12 @@
 'use client';
 
-import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { motion } from 'framer-motion';
-import { FaCalendarAlt, FaHandshake, FaArrowRight, FaChevronLeft } from 'react-icons/fa';
+import { FaCalendarAlt, FaArrowRight, FaChevronLeft } from 'react-icons/fa';
 
-// بخش رویدادها — هر زیربخش (مثل همکاری‌ها) یک کارت دارد تا در آینده
+// بخش رویدادها — هر زیربخش یک کارت دارد تا در آینده
 // رویدادهای دیگری نیز به همین صفحه اضافه شوند
 export default function AdminEvents() {
-  const [collaborationCount, setCollaborationCount] = useState(null);
-
-  useEffect(() => {
-    fetch('/api/collaborations')
-      .then((res) => res.json())
-      .then((data) => setCollaborationCount(data.collaborations?.length ?? 0))
-      .catch(() => setCollaborationCount(0));
-  }, []);
-
   const sections = [
     {
       title: 'کمپین‌ها',
@@ -26,15 +16,6 @@ export default function AdminEvents() {
       href: '/p-admin/admin-events/campaigns',
       icon: FaCalendarAlt,
       count: null,
-    },
-    {
-      title: 'همکاری‌ها',
-      subtitle: 'Collaborations',
-      description:
-        'رویدادها و همکاری‌های مشترک مثل Roland Garros — محصولات سری‌های مختلف می‌توانند عضو یک همکاری باشند.',
-      href: '/p-admin/admin-events/collaborations',
-      icon: FaHandshake,
-      count: collaborationCount,
     },
   ];
 

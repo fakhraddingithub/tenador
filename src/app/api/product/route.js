@@ -7,7 +7,7 @@ import "base/models/Athlete";
 import "base/models/Category";
 import "base/models/Variant";
 import "base/models/Serie";
-import "base/models/Collaboration";
+import "base/models/LimitedEdition";
 
 export async function GET(req) {
   try {
@@ -17,14 +17,14 @@ export async function GET(req) {
     const { searchParams } = new URL(req.url);
     const isAdmin = searchParams.get("isAdmin") === "true";
     const categoryId = searchParams.get("category"); // فیلتر بر اساس دسته‌بندی
-    const collaborationId = searchParams.get("collaboration"); // فیلتر بر اساس همکاری
+    const limitedEditionId = searchParams.get("limitedEdition"); // فیلتر بر اساس لیمیتد ادیشن
     const withVariants = searchParams.get("withVariants") === "true"; // populate واریانت‌ها
 
     // ۲. شرط داینامیک دیتابیس:
     // اگر ادمین بود آبجکت خالی {} (یعنی همه محصولات) و اگر نبود فقط { isActive: true }
     const query = isAdmin ? {} : { isActive: true };
     if (categoryId) query.category = categoryId;
-    if (collaborationId) query.collaboration = collaborationId;
+    if (limitedEditionId) query.limitedEdition = limitedEditionId;
 
     let productsQuery = Product.find(query)
       .populate('brand')
@@ -32,7 +32,7 @@ export async function GET(req) {
       .populate('athlete')
       .populate('category')
       .populate('serie')
-      .populate('collaboration');
+      .populate('limitedEdition');
 
     if (withVariants) productsQuery = productsQuery.populate('variants');
 
