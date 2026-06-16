@@ -380,8 +380,72 @@ export function isUsedInCart(usedProductId) {
 
 // ─── تعداد کل آیتم‌ها ───
 
+// تعداد خطوط سبد (هر ترکیب محصول/واریانت/فرایند یک خط)
 export function getCartCount() {
   return getCart().length;
+}
+
+// تعداد کل واحدها (مجموع quantity) — منبع واحد برای بج نوار بالا
+// همیشه از getCart() نرمال‌شده خوانده می‌شود تا با محتوای سبد یکسان بماند.
+export function getCartTotalQuantity() {
+  return getCart().reduce((sum, i) => sum + (i.quantity || 0), 0);
+}
+
+// ─── کلید یکتای هر خط سبد ───
+// برای تطبیق خطوط محلی با پاسخ سرور (بدون اتکا به ترتیب/ایندکس)
+export function cartLineKey(i) {
+  if (!i) return "";
+  if (i.itemType === "used_product") return `u:${i.usedProductId}`;
+  return `p:${i.productId}:${i.variantId ?? ""}:${itemFlowSignature(i)}`;
+}
+
+// ─── همگام‌سازی سبد محلی با پاسخ معتبرشده‌ی سرور ───
+// سرور آیتم‌هایی را که محصولشان دیگر وجود ندارد حذف می‌کند (filter(Boolean)).
+// این تابع همان خطوط را از localStorage هم پاک می‌کند تا بج و محتوا هم‌خوان بمانند.
+// فقط هرس می‌کند (چیزی اضافه/جابه‌جا نمی‌کند) و فقط در صورت تغییر ذخیره می‌کند
+// تا حلقه‌ی بی‌نهایت رخ ندهد.
+export function reconcileCartWithServer(serverItems) {
+  if (typeof window === "undefined") return;
+  if (!Array.isArray(serverItems)) return;
+
+  const validKeys = new Set(serverItems.map(cartLineKey));
+  const local = getCart();
+  const kept = local.filter((i) => validKeys.has(cartLineKey(i)));
+
+  if (kept.length !== local.length) {
+    saveCart(kept); // dispatchCartChange → بج و نماهای باز به‌روز می‌شوند
+  }
+}
+
+// ─── پاک‌سازی یک‌باره‌ی داده‌های قدیمی/خراب سبد ───
+// به‌خاطر داده‌های ناسازگار قبلی، یک‌بار (و فقط یک‌بار) به‌ازای هر مرورگر
+// کلیدهای مربوط به سبد پاک می‌شوند. پرچم در خود localStorage نگه داشته می‌شود
+// تا با رفرش یا بازدید مجدد دوباره اجرا نشود.
+// فقط کلیدهای سبد پاک می‌شوند؛ به وضعیت ورود/نشست کاربر دست نمی‌زند.
+const CLEANUP_FLAG = "cart_cleanup_v1_done";
+const STALE_CART_KEYS = [CART_KEY, COUPON_KEY];
+
+export function runOneTimeCartCleanup() {
+  if (typeof window === "undefined") return;
+  try {
+    if (localStorage.getItem(CLEANUP_FLAG)) return; // قبلاً اجرا شده → هیچ کاری نکن
+
+    let cleared = false;
+    for (const key of STALE_CART_KEYS) {
+      if (localStorage.getItem(key) !== null) {
+        localStorage.removeItem(key);
+        cleared = true;
+      }
+    }
+
+    // پرچم را همیشه ست کن تا دیگر هرگز اجرا نشود (حتی اگر چیزی برای پاک‌کردن نبود)
+    localStorage.setItem(CLEANUP_FLAG, "true");
+
+    // اگر سبد پاک شد، به نوار بالا/نماهای باز خبر بده تا بج صفر شود
+    if (cleared) dispatchCartChange();
+  } catch {
+    // اگر localStorage در دسترس نبود، بی‌صدا رد شو
+  }
 }
 
 // ─── dispatch event ───

@@ -78,7 +78,8 @@
       "Bash(grep -io \"Functions cannot be passed[^\\\\\\\\\\\\\\\\]*\\\\|TypeError:[^\\\\\\\\\\\\\\\\]*\\\\|cannot read[^\\\\\\\\\\\\\\\\]*\\\\|is not a function[^\\\\\\\\\\\\\\\\]*\" /tmp/ev.html)",
       "Bash(curl -s http://localhost:3000/api/navbar)",
       "Bash(curl -s -o /tmp/sport.html -w \"%{http_code}\" \"http://localhost:3000/tennis\")",
-      "PowerShell(npx eslint \"src/components/features/events/sections/ProductSliderSection.jsx\" \"src/components/features/events/sections/FeaturedSection.jsx\" 2>&1 | Select-Object -Last 10; if \\($LASTEXITCODE -eq 0\\) { \"LINT CLEAN\" })"
+      "PowerShell(npx eslint \"src/components/features/events/sections/ProductSliderSection.jsx\" \"src/components/features/events/sections/FeaturedSection.jsx\" 2>&1 | Select-Object -Last 10; if \\($LASTEXITCODE -eq 0\\) { \"LINT CLEAN\" })",
+      "PowerShell(npx next lint --file src/lib/cart.js --file src/hooks/useCart.js --file \"src/components/features/cartDrawer/CartDrawer.jsx\" --file \"src/components/features/navbar/Navbar.js\" --file \"src/components/modules/dashboard/Navbar.jsx\" --file \"src/components/modules/cart/index.jsx\" --file \"src/components/features/cart/CartCleanup.jsx\")"
     ]
   }
 }

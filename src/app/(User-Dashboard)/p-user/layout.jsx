@@ -6,6 +6,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 
 import Navbar from '@/components/modules/dashboard/Navbar'
 import Sidebar from '@/components/modules/dashboard/Sidebar'
+import CartCleanup from '@/components/features/cart/CartCleanup'
 
 export default function RootLayout({ children }) {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false)
@@ -21,6 +22,8 @@ export default function RootLayout({ children }) {
         />
       </head>
       <body>
+        <CartCleanup />
+
         <div className="min-h-screen bg-[#f8fafc] text-slate-800 rtl font-sans">
 
           {/* منوی بالایی */}

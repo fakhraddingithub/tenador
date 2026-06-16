@@ -16,7 +16,14 @@ import {
     FaShoppingCart,
     FaSpinner,
 } from 'react-icons/fa';
-import { getCart, updateQuantity, removeFromCart, flowSignature } from '@/lib/cart';
+import {
+    getCart,
+    updateQuantity,
+    removeFromCart,
+    removeUsedFromCart,
+    flowSignature,
+    reconcileCartWithServer,
+} from '@/lib/cart';
 import FlowSelectionsList from '@/components/modules/orderFlow/FlowSelectionsList';
 import { useUser } from '@/components/features/auth/UserContext';
 import StockReminderToast from '@/components/order/StockReminderToast';
@@ -51,8 +58,13 @@ export default function CartDrawer({ isOpen, onClose }) {
             if (!res.ok) throw new Error('خطا در دریافت سبد خرید');
 
             const data = await res.json();
+            const serverItems = data.items || [];
 
-            setItems(data.items || []);
+            // همگام‌سازی: خطوطی که محصولشان حذف شده از localStorage هم پاک شوند
+            // تا بج و محتوای سبد همیشه یکی باشند.
+            reconcileCartWithServer(serverItems);
+
+            setItems(serverItems);
             setTotals({
                 grand: data.grandTotalToman ?? 0,
                 savings: data.grandDiscountToman ?? 0,
@@ -71,6 +83,8 @@ export default function CartDrawer({ isOpen, onClose }) {
     // ─── تغییر تعداد ───
     const handleQuantityChange = async (item, newQty) => {
         if (newQty < 1) return;
+        // تعداد کالای دست‌دوم همیشه ۱ است
+        if ((item.itemType || 'product') === 'used_product') return;
         const sig = flowSignature(item.flowSelections);
         const key = `${item.productId}-${item.variantId ?? 'null'}-${sig}`;
         setUpdatingId(key);
@@ -116,12 +130,22 @@ export default function CartDrawer({ isOpen, onClose }) {
 
     // ─── حذف آیتم ───
     const handleRemove = (item) => {
+        const isUsed = (item.itemType || 'product') === 'used_product';
         const sig = flowSignature(item.flowSelections);
-        removeFromCart(item.productId, item.variantId, item.flowSelections);
 
-        const remaining = items.filter(
-            (i) =>
-                !(i.productId === item.productId &&
+        // کالای دست‌دوم با removeFromCart حذف نمی‌شود (آن تابع خطوط used را رد می‌کند)
+        if (isUsed) {
+            removeUsedFromCart(item.usedProductId);
+        } else {
+            removeFromCart(item.productId, item.variantId, item.flowSelections);
+        }
+
+        const remaining = items.filter((i) =>
+            isUsed
+                ? !((i.itemType || 'product') === 'used_product' &&
+                    i.usedProductId === item.usedProductId)
+                : !((i.itemType || 'product') !== 'used_product' &&
+                    i.productId === item.productId &&
                     (i.variantId ?? null) === (item.variantId ?? null) &&
                     flowSignature(i.flowSelections) === sig)
         );
@@ -193,7 +217,9 @@ export default function CartDrawer({ isOpen, onClose }) {
                     ) : (
                         items.map((item) => {
                             const sig = flowSignature(item.flowSelections);
-                            const key = `${item.productId}-${item.variantId ?? 'no-variant'}-${sig}`;
+                            const key = (item.itemType || 'product') === 'used_product'
+                                ? `used-${item.usedProductId}`
+                                : `${item.productId}-${item.variantId ?? 'no-variant'}-${sig}`;
                             const isUpdating = updatingId === `${item.productId}-${item.variantId ?? 'null'}-${sig}`;
                             const baseToman = item.basePriceToman ?? 0;
                             const unitToman = item.unitPriceToman ?? baseToman;
@@ -295,7 +321,7 @@ export default function CartDrawer({ isOpen, onClose }) {
 
                                                         <button
                                                             onClick={() => handleQuantityChange(item, item.quantity + 1)}
-                                                            disabled={!item.inStock || isUpdating}
+                                                            disabled={!item.inStock || isUpdating || (item.itemType || 'product') === 'used_product'}
                                                             className="px-2 py-1 bg-gray-50 hover:bg-gray-100 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
                                                         >
                                                             <FaPlus className="text-sm" />

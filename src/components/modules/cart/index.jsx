@@ -19,8 +19,10 @@ import {
   getCart,
   updateQuantity,
   removeFromCart,
+  removeUsedFromCart,
   removeFlowSelectionFromCart,
   flowSignature,
+  reconcileCartWithServer,
 } from '@/lib/cart'
 import FlowSelectionsList from '@/components/modules/orderFlow/FlowSelectionsList'
 
@@ -60,6 +62,9 @@ const CartModule = () => {
 
       const productsData = await productsRes.json()
       const priceData = await priceRes.json()
+
+      // همگام‌سازی: خطوط با محصول حذف‌شده از localStorage هم پاک شوند
+      reconcileCartWithServer(productsData.items || [])
 
       setPricingData(priceData)
 
@@ -121,7 +126,11 @@ const CartModule = () => {
     })
 
     if (result.isConfirmed) {
-      removeFromCart(item.productId, item.variantId, item.flowSelections)
+      if ((item.itemType || 'product') === 'used_product') {
+        removeUsedFromCart(item.usedProductId)
+      } else {
+        removeFromCart(item.productId, item.variantId, item.flowSelections)
+      }
       fetchCart()
       toast.success('حذف شد')
     }
@@ -164,7 +173,9 @@ const CartModule = () => {
           {/* Items */}
           {cart.map((item) => (
             <motion.div
-              key={`${item.productId}-${item.variantId || 'no-variant'}-${flowSignature(item.flowSelections)}`}
+              key={(item.itemType || 'product') === 'used_product'
+                ? `used-${item.usedProductId}`
+                : `${item.productId}-${item.variantId || 'no-variant'}-${flowSignature(item.flowSelections)}`}
               initial={{ opacity: 0, scale: 0.96 }}
               animate={{ opacity: 1, scale: 1 }}
               className="

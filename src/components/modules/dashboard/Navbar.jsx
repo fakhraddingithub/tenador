@@ -14,6 +14,7 @@ import {
 } from "react-icons/fi";
 import { HiOutlineViewGrid } from "react-icons/hi";
 import CartDrawer from "@/components/features/cartDrawer/CartDrawer";
+import { getCartTotalQuantity } from "@/lib/cart";
 
 const NAVIGATION_ITEMS = [
   { id: 1, label: "جمعه بازار", href: "/second-hand" },
@@ -183,11 +184,25 @@ export default function Navbar({ user, isSidebarOpen, setIsSidebarOpen }) {
 
   const firstName = user?.userName?.split(" ")[0] || "";
 
+  // تعداد آیتم‌ها از منبع واحد (getCart نرمال‌شده) خوانده می‌شود
+  const updateCartCount = () => setCartCount(getCartTotalQuantity());
+
   useEffect(() => {
-    const stored = localStorage.getItem("cart");
-    const items = stored ? JSON.parse(stored) : [];
-    setCartCount(items.reduce((sum, i) => sum + i.quantity, 0));
+    updateCartCount();
   }, [openCart]);
+
+  // گوش دادن به تغییرات سبد در همان صفحه و تب‌های دیگر
+  // (خواندن اولیه‌ی تعداد در افکت [openCart] بالا انجام می‌شود)
+  useEffect(() => {
+    window.addEventListener("cart-changed", updateCartCount);
+    window.addEventListener("cartchange", updateCartCount);
+    window.addEventListener("storage", updateCartCount);
+    return () => {
+      window.removeEventListener("cart-changed", updateCartCount);
+      window.removeEventListener("cartchange", updateCartCount);
+      window.removeEventListener("storage", updateCartCount);
+    };
+  }, []);
 
   useEffect(() => {
     fetch("/api/navbar")

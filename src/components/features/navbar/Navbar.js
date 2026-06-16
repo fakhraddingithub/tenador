@@ -19,6 +19,7 @@ import IconButton from "@/components/ui/IconButton";
 import Button from "@/components/ui/Button";
 import CartDrawer from "@/components/features/cartDrawer/CartDrawer";
 import { useUser } from "@/components/features/auth/UserContext";
+import { getCartTotalQuantity } from "@/lib/cart";
 
 const NAVIGATION_ITEMS = [
   { id: 1, label: "جمعه بازار", href: "/second-hand" },
@@ -486,25 +487,26 @@ export default function Navbar({ navData: initialNavData = [] }) {
   const firstName =
     (user?.name || user?.userName)?.split(" ")[0] || "";
 
- // تابع کمکی برای خواندن تعداد آیتم‌ها از LocalStorage
+ // تعداد آیتم‌ها همیشه از منبع واحد (getCart نرمال‌شده) خوانده می‌شود
+ // تا بج دقیقاً با محتوای سبد یکسان بماند.
 const updateCartCount = () => {
-  const stored = localStorage.getItem("cart");
-  const items = stored ? JSON.parse(stored) : [];
-  setCartCount(items.reduce((sum, i) => sum + i.quantity, 0));
+  setCartCount(getCartTotalQuantity());
 };
 
 // ۱. اجرای اولیه و گوش دادن به تغییرات سبد خرید
 useEffect(() => {
   updateCartCount(); // خواندن مقدار اولیه هنگام لود صفحه
 
-  // گوش دادن به رویداد سفارشی برای تغییرات سبد خرید در همان صفحه
+  // گوش دادن به رویدادهای سفارشی تغییر سبد در همان صفحه
   window.addEventListener("cart-changed", updateCartCount);
-  
-  // گوش دادن به رویداد استاندار برای زمان‌هایی که در تپ‌های دیگر تغییر ایجاد می‌شود
+  window.addEventListener("cartchange", updateCartCount);
+
+  // گوش دادن به رویداد استاندارد storage برای تغییرات در تب‌های دیگر
   window.addEventListener("storage", updateCartCount);
 
   return () => {
     window.removeEventListener("cart-changed", updateCartCount);
+    window.removeEventListener("cartchange", updateCartCount);
     window.removeEventListener("storage", updateCartCount);
   };
 }, []);

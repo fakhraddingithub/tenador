@@ -16,6 +16,7 @@ import {
   getStoredCouponCode,
   storeCouponCode,
   clearStoredCouponCode,
+  reconcileCartWithServer,
 } from '@/lib/cart';
 
 export const useCart = () => {
@@ -82,6 +83,10 @@ export const useCart = () => {
       if (!productsRes.ok) throw new Error('خطا در دریافت اطلاعات سبد');
       const productsData = await productsRes.json();
 
+      // همگام‌سازی: خطوطی که محصولشان دیگر وجود ندارد از localStorage پاک شوند
+      // تا بج نوار بالا و محتوای سبد همیشه یکی باشند.
+      reconcileCartWithServer(productsData.items || []);
+
       // اگر کوپن داریم، قیمت نهایی با کوپن را هم بگیر
       let couponDiscountAmount = 0;
       let finalWithCoupon      = null;
@@ -111,17 +116,16 @@ export const useCart = () => {
       }
 
       // ساخت آیتم‌های غنی‌شده برای CartItems
-      const enriched = (productsData.items || []).map((item, index) => {
-        // 🛡️ برای امنیت بیشتر، آیتم متناظر را بر اساس ایندکس از LocalCart پیدا میکنیم تا فیلدها حتماً حفظ شوند
-        const localItem = localCart[index] || {};
-        const isSameProduct = localItem.productId === item.productId;
-
+      // ⚠️ از فیلدهای خود سرور استفاده می‌کنیم، نه تطبیق بر اساس ایندکس با localCart.
+      // سرور آیتم‌های حذف‌شده را drop می‌کند، پس ایندکس‌ها لزوماً هم‌تراز نیستند و
+      // تطبیق ایندکسی داده را به خط اشتباه می‌چسباند.
+      const enriched = (productsData.items || []).map((item) => {
         return {
-          // شناسه‌ها (اصلاح شد ⚠️)
+          // شناسه‌ها — مستقیم از پاسخ معتبرشده‌ی سرور
           productId: item.productId,
           variantId: item.variantId ?? null,
-          usedProductId: item.usedProductId || (isSameProduct ? localItem.usedProductId : null) || null,
-          itemType: item.itemType || (isSameProduct ? localItem.itemType : 'product') || 'product',
+          usedProductId: item.usedProductId ?? null,
+          itemType: item.itemType || 'product',
           quantity:  item.quantity,
 
           // داده نمایشی (سازگار با CartItems)
