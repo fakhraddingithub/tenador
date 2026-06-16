@@ -4,6 +4,7 @@ import Product from "base/models/Product";
 import Brand from "base/models/Brand";
 import Serie from "base/models/Serie";
 import Category from "base/models/Category";
+import Sport from "base/models/Sport";
 import Variant from "base/models/Variant";
 import { NextResponse } from "next/server";
 
@@ -38,6 +39,10 @@ export async function GET(req) {
       if (type === "category") {
         const items = await Category.find({ _id: { $in: ids } }).select("_id name title icon image").lean();
         return NextResponse.json({ items: items.map((c) => ({ _id: c._id, label: c.title || c.name, image: c.icon || c.image || null })) });
+      }
+      if (type === "sport") {
+        const items = await Sport.find({ _id: { $in: ids } }).select("_id name title icon image").lean();
+        return NextResponse.json({ items: items.map((s) => ({ _id: s._id, label: s.title || s.name, sub: s.name || "", image: s.icon || s.image || null })) });
       }
       if (type === "variant") {
         const variants = await Variant.find({ _id: { $in: ids } }).select("_id sku attributes price images productId").lean();
@@ -88,6 +93,14 @@ export async function GET(req) {
         .limit(10)
         .lean();
       return NextResponse.json({ items: items.map((c) => ({ _id: c._id, label: c.title || c.name, image: c.icon || c.image || null })) });
+    }
+
+    // ── ورزش ──────────────────────────────────────────────────────────────────
+    if (type === "sport") {
+      if (!q) return NextResponse.json({ items: [] });
+      const items = await Sport.find({ $or: [{ title: { $regex: q, $options: "i" } }, { name: { $regex: q, $options: "i" } }] })
+        .select("_id name title icon image").limit(10).lean();
+      return NextResponse.json({ items: items.map((s) => ({ _id: s._id, label: s.title || s.name, sub: s.name || "", image: s.icon || s.image || null })) });
     }
 
     // ── واریانت ───────────────────────────────────────────────────────────────

@@ -7,7 +7,10 @@ import QuickViewModal from "@/components/modules/cart/QuickViewModal";
 // ۵ ردیف در گرید ۴‌ستونه = ۲۰ محصول در هر صفحه
 const PAGE_SIZE = 20;
 
-export default function ProductList({ products = [], rate, onAddToCart, onToggleWishlist }) {
+// `cardOverlay` is an optional React node (decoration) layered onto every card.
+// It must be a node, not a function — a function can't cross the server→client
+// boundary when a Server Component renders this Client Component.
+export default function ProductList({ products = [], rate, onAddToCart, onToggleWishlist, cardOverlay = null }) {
   const [selectedProduct, setSelectedProduct] = useState(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [page, setPage] = useState(1);
@@ -65,6 +68,7 @@ export default function ProductList({ products = [], rate, onAddToCart, onToggle
             product={product}
             rate={rate}
             isWishlisted={product.isWishlisted}
+            overlay={cardOverlay}
             onQuickView={() => { setSelectedProduct(product); setIsModalOpen(true); }}
             onAddToCart={() => onAddToCart?.(product)}
             onToggleWishlist={() => onToggleWishlist?.(product)}
@@ -78,7 +82,7 @@ export default function ProductList({ products = [], rate, onAddToCart, onToggle
           <button
             onClick={() => goTo(page - 1)}
             disabled={page === 1}
-            className="px-3 py-2 rounded-[6px] border border-gray-200 bg-white text-sm font-bold text-gray-600 hover:border-[#aa4725] hover:text-[#aa4725] disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+            className="px-3 py-2 rounded-[6px] border border-gray-200 bg-white text-sm font-bold text-gray-600 hover:border-[var(--color-primary)] hover:text-[var(--color-primary)] disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
           >
             قبلی
           </button>
@@ -92,8 +96,8 @@ export default function ProductList({ products = [], rate, onAddToCart, onToggle
                 onClick={() => goTo(n)}
                 className={`min-w-[40px] px-3 py-2 rounded-[6px] border text-sm font-bold transition-colors ${
                   n === page
-                    ? "border-[#aa4725] bg-[#aa4725] text-white"
-                    : "border-gray-200 bg-white text-gray-600 hover:border-[#aa4725] hover:text-[#aa4725]"
+                    ? "border-[var(--color-primary)] bg-[var(--color-primary)] text-white"
+                    : "border-gray-200 bg-white text-gray-600 hover:border-[var(--color-primary)] hover:text-[var(--color-primary)]"
                 }`}
               >
                 {n.toLocaleString("fa-IR")}
@@ -104,7 +108,7 @@ export default function ProductList({ products = [], rate, onAddToCart, onToggle
           <button
             onClick={() => goTo(page + 1)}
             disabled={page === totalPages}
-            className="px-3 py-2 rounded-[6px] border border-gray-200 bg-white text-sm font-bold text-gray-600 hover:border-[#aa4725] hover:text-[#aa4725] disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+            className="px-3 py-2 rounded-[6px] border border-gray-200 bg-white text-sm font-bold text-gray-600 hover:border-[var(--color-primary)] hover:text-[var(--color-primary)] disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
           >
             بعدی
           </button>

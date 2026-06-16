@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
@@ -24,6 +24,7 @@ import { AiFillProduct } from "react-icons/ai";
 import { RiMenuFoldLine, RiMenuUnfoldLine } from "react-icons/ri";
 import { FiGitBranch } from "react-icons/fi";
 import { ShoppingCart } from "lucide-react";
+import NotificationBell from "./NotificationBell";
 
 
 const menuItems = [
@@ -48,6 +49,40 @@ export default function AdminLayout({ children }) {
   const [prices, setPrices] = useState({ usd: "---", eur: "---" });
   const [time, setTime] = useState("");
   const [mounted, setMounted] = useState(false);
+
+  // ─── شمارش اعلان‌ها (منبع واحد حقیقت برای زنگوله و بَج‌های سایدبار) ───
+  const [counts, setCounts] = useState({
+    total: 0,
+    byType: {},
+    sections: { orders: 0, coachCredits: 0, coachApplications: 0 },
+  });
+
+  const refreshCounts = useCallback(async () => {
+    try {
+      const res = await fetch("/api/admin/notifications/counts");
+      if (!res.ok) return;
+      const data = await res.json();
+      if (data?.counts) setCounts(data.counts);
+    } catch {
+      /* بی‌صدا */
+    }
+  }, []);
+
+  // واکشی اولیه + پولینگ هر ۴۵ ثانیه
+  useEffect(() => {
+    refreshCounts();
+    const id = setInterval(refreshCounts, 45000);
+    return () => clearInterval(id);
+  }, [refreshCounts]);
+
+  // بَج هر آیتم منو بر اساس بخش‌های مرتبط
+  const badgeForHref = (href) => {
+    const s = counts.sections || {};
+    if (href === "/p-admin/admin-orders") return s.orders || 0;
+    // مدیریت مربیان (کردیت + درخواست مربیگری) زیرمجموعه‌ی «کاربران» است
+    if (href === "/p-admin/users") return (s.coachCredits || 0) + (s.coachApplications || 0);
+    return 0;
+  };
 
   useEffect(() => {
     setMounted(true);
@@ -205,6 +240,7 @@ export default function AdminLayout({ children }) {
             const isActive = isDashboard
               ? pathname === "/p-admin"
               : pathname.startsWith(item.href);
+            const badge = badgeForHref(item.href);
 
             return (
               <Link
@@ -219,9 +255,16 @@ export default function AdminLayout({ children }) {
                 style={isActive ? { background: "rgba(170,71,37,0.15)" } : {}}
               >
                 <span
-                  className={`flex-shrink-0 transition-all duration-200 ${isActive ? "text-[var(--color-secondary)]" : "group-hover:scale-110"}`}
+                  className={`relative flex-shrink-0 transition-all duration-200 ${isActive ? "text-[var(--color-secondary)]" : "group-hover:scale-110"}`}
                 >
                   <Icon size={16} />
+                  {/* در حالت جمع‌شده فقط یک نقطه روی آیکون */}
+                  {!sidebarOpen && badge > 0 && (
+                    <span
+                      className="absolute -top-1.5 -left-1.5 w-2 h-2 rounded-full ring-2 ring-[#0d0d0d]"
+                      style={{ background: "var(--color-secondary)" }}
+                    />
+                  )}
                 </span>
                 <AnimatePresence>
                   {sidebarOpen && (
@@ -236,6 +279,20 @@ export default function AdminLayout({ children }) {
                     </motion.span>
                   )}
                 </AnimatePresence>
+
+                {/* بَج عددی در حالت باز */}
+                {sidebarOpen && badge > 0 && (
+                  <motion.span
+                    key={`badge-${badge}`}
+                    initial={{ scale: 0.6, opacity: 0 }}
+                    animate={{ scale: 1, opacity: 1 }}
+                    transition={{ type: "spring", stiffness: 500, damping: 22 }}
+                    className="mr-auto min-w-[20px] h-5 px-1.5 flex items-center justify-center rounded-full text-[10px] font-bold tabular-nums"
+                    style={{ background: "var(--color-secondary)", color: "#1a1a1a" }}
+                  >
+                    {badge > 99 ? "۹۹+" : Number(badge).toLocaleString("fa-IR")}
+                  </motion.span>
+                )}
               </Link>
             );
           })}
@@ -296,8 +353,11 @@ export default function AdminLayout({ children }) {
             </span>
           </div>
 
-          {/* Right: clock + prices + user */}
+          {/* Right: bell + clock + prices + user */}
           <div className="flex items-center gap-3">
+            {/* Notifications */}
+            <NotificationBell total={counts.total} onCountsChange={setCounts} />
+
             {/* Clock */}
             <div
               className="flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-bold tabular-nums"

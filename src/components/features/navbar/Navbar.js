@@ -8,7 +8,9 @@ import {
   FiUser,
   FiX,
   FiChevronLeft,
+  FiChevronRight,
 } from "react-icons/fi";
+import { motion, AnimatePresence } from "framer-motion";
 import { HiOutlineViewGrid } from "react-icons/hi";
 import Image from "next/image";
 import Link from "next/link";
@@ -216,6 +218,246 @@ function CategoryMenu({ navData, onClose }) {
         </div>
       </div>
     </div>
+  );
+}
+
+// ---- Mobile Drill-down Category Menu ----
+// نسخه‌ی موبایلِ منوی سه‌ستونه‌ی دسکتاپ، به‌صورت پنل‌های کشویی پشت‌سرهم
+// (سطح ۱: ورزش‌ها → سطح ۲: دسته‌بندی‌ها → سطح ۳: برندها)
+// همان دادهٔ navData و همان الگوی لینک‌های دسکتاپ استفاده می‌شود.
+function MobileCategoryDrawer({ navData, onClose }) {
+  // سطح فعلی: ۱=ورزش‌ها، ۲=دسته‌بندی‌ها، ۳=برندها
+  const [level, setLevel] = useState(1);
+  // جهت اسلاید: ۱=رفتن به عمق، ۱-=بازگشت
+  const [direction, setDirection] = useState(1);
+  const [selectedSport, setSelectedSport] = useState(null);
+  const [selectedCategory, setSelectedCategory] = useState(null);
+
+  const goBack = () => {
+    setDirection(-1);
+    setLevel((l) => Math.max(1, l - 1));
+  };
+
+  const openSport = (sport) => {
+    setSelectedSport(sport);
+    setDirection(1);
+    setLevel(2);
+  };
+
+  const openCategory = (cat) => {
+    setSelectedCategory(cat);
+    setDirection(1);
+    setLevel(3);
+  };
+
+  const headerTitle =
+    level === 1
+      ? "فهرست محصولات"
+      : level === 2
+        ? selectedSport?.title
+        : selectedCategory?.title;
+
+  // پنل‌ها در حالت RTL: رفتن به عمق از سمت چپ می‌آید، بازگشت از سمت راست
+  const panelVariants = {
+    enter: (dir) => ({ x: dir > 0 ? "100%" : "-100%", opacity: 0 }),
+    center: { x: 0, opacity: 1 },
+    exit: (dir) => ({ x: dir > 0 ? "-100%" : "100%", opacity: 0 }),
+  };
+
+  const rowClass =
+    "w-full flex items-center justify-between gap-3 px-5 py-3.5 text-white text-sm hover:bg-white/5 transition-colors border-b border-white/[0.03]";
+
+  return (
+    <>
+      {/* Overlay تیره پشت منو */}
+      <motion.div
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        exit={{ opacity: 0 }}
+        className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[110]"
+        onClick={onClose}
+      />
+
+      {/* پنل کشویی از سمت راست */}
+      <motion.div
+        dir="rtl"
+        initial={{ x: "100%" }}
+        animate={{ x: 0 }}
+        exit={{ x: "100%" }}
+        transition={{ type: "tween", duration: 0.3, ease: "easeOut" }}
+        className="fixed top-0 right-0 h-full w-[260px] max-w-[78vw] bg-[#1a1c22] z-[120] shadow-2xl flex flex-col"
+      >
+        {/* هدر: دکمه بازگشت (در سطوح ۲ و ۳)، عنوان، و دکمه بستن */}
+        <div className="p-4 border-b border-white/10 flex justify-between items-center bg-[#20232a] flex-shrink-0">
+          <div className="flex items-center gap-1.5 min-w-0">
+            {level > 1 && (
+              <button
+                onClick={goBack}
+                aria-label="بازگشت"
+                className="text-white p-1 -mr-1 hover:text-[#aa4725] transition-colors flex-shrink-0"
+              >
+                <FiChevronRight size={22} />
+              </button>
+            )}
+            <span className="text-white font-bold text-sm truncate">
+              {headerTitle}
+            </span>
+          </div>
+          <button
+            onClick={onClose}
+            aria-label="بستن"
+            className="text-white flex-shrink-0"
+          >
+            <FiX size={22} />
+          </button>
+        </div>
+
+        {/* ناحیه‌ی کشویی سطوح */}
+        <div className="relative flex-1 overflow-hidden">
+          <AnimatePresence initial={false} custom={direction}>
+            <motion.div
+              key={level}
+              custom={direction}
+              variants={panelVariants}
+              initial="enter"
+              animate="center"
+              exit="exit"
+              transition={{ type: "tween", duration: 0.28, ease: "easeOut" }}
+              className="absolute inset-0 overflow-y-auto"
+            >
+              {/* سطح ۱: ورزش‌ها */}
+              {level === 1 && (
+                <div className="py-1">
+                  {navData.map((sport) => (
+                    <button
+                      key={sport._id}
+                      onClick={() => openSport(sport)}
+                      className={rowClass}
+                    >
+                      <div className="flex items-center gap-3 min-w-0">
+                        {sport.icon && (
+                          <img
+                            src={sport.icon}
+                            alt=""
+                            className="w-5 h-5 invert opacity-80 flex-shrink-0"
+                          />
+                        )}
+                        <span className="font-medium truncate">
+                          {sport.title}
+                        </span>
+                      </div>
+                      <FiChevronLeft className="text-gray-500 flex-shrink-0" />
+                    </button>
+                  ))}
+
+                  {/* کارت جمعه بازار */}
+                  <div className="px-4 py-4 border-t border-white/5 mt-1">
+                    <Link
+                      href="/second-hand"
+                      onClick={onClose}
+                      className="group relative flex items-center justify-between p-4 bg-gradient-to-l from-[#aa4725]/15 to-[#aa4725]/5 border border-[#aa4725]/30 rounded-[6px] overflow-hidden transition-all duration-300 hover:border-[#aa4725]/70 hover:shadow-[0_4px_15px_rgba(170,71,37,0.15)]"
+                    >
+                      <div className="absolute inset-0 bg-gradient-to-r from-[#aa4725]/20 to-transparent translate-x-full group-hover:translate-x-0 transition-transform duration-500 ease-out" />
+                      <div className="relative z-10 flex flex-col gap-1.5">
+                        <span className="text-[#aa4725] text-[15px] font-bold tracking-wide">
+                          جمعه بازار
+                        </span>
+                        <span className="text-gray-400 text-[11px] font-medium leading-tight">
+                          دست‌دوم‌های با ارزش و اقتصادی
+                        </span>
+                      </div>
+                      <div className="relative z-10 w-9 h-9 rounded-[6px] bg-[#aa4725]/20 flex items-center justify-center text-[#aa4725] group-hover:scale-110 group-hover:bg-[#aa4725] group-hover:text-white transition-all duration-300">
+                        <FiShoppingCart size={16} />
+                      </div>
+                    </Link>
+                  </div>
+                </div>
+              )}
+
+              {/* سطح ۲: دسته‌بندی‌های ورزش انتخاب‌شده */}
+              {level === 2 && selectedSport && (
+                <div className="py-1">
+                  <Link
+                    href={`/${selectedSport.slug}`}
+                    onClick={onClose}
+                    className="block px-5 py-3 text-xs text-[#aa4725] font-bold border-b border-white/[0.06]"
+                  >
+                    مشاهده‌ی صفحه‌ی {selectedSport.title}
+                  </Link>
+                  {selectedSport.categories?.length > 0 ? (
+                    selectedSport.categories.map((cat) => (
+                      <button
+                        key={cat._id}
+                        onClick={() => openCategory(cat)}
+                        className={rowClass}
+                      >
+                        <div className="flex items-center gap-3 min-w-0">
+                          {cat.icon && (
+                            <img
+                              src={cat.icon}
+                              alt=""
+                              className="w-5 h-5 invert opacity-80 flex-shrink-0"
+                            />
+                          )}
+                          <span className="font-medium truncate">
+                            {cat.title}
+                          </span>
+                        </div>
+                        <FiChevronLeft className="text-gray-500 flex-shrink-0" />
+                      </button>
+                    ))
+                  ) : (
+                    <p className="text-gray-500 text-[13px] p-5 text-center">
+                      موردی یافت نشد
+                    </p>
+                  )}
+                </div>
+              )}
+
+              {/* سطح ۳: برندهای دسته‌بندی انتخاب‌شده */}
+              {level === 3 && selectedSport && selectedCategory && (
+                <div className="py-1">
+                  <Link
+                    href={`/${selectedSport.slug}/${selectedCategory.slug}`}
+                    onClick={onClose}
+                    className="block px-5 py-3 text-xs text-[#aa4725] font-bold border-b border-white/[0.06]"
+                  >
+                    مشاهده‌ی صفحه‌ی {selectedCategory.title}
+                  </Link>
+                  {selectedCategory.brands?.length > 0 ? (
+                    selectedCategory.brands.map((brand) => (
+                      <Link
+                        key={brand._id}
+                        href={`/${selectedSport.slug}/${selectedCategory.slug}/${brand.slug}`}
+                        onClick={onClose}
+                        className={rowClass}
+                      >
+                        <div className="flex items-center gap-3 min-w-0">
+                          {brand.icon && (
+                            <img
+                              src={brand.icon}
+                              alt=""
+                              className="w-5 h-5 invert opacity-70 flex-shrink-0"
+                            />
+                          )}
+                          <span className="font-medium truncate">
+                            {brand.title}
+                          </span>
+                        </div>
+                      </Link>
+                    ))
+                  ) : (
+                    <p className="text-gray-500 text-[13px] p-5 text-center">
+                      برندی یافت نشد
+                    </p>
+                  )}
+                </div>
+              )}
+            </motion.div>
+          </AnimatePresence>
+        </div>
+      </motion.div>
+    </>
   );
 }
 
@@ -566,100 +808,16 @@ useEffect(() => {
             </div>
           )}
 
-          {isCategoryOpen && (
-            <>
-              {/* Overlay تیره پشت منو */}
-              <div
-                className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[110]"
-                onClick={() => setIsCategoryOpen(false)}
+          {/* منوی کشویی چندسطحی موبایل (با باز/بسته شدن دوباره، به سطح ۱ ریست می‌شود) */}
+          <AnimatePresence>
+            {isCategoryOpen && (
+              <MobileCategoryDrawer
+                key="mobile-cat-drawer"
+                navData={navData}
+                onClose={() => setIsCategoryOpen(false)}
               />
-
-              {/* محتوای منو که از راست باز می‌شود */}
-              <div className="fixed top-0 right-0 h-full w-[280px] bg-[#1a1c22] z-[120] shadow-2xl transition-transform duration-300 overflow-y-auto">
-                <div className="p-5 border-b border-white/10 flex justify-between items-center bg-[#20232a]">
-                  <span className="text-white font-bold">فهرست محصولات</span>
-                  <button
-                    onClick={() => setIsCategoryOpen(false)}
-                    className="text-white"
-                  >
-                    <FiX size={24} />
-                  </button>
-                </div>
-
-                <div className="py-2">
-                  {/* لیست دسته‌بندی‌های آکاردئونی */}
-                  {navData.map((sport) => (
-                    <details
-                      key={sport._id}
-                      className="group border-b border-white/[0.03]"
-                    >
-                      <summary className="list-none flex items-center justify-between px-5 py-4 text-white cursor-pointer hover:bg-white/5 transition-colors">
-                        <div className="flex items-center gap-3">
-                          {sport.icon && (
-                            <img
-                              src={sport.icon}
-                              alt=""
-                              className="w-5 h-5 invert opacity-80"
-                            />
-                          )}
-                          <span className="text-sm font-medium">
-                            {sport.title}
-                          </span>
-                        </div>
-                        <FiChevronLeft className="group-open:-rotate-90 transition-transform text-gray-500" />
-                      </summary>
-
-                      <div className="bg-black/20 pb-2">
-                        <Link
-                          href={`/category/${sport.slug}`}
-                          className="block px-12 py-2 text-xs text-[#aa4725] font-bold"
-                          onClick={() => setIsCategoryOpen(false)}
-                        >
-                          مشاهده صفحه {sport.title}
-                        </Link>
-                        {sport.categories?.map((cat) => (
-                          <div key={cat._id}>
-                            <Link
-                              href={`/category/${sport.slug}/${cat.slug}`}
-                              className="block px-12 py-2 text-gray-300 text-sm hover:text-white"
-                              onClick={() => setIsCategoryOpen(false)}
-                            >
-                              {cat.title}
-                            </Link>
-                          </div>
-                        ))}
-                      </div>
-                    </details>
-                  ))}
-
-                  {/* کارت افقی مدرن جمعه بازار (منتقل شده به انتهای منو) */}
-                  <div className="px-4 py-4 border-t border-white/5 mt-2">
-                    <Link
-                      href="/second-hand"
-                      onClick={() => setIsCategoryOpen(false)}
-                      className="group relative flex items-center justify-between p-4 bg-gradient-to-l from-[#aa4725]/15 to-[#aa4725]/5 border border-[#aa4725]/30 rounded-[6px] overflow-hidden transition-all duration-300 hover:border-[#aa4725]/70 hover:shadow-[0_4px_15px_rgba(170,71,37,0.15)]"
-                    >
-                      {/* پس‌زمینه هاور */}
-                      <div className="absolute inset-0 bg-gradient-to-r from-[#aa4725]/20 to-transparent translate-x-full group-hover:translate-x-0 transition-transform duration-500 ease-out" />
-
-                      <div className="relative z-10 flex flex-col gap-1.5">
-                        <span className="text-[#aa4725] text-[15px] font-bold tracking-wide">
-                          جمعه بازار
-                        </span>
-                        <span className="text-gray-400 text-[11px] font-medium leading-tight">
-                          دست‌دوم‌های با ارزش و اقتصادی
-                        </span>
-                      </div>
-
-                      <div className="relative z-10 w-9 h-9 rounded-[6px] bg-[#aa4725]/20 flex items-center justify-center text-[#aa4725] group-hover:scale-110 group-hover:bg-[#aa4725] group-hover:text-white transition-all duration-300">
-                        <FiShoppingCart size={16} />
-                      </div>
-                    </Link>
-                  </div>
-                </div>
-              </div>
-            </>
-          )}
+            )}
+          </AnimatePresence>
         </div>
       </nav>
 

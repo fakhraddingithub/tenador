@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
@@ -18,9 +18,7 @@ export default function AdminCollaborations() {
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
 
-  useEffect(() => { fetchCollaborations(); fetchProducts(); }, []);
-
-  const fetchCollaborations = async () => {
+  const fetchCollaborations = useCallback(async () => {
     try {
       const res = await fetch('/api/collaborations');
       const data = await res.json();
@@ -30,15 +28,27 @@ export default function AdminCollaborations() {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
-  const fetchProducts = async () => {
+  const fetchProducts = useCallback(async () => {
     try {
       const res = await fetch('/api/product');
       const data = await res.json();
       setProducts(data.products || []);
     } catch { /* شمارش محصولات اختیاری است */ }
-  };
+  }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+    Promise.resolve().then(() => {
+      if (cancelled) return;
+      fetchCollaborations();
+      fetchProducts();
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [fetchCollaborations, fetchProducts]);
 
   const getProductCount = (collaborationId) =>
     products.filter(

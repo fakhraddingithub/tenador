@@ -28,6 +28,12 @@ export default function AdminCoachesManagement() {
   const [rejectingAppId, setRejectingAppId] = useState(null);
   const [rejectReason, setRejectReason] = useState("");
 
+  // باز شدن مستقیم تب درخواست‌ها از طریق ?tab=applications (لینک اعلان)
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get("tab") === "applications") setActiveTab("applications");
+  }, []);
+
   useEffect(() => {
     loadData();
   }, [activeTab]);

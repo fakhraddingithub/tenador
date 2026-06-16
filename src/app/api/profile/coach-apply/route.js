@@ -3,6 +3,7 @@ import { cookies } from 'next/headers';
 import connectToDB from 'base/configs/db';
 import User from 'base/models/User';
 import { verifyToken } from 'base/utils/auth';
+import { notifyCoachApplication } from 'base/services/notificationService';
 
 async function getUserFromToken() {
   const cookieStore = await cookies();
@@ -45,6 +46,9 @@ export async function POST(req) {
     };
 
     await user.save();
+
+    // اعلان درخواست مربیگری برای پنل مدیریت (شکست، روند را متوقف نمی‌کند)
+    await notifyCoachApplication(user);
 
     return NextResponse.json({ message: 'درخواست شما ثبت شد و در صف بررسی قرار گرفت' }, { status: 200 });
   } catch (error) {

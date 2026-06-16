@@ -5,7 +5,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { FaEye, FaRegHeart, FaHeart, FaArrowLeft } from "react-icons/fa";
 
-export default function ProductCard({ product, rate, onQuickView, onToggleWishlist, isWishlisted = false }) {
+export default function ProductCard({ product, rate, onQuickView, onToggleWishlist, isWishlisted = false, overlay = null }) {
   const { mainImage, name, slug, basePrice, label } = product;
 
   // ── قیمت‌ها از سرور می‌آیند (attachListingPrices) — دیگر هیچ درخواست price-API
@@ -43,6 +43,9 @@ export default function ProductCard({ product, rate, onQuickView, onToggleWishli
   return (
     <div className="group relative bg-white border border-gray-200 rounded-[6px] transition-all duration-500 hover:shadow-[0_20px_40px_rgba(0,0,0,0.1)] hover:-translate-y-1 overflow-hidden h-full flex flex-col">
       <Link href={`/products/${slug}`} className="absolute inset-0 z-0" />
+
+      {/* اسلات اختیاری روکش (ربان/استیکر/بج رویداد) — صفحات معمولی چیزی پاس نمی‌دهند */}
+      {overlay}
 
       {product.brand?.icon && (
         <div className="absolute top-3 left-3 z-20">
@@ -102,7 +105,7 @@ export default function ProductCard({ product, rate, onQuickView, onToggleWishli
           <button key={variant._id} type="button"
             onMouseEnter={() => { setActiveImage(variant.images[0]); setActiveVariantId(variant._id); }}
             onClick={(e) => { e.preventDefault(); e.stopPropagation(); setActiveImage(variant.images[0]); setActiveVariantId(variant._id); }}
-            className={`relative w-8 h-8 rounded-[6px] overflow-hidden border-2 transition-all duration-200 ${activeVariantId === variant._id ? "border-[#aa4725] scale-110 shadow-md" : "border-gray-100 hover:border-[#aa4725]/60 opacity-80 hover:opacity-100"}`}>
+            className={`relative w-8 h-8 rounded-[6px] overflow-hidden border-2 transition-all duration-200 ${activeVariantId === variant._id ? "border-[var(--color-primary)] scale-110 shadow-md" : "border-gray-100 hover:border-[color-mix(in_srgb,var(--color-primary)_60%,transparent)] opacity-80 hover:opacity-100"}`}>
             <Image src={variant.images[0]} alt="" fill className="object-cover" />
           </button>
         )) : <div className="h-8" />}
@@ -122,12 +125,12 @@ export default function ProductCard({ product, rate, onQuickView, onToggleWishli
               <span className="text-[12px] line-through text-gray-300 mb-0.5 leading-none">
                 {basePriceToman.toLocaleString("fa-IR")} <small className="text-[10px]">تومان</small>
               </span>
-              <span className="text-[18px] font-black text-[#aa4725]">
+              <span className="text-[18px] font-black text-[var(--color-primary)]">
                 {finalPriceToman.toLocaleString("fa-IR")} <small className="text-[10px] font-bold">تومان</small>
               </span>
             </>
           ) : (
-            <span className="text-[18px] font-black text-[#aa4725]">
+            <span className="text-[18px] font-black text-[var(--color-primary)]">
               {basePriceToman.toLocaleString("fa-IR")} <small className="text-[10px] font-bold">تومان</small>
             </span>
           )}
@@ -156,7 +159,7 @@ function ActionButton({ icon, label, onClick }) {
         {label}
         <span className="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent border-t-gray-800" />
       </span>
-      <button onClick={onClick} className="text-gray-800 hover:text-[#aa4725] transition-colors duration-300 text-[18px]">{icon}</button>
+      <button onClick={onClick} className="text-gray-800 hover:text-[var(--color-primary)] transition-colors duration-300 text-[18px]">{icon}</button>
     </div>
   );
 }

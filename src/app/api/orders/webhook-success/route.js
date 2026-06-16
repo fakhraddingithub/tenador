@@ -18,6 +18,7 @@ import Order from "base/models/Order";
 import Payment from "base/models/Payment";
 import User from "base/models/User";
 import { computeCoachCredit } from "base/services/priceEngine";
+import { notifyNewPayment } from "base/services/notificationService";
 import { sendOrderConfirmationEmail } from "@/lib/emailService";
 
 export async function POST(req) {
@@ -65,6 +66,10 @@ export async function POST(req) {
       paymentStatus:     "PAID",
       fulfillmentStatus: "PROCESSING",
     });
+
+    // ─── اعلان تأیید پرداخت برای پنل مدیریت (غیرمسدودکننده) ───
+    // چون این endpoint در صورت PAID بودن زودتر return می‌کند، اعلان تکراری ساخته نمی‌شود.
+    await notifyNewPayment(order);
 
     // ─── ارسال ایمیل فاکتور ───
     try {

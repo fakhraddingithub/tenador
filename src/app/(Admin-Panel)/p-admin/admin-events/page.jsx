@@ -19,6 +19,15 @@ export default function AdminEvents() {
 
   const sections = [
     {
+      title: 'کمپین‌ها',
+      subtitle: 'Campaigns & Events',
+      description:
+        'رویدادهای فصلی، فروش ویژه، کمپین‌های بازاریابی و هر تجربه تعاملی با هویت بصری مستقل و موتور انتخاب محصول.',
+      href: '/p-admin/admin-events/campaigns',
+      icon: FaCalendarAlt,
+      count: null,
+    },
+    {
       title: 'همکاری‌ها',
       subtitle: 'Collaborations',
       description:

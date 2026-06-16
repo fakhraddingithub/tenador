@@ -4,6 +4,7 @@ import { verifyToken } from "base/utils/auth";
 import connectToDB from "base/configs/db";
 import Payment from "base/models/Payment";
 import Order from "base/models/Order";
+import { notifyNewPayment } from "base/services/notificationService";
 import mongoose from "mongoose";
 
 async function getAdminUser() {
@@ -99,6 +100,12 @@ export async function POST(req, { params }) {
 
       await session.commitTransaction();
       session.endSession();
+
+      // اعلان تأیید پرداخت برای پنل مدیریت (مسیر رسید بانکی).
+      // webhook-success به‌دلیل PAID بودن سفارش زودتر return می‌کند و اعلان تکراری نمی‌سازد.
+      if (isFullyPaid) {
+        await notifyNewPayment(order);
+      }
 
       // webhook کردیت مربی (پس از commit)
       if (isFullyPaid) {

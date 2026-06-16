@@ -38,6 +38,10 @@ import Payment from "base/models/Payment";
 import Installment from "base/models/Installment";
 import User from "base/models/User";
 import { computeCartPrice } from "base/services/priceEngine";
+import {
+  notifyNewOrder,
+  notifyCoachStudentOrder,
+} from "base/services/notificationService";
 import { autoAssignUsedProductTracking } from "@/lib/usedTrackingAuto";
 import { sendOrderConfirmationEmail } from "@/lib/emailService";
 import { INSTALLMENT_MONTHLY_INTEREST_RATE } from "@/lib/constants";
@@ -470,6 +474,21 @@ export async function POST(req) {
 
     // ایمیل فاکتور
     await sendConfirmationEmail(order._id, user.userId);
+
+    // ─── اعلان‌های پنل مدیریت (شکست در ساخت اعلان روند را متوقف نمی‌کند) ───
+    // اعلان سفارش جدید
+    await notifyNewOrder(order);
+
+    // اگر خریدار شاگردِ یک مربی باشد → اعلان ثبت کردیت برای مربی
+    try {
+      const buyer = await User.findById(user.userId).select("coach").lean();
+      if (buyer?.coach) {
+        const coach = await User.findById(buyer.coach).select("name").lean();
+        if (coach) await notifyCoachStudentOrder(order, coach);
+      }
+    } catch (notifErr) {
+      console.warn("خطا در اعلان شاگرد مربی:", notifErr?.message);
+    }
 
     return NextResponse.json(
       {
