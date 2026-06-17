@@ -4,13 +4,17 @@ import { motion, AnimatePresence } from 'framer-motion'
 import {
   FaShoppingBag, FaTruck, FaCheckCircle, FaTimesCircle,
   FaClock, FaSpinner, FaTrash, FaReceipt, FaMapMarkerAlt,
-  FaTimes, FaChevronDown
+  FaTimes, FaChevronDown, FaStar
 } from 'react-icons/fa'
 import { MdOutlinePayment, MdOutlineConfirmationNumber } from 'react-icons/md'
 import { useState, useEffect } from 'react'
 import { toast } from 'react-toastify'
 import Swal from 'sweetalert2'
 import OrderFlowSelectionsView from '@/components/order/OrderFlowSelectionsView'
+import ReviewModal from './ReviewModal'
+
+// وضعیت‌های سفارش که اجازه‌ی ثبت نظر می‌دهند (مطابق enum مدل Order)
+const REVIEWABLE_FULFILLMENT = ['SENT', 'DELIVERED']
 
 /* ─── Helpers ─────────────────────────────────────────────────────── */
 
@@ -234,7 +238,7 @@ function OrderDetailModal({ order, onClose }) {
 
 /* ─── OrderCard ────────────────────────────────────────────────────── */
 
-function OrderCard({ order, onDelete, onViewDetail }) {
+function OrderCard({ order, onDelete, onViewDetail, reviewedIds, onReview }) {
   const [expanded, setExpanded] = useState(false)
   const payStatus = PAYMENT_STATUS[order.paymentStatus] ?? PAYMENT_STATUS.UNPAID
   const fulStatus = FULFILLMENT_STATUS[order.fulfillmentStatus] ?? FULFILLMENT_STATUS.PENDING
@@ -242,6 +246,19 @@ function OrderCard({ order, onDelete, onViewDetail }) {
   const canDelete = order.paymentStatus === 'UNPAID'
   const previewItems = order.items?.slice(0, 3) ?? []
   const extraCount   = (order.items?.length ?? 0) - 3
+
+  // محصولاتِ یکتا (فقط Product، نه دست‌دوم) که در سفارشِ ارسال/تحویل‌شده هستند
+  // و کاربر هنوز برایشان نظر ثبت نکرده — هر کدام یک دکمه‌ی «ثبت نظر» می‌گیرند
+  const isReviewable = REVIEWABLE_FULFILLMENT.includes(order.fulfillmentStatus)
+  const reviewableProducts = isReviewable
+    ? Array.from(
+        new Map(
+          (order.items ?? [])
+            .filter((it) => it.itemType !== 'used_product' && it.product?._id)
+            .map((it) => [String(it.product._id), it.product])
+        ).values()
+      ).filter((p) => !reviewedIds?.has(String(p._id)))
+    : []
 
   return (
     <motion.div
@@ -334,6 +351,35 @@ function OrderCard({ order, onDelete, onViewDetail }) {
         </div>
       </div>
 
+      {/* ── دعوت به ثبت نظر (سفارش ارسال/تحویل‌شده) ── */}
+      {reviewableProducts.length > 0 && (
+        <div className="border-t border-amber-100 bg-amber-50/50 px-4 py-3">
+          <div className="mb-2 flex items-center gap-1.5">
+            <FaStar className="text-[#ffbf00] text-xs" />
+            <p className="text-xs font-bold text-[#1a1a1a]">
+              تجربه‌ی خود را ثبت کنید
+            </p>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            {reviewableProducts.map((product) => {
+              const { farsi, english } = splitName(product.name)
+              return (
+                <button
+                  key={product._id}
+                  onClick={() => onReview(order, product)}
+                  className="inline-flex items-center gap-1.5 rounded-[6px] border border-[#aa4725]/30 bg-white px-3 py-1.5 text-xs font-semibold text-[#aa4725] transition-colors hover:bg-[#aa4725] hover:text-white focus:outline-none focus-visible:ring-2 focus-visible:ring-[#aa4725]/40"
+                >
+                  <FaStar className="text-[10px]" />
+                  <span className="max-w-[140px] truncate">
+                    نظر برای {farsi || english || product.name}
+                  </span>
+                </button>
+              )
+            })}
+          </div>
+        </div>
+      )}
+
       {/* ── Footer: actions ── */}
       <div className="border-t border-gray-50 px-4 py-3 flex items-center justify-between gap-2">
         <div className="flex items-center gap-2">
@@ -395,8 +441,8 @@ const OrdersModule = () => {
   const [loading,      setLoading]      = useState(true)
   const [activeFilter, setActiveFilter] = useState('ALL')
   const [detailOrder,  setDetailOrder]  = useState(null)
-
-  useEffect(() => { fetchOrders() }, [])
+  const [reviewedIds,  setReviewedIds]  = useState(() => new Set())
+  const [reviewTarget, setReviewTarget] = useState(null) // { order, product }
 
   const fetchOrders = async () => {
     try {
@@ -413,6 +459,27 @@ const OrdersModule = () => {
       setLoading(false)
     }
   }
+
+  // شناسه‌ی محصولاتی که کاربر قبلاً نظر داده — برای پنهان‌کردن دکمه‌ی ثبت نظر
+  const fetchReviewed = async () => {
+    try {
+      const res = await fetch('/api/comments/mine', { credentials: 'include' })
+      if (res.ok) {
+        const data = await res.json()
+        setReviewedIds(new Set(data.reviewedProductIds ?? []))
+      }
+    } catch {
+      /* بی‌صدا — نبودِ این داده فقط یعنی دکمه‌ها نمایش داده می‌شوند */
+    }
+  }
+
+  const markReviewed = (productId) =>
+    setReviewedIds((prev) => new Set(prev).add(productId))
+
+  useEffect(() => {
+    fetchOrders()
+    fetchReviewed()
+  }, [])
 
   const handleDelete = async (orderId, trackingCode) => {
     const result = await Swal.fire({
@@ -528,6 +595,8 @@ const OrdersModule = () => {
                 order={order}
                 onDelete={handleDelete}
                 onViewDetail={setDetailOrder}
+                reviewedIds={reviewedIds}
+                onReview={(o, p) => setReviewTarget({ order: o, product: p })}
               />
             ))}
           </motion.div>
@@ -539,6 +608,16 @@ const OrdersModule = () => {
         <OrderDetailModal
           order={detailOrder}
           onClose={() => setDetailOrder(null)}
+        />
+      )}
+
+      {/* Review Modal */}
+      {reviewTarget && (
+        <ReviewModal
+          order={reviewTarget.order}
+          product={reviewTarget.product}
+          onClose={() => setReviewTarget(null)}
+          onDone={markReviewed}
         />
       )}
     </>

@@ -1,5 +1,6 @@
 import ProductTemplate from "@/components/templates/product/ProductTemplate";
 import { getProductBySlug } from "base/services/product.service";
+import { getApprovedReviews } from "base/services/comment.service";
 import { getCachedRate, eurToToman } from "@/lib/Exchangerate";
 import { generateProductMetadata } from "@/lib/seo/productSeo";
 import { generateProductSchema } from "@/lib/seo/productSchema";
@@ -41,8 +42,11 @@ export default async function ProductPage({ params }) {
     throw new Error("محصول مورد نظر یافت نشد");
   }
 
-  // دریافت نرخ تبدیل
-  const rate = await getCachedRate();
+  // نظرهای تأییدشده (کش‌شده با تگ comments) — موازی با نرخ تبدیل
+  const [rate, { reviews, stats: reviewStats }] = await Promise.all([
+    getCachedRate(),
+    getApprovedReviews(fetchProduct._id),
+  ]);
 
   // تبدیل قیمت پایه محصول
   const priceInToman = eurToToman(fetchProduct.basePrice, rate);
@@ -89,7 +93,11 @@ export default async function ProductPage({ params }) {
       </div>
 
       <div className="max-w-7xl mx-auto px-4 py-8">
-        <ProductTemplate product={product} />
+        <ProductTemplate
+          product={product}
+          reviews={reviews}
+          reviewStats={reviewStats}
+        />
       </div>
     </>
   );

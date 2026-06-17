@@ -5,15 +5,28 @@ import { motion, AnimatePresence } from "framer-motion";
 import ProductDescription from "./ProductDescription";
 import ProductAttributesTable from "./ProductAttributesTable";
 import ProductReviews from "./ProductReviews";
+import ReviewForm from "@/components/reviews/ReviewForm";
 
-const tabs = [
-  { id: "description", label: "توضیحات تخصصی", icon: "📄" },
-  { id: "attributes", label: "مشخصات فنی", icon: "⚙️" },
-  { id: "reviews", label: "نظرات کاربران", icon: "💬" },
-];
-
-const ProductTabs = ({ description, attributes, technicalStats, reviews }) => {
+const ProductTabs = ({
+  description,
+  attributes,
+  technicalStats,
+  productId,
+  reviews = [],
+  reviewStats = { count: 0, average: 0 },
+}) => {
   const [activeTab, setActiveTab] = useState("description");
+
+  const tabs = [
+    { id: "description", label: "توضیحات تخصصی", icon: "📄" },
+    { id: "attributes", label: "مشخصات فنی", icon: "⚙️" },
+    {
+      id: "reviews",
+      label: "نظرات کاربران",
+      icon: "💬",
+      count: reviewStats.count,
+    },
+  ];
 
   return (
     <div className="mt-24 w-full rtl text-right" dir="rtl">
@@ -34,6 +47,11 @@ const ProductTabs = ({ description, attributes, technicalStats, reviews }) => {
               <div className="flex items-center gap-2">
                 <span className={`text-xs ${isActive ? "opacity-100" : "opacity-40"}`}>{tab.icon}</span>
                 <span>{tab.label}</span>
+                {tab.count > 0 && (
+                  <span className="rounded-full bg-gray-100 px-1.5 py-0.5 text-[10px] font-bold tabular-nums text-gray-500">
+                    {tab.count.toLocaleString("fa-IR")}
+                  </span>
+                )}
               </div>
 
               {/* نشانگر متحرک هوشمند */}
@@ -70,8 +88,9 @@ const ProductTabs = ({ description, attributes, technicalStats, reviews }) => {
               </div>
             )}
             {activeTab === "reviews" && (
-              <div className="px-2">
-                <ProductReviews reviews={reviews} />
+              <div className="space-y-6 px-2">
+                <ReviewForm productId={productId} />
+                <ProductReviews reviews={reviews} stats={reviewStats} />
               </div>
             )}
           </motion.div>

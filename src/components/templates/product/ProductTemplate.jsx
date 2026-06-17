@@ -2,7 +2,7 @@ import ProductClientSection from "./ProductClientSection";
 import ProductTabs from "./ProductTabs";
 import ProductShare from "./ProductShare";
 
-const ProductTemplate = ({ product }) => {
+const ProductTemplate = ({ product, reviews = [], reviewStats }) => {
   const technicalStats = {
     productStats: product.technicalStats || [],
     categoryStats: product.category.technicalStats || [],
@@ -21,7 +21,9 @@ const ProductTemplate = ({ product }) => {
             description={product.longDescription}
             attributes={product.attributes}
             technicalStats={technicalStats}
-            reviews={[]}
+            productId={product._id}
+            reviews={reviews}
+            reviewStats={reviewStats}
           />
         </div>
       <ProductShare/>
