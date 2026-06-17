@@ -52,8 +52,12 @@ export default function EventCard({ event, index = 0 }) {
   const primaryColor = theme.primaryColor || "#aa4725";
   const secondaryColor = theme.secondaryColor || "#ffbf00";
   const bgColor = theme.backgroundColor || "#0d0d0d";
-  const coverImage = event.visualIdentity?.coverImage || event.visualIdentity?.heroImage;
-  const logo = event.visualIdentity?.logo;
+  // Single header image (fallback to legacy fields for old events)
+  const coverImage =
+    event.visualIdentity?.headerImage ||
+    event.visualIdentity?.heroImage ||
+    event.visualIdentity?.coverImage;
+  const logo = event.visualIdentity?.icon || event.visualIdentity?.logo;
 
   const isEnded = event.status === "ended";
 

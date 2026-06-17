@@ -10,7 +10,9 @@ const PAGE_SIZE = 20;
 // `cardOverlay` is an optional React node (decoration) layered onto every card.
 // It must be a node, not a function — a function can't cross the server→client
 // boundary when a Server Component renders this Client Component.
-export default function ProductList({ products = [], rate, onAddToCart, onToggleWishlist, cardOverlay = null }) {
+// `campaignBadge` is a plain serializable object ({text,bgColor,textColor}) that
+// each ProductCard renders in its badge stack with the exact discount-badge style.
+export default function ProductList({ products = [], rate, onAddToCart, onToggleWishlist, cardOverlay = null, campaignBadge = null }) {
   const [selectedProduct, setSelectedProduct] = useState(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [page, setPage] = useState(1);
@@ -69,6 +71,7 @@ export default function ProductList({ products = [], rate, onAddToCart, onToggle
             rate={rate}
             isWishlisted={product.isWishlisted}
             overlay={cardOverlay}
+            campaignBadge={campaignBadge}
             onQuickView={() => { setSelectedProduct(product); setIsModalOpen(true); }}
             onAddToCart={() => onAddToCart?.(product)}
             onToggleWishlist={() => onToggleWishlist?.(product)}

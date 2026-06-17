@@ -14,6 +14,13 @@ export default function SportPageClient({
   filters = {},
   rate,
   series = [],
+  // Optional slots — used by the themed Event page to reuse this exact layout.
+  // All default to null/undefined so the Sport page renders byte-identically.
+  titleOverride = null, // override the computed hero <h1>
+  headerExtra = null, // node rendered under the title divider (e.g. countdown)
+  belowHero = null, // node rendered right below the hero (e.g. description block)
+  cardOverlay = null, // forwarded to ProductList → each ProductCard (event flair)
+  campaignBadge = null, // forwarded to ProductList → each ProductCard badge stack
 }) {
   const [searchTerm, setSearchTerm] = useState("");
 
@@ -131,7 +138,7 @@ export default function SportPageClient({
   }, [searchTerm, localFilters, initialProducts]);
 
   return (
-    <div className="bg-[#fcfcfc] min-h-screen" dir="rtl">
+    <div className="bg-[var(--page-surface,#fcfcfc)] min-h-screen" dir="rtl">
       {/* ───────────────── Hero ───────────────── */}
       <div className="relative h-[100px] md:h-[220px] w-full overflow-hidden">
         <img
@@ -143,14 +150,25 @@ export default function SportPageClient({
         <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent z-10" />
 
         <div className="absolute inset-0 z-20 flex flex-col justify-center items-center text-center px-4">
-          <h1 className="text-xl md:text-4xl font-bold text-white mb-4 drop-shadow-xl">
-            {dynamicTitle}
+          {/* Title color: on the campaign page --event-text = the event's Title
+              Color; on the Sport page the var is undefined → falls back to #fff
+              (identical to the previous text-white). */}
+          <h1
+            className="text-xl md:text-4xl font-bold mb-4 drop-shadow-xl"
+            style={{ color: "var(--event-text, #fff)" }}
+          >
+            {titleOverride || dynamicTitle}
           </h1>
 
           <div className="w-20 h-1 bg-[var(--color-primary)] rounded-full mb-4" />
 
+          {/* Optional slot (event countdown) — Sport page passes nothing */}
+          {headerExtra}
         </div>
       </div>
+
+      {/* Optional slot (event description) — Sport page passes nothing */}
+      {belowHero}
 
       {/* ───────────────── Series Slider (سری‌های جدید) ───────────────── */}
       {series.filter((serie) => serie.isNewSerie && !serie.isLimitedEdition)
@@ -214,6 +232,8 @@ export default function SportPageClient({
             <ProductList
               products={filteredProducts}
               rate={rate}
+              cardOverlay={cardOverlay}
+              campaignBadge={campaignBadge}
               onAddToCart={(p) => console.log("Added", p)}
               onToggleWishlist={(p) => console.log("Wishlist", p)}
             />

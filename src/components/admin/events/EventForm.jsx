@@ -1,16 +1,15 @@
 "use client";
 
-import { useState, useEffect, useCallback, useRef, useId } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "react-toastify";
 import Swal from "sweetalert2";
 import {
-  FaSave, FaRocket, FaArrowRight, FaCalendarAlt,
-  FaInfo, FaPalette, FaBoxOpen, FaLayerGroup,
+  FaSave, FaRocket, FaCalendarAlt,
+  FaInfo, FaPalette, FaBoxOpen,
   FaSearch, FaCreditCard, FaImage,
 } from "react-icons/fa";
 import ImageUpload from "@/components/admin/ImageUpload";
-import FontPicker from "./FontPicker";
 import EventEntityPicker from "./EventEntityPicker";
 import DiscountRulePicker from "./DiscountRulePicker";
 
@@ -42,26 +41,9 @@ const RULE_INPUT = {
   discount: { input: "none" },
 };
 
-const SECTION_TYPES = [
-  { type: "hero", label: "هدر اصلی", icon: "🖼" },
-  { type: "countdown", label: "شمارش معکوس", icon: "⏱" },
-  { type: "announcement", label: "اعلان", icon: "📢" },
-  { type: "product-slider", label: "اسلایدر محصولات", icon: "🛍" },
-  { type: "featured-products", label: "محصولات ویژه", icon: "⭐" },
-  { type: "richtext", label: "متن آزاد", icon: "📝" },
-];
-
-const DEFAULT_SECTION_CONFIG = {
-  hero: { title: "", subtitle: "", ctaText: "مشاهده محصولات", height: "large", backgroundType: "image" },
-  countdown: { title: "زمان باقی‌مانده", style: "cards" },
-  announcement: { text: "", icon: "📢" },
-  "product-slider": { title: "محصولات رویداد", limit: 12 },
-  "featured-products": { title: "محصولات ویژه", columns: 4, limit: 8 },
-  richtext: { title: "", content: "", align: "right" },
-};
-
 const EMPTY_FORM = {
   name: "",
+  nameEn: "",
   slug: "",
   shortDescription: "",
   description: "",
@@ -69,14 +51,15 @@ const EMPTY_FORM = {
   startDate: "",
   endDate: "",
   priority: 0,
-  visualIdentity: { logo: "", coverImage: "", heroImage: "", mobileHeroImage: "" },
+  visualIdentity: { headerImage: "", icon: "" },
   theme: {
     primaryColor: "#aa4725",
     secondaryColor: "#ffbf00",
     accentColor: "#ffffff",
     backgroundColor: "#0d0d0d",
     textPrimary: "#ffffff",
-    textSecondary: "rgba(255,255,255,0.65)",
+    // hex (not rgba) so the <input type="color"> body-text picker works
+    textSecondary: "#b3b3b3",
     headingFont: "Vazirmatn",
     bodyFont: "Vazirmatn",
     borderRadius: "8px",
@@ -96,7 +79,6 @@ const EMPTY_FORM = {
     sticker: { enabled: false, image: "", position: "top-left", size: "md" },
     priceHighlight: false,
   },
-  pageSections: [],
   seo: { title: "", description: "", keywords: "" },
   social: { ogTitle: "", ogDescription: "", ogImage: "", twitterTitle: "", twitterDescription: "" },
 };
@@ -107,7 +89,6 @@ const TABS = [
   { id: "theme", label: "تم", icon: FaPalette },
   { id: "products", label: "محصولات", icon: FaBoxOpen },
   { id: "cards", label: "کارت‌ها", icon: FaCreditCard },
-  { id: "sections", label: "صفحه", icon: FaLayerGroup },
   { id: "seo", label: "SEO", icon: FaSearch },
 ];
 
@@ -163,32 +144,6 @@ function Select({ className = "", children, ...props }) {
   );
 }
 
-// Dark-themed native select with an appearance-none reset + custom RTL caret,
-// so the browser's default arrow can't overlap the text or escape the control.
-function DarkSelect({ value, onChange, children }) {
-  return (
-    <div className="relative">
-      <select
-        value={value}
-        onChange={onChange}
-        className="appearance-none w-full bg-white/5 border border-white/10 text-white text-xs pr-3 pl-8 py-2 rounded-lg focus:outline-none focus:border-[var(--color-secondary)] transition-colors"
-      >
-        {children}
-      </select>
-      <svg
-        className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-white/40"
-        fill="none"
-        viewBox="0 0 24 24"
-        stroke="currentColor"
-        strokeWidth={2.5}
-        aria-hidden="true"
-      >
-        <path strokeLinecap="round" d="M19 9l-7 7-7-7" />
-      </svg>
-    </div>
-  );
-}
-
 function ColorRow({ label, value, onChange }) {
   return (
     <div className="flex items-center justify-between bg-white/5 p-3 rounded-xl border border-white/10">
@@ -211,25 +166,32 @@ function BasicTab({ form, setField }) {
   return (
     <div className="space-y-6">
       <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-        <InputRow label="نام رویداد *">
+        <InputRow label="نام رویداد (فارسی) *">
           <Input
             value={form.name}
-            onChange={(e) => {
-              setField("name", e.target.value);
-              if (!form._id) setField("slug", slugify(e.target.value));
-            }}
+            onChange={(e) => setField("name", e.target.value)}
             placeholder="مثلاً جشنواره پاییزه"
             required
           />
         </InputRow>
-        <InputRow label="شناسه URL (Slug) *">
+        <InputRow label="نام انگلیسی *">
           <Input
-            value={form.slug}
-            onChange={(e) => setField("slug", slugify(e.target.value))}
-            placeholder="paeiz-festival"
+            value={form.nameEn}
+            onChange={(e) => {
+              const v = e.target.value;
+              setField("nameEn", v);
+              // شناسه URL به‌صورت خودکار از نام انگلیسی ساخته می‌شود
+              setField("slug", slugify(v));
+            }}
+            placeholder="Autumn Festival"
             dir="ltr"
             required
           />
+          {form.slug && (
+            <p className="text-[10px] text-gray-400 font-bold mt-1" dir="ltr">
+              /events/{form.slug}
+            </p>
+          )}
         </InputRow>
       </div>
 
@@ -296,6 +258,8 @@ function BasicTab({ form, setField }) {
 }
 
 // ─── Tab: Visual Identity ────────────────────────────────────────────────────
+// A single header image (used everywhere the event needs a cover/hero visual)
+// plus an event icon. The old multi-image fields were removed.
 function VisualTab({ form, setField }) {
   const set = (key, val) =>
     setField("visualIdentity", { ...form.visualIdentity, [key]: val });
@@ -304,55 +268,41 @@ function VisualTab({ form, setField }) {
     <div className="space-y-6">
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         <ImageUpload
-          label="تصویر کاور (کارت رویداد)"
-          value={form.visualIdentity.coverImage}
-          onChange={(url) => set("coverImage", url)}
-          folder="events/covers"
+          label="تصویر هدر (در همه‌جای رویداد استفاده می‌شود)"
+          value={form.visualIdentity.headerImage}
+          onChange={(url) => set("headerImage", url)}
+          folder="events/headers"
         />
         <ImageUpload
-          label="تصویر هدر (صفحه رویداد)"
-          value={form.visualIdentity.heroImage}
-          onChange={(url) => set("heroImage", url)}
-          folder="events/heroes"
+          label="آیکون رویداد"
+          value={form.visualIdentity.icon}
+          onChange={(url) => set("icon", url)}
+          folder="events/icons"
         />
       </div>
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <ImageUpload
-          label="لوگو / آیکون رویداد"
-          value={form.visualIdentity.logo}
-          onChange={(url) => set("logo", url)}
-          folder="events/logos"
-        />
-        <ImageUpload
-          label="هدر موبایل"
-          value={form.visualIdentity.mobileHeroImage}
-          onChange={(url) => set("mobileHeroImage", url)}
-          folder="events/heroes"
-        />
-      </div>
+      <p className="text-[11px] text-gray-400 font-bold leading-6">
+        تصویر هدر به‌عنوان کاور کارت رویداد، هدر صفحه و تصویر اشتراک‌گذاری در شبکه‌های اجتماعی به‌کار می‌رود.
+      </p>
     </div>
   );
 }
 
 // ─── Tab: Theme ───────────────────────────────────────────────────────────────
+// Colors only — typography, gradient, ambient effect and custom CSS were removed.
 function ThemeTab({ form, setField }) {
   const t = form.theme;
   const setT = (key, val) => setField("theme", { ...t, [key]: val });
-  const setEffect = (key, val) =>
-    setField("theme", { ...t, effect: { ...t.effect, [key]: val } });
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-      {/* Live preview */}
+      {/* Live preview (colors only) */}
       <div
         className="rounded-2xl overflow-hidden border border-white/10"
         style={{ background: t.backgroundColor }}
       >
         <div
           className="h-1"
-          style={{
-            background: t.gradient || `linear-gradient(to right, ${t.primaryColor}, ${t.secondaryColor})`,
-          }}
+          style={{ background: `linear-gradient(to right, ${t.primaryColor}, ${t.secondaryColor})` }}
         />
         <div className="p-6 space-y-3">
           <p
@@ -361,37 +311,19 @@ function ThemeTab({ form, setField }) {
           >
             PREVIEW
           </p>
-          <h2
-            className="text-2xl font-black"
-            style={{ color: t.textPrimary, fontFamily: `'${t.headingFont}', Vazirmatn` }}
-          >
+          {/* Title (uses Title Color = textPrimary) */}
+          <h2 className="text-2xl font-black" style={{ color: t.textPrimary }}>
             {form.name || "نام رویداد"}
           </h2>
-          <p className="text-sm" style={{ color: t.textSecondary }}>
-            {form.shortDescription || "توضیح کوتاه رویداد در اینجا نشان داده می‌شود."}
+          {/* Description (uses Body Text Color = textSecondary) — mirrors the
+              full description shown on the campaign page. */}
+          <p className="text-sm leading-7 line-clamp-3" style={{ color: t.textSecondary }}>
+            {form.description || "توضیحات کامل رویداد در این بخش از صفحه نمایش داده می‌شود."}
           </p>
-          <div className="flex gap-2">
-            <button
-              className="px-4 py-2 rounded-lg text-xs font-black text-white"
-              style={{ background: t.primaryColor, borderRadius: t.borderRadius }}
-            >
-              دکمه اصلی
-            </button>
-            <button
-              className="px-4 py-2 rounded-lg text-xs font-black"
-              style={{
-                background: t.secondaryColor,
-                color: t.backgroundColor,
-                borderRadius: t.borderRadius,
-              }}
-            >
-              دکمه ثانویه
-            </button>
-          </div>
         </div>
       </div>
 
-      {/* Controls */}
+      {/* Color controls */}
       <div className="bg-[#111] rounded-2xl p-6 space-y-4">
         <p className="text-[10px] font-black uppercase tracking-widest text-gray-500 flex items-center gap-2">
           <FaPalette className="text-[var(--color-primary)]" /> رنگ‌ها
@@ -399,62 +331,9 @@ function ThemeTab({ form, setField }) {
 
         <ColorRow label="رنگ اصلی" value={t.primaryColor} onChange={(v) => setT("primaryColor", v)} />
         <ColorRow label="رنگ ثانویه" value={t.secondaryColor} onChange={(v) => setT("secondaryColor", v)} />
-        <ColorRow label="رنگ تأکید" value={t.accentColor} onChange={(v) => setT("accentColor", v)} />
         <ColorRow label="پس‌زمینه" value={t.backgroundColor} onChange={(v) => setT("backgroundColor", v)} />
-        <ColorRow label="متن اصلی" value={t.textPrimary} onChange={(v) => setT("textPrimary", v)} />
-
-        <hr className="border-white/10" />
-
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-          <FontPicker
-            label="فونت عنوان"
-            value={t.headingFont}
-            onChange={(v) => setT("headingFont", v)}
-          />
-          <FontPicker
-            label="فونت متن"
-            value={t.bodyFont}
-            onChange={(v) => setT("bodyFont", v)}
-          />
-        </div>
-        <div className="space-y-1">
-          <p className="text-[10px] font-black text-gray-500 uppercase">شعاع گوشه</p>
-          <input
-            value={t.borderRadius}
-            onChange={(e) => setT("borderRadius", e.target.value)}
-            className="w-full bg-white/5 border border-white/10 text-white text-xs px-3 py-2 rounded-lg focus:outline-none focus:border-[var(--color-secondary)] transition-colors"
-            placeholder="8px"
-          />
-        </div>
-
-        <hr className="border-white/10" />
-
-        <p className="text-[10px] font-black uppercase tracking-widest text-gray-500">افکت محیطی</p>
-        <div className="grid grid-cols-2 gap-3">
-          <DarkSelect value={t.effect.type} onChange={(e) => setEffect("type", e.target.value)}>
-            <option value="none">بدون افکت</option>
-            <option value="snow">برف</option>
-            <option value="leaves">برگ</option>
-            <option value="sparkles">ستاره</option>
-            <option value="particles">ذرات</option>
-            <option value="confetti">کانفتی</option>
-          </DarkSelect>
-          <DarkSelect value={t.effect.intensity} onChange={(e) => setEffect("intensity", e.target.value)}>
-            <option value="low">کم</option>
-            <option value="medium">متوسط</option>
-            <option value="high">زیاد</option>
-          </DarkSelect>
-        </div>
-
-        <div className="space-y-1">
-          <p className="text-[10px] font-black text-gray-500 uppercase">گرادیان سفارشی (CSS)</p>
-          <input
-            value={t.gradient}
-            onChange={(e) => setT("gradient", e.target.value)}
-            className="w-full bg-white/5 border border-white/10 text-white text-xs px-3 py-2 rounded-lg font-mono"
-            placeholder="linear-gradient(135deg, #aa4725, #ffbf00)"
-          />
-        </div>
+        <ColorRow label="رنگ متن (عنوان‌ها)" value={t.textPrimary} onChange={(v) => setT("textPrimary", v)} />
+        <ColorRow label="رنگ متن (بدنه)" value={t.textSecondary} onChange={(v) => setT("textSecondary", v)} />
       </div>
     </div>
   );
@@ -845,187 +724,6 @@ function CardsTab({ form, setField }) {
   );
 }
 
-// ─── Tab: Page Sections ───────────────────────────────────────────────────────
-function SectionsTab({ form, setField }) {
-  const sections = form.pageSections;
-
-  // Stable, collision-free id generator: useId is unique per form instance,
-  // the ref counter makes each added section unique without impure calls.
-  const uid = useId();
-  const seq = useRef(0);
-
-  const addSection = (type) => {
-    const id = `${type}-${uid}-${seq.current++}`;
-    setField("pageSections", [
-      ...sections,
-      {
-        id,
-        type,
-        order: sections.length,
-        visible: true,
-        config: DEFAULT_SECTION_CONFIG[type] || {},
-      },
-    ]);
-  };
-
-  const remove = (id) => setField("pageSections", sections.filter((s) => s.id !== id));
-
-  const toggle = (id) =>
-    setField(
-      "pageSections",
-      sections.map((s) => (s.id === id ? { ...s, visible: !s.visible } : s))
-    );
-
-  const move = (id, dir) => {
-    const idx = sections.findIndex((s) => s.id === id);
-    if (idx + dir < 0 || idx + dir >= sections.length) return;
-    const next = [...sections];
-    [next[idx], next[idx + dir]] = [next[idx + dir], next[idx]];
-    setField(
-      "pageSections",
-      next.map((s, i) => ({ ...s, order: i }))
-    );
-  };
-
-  const updateConfig = (id, key, val) =>
-    setField(
-      "pageSections",
-      sections.map((s) =>
-        s.id === id ? { ...s, config: { ...s.config, [key]: val } } : s
-      )
-    );
-
-  const [expanded, setExpanded] = useState(null);
-
-  return (
-    <div className="space-y-5">
-      {/* Palette */}
-      <div>
-        <p className="text-xs font-black text-gray-400 uppercase tracking-widest mb-3">
-          افزودن بخش جدید
-        </p>
-        <div className="flex flex-wrap gap-2">
-          {SECTION_TYPES.map((st) => (
-            <button
-              key={st.type}
-              type="button"
-              onClick={() => addSection(st.type)}
-              className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-black bg-gray-50 border border-gray-200 hover:border-[var(--color-primary)] hover:text-[var(--color-primary)] transition-all"
-            >
-              <span>{st.icon}</span> {st.label}
-            </button>
-          ))}
-        </div>
-      </div>
-
-      {/* Sections list */}
-      {sections.length === 0 && (
-        <div className="text-center py-10 border-2 border-dashed border-gray-200 rounded-xl text-gray-400 text-xs font-bold">
-          هنوز بخشی اضافه نشده — رویداد فقط هدر پیش‌فرض را نشان می‌دهد
-        </div>
-      )}
-
-      <div className="space-y-2">
-        {[...sections]
-          .sort((a, b) => a.order - b.order)
-          .map((section) => {
-            const st = SECTION_TYPES.find((s) => s.type === section.type);
-            const isOpen = expanded === section.id;
-
-            return (
-              <div
-                key={section.id}
-                className={`bg-gray-50 rounded-xl overflow-hidden border ${
-                  section.visible ? "border-gray-200" : "border-gray-100 opacity-60"
-                }`}
-              >
-                {/* Header row */}
-                <div className="flex items-center gap-3 px-4 py-3">
-                  <span className="text-base">{st?.icon || "▪"}</span>
-                  <span className="flex-1 text-sm font-black text-gray-700">
-                    {st?.label || section.type}
-                  </span>
-
-                  <button
-                    type="button"
-                    onClick={() => move(section.id, -1)}
-                    className="w-7 h-7 text-gray-400 hover:text-gray-700 text-xs"
-                    aria-label="بالاتر"
-                  >
-                    ↑
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => move(section.id, 1)}
-                    className="w-7 h-7 text-gray-400 hover:text-gray-700 text-xs"
-                    aria-label="پایین‌تر"
-                  >
-                    ↓
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => toggle(section.id)}
-                    className={`w-7 h-7 rounded-lg text-xs font-black transition-all ${
-                      section.visible
-                        ? "bg-green-100 text-green-600"
-                        : "bg-gray-200 text-gray-400"
-                    }`}
-                    aria-label={section.visible ? "مخفی کردن" : "نمایش دادن"}
-                  >
-                    {section.visible ? "👁" : "🚫"}
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setExpanded(isOpen ? null : section.id)}
-                    className="w-7 h-7 rounded-lg bg-blue-50 text-blue-500 text-xs font-black hover:bg-blue-500 hover:text-white transition-all"
-                    aria-label={isOpen ? "بستن تنظیمات" : "باز کردن تنظیمات"}
-                  >
-                    ✎
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => remove(section.id)}
-                    className="w-7 h-7 rounded-lg bg-red-50 text-red-400 text-xs hover:bg-red-500 hover:text-white transition-all"
-                    aria-label="حذف بخش"
-                  >
-                    ✕
-                  </button>
-                </div>
-
-                {/* Config panel */}
-                {isOpen && (
-                  <div className="px-4 pb-4 border-t border-gray-200 pt-3 space-y-3">
-                    {Object.entries(section.config).map(([key, val]) => (
-                      <div key={key} className="flex items-center gap-3">
-                        <label className="text-[10px] font-black text-gray-400 uppercase w-28 shrink-0">
-                          {key}
-                        </label>
-                        {typeof val === "boolean" ? (
-                          <input
-                            type="checkbox"
-                            checked={val}
-                            onChange={(e) => updateConfig(section.id, key, e.target.checked)}
-                          />
-                        ) : (
-                          <input
-                            type="text"
-                            value={val ?? ""}
-                            onChange={(e) => updateConfig(section.id, key, e.target.value)}
-                            className="flex-1 text-xs px-3 py-1.5 bg-white border border-gray-200 rounded-lg font-bold focus:outline-none focus:border-[var(--color-primary)]"
-                          />
-                        )}
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-            );
-          })}
-      </div>
-    </div>
-  );
-}
-
 // ─── Tab: SEO ─────────────────────────────────────────────────────────────────
 function SeoTab({ form, setField }) {
   const setSeo = (key, val) => setField("seo", { ...form.seo, [key]: val });
@@ -1120,7 +818,6 @@ export default function EventForm({ eventId = null }) {
             ribbon: { ...EMPTY_FORM.cardCustomization.ribbon, ...data.cardCustomization?.ribbon },
             sticker: { ...EMPTY_FORM.cardCustomization.sticker, ...data.cardCustomization?.sticker },
           },
-          pageSections: data.pageSections || [],
         });
       } catch { toast.error("خطا در بارگذاری"); }
       finally { setFetching(false); }
@@ -1130,7 +827,7 @@ export default function EventForm({ eventId = null }) {
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!form.name.trim()) { toast.error("نام رویداد الزامی است"); setActiveTab("basic"); return; }
-    if (!form.slug.trim()) { toast.error("شناسه URL الزامی است"); setActiveTab("basic"); return; }
+    if (!form.slug.trim()) { toast.error("نام انگلیسی الزامی است (برای ساخت شناسه URL)"); setActiveTab("basic"); return; }
 
     setLoading(true);
     try {
@@ -1187,7 +884,6 @@ export default function EventForm({ eventId = null }) {
     theme: <ThemeTab form={form} setField={setField} />,
     products: <ProductsTab form={form} setField={setField} />,
     cards: <CardsTab form={form} setField={setField} />,
-    sections: <SectionsTab form={form} setField={setField} />,
     seo: <SeoTab form={form} setField={setField} />,
   };
 

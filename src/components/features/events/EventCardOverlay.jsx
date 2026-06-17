@@ -35,13 +35,15 @@ const ribbonStyles = {
 };
 
 export default function EventCardOverlay({ customization = {} }) {
-  const { badge = {}, ribbon = {}, sticker = {} } = customization;
+  // NOTE: the campaign *badge* is no longer drawn here — it now renders inside
+  // ProductCard's badge stack with the exact discount-badge style (via the
+  // `campaignBadge` prop). This overlay only handles ribbon + sticker flair.
+  const { ribbon = {}, sticker = {} } = customization;
 
   const hasRibbon = ribbon.enabled && ribbon.text;
   const hasSticker = sticker.enabled && sticker.image;
-  const hasBadge = badge.enabled && badge.text;
 
-  if (!hasRibbon && !hasSticker && !hasBadge) return null;
+  if (!hasRibbon && !hasSticker) return null;
 
   return (
     <div className="absolute inset-0 z-30 pointer-events-none" aria-hidden="true">
@@ -68,19 +70,6 @@ export default function EventCardOverlay({ customization = {} }) {
             <Image src={sticker.image} alt="" fill className="object-contain" sizes="80px" />
           </div>
         </div>
-      )}
-
-      {/* Badge — text chip pinned bottom-right of the image area */}
-      {hasBadge && (
-        <span
-          className="absolute bottom-2 right-2 text-[9px] font-black px-2 py-0.5 rounded-full"
-          style={{
-            background: badge.bgColor || "var(--event-primary, #aa4725)",
-            color: badge.textColor || "#ffffff",
-          }}
-        >
-          {badge.text}
-        </span>
       )}
     </div>
   );

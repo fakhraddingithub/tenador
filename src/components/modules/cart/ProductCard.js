@@ -5,7 +5,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { FaEye, FaRegHeart, FaHeart, FaArrowLeft } from "react-icons/fa";
 
-export default function ProductCard({ product, rate, onQuickView, onToggleWishlist, isWishlisted = false, overlay = null }) {
+export default function ProductCard({ product, rate, onQuickView, onToggleWishlist, isWishlisted = false, overlay = null, campaignBadge = null }) {
   const { mainImage, name, slug, basePrice, label } = product;
 
   // ── قیمت‌ها از سرور می‌آیند (attachListingPrices) — دیگر هیچ درخواست price-API
@@ -56,6 +56,19 @@ export default function ProductCard({ product, rate, onQuickView, onToggleWishli
       {/* Badges — لبه‌ی راستِ همه‌ی بج‌ها روی لبه‌ی راستِ کارت قفل می‌شود؛
           dir=rtl + items-start یعنی inline-start = سمت راست (مستقل از طول متن) */}
       <div dir="rtl" className="absolute top-4 right-0 z-20 flex flex-col gap-1 items-start">
+        {/* بج کمپین — دقیقاً همان استایلِ بج‌های تخفیف/محدود (همان clip-path و کلاس‌ها)؛
+            فقط متن و رنگ از داده‌ی کمپین (cardCustomization.badge) خوانده می‌شود. */}
+        {campaignBadge?.text && (
+          <div className="relative py-1 pr-3 pl-5 text-[10px] font-bold shadow-sm"
+            style={{
+              ...badgeShape,
+              background: campaignBadge.bgColor || "var(--color-primary)",
+              color: campaignBadge.textColor || "#ffffff",
+            }}>
+            {campaignBadge.text}
+          </div>
+        )}
+
         {/* درصد تخفیف */}
         {hasDiscount && discountPercent > 0 && (
           <div className="relative py-1 pr-3 pl-5 text-[10px] font-bold text-white shadow-sm bg-red-500"
@@ -77,19 +90,6 @@ export default function ProductCard({ product, rate, onQuickView, onToggleWishli
           <div className={`relative py-1 pr-3 pl-5 text-[10px] font-bold text-white shadow-sm ${labelMap[label].color}`}
             style={badgeShape}>
             {labelMap[label].text}
-          </div>
-        )}
-
-        {/* بج لیمیتد ادیشن (مثل Roland Garros) — وقتی محصول عضو یک لیمیتد ادیشن است */}
-        {product.limitedEdition?.title && (
-          <div
-            className="relative py-1 pr-3 pl-5 text-[10px] font-bold text-white shadow-sm"
-            style={{
-              ...badgeShape,
-              background: product.limitedEdition.colors?.primary || "#0d0d0d",
-            }}
-          >
-            {product.limitedEdition.title}
           </div>
         )}
       </div>

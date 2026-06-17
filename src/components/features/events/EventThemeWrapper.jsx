@@ -41,6 +41,12 @@ export default function EventThemeWrapper({ theme = {}, children }) {
       --color-primary: ${primaryColor};
       --color-secondary: ${secondaryColor};
       --radius: ${borderRadius};
+
+      /* Page background surface — consumed by the reused Sport page root
+         (bg-[var(--page-surface,#fcfcfc)]) so the admin's background color
+         actually paints the campaign page backdrop (white storefront cards
+         float on top of it). */
+      --page-surface: ${backgroundColor};
     }
     ${customCss}
   `;

@@ -41,6 +41,8 @@ const EventSchema = new mongoose.Schema(
   {
     // Basic Info
     name: { type: String, required: true, trim: true },
+    // English name — drives slug generation in the admin form
+    nameEn: { type: String, trim: true },
     slug: {
       type: String,
       required: true,
@@ -64,7 +66,13 @@ const EventSchema = new mongoose.Schema(
     priority: { type: Number, default: 0 },
 
     // Visual Identity
+    // headerImage + icon are the current fields (one header used everywhere a
+    // cover/hero is needed). The legacy fields below are kept ONLY so old event
+    // documents don't lose data / error — they are no longer edited or required.
     visualIdentity: {
+      headerImage: { type: String },
+      icon: { type: String },
+      // legacy (deprecated) — read as fallback for old events
       logo: { type: String },
       coverImage: { type: String },
       heroImage: { type: String },

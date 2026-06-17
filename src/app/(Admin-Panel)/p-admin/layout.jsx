@@ -2,6 +2,7 @@ import '@/app/globals.css';
 import { ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import AdminLayout from "@/components/admin/Layout"
+import SiteNavbar from "@/components/features/navbar/SiteNavbar"
 
 export const metadata = {
   title: 'فروشگاه ورزشی تنادور | پنل مدیریت',
@@ -23,7 +24,13 @@ export default function RootLayout({ children }) {
         style={{ fontFamily: 'var(--font-sans)' }}
       >
         <main className="min-h-screen overflow-x-hidden">
-          <AdminLayout>{children}</AdminLayout>
+          {/* نوبار اصلی سایت — بالای نوبار پنل مدیریت (دو نوبار روی‌هم چیده می‌شوند) */}
+          <SiteNavbar />
+          {/* transform یک containing-block می‌سازد تا سایدبار/هدرِ fixed و sticky پنل
+              ادمین زیر نوبار سایت (۷۵px) قرار بگیرند، بدون تغییر خود کامپوننت ادمین */}
+          <div style={{ transform: "translateZ(0)" }}>
+            <AdminLayout>{children}</AdminLayout>
+          </div>
         </main>
 
         <ToastContainer

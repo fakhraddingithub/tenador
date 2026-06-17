@@ -220,9 +220,17 @@ export default function EventList() {
                     className="w-14 h-14 rounded-xl overflow-hidden shrink-0 flex items-center justify-center"
                     style={{ background: event.theme?.backgroundColor || "#f3f4f6" }}
                   >
-                    {event.visualIdentity?.coverImage || event.visualIdentity?.logo ? (
+                    {event.visualIdentity?.headerImage ||
+                    event.visualIdentity?.icon ||
+                    event.visualIdentity?.coverImage ||
+                    event.visualIdentity?.logo ? (
                       <img
-                        src={event.visualIdentity.coverImage || event.visualIdentity.logo}
+                        src={
+                          event.visualIdentity.headerImage ||
+                          event.visualIdentity.icon ||
+                          event.visualIdentity.coverImage ||
+                          event.visualIdentity.logo
+                        }
                         alt={event.name}
                         className="w-full h-full object-cover"
                       />

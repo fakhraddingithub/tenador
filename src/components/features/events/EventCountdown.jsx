@@ -50,24 +50,40 @@ export default function EventCountdown({ endDate, style = "cards", className = "
     );
   }
 
+  // ⚠️ globals.css has a global `* { direction: rtl }` rule that overrides any
+  // dir="ltr" attribute (an author `*` rule beats the UA-level dir attribute) —
+  // that's why the earlier dir-based fix didn't work. So instead of fighting the
+  // direction, we author the segments in RTL visual order: in an RTL flex row the
+  // FIRST child sits on the RIGHT. Order [seconds, minutes, hours, days] therefore
+  // renders seconds → rightmost and days → leftmost (reads right-to-left:
+  // ثانیه، دقیقه، ساعت، روز).
   const units = [
-    { label: "روز", value: timeLeft.days },
-    { label: "ساعت", value: timeLeft.hours },
-    { label: "دقیقه", value: timeLeft.minutes },
     { label: "ثانیه", value: timeLeft.seconds },
+    { label: "دقیقه", value: timeLeft.minutes },
+    { label: "ساعت", value: timeLeft.hours },
+    { label: "روز", value: timeLeft.days },
   ];
 
   if (style === "minimal") {
+    // Glassy / frosted chips tinted with the campaign's theme colors. Uses the
+    // site font (no font-mono) — inherits Vazirmatn from the page.
     return (
-      <div className={`flex items-center gap-2 font-mono text-lg font-bold ${className}`}>
-        {units.map((u, i) => (
-          <span key={u.label} className="flex items-center gap-1">
-            <span style={{ color: "var(--event-primary, #aa4725)" }}>
-              {pad(u.value)}
-            </span>
-            <span className="text-xs opacity-50">{u.label}</span>
-            {i < units.length - 1 && <span className="opacity-30 mx-0.5">:</span>}
-          </span>
+      <div className={`inline-flex items-center gap-2 ${className}`}>
+        {units.map((u) => (
+          <div
+            key={u.label}
+            className="flex flex-col items-center justify-center min-w-[3rem] px-2.5 py-1.5 rounded-xl border"
+            style={{
+              background: "color-mix(in srgb, var(--event-primary, #aa4725) 16%, transparent)",
+              borderColor: "color-mix(in srgb, var(--event-primary, #aa4725) 35%, transparent)",
+              backdropFilter: "blur(8px)",
+              WebkitBackdropFilter: "blur(8px)",
+              color: "var(--event-text, #fff)",
+            }}
+          >
+            <span className="text-lg font-bold leading-none tabular-nums">{pad(u.value)}</span>
+            <span className="text-[10px] mt-0.5 opacity-70">{u.label}</span>
+          </div>
         ))}
       </div>
     );
