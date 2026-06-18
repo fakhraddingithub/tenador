@@ -16,6 +16,7 @@ const roleLabels = {
   coach: 'مربی',
   seller: 'فروشنده',
   national_player: 'ورزشکار ملی',
+  store: 'فروشگاه',
   user: 'کاربر عادی',
 }
 
@@ -293,7 +294,7 @@ export default function AdminUsersManagement() {
                   <td className="p-4 relative" onClick={(e) => e.stopPropagation()}>
                     <button
                       onClick={() => setActiveMenu(activeMenu === user._id ? null : user._id)}
-                      className="w-8 h-8 flex items-center justify-center rounded-[var(--radius)] hover:bg-gray-100 text-gray-400 hover:text-gray-600 transition-all opacity-0 group-hover:opacity-100"
+                      className="w-8 h-8 flex items-center justify-center rounded-[var(--radius)] hover:bg-gray-100 text-gray-400 hover:text-gray-600 transition-all opacity-100 lg:opacity-0 lg:group-hover:opacity-100"
                     >
                       <MoreVertical size={15} />
                     </button>

@@ -298,7 +298,7 @@ export default function AdminOrdersClient() {
       <div className="max-w-7xl mx-auto p-5 space-y-5">
 
         {/* ─── Page Header ─── */}
-        <div className="flex items-center justify-between">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <h1 className="text-xl font-black text-gray-900 flex items-center gap-2.5">
               <div className="w-8 h-8 bg-[#aa4725] rounded-xl flex items-center justify-center">
@@ -395,8 +395,8 @@ export default function AdminOrdersClient() {
 
         {/* ─── Filters Bar ─── */}
         <div className="bg-white rounded-2xl border border-gray-100 p-4 space-y-3">
-          <form onSubmit={handleSearch} className="flex gap-2">
-            <div className="relative flex-1">
+          <form onSubmit={handleSearch} className="flex flex-wrap gap-2">
+            <div className="relative flex-1 min-w-[160px]">
               <Search size={15} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400" />
               <input
                 type="text" value={search} onChange={(e) => setSearch(e.target.value)}

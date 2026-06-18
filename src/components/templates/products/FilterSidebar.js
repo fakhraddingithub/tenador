@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { FaChevronDown, FaFilter, FaHistory } from "react-icons/fa";
+import MobileFilterDrawer from "@/components/features/filters/MobileFilterDrawer";
 
 export default function FilterSidebar({
   initialProducts,
@@ -35,7 +36,17 @@ export default function FilterSidebar({
       maxPrice: 50000000,
     });
 
+  // تعداد فیلترهای فعال — فقط برای نمایش بج روی دکمه‌ی موبایل (منطق فیلتر تغییر نمی‌کند)
+  const activeCount =
+    (filters.brands?.length || 0) +
+    (filters.categories?.length || 0) +
+    (filters.sports?.length || 0) +
+    (filters.series?.length || 0) +
+    (filters.minPrice > 0 ? 1 : 0) +
+    (filters.maxPrice < 50000000 ? 1 : 0);
+
   return (
+    <MobileFilterDrawer activeCount={activeCount} onReset={resetFilters}>
     <div className="flex flex-col gap-5 sticky top-24">
       {/* هدر فیلتر */}
       <div className="flex items-center justify-between bg-white p-4 rounded-[6px] border border-gray-100 shadow-sm">
@@ -121,6 +132,7 @@ export default function FilterSidebar({
         </div>
       </div>
     </div>
+    </MobileFilterDrawer>
   );
 }
 

@@ -123,7 +123,7 @@ export async function PATCH(req, { params }) {
     if (body.isBanned !== undefined) user.isBanned = Boolean(body.isBanned);
 
     if (body.role !== undefined) {
-      const validRoles = ["user", "coach", "admin", "seller", "national_player"];
+      const validRoles = ["user", "coach", "admin", "seller", "national_player", "store"];
       if (!validRoles.includes(body.role)) {
         return NextResponse.json({ message: "نقش نامعتبر است" }, { status: 400 });
       }

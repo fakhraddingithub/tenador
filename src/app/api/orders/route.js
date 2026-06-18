@@ -14,6 +14,7 @@ import { verifyToken } from "base/utils/auth";
 import Order from "base/models/Order";
 import UsedProduct from "base/models/UsedProduct";
 import Product from "base/models/Product";
+import User from "base/models/User";
 
 async function getUserFromToken() {
   const cookieStore = await cookies();
@@ -49,6 +50,11 @@ export async function GET() {
         { status: 401 },
       );
     }
+
+    // نقش کاربر — برای نمایش بخش یورو فقط به کاربران «فروشگاه» (store).
+    // مستقیم از دیتابیس خوانده می‌شود تا معتبر باشد (نه از روی توکن قدیمی).
+    const dbUser = await User.findById(user.userId).select("role").lean();
+    const role = dbUser?.role || "user";
 
     const orders = await Order.find({ user: user.userId })
       .populate({
@@ -87,7 +93,7 @@ export async function GET() {
       return { ...order, items: normalizedItems };
     });
 
-    return NextResponse.json({ orders: normalizedOrders }, { status: 200 });
+    return NextResponse.json({ orders: normalizedOrders, role }, { status: 200 });
   } catch (error) {
     console.error("[GET Orders Error]:", error);
     return NextResponse.json(

@@ -22,6 +22,14 @@ function formatPrice(price) {
   return new Intl.NumberFormat('fa-IR').format(Number(price ?? 0))
 }
 
+// قالب‌بندی مبلغ یورو — جدا از تومان (ارقام لاتین، حداکثر دو رقم اعشار)
+function formatEUR(v) {
+  return new Intl.NumberFormat('en-US', {
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 2,
+  }).format(Number(v ?? 0))
+}
+
 function splitName(text) {
   if (!text) return { farsi: '', english: '' }
   const match = text.match(/[a-zA-Z(].*/)
@@ -53,11 +61,18 @@ const PAYMENT_METHOD = {
 
 /* ─── OrderDetailModal ─────────────────────────────────────────────── */
 
-function OrderDetailModal({ order, onClose }) {
+function OrderDetailModal({ order, onClose, isStore = false }) {
   const addressSnap = order.address?.snapshot ?? {}
   const payStatus   = PAYMENT_STATUS[order.paymentStatus] ?? PAYMENT_STATUS.UNPAID
   const fulStatus   = FULFILLMENT_STATUS[order.fulfillmentStatus] ?? FULFILLMENT_STATUS.PENDING
   const PayIcon     = payStatus.icon
+
+  // ─── وضعیت یورو (فقط برای کاربران «فروشگاه») — مستقل از تومان ───
+  // همان داده‌ای که در پنل ادمین ثبت می‌شود: priceEUR و paymentsEUR.
+  // مانده دقیقاً مثل تومان سمت کلاینت محاسبه می‌شود.
+  const hasEurPrice  = order.priceEUR !== null && order.priceEUR !== undefined
+  const totalPaidEUR = (order.paymentsEUR ?? []).reduce((s, p) => s + (p.amount || 0), 0)
+  const remainingEUR = hasEurPrice ? order.priceEUR - totalPaidEUR : null
 
   return (
     <AnimatePresence>
@@ -187,6 +202,39 @@ function OrderDetailModal({ order, onClose }) {
                 </div>
               </div>
             </div>
+
+            {/* وضعیت یورو — فقط برای کاربران «فروشگاه» (مستقل از تومان) */}
+            {isStore && (
+              <div className="border border-[#aa4725]/20 rounded-[6px] overflow-hidden">
+                <div className="bg-[#aa4725]/5 px-4 py-2.5 border-b border-[#aa4725]/10 flex items-center gap-1.5">
+                  <span className="text-xs font-bold text-[#aa4725] tracking-wider">وضعیت یورو (EUR)</span>
+                </div>
+                <div className="divide-y divide-gray-50 text-sm">
+                  <div className="flex justify-between px-4 py-2.5">
+                    <span className="text-gray-500">قیمت سفارش (یورو)</span>
+                    <span className="font-bold text-[#1a1a1a]" dir="ltr">
+                      {hasEurPrice ? `€ ${formatEUR(order.priceEUR)}` : '—'}
+                    </span>
+                  </div>
+                  <div className="flex justify-between px-4 py-2.5">
+                    <span className="text-gray-500">پرداخت‌شده تاکنون</span>
+                    <span className="font-bold text-emerald-600" dir="ltr">€ {formatEUR(totalPaidEUR)}</span>
+                  </div>
+                  {hasEurPrice ? (
+                    <div className="flex justify-between px-4 py-3 bg-gray-50">
+                      <span className="font-bold text-[#1a1a1a]">{remainingEUR > 0 ? 'مانده یورو' : 'تسویه کامل یورو'}</span>
+                      <span className={`text-base font-bold tracking-tight ${remainingEUR > 0 ? 'text-[#aa4725]' : 'text-emerald-600'}`} dir="ltr">
+                        € {formatEUR(remainingEUR)}
+                      </span>
+                    </div>
+                  ) : (
+                    <div className="px-4 py-3 bg-gray-50 text-center text-xs text-gray-400 font-medium">
+                      قیمت یورویی برای این سفارش هنوز ثبت نشده است
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
 
             {/* آدرس */}
             {addressSnap.fullName && (
@@ -438,6 +486,7 @@ const FILTER_OPTIONS = [
 
 const OrdersModule = () => {
   const [orders,       setOrders]       = useState([])
+  const [role,         setRole]         = useState('user')
   const [loading,      setLoading]      = useState(true)
   const [activeFilter, setActiveFilter] = useState('ALL')
   const [detailOrder,  setDetailOrder]  = useState(null)
@@ -450,6 +499,7 @@ const OrdersModule = () => {
       if (res.ok) {
         const data = await res.json()
         setOrders(data.orders ?? [])
+        setRole(data.role ?? 'user')
       } else {
         toast.error('خطا در بارگذاری سفارش‌ها')
       }
@@ -608,6 +658,7 @@ const OrdersModule = () => {
         <OrderDetailModal
           order={detailOrder}
           onClose={() => setDetailOrder(null)}
+          isStore={role === 'store'}
         />
       )}
 

@@ -44,6 +44,28 @@ const OrderFlowSelectionSchema = new mongoose.Schema(
   { _id: false }
 );
 
+// ─────────────────────────────────────────────────────────────────────────
+// سیستم یورو (EUR) — کاملاً مستقل از سیستم تومان
+// این بخش هیچ ربطی به فیلدهای تومانی (totalPrice / payments / ...) ندارد و
+// به‌صورت دستی توسط ادمین مدیریت می‌شود. هیچ تبدیل خودکاری بین یورو و تومان
+// انجام نمی‌شود.
+// ─────────────────────────────────────────────────────────────────────────
+const EurPaymentSchema = new mongoose.Schema(
+  {
+    // مبلغ پرداخت‌شده به یورو (وارد‌شده دستی توسط ادمین)
+    amount: { type: Number, required: true, min: 0 },
+    // یادداشت اختیاری (مثلاً روش پرداخت یا شماره تراکنش)
+    note: { type: String, default: "" },
+    confirmedBy: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+      default: null,
+    },
+    confirmedAt: { type: Date, default: Date.now },
+  },
+  { _id: true, timestamps: true }
+);
+
 const OrderSchema = new mongoose.Schema(
   {
     trackingCode: {
@@ -171,6 +193,22 @@ const OrderSchema = new mongoose.Schema(
         ref: "Payment",
       },
     ],
+
+    // ─── سیستم یورو (EUR) — مستقل از تومان ───────────────────────────────
+    // قیمت سفارش به یورو — به‌صورت دستی توسط ادمین وارد می‌شود (بدون تبدیل خودکار).
+    // برای سفارش‌های قدیمی که یورو ندارند مقدار پیش‌فرض null است تا چیزی نشکند.
+    priceEUR: {
+      type: Number,
+      default: null,
+      min: 0,
+    },
+
+    // تاریخچه‌ی پرداخت‌های یورویی — جدا از آرایه‌ی payments تومانی.
+    // مانده‌ی یورو از priceEUR منهای مجموع این آرایه محاسبه می‌شود.
+    paymentsEUR: {
+      type: [EurPaymentSchema],
+      default: [],
+    },
 
     orderDate: {
       type: Date,

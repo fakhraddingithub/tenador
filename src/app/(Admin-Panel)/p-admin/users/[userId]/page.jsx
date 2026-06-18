@@ -17,6 +17,7 @@ const roleOptions = [
   { value: 'coach', label: 'مربی' },
   { value: 'seller', label: 'فروشنده' },
   { value: 'national_player', label: 'ورزشکار ملی' },
+  { value: 'store', label: 'فروشگاه' },
   { value: 'admin', label: 'مدیر کل' },
 ]
 

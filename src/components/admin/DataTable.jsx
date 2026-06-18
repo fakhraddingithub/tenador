@@ -69,7 +69,7 @@ export default function DataTable({
                 ))}
                 {(onEdit || onDelete) && (
                   <td className="px-5 py-3.5">
-                    <div className="flex items-center gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <div className="flex items-center gap-1.5 opacity-100 lg:opacity-0 lg:group-hover:opacity-100 transition-opacity">
                       {onEdit && (
                         <button
                           onClick={() => onEdit(row)}

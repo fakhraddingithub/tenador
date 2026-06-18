@@ -26,11 +26,11 @@ export default function RootLayout({ children }) {
         <main className="min-h-screen overflow-x-hidden">
           {/* نوبار اصلی سایت — بالای نوبار پنل مدیریت (دو نوبار روی‌هم چیده می‌شوند) */}
           <SiteNavbar />
-          {/* transform یک containing-block می‌سازد تا سایدبار/هدرِ fixed و sticky پنل
-              ادمین زیر نوبار سایت (۷۵px) قرار بگیرند، بدون تغییر خود کامپوننت ادمین */}
-          <div style={{ transform: "translateZ(0)" }}>
-            <AdminLayout>{children}</AdminLayout>
-          </div>
+          {/* بدون transform: عناصرِ fixed پنل ادمین (سایدبار و دستگیره) باید نسبت به
+              viewport ثابت بمانند. یک ancestorِ دارای transform، آن‌ها را به‌جای viewport
+              نسبت به خودش ثابت می‌کند و با اسکرول صفحه جابه‌جا می‌شوند. به‌جای آن، خودِ
+              سایدبار/هدر/دستگیره با top-[75px] زیر نوبار سایت (۷۵px) قرار می‌گیرند. */}
+          <AdminLayout>{children}</AdminLayout>
         </main>
 
         <ToastContainer

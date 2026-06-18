@@ -24,7 +24,7 @@ import { HiOutlineLogout } from "react-icons/hi";
 import { AiFillProduct } from "react-icons/ai";
 import { RiMenuFoldLine, RiMenuUnfoldLine } from "react-icons/ri";
 import { FiGitBranch } from "react-icons/fi";
-import { ShoppingCart } from "lucide-react";
+import { ShoppingCart, ChevronLeft } from "lucide-react";
 import NotificationBell from "./NotificationBell";
 
 
@@ -48,6 +48,9 @@ const menuItems = [
 export default function AdminLayout({ children }) {
   const pathname = usePathname();
   const [sidebarOpen, setSidebarOpen] = useState(true);
+  // باز/بسته‌ی سایدبار در موبایل — مستقل از حالت جمع‌شده‌ی دسکتاپ.
+  // پیش‌فرض بسته (کاملاً خارج از صفحه) تا روی موبایل اول محتوا دیده شود.
+  const [mobileOpen, setMobileOpen] = useState(false);
   const [prices, setPrices] = useState({ usd: "---", eur: "---" });
   const [time, setTime] = useState("");
   const [mounted, setMounted] = useState(false);
@@ -76,6 +79,11 @@ export default function AdminLayout({ children }) {
     const id = setInterval(refreshCounts, 45000);
     return () => clearInterval(id);
   }, [refreshCounts]);
+
+  // با تغییر مسیر، سایدبارِ موبایل بسته شود (دسکتاپ تحت تأثیر نیست چون آنجا static است)
+  useEffect(() => {
+    setMobileOpen(false);
+  }, [pathname]);
 
   // بَج هر آیتم منو بر اساس بخش‌های مرتبط
   const badgeForHref = (href) => {
@@ -145,6 +153,12 @@ export default function AdminLayout({ children }) {
         .admin-scrollbar::-webkit-scrollbar { width: 3px; }
         .admin-scrollbar::-webkit-scrollbar-track { background: transparent; }
         .admin-scrollbar::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 10px; }
+        /* موبایل: عرض ثابت سایدبار و حذف حاشیه‌ی محتوا، با !important چون framer
+           مقدار width/margin-right را به‌صورت inline می‌نویسد. روی دسکتاپ بی‌اثر است. */
+        @media (max-width: 1023px) {
+          .admin-aside-mobile { width: 280px !important; }
+          .admin-main-mobile { margin-right: 0 !important; }
+        }
         .nav-item-active::before {
           content: '';
           position: absolute;
@@ -160,7 +174,9 @@ export default function AdminLayout({ children }) {
         initial={false}
         animate={{ width: sidebarWidth }}
         transition={{ duration: 0.35, ease: [0.4, 0, 0.2, 1] }}
-        className="fixed right-0 top-0 h-screen z-50 flex flex-col overflow-hidden"
+        className={`admin-aside-mobile fixed right-0 top-[75px] h-[calc(100vh-75px)] z-50 flex flex-col overflow-hidden
+          transition-transform duration-300 ease-in-out
+          ${mobileOpen ? "max-lg:translate-x-0" : "max-lg:translate-x-full"}`}
         style={{ background: "var(--admin-sidebar-bg)" }}
       >
         {/* Subtle texture overlay */}
@@ -215,7 +231,7 @@ export default function AdminLayout({ children }) {
           {sidebarOpen && (
             <button
               onClick={() => setSidebarOpen(false)}
-              className="w-8 h-8 flex items-center justify-center rounded-lg text-white/40 hover:text-white hover:bg-white/10 transition-all"
+              className="w-8 h-8 flex items-center justify-center rounded-lg text-white/40 hover:text-white hover:bg-white/10 transition-all max-lg:hidden"
             >
               <RiMenuFoldLine size={18} />
             </button>
@@ -224,7 +240,7 @@ export default function AdminLayout({ children }) {
 
         {/* Toggle when collapsed */}
         {!sidebarOpen && (
-          <div className="relative z-10 flex justify-center py-3 border-b border-white/[0.06]">
+          <div className="relative z-10 flex justify-center py-3 border-b border-white/[0.06] max-lg:hidden">
             <button
               onClick={() => setSidebarOpen(true)}
               className="w-8 h-8 flex items-center justify-center rounded-lg text-white/40 hover:text-white hover:bg-white/10 transition-all"
@@ -248,6 +264,7 @@ export default function AdminLayout({ children }) {
               <Link
                 key={item.href}
                 href={item.href}
+                onClick={() => setMobileOpen(false)}
                 title={!sidebarOpen ? item.title : ""}
                 className={`relative flex items-center gap-3 px-3 py-2.5 rounded-[var(--radius)] transition-all duration-200 group
                   ${isActive
@@ -326,11 +343,11 @@ export default function AdminLayout({ children }) {
       <motion.div
         animate={{ marginRight: sidebarWidth }}
         transition={{ duration: 0.35, ease: [0.4, 0, 0.2, 1] }}
-        className="flex-1 flex flex-col min-h-screen"
+        className="admin-main-mobile flex-1 flex flex-col min-h-screen min-w-0"
       >
         {/* Header */}
         <header
-          className="sticky top-0 z-40 flex items-center justify-between px-6 py-3 border-b"
+          className="sticky top-[75px] z-40 flex items-center justify-between gap-2 px-4 sm:px-6 py-3 border-b"
           style={{
             background: "rgba(245,243,240,0.85)",
             backdropFilter: "blur(16px)",
@@ -338,13 +355,13 @@ export default function AdminLayout({ children }) {
           }}
         >
           {/* Left: title breadcrumb */}
-          <div className="flex items-center gap-2">
-            <span className="text-xs font-bold" style={{ color: "var(--admin-text-muted)" }}>
+          <div className="flex items-center gap-2 min-w-0">
+            <span className="hidden sm:inline text-xs font-bold" style={{ color: "var(--admin-text-muted)" }}>
               پنل مدیریت
             </span>
-            <span style={{ color: "var(--admin-border)" }}>/</span>
+            <span className="hidden sm:inline" style={{ color: "var(--admin-border)" }}>/</span>
             <span
-              className="text-xs font-bold"
+              className="text-xs font-bold truncate"
               style={{ color: "var(--color-primary)" }}
             >
               {menuItems.find(m =>
@@ -356,7 +373,7 @@ export default function AdminLayout({ children }) {
           </div>
 
           {/* Right: bell + clock + prices + user */}
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2 sm:gap-3 flex-shrink-0">
             {/* Notifications */}
             <NotificationBell total={counts.total} onCountsChange={setCounts} />
 
@@ -427,7 +444,7 @@ export default function AdminLayout({ children }) {
         </header>
 
         {/* Page Content */}
-        <main className="flex-1 p-6">
+        <main className="flex-1 p-4 sm:p-6 min-w-0">
           <motion.div
             key={pathname}
             initial={{ opacity: 0, y: 8 }}
@@ -438,6 +455,40 @@ export default function AdminLayout({ children }) {
           </motion.div>
         </main>
       </motion.div>
+
+      {/* ─── Mobile backdrop (overlay پشت سایدبار) ─── */}
+      <AnimatePresence>
+        {mobileOpen && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.2 }}
+            onClick={() => setMobileOpen(false)}
+            className="fixed inset-0 z-40 bg-slate-900/40 backdrop-blur-[2px] lg:hidden"
+          />
+        )}
+      </AnimatePresence>
+
+      {/* ─── Mobile drawer handle (دستگیره‌ی کشویی — تنها راهِ باز/بستنِ سایدبار در موبایل) ───
+          هم‌سبک با دستگیره‌ی داشبورد کاربر؛ روی دسکتاپ با lg:hidden مخفی می‌شود */}
+      <motion.button
+        type="button"
+        aria-label={mobileOpen ? "بستن منو" : "باز کردن منو"}
+        aria-expanded={mobileOpen}
+        onClick={() => setMobileOpen((v) => !v)}
+        initial={false}
+        animate={{ right: mobileOpen ? "280px" : 0 }}
+        transition={{ duration: 0.3, ease: "easeInOut" }}
+        className="fixed top-[150px] z-[60] lg:hidden flex items-center justify-center h-16 w-7 rounded-l-[6px] rounded-r-none text-white shadow-lg shadow-black/25 ring-1 ring-white/10 active:scale-95 transition-transform"
+        style={{ background: "var(--admin-sidebar-bg)" }}
+      >
+        <ChevronLeft
+          size={18}
+          className="transition-transform duration-300"
+          style={{ transform: mobileOpen ? "rotate(180deg)" : "none" }}
+        />
+      </motion.button>
     </div>
   );
 }

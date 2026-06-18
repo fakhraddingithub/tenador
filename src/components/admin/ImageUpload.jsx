@@ -131,7 +131,7 @@ export default function ImageUpload({
                   <button
                     type="button"
                     onClick={() => removeImage(index)}
-                    className="absolute top-2 left-2 bg-red-500 text-white rounded-full w-8 h-8 flex items-center justify-center text-lg opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-600"
+                    className="absolute top-2 left-2 bg-red-500 text-white rounded-full w-8 h-8 flex items-center justify-center text-lg opacity-100 lg:opacity-0 lg:group-hover:opacity-100 transition-opacity hover:bg-red-600"
                   >
                     ×
                   </button>

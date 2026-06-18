@@ -204,7 +204,7 @@ export default function SliderManagement() {
                         </div>
 
                         {/* actions */}
-                        <div className="flex items-center gap-1 flex-shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <div className="flex items-center gap-1 flex-shrink-0 opacity-100 lg:opacity-0 lg:group-hover:opacity-100 transition-opacity">
                           <Link
                             href={`/p-admin/admin-home/slider/edit/${slide._id}`}
                             className="w-8 h-8 flex items-center justify-center rounded-lg bg-gray-100 text-gray-500 hover:bg-[var(--color-primary)] hover:text-white transition-all"

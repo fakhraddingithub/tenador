@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from 'react';
 import { FiChevronDown, FiChevronUp, FiShield } from 'react-icons/fi';
+import MobileFilterDrawer from '@/components/features/filters/MobileFilterDrawer';
 
 function Section({ title, children, defaultOpen = true }) {
   const [open, setOpen] = useState(defaultOpen);
@@ -49,6 +50,7 @@ export default function UsedFilterSidebar({ products, filters, setFilters }) {
   const reset = () => setFilters({ brands: [], categories: [], maxPrice, scoreRange: null, onlyInStock: false });
 
   return (
+    <MobileFilterDrawer activeCount={activeCount} onReset={reset}>
     <div className="bg-white rounded-[var(--radius)] border border-gray-100 shadow-sm p-5">
       {/* عنوان */}
       <div className="flex items-center justify-between mb-2">
@@ -147,5 +149,6 @@ export default function UsedFilterSidebar({ products, filters, setFilters }) {
         </div>
       </Section>
     </div>
+    </MobileFilterDrawer>
   );
 }

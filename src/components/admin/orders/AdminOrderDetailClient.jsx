@@ -13,7 +13,7 @@ import {
   ExternalLink, MapPin, Phone, Mail, Hash, Calendar, Tag,
   ArrowLeft, Scan, QrCode, Barcode, CheckSquare, Square,
   ShoppingBag, Warehouse, Plus, Trash2, AlertTriangle,
-  ChevronDown, ChevronUp, GraduationCap,
+  ChevronDown, ChevronUp, GraduationCap, Euro, Wallet,
 } from "lucide-react";
 import OrderFlowSelectionsView from "@/components/order/OrderFlowSelectionsView";
 
@@ -72,6 +72,14 @@ const swalTheme = {
 
 function formatPrice(v) {
   return new Intl.NumberFormat("fa-IR").format(Number(v ?? 0));
+}
+
+// قالب‌بندی مبلغ یورو — جدا از تومان، با ارقام لاتین و حداکثر دو رقم اعشار
+function formatEUR(v) {
+  return new Intl.NumberFormat("en-US", {
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 2,
+  }).format(Number(v ?? 0));
 }
 
 function toFarsiDate(dateStr) {
@@ -137,16 +145,26 @@ function ReceiptLightbox({ url, onClose }) {
 /* ─── Approve Payment Modal ─────────────────────────────────────────── */
 function ApproveModal({ payment, orderTotal, onConfirm, onClose }) {
   const [amount, setAmount] = useState(String(payment.amount || ""));
+  // مبلغ یورو — اختیاری و کاملاً مستقل از تومان
+  const [eurAmount, setEurAmount] = useState("");
   const [loading, setLoading] = useState(false);
   const inputRef = useRef(null);
 
   useEffect(() => { setTimeout(() => inputRef.current?.focus(), 100); }, []);
 
   const handleSubmit = async () => {
+    // فقط مبلغ تومان الزامی است
     const parsed = Number(amount.replace(/,/g, ""));
-    if (!parsed || parsed <= 0) { toast.error("مبلغ معتبر وارد کنید"); return; }
+    if (!parsed || parsed <= 0) { toast.error("مبلغ تومان معتبر وارد کنید"); return; }
+
+    // مبلغ یورو اختیاری است؛ اگر خالی بود نادیده گرفته می‌شود (بدون اعتبارسنجی مسدودکننده).
+    const eurRaw = String(eurAmount).replace(/,/g, "").trim();
+    const eurParsed = eurRaw === "" ? null : Number(eurRaw);
+    const eurToSend =
+      eurParsed !== null && !isNaN(eurParsed) && eurParsed > 0 ? eurParsed : null;
+
     setLoading(true);
-    await onConfirm(parsed);
+    await onConfirm(parsed, eurToSend);
     setLoading(false);
   };
 
@@ -183,7 +201,7 @@ function ApproveModal({ payment, orderTotal, onConfirm, onClose }) {
           </div>
           <div>
             <label className="block text-sm font-bold text-gray-700 mb-2">
-              مبلغ تأیید شده <span className="text-red-500">*</span>
+              مبلغ تأیید شده (تومان) <span className="text-red-500">*</span>
             </label>
             <div className="relative">
               <input
@@ -196,6 +214,31 @@ function ApproveModal({ payment, orderTotal, onConfirm, onClose }) {
               />
               <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs text-gray-400">تومان</span>
             </div>
+          </div>
+
+          {/* ─── مبلغ یورو (اختیاری) — مستقل از تومان ─── */}
+          <div>
+            <label className="flex items-center gap-1.5 text-sm font-bold text-gray-700 mb-2">
+              <Euro size={13} className="text-[#aa4725]" />
+              مبلغ یورو
+              <span className="text-[10px] font-medium text-gray-400">(اختیاری)</span>
+            </label>
+            <div className="relative">
+              <input
+                type="number" step="any" min="0" value={eurAmount}
+                onChange={(e) => setEurAmount(e.target.value)}
+                onKeyDown={(e) => e.key === "Enter" && handleSubmit()}
+                placeholder="در صورت پرداخت یورویی، مبلغ را وارد کنید"
+                dir="ltr"
+                className="w-full border border-gray-300 rounded-xl px-4 py-3 text-sm font-bold text-gray-800 text-left
+                  focus:outline-none focus:ring-2 focus:ring-[#aa4725]/30 focus:border-[#aa4725] transition"
+              />
+              <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-gray-400">€</span>
+            </div>
+            <p className="text-[10px] text-gray-400 mt-1.5 leading-relaxed">
+              این مبلغ مستقل از تومان است و فقط مانده و تاریخچه‌ی یورو را بروزرسانی می‌کند.
+              خالی بگذارید تا فقط پرداخت تومانی ثبت شود.
+            </p>
           </div>
           <div className="flex gap-3">
             <button onClick={handleSubmit} disabled={loading}
@@ -1207,6 +1250,210 @@ function TrackingPanel({ orderId, orderFulfillmentStatus, onStatusChange }) {
   );
 }
 
+/* ─── EUR Panel (سیستم یورو — کاملاً مستقل از تومان) ─────────────────── */
+// این پنل فقط فیلدهای یورویی سفارش را می‌خواند/می‌نویسد و هیچ تأثیری روی
+// مبلغ، پرداخت‌ها یا مانده‌ی تومانی ندارد. مانده‌ی یورو دقیقاً مثل مانده‌ی
+// تومان، سمت کلاینت از روی priceEUR و paymentsEUR محاسبه می‌شود.
+function EurPanel({ orderId, priceEUR, paymentsEUR = [], onChange }) {
+  const [editPrice, setEditPrice] = useState(false);
+  const [priceInput, setPriceInput] = useState(
+    priceEUR === null || priceEUR === undefined ? "" : String(priceEUR)
+  );
+  const [savingPrice, setSavingPrice] = useState(false);
+
+  // باز/بستن حالت ویرایش قیمت — هنگام باز شدن، ورودی را از مقدار فعلی پر می‌کند.
+  // (نمایش حالت غیرویرایش مستقیماً از priceEUR خوانده می‌شود، پس نیازی به sync افکتی نیست)
+  const toggleEditPrice = () => {
+    setEditPrice((open) => {
+      if (!open) {
+        setPriceInput(
+          priceEUR === null || priceEUR === undefined ? "" : String(priceEUR)
+        );
+      }
+      return !open;
+    });
+  };
+
+  const hasPrice = priceEUR !== null && priceEUR !== undefined;
+  const totalPaidEUR = paymentsEUR.reduce((s, p) => s + (p.amount || 0), 0);
+  const remainingEUR = hasPrice ? priceEUR - totalPaidEUR : null;
+
+  const handleSavePrice = async () => {
+    setSavingPrice(true);
+    try {
+      const res = await fetch(`/api/admin/orders/${orderId}/eur`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          priceEUR: priceInput.trim() === "" ? null : Number(priceInput),
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.message || "خطا");
+      toast.success(data.message || "قیمت یورو ذخیره شد");
+      setEditPrice(false);
+      onChange?.();
+    } catch (err) {
+      toast.error(err.message || "خطا در ذخیره قیمت یورو");
+    } finally {
+      setSavingPrice(false);
+    }
+  };
+
+  const handleDeletePayment = async (paymentId) => {
+    const result = await Swal.fire({
+      ...swalTheme,
+      title: "حذف پرداخت یورویی",
+      text: "آیا از حذف این پرداخت یورو مطمئن هستید؟",
+      showCancelButton: true,
+      confirmButtonText: "بله، حذف کن",
+      cancelButtonText: "انصراف",
+      confirmButtonColor: "#dc2626",
+    });
+    if (!result.isConfirmed) return;
+    try {
+      const res = await fetch(`/api/admin/orders/${orderId}/eur`, {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ paymentId }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.message || "خطا");
+      toast.success(data.message || "پرداخت یورویی حذف شد");
+      onChange?.();
+    } catch (err) {
+      toast.error(err.message || "خطا در حذف پرداخت یورو");
+    }
+  };
+
+  return (
+    <div className="bg-white rounded-2xl border border-gray-100 p-5 space-y-4">
+      <div className="flex items-center justify-between">
+        <h3 className="text-sm font-bold text-gray-700 flex items-center gap-2">
+          <span className="w-7 h-7 rounded-xl bg-[#aa4725] flex items-center justify-center">
+            <Euro size={14} className="text-white" />
+          </span>
+          سیستم یورو (EUR)
+        </h3>
+        <span className="text-[10px] font-bold text-[#aa4725] bg-[#aa4725]/10 border border-[#aa4725]/20 px-2 py-0.5 rounded-full">
+          مستقل از تومان
+        </span>
+      </div>
+
+      {/* ─── قیمت یورویی سفارش ─── */}
+      <div className="bg-gray-50 border border-gray-100 rounded-xl p-3.5 space-y-3">
+        <div className="flex items-center justify-between">
+          <span className="text-xs font-bold text-gray-600">قیمت سفارش (یورو)</span>
+          <button
+            onClick={toggleEditPrice}
+            className={`flex items-center gap-1 text-[11px] font-bold px-2.5 py-1 rounded-lg transition
+              ${editPrice
+                ? "bg-gray-200 text-gray-600"
+                : "bg-[#aa4725]/10 text-[#aa4725] hover:bg-[#aa4725]/20"}`}
+          >
+            <Edit3 size={10} />
+            {editPrice ? "انصراف" : hasPrice ? "ویرایش" : "تعیین قیمت"}
+          </button>
+        </div>
+
+        {editPrice ? (
+          <div className="space-y-2">
+            <div className="relative">
+              <input
+                type="number"
+                step="any"
+                min="0"
+                value={priceInput}
+                onChange={(e) => setPriceInput(e.target.value)}
+                onKeyDown={(e) => e.key === "Enter" && handleSavePrice()}
+                placeholder="مبلغ را به یورو وارد کنید"
+                dir="ltr"
+                className="w-full border border-gray-300 rounded-xl px-4 py-2.5 text-sm font-bold text-gray-800 text-left
+                  focus:outline-none focus:ring-2 focus:ring-[#aa4725]/30 focus:border-[#aa4725] transition"
+              />
+              <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-gray-400">€</span>
+            </div>
+            <button
+              onClick={handleSavePrice}
+              disabled={savingPrice}
+              className="w-full bg-[#aa4725] hover:bg-[#8f3b1e] text-white font-bold py-2.5 rounded-xl text-sm
+                transition flex items-center justify-center gap-2 disabled:opacity-60"
+            >
+              {savingPrice ? <Loader2 size={14} className="animate-spin" /> : <Save size={14} />}
+              ذخیره قیمت یورو
+            </button>
+          </div>
+        ) : (
+          <p className="text-2xl font-black text-gray-900 tabular-nums" dir="ltr">
+            {hasPrice ? (
+              <>€ {formatEUR(priceEUR)}</>
+            ) : (
+              <span className="text-sm text-gray-400 font-bold">قیمت یورویی تعیین نشده</span>
+            )}
+          </p>
+        )}
+      </div>
+
+      {/* ─── تاریخچه‌ی پرداخت‌های یورویی ─── */}
+      {/* پرداخت‌های یورویی از داخل مودال «تأیید رسید» ثبت می‌شوند (اختیاری، در کنار مبلغ تومان) */}
+      {paymentsEUR.length > 0 ? (
+        <div className="space-y-2">
+          <p className="text-xs font-bold text-gray-500 flex items-center gap-1.5">
+            <Wallet size={12} className="text-[#aa4725]" />
+            پرداخت‌های یورویی
+          </p>
+          {paymentsEUR.map((p) => (
+            <div
+              key={p._id}
+              className="flex items-center justify-between gap-2 bg-gray-50 border border-gray-200 rounded-xl px-3 py-2 group"
+            >
+              <div className="min-w-0">
+                <p className="text-sm font-black text-gray-800" dir="ltr">€ {formatEUR(p.amount)}</p>
+                <p className="text-[10px] text-gray-400">
+                  {toFarsiDate(p.confirmedAt || p.createdAt)}
+                  {p.note ? ` — ${p.note}` : ""}
+                </p>
+              </div>
+              <button
+                onClick={() => handleDeletePayment(p._id)}
+                className="opacity-0 group-hover:opacity-100 w-7 h-7 flex items-center justify-center
+                  text-red-400 hover:text-red-600 transition rounded-lg hover:bg-red-50 flex-shrink-0"
+              >
+                <Trash2 size={13} />
+              </button>
+            </div>
+          ))}
+        </div>
+      ) : (
+        <p className="text-[11px] text-gray-400 leading-relaxed bg-gray-50 border border-gray-100 rounded-xl px-3 py-2">
+          پرداخت یورویی هنگام «تأیید رسید» و با پر کردن فیلد اختیاری یورو ثبت می‌شود.
+        </p>
+      )}
+
+      {/* ─── خلاصه‌ی مالی یورو ─── */}
+      <div className="border-t border-gray-100 pt-3 space-y-2 text-xs">
+        <div className="flex justify-between text-gray-500">
+          <span>قیمت سفارش (یورو)</span>
+          <span className="font-bold text-gray-700" dir="ltr">
+            {hasPrice ? `€ ${formatEUR(priceEUR)}` : "—"}
+          </span>
+        </div>
+        <div className="flex justify-between text-gray-500">
+          <span>مجموع پرداخت‌های یورویی</span>
+          <span className="font-bold text-green-600" dir="ltr">€ {formatEUR(totalPaidEUR)}</span>
+        </div>
+        {hasPrice && (
+          <div className={`flex justify-between font-black text-sm pt-1 border-t border-gray-100
+            ${remainingEUR > 0 ? "text-red-600" : "text-green-600"}`}>
+            <span>{remainingEUR > 0 ? "مانده پرداخت (یورو)" : "تسویه کامل یورو"}</span>
+            <span dir="ltr">€ {formatEUR(remainingEUR)}</span>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
 /* ─── Main Page ─────────────────────────────────────────────────────── */
 export default function AdminOrderDetailClient({ orderId }) {
   const router = useRouter();
@@ -1238,8 +1485,9 @@ export default function AdminOrderDetailClient({ orderId }) {
 
   useEffect(() => { fetchOrder(); }, [fetchOrder]);
 
-  const handleApprovePayment = async (confirmedAmount) => {
+  const handleApprovePayment = async (confirmedAmount, eurAmount = null) => {
     try {
+      // ۱) تأیید پرداخت تومانی — مسیر موجود و دست‌نخورده
       const res = await fetch(`/api/admin/payments/${approveTarget._id}/approve`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -1247,6 +1495,27 @@ export default function AdminOrderDetailClient({ orderId }) {
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.message || "خطا");
+
+      // ۲) ثبت پرداخت یورویی (اختیاری) — کاملاً مستقل از تومان، مسیر جداگانه.
+      //    اگر این مرحله خطا بدهد، تأیید تومانی که قبلاً موفق شده را خراب نمی‌کند.
+      if (eurAmount && eurAmount > 0) {
+        try {
+          const eurRes = await fetch(`/api/admin/orders/${orderId}/eur`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ amount: eurAmount, note: "ثبت همراه تأیید رسید" }),
+          });
+          const eurData = await eurRes.json();
+          if (!eurRes.ok) {
+            toast.error(eurData.message || "خطا در ثبت پرداخت یورو");
+          } else {
+            toast.success("پرداخت یورو نیز ثبت شد");
+          }
+        } catch {
+          toast.error("خطا در ثبت پرداخت یورو");
+        }
+      }
+
       toast.success(data.message || "پرداخت تأیید شد");
       setApproveTarget(null);
       fetchOrder();
@@ -1623,6 +1892,14 @@ export default function AdminOrderDetailClient({ orderId }) {
                 })()}
               </div>
             )}
+
+            {/* EUR System (مستقل از تومان) */}
+            <EurPanel
+              orderId={orderId}
+              priceEUR={order.priceEUR ?? null}
+              paymentsEUR={order.paymentsEUR || []}
+              onChange={fetchOrder}
+            />
 
             {/* Description */}
             {order.description && (
