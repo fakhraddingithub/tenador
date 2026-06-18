@@ -88,7 +88,12 @@
       "PowerShell(npx eslint \"src/components/reviews/RatingStars.jsx\" \"src/components/reviews/ReviewForm.jsx\" \"src/components/modules/orders/ReviewModal.jsx\" \"src/components/admin/comments/CommentsModeration.jsx\" \"src/components/templates/product/ProductReviews.jsx\" \"src/components/templates/product/ProductTabs.jsx\" \"src/components/modules/orders/index.jsx\" \"src/app/api/comments/route.js\" \"src/app/api/comments/mine/route.js\" \"src/app/api/admin/comments/route.js\" \"src/app/api/admin/comments/[id]/route.js\" \"services/comment.service.js\" \"models/Comment.js\" 2>&1 | Select-Object -First 100)",
       "PowerShell(npx eslint \"src/components/admin/orders/AdminOrderDetailClient.jsx\" \"src/app/api/admin/orders/[orderId]/eur/route.js\" \"models/Order.js\")",
       "Bash(echo \"EXIT: $?\")",
-      "PowerShell(npx eslint \"src/components/features/filters/MobileFilterDrawer.jsx\" 2>&1 | Select-Object -First 40)"
+      "PowerShell(npx eslint \"src/components/features/filters/MobileFilterDrawer.jsx\" 2>&1 | Select-Object -First 40)",
+      "PowerShell(npx eslint \"src/components/admin/events/EventForm.jsx\" \"services/eventProductResolver.js\" \"models/Event.js\")",
+      "PowerShell(npx eslint \"src/components/admin/events/EventForm.jsx\" \"services/eventProductResolver.js\")",
+      "PowerShell(npx next lint --file \"src/lib/seo/productSchema.js\" --file \"src/app/\\(Site\\)/products/[productSlug]/page.jsx\" 2>&1 | Select-Object -First 30)",
+      "PowerShell(npx eslint \"src/lib/seo/productSchema.js\" \"src/app/\\(Site\\)/products/[productSlug]/page.jsx\")",
+      "PowerShell(npx eslint \"src/components/templates/product/ProductTabs.jsx\")"
     ]
   }
 }

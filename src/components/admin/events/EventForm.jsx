@@ -37,9 +37,15 @@ const RULE_INPUT = {
   bestseller: { input: "number", placeholder: "تعداد (پیش‌فرض ۵۰)" },
   tag: { input: "tags", placeholder: "تگ‌ها را با کاما جدا کنید" },
   discountRule: { input: "discountRules" },
+  color: { input: "color" },
   featured: { input: "none" },
   discount: { input: "none" },
 };
+
+// Default value object for a "By Color" rule. The admin only picks a color; hue
+// tolerance / min-saturation are hardcoded in the resolver. `excludedIds` holds
+// products the admin removed from the matched results during review.
+const DEFAULT_COLOR_VALUE = { hex: "#ff0080", excludedIds: [] };
 
 const EMPTY_FORM = {
   name: "",
@@ -339,6 +345,161 @@ function ThemeTab({ form, setField }) {
   );
 }
 
+// "By Color" rule input — pick a target color + perceptual match thresholds.
+// Matching is HSL hue-based on the backend (groups all shades of a color); the
+// product count is shown by the shared live preview below the rules list.
+const isValidHex = (hex) => typeof hex === "string" && /^#[0-9A-Fa-f]{6}$/.test(hex);
+
+function ColorRuleInput({ value, onChange }) {
+  const v = value && typeof value === "object" ? value : DEFAULT_COLOR_VALUE;
+  const set = (patch) => onChange({ ...DEFAULT_COLOR_VALUE, ...v, ...patch });
+  const hex = isValidHex(v.hex) ? v.hex : "#ff0080";
+  const excludedIds = Array.isArray(v.excludedIds) ? v.excludedIds : [];
+
+  const toggleExclude = (id) => {
+    const sid = String(id);
+    const next = excludedIds.includes(sid)
+      ? excludedIds.filter((x) => x !== sid)
+      : [...excludedIds, sid];
+    set({ excludedIds: next });
+  };
+
+  // Per-rule preview: resolve the products matching ONLY this color so the admin
+  // can review them and remove individual products before confirming. We send
+  // just the hex (no excludedIds) so removed products stay visible (dimmed) and
+  // can be restored. Debounced on the picked color.
+  const [matches, setMatches] = useState({ loading: false, items: null });
+
+  useEffect(() => {
+    if (!isValidHex(hex)) return;
+    let cancelled = false;
+    const t = setTimeout(async () => {
+      setMatches((m) => ({ ...m, loading: true }));
+      try {
+        const res = await fetch("/api/admin/events/preview-products", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            productSelection: {
+              rules: [{ type: "color", operator: "include", value: { hex } }],
+              limit: 200,
+            },
+          }),
+        });
+        const data = await res.json();
+        if (!cancelled) setMatches({ loading: false, items: data.products || [] });
+      } catch {
+        if (!cancelled) setMatches({ loading: false, items: [] });
+      }
+    }, 500);
+    return () => {
+      cancelled = true;
+      clearTimeout(t);
+    };
+  }, [hex]);
+
+  const items = matches.items || [];
+  const remaining = items.filter((p) => !excludedIds.includes(String(p._id))).length;
+
+  return (
+    <div className="space-y-4 bg-white rounded-lg border border-gray-100 p-4">
+      {/* Target color — the only control the admin sets */}
+      <div className="flex items-center gap-3">
+        <input
+          type="color"
+          value={hex}
+          onChange={(e) => set({ hex: e.target.value })}
+          className="w-12 h-10 p-1 border rounded bg-white cursor-pointer shadow-sm shrink-0"
+          aria-label="رنگ هدف"
+        />
+        <Input
+          value={v.hex || ""}
+          onChange={(e) => set({ hex: e.target.value })}
+          placeholder="#ff0080"
+          dir="ltr"
+          className="font-mono"
+        />
+        <div
+          className="w-10 h-10 rounded-lg border border-gray-200 shrink-0"
+          style={{ background: hex }}
+          title="پیش‌نمایش رنگ"
+        />
+      </div>
+      <p className="text-[11px] text-gray-400 font-bold leading-5">
+        یک رنگ هدف انتخاب کنید — همهٔ محصولاتی که رنگشان در محدودهٔ این رنگ قرار می‌گیرد
+        انتخاب می‌شوند (همهٔ طیف‌های صورتی، آبی و … با هم گروه می‌شوند). محصولات ناخواسته را
+        می‌توانید از نتایج زیر حذف کنید.
+      </p>
+
+      {/* Matched products — review & remove before confirming */}
+      <div className="border-t border-gray-100 pt-3">
+        <div className="flex items-center justify-between mb-2">
+          <p className="text-xs font-black text-gray-600">محصولات منطبق با این رنگ</p>
+          {matches.items !== null && (
+            <span className="text-[11px] font-bold text-gray-400">
+              {remaining.toLocaleString("fa-IR")} انتخاب‌شده
+              {excludedIds.length > 0 &&
+                ` — ${excludedIds.length.toLocaleString("fa-IR")} حذف‌شده`}
+            </span>
+          )}
+        </div>
+
+        {matches.loading && (
+          <p className="text-[11px] text-gray-400 font-bold py-2">در حال بررسی…</p>
+        )}
+
+        {!matches.loading && matches.items !== null && items.length === 0 && (
+          <p className="text-[11px] text-gray-400 font-bold py-2">
+            هیچ محصولی با این رنگ یافت نشد.
+          </p>
+        )}
+
+        {items.length > 0 && (
+          <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 gap-2">
+            {items.map((p) => {
+              const isExcluded = excludedIds.includes(String(p._id));
+              return (
+                <div
+                  key={p._id}
+                  className={`relative bg-white rounded-lg border p-1.5 flex flex-col items-center text-center transition-opacity ${
+                    isExcluded ? "border-red-100 opacity-40" : "border-gray-100"
+                  }`}
+                  title={p.name}
+                >
+                  <button
+                    type="button"
+                    onClick={() => toggleExclude(p._id)}
+                    className={`absolute top-1 right-1 z-10 w-5 h-5 flex items-center justify-center rounded-full text-[10px] font-black shadow-sm transition-all ${
+                      isExcluded
+                        ? "bg-gray-200 text-gray-600 hover:bg-gray-300"
+                        : "bg-red-500 text-white hover:bg-red-600"
+                    }`}
+                    aria-label={isExcluded ? "بازگرداندن محصول" : "حذف محصول"}
+                    title={isExcluded ? "بازگرداندن" : "حذف از نتایج"}
+                  >
+                    {isExcluded ? "↺" : "✕"}
+                  </button>
+                  <div className="w-full aspect-square rounded-md overflow-hidden bg-gray-50 flex items-center justify-center">
+                    {p.mainImage ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img src={p.mainImage} alt="" className="w-full h-full object-contain" />
+                    ) : (
+                      <span className="text-gray-200 text-lg">▪</span>
+                    )}
+                  </div>
+                  <p className="text-[9px] font-bold text-gray-500 mt-1 line-clamp-1 w-full">
+                    {p.name}
+                  </p>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
 // ─── Tab: Product Selection ───────────────────────────────────────────────────
 function ProductsTab({ form, setField }) {
   const rules = form.productSelection.rules;
@@ -358,7 +519,13 @@ function ProductsTab({ form, setField }) {
   const changeRuleType = (i, type) => {
     const kind = RULE_INPUT[type]?.input;
     const arrayKinds = ["entity", "tags", "discountRules"];
-    const value = arrayKinds.includes(kind) ? [] : kind === "number" ? "" : "";
+    const value = arrayKinds.includes(kind)
+      ? []
+      : kind === "color"
+      ? { ...DEFAULT_COLOR_VALUE }
+      : kind === "number"
+      ? ""
+      : "";
     updateRule(i, { type, value });
   };
 
@@ -477,6 +644,7 @@ function ProductsTab({ form, setField }) {
                   <option value="bestseller">پرفروش‌ها</option>
                   <option value="new">محصولات جدید</option>
                   <option value="discountRule">بر اساس قانون تخفیف</option>
+                  <option value="color">بر اساس رنگ</option>
                   <option value="tag">تگ</option>
                 </Select>
 
@@ -529,6 +697,13 @@ function ProductsTab({ form, setField }) {
                 <DiscountRulePicker
                   value={Array.isArray(rule.value) ? rule.value : []}
                   onChange={(ids) => updateRule(i, { value: ids })}
+                />
+              )}
+
+              {meta.input === "color" && (
+                <ColorRuleInput
+                  value={rule.value}
+                  onChange={(val) => updateRule(i, { value: val })}
                 />
               )}
 

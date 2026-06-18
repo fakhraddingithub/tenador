@@ -65,7 +65,7 @@ export default async function ProductPage({ params }) {
     variants: convertedVariants,
   };
 
-  const productSchema = generateProductSchema(product);
+  const productSchema = generateProductSchema(product, reviewStats);
   const breadcrumbSchema = generateBreadcrumbSchema(product);
 
   return (

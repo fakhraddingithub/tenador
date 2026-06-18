@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
+import { FiFileText, FiSettings, FiMessageSquare } from "react-icons/fi";
 import ProductDescription from "./ProductDescription";
 import ProductAttributesTable from "./ProductAttributesTable";
 import ProductReviews from "./ProductReviews";
@@ -18,12 +19,12 @@ const ProductTabs = ({
   const [activeTab, setActiveTab] = useState("description");
 
   const tabs = [
-    { id: "description", label: "توضیحات تخصصی", icon: "📄" },
-    { id: "attributes", label: "مشخصات فنی", icon: "⚙️" },
+    { id: "description", label: "توضیحات تخصصی", icon: FiFileText },
+    { id: "attributes", label: "مشخصات فنی", icon: FiSettings },
     {
       id: "reviews",
       label: "نظرات کاربران",
-      icon: "💬",
+      icon: FiMessageSquare,
       count: reviewStats.count,
     },
   ];
@@ -45,7 +46,9 @@ const ProductTabs = ({
               `}
             >
               <div className="flex items-center gap-2">
-                <span className={`text-xs ${isActive ? "opacity-100" : "opacity-40"}`}>{tab.icon}</span>
+                <span className={`${isActive ? "opacity-100" : "opacity-40"}`}>
+                  <tab.icon className="text-sm" />
+                </span>
                 <span>{tab.label}</span>
                 {tab.count > 0 && (
                   <span className="rounded-full bg-gray-100 px-1.5 py-0.5 text-[10px] font-bold tabular-nums text-gray-500">

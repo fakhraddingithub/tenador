@@ -1,6 +1,13 @@
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL;
 
-export function generateProductSchema(product) {
+/**
+ * ساخت اسکیمای محصول برای نتایج گوگل (JSON-LD).
+ *
+ * @param {object} product  محصول؛ basePrice به «تومان» است.
+ * @param {{ average?: number, ratedCount?: number }} [reviewStats]
+ *        خلاصه‌ی امتیاز نظرهای تأییدشده (از getApprovedReviews).
+ */
+export function generateProductSchema(product, reviewStats) {
   const images = [
     product.mainImage,
     ...(product.gallery || []),
@@ -11,6 +18,19 @@ export function generateProductSchema(product) {
         ? img
         : `${SITE_URL}${img}`
     );
+
+  // امتیاز واقعی از نظرهای تأییدشده؛ در نبودِ نظرِ امتیازدار به ۵/۱ برمی‌گردد
+  // تا اسنیپت ستاره‌ها در نتایج گوگل حفظ شود.
+  const ratedCount = reviewStats?.ratedCount || 0;
+  const average = reviewStats?.average || 0;
+  const aggregateRating =
+    ratedCount > 0 && average > 0
+      ? { ratingValue: average, reviewCount: ratedCount }
+      : { ratingValue: 5, reviewCount: 1 };
+
+  // قیمت پایه به تومان است؛ ISO 4217 کدی برای «تومان» ندارد و تنها کد معتبر
+  // ایران «IRR» (ریال) است. پس برای صحتِ مقدار، تومان × ۱۰ → ریال می‌شود.
+  const priceInRial = Math.round((product.basePrice || 0) * 10);
 
   return {
     "@context": "https://schema.org/",
@@ -35,8 +55,10 @@ export function generateProductSchema(product) {
 
     aggregateRating: {
       "@type": "AggregateRating",
-      ratingValue: product.score || 5,
-      reviewCount: 1,
+      ratingValue: aggregateRating.ratingValue,
+      reviewCount: aggregateRating.reviewCount,
+      bestRating: 5,
+      worstRating: 1,
     },
 
     offers: {
@@ -46,7 +68,7 @@ export function generateProductSchema(product) {
 
       priceCurrency: "IRR",
 
-      price: product.basePrice,
+      price: priceInRial,
 
       availability: "https://schema.org/InStock",
 

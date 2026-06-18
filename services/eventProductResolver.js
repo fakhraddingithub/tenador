@@ -16,9 +16,69 @@
 import mongoose from "mongoose";
 import connectToDB from "base/configs/db";
 import Product from "base/models/Product";
+import Variant from "base/models/Variant";
 import DiscountRule from "base/models/DiscountRule";
 import { getCachedRate } from "@/lib/Exchangerate";
 import { attachListingPrices } from "base/services/priceEngine";
+
+// ─── Color matching (HSL-based) ───────────────────────────────────────────────
+// We match products by PERCEPTUAL color, not raw hex distance: a hex range would
+// wrongly group colors that look unrelated. Converting to HSL lets us match by
+// HUE (the "which color" axis), so all shades of pink group together regardless
+// of their exact hex, while a minimum SATURATION threshold keeps near-grey /
+// near-white colors from accidentally matching a vivid target hue.
+
+/** Normalizes "#abc" / "abc" / "#aabbcc" / "AABBCC" to lowercase "#aabbcc", else null. */
+function normalizeHex(hex) {
+  if (typeof hex !== "string") return null;
+  let h = hex.trim().replace(/^#/, "");
+  if (/^[0-9a-fA-F]{3}$/.test(h)) h = h.split("").map((c) => c + c).join("");
+  if (!/^[0-9a-fA-F]{6}$/.test(h)) return null;
+  return "#" + h.toLowerCase();
+}
+
+/** hex → { h: 0–360, s: 0–100, l: 0–100 }, or null for non-hex values. */
+function hexToHsl(hex) {
+  const norm = normalizeHex(hex);
+  if (!norm) return null;
+  const r = parseInt(norm.slice(1, 3), 16) / 255;
+  const g = parseInt(norm.slice(3, 5), 16) / 255;
+  const b = parseInt(norm.slice(5, 7), 16) / 255;
+  const max = Math.max(r, g, b);
+  const min = Math.min(r, g, b);
+  const d = max - min;
+  const l = (max + min) / 2;
+  let h = 0;
+  let s = 0;
+  if (d !== 0) {
+    s = d / (1 - Math.abs(2 * l - 1));
+    switch (max) {
+      case r:
+        h = (((g - b) / d) % 6 + 6) % 6;
+        break;
+      case g:
+        h = (b - r) / d + 2;
+        break;
+      default:
+        h = (r - g) / d + 4;
+    }
+    h *= 60;
+  }
+  return { h, s: s * 100, l: l * 100 };
+}
+
+/** Shortest distance between two hues on the 360° wheel (red wraps 0↔360). */
+function hueDistance(a, b) {
+  const d = Math.abs(a - b) % 360;
+  return d > 180 ? 360 - d : d;
+}
+
+/** Reads a key from a Mongoose Map (lean may return a Map or a plain object). */
+function readAttr(attrs, key) {
+  if (!attrs) return undefined;
+  if (attrs instanceof Map) return attrs.get(key);
+  return attrs[key];
+}
 
 /**
  * Normalizes a rule value into an array of trimmed strings.
@@ -91,6 +151,73 @@ async function resolveDiscountRuleProducts(ruleIds) {
     .select("_id")
     .lean();
   return docs.map((d) => d._id.toString());
+}
+
+/**
+ * Returns product ids whose color (or ANY of their variant colors) falls within
+ * the (now hardcoded) hue tolerance of the target hue.
+ *
+ * value shape: { hex: "#ff69b4", excludedIds: [<productId>, ...] }
+ *
+ * The admin only picks a target color: hue tolerance is fixed at its maximum
+ * (HUE_TOLERANCE_MAX°) and minimum saturation at 0 (so no shade is filtered out
+ * by saturation). The admin can then remove individual products in the review
+ * step; those ids live in `excludedIds` and are dropped from the result here.
+ *
+ * Products with no valid-hex color anywhere are skipped gracefully. Variant
+ * color attributes are only considered when they are valid hex strings (named
+ * colors like "قرمز" can't be matched perceptually, so they're ignored).
+ */
+const HUE_TOLERANCE_MAX = 30;
+
+async function resolveColorRule(value) {
+  const cfg = value && typeof value === "object" ? value : {};
+  const target = hexToHsl(cfg.hex);
+  if (!target) return [];
+
+  const tolerance = HUE_TOLERANCE_MAX; // hardcoded max — UI no longer exposes this
+  const minSat = 0; // hardcoded — saturation no longer filters matches
+
+  const matchesHex = (hex) => {
+    const hsl = hexToHsl(hex);
+    if (!hsl) return false;
+    if (hsl.s < minSat) return false;
+    return hueDistance(hsl.h, target.h) <= tolerance;
+  };
+
+  const products = await Product.find({ isActive: true })
+    .select("_id color")
+    .lean();
+
+  const matched = new Set();
+  const unmatched = [];
+  for (const p of products) {
+    if (matchesHex(p.color)) matched.add(p._id.toString());
+    else unmatched.push(p._id);
+  }
+
+  // For products the base color didn't match, accept them if ANY variant color
+  // (when stored as a valid hex) falls in range.
+  if (unmatched.length) {
+    const variants = await Variant.find({ productId: { $in: unmatched } })
+      .select("productId attributes")
+      .lean();
+    for (const v of variants) {
+      const pid = v.productId?.toString();
+      if (!pid || matched.has(pid)) continue;
+      const colorVal =
+        readAttr(v.attributes, "color") ??
+        readAttr(v.attributes, "Color") ??
+        readAttr(v.attributes, "رنگ");
+      if (matchesHex(colorVal)) matched.add(pid);
+    }
+  }
+
+  // Drop products the admin manually removed during the review-and-confirm step.
+  const excluded = new Set(
+    (Array.isArray(cfg.excludedIds) ? cfg.excludedIds : []).map((id) => String(id))
+  );
+  return Array.from(matched).filter((id) => !excluded.has(id));
 }
 
 async function resolveRule(rule) {
@@ -180,6 +307,9 @@ async function resolveRule(rule) {
 
     case "discountRule":
       return resolveDiscountRuleProducts(value);
+
+    case "color":
+      return resolveColorRule(value);
 
     case "tag": {
       const tags = toArray(value);

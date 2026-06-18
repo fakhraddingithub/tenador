@@ -27,6 +27,7 @@ const ProductRuleSchema = new mongoose.Schema(
         "discount",
         "discountRule",
         "tag",
+        "color",
       ],
       required: true,
     },
