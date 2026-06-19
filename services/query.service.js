@@ -88,8 +88,11 @@ async function _queryBySlugs(slugs) {
   if (search.limitedEdition) finalFilter.limitedEdition = search.limitedEdition._id;
   if (search.product) finalFilter._id = search.product._id;
 
+  // ⚠️ variants باید populate شوند تا سوآچ‌های تصویر واریانت روی کارت محصول
+  //   نمایش داده شوند — دقیقاً مثل صفحه‌ی اصلی ورزش (getPageDataBySlug). بدون این،
+  //   product.variants فقط آرایه‌ای از ObjectId است و کارت هیچ سوآچی نشان نمی‌دهد.
   const products = await Product.find(finalFilter)
-    .populate("brand sport athlete category serie limitedEdition")
+    .populate("brand sport athlete category serie limitedEdition variants")
     .sort({ createdAt: -1 })
     .lean();
 

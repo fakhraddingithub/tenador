@@ -21,6 +21,7 @@
  *
  * PATCH  → تنظیم/ویرایش priceEUR
  * POST   → افزودن یک پرداخت یورویی به paymentsEUR
+ * PUT    → ویرایش مبلغِ یک پرداخت یورویی موجود (با ردپای ممیزی)
  * DELETE → حذف یک پرداخت یورویی از paymentsEUR
  */
 
@@ -168,6 +169,93 @@ export async function POST(req, { params }) {
     );
   } catch (error) {
     console.error("[admin/orders/:id/eur POST]", error);
+    return NextResponse.json({ message: "خطای داخلی سرور" }, { status: 500 });
+  }
+}
+
+/* ─── PUT: ویرایش مبلغِ یک پرداخت یورویی موجود ───────────────────────── */
+export async function PUT(req, { params }) {
+  try {
+    await connectToDB();
+
+    const admin = await getAdminUser();
+    if (!admin?.userId) {
+      return NextResponse.json(
+        { message: "احراز هویت ادمین لازم است" },
+        { status: 401 }
+      );
+    }
+
+    const { orderId } = await params;
+    if (!mongoose.Types.ObjectId.isValid(orderId)) {
+      return NextResponse.json({ message: "شناسه سفارش نامعتبر است" }, { status: 400 });
+    }
+
+    const body = await req.json();
+    const { paymentId, amount } = body;
+    if (!paymentId || !mongoose.Types.ObjectId.isValid(paymentId)) {
+      return NextResponse.json({ message: "شناسه پرداخت نامعتبر است" }, { status: 400 });
+    }
+
+    const parsed = Number(amount);
+    if (isNaN(parsed) || parsed <= 0) {
+      return NextResponse.json(
+        { message: "مبلغ یورو باید عددی مثبت باشد" },
+        { status: 400 }
+      );
+    }
+
+    // مبلغ فعلی را برای ثبت در تاریخچه می‌خوانیم (lean، مستقل از اسکیمای کش‌شده)
+    const order = await Order.findById(orderId).lean();
+    if (!order) {
+      return NextResponse.json({ message: "سفارش یافت نشد" }, { status: 404 });
+    }
+    const existing = (order.paymentsEUR || []).find(
+      (p) => String(p._id) === String(paymentId)
+    );
+    if (!existing) {
+      return NextResponse.json({ message: "پرداخت یورویی یافت نشد" }, { status: 404 });
+    }
+
+    const now = new Date();
+    const adminId = new mongoose.Types.ObjectId(admin.userId);
+
+    // read-modify-write روی کل آرایه و $set اتمیک — دقیقاً مثل بقیه‌ی عملیاتِ یورو
+    // در همین فایل (POST/PATCH/DELETE). از arrayFilters استفاده نمی‌کنیم چون با
+    // strict:false روی مدلِ کش‌شده‌ی HMR قابل‌اتکا اعمال نمی‌شود (سند match می‌شد
+    // ولی هیچ تغییری نوشته نمی‌شد → مبلغ ویرایش نمی‌شد).
+    const updatedPayments = (order.paymentsEUR || []).map((p) => {
+      if (String(p._id) !== String(paymentId)) return p;
+      const history = Array.isArray(p.editHistory) ? p.editHistory : [];
+      return {
+        ...p,
+        amount: parsed,
+        editedBy: adminId,
+        editedAt: now,
+        updatedAt: now,
+        editHistory: [
+          ...history,
+          { oldAmount: p.amount || 0, newAmount: parsed, at: now, by: adminId },
+        ],
+      };
+    });
+
+    const result = await Order.updateOne(
+      { _id: orderId },
+      { $set: { paymentsEUR: updatedPayments } },
+      { strict: false }
+    );
+
+    if (result.matchedCount === 0) {
+      return NextResponse.json({ message: "سفارش یافت نشد" }, { status: 404 });
+    }
+
+    return NextResponse.json(
+      { message: "مبلغ پرداخت یورویی ویرایش شد", ...(await eurPayload(orderId)) },
+      { status: 200 }
+    );
+  } catch (error) {
+    console.error("[admin/orders/:id/eur PUT]", error);
     return NextResponse.json({ message: "خطای داخلی سرور" }, { status: 500 });
   }
 }

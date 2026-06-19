@@ -93,7 +93,9 @@
       "PowerShell(npx eslint \"src/components/admin/events/EventForm.jsx\" \"services/eventProductResolver.js\")",
       "PowerShell(npx next lint --file \"src/lib/seo/productSchema.js\" --file \"src/app/\\(Site\\)/products/[productSlug]/page.jsx\" 2>&1 | Select-Object -First 30)",
       "PowerShell(npx eslint \"src/lib/seo/productSchema.js\" \"src/app/\\(Site\\)/products/[productSlug]/page.jsx\")",
-      "PowerShell(npx eslint \"src/components/templates/product/ProductTabs.jsx\")"
+      "PowerShell(npx eslint \"src/components/templates/product/ProductTabs.jsx\")",
+      "Bash(find src/components/admin -iname \"*categor*\" -o -iname \"*attribute*\")",
+      "Bash(find \"src/app/\\(Admin-Panel\\)\" -ipath \"*categor*\" -type f)"
     ]
   }
 }

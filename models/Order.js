@@ -62,6 +62,26 @@ const EurPaymentSchema = new mongoose.Schema(
       default: null,
     },
     confirmedAt: { type: Date, default: Date.now },
+
+    // ─── ردپای ممیزی ویرایش مبلغ (مستقل از تومان) ───
+    editedBy: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+      default: null,
+    },
+    editedAt: { type: Date, default: null },
+    editHistory: {
+      type: [
+        {
+          _id: false,
+          oldAmount: Number,
+          newAmount: Number,
+          at: { type: Date, default: Date.now },
+          by: { type: mongoose.Schema.Types.ObjectId, ref: "User", default: null },
+        },
+      ],
+      default: [],
+    },
   },
   { _id: true, timestamps: true }
 );
@@ -111,6 +131,15 @@ const OrderSchema = new mongoose.Schema(
 
         quantity:  { type: Number, required: true, min: 1 },
         unitPrice: { type: Number, required: true, min: 0 }, // قیمت واحد تأیید‌شده سمت سرور (تومان) — شامل افزوده‌ی فرایند
+
+        // ─── اسنپ‌شات قیمت‌گذاری برای بازمحاسبه‌ی دقیق هنگام ویرایش ادمین ───
+        // basePriceToman = قیمت واحدِ پیش از تخفیف محصول (شامل افزوده‌ی فرایند) =
+        // unitPrice + unitDiscount. برای آیتم‌های قدیمی null است؛ در این صورت
+        // بازمحاسبه آن آیتم را بدون تخفیف فرض می‌کند (unitPrice همان base).
+        // این فیلدها هرگز در محاسبه‌ی مانده/مبلغ کل دخیل مستقیم نیستند؛ فقط برای
+        // بازسازی دقیق subtotalPrice / discountAmount استفاده می‌شوند.
+        basePriceToman: { type: Number, default: null, min: 0 },
+        unitDiscount:   { type: Number, default: 0, min: 0 },
 
         // وضعیت تأمین محصول اصلی این آیتم: موجود در انبار / باید خریداری شود / خریداری شد
         procurementStatus: {

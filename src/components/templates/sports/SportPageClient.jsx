@@ -1,12 +1,19 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import ProductList from "@/components/templates/products/ProductList";
 import FilterSidebar from "@/components/templates/products/FilterSidebar";
 import SearchBar from "@/components/templates/products/SearchBar";
 import SeriesSlider from "@/components/templates/sports/SeriesSlider";
 import LimitedEditionsStrip from "@/components/templates/sports/LimitedEditionsStrip";
+import SportHero from "@/components/templates/sports/SportHero";
 import { FiShoppingBag } from "react-icons/fi";
+import {
+  buildAttributeMeta,
+  parseAttrFiltersFromParams,
+  writeAttrFiltersToParams,
+  productMatchesAttrFilters,
+} from "@/lib/attributeFilters";
 
 export default function SportPageClient({
   products: initialProducts = [],
@@ -31,6 +38,52 @@ export default function SportPageClient({
     minPrice: 0,
     maxPrice: 50000000,
   });
+
+  // ─────────────────────────────────────────────
+  // فیلتر بر اساس ویژگی‌های پویای دسته‌بندی (query-param driven)
+  // ویژگی‌ها از روی filters.category.attributes تعریف می‌شوند و فقط روی
+  // صفحه‌ی دسته (که category دارد) نمایش داده می‌شوند. صفحه‌ی اصلی ورزش و صفحه‌ی
+  // رویداد که category پاس نمی‌دهند، هیچ فیلتر ویژگی نشان نمی‌دهند.
+  // ─────────────────────────────────────────────
+  const attributeMeta = useMemo(
+    () => buildAttributeMeta(filters?.category?.attributes, initialProducts),
+    [filters?.category, initialProducts],
+  );
+
+  const [attrFilters, setAttrFilters] = useState({});
+
+  // مقداردهی اولیه از روی URL (کلاینت‌ساید) تا لینکِ به‌اشتراک‌گذاشته‌شده همان
+  // نمای فیلترشده را بازتولید کند. window.location به‌جای useSearchParams تا این
+  // کامپوننت اشتراکی (که صفحه‌ی رویداد هم از آن استفاده می‌کند) به Suspense نیاز
+  // پیدا نکند.
+  useEffect(() => {
+    if (typeof window === "undefined" || attributeMeta.length === 0) return;
+    const sp = new URLSearchParams(window.location.search);
+    // خواندن وضعیت اولیه از URL یک «همگام‌سازی از سیستم بیرونی» (history) است؛
+    // یک‌بار هنگام آماده‌شدن متادیتای ویژگی‌ها اجرا می‌شود.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setAttrFilters(parseAttrFiltersFromParams(sp, attributeMeta));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [attributeMeta.length]);
+
+  // اعمال تغییر فیلتر ویژگی + همگام‌سازی URL بدون رفرش کامل صفحه.
+  // history.replaceState استفاده می‌شود تا داده‌ی سرور دوباره fetch نشود و
+  // تجربه‌ی فیلتر آنی بماند (داده‌ها از قبل در حافظه هستند).
+  const applyAttrFilters = (next) => {
+    setAttrFilters(next);
+    if (typeof window === "undefined") return;
+    const params = writeAttrFiltersToParams(
+      new URLSearchParams(window.location.search),
+      next,
+      attributeMeta,
+    );
+    const qs = params.toString();
+    window.history.replaceState(
+      null,
+      "",
+      qs ? `${window.location.pathname}?${qs}` : window.location.pathname,
+    );
+  };
 
   // ─────────────────────────────────────────────
   // Dynamic Title Builder
@@ -127,45 +180,32 @@ export default function SportPageClient({
         product.basePrice >= localFilters.minPrice &&
         product.basePrice <= localFilters.maxPrice;
 
+      const matchesAttributes = productMatchesAttrFilters(
+        product,
+        attrFilters,
+        attributeMeta,
+      );
+
       return (
         matchesSearch &&
         matchesBrand &&
         matchesCategory &&
         matchesSerie &&
-        matchesPrice
+        matchesPrice &&
+        matchesAttributes
       );
     });
-  }, [searchTerm, localFilters, initialProducts]);
+  }, [searchTerm, localFilters, initialProducts, attrFilters, attributeMeta]);
 
   return (
     <div className="bg-[var(--page-surface,#fcfcfc)] min-h-screen" dir="rtl">
       {/* ───────────────── Hero ───────────────── */}
-      <div className="relative h-[100px] md:h-[220px] w-full overflow-hidden">
-        <img
-          src={pageInfo.headImage || pageInfo.image || "/images/default-sport.jpg"}
-          alt={dynamicTitle}
-          className="w-full h-full object-cover scale-105"
-        />
-
-        <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent z-10" />
-
-        <div className="absolute inset-0 z-20 flex flex-col justify-center items-center text-center px-4">
-          {/* Title color: on the campaign page --event-text = the event's Title
-              Color; on the Sport page the var is undefined → falls back to #fff
-              (identical to the previous text-white). */}
-          <h1
-            className="text-xl md:text-4xl font-bold mb-4 drop-shadow-xl"
-            style={{ color: "var(--event-text, #fff)" }}
-          >
-            {titleOverride || dynamicTitle}
-          </h1>
-
-          <div className="w-20 h-1 bg-[var(--color-primary)] rounded-full mb-4" />
-
-          {/* Optional slot (event countdown) — Sport page passes nothing */}
-          {headerExtra}
-        </div>
-      </div>
+      <SportHero
+        image={pageInfo.headImage || pageInfo.image}
+        title={titleOverride || dynamicTitle}
+        alt={dynamicTitle}
+        headerExtra={headerExtra}
+      />
 
       {/* Optional slot (event description) — Sport page passes nothing */}
       {belowHero}
@@ -204,6 +244,9 @@ export default function SportPageClient({
               filters={localFilters}
               setFilters={setLocalFilters}
               hideSportFilter={true}
+              attributeMeta={attributeMeta}
+              attrFilters={attrFilters}
+              setAttrFilters={applyAttrFilters}
             />
           </div>
         </aside>
@@ -248,15 +291,16 @@ export default function SportPageClient({
               </p>
 
               <button
-                onClick={() =>
+                onClick={() => {
                   setLocalFilters({
                     brands: [],
                     categories: [],
                     series: [],
                     minPrice: 0,
                     maxPrice: 50000000,
-                  })
-                }
+                  });
+                  applyAttrFilters({});
+                }}
                 className="mt-4 text-[var(--color-primary)] font-bold underline"
               >
                 پاک کردن تمام فیلترها

@@ -96,6 +96,7 @@ function SortableAttribute({ attr, onRemove, onEdit }) {
           <div className="flex items-center gap-2">
             <span className="font-bold text-neutral-800">{attr.label}</span>
             {attr.required && <span className="text-[10px] bg-red-50 text-red-500 px-1.5 py-0.5 rounded border border-red-100">الزامی</span>}
+            {attr.filterable && <span className="text-[10px] bg-emerald-50 text-emerald-600 px-1.5 py-0.5 rounded border border-emerald-100">قابل فیلتر</span>}
           </div>
           <div className="flex items-center gap-2 mt-1">
             <span className="text-xs text-neutral-500 font-mono">{attr.name}</span>
@@ -173,6 +174,7 @@ export default function EditCategory() {
     name: '',
     label: '',
     required: true,
+    filterable: false,
     options: '',
     prompt: '',
   });
@@ -374,6 +376,7 @@ export default function EditCategory() {
       name: currentAttribute.name,
       label: currentAttribute.label,
       required: currentAttribute.required,
+      filterable: currentAttribute.filterable,
       options: currentAttribute.options ? currentAttribute.options.split(',').map(o => o.trim()).filter(Boolean) : [],
       prompt: currentAttribute.prompt || '',
     };
@@ -403,7 +406,7 @@ export default function EditCategory() {
   };
 
   const resetAttributeForm = () => {
-    setCurrentAttribute({ name: '', label: '', required: true, options: '', prompt: '' });
+    setCurrentAttribute({ name: '', label: '', required: true, filterable: false, options: '', prompt: '' });
     setEditingId(null);
   };
 
@@ -413,6 +416,7 @@ export default function EditCategory() {
       name: attr.name,
       label: attr.label,
       required: attr.required ?? true,
+      filterable: attr.filterable ?? false,
       options: Array.isArray(attr.options) ? attr.options.join(', ') : '',
       prompt: attr.prompt || '',
     });
@@ -707,9 +711,12 @@ export default function EditCategory() {
                 </div>
 
                 <div className="grid md:grid-cols-2 gap-4">
-                  <div className="mt-4">
+                  <div className="mt-4 flex flex-col gap-3">
                     <label className="flex items-center gap-2 text-sm font-bold cursor-pointer">
                       <input type="checkbox" checked={currentAttribute.required} onChange={(e) => setCurrentAttribute(p => ({ ...p, required: e.target.checked }))} className="w-5 h-5 accent-[var(--color-primary)]" /> الزامی
+                    </label>
+                    <label className="flex items-center gap-2 text-sm font-bold cursor-pointer">
+                      <input type="checkbox" checked={currentAttribute.filterable} onChange={(e) => setCurrentAttribute(p => ({ ...p, filterable: e.target.checked }))} className="w-5 h-5 accent-[var(--color-primary)]" /> قابل فیلتر (نمایش در صفحه محصولات)
                     </label>
                   </div>
                   <Input label="گزینه‌ها (در صورت نیاز، با کاما جدا کنید)" value={currentAttribute.options} onChange={(e) => setCurrentAttribute(p => ({ ...p, options: e.target.value }))} />

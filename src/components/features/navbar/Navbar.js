@@ -25,6 +25,17 @@ const NAVIGATION_ITEMS = [
   { id: 1, label: "جمعه بازار", href: "/second-hand" },
 ];
 
+// آیکون برند/دسته را به صورت ماسک با رنگ متن (سفید) نمایش می‌دهد
+const iconMaskStyle = (url) => ({
+  backgroundColor: "currentColor",
+  maskImage: `url(${url})`,
+  WebkitMaskImage: `url(${url})`,
+  maskRepeat: "no-repeat",
+  WebkitMaskRepeat: "no-repeat",
+  maskSize: "contain",
+  WebkitMaskSize: "contain",
+});
+
 // ---- Search Result Item ----
 function SearchResultItem({ product, onClick }) {
   return (
@@ -76,16 +87,6 @@ function CategoryMenu({ navData, onClose }) {
   const activeCategory =
     activeSport?.categories?.find((c) => c._id === activeCategoryId) ||
     activeSport?.categories?.[0];
-
-  const iconMaskStyle = (url) => ({
-    backgroundColor: "currentColor",
-    maskImage: `url(${url})`,
-    WebkitMaskImage: `url(${url})`,
-    maskRepeat: "no-repeat",
-    WebkitMaskRepeat: "no-repeat",
-    maskSize: "contain",
-    WebkitMaskSize: "contain",
-  });
 
   // تابع کمکی برای استایل دکمه‌های لیست در هر سه ستون
   const listButtonStyle = (isActive) => `
@@ -435,10 +436,9 @@ function MobileCategoryDrawer({ navData, onClose }) {
                       >
                         <div className="flex items-center gap-3 min-w-0">
                           {brand.icon && (
-                            <img
-                              src={brand.icon}
-                              alt=""
-                              className="w-5 h-5 invert opacity-70 flex-shrink-0"
+                            <div
+                              style={iconMaskStyle(brand.icon)}
+                              className="w-5 h-5 opacity-70 flex-shrink-0"
                             />
                           )}
                           <span className="font-medium truncate">

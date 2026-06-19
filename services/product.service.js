@@ -102,6 +102,33 @@ export const getProductBySlug = unstable_cache(
   { revalidate: 300, tags: ["products"] }
 );
 
+/**
+ * فهرست ویژگی‌هایی که ادمین در هر دسته‌بندی «قابل فیلتر» علامت زده — یک‌بار از
+ * روی همه‌ی دسته‌ها جمع و بر اساس name یکتا می‌شود. صفحه‌ی محصولات از این لیست
+ * برای رندر کردن اینپوت‌های فیلتر متنی استفاده می‌کند (ماچینگ همان منطق
+ * مشترکِ attributeFilters است — کلاینت‌ساید و substring).
+ */
+export const getFilterableAttributes = unstable_cache(
+  async () => {
+    await connectToDB();
+    const categories = await Category.find({ "attributes.filterable": true })
+      .select("attributes")
+      .lean();
+
+    const map = new Map();
+    for (const cat of categories) {
+      for (const attr of cat.attributes || []) {
+        if (attr?.filterable && attr.name && !map.has(attr.name)) {
+          map.set(attr.name, { name: attr.name, label: attr.label || attr.name });
+        }
+      }
+    }
+    return Array.from(map.values());
+  },
+  ["filterable-attributes"],
+  { revalidate: 300, tags: ["categories"] }
+);
+
 export const getPageDataBySlug = unstable_cache(
   async (slug) => {
     await connectToDB();

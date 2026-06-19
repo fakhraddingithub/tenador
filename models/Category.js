@@ -21,6 +21,10 @@ const AttributeSchema = new mongoose.Schema(
 
     required: { type: Boolean, default: true },
 
+    // آیا این ویژگی در صفحه‌ی محصولات به‌عنوان فیلتر متنی قابل استفاده است؟
+    // پیش‌فرض false؛ ادمین باید آن را صریحاً فعال کند.
+    filterable: { type: Boolean, default: false },
+
     // همیشه آرایه‌ای از String
     options: { type: [String], default: [] },
 

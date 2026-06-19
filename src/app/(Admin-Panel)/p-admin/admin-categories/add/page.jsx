@@ -95,6 +95,7 @@ function SortableAttribute({ attr, onRemove, onEdit }) {
           <div className="flex items-center gap-2">
             <span className="font-bold text-neutral-800">{attr.label}</span>
             {attr.required && <span className="text-[10px] bg-red-50 text-red-500 px-1.5 py-0.5 rounded border border-red-100">الزامی</span>}
+            {attr.filterable && <span className="text-[10px] bg-emerald-50 text-emerald-600 px-1.5 py-0.5 rounded border border-emerald-100">قابل فیلتر</span>}
           </div>
           <div className="flex items-center gap-2 mt-1">
             <span className="text-xs text-neutral-500 font-mono">{attr.name}</span>
@@ -229,6 +230,7 @@ The color code may appear in formats like:
     name: '',
     label: '',
     required: true,
+    filterable: false,
     options: '',
     prompt: '',
   });
@@ -385,6 +387,7 @@ The color code may appear in formats like:
       name: currentAttribute.name,
       label: currentAttribute.label,
       required: currentAttribute.required,
+      filterable: currentAttribute.filterable,
       options: currentAttribute.options ? currentAttribute.options.split(',').map(o => o.trim()).filter(Boolean) : [],
       prompt: currentAttribute.prompt || '',
     };
@@ -419,6 +422,7 @@ The color code may appear in formats like:
       name: '',
       label: '',
       required: true,
+      filterable: false,
       options: '',
       prompt: '',
     });
@@ -431,6 +435,7 @@ The color code may appear in formats like:
       name: attr.name,
       label: attr.label,
       required: attr.required,
+      filterable: attr.filterable ?? false,
       options: Array.isArray(attr.options) ? attr.options.join(', ') : '',
       prompt: attr.prompt || '',
     });
@@ -758,7 +763,7 @@ The color code may appear in formats like:
                 </div>
 
                 <div className="grid md:grid-cols-2 gap-4">
-                  <div className="flex items-center gap-3 h-full mt-8">
+                  <div className="flex flex-col justify-center gap-3 h-full mt-8">
                     <label className="flex items-center gap-2 text-sm font-bold cursor-pointer select-none">
                       <input
                         type="checkbox"
@@ -767,6 +772,16 @@ The color code may appear in formats like:
                         className="w-5 h-5 rounded accent-[var(--color-primary)]"
                       />
                       فیلد الزامی است
+                    </label>
+
+                    <label className="flex items-center gap-2 text-sm font-bold cursor-pointer select-none">
+                      <input
+                        type="checkbox"
+                        checked={currentAttribute.filterable}
+                        onChange={(e) => setCurrentAttribute((p) => ({ ...p, filterable: e.target.checked }))}
+                        className="w-5 h-5 rounded accent-[var(--color-primary)]"
+                      />
+                      قابل فیلتر (نمایش به‌عنوان فیلتر در صفحه محصولات)
                     </label>
                   </div>
 

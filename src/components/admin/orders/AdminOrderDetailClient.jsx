@@ -14,6 +14,7 @@ import {
   ArrowLeft, Scan, QrCode, Barcode, CheckSquare, Square,
   ShoppingBag, Warehouse, Plus, Trash2, AlertTriangle,
   ChevronDown, ChevronUp, GraduationCap, Euro, Wallet,
+  Search, Minus, Pencil,
 } from "lucide-react";
 import OrderFlowSelectionsView from "@/components/order/OrderFlowSelectionsView";
 
@@ -252,6 +253,348 @@ function ApproveModal({ payment, orderTotal, onConfirm, onClose }) {
               انصراف
             </button>
           </div>
+        </div>
+      </motion.div>
+    </motion.div>
+  );
+}
+
+/* ─── Edit Payment Modal (تومان و یورو) ─────────────────────────────── */
+// تأییدِ ویرایش مبلغ پرداخت با نمایش «مبلغ قبلی → مبلغ جدید».
+// currency: "toman" | "eur"
+function EditPaymentModal({ payment, currency, onConfirm, onClose }) {
+  const isEUR = currency === "eur";
+  const fmt = isEUR ? formatEUR : formatPrice;
+  const unit = isEUR ? "€" : "تومان";
+  const [value, setValue] = useState(String(payment.amount ?? ""));
+  const [loading, setLoading] = useState(false);
+  const inputRef = useRef(null);
+
+  useEffect(() => { setTimeout(() => inputRef.current?.focus(), 100); }, []);
+
+  const parsed = Number(String(value).replace(/,/g, ""));
+  const valid = !isNaN(parsed) && parsed > 0;
+  const changed = valid && Math.round(parsed) !== Math.round(Number(payment.amount) || 0);
+  const diff = valid ? parsed - (Number(payment.amount) || 0) : 0;
+
+  const handleSubmit = async () => {
+    if (!valid) { toast.error(`مبلغ ${isEUR ? "یورو" : "تومان"} معتبر وارد کنید`); return; }
+    setLoading(true);
+    await onConfirm(parsed);
+    setLoading(false);
+  };
+
+  return (
+    <motion.div
+      initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+      className="fixed inset-0 z-[260] flex items-center justify-center p-4"
+      style={{ background: "rgba(0,0,0,0.5)", backdropFilter: "blur(4px)" }}
+      onClick={onClose}
+    >
+      <motion.div
+        initial={{ scale: 0.9, opacity: 0, y: 20 }} animate={{ scale: 1, opacity: 1, y: 0 }}
+        exit={{ scale: 0.9, opacity: 0, y: 20 }}
+        transition={{ type: "spring", damping: 24, stiffness: 280 }}
+        className="bg-white rounded-2xl shadow-2xl w-full max-w-sm overflow-hidden"
+        dir="rtl" onClick={(e) => e.stopPropagation()}
+      >
+        <div className="bg-[#aa4725] px-5 py-4 flex items-center justify-between">
+          <div className="flex items-center gap-2 text-white">
+            <Pencil size={16} />
+            <span className="font-bold text-sm">ویرایش مبلغ پرداخت {isEUR ? "(یورو)" : "(تومان)"}</span>
+          </div>
+          <button onClick={onClose} className="text-white/70 hover:text-white transition">
+            <X size={18} />
+          </button>
+        </div>
+        <div className="p-5 space-y-4">
+          <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 text-xs text-amber-700 leading-relaxed">
+            <div className="flex items-center gap-1.5 font-bold mb-1">
+              <AlertCircle size={12} /><span>ویرایش سابقه‌ی مالی</span>
+            </div>
+            <p>این تغییر فقط مانده و وضعیت {isEUR ? "یورو" : "تومان"} را بروزرسانی می‌کند و در تاریخچه‌ی ممیزی ثبت می‌شود.</p>
+          </div>
+
+          <div>
+            <label className="block text-sm font-bold text-gray-700 mb-2">
+              مبلغ جدید ({unit}) <span className="text-red-500">*</span>
+            </label>
+            <div className="relative">
+              <input
+                ref={inputRef} type="number" step={isEUR ? "any" : "1"} min="0" value={value}
+                onChange={(e) => setValue(e.target.value)}
+                onKeyDown={(e) => e.key === "Enter" && handleSubmit()}
+                dir="ltr"
+                className="w-full border border-gray-300 rounded-xl px-4 py-3 text-sm font-bold text-gray-800 text-left
+                  focus:outline-none focus:ring-2 focus:ring-[#aa4725]/30 focus:border-[#aa4725] transition"
+              />
+              <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-gray-400">{unit}</span>
+            </div>
+          </div>
+
+          {/* قبلی → جدید */}
+          <div className="flex items-center justify-between bg-gray-50 border border-gray-100 rounded-xl px-3 py-2.5 text-xs">
+            <div className="text-center flex-1">
+              <p className="text-gray-400 mb-0.5">مبلغ قبلی</p>
+              <p className="font-black text-gray-600" dir="ltr">{isEUR ? "€ " : ""}{fmt(payment.amount)}</p>
+            </div>
+            <ChevronRight size={16} className="text-gray-300 rotate-180" />
+            <div className="text-center flex-1">
+              <p className="text-gray-400 mb-0.5">مبلغ جدید</p>
+              <p className={`font-black ${changed ? "text-[#aa4725]" : "text-gray-600"}`} dir="ltr">
+                {valid ? <>{isEUR ? "€ " : ""}{fmt(parsed)}</> : "—"}
+              </p>
+            </div>
+          </div>
+          {changed && (
+            <p className={`text-[11px] font-bold text-center ${diff > 0 ? "text-blue-600" : "text-amber-600"}`} dir="ltr">
+              {diff > 0 ? "▲ +" : "▼ "}{isEUR ? "€ " : ""}{fmt(Math.abs(diff))}{!isEUR ? " تومان" : ""}
+            </p>
+          )}
+
+          <div className="flex gap-3">
+            <button onClick={handleSubmit} disabled={loading || !valid}
+              className="flex-1 bg-[#aa4725] hover:bg-[#8f3b1e] text-white font-bold py-2.5 rounded-xl text-sm
+                transition flex items-center justify-center gap-2 disabled:opacity-60">
+              {loading ? <Loader2 size={15} className="animate-spin" /> : <Save size={15} />}
+              ذخیره تغییر
+            </button>
+            <button onClick={onClose}
+              className="flex-1 bg-gray-100 hover:bg-gray-200 text-gray-600 font-bold py-2.5 rounded-xl text-sm transition">
+              انصراف
+            </button>
+          </div>
+        </div>
+      </motion.div>
+    </motion.div>
+  );
+}
+
+/* ─── Add Item Modal ────────────────────────────────────────────────── */
+// جستجوی محصول (همان API بخش تخفیف‌ها) → انتخاب واریانت (در صورت وجود) → تعداد.
+// قیمت در سرور و از همان مسیر priceEngine ثبت می‌شود؛ اینجا فقط انتخاب انجام می‌شود.
+function AddItemModal({ orderId, onSuccess, onClose }) {
+  const [query, setQuery] = useState("");
+  const [results, setResults] = useState([]);
+  const [searching, setSearching] = useState(false);
+  const [openList, setOpenList] = useState(false);
+  const [product, setProduct] = useState(null);     // {_id, label, image}
+  const [variants, setVariants] = useState([]);
+  const [loadingVariants, setLoadingVariants] = useState(false);
+  const [variantId, setVariantId] = useState(null);
+  const [quantity, setQuantity] = useState(1);
+  const [submitting, setSubmitting] = useState(false);
+  const timer = useRef(null);
+
+  const runSearch = useCallback(async (q) => {
+    if (!q?.trim()) { setResults([]); setOpenList(false); return; }
+    setSearching(true);
+    try {
+      const res = await fetch(`/api/admin/discounts/search?type=product&q=${encodeURIComponent(q)}`);
+      const data = await res.json();
+      setResults(data.items || []);
+      setOpenList(true);
+    } catch { setResults([]); }
+    finally { setSearching(false); }
+  }, []);
+
+  const handleQuery = (val) => {
+    setQuery(val);
+    clearTimeout(timer.current);
+    if (!val.trim()) { setResults([]); setOpenList(false); return; }
+    timer.current = setTimeout(() => runSearch(val), 300);
+  };
+
+  const selectProduct = async (item) => {
+    setProduct(item);
+    setOpenList(false);
+    setQuery("");
+    setResults([]);
+    setVariantId(null);
+    setVariants([]);
+    setLoadingVariants(true);
+    try {
+      const res = await fetch(`/api/admin/discounts/search?type=variant&productId=${item._id}`);
+      const data = await res.json();
+      setVariants(data.items || []);
+    } catch { toast.error("خطا در دریافت واریانت‌ها"); }
+    finally { setLoadingVariants(false); }
+  };
+
+  const resetProduct = () => {
+    setProduct(null);
+    setVariants([]);
+    setVariantId(null);
+    setQuantity(1);
+  };
+
+  const needsVariant = variants.length > 0;
+  const canSubmit = product && (!needsVariant || variantId) && quantity >= 1 && !submitting;
+
+  const handleSubmit = async () => {
+    if (!canSubmit) {
+      if (needsVariant && !variantId) toast.error("لطفاً یک واریانت انتخاب کنید");
+      return;
+    }
+    setSubmitting(true);
+    try {
+      const res = await fetch(`/api/admin/orders/${orderId}/items`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          productId: product._id,
+          variantId: variantId || null,
+          quantity: Math.max(1, Math.floor(quantity)),
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.message || "خطا در افزودن آیتم");
+      toast.success(data.message || "آیتم افزوده شد");
+      onSuccess();
+      onClose();
+    } catch (err) {
+      toast.error(err.message || "خطا در افزودن آیتم");
+      setSubmitting(false);
+    }
+  };
+
+  return (
+    <motion.div
+      initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+      className="fixed inset-0 z-[260] flex items-center justify-center p-4"
+      style={{ background: "rgba(0,0,0,0.5)", backdropFilter: "blur(4px)" }}
+      onClick={onClose}
+    >
+      <motion.div
+        initial={{ scale: 0.92, opacity: 0, y: 20 }} animate={{ scale: 1, opacity: 1, y: 0 }}
+        exit={{ scale: 0.92, opacity: 0, y: 20 }}
+        transition={{ type: "spring", damping: 24, stiffness: 280 }}
+        className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden"
+        dir="rtl" onClick={(e) => e.stopPropagation()}
+      >
+        <div className="bg-[#aa4725] px-5 py-4 flex items-center justify-between">
+          <div className="flex items-center gap-2 text-white">
+            <Plus size={18} />
+            <span className="font-bold text-sm">افزودن آیتم به سفارش</span>
+          </div>
+          <button onClick={onClose} className="text-white/70 hover:text-white transition">
+            <X size={18} />
+          </button>
+        </div>
+
+        <div className="p-5 space-y-4">
+          {!product ? (
+            <div className="relative">
+              <label className="block text-sm font-bold text-gray-700 mb-2">جستجوی محصول</label>
+              <div className="relative">
+                <Search size={15} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                <input
+                  type="text" value={query} autoComplete="off"
+                  onChange={(e) => handleQuery(e.target.value)}
+                  onFocus={() => query && results.length && setOpenList(true)}
+                  placeholder="نام محصول را تایپ کنید..."
+                  className="w-full border border-gray-300 rounded-xl pr-9 pl-3 py-2.5 text-sm font-bold text-gray-800
+                    focus:outline-none focus:ring-2 focus:ring-[#aa4725]/30 focus:border-[#aa4725] transition"
+                />
+                {searching && <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs text-gray-400">جستجو...</span>}
+              </div>
+              {openList && (
+                <ul className="mt-2 bg-white border border-gray-200 rounded-xl shadow-sm
+                  min-h-[4rem] max-h-[18rem] overflow-y-auto">
+                  {results.length === 0
+                    ? <li className="px-4 py-6 text-sm text-gray-400 text-center">محصولی یافت نشد</li>
+                    : results.map((item) => (
+                      <li key={String(item._id)} onMouseDown={() => selectProduct(item)}
+                        className="flex items-center gap-2.5 px-3 py-2.5 hover:bg-gray-50 cursor-pointer transition border-b border-gray-50 last:border-none">
+                        {item.image
+                          ? <img src={item.image} alt="" className="w-9 h-9 rounded-lg object-cover flex-shrink-0" />
+                          : <div className="w-9 h-9 rounded-lg bg-gray-100 flex-shrink-0" />}
+                        <div className="text-right min-w-0">
+                          <p className="text-sm font-bold text-gray-800 truncate">{item.label}</p>
+                          {item.sub && <p className="text-xs text-gray-400 truncate">{item.sub}</p>}
+                        </div>
+                      </li>
+                    ))}
+                </ul>
+              )}
+            </div>
+          ) : (
+            <>
+              {/* محصول انتخاب‌شده */}
+              <div className="flex items-center gap-3 bg-gray-50 border border-gray-100 rounded-xl p-3">
+                {product.image
+                  ? <img src={product.image} alt="" className="w-12 h-12 rounded-xl object-cover border border-gray-200" />
+                  : <div className="w-12 h-12 rounded-xl bg-gray-100" />}
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-bold text-gray-800 truncate">{product.label}</p>
+                  <p className="text-xs text-gray-400">{product.sub || ""}</p>
+                </div>
+                <button onClick={resetProduct} className="text-xs text-gray-400 hover:text-gray-600 font-bold">× تغییر</button>
+              </div>
+
+              {/* واریانت‌ها */}
+              {loadingVariants ? (
+                <div className="flex items-center justify-center gap-2 py-3 text-sm text-gray-400">
+                  <Loader2 size={15} className="animate-spin text-[#aa4725]" /> بارگذاری واریانت‌ها...
+                </div>
+              ) : needsVariant ? (
+                <div className="space-y-2">
+                  <label className="block text-xs font-bold text-gray-500">انتخاب واریانت <span className="text-red-500">*</span></label>
+                  <div className="space-y-1.5 max-h-48 overflow-y-auto">
+                    {variants.map((v) => {
+                      const selected = variantId === String(v._id);
+                      return (
+                        <label key={String(v._id)}
+                          className={`flex items-center gap-2 p-2.5 rounded-xl cursor-pointer transition border
+                            ${selected ? "bg-[#aa4725]/10 border-[#aa4725]/30" : "bg-white border-gray-100 hover:border-[#aa4725]/30"}`}>
+                          <input type="radio" name="variant" checked={selected}
+                            onChange={() => setVariantId(String(v._id))} className="accent-[#aa4725]" />
+                          <div className="text-right flex-1 min-w-0">
+                            <p className="text-xs font-bold text-gray-800 truncate">{v.label}</p>
+                            {v.sub && <p className="text-[10px] text-gray-400 truncate">{v.sub}</p>}
+                          </div>
+                        </label>
+                      );
+                    })}
+                  </div>
+                </div>
+              ) : (
+                <p className="text-[11px] text-gray-400 bg-gray-50 border border-gray-100 rounded-xl px-3 py-2">
+                  این محصول واریانت ندارد؛ قیمت پایه‌ی محصول ثبت می‌شود.
+                </p>
+              )}
+
+              {/* تعداد */}
+              <div>
+                <label className="block text-xs font-bold text-gray-500 mb-2">تعداد</label>
+                <div className="flex items-center gap-3">
+                  <button onClick={() => setQuantity((q) => Math.max(1, q - 1))}
+                    className="w-9 h-9 rounded-xl border border-gray-200 flex items-center justify-center text-gray-600 hover:border-[#aa4725] hover:text-[#aa4725] transition">
+                    <Minus size={14} />
+                  </button>
+                  <input type="number" min="1" value={quantity}
+                    onChange={(e) => setQuantity(Math.max(1, Math.floor(Number(e.target.value) || 1)))}
+                    className="w-16 text-center border border-gray-300 rounded-xl py-2 text-sm font-black text-gray-800
+                      focus:outline-none focus:ring-2 focus:ring-[#aa4725]/30 focus:border-[#aa4725]" />
+                  <button onClick={() => setQuantity((q) => q + 1)}
+                    className="w-9 h-9 rounded-xl border border-gray-200 flex items-center justify-center text-gray-600 hover:border-[#aa4725] hover:text-[#aa4725] transition">
+                    <Plus size={14} />
+                  </button>
+                </div>
+              </div>
+
+              <p className="text-[11px] text-gray-400 leading-relaxed bg-blue-50/60 border border-blue-100 rounded-xl px-3 py-2">
+                قیمت این آیتم سمت سرور و دقیقاً از همان موتور قیمت‌گذاری سفارش (شامل تخفیف‌های فعال) محاسبه و به‌صورت اسنپ‌شات ثبت می‌شود.
+              </p>
+
+              <button onClick={handleSubmit} disabled={!canSubmit}
+                className="w-full bg-[#aa4725] hover:bg-[#8f3b1e] text-white font-bold py-2.5 rounded-xl text-sm
+                  transition flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed">
+                {submitting ? <Loader2 size={15} className="animate-spin" /> : <Plus size={15} />}
+                افزودن به سفارش
+              </button>
+            </>
+          )}
         </div>
       </motion.div>
     </motion.div>
@@ -736,7 +1079,7 @@ function ScanModal({ target, orderId, mode = "choose", onSuccess, onClose }) {
 }
 
 /* ─── Payment Card ──────────────────────────────────────────────────── */
-function PaymentCard({ payment, orderTotal, onViewReceipt, onApprove, onReject }) {
+function PaymentCard({ payment, orderTotal, onViewReceipt, onApprove, onReject, onEdit }) {
   const isPending = payment.status === "PENDING";
   const isPaid = payment.status === "PAID";
   const isBankReceipt = payment.method === "BANK_RECEIPT";
@@ -776,8 +1119,20 @@ function PaymentCard({ payment, orderTotal, onViewReceipt, onApprove, onReject }
         </div>
 
         <div className="text-left space-y-0.5">
-          <p className="text-sm font-black text-gray-800">{formatPrice(payment.amount)}</p>
+          <div className="flex items-center gap-1.5">
+            {onEdit && (
+              <button onClick={onEdit} title="ویرایش مبلغ"
+                className="w-6 h-6 flex items-center justify-center rounded-lg text-gray-400
+                  hover:text-[#aa4725] hover:bg-[#aa4725]/10 transition">
+                <Pencil size={12} />
+              </button>
+            )}
+            <p className="text-sm font-black text-gray-800">{formatPrice(payment.amount)}</p>
+          </div>
           <p className="text-[10px] text-gray-400">تومان پرداخت شده</p>
+          {payment.meta?.editedAt && (
+            <p className="text-[9px] text-amber-500 font-medium">ویرایش‌شده</p>
+          )}
         </div>
       </div>
 
@@ -1254,7 +1609,7 @@ function TrackingPanel({ orderId, orderFulfillmentStatus, onStatusChange }) {
 // این پنل فقط فیلدهای یورویی سفارش را می‌خواند/می‌نویسد و هیچ تأثیری روی
 // مبلغ، پرداخت‌ها یا مانده‌ی تومانی ندارد. مانده‌ی یورو دقیقاً مثل مانده‌ی
 // تومان، سمت کلاینت از روی priceEUR و paymentsEUR محاسبه می‌شود.
-function EurPanel({ orderId, priceEUR, paymentsEUR = [], onChange }) {
+function EurPanel({ orderId, priceEUR, paymentsEUR = [], onChange, onEditPayment }) {
   const [editPrice, setEditPrice] = useState(false);
   const [priceInput, setPriceInput] = useState(
     priceEUR === null || priceEUR === undefined ? "" : String(priceEUR)
@@ -1412,15 +1767,26 @@ function EurPanel({ orderId, priceEUR, paymentsEUR = [], onChange }) {
                 <p className="text-[10px] text-gray-400">
                   {toFarsiDate(p.confirmedAt || p.createdAt)}
                   {p.note ? ` — ${p.note}` : ""}
+                  {p.editedAt ? " — ویرایش‌شده" : ""}
                 </p>
               </div>
-              <button
-                onClick={() => handleDeletePayment(p._id)}
-                className="opacity-0 group-hover:opacity-100 w-7 h-7 flex items-center justify-center
-                  text-red-400 hover:text-red-600 transition rounded-lg hover:bg-red-50 flex-shrink-0"
-              >
-                <Trash2 size={13} />
-              </button>
+              <div className="flex items-center gap-1 flex-shrink-0">
+                <button
+                  onClick={() => onEditPayment?.(p)}
+                  title="ویرایش مبلغ"
+                  className="opacity-0 group-hover:opacity-100 w-7 h-7 flex items-center justify-center
+                    text-gray-400 hover:text-[#aa4725] transition rounded-lg hover:bg-[#aa4725]/10"
+                >
+                  <Pencil size={12} />
+                </button>
+                <button
+                  onClick={() => handleDeletePayment(p._id)}
+                  className="opacity-0 group-hover:opacity-100 w-7 h-7 flex items-center justify-center
+                    text-red-400 hover:text-red-600 transition rounded-lg hover:bg-red-50"
+                >
+                  <Trash2 size={13} />
+                </button>
+              </div>
             </div>
           ))}
         </div>
@@ -1444,9 +1810,11 @@ function EurPanel({ orderId, priceEUR, paymentsEUR = [], onChange }) {
         </div>
         {hasPrice && (
           <div className={`flex justify-between font-black text-sm pt-1 border-t border-gray-100
-            ${remainingEUR > 0 ? "text-red-600" : "text-green-600"}`}>
-            <span>{remainingEUR > 0 ? "مانده پرداخت (یورو)" : "تسویه کامل یورو"}</span>
-            <span dir="ltr">€ {formatEUR(remainingEUR)}</span>
+            ${remainingEUR < 0 ? "text-blue-600" : remainingEUR > 0 ? "text-red-600" : "text-green-600"}`}>
+            <span>
+              {remainingEUR < 0 ? "اضافه‌پرداخت (یورو)" : remainingEUR > 0 ? "مانده پرداخت (یورو)" : "تسویه کامل یورو"}
+            </span>
+            <span dir="ltr">€ {formatEUR(Math.abs(remainingEUR))}</span>
           </div>
         )}
       </div>
@@ -1466,6 +1834,9 @@ export default function AdminOrderDetailClient({ orderId }) {
   const [fulStatus, setFulStatus] = useState("");
   const [saving, setSaving] = useState(false);
   const [activeTab, setActiveTab] = useState("details"); // "details" | "tracking"
+  const [addItemOpen, setAddItemOpen] = useState(false);
+  const [editPaymentTarget, setEditPaymentTarget] = useState(null); // { payment, currency }
+  const [itemBusy, setItemBusy] = useState(null); // item._id در حال تغییر
 
   const fetchOrder = useCallback(async () => {
     setLoading(true);
@@ -1573,6 +1944,86 @@ export default function AdminOrderDetailClient({ orderId }) {
       toast.error(err.message || "خطا در ذخیره وضعیت");
     } finally {
       setSaving(false);
+    }
+  };
+
+  // ─── ویرایش تعداد یک آیتم ───
+  const handleEditItemQty = async (item, newQty) => {
+    if (!item._id || newQty < 1 || newQty === item.quantity) return;
+    setItemBusy(item._id);
+    try {
+      const res = await fetch(`/api/admin/orders/${orderId}/items`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ itemId: item._id, quantity: newQty }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.message || "خطا");
+      await fetchOrder();
+    } catch (err) {
+      toast.error(err.message || "خطا در تغییر تعداد");
+    } finally {
+      setItemBusy(null);
+    }
+  };
+
+  // ─── حذف یک آیتم ───
+  const handleRemoveItem = async (item) => {
+    if (!item._id) return;
+    const result = await Swal.fire({
+      ...swalTheme,
+      title: "حذف آیتم از سفارش",
+      text: `«${item.product?.name || "این آیتم"}» از سفارش حذف شود؟ مبلغ کل و مانده دوباره محاسبه می‌شوند.`,
+      showCancelButton: true,
+      confirmButtonText: "بله، حذف کن",
+      cancelButtonText: "انصراف",
+      confirmButtonColor: "#dc2626",
+    });
+    if (!result.isConfirmed) return;
+    setItemBusy(item._id);
+    try {
+      const res = await fetch(`/api/admin/orders/${orderId}/items`, {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ itemId: item._id }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.message || "خطا");
+      toast.success(data.message || "آیتم حذف شد");
+      await fetchOrder();
+    } catch (err) {
+      toast.error(err.message || "خطا در حذف آیتم");
+    } finally {
+      setItemBusy(null);
+    }
+  };
+
+  // ─── ویرایش مبلغ پرداخت (تومان یا یورو، مستقل) ───
+  const handleEditPayment = async (newAmount) => {
+    if (!editPaymentTarget) return;
+    const { payment, currency } = editPaymentTarget;
+    try {
+      let res, data;
+      if (currency === "eur") {
+        res = await fetch(`/api/admin/orders/${orderId}/eur`, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ paymentId: payment._id, amount: newAmount }),
+        });
+      } else {
+        res = await fetch(`/api/admin/payments/${payment._id}/edit`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ amount: newAmount }),
+        });
+      }
+      data = await res.json();
+      if (!res.ok) throw new Error(data.message || "خطا");
+      toast.success(data.message || "مبلغ پرداخت ویرایش شد");
+      setEditPaymentTarget(null);
+      await fetchOrder();
+    } catch (err) {
+      toast.error(err.message || "خطا در ویرایش پرداخت");
     }
   };
 
@@ -1783,20 +2234,45 @@ export default function AdminOrderDetailClient({ orderId }) {
 
             {/* Order Items */}
             <div className="bg-white rounded-2xl border border-gray-100 p-5 space-y-3">
-              <h3 className="text-sm font-bold text-gray-700 flex items-center gap-2">
-                <Package size={14} className="text-[#aa4725]" />
-                اقلام سفارش
-              </h3>
+              <div className="flex items-center justify-between">
+                <h3 className="text-sm font-bold text-gray-700 flex items-center gap-2">
+                  <Package size={14} className="text-[#aa4725]" />
+                  اقلام سفارش
+                </h3>
+                <button
+                  onClick={() => setAddItemOpen(true)}
+                  className="flex items-center gap-1.5 text-xs font-bold px-3 py-1.5 rounded-lg
+                    bg-[#aa4725]/10 text-[#aa4725] hover:bg-[#aa4725]/20 transition"
+                >
+                  <Plus size={12} /> افزودن آیتم
+                </button>
+              </div>
+              {order.paymentStatus === "PAID" && (
+                <div className="flex items-center gap-1.5 text-[11px] text-amber-700 bg-amber-50
+                  border border-amber-200 rounded-xl px-3 py-2">
+                  <AlertTriangle size={12} className="shrink-0" />
+                  این سفارش تسویه شده است؛ تغییر اقلام مانده/اضافه‌پرداخت ایجاد می‌کند.
+                </div>
+              )}
               <div className="space-y-2">
-                {order.items?.map((item, i) => (
-                  <div key={i} className="flex items-start gap-3 p-3 bg-gray-50 rounded-xl">
+                {order.items?.map((item, i) => {
+                  const itemId = item._id;
+                  const isUsed = item.itemType === "used_product";
+                  const busy = itemBusy === itemId;
+                  return (
+                  <div key={itemId || i} className="flex items-start gap-3 p-3 bg-gray-50 rounded-xl">
                     {item.product?.mainImage && (
                       <img src={item.product.mainImage} alt={item.product.name}
                         className="w-12 h-12 rounded-xl object-cover border border-gray-200 flex-shrink-0" />
                     )}
                     <div className="flex-1 min-w-0">
-                      <p className="text-sm font-bold text-gray-800 truncate">
+                      <p className="text-sm font-bold text-gray-800 truncate flex items-center gap-1.5">
                         {item.product?.name || "محصول"}
+                        {isUsed && (
+                          <span className="text-[10px] font-bold text-amber-600 bg-amber-50 border border-amber-200 px-1.5 py-0.5 rounded-full shrink-0">
+                            دست‌دوم
+                          </span>
+                        )}
                       </p>
                       {item.product?.sku && (
                         <p className="text-xs text-gray-400 font-mono">{item.product.sku}</p>
@@ -1816,13 +2292,54 @@ export default function AdminOrderDetailClient({ orderId }) {
                       {item.flowSelections?.length > 0 && (
                         <OrderFlowSelectionsView flowSelections={item.flowSelections} />
                       )}
+
+                      {/* کنترل‌های ویرایش آیتم */}
+                      <div className="flex items-center gap-2 mt-2">
+                        {isUsed ? (
+                          <span className="text-[11px] text-gray-400 font-medium">تعداد: ۱ (دست‌دوم)</span>
+                        ) : (
+                          <div className="flex items-center gap-1">
+                            <button
+                              disabled={busy || !itemId || item.quantity <= 1}
+                              onClick={() => handleEditItemQty(item, item.quantity - 1)}
+                              className="w-6 h-6 rounded-lg border border-gray-200 flex items-center justify-center
+                                text-gray-500 hover:border-[#aa4725] hover:text-[#aa4725] transition
+                                disabled:opacity-40 disabled:cursor-not-allowed"
+                            >
+                              <Minus size={11} />
+                            </button>
+                            <span className="min-w-7 text-center text-xs font-black text-gray-700">
+                              {busy ? <Loader2 size={11} className="animate-spin inline" /> : new Intl.NumberFormat("fa-IR").format(item.quantity)}
+                            </span>
+                            <button
+                              disabled={busy || !itemId}
+                              onClick={() => handleEditItemQty(item, item.quantity + 1)}
+                              className="w-6 h-6 rounded-lg border border-gray-200 flex items-center justify-center
+                                text-gray-500 hover:border-[#aa4725] hover:text-[#aa4725] transition
+                                disabled:opacity-40 disabled:cursor-not-allowed"
+                            >
+                              <Plus size={11} />
+                            </button>
+                          </div>
+                        )}
+                        <button
+                          disabled={busy || !itemId}
+                          onClick={() => handleRemoveItem(item)}
+                          className="flex items-center gap-1 text-[11px] font-bold text-red-400 hover:text-red-600
+                            hover:bg-red-50 px-2 py-1 rounded-lg transition disabled:opacity-40"
+                        >
+                          <Trash2 size={11} /> حذف
+                        </button>
+                      </div>
                     </div>
                     <div className="text-left flex-shrink-0 text-xs text-gray-500 space-y-0.5">
-                      <p>×{item.quantity}</p>
+                      <p>×{new Intl.NumberFormat("fa-IR").format(item.quantity)}</p>
                       <p className="font-bold text-gray-700">{formatPrice(item.unitPrice)}</p>
+                      <p className="text-[10px] text-gray-400">{formatPrice(item.unitPrice * item.quantity)}</p>
                     </div>
                   </div>
-                ))}
+                  );
+                })}
               </div>
               <div className="border-t border-gray-100 pt-3 space-y-1.5 text-xs">
                 {order.discountAmount > 0 && (
@@ -1861,6 +2378,7 @@ export default function AdminOrderDetailClient({ orderId }) {
                       onViewReceipt={setLightboxUrl}
                       onApprove={() => setApproveTarget(payment)}
                       onReject={() => handleRejectPayment(payment._id)}
+                      onEdit={() => setEditPaymentTarget({ payment, currency: "toman" })}
                     />
                   ))}
                 </div>
@@ -1871,6 +2389,8 @@ export default function AdminOrderDetailClient({ orderId }) {
                     .filter((p) => p.status === "PAID")
                     .reduce((sum, p) => sum + (p.amount || 0), 0);
                   const remaining = order.totalPrice - totalPaid;
+                  const overpaid = remaining < 0;
+                  const settled = remaining === 0;
 
                   return (
                     <div className="border-t border-gray-100 pt-3 space-y-2 text-xs">
@@ -1883,9 +2403,9 @@ export default function AdminOrderDetailClient({ orderId }) {
                         <span className="font-bold text-green-600">{formatPrice(totalPaid)} تومان</span>
                       </div>
                       <div className={`flex justify-between font-black text-sm pt-1 border-t border-gray-100
-            ${remaining > 0 ? "text-red-600" : "text-green-600"}`}>
-                        <span>{remaining > 0 ? "مانده پرداخت" : "تسویه کامل"}</span>
-                        <span>{formatPrice(remaining)} تومان</span>
+            ${overpaid ? "text-blue-600" : settled ? "text-green-600" : "text-red-600"}`}>
+                        <span>{overpaid ? "اضافه‌پرداخت" : settled ? "تسویه کامل" : "مانده پرداخت"}</span>
+                        <span>{formatPrice(Math.abs(remaining))} تومان</span>
                       </div>
                     </div>
                   );
@@ -1899,6 +2419,7 @@ export default function AdminOrderDetailClient({ orderId }) {
               priceEUR={order.priceEUR ?? null}
               paymentsEUR={order.paymentsEUR || []}
               onChange={fetchOrder}
+              onEditPayment={(p) => setEditPaymentTarget({ payment: p, currency: "eur" })}
             />
 
             {/* Description */}
@@ -1963,6 +2484,29 @@ export default function AdminOrderDetailClient({ orderId }) {
             orderTotal={order.totalPrice}
             onConfirm={handleApprovePayment}
             onClose={() => setApproveTarget(null)}
+          />
+        )}
+      </AnimatePresence>
+
+      {/* Add Item Modal */}
+      <AnimatePresence>
+        {addItemOpen && (
+          <AddItemModal
+            orderId={orderId}
+            onSuccess={fetchOrder}
+            onClose={() => setAddItemOpen(false)}
+          />
+        )}
+      </AnimatePresence>
+
+      {/* Edit Payment Modal (تومان / یورو) */}
+      <AnimatePresence>
+        {editPaymentTarget && (
+          <EditPaymentModal
+            payment={editPaymentTarget.payment}
+            currency={editPaymentTarget.currency}
+            onConfirm={handleEditPayment}
+            onClose={() => setEditPaymentTarget(null)}
           />
         )}
       </AnimatePresence>
