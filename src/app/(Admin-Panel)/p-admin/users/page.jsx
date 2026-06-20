@@ -8,7 +8,7 @@ import AdminLoader from '@/components/admin/AdminLoader'
 import {
   Users, UserCheck, UserX, ShieldAlert, Search, Filter,
   MoreVertical, Shield, Ban, CheckCircle, ArrowLeftRight,
-  GraduationCap, Award, Key, Eye
+  GraduationCap, Award, Key, Eye, Megaphone
 } from 'lucide-react'
 
 const roleLabels = {
@@ -134,6 +134,14 @@ export default function AdminUsersManagement() {
           <p className="text-xs font-bold text-gray-400">دسترسی کامل به نقش‌ها، سطوح دسترسی و وضعیت حساب‌ها</p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
+          <button
+            onClick={() => router.push('/p-admin/users/notifications')}
+            className="inline-flex items-center gap-2 text-white text-xs font-bold px-4 py-2.5 rounded-[var(--radius)] transition-all hover:shadow-lg hover:-translate-y-0.5 active:scale-95"
+            style={{ background: 'var(--color-secondary)', color: '#1a1a1a' }}
+          >
+            <Megaphone size={15} />
+            ارسال اعلان
+          </button>
           <button
             onClick={() => router.push('/p-admin/users/admins')}
             className="inline-flex items-center gap-2 text-white text-xs font-bold px-4 py-2.5 rounded-[var(--radius)] transition-all hover:shadow-lg hover:-translate-y-0.5 active:scale-95"

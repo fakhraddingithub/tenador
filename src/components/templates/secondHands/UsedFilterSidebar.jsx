@@ -3,6 +3,8 @@
 import { useMemo, useState } from 'react';
 import { FiChevronDown, FiChevronUp, FiShield } from 'react-icons/fi';
 import MobileFilterDrawer from '@/components/features/filters/MobileFilterDrawer';
+import AttributeFilters from '@/components/features/filters/AttributeFilters';
+import { countActiveAttrFilters } from '@/lib/attributeFilters';
 
 function Section({ title, children, defaultOpen = true }) {
   const [open, setOpen] = useState(defaultOpen);
@@ -27,7 +29,14 @@ const SCORE_RANGES = [
   { label: 'متوسط (۱ تا ۴)', min: 1, max: 4  },
 ];
 
-export default function UsedFilterSidebar({ products, filters, setFilters }) {
+export default function UsedFilterSidebar({
+  products,
+  filters,
+  setFilters,
+  attrMeta = [],
+  attrFilters = {},
+  setAttrFilters = () => {},
+}) {
   const brands     = useMemo(() => [...new Map(products.map(p => p.baseProduct?.brand).filter(Boolean).map(b => [b._id, b])).values()], [products]);
   const categories = useMemo(() => [...new Map(products.map(p => p.baseProduct?.category).filter(Boolean).map(c => [c._id, c])).values()], [products]);
   const maxPrice   = useMemo(() => Math.max(...products.map(p => p.price || 0), 50_000_000), [products]);
@@ -45,9 +54,13 @@ export default function UsedFilterSidebar({ products, filters, setFilters }) {
     filters.scoreRange ? 1 : 0,
     filters.maxPrice < maxPrice ? 1 : 0,
     filters.onlyInStock ? 1 : 0,
+    countActiveAttrFilters(attrFilters),
   ].reduce((a, b) => a + b, 0);
 
-  const reset = () => setFilters({ brands: [], categories: [], maxPrice, scoreRange: null, onlyInStock: false });
+  const reset = () => {
+    setFilters({ brands: [], categories: [], maxPrice, scoreRange: null, onlyInStock: false });
+    setAttrFilters({});
+  };
 
   return (
     <MobileFilterDrawer activeCount={activeCount} onReset={reset}>
@@ -148,6 +161,17 @@ export default function UsedFilterSidebar({ products, filters, setFilters }) {
           </div>
         </div>
       </Section>
+
+      {/* ویژگی‌ها (رنگ، وزن و ...) — کامپوننتِ مشترکِ دکمه‌ای، با همان منطقِ فروشگاه */}
+      {attrMeta.length > 0 && (
+        <div className="-mx-5 mt-1 border-t border-gray-100">
+          <AttributeFilters
+            attrMeta={attrMeta}
+            attrFilters={attrFilters}
+            setAttrFilters={setAttrFilters}
+          />
+        </div>
+      )}
     </div>
     </MobileFilterDrawer>
   );

@@ -12,6 +12,7 @@ import {
 import ImageUpload from "@/components/admin/ImageUpload";
 import EventEntityPicker from "./EventEntityPicker";
 import DiscountRulePicker from "./DiscountRulePicker";
+import AttributeFilters from "@/components/features/filters/AttributeFilters";
 
 // ─── helpers ────────────────────────────────────────────────────────────────
 
@@ -38,9 +39,13 @@ const RULE_INPUT = {
   tag: { input: "tags", placeholder: "تگ‌ها را با کاما جدا کنید" },
   discountRule: { input: "discountRules" },
   color: { input: "color" },
+  attribute: { input: "attribute" },
   featured: { input: "none" },
   discount: { input: "none" },
 };
+
+// Default value for an "attribute" rule — the shared button filter state.
+const DEFAULT_ATTRIBUTE_VALUE = { filters: {} };
 
 // Default value object for a "By Color" rule. The admin only picks a color; hue
 // tolerance / min-saturation are hardcoded in the resolver. `excludedIds` holds
@@ -500,6 +505,57 @@ function ColorRuleInput({ value, onChange }) {
   );
 }
 
+// "By Attribute" rule input — the SAME button filter UI the storefront uses
+// (incl. the 16-color swatch grid). Options come from /attribute-options, which
+// builds them from the filterable attributes' existing product values. The value
+// shape is { filters: { [name]: [values] } }, resolved server-side by
+// resolveAttributeRule via the shared productMatchesAttrFilters.
+function AttributeRuleInput({ value, onChange }) {
+  const v = value && typeof value === "object" ? value : DEFAULT_ATTRIBUTE_VALUE;
+  const filters = v.filters && typeof v.filters === "object" ? v.filters : {};
+  const [meta, setMeta] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await fetch("/api/admin/events/attribute-options");
+        const data = await res.json();
+        if (!cancelled) setMeta(data.meta || []);
+      } catch {
+        if (!cancelled) setMeta([]);
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  return (
+    <div className="bg-white rounded-lg border border-gray-100 overflow-hidden">
+      {loading && (
+        <p className="text-[11px] text-gray-400 font-bold p-4">در حال بارگذاری مشخصات…</p>
+      )}
+      {!loading && meta.length === 0 && (
+        <p className="text-[11px] text-gray-400 font-bold p-4">
+          هیچ ویژگیِ «قابل فیلتر» تعریف نشده — از تنظیماتِ دسته‌بندی فعالش کنید.
+        </p>
+      )}
+      {!loading && meta.length > 0 && (
+        <AttributeFilters
+          attrMeta={meta}
+          attrFilters={filters}
+          setAttrFilters={(next) => onChange({ filters: next })}
+          defaultOpen
+        />
+      )}
+    </div>
+  );
+}
+
 // ─── Tab: Product Selection ───────────────────────────────────────────────────
 function ProductsTab({ form, setField }) {
   const rules = form.productSelection.rules;
@@ -523,6 +579,8 @@ function ProductsTab({ form, setField }) {
       ? []
       : kind === "color"
       ? { ...DEFAULT_COLOR_VALUE }
+      : kind === "attribute"
+      ? { filters: {} }
       : kind === "number"
       ? ""
       : "";
@@ -645,6 +703,7 @@ function ProductsTab({ form, setField }) {
                   <option value="new">محصولات جدید</option>
                   <option value="discountRule">بر اساس قانون تخفیف</option>
                   <option value="color">بر اساس رنگ</option>
+                  <option value="attribute">بر اساس مشخصات</option>
                   <option value="tag">تگ</option>
                 </Select>
 
@@ -702,6 +761,13 @@ function ProductsTab({ form, setField }) {
 
               {meta.input === "color" && (
                 <ColorRuleInput
+                  value={rule.value}
+                  onChange={(val) => updateRule(i, { value: val })}
+                />
+              )}
+
+              {meta.input === "attribute" && (
+                <AttributeRuleInput
                   value={rule.value}
                   onChange={(val) => updateRule(i, { value: val })}
                 />

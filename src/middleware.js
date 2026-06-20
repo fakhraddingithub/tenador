@@ -2,8 +2,11 @@ import { NextResponse } from 'next/server'
 
 export function middleware(request) {
   const token = request.cookies.get('accessToken')?.value
+  const { pathname } = request.nextUrl
+  const isProtected =
+    pathname.startsWith('/p-user') || pathname.startsWith('/p-admin')
 
-  if (!token && request.nextUrl.pathname.startsWith('/p-user')) {
+  if (!token && isProtected) {
     const loginUrl = new URL('/login-register', request.url)
     loginUrl.searchParams.set(
       'callbackUrl',
@@ -16,5 +19,5 @@ export function middleware(request) {
 }
 
 export const config = {
-  matcher: '/p-user/:path*',
+  matcher: ['/p-user/:path*', '/p-admin/:path*'],
 }

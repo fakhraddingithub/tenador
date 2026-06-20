@@ -6,6 +6,7 @@ import Product from "base/models/Product";
 import HealthCard from "base/models/HealthCard";
 import SiteSetting from "base/models/SiteSetting";
 import UsedProductsPageClient from "@/components/templates/secondHands/UsedProductsPageClient";
+import { getFilterableAttributes } from "base/services/product.service";
 import { getCachedRate, eurToToman } from "@/lib/Exchangerate";
 
 export const revalidate = 300;
@@ -52,7 +53,8 @@ export default async function UsedProductsPage() {
   const rawProducts = await UsedProduct.find({ status: "available" })
     .populate({
       path: "baseProduct",
-      select: "name mainImage shortDescription basePrice brand category sku",
+      // attributes + color برای فیلترِ ویژگی/رنگِ دکمه‌ای روی صفحهٔ دست‌دوم
+      select: "name mainImage shortDescription basePrice brand category sku attributes color",
       populate: [
         { path: "brand", select: "title slug logo icon" },
         { path: "category", select: "title slug" },
@@ -117,6 +119,9 @@ export default async function UsedProductsPage() {
           mainImage: p.baseProduct.mainImage,
           basePrice: p.baseProduct.basePrice,
           sku: p.baseProduct.sku,
+          // برای فیلترِ ویژگی/رنگِ دکمه‌ای
+          attributes: p.baseProduct.attributes || {},
+          color: p.baseProduct.color || null,
           brand: p.baseProduct.brand
             ? {
                 _id: p.baseProduct.brand._id.toString(),
@@ -136,5 +141,13 @@ export default async function UsedProductsPage() {
         },
       };
     });
-  return <UsedProductsPageClient products={products} headerImage={headerImage} />;
+  const filterableAttributes = await getFilterableAttributes();
+
+  return (
+    <UsedProductsPageClient
+      products={products}
+      headerImage={headerImage}
+      filterableAttributes={filterableAttributes}
+    />
+  );
 }

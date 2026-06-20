@@ -119,7 +119,13 @@ export const getFilterableAttributes = unstable_cache(
     for (const cat of categories) {
       for (const attr of cat.attributes || []) {
         if (attr?.filterable && attr.name && !map.has(attr.name)) {
-          map.set(attr.name, { name: attr.name, label: attr.label || attr.name });
+          // filterable:true را همراه می‌بریم تا buildAttributeMeta (که فقط ویژگی‌های
+          // قابل فیلتر را می‌پذیرد) این لیستِ ازقبل‌فیلترشده را هم رد نکند.
+          map.set(attr.name, {
+            name: attr.name,
+            label: attr.label || attr.name,
+            filterable: true,
+          });
         }
       }
     }

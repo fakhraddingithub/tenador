@@ -1,21 +1,18 @@
 import { useState } from "react";
 import { FaChevronDown, FaFilter, FaHistory } from "react-icons/fa";
 import MobileFilterDrawer from "@/components/features/filters/MobileFilterDrawer";
+import AttributeFilters from "@/components/features/filters/AttributeFilters";
 import { countActiveAttrFilters } from "@/lib/attributeFilters";
 
 export default function FilterSidebar({
   initialProducts,
   filters,
   setFilters,
-  // فیلترهای ویژگیِ پویای دسته‌بندی (چیپ/بازه) — فقط روی صفحه‌ی دسته پاس داده می‌شوند
+  // فیلترهای ویژگیِ پویای دسته‌بندی (دکمه‌های انتخابی + گریدِ رنگ) — کامپوننتِ
+  // مشترکِ AttributeFilters همه‌جا از همین props استفاده می‌کند.
   attributeMeta = [],
   attrFilters = {},
   setAttrFilters = () => {},
-  // فیلترهای متنیِ آزاد بر اساس ویژگی‌های «قابل فیلتر» — فقط روی صفحه‌ی محصولات
-  freeTextAttributes = [],
-  attrInputs = {},
-  onAttrInput = () => {},
-  onResetFreeText = () => {},
 }) {
   // استخراج داده‌های یکتا برای فیلترها
   const getUniqueItems = (products, key) => {
@@ -46,12 +43,7 @@ export default function FilterSidebar({
       maxPrice: 50000000,
     });
     setAttrFilters({});
-    onResetFreeText();
   };
-
-  const activeFreeTextCount = Object.values(attrInputs).filter(
-    (v) => v && String(v).trim() !== "",
-  ).length;
 
   // تعداد فیلترهای فعال — فقط برای نمایش بج روی دکمه‌ی موبایل (منطق فیلتر تغییر نمی‌کند)
   const activeCount =
@@ -61,8 +53,7 @@ export default function FilterSidebar({
     (filters.series?.length || 0) +
     (filters.minPrice > 0 ? 1 : 0) +
     (filters.maxPrice < 50000000 ? 1 : 0) +
-    countActiveAttrFilters(attrFilters) +
-    activeFreeTextCount;
+    countActiveAttrFilters(attrFilters);
 
   return (
     <MobileFilterDrawer activeCount={activeCount} onReset={resetFilters}>
@@ -150,174 +141,16 @@ export default function FilterSidebar({
           </div>
         </div>
 
-        {/* ویژگی‌های پویای دسته‌بندی (رنگ، وزن، اندازه صفحه و ...) */}
-        {attributeMeta.map((attr) =>
-          attr.type === "number" ? (
-            <NumericAttributeFilter
-              key={attr.name}
-              attr={attr}
-              attrFilters={attrFilters}
-              setAttrFilters={setAttrFilters}
-            />
-          ) : (
-            <TextAttributeFilter
-              key={attr.name}
-              attr={attr}
-              attrFilters={attrFilters}
-              setAttrFilters={setAttrFilters}
-            />
-          ),
-        )}
-
-        {/* فیلترهای متنیِ آزاد (صفحه‌ی محصولات) — یک اینپوت متنی برای هر ویژگیِ
-            «قابل فیلتر». ماچینگ = substring (همان منطق مشترک)، با debounce در والد. */}
-        {freeTextAttributes.length > 0 && (
-          <div className="p-5 border-b border-gray-50 last:border-0">
-            <h4 className="text-sm font-bold text-[#1a1a1a] mb-4">
-              فیلتر بر اساس مشخصات
-            </h4>
-            <div className="flex flex-col gap-3">
-              {freeTextAttributes.map((attr) => (
-                <div key={attr.name}>
-                  <label className="text-xs font-bold text-gray-500 mb-1 block">
-                    {attr.label}
-                  </label>
-                  <input
-                    type="text"
-                    value={attrInputs[attr.name] || ""}
-                    onChange={(e) => onAttrInput(attr.name, e.target.value)}
-                    placeholder={`جستجو در ${attr.label}...`}
-                    className="w-full h-10 bg-gray-50 border border-gray-100 rounded-[6px] text-xs px-2 focus:border-[#aa4725] outline-none font-bold"
-                  />
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
+        {/* ویژگی‌های پویای دسته‌بندی (رنگ، وزن، اندازه صفحه و ...) —
+            کامپوننتِ مشترکِ دکمه‌ایِ AttributeFilters (شاملِ گریدِ ۱۶ رنگ). */}
+        <AttributeFilters
+          attrMeta={attributeMeta}
+          attrFilters={attrFilters}
+          setAttrFilters={setAttrFilters}
+        />
       </div>
     </div>
     </MobileFilterDrawer>
-  );
-}
-
-// فیلتر ویژگیِ متنی — تطبیق substring (شاملِ). چند گزینه = OR
-function TextAttributeFilter({ attr, attrFilters, setAttrFilters }) {
-  const [isOpen, setIsOpen] = useState(false);
-  const selected = attrFilters[attr.name] || [];
-
-  const toggleValue = (value) => {
-    const next = selected.includes(value)
-      ? selected.filter((v) => v !== value)
-      : [...selected, value];
-
-    const all = { ...attrFilters };
-    if (next.length) all[attr.name] = next;
-    else delete all[attr.name];
-    setAttrFilters(all);
-  };
-
-  return (
-    <div className="border-b border-gray-50 last:border-0">
-      <button
-        type="button"
-        onClick={() => setIsOpen(!isOpen)}
-        className="w-full p-5 flex items-center justify-between hover:bg-gray-50/50 transition-colors"
-      >
-        <span className="text-sm font-bold text-[#1a1a1a] flex items-center gap-2">
-          {attr.label}
-          {selected.length > 0 && (
-            <span className="bg-[#aa4725] text-white text-[9px] rounded-full w-4 h-4 flex items-center justify-center">
-              {selected.length}
-            </span>
-          )}
-        </span>
-        <FaChevronDown
-          size={10}
-          className={`text-gray-400 transition-transform ${isOpen ? "rotate-180" : ""}`}
-        />
-      </button>
-
-      {isOpen && (
-        <div className="px-5 pb-5 flex flex-wrap gap-2 max-h-52 overflow-y-auto custom-scrollbar">
-          {attr.options.map((opt) => {
-            const isActive = selected.includes(opt.value);
-            return (
-              <button
-                key={opt.value}
-                type="button"
-                onClick={() => toggleValue(opt.value)}
-                className={`px-3 py-1.5 rounded-full text-[11px] font-bold border transition-all
-                  ${
-                    isActive
-                      ? "bg-[#aa4725] border-[#aa4725] text-white"
-                      : "bg-gray-50 border-gray-200 text-gray-600 hover:border-[#aa4725]"
-                  }`}
-              >
-                {opt.value}
-              </button>
-            );
-          })}
-        </div>
-      )}
-    </div>
-  );
-}
-
-// فیلتر ویژگیِ عددی — بازه‌ی از/تا
-function NumericAttributeFilter({ attr, attrFilters, setAttrFilters }) {
-  const [isOpen, setIsOpen] = useState(false);
-  const sel = attrFilters[attr.name] || { min: null, max: null };
-  const isActive = sel.min != null || sel.max != null;
-
-  const setBound = (key, raw) => {
-    const value = raw === "" ? null : Number(raw);
-    const next = { ...sel, [key]: value };
-    const all = { ...attrFilters };
-    if (next.min != null || next.max != null) all[attr.name] = next;
-    else delete all[attr.name];
-    setAttrFilters(all);
-  };
-
-  return (
-    <div className="border-b border-gray-50 last:border-0">
-      <button
-        type="button"
-        onClick={() => setIsOpen(!isOpen)}
-        className="w-full p-5 flex items-center justify-between hover:bg-gray-50/50 transition-colors"
-      >
-        <span className="text-sm font-bold text-[#1a1a1a] flex items-center gap-2">
-          {attr.label}
-          {isActive && (
-            <span className="w-2 h-2 rounded-full bg-[#aa4725]" />
-          )}
-        </span>
-        <FaChevronDown
-          size={10}
-          className={`text-gray-400 transition-transform ${isOpen ? "rotate-180" : ""}`}
-        />
-      </button>
-
-      {isOpen && (
-        <div className="px-5 pb-5 flex flex-col gap-2">
-          <div className="flex gap-2">
-            <input
-              type="number"
-              placeholder={`از ${attr.min}`}
-              value={sel.min ?? ""}
-              onChange={(e) => setBound("min", e.target.value)}
-              className="w-1/2 h-10 bg-gray-50 border border-gray-100 rounded-[6px] text-xs px-2 focus:border-[#aa4725] outline-none font-bold"
-            />
-            <input
-              type="number"
-              placeholder={`تا ${attr.max}`}
-              value={sel.max ?? ""}
-              onChange={(e) => setBound("max", e.target.value)}
-              className="w-1/2 h-10 bg-gray-50 border border-gray-100 rounded-[6px] text-xs px-2 focus:border-[#aa4725] outline-none font-bold"
-            />
-          </div>
-        </div>
-      )}
-    </div>
   );
 }
 

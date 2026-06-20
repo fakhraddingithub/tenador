@@ -5,6 +5,7 @@ import ProductList from "./ProductList";
 import FilterSidebar from "./FilterSidebar"; // این کامپوننت را در ادامه می‌سازیم
 import SearchBar from "./SearchBar";
 import {
+  buildAttributeMeta,
   parseAttrFiltersFromParams,
   writeAttrFiltersToParams,
   productMatchesAttrFilters,
@@ -21,23 +22,16 @@ export default function ProductListClient({ products: initialProducts, rate, fil
   });
 
   // ─────────────────────────────────────────────
-  // فیلتر آزادِ متنی بر اساس ویژگی‌های «قابل فیلتر» (در هر دسته‌بندی).
-  // متادیتا را به شکلی می‌سازیم که عیناً با هلپر مشترکِ attributeFilters سازگار
-  // باشد (type:"text") تا همان منطق substring/AND صفحه‌ی دسته دوباره استفاده شود.
+  // فیلتر بر اساس ویژگی‌های «قابل فیلتر» (در هر دسته‌بندی) — دکمه‌های انتخابی.
+  // متادیتا و گزینه‌ها از روی همان محصولاتِ لودشده ساخته می‌شوند (همان هلپر
+  // مشترکِ صفحه‌ی دسته)؛ ویژگیِ «رنگ» خودش گریدِ ۱۶ سواچ می‌شود.
   // ─────────────────────────────────────────────
   const attrMeta = useMemo(
-    () =>
-      (filterableAttributes || []).map((a) => ({
-        name: a.name,
-        label: a.label || a.name,
-        type: "text",
-      })),
-    [filterableAttributes],
+    () => buildAttributeMeta(filterableAttributes, initialProducts),
+    [filterableAttributes, initialProducts],
   );
 
-  // مقدارِ خامِ اینپوت‌ها (بلافاصله با هر کیبورد به‌روز می‌شود تا تایپ روان بماند)
-  const [attrInputs, setAttrInputs] = useState({});
-  // فیلترهای اعمال‌شده (با debounce) — شکلِ سازگار با هلپر: { [name]: [value] }
+  // فیلترهای اعمال‌شده — شکلِ مشترک: { [name]: [value, ...] }
   const [attrFilters, setAttrFilters] = useState({});
 
   // ── مقداردهی اولیه از روی URL (کلاینت‌ساید) تا لینکِ به‌اشتراک‌گذاشته همان
@@ -45,54 +39,31 @@ export default function ProductListClient({ products: initialProducts, rate, fil
   useEffect(() => {
     if (typeof window === "undefined" || attrMeta.length === 0) return;
     const sp = new URLSearchParams(window.location.search);
-    const parsed = parseAttrFiltersFromParams(sp, attrMeta);
-    const inputs = {};
-    for (const [name, vals] of Object.entries(parsed)) {
-      inputs[name] = Array.isArray(vals) ? vals[0] : "";
-    }
     // eslint-disable-next-line react-hooks/set-state-in-effect
-    setAttrFilters(parsed);
-    setAttrInputs(inputs);
+    setAttrFilters(parseAttrFiltersFromParams(sp, attrMeta));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [attrMeta.length]);
 
-  // ── debounce: اینپوت‌ها → فیلترهای اعمال‌شده + URL (بدون رفرش کامل). ۳۰۰ms،
-  //    همان الگوی debounce موجود در پروژه (setTimeout + clearTimeout). ──
-  useEffect(() => {
-    if (typeof window === "undefined" || attrMeta.length === 0) return;
+  // اعمال تغییر فیلتر + همگام‌سازی URL بدون رفرش کامل (داده از قبل در حافظه است).
+  const applyAttrFilters = (next) => {
+    setAttrFilters(next);
+    if (typeof window === "undefined") return;
+    const params = writeAttrFiltersToParams(
+      new URLSearchParams(window.location.search),
+      next,
+      attrMeta,
+    );
+    const qs = params.toString();
+    window.history.replaceState(
+      null,
+      "",
+      qs ? `${window.location.pathname}?${qs}` : window.location.pathname,
+    );
 
-    const timer = setTimeout(() => {
-      const next = {};
-      for (const m of attrMeta) {
-        const v = (attrInputs[m.name] || "").trim();
-        if (v) next[m.name] = [v];
-      }
-      setAttrFilters(next);
-
-      const params = writeAttrFiltersToParams(
-        new URLSearchParams(window.location.search),
-        next,
-        attrMeta,
-      );
-      const qs = params.toString();
-      window.history.replaceState(
-        null,
-        "",
-        qs ? `${window.location.pathname}?${qs}` : window.location.pathname,
-      );
-
-      // history.replaceState رویدادی منتشر نمی‌کند؛ به هدر اطلاع می‌دهیم تا خطِ
-      // «فیلترهای فعال» را دوباره از URL بخواند.
-      window.dispatchEvent(new Event("products:filters-change"));
-    }, 300);
-
-    return () => clearTimeout(timer);
-  }, [attrInputs, attrMeta]);
-
-  const onAttrInput = (name, value) =>
-    setAttrInputs((prev) => ({ ...prev, [name]: value }));
-
-  const onResetFreeText = () => setAttrInputs({});
+    // history.replaceState رویدادی منتشر نمی‌کند؛ به هدر اطلاع می‌دهیم تا خطِ
+    // «فیلترهای فعال» را دوباره از URL بخواند.
+    window.dispatchEvent(new Event("products:filters-change"));
+  };
 
   // منطق فیلترینگ فوق حرفه‌ای
   const filteredProducts = useMemo(() => {
@@ -131,10 +102,9 @@ export default function ProductListClient({ products: initialProducts, rate, fil
           initialProducts={initialProducts}
           filters={filters}
           setFilters={setFilters}
-          freeTextAttributes={attrMeta}
-          attrInputs={attrInputs}
-          onAttrInput={onAttrInput}
-          onResetFreeText={onResetFreeText}
+          attributeMeta={attrMeta}
+          attrFilters={attrFilters}
+          setAttrFilters={applyAttrFilters}
         />
       </aside>
 

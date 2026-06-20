@@ -14,7 +14,10 @@ const stickerPositions = {
   "top-right": "top-2 right-2",
   "bottom-right": "bottom-2 right-2",
   "bottom-left": "bottom-2 left-2",
-  "top-left": "top-2 left-2",
+  // The brand logo lives at top-3 left-3 (12px) and is 30px tall → its bottom edge
+  // is at ~42px. Push the top-left sticker to top-14 (56px) so it sits clearly
+  // BELOW the logo (left-aligned under it) with a visible gap, never overlapping.
+  "top-left": "top-14 left-3",
 };
 
 const ribbonStyles = {
@@ -46,10 +49,14 @@ export default function EventCardOverlay({ customization = {} }) {
   if (!hasRibbon && !hasSticker) return null;
 
   return (
-    <div className="absolute inset-0 z-30 pointer-events-none" aria-hidden="true">
+    // No z-index on the root: that lets each child set its OWN stacking level
+    // relative to the card (the brand logo is z-20). The ribbon sits above
+    // everything (z-30); the sticker sits BELOW the logo (z-10) so the logo always
+    // wins if they ever touch — together with the top-14 offset, zero overlap.
+    <div className="absolute inset-0 pointer-events-none" aria-hidden="true">
       {/* Ribbon — diagonal corner banner */}
       {hasRibbon && (
-        <div className="absolute inset-0 overflow-hidden">
+        <div className="absolute inset-0 overflow-hidden z-30">
           <span
             className="absolute text-[10px] font-black whitespace-nowrap"
             style={{
@@ -63,9 +70,9 @@ export default function EventCardOverlay({ customization = {} }) {
         </div>
       )}
 
-      {/* Sticker — circular badge image */}
+      {/* Sticker — circular badge image. z-10 keeps it UNDER the brand logo (z-20). */}
       {hasSticker && (
-        <div className={`absolute ${stickerPositions[sticker.position] || stickerPositions["top-left"]}`}>
+        <div className={`absolute z-10 ${stickerPositions[sticker.position] || stickerPositions["top-left"]}`}>
           <div className={`relative ${stickerSizes[sticker.size || "md"]} rounded-full overflow-hidden`}>
             <Image src={sticker.image} alt="" fill className="object-contain" sizes="80px" />
           </div>

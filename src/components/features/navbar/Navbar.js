@@ -18,6 +18,7 @@ import Input from "@/components/ui/Input";
 import IconButton from "@/components/ui/IconButton";
 import Button from "@/components/ui/Button";
 import CartDrawer from "@/components/features/cartDrawer/CartDrawer";
+import UserNotificationBell from "@/components/features/notifications/UserNotificationBell";
 import { useUser } from "@/components/features/auth/UserContext";
 import { getCartTotalQuantity } from "@/lib/cart";
 
@@ -678,6 +679,8 @@ useEffect(() => {
                 </Link>
               )}
 
+              {user && <UserNotificationBell />}
+
               <div
                 id="cart-nav-icon"
                 className="relative cursor-pointer"
@@ -787,6 +790,8 @@ useEffect(() => {
                     ورود
                   </Link>
                 )}
+
+                {user && <UserNotificationBell />}
 
                 <button
                   onClick={() => setMobileSearchOpen(true)}

@@ -95,7 +95,12 @@
       "PowerShell(npx eslint \"src/lib/seo/productSchema.js\" \"src/app/\\(Site\\)/products/[productSlug]/page.jsx\")",
       "PowerShell(npx eslint \"src/components/templates/product/ProductTabs.jsx\")",
       "Bash(find src/components/admin -iname \"*categor*\" -o -iname \"*attribute*\")",
-      "Bash(find \"src/app/\\(Admin-Panel\\)\" -ipath \"*categor*\" -type f)"
+      "Bash(find \"src/app/\\(Admin-Panel\\)\" -ipath \"*categor*\" -type f)",
+      "PowerShell(npx eslint \"src/lib/colorMatch.js\" \"src/lib/attributeFilters.js\" \"src/components/features/filters/AttributeFilters.jsx\" \"src/components/templates/products/FilterSidebar.js\" \"src/components/templates/products/ProductListClient.jsx\" \"src/components/templates/secondHands/UsedProductsPageClient.jsx\" \"src/components/templates/secondHands/UsedFilterSidebar.jsx\" \"src/components/admin/events/EventForm.jsx\" \"services/eventProductResolver.js\" \"src/app/api/admin/events/attribute-options/route.js\" \"src/app/\\(Site\\)/second-hand/page.jsx\" 2>&1 | Select-Object -Last 40)",
+      "PowerShell(npx eslint \"src/lib/attributeFilters.js\" \"services/product.service.js\" \"services/eventProductResolver.js\" \"src/components/features/events/EventCardOverlay.jsx\" 2>&1 | Select-Object -Last 20)",
+      "PowerShell(Remove-Item *)",
+      "PowerShell(Get-CimInstance *)",
+      "PowerShell(Get-Process *)"
     ]
   }
 }

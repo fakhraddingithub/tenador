@@ -1,10 +1,16 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { FiSearch, FiShoppingBag, FiTag } from 'react-icons/fi';
 import UsedProductCard from './UsedProductCard';
 import UsedFilterSidebar from './UsedFilterSidebar';
 import UsedQuickViewModal from './Usedquickviewmodal';
+import {
+  buildAttributeMeta,
+  parseAttrFiltersFromParams,
+  writeAttrFiltersToParams,
+  productMatchesAttrFilters,
+} from '@/lib/attributeFilters';
 
 const DEFAULT_FILTERS = {
   brands:      [],
@@ -14,9 +20,33 @@ const DEFAULT_FILTERS = {
   onlyInStock: false,
 };
 
-export default function UsedProductsPageClient({ products: initialProducts, headerImage }) {
+export default function UsedProductsPageClient({ products: initialProducts, headerImage, filterableAttributes = [] }) {
   const [searchTerm, setSearchTerm] = useState('');
   const [filters, setFilters]       = useState(DEFAULT_FILTERS);
+
+  // ── فیلترِ ویژگی/رنگِ دکمه‌ای (همان منطقِ مشترکِ فروشگاه) — مقادیر روی
+  //    baseProduct ذخیره می‌شوند، پس متادیتا و تطبیق هم بر اساس baseProduct است. ──
+  const attrMeta = useMemo(
+    () => buildAttributeMeta(filterableAttributes, initialProducts.map(p => p.baseProduct || {})),
+    [filterableAttributes, initialProducts],
+  );
+  const [attrFilters, setAttrFilters] = useState({});
+
+  useEffect(() => {
+    if (typeof window === 'undefined' || attrMeta.length === 0) return;
+    const sp = new URLSearchParams(window.location.search);
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setAttrFilters(parseAttrFiltersFromParams(sp, attrMeta));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [attrMeta.length]);
+
+  const applyAttrFilters = (next) => {
+    setAttrFilters(next);
+    if (typeof window === 'undefined') return;
+    const params = writeAttrFiltersToParams(new URLSearchParams(window.location.search), next, attrMeta);
+    const qs = params.toString();
+    window.history.replaceState(null, '', qs ? `${window.location.pathname}?${qs}` : window.location.pathname);
+  };
 
   // ── QuickView ──
   const [selectedProduct, setSelectedProduct] = useState(null);
@@ -53,9 +83,11 @@ export default function UsedProductsPageClient({ products: initialProducts, head
         (product.overallScore >= filters.scoreRange.min &&
          product.overallScore <= filters.scoreRange.max);
 
-      return matchesSearch && matchesBrand && matchesCategory && matchesPrice && matchesScore;
+      const matchesAttributes = productMatchesAttrFilters(product.baseProduct || {}, attrFilters, attrMeta);
+
+      return matchesSearch && matchesBrand && matchesCategory && matchesPrice && matchesScore && matchesAttributes;
     });
-  }, [searchTerm, filters, initialProducts]);
+  }, [searchTerm, filters, initialProducts, attrFilters, attrMeta]);
 
   const resetFilters = () => setFilters({ ...DEFAULT_FILTERS, maxPrice });
 
@@ -114,6 +146,9 @@ export default function UsedProductsPageClient({ products: initialProducts, head
               products={initialProducts}
               filters={filters}
               setFilters={setFilters}
+              attrMeta={attrMeta}
+              attrFilters={attrFilters}
+              setAttrFilters={applyAttrFilters}
             />
           </div>
         </aside>

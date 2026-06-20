@@ -51,5 +51,7 @@ import "base/models/Sport";
 import "base/models/Ticket";
 import "base/models/UsedProduct";
 import "base/models/User";
+import "base/models/UserNotification";
+import "base/models/UserNotificationState";
 import "base/models/Variant";
 import "base/models/Event";

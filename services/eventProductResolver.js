@@ -20,6 +20,8 @@ import Variant from "base/models/Variant";
 import DiscountRule from "base/models/DiscountRule";
 import { getCachedRate } from "@/lib/Exchangerate";
 import { attachListingPrices } from "base/services/priceEngine";
+import { productMatchesAttrFilters } from "@/lib/attributeFilters";
+import { isColorAttribute } from "@/lib/colorMatch";
 
 // ─── Color matching (HSL-based) ───────────────────────────────────────────────
 // We match products by PERCEPTUAL color, not raw hex distance: a hex range would
@@ -220,6 +222,37 @@ async function resolveColorRule(value) {
   return Array.from(matched).filter((id) => !excluded.has(id));
 }
 
+/**
+ * Returns product ids matching a button-based attribute selection (the same
+ * shared filter UI used across the storefront). `value.filters` has the shape
+ * { [attrName]: [value, ...] }; the color attribute uses the 16-swatch names and
+ * is matched perceptually (hue) + textually via the shared colorMatch logic.
+ *
+ * We reuse productMatchesAttrFilters so a campaign filters products identically
+ * to how the storefront does. Variants are populated so variant colors count.
+ */
+async function resolveAttributeRule(value) {
+  const filters = value && typeof value === "object" ? value.filters || {} : {};
+  const names = Object.keys(filters).filter(
+    (n) => Array.isArray(filters[n]) && filters[n].length
+  );
+  if (!names.length) return [];
+
+  const attrMeta = names.map((name) => ({
+    name,
+    type: isColorAttribute(name) ? "color" : "text",
+  }));
+
+  const products = await Product.find({ isActive: true })
+    .select("_id attributes color variants")
+    .populate("variants", "attributes variantAttributes color")
+    .lean();
+
+  return products
+    .filter((p) => productMatchesAttrFilters(p, filters, attrMeta))
+    .map((p) => p._id.toString());
+}
+
 async function resolveRule(rule) {
   const { type, value } = rule;
 
@@ -311,6 +344,9 @@ async function resolveRule(rule) {
     case "color":
       return resolveColorRule(value);
 
+    case "attribute":
+      return resolveAttributeRule(value);
+
     case "tag": {
       const tags = toArray(value);
       if (!tags.length) return [];
@@ -376,6 +412,11 @@ export async function resolveEventProducts(productSelection = {}) {
       .sort(sort)
       .limit(safeLimit)
       .populate("brand", "name title logo icon")
+      // sport/category را هم populate می‌کنیم تا فیلترهای «ورزش تخصصی» و «نوع محصول»
+      // در سایدبارِ صفحهٔ کمپین نامِ فارسی نشان دهند نه _id خام. (فیلتر همچنان با
+      // id کار می‌کند؛ فقط برچسبِ نمایشی title/name می‌شود.)
+      .populate("sport", "name title slug order")
+      .populate("category", "name title slug order")
       .lean(),
     getCachedRate(),
   ]);
