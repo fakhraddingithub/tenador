@@ -8,16 +8,18 @@ import Image from "next/image";
  * the shared card renders exactly as before.
  */
 
-const stickerSizes = { sm: "w-10 h-10", md: "w-14 h-14", lg: "w-20 h-20" };
+// The sticker is locked to the brand logo's exact footprint: the logo Image is
+// rendered at 30px × 30px (ProductCard), so the sticker is the same 30px square.
+const STICKER_SIZE = "w-[30px] h-[30px]";
 
 const stickerPositions = {
   "top-right": "top-2 right-2",
   "bottom-right": "bottom-2 right-2",
   "bottom-left": "bottom-2 left-2",
   // The brand logo lives at top-3 left-3 (12px) and is 30px tall → its bottom edge
-  // is at ~42px. Push the top-left sticker to top-14 (56px) so it sits clearly
-  // BELOW the logo (left-aligned under it) with a visible gap, never overlapping.
-  "top-left": "top-14 left-3",
+  // is at 42px. top-12 (48px) places the sticker directly below the logo, sharing
+  // its left edge (left-3), with a 6px gap (48 = 12 + 30 + 6) — aligned, no overlap.
+  "top-left": "top-12 left-3",
 };
 
 const ribbonStyles = {
@@ -73,8 +75,8 @@ export default function EventCardOverlay({ customization = {} }) {
       {/* Sticker — circular badge image. z-10 keeps it UNDER the brand logo (z-20). */}
       {hasSticker && (
         <div className={`absolute z-10 ${stickerPositions[sticker.position] || stickerPositions["top-left"]}`}>
-          <div className={`relative ${stickerSizes[sticker.size || "md"]} rounded-full overflow-hidden`}>
-            <Image src={sticker.image} alt="" fill className="object-contain" sizes="80px" />
+          <div className={`relative ${STICKER_SIZE} rounded-full overflow-hidden`}>
+            <Image src={sticker.image} alt="" fill className="object-contain" sizes="30px" />
           </div>
         </div>
       )}

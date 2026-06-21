@@ -100,7 +100,18 @@
       "PowerShell(npx eslint \"src/lib/attributeFilters.js\" \"services/product.service.js\" \"services/eventProductResolver.js\" \"src/components/features/events/EventCardOverlay.jsx\" 2>&1 | Select-Object -Last 20)",
       "PowerShell(Remove-Item *)",
       "PowerShell(Get-CimInstance *)",
-      "PowerShell(Get-Process *)"
+      "PowerShell(Get-Process *)",
+      "WebSearch",
+      "WebFetch(domain:developers.facebook.com)",
+      "Bash(grep -iE \"instagram|support/Instagram|lib\\\\\\\\\\\\\\\\instagram|instagramService\")",
+      "Bash(grep -A 30 \"support\\\\\\\\\\\\\\\\InstagramInbox.jsx\")",
+      "Bash(grep -A 25 \"support\\\\\\\\\\\\\\\\InstagramInbox.jsx\")",
+      "Bash(awk '/InstagramInbox.jsx/{f=1} f{print; n++} n>15{exit}' /tmp/lint.txt)",
+      "Bash(grep -iA3 \"eslint\\\\|typescript\")",
+      "Bash(:)",
+      "Bash(awk '/InstagramInbox.jsx/{f=1;next} /^I:\\\\\\\\\\\\\\\\develope/{f=0} f' /tmp/lint2.txt)",
+      "Bash(grep -iE \"instagram\\\\\\\\\\\\\\\\webhook|instagramService|lib\\\\\\\\\\\\\\\\instagram|admin\\\\\\\\\\\\\\\\instagram\" /tmp/lint2.txt)",
+      "PowerShell(npx eslint \"src/components/features/events/EventCardOverlay.jsx\")"
     ]
   }
 }

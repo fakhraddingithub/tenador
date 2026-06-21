@@ -19,6 +19,7 @@ import {
   FaMoneyBillWave,
   FaCalendarAlt,
   FaRegCommentDots,
+  FaInstagram,
 } from "react-icons/fa";
 import { HiOutlineLogout } from "react-icons/hi";
 import { AiFillProduct } from "react-icons/ai";
@@ -43,6 +44,7 @@ const menuItems = [
   { title: "نظرات", href: "/p-admin/admin-comments", icon: FaRegCommentDots },
   { title: "مدیریت مالی", href: "/p-admin/financial", icon: FaMoneyBillWave },
   { title: "کاربران", href: "/p-admin/users", icon: FaUsersCog },
+  { title: "پشتیبانی اینستاگرام", href: "/p-admin/support/instagram", icon: FaInstagram },
 ];
 
 export default function AdminLayout({ children }) {
@@ -62,6 +64,20 @@ export default function AdminLayout({ children }) {
     sections: { orders: 0, coachCredits: 0, coachApplications: 0 },
   });
 
+  // ─── شمارشِ پیام‌های خوانده‌نشده‌ی دایرکتِ اینستاگرام (بَجِ پشتیبانی) ───
+  const [igUnread, setIgUnread] = useState(0);
+
+  const refreshIgUnread = useCallback(async () => {
+    try {
+      const res = await fetch("/api/admin/instagram/unread");
+      if (!res.ok) return;
+      const data = await res.json();
+      setIgUnread(Number(data?.unread || 0));
+    } catch {
+      /* بی‌صدا */
+    }
+  }, []);
+
   const refreshCounts = useCallback(async () => {
     try {
       const res = await fetch("/api/admin/notifications/counts");
@@ -80,6 +96,13 @@ export default function AdminLayout({ children }) {
     return () => clearInterval(id);
   }, [refreshCounts]);
 
+  // پولینگِ بَجِ نخوانده‌ی اینستاگرام (هر ۳۰ ثانیه)
+  useEffect(() => {
+    refreshIgUnread();
+    const id = setInterval(refreshIgUnread, 30000);
+    return () => clearInterval(id);
+  }, [refreshIgUnread]);
+
   // با تغییر مسیر، سایدبارِ موبایل بسته شود (دسکتاپ تحت تأثیر نیست چون آنجا static است)
   useEffect(() => {
     setMobileOpen(false);
@@ -91,6 +114,7 @@ export default function AdminLayout({ children }) {
     if (href === "/p-admin/admin-orders") return s.orders || 0;
     // مدیریت مربیان (کردیت + درخواست مربیگری) زیرمجموعه‌ی «کاربران» است
     if (href === "/p-admin/users") return (s.coachCredits || 0) + (s.coachApplications || 0);
+    if (href === "/p-admin/support/instagram") return igUnread || 0;
     return 0;
   };
 
