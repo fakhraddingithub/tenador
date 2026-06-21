@@ -46,8 +46,24 @@ function AuthContent() {
           return;
         }
 
+        // ورود خودکار پس از ثبت‌نام موفق — همان مکانیزم ورود عادی (loginAction)
+        const loginResult = await loginAction({
+          phone: data.phone,
+          password: data.password,
+          callbackUrl,
+        });
+
+        if (loginResult?.error) {
+          // ثبت‌نام موفق بود ولی ورود خودکار ناموفق — کاربر را به تب ورود می‌بریم
+          showToast.success('ثبت‌نام با موفقیت انجام شد، لطفاً وارد شوید');
+          setMode('login');
+          return;
+        }
+
         showToast.success('ثبت‌نام با موفقیت انجام شد');
-        setMode('login');
+        // hard-navigation مشابه مسیر ورود عادی
+        window.location.href = loginResult?.redirectUrl || '/';
+        return;
       }
     }catch (error) {
       // redirect() در Next.js یه error خاص throw میکنه — نباید بهش دست بزنیم

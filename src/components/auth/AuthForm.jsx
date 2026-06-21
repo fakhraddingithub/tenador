@@ -7,15 +7,31 @@ export default function AuthForm({ isLogin, onSubmit, loading }) {
   const [form, setForm] = useState({
     phone: '',
     password: '',
+    confirmPassword: '',
     name: '',
   });
   const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [errors, setErrors] = useState({});
 
+  // تبدیل ارقام فارسی/عربی به ارقام انگلیسی
+  const toEnglishDigits = (str) =>
+    str
+      .replace(/[۰-۹]/g, (d) => String(d.charCodeAt(0) - 0x06f0)) // فارسی
+      .replace(/[٠-٩]/g, (d) => String(d.charCodeAt(0) - 0x0660)); // عربی
+
   const update = (e) => {
-    setForm({ ...form, [e.target.name]: e.target.value });
-    if (errors[e.target.name]) {
-      setErrors({ ...errors, [e.target.name]: null });
+    const { name, value } = e.target;
+    let nextValue = value;
+
+    // فیلد شماره تلفن: ارقام فارسی/عربی را انگلیسی کن و هر چیز غیر از رقم را حذف کن
+    if (name === 'phone') {
+      nextValue = toEnglishDigits(value).replace(/\D/g, '');
+    }
+
+    setForm({ ...form, [name]: nextValue });
+    if (errors[name]) {
+      setErrors({ ...errors, [name]: null });
     }
   };
 
@@ -28,6 +44,14 @@ export default function AuthForm({ isLogin, onSubmit, loading }) {
 
     if (form.password.length < 8) {
       err.password = 'رمز عبور حداقل ۸ کاراکتر';
+    }
+
+    if (!isLogin) {
+      if (form.confirmPassword.length < 8) {
+        err.confirmPassword = 'رمز عبور حداقل ۸ کاراکتر';
+      } else if (form.password !== form.confirmPassword) {
+        err.confirmPassword = 'رمز عبور و تکرار آن یکسان نیستند';
+      }
     }
 
     if (!isLogin && !form.name.trim()) {
@@ -80,6 +104,7 @@ export default function AuthForm({ isLogin, onSubmit, loading }) {
           value={form.phone}
           onChange={update}
           disabled={loading}
+          inputMode="numeric"
           className={inputClass(errors.phone)}
         />
         {errors.phone && <p className="text-xs text-red-500 mt-1">{errors.phone}</p>}
@@ -105,6 +130,29 @@ export default function AuthForm({ isLogin, onSubmit, loading }) {
         </button>
         {errors.password && <p className="text-xs text-red-500 mt-1">{errors.password}</p>}
       </div>
+
+      {!isLogin && (
+        <div className="relative">
+          <FaLock className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm" />
+          <input
+            type={showConfirmPassword ? 'text' : 'password'}
+            name="confirmPassword"
+            placeholder="تکرار رمز عبور"
+            value={form.confirmPassword}
+            onChange={update}
+            disabled={loading}
+            className={inputClass(errors.confirmPassword) + ' pl-10'}
+          />
+          <button
+            type="button"
+            onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+            className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+          >
+            {showConfirmPassword ? <FaEyeSlash /> : <FaEye />}
+          </button>
+          {errors.confirmPassword && <p className="text-xs text-red-500 mt-1">{errors.confirmPassword}</p>}
+        </div>
+      )}
 
       <button
         type="submit"

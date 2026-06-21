@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import connectToDB from 'base/configs/db';
 import User from 'base/models/User';
-import { hasher, tokenGenrator, generateRefreshToken, validatePhone, validatePassword } from 'base/utils/auth';
+import { hasher, tokenGenrator, generateRefreshToken, validatePhone } from 'base/utils/auth';
 
 export async function POST(request) {
   try {
@@ -18,9 +18,9 @@ export async function POST(request) {
       return NextResponse.json({ message: 'شماره تلفن وارد شده معتبر نیست' }, { status: 400 });
     }
 
-    if (!validatePassword(password)) {
-      return NextResponse.json({ 
-        message: 'رمز عبور باید حداقل ۸ کاراکتر و شامل حروف بزرگ، کوچک، عدد و کاراکتر خاص باشد' 
+    if (password.length < 8) {
+      return NextResponse.json({
+        message: 'رمز عبور باید حداقل ۸ کاراکتر باشد'
       }, { status: 400 });
     }
 
