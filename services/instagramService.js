@@ -39,21 +39,30 @@ async function findOrCreateConversation(igsid) {
  * - dedupe بر اساس mid (وبهوک‌های تکراریِ متا)
  * - شمارشِ نخوانده و متادیتای ترِد را به‌روزرسانی می‌کند
  *
- * @returns {Promise<{created:boolean}>}
+ * @returns {Promise<{created:boolean, reason?:string, conversationId?:string, messageId?:string}>}
  */
 export async function ingestIncomingMessage({ igsid, mid, text, imageUrl, timestamp }) {
-  if (!igsid) return { created: false };
+  if (!igsid) return { created: false, reason: "no-igsid" };
 
   // dedupe: اگر این mid قبلاً ذخیره شده، کاری نکن
   if (mid) {
-    const exists = await InstagramMessage.findOne({ mid }).select("_id").lean();
-    if (exists) return { created: false };
+    const exists = await InstagramMessage.findOne({ mid })
+      .select("_id conversation")
+      .lean();
+    if (exists) {
+      return {
+        created: false,
+        reason: "duplicate-mid",
+        conversationId: String(exists.conversation || ""),
+        messageId: String(exists._id),
+      };
+    }
   }
 
   const convo = await findOrCreateConversation(igsid);
   const when = timestamp ? new Date(timestamp) : new Date();
 
-  await InstagramMessage.create({
+  const created = await InstagramMessage.create({
     conversation: convo._id,
     igsid,
     sender: "user",
@@ -79,7 +88,12 @@ export async function ingestIncomingMessage({ igsid, mid, text, imageUrl, timest
     }
   );
 
-  return { created: true };
+  return {
+    created: true,
+    reason: "stored",
+    conversationId: String(convo._id),
+    messageId: String(created._id),
+  };
 }
 
 /**

@@ -38,23 +38,44 @@ function getBusinessAccountId() {
  * تستِ محلی) ولی در پروداکشن باید تنظیم شود.
  */
 export function verifyWebhookSignature(rawBody, signatureHeader) {
-  const appSecret = process.env.INSTAGRAM_APP_SECRET;
+  // trim تا فاصله/خطِ جدیدِ احتمالی از .env باعثِ عدمِ تطبیقِ HMAC نشود
+  const appSecret = (process.env.INSTAGRAM_APP_SECRET || "").trim();
+
   // بدون secret نمی‌توان تأیید کرد → اجازه‌ی عبور می‌دهیم تا تستِ محلی ممکن باشد
-  if (!appSecret) return true;
-  if (!signatureHeader) return false;
+  if (!appSecret) {
+    return { ok: true, reason: "no-app-secret-skipped" };
+  }
+  if (!signatureHeader) {
+    return { ok: false, reason: "missing-signature-header" };
+  }
+  if (!signatureHeader.startsWith("sha256=")) {
+    return { ok: false, reason: "unexpected-format(not-sha256=)" };
+  }
 
   const expected =
     "sha256=" +
     crypto.createHmac("sha256", appSecret).update(rawBody, "utf8").digest("hex");
 
+  let ok = false;
   try {
-    return crypto.timingSafeEqual(
-      Buffer.from(signatureHeader),
-      Buffer.from(expected)
-    );
+    // timingSafeEqual روی طولِ نابرابر throw می‌کند؛ اول طول را چک کن
+    ok =
+      signatureHeader.length === expected.length &&
+      crypto.timingSafeEqual(
+        Buffer.from(signatureHeader),
+        Buffer.from(expected)
+      );
   } catch {
-    return false;
+    ok = false;
   }
+
+  return {
+    ok,
+    reason: ok ? "valid" : "hmac-mismatch",
+    // فقط ۱۴ کاراکترِ اولِ هش لاگ می‌شود (نه راز، نه امضای کامل) برای مقایسه‌ی دیداری
+    receivedPrefix: signatureHeader.slice(0, 14),
+    expectedPrefix: expected.slice(0, 14),
+  };
 }
 
 /**
@@ -63,9 +84,9 @@ export function verifyWebhookSignature(rawBody, signatureHeader) {
  */
 export function verifyWebhookChallenge(searchParams) {
   const mode = searchParams.get("hub.mode");
-  const token = searchParams.get("hub.verify_token");
+  const token = (searchParams.get("hub.verify_token") || "").trim();
   const challenge = searchParams.get("hub.challenge");
-  const expected = process.env.INSTAGRAM_WEBHOOK_VERIFY_TOKEN;
+  const expected = (process.env.INSTAGRAM_WEBHOOK_VERIFY_TOKEN || "").trim();
 
   if (mode === "subscribe" && token && token === expected) {
     return challenge;

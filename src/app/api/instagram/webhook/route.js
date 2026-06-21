@@ -55,20 +55,39 @@ export async function GET(req) {
 
 // ─── POST: رویدادِ پیامِ ورودی ────────────────────────────────────────
 export async function POST(req) {
-  // بدنه‌ی خام لازم است تا امضا (HMAC) دقیقاً روی همان بایت‌ها بررسی شود
-  const rawBody = await req.text();
-  const signature = req.headers.get("x-hub-signature-256");
+  const ts = new Date().toISOString();
 
-  // ✅ نخستین نشانه‌ی «متا واقعاً ما را صدا زد» — صرفِ دیدنِ این خط یعنی تحویل برقرار است
+  // ① نخستین خط — پیش از هر اعتبارسنجی. صرفِ دیدنِ این یعنی متا واقعاً ما را صدا زد.
   console.log(
-    `${TAG} POST received — bytes=${rawBody.length} signature_header=${
-      signature ? "present" : "MISSING"
-    } app_secret_set=${!!process.env.INSTAGRAM_APP_SECRET}`
+    `${TAG} ① POST ARRIVED @ ${ts} — ua="${
+      req.headers.get("user-agent") || "?"
+    }" content-type="${req.headers.get("content-type") || "?"}"`
   );
 
-  if (!verifyWebhookSignature(rawBody, signature)) {
+  // بدنه‌ی خام لازم است تا امضا (HMAC) دقیقاً روی همان بایت‌ها بررسی شود.
+  // ⚠️ حتماً پیش از JSON.parse خوانده می‌شود (وگرنه امضا روی بایت‌های اصلی تأیید نمی‌شود).
+  const rawBody = await req.text();
+  const signature = req.headers.get("x-hub-signature-256");
+  const appSecretSet = !!(process.env.INSTAGRAM_APP_SECRET || "").trim();
+
+  // ② وضعیتِ امضا: حضور، نتیجه و دلیلِ شکست
+  const sig = verifyWebhookSignature(rawBody, signature);
+  console.log(
+    `${TAG} ② signature — header=${
+      signature ? "present" : "MISSING"
+    } app_secret_loaded=${appSecretSet} result=${
+      sig.ok ? "PASS" : "FAIL"
+    } reason=${sig.reason}` +
+      (sig.ok || sig.reason === "no-app-secret-skipped"
+        ? ""
+        : ` received="${sig.receivedPrefix}…" expected="${sig.expectedPrefix}…"`) +
+      ` bytes=${rawBody.length}`
+  );
+
+  if (!sig.ok) {
     console.warn(
-      `${TAG} POST REJECTED — signature verification failed → 403 (check INSTAGRAM_APP_SECRET in production)`
+      `${TAG} ✗ POST REJECTED — signature ${sig.reason} → 403. ` +
+        `اگر header موجود است ولی FAIL است، INSTAGRAM_APP_SECRET در پروداکشن با App Secret پنلِ متا یکی نیست.`
     );
     return new NextResponse("Invalid signature", { status: 403 });
   }
@@ -77,14 +96,33 @@ export async function POST(req) {
   try {
     body = JSON.parse(rawBody);
   } catch {
-    console.warn(`${TAG} POST body is not valid JSON — ignored`);
+    console.warn(`${TAG} ✗ body is not valid JSON — ignored (still 200)`);
     return NextResponse.json({ ok: true });
+  }
+
+  // ③ ساختارِ امنِ پیلود (بدونِ متنِ پیام/داده‌ی حساس) — فقط شکل و شمارش
+  try {
+    console.log(
+      `${TAG} ③ payload — object=${body?.object} entries=${
+        (body?.entry || []).length
+      } shape=${JSON.stringify(
+        (body?.entry || []).map((e) => ({
+          id: e.id,
+          time: e.time,
+          messaging: (e.messaging || []).length,
+          changes: (e.changes || []).length, // اگر به‌جای messaging از changes استفاده شده باشد دیده می‌شود
+          keys: Object.keys(e),
+        }))
+      )}`
+    );
+  } catch {
+    /* لاگِ تشخیصی نباید جریان را بشکند */
   }
 
   // فقط رویدادهای مربوط به اینستاگرام
   if (body?.object !== "instagram") {
     console.log(
-      `${TAG} POST ignored — object=${body?.object} (expected "instagram")`
+      `${TAG} ✗ POST ignored — object=${body?.object} (expected "instagram")`
     );
     return NextResponse.json({ ok: true });
   }
@@ -96,9 +134,22 @@ export async function POST(req) {
 
     for (const entry of body.entry || []) {
       // رویدادهای پیام در آرایه‌ی messaging قرار دارند
-      for (const event of entry.messaging || []) {
+      const events = entry.messaging || [];
+      if (events.length === 0) {
+        console.log(
+          `${TAG} entry ${entry.id} has no messaging[] — keys=${JSON.stringify(
+            Object.keys(entry)
+          )}`
+        );
+      }
+      for (const event of events) {
         const msg = event.message;
         if (!msg) {
+          console.log(
+            `${TAG} skip — event without message (keys=${JSON.stringify(
+              Object.keys(event)
+            )})`
+          );
           skipped++;
           continue;
         }
@@ -128,7 +179,11 @@ export async function POST(req) {
 
         // پیام‌های بدونِ متن و بدونِ تصویر (مثل واکنش‌ها) را رد کن
         if (!msg.text && !imageUrl) {
-          console.log(`${TAG} skip — no text and no image attachment`);
+          console.log(
+            `${TAG} skip — no text and no image (attachment types=${JSON.stringify(
+              (msg.attachments || []).map((a) => a.type)
+            )})`
+          );
           skipped++;
           continue;
         }
@@ -140,20 +195,32 @@ export async function POST(req) {
           imageUrl,
           timestamp: event.timestamp || entry.time * 1000 || Date.now(),
         });
-        console.log(
-          `${TAG} ingest — sender=${senderId} hasText=${!!msg.text} hasImage=${!!imageUrl} mid=${
-            msg.mid || "none"
-          } → ${result.created ? "STORED" : "duplicate/skipped"}`
-        );
+
+        // ④ نتیجه‌ی ذخیره با شناسه‌های ساخته‌شده
+        if (result.created) {
+          console.log(
+            `${TAG} ④ ✓ STORED — sender=${senderId} hasText=${!!msg.text} hasImage=${!!imageUrl} ` +
+              `conversationId=${result.conversationId} messageId=${result.messageId} mid=${
+                msg.mid || "none"
+              }`
+          );
+        } else {
+          console.log(
+            `${TAG} ④ • not stored — reason=${result.reason} sender=${senderId} ` +
+              `conversationId=${result.conversationId || "?"} messageId=${
+                result.messageId || "?"
+              }`
+          );
+        }
         processed++;
       }
     }
     console.log(
-      `${TAG} POST done — events_processed=${processed} skipped=${skipped}`
+      `${TAG} ⑤ POST done @ ${new Date().toISOString()} — events_processed=${processed} skipped=${skipped} → 200`
     );
   } catch (err) {
     // خطای داخلی را لاگ کن ولی همچنان ۲۰۰ بده تا متا retry/disable نکند
-    console.error(`${TAG} POST handler error:`, err);
+    console.error(`${TAG} ✗ POST handler error (still returning 200):`, err);
   }
 
   return NextResponse.json({ ok: true });
