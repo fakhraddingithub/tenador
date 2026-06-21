@@ -117,7 +117,8 @@
       "Bash(curl -s -o /dev/null -w \"graph.instagram.com -> HTTP %{http_code} \\(time %{time_total}s\\)\\\\n\" --max-time 15 \"https://graph.instagram.com/v21.0/me\")",
       "Bash(echo \"curl failed: $?\")",
       "Bash(curl -s -o /dev/null -w \"google -> HTTP %{http_code}\\\\n\" --max-time 15 \"https://www.google.com\")",
-      "Bash(echo \"curl google failed: $?\")"
+      "Bash(echo \"curl google failed: $?\")",
+      "Bash(git check-ignore *)"
     ]
   }
 }
