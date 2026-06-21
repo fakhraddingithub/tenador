@@ -24,12 +24,22 @@ export const runtime = "nodejs";
 // وبهوک نباید کش/استاتیک شود
 export const dynamic = "force-dynamic";
 
+// برچسبِ ثابت برای گرفتنِ آسانِ لاگ‌ها در پروداکشن (grep "[IG-WEBHOOK]")
+const TAG = "[IG-WEBHOOK]";
+
 // ─── GET: وریفایِ وبهوک ───────────────────────────────────────────────
 export async function GET(req) {
   const { searchParams } = new URL(req.url);
+  const mode = searchParams.get("hub.mode");
+  const hasToken = !!searchParams.get("hub.verify_token");
+  console.log(
+    `${TAG} GET verification hit — mode=${mode} verify_token_present=${hasToken}`
+  );
+
   const challenge = verifyWebhookChallenge(searchParams);
 
   if (challenge !== null) {
+    console.log(`${TAG} GET verification OK — echoing challenge`);
     // متا انتظارِ خودِ challenge را به‌صورت متنِ خام دارد
     return new NextResponse(challenge, {
       status: 200,
@@ -37,6 +47,9 @@ export async function GET(req) {
     });
   }
 
+  console.warn(
+    `${TAG} GET verification FAILED — verify_token mismatch or missing params → 403`
+  );
   return new NextResponse("Forbidden", { status: 403 });
 }
 
@@ -46,8 +59,17 @@ export async function POST(req) {
   const rawBody = await req.text();
   const signature = req.headers.get("x-hub-signature-256");
 
+  // ✅ نخستین نشانه‌ی «متا واقعاً ما را صدا زد» — صرفِ دیدنِ این خط یعنی تحویل برقرار است
+  console.log(
+    `${TAG} POST received — bytes=${rawBody.length} signature_header=${
+      signature ? "present" : "MISSING"
+    } app_secret_set=${!!process.env.INSTAGRAM_APP_SECRET}`
+  );
+
   if (!verifyWebhookSignature(rawBody, signature)) {
-    console.warn("[instagram/webhook] امضای نامعتبر — درخواست رد شد");
+    console.warn(
+      `${TAG} POST REJECTED — signature verification failed → 403 (check INSTAGRAM_APP_SECRET in production)`
+    );
     return new NextResponse("Invalid signature", { status: 403 });
   }
 
@@ -55,14 +77,20 @@ export async function POST(req) {
   try {
     body = JSON.parse(rawBody);
   } catch {
+    console.warn(`${TAG} POST body is not valid JSON — ignored`);
     return NextResponse.json({ ok: true });
   }
 
   // فقط رویدادهای مربوط به اینستاگرام
   if (body?.object !== "instagram") {
+    console.log(
+      `${TAG} POST ignored — object=${body?.object} (expected "instagram")`
+    );
     return NextResponse.json({ ok: true });
   }
 
+  let processed = 0;
+  let skipped = 0;
   try {
     await connectToDB();
 
@@ -70,13 +98,24 @@ export async function POST(req) {
       // رویدادهای پیام در آرایه‌ی messaging قرار دارند
       for (const event of entry.messaging || []) {
         const msg = event.message;
-        if (!msg) continue;
+        if (!msg) {
+          skipped++;
+          continue;
+        }
 
         // اکوی پیام‌های ارسالیِ خودمان را نادیده بگیر
-        if (msg.is_echo) continue;
+        if (msg.is_echo) {
+          console.log(`${TAG} skip — is_echo (our own outgoing message)`);
+          skipped++;
+          continue;
+        }
 
         const senderId = event.sender?.id;
-        if (!senderId) continue;
+        if (!senderId) {
+          console.log(`${TAG} skip — event has no sender.id`);
+          skipped++;
+          continue;
+        }
 
         // پیوست‌های تصویری (در صورت وجود)
         let imageUrl = "";
@@ -88,20 +127,33 @@ export async function POST(req) {
         }
 
         // پیام‌های بدونِ متن و بدونِ تصویر (مثل واکنش‌ها) را رد کن
-        if (!msg.text && !imageUrl) continue;
+        if (!msg.text && !imageUrl) {
+          console.log(`${TAG} skip — no text and no image attachment`);
+          skipped++;
+          continue;
+        }
 
-        await ingestIncomingMessage({
+        const result = await ingestIncomingMessage({
           igsid: senderId,
           mid: msg.mid || null,
           text: msg.text || "",
           imageUrl,
           timestamp: event.timestamp || entry.time * 1000 || Date.now(),
         });
+        console.log(
+          `${TAG} ingest — sender=${senderId} hasText=${!!msg.text} hasImage=${!!imageUrl} mid=${
+            msg.mid || "none"
+          } → ${result.created ? "STORED" : "duplicate/skipped"}`
+        );
+        processed++;
       }
     }
+    console.log(
+      `${TAG} POST done — events_processed=${processed} skipped=${skipped}`
+    );
   } catch (err) {
     // خطای داخلی را لاگ کن ولی همچنان ۲۰۰ بده تا متا retry/disable نکند
-    console.error("[instagram/webhook POST]", err);
+    console.error(`${TAG} POST handler error:`, err);
   }
 
   return NextResponse.json({ ok: true });

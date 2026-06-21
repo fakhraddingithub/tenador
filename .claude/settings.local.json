@@ -111,7 +111,13 @@
       "Bash(:)",
       "Bash(awk '/InstagramInbox.jsx/{f=1;next} /^I:\\\\\\\\\\\\\\\\develope/{f=0} f' /tmp/lint2.txt)",
       "Bash(grep -iE \"instagram\\\\\\\\\\\\\\\\webhook|instagramService|lib\\\\\\\\\\\\\\\\instagram|admin\\\\\\\\\\\\\\\\instagram\" /tmp/lint2.txt)",
-      "PowerShell(npx eslint \"src/components/features/events/EventCardOverlay.jsx\")"
+      "PowerShell(npx eslint \"src/components/features/events/EventCardOverlay.jsx\")",
+      "Bash(cat)",
+      "Bash(rm -f ./igapi.mjs)",
+      "Bash(curl -s -o /dev/null -w \"graph.instagram.com -> HTTP %{http_code} \\(time %{time_total}s\\)\\\\n\" --max-time 15 \"https://graph.instagram.com/v21.0/me\")",
+      "Bash(echo \"curl failed: $?\")",
+      "Bash(curl -s -o /dev/null -w \"google -> HTTP %{http_code}\\\\n\" --max-time 15 \"https://www.google.com\")",
+      "Bash(echo \"curl google failed: $?\")"
     ]
   }
 }
