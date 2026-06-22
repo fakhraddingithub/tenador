@@ -57,3 +57,4 @@ import "base/models/Variant";
 import "base/models/Event";
 import "base/models/InstagramConversation";
 import "base/models/InstagramMessage";
+import "base/models/InstagramWebhookLog";

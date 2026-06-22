@@ -19,6 +19,7 @@ import {
   verifyWebhookSignature,
 } from "@/lib/instagram";
 import { ingestIncomingMessage } from "base/services/instagramService";
+import InstagramWebhookLog from "base/models/InstagramWebhookLog";
 
 export const runtime = "nodejs";
 // وبهوک نباید کش/استاتیک شود
@@ -84,52 +85,83 @@ export async function POST(req) {
       ` bytes=${rawBody.length}`
   );
 
-  if (!sig.ok) {
-    console.warn(
-      `${TAG} ✗ POST REJECTED — signature ${sig.reason} → 403. ` +
-        `اگر header موجود است ولی FAIL است، INSTAGRAM_APP_SECRET در پروداکشن با App Secret پنلِ متا یکی نیست.`
-    );
-    return new NextResponse("Invalid signature", { status: 403 });
-  }
+  // ── سندِ تشخیصی که در هر مسیرِ بازگشت ذخیره می‌شود (قابل‌مشاهده در مرورگر) ──
+  const debug = {
+    receivedAt: new Date(),
+    method: "POST",
+    signaturePresent: !!signature,
+    signatureResult: sig.ok
+      ? "PASS"
+      : sig.reason === "no-app-secret-skipped"
+      ? "SKIPPED"
+      : "FAIL",
+    signatureReason: sig.reason,
+    appSecretLoaded: appSecretSet,
+    bytes: rawBody.length,
+    objectType: "",
+    stored: 0,
+    skipped: 0,
+    note: "",
+    shape: null,
+    rawPreview: rawBody.slice(0, 600),
+  };
+  // best-effort: هرگز جریانِ اصلی یا پاسخِ ۲۰۰ را نشکند
+  const persistDebug = async () => {
+    try {
+      await connectToDB();
+      await InstagramWebhookLog.create(debug);
+    } catch (e) {
+      console.error(`${TAG} debug-log write failed:`, e?.message || e);
+    }
+  };
 
-  let body;
   try {
-    body = JSON.parse(rawBody);
-  } catch {
-    console.warn(`${TAG} ✗ body is not valid JSON — ignored (still 200)`);
-    return NextResponse.json({ ok: true });
-  }
+    if (!sig.ok) {
+      console.warn(
+        `${TAG} ✗ POST REJECTED — signature ${sig.reason} → 403. ` +
+          `اگر header موجود است ولی FAIL است، INSTAGRAM_APP_SECRET در پروداکشن با App Secret پنلِ متا یکی نیست.`
+      );
+      debug.note = "rejected-bad-signature";
+      return new NextResponse("Invalid signature", { status: 403 });
+    }
 
-  // ③ ساختارِ امنِ پیلود (بدونِ متنِ پیام/داده‌ی حساس) — فقط شکل و شمارش
-  try {
+    let body;
+    try {
+      body = JSON.parse(rawBody);
+    } catch {
+      console.warn(`${TAG} ✗ body is not valid JSON — ignored (still 200)`);
+      debug.note = "invalid-json";
+      return NextResponse.json({ ok: true });
+    }
+
+    debug.objectType = body?.object || "";
+    debug.shape = (body?.entry || []).map((e) => ({
+      id: e.id,
+      time: e.time,
+      messaging: (e.messaging || []).length,
+      changes: (e.changes || []).length,
+      keys: Object.keys(e),
+    }));
+
+    // ③ ساختارِ امنِ پیلود (بدونِ متنِ پیام/داده‌ی حساس) — فقط شکل و شمارش
     console.log(
       `${TAG} ③ payload — object=${body?.object} entries=${
         (body?.entry || []).length
-      } shape=${JSON.stringify(
-        (body?.entry || []).map((e) => ({
-          id: e.id,
-          time: e.time,
-          messaging: (e.messaging || []).length,
-          changes: (e.changes || []).length, // اگر به‌جای messaging از changes استفاده شده باشد دیده می‌شود
-          keys: Object.keys(e),
-        }))
-      )}`
+      } shape=${JSON.stringify(debug.shape)}`
     );
-  } catch {
-    /* لاگِ تشخیصی نباید جریان را بشکند */
-  }
 
-  // فقط رویدادهای مربوط به اینستاگرام
-  if (body?.object !== "instagram") {
-    console.log(
-      `${TAG} ✗ POST ignored — object=${body?.object} (expected "instagram")`
-    );
-    return NextResponse.json({ ok: true });
-  }
+    // فقط رویدادهای مربوط به اینستاگرام
+    if (body?.object !== "instagram") {
+      console.log(
+        `${TAG} ✗ POST ignored — object=${body?.object} (expected "instagram")`
+      );
+      debug.note = "non-instagram-object";
+      return NextResponse.json({ ok: true });
+    }
 
-  let processed = 0;
-  let skipped = 0;
-  try {
+    let processed = 0;
+    let skipped = 0;
+    let storedCount = 0;
     await connectToDB();
 
     for (const entry of body.entry || []) {
@@ -198,6 +230,7 @@ export async function POST(req) {
 
         // ④ نتیجه‌ی ذخیره با شناسه‌های ساخته‌شده
         if (result.created) {
+          storedCount++;
           console.log(
             `${TAG} ④ ✓ STORED — sender=${senderId} hasText=${!!msg.text} hasImage=${!!imageUrl} ` +
               `conversationId=${result.conversationId} messageId=${result.messageId} mid=${
@@ -215,12 +248,21 @@ export async function POST(req) {
         processed++;
       }
     }
+    debug.stored = storedCount;
+    debug.skipped = skipped + (processed - storedCount);
+    if (!debug.note) {
+      debug.note = processed === 0 ? "delivered-but-no-message-events" : "processed";
+    }
     console.log(
-      `${TAG} ⑤ POST done @ ${new Date().toISOString()} — events_processed=${processed} skipped=${skipped} → 200`
+      `${TAG} ⑤ POST done @ ${new Date().toISOString()} — events_processed=${processed} stored=${storedCount} skipped=${skipped} → 200`
     );
   } catch (err) {
     // خطای داخلی را لاگ کن ولی همچنان ۲۰۰ بده تا متا retry/disable نکند
     console.error(`${TAG} ✗ POST handler error (still returning 200):`, err);
+    debug.note = `handler-error: ${err?.message || err}`;
+  } finally {
+    // در هر مسیرِ بازگشت، سندِ تشخیصی ذخیره می‌شود
+    await persistDebug();
   }
 
   return NextResponse.json({ ok: true });
