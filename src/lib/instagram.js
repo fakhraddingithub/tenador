@@ -178,6 +178,49 @@ export async function fetchOwnAccount() {
 }
 
 /**
+ * خواندنِ وضعیتِ اشتراکِ وبهوک روی حسابِ متصل:
+ *   GET /me/subscribed_apps
+ * نشان می‌دهد کدام اپ‌ها و کدام fieldها (مثلاً messages) سابسکرایب شده‌اند.
+ */
+export async function getSubscribedApps() {
+  try {
+    const url =
+      `${GRAPH_BASE}/me/subscribed_apps` +
+      `?access_token=${encodeURIComponent(getAccessToken())}`;
+    const res = await fetch(url);
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      return { error: data?.error?.message || `HTTP ${res.status}`, raw: data };
+    }
+    return data; // { data: [{ subscribed_fields: [...] }] }
+  } catch (e) {
+    return { error: e?.message || String(e) };
+  }
+}
+
+/**
+ * (دوباره) سابسکرایب کردنِ اپ روی فیلدِ messages برای حسابِ متصل:
+ *   POST /me/subscribed_apps?subscribed_fields=messages
+ * پس از تبدیلِ نوعِ حساب لازم می‌شود (بایندینگِ اشتراک ممکن است افتاده باشد).
+ */
+export async function subscribeMessagesField() {
+  try {
+    const url =
+      `${GRAPH_BASE}/me/subscribed_apps` +
+      `?subscribed_fields=messages` +
+      `&access_token=${encodeURIComponent(getAccessToken())}`;
+    const res = await fetch(url, { method: "POST" });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      return { ok: false, error: data?.error?.message || `HTTP ${res.status}`, raw: data };
+    }
+    return { ok: true, result: data }; // { success: true }
+  } catch (e) {
+    return { ok: false, error: e?.message || String(e) };
+  }
+}
+
+/**
  * تلاش برای واکشیِ پروفایلِ کاربرِ اینستاگرام (نام/یوزرنیم/عکس).
  * این روی همه‌ی توکن‌ها/دسترسی‌ها در دسترس نیست؛ در صورتِ خطا، {} برمی‌گرداند
  * تا جریان اصلی (ذخیره‌ی پیام) متوقف نشود.
