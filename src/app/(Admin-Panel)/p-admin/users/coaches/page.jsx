@@ -16,7 +16,11 @@ import {
   ChevronLeft,
   Wallet,
   Clock,
+  FileText,
 } from "lucide-react";
+
+// تشخیص PDF بودن مدرک آپلودشده (برای نمایش به‌جای تصویر)
+const isPdfUrl = (url) => typeof url === "string" && /\.pdf(\?|$)/i.test(url);
 
 export default function AdminCoachesManagement() {
   const router = useRouter();
@@ -287,15 +291,28 @@ export default function AdminCoachesManagement() {
                   <div className="space-y-2 bg-slate-50/50 p-3 rounded-[var(--radius)] border border-slate-100">
                     <span className="text-[11px] text-slate-500 block font-bold">حکم یا مدرک رسمی مربیگری</span>
                     {app.coachApplication?.certificateImage ? (
-                      <div
-                        onClick={() => setPreviewImage({ url: app.coachApplication.certificateImage, title: `مدرک مربیگری - ${app.coachApplication?.fullName || app.name}` })}
-                        className="relative h-28 w-full max-w-[200px] mx-auto rounded-[var(--radius)] overflow-hidden border border-slate-200 group/img cursor-pointer shadow-2xs"
-                      >
-                        <img src={app.coachApplication.certificateImage} className="h-full w-full object-cover group-hover/img:scale-105 transition-transform duration-300" alt="مدرک" />
-                        <div className="absolute inset-0 bg-slate-900/40 opacity-0 group-hover/img:opacity-100 transition-opacity duration-200 flex items-center justify-center">
-                          <ZoomIn className="text-white backdrop-blur-xs p-1 rounded-lg bg-white/20" size={24} />
+                      isPdfUrl(app.coachApplication.certificateImage) ? (
+                        // مدرک PDF: باز کردن در تب جدید (پیش‌نمایش تصویری ممکن نیست)
+                        <a
+                          href={app.coachApplication.certificateImage}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="relative h-28 w-full max-w-[200px] mx-auto rounded-[var(--radius)] overflow-hidden border border-slate-200 group/img cursor-pointer shadow-2xs bg-rose-50 flex flex-col items-center justify-center gap-1.5 text-rose-600 hover:bg-rose-100 transition-colors"
+                        >
+                          <FileText size={28} />
+                          <span className="text-[11px] font-bold">مشاهده مدرک PDF</span>
+                        </a>
+                      ) : (
+                        <div
+                          onClick={() => setPreviewImage({ url: app.coachApplication.certificateImage, title: `مدرک مربیگری - ${app.coachApplication?.fullName || app.name}` })}
+                          className="relative h-28 w-full max-w-[200px] mx-auto rounded-[var(--radius)] overflow-hidden border border-slate-200 group/img cursor-pointer shadow-2xs"
+                        >
+                          <img src={app.coachApplication.certificateImage} className="h-full w-full object-cover group-hover/img:scale-105 transition-transform duration-300" alt="مدرک" />
+                          <div className="absolute inset-0 bg-slate-900/40 opacity-0 group-hover/img:opacity-100 transition-opacity duration-200 flex items-center justify-center">
+                            <ZoomIn className="text-white backdrop-blur-xs p-1 rounded-lg bg-white/20" size={24} />
+                          </div>
                         </div>
-                      </div>
+                      )
                     ) : (
                       <div className="mx-auto h-28 w-full max-w-[200px] bg-slate-100 rounded-[var(--radius)] flex items-center justify-center text-[10px] text-slate-400 border border-dashed border-slate-200">بدون مدرک آپلود شده</div>
                     )}

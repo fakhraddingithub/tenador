@@ -23,8 +23,9 @@ export async function POST(req) {
 
     const { fullName, certificateImage, personalImage } = await req.json();
 
-    if (!fullName || !certificateImage || !personalImage) {
-      return NextResponse.json({ message: 'تمامی فیلدها الزامی هستند' }, { status: 400 });
+    // عکس پرسنلی اختیاری است؛ فقط نام و مدرک مربیگری الزامی هستند
+    if (!fullName || !certificateImage) {
+      return NextResponse.json({ message: 'نام و مدرک مربیگری الزامی است' }, { status: 400 });
     }
 
     const user = await User.findById(authUser.userId);
@@ -41,7 +42,7 @@ export async function POST(req) {
       status: 'pending',
       fullName: fullName.trim(),
       certificateImage,
-      personalImage,
+      personalImage: personalImage || '', // اختیاری
       appliedAt: new Date(),
     };
 

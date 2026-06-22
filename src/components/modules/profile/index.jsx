@@ -4,10 +4,13 @@ import { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { toast } from 'react-toastify'
 import { 
-  User, Mail, Phone, Calendar, Edit3, CheckCircle2, 
+  User, Mail, Phone, Calendar, Edit3, CheckCircle2,
   Copy, Download, Award, ShieldCheck, Save, X, QrCode,
-  Upload, Link, Loader2, Users, AlertCircle
+  Upload, Link, Loader2, Users, AlertCircle, FileText
 } from 'lucide-react'
+
+// تشخیص اینکه آدرس آپلودشده PDF است یا تصویر (برای نمایش پیش‌نمایش مناسب)
+const isPdfUrl = (url) => typeof url === 'string' && /\.pdf(\?|$)/i.test(url)
 
 export default function ProfileModule() {
   const [user, setUser] = useState(null)
@@ -25,9 +28,11 @@ export default function ProfileModule() {
   // استیت‌های مودال تایید انتخاب مربی با کد معرف
   const [coachPreview, setCoachPreview] = useState(null) // اطلاعات مربی پیدا شده
   const [confirmLoading, setConfirmLoading] = useState(false)
-  const [uploading, setUploading] = useState({ certificateImage: false, personalImage: false })
+  const [uploading, setUploading] = useState({ certificateImage: false, personalImage: false, avatar: false })
   const [applyFormData, setApplyFormData] = useState({ fullName: '', certificateImage: '', personalImage: '' })
   const [submitLoading, setSubmitLoading] = useState(false)
+
+  const [savingProfile, setSavingProfile] = useState(false)
 
   useEffect(() => {
     fetchUserProfile()
@@ -51,54 +56,145 @@ export default function ProfileModule() {
   }
 
   const handleUpdate = async () => {
+    // در حین آپلودِ مدارک، اجازه‌ی ذخیره نده تا URL ناقص ثبت نشود
+    if (uploading.avatar || uploading.coachCertificate) {
+      return toast.warn('لطفاً تا پایان آپلود فایل صبر کنید')
+    }
+
+    setSavingProfile(true)
     try {
       const res = await fetch('/api/auth/profile', {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(formData),
+        body: JSON.stringify({
+          name: formData.name,
+          email: formData.email,
+          phone: formData.phone,
+          // فیلدهای مربی (سرور برای کاربر غیرمربی نادیده می‌گیرد)
+          avatar: formData.avatar,
+          certificateImage: formData.coachCertificate,
+        }),
       })
+      const data = await res.json().catch(() => null)
+
       if (res.ok) {
-        setUser({ ...user, ...formData })
         setEditing(false)
-        toast.success('پروفایل با موفقیت بروزرسانی شد')
+        toast.success(data?.message || 'پروفایل با موفقیت بروزرسانی شد')
+        // دریافت دیتای قطعی از سرور تا کارت مربیگری/آواتار همگام شود
+        fetchUserProfile()
       } else {
-        toast.error('خطا در بروزرسانی اطلاعات')
+        toast.error(data?.message || 'خطا در بروزرسانی اطلاعات')
       }
     } catch {
       toast.error('خطا در اتصال به شبکه')
+    } finally {
+      setSavingProfile(false)
     }
   }
 
-  // ۱. آپلود تصویر در بستر اختصاصی API پروژه
-  // پشتیبانی از جایگزینی: هر بار آپلود، فقط URL همان فیلد بازنویسی می‌شود (بدون فایل تکراری).
-  // ورودیِ فایل پس از انتخاب reset می‌شود تا انتخاب دوباره‌ی همان فایل هم رویداد بدهد.
-  const uploadImage = async (file, field, inputEl) => {
+  // ۱. آپلود فایل (تصویر یا PDF) با مدیریت کامل خطاها.
+  // - field: کلید استیت uploading برای کنترل اسپینر همان فیلد
+  // - inputEl: المان input برای ریست‌کردن مقدار پس از پایان (تا انتخاب مجددِ همان فایل کار کند)
+  // - allowPdf: آیا علاوه‌بر تصویر، PDF هم مجاز است (مدرک/حکم مربیگری)
+  // - onSuccess: کال‌بک دریافت URL نهایی برای ذخیره در استیت مربوطه
+  // هر مسیر خطا (نوع/حجم نامعتبر، تایم‌اوت، خطای شبکه، خطای سرور) پیام فارسیِ مشخص نشان می‌دهد
+  // و در نهایت همیشه اسپینر خاموش می‌شود (بدون اسپینر بی‌نهایت).
+  const MAX_UPLOAD = 5 * 1024 * 1024; // ۵ مگابایت
+  const IMAGE_TYPES = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp', 'image/svg+xml'];
+
+  const uploadFile = async (file, field, inputEl, { allowPdf = false, onSuccess }) => {
     if (!file) return;
+
+    // اعتبارسنجی سمت کلاینت: نوع فایل
+    const allowedTypes = allowPdf ? [...IMAGE_TYPES, 'application/pdf'] : IMAGE_TYPES;
+    const extOk = allowPdf
+      ? /\.(jpe?g|png|webp|svg|pdf)$/i.test(file.name || '')
+      : /\.(jpe?g|png|webp|svg)$/i.test(file.name || '');
+    if (!allowedTypes.includes(file.type) && !extOk) {
+      if (inputEl) inputEl.value = '';
+      return toast.error(
+        allowPdf
+          ? 'فرمت فایل نامعتبر است. فقط تصویر (JPG/PNG/WebP) یا PDF مجاز است'
+          : 'فرمت فایل نامعتبر است. فقط تصویر (JPG/PNG/WebP) مجاز است'
+      );
+    }
+
+    // اعتبارسنجی سمت کلاینت: حجم فایل
+    if (file.size > MAX_UPLOAD) {
+      if (inputEl) inputEl.value = '';
+      return toast.error('حجم فایل نباید بیشتر از ۵ مگابایت باشد');
+    }
+
     setUploading((p) => ({ ...p, [field]: true }));
+
+    // تایم‌اوت برای جلوگیری از اسپینر بی‌نهایت در صورت کندی/قطعی شبکه
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 60000);
+
     const fd = new FormData();
     fd.append('file', file);
-    fd.append('folder', 'brands');
+    fd.append('folder', 'coach-docs');
 
     try {
-      const res = await fetch('/api/upload', { method: 'POST', body: fd });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error);
-      setApplyFormData((p) => ({ ...p, [field]: data.url }));
-      toast.success('تصویر با موفقیت آپلود شد');
+      const res = await fetch('/api/upload', {
+        method: 'POST',
+        body: fd,
+        signal: controller.signal,
+      });
+
+      // ممکن است سرور پاسخ غیرJSON بدهد (مثلاً محدودیت حجم در لایه‌ی پلتفرم)
+      let data = null;
+      try { data = await res.json(); } catch { /* پاسخ JSON نبود */ }
+
+      if (!res.ok) {
+        const fallback = res.status === 413
+          ? 'حجم فایل بیش از حد مجاز است'
+          : res.status === 415
+            ? 'فرمت فایل مجاز نیست'
+            : 'خطای سرور هنگام آپلود فایل';
+        throw new Error(data?.error || fallback);
+      }
+
+      if (!data?.url) throw new Error('پاسخ نامعتبر از سرور دریافت شد');
+
+      onSuccess(data.url);
+      toast.success('فایل با موفقیت آپلود شد');
     } catch (err) {
-      toast.error('آپلود تصویر ناموفق بود');
+      if (err?.name === 'AbortError') {
+        toast.error('آپلود به دلیل کندی یا قطعی شبکه متوقف شد. دوباره تلاش کنید');
+      } else if (err instanceof TypeError) {
+        // خطای شبکه‌ی fetch (قطع اینترنت، CORS، عدم دسترسی به سرور)
+        toast.error('خطای شبکه؛ اتصال اینترنت خود را بررسی کنید');
+      } else {
+        toast.error(err?.message || 'آپلود فایل ناموفق بود');
+      }
     } finally {
+      clearTimeout(timeoutId);
       setUploading((p) => ({ ...p, [field]: false }));
-      // ریست مقدار اینپوت تا انتخاب مجددِ همان فایل هم onChange را اجرا کند
       if (inputEl) inputEl.value = '';
     }
   };
 
+  // هِلپرِ آپلود برای فرم درخواست مربیگری (ذخیره در applyFormData)
+  const uploadApplyFile = (file, field, inputEl, allowPdf = false) =>
+    uploadFile(file, field, inputEl, {
+      allowPdf,
+      onSuccess: (url) => setApplyFormData((p) => ({ ...p, [field]: url })),
+    });
+
+  // هِلپرِ آپلود برای ویرایش پروفایلِ مربی (ذخیره در formData)
+  const uploadProfileFile = (file, field, inputEl, allowPdf = false) =>
+    uploadFile(file, field, inputEl, {
+      allowPdf,
+      onSuccess: (url) => setFormData((p) => ({ ...p, [field]: url })),
+    });
+
   // ۲. ارسال نهایی درخواست مربیگری به سرور
   const handleApplySubmit = async (e) => {
     e.preventDefault();
-    if (!applyFormData.fullName || !applyFormData.certificateImage || !applyFormData.personalImage) {
-      return toast.warn('لطفاً تمامی فیلدها و مدارک را تکمیل کنید');
+    // عکس پرسنلی اختیاری است؛ فقط نام و مدرک مربیگری الزامی‌اند
+    if (!applyFormData.fullName || !applyFormData.certificateImage) {
+      return toast.warn('لطفاً نام و مدرک مربیگری را تکمیل کنید');
     }
 
     setSubmitLoading(true);
@@ -268,12 +364,118 @@ export default function ProfileModule() {
                   ))}
                 </div>
 
+                {/* فیلدهای مخصوص مربی: فقط برای کاربری که نقش مربی دارد نمایش داده می‌شوند */}
+                {user?.isCoach && (
+                  <div className="space-y-4 pt-4 border-t border-slate-100">
+                    <h3 className="flex items-center gap-1.5 text-xs font-bold text-slate-700">
+                      <Award size={14} className="text-[#ffbf00]" />
+                      مدارک مربیگری
+                    </h3>
+
+                    {/* عکس پرسنلی مربی (همان عکس روی کارت) */}
+                    <div className="space-y-1">
+                      <label className="text-xs font-medium text-slate-500 block">عکس پرسنلی</label>
+                      <div className="relative flex items-center justify-center border border-dashed border-slate-200 rounded-[var(--radius)] bg-slate-50/50 p-4 transition-colors hover:bg-slate-50">
+                        {formData.avatar ? (
+                          <div className="flex items-center justify-between gap-2 w-full text-xs text-emerald-600 font-bold bg-emerald-50 p-2 rounded-lg">
+                            <span className="flex items-center gap-1"><CheckCircle2 size={14}/> عکس پرسنلی ثبت شد</span>
+                            <div className="flex items-center gap-2">
+                              <img src={formData.avatar} className="h-8 w-8 rounded-full object-cover border"/>
+                              <label className="flex items-center gap-1 cursor-pointer text-[11px] font-bold text-[var(--color-primary)] hover:opacity-80 whitespace-nowrap">
+                                {uploading.avatar ? <Loader2 size={13} className="animate-spin"/> : <Upload size={13} />}
+                                تغییر تصویر
+                                <input
+                                  type="file"
+                                  accept="image/*"
+                                  className="hidden"
+                                  disabled={uploading.avatar}
+                                  onChange={(e) => uploadProfileFile(e.target.files[0], 'avatar', e.target)}
+                                />
+                              </label>
+                            </div>
+                          </div>
+                        ) : (
+                          <label className="flex flex-col items-center gap-1 cursor-pointer w-full">
+                            {uploading.avatar ? (
+                              <Loader2 size={20} className="animate-spin text-[var(--color-primary)]"/>
+                            ) : (
+                              <>
+                                <Upload size={18} className="text-slate-400" />
+                                <span className="text-xs text-slate-500">انتخاب عکس پرسنلی</span>
+                              </>
+                            )}
+                            <input
+                              type="file"
+                              accept="image/*"
+                              className="hidden"
+                              disabled={uploading.avatar}
+                              onChange={(e) => uploadProfileFile(e.target.files[0], 'avatar', e.target)}
+                            />
+                          </label>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* حکم/مدرک مربیگری (تصویر یا PDF) */}
+                    <div className="space-y-1">
+                      <label className="text-xs font-medium text-slate-500 block">حکم یا مدرک مربیگری (تصویر یا PDF)</label>
+                      <div className="relative flex items-center justify-center border border-dashed border-slate-200 rounded-[var(--radius)] bg-slate-50/50 p-4 transition-colors hover:bg-slate-50">
+                        {formData.coachCertificate ? (
+                          <div className="flex items-center justify-between gap-2 w-full text-xs text-emerald-600 font-bold bg-emerald-50 p-2 rounded-lg">
+                            <span className="flex items-center gap-1"><CheckCircle2 size={14}/> مدرک ثبت شد</span>
+                            <div className="flex items-center gap-2">
+                              {isPdfUrl(formData.coachCertificate) ? (
+                                <a href={formData.coachCertificate} target="_blank" rel="noopener noreferrer"
+                                  className="flex items-center gap-1 text-red-500 underline">
+                                  <FileText size={16} /> مشاهده PDF
+                                </a>
+                              ) : (
+                                <img src={formData.coachCertificate} className="h-8 w-12 rounded object-cover border"/>
+                              )}
+                              <label className="flex items-center gap-1 cursor-pointer text-[11px] font-bold text-[var(--color-primary)] hover:opacity-80 whitespace-nowrap">
+                                {uploading.coachCertificate ? <Loader2 size={13} className="animate-spin"/> : <Upload size={13} />}
+                                تغییر فایل
+                                <input
+                                  type="file"
+                                  accept="image/*,application/pdf"
+                                  className="hidden"
+                                  disabled={uploading.coachCertificate}
+                                  onChange={(e) => uploadProfileFile(e.target.files[0], 'coachCertificate', e.target, true)}
+                                />
+                              </label>
+                            </div>
+                          </div>
+                        ) : (
+                          <label className="flex flex-col items-center gap-1 cursor-pointer w-full">
+                            {uploading.coachCertificate ? (
+                              <Loader2 size={20} className="animate-spin text-[var(--color-primary)]"/>
+                            ) : (
+                              <>
+                                <Upload size={18} className="text-slate-400" />
+                                <span className="text-xs text-slate-500">انتخاب فایل حکم (تصویر یا PDF)</span>
+                              </>
+                            )}
+                            <input
+                              type="file"
+                              accept="image/*,application/pdf"
+                              className="hidden"
+                              disabled={uploading.coachCertificate}
+                              onChange={(e) => uploadProfileFile(e.target.files[0], 'coachCertificate', e.target, true)}
+                            />
+                          </label>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                )}
+
                 <div className="flex gap-2 pt-4 border-t border-slate-100">
                   <button
                     onClick={handleUpdate}
-                    className="flex items-center gap-1.5 px-4 py-2 text-xs font-bold text-white bg-[var(--color-primary)] hover:opacity-95 rounded-[var(--radius)] shadow-md shadow-[var(--color-primary)]/10"
+                    disabled={savingProfile || uploading.avatar || uploading.coachCertificate}
+                    className="flex items-center gap-1.5 px-4 py-2 text-xs font-bold text-white bg-[var(--color-primary)] hover:opacity-95 rounded-[var(--radius)] shadow-md shadow-[var(--color-primary)]/10 disabled:opacity-50"
                   >
-                    <Save size={14} />
+                    {savingProfile ? <Loader2 size={14} className="animate-spin" /> : <Save size={14} />}
                     ذخیره تغییرات
                   </button>
                   <button
@@ -556,7 +758,9 @@ export default function ProfileModule() {
 
                 {/* فیلد آپلود عکس پرسنلی */}
                 <div className="space-y-1">
-                  <label className="text-xs font-semibold text-slate-600 block">تصویر پرسنلی مربی</label>
+                  <label className="text-xs font-semibold text-slate-600 block">
+                    تصویر پرسنلی مربی <span className="text-slate-400 font-normal">(اختیاری)</span>
+                  </label>
                   <div className="relative flex items-center justify-center border border-dashed border-slate-200 rounded-[var(--radius)] bg-slate-50/50 p-4 transition-colors hover:bg-slate-50">
                     {applyFormData.personalImage ? (
                       <div className="flex items-center justify-between gap-2 w-full text-xs text-emerald-600 font-bold bg-emerald-50 p-2 rounded-lg">
@@ -576,7 +780,7 @@ export default function ProfileModule() {
                               accept="image/*"
                               className="hidden"
                               disabled={uploading.personalImage}
-                              onChange={(e) => uploadImage(e.target.files[0], 'personalImage', e.target)}
+                              onChange={(e) => uploadApplyFile(e.target.files[0], 'personalImage', e.target)}
                             />
                           </label>
                         </div>
@@ -596,22 +800,29 @@ export default function ProfileModule() {
                           accept="image/*"
                           className="hidden"
                           disabled={uploading.personalImage}
-                          onChange={(e) => uploadImage(e.target.files[0], 'personalImage', e.target)}
+                          onChange={(e) => uploadApplyFile(e.target.files[0], 'personalImage', e.target)}
                         />
                       </label>
                     )}
                   </div>
                 </div>
 
-                {/* فیلد آپلود مدرک مربیگری */}
+                {/* فیلد آپلود مدرک مربیگری (تصویر یا PDF) */}
                 <div className="space-y-1">
-                  <label className="text-xs font-semibold text-slate-600 block">تصویر مدرک یا حکم مربیگری معتبر</label>
+                  <label className="text-xs font-semibold text-slate-600 block">حکم یا مدرک مربیگری معتبر (تصویر یا PDF)</label>
                   <div className="relative flex items-center justify-center border border-dashed border-slate-200 rounded-[var(--radius)] bg-slate-50/50 p-4 transition-colors hover:bg-slate-50">
                     {applyFormData.certificateImage ? (
                       <div className="flex items-center justify-between gap-2 w-full text-xs text-emerald-600 font-bold bg-emerald-50 p-2 rounded-lg">
                         <span className="flex items-center gap-1"><CheckCircle2 size={14}/> حکم مربیگری آپلود شد</span>
                         <div className="flex items-center gap-2">
-                          <img src={applyFormData.certificateImage} className="h-8 w-12 rounded object-cover border"/>
+                          {isPdfUrl(applyFormData.certificateImage) ? (
+                            <a href={applyFormData.certificateImage} target="_blank" rel="noopener noreferrer"
+                              className="flex items-center gap-1 text-red-500 underline">
+                              <FileText size={16} /> مشاهده PDF
+                            </a>
+                          ) : (
+                            <img src={applyFormData.certificateImage} className="h-8 w-12 rounded object-cover border"/>
+                          )}
                           {/* امکان جایگزینی فایل */}
                           <label className="flex items-center gap-1 cursor-pointer text-[11px] font-bold text-[var(--color-primary)] hover:opacity-80 transition-opacity whitespace-nowrap">
                             {uploading.certificateImage ? (
@@ -619,13 +830,13 @@ export default function ProfileModule() {
                             ) : (
                               <Upload size={13} />
                             )}
-                            تغییر تصویر
+                            تغییر فایل
                             <input
                               type="file"
-                              accept="image/*"
+                              accept="image/*,application/pdf"
                               className="hidden"
                               disabled={uploading.certificateImage}
-                              onChange={(e) => uploadImage(e.target.files[0], 'certificateImage', e.target)}
+                              onChange={(e) => uploadApplyFile(e.target.files[0], 'certificateImage', e.target, true)}
                             />
                           </label>
                         </div>
@@ -637,15 +848,15 @@ export default function ProfileModule() {
                         ) : (
                           <>
                             <Upload size={18} className="text-slate-400" />
-                            <span className="text-xs text-slate-500">انتخاب فایل حکم مربیگری</span>
+                            <span className="text-xs text-slate-500">انتخاب فایل حکم (تصویر یا PDF)</span>
                           </>
                         )}
                         <input
                           type="file"
-                          accept="image/*"
+                          accept="image/*,application/pdf"
                           className="hidden"
                           disabled={uploading.certificateImage}
-                          onChange={(e) => uploadImage(e.target.files[0], 'certificateImage', e.target)}
+                          onChange={(e) => uploadApplyFile(e.target.files[0], 'certificateImage', e.target, true)}
                         />
                       </label>
                     )}
