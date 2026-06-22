@@ -12,6 +12,9 @@ import {
 // تشخیص اینکه آدرس آپلودشده PDF است یا تصویر (برای نمایش پیش‌نمایش مناسب)
 const isPdfUrl = (url) => typeof url === 'string' && /\.pdf(\?|$)/i.test(url)
 
+// نمایش PDF از طریق پراکسی سرور (Cloudinary تحویل مستقیم PDF را مسدود می‌کند)
+const pdfViewerUrl = (url) => `/api/files/pdf?url=${encodeURIComponent(url)}`
+
 export default function ProfileModule() {
   const [user, setUser] = useState(null)
   const [loading, setLoading] = useState(true)
@@ -425,7 +428,7 @@ export default function ProfileModule() {
                             <span className="flex items-center gap-1"><CheckCircle2 size={14}/> مدرک ثبت شد</span>
                             <div className="flex items-center gap-2">
                               {isPdfUrl(formData.coachCertificate) ? (
-                                <a href={formData.coachCertificate} target="_blank" rel="noopener noreferrer"
+                                <a href={pdfViewerUrl(formData.coachCertificate)} target="_blank" rel="noopener noreferrer"
                                   className="flex items-center gap-1 text-red-500 underline">
                                   <FileText size={16} /> مشاهده PDF
                                 </a>
@@ -816,7 +819,7 @@ export default function ProfileModule() {
                         <span className="flex items-center gap-1"><CheckCircle2 size={14}/> حکم مربیگری آپلود شد</span>
                         <div className="flex items-center gap-2">
                           {isPdfUrl(applyFormData.certificateImage) ? (
-                            <a href={applyFormData.certificateImage} target="_blank" rel="noopener noreferrer"
+                            <a href={pdfViewerUrl(applyFormData.certificateImage)} target="_blank" rel="noopener noreferrer"
                               className="flex items-center gap-1 text-red-500 underline">
                               <FileText size={16} /> مشاهده PDF
                             </a>

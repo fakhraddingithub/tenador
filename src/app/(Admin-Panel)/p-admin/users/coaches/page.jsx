@@ -22,6 +22,9 @@ import {
 // تشخیص PDF بودن مدرک آپلودشده (برای نمایش به‌جای تصویر)
 const isPdfUrl = (url) => typeof url === "string" && /\.pdf(\?|$)/i.test(url);
 
+// نمایش PDF از طریق پراکسی سرور (Cloudinary تحویل مستقیم PDF را مسدود می‌کند)
+const pdfViewerUrl = (url) => `/api/files/pdf?url=${encodeURIComponent(url)}`;
+
 export default function AdminCoachesManagement() {
   const router = useRouter();
   const [activeTab, setActiveTab] = useState("list");
@@ -294,7 +297,7 @@ export default function AdminCoachesManagement() {
                       isPdfUrl(app.coachApplication.certificateImage) ? (
                         // مدرک PDF: باز کردن در تب جدید (پیش‌نمایش تصویری ممکن نیست)
                         <a
-                          href={app.coachApplication.certificateImage}
+                          href={pdfViewerUrl(app.coachApplication.certificateImage)}
                           target="_blank"
                           rel="noopener noreferrer"
                           className="relative h-28 w-full max-w-[200px] mx-auto rounded-[var(--radius)] overflow-hidden border border-slate-200 group/img cursor-pointer shadow-2xs bg-rose-50 flex flex-col items-center justify-center gap-1.5 text-rose-600 hover:bg-rose-100 transition-colors"
