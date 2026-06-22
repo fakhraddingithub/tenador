@@ -16,6 +16,123 @@ import { fetchUserProfile } from "@/lib/instagram";
 export const REPLY_WINDOW_MS = 24 * 60 * 60 * 1000;
 
 /**
+ * پردازشِ کاملِ یک بدنه‌ی وبهوکِ اینستاگرام: استخراجِ رویدادها از هر entry و
+ * ذخیره‌ی پیام‌های ورودی. این تابع منطقِ مشترکی است که هم وبهوکِ واقعی و هم
+ * endpointِ تست از آن استفاده می‌کنند (تا رفتارِ تست دقیقاً همان مسیرِ واقعی باشد).
+ *
+ * دو ساختار پشتیبانی می‌شود:
+ *   1. entry[].messaging[].message   ← مسیرِ استانداردِ Instagram-Login messaging
+ *   2. entry[].changes[] با field=messages و value هم‌شکلِ یک رویدادِ messaging
+ *      (برخی نسخه‌ها/پیکربندی‌های Graph به این شکل تحویل می‌دهند)
+ *
+ * connectToDB باید پیش از فراخوانی صدا زده شده باشد.
+ *
+ * @returns {Promise<{object:string, entryCount:number, processed:number,
+ *   skipped:number, stored:number, events:Array}>}
+ */
+export async function processWebhookPayload(body) {
+  const out = {
+    object: body?.object || "",
+    entryCount: (body?.entry || []).length,
+    processed: 0,
+    skipped: 0,
+    stored: 0,
+    events: [],
+  };
+
+  if (body?.object !== "instagram") {
+    out.note = "non-instagram-object";
+    return out;
+  }
+
+  for (const entry of body.entry || []) {
+    // رویدادها را از هر دو ساختار جمع‌آوری کن
+    const events = [];
+    if (Array.isArray(entry.messaging)) events.push(...entry.messaging);
+    if (Array.isArray(entry.changes)) {
+      for (const ch of entry.changes) {
+        // value در field=messages هم‌شکلِ یک رویدادِ messaging است
+        if (ch?.field === "messages" && ch?.value) events.push(ch.value);
+      }
+    }
+
+    for (const event of events) {
+      const info = {
+        entryId: entry.id,
+        eventKeys: Object.keys(event),
+        decision: "",
+        reason: "",
+      };
+
+      const msg = event.message;
+      if (!msg) {
+        info.decision = "skipped";
+        info.reason = "no-message-field";
+        out.skipped++;
+        out.events.push(info);
+        continue;
+      }
+      if (msg.is_echo) {
+        info.decision = "skipped";
+        info.reason = "is-echo";
+        out.skipped++;
+        out.events.push(info);
+        continue;
+      }
+      const senderId = event.sender?.id;
+      if (!senderId) {
+        info.decision = "skipped";
+        info.reason = "no-sender-id";
+        out.skipped++;
+        out.events.push(info);
+        continue;
+      }
+
+      let imageUrl = "";
+      if (Array.isArray(msg.attachments)) {
+        const img = msg.attachments.find(
+          (a) => a.type === "image" && a.payload?.url
+        );
+        if (img) imageUrl = img.payload.url;
+      }
+      if (!msg.text && !imageUrl) {
+        info.decision = "skipped";
+        info.reason = "no-text-and-no-image";
+        out.skipped++;
+        out.events.push(info);
+        continue;
+      }
+
+      const result = await ingestIncomingMessage({
+        igsid: senderId,
+        mid: msg.mid || null,
+        text: msg.text || "",
+        imageUrl,
+        timestamp: event.timestamp || entry.time * 1000 || Date.now(),
+      });
+
+      out.processed++;
+      info.sender = senderId;
+      info.hasText = !!msg.text;
+      info.hasImage = !!imageUrl;
+      info.conversationId = result.conversationId || null;
+      info.messageId = result.messageId || null;
+      if (result.created) {
+        out.stored++;
+        info.decision = "stored";
+        info.reason = "stored";
+      } else {
+        info.decision = "not-stored";
+        info.reason = result.reason || "unknown";
+      }
+      out.events.push(info);
+    }
+  }
+
+  return out;
+}
+
+/**
  * یافتن یا ساختنِ گفتگو برای یک IGSID. در صورت ساختِ تازه، تلاش می‌شود
  * پروفایلِ کاربر از Graph API واکشی شود (بی‌صدا در صورت شکست).
  */

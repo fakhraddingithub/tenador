@@ -151,6 +151,33 @@ export async function sendImageMessage(igsid, imageUrl) {
 }
 
 /**
+ * واکشیِ هویتِ خودِ حسابِ متصل (توکن) از Graph API:
+ *   GET /me?fields=user_id,username,account_type
+ * برای تأییدِ اینکه INSTAGRAM_BUSINESS_ACCOUNT_ID با حسابِ واقعیِ پشتِ توکن
+ * یکی است و حساب از نوعِ BUSINESS است. در صورتِ خطا، {error} برمی‌گرداند.
+ */
+export async function fetchOwnAccount() {
+  try {
+    const url =
+      `${GRAPH_BASE}/me` +
+      `?fields=user_id,username,account_type` +
+      `&access_token=${encodeURIComponent(getAccessToken())}`;
+    const res = await fetch(url);
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      return { error: data?.error?.message || `HTTP ${res.status}`, raw: data };
+    }
+    return {
+      user_id: data?.user_id ? String(data.user_id) : "",
+      username: data?.username || "",
+      account_type: data?.account_type || "",
+    };
+  } catch (e) {
+    return { error: e?.message || String(e) };
+  }
+}
+
+/**
  * تلاش برای واکشیِ پروفایلِ کاربرِ اینستاگرام (نام/یوزرنیم/عکس).
  * این روی همه‌ی توکن‌ها/دسترسی‌ها در دسترس نیست؛ در صورتِ خطا، {} برمی‌گرداند
  * تا جریان اصلی (ذخیره‌ی پیام) متوقف نشود.

@@ -18,7 +18,7 @@ import {
   verifyWebhookChallenge,
   verifyWebhookSignature,
 } from "@/lib/instagram";
-import { ingestIncomingMessage } from "base/services/instagramService";
+import { processWebhookPayload } from "base/services/instagramService";
 import InstagramWebhookLog from "base/models/InstagramWebhookLog";
 
 export const runtime = "nodejs";
@@ -70,6 +70,9 @@ export async function POST(req) {
   const rawBody = await req.text();
   const signature = req.headers.get("x-hub-signature-256");
   const appSecretSet = !!(process.env.INSTAGRAM_APP_SECRET || "").trim();
+
+  // ②a بدنه‌ی خام (۵۰۰ کاراکترِ اول) — برای دیدنِ ساختارِ دقیقی که متا فرستاده
+  console.log(`${TAG} ②a raw body (first 500): ${rawBody.slice(0, 500)}`);
 
   // ② وضعیتِ امضا: حضور، نتیجه و دلیلِ شکست
   const sig = verifyWebhookSignature(rawBody, signature);
@@ -159,102 +162,38 @@ export async function POST(req) {
       return NextResponse.json({ ok: true });
     }
 
-    let processed = 0;
-    let skipped = 0;
-    let storedCount = 0;
     await connectToDB();
 
-    for (const entry of body.entry || []) {
-      // رویدادهای پیام در آرایه‌ی messaging قرار دارند
-      const events = entry.messaging || [];
-      if (events.length === 0) {
-        console.log(
-          `${TAG} entry ${entry.id} has no messaging[] — keys=${JSON.stringify(
-            Object.keys(entry)
-          )}`
-        );
-      }
-      for (const event of events) {
-        const msg = event.message;
-        if (!msg) {
-          console.log(
-            `${TAG} skip — event without message (keys=${JSON.stringify(
-              Object.keys(event)
-            )})`
-          );
-          skipped++;
-          continue;
-        }
+    // ⑤ پردازشِ مشترک (همان منطقی که endpointِ تست هم اجرا می‌کند)
+    const result = await processWebhookPayload(body);
 
-        // اکوی پیام‌های ارسالیِ خودمان را نادیده بگیر
-        if (msg.is_echo) {
-          console.log(`${TAG} skip — is_echo (our own outgoing message)`);
-          skipped++;
-          continue;
-        }
-
-        const senderId = event.sender?.id;
-        if (!senderId) {
-          console.log(`${TAG} skip — event has no sender.id`);
-          skipped++;
-          continue;
-        }
-
-        // پیوست‌های تصویری (در صورت وجود)
-        let imageUrl = "";
-        if (Array.isArray(msg.attachments)) {
-          const img = msg.attachments.find(
-            (a) => a.type === "image" && a.payload?.url
-          );
-          if (img) imageUrl = img.payload.url;
-        }
-
-        // پیام‌های بدونِ متن و بدونِ تصویر (مثل واکنش‌ها) را رد کن
-        if (!msg.text && !imageUrl) {
-          console.log(
-            `${TAG} skip — no text and no image (attachment types=${JSON.stringify(
-              (msg.attachments || []).map((a) => a.type)
-            )})`
-          );
-          skipped++;
-          continue;
-        }
-
-        const result = await ingestIncomingMessage({
-          igsid: senderId,
-          mid: msg.mid || null,
-          text: msg.text || "",
-          imageUrl,
-          timestamp: event.timestamp || entry.time * 1000 || Date.now(),
-        });
-
-        // ④ نتیجه‌ی ذخیره با شناسه‌های ساخته‌شده
-        if (result.created) {
-          storedCount++;
-          console.log(
-            `${TAG} ④ ✓ STORED — sender=${senderId} hasText=${!!msg.text} hasImage=${!!imageUrl} ` +
-              `conversationId=${result.conversationId} messageId=${result.messageId} mid=${
-                msg.mid || "none"
+    // برای هر رویداد: تصمیم و دلیل را لاگ کن
+    for (const ev of result.events) {
+      console.log(
+        `${TAG} ⑤ entry=${ev.entryId} keys=${JSON.stringify(ev.eventKeys)} ` +
+          `→ ${ev.decision} (${ev.reason})` +
+          (ev.decision === "stored" || ev.decision === "not-stored"
+            ? ` sender=${ev.sender} hasText=${ev.hasText} hasImage=${ev.hasImage} ` +
+              `conversationId=${ev.conversationId || "?"} messageId=${
+                ev.messageId || "?"
               }`
-          );
-        } else {
-          console.log(
-            `${TAG} ④ • not stored — reason=${result.reason} sender=${senderId} ` +
-              `conversationId=${result.conversationId || "?"} messageId=${
-                result.messageId || "?"
-              }`
-          );
-        }
-        processed++;
-      }
+            : "")
+      );
     }
-    debug.stored = storedCount;
-    debug.skipped = skipped + (processed - storedCount);
+    if (result.events.length === 0) {
+      console.log(
+        `${TAG} ⑤ no events found in any entry — neither messaging[] nor changes[field=messages]`
+      );
+    }
+
+    debug.stored = result.stored;
+    debug.skipped = result.skipped;
     if (!debug.note) {
-      debug.note = processed === 0 ? "delivered-but-no-message-events" : "processed";
+      debug.note =
+        result.processed === 0 ? "delivered-but-no-message-events" : "processed";
     }
     console.log(
-      `${TAG} ⑤ POST done @ ${new Date().toISOString()} — events_processed=${processed} stored=${storedCount} skipped=${skipped} → 200`
+      `${TAG} ⑥ POST done @ ${new Date().toISOString()} — events_processed=${result.processed} stored=${result.stored} skipped=${result.skipped} → 200`
     );
   } catch (err) {
     // خطای داخلی را لاگ کن ولی همچنان ۲۰۰ بده تا متا retry/disable نکند
