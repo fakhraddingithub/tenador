@@ -15,14 +15,16 @@ const nextConfig = {
   },
 
   images: {
+    // بهینه‌سازی تصاویر از طریق Cloudinary انجام می‌شود (نه Image Optimization ورسل)
+    // تا مصرف Transformations ورسل صفر بماند. منطق در src/lib/cloudinaryLoader.js
+    loader: "custom",
+    loaderFile: "./src/lib/cloudinaryLoader.js",
     remotePatterns: [
       {
         protocol: "https",
         hostname: "res.cloudinary.com",
       },
     ],
-    // فرمت‌های مدرن برای کاهش حجم تصاویر و بهبود LCP
-    formats: ["image/avif", "image/webp"],
   },
 };
 
