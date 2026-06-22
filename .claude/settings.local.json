@@ -118,7 +118,8 @@
       "Bash(echo \"curl failed: $?\")",
       "Bash(curl -s -o /dev/null -w \"google -> HTTP %{http_code}\\\\n\" --max-time 15 \"https://www.google.com\")",
       "Bash(echo \"curl google failed: $?\")",
-      "Bash(git check-ignore *)"
+      "Bash(git check-ignore *)",
+      "Bash(git fsck *)"
     ]
   }
 }
