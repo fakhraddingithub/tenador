@@ -1,10 +1,16 @@
-import { NextResponse } from "next/server";
+import { NextResponse, after } from "next/server";
 import { revalidatePath } from "next/cache";
 import connectToDB from "base/configs/db";
 import UsedProduct from "base/models/UsedProduct";
 import Product from "base/models/Product";
 import Variant from "base/models/Variant";
 import { validateHealthScores, calcOverallScore } from "@/lib/healthcard";
+import { broadcastPush } from "@/lib/push";
+
+// trailing slash را حذف می‌کنیم تا URLها به //path تبدیل نشوند
+const SITE_URL = (process.env.NEXT_PUBLIC_SITE_URL || "https://tenador.com").replace(/\/+$/, "");
+// آیکن نوتیفیکیشن باید PNG باشد — مرورگرها SVG را به‌عنوان آیکن نوتیفیکیشن رندر نمی‌کنند
+const NOTIF_ICON_URL = `${SITE_URL}/android-chrome-192x192.png`;
 
 export async function GET(req) {
   try {
@@ -119,6 +125,33 @@ export async function POST(req) {
     });
 
     try { revalidatePath("/second-hand"); } catch {}
+
+    // ─── ارسال Web Push به همهٔ مشترکین (فقط برای محصولاتِ available) ───
+    // fire-and-forget: با after() بعد از ارسالِ پاسخ اجرا می‌شود تا save ادمین را بلاک نکند،
+    // اما روی Vercel/serverless هم تا پایان کامل ادامه می‌یابد.
+    if (item.status === "available") {
+      const briefDesc =
+        (item.description && item.description.trim()) ||
+        "همین حالا در بازار دست‌دوم تنادور ببینید";
+      const productUrl = item.slug
+        ? `${SITE_URL}/second-hand/${encodeURIComponent(item.slug)}`
+        : `${SITE_URL}/second-hand`;
+
+      after(async () => {
+        try {
+          await broadcastPush({
+            title: "محصول دست دوم جدید در تنادور",
+            body: `${item.name} — ${briefDesc}`,
+            icon: NOTIF_ICON_URL,
+            url: productUrl,
+            tag: `used-${item._id}`,
+            data: { usedProductId: String(item._id) },
+          });
+        } catch (pushErr) {
+          console.error("[used-products] push broadcast failed:", pushErr);
+        }
+      });
+    }
 
     return NextResponse.json({ item }, { status: 201 });
   } catch (err) {

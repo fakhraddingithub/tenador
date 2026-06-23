@@ -1,5 +1,7 @@
 "use client";
 
+import Link from "next/link";
+
 /**
  * StripBannerRenderer
  * رندر بنر نواری (strip) - برای نوار باریک زیر بنرها
@@ -21,25 +23,36 @@ export default function StripBannerRenderer({ banner }) {
     fontFamily: "var(--font-sans, Vazirmatn, sans-serif)",
   };
 
-  const handleClick = () => {
-    if (banner.link) window.location.href = banner.link;
-  };
+  // ناوبری توسط <Link> پایین انجام می‌شود (سمت کلاینت، مثل بخش رشته‌های ورزشی)
+  const handleClick = undefined;
 
-  switch (banner.template) {
-    case "flame":
-    case "neon":
-      return <MarqueeStrip banner={banner} style={baseStyle} onClick={handleClick} c={c} dark />;
-    case "luxury":
-    case "editorial":
-      return <ElegantStrip banner={banner} style={baseStyle} onClick={handleClick} c={c} />;
-    case "geometric":
-    case "brutalist":
-      return <BoldStrip banner={banner} style={baseStyle} onClick={handleClick} c={c} />;
-    case "symmetric":
+  const content = (() => {
+    switch (banner.template) {
+      case "flame":
+      case "neon":
+        return <MarqueeStrip banner={banner} style={baseStyle} onClick={handleClick} c={c} dark />;
+      case "luxury":
+      case "editorial":
+        return <ElegantStrip banner={banner} style={baseStyle} onClick={handleClick} c={c} />;
+      case "geometric":
+      case "brutalist":
+        return <BoldStrip banner={banner} style={baseStyle} onClick={handleClick} c={c} />;
+      case "symmetric":
         return <SymmetricStrip banner={banner} style={baseStyle} onClick={handleClick} c={c} />;
-    default:
-      return <MarqueeStrip banner={banner} style={baseStyle} onClick={handleClick} c={c} />;
+      default:
+        return <MarqueeStrip banner={banner} style={baseStyle} onClick={handleClick} c={c} />;
+    }
+  })();
+
+  if (banner.link) {
+    return (
+      <Link href={banner.link} className="block w-full h-full">
+        {content}
+      </Link>
+    );
   }
+
+  return content;
 }
 
 /* نوار متحرک مارکی */
@@ -77,7 +90,7 @@ function MarqueeStrip({ banner, style, onClick, c, dark }) {
         </div>
       </div>
       {banner.ctaText && (
-        <button onClick={(e) => { e.stopPropagation(); if (banner.link) window.location.href = banner.link; }} style={{
+        <button style={{
           background: dark ? (c.primary || "#aa4725") : "rgba(255,255,255,0.25)",
           border: dark ? "none" : "1px solid rgba(255,255,255,0.5)",
           color: "#fff",

@@ -12,6 +12,7 @@ import {
 } from "react-icons/fa";
 import { toast } from "react-toastify";
 import { useOrderFlowCart } from "@/components/modules/orderFlow/useOrderFlowCart";
+import GalleryImageViewer from "@/components/ui/GalleryImageViewer";
 
 /* ─────────────────────────────────────────
    Helpers
@@ -309,12 +310,15 @@ export default function QuickViewModal({
               fill
               className="object-contain p-4 transition-all duration-500 group-hover:scale-110"
             />
+
+            {/* لایهٔ تعاملی: تول‌تیپِ دنبال‌کنندهٔ ماوس + لایت‌باکسِ زوم */}
+            <GalleryImageViewer src={displayedImage} alt={product.name} />
           </div>
 
           {/* Thumbnails */}
           {activeGalleryImages.length > 1 && (
             <div className="flex gap-2 overflow-x-auto pb-1 custom-scrollbar">
-              {activeGalleryImages.map((img) => {
+              {activeGalleryImages.map((img, idx) => {
                 const isActive = displayedImage === img;
                 return (
                   <button
@@ -332,7 +336,7 @@ export default function QuickViewModal({
                   >
                     <Image
                       src={img}
-                      alt="thumb"
+                      alt={`${product.name} - تصویر ${idx + 1}`}
                       fill
                       className="object-cover p-1"
                     />

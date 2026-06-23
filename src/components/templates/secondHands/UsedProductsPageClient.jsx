@@ -5,6 +5,7 @@ import { FiSearch, FiShoppingBag, FiTag } from 'react-icons/fi';
 import UsedProductCard from './UsedProductCard';
 import UsedFilterSidebar from './UsedFilterSidebar';
 import UsedQuickViewModal from './Usedquickviewmodal';
+import PushOptInBanner from '@/components/features/push/PushOptInBanner';
 import {
   buildAttributeMeta,
   parseAttrFiltersFromParams,
@@ -111,6 +112,9 @@ export default function UsedProductsPageClient({ products: initialProducts, head
 
   return (
     <div className="bg-[#fcfcfc] min-h-screen" dir="rtl">
+
+      {/* ─── بنرِ اجازهٔ نوتیفیکیشنِ محصولات دست‌دوم جدید ─── */}
+      <PushOptInBanner />
 
       {/* ─── Hero ─── */}
       <div className="relative h-[120px] md:h-[220px] w-full overflow-hidden">

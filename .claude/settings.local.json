@@ -127,7 +127,16 @@
       "Bash(cat eslint.config.mjs)",
       "PowerShell(npx eslint \"src/app/\\(Admin-Panel\\)/p-admin/users/coaches/page.jsx\" 2>&1 | Select-String -Pattern \"error\" -SimpleMatch; Write-Output \"---exit:$LASTEXITCODE---\")",
       "PowerShell(npx eslint \"src/app/api/files/pdf/route.js\" \"src/components/modules/profile/index.jsx\" \"src/app/\\(Admin-Panel\\)/p-admin/users/coaches/page.jsx\" 2>&1 | Select-String -Pattern \"error\" -SimpleMatch; Write-Output \"---exit:$LASTEXITCODE---\")",
-      "PowerShell($out = npm run build 2>&1; $out | Select-String -Pattern \"/about |/contact |/faq |/how-to-order |/returns |/shipping |/payment |/terms |admin-pages|support/messages|prerender|Error occurred|Failed to compile\" | Select-Object -First 30; \"----\"; \\($out | Select-String \"Compiled successfully\"\\).Line)"
+      "PowerShell($out = npm run build 2>&1; $out | Select-String -Pattern \"/about |/contact |/faq |/how-to-order |/returns |/shipping |/payment |/terms |admin-pages|support/messages|prerender|Error occurred|Failed to compile\" | Select-Object -First 30; \"----\"; \\($out | Select-String \"Compiled successfully\"\\).Line)",
+      "PowerShell(Get-Content *)",
+      "PowerShell(npx eslint src/components/banners/BannerRenderer.jsx src/components/banners/StripBannerRenderer.jsx)",
+      "PowerShell(npm install *)",
+      "PowerShell($ok=$false; for \\($i=1; $i -le 4; $i++\\) { $out=\"$env:TEMP\\\\cms_b_$i.log\"; cmd /c \"npm run build > `\"$out`\" 2>&1\"; $code=$LASTEXITCODE; Write-Output \"Attempt $i EXIT=$code\"; if \\($code -eq 0\\) { $ok=$true; break } }; Write-Output \"OK=$ok\"; if \\($ok\\) { Get-Content $out | Select-String -Pattern \"Compiled|/about|/contact|/faq|/terms|/returns|/payment|/shipping|/how-to-order\" })",
+      "PowerShell(node -e \"const wp=require\\('web-push'\\); const k=wp.generateVAPIDKeys\\(\\); console.log\\('PUBLIC='+k.publicKey\\); console.log\\('PRIVATE='+k.privateKey\\);\")",
+      "PowerShell(node -e \"const s=require\\('next/server'\\); console.log\\('after exported:', typeof s.after\\)\")",
+      "PowerShell(npx eslint \"src/components/features/push/PushOptInBanner.jsx\" \"src/lib/push.js\" \"src/app/api/push/subscribe/route.js\" \"src/app/api/push/unsubscribe/route.js\" \"src/app/api/admin/used-products/route.js\" \"src/components/templates/secondHands/UsedProductsPageClient.jsx\")",
+      "PowerShell(npx eslint src/components/ui/GalleryImageViewer.jsx src/components/templates/product/ProductGallery.jsx src/components/templates/product/ProductClientSection.jsx src/components/templates/secondHand/Usedproductclientsection.jsx src/components/modules/cart/QuickViewModal.jsx src/components/modules/cart/ProductCard.js src/components/templates/secondHands/Usedquickviewmodal.jsx)",
+      "PowerShell(npx eslint \"src/app/api/admin/used-products/route.js\")"
     ]
   }
 }

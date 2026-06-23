@@ -4,8 +4,10 @@ import { useState, useEffect, useRef } from "react";
 import Image from "next/image";
 import { motion, AnimatePresence } from "framer-motion";
 import VerifiedBadge from "@/components/ui/VerifiedBadge";
+import GalleryImageViewer from "@/components/ui/GalleryImageViewer";
 
-const ProductGallery = ({ images = [], logo, verified = false }) => {
+const ProductGallery = ({ images = [], logo, verified = false, productName = "" }) => {
+  const mainAlt = productName || "نمای محصول";
   const [activeIndex, setActiveIndex] = useState(0);
 
   const prevImagesRef = useRef(images);
@@ -56,13 +58,16 @@ const ProductGallery = ({ images = [], logo, verified = false }) => {
             >
               <Image
                 src={images[activeIndex]}
-                alt="نمای اصلی محصول"
+                alt={mainAlt}
                 fill
                 priority
                 className="object-contain p-6 transition-transform duration-700 group-hover:scale-110"
               />
             </motion.div>
           </AnimatePresence>
+
+          {/* لایهٔ تعاملی: تول‌تیپِ دنبال‌کنندهٔ ماوس + لایت‌باکسِ زوم */}
+          <GalleryImageViewer src={images[activeIndex]} alt={mainAlt} />
         </div>
       </div>
 
@@ -85,7 +90,7 @@ const ProductGallery = ({ images = [], logo, verified = false }) => {
             >
               <Image
                 src={image}
-                alt={`بندانگشتی ${index + 1}`}
+                alt={`${mainAlt} - تصویر ${index + 1}`}
                 fill
                 className={`
                   object-cover p-1.5 transition-transform duration-300

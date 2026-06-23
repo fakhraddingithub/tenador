@@ -11,6 +11,7 @@ import {
 } from "react-icons/fa";
 import { FiShield, FiTag } from "react-icons/fi";
 import VerifiedBadge from "@/components/ui/VerifiedBadge";
+import GalleryImageViewer from "@/components/ui/GalleryImageViewer";
 
 /* ─────────────────────────────────────────
    Helpers
@@ -145,12 +146,17 @@ export default function UsedQuickViewModal({
             )}
 
             {/* badge دست‌دوم + نشان تست‌شده */}
-            <div className="absolute top-3 right-3 flex items-center gap-1.5">
+            <div className="absolute top-3 right-3 z-30 flex items-center gap-1.5">
               {tested && <VerifiedBadge size={22} />}
               <span className="bg-[#aa4725] text-white text-[10px] font-black px-2.5 py-1 rounded-full flex items-center gap-1">
                 <FiTag size={9} /> دست‌دوم
               </span>
             </div>
+
+            {/* لایهٔ تعاملی: تول‌تیپِ دنبال‌کنندهٔ ماوس + لایت‌باکسِ زوم */}
+            {displayedImage && (
+              <GalleryImageViewer src={displayedImage} alt={name} />
+            )}
           </div>
 
           {/* Thumbnails */}
@@ -170,7 +176,7 @@ export default function UsedQuickViewModal({
                         : "border-transparent opacity-55 hover:opacity-100"}
                     `}
                   >
-                    <Image src={img} alt="" fill className="object-cover p-1" />
+                    <Image src={img} alt={`${name} - تصویر ${i + 1}`} fill className="object-cover p-1" />
                   </button>
                 );
               })}

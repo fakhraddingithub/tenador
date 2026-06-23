@@ -2,7 +2,7 @@
  * SectionRenderer — هر بلوکِ محتوایی را به کامپوننتِ متناظرش نگاشت می‌کند.
  * سرور-کامپوننت است؛ بخش‌های تعاملی (faq/legal/contact) جزایرِ کلاینت هستند.
  */
-import PageHero from "./PageHero";
+import SportHero from "@/components/templates/sports/SportHero";
 import {
   RichText,
   ImageText,
@@ -29,14 +29,10 @@ export default function SectionRenderer({
         switch (block.type) {
           case "hero":
             return (
-              <PageHero
+              <SportHero
                 key={key}
-                eyebrow={block.eyebrow}
-                title={block.title}
-                subtitle={block.subtitle}
                 image={block.image}
-                align={block.align}
-                accent={accent}
+                title={block.title}
               />
             );
           case "richtext":

@@ -106,7 +106,7 @@ export default function ProductCard({ product, rate, onQuickView, onToggleWishli
             onMouseEnter={() => { setActiveImage(variant.images[0]); setActiveVariantId(variant._id); }}
             onClick={(e) => { e.preventDefault(); e.stopPropagation(); setActiveImage(variant.images[0]); setActiveVariantId(variant._id); }}
             className={`relative w-8 h-8 rounded-[6px] overflow-hidden border-2 transition-all duration-200 ${activeVariantId === variant._id ? "border-[var(--color-primary)] scale-110 shadow-md" : "border-gray-100 hover:border-[color-mix(in_srgb,var(--color-primary)_60%,transparent)] opacity-80 hover:opacity-100"}`}>
-            <Image src={variant.images[0]} alt="" fill className="object-cover" />
+            <Image src={variant.images[0]} alt={name} fill className="object-cover" />
           </button>
         )) : <div className="h-8" />}
       </div>

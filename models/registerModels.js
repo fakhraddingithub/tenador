@@ -44,6 +44,7 @@ import "base/models/Otp";
 import "base/models/Payment";
 import "base/models/PriceCache";
 import "base/models/Product";
+import "base/models/PushSubscription";
 import "base/models/QuantityDiscount";
 import "base/models/Serie";
 import "base/models/SiteSetting";

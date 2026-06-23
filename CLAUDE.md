@@ -8,7 +8,9 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 npm run dev          # Start Next.js dev server
 npm run build        # Production build
 npm run lint         # ESLint (next/core-web-vitals)
-npm test             # Jest test suite
+npm test             # Jest test suite (node env; tests/setup.js spins up mongodb-memory-server)
+npm test -- tests/paymentWorkflow.test.js   # Run a single test file
+npm test -- -t "name of test"                # Run tests matching a name
 npm run test:db      # Test MongoDB connection
 
 # Database migrations (run when needed)
@@ -44,6 +46,8 @@ Custom JWT, **not next-auth**. Flow:
 
 Token utilities live in `utils/auth.js` (bcryptjs for passwords, jsonwebtoken for tokens).
 
+**Admin authorization:** API handlers gate admin access by calling `requireAdmin()` from `src/lib/requireAdmin.js`. It re-checks `user.role === "admin"` via a fresh DB lookup — the JWT alone is **not** trusted for role. `src/lib/permissions.js` is the single source of truth for the fine-grained permission registry (keys like `products.edit`), stored on `AdminRole` as an array of string keys; adding a module/permission means editing only that file (no schema change). Note enforcement of these per-permission keys is staged and may not be applied on every route yet — confirm before relying on it.
+
 ### Database
 
 Mongoose v9 connecting to MongoDB. Connection is cached in `global._mongooseCache` (module-level) to survive hot-reload in dev and prevent connection exhaustion in serverless. Config is in `configs/db.js` with pool size tuned for Vercel (`maxPoolSize: 5`).
@@ -75,6 +79,22 @@ After any admin mutation, call `revalidateContent(tags)` from `src/lib/revalidat
 ### Slug System
 
 `SlugRegistery` model maps dynamic URL segments (sport/category/brand slugs) to their entity types. `actions/registerSlug.js` is a server action that creates entries on entity creation. This powers ISR revalidation — when a slug is revalidated, the correct entity page is rebuilt.
+
+### Feature Subsystems
+
+Beyond the storefront, several self-contained subsystems each span a model + service + API + admin/site UI. Start from the service file (the entry point) when working on one:
+
+| Subsystem | Entry point(s) | Notes |
+|---|---|---|
+| Events / campaigns | `services/event.service.js`, `services/eventProductResolver.js`, `models/Event.js` | Campaign platform with theme/effect system and resolver-driven product selection |
+| Admin notifications | `services/notificationService.js`, `models/Notification.js` | Bell/sidebar UI; beware the payment dual-path/webhook early-return gotcha |
+| User broadcasts | `services/userNotificationService.js`, `models/UserNotification*.js` | Admin→user broadcasts with watermark read-tracking |
+| Reviews / comments | `services/comment.service.js`, `models/Comment.js` | Moderated, one-per-product, "verified purchase" badge |
+| Instagram DM inbox | `services/instagramService.js`, `src/lib/instagram.js`, `models/Instagram*.js` | Meta webhook + send API + chat UI; 24h messaging window |
+| CMS info pages | `services/pageContent.service.js`, `src/lib/pageDefaults.js`, `models/PageContent.js` | Block-based editor; `SectionRenderer` renders blocks; `ContactMessage` inbox |
+| Coach system | `models/CoachCredit.js`, `models/CoachWalletTransaction.js`, `api/admin/coach-*` | Coach applications, codes, credits/wallet |
+| Second-hand / used | `models/UsedProduct.js`, `api/admin/used-products` | Used-product listings with health scale |
+| Installments | `models/Installment.js`, `api/installments` | Check-based installment payments |
 
 ### State Management
 

@@ -1,5 +1,7 @@
 "use client";
 
+import Link from "next/link";
+
 /**
  * BannerRenderer
  * رندر بنر بر اساس تمپلیت و داده‌های دریافتی
@@ -35,11 +37,11 @@ export default function BannerRenderer({ banner, preview = false }) {
     fontSize: `${fontSize}rem`,
   };
 
-  const handleClick = () => {
-    if (!preview && b.link) window.location.href = b.link;
-  };
+  // ناوبری توسط <Link> پایین انجام می‌شود (سمت کلاینت، مثل بخش رشته‌های ورزشی)
+  const handleClick = undefined;
 
-  switch (b.template) {
+  const content = (() => {
+    switch (b.template) {
     case "flame":
       return (
         <FlameTemplate
@@ -148,7 +150,18 @@ export default function BannerRenderer({ banner, preview = false }) {
           c={c}
         />
       );
+    }
+  })();
+
+  if (!preview && b.link) {
+    return (
+      <Link href={b.link} className="block w-full h-full">
+        {content}
+      </Link>
+    );
   }
+
+  return content;
 }
 
 /* =====================================================

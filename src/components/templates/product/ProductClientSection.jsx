@@ -52,7 +52,11 @@ const ProductClientSection = ({ product }) => {
       {/* Top on Mobile / Left on Desktop - Gallery */}
       <div className="w-full">
         <div className="mx-auto max-w-md lg:max-w-none">
-          <ProductGallery images={galleryImages} logo={product?.brand?.icon} />
+          <ProductGallery
+            images={galleryImages}
+            logo={product?.brand?.icon}
+            productName={product?.name}
+          />
         </div>
       </div>
 
