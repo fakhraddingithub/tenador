@@ -1,0 +1,292 @@
+
+> tenador@0.1.0 build
+> next build
+
+▲ Next.js 16.2.6 (Turbopack)
+- Environments: .env
+- Experiments (use with caution):
+  · staleTimes
+
+⚠ The "middleware" file convention is deprecated. Please use "proxy" instead. Learn more: https://nextjs.org/docs/messages/middleware-to-proxy
+  Creating an optimized production build ...
+✓ Compiled successfully in 39.9s
+  Running TypeScript ...
+  Finished TypeScript in 30.1s ...
+  Collecting page data using 3 workers ...
+  Generating static pages using 3 workers (0/158) ...
+  Generating static pages using 3 workers (39/158) 
+  Generating static pages using 3 workers (78/158) 
+  Generating static pages using 3 workers (118/158) 
+<<<🎇 MongoDB Connected Successfully 🎇>>>
+<<<🎇 MongoDB Connected Successfully 🎇>>>
+(node:11080) [MONGOOSE] Warning: mongoose: Duplicate schema index on {"category":1} for model "HealthCard". This is often due to declaring an index using both "index: true" and "schema.index()". Please remove the duplicate index definition.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:11080) [MONGOOSE] Warning: mongoose: Duplicate schema index on {"mid":1} for model "InstagramMessage". This is often due to declaring an index using both "index: true" and "schema.index()". Please remove the duplicate index definition.
+(node:6620) [MONGOOSE] Warning: mongoose: Duplicate schema index on {"category":1} for model "HealthCard". This is often due to declaring an index using both "index: true" and "schema.index()". Please remove the duplicate index definition.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:6620) [MONGOOSE] Warning: mongoose: Duplicate schema index on {"mid":1} for model "InstagramMessage". This is often due to declaring an index using both "index: true" and "schema.index()". Please remove the duplicate index definition.
+Failed to set Next.js data cache for unstable_cache /products 221a029ef74325492674516722e214a1e6428874212fe80b6fce9a70c46ac754, items over 2MB can not be cached (4554972 bytes)
+✓ Generating static pages using 3 workers (158/158) in 44s
+  Finalizing page optimization ...
+
+Route (app)                                                                   Revalidate  Expire
+┌ ○ /                                                                                 1m      1y
+├ ○ /_not-found
+├ ƒ /[sportSlug]
+├ ƒ /[sportSlug]/[...slug]
+├ ○ /about-us                                                                        10m      1y
+├ ƒ /api/addresses
+├ ƒ /api/addresses/[id]
+├ ƒ /api/addresses/[id]/set-default
+├ ƒ /api/admin/admins
+├ ƒ /api/admin/admins/[id]
+├ ƒ /api/admin/coach-applications
+├ ƒ /api/admin/coach-applications/[id]/review
+├ ƒ /api/admin/coach-credits
+├ ƒ /api/admin/coach-credits/[id]
+├ ƒ /api/admin/coaches
+├ ƒ /api/admin/coaches/[coachId]/orders
+├ ƒ /api/admin/coaches/[coachId]/wallet
+├ ƒ /api/admin/comments
+├ ƒ /api/admin/comments/[id]
+├ ƒ /api/admin/coupons
+├ ƒ /api/admin/coupons/[id]
+├ ƒ /api/admin/discounts
+├ ƒ /api/admin/discounts/[id]
+├ ƒ /api/admin/discounts/search
+├ ƒ /api/admin/events
+├ ƒ /api/admin/events/[id]
+├ ƒ /api/admin/events/[id]/duplicate
+├ ƒ /api/admin/events/[id]/products-preview
+├ ƒ /api/admin/events/[id]/status
+├ ƒ /api/admin/events/attribute-options
+├ ƒ /api/admin/events/preview-products
+├ ƒ /api/admin/exchange-rate
+├ ƒ /api/admin/healthcards
+├ ƒ /api/admin/healthcards/[id]
+├ ƒ /api/admin/instagram/conversations
+├ ƒ /api/admin/instagram/conversations/[conversationId]
+├ ƒ /api/admin/instagram/conversations/[conversationId]/read
+├ ƒ /api/admin/instagram/conversations/[conversationId]/send
+├ ƒ /api/admin/instagram/debug
+├ ƒ /api/admin/instagram/unread
+├ ƒ /api/admin/notifications
+├ ƒ /api/admin/notifications/[id]/read
+├ ƒ /api/admin/notifications/counts
+├ ƒ /api/admin/notifications/read-all
+├ ƒ /api/admin/order-flows
+├ ƒ /api/admin/order-flows/[flowId]
+├ ƒ /api/admin/orders
+├ ƒ /api/admin/orders/[orderId]
+├ ƒ /api/admin/orders/[orderId]/eur
+├ ƒ /api/admin/orders/[orderId]/items
+├ ƒ /api/admin/orders/[orderId]/tracking
+├ ƒ /api/admin/orders/tracking-items/lookup
+├ ƒ /api/admin/orders/used-product-tracking
+├ ƒ /api/admin/payments/[id]/approve
+├ ƒ /api/admin/payments/[id]/edit
+├ ƒ /api/admin/payments/[id]/reject
+├ ƒ /api/admin/permissions
+├ ƒ /api/admin/quantity-discounts
+├ ƒ /api/admin/quantity-discounts/[id]
+├ ƒ /api/admin/roles
+├ ƒ /api/admin/roles/[id]
+├ ƒ /api/admin/site-settings
+├ ƒ /api/admin/used-products
+├ ƒ /api/admin/used-products/[id]
+├ ƒ /api/admin/user-notifications
+├ ƒ /api/admin/user-notifications/recipients
+├ ƒ /api/admin/users
+├ ƒ /api/admin/users/[userId]
+├ ƒ /api/admin/variants
+├ ƒ /api/ai/athlete-prompt
+├ ƒ /api/ai/product-draft
+├ ƒ /api/athletes
+├ ƒ /api/athletes/[athleteId]
+├ ƒ /api/athletes/create
+├ ƒ /api/athletes/showcase
+├ ƒ /api/auth/edit-profile
+├ ƒ /api/auth/forgot-password
+├ ƒ /api/auth/google
+├ ƒ /api/auth/google/callback
+├ ƒ /api/auth/login
+├ ƒ /api/auth/logout
+├ ƒ /api/auth/profile
+├ ƒ /api/auth/register
+├ ƒ /api/auth/reset-password
+├ ƒ /api/auth/verify-otp
+├ ƒ /api/banners
+├ ƒ /api/banners/[id]
+├ ƒ /api/bans
+├ ƒ /api/bans/[id]
+├ ƒ /api/brands
+├ ƒ /api/brands/[brandId]
+├ ƒ /api/brands/create
+├ ƒ /api/brands/grouped
+├ ƒ /api/brands/reorder
+├ ƒ /api/cart/price
+├ ƒ /api/cart/products
+├ ƒ /api/categories
+├ ƒ /api/categories/[categoryId]
+├ ƒ /api/categories/create
+├ ƒ /api/categories/reorder
+├ ƒ /api/checkout
+├ ƒ /api/coach/dashboard
+├ ƒ /api/comments
+├ ƒ /api/comments/mine
+├ ƒ /api/compare/best-in-category
+├ ƒ /api/compare/search
+├ ƒ /api/departments
+├ ƒ /api/departments/[id]
+├ ƒ /api/events
+├ ƒ /api/events/[slug]
+├ ƒ /api/exchange-rate
+├ ƒ /api/files/pdf
+├ ƒ /api/instagram/subscription
+├ ƒ /api/instagram/test-receive
+├ ƒ /api/instagram/webhook
+├ ƒ /api/installments/checks/[checkId]/status
+├ ƒ /api/limited-editions
+├ ƒ /api/limited-editions/[id]
+├ ƒ /api/limited-editions/create
+├ ƒ /api/navbar
+├ ƒ /api/newsletter
+├ ƒ /api/notifications
+├ ƒ /api/notifications/read-all
+├ ƒ /api/order-flows/category/[categoryId]
+├ ƒ /api/orders
+├ ƒ /api/orders/[trackingCode]
+├ ƒ /api/orders/webhook-success
+├ ƒ /api/otps
+├ ƒ /api/otps/[id]
+├ ƒ /api/payments/bank-receipt
+├ ƒ /api/payments/online/callback
+├ ƒ /api/product
+├ ƒ /api/product/[productId]
+├ ƒ /api/product/[productId]/price
+├ ƒ /api/product/[productId]/variants
+├ ƒ /api/product/create
+├ ƒ /api/profile/coach-apply
+├ ƒ /api/profile/coach-lookup
+├ ƒ /api/profile/link-coach
+├ ƒ /api/query
+├ ƒ /api/series
+├ ƒ /api/series/[id]
+├ ƒ /api/series/[id]/children
+├ ƒ /api/series/create
+├ ƒ /api/series/grouped
+├ ƒ /api/series/reorder
+├ ƒ /api/slides
+├ ƒ /api/slides/[id]
+├ ƒ /api/slides/reorder
+├ ƒ /api/sports
+├ ƒ /api/sports/[sportId]
+├ ƒ /api/sports/create
+├ ƒ /api/sports/reorder
+├ ƒ /api/tickets
+├ ƒ /api/tickets/[id]
+├ ƒ /api/upload
+├ ƒ /api/variants/[variantId]
+├ ƒ /api/wishlist
+├ ƒ /api/wishlist/[productId]
+├ ○ /articles                                                                        10m      1y
+├ ƒ /articles/[articleId]
+├ ○ /athletes                                                                        10m      1y
+├ ƒ /athletes/[athleteId]
+├ ○ /auth/success                                                                    10m      1y
+├ ○ /compare                                                                         10m      1y
+├ ○ /contact-us                                                                      10m      1y
+├ ○ /events                                                                           5m      1y
+├ ƒ /events/[eventSlug]
+├ ○ /login-register                                                                  10m      1y
+├ ○ /p-admin
+├ ○ /p-admin/admin-articles/add-artlicle
+├ ƒ /p-admin/admin-articles/edit-article/[articleId]
+├ ○ /p-admin/admin-athletes
+├ ○ /p-admin/admin-athletes/add
+├ ƒ /p-admin/admin-athletes/edit/[athleteId]
+├ ○ /p-admin/admin-brands
+├ ƒ /p-admin/admin-brands/[brandId]
+├ ƒ /p-admin/admin-brands/[brandId]/[serieId]
+├ ƒ /p-admin/admin-brands/[brandId]/[serieId]/edit
+├ ƒ /p-admin/admin-brands/[brandId]/add-serie
+├ ƒ /p-admin/admin-brands/[brandId]/limited-editions/[limitedEditionId]/edit
+├ ƒ /p-admin/admin-brands/[brandId]/limited-editions/add
+├ ○ /p-admin/admin-brands/add
+├ ƒ /p-admin/admin-brands/edit/[brandId]
+├ ○ /p-admin/admin-categories
+├ ○ /p-admin/admin-categories/add
+├ ƒ /p-admin/admin-categories/category-products/[categoryId]
+├ ƒ /p-admin/admin-categories/category-products/[categoryId]/add-product
+├ ƒ /p-admin/admin-categories/edit/[categoryId]
+├ ○ /p-admin/admin-comments
+├ ○ /p-admin/admin-events
+├ ○ /p-admin/admin-events/campaigns
+├ ƒ /p-admin/admin-events/campaigns/[id]
+├ ○ /p-admin/admin-events/campaigns/new
+├ ○ /p-admin/admin-home
+├ ○ /p-admin/admin-home/banners
+├ ○ /p-admin/admin-home/slider
+├ ○ /p-admin/admin-home/slider/create
+├ ƒ /p-admin/admin-home/slider/edit/[id]
+├ ○ /p-admin/admin-order-flows
+├ ○ /p-admin/admin-order-flows/create
+├ ƒ /p-admin/admin-order-flows/edit/[flowId]
+├ ○ /p-admin/admin-orders
+├ ƒ /p-admin/admin-orders/[orderId]
+├ ○ /p-admin/admin-products
+├ ƒ /p-admin/admin-products/[productId]/variants
+├ ƒ /p-admin/admin-products/[productId]/variants/add
+├ ○ /p-admin/admin-products/add
+├ ƒ /p-admin/admin-products/edit/[productId]
+├ ○ /p-admin/admin-secondHands
+├ ○ /p-admin/admin-secondHands/healthcards
+├ ƒ /p-admin/admin-secondHands/healthcards/[id]/edit
+├ ○ /p-admin/admin-secondHands/healthcards/create
+├ ○ /p-admin/admin-secondHands/used-products
+├ ƒ /p-admin/admin-secondHands/used-products/[id]/edit
+├ ○ /p-admin/admin-secondHands/used-products/create
+├ ○ /p-admin/admin-sports
+├ ○ /p-admin/admin-sports/add
+├ ƒ /p-admin/admin-sports/edit/[sportId]
+├ ○ /p-admin/discounts
+├ ○ /p-admin/exchange-rate
+├ ○ /p-admin/financial
+├ ƒ /p-admin/support/instagram
+├ ○ /p-admin/users
+├ ƒ /p-admin/users/[userId]
+├ ○ /p-admin/users/admins
+├ ○ /p-admin/users/admins/add
+├ ƒ /p-admin/users/admins/edit/[adminId]
+├ ○ /p-admin/users/coaches
+├ ƒ /p-admin/users/coaches/[coachId]
+├ ƒ /p-admin/users/coaches/[coachId]/credit/[orderId]
+├ ○ /p-admin/users/notifications
+├ ○ /p-user
+├ ○ /p-user/addresses
+├ ○ /p-user/cart
+├ ○ /p-user/coach
+├ ○ /p-user/installments
+├ ○ /p-user/orders
+├ ƒ /p-user/orders/success/[trackingCode]
+├ ○ /p-user/payments
+├ ƒ /p-user/payments/[trackingCode]
+├ ○ /p-user/payments/checkout
+├ ○ /p-user/profile
+├ ○ /p-user/signOrder
+├ ○ /p-user/tickets
+├ ○ /p-user/wallet
+├ ○ /p-user/wishlist
+├ ○ /products                                                                         1m      1y
+├ ƒ /products/[productSlug]
+├ ○ /robots.txt
+├ ○ /second-hand                                                                      5m      1y
+├ ƒ /second-hand/[slug]
+└ ○ /sitemap.xml
+
+
+ƒ Proxy (Middleware)
+
+○  (Static)   prerendered as static content
+ƒ  (Dynamic)  server-rendered on demand
+

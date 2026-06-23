@@ -1,3 +1,6 @@
-export default function AboutUsPage() {
-    return <h1>About us</h1>
-  }
+import { redirect } from "next/navigation";
+
+// مسیر متعارف صفحه‌ی «تماس با ما» اکنون /contact است (مطابق لینک‌های فوتر).
+export default function ContactUsRedirect() {
+  redirect("/contact");
+}

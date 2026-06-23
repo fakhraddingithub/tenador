@@ -1,3 +1,6 @@
-export default function AboutUsPage() {
-    return <h1>About us</h1>
-  }
+import { redirect } from "next/navigation";
+
+// مسیر متعارف صفحه‌ی «درباره ما» اکنون /about است (مطابق لینک‌های فوتر).
+export default function AboutUsRedirect() {
+  redirect("/about");
+}

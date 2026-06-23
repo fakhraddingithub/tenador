@@ -20,6 +20,8 @@ import {
   FaCalendarAlt,
   FaRegCommentDots,
   FaInstagram,
+  FaFileAlt,
+  FaEnvelopeOpenText,
 } from "react-icons/fa";
 import { HiOutlineLogout } from "react-icons/hi";
 import { AiFillProduct } from "react-icons/ai";
@@ -42,8 +44,10 @@ const menuItems = [
   { title: "بازار دست دوم", href: "/p-admin/admin-secondHands", icon: FaBoxOpen },
   { title: "سفارشات", href: "/p-admin/admin-orders", icon: ShoppingCart },
   { title: "نظرات", href: "/p-admin/admin-comments", icon: FaRegCommentDots },
+  { title: "صفحات سایت", href: "/p-admin/admin-pages", icon: FaFileAlt },
   { title: "مدیریت مالی", href: "/p-admin/financial", icon: FaMoneyBillWave },
   { title: "کاربران", href: "/p-admin/users", icon: FaUsersCog },
+  { title: "پیام‌های تماس", href: "/p-admin/support/messages", icon: FaEnvelopeOpenText },
   { title: "پشتیبانی اینستاگرام", href: "/p-admin/support/instagram", icon: FaInstagram },
 ];
 
@@ -66,6 +70,20 @@ export default function AdminLayout({ children }) {
 
   // ─── شمارشِ پیام‌های خوانده‌نشده‌ی دایرکتِ اینستاگرام (بَجِ پشتیبانی) ───
   const [igUnread, setIgUnread] = useState(0);
+
+  // ─── شمارشِ پیام‌های جدیدِ فرم تماس (بَجِ صندوقِ پیام) ───
+  const [contactNew, setContactNew] = useState(0);
+
+  const refreshContactNew = useCallback(async () => {
+    try {
+      const res = await fetch("/api/admin/contact-messages?status=new&limit=1");
+      if (!res.ok) return;
+      const data = await res.json();
+      setContactNew(Number(data?.counts?.new || 0));
+    } catch {
+      /* بی‌صدا */
+    }
+  }, []);
 
   const refreshIgUnread = useCallback(async () => {
     try {
@@ -103,6 +121,13 @@ export default function AdminLayout({ children }) {
     return () => clearInterval(id);
   }, [refreshIgUnread]);
 
+  // پولینگِ بَجِ پیام‌های جدیدِ فرم تماس (هر ۴۵ ثانیه)
+  useEffect(() => {
+    refreshContactNew();
+    const id = setInterval(refreshContactNew, 45000);
+    return () => clearInterval(id);
+  }, [refreshContactNew]);
+
   // با تغییر مسیر، سایدبارِ موبایل بسته شود (دسکتاپ تحت تأثیر نیست چون آنجا static است)
   useEffect(() => {
     setMobileOpen(false);
@@ -115,6 +140,7 @@ export default function AdminLayout({ children }) {
     // مدیریت مربیان (کردیت + درخواست مربیگری) زیرمجموعه‌ی «کاربران» است
     if (href === "/p-admin/users") return (s.coachCredits || 0) + (s.coachApplications || 0);
     if (href === "/p-admin/support/instagram") return igUnread || 0;
+    if (href === "/p-admin/support/messages") return contactNew || 0;
     return 0;
   };
 
