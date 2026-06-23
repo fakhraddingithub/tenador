@@ -85,7 +85,7 @@ export default function LegalSection({ block, accent }) {
                 >
                   <div className="flex items-center gap-3 mb-3">
                     <span
-                      className="flex-shrink-0 w-9 h-9 rounded-xl flex items-center justify-center text-sm font-black text-white"
+                      className="flex-shrink-0 w-9 h-9 rounded-[6px] flex items-center justify-center text-sm font-black text-white"
                       style={{ background: accent }}
                     >
                       {toFa(i + 1)}

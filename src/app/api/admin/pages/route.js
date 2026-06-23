@@ -69,11 +69,6 @@ export async function PUT(req) {
         pageSlug: slug,
         title: String(body.title || "").trim(),
         sections: body.sections,
-        seo: {
-          title: String(body.seo?.title || "").trim(),
-          description: String(body.seo?.description || "").trim(),
-          ogImage: String(body.seo?.ogImage || "").trim(),
-        },
         published: body.published !== false,
       },
       { upsert: true, new: true, setDefaultsOnInsert: true }

@@ -13,7 +13,6 @@ import {
   FaChevronDown,
   FaExternalLinkAlt,
   FaSave,
-  FaSearch,
 } from "react-icons/fa";
 import FieldEditor from "./FieldEditor";
 import { BLOCK_TYPES, BLOCK_TYPE_LIST, createEmptyBlock } from "./blockSchema";
@@ -23,10 +22,8 @@ export default function PageEditor({ slug }) {
   const [saving, setSaving] = useState(false);
   const [title, setTitle] = useState("");
   const [published, setPublished] = useState(true);
-  const [seo, setSeo] = useState({ title: "", description: "", ogImage: "" });
   const [sections, setSections] = useState([]);
   const [openBlock, setOpenBlock] = useState(0);
-  const [seoOpen, setSeoOpen] = useState(false);
   const [addOpen, setAddOpen] = useState(false);
 
   const load = useCallback(async () => {
@@ -39,11 +36,6 @@ export default function PageEditor({ slug }) {
       const { page } = await res.json();
       setTitle(page.title || "");
       setPublished(page.published !== false);
-      setSeo({
-        title: page.seo?.title || "",
-        description: page.seo?.description || "",
-        ogImage: page.seo?.ogImage || "",
-      });
       // اطمینان از وجود id برای هر بلوک (محتوای پیش‌فرض id دارد، اما برای امنیت)
       setSections(
         (page.sections || []).map((b, i) => ({ id: b.id || `b${i}`, ...b }))
@@ -95,7 +87,7 @@ export default function PageEditor({ slug }) {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
-        body: JSON.stringify({ slug, title, sections, seo, published }),
+        body: JSON.stringify({ slug, title, sections, published }),
       });
       const json = await res.json();
       if (!res.ok) throw new Error(json.error || "خطا در ذخیره");
@@ -175,59 +167,6 @@ export default function PageEditor({ slug }) {
             <span className="text-sm font-bold text-gray-700">منتشرشده</span>
           </label>
         </div>
-      </div>
-
-      {/* سئو */}
-      <div className="bg-white rounded-2xl border border-gray-100 shadow-sm mb-6 overflow-hidden">
-        <button
-          onClick={() => setSeoOpen((v) => !v)}
-          className="w-full flex items-center justify-between px-5 py-4"
-        >
-          <span className="flex items-center gap-2 text-sm font-black text-gray-700">
-            <FaSearch size={13} className="text-gray-400" /> تنظیمات سئو
-          </span>
-          <motion.span animate={{ rotate: seoOpen ? 180 : 0 }}>
-            <FaChevronDown size={13} className="text-gray-400" />
-          </motion.span>
-        </button>
-        <AnimatePresence initial={false}>
-          {seoOpen ? (
-            <motion.div
-              initial={{ height: 0 }}
-              animate={{ height: "auto" }}
-              exit={{ height: 0 }}
-              className="overflow-hidden"
-            >
-              <div className="px-5 pb-5 space-y-3 border-t border-gray-100 pt-4">
-                <Labeled label="عنوان سئو">
-                  <input
-                    className="w-full px-3 py-2 text-sm rounded-lg border border-gray-300 outline-none focus:border-[var(--color-primary)]"
-                    value={seo.title}
-                    onChange={(e) => setSeo({ ...seo, title: e.target.value })}
-                  />
-                </Labeled>
-                <Labeled label="توضیحات سئو">
-                  <textarea
-                    rows={2}
-                    className="w-full px-3 py-2 text-sm rounded-lg border border-gray-300 outline-none focus:border-[var(--color-primary)] resize-y"
-                    value={seo.description}
-                    onChange={(e) =>
-                      setSeo({ ...seo, description: e.target.value })
-                    }
-                  />
-                </Labeled>
-                <Labeled label="تصویر اشتراک‌گذاری (og:image)">
-                  <input
-                    className="w-full px-3 py-2 text-sm rounded-lg border border-gray-300 outline-none focus:border-[var(--color-primary)]"
-                    placeholder="آدرس تصویر"
-                    value={seo.ogImage}
-                    onChange={(e) => setSeo({ ...seo, ogImage: e.target.value })}
-                  />
-                </Labeled>
-              </div>
-            </motion.div>
-          ) : null}
-        </AnimatePresence>
       </div>
 
       {/* بلوک‌ها */}
@@ -360,11 +299,3 @@ function Ctrl({ children, onClick, disabled, danger }) {
   );
 }
 
-function Labeled({ label, children }) {
-  return (
-    <div>
-      <label className="block text-xs font-bold text-gray-600 mb-1.5">{label}</label>
-      {children}
-    </div>
-  );
-}

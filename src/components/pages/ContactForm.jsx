@@ -214,7 +214,7 @@ export default function ContactForm({ accent = "#aa4725" }) {
           value={data.message}
           onChange={(e) => setField("message", e.target.value)}
           rows={5}
-          className="w-full px-4 py-3 text-sm font-medium rounded-xl border-2 bg-gray-50 text-gray-900 placeholder-gray-400 outline-none transition-all focus:bg-white resize-y"
+          className="w-full px-4 py-3 text-sm font-medium rounded-[6px] border-2 bg-gray-50 text-gray-900 placeholder-gray-400 outline-none transition-all focus:bg-white resize-y"
           style={{ borderColor: errors.message ? "#f87171" : "#e5e7eb" }}
           onFocus={(e) => !errors.message && (e.target.style.borderColor = accent)}
           onBlur={(e) => (e.target.style.borderColor = errors.message ? "#f87171" : "#e5e7eb")}
@@ -231,7 +231,7 @@ export default function ContactForm({ accent = "#aa4725" }) {
           فایل پیوست <span className="text-gray-400 font-medium">(اختیاری — تصویر یا PDF)</span>
         </label>
         {file ? (
-          <div className="flex items-center justify-between gap-3 px-4 py-3 rounded-xl border-2 border-gray-200 bg-gray-50">
+          <div className="flex items-center justify-between gap-3 px-4 py-3 rounded-[6px] border-2 border-gray-200 bg-gray-50">
             <span className="flex items-center gap-2 text-sm font-medium text-gray-700 truncate">
               <Paperclip size={16} style={{ color: accent }} />
               <span className="truncate">{file.name}</span>
@@ -250,7 +250,7 @@ export default function ContactForm({ accent = "#aa4725" }) {
           </div>
         ) : (
           <label
-            className="flex items-center justify-center gap-2 px-4 py-4 rounded-xl border-2 border-dashed border-gray-200 bg-gray-50 text-sm font-bold text-gray-500 cursor-pointer transition-colors hover:border-gray-300"
+            className="flex items-center justify-center gap-2 px-4 py-4 rounded-[6px] border-2 border-dashed border-gray-200 bg-gray-50 text-sm font-bold text-gray-500 cursor-pointer transition-colors hover:border-gray-300"
           >
             <Paperclip size={18} />
             انتخاب فایل
@@ -268,7 +268,7 @@ export default function ContactForm({ accent = "#aa4725" }) {
       <button
         type="submit"
         disabled={submitting}
-        className="w-full flex items-center justify-center gap-2 py-3.5 rounded-xl text-white font-black text-[15px] transition-all disabled:opacity-60 hover:brightness-110 active:scale-[0.99]"
+        className="w-full flex items-center justify-center gap-2 py-3.5 rounded-[6px] text-white font-black text-[15px] transition-all disabled:opacity-60 hover:brightness-110 active:scale-[0.99]"
         style={{ background: accent }}
       >
         {submitting ? (
@@ -306,7 +306,7 @@ function Field({
         type={type}
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        className="w-full px-4 py-2.5 text-sm font-medium rounded-xl border-2 bg-gray-50 text-gray-900 placeholder-gray-400 outline-none transition-all focus:bg-white"
+        className="w-full px-4 py-2.5 text-sm font-medium rounded-[6px] border-2 bg-gray-50 text-gray-900 placeholder-gray-400 outline-none transition-all focus:bg-white"
         style={{ borderColor: error ? "#f87171" : "#e5e7eb" }}
         onFocus={(e) => !error && (e.target.style.borderColor = accent)}
         onBlur={(e) => (e.target.style.borderColor = error ? "#f87171" : "#e5e7eb")}

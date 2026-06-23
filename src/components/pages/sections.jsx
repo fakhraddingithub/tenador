@@ -7,6 +7,7 @@
  */
 import Reveal from "./Reveal";
 import { getIcon } from "./iconMap";
+import ZoomableImage from "./ZoomableImage";
 
 /* ─────────────── سرفصلِ مشترکِ بخش‌ها ─────────────── */
 export function SectionHeading({ eyebrow, title, subtitle, accent, center = true }) {
@@ -66,9 +67,11 @@ export function RichText({ block, accent }) {
 }
 
 /* ─────────────── تصویر + متن ─────────────── */
-export function ImageText({ block, accent }) {
+export function ImageText({ block, accent, zoom = false }) {
   const left = block.imageSide === "left";
   const paragraphs = String(block.body || "").split("\n").filter(Boolean);
+  const imgCls =
+    "relative w-full h-[280px] sm:h-[440px] object-cover rounded-[6px] shadow-2xl";
   return (
     <section className="py-16 sm:py-24">
       <Container>
@@ -78,14 +81,22 @@ export function ImageText({ block, accent }) {
             className={`relative ${left ? "lg:order-1" : "lg:order-2"}`}
           >
             <div
-              className="absolute -inset-3 rounded-[28px] opacity-30 blur-2xl"
+              className="absolute -inset-3 rounded-[6px] opacity-30 blur-2xl"
               style={{ background: accent }}
             />
-            <img
-              src={block.image || "/images/default-sport.jpg"}
-              alt={block.title || ""}
-              className="relative w-full h-[280px] sm:h-[440px] object-cover rounded-[24px] shadow-2xl"
-            />
+            {zoom && block.image ? (
+              <ZoomableImage
+                src={block.image}
+                alt={block.title || ""}
+                className={imgCls}
+              />
+            ) : (
+              <img
+                src={block.image || "/images/default-sport.jpg"}
+                alt={block.title || ""}
+                className={imgCls}
+              />
+            )}
           </Reveal>
           <Reveal
             delay={0.1}
@@ -122,7 +133,13 @@ export function ImageText({ block, accent }) {
 export function Cards({ block, accent }) {
   const cols = block.columns === 2 ? "sm:grid-cols-2" : "sm:grid-cols-2 lg:grid-cols-3";
   return (
-    <section className="py-16 sm:py-24 bg-[#faf8f6]">
+    <section
+      className="py-16 sm:py-24"
+      style={{
+        background:
+          "color-mix(in srgb, var(--color-primary) 4%, var(--color-background))",
+      }}
+    >
       <Container>
         <Reveal>
           <SectionHeading
@@ -137,9 +154,9 @@ export function Cards({ block, accent }) {
             const Icon = getIcon(item.icon);
             return (
               <Reveal key={i} delay={i * 0.08} y={28}>
-                <div className="group h-full bg-white rounded-[20px] p-7 border border-gray-100 shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all duration-300">
+                <div className="group h-full bg-white rounded-[6px] p-7 border border-gray-100 shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all duration-300">
                   <div
-                    className="w-14 h-14 rounded-2xl flex items-center justify-center mb-5 transition-transform duration-300 group-hover:scale-110"
+                    className="w-14 h-14 rounded-[6px] flex items-center justify-center mb-5 transition-transform duration-300 group-hover:scale-110"
                     style={{
                       background: `color-mix(in srgb, ${accent} 12%, white)`,
                       color: accent,
@@ -176,7 +193,7 @@ export function Timeline({ block, accent }) {
         {/* خط عمودی سمت راست (RTL) */}
         <div className="relative pr-10 sm:pr-14">
           <div
-            className="absolute top-2 bottom-2 right-3 sm:right-5 w-[2px] rounded-full"
+            className="absolute top-2 bottom-2 right-3 sm:right-5 w-[2px] rounded-[6px]"
             style={{ background: `color-mix(in srgb, ${accent} 35%, #e5e7eb)` }}
           />
           <div className="space-y-10">
@@ -192,7 +209,7 @@ export function Timeline({ block, accent }) {
                 <div>
                   {item.date ? (
                     <span
-                      className="inline-block text-xs font-black px-2.5 py-1 rounded-full mb-2"
+                      className="inline-block text-xs font-black px-2.5 py-1 rounded-[6px] mb-2"
                       style={{
                         background: `color-mix(in srgb, ${accent} 12%, white)`,
                         color: accent,
@@ -216,9 +233,15 @@ export function Timeline({ block, accent }) {
 }
 
 /* ─────────────── گام‌ها ─────────────── */
-export function Steps({ block, accent }) {
+export function Steps({ block, accent, zoom = false }) {
   return (
-    <section className="py-16 sm:py-24 bg-[#faf8f6]">
+    <section
+      className="py-16 sm:py-24"
+      style={{
+        background:
+          "color-mix(in srgb, var(--color-primary) 4%, var(--color-background))",
+      }}
+    >
       <Container>
         <Reveal>
           <SectionHeading
@@ -231,7 +254,7 @@ export function Steps({ block, accent }) {
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
           {(block.items || []).map((item, i) => (
             <Reveal key={i} delay={i * 0.08} y={28}>
-              <div className="relative h-full bg-white rounded-[20px] p-7 border border-gray-100 shadow-sm hover:shadow-lg transition-all duration-300">
+              <div className="relative h-full bg-white rounded-[6px] p-7 border border-gray-100 shadow-sm hover:shadow-lg transition-all duration-300">
                 {/* شماره‌ی بزرگ */}
                 <span
                   className="block text-5xl font-black leading-none mb-4"
@@ -240,11 +263,19 @@ export function Steps({ block, accent }) {
                   {toFa(i + 1)}
                 </span>
                 {item.image ? (
-                  <img
-                    src={item.image}
-                    alt={item.title || ""}
-                    className="w-full h-36 object-cover rounded-xl mb-4"
-                  />
+                  zoom ? (
+                    <ZoomableImage
+                      src={item.image}
+                      alt={item.title || ""}
+                      className="w-full h-36 object-cover rounded-[6px] mb-4"
+                    />
+                  ) : (
+                    <img
+                      src={item.image}
+                      alt={item.title || ""}
+                      className="w-full h-36 object-cover rounded-[6px] mb-4"
+                    />
+                  )
                 ) : null}
                 <h3 className="text-lg font-black text-[var(--color-text)] mb-2">
                   {item.title}
@@ -282,7 +313,7 @@ export function TableSection({ block, accent }) {
           />
         </Reveal>
         <Reveal delay={0.1}>
-          <div className="overflow-x-auto rounded-[20px] border border-gray-100 shadow-sm">
+          <div className="overflow-x-auto rounded-[6px] border border-gray-100 shadow-sm">
             <table className="w-full text-right border-collapse min-w-[480px]">
               <thead>
                 <tr style={{ background: `color-mix(in srgb, ${accent} 10%, white)` }}>
@@ -376,22 +407,22 @@ export function PaymentMethods({ block, accent }) {
             return (
               <Reveal key={i} delay={i * 0.08} y={28}>
                 <div
-                  className="group relative h-full rounded-[22px] p-[1.5px] overflow-hidden transition-transform duration-300 hover:-translate-y-1"
+                  className="group relative h-full rounded-[6px] p-[1.5px] overflow-hidden transition-transform duration-300 hover:-translate-y-1"
                   style={{
                     background: `linear-gradient(140deg, ${accent}, color-mix(in srgb, ${accent} 20%, white))`,
                   }}
                 >
-                  <div className="h-full bg-white rounded-[21px] p-7">
+                  <div className="h-full bg-white rounded-[6px] p-7">
                     {item.badge ? (
                       <span
-                        className="absolute top-5 left-5 text-[11px] font-black px-2.5 py-1 rounded-full text-white"
+                        className="absolute top-5 left-5 text-[11px] font-black px-2.5 py-1 rounded-[6px] text-white"
                         style={{ background: accent }}
                       >
                         {item.badge}
                       </span>
                     ) : null}
                     <div
-                      className="w-14 h-14 rounded-2xl flex items-center justify-center mb-5 text-white transition-transform duration-300 group-hover:scale-110"
+                      className="w-14 h-14 rounded-[6px] flex items-center justify-center mb-5 text-white transition-transform duration-300 group-hover:scale-110"
                       style={{ background: accent }}
                     >
                       <Icon size={26} strokeWidth={2} />

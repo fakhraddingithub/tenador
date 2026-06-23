@@ -56,7 +56,7 @@ export default function FaqSection({ block, accent }) {
               onChange={(e) => setQuery(e.target.value)}
               placeholder="جست‌وجو در پرسش‌ها…"
               aria-label="جست‌وجو در پرسش‌های متداول"
-              className="w-full rounded-2xl border-2 border-gray-200 bg-white pr-12 pl-4 py-3.5 text-sm font-medium outline-none transition-all focus:bg-white"
+              className="w-full rounded-[6px] border-2 border-gray-200 bg-white pr-12 pl-4 py-3.5 text-sm font-medium outline-none transition-all focus:bg-white"
               style={{ "--tw-ring-color": accent }}
               onFocus={(e) => (e.target.style.borderColor = accent)}
               onBlur={(e) => (e.target.style.borderColor = "")}
@@ -98,7 +98,7 @@ export default function FaqSection({ block, accent }) {
               return (
                 <div
                   key={id}
-                  className="rounded-2xl border border-gray-150 bg-white overflow-hidden shadow-sm"
+                  className="rounded-[6px] border border-gray-100 bg-white overflow-hidden shadow-sm"
                   style={{ borderColor: isOpen ? accent : "#eee" }}
                 >
                   <button
@@ -147,7 +147,7 @@ function TabButton({ label, isActive, accent, onClick }) {
   return (
     <button
       onClick={onClick}
-      className="px-4 py-2 rounded-full text-sm font-bold transition-all"
+      className="px-4 py-2 rounded-[6px] text-sm font-bold transition-all"
       style={
         isActive
           ? { background: accent, color: "#fff" }

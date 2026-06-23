@@ -47,7 +47,7 @@ export default function PageHero({
       >
         {eyebrow ? (
           <span
-            className="animate-fadeIn inline-flex items-center gap-2 self-center rounded-full px-4 py-1.5 text-xs sm:text-sm font-bold text-white backdrop-blur-md mb-5"
+            className="animate-fadeIn inline-flex items-center gap-2 self-center rounded-[6px] px-4 py-1.5 text-xs sm:text-sm font-bold text-white backdrop-blur-md mb-5"
             style={{
               background: `${accent}33`,
               border: `1px solid ${accent}66`,
@@ -70,7 +70,7 @@ export default function PageHero({
         </h1>
 
         <div
-          className="animate-fadeIn h-1.5 w-24 rounded-full my-6"
+          className="animate-fadeIn h-1.5 w-24 rounded-[6px] my-6"
           style={{ background: accent, animationDelay: "160ms", animationFillMode: "backwards" }}
         />
 

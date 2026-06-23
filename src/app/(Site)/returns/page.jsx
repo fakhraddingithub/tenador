@@ -14,5 +14,5 @@ export async function generateMetadata() {
 export default async function Page() {
   const content = await getPageContent(SLUG);
   if (!content) notFound();
-  return <CmsPageBody content={content} />;
+  return <CmsPageBody content={content} enableLightbox />;
 }

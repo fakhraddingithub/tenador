@@ -126,7 +126,8 @@
       "Bash(grep -n \"eslint\" next.config.mjs)",
       "Bash(cat eslint.config.mjs)",
       "PowerShell(npx eslint \"src/app/\\(Admin-Panel\\)/p-admin/users/coaches/page.jsx\" 2>&1 | Select-String -Pattern \"error\" -SimpleMatch; Write-Output \"---exit:$LASTEXITCODE---\")",
-      "PowerShell(npx eslint \"src/app/api/files/pdf/route.js\" \"src/components/modules/profile/index.jsx\" \"src/app/\\(Admin-Panel\\)/p-admin/users/coaches/page.jsx\" 2>&1 | Select-String -Pattern \"error\" -SimpleMatch; Write-Output \"---exit:$LASTEXITCODE---\")"
+      "PowerShell(npx eslint \"src/app/api/files/pdf/route.js\" \"src/components/modules/profile/index.jsx\" \"src/app/\\(Admin-Panel\\)/p-admin/users/coaches/page.jsx\" 2>&1 | Select-String -Pattern \"error\" -SimpleMatch; Write-Output \"---exit:$LASTEXITCODE---\")",
+      "PowerShell($out = npm run build 2>&1; $out | Select-String -Pattern \"/about |/contact |/faq |/how-to-order |/returns |/shipping |/payment |/terms |admin-pages|support/messages|prerender|Error occurred|Failed to compile\" | Select-Object -First 30; \"----\"; \\($out | Select-String \"Compiled successfully\"\\).Line)"
     ]
   }
 }

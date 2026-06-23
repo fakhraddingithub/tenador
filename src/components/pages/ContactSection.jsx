@@ -20,7 +20,7 @@ export default function ContactSection({ block, accent }) {
           {/* اطلاعات تماس */}
           <Reveal y={28}>
             <div
-              className="relative h-full rounded-[28px] p-8 sm:p-10 overflow-hidden text-white"
+              className="relative h-full rounded-[6px] p-8 sm:p-10 overflow-hidden text-white"
               style={{
                 background: `linear-gradient(150deg, ${accent}, color-mix(in srgb, ${accent} 55%, #111))`,
               }}
@@ -52,7 +52,7 @@ export default function ContactSection({ block, accent }) {
                     const Icon = it.icon;
                     return (
                       <div key={i} className="flex items-center gap-4">
-                        <div className="w-11 h-11 rounded-2xl bg-white/15 backdrop-blur-sm flex items-center justify-center flex-shrink-0">
+                        <div className="w-11 h-11 rounded-[6px] bg-white/15 backdrop-blur-sm flex items-center justify-center flex-shrink-0">
                           <Icon size={20} />
                         </div>
                         <div>
@@ -77,7 +77,7 @@ export default function ContactSection({ block, accent }) {
 
           {/* فرم */}
           <Reveal y={28} delay={0.1}>
-            <div className="h-full bg-white rounded-[28px] p-7 sm:p-9 border border-gray-100 shadow-xl">
+            <div className="h-full bg-white rounded-[6px] p-7 sm:p-9 border border-gray-100 shadow-xl">
               <ContactForm accent={accent} />
             </div>
           </Reveal>

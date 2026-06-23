@@ -17,7 +17,11 @@ import FaqSection from "./FaqSection";
 import LegalSection from "./LegalSection";
 import ContactSection from "./ContactSection";
 
-export default function SectionRenderer({ sections = [], accent = "#aa4725" }) {
+export default function SectionRenderer({
+  sections = [],
+  accent = "#aa4725",
+  enableLightbox = false,
+}) {
   return (
     <>
       {sections.map((block, i) => {
@@ -38,13 +42,27 @@ export default function SectionRenderer({ sections = [], accent = "#aa4725" }) {
           case "richtext":
             return <RichText key={key} block={block} accent={accent} />;
           case "image-text":
-            return <ImageText key={key} block={block} accent={accent} />;
+            return (
+              <ImageText
+                key={key}
+                block={block}
+                accent={accent}
+                zoom={enableLightbox}
+              />
+            );
           case "cards":
             return <Cards key={key} block={block} accent={accent} />;
           case "timeline":
             return <Timeline key={key} block={block} accent={accent} />;
           case "steps":
-            return <Steps key={key} block={block} accent={accent} />;
+            return (
+              <Steps
+                key={key}
+                block={block}
+                accent={accent}
+                zoom={enableLightbox}
+              />
+            );
           case "table":
             return <TableSection key={key} block={block} accent={accent} />;
           case "quote":
