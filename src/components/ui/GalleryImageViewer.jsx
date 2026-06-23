@@ -369,8 +369,8 @@ export default function GalleryImageViewer({ src, alt = "", className = "" }) {
     const rect = layer.getBoundingClientRect();
     const x = e.clientX - rect.left;
     const y = e.clientY - rect.top;
-    const pad = 12;
-    const off = 16;
+    const pad = 8; // حداقل فاصله از لبه‌های تصویر (تشخیص مرز)
+    const off = 6; // فاصلهٔ بسیار کم تا نزدیک‌ترین گوشهٔ تول‌تیپ به نشانگر بچسبد
     const tw = tip.offsetWidth;
     const th = tip.offsetHeight;
     let tx = x + off;
