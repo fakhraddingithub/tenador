@@ -34,6 +34,17 @@ function formatPrice(price) {
   return new Intl.NumberFormat('fa-IR').format(Number(price ?? 0)) + ' تومان';
 }
 
+function formatJalaliDate(date) {
+  if (!date) return '—';
+  try {
+    return new Intl.DateTimeFormat('fa-IR', {
+      year: 'numeric', month: '2-digit', day: '2-digit', timeZone: 'Asia/Tehran',
+    }).format(new Date(date));
+  } catch {
+    return '—';
+  }
+}
+
 function splitName(text) {
   if (!text) return { farsi: '', english: '' };
   const match = text.match(/[a-zA-Z(].*/);
@@ -106,12 +117,76 @@ const PAYMENT_LABEL = {
   ONLINE:       'پرداخت آنلاین',
 };
 
+// ─── جدول زمان‌بندی اقساط (در ایمیل تأیید سفارشِ اقساطی) ──────────────────────
+function renderInstallmentSchedule(order, installment) {
+  if (!installment || !Array.isArray(installment.checks) || installment.checks.length === 0) {
+    return '';
+  }
+
+  const checks = installment.checks
+    .slice()
+    .sort((a, b) => new Date(a.dueDate) - new Date(b.dueDate));
+
+  const checksTotal = checks.reduce((s, c) => s + (Number(c.amount) || 0), 0);
+  const downPaymentAmount = Number(installment.downPaymentAmount ?? installment.downPayment?.amount ?? 0);
+  const orderTotal = Number(order.totalPrice ?? 0);
+  const interest = Math.max(0, checksTotal - (orderTotal - downPaymentAmount));
+
+  const rows = checks.map((c, idx) => `
+    <tr style="border-bottom:1px solid #f0ece8;">
+      <td style="padding:10px 12px; text-align:center; font-size:13px; color:#555;">قسط ${new Intl.NumberFormat('fa-IR').format(idx + 1)}</td>
+      <td style="padding:10px 12px; text-align:center; font-size:13px; color:#555;">${formatJalaliDate(c.dueDate)}</td>
+      <td style="padding:10px 12px; text-align:left; font-size:13px; font-weight:700; color:#1a1a1a; direction:rtl;">${formatPrice(c.amount)}</td>
+    </tr>`).join('');
+
+  return `
+    <div style="margin-top:24px; border:1px solid rgba(170,71,37,0.25); border-radius:10px; overflow:hidden;">
+      <div style="background:rgba(170,71,37,0.06); padding:12px 16px; border-bottom:1px solid rgba(170,71,37,0.15);">
+        <span style="font-size:14px; font-weight:700; color:#aa4725;">🗓 زمان‌بندی پرداخت اقساطی</span>
+      </div>
+
+      <table width="100%" cellpadding="0" cellspacing="0" style="font-size:13px;">
+        <tr>
+          <td style="padding:10px 16px; color:#888; border-bottom:1px solid #f0ece8; width:50%;">پیش‌پرداخت</td>
+          <td style="padding:10px 16px; color:#1a1a1a; font-weight:700; border-bottom:1px solid #f0ece8; text-align:left; direction:rtl;">${formatPrice(downPaymentAmount)}</td>
+        </tr>
+        <tr>
+          <td style="padding:10px 16px; color:#888; border-bottom:1px solid #f0ece8;">تعداد اقساط</td>
+          <td style="padding:10px 16px; color:#1a1a1a; font-weight:700; border-bottom:1px solid #f0ece8; text-align:left;">${new Intl.NumberFormat('fa-IR').format(checks.length)} قسط</td>
+        </tr>
+        <tr>
+          <td style="padding:10px 16px; color:#888; border-bottom:1px solid #f0ece8;">مجموع سود اقساط</td>
+          <td style="padding:10px 16px; color:#1a1a1a; font-weight:700; border-bottom:1px solid #f0ece8; text-align:left; direction:rtl;">${formatPrice(interest)}</td>
+        </tr>
+        <tr>
+          <td style="padding:10px 16px; color:#888;">مجموع چک‌ها (با سود)</td>
+          <td style="padding:10px 16px; color:#aa4725; font-weight:700; text-align:left; direction:rtl;">${formatPrice(checksTotal)}</td>
+        </tr>
+      </table>
+
+      <table width="100%" cellpadding="0" cellspacing="0" style="border-top:2px solid #f0ece8;">
+        <thead>
+          <tr style="background:#faf7f5;">
+            <th style="padding:10px 12px; text-align:center; color:#888; font-weight:600; font-size:12px;">قسط</th>
+            <th style="padding:10px 12px; text-align:center; color:#888; font-weight:600; font-size:12px;">سررسید</th>
+            <th style="padding:10px 12px; text-align:left; color:#888; font-weight:600; font-size:12px; direction:rtl;">مبلغ</th>
+          </tr>
+        </thead>
+        <tbody>${rows}</tbody>
+      </table>
+
+      <div style="padding:10px 16px; background:#faf7f5; font-size:11px; color:#888; line-height:1.7;">
+        چک‌های شما پس از بازبینی توسط فروشگاه تأیید می‌شوند. لطفاً نسبت به تأمین موجودی هر چک تا تاریخ سررسید آن اقدام فرمایید.
+      </div>
+    </div>`;
+}
+
 // ─── HTML Template ─────────────────────────────────────────────────────────
 /**
  * @param {Object} order  - سفارش populate‌شده
  * @param {boolean} isAdmin
  */
-function buildEmailHtml(order, isAdmin = false) {
+function buildEmailHtml(order, isAdmin = false, installment = null) {
   const logoUrl     = process.env.NEXT_PUBLIC_LOGO_URL ?? `${process.env.NEXT_PUBLIC_BASE_URL ?? ''}/logo.png`;
   const baseUrl     = process.env.NEXT_PUBLIC_BASE_URL ?? '';
   const addressSnap = order.address?.snapshot ?? {};
@@ -236,6 +311,8 @@ function buildEmailHtml(order, isAdmin = false) {
           </tfoot>
         </table>
 
+        ${order.paymentMethod === 'INSTALLMENT' ? renderInstallmentSchedule(order, installment) : ''}
+
         <!-- Address -->
         <div style="margin-top:24px; border:1px solid #f0ece8; border-radius:8px; overflow:hidden;">
           <div style="background:#faf7f5; padding:10px 16px; border-bottom:1px solid #f0ece8;">
@@ -302,7 +379,7 @@ function buildEmailHtml(order, isAdmin = false) {
  * @param {Object} order  - سفارش کامل populate‌شده از دیتابیس
  * @param {string} customerEmail  - ایمیل مشتری
  */
-export async function sendOrderConfirmationEmail(order, customerEmail) {
+export async function sendOrderConfirmationEmail(order, customerEmail, installment = null) {
   if (!process.env.EMAIL_HOST || !process.env.EMAIL_USER) {
     console.warn('[emailService] EMAIL_HOST / EMAIL_USER not set — skipping email');
     return;
@@ -320,7 +397,7 @@ export async function sendOrderConfirmationEmail(order, customerEmail) {
         from:    process.env.EMAIL_FROM ?? process.env.EMAIL_USER,
         to:      customerEmail,
         subject,
-        html:    buildEmailHtml(order, false),
+        html:    buildEmailHtml(order, false, installment),
       })
     );
   }
@@ -332,7 +409,7 @@ export async function sendOrderConfirmationEmail(order, customerEmail) {
         from:    process.env.EMAIL_FROM ?? process.env.EMAIL_USER,
         to:      process.env.ADMIN_EMAIL,
         subject: `[سفارش جدید] ${subject}`,
-        html:    buildEmailHtml(order, true),
+        html:    buildEmailHtml(order, true, installment),
       })
     );
   }
@@ -344,4 +421,129 @@ export async function sendOrderConfirmationEmail(order, customerEmail) {
     // خطای ایمیل نباید سفارش را متوقف کند
     console.error('[emailService] Failed to send email:', err);
   }
+}
+
+// ─── ایمیل ساده‌ی اعلانی (قالب مشترک برای رویدادهای اقساط) ───────────────────
+function buildSimpleNoticeHtml({ title, emoji, greeting, rows = [], note }) {
+  const logoUrl = process.env.NEXT_PUBLIC_LOGO_URL ?? `${process.env.NEXT_PUBLIC_BASE_URL ?? ''}/logo.png`;
+  const baseUrl = process.env.NEXT_PUBLIC_BASE_URL ?? '';
+
+  const rowsHtml = rows.map((r) => `
+    <tr>
+      <td style="padding:10px 16px; color:#888; border-bottom:1px solid #f0ece8; width:45%;">${escapeHtml(r.label)}</td>
+      <td style="padding:10px 16px; color:#1a1a1a; font-weight:700; border-bottom:1px solid #f0ece8; text-align:left; direction:rtl;">${r.value}</td>
+    </tr>`).join('');
+
+  return `
+<!DOCTYPE html>
+<html dir="rtl" lang="fa">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Vazirmatn:wght@400;500;600;700&display=swap');
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Vazirmatn', Tahoma, Arial, sans-serif; background: #f5f0eb; direction: rtl; }
+  </style>
+</head>
+<body style="background:#f5f0eb; padding: 24px 16px;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="max-width:560px; margin:0 auto;">
+    <tr>
+      <td style="background:#fff; border-radius:12px 12px 0 0; padding:28px 32px; text-align:center;">
+        <img src="${logoUrl}" alt="Tenador" height="44" style="display:inline-block;max-width:160px;object-fit:contain;" onerror="this.style.display='none'">
+        <h1 style="color:#aa4725; font-size:19px; font-weight:700; margin-top:12px;">${emoji} ${escapeHtml(title)}</h1>
+      </td>
+    </tr>
+    <tr>
+      <td style="background:#fff; padding:24px 32px;">
+        <p style="font-size:15px;color:#555;margin:0 0 16px; line-height:1.8;">${greeting}</p>
+        <table width="100%" cellpadding="0" cellspacing="0" style="border:1px solid #f0ece8; border-radius:8px; overflow:hidden; font-size:13px;">
+          ${rowsHtml}
+        </table>
+        ${note ? `<p style="font-size:12px;color:#888;margin-top:16px; line-height:1.8;">${note}</p>` : ''}
+        <div style="margin-top:24px; text-align:center;">
+          <a href="${baseUrl}/p-user/installments" style="display:inline-block; background:#aa4725; color:#fff; text-decoration:none; font-size:14px; font-weight:700; padding:11px 28px; border-radius:8px;">
+            مشاهده اقساط من
+          </a>
+        </div>
+      </td>
+    </tr>
+    <tr>
+      <td style="background:#1a1a1a; border-radius:0 0 12px 12px; padding:18px 32px; text-align:center;">
+        <p style="color:#888; font-size:11px; line-height:1.7; margin:0;">
+          این ایمیل به صورت خودکار ارسال شده است.<br>
+          &copy; تمامی حقوق برای فروشگاه تنادور محفوظ است.
+        </p>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>`.trim();
+}
+
+async function sendSingle(to, subject, html) {
+  if (!process.env.EMAIL_HOST || !process.env.EMAIL_USER) {
+    console.warn('[emailService] EMAIL_HOST / EMAIL_USER not set — skipping email');
+    return;
+  }
+  if (!to) return;
+  try {
+    const transporter = createTransporter();
+    await transporter.sendMail({
+      from: process.env.EMAIL_FROM ?? process.env.EMAIL_USER,
+      to,
+      subject,
+      html,
+    });
+    console.log(`[emailService] Notice email sent to ${to}: ${subject}`);
+  } catch (err) {
+    console.error('[emailService] Failed to send notice email:', err);
+  }
+}
+
+/**
+ * ایمیل «دریافت یک قسط» — وقتی ادمین یک چک را پاس (CLEARED) می‌کند.
+ */
+export async function sendInstallmentCheckClearedEmail(order, installment, check, customerEmail) {
+  const checks = (installment.checks || []).slice().sort((a, b) => new Date(a.dueDate) - new Date(b.dueDate));
+  const idx = checks.findIndex((c) => String(c._id) === String(check._id));
+  const num = idx >= 0 ? idx + 1 : '';
+  const clearedCount = checks.filter((c) => c.status === 'CLEARED').length;
+  const remaining = checks.length - clearedCount;
+
+  const html = buildSimpleNoticeHtml({
+    title: 'قسط شما دریافت شد',
+    emoji: '✅',
+    greeting: 'با سلام،<br>یکی از اقساط سفارش شما با موفقیت دریافت و تأیید شد.',
+    rows: [
+      { label: 'کد سفارش', value: escapeHtml(order.trackingCode ?? '—') },
+      { label: 'شماره قسط', value: `قسط ${new Intl.NumberFormat('fa-IR').format(num || 0)}` },
+      { label: 'مبلغ این قسط', value: formatPrice(check.amount) },
+      { label: 'اقساط باقی‌مانده', value: `${new Intl.NumberFormat('fa-IR').format(remaining)} قسط` },
+    ],
+    note: remaining > 0
+      ? 'با تشکر از پرداخت به‌موقع شما. اقساط باقی‌مانده را می‌توانید از پنل کاربری پیگیری کنید.'
+      : 'این آخرین قسط شما بود؛ به‌زودی ایمیل تکمیل اقساط برایتان ارسال می‌شود.',
+  });
+
+  await sendSingle(customerEmail, `دریافت قسط — سفارش ${order.trackingCode}`, html);
+}
+
+/**
+ * ایمیل «تکمیل اقساط» — وقتی همه‌ی چک‌ها پاس شده‌اند.
+ */
+export async function sendInstallmentCompletedEmail(order, installment, customerEmail) {
+  const html = buildSimpleNoticeHtml({
+    title: 'اقساط شما تکمیل شد',
+    emoji: '🎉',
+    greeting: 'با سلام،<br>تمامی اقساط سفارش شما با موفقیت پرداخت و تسویه شد. از خرید و همراهی شما سپاسگزاریم.',
+    rows: [
+      { label: 'کد سفارش', value: escapeHtml(order.trackingCode ?? '—') },
+      { label: 'تعداد اقساط', value: `${new Intl.NumberFormat('fa-IR').format(installment.numberOfChecks ?? (installment.checks || []).length)} قسط` },
+      { label: 'مبلغ کل سفارش', value: formatPrice(order.totalPrice) },
+    ],
+    note: 'پرونده‌ی اقساط این سفارش بسته شد. در صورت هرگونه سؤال با پشتیبانی در تماس باشید.',
+  });
+
+  await sendSingle(customerEmail, `تکمیل اقساط — سفارش ${order.trackingCode}`, html);
 }

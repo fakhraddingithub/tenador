@@ -99,7 +99,7 @@ async function reserveUsedProducts(order) {
   }
 }
 
-async function sendConfirmationEmail(orderId, userId) {
+async function sendConfirmationEmail(orderId, userId, installmentInfo = null) {
   try {
     const populatedOrder = await Order.findById(orderId)
       .populate("items.product", "_id name mainImage")
@@ -109,7 +109,11 @@ async function sendConfirmationEmail(orderId, userId) {
 
     const userDoc = await User.findById(userId).select("email").lean();
 
-    await sendOrderConfirmationEmail(populatedOrder, userDoc?.email ?? null);
+    await sendOrderConfirmationEmail(
+      populatedOrder,
+      userDoc?.email ?? null,
+      installmentInfo,
+    );
   } catch (emailErr) {
     console.error("خطا در ارسال ایمیل:", emailErr);
   }
@@ -472,8 +476,16 @@ export async function POST(req) {
       console.warn("خطا در اختصاص خودکار tracking محصول دست‌دوم:", err?.message);
     }
 
-    // ایمیل فاکتور
-    await sendConfirmationEmail(order._id, user.userId);
+    // ایمیل فاکتور — برای سفارش اقساطی، زمان‌بندی اقساط هم ضمیمه می‌شود
+    const installmentEmailInfo =
+      paymentMethod === "INSTALLMENT" && installmentData
+        ? {
+            checks: installmentData.checks,
+            numberOfChecks: installmentData.numberOfChecks,
+            downPaymentAmount: installmentData.downPaymentAmount,
+          }
+        : null;
+    await sendConfirmationEmail(order._id, user.userId, installmentEmailInfo);
 
     // ─── اعلان‌های پنل مدیریت (شکست در ساخت اعلان روند را متوقف نمی‌کند) ───
     // اعلان سفارش جدید

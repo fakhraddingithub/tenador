@@ -13,6 +13,8 @@ import mongoose from "mongoose";
 import connectToDB from "base/configs/db";
 import { verifyToken } from "base/utils/auth";
 import Order from "base/models/Order";
+import Installment from "base/models/Installment";
+import { deriveCheckStatus, summarizeInstallment } from "base/services/installmentService";
 
 // فقط برای ثبت شدن مدل‌ها در Mongoose / جلوگیری از MissingSchemaError
 import "base/models/Payment";
@@ -38,6 +40,56 @@ function normalizeVariant(variant) {
       ? Object.fromEntries(variant.attributes)
       : variant.attributes || {};
   return { ...variant, attributes: attrs };
+}
+
+// طرح اقساط مرتبط با این سفارش را (در صورت وجود) به‌صورت خلاصه برمی‌گرداند
+async function loadInstallmentForOrder(orderId) {
+  const inst = await Installment.findOne({ order: orderId })
+    .populate({ path: "downPayment", select: "amount status bankReceipt" })
+    .lean();
+  if (!inst) return null;
+
+  const now = new Date();
+  const summary = summarizeInstallment(inst, now);
+
+  return {
+    _id: inst._id,
+    status: inst.status,
+    derivedStatus: summary.derivedStatus,
+    numberOfChecks: inst.numberOfChecks,
+    totalAmount: inst.totalAmount,
+    createdAt: inst.createdAt,
+    orderConfirmedAt: inst.orderConfirmedAt || null,
+    downPayment: {
+      _id: inst.downPayment?._id || null,
+      amount: summary.downPaymentAmount,
+      paid: summary.downPaymentPaid,
+      status: inst.downPayment?.status || "PENDING",
+      reviewStatus: inst.downPayment?.bankReceipt?.reviewStatus || "PENDING",
+    },
+    paidAmount: summary.paidAmount,
+    remainingAmount: summary.remainingAmount,
+    paidChecksCount: summary.paidChecksCount,
+    remainingChecksCount: summary.remainingChecksCount,
+    nextDueDate: summary.nextDueDate,
+    overdueCount: summary.overdueCount,
+    checks: (inst.checks || [])
+      .slice()
+      .sort((a, b) => new Date(a.dueDate) - new Date(b.dueDate))
+      .map((c, idx) => ({
+        _id: c._id,
+        number: idx + 1,
+        checkNumber: c.checkNumber || null,
+        amount: c.amount,
+        dueDate: c.dueDate,
+        status: c.status,
+        displayStatus: deriveCheckStatus(c, now),
+        paidAt: c.paidAt || null,
+        receiptImageUrl: c.receiptImageUrl || null,
+        notes: c.notes || "",
+        bounceReason: c.bounceReason || "",
+      })),
+  };
 }
 
 function normalizeOrderItems(items = []) {
@@ -140,7 +192,13 @@ export async function GET(req, { params }) {
 
     fullOrder.items = normalizeOrderItems(fullOrder.items);
 
-    return NextResponse.json({ order: fullOrder }, { status: 200 });
+    // طرح اقساط مرتبط (در صورت وجود) برای نمایش تبِ «اقساط» در جزئیات سفارش
+    const installment =
+      fullOrder.paymentMethod === "INSTALLMENT"
+        ? await loadInstallmentForOrder(orderId)
+        : null;
+
+    return NextResponse.json({ order: fullOrder, installment }, { status: 200 });
   } catch (error) {
     console.error("[admin/orders/:id GET]", error);
     return NextResponse.json(
@@ -254,8 +312,13 @@ export async function PATCH(req, { params }) {
 
     order.items = normalizeOrderItems(order.items);
 
+    const installment =
+      order.paymentMethod === "INSTALLMENT"
+        ? await loadInstallmentForOrder(orderId)
+        : null;
+
     return NextResponse.json(
-      { message: "وضعیت سفارش با موفقیت بروزرسانی شد", order },
+      { message: "وضعیت سفارش با موفقیت بروزرسانی شد", order, installment },
       { status: 200 }
     );
   } catch (error) {

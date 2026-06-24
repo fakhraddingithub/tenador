@@ -4,7 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { motion } from "framer-motion";
 import { MdAccountBalance, MdOutlineCurrencyExchange } from "react-icons/md";
-import { FiTag, FiArrowLeft } from "react-icons/fi";
+import { FiTag, FiArrowLeft, FiCalendar } from "react-icons/fi";
 import { FaMoneyBillWave } from "react-icons/fa";
 import BankAccountManager from "@/components/admin/financial/BankAccountManager";
 import ExchangeRateManager from "@/components/admin/financial/ExchangeRateManager";
@@ -55,6 +55,17 @@ export default function FinancialManagementPage() {
             </button>
           );
         })}
+
+        {/* بخش مدیریت اقساط — صفحه‌ی اختصاصی (فهرست + جزئیات) */}
+        <Link
+          href="/p-admin/financial/installments"
+          className="flex items-center gap-2 px-4 py-2.5 rounded-[var(--radius)] text-sm font-bold transition-all border-2
+            bg-white text-gray-500 border-gray-200 hover:border-[var(--color-primary)]/40 hover:text-gray-700 group"
+        >
+          <FiCalendar size={16} />
+          مدیریت اقساط
+          <FiArrowLeft size={14} className="opacity-50 group-hover:-translate-x-0.5 transition-transform" />
+        </Link>
 
         {/* بخش تخفیف‌ها — مستقیماً به صفحه‌ی تخفیف‌ها لینک می‌شود */}
         <Link

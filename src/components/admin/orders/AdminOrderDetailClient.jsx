@@ -17,6 +17,7 @@ import {
   Search, Minus, Pencil,
 } from "lucide-react";
 import OrderFlowSelectionsView from "@/components/order/OrderFlowSelectionsView";
+import InstallmentChecksPanel from "@/components/admin/financial/InstallmentChecksPanel";
 
 /* ─── Constants ─────────────────────────────────────────────────────── */
 
@@ -1826,6 +1827,7 @@ function EurPanel({ orderId, priceEUR, paymentsEUR = [], onChange, onEditPayment
 export default function AdminOrderDetailClient({ orderId }) {
   const router = useRouter();
   const [order, setOrder] = useState(null);
+  const [installment, setInstallment] = useState(null);
   const [loading, setLoading] = useState(true);
   const [lightboxUrl, setLightboxUrl] = useState(null);
   const [approveTarget, setApproveTarget] = useState(null);
@@ -1845,6 +1847,7 @@ export default function AdminOrderDetailClient({ orderId }) {
       const data = await res.json();
       if (!res.ok) throw new Error(data.message || "خطا");
       setOrder(data.order);
+      setInstallment(data.installment || null);
       setPayStatus(data.order.paymentStatus);
       setFulStatus(data.order.fulfillmentStatus);
     } catch (err) {
@@ -2125,6 +2128,23 @@ export default function AdminOrderDetailClient({ orderId }) {
             <Scan size={15} />
             ترکینگ محصولات
           </button>
+          {installment && (
+            <button
+              onClick={() => setActiveTab("installment")}
+              className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl text-sm font-bold transition
+                ${activeTab === "installment"
+                  ? "bg-[#aa4725] text-white shadow-sm"
+                  : "text-gray-500 hover:text-gray-700 hover:bg-gray-50"}`}
+            >
+              <Calendar size={15} />
+              اقساط
+              {installment.overdueCount > 0 && (
+                <span className="min-w-[18px] h-[18px] px-1 flex items-center justify-center rounded-full bg-red-500 text-white text-[10px] font-bold">
+                  {Number(installment.overdueCount).toLocaleString("fa-IR")}
+                </span>
+              )}
+            </button>
+          )}
         </div>
 
         {/* ─── Tab Content ─── */}
@@ -2464,6 +2484,30 @@ export default function AdminOrderDetailClient({ orderId }) {
               orderId={orderId}
               orderFulfillmentStatus={order.fulfillmentStatus}
               onStatusChange={fetchOrder}
+            />
+          </div>
+        )}
+
+        {activeTab === "installment" && installment && (
+          <div className="bg-white rounded-2xl border border-gray-100 p-5">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-sm font-bold text-gray-700 flex items-center gap-2">
+                <Calendar size={14} className="text-[#aa4725]" />
+                مدیریت اقساط سفارش
+              </h3>
+              <a
+                href={`/p-admin/financial/installments/${installment._id}`}
+                className="flex items-center gap-1.5 text-xs font-bold text-[#aa4725] hover:underline"
+              >
+                <ExternalLink size={12} />
+                صفحه کامل اقساط
+              </a>
+            </div>
+            <InstallmentChecksPanel
+              installment={installment}
+              orderFulfillmentStatus={order.fulfillmentStatus}
+              onChanged={fetchOrder}
+              onViewImage={setLightboxUrl}
             />
           </div>
         )}

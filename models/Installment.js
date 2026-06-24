@@ -43,6 +43,12 @@ const CheckSchema = new mongoose.Schema(
     bounceReason: {
       type: String,
     },
+
+    // یادداشت ادمین برای این چک (اختیاری)
+    notes: {
+      type: String,
+      default: "",
+    },
   },
   { _id: true }
 );
@@ -75,8 +81,24 @@ const InstallmentSchema = new mongoose.Schema(
 
     status: {
       type: String,
+      // PENDING: درخواست ثبت شده، هنوز پیش‌پرداخت/چکی تأیید نشده
+      // ACTIVE: حداقل یک چک تأیید شده ولی همه نه
+      // COMPLETED: همه چک‌ها تأیید (CLEARED) شده‌اند
+      // DEFAULTED: حداقل یک چک برگشت خورده (BOUNCED)
       enum: ["PENDING", "ACTIVE", "COMPLETED", "DEFAULTED"],
-      default: "ACTIVE",
+      default: "PENDING",
+    },
+
+    // ─── تأیید نهایی سفارش توسط ادمین پس از بازبینی چک‌ها ───
+    // سفارش اقساطی تا زمانی که ادمین این فیلد را ست نکند به مرحله‌ی پردازش/ارسال نمی‌رود.
+    orderConfirmedAt: {
+      type: Date,
+      default: null,
+    },
+    orderConfirmedBy: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+      default: null,
     },
 
     checks: [CheckSchema],

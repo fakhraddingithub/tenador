@@ -303,6 +303,11 @@ export async function POST(req) {
         await sendOrderConfirmationEmail(
           populatedOrder,
           userDoc?.email ?? null,
+          {
+            checks,
+            numberOfChecks,
+            downPaymentAmount,
+          },
         );
       } catch (emailErr) {
         console.error("خطا در ارسال ایمیل:", emailErr);
