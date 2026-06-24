@@ -40,7 +40,7 @@ const menuItems = [
   { title: "دسته‌بندی‌ها", href: "/p-admin/admin-categories", icon: FaFolderOpen },
   { title: "فرایند سفارش", href: "/p-admin/admin-order-flows", icon: FiGitBranch },
   { title: "محصولات", href: "/p-admin/admin-products", icon: AiFillProduct },
-  { title: "رویدادها", href: "/p-admin/admin-events", icon: FaCalendarAlt },
+  { title: "Collection", href: "/p-admin/admin-events", icon: FaCalendarAlt },
   { title: "بازار دست دوم", href: "/p-admin/admin-secondHands", icon: FaBoxOpen },
   { title: "سفارشات", href: "/p-admin/admin-orders", icon: ShoppingCart },
   { title: "نظرات", href: "/p-admin/admin-comments", icon: FaRegCommentDots },

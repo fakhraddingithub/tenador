@@ -45,7 +45,7 @@ export default function EventCountdown({ endDate, style = "cards", className = "
   if (!timeLeft) {
     return (
       <div className={`text-center text-sm font-bold opacity-60 ${className}`}>
-        رویداد به پایان رسید
+        Collection به پایان رسید
       </div>
     );
   }

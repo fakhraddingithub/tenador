@@ -136,7 +136,9 @@
       "PowerShell(node -e \"const s=require\\('next/server'\\); console.log\\('after exported:', typeof s.after\\)\")",
       "PowerShell(npx eslint \"src/components/features/push/PushOptInBanner.jsx\" \"src/lib/push.js\" \"src/app/api/push/subscribe/route.js\" \"src/app/api/push/unsubscribe/route.js\" \"src/app/api/admin/used-products/route.js\" \"src/components/templates/secondHands/UsedProductsPageClient.jsx\")",
       "PowerShell(npx eslint src/components/ui/GalleryImageViewer.jsx src/components/templates/product/ProductGallery.jsx src/components/templates/product/ProductClientSection.jsx src/components/templates/secondHand/Usedproductclientsection.jsx src/components/modules/cart/QuickViewModal.jsx src/components/modules/cart/ProductCard.js src/components/templates/secondHands/Usedquickviewmodal.jsx)",
-      "PowerShell(npx eslint \"src/app/api/admin/used-products/route.js\")"
+      "PowerShell(npx eslint \"src/app/api/admin/used-products/route.js\")",
+      "PowerShell(npx eslint \"src/app/\\(Site\\)/collection/page.jsx\" \"src/app/\\(Site\\)/collection/[collectionSlug]/page.jsx\" \"src/components/admin/events/EventList.jsx\" \"src/components/admin/events/EventForm.jsx\" \"src/components/features/events/EventCard.jsx\" \"next.config.mjs\" 2>&1 | Select-Object -First 60; \"EXIT=$LASTEXITCODE\")",
+      "Bash(grep -E \"error|\\\\.jsx|\\\\.js$\")"
     ]
   }
 }

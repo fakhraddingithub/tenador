@@ -43,7 +43,7 @@ export default function EventList() {
       const data = await res.json();
       setEvents(data.events || []);
     } catch {
-      toast.error("خطا در بارگذاری رویدادها");
+      toast.error("خطا در بارگذاری Collection");
     } finally {
       setLoading(false);
     }
@@ -69,7 +69,7 @@ export default function EventList() {
         body: JSON.stringify({ status }),
       });
       if (res.ok) {
-        toast.success("وضعیت رویداد تغییر کرد");
+        toast.success("وضعیت Collection تغییر کرد");
         fetchEvents();
       } else {
         const d = await res.json();
@@ -85,7 +85,7 @@ export default function EventList() {
       const res = await fetch(`/api/admin/events/${event._id}/duplicate`, { method: "POST" });
       const data = await res.json();
       if (res.ok) {
-        toast.success("رویداد کپی شد");
+        toast.success("Collection کپی شد");
         fetchEvents();
       } else {
         toast.error(data.error || "خطا در کپی");
@@ -97,8 +97,8 @@ export default function EventList() {
 
   const remove = async (event) => {
     const result = await Swal.fire({
-      title: "حذف رویداد؟",
-      text: `رویداد «${event.name}» به‌طور دائمی حذف می‌شود.`,
+      title: "حذف Collection؟",
+      text: `Collection «${event.name}» به‌طور دائمی حذف می‌شود.`,
       icon: "warning",
       showCancelButton: true,
       confirmButtonColor: "#ef4444",
@@ -110,7 +110,7 @@ export default function EventList() {
     try {
       const res = await fetch(`/api/admin/events/${event._id}`, { method: "DELETE" });
       if (res.ok) {
-        toast.success("رویداد حذف شد");
+        toast.success("Collection حذف شد");
         fetchEvents();
       } else {
         const d = await res.json();
@@ -134,10 +134,10 @@ export default function EventList() {
         <div>
           <h1 className="text-xl font-bold text-gray-900 flex items-center gap-2">
             <FaCalendarAlt style={{ color: "var(--color-secondary)" }} size={18} />
-            مدیریت <span style={{ color: "var(--color-primary)" }}>کمپین‌ها</span>
+            مدیریت <span style={{ color: "var(--color-primary)" }}>Collections</span>
           </h1>
           <p className="text-sm font-bold text-gray-400 mt-0.5">
-            {events.length} کمپین ثبت‌شده
+            {events.length} Collection ثبت‌شده
           </p>
         </div>
 
@@ -157,7 +157,7 @@ export default function EventList() {
             className="flex items-center gap-2 px-4 py-2.5 rounded-[var(--radius)] text-sm font-bold text-white hover:shadow-lg hover:-translate-y-0.5 active:scale-95 transition-all"
             style={{ background: "var(--color-primary)" }}
           >
-            <FaPlus size={13} /> کمپین جدید
+            <FaPlus size={13} /> Collection جدید
           </Link>
         </div>
       </div>
@@ -184,13 +184,13 @@ export default function EventList() {
       ) : filtered.length === 0 ? (
         <div className="bg-white rounded-2xl border-2 border-dashed border-gray-200 py-20 text-center">
           <FaCalendarAlt size={28} className="text-gray-200 mx-auto mb-3" />
-          <p className="text-gray-400 font-bold">کمپینی یافت نشد</p>
+          <p className="text-gray-400 font-bold">Collection یافت نشد</p>
           <Link
             href="/p-admin/admin-events/campaigns/new"
             className="mt-4 inline-flex items-center gap-1.5 text-sm font-bold"
             style={{ color: "var(--color-primary)" }}
           >
-            <FaPlus size={12} /> ساخت اولین کمپین
+            <FaPlus size={12} /> ساخت اولین Collection
           </Link>
         </div>
       ) : (
@@ -278,7 +278,7 @@ export default function EventList() {
                     ) : null}
 
                     <Link
-                      href={`/events/${event.slug}`}
+                      href={`/collection/${event.slug}`}
                       target="_blank"
                       title="پیش‌نمایش"
                       className="w-8 h-8 flex items-center justify-center rounded-lg bg-blue-50 text-blue-500 hover:bg-blue-500 hover:text-white transition-all border border-blue-100"

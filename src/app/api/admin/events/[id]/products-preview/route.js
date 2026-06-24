@@ -10,7 +10,7 @@ export async function GET(req, { params }) {
 
   const { id } = await params;
   const event = await Event.findById(id).select("productSelection").lean();
-  if (!event) return NextResponse.json({ error: "رویداد یافت نشد" }, { status: 404 });
+  if (!event) return NextResponse.json({ error: "Collection یافت نشد" }, { status: 404 });
 
   const products = await resolveEventProducts(event.productSelection);
   return NextResponse.json({ products, total: products.length });

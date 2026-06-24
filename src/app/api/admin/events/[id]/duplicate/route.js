@@ -9,7 +9,7 @@ export async function POST(req, { params }) {
 
   const { id } = await params;
   const source = await Event.findById(id).lean();
-  if (!source) return NextResponse.json({ error: "رویداد یافت نشد" }, { status: 404 });
+  if (!source) return NextResponse.json({ error: "Collection یافت نشد" }, { status: 404 });
 
   const { _id, createdAt, updatedAt, ...rest } = source;
 

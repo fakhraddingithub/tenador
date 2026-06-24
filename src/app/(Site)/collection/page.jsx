@@ -5,8 +5,8 @@ import Link from "next/link";
 export const revalidate = 300;
 
 export const metadata = {
-  title: "رویدادها و کمپین‌ها | تنادور",
-  description: "آخرین رویدادهای فروشگاه ورزشی تنادور — فروش ویژه، کمپین‌های فصلی و تجربه‌های منحصر‌به‌فرد",
+  title: "Collection | تنادور",
+  description: "آخرین Collectionهای فروشگاه ورزشی تنادور — فروش ویژه، Collectionهای فصلی و تجربه‌های منحصر‌به‌فرد",
 };
 
 export default async function EventsPage() {
@@ -32,16 +32,16 @@ export default async function EventsPage() {
 
         <div className="max-w-7xl mx-auto relative z-10 text-center">
           <p className="text-[10px] font-black uppercase tracking-[0.4em] text-[#aa4725] mb-4">
-            Tenador Events
+            Tenador Collection
           </p>
           <h1
             className="text-4xl md:text-6xl font-black text-white mb-4 leading-tight"
             style={{ fontFamily: "'Lalezar', 'Vazirmatn', sans-serif" }}
           >
-            رویدادها و کمپین‌ها
+            Collection
           </h1>
           <p className="text-sm text-white/50 max-w-xl mx-auto leading-7">
-            تجربه‌های خرید منحصربه‌فرد با هویت بصری مستقل — هر رویداد دنیایی جداگانه است
+            تجربه‌های خرید منحصربه‌فرد با هویت بصری مستقل — هر Collection دنیایی جداگانه است
           </p>
         </div>
       </section>
@@ -52,7 +52,7 @@ export default async function EventsPage() {
           <div className="text-center py-24">
             <div className="text-5xl mb-4" aria-hidden="true">🎪</div>
             <p className="text-white/30 font-bold text-sm">
-              در حال حاضر رویداد فعالی وجود ندارد
+              در حال حاضر Collection فعالی وجود ندارد
             </p>
             <Link
               href="/"

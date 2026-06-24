@@ -17,10 +17,10 @@ function resolveHeaderImage(vi = {}) {
 }
 
 export async function generateMetadata({ params }) {
-  const { eventSlug } = await params;
+  const { collectionSlug } = await params;
   await connectToDB();
   const event = await Event.findOne({
-    slug: eventSlug,
+    slug: collectionSlug,
     status: "active",
   })
     .select("name shortDescription seo social visualIdentity")
@@ -50,11 +50,11 @@ export async function generateMetadata({ params }) {
 }
 
 export default async function EventPage({ params }) {
-  const { eventSlug } = await params;
+  const { collectionSlug } = await params;
   await connectToDB();
 
   const event = await Event.findOne({
-    slug: eventSlug,
+    slug: collectionSlug,
     status: "active",
   }).lean();
 
@@ -138,7 +138,7 @@ export default async function EventPage({ params }) {
                   className="text-xs font-black mb-2"
                   style={{ color: "var(--event-text, #fff)" }}
                 >
-                  درباره رویداد
+                  درباره Collection
                 </p>
                 {/* Full description → Body Text Color (textSecondary / --event-text-muted) */}
                 <div

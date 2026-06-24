@@ -8,7 +8,7 @@ export async function GET(req, { params }) {
   await connectToDB();
   const { id } = await params;
   const event = await Event.findById(id).lean();
-  if (!event) return NextResponse.json({ error: "رویداد یافت نشد" }, { status: 404 });
+  if (!event) return NextResponse.json({ error: "Collection یافت نشد" }, { status: 404 });
   return NextResponse.json(event);
 }
 
@@ -19,7 +19,7 @@ export async function PUT(req, { params }) {
   const body = await req.json();
 
   if (!body.name?.trim()) {
-    return NextResponse.json({ error: "نام رویداد الزامی است" }, { status: 400 });
+    return NextResponse.json({ error: "نام Collection الزامی است" }, { status: 400 });
   }
 
   // Prevent slug conflict with another event
@@ -39,7 +39,7 @@ export async function PUT(req, { params }) {
     runValidators: true,
   }).lean();
 
-  if (!event) return NextResponse.json({ error: "رویداد یافت نشد" }, { status: 404 });
+  if (!event) return NextResponse.json({ error: "Collection یافت نشد" }, { status: 404 });
 
   revalidateContent(["events"]);
   return NextResponse.json(event);
@@ -50,7 +50,7 @@ export async function DELETE(req, { params }) {
   await connectToDB();
   const { id } = await params;
   const event = await Event.findByIdAndDelete(id).lean();
-  if (!event) return NextResponse.json({ error: "رویداد یافت نشد" }, { status: 404 });
+  if (!event) return NextResponse.json({ error: "Collection یافت نشد" }, { status: 404 });
 
   revalidateContent(["events"]);
   return NextResponse.json({ success: true });

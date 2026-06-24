@@ -9,7 +9,7 @@ export async function GET(req, { params }) {
 
   const { slug } = await params;
   const event = await Event.findOne({ slug, status: "active" }).lean();
-  if (!event) return NextResponse.json({ error: "رویداد یافت نشد" }, { status: 404 });
+  if (!event) return NextResponse.json({ error: "Collection یافت نشد" }, { status: 404 });
 
   const products = await resolveEventProducts(event.productSelection);
   return NextResponse.json({ event: JSON.parse(JSON.stringify(event)), products });

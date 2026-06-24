@@ -4,15 +4,15 @@ import Link from 'next/link';
 import { motion } from 'framer-motion';
 import { FaCalendarAlt, FaArrowRight, FaChevronLeft } from 'react-icons/fa';
 
-// بخش رویدادها — هر زیربخش یک کارت دارد تا در آینده
-// رویدادهای دیگری نیز به همین صفحه اضافه شوند
+// بخش Collection — هر زیربخش یک کارت دارد تا در آینده
+// بخش‌های دیگری نیز به همین صفحه اضافه شوند
 export default function AdminEvents() {
   const sections = [
     {
-      title: 'کمپین‌ها',
-      subtitle: 'Campaigns & Events',
+      title: 'Collections',
+      subtitle: 'Collections',
       description:
-        'رویدادهای فصلی، فروش ویژه، کمپین‌های بازاریابی و هر تجربه تعاملی با هویت بصری مستقل و موتور انتخاب محصول.',
+        'Collectionهای فصلی، فروش ویژه و تجربه‌های تعاملی با هویت بصری مستقل و موتور انتخاب محصول.',
       href: '/p-admin/admin-events/campaigns',
       icon: FaCalendarAlt,
       count: null,
@@ -32,10 +32,10 @@ export default function AdminEvents() {
         </Link>
         <h1 className="text-xl font-bold text-gray-900 flex items-center gap-2">
           <FaCalendarAlt style={{ color: 'var(--color-secondary)' }} size={18} />
-          مدیریت <span style={{ color: 'var(--color-primary)' }}>رویدادها</span>
+          مدیریت <span style={{ color: 'var(--color-primary)' }}>Collection</span>
         </h1>
         <p className="text-sm font-bold text-gray-400 mt-0.5">
-          رویدادها و کمپین‌های مشترک فروشگاه را از اینجا مدیریت کنید
+          Collectionهای فروشگاه را از اینجا مدیریت کنید
         </p>
       </div>
 

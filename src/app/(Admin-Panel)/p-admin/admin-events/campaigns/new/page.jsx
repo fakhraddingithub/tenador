@@ -3,7 +3,7 @@ import { FaArrowRight } from 'react-icons/fa';
 import EventForm from '@/components/admin/events/EventForm';
 
 export const metadata = {
-  title: 'کمپین جدید | پنل مدیریت تنادور',
+  title: 'Collection جدید | پنل مدیریت تنادور',
 };
 
 export default function NewCampaignPage() {
@@ -15,7 +15,7 @@ export default function NewCampaignPage() {
           className="inline-flex items-center gap-1.5 text-xs font-bold hover:gap-2.5 transition-all"
           style={{ color: 'var(--color-primary)' }}
         >
-          <FaArrowRight size={11} /> بازگشت به کمپین‌ها
+          <FaArrowRight size={11} /> بازگشت به Collections
         </Link>
       </div>
       <EventForm />

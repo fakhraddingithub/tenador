@@ -68,13 +68,13 @@ export default function EventCard({ event, index = 0 }) {
       transition={{ delay: index * 0.06, duration: 0.4, ease: "easeOut" }}
     >
       <Link
-        href={`/events/${event.slug}`}
+        href={`/collection/${event.slug}`}
         className={`group block relative rounded-2xl overflow-hidden transition-all duration-500 hover:-translate-y-2 hover:shadow-2xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/70 focus-visible:ring-offset-2 focus-visible:ring-offset-[#080808] ${isEnded ? "opacity-50 grayscale" : ""}`}
         style={{
           background: bgColor,
           boxShadow: `0 4px 24px ${primaryColor}18`,
         }}
-        aria-label={`رویداد ${event.name}`}
+        aria-label={`Collection ${event.name}`}
       >
         {/* Gradient accent bar */}
         <div
@@ -175,7 +175,7 @@ export default function EventCard({ event, index = 0 }) {
             className="flex items-center justify-between text-xs font-black"
             style={{ color: primaryColor }}
           >
-            <span>مشاهده رویداد</span>
+            <span>مشاهده Collection</span>
             <svg
               xmlns="http://www.w3.org/2000/svg"
               className="w-4 h-4 group-hover:-translate-x-1 transition-transform"

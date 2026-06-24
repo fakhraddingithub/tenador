@@ -21,7 +21,7 @@ export async function PUT(req, { params }) {
     { new: true }
   ).lean();
 
-  if (!event) return NextResponse.json({ error: "رویداد یافت نشد" }, { status: 404 });
+  if (!event) return NextResponse.json({ error: "Collection یافت نشد" }, { status: 404 });
 
   revalidateContent(["events"]);
   return NextResponse.json(event);

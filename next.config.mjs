@@ -14,6 +14,23 @@ const nextConfig = {
     },
   },
 
+  // ریدایرکت دائمی مسیر قدیمیِ «رویدادها» به مسیر جدید «Collection».
+  // اسلاگ‌ها بدون تغییر باقی مانده‌اند؛ فقط بخش مسیر تغییر کرده است.
+  async redirects() {
+    return [
+      {
+        source: "/events",
+        destination: "/collection",
+        permanent: true,
+      },
+      {
+        source: "/events/:slug*",
+        destination: "/collection/:slug*",
+        permanent: true,
+      },
+    ];
+  },
+
   images: {
     // بهینه‌سازی تصاویر از طریق Cloudinary انجام می‌شود (نه Image Optimization ورسل)
     // تا مصرف Transformations ورسل صفر بماند. منطق در src/lib/cloudinaryLoader.js

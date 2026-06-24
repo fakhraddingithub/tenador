@@ -39,7 +39,7 @@ export async function POST(req) {
   const body = await req.json();
 
   if (!body.name?.trim()) {
-    return NextResponse.json({ error: "نام رویداد الزامی است" }, { status: 400 });
+    return NextResponse.json({ error: "نام Collection الزامی است" }, { status: 400 });
   }
   if (!body.slug?.trim()) {
     return NextResponse.json({ error: "شناسه URL الزامی است" }, { status: 400 });

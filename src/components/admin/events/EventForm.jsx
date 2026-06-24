@@ -177,7 +177,7 @@ function BasicTab({ form, setField }) {
   return (
     <div className="space-y-6">
       <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-        <InputRow label="نام رویداد (فارسی) *">
+        <InputRow label="نام Collection (فارسی) *">
           <Input
             value={form.name}
             onChange={(e) => setField("name", e.target.value)}
@@ -200,7 +200,7 @@ function BasicTab({ form, setField }) {
           />
           {form.slug && (
             <p className="text-[10px] text-gray-400 font-bold mt-1" dir="ltr">
-              /events/{form.slug}
+              /collection/{form.slug}
             </p>
           )}
         </InputRow>
@@ -210,7 +210,7 @@ function BasicTab({ form, setField }) {
         <Input
           value={form.shortDescription}
           onChange={(e) => setField("shortDescription", e.target.value)}
-          placeholder="یک جمله توضیح برای کارت رویداد"
+          placeholder="یک جمله توضیح برای کارت Collection"
         />
       </InputRow>
 
@@ -219,7 +219,7 @@ function BasicTab({ form, setField }) {
           rows={4}
           value={form.description}
           onChange={(e) => setField("description", e.target.value)}
-          placeholder="توضیحات کامل رویداد..."
+          placeholder="توضیحات کامل Collection..."
         />
       </InputRow>
 
@@ -279,20 +279,20 @@ function VisualTab({ form, setField }) {
     <div className="space-y-6">
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         <ImageUpload
-          label="تصویر هدر (در همه‌جای رویداد استفاده می‌شود)"
+          label="تصویر هدر (در همه‌جای Collection استفاده می‌شود)"
           value={form.visualIdentity.headerImage}
           onChange={(url) => set("headerImage", url)}
           folder="events/headers"
         />
         <ImageUpload
-          label="آیکون رویداد"
+          label="آیکون Collection"
           value={form.visualIdentity.icon}
           onChange={(url) => set("icon", url)}
           folder="events/icons"
         />
       </div>
       <p className="text-[11px] text-gray-400 font-bold leading-6">
-        تصویر هدر به‌عنوان کاور کارت رویداد، هدر صفحه و تصویر اشتراک‌گذاری در شبکه‌های اجتماعی به‌کار می‌رود.
+        تصویر هدر به‌عنوان کاور کارت Collection، هدر صفحه و تصویر اشتراک‌گذاری در شبکه‌های اجتماعی به‌کار می‌رود.
       </p>
     </div>
   );
@@ -324,12 +324,12 @@ function ThemeTab({ form, setField }) {
           </p>
           {/* Title (uses Title Color = textPrimary) */}
           <h2 className="text-2xl font-black" style={{ color: t.textPrimary }}>
-            {form.name || "نام رویداد"}
+            {form.name || "نام Collection"}
           </h2>
           {/* Description (uses Body Text Color = textSecondary) — mirrors the
               full description shown on the campaign page. */}
           <p className="text-sm leading-7 line-clamp-3" style={{ color: t.textSecondary }}>
-            {form.description || "توضیحات کامل رویداد در این بخش از صفحه نمایش داده می‌شود."}
+            {form.description || "توضیحات کامل Collection در این بخش از صفحه نمایش داده می‌شود."}
           </p>
         </div>
       </div>
@@ -958,7 +958,7 @@ function CardsTab({ form, setField }) {
           className="w-4 h-4"
         />
         <label htmlFor="price-highlight" className="text-sm font-black text-gray-700">
-          هایلایت قیمت با رنگ ثانویه رویداد
+          هایلایت قیمت با رنگ ثانویه Collection
         </label>
       </div>
     </div>
@@ -975,7 +975,7 @@ function SeoTab({ form, setField }) {
       <div className="space-y-4">
         <p className="text-sm font-black text-gray-700">متادیتای جستجو</p>
         <InputRow label="عنوان صفحه (SEO Title)">
-          <Input value={form.seo.title} onChange={(e) => setSeo("title", e.target.value)} placeholder="عنوان صفحه — پیش‌فرض: نام رویداد" />
+          <Input value={form.seo.title} onChange={(e) => setSeo("title", e.target.value)} placeholder="عنوان صفحه — پیش‌فرض: نام Collection" />
         </InputRow>
         <InputRow label="توضیحات متا">
           <Textarea rows={2} value={form.seo.description} onChange={(e) => setSeo("description", e.target.value)} placeholder="توضیح کوتاه برای موتور جستجو (۱۵۰–۱۶۰ کاراکتر)" />
@@ -1067,7 +1067,7 @@ export default function EventForm({ eventId = null }) {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!form.name.trim()) { toast.error("نام رویداد الزامی است"); setActiveTab("basic"); return; }
+    if (!form.name.trim()) { toast.error("نام Collection الزامی است"); setActiveTab("basic"); return; }
     if (!form.slug.trim()) { toast.error("نام انگلیسی الزامی است (برای ساخت شناسه URL)"); setActiveTab("basic"); return; }
 
     setLoading(true);
@@ -1097,7 +1097,7 @@ export default function EventForm({ eventId = null }) {
       if (res.ok) {
         await Swal.fire({
           icon: "success",
-          title: isEdit ? "رویداد به‌روزرسانی شد" : "رویداد ساخته شد",
+          title: isEdit ? "Collection به‌روزرسانی شد" : "Collection ساخته شد",
           confirmButtonColor: "var(--color-primary)",
           timer: 2000,
           showConfirmButton: false,
@@ -1141,10 +1141,10 @@ export default function EventForm({ eventId = null }) {
           </div>
           <div>
             <h2 className="text-lg font-black text-gray-900">
-              {isEdit ? `ویرایش: ${form.name || "..."}` : "کمپین جدید"}
+              {isEdit ? `ویرایش: ${form.name || "..."}` : "Collection جدید"}
             </h2>
             <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 mt-0.5">
-              Events / Campaigns
+              Collection
             </p>
           </div>
         </div>
@@ -1160,7 +1160,7 @@ export default function EventForm({ eventId = null }) {
           ) : isEdit ? (
             <><FaSave size={14} /> ذخیره تغییرات</>
           ) : (
-            <><FaRocket size={14} /> انتشار کمپین</>
+            <><FaRocket size={14} /> انتشار Collection</>
           )}
         </button>
       </div>

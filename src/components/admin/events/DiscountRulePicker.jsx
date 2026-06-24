@@ -265,7 +265,7 @@ export default function DiscountRulePicker({ value = [], onChange }) {
               <span className="text-[var(--color-primary)] font-black">
                 {count.toLocaleString("fa-IR")} محصول
               </span>{" "}
-              با این قوانین به رویداد اضافه می‌شود
+              با این قوانین به Collection اضافه می‌شود
             </span>
           ) : null}
         </p>
