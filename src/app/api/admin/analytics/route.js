@@ -11,7 +11,6 @@
  */
 
 import { NextResponse } from "next/server";
-import requireAdmin from "@/lib/requireAdmin";
 import { computeAnalytics } from "base/services/analyticsService";
 
 const DAY_MS = 24 * 60 * 60 * 1000;
@@ -24,11 +23,6 @@ function parseDate(value, fallback) {
 
 export async function GET(req) {
   try {
-    const admin = await requireAdmin();
-    if (!admin) {
-      return NextResponse.json({ message: "احراز هویت ادمین لازم است" }, { status: 401 });
-    }
-
     const { searchParams } = new URL(req.url);
     const now = new Date();
 

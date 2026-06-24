@@ -9,8 +9,8 @@ import { FaCalendarAlt, FaArrowRight, FaChevronLeft } from 'react-icons/fa';
 export default function AdminEvents() {
   const sections = [
     {
-      title: 'Collections',
-      subtitle: 'Collections',
+      title: 'کالکشن ها',
+      subtitle: 'کالکشن ها',
       description:
         'Collectionهای فصلی، فروش ویژه و تجربه‌های تعاملی با هویت بصری مستقل و موتور انتخاب محصول.',
       href: '/p-admin/admin-events/campaigns',
