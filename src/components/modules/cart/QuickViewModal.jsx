@@ -262,7 +262,7 @@ export default function QuickViewModal({
           onClick={onClose}
           className="
             absolute top-3 left-3 z-50
-            w-9 h-9 flex items-center justify-center
+            w-9 h-9 flex items-center justify-center text-[#aa4725]
             rounded-full bg-gray-100/90 hover:bg-[#aa4725] hover:text-white
             transition-all border border-white/30
             shadow-sm
