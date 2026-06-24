@@ -5,36 +5,53 @@
  * ──────────────────────────────────────────────────────────────────────────
  * یک لایهٔ تعاملی قابل‌استفادهٔ مجدد روی «تصویرِ در حال نمایشِ» گالری محصول.
  * این کامپوننت چیدمان/مارکاپ موجود گالری را تغییر نمی‌دهد؛ فقط به‌صورت یک
- * overlayِ absolute روی تصویر قرار می‌گیرد و دو قابلیت اضافه می‌کند:
+ * overlayِ absolute روی تصویر قرار می‌گیرد و این قابلیت‌ها را اضافه می‌کند:
  *
  *   ۱) تول‌تیپِ دنبال‌کنندهٔ ماوس که متن alt تصویر (نام محصول) را نشان می‌دهد.
  *      فقط برای ماوس فعال است (روی لمسی نمایش داده نمی‌شود).
- *   ۲) با کلیک، لایت‌باکسِ تمام‌صفحه با قابلیت زوم (اسکرول، پینچ، دکمه‌ها) باز می‌شود.
+ *   ۲) با کلیک، «لایت‌باکسِ گالریِ» تمام‌صفحه باز می‌شود که شامل:
+ *        • ناوبری بین همهٔ تصاویرِ گالری (دکمه‌های قبلی/بعدی + کلیدهای جهت‌دار)
+ *        • نوارِ تصاویرِ کوچک (thumbnail strip) با هایلایتِ تصویرِ فعال
+ *        • سواایپ روی لمسی (چپ → بعدی، راست → قبلی)
+ *        • زوم با اسکرول/ترک‌پد/پینچ + پن هنگام زوم
+ *
+ * API:
+ *   <GalleryImageViewer
+ *      src={currentSrc}     // تصویرِ در حال نمایش (برای تول‌تیپ و نقطهٔ شروع)
+ *      alt={productName}
+ *      images={allImages}   // (اختیاری) کل تصاویرِ گالری برای ناوبری؛ پیش‌فرض [src]
+ *      index={activeIndex}  // (اختیاری) اندیسِ تصویرِ شروع در images
+ *   />
  *
  * استفاده: داخل کانتینرِ «relative» تصویر اصلی، به‌عنوان آخرین فرزند قرار بگیرد.
- *   <div className="relative ...">
- *     ... <Image fill /> ...
- *     <GalleryImageViewer src={currentSrc} alt={productName} />
- *   </div>
  */
 
 import { useState, useRef, useEffect, useCallback } from "react";
 import { createPortal } from "react-dom";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
-import { X, ZoomIn, ZoomOut, RotateCcw } from "lucide-react";
+import { X, ZoomIn, ZoomOut, RotateCcw, ChevronLeft, ChevronRight } from "lucide-react";
 
 const MIN_SCALE = 1;
 const MAX_SCALE = 5;
+const SWIPE_THRESHOLD = 50; // حداقل جابه‌جاییِ افقی (px) برای تشخیص سواایپ
 
 const clamp = (v, lo, hi) => Math.min(hi, Math.max(lo, v));
 
 /* ════════════════════════════════════════════════════════════════════════
-   لایت‌باکس — نمایشگر تمام‌صفحهٔ تصویر با زوم
+   لایت‌باکس — نمایشگرِ گالریِ تمام‌صفحه با زوم/پن/سواایپ و ناوبری
    ════════════════════════════════════════════════════════════════════════ */
-function ImageLightbox({ src, alt, onClose }) {
+function ImageLightbox({ images, start = 0, alt, onClose }) {
   const reduce = useReducedMotion();
   const dialogRef = useRef(null);
   const imgRef = useRef(null);
+
+  const hasMultiple = images.length > 1;
+
+  // اندیسِ تصویرِ فعال
+  const [current, setCurrent] = useState(
+    clamp(start, 0, images.length - 1),
+  );
+  const [loaded, setLoaded] = useState(false);
 
   // وضعیت تبدیل (transform): مقیاس و جابه‌جایی
   const [view, setView] = useState({ scale: 1, x: 0, y: 0 });
@@ -49,6 +66,9 @@ function ImageLightbox({ src, alt, onClose }) {
   const pinch = useRef(null);
   const pan = useRef(null);
   const dragged = useRef(false);
+  // ردیابیِ سواایپ (تک‌نشانگرِ لمسی، فقط وقتی زوم نیست)
+  const swipeStart = useRef(null);
+  const pinchHappened = useRef(false);
 
   // محدودکردن جابه‌جایی تا تصویر از کادر خارج نشود
   const clampTranslate = useCallback((nx, ny, s) => {
@@ -77,6 +97,42 @@ function ImageLightbox({ src, alt, onClose }) {
 
   const reset = useCallback(() => setView({ scale: 1, x: 0, y: 0 }), []);
 
+  // آخرین مقدارِ current در ref تا توابعِ ناوبری بدونِ وابستگی به current پایدار بمانند
+  // (افکتِ مدیریت فوکوس/قفل‌اسکرول نباید روی هر ناوبری دوباره اجرا شود).
+  const currentRef = useRef(current);
+  useEffect(() => {
+    currentRef.current = current;
+  }, [current]);
+
+  // ناوبری به اندیسِ مشخص — هنگام تعویض، زوم/پن و وضعیتِ بارگذاری ریست می‌شود.
+  // در هندلرِ رویداد صدا زده می‌شود (نه افکت) تا چند setState با هم batch شوند.
+  const jumpTo = useCallback(
+    (i) => {
+      const len = images.length;
+      const n = ((i % len) + len) % len;
+      if (n === currentRef.current) return;
+      currentRef.current = n;
+      setCurrent(n);
+      setView({ scale: 1, x: 0, y: 0 });
+      setLoaded(false);
+    },
+    [images.length],
+  );
+  // جابه‌جاییِ نسبی (قبلی/بعدی) با چرخش (wrap).
+  const navigate = useCallback(
+    (dir) => jumpTo(currentRef.current + dir),
+    [jumpTo],
+  );
+
+  // پیش‌بارگذاریِ تصاویرِ همسایه برای ناوبریِ بدون‌مکث (بدون setState → بدونِ رندرِ اضافه)
+  useEffect(() => {
+    if (!hasMultiple || typeof window === "undefined") return;
+    const next = new window.Image();
+    next.src = images[(current + 1) % images.length];
+    const prev = new window.Image();
+    prev.src = images[(current - 1 + images.length) % images.length];
+  }, [current, images, hasMultiple]);
+
   const stageCenter = () => {
     const r = dialogRef.current?.getBoundingClientRect();
     if (!r) return { cx: 0, cy: 0, rect: null };
@@ -101,7 +157,7 @@ function ImageLightbox({ src, alt, onClose }) {
     return () => stage.removeEventListener("wheel", onWheel);
   }, [zoomTo]);
 
-  /* ── پن و پینچ با Pointer Events ── */
+  /* ── پن، پینچ و سواایپ با Pointer Events ── */
   const onPointerDown = (e) => {
     dialogRef.current?.setPointerCapture?.(e.pointerId);
     pointers.current.set(e.pointerId, { x: e.clientX, y: e.clientY });
@@ -109,6 +165,9 @@ function ImageLightbox({ src, alt, onClose }) {
     setInteracting(true);
 
     if (pointers.current.size === 2) {
+      // شروع پینچ → سواایپ را لغو کن
+      pinchHappened.current = true;
+      swipeStart.current = null;
       const [a, b] = [...pointers.current.values()];
       const { cx, cy } = stageCenter();
       pinch.current = {
@@ -121,11 +180,19 @@ function ImageLightbox({ src, alt, onClose }) {
       };
       pan.current = null;
     } else {
+      // تک‌نشانگر: کاندیدِ پن (هنگام زوم) و سواایپ (هنگام لمسی و بدون زوم)
+      pinchHappened.current = false;
       pan.current = {
         x: e.clientX,
         y: e.clientY,
         startX: viewRef.current.x,
         startY: viewRef.current.y,
+      };
+      swipeStart.current = {
+        x: e.clientX,
+        y: e.clientY,
+        scale: viewRef.current.scale,
+        pointerType: e.pointerType,
       };
     }
   };
@@ -153,7 +220,7 @@ function ImageLightbox({ src, alt, onClose }) {
       const dy = e.clientY - pan.current.y;
       if (Math.abs(dx) > 4 || Math.abs(dy) > 4) dragged.current = true;
       setView((v) => {
-        if (v.scale <= 1) return v; // وقتی زوم نیست پن نکن
+        if (v.scale <= 1) return v; // وقتی زوم نیست پن نکن (سواایپ در pointerup بررسی می‌شود)
         const c = clampTranslate(
           pan.current.startX + dx,
           pan.current.startY + dy,
@@ -167,9 +234,28 @@ function ImageLightbox({ src, alt, onClose }) {
   const endPointer = (e) => {
     pointers.current.delete(e.pointerId);
     if (pointers.current.size < 2) pinch.current = null;
+
     if (pointers.current.size === 0) {
       pan.current = null;
       setInteracting(false);
+
+      // تصمیمِ سواایپ: فقط لمسی/قلم، فقط وقتی زوم نبوده و پینچ رخ نداده
+      const s = swipeStart.current;
+      if (
+        s &&
+        hasMultiple &&
+        !pinchHappened.current &&
+        s.scale <= 1.01 &&
+        s.pointerType !== "mouse"
+      ) {
+        const dx = e.clientX - s.x;
+        const dy = e.clientY - s.y;
+        if (Math.abs(dx) > SWIPE_THRESHOLD && Math.abs(dx) > Math.abs(dy) * 1.3) {
+          // سواایپ چپ (dx<0) → بعدی ، سواایپ راست (dx>0) → قبلی
+          navigate(dx < 0 ? 1 : -1);
+        }
+      }
+      swipeStart.current = null;
     } else if (pointers.current.size === 1) {
       const [p] = [...pointers.current.values()];
       pan.current = {
@@ -196,7 +282,7 @@ function ImageLightbox({ src, alt, onClose }) {
     if (e.target === dialogRef.current) onClose();
   };
 
-  /* ── Escape، قفل اسکرول بدون پرش چیدمان، تله‌ی فوکوس ── */
+  /* ── Escape، کلیدهای جهت‌دار، قفل اسکرول بدون پرش چیدمان، تله‌ی فوکوس ── */
   useEffect(() => {
     const prevActive =
       typeof document !== "undefined" ? document.activeElement : null;
@@ -216,6 +302,16 @@ function ImageLightbox({ src, alt, onClose }) {
       if (e.key === "Escape") {
         e.preventDefault();
         onClose();
+      } else if (e.key === "ArrowLeft") {
+        if (hasMultiple) {
+          e.preventDefault();
+          navigate(-1); // ← قبلی
+        }
+      } else if (e.key === "ArrowRight") {
+        if (hasMultiple) {
+          e.preventDefault();
+          navigate(1); // → بعدی
+        }
       } else if (e.key === "Tab") {
         const nodes = focusables();
         if (!nodes.length) {
@@ -251,13 +347,16 @@ function ImageLightbox({ src, alt, onClose }) {
       document.body.style.paddingRight = prevPad;
       prevActive?.focus?.();
     };
-  }, [onClose]);
+  }, [onClose, navigate, hasMultiple]);
 
   if (typeof document === "undefined") return null;
 
+  const src = images[current];
   const zoomed = view.scale > 1.01;
   const btn =
     "w-11 h-11 flex items-center justify-center rounded-[8px] bg-white/10 text-white hover:bg-white/20 active:scale-95 transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-white/70";
+  const navBtn =
+    "absolute top-1/2 -translate-y-1/2 z-10 hidden sm:flex w-12 h-12 items-center justify-center rounded-full bg-white/10 text-white hover:bg-white/25 active:scale-95 transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-white/70";
 
   return createPortal(
     <motion.div
@@ -330,20 +429,105 @@ function ImageLightbox({ src, alt, onClose }) {
         </button>
       </div>
 
-      {/* تصویر — کیفیت اصلی حفظ می‌شود، فقط transform تغییر می‌کند */}
+      {/* شمارندهٔ تصویر */}
+      {hasMultiple && (
+        <div className="absolute top-5 right-4 z-10 rounded-full bg-white/10 px-3 py-1 text-[13px] font-medium text-white tabular-nums">
+          {current + 1} / {images.length}
+        </div>
+      )}
+
+      {/* ناوبریِ دسکتاپ (روی موبایل مخفی — سواایپ جایگزین است) */}
+      {hasMultiple && (
+        <>
+          <button
+            type="button"
+            aria-label="تصویر قبلی"
+            onClick={(e) => {
+              e.stopPropagation();
+              navigate(-1);
+            }}
+            onPointerDown={(e) => e.stopPropagation()}
+            className={`${navBtn} right-4`}
+          >
+            <ChevronRight size={26} />
+          </button>
+          <button
+            type="button"
+            aria-label="تصویر بعدی"
+            onClick={(e) => {
+              e.stopPropagation();
+              navigate(1);
+            }}
+            onPointerDown={(e) => e.stopPropagation()}
+            className={`${navBtn} left-4`}
+          >
+            <ChevronLeft size={26} />
+          </button>
+        </>
+      )}
+
+      {/* وضعیتِ بارگذاری */}
+      {!loaded && (
+        <div
+          aria-hidden="true"
+          className="absolute z-0 h-10 w-10 animate-spin rounded-full border-2 border-white/30 border-t-white"
+        />
+      )}
+
+      {/* تصویر — کیفیت اصلی حفظ می‌شود، فقط transform/opacity تغییر می‌کند */}
       <img
         ref={imgRef}
+        key={src}
         src={src}
-        alt={alt || ""}
+        alt={alt ? `${alt} (${current + 1}/${images.length})` : ""}
         draggable={false}
+        onLoad={() => setLoaded(true)}
         onClick={(e) => e.stopPropagation()}
         className="max-w-[92vw] max-h-[88vh] object-contain rounded-[6px] shadow-2xl will-change-transform"
         style={{
           transform: `translate(${view.x}px, ${view.y}px) scale(${view.scale})`,
-          transition: interacting || reduce ? "none" : "transform 150ms ease-out",
+          transition:
+            interacting || reduce
+              ? "none"
+              : "transform 150ms ease-out, opacity 200ms ease-out",
+          opacity: loaded ? 1 : 0,
           cursor: zoomed ? "grab" : "zoom-in",
         }}
       />
+
+      {/* نوارِ تصاویرِ کوچک */}
+      {hasMultiple && (
+        <div
+          onClick={(e) => e.stopPropagation()}
+          onPointerDown={(e) => e.stopPropagation()}
+          className="absolute bottom-4 left-1/2 z-10 flex max-w-[94vw] -translate-x-1/2 gap-2 overflow-x-auto rounded-xl bg-black/30 px-2.5 py-2 backdrop-blur-sm"
+        >
+          {images.map((img, i) => {
+            const active = i === current;
+            return (
+              <button
+                key={img}
+                type="button"
+                aria-label={`نمایش تصویر ${i + 1}`}
+                aria-current={active ? "true" : undefined}
+                onClick={() => jumpTo(i)}
+                className={`relative h-12 w-12 shrink-0 overflow-hidden rounded-md border-2 transition-all sm:h-14 sm:w-14 ${
+                  active
+                    ? "border-white opacity-100"
+                    : "border-transparent opacity-50 hover:opacity-90"
+                }`}
+              >
+                <img
+                  src={img}
+                  alt=""
+                  draggable={false}
+                  className="h-full w-full object-cover"
+                />
+              </button>
+            );
+          })}
+        </div>
+      )}
     </motion.div>,
     document.body,
   );
@@ -352,11 +536,24 @@ function ImageLightbox({ src, alt, onClose }) {
 /* ════════════════════════════════════════════════════════════════════════
    GalleryImageViewer — لایهٔ تعاملی + تول‌تیپ روی تصویرِ در حال نمایش
    ════════════════════════════════════════════════════════════════════════ */
-export default function GalleryImageViewer({ src, alt = "", className = "" }) {
+export default function GalleryImageViewer({
+  src,
+  alt = "",
+  className = "",
+  images,
+  index = 0,
+}) {
   const layerRef = useRef(null);
   const tipRef = useRef(null);
   const [hovering, setHovering] = useState(false);
   const [open, setOpen] = useState(false);
+  const [startIndex, setStartIndex] = useState(0);
+
+  // گالریِ معتبر؛ اگر images داده نشده باشد فقط همان src
+  const gallery = Array.isArray(images)
+    ? images.filter(Boolean)
+    : [];
+  const effective = gallery.length ? gallery : src ? [src] : [];
 
   // فقط برای ماوس (نه لمسی/قلم)
   const isMouse = (e) => !e.pointerType || e.pointerType === "mouse";
@@ -383,6 +580,20 @@ export default function GalleryImageViewer({ src, alt = "", className = "" }) {
     tip.style.transform = `translate(${tx}px, ${ty}px)`;
   };
 
+  // پایدار تا افکتِ مدیریت فوکوس/قفل‌اسکرولِ لایت‌باکس فقط یک‌بار اجرا شود
+  const closeViewer = useCallback(() => setOpen(false), []);
+
+  const openViewer = () => {
+    // نقطهٔ شروع: اندیسِ معتبرِ ورودی، وگرنه جایگاهِ src در گالری
+    let i =
+      typeof index === "number" && index >= 0 && index < effective.length
+        ? index
+        : effective.indexOf(src);
+    if (i < 0) i = 0;
+    setStartIndex(i);
+    setOpen(true);
+  };
+
   if (!src) return null;
 
   return (
@@ -390,7 +601,7 @@ export default function GalleryImageViewer({ src, alt = "", className = "" }) {
       <button
         ref={layerRef}
         type="button"
-        onClick={() => setOpen(true)}
+        onClick={openViewer}
         onPointerMove={handleMove}
         onPointerEnter={(e) => {
           if (isMouse(e)) setHovering(true);
@@ -403,10 +614,14 @@ export default function GalleryImageViewer({ src, alt = "", className = "" }) {
           <span
             ref={tipRef}
             aria-hidden="true"
-            className={`pointer-events-none absolute top-0 right-0 z-30 max-w-[16rem] break-words leading-snug rounded-md bg-black/80 px-2.5 py-1 text-[11px] font-medium text-white text-right shadow-lg backdrop-blur-sm transition-opacity duration-150 ${
+            className={`pointer-events-none absolute z-30 max-w-[16rem] break-words leading-snug rounded-md bg-black/80 px-2.5 py-1 text-[11px] font-medium text-white text-right shadow-lg backdrop-blur-sm transition-opacity duration-150 ${
               hovering ? "opacity-100" : "opacity-0"
             }`}
-            style={{ willChange: "transform" }}
+            // مبدأ تول‌تیپ گوشهٔ بالا-چپِ لایه است تا translate(tx,ty) دقیقاً مختصاتِ
+            // محاسبه‌شده نسبت به لبهٔ چپ را اعمال کند (translate در فضای صفحه همیشه
+            // به راست/پایین است، مستقل از RTL). انکر right-0 باعث افزودن فاصلهٔ
+            // اضافیِ (عرضِ لایه − عرضِ تول‌تیپ) و جداشدنِ تول‌تیپ از نشانگر می‌شد.
+            style={{ top: 0, left: 0, willChange: "transform" }}
           >
             {alt}
           </span>
@@ -415,7 +630,12 @@ export default function GalleryImageViewer({ src, alt = "", className = "" }) {
 
       <AnimatePresence>
         {open ? (
-          <ImageLightbox src={src} alt={alt} onClose={() => setOpen(false)} />
+          <ImageLightbox
+            images={effective}
+            start={startIndex}
+            alt={alt}
+            onClose={closeViewer}
+          />
         ) : null}
       </AnimatePresence>
     </>

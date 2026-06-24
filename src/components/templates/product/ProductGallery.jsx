@@ -67,7 +67,12 @@ const ProductGallery = ({ images = [], logo, verified = false, productName = "" 
           </AnimatePresence>
 
           {/* لایهٔ تعاملی: تول‌تیپِ دنبال‌کنندهٔ ماوس + لایت‌باکسِ زوم */}
-          <GalleryImageViewer src={images[activeIndex]} alt={mainAlt} />
+          <GalleryImageViewer
+            src={images[activeIndex]}
+            alt={mainAlt}
+            images={images}
+            index={activeIndex}
+          />
         </div>
       </div>
 

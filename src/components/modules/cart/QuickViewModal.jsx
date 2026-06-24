@@ -312,7 +312,12 @@ export default function QuickViewModal({
             />
 
             {/* لایهٔ تعاملی: تول‌تیپِ دنبال‌کنندهٔ ماوس + لایت‌باکسِ زوم */}
-            <GalleryImageViewer src={displayedImage} alt={product.name} />
+            <GalleryImageViewer
+              src={displayedImage}
+              alt={product.name}
+              images={activeGalleryImages}
+              index={activeGalleryImages.indexOf(displayedImage)}
+            />
           </div>
 
           {/* Thumbnails */}

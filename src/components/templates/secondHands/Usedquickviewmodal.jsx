@@ -155,7 +155,12 @@ export default function UsedQuickViewModal({
 
             {/* لایهٔ تعاملی: تول‌تیپِ دنبال‌کنندهٔ ماوس + لایت‌باکسِ زوم */}
             {displayedImage && (
-              <GalleryImageViewer src={displayedImage} alt={name} />
+              <GalleryImageViewer
+                src={displayedImage}
+                alt={name}
+                images={allImages}
+                index={allImages.indexOf(displayedImage)}
+              />
             )}
           </div>
 
