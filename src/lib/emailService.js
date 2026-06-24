@@ -530,6 +530,43 @@ export async function sendInstallmentCheckClearedEmail(order, installment, check
 }
 
 /**
+ * ایمیل «یادآوری سررسید اقساط» — برای چک‌های نزدیک به سررسید یا سررسیدگذشته.
+ *
+ * @param {Object} order
+ * @param {Object} installment
+ * @param {Array}  dueChecks  - [{ number, amount, dueDate, overdue }]
+ * @param {string} customerEmail
+ */
+export async function sendInstallmentReminderEmail(order, installment, dueChecks, customerEmail) {
+  if (!Array.isArray(dueChecks) || dueChecks.length === 0) return;
+
+  const anyOverdue = dueChecks.some((c) => c.overdue);
+  const totalDue = dueChecks.reduce((s, c) => s + (Number(c.amount) || 0), 0);
+
+  const rows = dueChecks.map((c) => ({
+    label: `قسط ${new Intl.NumberFormat('fa-IR').format(c.number)} — سررسید ${formatJalaliDate(c.dueDate)}`,
+    value: `${formatPrice(c.amount)}${c.overdue ? ' <span style="color:#dc2626;font-size:11px;">(سررسید گذشته)</span>' : ''}`,
+  }));
+  rows.push({ label: 'مجموع مبلغ قابل پرداخت', value: formatPrice(totalDue) });
+
+  const html = buildSimpleNoticeHtml({
+    title: anyOverdue ? 'یادآوری اقساط سررسیدگذشته' : 'یادآوری سررسید اقساط',
+    emoji: anyOverdue ? '⚠️' : '🔔',
+    greeting: anyOverdue
+      ? 'با سلام،<br>برخی از اقساط سفارش شما به سررسید رسیده یا از آن گذشته است. لطفاً در اسرع وقت نسبت به تأمین موجودی چک‌ها اقدام فرمایید.'
+      : 'با سلام،<br>سررسید برخی از اقساط سفارش شما نزدیک است. لطفاً نسبت به تأمین موجودی چک‌های زیر اقدام فرمایید.',
+    rows: [{ label: 'کد سفارش', value: escapeHtml(order.trackingCode ?? '—') }, ...rows],
+    note: 'در صورت پرداخت، این پیام را نادیده بگیرید. برای پیگیری وضعیت اقساط به پنل کاربری مراجعه کنید.',
+  });
+
+  await sendSingle(
+    customerEmail,
+    `${anyOverdue ? 'یادآوری اقساط سررسیدگذشته' : 'یادآوری سررسید اقساط'} — سفارش ${order.trackingCode}`,
+    html,
+  );
+}
+
+/**
  * ایمیل «تکمیل اقساط» — وقتی همه‌ی چک‌ها پاس شده‌اند.
  */
 export async function sendInstallmentCompletedEmail(order, installment, customerEmail) {

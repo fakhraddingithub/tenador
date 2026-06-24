@@ -9,17 +9,11 @@ import { NextResponse } from "next/server";
 import mongoose from "mongoose";
 import connectToDB from "base/configs/db";
 import "base/models/registerModels";
-import requireAdmin from "@/lib/requireAdmin";
 import Installment from "base/models/Installment";
 import { deriveCheckStatus, summarizeInstallment } from "base/services/installmentService";
 
 export async function GET(req, { params }) {
   try {
-    const admin = await requireAdmin();
-    if (!admin) {
-      return NextResponse.json({ message: "احراز هویت ادمین لازم است" }, { status: 401 });
-    }
-
     await connectToDB();
 
     const { id } = await params;

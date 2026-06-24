@@ -14,17 +14,11 @@
 import { NextResponse } from "next/server";
 import connectToDB from "base/configs/db";
 import "base/models/registerModels";
-import requireAdmin from "@/lib/requireAdmin";
 import Installment from "base/models/Installment";
 import { summarizeInstallment } from "base/services/installmentService";
 
 export async function GET(req) {
   try {
-    const admin = await requireAdmin();
-    if (!admin) {
-      return NextResponse.json({ message: "احراز هویت ادمین لازم است" }, { status: 401 });
-    }
-
     await connectToDB();
 
     const { searchParams } = new URL(req.url);

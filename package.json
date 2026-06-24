@@ -13,7 +13,8 @@
     "migrate:coach-codes": "node scripts/migrateCoachCodeFormat.js",
     "check:mongodb": "node scripts/check-mongodb.js",
     "worker:prices": "node workers/priceWorker.js",
-    "worker:discounts": "node workers/discountWorker.js"
+    "worker:discounts": "node workers/discountWorker.js",
+    "worker:installment-reminders": "node workers/installmentReminderWorker.js"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",

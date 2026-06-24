@@ -49,6 +49,12 @@ const CheckSchema = new mongoose.Schema(
       type: String,
       default: "",
     },
+
+    // آخرین زمانی که برای این چک به مشتری یادآوری ارسال شد (برای جلوگیری از ارسال تکراری)
+    lastReminderAt: {
+      type: Date,
+      default: null,
+    },
   },
   { _id: true }
 );

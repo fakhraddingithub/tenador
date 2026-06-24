@@ -14,18 +14,12 @@ import { NextResponse } from "next/server";
 import mongoose from "mongoose";
 import connectToDB from "base/configs/db";
 import "base/models/registerModels";
-import requireAdmin from "@/lib/requireAdmin";
 import Installment from "base/models/Installment";
 import Payment from "base/models/Payment";
 import Order from "base/models/Order";
 
 export async function POST(req, { params }) {
   try {
-    const admin = await requireAdmin();
-    if (!admin) {
-      return NextResponse.json({ message: "احراز هویت ادمین لازم است" }, { status: 401 });
-    }
-
     await connectToDB();
 
     const { id } = await params;
@@ -59,15 +53,14 @@ export async function POST(req, { params }) {
       );
     }
 
-    // ثبت تأیید روی اقساط
+    // ثبت تأیید روی اقساط (بدون احراز هویت ادمین — شناسه‌ی تأییدکننده ثبت نمی‌شود)
     installment.orderConfirmedAt = new Date();
-    installment.orderConfirmedBy = admin._id;
+    installment.orderConfirmedBy = null;
     await installment.save();
 
     // ورود سفارش به مرحله‌ی پردازش (فقط اگر هنوز در مراحل ابتدایی است)
     if (["WAITING", "NEEDS_PURCHASE"].includes(order.fulfillmentStatus)) {
       order.fulfillmentStatus = "PROCESSING";
-      order.reviewedBy = admin._id;
       order.reviewedAt = new Date();
       await order.save();
     }
