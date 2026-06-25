@@ -61,7 +61,7 @@ function generateCombinations(options) {
  * generateCombinations استفاده می‌کند تا قیمت/تصویرِ ترکیب‌های موجود هنگام
  * ویرایش گم نشوند (رفع باگِ عدم‌تطابقِ ترتیب).
  */
-function rebuildVariantState(variants = []) {
+function rebuildVariantState(variants = [], basePrice = null) {
   if (!variants.length) return { variantOptions: {}, variantDetails: {} };
 
   const variantOptions = {};
@@ -78,8 +78,15 @@ function rebuildVariantState(variants = []) {
       }
     }
 
+    // قیمت ویژه فقط وقتی «سفارشی» است که با قیمت پایه فرق داشته باشد. واریانت‌های
+    // بدون قیمت سفارشی در دیتابیس با قیمت پایه ذخیره می‌شوند؛ اگر همان مقدار را به
+    // عنوان قیمت ویژه بارگذاری کنیم، (الف) فیلد قیمت بی‌جهت پر و الزامی به نظر می‌رسد
+    // و (ب) آن واریانت‌ها روی قیمت پایه‌ی قدیمی «منجمد» می‌شوند. پس برابر با پایه = خالی.
+    const isCustomPrice =
+      v.price != null && (basePrice == null || Number(v.price) !== Number(basePrice));
+
     variantDetails[makeComboKey(attrs)] = {
-      price: v.price ?? '',
+      price: isCustomPrice ? v.price : '',
       images: v.images || [],
     };
   }
@@ -137,6 +144,10 @@ export default function ProductEditPage() {
 
   // متادیتای سطحِ مقدار: تصاویرِ مشترکِ هر مقدار { [attr]: { [value]: { images: [] } } }
   const [variantMeta, setVariantMeta] = useState({});
+
+  // ترکیب‌هایی که ادمین «قیمت ویژه» را برایشان باز کرده. قیمت اختیاری است؛ خالی
+  // بودنش یعنی قیمت پایه‌ی محصول اعمال می‌شود (هیچ‌جا الزامی نیست).
+  const [expandedPrices, setExpandedPrices] = useState(() => new Set());
 
   // ---------------------------
   // Fetch all data on mount
@@ -211,9 +222,10 @@ export default function ProductEditPage() {
             isActive: p.isActive ?? true, // ✨ اضافه شد: دریافت وضعیت فعلی محصول از دیتابیس
           });
 
-          // Rebuild variant state from populated variants array
+          // Rebuild variant state from populated variants array (قیمتِ برابر با
+          // پایه به‌عنوان «بدون قیمت ویژه» بارگذاری می‌شود)
           const { variantOptions: vOpts, variantDetails: vDetails } =
-            rebuildVariantState(p.variants || []);
+            rebuildVariantState(p.variants || [], p.basePrice);
           setVariantOptions(vOpts);
           setVariantDetails(vDetails);
 
@@ -426,6 +438,22 @@ export default function ProductEditPage() {
       },
     }));
   }
+
+  // ── قیمت ویژه (اختیاری، جمع‌شونده) ──
+  // ورودیِ قیمت پیش‌فرض پنهان است؛ فقط وقتی نمایش داده می‌شود که ادمین «قیمت ویژه»
+  // را باز کرده باشد یا ترکیب از قبل قیمت سفارشی داشته باشد. خالی = قیمت پایه.
+  const isPriceVisible = (key, detail) =>
+    expandedPrices.has(key) || (detail.price !== '' && detail.price != null);
+  const showPriceInput = (key) =>
+    setExpandedPrices(prev => new Set(prev).add(key));
+  const clearCustomPrice = (key) => {
+    updateVariantDetail(key, 'price', '');
+    setExpandedPrices(prev => {
+      const next = new Set(prev);
+      next.delete(key);
+      return next;
+    });
+  };
 
   // ---------------------------
   // Submit (PUT)
@@ -784,7 +812,7 @@ export default function ProductEditPage() {
             <h2 className="font-bold text-gray-800">ویژگی‌های متغیر (واریانت‌ها)</h2>
           </div>
           <p className="text-xs text-gray-400 mb-6">
-            برای هر ویژگی مقادیر موجود را اضافه یا حذف کنید. سپس برای هر ترکیب قیمت، موجودی و تصویر تعیین کنید.
+            برای هر ویژگی مقادیر موجود را اضافه یا حذف کنید. تصاویر در بخش «تصاویر هر مقدار» بارگذاری می‌شوند؛ تعیین قیمت برای هر ترکیب اختیاری است (خالی = قیمت پایه).
           </p>
 
           {/* Tag inputs per variantAttribute */}
@@ -998,34 +1026,41 @@ export default function ProductEditPage() {
                         )}
                       </div>
 
-                      {/* Price */}
-                      <div className="mb-4">
-                        <label className="block text-sm text-gray-600 mb-1 font-medium">
-                          قیمت (یورو)
-                        </label>
-                        <input
-                          type="number"
-                          min="0"
-                          className="w-full border rounded-[var(--radius)] px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
-                          placeholder="قیمت این ترکیب…"
-                          value={detail.price}
-                          onChange={e => updateVariantDetail(key, 'price', e.target.value)}
-                        />
-                      </div>
-
-                      {/* Images */}
-                      <div>
-                        <label className="block text-sm text-gray-600 mb-1 font-medium">
-                          تصاویر این ترکیب
-                        </label>
-                        <ImageUpload
-                          label=""
-                          multiple
-                          value={detail.images}
-                          onChange={v => updateVariantDetail(key, 'images', v)}
-                          folder="product/variants"
-                        />
-                      </div>
+                      {/* قیمت ویژه (اختیاری) — تصاویر در بخش «تصاویر هر مقدار» مدیریت می‌شوند */}
+                      {isPriceVisible(key, detail) ? (
+                        <div className="flex items-end gap-2">
+                          <div className="flex-1">
+                            <label className="block text-xs text-gray-500 mb-1 font-medium">
+                              قیمت ویژه (یورو){' '}
+                              <span className="text-gray-400 font-normal">— خالی = قیمت پایه</span>
+                            </label>
+                            <input
+                              type="number"
+                              min="0"
+                              className="w-full border rounded-[var(--radius)] px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
+                              placeholder="قیمت پایه‌ی محصول"
+                              value={detail.price}
+                              onChange={e => updateVariantDetail(key, 'price', e.target.value)}
+                            />
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => clearCustomPrice(key)}
+                            className="px-2 py-2 text-xs font-bold text-gray-400 hover:text-red-600 transition-colors"
+                            title="حذف قیمت ویژه (استفاده از قیمت پایه)"
+                          >
+                            حذف
+                          </button>
+                        </div>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={() => showPriceInput(key)}
+                          className="text-xs font-bold text-blue-600 hover:text-blue-700 transition-colors"
+                        >
+                          + قیمت ویژه
+                        </button>
+                      )}
                     </div>
                   );
                 })}
