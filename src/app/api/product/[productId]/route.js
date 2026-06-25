@@ -13,6 +13,7 @@ import "base/models/LimitedEdition";
 
 import { verifyToken } from "base/utils/auth";
 import { revalidateContent } from "@/lib/revalidate";
+import { makeComboKey } from "@/lib/variantKey";
 
 // --------------------------------------------------
 // Helpers
@@ -139,6 +140,8 @@ export async function PUT(request, { params }) {
       isActive, // ✨ اضافه شد: دریافت وضعیت فعال/غیرفعال از فرانت‌اند
       variantOptions,
       variantDetails,
+      selectedCombos, // آرایه‌ی کلیدِ ترکیب‌های انتخاب‌شده برای ساخت (اختیاری)
+      variantMeta, // متادیتای سطحِ مقدار (تصاویرِ مشترک هر مقدار و ...)
     } = body;
 
     const product = await Product.findById(productId);
@@ -195,7 +198,13 @@ export async function PUT(request, { params }) {
         return result;
       }
 
-      const combinations = generateCombinations(variantOptions);
+      const allCombinations = generateCombinations(variantOptions);
+      // اگر لیست انتخاب‌شده ارسال شده باشد فقط همان ترکیب‌ها ساخته می‌شوند؛
+      // در غیر این صورت همه‌ی ترکیب‌ها (سازگاری با کلاینت‌های قدیمی)
+      const selectedSet = Array.isArray(selectedCombos) ? new Set(selectedCombos) : null;
+      const combinations = selectedSet
+        ? allCombinations.filter((c) => selectedSet.has(makeComboKey(c)))
+        : allCombinations;
 
       // حذف واریانت‌های قبلی
       if (product.variants?.length > 0) {
@@ -204,8 +213,10 @@ export async function PUT(request, { params }) {
         });
       }
 
+      let variantIndex = 0;
+
       for (const combo of combinations) {
-        const comboKey = Object.values(combo).join("-");
+        const comboKey = makeComboKey(combo);
 
         const detail = variantDetails?.[comboKey] || {};
 
@@ -216,9 +227,8 @@ export async function PUT(request, { params }) {
           // قیمت ۰ یا خالی → قیمت پایه محصول ذخیره می‌شود
           price: Number(detail.price) || Number(basePrice) || 0,
           images: Array.isArray(detail.images) ? detail.images : [],
-          sku: `${product._id}-${comboKey}`
-            .replace(/\s+/g, "")
-            .toUpperCase(),
+          // SKU یکتا و پایدار بر اساس ایندکس (مقادیر ممکن است فارسی/تکراری باشند)
+          sku: `${product._id}-V${++variantIndex}`.toUpperCase(),
         });
 
         generatedVariants.push(variant._id);
@@ -249,6 +259,9 @@ export async function PUT(request, { params }) {
 
     product.technicalStats =
       technicalStats && typeof technicalStats === "object" ? technicalStats : {};
+
+    product.variantMeta =
+      variantMeta && typeof variantMeta === "object" ? variantMeta : {};
 
     product.label = label || "none";
 

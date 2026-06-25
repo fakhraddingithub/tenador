@@ -10,6 +10,7 @@ import {
 } from "react-icons/fi";
 import { useEffect, useState } from "react";
 import OrderFlowSelectionsView from "@/components/order/OrderFlowSelectionsView";
+import VariantSummary from "@/components/order/VariantSummary";
 
 // جداسازی نام فارسی و انگلیسی
 function splitName(text) {
@@ -173,16 +174,13 @@ export default function PaymentSuccessPage({ trackingCode }) {
                                                         )}
                                                     </div>
                                                     {/* واریانت */}
-                                                    {variantAttrs && Object.keys(variantAttrs).length > 0 && (
-                                                        <div className="flex flex-wrap gap-1 mt-1">
-                                                            {Object.entries(variantAttrs).map(([k, v]) => (
-                                                                <span
-                                                                    key={k}
-                                                                    className="text-[10px] bg-[#aa4725]/8 text-[#aa4725] border border-[#aa4725]/20 px-2 py-0.5 rounded-full"
-                                                                >
-                                                                    {k}: {v}
-                                                                </span>
-                                                            ))}
+                                                    {(item.variantSnapshot?.length ||
+                                                        (variantAttrs && Object.keys(variantAttrs).length > 0)) && (
+                                                        <div className="mt-1">
+                                                            <VariantSummary
+                                                                snapshot={item.variantSnapshot}
+                                                                attributes={variantAttrs}
+                                                            />
                                                         </div>
                                                     )}
                                                     {/* انتخاب‌های فرایند سفارش */}

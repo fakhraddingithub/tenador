@@ -88,6 +88,14 @@ const ProductSchema = new mongoose.Schema(
       default: {},
     },
 
+    // متادیتای سطحِ مقدارِ واریانت (Change 2/3): تصاویرِ مشترک هر مقدار و مقادیرِ چندواحدی.
+    // شکل: { [attrName]: { [value]: { images: [String], units: { [unitLabel]: String } } } }
+    // اختیاری و افزایشی؛ نبودنش = رفتارِ قبلی (تصاویر فقط در سطحِ واریانت).
+    variantMeta: {
+      type: Object,
+      default: {},
+    },
+
     slug: { type: String, unique: true, index: true },
 
     isActive: {

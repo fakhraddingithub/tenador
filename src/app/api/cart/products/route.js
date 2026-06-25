@@ -15,6 +15,7 @@ import {
 } from "base/services/priceEngine";
 import { eurToToman } from "@/lib/Exchangerate";
 import { calculateDiscount } from "base/utils/discountCalculator";
+import { variantAttributeImages, variantAttributeUnits } from "@/lib/variantImages";
 
 async function getUserFromToken() {
   const cookieStore = await cookies();
@@ -232,6 +233,10 @@ export async function POST(request) {
             sku: v.sku,
             attributes: v.attributes instanceof Map ? Object.fromEntries(v.attributes) : v.attributes || {},
             images: v.images || [],
+            // تصویرِ نماینده‌ی هر ویژگیِ تصویری (برای نمایش thumbnail در سبد) — Change 4
+            attributeImages: variantAttributeImages(v, p),
+            // مقادیرِ واحدهای هر ویژگیِ چندواحدی (برای نمایش در سبد/سفارش) — Change 3
+            attributeUnits: variantAttributeUnits(v, p),
           } : null,
 
           usedProduct: up ? {

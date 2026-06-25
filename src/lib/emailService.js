@@ -57,9 +57,23 @@ function splitName(text) {
   return { farsi: text, english: '' };
 }
 
-function renderVariant(variantAttrs) {
-  if (!variantAttrs || !Object.keys(variantAttrs).length) return '';
-  return Object.entries(variantAttrs)
+// نمایشِ واریانت در ایمیل — اولویت با variantSnapshot (برچسب + چندواحدی)، فالبک attributes
+function renderVariant(item) {
+  const snap = item?.variantSnapshot;
+  if (Array.isArray(snap) && snap.length) {
+    return snap
+      .map((e) => {
+        const val =
+          e.units && Object.keys(e.units).length
+            ? Object.entries(e.units).map(([u, v]) => `${v} ${u}`).join('/')
+            : e.value;
+        return `${e.label || e.name}: ${val}`;
+      })
+      .join(' / ');
+  }
+  const attrs = item?.variant?.attributes;
+  if (!attrs || !Object.keys(attrs).length) return '';
+  return Object.entries(attrs)
     .map(([k, v]) => `${k}: ${v}`)
     .join(' / ');
 }
@@ -195,8 +209,7 @@ function buildEmailHtml(order, isAdmin = false, installment = null) {
     const productName  = item.product?.name ?? '—';
     const productImage = item.product?.mainImage ?? '';
     const { farsi, english } = splitName(productName);
-    const variantAttrs = item.variant?.attributes ?? null;
-    const variantText  = renderVariant(variantAttrs);
+    const variantText  = renderVariant(item);
     const unitPrice    = item.unitPrice ?? 0;
     const totalLine    = unitPrice * (item.quantity ?? 1);
 

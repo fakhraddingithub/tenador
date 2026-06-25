@@ -150,6 +150,11 @@ const OrderSchema = new mongoose.Schema(
 
         // انتخاب‌های فرایند سفارش (خدمات و محصولات مرتبط)
         flowSelections: { type: [OrderFlowSelectionSchema], default: [] },
+
+        // اسنپ‌شاتِ نمایشیِ واریانت در لحظه‌ی ثبت — مستقل از زنده‌بودنِ واریانت/دسته.
+        // شاملِ { name, label, value, image?, units? } برای نمایشِ تصویر و چندواحدی.
+        // برای آیتم‌های قدیمی خالی است؛ نمایش به variant.attributes برمی‌گردد.
+        variantSnapshot: { type: [mongoose.Schema.Types.Mixed], default: [] },
       },
     ],
 

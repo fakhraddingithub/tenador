@@ -6,7 +6,9 @@ import ProductHeader from "./ProductHeader";
 import ProductPrice from "./ProductPrice";
 import AddToCartButton from "./AddToCartButton";
 import WishlistButton from "./WishlistButton";
+import VariantSelector from "./VariantSelector";
 import { useOrderFlowCart } from "@/components/modules/orderFlow/useOrderFlowCart";
+import { valueImages, attrUnits, unitValue } from "@/lib/variantImages";
 
 /* ─────────────────────────────────────────
    Helpers
@@ -52,11 +54,12 @@ function formatTierValue(tier) {
 /* ─────────────────────────────────────────
    Component
 ───────────────────────────────────────── */
-const ProductInfo = ({ product, selectedVariant, onVariantChange }) => {
+const ProductInfo = ({ product, selectedVariant, onVariantChange, onSelectionChange }) => {
   const hasVariants =
     Array.isArray(product.variants) && product.variants.length > 0;
 
   const [selection, setSelection] = useState({});
+  const [unitSelection, setUnitSelection] = useState({}); // واحدِ فعالِ هر ویژگیِ چندواحدی
   const [quantity, setQuantity] = useState(1);
   const [errorMessage, setErrorMessage] = useState(""); // استیت برای مدیریت خطای انتخاب ویژگی
   const addToCartWrapperRef = useRef(null); // رفرنس برای پیدا کردن مکان دکمه در صفحه
@@ -76,9 +79,18 @@ const ProductInfo = ({ product, selectedVariant, onVariantChange }) => {
 
   const optionKeys = Object.keys(variantOptions);
 
+  // چندواحدی: واحدِ فعال، برچسبِ مقدار در آن واحد، و تعویضِ واحد
+  const getActiveUnit = (attrKey) =>
+    unitSelection[attrKey] ?? attrUnits(product, attrKey)[0];
+  const getValueLabel = (attrKey, val) =>
+    unitValue(product, attrKey, val, getActiveUnit(attrKey));
+  const onUnitChange = (attrKey, unit) =>
+    setUnitSelection((prev) => ({ ...prev, [attrKey]: unit }));
+
   function handleSelect(attrKey, value) {
     const newSelection = { ...selection, [attrKey]: value };
     setSelection(newSelection);
+    onSelectionChange?.(newSelection);
     setErrorMessage("");
 
     if (optionKeys.every((k) => newSelection[k])) {
@@ -355,51 +367,20 @@ const ProductInfo = ({ product, selectedVariant, onVariantChange }) => {
 
       {/* ── Variant Selectors ── */}
       {hasVariants && (
-        <div className="space-y-5">
-          {optionKeys.map((attrKey) => {
-            const values = variantOptions[attrKey];
-            const label = labelMap[attrKey] || attrKey;
-
-            return (
-              <div key={attrKey}>
-                <p className="text-sm font-semibold text-gray-700 mb-2">
-                  {label}
-                  {selection[attrKey] && (
-                    <span className="mr-2 font-normal text-gray-400">
-                      {selection[attrKey]}
-                    </span>
-                  )}
-                </p>
-
-                <div className="flex flex-wrap gap-2">
-                  {values.map((val) => {
-                    const isSelected = selection[attrKey] === val;
-
-                    return (
-                      <button
-                        key={val}
-                        type="button"
-                        onClick={() => handleSelect(attrKey, val)}
-                        title={val}
-                        className={`
-                          relative px-4 py-2 rounded-lg border-2 text-sm font-medium
-                          transition-all duration-200 select-none
-                          ${
-                            isSelected
-                              ? "border-[#aa4725] bg-[#aa4725]/5 text-[#aa4725] shadow-sm"
-                              : "border-gray-200 text-gray-700 hover:border-[#aa4725]/50"
-                          }
-                        `}
-                      >
-                        {val}
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-            );
-          })}
-        </div>
+        <VariantSelector
+          optionKeys={optionKeys}
+          variantOptions={variantOptions}
+          labelMap={labelMap}
+          selection={selection}
+          onSelect={handleSelect}
+          getValueImage={(attrKey, val) =>
+            valueImages(product, attrKey, val)[0] || null
+          }
+          getValueLabel={getValueLabel}
+          getUnits={(attrKey) => attrUnits(product, attrKey)}
+          getActiveUnit={getActiveUnit}
+          onUnitChange={onUnitChange}
+        />
       )}
 
       {/* ── Quantity Selector with Discount Tiers ── */}

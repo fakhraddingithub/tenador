@@ -244,6 +244,8 @@ The color code may appear in formats like:
     required: true,
     options: '',
     prompt: '',
+    multiUnit: false,
+    units: '',
   });
 
   const [technicalStats, setTechnicalStats] = useState([]);
@@ -467,6 +469,10 @@ The color code may appear in formats like:
       required: currentVariantAttr.required,
       options: currentVariantAttr.uiType === 'dropdown' ? (currentVariantAttr.options ? currentVariantAttr.options.split(',').map(o => o.trim()).filter(Boolean) : []) : [],
       prompt: currentVariantAttr.prompt || '',
+      multiUnit: !!currentVariantAttr.multiUnit,
+      units: currentVariantAttr.multiUnit
+        ? (currentVariantAttr.units ? currentVariantAttr.units.split(',').map(u => u.trim()).filter(Boolean) : [])
+        : [],
     };
 
     if (editingVariantId) {
@@ -494,6 +500,8 @@ The color code may appear in formats like:
       required: true,
       options: '',
       prompt: '',
+      multiUnit: false,
+      units: '',
     });
     setEditingVariantId(null);
   };
@@ -507,6 +515,8 @@ The color code may appear in formats like:
       required: v.required ?? true,
       options: Array.isArray(v.options) ? v.options.join(', ') : '',
       prompt: v.prompt || '',
+      multiUnit: v.multiUnit ?? false,
+      units: Array.isArray(v.units) ? v.units.join(', ') : '',
     });
     document.getElementById('variant-form-anchor')?.scrollIntoView({ behavior: 'smooth' });
   };
@@ -918,6 +928,27 @@ The color code may appear in formats like:
                   />
                 )}
 
+                {/* ویژگیِ چندواحدی (مثلاً سایز با EU و سانتی‌متر) */}
+                <div className="space-y-3 border-t pt-4">
+                  <label className="flex items-center gap-2 text-sm font-bold cursor-pointer select-none">
+                    <input
+                      type="checkbox"
+                      checked={!!currentVariantAttr.multiUnit}
+                      onChange={(e) => setCurrentVariantAttr((p) => ({ ...p, multiUnit: e.target.checked }))}
+                      className="w-5 h-5 rounded accent-[var(--color-primary)]"
+                    />
+                    ویژگیِ چندواحدی (مقدار در چند واحد وارد می‌شود)
+                  </label>
+                  {currentVariantAttr.multiUnit && (
+                    <Input
+                      label="واحدها (با کاما جدا کنید؛ واحدِ اول مقدارِ اصلی است)"
+                      value={currentVariantAttr.units}
+                      onChange={(e) => setCurrentVariantAttr((p) => ({ ...p, units: e.target.value }))}
+                      placeholder="EU, سانتی‌متر"
+                    />
+                  )}
+                </div>
+
                 <Textarea
                   label="راهنمای پرامپت (اختیاری)"
                   value={currentVariantAttr.prompt}
@@ -946,7 +977,14 @@ The color code may appear in formats like:
                 {variantAttributes.map((v) => (
                   <div key={v.id} className="flex items-center justify-between p-3 bg-white border border-neutral-200 rounded-lg shadow-sm">
                     <div className="flex flex-col">
-                      <span className="font-bold text-sm">{v.label}</span>
+                      <span className="font-bold text-sm flex items-center gap-1.5">
+                        {v.label}
+                        {v.multiUnit && (
+                          <span className="text-[9px] font-bold bg-amber-50 text-amber-600 border border-amber-100 px-1.5 py-0.5 rounded">
+                            چندواحدی: {(v.units || []).join('/')}
+                          </span>
+                        )}
+                      </span>
                       <span className="text-[10px] text-neutral-400 font-mono">{v.name} • {v.uiType}</span>
                     </div>
                     <div className="flex gap-2">

@@ -13,6 +13,8 @@ import {
 import { toast } from "react-toastify";
 import { useOrderFlowCart } from "@/components/modules/orderFlow/useOrderFlowCart";
 import GalleryImageViewer from "@/components/ui/GalleryImageViewer";
+import VariantSelector from "@/components/templates/product/VariantSelector";
+import { buildGalleryImages, valueImages, attrUnits, unitValue } from "@/lib/variantImages";
 
 /* ─────────────────────────────────────────
    Helpers
@@ -65,6 +67,7 @@ export default function QuickViewModal({
 }) {
   const [quantity, setQuantity] = useState(1);
   const [selection, setSelection] = useState({});
+  const [unitSelection, setUnitSelection] = useState({}); // واحدِ فعالِ هر ویژگیِ چندواحدی
   const [selectedVariant, setSelectedVariant] = useState(null);
 
   // افزودن به سبد با پشتیبانی از فرایند سفارش
@@ -85,30 +88,19 @@ export default function QuickViewModal({
 
   const optionKeys = Object.keys(variantOptions);
 
-  const allImages = useMemo(() => {
-    if (!product) return [];
-    const base = [product.mainImage, ...(product.gallery || [])].filter(
-      Boolean,
-    );
-    const variantImgs = (product.variants || [])
-      .flatMap((v) => v.images || [])
-      .filter(Boolean)
-      .filter((img) => !base.includes(img));
-    return [...base, ...variantImgs];
-  }, [product]);
+  // چندواحدی: واحدِ فعال، برچسبِ مقدار در آن واحد، و تعویضِ واحد
+  const getActiveUnit = (attrKey) =>
+    unitSelection[attrKey] ?? attrUnits(product, attrKey)[0];
+  const getValueLabel = (attrKey, val) =>
+    unitValue(product, attrKey, val, getActiveUnit(attrKey));
+  const onUnitChange = (attrKey, unit) =>
+    setUnitSelection((prev) => ({ ...prev, [attrKey]: unit }));
 
-  const activeGalleryImages = useMemo(() => {
-    if (
-      selectedVariant &&
-      Array.isArray(selectedVariant.images) &&
-      selectedVariant.images.length > 0
-    ) {
-      const selectedImgs = selectedVariant.images.filter(Boolean);
-      const rest = allImages.filter((img) => !selectedImgs.includes(img));
-      return [...selectedImgs, ...rest];
-    }
-    return allImages;
-  }, [allImages, selectedVariant]);
+  // گالریِ یکتاسازی‌شده با اولویتِ تصاویرِ مقادیرِ انتخاب‌شده (مثلاً رنگ انتخاب‌شده)
+  const activeGalleryImages = useMemo(
+    () => buildGalleryImages(product, selection),
+    [product, selection],
+  );
 
   const [selectedImage, setSelectedImage] = useState(null);
   const displayedImage =
@@ -117,16 +109,14 @@ export default function QuickViewModal({
   function handleVariantSelect(attrKey, value) {
     const newSelection = { ...selection, [attrKey]: value };
     setSelection(newSelection);
+    // گالری با اولویتِ تصاویرِ مقدارِ انتخاب‌شده به‌روزرسانی می‌شود؛ انتخابِ دستیِ
+    // تصویر صفر می‌شود تا تصویرِ همان مقدار جلو بیفتد.
+    setSelectedImage(null);
 
     if (optionKeys.every((k) => newSelection[k])) {
-      const matched = findMatchingVariant(product.variants, newSelection);
-      setSelectedVariant(matched);
-      if (matched?.images?.length) {
-        setSelectedImage(matched.images[0]);
-      }
+      setSelectedVariant(findMatchingVariant(product.variants, newSelection));
     } else {
       setSelectedVariant(null);
-      setSelectedImage(null);
     }
   }
 
@@ -419,58 +409,21 @@ export default function QuickViewModal({
 
           {/* ── Variant Selectors ── */}
           {hasVariants && (
-            <div className="flex flex-col gap-4 sm:gap-5">
-              {optionKeys.map((attrKey) => {
-                const values = variantOptions[attrKey];
-                const label = labelMap[attrKey] || attrKey;
-
-                return (
-                  <div key={attrKey} className="flex flex-col gap-2 sm:gap-3">
-                    <h4 className="text-[13px] sm:text-[14px] font-bold text-gray-800 flex items-center gap-2">
-                      <span className="w-1 h-4 bg-[#aa4725] rounded-full shrink-0" />
-                      {label}
-                      {selection[attrKey] && (
-                        <span className="font-normal text-gray-400 text-xs mr-1">
-                          {selection[attrKey]}
-                        </span>
-                      )}
-                    </h4>
-
-                    <div className="flex flex-wrap gap-2">
-                      {values.map((val) => {
-                        const isActive = selection[attrKey] === val;
-
-                        return (
-                          <button
-                            key={val}
-                            type="button"
-                            onClick={() => handleVariantSelect(attrKey, val)}
-                            title={val}
-                            className={`
-                              relative min-w-[52px] sm:min-w-[60px] px-3 sm:px-4
-                              h-9 sm:h-10 lg:h-11
-                              rounded-lg text-xs font-bold
-                              transition-all duration-300 border
-                              flex items-center justify-center gap-1.5
-                              ${
-                                isActive
-                                  ? "bg-[#aa4725] text-white border-[#aa4725] shadow-lg shadow-[#aa4725]/30 scale-[1.05]"
-                                  : "bg-white/40 backdrop-blur-md border-gray-200 text-gray-500 hover:border-[#aa4725]/40 hover:bg-white/60"
-                              }
-                            `}
-                          >
-                            {isActive && (
-                              <span className="w-1.5 h-1.5 bg-white rounded-full animate-pulse shrink-0" />
-                            )}
-                            {val}
-                          </button>
-                        );
-                      })}
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
+            <VariantSelector
+              compact
+              optionKeys={optionKeys}
+              variantOptions={variantOptions}
+              labelMap={labelMap}
+              selection={selection}
+              onSelect={handleVariantSelect}
+              getValueImage={(attrKey, val) =>
+                valueImages(product, attrKey, val)[0] || null
+              }
+              getValueLabel={getValueLabel}
+              getUnits={(attrKey) => attrUnits(product, attrKey)}
+              getActiveUnit={getActiveUnit}
+              onUnitChange={onUnitChange}
+            />
           )}
 
           {/* ── تخفیف تعدادی ── */}

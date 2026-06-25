@@ -9,6 +9,7 @@ import Select from '@/components/admin/Select';
 import ImageUpload from '@/components/admin/ImageUpload';
 import { showToast } from '@/lib/toast';
 import { showError } from '@/lib/swal';
+import { makeComboKey } from '@/lib/variantKey';
 
 // ---------------------------
 // Helpers
@@ -48,10 +49,7 @@ function generateCombinations(options) {
   return result;
 }
 
-/** Combination key matches exactly what the backend uses as variantDetails key */
-function getComboKey(combo) {
-  return Object.values(combo).join('-');
-}
+// کلید ترکیب از util مشترک ساخته می‌شود (makeComboKey) — هم‌خوان با سرور.
 
 // ---------------------------
 // Main Component
@@ -101,10 +99,18 @@ export default function ProductCreateForm({ initialData = {} }) {
     initialData.variantOptions || {}
   );
   const [variantInputBuffer, setVariantInputBuffer] = useState({});
-  // { "Red-300g": { price: "", images: [] } }
+  // { "color=...&size=...": { price: "", images: [] } }
   const [variantDetails, setVariantDetails] = useState(
     initialData.variantDetails || {}
   );
+
+  // ترکیب‌هایی که ادمین صریحاً تیکشان را برداشته (مجموعه‌ی استثناها). «انتخاب‌شده»
+  // در زمان رندر مشتق می‌شود: هر ترکیبی که در این مجموعه نباشد ساخته می‌شود. بنابراین
+  // ترکیب‌های تازه‌اضافه‌شده خودبه‌خود انتخاب‌اند و نیازی به effectِ همگام‌سازی نیست.
+  const [deselectedCombos, setDeselectedCombos] = useState(() => new Set());
+
+  // متادیتای سطحِ مقدار: تصاویرِ مشترکِ هر مقدار { [attr]: { [value]: { images: [] } } }
+  const [variantMeta, setVariantMeta] = useState(initialData.variantMeta || {});
 
   // ---------------------------
   // Data Fetching
@@ -191,12 +197,62 @@ export default function ProductCreateForm({ initialData = {} }) {
     setVariantDetails(prev => {
       const next = {};
       for (const combo of combinations) {
-        const key = getComboKey(combo);
+        const key = makeComboKey(combo);
         next[key] = prev[key] || { price: '', images: [] };
       }
       return next;
     });
   }, [combinations]);
+
+  const toggleCombo = (key) => {
+    setDeselectedCombos((prev) => {
+      const next = new Set(prev);
+      if (next.has(key)) next.delete(key);
+      else next.add(key);
+      return next;
+    });
+  };
+
+  const setAllCombos = (select) => {
+    setDeselectedCombos(
+      select ? new Set() : new Set(combinations.map(makeComboKey))
+    );
+  };
+
+  // تنظیم تصاویرِ یک مقدار مشخص (مثلاً تصاویرِ رنگ «قرمز»)
+  const setValueImages = (attrName, value, images) => {
+    setVariantMeta((prev) => ({
+      ...prev,
+      [attrName]: {
+        ...(prev[attrName] || {}),
+        [value]: { ...(prev[attrName]?.[value] || {}), images },
+      },
+    }));
+  };
+
+  // فقط متادیتای مقادیرِ موجود را نگه می‌دارد (هرسِ مقادیرِ حذف‌شده)
+  const buildCleanVariantMeta = () => {
+    const clean = {};
+    for (const attr of categoryVariantAttributes) {
+      for (const val of variantOptions[attr.name] || []) {
+        const entry = variantMeta[attr.name]?.[val];
+        if (!entry) continue;
+        const imgs = Array.isArray(entry.images) ? entry.images.filter(Boolean) : [];
+        const hasUnits = entry.units && Object.keys(entry.units).length > 0;
+        if (imgs.length || hasUnits) {
+          if (!clean[attr.name]) clean[attr.name] = {};
+          clean[attr.name][val] = { ...entry, images: imgs };
+        }
+      }
+    }
+    return clean;
+  };
+
+  // تعداد ترکیب‌های انتخاب‌شده (مشتق در رندر، بدون state اضافه)
+  const selectedComboCount = combinations.reduce(
+    (n, c) => (deselectedCombos.has(makeComboKey(c)) ? n : n + 1),
+    0
+  );
 
   // ---------------------------
   // Field updaters
@@ -241,7 +297,34 @@ export default function ProductCreateForm({ initialData = {} }) {
   // ---------------------------
   // Variant option tag-input
   // ---------------------------
-  function addVariantValue(attrName) {
+  function addVariantValue(attr) {
+    const attrName = attr.name;
+
+    if (attr.multiUnit) {
+      const units = attr.units || [];
+      const buf = variantInputBuffer[attrName] || {};
+      const primary = (buf[units[0]] || '').trim();
+      if (!primary) return; // مقدارِ واحدِ اصلی الزامی است
+
+      setVariantOptions(prev => {
+        const existing = prev[attrName] || [];
+        if (existing.includes(primary)) return prev;
+        return { ...prev, [attrName]: [...existing, primary] };
+      });
+
+      const unitsMap = {};
+      for (const u of units) unitsMap[u] = (buf[u] || '').trim();
+      setVariantMeta(prev => ({
+        ...prev,
+        [attrName]: {
+          ...(prev[attrName] || {}),
+          [primary]: { ...(prev[attrName]?.[primary] || {}), units: unitsMap },
+        },
+      }));
+      setVariantInputBuffer(prev => ({ ...prev, [attrName]: {} }));
+      return;
+    }
+
     const value = (variantInputBuffer[attrName] || '').trim();
     if (!value) return;
 
@@ -339,6 +422,12 @@ export default function ProductCreateForm({ initialData = {} }) {
         ...(Object.keys(variantOptions).length > 0 && {
           variantOptions,
           variantDetails: normalizedVariantDetails,
+          // فقط ترکیب‌های انتخاب‌شده (غیرِ استثناشده) ساخته می‌شوند
+          selectedCombos: combinations
+            .map(makeComboKey)
+            .filter((k) => !deselectedCombos.has(k)),
+          // تصاویرِ سطحِ مقدار (مشترک بین واریانت‌ها)
+          variantMeta: buildCleanVariantMeta(),
         }),
       };
 
@@ -621,52 +710,93 @@ export default function ProductCreateForm({ initialData = {} }) {
                 </label>
 
                 {/* Input + Add button */}
-                <div className="flex gap-2 mb-3">
-                  <input
-                    type="text"
-                    className="flex-1 border rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-400"
-                    placeholder={`مقدار جدید برای ${attr.label}…`}
-                    value={variantInputBuffer[attr.name] || ''}
-                    onChange={e =>
-                      setVariantInputBuffer(prev => ({
-                        ...prev,
-                        [attr.name]: e.target.value,
-                      }))
-                    }
-                    onKeyDown={e => {
-                      if (e.key === 'Enter') {
-                        e.preventDefault();
-                        addVariantValue(attr.name);
+                {attr.multiUnit ? (
+                  <div className="mb-3 space-y-2">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                      {(attr.units || []).map((unit, ui) => (
+                        <input
+                          key={unit}
+                          type="text"
+                          className="border rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-400"
+                          placeholder={`${attr.label} — ${unit}${ui === 0 ? ' (اصلی)' : ''}`}
+                          value={variantInputBuffer[attr.name]?.[unit] || ''}
+                          onChange={e =>
+                            setVariantInputBuffer(prev => ({
+                              ...prev,
+                              [attr.name]: { ...(prev[attr.name] || {}), [unit]: e.target.value },
+                            }))
+                          }
+                          onKeyDown={e => {
+                            if (e.key === 'Enter') {
+                              e.preventDefault();
+                              addVariantValue(attr);
+                            }
+                          }}
+                        />
+                      ))}
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => addVariantValue(attr)}
+                      className="px-4 py-2 bg-purple-600 text-white rounded text-sm hover:bg-purple-700 transition-colors"
+                    >
+                      + افزودن مقدار
+                    </button>
+                  </div>
+                ) : (
+                  <div className="flex gap-2 mb-3">
+                    <input
+                      type="text"
+                      className="flex-1 border rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-400"
+                      placeholder={`مقدار جدید برای ${attr.label}…`}
+                      value={variantInputBuffer[attr.name] || ''}
+                      onChange={e =>
+                        setVariantInputBuffer(prev => ({
+                          ...prev,
+                          [attr.name]: e.target.value,
+                        }))
                       }
-                    }}
-                  />
-                  <button
-                    type="button"
-                    onClick={() => addVariantValue(attr.name)}
-                    className="px-4 py-2 bg-purple-600 text-white rounded text-sm hover:bg-purple-700 transition-colors"
-                  >
-                    + افزودن
-                  </button>
-                </div>
+                      onKeyDown={e => {
+                        if (e.key === 'Enter') {
+                          e.preventDefault();
+                          addVariantValue(attr);
+                        }
+                      }}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => addVariantValue(attr)}
+                      className="px-4 py-2 bg-purple-600 text-white rounded text-sm hover:bg-purple-700 transition-colors"
+                    >
+                      + افزودن
+                    </button>
+                  </div>
+                )}
 
                 {/* Value tags */}
                 <div className="flex flex-wrap gap-2 min-h-[2rem]">
-                  {(variantOptions[attr.name] || []).map(val => (
-                    <span
-                      key={val}
-                      className="inline-flex items-center gap-1 px-3 py-1 bg-purple-100 text-purple-800 rounded-full text-sm font-medium"
-                    >
-                      {val}
-                      <button
-                        type="button"
-                        onClick={() => removeVariantValue(attr.name, val)}
-                        className="text-purple-400 hover:text-red-600 font-bold leading-none ml-1"
-                        title="حذف"
+                  {(variantOptions[attr.name] || []).map(val => {
+                    const u = attr.multiUnit ? variantMeta[attr.name]?.[val]?.units : null;
+                    const display = u
+                      ? (attr.units || []).map(unit => `${u[unit] ?? '—'} ${unit}`).join(' / ')
+                      : val;
+                    return (
+                      <span
+                        key={val}
+                        className="inline-flex items-center gap-1 px-3 py-1 bg-purple-100 text-purple-800 rounded-full text-sm font-medium"
                       >
-                        ×
-                      </button>
-                    </span>
-                  ))}
+                        {display}
+                        <button
+                          type="button"
+                          onClick={() => removeVariantValue(attr.name, val)}
+                          className="text-purple-400 hover:text-red-600 font-bold leading-none ml-1"
+                          title="حذف"
+                        >
+                          ×
+                        </button>
+                      </span>
+                    );
+                  })}
                   {!(variantOptions[attr.name] || []).length && (
                     <span className="text-xs text-gray-400 italic">
                       هنوز مقداری اضافه نشده
@@ -677,31 +807,103 @@ export default function ProductCreateForm({ initialData = {} }) {
             ))}
           </div>
 
+          {/* ── تصاویرِ هر مقدار (مشترک بین واریانت‌ها) ── */}
+          {categoryVariantAttributes.some(
+            (attr) => (variantOptions[attr.name] || []).length > 0
+          ) && (
+            <div className="mb-6 border rounded-lg p-4 bg-blue-50/30">
+              <h4 className="font-semibold mb-1 text-blue-800">تصاویر هر مقدار</h4>
+              <p className="text-xs text-gray-500 mb-4">
+                تصاویری که برای هر مقدار (مثلاً هر رنگ) بارگذاری می‌کنید بین همه‌ی
+                واریانت‌هایی که آن مقدار را دارند مشترک است؛ لازم نیست برای هر سایز جدا آپلود کنید.
+              </p>
+              <div className="space-y-5">
+                {categoryVariantAttributes.map((attr) => {
+                  const values = variantOptions[attr.name] || [];
+                  if (!values.length) return null;
+                  return (
+                    <div key={attr.name}>
+                      <p className="text-sm font-bold text-gray-700 mb-2">{attr.label}</p>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        {values.map((val) => (
+                          <div key={val} className="border rounded-lg p-3 bg-white">
+                            <p className="text-xs font-semibold text-gray-600 mb-2">{val}</p>
+                            <ImageUpload
+                              label=""
+                              multiple
+                              value={variantMeta[attr.name]?.[val]?.images || []}
+                              onChange={(imgs) => setValueImages(attr.name, val, imgs)}
+                              folder="product/variant-values"
+                            />
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
           {/* ── Combination detail cards ── */}
           {combinations.length > 0 && (
             <div>
-              <h4 className="font-semibold mb-3 text-gray-700">
-                جزئیات ترکیب‌ها
-                <span className="mr-2 text-xs font-normal text-gray-400">
-                  ({combinations.length} ترکیب)
-                </span>
-              </h4>
+              <div className="flex flex-wrap items-center justify-between gap-3 mb-2">
+                <h4 className="font-semibold text-gray-700">
+                  جزئیات ترکیب‌ها
+                  <span className="mr-2 text-xs font-normal text-gray-400">
+                    ({selectedComboCount} از {combinations.length} انتخاب‌شده)
+                  </span>
+                </h4>
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setAllCombos(true)}
+                    className="px-3 py-1.5 text-xs font-bold rounded-lg border border-purple-200 text-purple-700 hover:bg-purple-50 transition-colors"
+                  >
+                    انتخاب همه
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setAllCombos(false)}
+                    className="px-3 py-1.5 text-xs font-bold rounded-lg border border-gray-200 text-gray-500 hover:bg-gray-50 transition-colors"
+                  >
+                    حذف همه
+                  </button>
+                </div>
+              </div>
+
+              <p className="text-xs text-gray-500 mb-4">
+                فقط ترکیب‌هایی که تیک دارند ساخته می‌شوند؛ ترکیب‌های بدون تیک نادیده گرفته می‌شوند.
+              </p>
 
               <div className="space-y-4">
                 {combinations.map(combo => {
-                  const key = getComboKey(combo);
+                  const key = makeComboKey(combo);
                   const detail = variantDetails[key] || {
                     price: '',
                     images: [],
                   };
+                  const isSelected = !deselectedCombos.has(key);
 
                   return (
                     <div
                       key={key}
-                      className="border rounded-lg p-4 bg-white shadow-sm"
+                      className={`border rounded-lg p-4 bg-white shadow-sm transition-opacity ${
+                        isSelected ? 'border-purple-200' : 'border-gray-200 opacity-60'
+                      }`}
                     >
-                      {/* Combo label */}
+                      {/* Combo label + انتخاب ساخت */}
                       <div className="flex flex-wrap items-center gap-2 mb-4">
+                        <label className="flex items-center cursor-pointer select-none">
+                          <input
+                            type="checkbox"
+                            checked={isSelected}
+                            onChange={() => toggleCombo(key)}
+                            className="w-5 h-5 rounded accent-purple-600 shrink-0"
+                          />
+                          <span className="sr-only">ساخت این ترکیب</span>
+                        </label>
                         {Object.entries(combo).map(([k, v]) => (
                           <span
                             key={k}
@@ -713,9 +915,11 @@ export default function ProductCreateForm({ initialData = {} }) {
                             </span>
                           </span>
                         ))}
-                        <span className="text-xs text-gray-400 mr-auto font-mono">
-                          کلید: {key}
-                        </span>
+                        {!isSelected && (
+                          <span className="text-[11px] font-bold text-gray-400 bg-gray-100 border border-gray-200 px-2 py-0.5 rounded-full mr-auto">
+                            ساخته نمی‌شود
+                          </span>
+                        )}
                       </div>
 
                       {/* Price */}

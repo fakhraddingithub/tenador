@@ -33,6 +33,7 @@ import User from "base/models/User";
 import UsedProduct from "base/models/UsedProduct";
 import { computeCartPrice } from "base/services/priceEngine";
 import { recomputeOrderTotals, derivePaymentStatus } from "base/services/orderRecalc";
+import { buildVariantSnapshot } from "@/lib/variantImages";
 
 async function getAdminUser() {
   const cookieStore = await cookies();
@@ -111,6 +112,18 @@ export async function POST(req, { params }) {
       }
     }
 
+    // اسنپ‌شاتِ واریانت برای نمایشِ پایدارِ سفارش (تصویر/چندواحدی)
+    let variantSnapshot = [];
+    if (variantId) {
+      const [snapProduct, snapVariant] = await Promise.all([
+        Product.findById(productId).populate("category", "variantAttributes").lean(),
+        Variant.findById(variantId).lean(),
+      ]);
+      if (snapVariant && snapProduct) {
+        variantSnapshot = buildVariantSnapshot(snapVariant, snapProduct);
+      }
+    }
+
     // خواندنِ اولیه فقط برای گرفتنِ کاربرِ سفارش (قیمت‌گذاری سنگین است و نباید داخل
     // تراکنش اجرا شود). سندِ نهایی دوباره داخل تراکنش و تازه خوانده می‌شود.
     const orderForUser = await Order.findById(orderId).select("user").lean();
@@ -173,6 +186,7 @@ export async function POST(req, { params }) {
         unitDiscount,
         basePriceToman,
         flowSelections: [],
+        variantSnapshot,
       });
 
       order.reviewedBy = new mongoose.Types.ObjectId(admin.userId);

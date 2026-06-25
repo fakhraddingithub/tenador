@@ -29,6 +29,12 @@ const AttributeSchema = new mongoose.Schema(
     options: { type: [String], default: [] },
 
     prompt: { type: String, trim: true },
+
+    // ویژگیِ چندواحدی (Change 3): مثلاً سایز با واحدهای ["EU", "سانتی‌متر"].
+    // مقدارِ اصلی (primary) همان واحدِ اول است؛ سایر واحدها فقط برای نمایش‌اند و
+    // در product.variantMeta[attr][value].units نگه‌داری می‌شوند.
+    multiUnit: { type: Boolean, default: false },
+    units: { type: [String], default: [] },
   },
   { _id: false },
 );

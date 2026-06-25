@@ -27,6 +27,7 @@ import {
 import FlowSelectionsList from '@/components/modules/orderFlow/FlowSelectionsList';
 import { useUser } from '@/components/features/auth/UserContext';
 import StockReminderToast from '@/components/order/StockReminderToast';
+import VariantSummary from '@/components/order/VariantSummary';
 
 export default function CartDrawer({ isOpen, onClose }) {
     const { user } = useUser();
@@ -251,15 +252,12 @@ export default function CartDrawer({ isOpen, onClose }) {
 
                                                 {/* ویژگی‌های واریانت */}
                                                 {item.variant && Object.keys(item.variant.attributes || {}).length > 0 && (
-                                                    <div className="flex flex-wrap gap-1 mb-2">
-                                                        {Object.entries(item.variant.attributes).map(([key, val]) => (
-                                                            <span
-                                                                key={key}
-                                                                className="text-xs bg-gray-100 px-2 py-1 rounded"
-                                                            >
-                                                                {val}
-                                                            </span>
-                                                        ))}
+                                                    <div className="mb-2">
+                                                        <VariantSummary
+                                                            attributes={item.variant.attributes}
+                                                            attributeImages={item.variant.attributeImages}
+                                                            attributeUnits={item.variant.attributeUnits}
+                                                        />
                                                     </div>
                                                 )}
 

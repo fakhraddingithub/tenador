@@ -1,5 +1,6 @@
 import React from 'react';
 import { MdOutlineConfirmationNumber, MdOutlineReceiptLong, MdOutlinePayment } from 'react-icons/md';
+import VariantSummary from '@/components/order/VariantSummary';
 
 const OrderSummary = ({ order }) => {
   const formatPrice = (price) =>
@@ -116,16 +117,12 @@ const OrderSummary = ({ order }) => {
 
                 {/* واریانت — زیر نام (مخصوص کالای نو) */}
                 {!isUsed && variantAttrs && Object.keys(variantAttrs).length > 0 && (
-                  <div className="flex flex-wrap gap-1 mb-1.5">
-                    {Object.entries(variantAttrs).map(([key, val]) => (
-                      <span
-                        key={key}
-                        className="inline-flex items-center gap-0.5 text-[10px] bg-[#aa4725]/8 text-[#aa4725] border border-[#aa4725]/20 px-2 py-0.5 rounded-full font-medium"
-                      >
-                        <span className="text-slate-500">{key}:</span>
-                        {val}
-                      </span>
-                    ))}
+                  <div className="mb-1.5">
+                    <VariantSummary
+                      attributes={variantAttrs}
+                      attributeImages={item.variant?.attributeImages}
+                      attributeUnits={item.variant?.attributeUnits}
+                    />
                   </div>
                 )}
 

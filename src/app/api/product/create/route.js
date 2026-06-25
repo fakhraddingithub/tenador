@@ -5,6 +5,7 @@ import Variant from "base/models/Variant";
 import { createSlug } from "base/utils/slugify";
 import { v2 as cloudinary } from "cloudinary";
 import { revalidateContent } from "@/lib/revalidate";
+import { makeComboKey } from "@/lib/variantKey";
 
 /* ----------------------------------
    Cloudinary config
@@ -114,8 +115,10 @@ export async function POST(req) {
       technicalStats,
       label,
       isActive, // ✨ اضافه شد: دریافت وضعیت فعال بودن از فرانت‌اند
-      variantOptions, 
-      variantDetails
+      variantOptions,
+      variantDetails,
+      selectedCombos, // آرایه‌ی کلیدِ ترکیب‌های انتخاب‌شده برای ساخت (اختیاری)
+      variantMeta, // متادیتای سطحِ مقدار (تصاویرِ مشترک هر مقدار و ...)
     } = body;
 
     /* -------------------------------
@@ -209,6 +212,7 @@ export async function POST(req) {
       sport: sport || undefined,
       attributes: attributes || {},
       technicalStats: technicalStats || {},
+      variantMeta: variantMeta && typeof variantMeta === "object" ? variantMeta : {},
       label: label || "none",
       isActive: isActive !== undefined ? isActive : true, // ✨ اضافه شد: اگر ارسال نشود به صورت پیش‌فرض true خواهد بود
     });
@@ -217,8 +221,14 @@ export async function POST(req) {
         Generate & Create Variants
      ------------------------------- */
     if (variantOptions && Object.keys(variantOptions).length > 0) {
-      const combinations = generateCombinations(variantOptions);
-      
+      const allCombinations = generateCombinations(variantOptions);
+      // اگر لیست انتخاب‌شده ارسال شده باشد فقط همان ترکیب‌ها ساخته می‌شوند؛
+      // در غیر این صورت همه‌ی ترکیب‌ها (سازگاری با کلاینت‌های قدیمی)
+      const selectedSet = Array.isArray(selectedCombos) ? new Set(selectedCombos) : null;
+      const combinations = selectedSet
+        ? allCombinations.filter((c) => selectedSet.has(makeComboKey(c)))
+        : allCombinations;
+
       if (combinations.length > 0) {
         const variantPromises = combinations.map(async (combo, index) => {
           const variantSku = `${product.sku}-V${index + 1}`;
@@ -227,10 +237,7 @@ export async function POST(req) {
           let specificPrice = Number(basePrice) || 0;
 
           if (variantDetails) {
-            const comboValues = Object.values(combo);
-            const exactKey = comboValues.join("-");
-
-            const matchedDetail = variantDetails[exactKey] || comboValues.reduce((acc, val) => acc || variantDetails[val], null);
+            const matchedDetail = variantDetails[makeComboKey(combo)] || null;
 
             if (matchedDetail) {
               if (matchedDetail.price) specificPrice = Number(matchedDetail.price);

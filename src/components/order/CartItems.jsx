@@ -53,6 +53,18 @@ const CartItems = ({ items, onUpdateQuantity, onRemoveItem, onRemoveFlowSelectio
           item.product?.variant?.attributes ||
           null;
 
+        // تصویرِ نماینده‌ی هر ویژگیِ تصویری (مثلاً رنگ) برای نمایش thumbnail — Change 4
+        const variantAttrImages =
+          item.variantAttributeImages ||
+          item.product?.variant?.attributeImages ||
+          null;
+
+        // مقادیرِ واحدهای ویژگی‌های چندواحدی (مثلاً سایز EU/سانتی‌متر) — Change 3
+        const variantAttrUnits =
+          item.variantAttributeUnits ||
+          item.product?.variant?.attributeUnits ||
+          null;
+
         // جداسازی بخش فارسی و انگلیسی نام (مثل صفحه محصول)
         const splitName = (text) => {
           if (!text) return { farsi: '', english: '' };
@@ -117,15 +129,33 @@ const CartItems = ({ items, onUpdateQuantity, onRemoveItem, onRemoveFlowSelectio
                 {/* واریانت — زیر نام محصول */}
                 {variantAttrs && Object.keys(variantAttrs).length > 0 && (
                   <div className="flex flex-wrap gap-1.5 mb-2">
-                    {Object.entries(variantAttrs).map(([key, val]) => (
-                      <span
-                        key={key}
-                        className="inline-flex items-center gap-1 text-xs bg-[#aa4725]/8 text-[#aa4725] border border-[#aa4725]/20 px-2.5 py-0.5 rounded-full font-medium"
-                      >
-                        <span className="text-slate-500 text-[10px]">{key}:</span>
-                        {val}
-                      </span>
-                    ))}
+                    {Object.entries(variantAttrs).map(([key, val]) => {
+                      const img = variantAttrImages?.[key];
+                      const units = variantAttrUnits?.[key];
+                      // چندواحدی: همه‌ی واحدها نمایش داده می‌شوند (مثلاً «۴۲ EU / ۲۶.۵ سانتی‌متر»)
+                      const text = units
+                        ? Object.entries(units)
+                            .map(([u, v]) => `${v} ${u}`)
+                            .join(' / ')
+                        : val;
+                      return (
+                        <span
+                          key={key}
+                          className="inline-flex items-center gap-1 text-xs bg-[#aa4725]/8 text-[#aa4725] border border-[#aa4725]/20 px-2.5 py-0.5 rounded-full font-medium"
+                        >
+                          {img ? (
+                            <img
+                              src={img}
+                              alt={val}
+                              className="w-4 h-4 rounded-full object-cover border border-[#aa4725]/20"
+                            />
+                          ) : (
+                            <span className="text-slate-500 text-[10px]">{key}:</span>
+                          )}
+                          {text}
+                        </span>
+                      );
+                    })}
                   </div>
                 )}
 

@@ -17,6 +17,7 @@ import {
   Search, Minus, Pencil,
 } from "lucide-react";
 import OrderFlowSelectionsView from "@/components/order/OrderFlowSelectionsView";
+import VariantSummary from "@/components/order/VariantSummary";
 import InstallmentChecksPanel from "@/components/admin/financial/InstallmentChecksPanel";
 
 /* ─── Constants ─────────────────────────────────────────────────────── */
@@ -2297,16 +2298,14 @@ export default function AdminOrderDetailClient({ orderId }) {
                       {item.product?.sku && (
                         <p className="text-xs text-gray-400 font-mono">{item.product.sku}</p>
                       )}
-                      {item.variant?.attributes && Object.keys(item.variant.attributes).length > 0 && (
-                        <div className="flex flex-wrap gap-1.5 mt-1.5">
-                          {Object.entries(item.variant.attributes).map(([k, v]) => (
-                            <span key={k}
-                              className="inline-flex items-center gap-1 text-[11px] bg-[#aa4725]/8 text-[#aa4725]
-                                border border-[#aa4725]/20 px-2 py-0.5 rounded-full font-medium">
-                              <span className="text-gray-400">{k}:</span>
-                              {v}
-                            </span>
-                          ))}
+                      {(item.variantSnapshot?.length ||
+                        (item.variant?.attributes &&
+                          Object.keys(item.variant.attributes).length > 0)) && (
+                        <div className="mt-1.5">
+                          <VariantSummary
+                            snapshot={item.variantSnapshot}
+                            attributes={item.variant?.attributes}
+                          />
                         </div>
                       )}
                       {item.flowSelections?.length > 0 && (

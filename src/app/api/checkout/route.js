@@ -45,6 +45,7 @@ import {
 import { autoAssignUsedProductTracking } from "@/lib/usedTrackingAuto";
 import { sendOrderConfirmationEmail } from "@/lib/emailService";
 import { INSTALLMENT_MONTHLY_INTEREST_RATE } from "@/lib/constants";
+import { buildVariantSnapshot } from "@/lib/variantImages";
 
 // تبدیل انتخاب فرایندِ غنی‌شده (از پرایس‌انجین) به شکل ذخیره‌سازی در سفارش
 function mapFlowSelectionToOrder(sel) {
@@ -336,6 +337,25 @@ export async function POST(req) {
       };
     }
 
+    // ─── اسنپ‌شاتِ واریانت برای نمایشِ پایدارِ سفارش (تصویر/چندواحدی) ───
+    // مستقل از computeCartPrice بارگذاری می‌شود چون آنجا category فقط _id دارد.
+    const snapProductMap = new Map();
+    const snapVariantMap = new Map();
+    const snapVariantIds = priceResult.items.filter((i) => i.variantId).map((i) => i.variantId);
+    if (snapVariantIds.length) {
+      const snapProductIds = priceResult.items
+        .filter((i) => i.variantId && i.productId)
+        .map((i) => i.productId);
+      const [snapProducts, snapVariants] = await Promise.all([
+        Product.find({ _id: { $in: snapProductIds } })
+          .populate("category", "variantAttributes")
+          .lean(),
+        Variant.find({ _id: { $in: snapVariantIds } }).lean(),
+      ]);
+      for (const p of snapProducts) snapProductMap.set(p._id.toString(), p);
+      for (const v of snapVariants) snapVariantMap.set(v._id.toString(), v);
+    }
+
     // ═══ ۲. ساخت آیتم‌های سفارش ═══
     const orderItems = priceResult.items.map((item, idx) => {
       const originalItem = items[idx];
@@ -363,15 +383,22 @@ export async function POST(req) {
         };
       }
 
+      const vId = item.variantId || originalItem?.variantId || null;
+      const pId = item.productId || originalItem?.productId;
+      const snapVariant = vId ? snapVariantMap.get(String(vId)) : null;
+      const snapProduct = snapProductMap.get(String(pId));
+
       return {
-        product:   item.productId || originalItem?.productId,
-        variant:   item.variantId || originalItem?.variantId || null,
+        product:   pId,
+        variant:   vId,
         itemType:  "product",
         quantity:  item.quantity  || originalItem?.quantity  || 1,
         unitPrice: item.unitFinalPrice || item.unitPrice,
         flowSelections: Array.isArray(item.flowSelections)
           ? item.flowSelections.map(mapFlowSelectionToOrder)
           : [],
+        variantSnapshot:
+          snapVariant && snapProduct ? buildVariantSnapshot(snapVariant, snapProduct) : [],
       };
     });
 

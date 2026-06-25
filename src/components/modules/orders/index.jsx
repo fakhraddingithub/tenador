@@ -11,6 +11,7 @@ import { useState, useEffect } from 'react'
 import { toast } from 'react-toastify'
 import Swal from 'sweetalert2'
 import OrderFlowSelectionsView from '@/components/order/OrderFlowSelectionsView'
+import VariantSummary from '@/components/order/VariantSummary'
 import ReviewModal from './ReviewModal'
 
 // وضعیت‌های سفارش که اجازه‌ی ثبت نظر می‌دهند (مطابق enum مدل Order)
@@ -37,6 +38,25 @@ function splitName(text) {
     return { farsi: text.substring(0, match.index).trim(), english: match[0].trim() }
   }
   return { farsi: text, english: '' }
+}
+
+// متنِ خلاصه‌ی واریانت برای نماهای فشرده — اولویت با اسنپ‌شات (چندواحدی)، فالبک attributes
+function variantSummaryText(item) {
+  const snap = item?.variantSnapshot
+  if (Array.isArray(snap) && snap.length) {
+    return snap
+      .map((e) =>
+        e.units && Object.keys(e.units).length
+          ? Object.entries(e.units).map(([u, v]) => `${v} ${u}`).join('/')
+          : e.value
+      )
+      .join(' / ')
+  }
+  const attrs = item?.variant?.attributes
+  if (attrs && Object.keys(attrs).length) {
+    return Object.entries(attrs).map(([k, v]) => `${k}: ${v}`).join(' / ')
+  }
+  return ''
 }
 
 const PAYMENT_STATUS = {
@@ -153,13 +173,13 @@ function OrderDetailModal({ order, onClose, isStore = false }) {
                           {english && <span className="text-xs font-semibold text-gray-500 tracking-tight" dir="ltr">{english}</span>}
                           {!farsi && !english && name && <p className="text-sm font-bold text-[#1a1a1a] line-clamp-1">{name}</p>}
                         </div>
-                        {variantAttrs && Object.keys(variantAttrs).length > 0 && (
-                          <div className="flex flex-wrap gap-1 mt-1">
-                            {Object.entries(variantAttrs).map(([k, v]) => (
-                              <span key={k} className="text-[10px] bg-[#aa4725]/8 text-[#aa4725] border border-[#aa4725]/20 px-2 py-0.5 rounded-full">
-                                {k}: {v}
-                              </span>
-                            ))}
+                        {(item.variantSnapshot?.length ||
+                          (variantAttrs && Object.keys(variantAttrs).length > 0)) && (
+                          <div className="mt-1">
+                            <VariantSummary
+                              snapshot={item.variantSnapshot}
+                              attributes={variantAttrs}
+                            />
                           </div>
                         )}
                         {item.flowSelections?.length > 0 && (
@@ -367,9 +387,9 @@ function OrderCard({ order, onDelete, onViewDetail, reviewedIds, onReview }) {
                   <p className="text-xs font-bold text-[#1a1a1a] leading-tight truncate tracking-tight">
                     {farsi || english || name}
                   </p>
-                  {variantAttrs && Object.keys(variantAttrs).length > 0 && (
+                  {variantSummaryText(item) && (
                     <p className="text-[10px] text-[#aa4725] truncate mt-0.5">
-                      {Object.entries(variantAttrs).map(([k, v]) => `${k}: ${v}`).join(' / ')}
+                      {variantSummaryText(item)}
                     </p>
                   )}
                   <p className="text-[10px] text-gray-400 mt-0.5">× {item.quantity}</p>
