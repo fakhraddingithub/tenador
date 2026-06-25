@@ -36,6 +36,14 @@ const DiscountRuleSchema = new mongoose.Schema(
     // آی‌دی محصول/دسته/سری/برند (برای تایپ‌های مرتبط)
     targets: [{ type: mongoose.Schema.Types.ObjectId, index: true }],
 
+    // زیرفیلتر برند — فقط برای نوع category معنا دارد.
+    // اگر تنظیم شود، تخفیف فقط روی محصولاتی اعمال می‌شود که هم در دسته‌ی هدف
+    // و هم در یکی از این برندها باشند (مثلاً «راکت‌های ویلسون»).
+    // خالی = همه‌ی برندهای آن دسته.
+    targetBrands: [
+      { type: mongoose.Schema.Types.ObjectId, ref: "Brand", index: true },
+    ],
+
     // برای userRole: مثلاً ["coach", "national_player"]
     targetRoles: {
       type: [String],

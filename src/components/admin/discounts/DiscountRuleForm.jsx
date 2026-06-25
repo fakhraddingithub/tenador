@@ -7,7 +7,7 @@ import { toast } from "react-toastify";
 const TYPES = [
   { value: "global",    label: "همه محصولات",      hasTargets: false },
   { value: "product",   label: "محصول خاص",        hasTargets: true, searchType: "product" },
-  { value: "category",  label: "دسته‌بندی",         hasTargets: false },
+  { value: "category",  label: "دسته‌بندی",         hasTargets: true, searchType: "category" },
   { value: "variant",   label: "واریانت خاص",       hasTargets: true, searchType: "variant" },
   { value: "serie",     label: "سری محصولات",       hasTargets: true, searchType: "serie" },
   { value: "brand",     label: "برند",              hasTargets: true, searchType: "brand" },
@@ -240,7 +240,7 @@ function VariantSearchField({ selectedItems, onAdd, onRemove }) {
 // ─── تبدیل آی‌دی به اسم هنگام ویرایش ────────────────────────────────────────
 async function resolveTargetLabels(type, ids) {
   if (!ids?.length) return [];
-  const searchTypeMap = { product: "product", brand: "brand", serie: "serie" };
+  const searchTypeMap = { product: "product", brand: "brand", serie: "serie", category: "category" };
   const searchType = searchTypeMap[type];
 
   // برای واریانت: از API variant با productId نمی‌توانیم مستقیم بگیریم
@@ -267,11 +267,12 @@ async function resolveTargetLabels(type, ids) {
 export default function DiscountRuleForm({ initial, onSuccess, onCancel }) {
   const [form, setForm]                   = useState(defaultForm);
   const [selectedTargets, setSelectedTargets] = useState([]);
+  const [selectedBrands, setSelectedBrands]   = useState([]); // زیرفیلتر برند برای نوع category
   const [saving, setSaving]               = useState(false);
   const [resolvingTargets, setResolvingTargets] = useState(false);
 
   useEffect(() => {
-    if (!initial) { setForm(defaultForm); setSelectedTargets([]); return; }
+    if (!initial) { setForm(defaultForm); setSelectedTargets([]); setSelectedBrands([]); return; }
 
     setForm({
       ...defaultForm, ...initial,
@@ -291,6 +292,14 @@ export default function DiscountRuleForm({ initial, onSuccess, onCancel }) {
     } else {
       setSelectedTargets([]);
     }
+
+    // resolve زیرفیلتر برند (فقط برای نوع category)
+    if (initial.type === "category" && initial.targetBrands?.length) {
+      resolveTargetLabels("brand", initial.targetBrands)
+        .then((resolved) => setSelectedBrands(resolved));
+    } else {
+      setSelectedBrands([]);
+    }
   }, [initial]);
 
   const set = (path, value) =>
@@ -303,9 +312,13 @@ export default function DiscountRuleForm({ initial, onSuccess, onCancel }) {
   const addTarget    = (item) => setSelectedTargets((prev) => prev.find((t) => t._id === item._id) ? prev : [...prev, item]);
   const removeTarget = (id)   => setSelectedTargets((prev) => prev.filter((t) => t._id !== id));
 
+  const addBrand    = (item) => setSelectedBrands((prev) => prev.find((b) => b._id === item._id) ? prev : [...prev, item]);
+  const removeBrand = (id)   => setSelectedBrands((prev) => prev.filter((b) => b._id !== id));
+
   const handleTypeChange = (newType) => {
     set("type", newType);
     setSelectedTargets([]); // ریست targets
+    setSelectedBrands([]);  // ریست زیرفیلتر برند
   };
 
   const handleSubmit = async (e) => {
@@ -314,6 +327,7 @@ export default function DiscountRuleForm({ initial, onSuccess, onCancel }) {
     const payload = {
       ...form,
       targets:    selectedTargets.map((t) => t._id),
+      targetBrands: form.type === "category" ? selectedBrands.map((b) => b._id) : [],
       discount:   { ...form.discount, value: Number(form.discount.value) },
       conditions: { ...form.conditions, minCartValue: Number(form.conditions.minCartValue) || 0, maxUsagePerUser: form.conditions.maxUsagePerUser ? Number(form.conditions.maxUsagePerUser) : null },
       priority:   Number(form.priority),
@@ -357,6 +371,16 @@ export default function DiscountRuleForm({ initial, onSuccess, onCancel }) {
           ) : (
             <TargetSearchField searchType={selectedType.searchType} selectedItems={selectedTargets} onAdd={addTarget} onRemove={removeTarget} />
           )}
+        </Field>
+      )}
+
+      {/* زیرفیلتر برند — فقط برای نوع دسته‌بندی، پس از انتخاب دسته */}
+      {form.type === "category" && selectedTargets.length > 0 && (
+        <Field label="فیلتر برند (اختیاری)">
+          <p className="text-xs text-gray-500 mb-2">
+            در صورت انتخاب برند، تخفیف فقط روی محصولاتی اعمال می‌شود که هم در دسته‌ی بالا و هم در این برند(ها) باشند. خالی بگذارید تا همه‌ی برندهای این دسته شامل شوند.
+          </p>
+          <TargetSearchField searchType="brand" selectedItems={selectedBrands} onAdd={addBrand} onRemove={removeBrand} />
         </Field>
       )}
 

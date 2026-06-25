@@ -88,7 +88,14 @@ export async function loadActiveRules(product, user = null, cartValueToman = 0) 
     .sort({ priority: 1 }) // عدد کمتر = اولویت بالاتر
     .lean();
 
-  return rules;
+  // زیرفیلتر برند برای قوانین category: اگر قانون targetBrands داشته باشد،
+  // فقط زمانی اعمال می‌شود که برند این محصول هم در آن لیست باشد.
+  const brandIdStr = brandId ? brandId.toString() : null;
+  return rules.filter((r) => {
+    if (r.type !== "category") return true;
+    if (!Array.isArray(r.targetBrands) || r.targetBrands.length === 0) return true;
+    return brandIdStr != null && r.targetBrands.map((b) => b.toString()).includes(brandIdStr);
+  });
 }
 
 // ---------------------------------------------------------------------------
@@ -199,7 +206,13 @@ function ruleMatchesProduct(rule, product) {
   const targets = (rule.targets || []).map((t) => t.toString());
   if (rule.type === "product")  return targets.includes(product._id.toString());
   if (rule.type === "brand")    return targets.includes(String(product.brand?._id ?? product.brand));
-  if (rule.type === "category") return targets.includes(String(product.category?._id ?? product.category));
+  if (rule.type === "category") {
+    if (!targets.includes(String(product.category?._id ?? product.category))) return false;
+    // زیرفیلتر برند: اگر تنظیم شده باشد، برند محصول هم باید منطبق باشد
+    const brandFilter = (rule.targetBrands || []).map((b) => b.toString());
+    if (brandFilter.length === 0) return true;
+    return brandFilter.includes(String(product.brand?._id ?? product.brand));
+  }
   if (rule.type === "serie")    return targets.includes(String(product.serie?._id ?? product.serie));
   return false;
 }
