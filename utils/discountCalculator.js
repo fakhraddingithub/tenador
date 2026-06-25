@@ -1,5 +1,6 @@
 // base/utils/discountCalculator.js
 import DiscountRule from "base/models/DiscountRule";
+import { ruleBrandFilterPasses } from "base/utils/discountMatch";
 
 /**
  * محاسبه تخفیف نهایی برای یک آیتم سبد خرید
@@ -49,6 +50,9 @@ export async function calculateDiscount({ product, user, cartTotal = 0, isFirstO
   let appliedRule = null;
 
   for (const rule of rules) {
+    // زیرفیلتر برند برای قوانین category (مثلاً «راکت‌های ویلسون») — منطقِ مشترک
+    if (!ruleBrandFilterPasses(rule, product.brand)) continue;
+
     // بررسی شرایط
     if (rule.conditions?.minCartValue && cartTotal < rule.conditions.minCartValue) continue;
     if (rule.conditions?.onlyFirstOrders && !isFirstOrder) continue;

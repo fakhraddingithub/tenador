@@ -1,6 +1,7 @@
 // services/ruleLoader.js
 import mongoose from "mongoose";
 import DiscountRule from "base/models/DiscountRule";
+import { ruleBrandFilterPasses } from "base/utils/discountMatch";
 // import redis from "base/lib/redis";
 
 const RULE_TTL = parseInt(process.env.PRICE_CACHE_TTL || "300", 10);
@@ -39,6 +40,9 @@ export async function loadRulesForProduct(product) {
     ]
   }).sort({ priority: 1 }).lean();
 
-  // await redis.set(key, JSON.stringify(rules), "EX", RULE_TTL);
-  return rules;
+  // زیرفیلتر برند برای قوانین category — منطقِ مشترک در utils/discountMatch
+  const filtered = rules.filter((r) => ruleBrandFilterPasses(r, brandId));
+
+  // await redis.set(key, JSON.stringify(filtered), "EX", RULE_TTL);
+  return filtered;
 }

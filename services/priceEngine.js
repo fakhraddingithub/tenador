@@ -22,6 +22,7 @@ import Coupon from "base/models/Coupon";
 import CoachCredit from "base/models/CoachCredit";
 import Order from "base/models/Order";
 import QuantityDiscount from "base/models/QuantityDiscount";
+import { ruleBrandFilterPasses } from "base/utils/discountMatch";
 
 // ---------------------------------------------------------------------------
 // 1. نرخ ارز
@@ -88,14 +89,8 @@ export async function loadActiveRules(product, user = null, cartValueToman = 0) 
     .sort({ priority: 1 }) // عدد کمتر = اولویت بالاتر
     .lean();
 
-  // زیرفیلتر برند برای قوانین category: اگر قانون targetBrands داشته باشد،
-  // فقط زمانی اعمال می‌شود که برند این محصول هم در آن لیست باشد.
-  const brandIdStr = brandId ? brandId.toString() : null;
-  return rules.filter((r) => {
-    if (r.type !== "category") return true;
-    if (!Array.isArray(r.targetBrands) || r.targetBrands.length === 0) return true;
-    return brandIdStr != null && r.targetBrands.map((b) => b.toString()).includes(brandIdStr);
-  });
+  // زیرفیلتر برند برای قوانین category — منطقِ مشترک در utils/discountMatch
+  return rules.filter((r) => ruleBrandFilterPasses(r, brandId));
 }
 
 // ---------------------------------------------------------------------------
@@ -208,10 +203,8 @@ function ruleMatchesProduct(rule, product) {
   if (rule.type === "brand")    return targets.includes(String(product.brand?._id ?? product.brand));
   if (rule.type === "category") {
     if (!targets.includes(String(product.category?._id ?? product.category))) return false;
-    // زیرفیلتر برند: اگر تنظیم شده باشد، برند محصول هم باید منطبق باشد
-    const brandFilter = (rule.targetBrands || []).map((b) => b.toString());
-    if (brandFilter.length === 0) return true;
-    return brandFilter.includes(String(product.brand?._id ?? product.brand));
+    // زیرفیلتر برند — منطقِ مشترک در utils/discountMatch
+    return ruleBrandFilterPasses(rule, product.brand?._id ?? product.brand);
   }
   if (rule.type === "serie")    return targets.includes(String(product.serie?._id ?? product.serie));
   return false;
