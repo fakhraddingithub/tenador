@@ -32,6 +32,45 @@ export function valueImages(product, attrName, value) {
   return Array.isArray(imgs) ? imgs.filter(Boolean) : [];
 }
 
+/**
+ * سوآچ‌های تصویریِ سطحِ مقدار برای نمایش روی کارتِ محصول (Change 2/4): برای هر
+ * مقداری که در variantMeta تصویر دارد یک سوآچ (اولین تصویرش) برمی‌گرداند.
+ *   [{ key: 'color=قرمز', attr: 'color', value: 'قرمز', image: '...' }]
+ * اگر هیچ تصویرِ سطحِ مقداری نبود، فراخواننده می‌تواند به variant.images (رفتار
+ * قدیمی) برگردد.
+ */
+export function valueImageSwatches(product) {
+  const meta = product?.variantMeta || {};
+  const out = [];
+  for (const [attr, values] of Object.entries(meta)) {
+    for (const [value, data] of Object.entries(values || {})) {
+      const img = Array.isArray(data?.images) ? data.images.filter(Boolean)[0] : null;
+      if (img) out.push({ key: `${attr}=${value}`, attr, value, image: img });
+    }
+  }
+  return out;
+}
+
+/**
+ * در دسترس بودنِ یک مقدار با توجه به انتخابِ جاری (cascade filtering, Bug 2):
+ * مقدار «در دسترس» است اگر دستِ‌کم یک واریانت وجود داشته باشد که آن مقدار را برای
+ * این ویژگی داشته باشد و با همه‌ی ویژگی‌های *دیگرِ* انتخاب‌شده هم‌خوان باشد.
+ * انتخابِ خودِ همین ویژگی نادیده گرفته می‌شود تا کاربر بتواند آزادانه عوضش کند.
+ * برای ۲+ ویژگی هم درست کار می‌کند و به API اضافی نیازی ندارد.
+ */
+export function valueAvailable(variants, optionKeys, selection, attrKey, value) {
+  return (variants || []).some((variant) => {
+    const attrs = variantAttrsToObject(variant);
+    if (attrs[attrKey] !== value) return false;
+    for (const k of optionKeys) {
+      if (k === attrKey) continue;
+      const sel = selection?.[k];
+      if (sel != null && sel !== "" && attrs[k] !== sel) return false;
+    }
+    return true;
+  });
+}
+
 // همه‌ی تصاویرِ سطحِ مقدار در کل محصول (یکتا)
 export function allValueImages(product) {
   const meta = product?.variantMeta || {};

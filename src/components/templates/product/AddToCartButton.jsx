@@ -4,12 +4,12 @@ import { useState } from "react";
 import { FiShoppingCart, FiCheck, FiLoader, FiTrash2 } from "react-icons/fi";
 import { motion, AnimatePresence } from "framer-motion";
 
-const AddToCartButton = ({ onAddToCart, inCart = false }) => {
+const AddToCartButton = ({ onAddToCart, inCart = false, disabled = false }) => {
   const [isAdded,   setIsAdded]   = useState(false);
   const [isLoading, setIsLoading] = useState(false);
 
   const handleClick = async () => {
-    if (isLoading) return;
+    if (isLoading || disabled) return;
 
     // اگه در سبده → مستقیم حذف کن بدون انیمیشن لودینگ
     if (inCart) {
@@ -28,7 +28,9 @@ const AddToCartButton = ({ onAddToCart, inCart = false }) => {
   };
 
   // رنگ پس‌زمینه بر اساس وضعیت
-  const bgColor = inCart
+  const bgColor = disabled
+    ? "#d1d5db"   // خاکستری روشن — غیرفعال (انتخاب ناقص/ناموجود)
+    : inCart
     ? "#e5e7eb"   // خاکستری — در سبد
     : isAdded
     ? "#10b981"   // سبز — تایید شد
@@ -37,8 +39,8 @@ const AddToCartButton = ({ onAddToCart, inCart = false }) => {
   return (
     <button
       onClick={handleClick}
-      disabled={isLoading}
-      className="relative w-full flex-1 group outline-none"
+      disabled={isLoading || disabled}
+      className={`relative w-full flex-1 group outline-none ${disabled ? "cursor-not-allowed" : ""}`}
     >
       <motion.div
         animate={{ backgroundColor: bgColor, scale: isLoading ? 0.98 : 1 }}

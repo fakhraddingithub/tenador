@@ -140,7 +140,16 @@
       "PowerShell(npx eslint \"src/app/\\(Site\\)/collection/page.jsx\" \"src/app/\\(Site\\)/collection/[collectionSlug]/page.jsx\" \"src/components/admin/events/EventList.jsx\" \"src/components/admin/events/EventForm.jsx\" \"src/components/features/events/EventCard.jsx\" \"next.config.mjs\" 2>&1 | Select-Object -First 60; \"EXIT=$LASTEXITCODE\")",
       "Bash(grep -E \"error|\\\\.jsx|\\\\.js$\")",
       "PowerShell(npx eslint \"src/components/ui/GalleryImageViewer.jsx\")",
-      "PowerShell(npx eslint \"src/components/ui/GalleryImageViewer.jsx\" \"src/components/templates/product/ProductGallery.jsx\" \"src/components/modules/cart/QuickViewModal.jsx\" \"src/components/templates/secondHands/Usedquickviewmodal.jsx\")"
+      "PowerShell(npx eslint \"src/components/ui/GalleryImageViewer.jsx\" \"src/components/templates/product/ProductGallery.jsx\" \"src/components/modules/cart/QuickViewModal.jsx\" \"src/components/templates/secondHands/Usedquickviewmodal.jsx\")",
+      "Bash(git stash *)",
+      "Bash(grep -vE \"set-state-in-effect|immutability|exhaustive-deps|Calling setState|accessed before|declared here|Effects are intended|update external|Subscribe for|Calling setState|cascading|body of an effect|Update external|^\\\\s*\\\\*|react\\\\.dev|^\\\\s*$|^\\\\s*[0-9]+ \\\\|\")",
+      "Bash(echo \"exit=$?\")",
+      "Bash(npm test *)",
+      "Bash(ls tests *)",
+      "Bash(node -e \"require\\('@babel/core'\\) && console.log\\('babel ok'\\)\")",
+      "Bash(npx jest *)",
+      "Bash(sed -n '1,60p' jest.config.js)",
+      "Bash(sed -n '1,60p' jest.config.mjs)"
     ]
   }
 }

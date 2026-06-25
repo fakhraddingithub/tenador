@@ -4,6 +4,7 @@ import { useState, useMemo } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { FaEye, FaRegHeart, FaHeart, FaArrowLeft } from "react-icons/fa";
+import { valueImageSwatches } from "@/lib/variantImages";
 
 export default function ProductCard({ product, rate, onQuickView, onToggleWishlist, isWishlisted = false, overlay = null, campaignBadge = null }) {
   const { mainImage, name, slug, basePrice, label } = product;
@@ -19,11 +20,17 @@ export default function ProductCard({ product, rate, onQuickView, onToggleWishli
   const discountPercent = product.discountPercent ?? 0;
   const hasDiscount = finalPriceToman < basePriceToman;
 
-  // ── واریانت‌ها ──────────────────────────────────────────────────────────────
-  const variantsWithImages = useMemo(
-    () => (product.variants || []).filter((v) => Array.isArray(v.images) && v.images.length > 0),
-    [product.variants]
-  );
+  // ── سوآچ‌های واریانت ────────────────────────────────────────────────────────
+  // اولویت با تصاویرِ سطحِ مقدار (variantMeta، رفتار جدیدِ Change 2/4)؛ اگر نبود به
+  // تصاویرِ سطحِ واریانت (variant.images، رفتار قدیمی) برمی‌گردیم تا محصولاتِ قدیمی
+  // هم سوآچ داشته باشند (سازگاریِ عقب‌رو).
+  const swatches = useMemo(() => {
+    const metaSwatches = valueImageSwatches(product);
+    if (metaSwatches.length > 0) return metaSwatches;
+    return (product.variants || [])
+      .filter((v) => Array.isArray(v.images) && v.images.length > 0)
+      .map((v) => ({ key: v._id, image: v.images[0] }));
+  }, [product]);
   const [activeImage, setActiveImage]       = useState(mainImage);
   const [activeVariantId, setActiveVariantId] = useState(null);
 
@@ -99,14 +106,15 @@ export default function ProductCard({ product, rate, onQuickView, onToggleWishli
         <Image src={activeImage} alt={name} fill className="object-contain p-3 transition-all duration-500 group-hover:scale-110" />
       </Link>
 
-      {/* واریانت‌ها */}
+      {/* سوآچ‌های واریانت */}
       <div className="relative z-20 flex items-center justify-center gap-1.5 h-[56px] bg-white">
-        {variantsWithImages.length > 0 ? variantsWithImages.map((variant) => (
-          <button key={variant._id} type="button"
-            onMouseEnter={() => { setActiveImage(variant.images[0]); setActiveVariantId(variant._id); }}
-            onClick={(e) => { e.preventDefault(); e.stopPropagation(); setActiveImage(variant.images[0]); setActiveVariantId(variant._id); }}
-            className={`relative w-8 h-8 rounded-[6px] overflow-hidden border-2 transition-all duration-200 ${activeVariantId === variant._id ? "border-[var(--color-primary)] scale-110 shadow-md" : "border-gray-100 hover:border-[color-mix(in_srgb,var(--color-primary)_60%,transparent)] opacity-80 hover:opacity-100"}`}>
-            <Image src={variant.images[0]} alt={name} fill className="object-cover" />
+        {swatches.length > 0 ? swatches.map((swatch) => (
+          <button key={swatch.key} type="button"
+            title={swatch.value || undefined}
+            onMouseEnter={() => { setActiveImage(swatch.image); setActiveVariantId(swatch.key); }}
+            onClick={(e) => { e.preventDefault(); e.stopPropagation(); setActiveImage(swatch.image); setActiveVariantId(swatch.key); }}
+            className={`relative w-8 h-8 rounded-[6px] overflow-hidden border-2 transition-all duration-200 ${activeVariantId === swatch.key ? "border-[var(--color-primary)] scale-110 shadow-md" : "border-gray-100 hover:border-[color-mix(in_srgb,var(--color-primary)_60%,transparent)] opacity-80 hover:opacity-100"}`}>
+            <Image src={swatch.image} alt={swatch.value || name} fill className="object-cover" />
           </button>
         )) : <div className="h-8" />}
       </div>

@@ -14,7 +14,7 @@ import { toast } from "react-toastify";
 import { useOrderFlowCart } from "@/components/modules/orderFlow/useOrderFlowCart";
 import GalleryImageViewer from "@/components/ui/GalleryImageViewer";
 import VariantSelector from "@/components/templates/product/VariantSelector";
-import { buildGalleryImages, valueImages, attrUnits, unitValue } from "@/lib/variantImages";
+import { buildGalleryImages, valueImages, attrUnits, unitValue, valueAvailable } from "@/lib/variantImages";
 
 /* ─────────────────────────────────────────
    Helpers
@@ -195,6 +195,10 @@ export default function QuickViewModal({
     baseTomanPrice > 0
       ? Math.round(((baseTomanPrice - displayPrice) / baseTomanPrice) * 100)
       : 0;
+
+  // دکمه افزودن وقتی غیرفعال است که محصول واریانت دارد ولی هنوز ترکیبِ معتبرِ
+  // کاملی انتخاب نشده (selectedVariant فقط با انتخابِ کاملِ همه‌ی ویژگی‌ها ست می‌شود)
+  const cannotAddToCart = hasVariants && !selectedVariant;
 
   function handleAddToCart() {
     let variantId = null;
@@ -423,6 +427,9 @@ export default function QuickViewModal({
               getUnits={(attrKey) => attrUnits(product, attrKey)}
               getActiveUnit={getActiveUnit}
               onUnitChange={onUnitChange}
+              isValueDisabled={(attrKey, val) =>
+                !valueAvailable(product.variants, optionKeys, selection, attrKey, val)
+              }
             />
           )}
 
@@ -525,15 +532,22 @@ export default function QuickViewModal({
 
             {/* دکمه‌ها */}
             <div className="flex gap-2 sm:gap-3">
+              {/* وقتی واریانت دارد ولی ترکیبِ معتبری کامل نشده، غیرفعال است تا کاربر
+                  هرگز به خطای «این ترکیب موجود نیست» نرسد (Bug 2) */}
               <button
                 onClick={handleAddToCart}
-                className="
+                disabled={cannotAddToCart}
+                className={`
                   flex-[5] h-12 sm:h-13 lg:h-14
                   rounded-lg font-bold text-sm sm:text-base lg:text-lg
                   flex items-center justify-center gap-2 sm:gap-3
-                  transition-all shadow-xl active:scale-95
-                  bg-[#aa4725] text-white hover:bg-[#8e3b1e] shadow-[#aa4725]/20
-                "
+                  transition-all shadow-xl
+                  ${
+                    cannotAddToCart
+                      ? "bg-gray-300 text-gray-500 cursor-not-allowed"
+                      : "bg-[#aa4725] text-white hover:bg-[#8e3b1e] shadow-[#aa4725]/20 active:scale-95"
+                  }
+                `}
               >
                 <FaShoppingCart size={17} />
                 افزودن به سبد خرید

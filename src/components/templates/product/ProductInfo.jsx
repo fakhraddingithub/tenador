@@ -8,7 +8,7 @@ import AddToCartButton from "./AddToCartButton";
 import WishlistButton from "./WishlistButton";
 import VariantSelector from "./VariantSelector";
 import { useOrderFlowCart } from "@/components/modules/orderFlow/useOrderFlowCart";
-import { valueImages, attrUnits, unitValue } from "@/lib/variantImages";
+import { valueImages, attrUnits, unitValue, valueAvailable } from "@/lib/variantImages";
 
 /* ─────────────────────────────────────────
    Helpers
@@ -380,6 +380,9 @@ const ProductInfo = ({ product, selectedVariant, onVariantChange, onSelectionCha
           getUnits={(attrKey) => attrUnits(product, attrKey)}
           getActiveUnit={getActiveUnit}
           onUnitChange={onUnitChange}
+          isValueDisabled={(attrKey, val) =>
+            !valueAvailable(product.variants, optionKeys, selection, attrKey, val)
+          }
         />
       )}
 
@@ -585,7 +588,12 @@ const ProductInfo = ({ product, selectedVariant, onVariantChange, onSelectionCha
         <div className="flex items-center gap-3">
           {/* قرار دادن دکمه افزودن به سبد در یک Wrapper برای دریافت موقعیت مختصاتی */}
           <div className="flex-1" ref={addToCartWrapperRef}>
-            <AddToCartButton onAddToCart={handleAddToCart} />
+            {/* وقتی واریانت دارد ولی هنوز ترکیبِ معتبری کامل انتخاب نشده، دکمه غیرفعال
+                است تا کاربر هرگز به خطای «این ترکیب موجود نیست» نرسد (Bug 2) */}
+            <AddToCartButton
+              onAddToCart={handleAddToCart}
+              disabled={hasVariants && !selectedVariant}
+            />
           </div>
           <WishlistButton onToggle={handleWishlist} />
         </div>

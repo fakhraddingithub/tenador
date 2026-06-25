@@ -12,6 +12,7 @@ npm test             # Jest test suite (node env; tests/setup.js spins up mongod
 npm test -- tests/paymentWorkflow.test.js   # Run a single test file
 npm test -- -t "name of test"                # Run tests matching a name
 npm run test:db      # Test MongoDB connection
+npm run check:mongodb # Inspect MongoDB collections/state
 
 # Database migrations (run when needed)
 npm run migrate:used-products
@@ -20,6 +21,7 @@ npm run migrate:coach-codes
 # Background workers (must run separately from the web process)
 npm run worker:prices
 npm run worker:discounts
+npm run worker:installment-reminders   # Sends installment due-date reminders
 ```
 
 ## Architecture
@@ -94,7 +96,10 @@ Beyond the storefront, several self-contained subsystems each span a model + ser
 | CMS info pages | `services/pageContent.service.js`, `src/lib/pageDefaults.js`, `models/PageContent.js` | Block-based editor; `SectionRenderer` renders blocks; `ContactMessage` inbox |
 | Coach system | `models/CoachCredit.js`, `models/CoachWalletTransaction.js`, `api/admin/coach-*` | Coach applications, codes, credits/wallet |
 | Second-hand / used | `models/UsedProduct.js`, `api/admin/used-products` | Used-product listings with health scale |
-| Installments | `models/Installment.js`, `api/installments` | Check-based installment payments |
+| Installments | `models/Installment.js`, `api/installments`, `workers/installmentReminderWorker.js` | Check-based installment payments + due-date reminder worker |
+| Order flows | `src/lib/flowTraversal.js`, `p-admin/admin-order-flows`, `models/OrderFlow*` | Admin-defined DAG of order stages; traversal turns the graph into a customer-facing step sequence |
+| Financial analytics | `services/analyticsService.js`, `p-admin/financial` | Revenue/collected/outstanding/collect-rate via aggregation pipelines (no N+1); overdue from installment-check due dates |
+| Web push | `src/lib/push.js`, `models/PushSubscription.js` | Server-side Web Push via VAPID; Node-only (needs native crypto); auto-prunes expired subscriptions (404/410) |
 
 ### State Management
 
@@ -122,4 +127,7 @@ GOOGLE_CLIENT_ID / GOOGLE_CLIENT_SECRET
 NEXT_PUBLIC_BASE_URL / NEXT_PUBLIC_SITE_URL / NEXT_PUBLIC_LOGO_URL
 EMAIL_HOST / EMAIL_PORT / EMAIL_USER / EMAIL_PASS / EMAIL_FROM / ADMIN_EMAIL
 BULLMQ_QUEUE / BATCH_SIZE / PRECOMPUTE_CONCURRENCY / PRICE_CACHE_TTL
+REDIS_URL                                                    # BullMQ connection (workers)
+NEXT_PUBLIC_VAPID_PUBLIC_KEY / VAPID_PRIVATE_KEY / VAPID_SUBJECT   # Web push
+INSTAGRAM_ACCESS_TOKEN / INSTAGRAM_BUSINESS_ACCOUNT_ID / INSTAGRAM_APP_SECRET / INSTAGRAM_WEBHOOK_VERIFY_TOKEN
 ```
