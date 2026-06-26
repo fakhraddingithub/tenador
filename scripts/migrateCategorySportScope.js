@@ -6,10 +6,14 @@
  * چه می‌کند:
  *   1. ایندکسِ سراسریِ یکتای `slug_1` را از کالکشن categories حذف می‌کند
  *      (تا دو ورزش بتوانند اسلاگ یکسان مثل "racket" داشته باشند).
- *   2. ایندکسِ ترکیبیِ یکتای { sport: 1, slug: 1 } را روی categories می‌سازد.
- *   3. ایندکسِ سراسریِ یکتای `slug_1` را از کالکشن slugregistries حذف می‌کند.
- *   4. ایندکسِ ترکیبیِ یکتای { type: 1, slug: 1, filterValue: 1 } را می‌سازد.
- *   5. (گزارش) دسته‌های بدونِ ورزش را فهرست می‌کند تا ادمین آن‌ها را اصلاح کند.
+ *   2. Backfill: به هر دسته‌ی بدونِ ورزش، یک ورزش اختصاص می‌دهد — ورزشِ غالب از
+ *      روی محصولاتِ همان دسته (بیشترین تعداد)، و اگر محصولی نبود از روی عنوان.
+ *      بدونِ این مرحله، تمامِ URLهای دسته (/[sport]/[category]) با ۴۰۴ مواجه می‌شوند،
+ *      چون resolver دسته را با شرطِ { slug, sport } پیدا می‌کند.
+ *   3. ایندکسِ ترکیبیِ یکتای { sport: 1, slug: 1 } را روی categories می‌سازد.
+ *   4. ایندکسِ سراسریِ یکتای `slug_1` را از کالکشن slugregistries حذف می‌کند.
+ *   5. ایندکسِ ترکیبیِ یکتای { type: 1, slug: 1, filterValue: 1 } را می‌سازد.
+ *   6. (گزارش) دسته‌های هنوز-بدونِ-ورزش و دسته‌های چنددِ-ورزشی را فهرست می‌کند.
  *
  * این اسکریپت idempotent است: اگر ایندکسِ قدیمی نباشد یا ایندکسِ جدید موجود
  * باشد، بدون خطا رد می‌شود.
@@ -51,6 +55,115 @@ async function createIndexSafe(col, keys, options, label) {
   }
 }
 
+// تشخیصِ ورزش از روی عنوان/اسلاگِ دسته (فقط برای دسته‌های بدونِ محصول استفاده می‌شود).
+function inferSportByTitle(cat, sports) {
+  const hay = `${cat.title || ""} ${cat.slug || ""} ${cat.name || ""}`.toLowerCase();
+  for (const s of sports) {
+    const needles = [s.slug, s.title, s.name]
+      .filter(Boolean)
+      .map((x) => String(x).toLowerCase());
+    if (needles.some((n) => n && hay.includes(n))) return s;
+  }
+  return null;
+}
+
+/**
+ * هر دسته‌ی بدونِ ورزش را به یک ورزش اختصاص می‌دهد:
+ *   - ورزشِ غالب از روی محصولاتِ همان دسته (بیشترین تعداد محصولِ { category, sport })،
+ *   - در نبودِ محصول، تطبیقِ نامِ ورزش با عنوان/اسلاگِ دسته،
+ *   - در غیرِ این صورت بدونِ تغییر می‌ماند و در گزارش می‌آید (تخصیصِ دستی لازم است).
+ * idempotent: فقط دسته‌هایی که sport ندارند پردازش می‌شوند.
+ */
+async function backfillCategorySport(db, categories) {
+  console.log("\n🩹 Backfill ورزشِ دسته‌ها (از روی محصولات/عنوان):");
+
+  const sports = await db
+    .collection("sports")
+    .find({})
+    .project({ slug: 1, title: 1, name: 1 })
+    .toArray();
+  const sportById = new Map(sports.map((s) => [String(s._id), s]));
+
+  // تعداد محصولِ فعالِ هر ترکیبِ { category, sport }
+  const agg = await db
+    .collection("products")
+    .aggregate([
+      { $match: { category: { $ne: null }, sport: { $ne: null } } },
+      { $group: { _id: { category: "$category", sport: "$sport" }, n: { $sum: 1 } } },
+    ])
+    .toArray();
+
+  const byCat = new Map(); // catId -> [{ sport, n }]
+  for (const r of agg) {
+    const c = String(r._id.category);
+    if (!byCat.has(c)) byCat.set(c, []);
+    byCat.get(c).push({ sport: String(r._id.sport), n: r.n });
+  }
+
+  const nullCats = await categories
+    .find({ $or: [{ sport: { $exists: false } }, { sport: null }] })
+    .project({ slug: 1, title: 1, name: 1 })
+    .toArray();
+
+  let assigned = 0;
+  const multiSport = [];
+  const unresolved = [];
+
+  for (const cat of nullCats) {
+    const usage = (byCat.get(String(cat._id)) || []).sort((a, b) => b.n - a.n);
+    let chosen = null;
+    let reason = "";
+
+    if (usage.length > 0) {
+      chosen = usage[0].sport;
+      reason = usage.length > 1 ? "چنددِ ورزشی؛ ورزشِ غالب" : "از روی محصولات";
+      if (usage.length > 1) multiSport.push({ cat, usage });
+    } else {
+      const inferred = inferSportByTitle(cat, sports);
+      if (inferred) {
+        chosen = String(inferred._id);
+        reason = "از روی عنوان (بدونِ محصول)";
+      }
+    }
+
+    if (chosen) {
+      await categories.updateOne(
+        { _id: cat._id },
+        { $set: { sport: new mongoose.Types.ObjectId(chosen) } },
+      );
+      assigned++;
+      const sp = sportById.get(chosen);
+      console.log(`  ✅ [${cat.slug}] "${cat.title}" → ${sp ? sp.slug : chosen}  (${reason})`);
+    } else {
+      unresolved.push(cat);
+      console.log(`  ⚠️ [${cat.slug}] "${cat.title}" → نامشخص (بدونِ محصول و بدونِ تطبیقِ عنوان)`);
+    }
+  }
+
+  console.log(`\n  جمعاً ${assigned} دسته اختصاص یافت.`);
+
+  if (multiSport.length > 0) {
+    console.log(
+      `\n  ⚠️ دسته‌های چنددِ ورزشی (به ورزشِ غالب اختصاص یافتند). در مدلِ per-sport،\n` +
+        `     URLِ ورزش‌های اقلیت برای این دسته‌ها ۴۰۴ می‌شود؛ در صورت نیاز یک دسته‌ی\n` +
+        `     مخصوصِ همان ورزش بسازید:`,
+    );
+    for (const { cat, usage } of multiSport) {
+      const parts = usage
+        .map((u) => `${sportById.get(u.sport)?.slug || u.sport}:${u.n}`)
+        .join(", ");
+      console.log(`     • [${cat.slug}] "${cat.title}" → ${parts}`);
+    }
+  }
+
+  if (unresolved.length > 0) {
+    console.log(
+      `\n  ⚠️ ${unresolved.length} دسته بدونِ ورزش باقی ماند (دستی تخصیص دهید): ` +
+        unresolved.map((c) => c.slug).join(", "),
+    );
+  }
+}
+
 async function run() {
   if (!MONGODB_URI) {
     console.error("❌ متغیر محیطی MONGODB_URI_TENADOR تنظیم نشده است.");
@@ -67,6 +180,10 @@ async function run() {
 
   console.log("📂 کالکشن categories:");
   await dropIndexIfExists(categories, "slug_1");
+
+  // Backfill ورزش قبل از ساختِ ایندکسِ ترکیبی انجام می‌شود تا داده تمیز شود
+  await backfillCategorySport(db, categories);
+
   await createIndexSafe(
     categories,
     { sport: 1, slug: 1 },
