@@ -1,5 +1,7 @@
+import mongoose from "mongoose";
 import connectToDB from "base/configs/db";
 import Category from "base/models/Category";
+import Sport from "base/models/Sport";
 import { NextResponse } from "next/server";
 import { revalidateContent } from "@/lib/revalidate";
 
@@ -10,7 +12,10 @@ export async function GET(req, { params }) {
   try {
     await connectToDB();
     const { categoryId } = await params;
-    const category = await Category.findById(categoryId).populate('parent').lean();
+    const category = await Category.findById(categoryId)
+      .populate('parent')
+      .populate('sport', 'title name slug')
+      .lean();
 
     if (!category) {
       return NextResponse.json({ error: "دسته‌بندی پیدا نشد" }, { status: 404 });
@@ -30,14 +35,15 @@ export async function PUT(req, { params }) {
     await connectToDB();
     const { categoryId } = await params;
     const body = await req.json();
-    const { 
-      title, 
-      name, 
-      parent, 
-      attributes, 
+    const {
+      title,
+      name,
+      sport,   // ورزشِ صاحبِ این دسته (الزامی)
+      parent,
+      attributes,
       variantAttributes, // فیلد جدید
-      technicalStats, 
-      technicalStatsPrompt, 
+      technicalStats,
+      technicalStatsPrompt,
       prompts,
       image,
       icon
@@ -48,9 +54,39 @@ export async function PUT(req, { params }) {
       return NextResponse.json({ error: "دسته‌بندی پیدا نشد" }, { status: 404 });
     }
 
-    // ۱. به‌روزرسانی فیلدهای پایه
+    // ۰. ورزشِ مقصد برای بررسی یکتاییِ اسلاگ/نام (مقدار جدید یا مقدار فعلی)
+    if (sport !== undefined) {
+      if (!sport || !mongoose.isValidObjectId(sport)) {
+        return NextResponse.json({ error: "ورزش انتخاب‌شده معتبر نیست" }, { status: 400 });
+      }
+      const sportDoc = await Sport.findById(sport).select("_id").lean();
+      if (!sportDoc) {
+        return NextResponse.json({ error: "ورزش انتخاب‌شده معتبر نیست" }, { status: 400 });
+      }
+      category.sport = sport;
+    }
+
+    if (!category.sport) {
+      return NextResponse.json({ error: "انتخاب ورزش برای دسته‌بندی الزامی است" }, { status: 400 });
+    }
+
+    // ۱. به‌روزرسانی فیلدهای پایه — یکتایی فقط در محدوده‌ی همین ورزش بررسی می‌شود
+    if (title?.trim() || name?.trim()) {
+      const dupOr = [];
+      if (title?.trim()) dupOr.push({ title: title.trim() });
+      if (name?.trim()) dupOr.push({ name: name.trim() });
+      const duplicate = await Category.findOne({
+        _id: { $ne: category._id },
+        sport: category.sport,
+        $or: dupOr,
+      }).select("_id").lean();
+      if (duplicate) {
+        return NextResponse.json({ error: "دسته‌ای با این عنوان یا نام در این ورزش وجود دارد" }, { status: 409 });
+      }
+    }
+
     if (title?.trim()) category.title = title.trim();
-    
+
     if (name?.trim()) {
       if (!/^[a-zA-Z0-9\s\-_]+$/.test(name)) {
         return NextResponse.json({ error: "فرمت نام انگلیسی نامعتبر است" }, { status: 400 });

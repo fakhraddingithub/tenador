@@ -1,6 +1,7 @@
 import Product from "base/models/Product";
 import Category from "base/models/Category";
 import Brand from "base/models/Brand";
+import Sport from "base/models/Sport";
 
 import connectToDB from "base/configs/db";
 
@@ -17,10 +18,18 @@ export default async function sitemap() {
     .lean();
 
   // -------------------------
-  // Categories
+  // Sports
+  // -------------------------
+  const sports = await Sport.find({})
+    .select("slug updatedAt")
+    .lean();
+
+  // -------------------------
+  // Categories (تو-در-توی ورزش: /[sportSlug]/[categorySlug])
   // -------------------------
   const categories = await Category.find({})
-    .select("slug updatedAt")
+    .select("slug updatedAt sport")
+    .populate("sport", "slug")
     .lean();
 
   // -------------------------
@@ -49,19 +58,24 @@ export default async function sitemap() {
     },
 
     {
-      url: `${SITE_URL}/category`,
-      lastModified: new Date(),
-      changeFrequency: "weekly",
-      priority: 0.8,
-    },
-
-    {
       url: `${SITE_URL}/brands`,
       lastModified: new Date(),
       changeFrequency: "weekly",
       priority: 0.7,
     },
   ];
+
+  // -------------------------
+  // Sport URLs — /[sportSlug]
+  // -------------------------
+  const sportUrls = sports
+    .filter((s) => s.slug)
+    .map((sport) => ({
+      url: `${SITE_URL}/${sport.slug}`,
+      lastModified: sport.updatedAt,
+      changeFrequency: "weekly",
+      priority: 0.8,
+    }));
 
   // -------------------------
   // Product URLs
@@ -77,17 +91,20 @@ export default async function sitemap() {
   }));
 
   // -------------------------
-  // Category URLs
+  // Category URLs — تو-در-توی ورزش: /[sportSlug]/[categorySlug]
+  // دسته‌های بدون ورزش (داده‌ی قدیمی) مسیر معتبری ندارند و رد می‌شوند.
   // -------------------------
-  const categoryUrls = categories.map((category) => ({
-    url: `${SITE_URL}/category/${category.slug}`,
+  const categoryUrls = categories
+    .filter((category) => category.sport?.slug && category.slug)
+    .map((category) => ({
+      url: `${SITE_URL}/${category.sport.slug}/${category.slug}`,
 
-    lastModified: category.updatedAt,
+      lastModified: category.updatedAt,
 
-    changeFrequency: "weekly",
+      changeFrequency: "weekly",
 
-    priority: 0.7,
-  }));
+      priority: 0.7,
+    }));
 
   // -------------------------
   // Brand URLs
@@ -104,6 +121,7 @@ export default async function sitemap() {
 
   return [
     ...staticPages,
+    ...sportUrls,
     ...productUrls,
     ...categoryUrls,
     ...brandUrls,

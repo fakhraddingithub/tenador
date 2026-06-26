@@ -139,6 +139,9 @@ export default function AddCategory() {
   const [loading, setLoading] = useState(false);
   const [uploadingField, setUploadingField] = useState(null);
   const [categories, setCategories] = useState([]);
+  const [sports, setSports] = useState([]);
+  // اگر دسته از صفحه‌ی یک ورزش خاص ساخته شود (?sportId=...)، ورزش قفل می‌شود
+  const [lockedSportId, setLockedSportId] = useState(null);
   const [showPromptSection, setShowPromptSection] = useState(false);
   const [editingId, setEditingId] = useState(null);
 
@@ -220,6 +223,7 @@ The color code may appear in formats like:
   const [formData, setFormData] = useState({
     title: '',
     name: '',
+    sport: '',
     parent: '',
     attributes: [],
     icon: '',
@@ -265,16 +269,42 @@ The color code may appear in formats like:
   );
 
   useEffect(() => {
-    fetchCategories();
+    fetchSports();
+
+    // ورزشِ از پیش‌انتخاب‌شده از طریق query param (مثلاً از صفحه‌ی مدیریت ورزش).
+    // از window استفاده می‌شود تا نیازی به Suspense boundaryِ useSearchParams نباشد.
+    const sportIdFromQuery = new URLSearchParams(window.location.search).get('sportId');
+    if (sportIdFromQuery) {
+      setLockedSportId(sportIdFromQuery);
+      setFormData((prev) => ({ ...prev, sport: sportIdFromQuery }));
+    }
   }, []);
 
-  const fetchCategories = async () => {
+  // دسته‌های والد فقط از همان ورزشِ انتخاب‌شده انتخاب می‌شوند
+  useEffect(() => {
+    fetchCategories(formData.sport);
+  }, [formData.sport]);
+
+  const fetchCategories = async (sportId) => {
     try {
-      const res = await fetch('/api/categories');
+      const url = sportId
+        ? `/api/categories?sportId=${sportId}`
+        : '/api/categories';
+      const res = await fetch(url);
       const data = await res.json();
       setCategories(data.categories || []);
     } catch (error) {
       console.error('Error fetching categories:', error);
+    }
+  };
+
+  const fetchSports = async () => {
+    try {
+      const res = await fetch('/api/sports');
+      const data = await res.json();
+      setSports(data.sports || []);
+    } catch (error) {
+      console.error('Error fetching sports:', error);
     }
   };
 
@@ -545,12 +575,19 @@ The color code may appear in formats like:
   // ---------- Submit ----------
   const handleSubmit = async (e) => {
     e.preventDefault();
+
+    if (!formData.sport) {
+      showError('خطا', 'انتخاب ورزش برای دسته‌بندی الزامی است');
+      return;
+    }
+
     setLoading(true);
 
     try {
       const payload = {
         title: formData.title,
         name: formData.name,
+        sport: formData.sport,
         parent: formData.parent || null,
         icon: formData.icon,
         image: formData.image,
@@ -673,6 +710,19 @@ The color code may appear in formats like:
                 </div>
               </div>
             </div>
+
+            {/* انتخاب ورزش — هنگام ساخت از صفحه‌ی یک ورزش خاص، قفل می‌شود */}
+            <Select
+              label="ورزش"
+              name="sport"
+              value={formData.sport}
+              onChange={(e) => setFormData((prev) => ({ ...prev, sport: e.target.value }))}
+              options={sports.map((s) => ({ value: s._id, label: s.title || s.name }))}
+              placeholder="ورزش را انتخاب کنید"
+              required
+              disabled={!!lockedSportId}
+              hint={lockedSportId ? 'این دسته به ورزشِ انتخاب‌شده تعلق دارد و قابل تغییر نیست.' : 'اسلاگ دسته فقط در محدوده‌ی همین ورزش یکتاست.'}
+            />
 
             {/* Basic Info */}
             <div className="grid md:grid-cols-2 gap-6">

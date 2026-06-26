@@ -84,8 +84,16 @@ const CategorySchema = new mongoose.Schema(
     slug: {
       type: String,
       required: true,
-      unique: true,
       trim: true,
+    },
+
+    // ورزشِ صاحبِ این دسته — اسلاگ دسته فقط در محدوده‌ی همین ورزش یکتاست
+    // (ساختار سئو: /[sportSlug]/[categorySlug] مثل /tennis/racket و /padel/racket)
+    sport: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Sport",
+      required: true,
+      index: true,
     },
 
     prompts: [
@@ -139,14 +147,20 @@ const CategorySchema = new mongoose.Schema(
   { timestamps: true },
 );
 
-// ایجاد اسلاگ اتوماتیک
+// اسلاگ فقط در محدوده‌ی هر ورزش یکتاست (نه سراسری). دو ورزش مختلف می‌توانند
+// دسته‌ای با اسلاگ یکسان (مثلاً "racket") داشته باشند.
+CategorySchema.index({ sport: 1, slug: 1 }, { unique: true });
+
+// ایجاد اسلاگ اتوماتیک — یکتایی فقط درونِ همان ورزش بررسی می‌شود
 CategorySchema.pre("validate", async function () {
   if (!this.slug && this.name) {
     const baseSlug = createSlug(this.name);
     let slug = baseSlug;
     let counter = 1;
 
-    while (await mongoose.models.Category.findOne({ slug })) {
+    while (
+      await mongoose.models.Category.findOne({ slug, sport: this.sport })
+    ) {
       slug = `${baseSlug}-${counter++}`;
     }
 

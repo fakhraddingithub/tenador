@@ -11,6 +11,7 @@
     "test:db": "node scripts/test-db-connection.js",
     "migrate:used-products": "node scripts/migrateUsedProductsHealthScale.js",
     "migrate:coach-codes": "node scripts/migrateCoachCodeFormat.js",
+    "migrate:category-sport": "node scripts/migrateCategorySportScope.js",
     "check:mongodb": "node scripts/check-mongodb.js",
     "worker:prices": "node workers/priceWorker.js",
     "worker:discounts": "node workers/discountWorker.js",

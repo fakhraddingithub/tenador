@@ -1,5 +1,6 @@
 import { getPageDataBySlug } from "base/services/product.service";
 import { getSeriesBySport } from "base/services/series.service";
+import { resolvePageContext } from "base/services/query.service";
 import SportPageClient from "@/components/templates/sports/SportPageClient";
 import { notFound } from "next/navigation";
 import { getCachedRate } from "@/lib/Exchangerate";
@@ -11,8 +12,13 @@ export const dynamic = "force-dynamic";
 
 export async function generateMetadata({ params }) {
   const { sportSlug } = await params;
-  const data = await getPageDataBySlug(sportSlug);
-  if (!data) return { title: "صفحه پیدا نشد" };
+
+  // RULE 2: یک سگمنتیِ ریشه فقط می‌تواند SPORT یا BRAND باشد؛ هر چیزِ دیگر ۴۰۴
+  const [ctx, data] = await Promise.all([
+    resolvePageContext([sportSlug]),
+    getPageDataBySlug(sportSlug),
+  ]);
+  if (ctx.notFound || !data) return { title: "صفحه پیدا نشد" };
 
   const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || "https://tenador.com";
   const title = `خرید تجهیزات و لوازم ${data.info.title || data.info.name}`;
@@ -30,6 +36,7 @@ export async function generateMetadata({ params }) {
     title,
     description,
     metadataBase: new URL(SITE_URL),
+    alternates: { canonical: pageUrl },
     openGraph: {
       title,
       description,
@@ -53,13 +60,16 @@ export async function generateMetadata({ params }) {
 export default async function DynamicSportPage({ params }) {
   const { sportSlug } = await params;
 
-  const [data, series, rate] = await Promise.all([
+  // RULE 2: ریشه فقط SPORT یا BRAND — validatorِ سخت‌گیر تصمیم می‌گیرد، نه صرفِ
+  // وجودِ اسلاگ در رجیستری (که اسلاگِ دسته/سری را هم می‌پذیرفت → soft-404).
+  const [ctx, data, series, rate] = await Promise.all([
+    resolvePageContext([sportSlug]),
     getPageDataBySlug(sportSlug),
     getSeriesBySport(sportSlug),
     getCachedRate(),
   ]);
 
-  if (!data) notFound();
+  if (ctx.notFound || !data) notFound();
 
   const serializedSportInfo = JSON.parse(JSON.stringify(data.info));
   const serializedProducts = JSON.parse(JSON.stringify(data.products));

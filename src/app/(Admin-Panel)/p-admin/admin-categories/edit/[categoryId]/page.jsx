@@ -144,6 +144,7 @@ export default function EditCategory() {
   const [fetching, setFetching] = useState(true);
   const [uploadingField, setUploadingField] = useState(null);
   const [categories, setCategories] = useState([]);
+  const [sports, setSports] = useState([]);
   const [showPromptSection, setShowPromptSection] = useState(false);
   const [editingId, setEditingId] = useState(null);
 
@@ -164,6 +165,7 @@ export default function EditCategory() {
   const [formData, setFormData] = useState({
     title: '',
     name: '',
+    sport: '',
     parent: '',
     attributes: [],
     icon: '',
@@ -211,9 +213,14 @@ export default function EditCategory() {
   const fetchInitialData = async () => {
     setFetching(true);
     try {
-      const catsRes = await fetch('/api/categories');
+      const [catsRes, sportsRes] = await Promise.all([
+        fetch('/api/categories'),
+        fetch('/api/sports'),
+      ]);
       const catsData = await catsRes.json();
       setCategories(catsData.categories || []);
+      const sportsData = await sportsRes.json();
+      setSports(sportsData.sports || []);
 
       const res = await fetch(`/api/categories/${categoryId}`);
       const data = await res.json();
@@ -226,6 +233,7 @@ export default function EditCategory() {
         setFormData({
           title: cat.title || '',
           name: cat.name || '',
+          sport: cat.sport?._id || cat.sport || '',
           parent: cat.parent?._id || cat.parent || '',
           attributes: (cat.attributes || []).map(attr => ({
             ...attr,
@@ -518,12 +526,19 @@ export default function EditCategory() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+
+    if (!formData.sport) {
+      showError('خطا', 'انتخاب ورزش برای دسته‌بندی الزامی است');
+      return;
+    }
+
     setLoading(true);
 
     try {
       const payload = {
         title: formData.title,
         name: formData.name,
+        sport: formData.sport,
         parent: formData.parent || null,
         icon: formData.icon,
         image: formData.image,
@@ -647,6 +662,17 @@ export default function EditCategory() {
                 </div>
               </div>
             </div>
+
+            {/* انتخاب ورزش — اسلاگ دسته فقط در محدوده‌ی همین ورزش یکتاست */}
+            <Select
+              label="ورزش"
+              name="sport"
+              value={formData.sport}
+              onChange={(e) => setFormData((prev) => ({ ...prev, sport: e.target.value }))}
+              options={sports.map((s) => ({ value: s._id, label: s.title || s.name }))}
+              placeholder="ورزش را انتخاب کنید"
+              required
+            />
 
             {/* Basic Info */}
             <div className="grid md:grid-cols-2 gap-6">

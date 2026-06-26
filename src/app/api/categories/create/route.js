@@ -1,5 +1,7 @@
+import mongoose from "mongoose";
 import connectToDB from "base/configs/db";
 import Category from "base/models/Category";
+import Sport from "base/models/Sport";
 import { registerSlug } from "base/actions/registerSlug";
 import { revalidateContent } from "@/lib/revalidate";
 
@@ -8,17 +10,18 @@ export async function POST(req) {
     await connectToDB();
 
     const body = await req.json();
-    const { 
-      title, 
-      name, 
-      parent, 
+    const {
+      title,
+      name,
+      sport,   // ورزشِ صاحبِ این دسته (الزامی)
+      parent,
       prompts,
       image,
       icon,
-      attributes, 
+      attributes,
       variantAttributes, // فیلد جدید اضافه شد
-      technicalStats, 
-      technicalStatsPrompt 
+      technicalStats,
+      technicalStatsPrompt
     } = body;
 
     // ۱. اعتبارسنجی فیلدهای اجباری پایه
@@ -37,13 +40,24 @@ export async function POST(req) {
       );
     }
 
-    // ۲. بررسی تکراری نبودن
+    // ورزش الزامی است؛ یکتایی اسلاگ/نام در محدوده‌ی همین ورزش بررسی می‌شود
+    if (!sport || !mongoose.isValidObjectId(sport)) {
+      return Response.json({ error: "انتخاب ورزش برای دسته‌بندی الزامی است" }, { status: 400 });
+    }
+
+    const sportDoc = await Sport.findById(sport).select("_id").lean();
+    if (!sportDoc) {
+      return Response.json({ error: "ورزش انتخاب‌شده معتبر نیست" }, { status: 400 });
+    }
+
+    // ۲. بررسی تکراری نبودن — فقط در محدوده‌ی همین ورزش
     const exists = await Category.findOne({
+      sport,
       $or: [{ title: title.trim() }, { name: name.trim() }]
     });
 
     if (exists) {
-      return Response.json({ error: "کتگوری با این عنوان یا نام قبلاً ثبت شده است" }, { status: 409 });
+      return Response.json({ error: "کتگوری با این عنوان یا نام در این ورزش قبلاً ثبت شده است" }, { status: 409 });
     }
 
     // ۳. تابع کمکی برای اعتبارسنجی ویژگی‌ها (Attributes & VariantAttributes)
@@ -85,8 +99,8 @@ export async function POST(req) {
     }
 
     // ۵. ایجاد کتگوری در دیتابیس (مطابق مدل جدید)
-    // کتگوری جدید در انتهای ترتیب نمایش قرار می‌گیرد
-    const lastCategory = await Category.findOne({})
+    // ترتیب نمایش در محدوده‌ی همین ورزش محاسبه می‌شود
+    const lastCategory = await Category.findOne({ sport })
       .sort({ order: -1 })
       .select("order")
       .lean();
@@ -95,6 +109,7 @@ export async function POST(req) {
       order: (lastCategory?.order ?? -1) + 1,
       title: title.trim(),
       name: name.trim(),
+      sport,
       parent: parent || null,
       prompts: prompts || [],
       icon: icon.trim(),

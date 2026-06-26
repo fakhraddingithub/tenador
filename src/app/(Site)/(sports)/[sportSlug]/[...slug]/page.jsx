@@ -38,15 +38,16 @@ export async function generateMetadata({ params }) {
   const { sportSlug, slug } = await params;
   const slugs = [sportSlug, ...(slug || [])];
 
-  const filters = await resolvePageContext(slugs);
+  const ctx = await resolvePageContext(slugs);
 
-  if (!filters?.sport) {
+  // مسیر باید دقیقاً یکی از ۶ الگوی مجاز باشد؛ در غیر این صورت متادیتای ۴۰۴
+  if (ctx.notFound) {
     return { title: "صفحه پیدا نشد" };
   }
 
+  const filters = ctx.filters;
   const activeEntity =
     filters.serie ||
-    filters.limitedEdition ||
     filters.brand ||
     filters.category ||
     filters.sport;
@@ -68,6 +69,7 @@ export async function generateMetadata({ params }) {
     title,
     description,
     metadataBase: new URL(SITE_URL),
+    alternates: { canonical: pageUrl },
     openGraph: {
       title,
       description,
@@ -88,17 +90,23 @@ export async function generateMetadata({ params }) {
   };
 }
 
-export default async function SportDynamicSlugPage({ params }) {
+export default async function SportDynamicSlugPage({ params, searchParams }) {
   const { sportSlug, slug } = await params;
   const slugs = [sportSlug, ...(slug || [])];
 
-  // ابتدا فقط موجودیت‌های صفحه را تشخیص می‌دهیم (سبک، بدون بارگذاری همه‌ی محصولات)
-  const filters = await resolvePageContext(slugs);
+  // RULE 4: صفحه‌بندی فقط از طریقِ searchParams (?page=2) خوانده می‌شود، هرگز به‌صورت
+  // سگمنتِ مسیر. سگمنتِ اضافیِ مسیر توسطِ validatorِ سخت‌گیر (طول + Mirror) رد می‌شود.
+  const sp = (await searchParams) || {};
+  const page = Math.max(1, Number(sp.page) || 1);
 
-  if (!filters?.sport) {
+  // اعتبارسنجیِ قطعیِ مسیر — اگر یکی از ۶ الگوی مجاز نباشد، ۴۰۴ سخت
+  const ctx = await resolvePageContext(slugs);
+
+  if (ctx.notFound) {
     notFound();
   }
 
+  const filters = ctx.filters;
   const rate = await getCachedRate();
 
   // ─── صفحه‌ی برند: نمای گروه‌بندی‌شده بر اساس سری ریشه + infinite scroll ───
@@ -127,6 +135,7 @@ export default async function SportDynamicSlugPage({ params }) {
         sportId={sportId}
         categoryId={categoryId}
         initialData={initialData}
+        page={page}
         title={`تنادور – ${pageInfo.title || pageInfo.name || ""}`}
       />
     );
@@ -160,17 +169,23 @@ export default async function SportDynamicSlugPage({ params }) {
         categoryId={categoryId}
         brandSlug={brandSlug}
         initialData={initialData}
+        page={page}
         title={`تنادور – ${pageInfo.title || pageInfo.name || ""}`}
       />
     );
   }
 
-  // ─── سایر صفحات (ورزش، دسته، زیرسری، لیمیتد ادیشن): همان رفتار قبلی ───
+  // ─── سایر صفحات (ورزش، دسته): الگوهای ۲ از این مسیر سرو می‌شوند ───
   const searchData = await queryBySlugs(slugs);
+
+  // محافظِ دوم: اگر بینِ resolve و query وضعیت تغییر کرده باشد (مثلاً حذفِ آخرین
+  // محصولِ یک ترکیب)، باز هم ۴۰۴ سخت می‌دهیم — بدونِ fallbackِ خاموش.
+  if (searchData.notFound) {
+    notFound();
+  }
 
   const pageInfo =
     searchData.filters.serie ||
-    searchData.filters.limitedEdition ||
     searchData.filters.brand ||
     searchData.filters.category ||
     searchData.filters.sport;
@@ -182,6 +197,7 @@ export default async function SportDynamicSlugPage({ params }) {
       products={searchData.results}
       totalResults={searchData.totalResults}
       rate={rate}
+      page={page}
       title={`تنادور – ${pageInfo.title || pageInfo.name || ""}`}
     />
   );

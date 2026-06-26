@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import Link from 'next/link';
-import { FiArrowRight, FiUploadCloud, FiSave, FiLoader, FiType, FiFileText, FiImage, FiGrid, FiActivity } from 'react-icons/fi';
+import { FiArrowRight, FiUploadCloud, FiSave, FiLoader, FiType, FiFileText, FiImage, FiGrid, FiActivity, FiPlus, FiEdit3, FiLayers } from 'react-icons/fi';
 import { toast, ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import AdminLoader from '@/components/admin/AdminLoader';
@@ -15,6 +15,7 @@ export default function EditSport() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [uploadingType, setUploadingType] = useState(null); // 'icon' or 'image'
+  const [categories, setCategories] = useState([]);
 
   const [formData, setFormData] = useState({
     name: '',
@@ -25,7 +26,20 @@ export default function EditSport() {
 
   useEffect(() => {
     fetchSport();
+    fetchSportCategories();
   }, [sportId]);
+
+  // فقط دسته‌های متعلق به همین ورزش نمایش داده می‌شوند
+  const fetchSportCategories = async () => {
+    try {
+      const res = await fetch(`/api/categories?sportId=${sportId}`);
+      const data = await res.json();
+      if (res.ok) setCategories(data.categories || []);
+    } catch (error) {
+      // عدم بارگذاری دسته‌ها نباید مدیریت ورزش را مختل کند
+      console.error('خطا در بارگذاری دسته‌های ورزش', error);
+    }
+  };
 
   const fetchSport = async () => {
     try {
@@ -219,6 +233,53 @@ export default function EditSport() {
                 placeholder="در مورد این رشته ورزشی توضیح دهید..."
               />
             </div>
+          </div>
+
+          {/* دسته‌بندی‌های این ورزش */}
+          <div className="bg-white p-8 rounded-[var(--radius)] border border-gray-100 shadow-sm space-y-5">
+            <div className="flex items-center justify-between">
+              <label className="flex items-center gap-2 text-sm font-bold text-gray-600">
+                <FiLayers className="text-[var(--color-primary)]" /> دسته‌بندی‌های این ورزش ({categories.length})
+              </label>
+              <Link
+                href={`/p-admin/admin-categories/add?sportId=${sportId}`}
+                className="flex items-center gap-2 px-4 py-2.5 rounded-[var(--radius)] text-xs font-bold text-white hover:shadow-lg transition-all"
+                style={{ background: 'var(--color-primary)' }}
+              >
+                <FiPlus size={14} /> ایجاد دسته‌بندی
+              </Link>
+            </div>
+
+            {categories.length === 0 ? (
+              <div className="text-center py-10 border-2 border-dashed border-gray-100 rounded-[var(--radius)] text-gray-400 text-sm font-bold">
+                هنوز دسته‌بندی‌ای برای این ورزش ثبت نشده است.
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                {categories.map((cat) => (
+                  <Link
+                    key={cat._id}
+                    href={`/p-admin/admin-categories/edit/${cat._id}`}
+                    className="flex items-center justify-between p-3 bg-gray-50 hover:bg-white border border-gray-100 hover:border-[var(--color-primary)]/40 rounded-[var(--radius)] transition-all group"
+                  >
+                    <div className="flex items-center gap-3">
+                      {cat.icon ? (
+                        <img src={cat.icon} alt={cat.title} className="w-9 h-9 rounded-lg object-contain bg-white p-1" />
+                      ) : (
+                        <div className="w-9 h-9 rounded-lg bg-white flex items-center justify-center text-gray-300">
+                          <FiLayers size={16} />
+                        </div>
+                      )}
+                      <div className="flex flex-col">
+                        <span className="text-sm font-bold text-gray-800">{cat.title}</span>
+                        <span className="text-[10px] text-gray-400 font-mono">{cat.slug}</span>
+                      </div>
+                    </div>
+                    <FiEdit3 className="text-gray-300 group-hover:text-[var(--color-primary)] transition-colors" size={15} />
+                  </Link>
+                ))}
+              </div>
+            )}
           </div>
 
           {/* دکمه‌های عملیاتی */}

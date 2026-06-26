@@ -6,7 +6,6 @@ const SlugRegistrySchema = new mongoose.Schema(
       type: String,
       required: true,
       index: true,
-      unique: true,
       trim: true,
       lowercase: true,
     },
@@ -74,6 +73,14 @@ const SlugRegistrySchema = new mongoose.Schema(
 // ترکیب‌هایی که جستجو را سریع می‌کنند
 SlugRegistrySchema.index({ type: 1, slug: 1 });
 SlugRegistrySchema.index({ filterField: 1, filterValue: 1 });
+
+// اسلاگ دیگر سراسری یکتا نیست (چون دسته‌ها زیرِ ورزش اسکوپ شده‌اند و دو ورزش
+// می‌توانند اسلاگ یکسان داشته باشند). یکتایی فقط در محدوده‌ی همان موجودیتِ مقصد
+// (type + slug + filterValue) تضمین می‌شود تا از رکوردهای تکراری جلوگیری شود.
+SlugRegistrySchema.index(
+  { type: 1, slug: 1, filterValue: 1 },
+  { unique: true },
+);
 
 export default mongoose.models.SlugRegistry ||
   mongoose.model("SlugRegistry", SlugRegistrySchema);

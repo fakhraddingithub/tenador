@@ -15,7 +15,10 @@ export async function registerSlug({
 }) {
   await connectToDB();
 
-  const exists = await SlugRegistry.findOne({ slug });
+  // اسلاگ دیگر سراسری یکتا نیست؛ هم‌نامی فقط در محدوده‌ی همان موجودیتِ مقصد
+  // (type + slug + filterValue) تکراری محسوب می‌شود. این اجازه می‌دهد دو ورزش
+  // مختلف هرکدام دسته‌ای با اسلاگ یکسان (مثلاً "racket") ثبت کنند.
+  const exists = await SlugRegistry.findOne({ slug, type, filterValue });
 
   if (exists) return exists;
 
