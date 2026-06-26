@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import {
   FiEdit3,
   FiTrash2,
@@ -15,6 +16,8 @@ export default function SortableSportCard({
   sport,
   handleDelete,
 }) {
+  const router = useRouter();
+
   const {
     attributes,
     listeners,
@@ -35,8 +38,9 @@ export default function SortableSportCard({
     <div
       ref={setNodeRef}
       style={style}
+      onClick={() => router.push(`/p-admin/admin-sports/${sport._id}`)}
       className={`
-        group bg-white rounded-[var(--radius)] border border-gray-100
+        group cursor-pointer bg-white rounded-[var(--radius)] border border-gray-100
         shadow-sm overflow-hidden transition-all duration-300
         hover:shadow-xl hover:-translate-y-1
         ${isDragging ? "opacity-50 scale-[0.98] rotate-1 z-50" : ""}
@@ -60,6 +64,7 @@ export default function SortableSportCard({
         <button
           {...attributes}
           {...listeners}
+          onClick={(e) => e.stopPropagation()}
           className="
             absolute top-3 left-3
             w-10 h-10
@@ -111,6 +116,7 @@ export default function SortableSportCard({
         <div className="flex items-center gap-2 border-t border-gray-50 pt-4">
           <Link
             href={`/p-admin/admin-sports/edit/${sport._id}`}
+            onClick={(e) => e.stopPropagation()}
             className="
               flex-1 flex items-center justify-center gap-2
               py-2 rounded-[var(--radius)]
@@ -126,7 +132,7 @@ export default function SortableSportCard({
           </Link>
 
           <button
-            onClick={() => handleDelete(sport._id)}
+            onClick={(e) => { e.stopPropagation(); handleDelete(sport._id); }}
             className="
               w-10 h-10
               flex items-center justify-center
