@@ -17,6 +17,7 @@ npm run check:mongodb # Inspect MongoDB collections/state
 # Database migrations (run when needed)
 npm run migrate:used-products
 npm run migrate:coach-codes
+npm run migrate:category-sport   # Drops global slug unique indexes, adds per-sport compound indexes (required in prod)
 
 # Background workers (must run separately from the web process)
 npm run worker:prices
@@ -81,6 +82,8 @@ After any admin mutation, call `revalidateContent(tags)` from `src/lib/revalidat
 ### Slug System
 
 `SlugRegistery` model maps dynamic URL segments (sport/category/brand slugs) to their entity types. `actions/registerSlug.js` is a server action that creates entries on entity creation. This powers ISR revalidation — when a slug is revalidated, the correct entity page is rebuilt.
+
+**Categories are scoped under a sport.** A `Category` has a required `sport` ref, and the slug is unique only within that sport (compound index `{ sport, slug }`) — two sports can each have a `racket` category. The public URL structure is nested: `/[sportSlug]/[categorySlug]` (e.g. `/tennis/racket`). Correspondingly `SlugRegistery` is no longer globally unique on `slug`; uniqueness is `{ type, slug, filterValue }`. Existing prod data must be migrated with `npm run migrate:category-sport`, which drops the old global `slug_1` indexes and reports any categories still missing a sport (these stay hidden from storefront/sitemap until assigned one).
 
 ### Feature Subsystems
 

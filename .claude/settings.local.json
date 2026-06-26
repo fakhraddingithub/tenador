@@ -150,7 +150,8 @@
       "Bash(npx jest *)",
       "Bash(sed -n '1,60p' jest.config.js)",
       "Bash(sed -n '1,60p' jest.config.mjs)",
-      "Bash(grep -v -E \"react-hooks/\\(immutability|set-state-in-effect\\)|accessed before it is declared|prevents the earlier|Calling setState|Effects are intended|Update external|Subscribe for|Avoid calling setState|cascading renders|^\\\\s*\\\\^|^\\\\s*[0-9]+ \\\\||^\\\\s*\\\\|| in general| platform APIs|react.dev|^$|^>\")"
+      "Bash(grep -v -E \"react-hooks/\\(immutability|set-state-in-effect\\)|accessed before it is declared|prevents the earlier|Calling setState|Effects are intended|Update external|Subscribe for|Avoid calling setState|cascading renders|^\\\\s*\\\\^|^\\\\s*[0-9]+ \\\\||^\\\\s*\\\\|| in general| platform APIs|react.dev|^$|^>\")",
+      "Bash(grep -vE \"react-hooks/\\(immutability|set-state-in-effect|exhaustive-deps\\)|accessed before|prevents the earlier|Calling setState|Effects are intended|Update external|Subscribe for|Avoid calling setState|cascading renders|no-img-element|slower LCP|^\\\\s*\\\\^|^\\\\s*[0-9]+ \\\\||^\\\\s*\\\\||react.dev|^$|^>|missing dependency|Either include\")"
     ]
   }
 }
