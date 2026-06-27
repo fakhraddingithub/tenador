@@ -588,12 +588,9 @@ const ProductInfo = ({ product, selectedVariant, onVariantChange, onSelectionCha
         <div className="flex items-center gap-3">
           {/* قرار دادن دکمه افزودن به سبد در یک Wrapper برای دریافت موقعیت مختصاتی */}
           <div className="flex-1" ref={addToCartWrapperRef}>
-            {/* وقتی واریانت دارد ولی هنوز ترکیبِ معتبری کامل انتخاب نشده، دکمه غیرفعال
-                است تا کاربر هرگز به خطای «این ترکیب موجود نیست» نرسد (Bug 2) */}
-            <AddToCartButton
-              onAddToCart={handleAddToCart}
-              disabled={hasVariants && !selectedVariant}
-            />
+            {/* دکمه همیشه فعال است؛ اگر ویژگی‌ای انتخاب نشده باشد، هنگام کلیک
+                پیامِ inline بالای دکمه نمایش داده می‌شود (handleAddToCart) */}
+            <AddToCartButton onAddToCart={handleAddToCart} />
           </div>
           <WishlistButton onToggle={handleWishlist} />
         </div>

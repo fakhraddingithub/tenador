@@ -53,7 +53,7 @@ export default function VariantSelector({
 
         return (
           <div key={attrKey} className="flex flex-col gap-2">
-            <div className="flex items-center justify-between gap-2 flex-wrap">
+            <div className="flex items-center gap-2 flex-wrap">
               <p className="text-sm font-semibold text-gray-700 flex items-center gap-2">
                 <span className="w-1 h-4 bg-[#aa4725] rounded-full shrink-0" />
                 {label}
@@ -67,7 +67,7 @@ export default function VariantSelector({
               {/* تعویضِ واحدِ نمایش (چندواحدی) — روی کلِ این ویژگی اعمال می‌شود */}
               {units.length > 1 && (
                 <div
-                  className="inline-flex rounded-lg border border-gray-200 overflow-hidden"
+                  className="inline-flex rounded-[6px] border border-gray-200 overflow-hidden"
                   role="group"
                   aria-label={`واحد نمایشِ ${label}`}
                 >
