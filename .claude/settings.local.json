@@ -155,7 +155,8 @@
       "Bash(ls src/app/api/product/ src/app/api/product/create)",
       "Bash(ls \"src/app/api/product/[id]\")",
       "Bash(grep -vE \"react-hooks/\\(immutability|set-state-in-effect|exhaustive-deps\\)|accessed before|prevents the earlier|Calling setState|Effects are intended|Update external|Subscribe for|Avoid calling setState|cascading renders|no-img-element|slower LCP|react.dev|missing dependency|Either include|^\\\\s*\\\\^|^\\\\s*[0-9]+ \\\\||^\\\\s*\\\\||^$|^>|in general|platform APIs\")",
-      "Bash(echo \"exit: $?\")"
+      "Bash(echo \"exit: $?\")",
+      "Bash(xargs grep -ln \"search\")"
     ]
   }
 }

@@ -43,9 +43,11 @@ export default function ModernSerieAIFlow({ brandId, brandName }) {
         if (!brandRes.ok) throw new Error(brandData.error);
 
         setBrand(brandData.brand);
+        // سری‌های ریشه (بدون والد) به‌عنوان گزینه‌های «سری والد». معیار یکسان با
+        // BrandAdminPage و SerieEditForm: نبودِ parentSerie (نه اتکا به فیلد level).
         const rootSeries =
         seriesData?.series?.filter(
-          (serie) => serie.level === 0
+          (serie) => !serie.parentSerie
         ) || [];
         setSeries(rootSeries || []); // ذخیره لیست سری‌ها
       } catch (err) {

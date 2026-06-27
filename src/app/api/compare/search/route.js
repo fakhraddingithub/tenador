@@ -16,7 +16,8 @@ export async function GET(request) {
     }
 
     // ساخت کوئری جستجو (برای سرعت بالا فقط 5 نتیجه اول برمیگردد)
-    const query = { name: { $regex: q, $options: 'i' } };
+    // محصولات غیرفعال (isActive: false) نباید در نتایج جستجو ظاهر شوند.
+    const query = { name: { $regex: q, $options: 'i' }, isActive: true };
     
     // محدود کردن جستجو به دسته بندی محصول اول
     if (categoryId) query.category = categoryId;

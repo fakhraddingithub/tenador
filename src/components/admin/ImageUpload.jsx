@@ -34,12 +34,26 @@ export default function ImageUpload({
           body: formData,
         });
 
-        const data = await res.json();
-        if (res.ok) {
-          uploadedUrls.push(data.url);
-        } else {
-          throw new Error(data.error || 'خطا در آپلود فایل');
+        const data = await res.json().catch(() => ({}));
+
+        // اگر سرور خطا برگرداند، نامِ فایل را هم در پیام بیاوریم تا ادمین دقیقاً بداند
+        // کدام تصویر و چرا آپلود نشده است.
+        if (!res.ok) {
+          throw new Error(
+            `آپلودِ «${file.name}» ناموفق بود: ${data.error || 'خطای نامشخصِ سرور'}`
+          );
         }
+
+        // تأییدِ نهایی سمتِ کلاینت: حتی با وضعیتِ ۲۰۰ باید مطمئن شویم آدرس و شناسه‌ی
+        // معتبر برگشته‌اند؛ در غیر این صورت یک URL خراب واردِ فرم و سپس دیتابیس می‌شود
+        // در حالی که فایلی روی Cloudinary وجود ندارد.
+        if (!data.url || !data.publicId) {
+          throw new Error(
+            `آپلودِ «${file.name}» ناموفق بود: آدرسِ معتبرِ تصویر از سرور دریافت نشد.`
+          );
+        }
+
+        uploadedUrls.push(data.url);
       }
 
       if (multiple) {

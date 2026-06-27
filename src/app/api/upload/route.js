@@ -84,6 +84,20 @@ export async function POST(req) {
       stream.end(buffer);
     });
 
+    // تأییدِ موفقیتِ واقعیِ آپلود: گاهی Cloudinary بدونِ پرتابِ خطا پاسخی برمی‌گرداند
+    // که secure_url یا public_id ندارد (آپلودِ ناقص). در این حالت فایل واقعاً روی
+    // Cloudinary ذخیره نشده؛ پس نباید آدرسِ ناقص را با وضعیتِ ۲۰۰ برگردانیم، وگرنه
+    // یک URL خراب در دیتابیس ذخیره می‌شود در حالی که تصویری پشتِ آن وجود ندارد.
+    if (!result || !result.secure_url || !result.public_id) {
+      console.error("UPLOAD VERIFICATION FAILED:", { fileName: file.name, result });
+      return NextResponse.json(
+        {
+          error: `آپلودِ فایل «${file.name || "نامشخص"}» ناموفق بود: پاسخِ Cloudinary فاقدِ آدرسِ معتبر بود. لطفاً دوباره تلاش کنید.`,
+        },
+        { status: 502 }
+      );
+    }
+
     return NextResponse.json({
       url: result.secure_url,
       publicId: result.public_id,
