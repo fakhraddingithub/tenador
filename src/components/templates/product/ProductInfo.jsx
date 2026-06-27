@@ -273,11 +273,11 @@ const ProductInfo = ({ product, selectedVariant, onVariantChange, onSelectionCha
         // تبدیل کلید ویژگی به لیبل فارسی
         const missingLabels = missingKeys.map((k) => labelMap[k] || k).join(" و ");
         setErrorMessage(`لطفاً ${missingLabels} را انتخاب کنید.`);
-        return;
+        return false; // اعتبارسنجی ناموفق → دکمه نباید تایید نشان دهد
       }
       if (!selectedVariant) {
         setErrorMessage("این ترکیب در حال حاضر موجود نیست.");
-        return;
+        return false; // اعتبارسنجی ناموفق → دکمه نباید تایید نشان دهد
       }
       variantId = selectedVariant._id;
     }
@@ -292,6 +292,8 @@ const ProductInfo = ({ product, selectedVariant, onVariantChange, onSelectionCha
         triggerFlyToCartAnimation(); // اجرای انیمیشن پرواز
       },
     });
+
+    return true; // اعتبارسنجی موفق → افزودن انجام شد
   }
 
   const handleWishlist = (isWishlisted) => {

@@ -249,7 +249,7 @@ function MobileCategoryDrawer({ navData, onClose }) {
               <button
                 key={sport._id}
                 onClick={() => selectSport(sport._id)}
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold whitespace-nowrap transition-all flex-shrink-0 ${
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-[6px] text-xs font-bold whitespace-nowrap transition-all flex-shrink-0 ${
                   isActive
                     ? "bg-[#aa4725] text-white"
                     : "bg-white/5 text-gray-300 hover:bg-white/10"

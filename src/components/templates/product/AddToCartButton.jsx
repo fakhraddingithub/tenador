@@ -17,13 +17,16 @@ const AddToCartButton = ({ onAddToCart, inCart = false, disabled = false }) => {
       return;
     }
 
+    // ابتدا افزودن/اعتبارسنجی؛ اگر ناموفق بود (مثلاً ویژگی انتخاب نشده) خروجی
+    // false برمی‌گردد و هیچ انیمیشن لودینگ/تاییدی نباید نمایش داده شود
+    const result = onAddToCart?.();
+    if (result === false) return;
+
     setIsLoading(true);
     await new Promise((r) => setTimeout(r, 800));
     setIsLoading(false);
 
     setIsAdded(true);
-    onAddToCart?.();
-
     setTimeout(() => setIsAdded(false), 2000);
   };
 
