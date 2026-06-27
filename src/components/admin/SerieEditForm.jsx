@@ -75,7 +75,9 @@ export default function SerieEditForm({ id,brandId }) {
         const [serieRes, seriesRes] = await Promise.all([
           fetch(`/api/series/${id}`),
 
-          fetch(`/api/brands/${brandId}`),
+          // منبعِ یکسان با حالتِ ساخت (SerieCreateFlow): کالکشنِ Serie به‌صورتِ
+          // مستقیم — نه آرایه‌ی denormalizedِ Brand.series که ممکن است ناقص باشد.
+          fetch(`/api/series?brand=${brandId}`),
         ]);
 
         const serieResult = await serieRes.json();
@@ -120,11 +122,12 @@ export default function SerieEditForm({ id,brandId }) {
 
         setBrandName(data?.brand?.title || "");
 
+        // فیلترِ یکسان با حالتِ ساخت: فقط سری‌های ریشه (بدونِ والد) به‌عنوان والدِ مجاز
         const rootSeries =
-        seriesResult?.brand?.series?.filter(
+        seriesResult?.series?.filter(
           (serie) => !serie.parentSerie
         ) || [];
-        
+
         setParentSeries(
           (rootSeries || []).filter((serie) => serie._id !== id),
         );
