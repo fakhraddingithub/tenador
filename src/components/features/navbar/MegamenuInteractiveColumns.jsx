@@ -4,14 +4,21 @@
  * MegamenuInteractiveColumns.jsx
  *
  * ستون‌های ۲ (درختِ دسته‌بندی‌ها) و ۳/۴ (نوارِ جنسیت + گریدِ برندها + سری‌های ریشه)
- * مگامنو. این کامپوننتِ کلاینتِ ایزوله، state تعاملیِ «جنسیت» را نگه می‌دارد تا
- * Navbar/مگامنوی والد سبک بماند (Performance Shield).
+ * مگامنو. این کامپوننتِ کلاینتِ ایزوله، state تعاملیِ «جنسیت» و «دسته‌ی هاورشده» را
+ * نگه می‌دارد تا Navbar/مگامنوی والد سبک بماند (Performance Shield).
+ *
+ * رابطه‌ی category→brand: با هاورِ هر دسته، فقط برندهایی که در همان دسته محصول دارند
+ * (و سری‌های ریشه‌ی همان برند در همان دسته) نمایش داده می‌شوند. این داده را
+ * navbarService از قبل به‌صورتِ category.brands[] (با availableGenders و series)
+ * می‌سازد؛ بدونِ کوئریِ اضافه سمتِ کلاینت.
  *
  * موتورِ وراثتِ URL: اگر activeGender تنظیم باشد، به همه‌ی لینک‌های ستون‌های ۲،۳،۴
  * پارامترِ ?gender=<value> افزوده می‌شود.
  *
- * کلاس‌های موجودِ ستون‌ها/لینک‌ها عیناً از مگامنوی اصلی کپی شده‌اند (UI Shield)؛
- * فقط wrapperهای grid/flex و استایلِ «فرزند» (کوچک‌تر/کم‌رنگ/تورفته) افزوده شده‌اند.
+ * مسیرِ لینک‌ها (مطابقِ ۶ الگوی مجازِ resolver):
+ *   - دسته:  /[sport]/[category]
+ *   - برند:  /[sport]/[category]/[brand]        (الگوی ۵ — با کانتکستِ دسته)
+ *   - سری:   /[sport]/[brand]/[serie]           (الگوی ۶ — سری کانتکستِ دسته نمی‌گیرد)
  */
 
 import { useState } from "react";
@@ -40,10 +47,14 @@ const listButtonStyle = (isActive) => `
 `;
 
 // استایلِ «فرزند» (زیردسته / سری ریشه): کوچک‌تر، کم‌رنگ، با تورفتگیِ راست (RTL)
-const childButtonStyle = `
+const childButtonStyle = (isActive) => `
   group w-full flex items-center gap-2 pr-7 pl-3 py-1.5 rounded-lg transition-all text-xs font-medium
-  text-gray-400/80 border-r border-white/10 mr-3
-  hover:bg-[#ffffff14] hover:text-[#aa4725]
+  border-r border-white/10 mr-3
+  ${
+    isActive
+      ? "bg-[#ffffff14] text-[#aa4725]"
+      : "text-gray-400/80 hover:bg-[#ffffff14] hover:text-[#aa4725]"
+  }
 `;
 
 const GENDER_PILLS = [
@@ -55,6 +66,8 @@ const GENDER_PILLS = [
 export default function MegamenuInteractiveColumns({ sport, onClose }) {
   // state تعاملیِ ایزوله — پیش‌فرض null؛ کلیکِ دوباره روی همان پیل آن را خاموش می‌کند
   const [activeGender, setActiveGender] = useState(null);
+  // دسته‌ی هاورشده که ستون‌های ۳/۴ را هدایت می‌کند
+  const [hoveredCatId, setHoveredCatId] = useState(null);
 
   const toggleGender = (g) =>
     setActiveGender((prev) => (prev === g ? null : g));
@@ -65,7 +78,6 @@ export default function MegamenuInteractiveColumns({ sport, onClose }) {
 
   const sportSlug = sport?.slug;
   const categories = sport?.categories || [];
-  const allBrands = sport?.brands || [];
 
   // ── درختِ دسته‌بندی‌ها: والدها + فرزندان (بر اساس فیلدِ parent) ──
   const idSet = new Set(categories.map((c) => c._id));
@@ -76,14 +88,25 @@ export default function MegamenuInteractiveColumns({ sport, onClose }) {
   const childrenOf = (id) =>
     categories.filter((c) => c.parent && c.parent === id);
 
-  // ── فیلترِ جنسیتِ برندها (Data constraint: availableGenders از سرور می‌آید) ──
+  // ── دسته‌ی فعال (هاور): اگر هاورشده معتبر نباشد، اولین دسته تا ستون B خالی نماند ──
+  // (با تعویضِ ورزش، hoveredCatId قدیمی نامعتبر می‌شود و این fallback اولین دسته را می‌گیرد)
+  const effectiveCatId = categories.some((c) => c._id === hoveredCatId)
+    ? hoveredCatId
+    : rootCategories[0]?._id || null;
+  const activeCategory =
+    categories.find((c) => c._id === effectiveCatId) || null;
+
+  // ── برندهای همین دسته (رابطه از روی محصول)، فیلترشده با جنسیتِ فعال ──
+  const categoryBrands = activeCategory?.brands || [];
   const visibleBrands = activeGender
-    ? allBrands.filter((b) => (b.availableGenders || []).includes(activeGender))
-    : allBrands;
+    ? categoryBrands.filter((b) =>
+        (b.availableGenders || []).includes(activeGender),
+      )
+    : categoryBrands;
 
   return (
     <>
-      {/* ستون دوم: درختِ دسته‌بندی‌ها (والد/فرزند) */}
+      {/* ستون دوم: درختِ دسته‌بندی‌ها (والد/فرزند) — هاور، ستون‌های ۳/۴ را فیلتر می‌کند */}
       <div className="w-[35%] border-l border-white/[0.06] p-3 overflow-y-auto">
         <p className="text-[11px] font-bold text-gray-500 mb-4 px-2 uppercase tracking-widest">
           دسته‌بندی‌ها
@@ -94,12 +117,13 @@ export default function MegamenuInteractiveColumns({ sport, onClose }) {
               const kids = childrenOf(cat._id);
               return (
                 <li key={cat._id}>
-                  {/* والد — تایپوگرافیِ موجود */}
+                  {/* والد — هاور دسته‌ی فعال را تعیین می‌کند، کلیک به صفحه‌ی دسته می‌رود */}
                   <Link
                     href={withGender(`/${sportSlug}/${cat.slug}`)}
                     prefetch
+                    onMouseEnter={() => setHoveredCatId(cat._id)}
                     onClick={onClose}
-                    className={listButtonStyle(false)}
+                    className={listButtonStyle(effectiveCatId === cat._id)}
                   >
                     {cat.icon && (
                       <div
@@ -113,7 +137,7 @@ export default function MegamenuInteractiveColumns({ sport, onClose }) {
                     <FiChevronLeft size={16} className="opacity-20" />
                   </Link>
 
-                  {/* فرزندان — کوچک‌تر/کم‌رنگ/تورفته */}
+                  {/* فرزندان — هر کدام نیز دسته‌ی فعال را تعیین می‌کنند */}
                   {kids.length > 0 && (
                     <ul className="mt-0.5 space-y-0.5">
                       {kids.map((child) => (
@@ -121,8 +145,11 @@ export default function MegamenuInteractiveColumns({ sport, onClose }) {
                           <Link
                             href={withGender(`/${sportSlug}/${child.slug}`)}
                             prefetch
+                            onMouseEnter={() => setHoveredCatId(child._id)}
                             onClick={onClose}
-                            className={childButtonStyle}
+                            className={childButtonStyle(
+                              effectiveCatId === child._id,
+                            )}
                           >
                             <span className="flex-grow text-right">
                               {child.title}
@@ -143,7 +170,7 @@ export default function MegamenuInteractiveColumns({ sport, onClose }) {
         )}
       </div>
 
-      {/* ستون‌های سوم و چهارم: نوار جنسیت + گرید برندها + سری‌های ریشه */}
+      {/* ستون‌های سوم و چهارم: نوار جنسیت + گرید برندهای دسته‌ی فعال + سری‌های ریشه */}
       <div className="flex-1 p-3 overflow-y-auto bg-white/[0.01]">
         {/* نوار جنسیت (پیل‌ها) */}
         <div className="flex items-center gap-2 mb-4 px-1">
@@ -166,14 +193,16 @@ export default function MegamenuInteractiveColumns({ sport, onClose }) {
           })}
         </div>
 
-        {/* گریدِ ۲‌ستونیِ برندها */}
-        {visibleBrands.length > 0 ? (
+        {/* گریدِ ۲‌ستونیِ برندهای دسته‌ی فعال */}
+        {activeCategory && visibleBrands.length > 0 ? (
           <div className="grid grid-cols-2 gap-x-2 gap-y-1">
             {visibleBrands.map((brand) => (
               <div key={brand._id} className="min-w-0">
-                {/* برند = والد (تایپوگرافیِ موجود) */}
+                {/* برند = والد → /[sport]/[category]/[brand] (الگوی ۵) */}
                 <Link
-                  href={withGender(`/${sportSlug}/${brand.slug}`)}
+                  href={withGender(
+                    `/${sportSlug}/${activeCategory.slug}/${brand.slug}`,
+                  )}
                   prefetch
                   onClick={onClose}
                   className={listButtonStyle(false)}
@@ -189,7 +218,7 @@ export default function MegamenuInteractiveColumns({ sport, onClose }) {
                   </span>
                 </Link>
 
-                {/* سری‌های ریشه (level 0) = فرزند — فقط در صورت وجود */}
+                {/* سری‌های ریشه (level 0) در همین دسته → /[sport]/[brand]/[serie] (الگوی ۶) */}
                 {brand.series?.length > 0 && (
                   <ul className="mt-0.5 mb-1 space-y-0.5">
                     {brand.series.map((serie) => (
@@ -200,7 +229,7 @@ export default function MegamenuInteractiveColumns({ sport, onClose }) {
                           )}
                           prefetch
                           onClick={onClose}
-                          className={childButtonStyle}
+                          className={childButtonStyle(false)}
                         >
                           <span className="flex-grow text-right truncate">
                             {serie.title}
