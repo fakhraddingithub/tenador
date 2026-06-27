@@ -84,7 +84,10 @@ export async function POST(request) {
     const usedProductMap = new Map(usedProducts.map((up) => [up._id.toString(), up]));
 
     // تخفیف‌های تعدادی فعال (یک‌بار batch)
-    const quantityDiscountMap = await loadQuantityDiscountMap(productIds);
+    // ⚠️ باید آبجکت‌های محصول پاس داده شوند (نه فقط idها)؛ این تابع برای تطبیقِ
+    // برند/دسته/سری به p.brand/p.category/p.serie نیاز دارد و در غیر این صورت
+    // روی p._id کرش می‌کند و کل سبد را خالی نشان می‌دهد.
+    const quantityDiscountMap = await loadQuantityDiscountMap(products);
 
     // ───── فرایند سفارش: resolver افزوده‌ی قیمت (واکشی batch محصولات/واریانت/فرایندها) ─────
     const resolveFlowAddon = await buildFlowAddonResolver(items, productMap, rate);

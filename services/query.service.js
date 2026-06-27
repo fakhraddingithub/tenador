@@ -44,6 +44,30 @@ const NOT_FOUND = Object.freeze({ notFound: true });
  *
  * @returns موجودیت‌های resolve‌شده { sport?, brand?, category?, serie? } یا NOT_FOUND.
  */
+/**
+ * شناسه‌ی یک سریِ ریشه به‌علاوه‌ی شناسه‌ی همه‌ی فرزندانِ زیردرختش (در همین برند) را
+ * برمی‌گرداند. همه‌ی سری‌های برند یک‌بار خوانده و زیردرخت با BFS پیمایش می‌شود تا
+ * بررسیِ وجودِ محصول، محصولاتِ زیرسری‌ها را هم پوشش دهد.
+ */
+async function _collectSerieSubtreeIds(rootSerieId, brandId) {
+  const all = await Serie.find({ brand: brandId })
+    .select("_id parentSerie")
+    .lean();
+
+  const ids = [rootSerieId];
+  const queue = [String(rootSerieId)];
+  while (queue.length > 0) {
+    const cur = queue.shift();
+    for (const s of all) {
+      if (s.parentSerie && String(s.parentSerie) === cur) {
+        ids.push(s._id);
+        queue.push(String(s._id));
+      }
+    }
+  }
+  return ids;
+}
+
 async function _validatePath(slugs) {
   // RULE 1: Array Length Hard Guard
   if (!Array.isArray(slugs) || slugs.length === 0 || slugs.length > 3) {
@@ -108,17 +132,22 @@ async function _validatePath(slugs) {
         const brand = await Brand.findOne({ slug: s2 }).lean();
         if (brand) {
           const serie = await Serie.findOne({ slug: s3 }).lean();
-          if (
-            serie &&
-            String(serie.brand) === String(brand._id) &&
-            (await Product.exists({
-              sport: sport._id,
-              brand: brand._id,
-              serie: serie._id,
-              isActive: true,
-            }))
-          ) {
-            resolved = { sport, brand, serie };
+          if (serie && String(serie.brand) === String(brand._id)) {
+            // یک سریِ ریشه ممکن است محصولِ مستقیم نداشته باشد و همه‌ی محصولاتش روی
+            // زیرسری‌ها باشند. پس «مرتبط‌بودنِ سری با این ورزش» با وجودِ محصول روی
+            // کلِ زیردرختِ سری (خودش + همه‌ی فرزندان) اثبات می‌شود، نه فقط خودِ سری —
+            // وگرنه صفحه‌ی سریِ والدِ بدونِ محصولِ مستقیم به‌اشتباه ۴۰۴ می‌شد.
+            const serieIds = await _collectSerieSubtreeIds(serie._id, brand._id);
+            if (
+              await Product.exists({
+                sport: sport._id,
+                brand: brand._id,
+                serie: { $in: serieIds },
+                isActive: true,
+              })
+            ) {
+              resolved = { sport, brand, serie };
+            }
           }
         }
       }

@@ -156,7 +156,14 @@
       "Bash(ls \"src/app/api/product/[id]\")",
       "Bash(grep -vE \"react-hooks/\\(immutability|set-state-in-effect|exhaustive-deps\\)|accessed before|prevents the earlier|Calling setState|Effects are intended|Update external|Subscribe for|Avoid calling setState|cascading renders|no-img-element|slower LCP|react.dev|missing dependency|Either include|^\\\\s*\\\\^|^\\\\s*[0-9]+ \\\\||^\\\\s*\\\\||^$|^>|in general|platform APIs\")",
       "Bash(echo \"exit: $?\")",
-      "Bash(xargs grep -ln \"search\")"
+      "Bash(xargs grep -ln \"search\")",
+      "PowerShell(npx eslint services/query.service.js)",
+      "Bash(curl -s -w \"\\\\nHTTP_STATUS:%{http_code}\\\\n\" http://localhost:3000/api/cart/products -X POST -H \"Content-Type: application/json\" -d '{\"items\":[{\"productId\":\"6a1741f45a75b48c7f4ebb93\",\"variantId\":\"6a1d80b11ab55c48a32234fb\",\"quantity\":1,\"itemType\":\"product\"}]}')",
+      "Bash(git log *)",
+      "Bash(python -c 'import sys,json; d=sys.stdin.read\\(\\); *)",
+      "Bash(curl -s -w \"\\\\nHTTP:%{http_code}\\\\n\" http://localhost:3000/api/product/6a1741f45a75b48c7f4ebb93/price)",
+      "Bash(taskkill //F //PID 776)",
+      "Bash(pkill -f \"next dev\")"
     ]
   }
 }

@@ -69,6 +69,7 @@ export default function QuickViewModal({
   const [selection, setSelection] = useState({});
   const [unitSelection, setUnitSelection] = useState({}); // واحدِ فعالِ هر ویژگیِ چندواحدی
   const [selectedVariant, setSelectedVariant] = useState(null);
+  const [errorMessage, setErrorMessage] = useState(""); // پیامِ inline انتخاب ویژگی (مثل صفحه‌ی محصول)
 
   // افزودن به سبد با پشتیبانی از فرایند سفارش
   const { requestAddToCart, flowModal } = useOrderFlowCart();
@@ -109,6 +110,7 @@ export default function QuickViewModal({
   function handleVariantSelect(attrKey, value) {
     const newSelection = { ...selection, [attrKey]: value };
     setSelection(newSelection);
+    setErrorMessage(""); // با انتخابِ ویژگی، پیامِ خطا پاک می‌شود
     // گالری با اولویتِ تصاویرِ مقدارِ انتخاب‌شده به‌روزرسانی می‌شود؛ انتخابِ دستیِ
     // تصویر صفر می‌شود تا تصویرِ همان مقدار جلو بیفتد.
     setSelectedImage(null);
@@ -196,20 +198,21 @@ export default function QuickViewModal({
       ? Math.round(((baseTomanPrice - displayPrice) / baseTomanPrice) * 100)
       : 0;
 
-  // دکمه افزودن وقتی غیرفعال است که محصول واریانت دارد ولی هنوز ترکیبِ معتبرِ
-  // کاملی انتخاب نشده (selectedVariant فقط با انتخابِ کاملِ همه‌ی ویژگی‌ها ست می‌شود)
-  const cannotAddToCart = hasVariants && !selectedVariant;
-
   function handleAddToCart() {
     let variantId = null;
 
     if (hasVariants) {
-      if (optionKeys.some((k) => !selection[k])) {
-        toast.warning("لطفاً تمام ویژگی‌های محصول را انتخاب کنید");
+      // پیدا کردن ویژگی‌هایی که هنوز انتخاب نشده‌اند (همان منطقِ صفحه‌ی محصول)
+      const missingKeys = optionKeys.filter((k) => !selection[k]);
+
+      if (missingKeys.length > 0) {
+        // تبدیل کلید ویژگی به لیبل فارسی
+        const missingLabels = missingKeys.map((k) => labelMap[k] || k).join(" و ");
+        setErrorMessage(`لطفاً ${missingLabels} را انتخاب کنید.`);
         return;
       }
       if (!selectedVariant) {
-        toast.error("این ترکیب موجود نیست");
+        setErrorMessage("این ترکیب در حال حاضر موجود نیست.");
         return;
       }
       variantId = selectedVariant._id;
@@ -220,7 +223,10 @@ export default function QuickViewModal({
       product,
       quantity,
       variantId,
-      onAdded: () => toast.success("به سبد خرید اضافه شد"),
+      onAdded: () => {
+        setErrorMessage(""); // پاک کردن خطا در صورت موفقیت
+        toast.success("به سبد خرید اضافه شد");
+      },
     });
   }
 
@@ -530,24 +536,29 @@ export default function QuickViewModal({
               </div>
             </div>
 
+            {/* نمایش پیامِ inline بالای دکمه (همان الگوی صفحه‌ی محصول) */}
+            {errorMessage && (
+              <div className="flex items-center gap-2 py-2.5 px-4 text-sm font-bold text-red-600 bg-red-50 border border-red-200 rounded-lg animate-pulse w-fit">
+                <svg className="w-5 h-5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                  <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                </svg>
+                <span>{errorMessage}</span>
+              </div>
+            )}
+
             {/* دکمه‌ها */}
             <div className="flex gap-2 sm:gap-3">
-              {/* وقتی واریانت دارد ولی ترکیبِ معتبری کامل نشده، غیرفعال است تا کاربر
-                  هرگز به خطای «این ترکیب موجود نیست» نرسد (Bug 2) */}
+              {/* دکمه همیشه فعال است؛ اگر ویژگی‌ای انتخاب نشده باشد، هنگام کلیک
+                  پیامِ inline بالای دکمه نمایش داده می‌شود (handleAddToCart) */}
               <button
                 onClick={handleAddToCart}
-                disabled={cannotAddToCart}
-                className={`
+                className="
                   flex-[5] h-12 sm:h-13 lg:h-14
                   rounded-lg font-bold text-sm sm:text-base lg:text-lg
                   flex items-center justify-center gap-2 sm:gap-3
                   transition-all shadow-xl
-                  ${
-                    cannotAddToCart
-                      ? "bg-gray-300 text-gray-500 cursor-not-allowed"
-                      : "bg-[#aa4725] text-white hover:bg-[#8e3b1e] shadow-[#aa4725]/20 active:scale-95"
-                  }
-                `}
+                  bg-[#aa4725] text-white hover:bg-[#8e3b1e] shadow-[#aa4725]/20 active:scale-95
+                "
               >
                 <FaShoppingCart size={17} />
                 افزودن به سبد خرید

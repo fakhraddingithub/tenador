@@ -76,7 +76,8 @@ export async function GET(request, { params }) {
     }
 
     // تخفیف تعدادی فعال (برای نمایش پله‌ها در صفحه محصول/مودال)
-    const qdMap = await loadQuantityDiscountMap([product._id]);
+    // ⚠️ آبجکت محصول پاس داده می‌شود (نه id)؛ تابع به brand/category/serie نیاز دارد
+    const qdMap = await loadQuantityDiscountMap([product]);
     const qd = qdMap.get(product._id.toString());
     const quantityDiscount = qd
       ? {

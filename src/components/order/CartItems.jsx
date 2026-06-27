@@ -47,20 +47,24 @@ const CartItems = ({ items, onUpdateQuantity, onRemoveItem, onRemoveFlowSelectio
         const productImage = item.product?.product?.mainImage ?? item.product?.mainImage;
         const hasDiscount  = (item.discountToman ?? 0) > 0;
 
-        // واریانت: از variantAttributes یا variant.attributes
+        // واریانت: شکلِ غنی‌شده‌ی useCart (item.variant) در اولویت است؛ سپس
+        // شکل‌های قدیمی برای سازگاری به‌عقب حفظ می‌شوند.
         const variantAttrs =
+          item.variant?.attributes ||
           item.variantAttributes ||
           item.product?.variant?.attributes ||
           null;
 
         // تصویرِ نماینده‌ی هر ویژگیِ تصویری (مثلاً رنگ) برای نمایش thumbnail — Change 4
         const variantAttrImages =
+          item.variant?.attributeImages ||
           item.variantAttributeImages ||
           item.product?.variant?.attributeImages ||
           null;
 
         // مقادیرِ واحدهای ویژگی‌های چندواحدی (مثلاً سایز EU/سانتی‌متر) — Change 3
         const variantAttrUnits =
+          item.variant?.attributeUnits ||
           item.variantAttributeUnits ||
           item.product?.variant?.attributeUnits ||
           null;
