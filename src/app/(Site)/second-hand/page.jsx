@@ -9,7 +9,9 @@ import UsedProductsPageClient from "@/components/templates/secondHands/UsedProdu
 import { getFilterableAttributes } from "base/services/product.service";
 import { getCachedRate, eurToToman } from "@/lib/Exchangerate";
 
-export const revalidate = 300;
+// تغییراتِ ادمین از طریقِ revalidatePath("/second-hand") باطل می‌شوند؛
+// TTL زمان‌محور → ۱ساعت برای کاهشِ ISR Writes.
+export const revalidate = 3600;
 
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || "https://tenador.com";
 const PAGE_TITLE = "بازار دست‌دوم | فروش تجهیزات ورزشی کارکرده";

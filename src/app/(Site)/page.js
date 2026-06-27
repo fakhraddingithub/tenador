@@ -16,8 +16,10 @@ import SportModel from "base/models/Sport";
 import { getCachedRate } from "@/lib/Exchangerate";
 import { getShowcaseAthletes } from "@/lib/athleteService";
 
-// ISR: صفحه اصلی هر ۶۰ ثانیه در پس‌زمینه بازتولید می‌شود
-export const revalidate = 60;
+// ISR: داده‌ها با تگ‌های unstable_cache (products/banners/sports/...) کش می‌شوند و
+// بعد از هر تغییرِ ادمین از طریقِ revalidateContent باطل می‌شوند؛ پس نیازی به
+// بازتولیدِ پرتکرارِ زمان‌محور نیست. TTL از ۶۰ث به ۱ساعت افزایش یافت تا ISR Writes کم شود.
+export const revalidate = 3600;
 
 export default async function Home() {
   // ۱. اتصال به دیتابیس

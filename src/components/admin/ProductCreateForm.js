@@ -85,6 +85,7 @@ export default function ProductCreateForm({ initialData = {} }) {
     serie: '',
     limitedEdition: '',
     sport: '',
+    gender: '', // '' = بدون جنسیت / عمومی (در پی‌لود به null تبدیل می‌شود)
     attributes: {},
     technicalStats: {},
     label: 'none',
@@ -435,6 +436,7 @@ export default function ProductCreateForm({ initialData = {} }) {
         attributes: normalizedAttributes,
         technicalStats: normalizedStats,
         basePrice: Number(formData.basePrice) || 0,
+        gender: formData.gender || null, // '' → null
         tag: normalizedTag,
         athlete: Array.isArray(formData.athlete) ? formData.athlete : [],
         label: formData.label,
@@ -548,6 +550,18 @@ export default function ProductCreateForm({ initialData = {} }) {
           value={formData.sport}
           onChange={e => updateField('sport', e.target.value)}
           options={sports.map(s => ({ value: s._id, label: s.name }))}
+        />
+
+        <Select
+          label="جنسیت"
+          value={formData.gender || ''}
+          onChange={e => updateField('gender', e.target.value)}
+          placeholder="بدون جنسیت / عمومی"
+          options={[
+            { value: 'men', label: 'مردانه' },
+            { value: 'women', label: 'زنانه' },
+            { value: 'kids', label: 'بچگانه' },
+          ]}
         />
 
         {/* لیمیتد ادیشن — مخصوص برند انتخاب‌شده (مثل Roland Garros) */}

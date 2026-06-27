@@ -21,6 +21,14 @@ const ProductSchema = new mongoose.Schema(
       default: "none",
     },
 
+    // بُعدِ جنسیت — اختیاری؛ null = بدون جنسیت / عمومی
+    gender: {
+      type: String,
+      enum: ["men", "women", "kids"],
+      required: false,
+      default: null,
+    },
+
     category: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "Category",
@@ -128,6 +136,10 @@ ProductSchema.virtual("comments", {
 });
 
 ProductSchema.index({ sport: 1, category: 1, brand: 1, isActive: 1 });
+
+// مسیرهای فیلتر بر اساس جنسیت (PLP برند و دسته + محاسبه‌ی availableGenders در مگامنو)
+ProductSchema.index({ sport: 1, gender: 1, brand: 1 });
+ProductSchema.index({ sport: 1, category: 1, gender: 1 });
 
 export default mongoose.models.Product ||
   mongoose.model("Product", ProductSchema);

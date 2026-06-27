@@ -2,7 +2,9 @@ import { getActiveEvents } from "base/services/event.service";
 import EventCard from "@/components/features/events/EventCard";
 import Link from "next/link";
 
-export const revalidate = 300;
+// رویدادها با تگ‌های events/limited-editions کش و در تغییرِ ادمین باطل می‌شوند؛
+// TTL زمان‌محور → ۱ساعت برای کاهشِ ISR Writes.
+export const revalidate = 3600;
 
 export const metadata = {
   title: "Collection | تنادور",

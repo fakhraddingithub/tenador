@@ -13,6 +13,10 @@ export default function FilterSidebar({
   attributeMeta = [],
   attrFilters = {},
   setAttrFilters = () => {},
+  // بُعدِ جنسیت — سمت سرور اعمال می‌شود (router.push). فقط وقتی onGenderChange
+  // پاس داده شود این بلوک رندر می‌شود (صفحه‌ی رویداد آن را پاس نمی‌دهد).
+  activeGender = null,
+  onGenderChange = null,
 }) {
   // استخراج داده‌های یکتا برای فیلترها
   const getUniqueItems = (products, key) => {
@@ -73,6 +77,14 @@ export default function FilterSidebar({
       </div>
 
       <div className="bg-white rounded-[6px] border border-gray-100 shadow-sm overflow-hidden">
+        {/* فیلتر جنسیت — تک‌انتخابی با قابلیتِ خاموش‌کردن؛ سمت سرور اعمال می‌شود */}
+        {onGenderChange && (
+          <GenderFilterGroup
+            activeGender={activeGender}
+            onGenderChange={onGenderChange}
+          />
+        )}
+
         {/* فیلتر ورزش (Sport) */}
         <FilterGroup
           title="ورزش تخصصی"
@@ -151,6 +163,65 @@ export default function FilterSidebar({
       </div>
     </div>
     </MobileFilterDrawer>
+  );
+}
+
+// بلوک فیلتر جنسیت — هم‌استایلِ FilterGroup اما تک‌انتخابی (رادیو) با toggle.
+// انتخابِ دوباره‌ی همان گزینه آن را خاموش می‌کند (activeGender = null).
+const GENDER_OPTIONS = [
+  { value: "men", label: "مردانه" },
+  { value: "women", label: "زنانه" },
+  { value: "kids", label: "بچگانه" },
+];
+
+function GenderFilterGroup({ activeGender, onGenderChange }) {
+  const [isOpen, setIsOpen] = useState(true);
+
+  return (
+    <div className="border-b border-gray-50 last:border-0">
+      <button
+        type="button"
+        onClick={() => setIsOpen(!isOpen)}
+        className="w-full p-5 flex items-center justify-between hover:bg-gray-50/50 transition-colors"
+      >
+        <span className="text-sm font-bold text-[#1a1a1a]">جنسیت</span>
+        <FaChevronDown
+          size={10}
+          className={`text-gray-400 transition-transform ${isOpen ? "rotate-180" : ""}`}
+        />
+      </button>
+
+      {isOpen && (
+        <div className="px-5 pb-5 flex flex-col gap-3">
+          {GENDER_OPTIONS.map((opt) => {
+            const isActive = activeGender === opt.value;
+            return (
+              <div
+                key={opt.value}
+                onClick={() => onGenderChange(opt.value)}
+                className="flex items-center justify-between group cursor-pointer"
+              >
+                <div className="flex items-center gap-3">
+                  <div
+                    className={`w-5 h-5 rounded-full border-2 flex items-center justify-center transition-all
+                      ${isActive ? "bg-[#aa4725] border-[#aa4725]" : "border-gray-200 group-hover:border-[#aa4725]"}`}
+                  >
+                    {isActive && (
+                      <div className="w-1.5 h-1.5 bg-white rounded-full shadow-sm" />
+                    )}
+                  </div>
+                  <span
+                    className={`text-xs font-bold transition-colors ${isActive ? "text-[#aa4725]" : "text-gray-500 group-hover:text-gray-800"}`}
+                  >
+                    {opt.label}
+                  </span>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </div>
   );
 }
 

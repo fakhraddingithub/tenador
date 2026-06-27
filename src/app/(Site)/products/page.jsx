@@ -5,7 +5,9 @@ import { getProducts, getFilterableAttributes } from "base/services/product.serv
 import { getFirstSport } from "@/lib/sportService";
 import { getCachedRate } from "@/lib/Exchangerate";
 
-export const revalidate = 60;
+// داده‌ها با تگِ "products" کش و بعد از تغییرِ ادمین (revalidateContent) باطل می‌شوند؛
+// TTL زمان‌محور از ۶۰ث به ۱ساعت افزایش یافت تا ISR Writes کاهش یابد.
+export const revalidate = 3600;
 
 export default async function ProductsPage() {
 

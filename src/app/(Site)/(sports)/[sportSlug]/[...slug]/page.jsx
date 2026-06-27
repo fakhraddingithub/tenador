@@ -98,6 +98,8 @@ export default async function SportDynamicSlugPage({ params, searchParams }) {
   // سگمنتِ مسیر. سگمنتِ اضافیِ مسیر توسطِ validatorِ سخت‌گیر (طول + Mirror) رد می‌شود.
   const sp = (await searchParams) || {};
   const page = Math.max(1, Number(sp.page) || 1);
+  // بُعدِ جنسیت فقط از searchParams (?gender=) خوانده می‌شود، نه از مسیر
+  const gender = ["men", "women", "kids"].includes(sp.gender) ? sp.gender : null;
 
   // اعتبارسنجیِ قطعیِ مسیر — اگر یکی از ۶ الگوی مجاز نباشد، ۴۰۴ سخت
   const ctx = await resolvePageContext(slugs);
@@ -119,6 +121,7 @@ export default async function SportDynamicSlugPage({ params, searchParams }) {
       brandId,
       sportId,
       categoryId,
+      gender,
       offset: 0,
       limit: INITIAL_SECTIONS,
       withIndex: true,
@@ -134,6 +137,7 @@ export default async function SportDynamicSlugPage({ params, searchParams }) {
         brandId={brandId}
         sportId={sportId}
         categoryId={categoryId}
+        gender={gender}
         initialData={initialData}
         page={page}
         title={`تنادور – ${pageInfo.title || pageInfo.name || ""}`}
@@ -152,6 +156,7 @@ export default async function SportDynamicSlugPage({ params, searchParams }) {
       serieId,
       sportId,
       categoryId,
+      gender,
       offset: 0,
       limit: INITIAL_SECTIONS,
       withIndex: true,
@@ -168,6 +173,7 @@ export default async function SportDynamicSlugPage({ params, searchParams }) {
         sportId={sportId}
         categoryId={categoryId}
         brandSlug={brandSlug}
+        gender={gender}
         initialData={initialData}
         page={page}
         title={`تنادور – ${pageInfo.title || pageInfo.name || ""}`}
@@ -176,7 +182,7 @@ export default async function SportDynamicSlugPage({ params, searchParams }) {
   }
 
   // ─── سایر صفحات (ورزش، دسته): الگوهای ۲ از این مسیر سرو می‌شوند ───
-  const searchData = await queryBySlugs(slugs);
+  const searchData = await queryBySlugs(slugs, gender);
 
   // محافظِ دوم: اگر بینِ resolve و query وضعیت تغییر کرده باشد (مثلاً حذفِ آخرین
   // محصولِ یک ترکیب)، باز هم ۴۰۴ سخت می‌دهیم — بدونِ fallbackِ خاموش.
@@ -198,6 +204,8 @@ export default async function SportDynamicSlugPage({ params, searchParams }) {
       totalResults={searchData.totalResults}
       rate={rate}
       page={page}
+      activeGender={gender}
+      enableGenderFilter={true}
       title={`تنادور – ${pageInfo.title || pageInfo.name || ""}`}
     />
   );

@@ -202,7 +202,7 @@ async function _resolveContext(slugs) {
   return { notFound: false, search, filters };
 }
 
-async function _queryBySlugs(slugs) {
+async function _queryBySlugs(slugs, gender = null) {
   const ctx = await _resolveContext(slugs);
   if (ctx.notFound) return NOT_FOUND;
 
@@ -213,6 +213,8 @@ async function _queryBySlugs(slugs) {
   if (search.sport) finalFilter.sport = search.sport._id;
   if (search.category) finalFilter.category = search.category._id;
   if (search.serie) finalFilter.serie = search.serie._id;
+  // بُعدِ جنسیت از searchParams؛ فقط مقادیرِ مجاز اعمال می‌شوند (بقیه نادیده)
+  if (["men", "women", "kids"].includes(gender)) finalFilter.gender = gender;
 
   // ⚠️ variants باید populate شوند تا سوآچ‌های تصویر واریانت روی کارت محصول
   //   نمایش داده شوند — دقیقاً مثل صفحه‌ی اصلی ورزش (getPageDataBySlug). بدون این،

@@ -111,6 +111,7 @@ export async function POST(req) {
       limitedEdition,
       athlete,
       sport,
+      gender, // جنسیت محصول (men|women|kids یا null)
       attributes,
       technicalStats,
       label,
@@ -210,6 +211,7 @@ export async function POST(req) {
       limitedEdition: (limitedEdition && limitedEdition !== "") ? limitedEdition : undefined,
       athlete: formattedAthletes.length > 0 ? formattedAthletes : [],
       sport: sport || undefined,
+      gender: ["men", "women", "kids"].includes(gender) ? gender : null,
       attributes: attributes || {},
       technicalStats: technicalStats || {},
       variantMeta: variantMeta && typeof variantMeta === "object" ? variantMeta : {},

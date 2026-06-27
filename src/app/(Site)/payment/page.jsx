@@ -4,7 +4,8 @@ import { buildPageMetadata } from "@/lib/pageMeta";
 import CmsPageBody from "@/components/pages/CmsPageBody";
 
 const SLUG = "payment";
-export const revalidate = 300;
+// CMS با تگِ "pages" کش/باطل می‌شود؛ TTL زمان‌محور → ۲۴ساعت برای کاهشِ ISR Writes.
+export const revalidate = 86400;
 
 export async function generateMetadata() {
   const content = await getPageContent(SLUG);

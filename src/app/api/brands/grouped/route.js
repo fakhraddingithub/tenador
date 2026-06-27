@@ -34,6 +34,7 @@ export async function GET(req) {
       brandId,
       sportId: searchParams.get("sportId") || null,
       categoryId: searchParams.get("categoryId") || null,
+      gender: searchParams.get("gender") || null,
       offset: toInt(searchParams.get("offset"), 0),
       limit: Math.min(Math.max(toInt(searchParams.get("limit"), 2), 1), 6),
       minPrice: toInt(searchParams.get("minPrice"), 0),

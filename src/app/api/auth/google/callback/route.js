@@ -1,5 +1,4 @@
 import { NextResponse } from 'next/server';
-import { revalidatePath } from 'next/cache';
 import { OAuth2Client } from 'google-auth-library';
 import connectToDB from 'base/configs/db';
 import User from 'base/models/User';
@@ -61,7 +60,10 @@ export async function GET(request) {
     const rawCallback = request.cookies.get('oauth_callback')?.value;
     const finalUrl = rawCallback ? decodeURIComponent(rawCallback) : '/';
 
-    revalidatePath('/', 'layout');
+    // نکته: قبلاً اینجا revalidatePath('/', 'layout') صدا زده می‌شد که در هر ورودِ
+    // گوگل کلِ کشِ ISR سایت را باطل می‌کرد (منشأ اصلی مصرفِ بیش از حدِ ISR Writes).
+    // وضعیتِ ورود کاربر سمتِ کلاینت (UserProvider / /api/auth/profile) مدیریت می‌شود،
+    // پس باطل‌سازیِ کشِ صفحات هیچ کمکی نمی‌کرد و فقط هزینه ایجاد می‌کرد — حذف شد.
 
     // ← به جای redirect مستقیم، از صفحه intermediate رد میشیم
     const response = NextResponse.redirect(

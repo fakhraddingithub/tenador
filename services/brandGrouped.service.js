@@ -89,10 +89,11 @@ async function buildSeriesTree(brandId) {
 /**
  * فیلتر پایه‌ی محصول (برند + ورزش + دسته + جستجو). قیمت جداگانه روی قیمت تومانی اعمال می‌شود.
  */
-function buildBaseMatch({ brandId, sportId, categoryId, search }) {
+function buildBaseMatch({ brandId, sportId, categoryId, gender, search }) {
   const match = { isActive: true, brand: toObjectId(brandId) };
   if (sportId) match.sport = toObjectId(sportId);
   if (categoryId) match.category = toObjectId(categoryId);
+  if (["men", "women", "kids"].includes(gender)) match.gender = gender;
   if (search && search.trim()) {
     match.name = { $regex: escapeRegex(search.trim()), $options: "i" };
   }
@@ -111,6 +112,7 @@ async function _getBrandGroupedSections(params) {
     brandId,
     sportId = null,
     categoryId = null,
+    gender = null,
     offset = 0,
     limit = 2,
     minPrice = 0,
@@ -130,7 +132,7 @@ async function _getBrandGroupedSections(params) {
     getCachedRate(),
   ]);
 
-  const baseMatch = buildBaseMatch({ brandId, sportId, categoryId, search });
+  const baseMatch = buildBaseMatch({ brandId, sportId, categoryId, gender, search });
 
   // ── شمارش محصولات هر سری با یک aggregation و رول‌آپ به سری ریشه ──
   const countAgg = await Product.aggregate([

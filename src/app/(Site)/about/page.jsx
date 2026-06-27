@@ -4,7 +4,9 @@ import { buildPageMetadata } from "@/lib/pageMeta";
 import CmsPageBody from "@/components/pages/CmsPageBody";
 
 const SLUG = "about";
-export const revalidate = 300;
+// محتوای CMS با تگِ "pages" کش و در زمانِ ذخیره در ادمین باطل می‌شود؛
+// پس بازتولیدِ زمان‌محور را به ۲۴ساعت افزایش دادیم تا ISR Writes کم شود.
+export const revalidate = 86400;
 
 export async function generateMetadata() {
   const content = await getPageContent(SLUG);

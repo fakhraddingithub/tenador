@@ -8,7 +8,9 @@ import EventCountdown from "@/components/features/events/EventCountdown";
 import EventCardOverlay from "@/components/features/events/EventCardOverlay";
 import SportPageClient from "@/components/templates/sports/SportPageClient";
 
-export const revalidate = 300;
+// رویدادها با تگ‌های events/limited-editions کش و در تغییرِ ادمین باطل می‌شوند؛
+// TTL زمان‌محور → ۱ساعت برای کاهشِ ISR Writes.
+export const revalidate = 3600;
 
 // Resolve the single header image with graceful fallback to the legacy fields so
 // old events (which only had heroImage/coverImage) keep rendering correctly.

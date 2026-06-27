@@ -9,6 +9,7 @@ import {
   FiX,
   FiChevronLeft,
   FiChevronRight,
+  FiChevronDown,
 } from "react-icons/fi";
 import { motion, AnimatePresence } from "framer-motion";
 import { HiOutlineViewGrid } from "react-icons/hi";
@@ -21,6 +22,7 @@ import CartDrawer from "@/components/features/cartDrawer/CartDrawer";
 import UserNotificationBell from "@/components/features/notifications/UserNotificationBell";
 import { useUser } from "@/components/features/auth/UserContext";
 import { getCartTotalQuantity } from "@/lib/cart";
+import MegamenuInteractiveColumns from "@/components/features/navbar/MegamenuInteractiveColumns";
 
 const NAVIGATION_ITEMS = [
   { id: 1, label: "جمعه بازار", href: "/second-hand" },
@@ -36,6 +38,13 @@ const iconMaskStyle = (url) => ({
   maskSize: "contain",
   WebkitMaskSize: "contain",
 });
+
+// پیل‌های جنسیت — مشترک بین دسکتاپ و موبایل
+const GENDER_PILLS = [
+  { value: "men", label: "مردانه" },
+  { value: "women", label: "زنانه" },
+  { value: "kids", label: "بچگانه" },
+];
 
 // ---- Search Result Item ----
 function SearchResultItem({ product, onClick }) {
@@ -80,16 +89,7 @@ function CategoryMenu({ navData, onClose }) {
   const activeSport =
     navData.find((s) => s._id === activeSportId) || navData[0];
 
-  // State برای مدیریت دسته‌بندی فعال (جهت نمایش برندهای ستون سوم)
-  const [activeCategoryId, setActiveCategoryId] = useState(
-    activeSport?.categories?.[0]?._id || null,
-  );
-
-  const activeCategory =
-    activeSport?.categories?.find((c) => c._id === activeCategoryId) ||
-    activeSport?.categories?.[0];
-
-  // تابع کمکی برای استایل دکمه‌های لیست در هر سه ستون
+  // تابع کمکی برای استایل دکمه‌های لیست در ستون اول (ورزش‌ها)
   const listButtonStyle = (isActive) => `
     group w-full flex items-center gap-3 px-4 py-2.5 rounded-lg transition-all text-[15px] font-medium
     ${
@@ -118,10 +118,7 @@ function CategoryMenu({ navData, onClose }) {
                   href={`/${sport.slug}`}
                   prefetch
                   onClick={onClose}
-                  onMouseEnter={() => {
-                    setActiveSportId(sport._id);
-                    setActiveCategoryId(sport.categories?.[0]?._id);
-                  }}
+                  onMouseEnter={() => setActiveSportId(sport._id)}
                   className={listButtonStyle(activeSportId === sport._id)}
                 >
                   {sport.icon && (
@@ -142,83 +139,9 @@ function CategoryMenu({ navData, onClose }) {
             ))}
           </ul>
         </div>
-        {/* ستون دوم: دسته‌بندی‌ها */}
-        <div className="w-[35%] border-l border-white/[0.06] p-3 overflow-y-auto">
-          <p className="text-[11px] font-bold text-gray-500 mb-4 px-2 uppercase tracking-widest">
-            دسته‌بندی‌ها
-          </p>
-          {activeSport?.categories?.length > 0 ? (
-            <ul className="space-y-1">
-              {activeSport.categories.map((cat) => (
-                <li key={cat._id}>
-                  <Link
-                    href={`/${activeSport.slug}/${cat.slug}`}
-                    prefetch
-                    onClick={onClose}
-                    onMouseEnter={() => setActiveCategoryId(cat._id)}
-                    className={listButtonStyle(activeCategoryId === cat._id)}
-                  >
-                    {cat.icon && (
-                      <div
-                        style={iconMaskStyle(cat.icon)}
-                        className="w-5 h-5 shrink-0"
-                      />
-                    )}
-                    <span className="flex-grow text-right font-bold">
-                      {cat.title}
-                    </span>
-                    <FiChevronLeft
-                      size={16}
-                      className={
-                        activeCategoryId === cat._id
-                          ? "opacity-100"
-                          : "opacity-20"
-                      }
-                    />
-                  </Link>
-                </li>
-              ))}
-            </ul>
-          ) : (
-            <div className="text-gray-600 text-[13px] p-4 text-center">
-              موردی یافت نشد
-            </div>
-          )}
-        </div>
-        {/* ستون سوم: برندها */}
-        <div className="flex-1 p-3 overflow-y-auto bg-white/[0.01]">
-          <p className="text-[11px] font-bold text-gray-500 mb-4 px-2 uppercase tracking-widest">
-            برندهای مرتبط
-          </p>
-          {activeCategory?.brands?.length > 0 ? (
-            <ul className="space-y-1">
-              {activeCategory.brands.map((brand) => (
-                <li key={brand._id}>
-                  <Link
-                    href={`/${activeSport.slug}/${activeCategory.slug}/${brand.slug}`}
-                    prefetch
-                    onClick={onClose}
-                    className={listButtonStyle(false)}
-                  >
-                    {brand.icon && (
-                      <div
-                        style={iconMaskStyle(brand.icon)}
-                        className="w-5 h-5 shrink-0 opacity-70 group-hover:opacity-100"
-                      />
-                    )}
-                    <span className="flex-grow text-right font-medium">
-                      {brand.title}
-                    </span>
-                  </Link>
-                </li>
-              ))}
-            </ul>
-          ) : (
-            <div className="text-gray-600 text-[13px] p-4 text-center">
-              برندی یافت نشد
-            </div>
-          )}
-        </div>
+        {/* ستون‌های دوم/سوم/چهارم: درختِ دسته‌ها + نوار جنسیت + برندها و سری‌ها
+            (کامپوننتِ کلاینتِ ایزوله — state تعاملیِ جنسیت آنجا نگه‌داری می‌شود) */}
+        <MegamenuInteractiveColumns sport={activeSport} onClose={onClose} />
       </div>
     </div>
   );
@@ -229,12 +152,24 @@ function CategoryMenu({ navData, onClose }) {
 // (سطح ۱: ورزش‌ها → سطح ۲: دسته‌بندی‌ها → سطح ۳: برندها)
 // همان دادهٔ navData و همان الگوی لینک‌های دسکتاپ استفاده می‌شود.
 function MobileCategoryDrawer({ navData, onClose }) {
-  // سطح فعلی: ۱=ورزش‌ها، ۲=دسته‌بندی‌ها، ۳=برندها
+  // سطح فعلی: ۱=ورزش‌ها، ۲=دسته‌ها/برندهای ورزش
   const [level, setLevel] = useState(1);
   // جهت اسلاید: ۱=رفتن به عمق، ۱-=بازگشت
   const [direction, setDirection] = useState(1);
   const [selectedSport, setSelectedSport] = useState(null);
-  const [selectedCategory, setSelectedCategory] = useState(null);
+
+  // بُعدِ جنسیت — ایزوله در همین دراور؛ کلیکِ دوباره روی همان پیل خاموش می‌کند
+  const [activeGender, setActiveGender] = useState(null);
+  // آکوردئون‌ها: شناسه‌ی دسته‌ی والدِ بازشده و برندِ بازشده
+  const [openCatId, setOpenCatId] = useState(null);
+  const [openBrandId, setOpenBrandId] = useState(null);
+
+  const toggleGender = (g) =>
+    setActiveGender((prev) => (prev === g ? null : g));
+
+  // موتورِ وراثتِ URL — اگر جنسیت فعال باشد به همه‌ی لینک‌ها افزوده می‌شود
+  const withGender = (href) =>
+    activeGender ? `${href}?gender=${activeGender}` : href;
 
   const goBack = () => {
     setDirection(-1);
@@ -243,22 +178,32 @@ function MobileCategoryDrawer({ navData, onClose }) {
 
   const openSport = (sport) => {
     setSelectedSport(sport);
+    setOpenCatId(null);
+    setOpenBrandId(null);
     setDirection(1);
     setLevel(2);
   };
 
-  const openCategory = (cat) => {
-    setSelectedCategory(cat);
-    setDirection(1);
-    setLevel(3);
-  };
-
   const headerTitle =
-    level === 1
-      ? "فهرست محصولات"
-      : level === 2
-        ? selectedSport?.title
-        : selectedCategory?.title;
+    level === 1 ? "فهرست محصولات" : selectedSport?.title;
+
+  // ── درختِ دسته‌بندی‌ها + برندهای فیلترشده بر اساس جنسیت (سطح ۲) ──
+  const categories = selectedSport?.categories || [];
+  const catIdSet = new Set(categories.map((c) => c._id));
+  const rootCategories = categories.filter(
+    (c) => !c.parent || !catIdSet.has(c.parent),
+  );
+  const childrenOf = (id) =>
+    categories.filter((c) => c.parent && c.parent === id);
+
+  const allBrands = selectedSport?.brands || [];
+  const visibleBrands = activeGender
+    ? allBrands.filter((b) => (b.availableGenders || []).includes(activeGender))
+    : allBrands;
+
+  // استایلِ ردیفِ زیرمجموعه (فرزندِ دسته / سری ریشه): کوچک‌تر، کم‌رنگ، تورفته (RTL)
+  const subRowClass =
+    "w-full flex items-center justify-between gap-2 pr-9 pl-5 py-2.5 text-xs text-gray-400 hover:text-[#aa4725] hover:bg-white/5 transition-colors border-b border-white/[0.02]";
 
   // پنل‌ها در حالت RTL: رفتن به عمق از سمت چپ می‌آید، بازگشت از سمت راست
   const panelVariants = {
@@ -326,7 +271,7 @@ function MobileCategoryDrawer({ navData, onClose }) {
               animate="center"
               exit="exit"
               transition={{ type: "tween", duration: 0.28, ease: "easeOut" }}
-              className="absolute inset-0 overflow-y-auto"
+              className="absolute inset-0 overflow-y-auto bg-[#1a1c22]"
             >
               {/* سطح ۱: ورزش‌ها */}
               {level === 1 && (
@@ -377,77 +322,228 @@ function MobileCategoryDrawer({ navData, onClose }) {
                 </div>
               )}
 
-              {/* سطح ۲: دسته‌بندی‌های ورزش انتخاب‌شده */}
+              {/* سطح ۲: نوارِ جنسیتِ چسبان + درختِ دسته‌ها + برندها/سری‌های ریشه */}
               {level === 2 && selectedSport && (
-                <div className="py-1">
+                <div className="pb-2">
+                  {/* نوارِ جنسیتِ چسبان — بلافاصله زیرِ انتخابِ ورزش، بالای لیستِ بلندِ دسته‌ها */}
+                  <div className="sticky top-0 z-10 bg-inherit border-b border-white/10 px-4 py-3 flex items-center gap-2">
+                    {GENDER_PILLS.map((pill) => {
+                      const isActive = activeGender === pill.value;
+                      return (
+                        <button
+                          key={pill.value}
+                          type="button"
+                          onClick={() => toggleGender(pill.value)}
+                          className={`flex-1 py-1.5 rounded-[6px] text-xs font-bold transition-all ${
+                            isActive
+                              ? "bg-[#aa4725] text-white"
+                              : "bg-white/5 text-gray-300 hover:bg-white/10 hover:text-[#aa4725]"
+                          }`}
+                        >
+                          {pill.label}
+                        </button>
+                      );
+                    })}
+                  </div>
+
                   <Link
-                    href={`/${selectedSport.slug}`}
+                    href={withGender(`/${selectedSport.slug}`)}
                     onClick={onClose}
                     className="block px-5 py-3 text-xs text-[#aa4725] font-bold border-b border-white/[0.06]"
                   >
                     مشاهده‌ی صفحه‌ی {selectedSport.title}
                   </Link>
-                  {selectedSport.categories?.length > 0 ? (
-                    selectedSport.categories.map((cat) => (
-                      <button
-                        key={cat._id}
-                        onClick={() => openCategory(cat)}
-                        className={rowClass}
-                      >
-                        <div className="flex items-center gap-3 min-w-0">
-                          {cat.icon && (
-                            <img
-                              src={cat.icon}
-                              alt=""
-                              className="w-5 h-5 invert opacity-80 flex-shrink-0"
+
+                  {/* ── دسته‌بندی‌ها (آکوردئونِ والد/فرزند) ── */}
+                  <p className="px-5 pt-4 pb-2 text-[11px] font-bold text-gray-500 uppercase tracking-widest">
+                    دسته‌بندی‌ها
+                  </p>
+                  {rootCategories.length > 0 ? (
+                    rootCategories.map((cat) => {
+                      const kids = childrenOf(cat._id);
+                      const isExpanded = openCatId === cat._id;
+                      // بدونِ فرزند → لینکِ مستقیم؛ با فرزند → آکوردئون
+                      if (kids.length === 0) {
+                        return (
+                          <Link
+                            key={cat._id}
+                            href={withGender(
+                              `/${selectedSport.slug}/${cat.slug}`,
+                            )}
+                            onClick={onClose}
+                            className={rowClass}
+                          >
+                            <div className="flex items-center gap-3 min-w-0">
+                              {cat.icon && (
+                                <img
+                                  src={cat.icon}
+                                  alt=""
+                                  className="w-5 h-5 invert opacity-80 flex-shrink-0"
+                                />
+                              )}
+                              <span className="font-medium truncate">
+                                {cat.title}
+                              </span>
+                            </div>
+                            <FiChevronLeft className="text-gray-500 flex-shrink-0" />
+                          </Link>
+                        );
+                      }
+                      return (
+                        <div key={cat._id}>
+                          <button
+                            onClick={() =>
+                              setOpenCatId(isExpanded ? null : cat._id)
+                            }
+                            className={rowClass}
+                          >
+                            <div className="flex items-center gap-3 min-w-0">
+                              {cat.icon && (
+                                <img
+                                  src={cat.icon}
+                                  alt=""
+                                  className="w-5 h-5 invert opacity-80 flex-shrink-0"
+                                />
+                              )}
+                              <span className="font-medium truncate">
+                                {cat.title}
+                              </span>
+                            </div>
+                            <FiChevronDown
+                              className={`text-gray-500 flex-shrink-0 transition-transform ${
+                                isExpanded ? "rotate-180" : ""
+                              }`}
                             />
+                          </button>
+                          {isExpanded && (
+                            <div className="bg-black/20">
+                              <Link
+                                href={withGender(
+                                  `/${selectedSport.slug}/${cat.slug}`,
+                                )}
+                                onClick={onClose}
+                                className={`${subRowClass} text-[#aa4725]`}
+                              >
+                                <span className="font-bold truncate">
+                                  مشاهده‌ی همه‌ی {cat.title}
+                                </span>
+                              </Link>
+                              {kids.map((child) => (
+                                <Link
+                                  key={child._id}
+                                  href={withGender(
+                                    `/${selectedSport.slug}/${child.slug}`,
+                                  )}
+                                  onClick={onClose}
+                                  className={subRowClass}
+                                >
+                                  <span className="truncate">
+                                    {child.title}
+                                  </span>
+                                </Link>
+                              ))}
+                            </div>
                           )}
-                          <span className="font-medium truncate">
-                            {cat.title}
-                          </span>
                         </div>
-                        <FiChevronLeft className="text-gray-500 flex-shrink-0" />
-                      </button>
-                    ))
+                      );
+                    })
                   ) : (
                     <p className="text-gray-500 text-[13px] p-5 text-center">
                       موردی یافت نشد
                     </p>
                   )}
-                </div>
-              )}
 
-              {/* سطح ۳: برندهای دسته‌بندی انتخاب‌شده */}
-              {level === 3 && selectedSport && selectedCategory && (
-                <div className="py-1">
-                  <Link
-                    href={`/${selectedSport.slug}/${selectedCategory.slug}`}
-                    onClick={onClose}
-                    className="block px-5 py-3 text-xs text-[#aa4725] font-bold border-b border-white/[0.06]"
-                  >
-                    مشاهده‌ی صفحه‌ی {selectedCategory.title}
-                  </Link>
-                  {selectedCategory.brands?.length > 0 ? (
-                    selectedCategory.brands.map((brand) => (
-                      <Link
-                        key={brand._id}
-                        href={`/${selectedSport.slug}/${selectedCategory.slug}/${brand.slug}`}
-                        onClick={onClose}
-                        className={rowClass}
-                      >
-                        <div className="flex items-center gap-3 min-w-0">
-                          {brand.icon && (
-                            <div
-                              style={iconMaskStyle(brand.icon)}
-                              className="w-5 h-5 opacity-70 flex-shrink-0"
+                  {/* ── برندها (آکوردئونِ برند → سری‌های ریشه)، فیلترشده با جنسیت ── */}
+                  <p className="px-5 pt-5 pb-2 text-[11px] font-bold text-gray-500 uppercase tracking-widest">
+                    برندها
+                  </p>
+                  {visibleBrands.length > 0 ? (
+                    visibleBrands.map((brand) => {
+                      const series = brand.series || [];
+                      const isExpanded = openBrandId === brand._id;
+                      // بدونِ سری ریشه → لینکِ مستقیم؛ با سری → آکوردئون
+                      if (series.length === 0) {
+                        return (
+                          <Link
+                            key={brand._id}
+                            href={withGender(
+                              `/${selectedSport.slug}/${brand.slug}`,
+                            )}
+                            onClick={onClose}
+                            className={rowClass}
+                          >
+                            <div className="flex items-center gap-3 min-w-0">
+                              {brand.icon && (
+                                <div
+                                  style={iconMaskStyle(brand.icon)}
+                                  className="w-5 h-5 opacity-70 flex-shrink-0"
+                                />
+                              )}
+                              <span className="font-medium truncate">
+                                {brand.title}
+                              </span>
+                            </div>
+                            <FiChevronLeft className="text-gray-500 flex-shrink-0" />
+                          </Link>
+                        );
+                      }
+                      return (
+                        <div key={brand._id}>
+                          <button
+                            onClick={() =>
+                              setOpenBrandId(isExpanded ? null : brand._id)
+                            }
+                            className={rowClass}
+                          >
+                            <div className="flex items-center gap-3 min-w-0">
+                              {brand.icon && (
+                                <div
+                                  style={iconMaskStyle(brand.icon)}
+                                  className="w-5 h-5 opacity-70 flex-shrink-0"
+                                />
+                              )}
+                              <span className="font-medium truncate">
+                                {brand.title}
+                              </span>
+                            </div>
+                            <FiChevronDown
+                              className={`text-gray-500 flex-shrink-0 transition-transform ${
+                                isExpanded ? "rotate-180" : ""
+                              }`}
                             />
+                          </button>
+                          {isExpanded && (
+                            <div className="bg-black/20">
+                              <Link
+                                href={withGender(
+                                  `/${selectedSport.slug}/${brand.slug}`,
+                                )}
+                                onClick={onClose}
+                                className={`${subRowClass} text-[#aa4725]`}
+                              >
+                                <span className="font-bold truncate">
+                                  مشاهده‌ی همه‌ی {brand.title}
+                                </span>
+                              </Link>
+                              {series.map((serie) => (
+                                <Link
+                                  key={serie._id}
+                                  href={withGender(
+                                    `/${selectedSport.slug}/${brand.slug}/${serie.slug}`,
+                                  )}
+                                  onClick={onClose}
+                                  className={subRowClass}
+                                >
+                                  <span className="truncate">
+                                    {serie.title}
+                                  </span>
+                                </Link>
+                              ))}
+                            </div>
                           )}
-                          <span className="font-medium truncate">
-                            {brand.title}
-                          </span>
                         </div>
-                      </Link>
-                    ))
+                      );
+                    })
                   ) : (
                     <p className="text-gray-500 text-[13px] p-5 text-center">
                       برندی یافت نشد

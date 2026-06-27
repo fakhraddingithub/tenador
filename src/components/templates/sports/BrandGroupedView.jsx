@@ -19,6 +19,7 @@ import Link from "next/link";
 import ProductCard from "@/components/modules/cart/ProductCard";
 import QuickViewModal from "@/components/modules/cart/QuickViewModal";
 import SearchBar from "@/components/templates/products/SearchBar";
+import GenderFilterCard from "@/components/templates/products/GenderFilterCard";
 import { FiShoppingBag, FiLayers, FiLoader, FiFilter, FiRotateCcw } from "react-icons/fi";
 
 const BATCH_SECTIONS = 2;
@@ -30,6 +31,7 @@ export default function BrandGroupedView({
   brandId,
   sportId = null,
   categoryId = null,
+  gender = null,
   initialData = {},
   title = "",
 }) {
@@ -83,6 +85,7 @@ export default function BrandGroupedView({
       params.set("brandId", brandId);
       if (sportId) params.set("sportId", sportId);
       if (categoryId) params.set("categoryId", categoryId);
+      if (gender) params.set("gender", gender);
       params.set("offset", String(offset));
       params.set("limit", String(BATCH_SECTIONS));
       if (f.minPrice > 0) params.set("minPrice", String(f.minPrice));
@@ -91,7 +94,7 @@ export default function BrandGroupedView({
       if (withIndex) params.set("withIndex", "1");
       return `/api/brands/grouped?${params.toString()}`;
     },
-    [brandId, sportId, categoryId]
+    [brandId, sportId, categoryId, gender]
   );
 
   // ─── بارگذاری batch بعدی (scroll) ───
@@ -265,6 +268,9 @@ export default function BrandGroupedView({
                 <FiRotateCcw size={11} /> حذف فیلترها
               </button>
             </div>
+
+            {/* فیلتر جنسیت — مقدار اولیه از URL، تغییر با navigationِ نرم */}
+            <GenderFilterCard activeGender={gender} />
 
             {/* نویگیشن سری‌ها (پرش به بخش) */}
             {index.length > 0 && (
