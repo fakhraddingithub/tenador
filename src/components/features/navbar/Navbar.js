@@ -188,8 +188,9 @@ function MobileCategoryDrawer({ navData, onClose }) {
   const activeCategory =
     rootCategories.find((c) => c._id === effectiveCatId) || null;
 
-  // ── برندهای پنل B: عضویت از دسته‌ی فعال، فراداده (جنسیت + سری ریشه) از سطحِ ورزش ──
-  // (نگاشتِ سطح-ورزش را مگامنو از قبل می‌سازد؛ بدونِ کوئریِ اضافه/N+1)
+  // ── برندهای پنل B: عضویت از دسته‌ی فعال؛ جنسیت از سطحِ ورزش، اما سری‌های ریشه
+  //    دسته‌اسکوپ‌اند (فقط سری‌هایی که در همین دسته محصول دارند) — از category.brands ──
+  // (هر دو داده را navbarService از قبل می‌سازد؛ بدونِ کوئریِ اضافه/N+1)
   const sportBrandMeta = new Map(
     (activeSport?.brands || []).map((b) => [b._id, b]),
   );
@@ -198,7 +199,7 @@ function MobileCategoryDrawer({ navData, onClose }) {
     return {
       ...b,
       availableGenders: meta.availableGenders || [],
-      series: meta.series || [],
+      series: b.series || [],
     };
   });
   const visibleBrands = activeGender
