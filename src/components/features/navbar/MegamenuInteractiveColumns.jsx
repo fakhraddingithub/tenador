@@ -3,13 +3,13 @@
 /**
  * MegamenuInteractiveColumns.jsx
  *
- * ستون‌های ۲ (درختِ دسته‌بندی‌ها — دو-ستونی) و ۳/۴ (نوارِ فیلترِ ویژگی + گریدِ برندها)
- * مگامنو. این کامپوننتِ کلاینتِ ایزوله، state تعاملیِ «مقدارِ فیلتر» و «دسته‌ی انتخاب‌شده»
+ * ستون‌های ۲ (درختِ دسته‌بندی‌ها — تک‌ستونی) و ۳/۴ (نوارِ فیلترِ ویژگی + گریدِ برندها)
+ * مگامنو. این کامپوننتِ کلاینتِ ایزوله، state تعاملیِ «مقدارِ فیلتر» و «دسته‌ی هاورشده»
  * را نگه می‌دارد تا Navbar/مگامنوی والد سبک بماند (Performance Shield).
  *
- * انتخابِ دسته با کلیک انجام می‌شود (نه هاور): با کلیک روی هر دسته، آن دسته فعال شده و
- * برندهایش نمایش داده می‌شوند و تا کلیکِ بعدی فعال می‌ماند. بالای ستونِ برندها دکمه‌ی
- * «مشاهده همه محصولات [دسته]» به صفحه‌ی دسته می‌رود.
+ * انتخابِ دسته با هاور انجام می‌شود: با هاور روی هر دسته، آن دسته فعال شده و برندهایش
+ * نمایش داده می‌شوند؛ اگر دسته زیردسته داشته باشد، زیردسته‌ها با هاور به‌نرمی باز می‌شوند.
+ * کلیک روی دسته به صفحه‌ی همان دسته می‌رود.
  *
  * فیلترِ پویا: هر دسته می‌تواند یک «ویژگیِ فیلترِ مگامنو» داشته باشد (category.megaMenuFilter).
  * مقادیرِ آن ویژگی به‌صورتِ تب نمایش داده می‌شوند و با انتخابِ هر مقدار، فقط برندهایی که
@@ -73,8 +73,8 @@ const childButtonStyle = (isActive) => `
 export default function MegamenuInteractiveColumns({ sport, onClose }) {
   // مقدارِ فعالِ فیلتر — پیش‌فرض null؛ کلیکِ دوباره روی همان تب آن را خاموش می‌کند
   const [activeFilterValue, setActiveFilterValue] = useState(null);
-  // دسته‌ی انتخاب‌شده (با کلیک) که ستون‌های ۳/۴ را هدایت می‌کند؛ تا کلیکِ بعدی فعال می‌ماند
-  const [selectedCatId, setSelectedCatId] = useState(null);
+  // دسته‌ی هاورشده که ستون‌های ۳/۴ را هدایت می‌کند
+  const [hoveredCatId, setHoveredCatId] = useState(null);
 
   const toggleFilterValue = (v) =>
     setActiveFilterValue((prev) => (prev === v ? null : v));
@@ -91,10 +91,10 @@ export default function MegamenuInteractiveColumns({ sport, onClose }) {
   const childrenOf = (id) =>
     categories.filter((c) => c.parent && c.parent === id);
 
-  // ── دسته‌ی فعال (کلیک): اگر انتخاب‌شده معتبر نباشد، اولین دسته به‌صورت پیش‌فرض فعال می‌شود ──
-  // (با تعویضِ ورزش، selectedCatId قدیمی نامعتبر می‌شود و این fallback اولین دسته را می‌گیرد)
-  const effectiveCatId = categories.some((c) => c._id === selectedCatId)
-    ? selectedCatId
+  // ── دسته‌ی فعال (هاور): اگر هاورشده معتبر نباشد، اولین دسته تا ستون B خالی نماند ──
+  // (با تعویضِ ورزش، hoveredCatId قدیمی نامعتبر می‌شود و این fallback اولین دسته را می‌گیرد)
+  const effectiveCatId = categories.some((c) => c._id === hoveredCatId)
+    ? hoveredCatId
     : rootCategories[0]?._id || null;
   const activeCategory =
     categories.find((c) => c._id === effectiveCatId) || null;
@@ -124,24 +124,25 @@ export default function MegamenuInteractiveColumns({ sport, onClose }) {
 
   return (
     <>
-      {/* ستون دوم: درختِ دسته‌بندی‌ها (والد/فرزند) — کلیک، ستون‌های ۳/۴ را تعیین می‌کند */}
+      {/* ستون دوم: درختِ دسته‌بندی‌ها (والد/فرزند) — هاور، ستون‌های ۳/۴ را تعیین می‌کند */}
       <div className="w-[35%] border-l border-white/[0.06] p-3 overflow-y-auto">
         <p className="text-[11px] font-bold text-gray-500 mb-4 px-2 uppercase tracking-widest">
           دسته‌بندی‌ها
         </p>
         {rootCategories.length > 0 ? (
-          // چیدمانِ دو-ستونی با column-flow: هر «والد + زیردسته‌هایش» یک <li> است و
-          // با break-inside-avoid هرگز بینِ دو ستون شکسته نمی‌شود؛ اگر گروه در فضای
-          // باقی‌مانده‌ی ستونِ اول جا نشود، کاملِ گروه به ستونِ دوم منتقل می‌شود.
-          <ul className="columns-2 gap-x-1">
+          // تک‌ستونی: هر «والد + زیردسته‌هایش» یک <li> با scopeِ هاورِ نام‌گذاری‌شده
+          // (group/cat) است تا با هاورِ والد، زیردسته‌ها به‌نرمی باز شوند.
+          <ul className="space-y-1">
             {rootCategories.map((cat) => {
               const kids = childrenOf(cat._id);
               return (
-                <li key={cat._id} className="break-inside-avoid mb-1">
-                  {/* والد — کلیک دسته را انتخاب می‌کند و برندهای آن را در ستونِ کناری نشان می‌دهد */}
-                  <button
-                    type="button"
-                    onClick={() => setSelectedCatId(cat._id)}
+                <li key={cat._id} className="group/cat">
+                  {/* والد — هاور دسته را فعال می‌کند (برندها)، کلیک به صفحه‌ی دسته می‌رود */}
+                  <Link
+                    href={withFilter(`/${sportSlug}/${cat.slug}`)}
+                    prefetch
+                    onMouseEnter={() => setHoveredCatId(cat._id)}
+                    onClick={onClose}
                     className={categoryButtonStyle(effectiveCatId === cat._id)}
                   >
                     {cat.icon && (
@@ -154,27 +155,33 @@ export default function MegamenuInteractiveColumns({ sport, onClose }) {
                       {cat.title}
                     </span>
                     <FiChevronLeft size={16} className="opacity-20" />
-                  </button>
+                  </Link>
 
-                  {/* فرزندان — هر کدام نیز دسته‌ی فعال را تعیین می‌کنند */}
+                  {/* زیردسته‌ها — به‌صورت پیش‌فرض پنهان؛ با هاورِ والد به‌نرمی باز می‌شوند */}
                   {kids.length > 0 && (
-                    <ul className="mt-0.5 space-y-0.5">
-                      {kids.map((child) => (
-                        <li key={child._id}>
-                          <button
-                            type="button"
-                            onClick={() => setSelectedCatId(child._id)}
-                            className={childButtonStyle(
-                              effectiveCatId === child._id,
-                            )}
-                          >
-                            <span className="flex-grow text-right">
-                              {child.title}
-                            </span>
-                          </button>
-                        </li>
-                      ))}
-                    </ul>
+                    <div className="grid grid-rows-[0fr] group-hover/cat:grid-rows-[1fr] transition-[grid-template-rows] duration-300 ease-out">
+                      <div className="overflow-hidden">
+                        <ul className="mt-0.5 space-y-0.5">
+                          {kids.map((child) => (
+                            <li key={child._id}>
+                              <Link
+                                href={withFilter(`/${sportSlug}/${child.slug}`)}
+                                prefetch
+                                onMouseEnter={() => setHoveredCatId(child._id)}
+                                onClick={onClose}
+                                className={childButtonStyle(
+                                  effectiveCatId === child._id,
+                                )}
+                              >
+                                <span className="flex-grow text-right">
+                                  {child.title}
+                                </span>
+                              </Link>
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    </div>
                   )}
                 </li>
               );
@@ -187,23 +194,8 @@ export default function MegamenuInteractiveColumns({ sport, onClose }) {
         )}
       </div>
 
-      {/* ستون‌های سوم و چهارم: دکمه‌ی «مشاهده همه» + نوار فیلترِ ویژگی + گرید برندها */}
+      {/* ستون‌های سوم و چهارم: نوار فیلترِ ویژگی + گرید برندهای دسته‌ی فعال */}
       <div className="flex-1 p-3 overflow-y-auto bg-white/[0.01]">
-        {/* دکمه‌ی «مشاهده همه محصولات [دسته]» — بالای ستونِ برندها؛ به صفحه‌ی دسته می‌رود */}
-        {activeCategory && (
-          <Link
-            href={withFilter(`/${sportSlug}/${activeCategory.slug}`)}
-            prefetch
-            onClick={onClose}
-            className="inline-flex items-center gap-1.5 mb-4 px-1 text-sm font-bold text-[#aa4725] hover:text-[#c95f39] transition-colors"
-          >
-            <span className="truncate">
-              مشاهده همه محصولات {activeCategory.title}
-            </span>
-            <FiChevronLeft size={16} className="shrink-0" />
-          </Link>
-        )}
-
         {/* نوار فیلترِ ویژگی — فقط اگر دسته‌ی فعال یک ویژگیِ فیلتر داشته باشد */}
         {megaMenuFilter && megaMenuFilter.values.length > 0 && (
           <div className="flex items-center flex-wrap gap-2 mb-4 px-1">
