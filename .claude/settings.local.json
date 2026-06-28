@@ -163,7 +163,9 @@
       "Bash(python -c 'import sys,json; d=sys.stdin.read\\(\\); *)",
       "Bash(curl -s -w \"\\\\nHTTP:%{http_code}\\\\n\" http://localhost:3000/api/product/6a1741f45a75b48c7f4ebb93/price)",
       "Bash(taskkill //F //PID 776)",
-      "Bash(pkill -f \"next dev\")"
+      "Bash(pkill -f \"next dev\")",
+      "Bash(cp scripts/_tmp_cloudinary_candidates.json \"C:/Users/saleh/AppData/Local/Temp/claude/I--develope-JS-learn-leaning-project-porjects-tenador/ab2d054a-cf82-481e-9a7f-dbd4f342f11b/scratchpad/cloudinary_variants_folder_521.json\")",
+      "Bash(rm -f scripts/_tmp_cloudinaryDryRun.mjs scripts/_tmp_cloudinary_candidates.json)"
     ]
   }
 }

@@ -123,6 +123,15 @@ const CategorySchema = new mongoose.Schema(
       default: [],
     },
 
+    // ویژگیِ انتخاب‌شده برای فیلترِ مگامنو — نامِ یکی از ویژگی‌های همین دسته
+    // (از attributes یا variantAttributes). مقادیرِ این ویژگی به‌صورتِ تب‌های فیلتر
+    // در مگامنو نمایش داده می‌شوند و لینکِ برند را با ?[name]=[value] می‌سازند.
+    // null = این دسته در مگامنو فیلتری ندارد.
+    megaMenuFilterAttribute: {
+      type: String,
+      default: null,
+    },
+
     technicalStats: {
       type: [TechnicalStatSchema],
       default: [],

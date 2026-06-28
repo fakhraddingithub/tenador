@@ -170,6 +170,8 @@ export default function EditCategory() {
     attributes: [],
     icon: '',
     image: '',
+    // ویژگیِ فیلترِ مگامنو (نامِ یکی از ویژگی‌های ثابت/متغیر) — '' = بدون فیلتر
+    megaMenuFilterAttribute: '',
   });
 
   const [currentAttribute, setCurrentAttribute] = useState({
@@ -242,6 +244,7 @@ export default function EditCategory() {
           })),
           icon: cat.icon || '',
           image: cat.image || '',
+          megaMenuFilterAttribute: cat.megaMenuFilterAttribute || '',
         });
 
         setTechnicalStats((cat.technicalStats || []).map(stat => ({
@@ -544,6 +547,7 @@ export default function EditCategory() {
         image: formData.image,
         attributes: formData.attributes,
         variantAttributes: variantAttributes,
+        megaMenuFilterAttribute: formData.megaMenuFilterAttribute || null,
         technicalStats: technicalStats,
         technicalStatsPrompt: technicalStatsPrompt,
         prompts: productPrompts.filter((p) => p.context.trim() !== ''),
@@ -901,6 +905,33 @@ export default function EditCategory() {
                   </div>
                 )}
               </div>
+            </div>
+
+            {/* Mega Menu Filter Attribute */}
+            <div className="border-t pt-8 space-y-4">
+              <div className="flex items-center gap-3">
+                <div className="p-2 rounded-lg bg-[var(--color-primary)]/10 text-[var(--color-primary)]">
+                  <FiMenu size={18} />
+                </div>
+                <div>
+                  <h3 className="text-lg font-bold">یک ویژگی برای فیلتر مگامنو</h3>
+                  <p className="text-xs text-neutral-500">
+                    یک ویژگی (ثابت یا متغیر) را انتخاب کنید تا مقادیر آن به‌صورت تب‌های فیلتر در مگامنوی نوبار نمایش داده شوند.
+                  </p>
+                </div>
+              </div>
+              <Select
+                label="ویژگی فیلتر مگامنو"
+                value={formData.megaMenuFilterAttribute}
+                onChange={(e) =>
+                  setFormData((prev) => ({ ...prev, megaMenuFilterAttribute: e.target.value }))
+                }
+                placeholder="بدون فیلتر مگامنو"
+                options={[
+                  ...formData.attributes.map((a) => ({ value: a.name, label: `${a.label} (ثابت)` })),
+                  ...variantAttributes.map((a) => ({ value: a.name, label: `${a.label} (متغیر)` })),
+                ]}
+              />
             </div>
 
             {/* Technical Stats Section */}

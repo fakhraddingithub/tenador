@@ -80,7 +80,7 @@ async function buildChildTree(parentSerieId) {
   return { parent, directChildren, descendantsByChild, allDescendantIds };
 }
 
-function buildBaseMatch({ parentSerieId, allDescendantIds, sportId, categoryId, gender, search }) {
+function buildBaseMatch({ parentSerieId, allDescendantIds, sportId, categoryId, search }) {
   const parentOid = toObjectId(parentSerieId);
   const serieScope = [
     parentOid,
@@ -90,7 +90,6 @@ function buildBaseMatch({ parentSerieId, allDescendantIds, sportId, categoryId, 
   const match = { isActive: true, serie: { $in: serieScope } };
   if (sportId) match.sport = toObjectId(sportId);
   if (categoryId) match.category = toObjectId(categoryId);
-  if (["men", "women", "kids"].includes(gender)) match.gender = gender;
   if (search && search.trim()) {
     match.name = { $regex: escapeRegex(search.trim()), $options: "i" };
   }
@@ -109,7 +108,6 @@ async function _getSerieGroupedSections(params) {
     serieId,
     sportId = null,
     categoryId = null,
-    gender = null,
     offset = 0,
     limit = 2,
     minPrice = 0,
@@ -137,7 +135,6 @@ async function _getSerieGroupedSections(params) {
     allDescendantIds,
     sportId,
     categoryId,
-    gender,
     search,
   });
 

@@ -20,6 +20,7 @@ export async function POST(req) {
       icon,
       attributes,
       variantAttributes, // فیلد جدید اضافه شد
+      megaMenuFilterAttribute, // ویژگیِ انتخاب‌شده برای فیلترِ مگامنو (نامِ ویژگی یا null)
       technicalStats,
       technicalStatsPrompt
     } = body;
@@ -105,6 +106,15 @@ export async function POST(req) {
       .select("order")
       .lean();
 
+    // فقط نامِ ویژگیِ معتبر (موجود در attributes یا variantAttributes) پذیرفته می‌شود
+    const allAttrNames = [
+      ...(attributes || []),
+      ...(variantAttributes || []),
+    ].map((a) => a?.name);
+    const normalizedMegaFilter = allAttrNames.includes(megaMenuFilterAttribute)
+      ? megaMenuFilterAttribute
+      : null;
+
     const created = await Category.create({
       order: (lastCategory?.order ?? -1) + 1,
       title: title.trim(),
@@ -116,6 +126,7 @@ export async function POST(req) {
       image: image.trim(),
       attributes: attributes || [],           // ویژگی‌های ثابت (Global)
       variantAttributes: variantAttributes || [], // ویژگی‌های متغیر
+      megaMenuFilterAttribute: normalizedMegaFilter,
       technicalStats: technicalStats || [],
       technicalStatsPrompt: technicalStatsPrompt || "",
     });

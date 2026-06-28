@@ -42,6 +42,7 @@ export async function PUT(req, { params }) {
       parent,
       attributes,
       variantAttributes, // فیلد جدید
+      megaMenuFilterAttribute, // ویژگیِ فیلترِ مگامنو (نامِ ویژگی یا null)
       technicalStats,
       technicalStatsPrompt,
       prompts,
@@ -121,6 +122,19 @@ export async function PUT(req, { params }) {
         return NextResponse.json({ error: "ویژگی‌های واریانت نامعتبر هستند" }, { status: 400 });
       }
       category.variantAttributes = variantAttributes;
+    }
+
+    // ویژگیِ فیلترِ مگامنو — فقط نامِ معتبر (موجود در attributes/variantAttributes فعلی) پذیرفته می‌شود
+    if (megaMenuFilterAttribute !== undefined) {
+      const allAttrNames = [
+        ...(category.attributes || []),
+        ...(category.variantAttributes || []),
+      ].map((a) => a?.name);
+      category.megaMenuFilterAttribute = allAttrNames.includes(
+        megaMenuFilterAttribute,
+      )
+        ? megaMenuFilterAttribute
+        : null;
     }
 
     // ۳. به‌روزرسانی شاخص‌های فنی نمودار (Technical Stats) - با دقت کامل

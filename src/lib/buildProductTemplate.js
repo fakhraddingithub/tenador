@@ -194,14 +194,6 @@ limitedEdition:
 sport:
 - Choose exactly ONE id from AVAILABLE SPORTS based on actual product usage.
 
-gender:
-- Determine the target gender of the product from its title/description.
-- Allowed values EXACTLY: "men" | "women" | "kids" | null
-  - "men"   → mentions men/man/male/مردانه/آقایان
-  - "women" → mentions women/woman/female/زنانه/بانوان
-  - "kids"  → mentions kids/junior/children/بچگانه/کودک/جونیور
-- If the product is unisex/general OR gender is not indicated → return null (NOT a string).
-
 athlete:
 - Pick ALL relevant athlete ids from AVAILABLE ATHLETES as a JSON array.
 - If none mentioned → return [].
@@ -309,7 +301,6 @@ Output exactly this structure with no extra fields:
   "limitedEdition": "ID_FROM_LIMITED_EDITIONS_LIST_OR_EMPTY_STRING",
   "sport": "ID_FROM_SPORTS_LIST",
   "athlete": [],
-  "gender": null,
   "category": "${category._id}",
   "attributes": {
     "English_key": "single value"

@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useMemo, useEffect } from "react";
-import { useRouter } from "next/navigation";
 import ProductList from "@/components/templates/products/ProductList";
 import FilterSidebar from "@/components/templates/products/FilterSidebar";
 import SearchBar from "@/components/templates/products/SearchBar";
@@ -22,10 +21,6 @@ export default function SportPageClient({
   filters = {},
   rate,
   series = [],
-  // بُعدِ جنسیت سمت سرور اعمال می‌شود (queryBySlugs)؛ این prop فقط برای
-  // مقداردهیِ اولیه‌ی کنترل‌های سایدبار است. صفحه‌ی رویداد آن را پاس نمی‌دهد.
-  activeGender = null,
-  enableGenderFilter = false, // فقط صفحات PLP (دسته/برند) آن را فعال می‌کنند
   // Optional slots — used by the themed Event page to reuse this exact layout.
   // All default to null/undefined so the Sport page renders byte-identically.
   titleOverride = null, // override the computed hero <h1>
@@ -35,24 +30,6 @@ export default function SportPageClient({
   campaignBadge = null, // forwarded to ProductList → each ProductCard badge stack
 }) {
   const [searchTerm, setSearchTerm] = useState("");
-  const router = useRouter();
-
-  // تغییر جنسیت → همگام‌سازیِ ?gender= در URL با navigationِ نرم (بدون رفرشِ کاملِ
-  // صفحه). فیلتر جنسیت سمت سرور (queryBySlugs) اعمال می‌شود، پس با تغییر آن سرور
-  // مجموعه‌ی محصولات را دوباره و درست برمی‌گرداند. کلیکِ دوباره روی همان گزینه آن را
-  // خاموش می‌کند.
-  const handleGenderChange = (g) => {
-    if (typeof window === "undefined") return;
-    const next = activeGender === g ? null : g;
-    const params = new URLSearchParams(window.location.search);
-    if (next) params.set("gender", next);
-    else params.delete("gender");
-    const qs = params.toString();
-    router.push(
-      qs ? `${window.location.pathname}?${qs}` : window.location.pathname,
-      { scroll: false },
-    );
-  };
 
   const [localFilters, setLocalFilters] = useState({
     brands: [],
@@ -270,8 +247,6 @@ export default function SportPageClient({
               attributeMeta={attributeMeta}
               attrFilters={attrFilters}
               setAttrFilters={applyAttrFilters}
-              activeGender={activeGender}
-              onGenderChange={enableGenderFilter ? handleGenderChange : null}
             />
           </div>
         </aside>

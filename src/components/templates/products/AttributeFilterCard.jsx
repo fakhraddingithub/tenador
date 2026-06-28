@@ -1,34 +1,43 @@
 "use client";
 
 /**
- * GenderFilterCard.jsx
+ * AttributeFilterCard.jsx
  *
- * بلوکِ فیلترِ جنسیت برای سایدبارِ صفحاتِ برند/سری (نمای گروه‌بندی‌شده).
- * خودکفاست: مقدارِ اولیه از prop (که سرور از ?gender خوانده) می‌آید و تغییر با
- * router.push (navigationِ نرم، بدونِ رفرشِ کامل) همگام می‌شود. انتخابِ دوباره‌ی
- * همان گزینه آن را خاموش می‌کند.
+ * بلوکِ فیلترِ ویژگیِ مگامنو برای سایدبارِ صفحه‌ی برند (نمای گروه‌بندی‌شده).
+ * جایگزینِ GenderFilterCard است اما برای «هر ویژگی» کار می‌کند: نام و گزینه‌ها از
+ * فرادادهٔ دسته می‌آیند (category.megaMenuFilterAttribute). مقدارِ اولیه از prop
+ * (که سرور از ?[name] خوانده) و تغییر با router.push (navigationِ نرم) همگام می‌شود.
+ * انتخابِ دوباره‌ی همان گزینه آن را خاموش می‌کند.
+ *
+ * meta: { name, label, options: string[] }
  */
 
 import { useRouter } from "next/navigation";
 import { FaChevronDown } from "react-icons/fa";
 import { useState } from "react";
 
-const OPTIONS = [
-  { value: "men", label: "مردانه" },
-  { value: "women", label: "زنانه" },
-  { value: "kids", label: "بچگانه" },
-];
-
-export default function GenderFilterCard({ activeGender = null }) {
+export default function AttributeFilterCard({ meta = null, activeValue = null }) {
   const router = useRouter();
   const [isOpen, setIsOpen] = useState(true);
 
-  const change = (g) => {
+  if (!meta || !meta.name) return null;
+
+  // گزینه‌ها: مقادیرِ تعریف‌شده‌ی ادمین؛ اگر خالی بود ولی مقداری فعال است، همان را نشان بده
+  const options =
+    Array.isArray(meta.options) && meta.options.length > 0
+      ? meta.options.map(String)
+      : activeValue
+        ? [String(activeValue)]
+        : [];
+
+  if (options.length === 0) return null;
+
+  const change = (v) => {
     if (typeof window === "undefined") return;
-    const next = activeGender === g ? null : g;
+    const next = activeValue === v ? null : v;
     const params = new URLSearchParams(window.location.search);
-    if (next) params.set("gender", next);
-    else params.delete("gender");
+    if (next) params.set(meta.name, next);
+    else params.delete(meta.name);
     const qs = params.toString();
     router.push(
       qs ? `${window.location.pathname}?${qs}` : window.location.pathname,
@@ -43,7 +52,7 @@ export default function GenderFilterCard({ activeGender = null }) {
         onClick={() => setIsOpen(!isOpen)}
         className="w-full p-5 flex items-center justify-between hover:bg-gray-50/50 transition-colors"
       >
-        <span className="text-sm font-bold text-[#1a1a1a]">جنسیت</span>
+        <span className="text-sm font-bold text-[#1a1a1a]">{meta.label}</span>
         <FaChevronDown
           size={10}
           className={`text-gray-400 transition-transform ${isOpen ? "rotate-180" : ""}`}
@@ -52,12 +61,12 @@ export default function GenderFilterCard({ activeGender = null }) {
 
       {isOpen && (
         <div className="px-5 pb-5 flex flex-col gap-3">
-          {OPTIONS.map((opt) => {
-            const isActive = activeGender === opt.value;
+          {options.map((opt) => {
+            const isActive = String(activeValue) === opt;
             return (
               <div
-                key={opt.value}
-                onClick={() => change(opt.value)}
+                key={opt}
+                onClick={() => change(opt)}
                 className="flex items-center justify-between group cursor-pointer"
               >
                 <div className="flex items-center gap-3">
@@ -72,7 +81,7 @@ export default function GenderFilterCard({ activeGender = null }) {
                   <span
                     className={`text-xs font-bold transition-colors ${isActive ? "text-[var(--color-primary)]" : "text-gray-500 group-hover:text-gray-800"}`}
                   >
-                    {opt.label}
+                    {opt}
                   </span>
                 </div>
               </div>

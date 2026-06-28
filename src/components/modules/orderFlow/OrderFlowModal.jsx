@@ -181,7 +181,7 @@ export default function OrderFlowModal({
       onClick={onClose}
     >
       <div
-        className="w-full sm:max-w-2xl bg-white rounded-t-[16px] sm:rounded-[8px] shadow-xl animate-scale-in flex flex-col max-h-[90vh]"
+        className="w-full sm:max-w-2xl bg-white rounded-t-[16px] sm:rounded-[8px] shadow-xl animate-scale-in flex flex-col h-[88vh] sm:h-[620px] max-h-[90vh]"
         onClick={(e) => e.stopPropagation()}
       >
         {/* ─── Header ─── */}
@@ -235,7 +235,7 @@ export default function OrderFlowModal({
         )}
 
         {/* ─── Body ─── */}
-        <div className="px-5 py-5 overflow-y-auto grow">
+        <div className="px-5 py-5 overflow-y-auto grow flex flex-col min-h-0">
           {loading ? (
             <div className="space-y-3">
               {[1, 2, 3].map((i) => (

@@ -2,7 +2,8 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Image from "next/image";
-import { FiCheck, FiTag } from "react-icons/fi";
+import { motion, AnimatePresence } from "framer-motion";
+import { FiCheck, FiTag, FiX, FiRefreshCw } from "react-icons/fi";
 import { eurToToman, formatToman } from "@/lib/currency";
 
 /* ─── helpers (هم‌راستا با QuickViewModal) ─── */
@@ -38,6 +39,18 @@ function getNodeCategoryId(node) {
   const cat = node?.categoryId;
   if (!cat) return null;
   return typeof cat === "object" ? cat._id || cat.id : cat;
+}
+
+/* نام محصول = «فارسی + انگلیسی» در یک رشته؛ دقیقاً مثل کارت صفحه‌ی محصولات
+   جدا می‌شود: تا اولین حرف لاتین/پرانتز = فارسی، باقی = انگلیسی. */
+function splitName(text = "") {
+  const match = text.match(/[a-zA-Z(].*/);
+  if (match)
+    return {
+      farsi: text.substring(0, match.index).trim(),
+      english: match[0].trim(),
+    };
+  return { farsi: text, english: "" };
 }
 
 /**
@@ -209,138 +222,291 @@ export default function CategoryNodeStep({
     setVariantSelection((prev) => ({ ...prev, [attrKey]: val }));
   };
 
+  // لغو انتخاب / بازگشت به مرور همه‌ی محصولات
+  const handleDeselect = () => {
+    setSelectedProductId(null);
+    setVariantSelection({});
+    onChange(undefined);
+  };
+
   /* ─── render ─── */
   if (loading) {
     return (
       <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
         {[1, 2, 3, 4, 5, 6, 7, 8].map((i) => (
-          <div key={i} className="h-28 rounded-[8px] bg-gray-100 animate-pulse" />
+          <div key={i} className="h-32 rounded-[8px] bg-gray-100 animate-pulse" />
         ))}
       </div>
     );
   }
 
+  const focusedNames = selectedProduct ? splitName(selectedProduct.name) : null;
+  const focusedPrice = selectedProduct
+    ? computeDisplayPrice(selectedProduct, matchedVariant)
+    : 0;
+
   return (
-    <div className="space-y-5">
-      <div>
+    <div className="relative flex flex-col h-full min-h-0">
+      {/* سرتیتر مرحله */}
+      <div className="shrink-0 mb-3">
         <h3 className="text-sm font-semibold text-[#0d0d0d]">{node.label}</h3>
         {!node.required && (
           <p className="text-xs text-gray-400 mt-1">انتخاب این بخش اختیاری است</p>
         )}
       </div>
 
-      {products.length === 0 ? (
-        <div className="rounded-[8px] border border-dashed border-gray-300 bg-gray-50 py-10 text-center">
-          <FiTag className="w-8 h-8 mx-auto mb-3 text-gray-300" />
-          <p className="text-sm text-gray-400">محصولی در این دسته‌بندی یافت نشد</p>
-        </div>
-      ) : (
-        <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
-          {products.map((p) => {
-            const selected = String(p._id) === String(selectedProductId);
-            const priceToman = eurToToman(Number(p.basePrice), rate);
-            return (
-              <button
-                key={p._id}
-                type="button"
-                onClick={() => handleSelectProduct(p)}
-                className={`relative text-right rounded-[8px] border p-1.5 transition flex flex-col ${
-                  selected
-                    ? "border-[#aa4725] bg-[#ffbf00]/10"
-                    : "border-gray-200 hover:border-[#aa4725]/60 hover:bg-gray-50"
-                }`}
-              >
-                <div className="relative w-full aspect-square rounded-md overflow-hidden bg-white mb-1.5">
-                  {p.mainImage ? (
-                    <Image
-                      src={p.mainImage}
-                      alt={p.name}
-                      fill
-                      className="object-contain p-0.5"
-                      sizes="(max-width: 640px) 33vw, 25vw"
-                    />
-                  ) : (
-                    <div className="w-full h-full flex items-center justify-center text-gray-300">
-                      <FiTag className="w-5 h-5" />
-                    </div>
-                  )}
-                  {selected && (
-                    <span className="absolute top-1 right-1 w-4 h-4 rounded-full bg-[#aa4725] flex items-center justify-center">
-                      <FiCheck className="w-2.5 h-2.5 text-white" />
-                    </span>
-                  )}
-                </div>
-                <p className="text-[11px] font-medium text-[#0d0d0d] line-clamp-1 leading-4">
-                  {p.name}
-                </p>
-                {priceToman > 0 && (
-                  <p className="text-[10px] text-[#aa4725] font-semibold mt-0.5">
-                    {formatToman(priceToman)} تومان
+      {/* ─── شبکه‌ی محصولات (هنگام تمرکز روی یک محصول، کم‌رنگ و تار می‌شود) ─── */}
+      <motion.div
+        animate={{
+          opacity: selectedProduct ? 0.35 : 1,
+          filter: selectedProduct ? "blur(2px)" : "blur(0px)",
+        }}
+        transition={{ duration: 0.25, ease: "easeOut" }}
+        className={`flex-1 min-h-0 overflow-y-auto -mx-1 px-1 ${
+          selectedProduct ? "pointer-events-none" : ""
+        }`}
+      >
+        {products.length === 0 ? (
+          <div className="rounded-[8px] border border-dashed border-gray-300 bg-gray-50 py-10 text-center">
+            <FiTag className="w-8 h-8 mx-auto mb-3 text-gray-300" />
+            <p className="text-sm text-gray-400">محصولی در این دسته‌بندی یافت نشد</p>
+          </div>
+        ) : (
+          <div className="grid grid-cols-3 sm:grid-cols-4 gap-2 pb-1">
+            {products.map((p) => {
+              const selected = String(p._id) === String(selectedProductId);
+              const priceToman = eurToToman(Number(p.basePrice), rate);
+              const { farsi, english } = splitName(p.name);
+              return (
+                <motion.button
+                  key={p._id}
+                  layoutId={`flow-card-${p._id}`}
+                  type="button"
+                  onClick={() => handleSelectProduct(p)}
+                  className={`relative text-right rounded-[8px] border p-1.5 transition-colors flex flex-col ${
+                    selected
+                      ? "border-[#aa4725] bg-[#ffbf00]/10"
+                      : "border-gray-200 hover:border-[#aa4725]/60 hover:bg-gray-50"
+                  }`}
+                >
+                  <div className="relative w-full aspect-square rounded-md overflow-hidden bg-white mb-1.5">
+                    {p.mainImage ? (
+                      <Image
+                        src={p.mainImage}
+                        alt={p.name}
+                        fill
+                        className="object-contain p-0.5"
+                        sizes="(max-width: 640px) 33vw, 25vw"
+                      />
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center text-gray-300">
+                        <FiTag className="w-5 h-5" />
+                      </div>
+                    )}
+                    {selected && (
+                      <span className="absolute top-1 right-1 w-4 h-4 rounded-full bg-[#aa4725] flex items-center justify-center">
+                        <FiCheck className="w-2.5 h-2.5 text-white" />
+                      </span>
+                    )}
+                  </div>
+                  {/* نام در ۲ خط: خط ۱ فارسی، خط ۲ انگلیسی — مثل کارت صفحه‌ی محصولات */}
+                  <p className="text-[11px] font-semibold text-[#0d0d0d] line-clamp-1 leading-4">
+                    {farsi}
                   </p>
+                  <p
+                    dir="ltr"
+                    className="text-[10px] text-gray-500 font-medium line-clamp-1 leading-4 text-right"
+                  >
+                    {english || " "}
+                  </p>
+                  {priceToman > 0 && (
+                    <p className="text-[10px] text-[#aa4725] font-semibold mt-0.5">
+                      {formatToman(priceToman)} تومان
+                    </p>
+                  )}
+                </motion.button>
+              );
+            })}
+          </div>
+        )}
+      </motion.div>
+
+      {/* ─── حالت تمرکز: کارت انتخاب‌شده به مرکز می‌آید و واریانت‌ها زیرش ظاهر می‌شوند ─── */}
+      <AnimatePresence>
+        {selectedProduct && (
+          <motion.div
+            key="focus-layer"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.2 }}
+            onClick={handleDeselect}
+            className="absolute inset-0 z-20 overflow-y-auto bg-white/55 backdrop-blur-[1px]"
+          >
+            <div className="min-h-full flex flex-col items-center justify-center gap-4 py-4">
+              <div
+                onClick={(e) => e.stopPropagation()}
+                className="flex flex-col items-center gap-4 w-full max-w-[260px]"
+              >
+                {/* کارت محصول متمرکز — با همان layoutId از شبکه به مرکز morph می‌شود */}
+                <motion.div
+                  layoutId={`flow-card-${selectedProduct._id}`}
+                  className="w-full rounded-[12px] border border-[#aa4725] bg-white p-3 shadow-[0_12px_32px_rgba(170,71,37,0.14)]"
+                >
+                  <div className="relative w-full aspect-square rounded-md overflow-hidden bg-white mb-2">
+                    {selectedProduct.mainImage ? (
+                      <Image
+                        src={selectedProduct.mainImage}
+                        alt={selectedProduct.name}
+                        fill
+                        className="object-contain p-1"
+                        sizes="240px"
+                      />
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center text-gray-300">
+                        <FiTag className="w-8 h-8" />
+                      </div>
+                    )}
+                    <span className="absolute top-2 right-2 w-5 h-5 rounded-full bg-[#aa4725] flex items-center justify-center">
+                      <FiCheck className="w-3 h-3 text-white" />
+                    </span>
+                  </div>
+                  {/* نام در ۲ خط بدون برش */}
+                  <p className="text-[13px] font-bold text-[#0d0d0d] leading-5 text-center">
+                    {focusedNames.farsi}
+                  </p>
+                  {focusedNames.english && (
+                    <p
+                      dir="ltr"
+                      className="text-[11px] text-gray-500 font-medium leading-4 text-center mt-0.5"
+                    >
+                      {focusedNames.english}
+                    </p>
+                  )}
+                  {focusedPrice > 0 && (
+                    <p className="text-[12px] text-[#aa4725] font-bold text-center mt-1.5">
+                      {formatToman(focusedPrice)} تومان
+                    </p>
+                  )}
+                </motion.div>
+
+                {/* انتخاب واریانت یا تایید محصول بدون واریانت */}
+                {hasVariants ? (
+                  <motion.div
+                    initial={{ opacity: 0, y: 14 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.12, duration: 0.28, ease: "easeOut" }}
+                    className="w-full space-y-3.5"
+                  >
+                    <p className="text-xs font-semibold text-gray-700 text-center">
+                      یک ویژگی را انتخاب کنید
+                    </p>
+
+                    {/* پیام اعتبارسنجی — درون‌خطی، زیر واریانت‌ها */}
+                    <AnimatePresence>
+                      {showError && missingVariantKeys.length > 0 && (
+                        <motion.p
+                          initial={{ opacity: 0, height: 0 }}
+                          animate={{ opacity: 1, height: "auto" }}
+                          exit={{ opacity: 0, height: 0 }}
+                          className="text-xs font-medium text-red-600 bg-red-50 border border-red-200 rounded-md px-3 py-2 text-center overflow-hidden"
+                        >
+                          لطفاً{" "}
+                          {missingVariantKeys
+                            .map((k) => labelMap[k] || k)
+                            .join(" و ")}{" "}
+                          را انتخاب کنید
+                        </motion.p>
+                      )}
+                    </AnimatePresence>
+
+                    {optionKeys.map((attrKey) => {
+                      const values = variantOptions[attrKey];
+                      const label = labelMap[attrKey] || attrKey;
+                      return (
+                        <div key={attrKey} className="flex flex-col gap-2">
+                          <span className="text-xs text-gray-600 flex items-center gap-1.5">
+                            <span className="w-1 h-3.5 bg-[#aa4725] rounded-full" />
+                            {label}
+                          </span>
+                          <div className="flex flex-wrap gap-2 justify-center">
+                            {values.map((val) => {
+                              const isActive = variantSelection[attrKey] === val;
+                              return (
+                                <button
+                                  key={val}
+                                  type="button"
+                                  onClick={() => handleVariantSelect(attrKey, val)}
+                                  className={`min-w-[48px] px-3 h-9 rounded-md text-xs font-medium border transition ${
+                                    isActive
+                                      ? "bg-[#aa4725] text-white border-[#aa4725]"
+                                      : "bg-white border-gray-200 text-gray-600 hover:border-[#aa4725]/50"
+                                  }`}
+                                >
+                                  {val}
+                                </button>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      );
+                    })}
+
+                    {/* خطای ترکیب ناموجود — درون‌خطی */}
+                    {optionKeys.every((k) => variantSelection[k]) &&
+                      !matchedVariant && (
+                        <p className="text-xs text-red-500 text-center">
+                          این ترکیب موجود نیست
+                        </p>
+                      )}
+                    {matchedVariant && (
+                      <p className="text-xs text-green-600 text-center flex items-center justify-center gap-1">
+                        <FiCheck className="w-3.5 h-3.5" />
+                        ویژگی انتخاب شد
+                      </p>
+                    )}
+                  </motion.div>
+                ) : (
+                  <motion.p
+                    initial={{ opacity: 0, y: 14 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.12, duration: 0.28, ease: "easeOut" }}
+                    className="text-xs text-green-600 flex items-center gap-1"
+                  >
+                    <FiCheck className="w-3.5 h-3.5" />
+                    این محصول انتخاب شد
+                  </motion.p>
                 )}
-              </button>
-            );
-          })}
-        </div>
-      )}
 
-      {/* ─── انتخاب واریانت برای محصول انتخاب‌شده ─── */}
-      {selectedProduct && hasVariants && (
-        <div className="space-y-4 pt-2 border-t border-gray-100">
-          <p className="text-xs font-semibold text-gray-700">
-            ویژگی‌های «{selectedProduct.name}»
-          </p>
-
-          {/* پیام اعتبارسنجی — وقتی کاربر بدون انتخاب کامل واریانت قصد ادامه دارد */}
-          {showError && missingVariantKeys.length > 0 && (
-            <p className="text-xs font-medium text-red-600 bg-red-50 border border-red-200 rounded-md px-3 py-2">
-              لطفاً {missingVariantKeys.map((k) => labelMap[k] || k).join(" و ")} را
-              انتخاب کنید
-            </p>
-          )}
-
-          {optionKeys.map((attrKey) => {
-            const values = variantOptions[attrKey];
-            const label = labelMap[attrKey] || attrKey;
-            return (
-              <div key={attrKey} className="flex flex-col gap-2">
-                <span className="text-xs text-gray-600 flex items-center gap-1.5">
-                  <span className="w-1 h-3.5 bg-[#aa4725] rounded-full" />
-                  {label}
-                </span>
-                <div className="flex flex-wrap gap-2">
-                  {values.map((val) => {
-                    const isActive = variantSelection[attrKey] === val;
-                    return (
-                      <button
-                        key={val}
-                        type="button"
-                        onClick={() => handleVariantSelect(attrKey, val)}
-                        className={`min-w-[48px] px-3 h-9 rounded-md text-xs font-medium border transition ${
-                          isActive
-                            ? "bg-[#aa4725] text-white border-[#aa4725]"
-                            : "bg-white border-gray-200 text-gray-600 hover:border-[#aa4725]/50"
-                        }`}
-                      >
-                        {val}
-                      </button>
-                    );
-                  })}
-                </div>
+                {/* دکمه‌های لغو انتخاب / تغییر محصول */}
+                <motion.div
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.18, duration: 0.25, ease: "easeOut" }}
+                  className="flex items-center gap-2 pt-1"
+                >
+                  <button
+                    type="button"
+                    onClick={handleDeselect}
+                    className="flex items-center gap-1.5 px-4 h-9 rounded-[6px] border border-gray-200 bg-white text-xs font-medium text-gray-600 hover:bg-gray-50 hover:text-[#aa4725] transition"
+                  >
+                    <FiX className="w-3.5 h-3.5" />
+                    لغو انتخاب
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleDeselect}
+                    className="flex items-center gap-1.5 px-4 h-9 rounded-[6px] text-xs font-medium text-[#aa4725] hover:bg-[#ffbf00]/10 transition"
+                  >
+                    <FiRefreshCw className="w-3.5 h-3.5" />
+                    تغییر محصول
+                  </button>
+                </motion.div>
               </div>
-            );
-          })}
-
-          {optionKeys.every((k) => variantSelection[k]) && !matchedVariant && (
-            <p className="text-xs text-red-500">این ترکیب موجود نیست</p>
-          )}
-          {matchedVariant && (
-            <p className="text-xs text-green-600">
-              قیمت: {formatToman(computeDisplayPrice(selectedProduct, matchedVariant))} تومان
-            </p>
-          )}
-        </div>
-      )}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

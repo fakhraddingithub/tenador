@@ -3,22 +3,20 @@
 /**
  * MegamenuInteractiveColumns.jsx
  *
- * ستون‌های ۲ (درختِ دسته‌بندی‌ها) و ۳/۴ (نوارِ جنسیت + گریدِ برندها + سری‌های ریشه)
- * مگامنو. این کامپوننتِ کلاینتِ ایزوله، state تعاملیِ «جنسیت» و «دسته‌ی هاورشده» را
- * نگه می‌دارد تا Navbar/مگامنوی والد سبک بماند (Performance Shield).
+ * ستون‌های ۲ (درختِ دسته‌بندی‌ها — دو-ستونی) و ۳/۴ (نوارِ فیلترِ ویژگی + گریدِ برندها)
+ * مگامنو. این کامپوننتِ کلاینتِ ایزوله، state تعاملیِ «مقدارِ فیلتر» و «دسته‌ی هاورشده»
+ * را نگه می‌دارد تا Navbar/مگامنوی والد سبک بماند (Performance Shield).
  *
- * رابطه‌ی category→brand: با هاورِ هر دسته، فقط برندهایی که در همان دسته محصول دارند
- * (و سری‌های ریشه‌ی همان برند در همان دسته) نمایش داده می‌شوند. این داده را
- * navbarService از قبل به‌صورتِ category.brands[] (با availableGenders و series)
- * می‌سازد؛ بدونِ کوئریِ اضافه سمتِ کلاینت.
+ * فیلترِ پویا: هر دسته می‌تواند یک «ویژگیِ فیلترِ مگامنو» داشته باشد (category.megaMenuFilter).
+ * مقادیرِ آن ویژگی به‌صورتِ تب نمایش داده می‌شوند و با انتخابِ هر مقدار، فقط برندهایی که
+ * در آن دسته دستِ‌کم یک محصول با آن مقدار دارند نشان داده می‌شوند. این داده را
+ * navbarService از قبل می‌سازد (category.megaMenuFilter + brand.filterValues).
  *
- * موتورِ وراثتِ URL: اگر activeGender تنظیم باشد، به همه‌ی لینک‌های ستون‌های ۲،۳،۴
- * پارامترِ ?gender=<value> افزوده می‌شود.
+ * موتورِ وراثتِ URL: اگر مقداری فعال باشد، پارامترِ ?[attrName]=<value> به لینک‌ها افزوده می‌شود.
  *
- * مسیرِ لینک‌ها (مطابقِ ۶ الگوی مجازِ resolver):
+ * مسیرِ لینک‌ها (مطابقِ الگوهای مجازِ resolver):
  *   - دسته:  /[sport]/[category]
  *   - برند:  /[sport]/[category]/[brand]        (الگوی ۵ — با کانتکستِ دسته)
- *   - سری:   /[sport]/[brand]/[serie]           (الگوی ۶ — سری کانتکستِ دسته نمی‌گیرد)
  */
 
 import { useState } from "react";
@@ -46,10 +44,21 @@ const listButtonStyle = (isActive) => `
   }
 `;
 
-// استایلِ «فرزند» (زیردسته / سری ریشه): کوچک‌تر، کم‌رنگ، با تورفتگیِ راست (RTL)
+// استایلِ «والدِ دسته» در ستونِ دو-ستونی — مثلِ listButtonStyle ولی با فاصله/پدینگِ
+// فشرده‌تر و whitespace-nowrap تا نامِ دسته در دو خط نشکند (اندازه‌ی فونت بدون تغییر).
+const categoryButtonStyle = (isActive) => `
+  group w-full flex items-center gap-1.5 px-2 py-2.5 rounded-lg transition-all text-[15px] font-medium whitespace-nowrap
+  ${
+    isActive
+      ? "bg-[#ffffff1a] text-[#aa4725]"
+      : "text-gray-300 hover:bg-[#ffffff1a] hover:text-[#aa4725]"
+  }
+`;
+
+// استایلِ «فرزند» (زیردسته): کوچک‌تر، کم‌رنگ، با تورفتگیِ راست (RTL) — فشرده + بدونِ شکستِ خط
 const childButtonStyle = (isActive) => `
-  group w-full flex items-center gap-2 pr-7 pl-3 py-1.5 rounded-lg transition-all text-xs font-medium
-  border-r border-white/10 mr-3
+  group w-full flex items-center gap-1.5 pr-5 pl-2 py-1.5 rounded-lg transition-all text-xs font-medium whitespace-nowrap
+  border-r border-white/10 mr-2
   ${
     isActive
       ? "bg-[#ffffff14] text-[#aa4725]"
@@ -57,24 +66,14 @@ const childButtonStyle = (isActive) => `
   }
 `;
 
-const GENDER_PILLS = [
-  { value: "men", label: "مردانه" },
-  { value: "women", label: "زنانه" },
-  { value: "kids", label: "بچگانه" },
-];
-
 export default function MegamenuInteractiveColumns({ sport, onClose }) {
-  // state تعاملیِ ایزوله — پیش‌فرض null؛ کلیکِ دوباره روی همان پیل آن را خاموش می‌کند
-  const [activeGender, setActiveGender] = useState(null);
+  // مقدارِ فعالِ فیلتر — پیش‌فرض null؛ کلیکِ دوباره روی همان تب آن را خاموش می‌کند
+  const [activeFilterValue, setActiveFilterValue] = useState(null);
   // دسته‌ی هاورشده که ستون‌های ۳/۴ را هدایت می‌کند
   const [hoveredCatId, setHoveredCatId] = useState(null);
 
-  const toggleGender = (g) =>
-    setActiveGender((prev) => (prev === g ? null : g));
-
-  // موتورِ وراثتِ URL — به همه‌ی لینک‌های ستون‌های ۲/۳/۴ اعمال می‌شود
-  const withGender = (href) =>
-    activeGender ? `${href}?gender=${activeGender}` : href;
+  const toggleFilterValue = (v) =>
+    setActiveFilterValue((prev) => (prev === v ? null : v));
 
   const sportSlug = sport?.slug;
   const categories = sport?.categories || [];
@@ -96,11 +95,26 @@ export default function MegamenuInteractiveColumns({ sport, onClose }) {
   const activeCategory =
     categories.find((c) => c._id === effectiveCatId) || null;
 
-  // ── برندهای همین دسته (رابطه از روی محصول)، فیلترشده با جنسیتِ فعال ──
+  // ── فیلترِ ویژگیِ دسته‌ی فعال (پویا) ──
+  const megaMenuFilter = activeCategory?.megaMenuFilter || null;
+  // مقدارِ اعمال‌شده فقط وقتی معتبر است که جزوِ مقادیرِ همین دسته باشد؛ با تعویضِ دسته
+  // مقدارِ کهنه نادیده گرفته می‌شود (بدونِ نیاز به effect/ریست).
+  const appliedValue =
+    megaMenuFilter && (megaMenuFilter.values || []).includes(activeFilterValue)
+      ? activeFilterValue
+      : null;
+
+  // موتورِ وراثتِ URL — اگر مقداری فعال باشد ?[attrName]=<value> افزوده می‌شود
+  const withFilter = (href) =>
+    appliedValue
+      ? `${href}?${encodeURIComponent(megaMenuFilter.name)}=${encodeURIComponent(appliedValue)}`
+      : href;
+
+  // ── برندهای همین دسته (رابطه از روی محصول)، فیلترشده با مقدارِ فعال ──
   const categoryBrands = activeCategory?.brands || [];
-  const visibleBrands = activeGender
+  const visibleBrands = appliedValue
     ? categoryBrands.filter((b) =>
-        (b.availableGenders || []).includes(activeGender),
+        (b.filterValues || []).includes(appliedValue),
       )
     : categoryBrands;
 
@@ -112,18 +126,21 @@ export default function MegamenuInteractiveColumns({ sport, onClose }) {
           دسته‌بندی‌ها
         </p>
         {rootCategories.length > 0 ? (
-          <ul className="space-y-1">
+          // چیدمانِ دو-ستونی با column-flow: هر «والد + زیردسته‌هایش» یک <li> است و
+          // با break-inside-avoid هرگز بینِ دو ستون شکسته نمی‌شود؛ اگر گروه در فضای
+          // باقی‌مانده‌ی ستونِ اول جا نشود، کاملِ گروه به ستونِ دوم منتقل می‌شود.
+          <ul className="columns-2 gap-x-1">
             {rootCategories.map((cat) => {
               const kids = childrenOf(cat._id);
               return (
-                <li key={cat._id}>
+                <li key={cat._id} className="break-inside-avoid mb-1">
                   {/* والد — هاور دسته‌ی فعال را تعیین می‌کند، کلیک به صفحه‌ی دسته می‌رود */}
                   <Link
-                    href={withGender(`/${sportSlug}/${cat.slug}`)}
+                    href={withFilter(`/${sportSlug}/${cat.slug}`)}
                     prefetch
                     onMouseEnter={() => setHoveredCatId(cat._id)}
                     onClick={onClose}
-                    className={listButtonStyle(effectiveCatId === cat._id)}
+                    className={categoryButtonStyle(effectiveCatId === cat._id)}
                   >
                     {cat.icon && (
                       <div
@@ -143,7 +160,7 @@ export default function MegamenuInteractiveColumns({ sport, onClose }) {
                       {kids.map((child) => (
                         <li key={child._id}>
                           <Link
-                            href={withGender(`/${sportSlug}/${child.slug}`)}
+                            href={withFilter(`/${sportSlug}/${child.slug}`)}
                             prefetch
                             onMouseEnter={() => setHoveredCatId(child._id)}
                             onClick={onClose}
@@ -170,28 +187,33 @@ export default function MegamenuInteractiveColumns({ sport, onClose }) {
         )}
       </div>
 
-      {/* ستون‌های سوم و چهارم: نوار جنسیت + گرید برندهای دسته‌ی فعال + سری‌های ریشه */}
+      {/* ستون‌های سوم و چهارم: نوار فیلترِ ویژگی (پویا) + گرید برندهای دسته‌ی فعال */}
       <div className="flex-1 p-3 overflow-y-auto bg-white/[0.01]">
-        {/* نوار جنسیت (پیل‌ها) */}
-        <div className="flex items-center gap-2 mb-4 px-1">
-          {GENDER_PILLS.map((pill) => {
-            const isActive = activeGender === pill.value;
-            return (
-              <button
-                key={pill.value}
-                type="button"
-                onClick={() => toggleGender(pill.value)}
-                className={`px-3 py-1.5 rounded-[6px] text-xs font-bold transition-all ${
-                  isActive
-                    ? "bg-[#aa4725] text-white"
-                    : "bg-white/5 text-gray-300 hover:bg-white/10 hover:text-[#aa4725]"
-                }`}
-              >
-                {pill.label}
-              </button>
-            );
-          })}
-        </div>
+        {/* نوار فیلترِ ویژگی — فقط اگر دسته‌ی فعال یک ویژگیِ فیلتر داشته باشد */}
+        {megaMenuFilter && megaMenuFilter.values.length > 0 && (
+          <div className="flex items-center flex-wrap gap-2 mb-4 px-1">
+            <span className="text-[11px] font-bold text-gray-500 ml-1">
+              {megaMenuFilter.label}:
+            </span>
+            {megaMenuFilter.values.map((value) => {
+              const isActive = appliedValue === value;
+              return (
+                <button
+                  key={value}
+                  type="button"
+                  onClick={() => toggleFilterValue(value)}
+                  className={`px-3 py-1.5 rounded-[6px] text-xs font-bold transition-all ${
+                    isActive
+                      ? "bg-[#aa4725] text-white"
+                      : "bg-white/5 text-gray-300 hover:bg-white/10 hover:text-[#aa4725]"
+                  }`}
+                >
+                  {value}
+                </button>
+              );
+            })}
+          </div>
+        )}
 
         {/* گریدِ ۲‌ستونیِ برندهای دسته‌ی فعال */}
         {activeCategory && visibleBrands.length > 0 ? (
@@ -200,7 +222,7 @@ export default function MegamenuInteractiveColumns({ sport, onClose }) {
               <div key={brand._id} className="min-w-0">
                 {/* برند = والد → /[sport]/[category]/[brand] (الگوی ۵) */}
                 <Link
-                  href={withGender(
+                  href={withFilter(
                     `/${sportSlug}/${activeCategory.slug}/${brand.slug}`,
                   )}
                   prefetch
@@ -217,28 +239,6 @@ export default function MegamenuInteractiveColumns({ sport, onClose }) {
                     {brand.title}
                   </span>
                 </Link>
-
-                {/* سری‌های ریشه (level 0) در همین دسته → /[sport]/[brand]/[serie] (الگوی ۶) */}
-                {brand.series?.length > 0 && (
-                  <ul className="mt-0.5 mb-1 space-y-0.5">
-                    {brand.series.map((serie) => (
-                      <li key={serie._id}>
-                        <Link
-                          href={withGender(
-                            `/${sportSlug}/${brand.slug}/${serie.slug}`,
-                          )}
-                          prefetch
-                          onClick={onClose}
-                          className={childButtonStyle(false)}
-                        >
-                          <span className="flex-grow text-right truncate">
-                            {serie.title}
-                          </span>
-                        </Link>
-                      </li>
-                    ))}
-                  </ul>
-                )}
               </div>
             ))}
           </div>

@@ -37,13 +37,6 @@ const iconMaskStyle = (url) => ({
   WebkitMaskSize: "contain",
 });
 
-// پیل‌های جنسیت — مشترک بین دسکتاپ و موبایل
-const GENDER_PILLS = [
-  { value: "men", label: "مردانه" },
-  { value: "women", label: "زنانه" },
-  { value: "kids", label: "بچگانه" },
-];
-
 // ---- Search Result Item ----
 function SearchResultItem({ product, onClick }) {
   return (
@@ -137,7 +130,7 @@ function CategoryMenu({ navData, onClose }) {
             ))}
           </ul>
         </div>
-        {/* ستون‌های دوم/سوم/چهارم: درختِ دسته‌ها + نوار جنسیت + برندها و سری‌ها
+        {/* ستون‌های دوم/سوم/چهارم: درختِ دسته‌ها + نوار جنسیت + برندها
             (کامپوننتِ کلاینتِ ایزوله — state تعاملیِ جنسیت آنجا نگه‌داری می‌شود) */}
         <MegamenuInteractiveColumns sport={activeSport} onClose={onClose} />
       </div>
@@ -147,23 +140,19 @@ function CategoryMenu({ navData, onClose }) {
 
 // ---- Mobile Two-Pane Master-Detail Category Drawer ----
 // چیدمانِ موبایل‌نیتیوِ دو-پنلی (الگوی دیجی‌کالا/آمازون):
-//   سقف (۱۰۰٪): تب‌های ورزش + نوارِ پیل‌های جنسیتِ سراسری (هر دو پنل را فیلتر می‌کند)
-//   بدنه: پنل A (راست، ۴۰٪) لیستِ دسته‌ها (مَستر) | پنل B (چپ، ۶۰٪) برندها و سری‌ها (دیتیل)
+//   سقف (۱۰۰٪): تب‌های ورزش + نوارِ فیلترِ ویژگیِ دسته‌ی فعال (پویا)
+//   بدنه: پنل A (راست، ۴۰٪) لیستِ دسته‌ها (مَستر) | پنل B (چپ، ۶۰٪) برندها (دیتیل)
 // هر دو پنل اسکرولِ مستقل دارند؛ ارتفاعِ بدنه به فضای باقی‌مانده‌ی زیرِ سقف مقید است.
 function MobileCategoryDrawer({ navData, onClose }) {
   // ورزشِ فعال (تب‌های سقف) — پیش‌فرض اولین ورزش
   const [activeSportId, setActiveSportId] = useState(navData[0]?._id || null);
-  // جنسیتِ سراسری — هر دو پنل را فیلتر می‌کند؛ کلیکِ دوباره خاموش می‌کند
-  const [activeGender, setActiveGender] = useState(null);
+  // مقدارِ فعالِ فیلتر (مخصوصِ دسته‌ی فعال)؛ کلیکِ دوباره خاموش می‌کند
+  const [activeFilterValue, setActiveFilterValue] = useState(null);
   // دسته‌ی فعال (مَسترِ پنل A) که محتوای پنل B را هدایت می‌کند
   const [activeCategoryId, setActiveCategoryId] = useState(null);
 
-  const toggleGender = (g) =>
-    setActiveGender((prev) => (prev === g ? null : g));
-
-  // موتورِ وراثتِ URL — اگر جنسیت فعال باشد به همه‌ی لینک‌ها افزوده می‌شود
-  const withGender = (href) =>
-    activeGender ? `${href}?gender=${activeGender}` : href;
+  const toggleFilterValue = (v) =>
+    setActiveFilterValue((prev) => (prev === v ? null : v));
 
   // سوییچِ ورزش → ریستِ دسته‌ی فعال تا Auto-Mount اولین دسته‌ی ورزشِ جدید را انتخاب کند
   const selectSport = (id) => {
@@ -188,23 +177,25 @@ function MobileCategoryDrawer({ navData, onClose }) {
   const activeCategory =
     rootCategories.find((c) => c._id === effectiveCatId) || null;
 
-  // ── برندهای پنل B: عضویت از دسته‌ی فعال؛ جنسیت از سطحِ ورزش، اما سری‌های ریشه
-  //    دسته‌اسکوپ‌اند (فقط سری‌هایی که در همین دسته محصول دارند) — از category.brands ──
-  // (هر دو داده را navbarService از قبل می‌سازد؛ بدونِ کوئریِ اضافه/N+1)
-  const sportBrandMeta = new Map(
-    (activeSport?.brands || []).map((b) => [b._id, b]),
-  );
-  const categoryBrands = (activeCategory?.brands || []).map((b) => {
-    const meta = sportBrandMeta.get(b._id) || {};
-    return {
-      ...b,
-      availableGenders: meta.availableGenders || [],
-      series: b.series || [],
-    };
-  });
-  const visibleBrands = activeGender
+  // ── فیلترِ ویژگیِ دسته‌ی فعال (پویا) — همان داده‌ی مگامنوی دسکتاپ از navbarService ──
+  const megaMenuFilter = activeCategory?.megaMenuFilter || null;
+  // مقدار فقط وقتی اعمال می‌شود که جزوِ مقادیرِ همین دسته باشد (با تعویضِ دسته نادیده می‌شود)
+  const appliedValue =
+    megaMenuFilter && (megaMenuFilter.values || []).includes(activeFilterValue)
+      ? activeFilterValue
+      : null;
+
+  // موتورِ وراثتِ URL — اگر مقداری فعال باشد ?[attrName]=<value> افزوده می‌شود
+  const withFilter = (href) =>
+    appliedValue
+      ? `${href}?${encodeURIComponent(megaMenuFilter.name)}=${encodeURIComponent(appliedValue)}`
+      : href;
+
+  // ── برندهای پنل B: عضویت از دسته‌ی فعال (از روی محصول)، فیلترشده با مقدارِ فعال ──
+  const categoryBrands = activeCategory?.brands || [];
+  const visibleBrands = appliedValue
     ? categoryBrands.filter((b) =>
-        (b.availableGenders || []).includes(activeGender),
+        (b.filterValues || []).includes(appliedValue),
       )
     : categoryBrands;
 
@@ -269,26 +260,31 @@ function MobileCategoryDrawer({ navData, onClose }) {
           })}
         </div>
 
-        {/* ───────── سقف: نوارِ جنسیتِ سراسری (۱۰۰٪ — هر دو پنل را فیلتر می‌کند) ───────── */}
-        <div className="flex items-center gap-2 px-3 py-2.5 border-b border-white/10 flex-shrink-0">
-          {GENDER_PILLS.map((pill) => {
-            const isActive = activeGender === pill.value;
-            return (
-              <button
-                key={pill.value}
-                type="button"
-                onClick={() => toggleGender(pill.value)}
-                className={`flex-1 py-1.5 rounded-[6px] text-xs font-bold transition-all ${
-                  isActive
-                    ? "bg-[#aa4725] text-white"
-                    : "bg-white/5 text-gray-300 hover:bg-white/10 hover:text-[#aa4725]"
-                }`}
-              >
-                {pill.label}
-              </button>
-            );
-          })}
-        </div>
+        {/* ───────── سقف: نوارِ فیلترِ ویژگیِ دسته‌ی فعال (پویا — فقط اگر دسته فیلتر داشته باشد) ───────── */}
+        {megaMenuFilter && megaMenuFilter.values.length > 0 && (
+          <div className="flex items-center gap-2 px-3 py-2.5 border-b border-white/10 flex-shrink-0 overflow-x-auto">
+            <span className="text-[11px] font-bold text-gray-500 whitespace-nowrap flex-shrink-0">
+              {megaMenuFilter.label}:
+            </span>
+            {megaMenuFilter.values.map((value) => {
+              const isActive = appliedValue === value;
+              return (
+                <button
+                  key={value}
+                  type="button"
+                  onClick={() => toggleFilterValue(value)}
+                  className={`px-3 py-1.5 rounded-[6px] text-xs font-bold whitespace-nowrap flex-shrink-0 transition-all ${
+                    isActive
+                      ? "bg-[#aa4725] text-white"
+                      : "bg-white/5 text-gray-300 hover:bg-white/10 hover:text-[#aa4725]"
+                  }`}
+                >
+                  {value}
+                </button>
+              );
+            })}
+          </div>
+        )}
 
         {/* ───────── بدنه: دو پنلِ ۴۰/۶۰ با اسکرولِ مستقل (ارتفاعِ مقید به فضای زیرِ سقف) ───────── */}
         <div className="flex flex-row flex-1 min-h-0 overflow-hidden">
@@ -327,12 +323,12 @@ function MobileCategoryDrawer({ navData, onClose }) {
             )}
           </div>
 
-          {/* PANE B — دیتیل/برندها و سری‌های ریشه (در RTL سمت چپ) — ۶۰٪ */}
+          {/* PANE B — دیتیل/برندها (در RTL سمت چپ) — ۶۰٪ */}
           <div className="w-[60%] flex-1 overflow-y-auto p-2 bg-black/20">
             {/* لینکِ مشاهده‌ی صفحه‌ی دسته‌ی فعال */}
             {activeCategory && (
               <Link
-                href={withGender(`/${activeSport.slug}/${activeCategory.slug}`)}
+                href={withFilter(`/${activeSport.slug}/${activeCategory.slug}`)}
                 onClick={onClose}
                 className="block px-2 py-2 mb-1 text-[11px] font-bold text-[#aa4725] truncate"
               >
@@ -343,9 +339,11 @@ function MobileCategoryDrawer({ navData, onClose }) {
             {visibleBrands.length > 0 ? (
               visibleBrands.map((brand) => (
                 <div key={brand._id} className="mb-2">
-                  {/* برند */}
+                  {/* برند = در کانتکستِ دسته → /[sport]/[category]/[brand] (الگوی ۵) */}
                   <Link
-                    href={withGender(`/${activeSport.slug}/${brand.slug}`)}
+                    href={withFilter(
+                      `/${activeSport.slug}/${activeCategory.slug}/${brand.slug}`,
+                    )}
                     onClick={onClose}
                     className="flex items-center gap-2 px-2 py-2 rounded-md hover:bg-white/5 transition-colors min-w-0"
                   >
@@ -359,24 +357,6 @@ function MobileCategoryDrawer({ navData, onClose }) {
                       {brand.title}
                     </span>
                   </Link>
-
-                  {/* سری‌های ریشه (level 0) زیرِ همان برند */}
-                  {brand.series.length > 0 && (
-                    <div className="mt-0.5 mr-2 pr-2 border-r border-white/10">
-                      {brand.series.map((serie) => (
-                        <Link
-                          key={serie._id}
-                          href={withGender(
-                            `/${activeSport.slug}/${brand.slug}/${serie.slug}`,
-                          )}
-                          onClick={onClose}
-                          className="block px-2 py-1.5 text-[11px] text-gray-400 hover:text-[#aa4725] transition-colors truncate"
-                        >
-                          {serie.title}
-                        </Link>
-                      ))}
-                    </div>
-                  )}
                 </div>
               ))
             ) : (

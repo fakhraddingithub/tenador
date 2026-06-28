@@ -23,6 +23,7 @@ import mongoose from "mongoose";
 import connectToDB from "base/configs/db";
 import Serie from "base/models/Serie";
 import Product from "base/models/Product";
+import Variant from "base/models/Variant";
 import { getCachedRate } from "@/lib/Exchangerate";
 import { attachListingPrices } from "base/services/priceEngine";
 
@@ -87,17 +88,37 @@ async function buildSeriesTree(brandId) {
 }
 
 /**
- * فیلتر پایه‌ی محصول (برند + ورزش + دسته + جستجو). قیمت جداگانه روی قیمت تومانی اعمال می‌شود.
+ * فیلتر پایه‌ی محصول (برند + ورزش + دسته + جستجو + فیلترِ ویژگی). قیمت جداگانه روی
+ * قیمت تومانی اعمال می‌شود. `extra` قطعه‌ی match اضافیِ از پیش‌ساخته‌ی فیلترِ ویژگی است
+ * (برای ویژگیِ ثابت: attributes.<name>؛ برای متغیر: _id ∈ productIdsِ واریانت).
  */
-function buildBaseMatch({ brandId, sportId, categoryId, gender, search }) {
+function buildBaseMatch({ brandId, sportId, categoryId, search, extra }) {
   const match = { isActive: true, brand: toObjectId(brandId) };
   if (sportId) match.sport = toObjectId(sportId);
   if (categoryId) match.category = toObjectId(categoryId);
-  if (["men", "women", "kids"].includes(gender)) match.gender = gender;
+  if (extra && typeof extra === "object") Object.assign(match, extra);
   if (search && search.trim()) {
     match.name = { $regex: escapeRegex(search.trim()), $options: "i" };
   }
   return match;
+}
+
+/**
+ * قطعه‌ی match فیلترِ ویژگیِ مگامنو را می‌سازد. برای ویژگیِ ثابت مستقیماً روی
+ * product.attributes.<name> تطبیق می‌دهد؛ برای ویژگیِ متغیر، ابتدا شناسه‌ی محصولاتی
+ * که واریانتی با آن مقدار دارند را پیدا و سپس _id را به آن‌ها محدود می‌کند.
+ * بازگشتِ {} یعنی فیلتری اعمال نمی‌شود؛ بازگشتِ _id:{$in:[]} یعنی هیچ محصولی منطبق نیست.
+ */
+async function buildAttrMatch(attrFilter, categoryId) {
+  if (!attrFilter || !attrFilter.name || !attrFilter.value) return {};
+  const { name, value, source } = attrFilter;
+  if (source === "variant") {
+    const variantQuery = { [`attributes.${name}`]: value };
+    if (categoryId) variantQuery.categoryId = toObjectId(categoryId);
+    const ids = await Variant.find(variantQuery).distinct("productId");
+    return { _id: { $in: ids } };
+  }
+  return { [`attributes.${name}`]: value };
 }
 
 function withinPrice(p, minPrice, maxPrice) {
@@ -112,7 +133,7 @@ async function _getBrandGroupedSections(params) {
     brandId,
     sportId = null,
     categoryId = null,
-    gender = null,
+    attrFilter = null,
     offset = 0,
     limit = 2,
     minPrice = 0,
@@ -127,12 +148,14 @@ async function _getBrandGroupedSections(params) {
 
   await connectToDB();
 
-  const [{ byId, roots, rootIdFor, descendantsByRoot }, rate] = await Promise.all([
-    buildSeriesTree(brandId),
-    getCachedRate(),
-  ]);
+  const [{ byId, roots, rootIdFor, descendantsByRoot }, rate, extra] =
+    await Promise.all([
+      buildSeriesTree(brandId),
+      getCachedRate(),
+      buildAttrMatch(attrFilter, categoryId),
+    ]);
 
-  const baseMatch = buildBaseMatch({ brandId, sportId, categoryId, gender, search });
+  const baseMatch = buildBaseMatch({ brandId, sportId, categoryId, search, extra });
 
   // ── شمارش محصولات هر سری با یک aggregation و رول‌آپ به سری ریشه ──
   const countAgg = await Product.aggregate([

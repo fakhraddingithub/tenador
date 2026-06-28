@@ -6,6 +6,7 @@
  *
  * query params:
  *   brandId (الزامی), sportId?, categoryId?
+ *   attrName?, attrValue?, attrSource? (fixed|variant) → فیلترِ ویژگیِ مگامنو
  *   offset (پیش‌فرض 0), limit (پیش‌فرض 2)
  *   minPrice?, maxPrice?, search?
  *   withIndex=1  → فهرست کاملِ بخش‌ها (برای نویگیشن سری‌ها) را هم برگردان
@@ -30,11 +31,23 @@ export async function GET(req) {
       return Number.isFinite(n) ? n : d;
     };
 
+    const attrName = searchParams.get("attrName");
+    const attrValue = searchParams.get("attrValue");
+    const attrFilter =
+      attrName && attrValue
+        ? {
+            name: attrName,
+            value: attrValue,
+            source:
+              searchParams.get("attrSource") === "variant" ? "variant" : "fixed",
+          }
+        : null;
+
     const data = await getBrandGroupedSections({
       brandId,
       sportId: searchParams.get("sportId") || null,
       categoryId: searchParams.get("categoryId") || null,
-      gender: searchParams.get("gender") || null,
+      attrFilter,
       offset: toInt(searchParams.get("offset"), 0),
       limit: Math.min(Math.max(toInt(searchParams.get("limit"), 2), 1), 6),
       minPrice: toInt(searchParams.get("minPrice"), 0),

@@ -133,7 +133,6 @@ export async function PUT(request, { params }) {
       serie,
       limitedEdition,
       sport,
-      gender, // جنسیت محصول (men|women|kids یا null)
       athlete,
       attributes,
       technicalStats,
@@ -253,7 +252,6 @@ export async function PUT(request, { params }) {
     product.serie = serie || null;
     product.limitedEdition = limitedEdition || null;
     product.sport = sport || null;
-    product.gender = ["men", "women", "kids"].includes(gender) ? gender : null;
     product.athlete = Array.isArray(athlete) ? athlete : [];
     
     product.attributes =

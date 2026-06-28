@@ -125,7 +125,6 @@ export default function ProductEditPage() {
     serie: '',
     limitedEdition: '',
     sport: '',
-    gender: '', // '' = بدون جنسیت / عمومی (در پی‌لود به null تبدیل می‌شود)
     athlete: [],   // always array
     attributes: {},
     technicalStats: {},
@@ -210,7 +209,6 @@ export default function ProductEditPage() {
             serie: p.serie?._id || p.serie || '',
             limitedEdition: p.limitedEdition?._id || p.limitedEdition || '',
             sport: p.sport?._id || p.sport || '',
-            gender: p.gender || '',
             athlete: athleteIds,
 
             attributes: normalizeInitialAttributes(
@@ -521,7 +519,6 @@ export default function ProductEditPage() {
         serie: formData.serie,
         limitedEdition: formData.limitedEdition,
         sport: formData.sport,
-        gender: formData.gender || null,
         athlete: Array.isArray(formData.athlete) ? formData.athlete : [],
         attributes: normalizedAttributes,
         technicalStats: normalizedStats,
@@ -711,17 +708,6 @@ export default function ProductEditPage() {
             value={formData.sport}
             onChange={e => updateField('sport', e.target.value)}
             options={sports.map(s => ({ value: s._id, label: s.name }))}
-          />
-          <Select
-            label="جنسیت"
-            value={formData.gender}
-            onChange={e => updateField('gender', e.target.value)}
-            placeholder="بدون جنسیت / عمومی"
-            options={[
-              { value: 'men', label: 'مردانه' },
-              { value: 'women', label: 'زنانه' },
-              { value: 'kids', label: 'بچگانه' },
-            ]}
           />
           <Select
             label="برچسب محصول"

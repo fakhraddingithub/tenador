@@ -29,6 +29,37 @@ function isParentSeriePage(filters) {
   );
 }
 
+// از روی دسته‌ی resolve‌شده و searchParams، فیلترِ ویژگیِ مگامنو را می‌سازد.
+// نامِ پارامتر = category.megaMenuFilterAttribute؛ نوعِ آن (ثابت/متغیر) از روی
+// attributes/variantAttributes تعیین می‌شود تا brandGrouped کوئریِ درست بسازد.
+function resolveAttrFilter(category, sp) {
+  const name = category?.megaMenuFilterAttribute;
+  if (!name) return null;
+  const raw = sp?.[name];
+  const value = Array.isArray(raw) ? raw[0] : raw;
+  if (!value || typeof value !== "string") return null;
+  const isVariant = (category.variantAttributes || []).some(
+    (a) => a.name === name,
+  );
+  return { name, value, source: isVariant ? "variant" : "fixed" };
+}
+
+// فرادادهٔ فیلتر برای کارتِ سایدبارِ صفحه‌ی برند (برچسب + گزینه‌های تعریف‌شده).
+function buildFilterMeta(category) {
+  const name = category?.megaMenuFilterAttribute;
+  if (!name) return null;
+  const def = [
+    ...(category.attributes || []),
+    ...(category.variantAttributes || []),
+  ].find((a) => a.name === name);
+  if (!def) return null;
+  return {
+    name,
+    label: def.label || name,
+    options: Array.isArray(def.options) ? def.options : [],
+  };
+}
+
 // ⚠️ اسلاگ‌های فارسی با هدر x-next-cache-tags ناسازگارند (باگ Next: کاراکتر
 // غیر-ASCII در هدر → ERR_INVALID_CHAR → خطای ۵۰۰). داینامیک رندر می‌شود تا هدر
 // کش روت ساخته نشود؛ کوئری‌ها همچنان با unstable_cache کش می‌مانند.
@@ -98,8 +129,6 @@ export default async function SportDynamicSlugPage({ params, searchParams }) {
   // سگمنتِ مسیر. سگمنتِ اضافیِ مسیر توسطِ validatorِ سخت‌گیر (طول + Mirror) رد می‌شود.
   const sp = (await searchParams) || {};
   const page = Math.max(1, Number(sp.page) || 1);
-  // بُعدِ جنسیت فقط از searchParams (?gender=) خوانده می‌شود، نه از مسیر
-  const gender = ["men", "women", "kids"].includes(sp.gender) ? sp.gender : null;
 
   // اعتبارسنجیِ قطعیِ مسیر — اگر یکی از ۶ الگوی مجاز نباشد، ۴۰۴ سخت
   const ctx = await resolvePageContext(slugs);
@@ -117,11 +146,15 @@ export default async function SportDynamicSlugPage({ params, searchParams }) {
     const sportId = filters.sport?._id || null;
     const categoryId = filters.category?._id || null;
 
+    // ── فیلترِ ویژگیِ مگامنو: نامِ پارامتر از دسته خوانده می‌شود (megaMenuFilterAttribute)
+    //    و نوعِ آن (ثابت/متغیر) برای ساختِ کوئریِ درست تعیین می‌شود. ?[name]=[value] ──
+    const attrFilter = resolveAttrFilter(filters.category, sp);
+
     const initialData = await getBrandGroupedSections({
       brandId,
       sportId,
       categoryId,
-      gender,
+      attrFilter,
       offset: 0,
       limit: INITIAL_SECTIONS,
       withIndex: true,
@@ -137,7 +170,8 @@ export default async function SportDynamicSlugPage({ params, searchParams }) {
         brandId={brandId}
         sportId={sportId}
         categoryId={categoryId}
-        gender={gender}
+        attrFilter={attrFilter}
+        filterMeta={buildFilterMeta(filters.category)}
         initialData={initialData}
         page={page}
         title={`تنادور – ${pageInfo.title || pageInfo.name || ""}`}
@@ -156,7 +190,6 @@ export default async function SportDynamicSlugPage({ params, searchParams }) {
       serieId,
       sportId,
       categoryId,
-      gender,
       offset: 0,
       limit: INITIAL_SECTIONS,
       withIndex: true,
@@ -173,7 +206,6 @@ export default async function SportDynamicSlugPage({ params, searchParams }) {
         sportId={sportId}
         categoryId={categoryId}
         brandSlug={brandSlug}
-        gender={gender}
         initialData={initialData}
         page={page}
         title={`تنادور – ${pageInfo.title || pageInfo.name || ""}`}
@@ -182,7 +214,7 @@ export default async function SportDynamicSlugPage({ params, searchParams }) {
   }
 
   // ─── سایر صفحات (ورزش، دسته): الگوهای ۲ از این مسیر سرو می‌شوند ───
-  const searchData = await queryBySlugs(slugs, gender);
+  const searchData = await queryBySlugs(slugs);
 
   // محافظِ دوم: اگر بینِ resolve و query وضعیت تغییر کرده باشد (مثلاً حذفِ آخرین
   // محصولِ یک ترکیب)، باز هم ۴۰۴ سخت می‌دهیم — بدونِ fallbackِ خاموش.
@@ -204,8 +236,6 @@ export default async function SportDynamicSlugPage({ params, searchParams }) {
       totalResults={searchData.totalResults}
       rate={rate}
       page={page}
-      activeGender={gender}
-      enableGenderFilter={true}
       title={`تنادور – ${pageInfo.title || pageInfo.name || ""}`}
     />
   );

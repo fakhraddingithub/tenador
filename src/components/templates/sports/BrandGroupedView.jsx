@@ -19,7 +19,7 @@ import Link from "next/link";
 import ProductCard from "@/components/modules/cart/ProductCard";
 import QuickViewModal from "@/components/modules/cart/QuickViewModal";
 import SearchBar from "@/components/templates/products/SearchBar";
-import GenderFilterCard from "@/components/templates/products/GenderFilterCard";
+import AttributeFilterCard from "@/components/templates/products/AttributeFilterCard";
 import { FiShoppingBag, FiLayers, FiLoader, FiFilter, FiRotateCcw } from "react-icons/fi";
 
 const BATCH_SECTIONS = 2;
@@ -31,7 +31,8 @@ export default function BrandGroupedView({
   brandId,
   sportId = null,
   categoryId = null,
-  gender = null,
+  attrFilter = null,
+  filterMeta = null,
   initialData = {},
   title = "",
 }) {
@@ -85,7 +86,11 @@ export default function BrandGroupedView({
       params.set("brandId", brandId);
       if (sportId) params.set("sportId", sportId);
       if (categoryId) params.set("categoryId", categoryId);
-      if (gender) params.set("gender", gender);
+      if (attrFilter?.name && attrFilter?.value) {
+        params.set("attrName", attrFilter.name);
+        params.set("attrValue", attrFilter.value);
+        params.set("attrSource", attrFilter.source || "fixed");
+      }
       params.set("offset", String(offset));
       params.set("limit", String(BATCH_SECTIONS));
       if (f.minPrice > 0) params.set("minPrice", String(f.minPrice));
@@ -94,7 +99,7 @@ export default function BrandGroupedView({
       if (withIndex) params.set("withIndex", "1");
       return `/api/brands/grouped?${params.toString()}`;
     },
-    [brandId, sportId, categoryId, gender]
+    [brandId, sportId, categoryId, attrFilter]
   );
 
   // ─── بارگذاری batch بعدی (scroll) ───
@@ -269,8 +274,11 @@ export default function BrandGroupedView({
               </button>
             </div>
 
-            {/* فیلتر جنسیت — مقدار اولیه از URL، تغییر با navigationِ نرم */}
-            <GenderFilterCard activeGender={gender} />
+            {/* فیلتر ویژگیِ مگامنو — مقدار اولیه از URL، تغییر با navigationِ نرم */}
+            <AttributeFilterCard
+              meta={filterMeta}
+              activeValue={attrFilter?.value || null}
+            />
 
             {/* نویگیشن سری‌ها (پرش به بخش) */}
             {index.length > 0 && (
