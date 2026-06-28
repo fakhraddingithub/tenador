@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import Image from "next/image";
 import { motion, AnimatePresence } from "framer-motion";
-import { FiCheck, FiTag, FiX, FiRefreshCw } from "react-icons/fi";
+import { FiCheck, FiTag, FiX } from "react-icons/fi";
 import { eurToToman, formatToman } from "@/lib/currency";
 
 /* ─── helpers (هم‌راستا با QuickViewModal) ─── */
@@ -83,6 +83,8 @@ export default function CategoryNodeStep({
   const [selectedProductId, setSelectedProductId] = useState(
     value?.selectedProductId || null
   );
+  // عرضِ دقیقِ کارت در شبکه — تا کارتِ متمرکز هم همان اندازه بماند (بدون بزرگ‌شدن)
+  const [cardWidth, setCardWidth] = useState(null);
   // مقدار اولیه از انتخاب قبلی بازگردانی می‌شود (هنگام رفت‌وبرگشت بین مراحل)
   const [variantSelection, setVariantSelection] = useState(() => ({
     ...(value?.selectedVariantAttributes || {}),
@@ -210,7 +212,10 @@ export default function CategoryNodeStep({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [matchedVariant]);
 
-  const handleSelectProduct = (product) => {
+  const handleSelectProduct = (product, e) => {
+    // اندازه‌ی واقعی کارت را نگه می‌داریم تا کارتِ متمرکز هم‌اندازه بماند
+    const w = e?.currentTarget?.getBoundingClientRect?.().width;
+    if (w) setCardWidth(w);
     setSelectedProductId(String(product._id));
     setVariantSelection({});
     // emitSelection خودش تشخیص می‌دهد محصول واریانت‌دار است یا نه:
@@ -234,7 +239,7 @@ export default function CategoryNodeStep({
     return (
       <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
         {[1, 2, 3, 4, 5, 6, 7, 8].map((i) => (
-          <div key={i} className="h-32 rounded-[8px] bg-gray-100 animate-pulse" />
+          <div key={i} className="h-32 rounded-[6px] bg-gray-100 animate-pulse" />
         ))}
       </div>
     );
@@ -267,7 +272,7 @@ export default function CategoryNodeStep({
         }`}
       >
         {products.length === 0 ? (
-          <div className="rounded-[8px] border border-dashed border-gray-300 bg-gray-50 py-10 text-center">
+          <div className="rounded-[6px] border border-dashed border-gray-300 bg-gray-50 py-10 text-center">
             <FiTag className="w-8 h-8 mx-auto mb-3 text-gray-300" />
             <p className="text-sm text-gray-400">محصولی در این دسته‌بندی یافت نشد</p>
           </div>
@@ -282,14 +287,14 @@ export default function CategoryNodeStep({
                   key={p._id}
                   layoutId={`flow-card-${p._id}`}
                   type="button"
-                  onClick={() => handleSelectProduct(p)}
-                  className={`relative text-right rounded-[8px] border p-1.5 transition-colors flex flex-col ${
+                  onClick={(e) => handleSelectProduct(p, e)}
+                  className={`relative text-right rounded-[6px] border p-1.5 transition-colors flex flex-col ${
                     selected
                       ? "border-[#aa4725] bg-[#ffbf00]/10"
                       : "border-gray-200 hover:border-[#aa4725]/60 hover:bg-gray-50"
                   }`}
                 >
-                  <div className="relative w-full aspect-square rounded-md overflow-hidden bg-white mb-1.5">
+                  <div className="relative w-full aspect-square rounded-[6px] overflow-hidden bg-white mb-1.5">
                     {p.mainImage ? (
                       <Image
                         src={p.mainImage}
@@ -343,48 +348,47 @@ export default function CategoryNodeStep({
             onClick={handleDeselect}
             className="absolute inset-0 z-20 overflow-y-auto bg-white/55 backdrop-blur-[1px]"
           >
-            <div className="min-h-full flex flex-col items-center justify-center gap-4 py-4">
+            <div className="min-h-full flex flex-col items-center justify-center gap-3 py-3">
               <div
                 onClick={(e) => e.stopPropagation()}
-                className="flex flex-col items-center gap-4 w-full max-w-[260px]"
+                className="flex flex-col items-center gap-3 w-full max-w-[260px]"
               >
-                {/* کارت محصول متمرکز — با همان layoutId از شبکه به مرکز morph می‌شود */}
+                {/* کارت محصول متمرکز — دقیقاً هم‌اندازه‌ی کارتِ شبکه (فقط جابه‌جا می‌شود، بزرگ نمی‌شود) */}
                 <motion.div
                   layoutId={`flow-card-${selectedProduct._id}`}
-                  className="w-full rounded-[12px] border border-[#aa4725] bg-white p-3 shadow-[0_12px_32px_rgba(170,71,37,0.14)]"
+                  style={cardWidth ? { width: cardWidth } : undefined}
+                  className="relative text-right rounded-[6px] border border-[#aa4725] bg-[#ffbf00]/10 p-1.5 flex flex-col"
                 >
-                  <div className="relative w-full aspect-square rounded-md overflow-hidden bg-white mb-2">
+                  <div className="relative w-full aspect-square rounded-[6px] overflow-hidden bg-white mb-1.5">
                     {selectedProduct.mainImage ? (
                       <Image
                         src={selectedProduct.mainImage}
                         alt={selectedProduct.name}
                         fill
-                        className="object-contain p-1"
-                        sizes="240px"
+                        className="object-contain p-0.5"
+                        sizes="(max-width: 640px) 33vw, 25vw"
                       />
                     ) : (
                       <div className="w-full h-full flex items-center justify-center text-gray-300">
-                        <FiTag className="w-8 h-8" />
+                        <FiTag className="w-5 h-5" />
                       </div>
                     )}
-                    <span className="absolute top-2 right-2 w-5 h-5 rounded-full bg-[#aa4725] flex items-center justify-center">
-                      <FiCheck className="w-3 h-3 text-white" />
+                    <span className="absolute top-1 right-1 w-4 h-4 rounded-full bg-[#aa4725] flex items-center justify-center">
+                      <FiCheck className="w-2.5 h-2.5 text-white" />
                     </span>
                   </div>
-                  {/* نام در ۲ خط بدون برش */}
-                  <p className="text-[13px] font-bold text-[#0d0d0d] leading-5 text-center">
+                  {/* نام در ۲ خط: خط ۱ فارسی، خط ۲ انگلیسی */}
+                  <p className="text-[11px] font-semibold text-[#0d0d0d] line-clamp-1 leading-4">
                     {focusedNames.farsi}
                   </p>
-                  {focusedNames.english && (
-                    <p
-                      dir="ltr"
-                      className="text-[11px] text-gray-500 font-medium leading-4 text-center mt-0.5"
-                    >
-                      {focusedNames.english}
-                    </p>
-                  )}
+                  <p
+                    dir="ltr"
+                    className="text-[10px] text-gray-500 font-medium line-clamp-1 leading-4 text-right"
+                  >
+                    {focusedNames.english || " "}
+                  </p>
                   {focusedPrice > 0 && (
-                    <p className="text-[12px] text-[#aa4725] font-bold text-center mt-1.5">
+                    <p className="text-[10px] text-[#aa4725] font-semibold mt-0.5">
                       {formatToman(focusedPrice)} تومان
                     </p>
                   )}
@@ -396,7 +400,7 @@ export default function CategoryNodeStep({
                     initial={{ opacity: 0, y: 14 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: 0.12, duration: 0.28, ease: "easeOut" }}
-                    className="w-full space-y-3.5"
+                    className="w-full space-y-3"
                   >
                     <p className="text-xs font-semibold text-gray-700 text-center">
                       یک ویژگی را انتخاب کنید
@@ -478,7 +482,7 @@ export default function CategoryNodeStep({
                   </motion.p>
                 )}
 
-                {/* دکمه‌های لغو انتخاب / تغییر محصول */}
+                {/* دکمه‌ی لغو انتخاب */}
                 <motion.div
                   initial={{ opacity: 0, y: 10 }}
                   animate={{ opacity: 1, y: 0 }}
@@ -492,14 +496,6 @@ export default function CategoryNodeStep({
                   >
                     <FiX className="w-3.5 h-3.5" />
                     لغو انتخاب
-                  </button>
-                  <button
-                    type="button"
-                    onClick={handleDeselect}
-                    className="flex items-center gap-1.5 px-4 h-9 rounded-[6px] text-xs font-medium text-[#aa4725] hover:bg-[#ffbf00]/10 transition"
-                  >
-                    <FiRefreshCw className="w-3.5 h-3.5" />
-                    تغییر محصول
                   </button>
                 </motion.div>
               </div>
