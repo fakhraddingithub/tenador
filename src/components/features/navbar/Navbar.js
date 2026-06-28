@@ -82,7 +82,7 @@ function CategoryMenu({ navData, onClose }) {
 
   // تابع کمکی برای استایل دکمه‌های لیست در ستون اول (ورزش‌ها)
   const listButtonStyle = (isActive) => `
-    group w-full flex items-center gap-3 px-4 py-2.5 rounded-lg transition-all text-[15px] font-medium
+    group w-full flex items-center gap-3 px-4 py-2.5 rounded-[6px] transition-all text-[15px] font-medium
     ${
       isActive
         ? "bg-[#ffffff1a] text-[#aa4725]"
@@ -93,7 +93,7 @@ function CategoryMenu({ navData, onClose }) {
   return (
     <div
       dir="rtl"
-      className="absolute top-full right-0 mt-2 w-[950px] bg-[#20232ae6] border border-white/10 shadow-2xl rounded-[var(--radius)] overflow-hidden z-[100] text-right"
+      className="absolute top-full right-0 mt-2 w-[950px] bg-[#20232ae6] border border-white/10 shadow-2xl rounded-[6px] overflow-hidden z-[100] text-right"
       onMouseLeave={onClose}
     >
       <div className="flex h-[480px]">
