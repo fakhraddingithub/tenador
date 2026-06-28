@@ -125,7 +125,7 @@ export default function MegamenuInteractiveColumns({ sport, onClose }) {
   return (
     <>
       {/* ستون دوم: درختِ دسته‌بندی‌ها (والد/فرزند) — هاور، ستون‌های ۳/۴ را تعیین می‌کند */}
-      <div className="w-[35%] border-l border-white/[0.06] p-3 overflow-y-auto">
+      <div className="w-[30%] border-l border-white/[0.06] p-3 overflow-y-auto">
         <p className="text-[11px] font-bold text-gray-500 mb-4 px-2 uppercase tracking-widest">
           دسته‌بندی‌ها
         </p>
