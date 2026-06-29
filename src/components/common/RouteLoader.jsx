@@ -10,7 +10,7 @@
 export default function RouteLoader() {
   return (
     <div
-      className="flex items-center justify-center min-h-[60vh] w-full"
+      className="flex items-center justify-center min-h-[100vh] w-full"
       role="status"
       aria-label="در حال بارگذاری"
     >

@@ -2,6 +2,7 @@
 
 import { motion } from "framer-motion";
 import ProductComparisonGraph from "@/components/templates/productCompare/ProductComparisonGraph";
+import AttributeInfoTooltip from "./AttributeInfoTooltip";
 
 const ProductAttributesTable = ({ attributes = [], technicalStats }) => {
   if (!attributes || attributes.length === 0) return null;
@@ -29,6 +30,7 @@ const ProductAttributesTable = ({ attributes = [], technicalStats }) => {
               <span className="text-[11px] font-bold uppercase tracking-tighter text-gray-400 group-hover:text-gray-600">
                 {attr.label}
               </span>
+              <AttributeInfoTooltip description={attr.description} />
             </div>
 
             {/* بخش مقدار ویژگی - اصلاح شده */}

@@ -6,6 +6,10 @@ const AttributeSchema = new mongoose.Schema(
     name: { type: String, required: true, trim: true },
     label: { type: String, required: true },
 
+    // توضیح اختیاری برای این ویژگی — در صفحه‌ی محصول (تب مشخصات فنی) کنار نام ویژگی
+    // به‌صورت آیکون راهنما/تولتیپ نمایش داده می‌شود. اختیاری و سازگار با داده‌ی قبلی.
+    description: { type: String, trim: true, default: "" },
+
     // این فیلد حالا هم نوع نمایش را تعیین می‌کند و هم به طور ضمنی نوع داده را
     uiType: {
       type: String,

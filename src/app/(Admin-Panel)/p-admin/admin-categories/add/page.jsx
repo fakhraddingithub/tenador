@@ -239,6 +239,7 @@ The color code may appear in formats like:
     filterable: false,
     options: '',
     prompt: '',
+    description: '',
   });
 
   const [variantAttributes, setVariantAttributes] = useState([]);
@@ -424,6 +425,7 @@ The color code may appear in formats like:
       filterable: currentAttribute.filterable,
       options: currentAttribute.options ? currentAttribute.options.split(',').map(o => o.trim()).filter(Boolean) : [],
       prompt: currentAttribute.prompt || '',
+      description: currentAttribute.description?.trim() || '',
     };
 
     if (editingId) {
@@ -459,6 +461,7 @@ The color code may appear in formats like:
       filterable: false,
       options: '',
       prompt: '',
+      description: '',
     });
     setEditingId(null);
   };
@@ -472,6 +475,7 @@ The color code may appear in formats like:
       filterable: attr.filterable ?? false,
       options: Array.isArray(attr.options) ? attr.options.join(', ') : '',
       prompt: attr.prompt || '',
+      description: attr.description || '',
     });
     document.getElementById('attribute-form-anchor')?.scrollIntoView({ behavior: 'smooth' });
   };
@@ -855,6 +859,13 @@ The color code may appear in formats like:
                     placeholder="گزینه1, گزینه2 (در صورت نیاز)"
                   />
                 </div>
+
+                <Textarea
+                  label="توضیح ویژگی (اختیاری — نمایش به‌صورت تولتیپ راهنما در صفحه‌ی محصول)"
+                  value={currentAttribute.description}
+                  onChange={(e) => setCurrentAttribute((p) => ({ ...p, description: e.target.value }))}
+                  placeholder="توضیح کوتاهی که کاربر با کلیک روی آیکون ؟ کنار این ویژگی در تب مشخصات فنی می‌بیند..."
+                />
 
                 <Textarea
                   label="راهنمای پرامپت ویژگی"

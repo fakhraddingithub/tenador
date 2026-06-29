@@ -181,6 +181,7 @@ export default function EditCategory() {
     filterable: false,
     options: '',
     prompt: '',
+    description: '',
   });
 
   const [variantAttributes, setVariantAttributes] = useState([]);
@@ -392,6 +393,7 @@ export default function EditCategory() {
       filterable: currentAttribute.filterable,
       options: currentAttribute.options ? currentAttribute.options.split(',').map(o => o.trim()).filter(Boolean) : [],
       prompt: currentAttribute.prompt || '',
+      description: currentAttribute.description?.trim() || '',
     };
 
     if (editingId) {
@@ -419,7 +421,7 @@ export default function EditCategory() {
   };
 
   const resetAttributeForm = () => {
-    setCurrentAttribute({ name: '', label: '', required: true, filterable: false, options: '', prompt: '' });
+    setCurrentAttribute({ name: '', label: '', required: true, filterable: false, options: '', prompt: '', description: '' });
     setEditingId(null);
   };
 
@@ -432,6 +434,7 @@ export default function EditCategory() {
       filterable: attr.filterable ?? false,
       options: Array.isArray(attr.options) ? attr.options.join(', ') : '',
       prompt: attr.prompt || '',
+      description: attr.description || '',
     });
     document.getElementById('attribute-form-anchor')?.scrollIntoView({ behavior: 'smooth' });
   };
@@ -761,6 +764,8 @@ export default function EditCategory() {
                   </div>
                   <Input label="گزینه‌ها (در صورت نیاز، با کاما جدا کنید)" value={currentAttribute.options} onChange={(e) => setCurrentAttribute(p => ({ ...p, options: e.target.value }))} />
                 </div>
+
+                <Textarea label="توضیح ویژگی (اختیاری — نمایش به‌صورت تولتیپ راهنما در صفحه‌ی محصول)" value={currentAttribute.description} onChange={(e) => setCurrentAttribute(p => ({ ...p, description: e.target.value }))} placeholder="توضیح کوتاهی که کاربر با کلیک روی آیکون ؟ کنار این ویژگی در تب مشخصات فنی می‌بیند..." />
 
                 <Textarea label="پرامپت ویژگی" value={currentAttribute.prompt} onChange={(e) => setCurrentAttribute(p => ({ ...p, prompt: e.target.value }))} />
 
