@@ -24,7 +24,7 @@ const NOT_FOUND = Object.freeze({ notFound: true });
 /**
  * Deterministic Path Validator (ضدِ تله‌ی Soft-404 / Duplicate-Content).
  *
- * فقط ۶ الگوی دقیقِ زیر مجاز است؛ هر انحراف، سگمنتِ اضافی، یا جفتِ والد-فرزندِ
+ * فقط ۷ الگوی دقیقِ زیر مجاز است؛ هر انحراف، سگمنتِ اضافی، یا جفتِ والد-فرزندِ
  * نامعتبر → notFound (بدونِ fallbackِ خاموش):
  *   1. /[sport]
  *   2. /[sport]/[category]            — category.sport === sport._id
@@ -32,6 +32,7 @@ const NOT_FOUND = Object.freeze({ notFound: true });
  *   4. /[sport]/[brand]               — برند در این ورزش محصولِ فعال دارد
  *   5. /[sport]/[category]/[brand]    — دسته متعلق به ورزش + برند در این ترکیب محصول دارد
  *   6. /[sport]/[brand]/[serie]       — serie.brand === brand._id و در این ورزش محصول دارد
+ *   7. /[brand]/[limitedEdition]      — limitedEdition.brand === brand._id و محصولِ فعال دارد
  *
  * نکته‌ی معماری: اعتبارسنجی مستقیماً روی مدل‌ها (موجودیت‌هایی که SlugRegistry به
  * آن‌ها اشاره می‌کند) انجام می‌شود، نه صرفاً روی اسلاگِ سراسریِ SlugRegistry؛ چون
@@ -90,7 +91,8 @@ async function _validatePath(slugs) {
       if (brand) resolved = { brand };
     }
   } else if (slugs.length === 2) {
-    // s1 باید حتماً SPORT باشد
+    // s1 معمولاً SPORT است (الگوهای ۲ و ۴). در غیر این صورت ممکن است برندی باشد
+    // که لیمیتد ادیشنِ خود را سرو می‌کند (الگوی ۷: /[brand]/[limitedEdition]).
     const sport = await Sport.findOne({ slug: s1 }).lean();
     if (sport) {
       // دسته در محدوده‌ی همین ورزش (الگوی ۲)
@@ -105,6 +107,24 @@ async function _validatePath(slugs) {
           (await Product.exists({ sport: sport._id, brand: brand._id, isActive: true }))
         ) {
           resolved = { sport, brand };
+        }
+      }
+    } else {
+      // الگوی ۷: /[brand]/[limitedEdition] — لیمیتد ادیشنِ متعلق به همین برند با
+      // حداقل یک محصولِ فعال. لیمیتد ادیشن‌ها برند-محور هستند (مستقل از ورزش).
+      const brand = await Brand.findOne({ slug: s1 }).lean();
+      if (brand) {
+        const limitedEdition = await LimitedEdition.findOne({ slug: s2 }).lean();
+        if (
+          limitedEdition &&
+          String(limitedEdition.brand) === String(brand._id) &&
+          (await Product.exists({
+            brand: brand._id,
+            limitedEdition: limitedEdition._id,
+            isActive: true,
+          }))
+        ) {
+          resolved = { brand, limitedEdition };
         }
       }
     }
@@ -175,6 +195,7 @@ function _canonicalSegments(r) {
   if (r.category) segs.push(r.category.slug);
   if (r.sport && r.brand) segs.push(r.brand.slug); // الگوهای ۴ و ۵
   if (r.serie) segs.push(r.serie.slug);
+  if (r.limitedEdition) segs.push(r.limitedEdition.slug); // الگوی ۷: /[brand]/[limitedEdition]
   return segs;
 }
 
@@ -182,7 +203,8 @@ function _canonicalSegments(r) {
  * Adapter: نتیجه‌ی validatorِ سخت‌گیر را به شکلِ { search, filters } برای مصرف‌کننده‌ها
  * در می‌آورد (یا NOT_FOUND). search داکیومنت‌های خام با ObjectId است؛ filters شیِ
  * نمایشی (با brandStats روی برند). فقط موجودیت‌هایی پر می‌شوند که بخشی از الگوی
- * معتبر باشند — athlete/limitedEdition/product در ۶ الگوی مجاز جایی ندارند.
+ * معتبر باشند — athlete/product در الگوهای مجاز جایی ندارند. limitedEdition فقط در
+ * الگوی ۷ (/[brand]/[limitedEdition]) پر می‌شود.
  */
 async function _resolveContext(slugs) {
   const resolved = await _validatePath(slugs);
@@ -194,7 +216,7 @@ async function _resolveContext(slugs) {
     athlete: null,
     category: resolved.category || null,
     serie: resolved.serie || null,
-    limitedEdition: null,
+    limitedEdition: resolved.limitedEdition || null,
     product: null,
   };
 
@@ -224,7 +246,7 @@ async function _resolveContext(slugs) {
     athlete: null,
     category: search.category,
     serie: search.serie,
-    limitedEdition: null,
+    limitedEdition: search.limitedEdition,
     product: null,
   };
 
@@ -242,6 +264,7 @@ async function _queryBySlugs(slugs) {
   if (search.sport) finalFilter.sport = search.sport._id;
   if (search.category) finalFilter.category = search.category._id;
   if (search.serie) finalFilter.serie = search.serie._id;
+  if (search.limitedEdition) finalFilter.limitedEdition = search.limitedEdition._id;
 
   // ⚠️ variants باید populate شوند تا سوآچ‌های تصویر واریانت روی کارت محصول
   //   نمایش داده شوند — دقیقاً مثل صفحه‌ی اصلی ورزش (getPageDataBySlug). بدون این،

@@ -5,14 +5,15 @@
  *
  * نوار لیمیتد ادیشن‌ها در صفحه سری — لیمیتد ادیشن‌هایی (مثل Roland Garros) که در بین
  * محصولات این صفحه وجود دارند را به‌صورت کارت نمایش می‌دهد. کلیک روی هر
- * کارت به صفحه همان لیمیتد ادیشن (همه محصولات آن در همه سری‌ها) می‌رود.
+ * کارت به صفحه همان لیمیتد ادیشن (همه محصولات آن در همه سری‌ها) می‌رود:
+ * /[brandSlug]/[limitedEditionSlug] — لیمیتد ادیشن‌ها برند-محور هستند.
  */
 
 import Link from "next/link";
 import { FiArrowLeft } from "react-icons/fi";
 
-export default function LimitedEditionsStrip({ limitedEditions = [], sportSlug }) {
-  if (!limitedEditions?.length) return null;
+export default function LimitedEditionsStrip({ limitedEditions = [], brandSlug }) {
+  if (!limitedEditions?.length || !brandSlug) return null;
 
   return (
     <section className="max-w-[1440px] mx-auto px-4 lg:px-8 pt-10">
@@ -31,7 +32,7 @@ export default function LimitedEditionsStrip({ limitedEditions = [], sportSlug }
           return (
             <Link
               key={le._id}
-              href={`/${sportSlug}/${le.slug}`}
+              href={`/${brandSlug}/${le.slug}`}
               className="group relative overflow-hidden rounded-[14px] border border-gray-100 bg-white hover:shadow-xl hover:-translate-y-1 transition-all duration-300"
             >
               {/* پس‌زمینه رنگی لیمیتد ادیشن */}

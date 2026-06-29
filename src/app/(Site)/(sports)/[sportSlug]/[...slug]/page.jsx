@@ -78,6 +78,7 @@ export async function generateMetadata({ params }) {
 
   const filters = ctx.filters;
   const activeEntity =
+    filters.limitedEdition ||
     filters.serie ||
     filters.brand ||
     filters.category ||
@@ -223,6 +224,7 @@ export default async function SportDynamicSlugPage({ params, searchParams }) {
   }
 
   const pageInfo =
+    searchData.filters.limitedEdition ||
     searchData.filters.serie ||
     searchData.filters.brand ||
     searchData.filters.category ||

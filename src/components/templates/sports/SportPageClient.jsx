@@ -230,7 +230,7 @@ export default function SportPageClient({
       {filters?.serie && !filters?.limitedEdition && (
         <LimitedEditionsStrip
           limitedEditions={pageLimitedEditions}
-          sportSlug={filters?.sport?.slug}
+          brandSlug={filters?.brand?.slug}
         />
       )}
 
