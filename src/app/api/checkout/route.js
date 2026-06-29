@@ -44,7 +44,8 @@ import {
 } from "base/services/notificationService";
 import { autoAssignUsedProductTracking } from "@/lib/usedTrackingAuto";
 import { sendOrderConfirmationEmail } from "@/lib/emailService";
-import { INSTALLMENT_MONTHLY_INTEREST_RATE } from "@/lib/constants";
+import { getMonthlyInstallmentRate } from "@/lib/installmentRateService";
+import { buildInstallmentTerms } from "@/lib/installmentFinance";
 import { buildVariantSnapshot } from "@/lib/variantImages";
 
 // تبدیل انتخاب فرایندِ غنی‌شده (از پرایس‌انجین) به شکل ذخیره‌سازی در سفارش
@@ -317,10 +318,18 @@ export async function POST(req) {
         }
       }
 
-      // مانده + سود ماهانه — همان فرمول ماشین‌حساب کلاینت (همه مبالغ تومان)
+      // ─── نرخ سود ماهانه‌ی سراسری (Part 1) — به‌صورت پویا و امن خوانده می‌شود ───
+      const monthlyRatePct = await getMonthlyInstallmentRate();
+
+      // مانده + سود ماهانه — منبع واحد محاسبه (installmentFinance). همه مبالغ تومان.
       const remaining = totalPrice - downPaymentAmount;
-      const expectedChecksTotal =
-        remaining + remaining * INSTALLMENT_MONTHLY_INTEREST_RATE * numberOfChecks;
+      const terms = buildInstallmentTerms({
+        principal: remaining,
+        downPaymentAmount,
+        monthlyRatePct,
+        numberOfChecks,
+      });
+      const expectedChecksTotal = terms.totalPayable;
       const checksTotal = checks.reduce((s, c) => s + Number(c.amount || 0), 0);
 
       if (Math.abs(checksTotal - expectedChecksTotal) > 100) {
@@ -334,6 +343,7 @@ export async function POST(req) {
         downPaymentImages,
         numberOfChecks,
         checks,
+        terms, // اسنپ‌شات تاریخی که روی سفارش قفل می‌شود
       };
     }
 
@@ -421,6 +431,8 @@ export async function POST(req) {
         snapshot: snap,
       },
       description: description || "",
+      // اسنپ‌شات تاریخی شرایط اقساط — فقط برای سفارش‌های اقساطی
+      ...(installmentData?.terms ? { installmentTerms: installmentData.terms } : {}),
     });
 
     let payment;

@@ -199,6 +199,21 @@ const OrderSchema = new mongoose.Schema(
       default: "UNPAID",
     },
 
+    // ─── اسنپ‌شات تاریخی شرایط اقساط ───────────────────────────────────────
+    // در لحظه‌ی ثبت سفارشِ اقساطی پر می‌شود و نرخ سود و مبالغ محاسبه‌شده را «قفل»
+    // می‌کند. اگر ادمین نرخ سراسری را بعداً تغییر دهد، این سفارش بازمحاسبه نمی‌شود.
+    // برای سفارش‌های غیراقساطی/قدیمی همه مقادیر null است (بدون رگرسیون).
+    installmentTerms: {
+      interestRate:       { type: Number, default: null }, // درصد ماهانه‌ی اعمال‌شده
+      principal:          { type: Number, default: null }, // مانده پس از پیش‌پرداخت (تومان)
+      downPaymentAmount:  { type: Number, default: null },
+      numberOfChecks:     { type: Number, default: null },
+      totalInterest:      { type: Number, default: null }, // کل سود دریافتی
+      totalPayable:       { type: Number, default: null }, // جمع کل اقساط = اصل مانده + سود
+      monthlyInstallment: { type: Number, default: null },
+      snapshotAt:         { type: Date,   default: null },
+    },
+
     fulfillmentStatus: {
       type: String,
       enum: ["WAITING", "NEEDS_PURCHASE", "PROCESSING", "SENT", "DELIVERED", "CANCELED"],

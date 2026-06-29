@@ -29,7 +29,8 @@ import Installment from "base/models/Installment";
 import UsedProduct from "base/models/UsedProduct";
 import User from "base/models/User";
 import { sendOrderConfirmationEmail } from "@/lib/emailService";
-import { INSTALLMENT_MONTHLY_INTEREST_RATE } from "@/lib/constants";
+import { getMonthlyInstallmentRate } from "@/lib/installmentRateService";
+import { buildInstallmentTerms } from "@/lib/installmentFinance";
 
 async function getUserFromToken() {
   const cookieStore = await cookies();
@@ -238,11 +239,19 @@ export async function POST(req) {
         );
       }
 
-      // مانده + سود ماهانه — همان فرمول ماشین‌حساب اقساط سمت کلاینت (تومان)
+      // ─── نرخ سود ماهانه‌ی سراسری (Part 1) — پویا و امن ───
+      const monthlyRatePct = await getMonthlyInstallmentRate();
+
+      // مانده + سود ماهانه — منبع واحد محاسبه (installmentFinance). همه مبالغ تومان.
       const remaining = order.totalPrice - downPaymentAmount;
       const checksTotal = checks.reduce((s, c) => s + (Number(c.amount) || 0), 0);
-      const expectedChecksTotal =
-        remaining + remaining * INSTALLMENT_MONTHLY_INTEREST_RATE * numberOfChecks;
+      const terms = buildInstallmentTerms({
+        principal: remaining,
+        downPaymentAmount,
+        monthlyRatePct,
+        numberOfChecks,
+      });
+      const expectedChecksTotal = terms.totalPayable;
 
       if (Math.abs(checksTotal - expectedChecksTotal) > 100) {
         return NextResponse.json(
@@ -283,6 +292,8 @@ export async function POST(req) {
 
       order.payments.push(downPayment._id);
       order.paymentStatus = "PARTIALLY_PAID";
+      // اسنپ‌شات تاریخی شرایط اقساط روی همین سفارش قفل می‌شود
+      order.installmentTerms = terms;
       await order.save();
 
       // ─── رزرو محصولات دست‌دوم ───

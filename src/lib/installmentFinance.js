@@ -80,6 +80,40 @@ export function computeInstallmentPlan({ principal, monthlyRatePct, months }) {
 }
 
 /**
+ * ساخت اسنپ‌شات تاریخی شرایط اقساط برای ذخیره روی سند Order.
+ * این مقادیر در لحظه‌ی ثبت سفارش «قفل» می‌شوند و با تغییر نرخ سراسری در آینده
+ * تغییر نمی‌کنند (الزام Part 3 — Historical Snapshot).
+ *
+ * @param {Object} opts
+ * @param {number} opts.principal          مانده پس از پیش‌پرداخت (تومان)
+ * @param {number} opts.downPaymentAmount  مبلغ پیش‌پرداخت (تومان)
+ * @param {number} opts.monthlyRatePct     نرخ سود ماهانه‌ی اعمال‌شده (٪)
+ * @param {number} opts.numberOfChecks     تعداد اقساط
+ */
+export function buildInstallmentTerms({
+  principal,
+  downPaymentAmount,
+  monthlyRatePct,
+  numberOfChecks,
+}) {
+  const plan = computeInstallmentPlan({
+    principal,
+    monthlyRatePct,
+    months: numberOfChecks,
+  });
+  return {
+    interestRate: plan.monthlyRatePct, // درصد — اسنپ‌شات‌شده
+    principal: plan.principal,
+    downPaymentAmount: Math.round(parseAmount(downPaymentAmount)),
+    numberOfChecks: plan.months,
+    totalInterest: plan.totalInterest,
+    totalPayable: plan.grandTotal, // جمع کل اقساط = اصل مانده + سود
+    monthlyInstallment: plan.monthlyInstallment,
+    snapshotAt: new Date(),
+  };
+}
+
+/**
  * مانده‌ی قابل پرداخت یک طرح اقساطی بر اساس نرخ سود ماهانه‌ی ذخیره‌شده.
  * منطق بک‌اند (Part 1.4): جمع کل با احتساب سود − مبالغ چک‌های تسویه‌شده (CLEARED).
  *

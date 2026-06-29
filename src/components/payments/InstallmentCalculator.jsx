@@ -1,7 +1,7 @@
 import React from 'react';
 import { HiOutlineCalendar } from 'react-icons/hi';
 
-const InstallmentCalculator = ({ count, setCount }) => {
+const InstallmentCalculator = ({ count, setCount, rate = 4 }) => {
   return (
     <div className="space-y-4">
       <label className="block text-sm font-bold text-gray-700 mb-2">
@@ -26,7 +26,9 @@ const InstallmentCalculator = ({ count, setCount }) => {
           </svg>
         </div>
       </div>
-      <p className="text-[10px] text-gray-400">سود ماهیانه: ۴ درصد</p>
+      <p className="text-[10px] text-gray-400">
+        سود ماهیانه: {Number(rate).toLocaleString('fa-IR')} درصد
+      </p>
     </div>
   );
 };

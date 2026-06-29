@@ -31,7 +31,7 @@ import EmailBox from './EmailBox.jsx';
 import RulesAgreement from './RulesAgreement.jsx';
 import { editProfile } from '@/hooks/useProfile';
 import SubmitPaymentButton from './SubmitPaymentButton.jsx';
-import { INSTALLMENT_MONTHLY_INTEREST_RATE } from '@/lib/constants';
+import { computeInstallmentPlan, DEFAULT_MONTHLY_RATE } from '@/lib/installmentFinance';
 
 // تبدیل تاریخ چک (DateObject یا رشته شمسی YYYY-MM-DD) به ISO میلادی برای سرور
 const checkDateToISO = (date) => {
@@ -79,21 +79,36 @@ const InstallmentPage = ({ order, user, onFinalSubmit }) => {
   const [email, setEmail] = useState('');
   const [rulesChecked, setRulesChecked] = useState(false);
   const [submitLoading, setSubmitLoading] = useState(false);
+  // نرخ سود ماهانه‌ی سراسری — به‌صورت پویا و امن از تنظیمات ادمین خوانده می‌شود (Part 1)
+  const [monthlyRatePct, setMonthlyRatePct] = useState(DEFAULT_MONTHLY_RATE);
 
-  // Dynamic Calculations — همه مبالغ تومان
+  useEffect(() => {
+    let active = true;
+    fetch('/api/installment-rate')
+      .then((r) => r.json())
+      .then((d) => {
+        const v = Number(d?.rate);
+        if (active && Number.isFinite(v) && v >= 0) setMonthlyRatePct(v);
+      })
+      .catch(() => {/* در صورت خطا از نرخ پیش‌فرض استفاده می‌شود */});
+    return () => { active = false; };
+  }, []);
+
+  // Dynamic Calculations — منبع واحد محاسبه (installmentFinance). همه مبالغ تومان.
   const calculations = useMemo(() => {
     const remaining = Math.max(0, order.totalPrice - downPayment);
-    const totalInterest = remaining * INSTALLMENT_MONTHLY_INTEREST_RATE * installmentCount;
-    const totalWithInterest = remaining + totalInterest;
-    const monthlyInstallment = totalWithInterest / installmentCount;
-
+    const plan = computeInstallmentPlan({
+      principal: remaining,
+      monthlyRatePct,
+      months: installmentCount,
+    });
     return {
       remaining,
-      totalInterest,
-      totalWithInterest,
-      monthlyInstallment
+      totalInterest: plan.totalInterest,
+      totalWithInterest: plan.grandTotal,
+      monthlyInstallment: plan.monthlyInstallment,
     };
-  }, [order.totalPrice, downPayment, installmentCount]);
+  }, [order.totalPrice, downPayment, installmentCount, monthlyRatePct]);
 
   // Sync check fields with installment count
   useEffect(() => {
@@ -247,6 +262,7 @@ const InstallmentPage = ({ order, user, onFinalSubmit }) => {
                   <InstallmentCalculator
                     count={installmentCount}
                     setCount={setInstallmentCount}
+                    rate={monthlyRatePct}
                   />
                 </div>
               </section>
