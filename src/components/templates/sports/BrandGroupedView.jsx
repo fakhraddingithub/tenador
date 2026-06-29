@@ -20,7 +20,8 @@ import ProductCard from "@/components/modules/cart/ProductCard";
 import QuickViewModal from "@/components/modules/cart/QuickViewModal";
 import SearchBar from "@/components/templates/products/SearchBar";
 import AttributeFilterCard from "@/components/templates/products/AttributeFilterCard";
-import { FiShoppingBag, FiLayers, FiLoader, FiFilter, FiRotateCcw } from "react-icons/fi";
+import ProductGridSkeleton from "@/components/templates/sports/ProductCardSkeleton";
+import { FiShoppingBag, FiLayers, FiFilter, FiRotateCcw } from "react-icons/fi";
 
 const BATCH_SECTIONS = 2;
 
@@ -429,12 +430,9 @@ export default function BrandGroupedView({
               {/* Sentinel + وضعیت بارگذاری */}
               <div ref={sentinelRef} className="h-px w-full" />
 
-              {loading && (
-                <div className="flex items-center justify-center py-8 gap-2 text-gray-400">
-                  <FiLoader className="animate-spin" />
-                  <span className="text-sm font-bold">در حال بارگذاری...</span>
-                </div>
-              )}
+              {/* اسکلتونِ بارگذاری — دو ردیفِ کارت با ابعادِ دقیقِ کارت واقعی و
+                  درخششِ روان؛ جایگزینِ متنِ «در حال بارگذاری». */}
+              {loading && <ProductGridSkeleton count={8} />}
 
               {!hasMore && !loading && sections.length > 0 && (
                 <p className="text-center text-xs text-gray-300 font-bold py-6">

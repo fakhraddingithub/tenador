@@ -2,8 +2,10 @@ import { getPageDataBySlug } from "base/services/product.service";
 import { getSeriesBySport } from "base/services/series.service";
 import { resolvePageContext } from "base/services/query.service";
 import SportPageClient from "@/components/templates/sports/SportPageClient";
+import BrandsTicker from "@/components/features/brandsTicker/BrandsTicker";
 import { notFound } from "next/navigation";
 import { getCachedRate } from "@/lib/Exchangerate";
+import { getSportTickerBrands } from "base/services/brandTicker.service";
 
 // ⚠️ اسلاگ‌های فارسی با هدر x-next-cache-tags ناسازگارند (باگ Next: کاراکتر
 // غیر-ASCII در هدر → ERR_INVALID_CHAR → خطای ۵۰۰). داینامیک رندر می‌شود تا هدر
@@ -75,7 +77,10 @@ export default async function DynamicSportPage({ params }) {
   const serializedProducts = JSON.parse(JSON.stringify(data.products));
   const serializedSeries = JSON.parse(JSON.stringify(series));
   const title = `تنادور – فروشگاه تخصصی تجهیزات و لوازم ${serializedSportInfo.title}`;
-  
+
+  // نوار برندهای همین ورزش — کلیک روی هر برند به /[sportSlug]/[brandSlug] می‌رود
+  const tickerBrands = await getSportTickerBrands(serializedSportInfo._id);
+
   return (
     <SportPageClient
       pageInfo={serializedSportInfo}
@@ -83,6 +88,11 @@ export default async function DynamicSportPage({ params }) {
       title={title}
       rate={rate}
       series={serializedSeries}
+      belowHero={
+        tickerBrands.length > 0 ? (
+          <BrandsTicker brands={tickerBrands} basePath={`/${sportSlug}`} />
+        ) : null
+      }
     />
   );
 }

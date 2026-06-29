@@ -8,106 +8,97 @@
     height: 20vh;
     overflow: hidden; /* Hide overflowing logos */
     white-space: nowrap; /* Prevent wrapping */
+    /* بک‌گراندِ تیره: لوگوها سفید هستند و صفحه پس‌زمینه‌ی روشن دارد، پس بدونِ این
+       نوار، لوگوها دیده نمی‌شدند. */
+    background-color: #0d0d0d;
   }
-  
+
   .brandTrack {
     display: flex;
-    gap: 50px; /* Space between logos */
+    width: max-content; /* عرضِ واقعیِ مجموعِ آیتم‌ها تا translateX(-50%) دقیقاً نیمه باشد */
     animation: autoScroll 20s linear infinite; /* Continuous scrolling animation */
-    transition: animation-play-state 0.3s ease; /* Smooth transition for hover pause */
   }
-  
+
   .brandSection:hover .brandTrack {
     animation-play-state: paused; /* Pause animation on hover */
   }
-  
+
   .brandLogo {
     width: 170px; /* Maintain logo width */
     height: 170px; /* Maintain logo height */
+    /* فاصله per-item (به‌جای gap روی ترَک): تضمین می‌کند نیمه‌ی دوم دقیقاً برابرِ
+       نیمه‌ی اول باشد تا translateX(-50%) بی‌وقفه و بدونِ پرش حلقه بزند. ۲۵+۲۵=۵۰ */
+    margin: 0 25px;
     display: flex;
     justify-content: center;
     align-items: center;
     cursor: pointer;
-    
+
     overflow: hidden; /* Ensure the image fits inside the circle */
     transition: transform 0.3s ease; /* Smooth transform on hover */
     flex-shrink: 0; /* Prevent logos from shrinking */
   }
-  
+
   .brandLogo:hover {
     transform: scale(1.1); /* Slightly enlarge on hover */
   }
-  
+
   .logoImage {
     width: 100%; /* Keep the image proportional */
     height: 100%;
     object-fit: contain; /* Ensure the image fits nicely inside */
-    filter: grayscale(100%) sepia(100%) hue-rotate(-30deg) saturate(500%) brightness(80%);
-    /* Tint logos with #AA4725 */
-    animation: neonFlash 2s infinite; /* Apply neon flash animation */
-    transition: filter 0.3s ease; /* Smooth transition for hover effect */
+    filter: brightness(0) invert(1); /* لوگوهای سفیدِ یکدست */
+    opacity: 0.85;
+    transition: opacity 0.3s ease; /* Smooth transition for hover effect */
   }
-  
+
   .brandLogo:hover .logoImage {
-    filter: none; /* Restore original colors */
-    animation: none; /* Stop animation on hover */
+    opacity: 1; /* روشن‌تر روی هاور */
   }
-  
-  
+
+
   /* Keyframes for scrolling animation */
   @keyframes autoScroll {
     0% {
       transform: translateX(0); /* Start position */
     }
     100% {
-      transform: translateX(-50%); /* End position */
+      transform: translateX(-50%); /* End position — دقیقاً ابتدای نیمه‌ی دوم */
     }
   }
-  
-  /* Neon flash animation for logos */
-  @keyframes flash {
-    0%, 100% {
-      opacity: 0.1;
-      text-shadow: 0 0 5px #AA4725, 0 0 10px #AA4725, 0 0 15px #AA4725, 0 0 20px #AA4725;
-    }
-    50% {
-      opacity: 1;
-      text-shadow: 0 0 10px #AA4725, 0 0 20px #AA4725, 0 0 30px #AA4725, 0 0 40px #AA4725;
-    }
-  }
-  
+
   @media (max-width: 768px) {
     .brandSection {
       height: 15vh;
     }
-  
+
     .brandLogo {
       width: 150px; /* Smaller logos for tablets */
       height: 150px;
-    }
-  
-    .brandTrack {
-      gap: 30px; /* Reduce gap for smaller screens */
+      margin: 0 15px; /* gap 30px */
     }
   }
-  
+
   @media (max-width: 480px) {
     .brandSection {
       height: 10vh;
     }
-  
+
     .brandLogo {
       width: 100px; /* Smallest size for mobile */
       height: 100px;
+      margin: 0 10px; /* gap 20px */
     }
-  
+
     .logoImage {
       width: 90%; /* Slightly smaller image inside container */
       height: 90%;
     }
-  
+  }
+
+  /* احترام به prefers-reduced-motion */
+  @media (prefers-reduced-motion: reduce) {
     .brandTrack {
-      gap: 20px; /* Reduce gap further for very small screens */
+      animation: none;
     }
   }
-  

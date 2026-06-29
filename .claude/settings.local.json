@@ -165,7 +165,8 @@
       "Bash(taskkill //F //PID 776)",
       "Bash(pkill -f \"next dev\")",
       "Bash(cp scripts/_tmp_cloudinary_candidates.json \"C:/Users/saleh/AppData/Local/Temp/claude/I--develope-JS-learn-leaning-project-porjects-tenador/ab2d054a-cf82-481e-9a7f-dbd4f342f11b/scratchpad/cloudinary_variants_folder_521.json\")",
-      "Bash(rm -f scripts/_tmp_cloudinaryDryRun.mjs scripts/_tmp_cloudinary_candidates.json)"
+      "Bash(rm -f scripts/_tmp_cloudinaryDryRun.mjs scripts/_tmp_cloudinary_candidates.json)",
+      "PowerShell(npx eslint \"src/components/features/brandsTicker/BrandsTicker.js\" \"src/components/templates/sports/ProductCardSkeleton.jsx\" \"src/components/templates/sports/BrandGroupedView.jsx\" \"src/app/\\(Site\\)/page.js\" \"src/app/\\(Site\\)/\\(sports\\)/[sportSlug]/page.jsx\" \"services/brandTicker.service.js\")"
     ]
   }
 }

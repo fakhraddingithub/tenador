@@ -15,6 +15,7 @@ import SlideModel from "base/models/Slide";
 import SportModel from "base/models/Sport";
 import { getCachedRate } from "@/lib/Exchangerate";
 import { getShowcaseAthletes } from "@/lib/athleteService";
+import { getTickerBrands } from "base/services/brandTicker.service";
 
 // ISR: داده‌ها با تگ‌های unstable_cache (products/banners/sports/...) کش می‌شوند و
 // بعد از هر تغییرِ ادمین از طریقِ revalidateContent باطل می‌شوند؛ پس نیازی به
@@ -27,13 +28,15 @@ export default async function Home() {
 
   // ۲. دریافت موازی همه داده‌ها برای افزایش سرعت (Parallel Fetching)
   //    فقط ۱۰ محصول برای هر اسلایدر — نه کل کاتالوگ
-  const [homeProducts, slides, sports, athletes, rate] = await Promise.all([
-    getHomeProducts(),
-    SlideModel.find({ isActive: true }).sort({ priority: 1 }).lean(),
-    SportModel.find({}).sort({ order: 1 }).lean(),
-    getShowcaseAthletes(),
-    getCachedRate(),
-  ]);
+  const [homeProducts, slides, sports, athletes, rate, tickerBrands] =
+    await Promise.all([
+      getHomeProducts(),
+      SlideModel.find({ isActive: true }).sort({ priority: 1 }).lean(),
+      SportModel.find({}).sort({ order: 1 }).lean(),
+      getShowcaseAthletes(),
+      getCachedRate(),
+      getTickerBrands(),
+    ]);
   const { bestSellers, offers } = homeProducts;
 
   return (
@@ -45,7 +48,7 @@ export default async function Home() {
       <BestSellers products={bestSellers} rate={rate} />
       <AmazingOffers products={offers} rate={rate} />
       <RolandGarros />
-      <BrandsTicker />
+      <BrandsTicker brands={tickerBrands} />
       <ShowcaseAthletes data={athletes} />
       {/* <Articles /> */}
     </>
