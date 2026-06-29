@@ -7,38 +7,50 @@ import { FiHelpCircle } from "react-icons/fi";
 /**
  * src/components/templates/product/AttributeInfoTooltip.jsx
  *
- * آیکون راهنمای کوچک (؟) کنار نام ویژگی در تب «مشخصات فنی».
- * با کلیک، توضیح ویژگی را در یک تولتیپِ مینیمال بالای آیکون نشان می‌دهد:
- *  - کلیک بیرون از تولتیپ آن را می‌بندد.
- *  - چون با هر کلیکِ بیرونی بسته می‌شود، همیشه فقط یک تولتیپ هم‌زمان باز است.
- *  - موقعیت‌یابیِ خودکار: به‌صورت fixed نسبت به آیکون، با مهارِ افقی داخل ویوپورت و
- *    چرخش به پایین وقتی فضای بالا کافی نیست — بنابراین از لبه‌ی صفحه بیرون نمی‌زند
- *    و توسط کانتینرهای overflow کلیپ نمی‌شود (رندر در portal روی body).
+ * آیکون راهنمای (؟) کنار نام ویژگی در تب «مشخصات فنی» + تولتیپِ توضیح آن.
+ *
+ * این کامپوننت «کنترل‌شده» است: وضعیتِ باز/بسته را والد (جدولِ مشخصات) نگه می‌دارد
+ * تا کلیک روی کلِ ردیف، تولتیپِ همان ردیف را باز کند و همیشه فقط یکی باز بماند.
+ *  - آیکون فقط نشانگر است؛ کلیکِ بازکننده روی خودِ ردیف انجام می‌شود (rowRef).
+ *  - کلیک بیرون از ردیف و تولتیپ → onClose.
+ *  - موقعیت‌یابیِ خودکار: fixed نسبت به آیکون، مهارِ افقی داخل ویوپورت و چرخش به
+ *    پایین وقتی فضای بالا (زیر نوار ناوبری) کافی نیست. رندر در portal روی body تا
+ *    توسط کانتینرهای overflow کلیپ نشود.
+ *  - لایه‌بندی: zIndex زیر نوار ناوبری (که z-50 است) ولی بالای محتوای صفحه.
  *
  * اگر description خالی باشد، هیچ آیکونی رندر نمی‌شود (سازگاری با داده‌ی قبلی).
  */
-export default function AttributeInfoTooltip({ description }) {
-  const [open, setOpen] = useState(false);
+
+// ارتفاعِ نوار ناوبریِ ثابت (h-[75px]) + کمی فاصله — مرزِ امنِ بالا برای چرخش تولتیپ
+const NAVBAR_SAFE = 84;
+// تولتیپ زیر نوار ناوبری (z-50) و بالای محتوای صفحه قرار می‌گیرد
+const TOOLTIP_Z = 40;
+
+export default function AttributeInfoTooltip({ description, open, onClose, rowRef }) {
   const [coords, setCoords] = useState(null); // { top, left, placement, arrowLeft }
 
-  const btnRef = useRef(null);
+  const iconRef = useRef(null);
   const tipRef = useRef(null);
 
   const computePosition = useCallback(() => {
-    const btn = btnRef.current;
+    const icon = iconRef.current;
     const tip = tipRef.current;
-    if (!btn || !tip) return;
+    // وقتی بسته است tip رندر نشده → مختصات ریست می‌شود تا بازِ بعدی تازه اندازه بگیرد
+    if (!icon || !tip) {
+      setCoords(null);
+      return;
+    }
 
-    const r = btn.getBoundingClientRect();
+    const r = icon.getBoundingClientRect();
     const tipW = tip.offsetWidth || 240;
     const tipH = tip.offsetHeight || 60;
     const margin = 8; // فاصله از لبه‌ی ویوپورت
     const gap = 8; // فاصله‌ی تولتیپ از آیکون
 
-    // پیش‌فرض بالا؛ اگر جا نبود به پایین برگردان
+    // پیش‌فرض بالا؛ اگر زیرِ نوار ناوبری بیفتد به پایین برگردان
     let placement = "top";
     let top = r.top - gap - tipH;
-    if (top < margin) {
+    if (top < NAVBAR_SAFE) {
       placement = "bottom";
       top = r.bottom + gap;
     }
@@ -53,18 +65,18 @@ export default function AttributeInfoTooltip({ description }) {
     setCoords({ top, left, placement, arrowLeft });
   }, []);
 
-  // پس از باز شدن، اندازه‌ی واقعیِ تولتیپ را اندازه‌گیری و موقعیت را تنظیم کن.
-  // تا پیش از محاسبه، تولتیپ با opacity:0 و خارج از کادر است تا پرشی دیده نشود.
+  // با باز شدن، اندازه‌ی واقعیِ تولتیپ اندازه‌گیری و موقعیت تنظیم می‌شود؛ با بسته
+  // شدن، مختصات null می‌شود. تا پیش از محاسبه opacity:0 است تا پرشی دیده نشود.
   useEffect(() => {
-    if (open) computePosition();
+    computePosition();
   }, [open, computePosition]);
 
   // بستن با کلیک بیرون + هم‌گام‌سازی موقعیت هنگام اسکرول/تغییر اندازه
   useEffect(() => {
     if (!open) return;
     const onPointerDown = (e) => {
-      if (btnRef.current?.contains(e.target) || tipRef.current?.contains(e.target)) return;
-      setOpen(false);
+      if (rowRef?.current?.contains(e.target) || tipRef.current?.contains(e.target)) return;
+      onClose?.();
     };
     const onReflow = () => computePosition();
     document.addEventListener("mousedown", onPointerDown);
@@ -77,7 +89,7 @@ export default function AttributeInfoTooltip({ description }) {
       window.removeEventListener("scroll", onReflow, true);
       window.removeEventListener("resize", onReflow);
     };
-  }, [open, computePosition]);
+  }, [open, computePosition, onClose, rowRef]);
 
   const text = typeof description === "string" ? description.trim() : "";
   if (!text) return null;
@@ -87,18 +99,15 @@ export default function AttributeInfoTooltip({ description }) {
 
   return (
     <>
-      <button
-        ref={btnRef}
-        type="button"
-        onClick={() => setOpen((o) => !o)}
-        aria-label="توضیح ویژگی"
-        aria-expanded={open}
-        className={`inline-flex items-center justify-center text-gray-300 hover:text-[#aa4725] transition-colors shrink-0 ${
-          open ? "text-[#aa4725]" : ""
+      <span
+        ref={iconRef}
+        aria-hidden="true"
+        className={`inline-flex items-center justify-center shrink-0 transition-colors ${
+          open ? "text-[#aa4725]" : "text-gray-400 group-hover:text-[#aa4725]"
         }`}
       >
-        <FiHelpCircle size={13} />
-      </button>
+        <FiHelpCircle size={16} />
+      </span>
 
       {open &&
         canPortal &&
@@ -113,7 +122,7 @@ export default function AttributeInfoTooltip({ description }) {
               left: coords ? coords.left : -9999,
               maxWidth: 260,
               opacity: coords ? 1 : 0,
-              zIndex: 9999,
+              zIndex: TOOLTIP_Z,
             }}
             className="rounded-lg bg-[#1a1c22] px-3 py-2 text-[12px] font-medium leading-6 text-gray-100 shadow-xl pointer-events-auto"
           >
@@ -123,9 +132,7 @@ export default function AttributeInfoTooltip({ description }) {
                 className="absolute h-2 w-2 rotate-45 bg-[#1a1c22]"
                 style={{
                   left: coords.arrowLeft - 4,
-                  ...(coords.placement === "top"
-                    ? { bottom: -4 }
-                    : { top: -4 }),
+                  ...(coords.placement === "top" ? { bottom: -4 } : { top: -4 }),
                 }}
               />
             )}
