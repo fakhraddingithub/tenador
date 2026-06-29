@@ -8,14 +8,14 @@
     height: 20vh;
     overflow: hidden; /* Hide overflowing logos */
     white-space: nowrap; /* Prevent wrapping */
-    /* بک‌گراندِ تیره: لوگوها سفید هستند و صفحه پس‌زمینه‌ی روشن دارد، پس بدونِ این
-       نوار، لوگوها دیده نمی‌شدند. */
-    background-color: #0d0d0d;
+    /* پس‌زمینه‌ی سفید (مثلِ قبل) */
+    background-color: #ffffff;
   }
 
   .brandTrack {
     display: flex;
-    width: max-content; /* عرضِ واقعیِ مجموعِ آیتم‌ها تا translateX(-50%) دقیقاً نیمه باشد */
+    width: max-content; /* عرضِ واقعیِ دو گروه تا translateX(-50%) دقیقاً یک گروه باشد */
+    height: 100%;
     animation: autoScroll 20s linear infinite; /* Continuous scrolling animation */
   }
 
@@ -23,12 +23,20 @@
     animation-play-state: paused; /* Pause animation on hover */
   }
 
+  /* هر «گروه» یک نسخه‌ی کاملِ لیستِ برندهاست؛ دو گروهِ یکسان کنارِ هم → حلقه‌ی بی‌وقفه */
+  .brandGroup {
+    display: flex;
+    align-items: center;
+    height: 100%;
+    flex-shrink: 0;
+  }
+
   .brandLogo {
-    width: 170px; /* Maintain logo width */
-    height: 170px; /* Maintain logo height */
-    /* فاصله per-item (به‌جای gap روی ترَک): تضمین می‌کند نیمه‌ی دوم دقیقاً برابرِ
-       نیمه‌ی اول باشد تا translateX(-50%) بی‌وقفه و بدونِ پرش حلقه بزند. ۲۵+۲۵=۵۰ */
-    margin: 0 25px;
+    /* اندازه نسبت به ارتفاعِ ردیف تا هیچ‌وقت از کادر بیرون نزند (fix overflow) */
+    height: 70%;
+    width: auto;
+    aspect-ratio: 1 / 1;
+    margin: 0 25px; /* فاصله per-item — حفظِ همان spacing قبلی (۲۵+۲۵=۵۰) */
     display: flex;
     justify-content: center;
     align-items: center;
@@ -47,13 +55,14 @@
     width: 100%; /* Keep the image proportional */
     height: 100%;
     object-fit: contain; /* Ensure the image fits nicely inside */
-    filter: brightness(0) invert(1); /* لوگوهای سفیدِ یکدست */
-    opacity: 0.85;
-    transition: opacity 0.3s ease; /* Smooth transition for hover effect */
+    /* رنگِ اصلیِ سایت (#aa4725) با فیلتر — همان رفتارِ اولیه */
+    filter: grayscale(100%) sepia(100%) hue-rotate(-30deg) saturate(500%) brightness(80%);
+    transition: filter 0.3s ease; /* Smooth transition for hover effect */
   }
 
+  /* روی هاور فیلتر حذف می‌شود تا رنگِ واقعیِ برند دیده شود */
   .brandLogo:hover .logoImage {
-    opacity: 1; /* روشن‌تر روی هاور */
+    filter: none;
   }
 
 
@@ -63,7 +72,7 @@
       transform: translateX(0); /* Start position */
     }
     100% {
-      transform: translateX(-50%); /* End position — دقیقاً ابتدای نیمه‌ی دوم */
+      transform: translateX(-50%); /* End position — دقیقاً ابتدای گروهِ دوم */
     }
   }
 
@@ -73,8 +82,6 @@
     }
 
     .brandLogo {
-      width: 150px; /* Smaller logos for tablets */
-      height: 150px;
       margin: 0 15px; /* gap 30px */
     }
   }
@@ -85,8 +92,6 @@
     }
 
     .brandLogo {
-      width: 100px; /* Smallest size for mobile */
-      height: 100px;
       margin: 0 10px; /* gap 20px */
     }
 

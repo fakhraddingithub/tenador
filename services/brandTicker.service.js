@@ -16,7 +16,9 @@ import connectToDB from "base/configs/db";
 import Brand from "base/models/Brand";
 import Product from "base/models/Product";
 
-const HAS_LOGO = { logo: { $type: "string", $ne: "" } };
+// فقط برندهایی که واقعاً لوگو دارند: مقدارِ رشته‌ای با دستِ‌کم یک کاراکترِ غیرفاصله
+// (\S) — این null/خالی/فقط-فاصله را حذف می‌کند تا اسلاتِ خالی نمایش داده نشود.
+const HAS_LOGO = { logo: { $type: "string", $regex: /\S/ } };
 
 function shape(brands) {
   return brands.map((b) => ({

@@ -82,17 +82,18 @@ export default async function DynamicSportPage({ params }) {
   const tickerBrands = await getSportTickerBrands(serializedSportInfo._id);
 
   return (
-    <SportPageClient
-      pageInfo={serializedSportInfo}
-      products={serializedProducts}
-      title={title}
-      rate={rate}
-      series={serializedSeries}
-      belowHero={
-        tickerBrands.length > 0 ? (
-          <BrandsTicker brands={tickerBrands} basePath={`/${sportSlug}`} />
-        ) : null
-      }
-    />
+    <>
+      <SportPageClient
+        pageInfo={serializedSportInfo}
+        products={serializedProducts}
+        title={title}
+        rate={rate}
+        series={serializedSeries}
+      />
+      {/* نوار برندهای همین ورزش — در پایینِ صفحه */}
+      {tickerBrands.length > 0 && (
+        <BrandsTicker brands={tickerBrands} basePath={`/${sportSlug}`} />
+      )}
+    </>
   );
 }
