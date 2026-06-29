@@ -5,8 +5,10 @@ import Link from "next/link";
 import { motion } from "framer-motion";
 import {
   Calendar, AlertTriangle, Wallet, Search, ChevronLeft,
-  Clock, CheckCircle, XCircle, Loader2, TrendingUp, Filter,
+  Clock, CheckCircle, XCircle, Loader2, TrendingUp, Filter, Calculator,
 } from "lucide-react";
+import InstallmentCalculatorModal from "@/components/admin/financial/InstallmentCalculatorModal";
+import { INSTALLMENT_RATE_KEY, DEFAULT_MONTHLY_RATE } from "@/lib/installmentFinance";
 
 /* ─── helpers ─── */
 const fa = (n) => new Intl.NumberFormat("fa-IR").format(Number(n ?? 0));
@@ -65,6 +67,22 @@ export default function InstallmentsManager() {
   const [from, setFrom] = useState("");
   const [to, setTo] = useState("");
   const [showDate, setShowDate] = useState(false);
+  const [calcOpen, setCalcOpen] = useState(false);
+  const [defaultRate, setDefaultRate] = useState(DEFAULT_MONTHLY_RATE);
+
+  // نرخ سود ماهانه‌ی پیش‌فرض برای ماشین‌حساب اقساط (Part 1)
+  useEffect(() => {
+    (async () => {
+      try {
+        const res = await fetch(`/api/admin/site-settings?key=${INSTALLMENT_RATE_KEY}`);
+        const data = await res.json();
+        const val = Number(data?.value);
+        if (val > 0) setDefaultRate(val);
+      } catch {
+        /* از پیش‌فرض استفاده می‌شود */
+      }
+    })();
+  }, []);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -96,6 +114,24 @@ export default function InstallmentsManager() {
 
   return (
     <div dir="rtl" className="space-y-5">
+      {/* Action bar — Installment Calculator */}
+      <div className="flex justify-start">
+        <button
+          onClick={() => setCalcOpen(true)}
+          className="flex items-center gap-2 text-white px-5 py-2.5 rounded-xl font-bold text-sm shadow-sm hover:shadow-lg hover:shadow-[#aa4725]/25 hover:-translate-y-0.5 active:scale-95 transition-all"
+          style={{ background: "#aa4725" }}
+        >
+          <Calculator size={16} />
+          ماشین حساب اقساط
+        </button>
+      </div>
+
+      <InstallmentCalculatorModal
+        open={calcOpen}
+        onClose={() => setCalcOpen(false)}
+        defaultRate={defaultRate}
+      />
+
       {/* Stats */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
         <StatCard icon={TrendingUp} label="اقساط فعال" value={fa(stats.totalActive)} suffix="مورد" accent="#3b82f6" />

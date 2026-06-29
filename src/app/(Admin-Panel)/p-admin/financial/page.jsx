@@ -3,15 +3,17 @@
 import { useState } from "react";
 import Link from "next/link";
 import { motion } from "framer-motion";
-import { MdAccountBalance, MdOutlineCurrencyExchange } from "react-icons/md";
+import { MdAccountBalance, MdOutlineCurrencyExchange, MdPercent } from "react-icons/md";
 import { FiTag, FiArrowLeft, FiCalendar, FiBarChart2 } from "react-icons/fi";
 import { FaMoneyBillWave } from "react-icons/fa";
 import BankAccountManager from "@/components/admin/financial/BankAccountManager";
 import ExchangeRateManager from "@/components/admin/financial/ExchangeRateManager";
+import FinancingSettingsManager from "@/components/admin/financial/FinancingSettingsManager";
 
 const TABS = [
   { key: "bank", title: "حساب بانکی", icon: MdAccountBalance },
   { key: "exchange", title: "نرخ تبدیل ارز", icon: MdOutlineCurrencyExchange },
+  { key: "financing", title: "تنظیمات اقساط", icon: MdPercent },
 ];
 
 export default function FinancialManagementPage() {
@@ -99,6 +101,7 @@ export default function FinancialManagementPage() {
       >
         {active === "bank" && <BankAccountManager />}
         {active === "exchange" && <ExchangeRateManager />}
+        {active === "financing" && <FinancingSettingsManager />}
       </motion.div>
     </div>
   );
