@@ -26,6 +26,14 @@ const sections = [
     badgeColor: 'bg-green-50 text-green-600',
   },
   {
+    href: '/p-admin/admin-home/product-sliders',
+    icon: FiTrendingUp,
+    title: 'اسلایدرهای محصول',
+    desc: 'انتخاب و چیدمان محصولات اسلایدرهای «پرفروش‌ها» و «شگفت‌انگیزها» با جستجو و کشیدن و رها کردن.',
+    badge: 'فعال',
+    badgeColor: 'bg-green-50 text-green-600',
+  },
+  {
     href: '#',
     icon: FiLayers,
     title: 'سایر بخش‌ها',

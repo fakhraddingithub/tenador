@@ -9,7 +9,7 @@ import ComparisonBanner from "@/components/features/comparisonBanner/ComparisonB
 import ShowcaseAthletes from "@/components/features/ShowcaseAthletes/ShowcaseAthletes";
 
 // سرویس‌ها را وارد کنید (فرض بر این است که این سرویس‌ها را دارید یا باید بسازید)
-import { getHomeProducts } from "base/services/product.service";
+import { getHomeSliderProducts } from "base/services/product.service";
 import connectToDB from "base/configs/db";
 import SlideModel from "base/models/Slide";
 import SportModel from "base/models/Sport";
@@ -30,7 +30,7 @@ export default async function Home() {
   //    فقط ۱۰ محصول برای هر اسلایدر — نه کل کاتالوگ
   const [homeProducts, slides, sports, athletes, rate, tickerBrands] =
     await Promise.all([
-      getHomeProducts(),
+      getHomeSliderProducts(),
       SlideModel.find({ isActive: true }).sort({ priority: 1 }).lean(),
       SportModel.find({}).sort({ order: 1 }).lean(),
       getShowcaseAthletes(),

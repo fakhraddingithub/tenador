@@ -7,10 +7,20 @@ import Sport from "base/models/Sport";
 import Athlete from "base/models/Athlete";
 import Category from "base/models/Category";
 import Variant from "base/models/Variant";
+import SiteSetting from "base/models/SiteSetting";
 import { getCachedRate } from "@/lib/Exchangerate";
 import { attachListingPrices } from "base/services/priceEngine";
 
 const modelsMap = { Sport, Brand, Athlete, Category };
+
+/**
+ * کلیدهای SiteSetting برای اسلایدرهای محصولِ صفحه‌ی اصلی.
+ * هر اسلایدر فهرستِ مرتبِ مستقلی از شناسه‌ی محصولات را نگه می‌دارد.
+ */
+export const HOME_SLIDER_KEYS = {
+  bestsellers: "home_slider_bestsellers",
+  offers: "home_slider_amazing_offers",
+};
 
 export const getProducts = unstable_cache(
   async () => {
@@ -60,6 +70,76 @@ export const getHomeProducts = unstable_cache(
   },
   ["home-products"],
   { revalidate: 60, tags: ["products"] }
+);
+
+/**
+ * فهرستِ مرتب و قیمت‌خورده‌ی محصولات یک اسلایدر را از روی آرایه‌ی شناسه‌ها می‌سازد.
+ * فقط محصولاتِ فعال برگردانده می‌شوند و ترتیبِ ذخیره‌شده دقیقاً حفظ می‌شود.
+ * اگر هیچ شناسه‌ای پیکربندی نشده باشد، null برمی‌گرداند تا فراخواننده به منطقِ
+ * پیش‌فرض برگردد (بدون رگرسیون پیش از پیکربندی توسط ادمین).
+ */
+async function buildSliderList(ids, rate) {
+  if (!Array.isArray(ids) || ids.length === 0) return null;
+
+  const products = await Product.find({ _id: { $in: ids }, isActive: true })
+    .populate("brand")
+    .populate("category")
+    .populate("variants")
+    .lean();
+
+  // مرتب‌سازی بر اساس ترتیبِ ذخیره‌شده + حذفِ محصولاتِ غیرفعال/حذف‌شده
+  const byId = new Map(products.map((p) => [String(p._id), p]));
+  const ordered = ids.map((id) => byId.get(String(id))).filter(Boolean);
+  if (ordered.length === 0) return null;
+
+  return attachListingPrices(ordered, rate);
+}
+
+/**
+ * منبعِ داده‌ی اسلایدرهای صفحه‌ی اصلی (پرفروش‌ها و پیشنهادهای شگفت‌انگیز).
+ * محصولات از روی پیکربندیِ ادمین (SiteSetting) و با ترتیبِ دقیقِ تعیین‌شده خوانده
+ * می‌شوند. اگر یک اسلایدر هنوز پیکربندی نشده باشد، به رفتارِ خودکارِ قبلی برمی‌گردد.
+ */
+export const getHomeSliderProducts = unstable_cache(
+  async () => {
+    await connectToDB();
+    const rate = await getCachedRate();
+
+    const [bestSetting, offersSetting] = await Promise.all([
+      SiteSetting.findOne({ key: HOME_SLIDER_KEYS.bestsellers }).lean(),
+      SiteSetting.findOne({ key: HOME_SLIDER_KEYS.offers }).lean(),
+    ]);
+
+    const bestIds = Array.isArray(bestSetting?.value) ? bestSetting.value : [];
+    const offerIds = Array.isArray(offersSetting?.value) ? offersSetting.value : [];
+
+    let [bestSellers, offers] = await Promise.all([
+      buildSliderList(bestIds, rate),
+      buildSliderList(offerIds, rate),
+    ]);
+
+    // ── منطقِ پیش‌فرض برای اسلایدرهای پیکربندی‌نشده (همان رفتارِ getHomeProducts) ──
+    if (!bestSellers || !offers) {
+      const recent = await Product.find({ isActive: true })
+        .sort({ createdAt: -1 })
+        .limit(20)
+        .populate("brand")
+        .populate("category")
+        .populate("variants")
+        .lean();
+      const pricedFallback = await attachListingPrices(recent, rate);
+
+      if (!bestSellers) bestSellers = pricedFallback.slice(0, 10);
+      if (!offers) {
+        const discounted = pricedFallback.filter((p) => p.discountPercent > 0);
+        offers = (discounted.length ? discounted : pricedFallback).slice(0, 10);
+      }
+    }
+
+    return JSON.parse(JSON.stringify({ bestSellers, offers }));
+  },
+  ["home-slider-products"],
+  { revalidate: 60, tags: ["products", "home-sliders"] }
 );
 
 export const getProductBySlug = unstable_cache(
