@@ -2,7 +2,6 @@ import { NextResponse } from "next/server";
 import mongoose from "mongoose";
 import connectToDB from "base/configs/db";
 import "base/models/registerModels";
-import requireAdmin from "@/lib/requireAdmin";
 import Product from "base/models/Product";
 import SiteSetting from "base/models/SiteSetting";
 import { HOME_SLIDER_KEYS } from "base/services/product.service";
@@ -42,11 +41,6 @@ async function readIds(key) {
 
 export async function GET() {
   try {
-    const admin = await requireAdmin();
-    if (!admin) {
-      return NextResponse.json({ error: "دسترسی غیرمجاز" }, { status: 403 });
-    }
-
     await connectToDB();
 
     const [bestIds, offerIds] = await Promise.all([
@@ -68,11 +62,6 @@ export async function GET() {
 
 export async function PUT(req) {
   try {
-    const admin = await requireAdmin();
-    if (!admin) {
-      return NextResponse.json({ error: "دسترسی غیرمجاز" }, { status: 403 });
-    }
-
     const { slider, productIds } = await req.json();
 
     const key = HOME_SLIDER_KEYS[slider];
