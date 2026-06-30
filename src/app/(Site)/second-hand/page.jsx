@@ -176,7 +176,8 @@ export default async function UsedProductsPage() {
         offers: {
           "@type": "Offer",
           priceCurrency: "IRT",
-          price: Math.round(p.price || 0),
+          // رشته‌ی صحیح بدون اعشار — هم‌راستا با اسکیمای صفحه‌ی محصول
+          price: String(Math.round(p.price || 0)),
           availability: "https://schema.org/InStock",
           itemCondition: "https://schema.org/UsedCondition",
           ...(productUrl && { url: productUrl }),
