@@ -8,6 +8,7 @@ import Input from "@/components/ui/Input";
 import Button from "@/components/ui/Button";
 import Swal from "sweetalert2";
 import Image from "next/image";
+import Link from "next/link";
 
 export default function Footer() {
   const [email, setEmail] = useState("");
@@ -170,12 +171,12 @@ export default function Footer() {
               <ul className="space-y-4">
                 {section.links.map((link, linkIndex) => (
                   <li key={linkIndex}>
-                    <a
+                    <Link
                       href={link.href}
                       className="text-gray-400 hover:text-[#aa4725] transition-colors block text-sm"
                     >
                       {link.label}
-                    </a>
+                    </Link>
                   </li>
                 ))}
               </ul>
@@ -190,12 +191,12 @@ export default function Footer() {
           <div className="flex flex-col md:flex-row items-center justify-between gap-4 text-xs text-gray-500">
             <p>© ۲۰۲۶ تمامی حقوق برای فروشگاه محفوظ است.</p>
             <div className="flex gap-6">
-              <a href="/terms" className="hover:text-white transition-colors">
+              <Link href="/terms" className="hover:text-white transition-colors">
                 قوانین و مقررات
-              </a>
-              <a href="/privacy" className="hover:text-white transition-colors">
+              </Link>
+              <Link href="/privacy" className="hover:text-white transition-colors">
                 حریم خصوصی
-              </a>
+              </Link>
             </div>
           </div>
         </div>

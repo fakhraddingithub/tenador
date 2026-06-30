@@ -103,7 +103,7 @@ export default function ProductCard({ product, rate, onQuickView, onToggleWishli
 
       {/* تصویر */}
       <Link href={`/products/${slug}`} className="relative w-full aspect-square bg-[#fcfcfc] overflow-hidden">
-        <Image src={activeImage} alt={name} fill className="object-contain p-3 transition-all duration-500 group-hover:scale-110" />
+        <Image src={activeImage} alt={name} fill sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 25vw" className="object-contain p-3 transition-all duration-500 group-hover:scale-110" />
       </Link>
 
       {/* سوآچ‌های واریانت */}
@@ -114,7 +114,7 @@ export default function ProductCard({ product, rate, onQuickView, onToggleWishli
             onMouseEnter={() => { setActiveImage(swatch.image); setActiveVariantId(swatch.key); }}
             onClick={(e) => { e.preventDefault(); e.stopPropagation(); setActiveImage(swatch.image); setActiveVariantId(swatch.key); }}
             className={`relative w-8 h-8 rounded-[6px] overflow-hidden border-2 transition-all duration-200 ${activeVariantId === swatch.key ? "border-[var(--color-primary)] scale-110 shadow-md" : "border-gray-100 hover:border-[color-mix(in_srgb,var(--color-primary)_60%,transparent)] opacity-80 hover:opacity-100"}`}>
-            <Image src={swatch.image} alt={swatch.value || name} fill className="object-cover" />
+            <Image src={swatch.image} alt={swatch.value || name} fill sizes="32px" className="object-cover" />
           </button>
         )) : <div className="h-8" />}
       </div>

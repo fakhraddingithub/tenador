@@ -3,9 +3,17 @@
 import { useState, useEffect, useMemo } from "react";
 import ProductCard from "@/components/modules/cart/ProductCard";
 import QuickViewModal from "@/components/modules/cart/QuickViewModal";
+import { ProductCardSkeleton } from "@/components/templates/sports/ProductCardSkeleton";
 
 // ۵ ردیف در گرید ۴‌ستونه = ۲۰ محصول در هر صفحه
 const PAGE_SIZE = 20;
+
+// تعداد محصولاتِ «اولویت‌دار» که فوراً (در همان رندرِ اول) به‌صورتِ کارتِ واقعی
+// نمایش داده می‌شوند — ۲ ردیفِ کاملِ دسکتاپ. بقیه‌ی محصولاتِ همین صفحه ابتدا
+// اسکلتون‌اند و بلافاصله پس از پِینتِ اول، خودکار (با requestAnimationFrame، نه
+// با اسکرول) به کارتِ واقعی تبدیل می‌شوند تا رندرِ سنگین، اولین محتوا را بلاک نکند.
+const PRIORITY_COUNT = 8;
+const REVEAL_CHUNK = 4;
 
 // `cardOverlay` is an optional React node (decoration) layered onto every card.
 // It must be a node, not a function — a function can't cross the server→client
@@ -34,6 +42,31 @@ export default function ProductList({ products = [], rate, onAddToCart, onToggle
     const start = (page - 1) * PAGE_SIZE;
     return (products || []).slice(start, start + PAGE_SIZE);
   }, [products, page]);
+
+  // ── پخشِ تدریجیِ کلاینت‌ساید (progressive reveal) ──
+  // تعداد کارت‌های واقعیِ نمایش‌داده‌شده از صفحه‌ی فعلی. در رندرِ اول فقط
+  // PRIORITY_COUNT کارتِ واقعی + بقیه اسکلتون؛ سپس فریم‌به‌فریم بقیه آشکار می‌شوند.
+  const [revealed, setRevealed] = useState(PRIORITY_COUNT);
+
+  // با هر تغییرِ صفحه/فیلتر (visibleProducts عوض می‌شود) دوباره از همان الگوی
+  // «۸ تای اول فوری، بقیه استریم» شروع می‌کنیم.
+  useEffect(() => {
+    // ریستِ شمارنده هنگامِ تعویضِ صفحه/فیلتر — همگام‌سازی با ورودیِ بیرونی
+    // (همان قراردادِ این کدبیس برای این قاعده‌ی لینت).
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setRevealed(PRIORITY_COUNT);
+    if (visibleProducts.length <= PRIORITY_COUNT) return;
+
+    let raf;
+    let current = PRIORITY_COUNT;
+    const step = () => {
+      current = Math.min(current + REVEAL_CHUNK, visibleProducts.length);
+      setRevealed(current);
+      if (current < visibleProducts.length) raf = requestAnimationFrame(step);
+    };
+    raf = requestAnimationFrame(step);
+    return () => cancelAnimationFrame(raf);
+  }, [visibleProducts]);
 
   if (!Array.isArray(products) || products.length === 0) {
     return <div className="py-10 text-center text-gray-500">محصولی برای نمایش وجود ندارد</div>;
@@ -64,19 +97,25 @@ export default function ProductList({ products = [], rate, onAddToCart, onToggle
   return (
     <>
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
-        {visibleProducts.map((product) => (
-          <ProductCard
-            key={product._id}
-            product={product}
-            rate={rate}
-            isWishlisted={product.isWishlisted}
-            overlay={cardOverlay}
-            campaignBadge={campaignBadge}
-            onQuickView={() => { setSelectedProduct(product); setIsModalOpen(true); }}
-            onAddToCart={() => onAddToCart?.(product)}
-            onToggleWishlist={() => onToggleWishlist?.(product)}
-          />
-        ))}
+        {visibleProducts.map((product, i) =>
+          i < revealed ? (
+            <ProductCard
+              key={product._id}
+              product={product}
+              rate={rate}
+              isWishlisted={product.isWishlisted}
+              overlay={cardOverlay}
+              campaignBadge={campaignBadge}
+              onQuickView={() => { setSelectedProduct(product); setIsModalOpen(true); }}
+              onAddToCart={() => onAddToCart?.(product)}
+              onToggleWishlist={() => onToggleWishlist?.(product)}
+            />
+          ) : (
+            // کلید = همان product._id تا وقتی اسکلتون به کارتِ واقعی تبدیل می‌شود،
+            // در همان جایگاه جابه‌جا شود (بدونِ پرشِ چیدمان؛ ابعاد یکسان است).
+            <ProductCardSkeleton key={product._id} />
+          )
+        )}
       </div>
 
       {/* پیجینیشن — فقط وقتی بیش از یک صفحه داریم */}
