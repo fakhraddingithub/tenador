@@ -13,6 +13,7 @@ import Link from "next/link";
 import ProductCard from "@/components/modules/cart/ProductCard";
 import QuickViewModal from "@/components/modules/cart/QuickViewModal";
 import SearchBar from "@/components/templates/products/SearchBar";
+import MobileFilterDrawer from "@/components/features/filters/MobileFilterDrawer";
 import { FiShoppingBag, FiLayers, FiLoader, FiFilter, FiRotateCcw } from "react-icons/fi";
 
 const BATCH_SECTIONS = 2;
@@ -198,6 +199,10 @@ export default function SerieGroupedView({
     setMaxPrice("");
   };
 
+  // تعداد فیلترهای فعالِ سایدبار — فقط برای بجِ دکمه‌ی موبایلِ MobileFilterDrawer.
+  const activeCount =
+    (Number(minPrice) > 0 ? 1 : 0) + (Number(maxPrice) > 0 ? 1 : 0);
+
   const openQuickView = (product) => {
     setSelectedProduct(product);
     setIsModalOpen(true);
@@ -227,6 +232,7 @@ export default function SerieGroupedView({
       <div className="max-w-[1440px] mx-auto px-4 lg:px-8 py-12 flex flex-col lg:flex-row gap-8">
         {/* Sidebar */}
         <aside className="w-full lg:w-1/4">
+          <MobileFilterDrawer activeCount={activeCount} onReset={resetFilters}>
           <div className="sticky top-24 flex flex-col gap-5">
             <div className="flex items-center justify-between bg-white p-4 rounded-[6px] border border-gray-100 shadow-sm">
               <div className="flex items-center gap-2 font-bold text-[#1a1a1a]">
@@ -303,6 +309,7 @@ export default function SerieGroupedView({
               </div>
             </div>
           </div>
+          </MobileFilterDrawer>
         </aside>
 
         {/* Sections */}

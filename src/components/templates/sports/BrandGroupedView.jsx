@@ -20,6 +20,7 @@ import ProductCard from "@/components/modules/cart/ProductCard";
 import QuickViewModal from "@/components/modules/cart/QuickViewModal";
 import SearchBar from "@/components/templates/products/SearchBar";
 import AttributeFilterCard from "@/components/templates/products/AttributeFilterCard";
+import MobileFilterDrawer from "@/components/features/filters/MobileFilterDrawer";
 import ProductGridSkeleton from "@/components/templates/sports/ProductCardSkeleton";
 import { FiShoppingBag, FiLayers, FiFilter, FiRotateCcw } from "react-icons/fi";
 
@@ -231,6 +232,11 @@ export default function BrandGroupedView({
     setMaxPrice("");
   };
 
+  // تعداد فیلترهای فعالِ سایدبار — فقط برای بجِ دکمه‌ی موبایلِ MobileFilterDrawer.
+  // (جستجو در نوارِ بالا قرار دارد و جزو سایدبار نیست.)
+  const activeCount =
+    (Number(minPrice) > 0 ? 1 : 0) + (Number(maxPrice) > 0 ? 1 : 0);
+
   const openQuickView = (product) => {
     setSelectedProduct(product);
     setIsModalOpen(true);
@@ -260,6 +266,7 @@ export default function BrandGroupedView({
       <div className="max-w-[1440px] mx-auto px-4 lg:px-8 py-12 flex flex-col lg:flex-row gap-8">
         {/* Sidebar */}
         <aside className="w-full lg:w-1/4">
+          <MobileFilterDrawer activeCount={activeCount} onReset={resetFilters}>
           <div className="sticky top-24 flex flex-col gap-5">
             {/* هدر فیلتر */}
             <div className="flex items-center justify-between bg-white p-4 rounded-[6px] border border-gray-100 shadow-sm">
@@ -343,6 +350,7 @@ export default function BrandGroupedView({
               </div>
             </div>
           </div>
+          </MobileFilterDrawer>
         </aside>
 
         {/* Sections */}

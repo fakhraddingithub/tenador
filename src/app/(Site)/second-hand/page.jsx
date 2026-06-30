@@ -29,6 +29,7 @@ export async function generateMetadata() {
     title: PAGE_TITLE,
     description: PAGE_DESC,
     metadataBase: new URL(SITE_URL),
+    alternates: { canonical: `${SITE_URL}/second-hand` },
     openGraph: {
       title: PAGE_TITLE,
       description: PAGE_DESC,
@@ -145,11 +146,89 @@ export default async function UsedProductsPage() {
     });
   const filterableAttributes = await getFilterableAttributes();
 
+  // ─────────────────────────────────────────────
+  // داده‌ی ساختاریافته (JSON-LD) برای ایندکس‌شدنِ صفحه‌ی فهرستِ دست‌دوم در گوگل.
+  // از داده‌ی واقعیِ همین صفحه ساخته می‌شود (نه مقدارِ ثابت): CollectionPage شامل
+  // ItemList از محصولاتِ موجود + BreadcrumbList. قیمت‌ها به تومان (IRT) هستند تا
+  // واحدِ پول در اسنیپت دیده شود، هم‌راستا با اسکیمای صفحه‌ی محصول.
+  // ─────────────────────────────────────────────
+  const absUrl = (u) =>
+    u ? (u.startsWith("http") ? u : `${SITE_URL}${u}`) : null;
+
+  const itemListElement = products.slice(0, 30).map((p, i) => {
+    const img = absUrl(p.images?.[0] || p.baseProduct?.mainImage);
+    const productUrl = p.slug ? `${SITE_URL}/second-hand/${p.slug}` : undefined;
+    return {
+      "@type": "ListItem",
+      position: i + 1,
+      item: {
+        "@type": "Product",
+        name: p.name,
+        ...(img && { image: [img] }),
+        ...(productUrl && { url: productUrl }),
+        ...(p.baseProduct?.sku && { sku: p.baseProduct.sku }),
+        ...(p.baseProduct?.brand?.title && {
+          brand: { "@type": "Brand", name: p.baseProduct.brand.title },
+        }),
+        ...(p.baseProduct?.category?.title && {
+          category: p.baseProduct.category.title,
+        }),
+        offers: {
+          "@type": "Offer",
+          priceCurrency: "IRT",
+          price: Math.round(p.price || 0),
+          availability: "https://schema.org/InStock",
+          itemCondition: "https://schema.org/UsedCondition",
+          ...(productUrl && { url: productUrl }),
+        },
+      },
+    };
+  });
+
+  const collectionSchema = {
+    "@context": "https://schema.org",
+    "@type": "CollectionPage",
+    name: PAGE_TITLE,
+    description: PAGE_DESC,
+    url: `${SITE_URL}/second-hand`,
+    inLanguage: "fa-IR",
+    isPartOf: { "@type": "WebSite", name: "تنادور", url: SITE_URL },
+    mainEntity: {
+      "@type": "ItemList",
+      numberOfItems: products.length,
+      itemListElement,
+    },
+  };
+
+  const breadcrumbSchema = {
+    "@context": "https://schema.org",
+    "@type": "BreadcrumbList",
+    itemListElement: [
+      { "@type": "ListItem", position: 1, name: "خانه", item: SITE_URL },
+      {
+        "@type": "ListItem",
+        position: 2,
+        name: "بازار دست‌دوم",
+        item: `${SITE_URL}/second-hand`,
+      },
+    ],
+  };
+
   return (
-    <UsedProductsPageClient
-      products={products}
-      headerImage={headerImage}
-      filterableAttributes={filterableAttributes}
-    />
+    <>
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(collectionSchema) }}
+      />
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbSchema) }}
+      />
+      <UsedProductsPageClient
+        products={products}
+        headerImage={headerImage}
+        filterableAttributes={filterableAttributes}
+      />
+    </>
   );
 }

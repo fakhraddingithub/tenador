@@ -28,9 +28,11 @@ export function generateProductSchema(product, reviewStats) {
       ? { ratingValue: average, reviewCount: ratedCount }
       : { ratingValue: 5, reviewCount: 1 };
 
-  // قیمت پایه به تومان است؛ ISO 4217 کدی برای «تومان» ندارد و تنها کد معتبر
-  // ایران «IRR» (ریال) است. پس برای صحتِ مقدار، تومان × ۱۰ → ریال می‌شود.
-  const priceInRial = Math.round((product.basePrice || 0) * 10);
+  // قیمت پایه به «تومان» است و واحدِ پولِ فروشگاه هم تومان است. برای آنکه گوگل
+  // واحدِ پول را در اسنیپتِ نتایج نمایش دهد، از کدِ «IRT» (تومان) با همان مقدارِ
+  // تومانی استفاده می‌شود تا نتیجه مثل «۶۰٬۰۰۰ IRT» رندر شود. (پیش‌تر IRR/ریال
+  // با مقدارِ ×۱۰ بود که واحدش در اسنیپت دیده نمی‌شد.)
+  const priceInToman = Math.round(product.basePrice || 0);
 
   return {
     "@context": "https://schema.org/",
@@ -66,9 +68,9 @@ export function generateProductSchema(product, reviewStats) {
 
       url: `${SITE_URL}/products/${product.slug}`,
 
-      priceCurrency: "IRR",
+      priceCurrency: "IRT",
 
-      price: priceInRial,
+      price: priceInToman,
 
       availability: "https://schema.org/InStock",
 
