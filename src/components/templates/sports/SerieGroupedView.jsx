@@ -14,6 +14,7 @@ import ProductCard from "@/components/modules/cart/ProductCard";
 import QuickViewModal from "@/components/modules/cart/QuickViewModal";
 import SearchBar from "@/components/templates/products/SearchBar";
 import MobileFilterDrawer from "@/components/features/filters/MobileFilterDrawer";
+import useFilterScrollAnchor from "@/hooks/useFilterScrollAnchor";
 import { FiShoppingBag, FiLayers, FiLoader, FiFilter, FiRotateCcw } from "react-icons/fi";
 
 const BATCH_SECTIONS = 2;
@@ -39,6 +40,8 @@ export default function SerieGroupedView({
   const [hasMore, setHasMore] = useState(Boolean(initialData.hasMore));
   const [totalCount, setTotalCount] = useState(initialData.totalCount ?? 0);
   const [loading, setLoading] = useState(false);
+  // توکنی که فقط با «اعمالِ فیلتر» (ریستِ نتایج) بالا می‌رود، نه با loadMore.
+  const [filterToken, setFilterToken] = useState(0);
 
   const [searchTerm, setSearchTerm] = useState("");
   const [minPrice, setMinPrice] = useState("");
@@ -135,6 +138,7 @@ export default function SerieGroupedView({
       setHasMore(Boolean(data.hasMore));
       setNextOffset(data.nextOffset ?? 0);
       setTotalCount(data.totalCount ?? 0);
+      setFilterToken((t) => t + 1); // نتیجه‌ی فیلتر به‌روز شد → ارزیابیِ لنگرِ اسکرول
     } catch (e) {
       if (reqId === reqIdRef.current) console.error("applyFilters error", e);
     } finally {
@@ -203,6 +207,10 @@ export default function SerieGroupedView({
   const activeCount =
     (Number(minPrice) > 0 ? 1 : 0) + (Number(maxPrice) > 0 ? 1 : 0);
 
+  // پس از اعمالِ فیلتر، اگر لیست کوتاه شد، نمای صفحه را به ناحیه‌ی فیلتر لنگر می‌اندازد.
+  const anchorRef = useRef(null);
+  useFilterScrollAnchor(anchorRef, filterToken);
+
   const openQuickView = (product) => {
     setSelectedProduct(product);
     setIsModalOpen(true);
@@ -229,7 +237,10 @@ export default function SerieGroupedView({
       </div>
 
       {/* ───────────────── Main ───────────────── */}
-      <div className="max-w-[1440px] mx-auto px-4 lg:px-8 py-12 flex flex-col lg:flex-row gap-8">
+      <div
+        ref={anchorRef}
+        className="max-w-[1440px] mx-auto px-4 lg:px-8 py-12 flex flex-col lg:flex-row gap-8"
+      >
         {/* Sidebar */}
         <aside className="w-full lg:w-1/4">
           <MobileFilterDrawer activeCount={activeCount} onReset={resetFilters}>

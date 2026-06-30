@@ -1,9 +1,10 @@
 'use client';
 
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo, useEffect, useRef } from "react";
 import ProductList from "./ProductList";
 import FilterSidebar from "./FilterSidebar"; // این کامپوننت را در ادامه می‌سازیم
 import SearchBar from "./SearchBar";
+import useFilterScrollAnchor from "@/hooks/useFilterScrollAnchor";
 import {
   buildAttributeMeta,
   parseAttrFiltersFromParams,
@@ -93,8 +94,17 @@ export default function ProductListClient({ products: initialProducts, rate, fil
     });
   }, [searchTerm, filters, initialProducts, attrFilters, attrMeta]);
 
+  // با تغییرِ فیلتر و کوتاه‌شدنِ لیست، نمای صفحه را به ناحیه‌ی فیلتر لنگر می‌اندازد
+  // (جلوگیری از افتادن روی فوتر). signal = تعدادِ نتایج.
+  const anchorRef = useRef(null);
+  useFilterScrollAnchor(anchorRef, filteredProducts.length);
+
   return (
-    <div className="max-w-[1440px] mx-auto px-4 py-8 flex flex-col lg:flex-row gap-8" dir="rtl">
+    <div
+      ref={anchorRef}
+      className="max-w-[1440px] mx-auto px-4 py-8 flex flex-col lg:flex-row gap-8"
+      dir="rtl"
+    >
 
       {/* Sidebar: فیلترهای پیشرفته */}
       <aside className="w-full lg:w-1/4">

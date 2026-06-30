@@ -21,6 +21,7 @@ import QuickViewModal from "@/components/modules/cart/QuickViewModal";
 import SearchBar from "@/components/templates/products/SearchBar";
 import AttributeFilterCard from "@/components/templates/products/AttributeFilterCard";
 import MobileFilterDrawer from "@/components/features/filters/MobileFilterDrawer";
+import useFilterScrollAnchor from "@/hooks/useFilterScrollAnchor";
 import ProductGridSkeleton from "@/components/templates/sports/ProductCardSkeleton";
 import { FiShoppingBag, FiLayers, FiFilter, FiRotateCcw } from "react-icons/fi";
 
@@ -58,6 +59,9 @@ export default function BrandGroupedView({
   const [hasMore, setHasMore] = useState(Boolean(initialData.hasMore));
   const [totalCount, setTotalCount] = useState(initialData.totalCount ?? 0);
   const [loading, setLoading] = useState(false);
+  // توکنی که فقط با «اعمالِ فیلتر» (ریستِ نتایج) بالا می‌رود، نه با loadMore؛
+  // برای لنگرانداختنِ اسکرول به ناحیه‌ی فیلتر هنگام کوتاه‌شدنِ لیست استفاده می‌شود.
+  const [filterToken, setFilterToken] = useState(0);
 
   // فیلترها
   const [searchTerm, setSearchTerm] = useState("");
@@ -164,6 +168,7 @@ export default function BrandGroupedView({
       setHasMore(Boolean(data.hasMore));
       setNextOffset(data.nextOffset ?? 0);
       setTotalCount(data.totalCount ?? 0);
+      setFilterToken((t) => t + 1); // نتیجه‌ی فیلتر به‌روز شد → ارزیابیِ لنگرِ اسکرول
     } catch (e) {
       if (reqId === reqIdRef.current) console.error("applyFilters error", e);
     } finally {
@@ -240,6 +245,12 @@ export default function BrandGroupedView({
   const activeCount =
     (Number(minPrice) > 0 ? 1 : 0) + (Number(maxPrice) > 0 ? 1 : 0);
 
+  // پس از اعمالِ فیلتر (ریستِ نتایج)، اگر لیست کوتاه شد، نمای صفحه را به ناحیه‌ی
+  // فیلتر لنگر می‌اندازد. به filterToken وابسته است تا با loadMore (افزایشِ نتایج)
+  // فعال نشود و پیمایشِ بی‌نهایت را به‌هم نزند.
+  const anchorRef = useRef(null);
+  useFilterScrollAnchor(anchorRef, filterToken);
+
   const openQuickView = (product) => {
     setSelectedProduct(product);
     setIsModalOpen(true);
@@ -266,7 +277,10 @@ export default function BrandGroupedView({
       </div>
 
       {/* ───────────────── Main ───────────────── */}
-      <div className="max-w-[1440px] mx-auto px-4 lg:px-8 py-12 flex flex-col lg:flex-row gap-8">
+      <div
+        ref={anchorRef}
+        className="max-w-[1440px] mx-auto px-4 lg:px-8 py-12 flex flex-col lg:flex-row gap-8"
+      >
         {/* Sidebar */}
         <aside className="w-full lg:w-1/4">
           <MobileFilterDrawer activeCount={activeCount} onReset={resetFilters}>

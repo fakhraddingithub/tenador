@@ -1,7 +1,8 @@
 'use client';
 
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo, useEffect, useRef } from 'react';
 import { FiSearch, FiShoppingBag, FiTag } from 'react-icons/fi';
+import useFilterScrollAnchor from '@/hooks/useFilterScrollAnchor';
 import UsedProductCard from './UsedProductCard';
 import UsedFilterSidebar from './UsedFilterSidebar';
 import UsedQuickViewModal from './Usedquickviewmodal';
@@ -90,6 +91,11 @@ export default function UsedProductsPageClient({ products: initialProducts, head
     });
   }, [searchTerm, filters, initialProducts, attrFilters, attrMeta]);
 
+  // با تغییرِ فیلتر و کوتاه‌شدنِ لیست، نمای صفحه را به ناحیه‌ی فیلتر لنگر می‌اندازد
+  // (جلوگیری از افتادن روی فوتر). signal = تعدادِ نتایج.
+  const anchorRef = useRef(null);
+  useFilterScrollAnchor(anchorRef, filteredProducts.length);
+
   const resetFilters = () => setFilters({ ...DEFAULT_FILTERS, maxPrice });
 
   const openQuickView = (product) => {
@@ -141,7 +147,10 @@ export default function UsedProductsPageClient({ products: initialProducts, head
       </div>
 
       {/* ─── بدنه اصلی ─── */}
-      <div className="max-w-[1440px] mx-auto px-4 lg:px-8 py-12 flex flex-col lg:flex-row gap-8">
+      <div
+        ref={anchorRef}
+        className="max-w-[1440px] mx-auto px-4 lg:px-8 py-12 flex flex-col lg:flex-row gap-8"
+      >
 
         {/* Sidebar */}
         <aside className="w-full lg:w-1/4">

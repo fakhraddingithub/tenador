@@ -1,7 +1,8 @@
 "use client";
 
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo, useEffect, useRef } from "react";
 import ProductList from "@/components/templates/products/ProductList";
+import useFilterScrollAnchor from "@/hooks/useFilterScrollAnchor";
 import FilterSidebar from "@/components/templates/products/FilterSidebar";
 import SearchBar from "@/components/templates/products/SearchBar";
 import SeriesSlider from "@/components/templates/sports/SeriesSlider";
@@ -197,6 +198,11 @@ export default function SportPageClient({
     });
   }, [searchTerm, localFilters, initialProducts, attrFilters, attributeMeta]);
 
+  // با تغییرِ فیلتر و کوتاه‌شدنِ لیست، نمای صفحه را به ناحیه‌ی فیلتر لنگر می‌اندازد
+  // (جلوگیری از افتادن روی فوتر). signal = تعدادِ نتایج.
+  const anchorRef = useRef(null);
+  useFilterScrollAnchor(anchorRef, filteredProducts.length);
+
   return (
     <div className="bg-[var(--page-surface,#fcfcfc)] min-h-screen" dir="rtl">
       {/* ───────────────── Hero ───────────────── */}
@@ -235,7 +241,10 @@ export default function SportPageClient({
       )}
 
       {/* ───────────────── Main Content ───────────────── */}
-      <div className="max-w-[1440px] mx-auto px-4 lg:px-8 py-12 flex flex-col lg:flex-row gap-8">
+      <div
+        ref={anchorRef}
+        className="max-w-[1440px] mx-auto px-4 lg:px-8 py-12 flex flex-col lg:flex-row gap-8"
+      >
         {/* Sidebar */}
         <aside className="w-full lg:w-1/4">
           <div className="sticky top-24">
