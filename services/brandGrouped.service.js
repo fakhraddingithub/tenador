@@ -106,19 +106,21 @@ function buildBaseMatch({ brandId, sportId, categoryId, search, extra }) {
 /**
  * قطعه‌ی match فیلترهای ویژگی (از پارامترهای URL) را می‌سازد — با همان معناشناسیِ
  * هلپرِ مشترکِ productMatchesAttrFilters در src/lib/attributeFilters.js: تطبیقِ
- * substring بدونِ حساسیت به حروف (مثلِ «۱۰» در «۱۰ لیتر»). این جایگزینِ تطبیقِ
- * «دقیق»ِ قبلی است که برای مقادیری که عیناً برابر نبودند هیچ محصولی برنمی‌گرداند.
+ * substring بدونِ حساسیت به حروف (مثلِ «۶ راکت» در «6 Racket Capacity»).
+ *
+ * نکته‌ی کلیدی: مقدارِ یک ویژگی می‌تواند روی «خودِ محصول» (attributes ثابت) یا روی
+ * «واریانت‌ها» (attributes متغیر) ذخیره شده باشد — دقیقاً مثلِ مگامنو که مقادیر را
+ * از اجتماعِ هر دو منبع کشف می‌کند. بنابراین تطبیق هم باید هر دو را بررسی کند و به
+ * طبقه‌بندیِ ثابت/متغیرِ schemaِ دسته وابسته نباشد: یک محصول منطبق است اگر
+ * attributes خودش یا attributes یکی از واریانت‌هایش با مقدار بخورد.
  *
  * هر ویژگی می‌تواند چند مقدار داشته باشد (OR درونِ ویژگی) و ویژگی‌ها با AND ترکیب
- * می‌شوند. ویژگیِ «ثابت» مستقیماً روی product.attributes.<name>؛ ویژگیِ «متغیر»
- * ابتدا productIdهای واریانتِ منطبق را پیدا و سپس _id را به اشتراکِ آن‌ها محدود می‌کند.
- * بازگشتِ {} یعنی فیلتری اعمال نمی‌شود؛ _id:{$in:[]} یعنی هیچ محصولی منطبق نیست.
+ * می‌شوند. بازگشتِ {} یعنی فیلتری اعمال نمی‌شود.
  */
-async function buildAttrMatches(attrFilters, categoryId) {
+async function buildAttrMatches(attrFilters) {
   if (!Array.isArray(attrFilters) || attrFilters.length === 0) return {};
 
-  const and = []; // شرط‌های ویژگیِ ثابت (هرکدام یک کلیدِ attributes.<name>)
-  let variantIds = null; // اشتراکِ idها بین ویژگی‌های متغیر (AND)
+  const conditions = []; // یک شرطِ {$or:[محصول, واریانت]} برای هر ویژگی (با AND)
 
   for (const f of attrFilters) {
     const name = f?.name;
@@ -131,32 +133,23 @@ async function buildAttrMatches(attrFilters, categoryId) {
     // substring بدونِ حساسیت به حروف — معادلِ String(pv).toLowerCase().includes(v)
     const regexes = values.map((v) => new RegExp(escapeRegex(v), "i"));
 
-    if (f.source === "variant") {
-      const vq = { [`attributes.${name}`]: { $in: regexes } };
-      if (categoryId) vq.categoryId = toObjectId(categoryId);
-      const ids = await Variant.find(vq).distinct("productId");
-      const idSet = new Set(ids.map((id) => id.toString()));
-      variantIds =
-        variantIds === null
-          ? idSet
-          : new Set([...variantIds].filter((x) => idSet.has(x)));
-    } else {
-      and.push({ [`attributes.${name}`]: { $in: regexes } });
-    }
+    // محصولاتی که دستِ‌کم یک واریانت با این مقدار دارند (منبعِ متغیر)
+    const variantProductIds = await Variant.find({
+      [`attributes.${name}`]: { $in: regexes },
+    }).distinct("productId");
+
+    conditions.push({
+      $or: [
+        { [`attributes.${name}`]: { $in: regexes } }, // منبعِ ثابت (روی محصول)
+        { _id: { $in: variantProductIds } }, // منبعِ متغیر (روی واریانت)
+      ],
+    });
   }
 
-  const match = {};
-  if (variantIds !== null) {
-    match._id = {
-      $in: [...variantIds].map((x) => toObjectId(x)).filter(Boolean),
-    };
-  }
-  if (and.length === 1) {
-    Object.assign(match, and[0]);
-  } else if (and.length > 1) {
-    match.$and = and;
-  }
-  return match;
+  if (conditions.length === 0) return {};
+  // همیشه داخلِ $and بسته‌بندی می‌شود تا با کلیدِ $orِ بخشِ «سایر محصولات» در
+  // fetchSectionProducts تداخل نکند (در غیرِ این صورت اسپردِ baseMatch آن را بازنویسی می‌کرد).
+  return { $and: conditions };
 }
 
 function withinPrice(p, minPrice, maxPrice) {
@@ -190,7 +183,7 @@ async function _getBrandGroupedSections(params) {
     await Promise.all([
       buildSeriesTree(brandId),
       getCachedRate(),
-      buildAttrMatches(attrFilters, categoryId),
+      buildAttrMatches(attrFilters),
     ]);
 
   const baseMatch = buildBaseMatch({ brandId, sportId, categoryId, search, extra });

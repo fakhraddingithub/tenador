@@ -33,16 +33,14 @@ function isParentSeriePage(filters) {
 // برند دقیقاً مثل صفحه‌ی دسته به هر پارامترِ ویژگی پاسخ دهد. هر کلیدِ پارامتر که
 // نامِ یکی از ویژگی‌های همین دسته (ثابت یا متغیر) باشد خوانده می‌شود؛ پارامترهای
 // غیرِویژگی (مثلِ page/utm) نادیده گرفته می‌شوند. مقادیرِ چندگانه (?Color=a&Color=b)
-// پشتیبانی می‌شوند. نوعِ ثابت/متغیر برای ساختِ کوئریِ درست در brandGrouped تعیین می‌شود.
+// پشتیبانی می‌شوند. تطبیقِ ثابت‌بودن/متغیربودنِ مقدار در brandGrouped (با بررسیِ هر
+// دو منبع) انجام می‌شود، پس اینجا فقط نام و مقدار لازم است.
 function resolveAttrFilters(category, sp) {
   if (!category || !sp) return [];
   const defs = [
     ...(category.attributes || []),
     ...(category.variantAttributes || []),
   ];
-  const variantNames = new Set(
-    (category.variantAttributes || []).map((a) => a.name),
-  );
   const seen = new Set();
   const out = [];
   for (const def of defs) {
@@ -54,11 +52,7 @@ function resolveAttrFilters(category, sp) {
     );
     if (values.length === 0) continue;
     seen.add(def.name);
-    out.push({
-      name: def.name,
-      values,
-      source: variantNames.has(def.name) ? "variant" : "fixed",
-    });
+    out.push({ name: def.name, values });
   }
   return out;
 }
