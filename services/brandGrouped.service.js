@@ -104,9 +104,28 @@ function buildBaseMatch({ brandId, sportId, categoryId, search, extra }) {
 }
 
 /**
- * قطعه‌ی match فیلترهای ویژگی (از پارامترهای URL) را می‌سازد — با همان معناشناسیِ
- * هلپرِ مشترکِ productMatchesAttrFilters در src/lib/attributeFilters.js: تطبیقِ
- * substring بدونِ حساسیت به حروف (مثلِ «۶ راکت» در «6 Racket Capacity»).
+ * مقادیرِ تطبیقِ یک مقدارِ فیلتر — دقیقاً هم‌راستا با هلپرِ مشترکِ
+ * productMatchesAttrFilters در src/lib/attributeFilters.js:
+ *  • مقدارِ عددی → تطبیقِ «دقیق». فیلدِ attributes روی محصول از نوعِ Object است و
+ *    اعداد عیناً عددی ذخیره می‌شوند (مثلِ capacity: 6, نه "6")، در حالی که regex
+ *    هرگز فیلدِ عددی را match نمی‌کند. پس هم خودِ «عدد» و هم شکلِ «رشته‌ای»‌اش در
+ *    $in گذاشته می‌شود تا چه عددی و چه رشته‌ای ذخیره شده باشد، بخورد.
+ *  • مقدارِ متنی → تطبیقِ substring بدونِ حساسیت به حروف.
+ */
+function attrValueMatchers(v) {
+  const s = (v == null ? "" : String(v)).trim();
+  if (s === "") return [];
+  if (/^-?\d+(\.\d+)?$/.test(s)) {
+    const out = [s];
+    const n = Number(s);
+    if (!Number.isNaN(n)) out.push(n);
+    return out;
+  }
+  return [new RegExp(escapeRegex(s), "i")];
+}
+
+/**
+ * قطعه‌ی match فیلترهای ویژگی (از پارامترهای URL) را می‌سازد.
  *
  * نکته‌ی کلیدی: مقدارِ یک ویژگی می‌تواند روی «خودِ محصول» (attributes ثابت) یا روی
  * «واریانت‌ها» (attributes متغیر) ذخیره شده باشد — دقیقاً مثلِ مگامنو که مقادیر را
@@ -125,22 +144,19 @@ async function buildAttrMatches(attrFilters) {
   for (const f of attrFilters) {
     const name = f?.name;
     if (!name) continue;
-    const values = (Array.isArray(f.values) ? f.values : [f.value])
-      .map((v) => (v == null ? "" : String(v).trim()))
-      .filter(Boolean);
-    if (values.length === 0) continue;
-
-    // substring بدونِ حساسیت به حروف — معادلِ String(pv).toLowerCase().includes(v)
-    const regexes = values.map((v) => new RegExp(escapeRegex(v), "i"));
+    const values = Array.isArray(f.values) ? f.values : [f.value];
+    // هم عدد و هم رشته/regex، تا فیلدهای عددیِ ذخیره‌شده (مثلِ capacity) هم بخورند
+    const matchers = values.flatMap(attrValueMatchers);
+    if (matchers.length === 0) continue;
 
     // محصولاتی که دستِ‌کم یک واریانت با این مقدار دارند (منبعِ متغیر)
     const variantProductIds = await Variant.find({
-      [`attributes.${name}`]: { $in: regexes },
+      [`attributes.${name}`]: { $in: matchers },
     }).distinct("productId");
 
     conditions.push({
       $or: [
-        { [`attributes.${name}`]: { $in: regexes } }, // منبعِ ثابت (روی محصول)
+        { [`attributes.${name}`]: { $in: matchers } }, // منبعِ ثابت (روی محصول)
         { _id: { $in: variantProductIds } }, // منبعِ متغیر (روی واریانت)
       ],
     });
