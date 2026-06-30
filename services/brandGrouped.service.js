@@ -104,21 +104,59 @@ function buildBaseMatch({ brandId, sportId, categoryId, search, extra }) {
 }
 
 /**
- * قطعه‌ی match فیلترِ ویژگیِ مگامنو را می‌سازد. برای ویژگیِ ثابت مستقیماً روی
- * product.attributes.<name> تطبیق می‌دهد؛ برای ویژگیِ متغیر، ابتدا شناسه‌ی محصولاتی
- * که واریانتی با آن مقدار دارند را پیدا و سپس _id را به آن‌ها محدود می‌کند.
- * بازگشتِ {} یعنی فیلتری اعمال نمی‌شود؛ بازگشتِ _id:{$in:[]} یعنی هیچ محصولی منطبق نیست.
+ * قطعه‌ی match فیلترهای ویژگی (از پارامترهای URL) را می‌سازد — با همان معناشناسیِ
+ * هلپرِ مشترکِ productMatchesAttrFilters در src/lib/attributeFilters.js: تطبیقِ
+ * substring بدونِ حساسیت به حروف (مثلِ «۱۰» در «۱۰ لیتر»). این جایگزینِ تطبیقِ
+ * «دقیق»ِ قبلی است که برای مقادیری که عیناً برابر نبودند هیچ محصولی برنمی‌گرداند.
+ *
+ * هر ویژگی می‌تواند چند مقدار داشته باشد (OR درونِ ویژگی) و ویژگی‌ها با AND ترکیب
+ * می‌شوند. ویژگیِ «ثابت» مستقیماً روی product.attributes.<name>؛ ویژگیِ «متغیر»
+ * ابتدا productIdهای واریانتِ منطبق را پیدا و سپس _id را به اشتراکِ آن‌ها محدود می‌کند.
+ * بازگشتِ {} یعنی فیلتری اعمال نمی‌شود؛ _id:{$in:[]} یعنی هیچ محصولی منطبق نیست.
  */
-async function buildAttrMatch(attrFilter, categoryId) {
-  if (!attrFilter || !attrFilter.name || !attrFilter.value) return {};
-  const { name, value, source } = attrFilter;
-  if (source === "variant") {
-    const variantQuery = { [`attributes.${name}`]: value };
-    if (categoryId) variantQuery.categoryId = toObjectId(categoryId);
-    const ids = await Variant.find(variantQuery).distinct("productId");
-    return { _id: { $in: ids } };
+async function buildAttrMatches(attrFilters, categoryId) {
+  if (!Array.isArray(attrFilters) || attrFilters.length === 0) return {};
+
+  const and = []; // شرط‌های ویژگیِ ثابت (هرکدام یک کلیدِ attributes.<name>)
+  let variantIds = null; // اشتراکِ idها بین ویژگی‌های متغیر (AND)
+
+  for (const f of attrFilters) {
+    const name = f?.name;
+    if (!name) continue;
+    const values = (Array.isArray(f.values) ? f.values : [f.value])
+      .map((v) => (v == null ? "" : String(v).trim()))
+      .filter(Boolean);
+    if (values.length === 0) continue;
+
+    // substring بدونِ حساسیت به حروف — معادلِ String(pv).toLowerCase().includes(v)
+    const regexes = values.map((v) => new RegExp(escapeRegex(v), "i"));
+
+    if (f.source === "variant") {
+      const vq = { [`attributes.${name}`]: { $in: regexes } };
+      if (categoryId) vq.categoryId = toObjectId(categoryId);
+      const ids = await Variant.find(vq).distinct("productId");
+      const idSet = new Set(ids.map((id) => id.toString()));
+      variantIds =
+        variantIds === null
+          ? idSet
+          : new Set([...variantIds].filter((x) => idSet.has(x)));
+    } else {
+      and.push({ [`attributes.${name}`]: { $in: regexes } });
+    }
   }
-  return { [`attributes.${name}`]: value };
+
+  const match = {};
+  if (variantIds !== null) {
+    match._id = {
+      $in: [...variantIds].map((x) => toObjectId(x)).filter(Boolean),
+    };
+  }
+  if (and.length === 1) {
+    Object.assign(match, and[0]);
+  } else if (and.length > 1) {
+    match.$and = and;
+  }
+  return match;
 }
 
 function withinPrice(p, minPrice, maxPrice) {
@@ -133,7 +171,7 @@ async function _getBrandGroupedSections(params) {
     brandId,
     sportId = null,
     categoryId = null,
-    attrFilter = null,
+    attrFilters = [],
     offset = 0,
     limit = 2,
     minPrice = 0,
@@ -152,7 +190,7 @@ async function _getBrandGroupedSections(params) {
     await Promise.all([
       buildSeriesTree(brandId),
       getCachedRate(),
-      buildAttrMatch(attrFilter, categoryId),
+      buildAttrMatches(attrFilters, categoryId),
     ]);
 
   const baseMatch = buildBaseMatch({ brandId, sportId, categoryId, search, extra });

@@ -33,11 +33,16 @@ export default function BrandGroupedView({
   brandId,
   sportId = null,
   categoryId = null,
-  attrFilter = null,
+  attrFilters = [],
   filterMeta = null,
   initialData = {},
   title = "",
 }) {
+  // مقدارِ فعالِ کارتِ فیلترِ سایدبار = مقدارِ فیلترِ هم‌نام با ویژگیِ مگامنو
+  const activeFilterValue =
+    (filterMeta &&
+      attrFilters.find((f) => f.name === filterMeta.name)?.values?.[0]) ||
+    null;
   // ─── عنوان صفحه ───
   const categoryTitle = filters?.category?.title || filters?.category?.name || "";
   const brandTitle =
@@ -88,10 +93,8 @@ export default function BrandGroupedView({
       params.set("brandId", brandId);
       if (sportId) params.set("sportId", sportId);
       if (categoryId) params.set("categoryId", categoryId);
-      if (attrFilter?.name && attrFilter?.value) {
-        params.set("attrName", attrFilter.name);
-        params.set("attrValue", attrFilter.value);
-        params.set("attrSource", attrFilter.source || "fixed");
+      if (Array.isArray(attrFilters) && attrFilters.length > 0) {
+        params.set("attrFilters", JSON.stringify(attrFilters));
       }
       params.set("offset", String(offset));
       params.set("limit", String(BATCH_SECTIONS));
@@ -101,7 +104,7 @@ export default function BrandGroupedView({
       if (withIndex) params.set("withIndex", "1");
       return `/api/brands/grouped?${params.toString()}`;
     },
-    [brandId, sportId, categoryId, attrFilter]
+    [brandId, sportId, categoryId, attrFilters]
   );
 
   // ─── بارگذاری batch بعدی (scroll) ───
@@ -285,7 +288,7 @@ export default function BrandGroupedView({
             {/* فیلتر ویژگیِ مگامنو — مقدار اولیه از URL، تغییر با navigationِ نرم */}
             <AttributeFilterCard
               meta={filterMeta}
-              activeValue={attrFilter?.value || null}
+              activeValue={activeFilterValue}
             />
 
             {/* نویگیشن سری‌ها (پرش به بخش) */}

@@ -29,19 +29,38 @@ function isParentSeriePage(filters) {
   );
 }
 
-// از روی دسته‌ی resolve‌شده و searchParams، فیلترِ ویژگیِ مگامنو را می‌سازد.
-// نامِ پارامتر = category.megaMenuFilterAttribute؛ نوعِ آن (ثابت/متغیر) از روی
-// attributes/variantAttributes تعیین می‌شود تا brandGrouped کوئریِ درست بسازد.
-function resolveAttrFilter(category, sp) {
-  const name = category?.megaMenuFilterAttribute;
-  if (!name) return null;
-  const raw = sp?.[name];
-  const value = Array.isArray(raw) ? raw[0] : raw;
-  if (!value || typeof value !== "string") return null;
-  const isVariant = (category.variantAttributes || []).some(
-    (a) => a.name === name,
+// همه‌ی فیلترهای ویژگیِ موجود در URL را می‌سازد (نه فقط ویژگیِ مگامنو) تا صفحه‌ی
+// برند دقیقاً مثل صفحه‌ی دسته به هر پارامترِ ویژگی پاسخ دهد. هر کلیدِ پارامتر که
+// نامِ یکی از ویژگی‌های همین دسته (ثابت یا متغیر) باشد خوانده می‌شود؛ پارامترهای
+// غیرِویژگی (مثلِ page/utm) نادیده گرفته می‌شوند. مقادیرِ چندگانه (?Color=a&Color=b)
+// پشتیبانی می‌شوند. نوعِ ثابت/متغیر برای ساختِ کوئریِ درست در brandGrouped تعیین می‌شود.
+function resolveAttrFilters(category, sp) {
+  if (!category || !sp) return [];
+  const defs = [
+    ...(category.attributes || []),
+    ...(category.variantAttributes || []),
+  ];
+  const variantNames = new Set(
+    (category.variantAttributes || []).map((a) => a.name),
   );
-  return { name, value, source: isVariant ? "variant" : "fixed" };
+  const seen = new Set();
+  const out = [];
+  for (const def of defs) {
+    if (!def?.name || seen.has(def.name)) continue;
+    const raw = sp[def.name];
+    if (raw == null) continue;
+    const values = (Array.isArray(raw) ? raw : [raw]).filter(
+      (v) => typeof v === "string" && v.trim() !== "",
+    );
+    if (values.length === 0) continue;
+    seen.add(def.name);
+    out.push({
+      name: def.name,
+      values,
+      source: variantNames.has(def.name) ? "variant" : "fixed",
+    });
+  }
+  return out;
 }
 
 // فرادادهٔ فیلتر برای کارتِ سایدبارِ صفحه‌ی برند (برچسب + گزینه‌های تعریف‌شده).
@@ -147,15 +166,16 @@ export default async function SportDynamicSlugPage({ params, searchParams }) {
     const sportId = filters.sport?._id || null;
     const categoryId = filters.category?._id || null;
 
-    // ── فیلترِ ویژگیِ مگامنو: نامِ پارامتر از دسته خوانده می‌شود (megaMenuFilterAttribute)
-    //    و نوعِ آن (ثابت/متغیر) برای ساختِ کوئریِ درست تعیین می‌شود. ?[name]=[value] ──
-    const attrFilter = resolveAttrFilter(filters.category, sp);
+    // ── فیلترهای ویژگی: همه‌ی پارامترهای ویژگیِ موجود در URL خوانده می‌شوند
+    //    (مثلِ ?capacity=10 یا ?Suitable for=خانم‌ها) و نوعِ هرکدام (ثابت/متغیر)
+    //    برای ساختِ کوئریِ درست در brandGrouped تعیین می‌شود. ──
+    const attrFilters = resolveAttrFilters(filters.category, sp);
 
     const initialData = await getBrandGroupedSections({
       brandId,
       sportId,
       categoryId,
-      attrFilter,
+      attrFilters,
       offset: 0,
       limit: INITIAL_SECTIONS,
       withIndex: true,
@@ -171,7 +191,7 @@ export default async function SportDynamicSlugPage({ params, searchParams }) {
         brandId={brandId}
         sportId={sportId}
         categoryId={categoryId}
-        attrFilter={attrFilter}
+        attrFilters={attrFilters}
         filterMeta={buildFilterMeta(filters.category)}
         initialData={initialData}
         page={page}
