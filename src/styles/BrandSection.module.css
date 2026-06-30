@@ -1,100 +1,98 @@
-/* ===== BrandsTicker — بازنویسیِ کامل ===== */
+/* ===== BrandsTicker — بازسازی مطابقِ نسخه‌ی مرجعِ پروداکشن =====
+   تنها تفاوتِ عمدی با مرجع: فاصله به‌جای flex `gap` به‌صورتِ margin روی هر آیتم
+   است تا حلقه دقیقاً seamless شود (gap باعثِ پرشِ نیم‌گپ روی -50% می‌شد). */
 
 .brandSection {
+  display: flex;
+  justify-content: flex-start;
+  align-items: center;
+  position: relative;
+  z-index: 1;
   width: 100%;
-  background-color: #ffffff; /* پس‌زمینه‌ی سفید */
+  height: 20vh;
   overflow: hidden; /* لوگوهای خارج از کادر مخفی می‌شوند */
-  padding: 2.5rem 0;
+  white-space: nowrap;
+  background-color: #ffffff; /* پس‌زمینه‌ی سفید */
 }
 
-/* ترَک: فلکسِ بدونِ wrap که عرضش طبیعی است (دو نسخه) → translateX(-50%) دقیق */
 .brandTrack {
   display: flex;
-  flex-wrap: nowrap;
   align-items: center;
-  width: max-content;
-  animation: ticker-scroll 30s linear infinite;
+  width: max-content; /* عرضِ طبیعی = دقیقاً دو نسخه → translateX(-50%) دقیق */
+  animation: autoScroll 20s linear infinite; /* فقط CSS، linear، infinite */
 }
 
-/* مکثِ انیمیشن روی hover (روی کلِ نوار) */
+/* مکثِ انیمیشن روی hover */
 .brandSection:hover .brandTrack {
   animation-play-state: paused;
 }
 
-/* هر لوگو: ارتفاعِ ثابت، عرضِ خودکار، فاصله‌ی افقیِ یکدست */
 .brandLogo {
-  position: relative;
-  display: inline-flex;
-  align-items: center;
+  width: 170px;
+  height: 170px;
+  margin: 0 25px; /* ۲۵+۲۵ = همان ۵۰px فاصله‌ی مرجع، اما baked در آیتم */
+  display: flex;
   justify-content: center;
-  height: 48px; /* ارتفاعِ ثابت */
-  margin: 0 28px; /* فاصله‌ی یکدست بینِ لوگوها */
-  flex-shrink: 0; /* جلوگیری از فشرده‌شدن */
+  align-items: center;
   cursor: pointer;
+  overflow: hidden;
+  transition: transform 0.3s ease;
+  flex-shrink: 0; /* جلوگیری از فشرده‌شدن */
 }
 
-/* لایه‌ی بازرنگ‌شده: لوگو به‌عنوانِ ماسک روی رنگِ پرایمری → خروجیِ دقیقِ #aa4725 */
-.logoMask {
-  position: absolute;
-  inset: 0;
-  background-color: #aa4725;
-  -webkit-mask-image: var(--logo-url);
-  mask-image: var(--logo-url);
-  -webkit-mask-repeat: no-repeat;
-  mask-repeat: no-repeat;
-  -webkit-mask-position: center;
-  mask-position: center;
-  -webkit-mask-size: contain;
-  mask-size: contain;
-  transition: opacity 0.3s ease;
+.brandLogo:hover {
+  transform: scale(1.1);
 }
 
-/* تصویرِ واقعی: به‌صورتِ پیش‌فرض مخفی، روی hover نمایان (رنگِ اصلیِ برند) */
 .logoImage {
+  width: 100%;
   height: 100%;
-  width: auto;
   object-fit: contain;
-  opacity: 0;
-  transition: opacity 0.3s ease;
+  /* بازرنگ‌سازی دقیقاً مطابقِ مرجع — رنگِ هدف #aa4725 */
+  filter: grayscale(100%) sepia(100%) hue-rotate(-30deg) saturate(500%)
+    brightness(80%);
+  transition: filter 0.3s ease;
 }
 
-/* روی hover: ماسک محو، تصویرِ واقعی نمایان */
-.brandLogo:hover .logoMask {
-  opacity: 0;
-}
-
+/* روی hover فیلتر حذف می‌شود تا رنگِ واقعیِ برند دیده شود */
 .brandLogo:hover .logoImage {
-  opacity: 1;
+  filter: none;
 }
 
 /* حلقه‌ی اسکرول — فقط CSS، بدونِ JS */
-@keyframes ticker-scroll {
-  from {
+@keyframes autoScroll {
+  0% {
     transform: translateX(0);
   }
-  to {
+  100% {
     transform: translateX(-50%); /* دقیقاً ابتدای نسخه‌ی دوم */
   }
 }
 
-/* واکنش‌گرا */
+/* واکنش‌گرا — مطابقِ مرجع (فاصله baked در margin) */
 @media (max-width: 768px) {
   .brandSection {
-    padding: 2rem 0;
+    height: 15vh;
   }
   .brandLogo {
-    height: 42px;
-    margin: 0 22px;
+    width: 150px;
+    height: 150px;
+    margin: 0 15px; /* ≈ gap 30px */
   }
 }
 
 @media (max-width: 480px) {
   .brandSection {
-    padding: 1.5rem 0;
+    height: 10vh;
   }
   .brandLogo {
-    height: 36px;
-    margin: 0 16px;
+    width: 100px;
+    height: 100px;
+    margin: 0 10px; /* ≈ gap 20px */
+  }
+  .logoImage {
+    width: 90%;
+    height: 90%;
   }
 }
 
