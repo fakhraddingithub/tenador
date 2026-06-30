@@ -170,7 +170,16 @@
       "PowerShell(npx eslint \"src/components/features/brandsTicker/BrandsTicker.js\" \"src/app/\\(Site\\)/\\(sports\\)/[sportSlug]/page.jsx\" \"services/brandTicker.service.js\")",
       "PowerShell(npx eslint \"src/components/features/brandsTicker/BrandsTicker.js\")",
       "Bash(echo \"LINT EXIT: $?\")",
-      "PowerShell(npx eslint \"src/components/features/brandsTicker/BrandsTicker.js\" \"src/app/\\(Site\\)/\\(sports\\)/[sportSlug]/page.jsx\")"
+      "PowerShell(npx eslint \"src/components/features/brandsTicker/BrandsTicker.js\" \"src/app/\\(Site\\)/\\(sports\\)/[sportSlug]/page.jsx\")",
+      "Read(//c/Program Files/Google/Chrome/Application/**)",
+      "Read(//c/Program Files \\(x86\\)/Microsoft/Edge/Application/**)",
+      "Bash(mkdir -p /c/Users/saleh/AppData/Local/Temp/claude/I--develope-JS-learn-leaning-project-porjects-tenador/06f55c3e-f9d9-42b9-9d7d-0fa0599bf340/scratchpad)",
+      "Bash(curl -s -L \"https://github.githubassets.com/images/modules/logos_page/GitHub-Mark.png\" -o trans.png -w \"trans.png: %{http_code} %{size_download}b %{content_type}\\\\n\")",
+      "Bash(curl -s -L \"https://upload.wikimedia.org/wikipedia/commons/3/3a/Cat03.jpg\" -o opaque.jpg -w \"opaque.jpg: %{http_code} %{size_download}b %{content_type}\\\\n\")",
+      "Bash(file trans.png opaque.jpg)",
+      "Bash('/c/Program Files/Google/Chrome/Application/chrome.exe' --headless=new --disable-gpu --hide-scrollbars --force-device-scale-factor=1 --window-size=720,360 --screenshot=/c/Users/saleh/AppData/Local/Temp/claude/I--develope-JS-learn-leaning-project-porjects-tenador/06f55c3e-f9d9-42b9-9d7d-0fa0599bf340/scratchpad/masktest.png /c/Users/saleh/AppData/Local/Temp/claude/I--develope-JS-learn-leaning-project-porjects-tenador/06f55c3e-f9d9-42b9-9d7d-0fa0599bf340/scratchpad/masktest.html)",
+      "Bash('/c/Program Files/Google/Chrome/Application/chrome.exe' --headless=new --disable-gpu --hide-scrollbars --force-device-scale-factor=1 --window-size=1920,180 --screenshot=/c/Users/saleh/AppData/Local/Temp/claude/I--develope-JS-learn-leaning-project-porjects-tenador/06f55c3e-f9d9-42b9-9d7d-0fa0599bf340/scratchpad/b2_fix.png /c/Users/saleh/AppData/Local/Temp/claude/I--develope-JS-learn-leaning-project-porjects-tenador/06f55c3e-f9d9-42b9-9d7d-0fa0599bf340/scratchpad/b2_fix.html)",
+      "Bash('/c/Program Files/Google/Chrome/Application/chrome.exe' --headless=new --disable-gpu --hide-scrollbars --force-device-scale-factor=1 --window-size=1280,180 --virtual-time-budget=2000 --screenshot=/c/Users/saleh/AppData/Local/Temp/claude/I--develope-JS-learn-leaning-project-porjects-tenador/06f55c3e-f9d9-42b9-9d7d-0fa0599bf340/scratchpad/final.png /c/Users/saleh/AppData/Local/Temp/claude/I--develope-JS-learn-leaning-project-porjects-tenador/06f55c3e-f9d9-42b9-9d7d-0fa0599bf340/scratchpad/final.html)"
     ]
   }
 }

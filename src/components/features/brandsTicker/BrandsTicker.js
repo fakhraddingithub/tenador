@@ -1,40 +1,55 @@
 "use client";
 
 /**
- * نوار حلقه‌ایِ برندها (seamless ticker) — بازسازی بر اساسِ نسخه‌ی مرجعِ پروداکشن.
+ * نوار حلقه‌ایِ برندها (seamless ticker).
  *
- * ساختار دقیقاً مطابقِ مرجع:
- *   section.brandSection > div.brandTrack > a.brandLogo > img.logoImage
+ * Bug 1 — رنگِ دقیق: به‌جای filter (که با hue-rotate تقریبی و وابسته به رنگِ
+ *   مبدأ بود) از تکنیکِ mask استفاده می‌شود: لوگو به‌عنوانِ ماسک روی یک لایه با
+ *   background-color:#aa4725 → خروجی همیشه دقیقاً #aa4725 است.
+ *   ⚠️ نکته‌ی اثبات‌شده: mask بر اساسِ کانالِ آلفا کار می‌کند؛ پس لوگوهایی که
+ *   پس‌زمینه‌ی شفاف دارند (PNG/SVG ترنسپرنت) به سیلوئتِ دقیق تبدیل می‌شوند، اما
+ *   فایل‌هایی که پس‌زمینه‌ی توپُر دارند به مستطیلِ توپُر می‌رسند (ذاتِ ماسک).
+ *   هاور → لایه‌ی ماسک محو و تصویرِ واقعیِ برند (رنگِ اصلی) دیده می‌شود.
  *
- * بازرنگ‌سازی: فقط CSS `filter` روی <img> (نه mask). با mask لوگوهای کاملاً
- * مات (PNG/JPG با پس‌زمینه) به مستطیلِ توپُر تبدیل می‌شدند؛ filter پیکسل‌های
- * واقعیِ تصویر را حفظ می‌کند و فقط آن‌ها را به رنگِ پرایمری (#aa4725) می‌بَرَد.
+ * Bug 2 — خالی‌شدنِ نوار: با تعدادِ کمِ برند (مثلاً صفحه‌ی ورزش)، دو نسخه از
+ *   آرایه کمتر از عرضِ ویوپورت می‌شد و translateX(-50%) فضای خالی نشان می‌داد.
+ *   راه‌حل: آرایه آن‌قدر تکرار می‌شود که «یک ست» از پهن‌ترین ویوپورت بزرگ‌تر شود،
+ *   سپس همان ست دوبار رندر می‌شود ([...set, ...set]) → -۵۰٪ همیشه پر است.
  *
- * حلقه: آرایه دوبار رندر می‌شود ([...brands, ...brands]) و کلِ ترَک با keyframe
- * از translateX(0) تا translateX(-50%) حرکت می‌کند (linear, infinite، فقط CSS).
- * فاصله‌ی بینِ لوگوها به‌جای flex-gap به‌صورتِ margin روی هر آیتم گذاشته شده تا
- * عرضِ ترَک دقیقاً دو برابرِ یک نسخه شود و -۵۰٪ بدونِ پرشِ نیم‌گپ روی درز بنشیند.
- *
- * مسیرِ کلیک:
- *   • sportSlug داده شود → /[sportSlug]/[brandSlug]
- *   • sportSlug داده نشود → /[brandSlug]
+ * مسیرِ کلیک: sportSlug → /[sportSlug]/[brandSlug] ، وگرنه /[brandSlug].
  */
 
 import React from "react";
 import Link from "next/link";
 import styles from "@/styles/BrandSection.module.css";
 
+// حداقل تعدادِ لوگو در «یک ست» تا یک ست از پهن‌ترین ویوپورت (≈۴K) عریض‌تر شود.
+// هر لوگوی دسکتاپ ≈ ۲۲۰px (۱۷۰ + ۵۰ مارجین) → ۲۰×۲۲۰ ≈ ۴۴۰۰px.
+const MIN_PER_SET = 20;
+
 const BrandsTicker = ({ brands = [], sportSlug = "" }) => {
   if (!Array.isArray(brands) || brands.length === 0) return null;
 
-  // دو نسخه برای پیوستگیِ بصری؛ نسخه‌ی دوم (clone) از دسترس‌پذیری خارج می‌شود.
-  const loop = [...brands, ...brands];
+  // «یک ست» را با تکرارِ آرایه‌ی پایه تا حداقل MIN_PER_SET می‌سازیم،
+  // سپس برای حلقه‌ی seamless آن را دو بار می‌گذاریم.
+  let set = brands;
+  if (brands.length < MIN_PER_SET) {
+    const times = Math.ceil(MIN_PER_SET / brands.length);
+    set = Array.from({ length: times }, () => brands).flat();
+  }
+  const loop = [...set, ...set];
+
+  // فقط اولین رخدادِ هر برند در دسترسِ صفحه‌کلید/اسکرین‌ریدر است؛ تکرارها و
+  // نسخه‌ی دوم decorative‌اند.
+  const seen = new Set();
 
   return (
     <section className={styles.brandSection} aria-label="برندها">
       <div className={styles.brandTrack}>
         {loop.map((brand, index) => {
-          const isClone = index >= brands.length;
+          const decorative = seen.has(brand.slug);
+          if (!decorative) seen.add(brand.slug);
+
           const href = sportSlug
             ? `/${sportSlug}/${brand.slug}`
             : `/${brand.slug}`;
@@ -45,9 +60,13 @@ const BrandsTicker = ({ brands = [], sportSlug = "" }) => {
               href={href}
               className={styles.brandLogo}
               title={brand.name}
-              aria-hidden={isClone ? true : undefined}
-              tabIndex={isClone ? -1 : undefined}
+              aria-hidden={decorative ? true : undefined}
+              tabIndex={decorative ? -1 : undefined}
+              style={{ "--logo-url": `url("${brand.logo}")` }}
             >
+              {/* لایه‌ی بازرنگ‌شده با ماسک — رنگِ ثابت و دقیقِ #aa4725 */}
+              <span className={styles.logoMask} aria-hidden="true" />
+              {/* تصویرِ واقعیِ برند — فقط روی هاور نمایان می‌شود (رنگِ اصلی) */}
               <img
                 src={brand.logo}
                 alt={brand.name}

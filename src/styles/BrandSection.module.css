@@ -1,6 +1,7 @@
-/* ===== BrandsTicker — بازسازی مطابقِ نسخه‌ی مرجعِ پروداکشن =====
-   تنها تفاوتِ عمدی با مرجع: فاصله به‌جای flex `gap` به‌صورتِ margin روی هر آیتم
-   است تا حلقه دقیقاً seamless شود (gap باعثِ پرشِ نیم‌گپ روی -50% می‌شد). */
+/* ===== BrandsTicker =====
+   Bug 1: بازرنگ‌سازی با mask (رنگِ دقیقِ #aa4725) به‌جای filterِ تقریبی.
+   Bug 2: حلقه با تکرارِ کافیِ آرایه در کامپوننت پر می‌ماند؛ اینجا فاصله به‌صورتِ
+          margin روی هر آیتم است تا عرضِ ترَک دقیقاً ۲× یک ست و -۵۰٪ بدونِ پرش باشد. */
 
 .brandSection {
   display: flex;
@@ -22,41 +23,60 @@
   animation: autoScroll 20s linear infinite; /* فقط CSS، linear، infinite */
 }
 
-/* مکثِ انیمیشن روی hover */
 .brandSection:hover .brandTrack {
-  animation-play-state: paused;
+  animation-play-state: paused; /* مکث روی هاور */
 }
 
 .brandLogo {
+  position: relative; /* مرجعِ لایه‌ی ماسکِ absolute */
   width: 170px;
   height: 170px;
-  margin: 0 25px; /* ۲۵+۲۵ = همان ۵۰px فاصله‌ی مرجع، اما baked در آیتم */
+  margin: 0 25px; /* فاصله baked در آیتم (۲۵+۲۵=۵۰) → حلقه‌ی دقیق */
   display: flex;
   justify-content: center;
   align-items: center;
   cursor: pointer;
   overflow: hidden;
   transition: transform 0.3s ease;
-  flex-shrink: 0; /* جلوگیری از فشرده‌شدن */
+  flex-shrink: 0;
 }
 
 .brandLogo:hover {
   transform: scale(1.1);
 }
 
+/* لایه‌ی بازرنگ‌شده: لوگو به‌عنوانِ ماسک روی رنگِ پرایمری → خروجیِ دقیقِ #aa4725 */
+.logoMask {
+  position: absolute;
+  inset: 0;
+  background-color: #aa4725;
+  -webkit-mask-image: var(--logo-url);
+  mask-image: var(--logo-url);
+  -webkit-mask-size: contain;
+  mask-size: contain;
+  -webkit-mask-repeat: no-repeat;
+  mask-repeat: no-repeat;
+  -webkit-mask-position: center;
+  mask-position: center;
+  opacity: 1;
+  transition: opacity 0.3s ease;
+}
+
+/* تصویرِ واقعی: پیش‌فرض مخفی، روی هاور نمایان (رنگِ اصلیِ برند) */
 .logoImage {
   width: 100%;
   height: 100%;
   object-fit: contain;
-  /* بازرنگ‌سازی دقیقاً مطابقِ مرجع — رنگِ هدف #aa4725 */
-  filter: grayscale(100%) sepia(100%) hue-rotate(-30deg) saturate(500%)
-    brightness(80%);
-  transition: filter 0.3s ease;
+  opacity: 0;
+  transition: opacity 0.3s ease;
 }
 
-/* روی hover فیلتر حذف می‌شود تا رنگِ واقعیِ برند دیده شود */
+.brandLogo:hover .logoMask {
+  opacity: 0;
+}
+
 .brandLogo:hover .logoImage {
-  filter: none;
+  opacity: 1;
 }
 
 /* حلقه‌ی اسکرول — فقط CSS، بدونِ JS */
@@ -69,7 +89,7 @@
   }
 }
 
-/* واکنش‌گرا — مطابقِ مرجع (فاصله baked در margin) */
+/* واکنش‌گرا */
 @media (max-width: 768px) {
   .brandSection {
     height: 15vh;
@@ -77,7 +97,7 @@
   .brandLogo {
     width: 150px;
     height: 150px;
-    margin: 0 15px; /* ≈ gap 30px */
+    margin: 0 15px;
   }
 }
 
@@ -88,11 +108,7 @@
   .brandLogo {
     width: 100px;
     height: 100px;
-    margin: 0 10px; /* ≈ gap 20px */
-  }
-  .logoImage {
-    width: 90%;
-    height: 90%;
+    margin: 0 10px;
   }
 }
 
