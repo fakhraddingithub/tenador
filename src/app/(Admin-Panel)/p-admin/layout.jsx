@@ -3,6 +3,7 @@ import { ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import AdminLayout from "@/components/admin/Layout"
 import SiteNavbar from "@/components/features/navbar/SiteNavbar"
+import ScrollToTop from "@/components/common/ScrollToTop"
 
 export const metadata = {
   title: 'فروشگاه ورزشی تنادور | پنل مدیریت',
@@ -23,6 +24,7 @@ export default function RootLayout({ children }) {
         className="min-h-screen bg-[var(--color-background)] text-[var(--color-text)] antialiased selection:bg-[var(--color-primary)] selection:text-white"
         style={{ fontFamily: 'var(--font-sans)' }}
       >
+        <ScrollToTop />
         <main className="min-h-screen overflow-x-hidden">
           {/* نوبار اصلی سایت — بالای نوبار پنل مدیریت (دو نوبار روی‌هم چیده می‌شوند) */}
           <SiteNavbar />

@@ -8,6 +8,7 @@ import { ChevronLeft } from 'lucide-react'
 import SiteNavbar from '@/components/features/navbar/SiteNavbar'
 import Sidebar from '@/components/modules/dashboard/Sidebar'
 import CartCleanup from '@/components/features/cart/CartCleanup'
+import ScrollToTop from '@/components/common/ScrollToTop'
 
 export default function RootLayout({ children }) {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false)
@@ -23,6 +24,7 @@ export default function RootLayout({ children }) {
         />
       </head>
       <body>
+        <ScrollToTop />
         <CartCleanup />
 
         <div className="min-h-screen bg-[#f8fafc] text-slate-800 rtl font-sans">
