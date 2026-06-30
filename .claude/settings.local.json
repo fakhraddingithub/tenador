@@ -169,7 +169,8 @@
       "PowerShell(npx eslint \"src/components/features/brandsTicker/BrandsTicker.js\" \"src/components/templates/sports/ProductCardSkeleton.jsx\" \"src/components/templates/sports/BrandGroupedView.jsx\" \"src/app/\\(Site\\)/page.js\" \"src/app/\\(Site\\)/\\(sports\\)/[sportSlug]/page.jsx\" \"services/brandTicker.service.js\")",
       "PowerShell(npx eslint \"src/components/features/brandsTicker/BrandsTicker.js\" \"src/app/\\(Site\\)/\\(sports\\)/[sportSlug]/page.jsx\" \"services/brandTicker.service.js\")",
       "PowerShell(npx eslint \"src/components/features/brandsTicker/BrandsTicker.js\")",
-      "Bash(echo \"LINT EXIT: $?\")"
+      "Bash(echo \"LINT EXIT: $?\")",
+      "PowerShell(npx eslint \"src/components/features/brandsTicker/BrandsTicker.js\" \"src/app/\\(Site\\)/\\(sports\\)/[sportSlug]/page.jsx\")"
     ]
   }
 }

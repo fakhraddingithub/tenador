@@ -92,7 +92,7 @@ export default async function DynamicSportPage({ params }) {
       />
       {/* نوار برندهای همین ورزش — در پایینِ صفحه */}
       {tickerBrands.length > 0 && (
-        <BrandsTicker brands={tickerBrands} basePath={`/${sportSlug}`} />
+        <BrandsTicker brands={tickerBrands} sportSlug={sportSlug} />
       )}
     </>
   );

@@ -1,106 +1,106 @@
+/* ===== BrandsTicker — بازنویسیِ کامل ===== */
+
 .brandSection {
-    display: flex;
-    justify-content: flex-start; /* Align items for scrolling */
-    align-items: center;
-    position: relative;
-    z-index: 1;
-    width: 100%;
-    height: 20vh;
-    overflow: hidden; /* Hide overflowing logos */
-    white-space: nowrap; /* Prevent wrapping */
-    /* پس‌زمینه‌ی سفید (مثلِ قبل) */
-    background-color: #ffffff;
-  }
+  width: 100%;
+  background-color: #ffffff; /* پس‌زمینه‌ی سفید */
+  overflow: hidden; /* لوگوهای خارج از کادر مخفی می‌شوند */
+  padding: 2.5rem 0;
+}
 
-  .brandTrack {
-    display: flex;
-    width: max-content; /* عرضِ کل = دقیقاً دو نسخه → translateX(-50%) = یک نسخه‌ی کامل */
-    animation: autoScroll 20s linear infinite; /* CSS-only، linear، infinite */
-  }
+/* ترَک: فلکسِ بدونِ wrap که عرضش طبیعی است (دو نسخه) → translateX(-50%) دقیق */
+.brandTrack {
+  display: flex;
+  flex-wrap: nowrap;
+  align-items: center;
+  width: max-content;
+  animation: ticker-scroll 30s linear infinite;
+}
 
-  .brandSection:hover .brandTrack {
-    animation-play-state: paused; /* Pause animation on hover */
-  }
+/* مکثِ انیمیشن روی hover (روی کلِ نوار) */
+.brandSection:hover .brandTrack {
+  animation-play-state: paused;
+}
 
+/* هر لوگو: ارتفاعِ ثابت، عرضِ خودکار، فاصله‌ی افقیِ یکدست */
+.brandLogo {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 48px; /* ارتفاعِ ثابت */
+  margin: 0 28px; /* فاصله‌ی یکدست بینِ لوگوها */
+  flex-shrink: 0; /* جلوگیری از فشرده‌شدن */
+  cursor: pointer;
+}
+
+/* لایه‌ی بازرنگ‌شده: لوگو به‌عنوانِ ماسک روی رنگِ پرایمری → خروجیِ دقیقِ #aa4725 */
+.logoMask {
+  position: absolute;
+  inset: 0;
+  background-color: #aa4725;
+  -webkit-mask-image: var(--logo-url);
+  mask-image: var(--logo-url);
+  -webkit-mask-repeat: no-repeat;
+  mask-repeat: no-repeat;
+  -webkit-mask-position: center;
+  mask-position: center;
+  -webkit-mask-size: contain;
+  mask-size: contain;
+  transition: opacity 0.3s ease;
+}
+
+/* تصویرِ واقعی: به‌صورتِ پیش‌فرض مخفی، روی hover نمایان (رنگِ اصلیِ برند) */
+.logoImage {
+  height: 100%;
+  width: auto;
+  object-fit: contain;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+
+/* روی hover: ماسک محو، تصویرِ واقعی نمایان */
+.brandLogo:hover .logoMask {
+  opacity: 0;
+}
+
+.brandLogo:hover .logoImage {
+  opacity: 1;
+}
+
+/* حلقه‌ی اسکرول — فقط CSS، بدونِ JS */
+@keyframes ticker-scroll {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(-50%); /* دقیقاً ابتدای نسخه‌ی دوم */
+  }
+}
+
+/* واکنش‌گرا */
+@media (max-width: 768px) {
+  .brandSection {
+    padding: 2rem 0;
+  }
   .brandLogo {
-    width: 170px; /* اندازه‌ی اصلی (قبل از تغییرات) — ثابت و قطعی برای حلقه‌ی دقیق */
-    height: 170px;
-    margin: 0 25px; /* فاصله per-item — حفظِ همان spacing (۲۵+۲۵=۵۰) */
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    cursor: pointer;
-
-    overflow: hidden; /* Ensure the image fits inside the circle */
-    transition: transform 0.3s ease; /* Smooth transform on hover */
-    flex-shrink: 0; /* Prevent logos from shrinking */
+    height: 42px;
+    margin: 0 22px;
   }
+}
 
-  .brandLogo:hover {
-    transform: scale(1.1); /* Slightly enlarge on hover */
+@media (max-width: 480px) {
+  .brandSection {
+    padding: 1.5rem 0;
   }
-
-  .logoImage {
-    width: 100%; /* Keep the image proportional */
-    height: 100%;
-    object-fit: contain; /* Ensure the image fits nicely inside */
-    /* بازرنگ‌سازی به رنگِ اصلیِ سایت (#aa4725). ابتدا brightness(0) همه‌ی پیکسل‌ها
-       (از جمله لوگوهای کاملاً مشکی) را به مشکیِ نرمال تبدیل می‌کند، سپس زنجیره‌ی
-       invert/sepia/saturate/hue-rotate آن را به نارنجیِ برند می‌برد. بدونِ
-       brightness(0)، لوگوهای ذاتاً مشکی مشکی می‌ماندند (باگِ صفحه‌ی ورزش). */
-    filter: brightness(0) saturate(100%) invert(34%) sepia(58%) saturate(1093%)
-      hue-rotate(338deg) brightness(94%) contrast(91%);
-    transition: filter 0.3s ease; /* Smooth transition for hover effect */
+  .brandLogo {
+    height: 36px;
+    margin: 0 16px;
   }
+}
 
-  /* روی هاور فیلتر حذف می‌شود تا رنگِ واقعیِ برند دیده شود */
-  .brandLogo:hover .logoImage {
-    filter: none;
+/* احترام به prefers-reduced-motion */
+@media (prefers-reduced-motion: reduce) {
+  .brandTrack {
+    animation: none;
   }
-
-
-  /* Keyframes for scrolling animation — pure CSS, no JS */
-  @keyframes autoScroll {
-    0% {
-      transform: translateX(0); /* Start position */
-    }
-    100% {
-      transform: translateX(-50%); /* دقیقاً ابتدای نسخه‌ی دوم */
-    }
-  }
-
-  @media (max-width: 768px) {
-    .brandSection {
-      height: 15vh;
-    }
-
-    .brandLogo {
-      width: 150px; /* Smaller logos for tablets */
-      height: 150px;
-      margin: 0 15px; /* gap 30px */
-    }
-  }
-
-  @media (max-width: 480px) {
-    .brandSection {
-      height: 10vh;
-    }
-
-    .brandLogo {
-      width: 100px; /* Smallest size for mobile */
-      height: 100px;
-      margin: 0 10px; /* gap 20px */
-    }
-
-    .logoImage {
-      width: 90%; /* Slightly smaller image inside container */
-      height: 90%;
-    }
-  }
-
-  /* احترام به prefers-reduced-motion */
-  @media (prefers-reduced-motion: reduce) {
-    .brandTrack {
-      animation: none;
-    }
-  }
+}
