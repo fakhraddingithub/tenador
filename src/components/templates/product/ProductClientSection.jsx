@@ -22,8 +22,9 @@ const ProductClientSection = ({ product }) => {
 
   return (
     <div className="grid gap-6 sm:gap-8 lg:grid-cols-[1fr_1.5fr] lg:gap-12 xl:gap-16">
+      
       {/* Top on Mobile / Left on Desktop - Gallery */}
-      <div className="w-full">
+      <div className="w-full min-w-0">
         <div className="mx-auto max-w-md lg:max-w-none">
           <ProductGallery
             images={galleryImages}
@@ -34,7 +35,7 @@ const ProductClientSection = ({ product }) => {
       </div>
 
       {/* Bottom on Mobile / Right on Desktop - Info */}
-      <div className="w-full">
+      <div className="w-full min-w-0">
         <ProductInfo
           product={product}
           selectedVariant={selectedVariant}
@@ -42,6 +43,7 @@ const ProductClientSection = ({ product }) => {
           onSelectionChange={setSelection}
         />
       </div>
+      
     </div>
   );
 };
