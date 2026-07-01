@@ -21,7 +21,7 @@ const ProductGallery = ({ images = [], logo, verified = false, productName = "" 
   if (!images || images.length === 0) return null;
 
   return (
-    <div className="flex flex-col gap-4 w-full border border-gray-100 shadow-sm" dir="rtl">
+    <div className="flex flex-col gap-4 w-full min-w-0 border border-gray-100 shadow-sm" dir="rtl">
       
       {/* Main Image */}
       <div className="relative group w-full">
@@ -77,7 +77,7 @@ const ProductGallery = ({ images = [], logo, verified = false, productName = "" 
       </div>
 
       {/* Thumbnails */}
-      <div className="flex flex-nowrap gap-3 mt-2 overflow-x-auto pb-1">
+      <div className="flex flex-nowrap gap-3 mt-2 w-full overflow-x-auto p-1 pb-3">
         {images.map((image, index) => {
           const isActive = index === activeIndex;
           return (
