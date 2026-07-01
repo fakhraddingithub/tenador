@@ -77,7 +77,7 @@ const ProductGallery = ({ images = [], logo, verified = false, productName = "" 
       </div>
 
       {/* Thumbnails */}
-      <div className="flex flex-wrap gap-3 mt-2">
+      <div className="flex flex-nowrap gap-3 mt-2 overflow-x-auto pb-1">
         {images.map((image, index) => {
           const isActive = index === activeIndex;
           return (

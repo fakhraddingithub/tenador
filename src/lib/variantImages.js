@@ -186,6 +186,15 @@ export function resolveVariantImages(variant, product) {
  */
 export function buildGalleryImages(product, selection = {}) {
   if (!product) return [];
+
+  // اگر مقدارِ انتخاب‌شده بیش از یک تصویر داشته باشد، گالری فقط از همان تصاویرِ اختصاصی ساخته می‌شود.
+  const exclusiveImages = [];
+  for (const [attr, value] of Object.entries(selection || {})) {
+    const imgs = valueImages(product, attr, value);
+    if (imgs.length > 1) exclusiveImages.push(...imgs);
+  }
+  if (exclusiveImages.length) return dedupe(exclusiveImages);
+
   const variants = product.variants || [];
   const metaImages = allValueImages(product);
   const variantImages = variants.flatMap((v) => v.images || []).filter(Boolean);
