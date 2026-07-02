@@ -7,6 +7,7 @@ import Input from '@/components/admin/Input';
 import Textarea from '@/components/admin/Textarea';
 import Select from '@/components/admin/Select';
 import ImageUpload from '@/components/admin/ImageUpload';
+import VariantValueImageUpload from '@/components/admin/VariantValueImageUpload';
 import { showToast } from '@/lib/toast';
 import { showError } from '@/lib/swal';
 import { makeComboKey } from '@/lib/variantKey';
@@ -848,9 +849,7 @@ export default function ProductCreateForm({ initialData = {} }) {
                         {values.map((val) => (
                           <div key={val} className="border rounded-lg p-3 bg-white">
                             <p className="text-xs font-semibold text-gray-600 mb-2">{val}</p>
-                            <ImageUpload
-                              label=""
-                              multiple
+                            <VariantValueImageUpload
                               value={variantMeta[attr.name]?.[val]?.images || []}
                               onChange={(imgs) => setValueImages(attr.name, val, imgs)}
                               folder="product/variant-values"
