@@ -13,6 +13,7 @@ import { getCachedNavbar } from "@/lib/navbarService";
 import { UserProvider } from "@/components/features/auth/UserContext";
 import CartCleanup from "@/components/features/cart/CartCleanup";
 import ScrollToTop from "@/components/common/ScrollToTop";
+import NavigationLoadingProvider from "@/components/common/NavigationLoadingProvider";
 
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || "https://tenador.com";
 
@@ -148,16 +149,18 @@ export default async function RootLayout({ children }) {
 
       <body className="bg-[var(--color-background)] text-[var(--color-text)]">
         <UserProvider>
-          <ScrollToTop />
-          <CartCleanup />
+          <NavigationLoadingProvider>
+            <ScrollToTop />
+            <CartCleanup />
 
-          <Navbar navData={navData} />
+            <Navbar navData={navData} />
 
-          <WhatsAppSupport />
+            <WhatsAppSupport />
 
-          <main className="min-h-screen">{children}</main>
+            <main className="min-h-screen">{children}</main>
 
-          <Footer />
+            <Footer />
+          </NavigationLoadingProvider>
         </UserProvider>
 
         <ToastContainer

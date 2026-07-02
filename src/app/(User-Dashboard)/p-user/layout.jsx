@@ -9,6 +9,7 @@ import SiteNavbar from '@/components/features/navbar/SiteNavbar'
 import Sidebar from '@/components/modules/dashboard/Sidebar'
 import CartCleanup from '@/components/features/cart/CartCleanup'
 import ScrollToTop from '@/components/common/ScrollToTop'
+import NavigationLoadingProvider from '@/components/common/NavigationLoadingProvider'
 
 export default function RootLayout({ children }) {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false)
@@ -24,10 +25,11 @@ export default function RootLayout({ children }) {
         />
       </head>
       <body>
-        <ScrollToTop />
-        <CartCleanup />
+        <NavigationLoadingProvider>
+          <ScrollToTop />
+          <CartCleanup />
 
-        <div className="min-h-screen bg-[#f8fafc] text-slate-800 rtl font-sans">
+          <div className="min-h-screen bg-[#f8fafc] text-slate-800 rtl font-sans">
 
           {/* منوی بالایی — نوبار اصلی سایت (جایگزین نوبار قدیمی داشبورد) */}
           <SiteNavbar />
@@ -83,7 +85,8 @@ export default function RootLayout({ children }) {
               style={{ transform: isSidebarOpen ? 'rotate(180deg)' : 'none' }}
             />
           </motion.button>
-        </div>
+          </div>
+        </NavigationLoadingProvider>
       </body>
     </html>
   )

@@ -1,18 +1,26 @@
-/* RouteLoader — صفحه‌ی بارگذاریِ تمام‌صفحه با لوگوی سایت + انیمیشنِ توپِ جهنده.
-   رنگ‌ها مطابقِ تمِ سایت: پرایمری #aa4725، ثانویه #ffbf00، پس‌زمینه #0d0d0d. */
-
 .overlay {
-  position: fixed; /* همیشه نسبت به ویوپورت مرکز است → هرگز چسبیده به فوتر/پایین نیست */
+  position: fixed;
   inset: 0;
   z-index: 9999;
   display: flex;
-  flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 48px;
   width: 100%;
   min-height: 100vh;
-  background: #ffffff; /* پس‌زمینه‌ی سفید */
+  background: rgb(255 255 255 / 12%);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+}
+
+.panel {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 48px;
+  padding: 40px 48px;
+  border-radius: 24px;
+  background: #ffffff;
+  box-shadow: 0 24px 70px rgb(15 23 42 / 14%);
 }
 
 .logo {
@@ -21,7 +29,6 @@
   object-fit: contain;
 }
 
-/* انیمیشنِ ارائه‌شده در اسپک — رنگ‌ها از قبل با تمِ سایت می‌خوانند */
 .loader {
   height: 60px;
   aspect-ratio: 2;
