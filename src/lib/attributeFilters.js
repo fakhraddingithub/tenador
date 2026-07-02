@@ -19,6 +19,7 @@ import {
   getSwatchByName,
   productColorMatchesSwatch,
 } from "./colorMatch";
+import { normalizeForCompare } from "./persianNormalize";
 
 // آیا یک مقدار، یک عددِ خالص است؟ (مثل "98"، "305"، "21.5")
 function isNumericValue(v) {
@@ -147,8 +148,14 @@ export function productMatchesAttrFilters(product, attrFilters = {}, attrMeta = 
       const pvs = String(pv ?? "").trim();
       if (!sel.some((v) => String(v).trim() === pvs)) return false;
     } else {
-      const pvl = String(pv ?? "").toLowerCase();
-      if (!sel.some((v) => pvl.includes(String(v).toLowerCase()))) return false;
+      const pvl = normalizeForCompare(String(pv ?? "")).toLowerCase();
+      if (
+        !sel.some((v) =>
+          pvl.includes(normalizeForCompare(String(v)).toLowerCase()),
+        )
+      ) {
+        return false;
+      }
     }
   }
   return true;

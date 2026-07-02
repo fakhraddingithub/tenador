@@ -3,6 +3,7 @@ import connectToDB from "base/configs/db";
 import Sport from "base/models/Sport";
 import Product from "base/models/Product";
 import Category from "base/models/Category";
+import { normalizeForCompare } from "./persianNormalize";
 // Variant فقط برای ثبتِ مدل (side-effect) لازم است تا lookup روی کالکشنِ variants کار کند
 import "base/models/Variant";
 
@@ -182,6 +183,11 @@ async function buildNavbarData() {
   const valuesByCatBrand = new Map(); // `${sport}|${category}` → Map(brandId → Set(values))
   const valuesByCat = new Map(); // categoryId → Set(values)
   function expandCompositeValues(values, knownOptions) {
+    const normalizedOptionsMap = new Map();
+    for (const opt of knownOptions) {
+      normalizedOptionsMap.set(normalizeForCompare(opt), opt);
+    }
+
     const out = [];
     for (const raw of values) {
       const v = String(raw);
@@ -190,7 +196,10 @@ async function buildNavbarData() {
           .split("،")
           .map((p) => p.trim())
           .filter(Boolean);
-        if (parts.length >= 2 && parts.every((p) => knownOptions.has(p))) {
+        if (
+          parts.length >= 2 &&
+          parts.every((p) => normalizedOptionsMap.has(normalizeForCompare(p)))
+        ) {
           out.push(...parts);
           continue;
         }

@@ -25,6 +25,7 @@ import Serie from "base/models/Serie";
 import Product from "base/models/Product";
 import Variant from "base/models/Variant";
 import { getCachedRate } from "@/lib/Exchangerate";
+import { buildLenientPersianRegexSource } from "@/lib/persianNormalize";
 import { attachListingPrices } from "base/services/priceEngine";
 
 const OTHER_KEY = "__other__";
@@ -121,7 +122,9 @@ function attrValueMatchers(v) {
     if (!Number.isNaN(n)) out.push(n);
     return out;
   }
-  return [new RegExp(escapeRegex(s), "i")];
+  const escaped = escapeRegex(s);
+  const lenientSource = buildLenientPersianRegexSource(escaped);
+  return [new RegExp(lenientSource, "i")];
 }
 
 /**
