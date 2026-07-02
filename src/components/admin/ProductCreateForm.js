@@ -738,6 +738,8 @@ export default function ProductCreateForm({ initialData = {} }) {
                         <input
                           key={unit}
                           type="text"
+                          dir="ltr"
+                          style={{ unicodeBidi: "isolate" }}
                           className="border rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-400"
                           placeholder={`${attr.label} — ${unit}${ui === 0 ? ' (اصلی)' : ''}`}
                           value={variantInputBuffer[attr.name]?.[unit] || ''}
@@ -768,6 +770,8 @@ export default function ProductCreateForm({ initialData = {} }) {
                   <div className="flex gap-2 mb-3">
                     <input
                       type="text"
+                      dir="ltr"
+                      style={{ unicodeBidi: "isolate" }}
                       className="flex-1 border rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-400"
                       placeholder={`مقدار جدید برای ${attr.label}…`}
                       value={variantInputBuffer[attr.name] || ''}
@@ -806,7 +810,9 @@ export default function ProductCreateForm({ initialData = {} }) {
                         key={val}
                         className="inline-flex items-center gap-1 px-3 py-1 bg-purple-100 text-purple-800 rounded-full text-sm font-medium"
                       >
-                        {display}
+                        <span dir="ltr" style={{ unicodeBidi: "isolate" }}>
+                          {display}
+                        </span>
                         <button
                           type="button"
                           onClick={() => removeVariantValue(attr.name, val)}
