@@ -13,14 +13,21 @@
   height: 20vh;
   overflow: hidden; /* لوگوهای خارج از کادر مخفی می‌شوند */
   white-space: nowrap;
+  direction: ltr;
   background-color: #ffffff; /* پس‌زمینه‌ی سفید */
 }
 
 .brandTrack {
   display: flex;
   align-items: center;
+  direction: ltr;
+  will-change: transform;
   width: max-content; /* عرضِ طبیعی = دقیقاً دو نسخه → translateX(-50%) دقیق */
   animation: autoScroll 20s linear infinite; /* فقط CSS، linear، infinite */
+}
+
+.brandTrack {
+  animation-duration: 28s;
 }
 
 .brandSection:hover .brandTrack {
@@ -63,6 +70,18 @@
 }
 
 /* تصویرِ واقعی: پیش‌فرض مخفی، روی هاور نمایان (رنگِ اصلیِ برند) */
+.logoTintedImage {
+  position: absolute;
+  inset: 0;
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  opacity: 1;
+  pointer-events: none;
+  transition: opacity 0.3s ease;
+}
+
 .logoImage {
   width: 100%;
   height: 100%;
@@ -72,6 +91,10 @@
 }
 
 .brandLogo:hover .logoMask {
+  opacity: 0;
+}
+
+.brandLogo:hover .logoTintedImage {
   opacity: 0;
 }
 

@@ -3,7 +3,6 @@ import connectToDB from "base/configs/db";
 import Sport from "base/models/Sport";
 import Product from "base/models/Product";
 import Category from "base/models/Category";
-import { normalizeForCompare } from "./persianNormalize";
 // Variant فقط برای ثبتِ مدل (side-effect) لازم است تا lookup روی کالکشنِ variants کار کند
 import "base/models/Variant";
 
@@ -182,12 +181,10 @@ async function buildNavbarData() {
   // نگاشت‌ها: مقادیرِ هر برند در هر دسته + اجتماعِ مقادیرِ هر دسته (برای تب‌ها)
   const valuesByCatBrand = new Map(); // `${sport}|${category}` → Map(brandId → Set(values))
   const valuesByCat = new Map(); // categoryId → Set(values)
-  function expandCompositeValues(values, knownOptions) {
-    const normalizedOptionsMap = new Map();
-    for (const opt of knownOptions) {
-      normalizedOptionsMap.set(normalizeForCompare(opt), opt);
-    }
-
+  // هر مقداری که شاملِ کاما فارسی «،» باشد را بدون قید و شرط به تکه‌های جداگانه می‌شکند
+  // (مثلاً «خانم‌ها،آقایان» → «خانم‌ها» و «آقایان»)، تا محصولی که برای چند گروه مناسب است
+  // زیرِ همان گزینه‌های واقعی دیده شود، نه به‌عنوان یک گزینه‌ی ترکیبیِ جداگانه.
+  function expandCompositeValues(values) {
     const out = [];
     for (const raw of values) {
       const v = String(raw);
@@ -196,13 +193,10 @@ async function buildNavbarData() {
           .split("،")
           .map((p) => p.trim())
           .filter(Boolean);
-        if (
-          parts.length >= 2 &&
-          parts.every((p) => normalizedOptionsMap.has(normalizeForCompare(p)))
-        ) {
+        if (parts.length > 0) {
           out.push(...parts);
-          continue;
         }
+        continue;
       }
       out.push(v);
     }
@@ -211,9 +205,7 @@ async function buildNavbarData() {
 
   for (const row of attrBrandAgg) {
     const catKey = row._id.category.toString();
-    const fm = catFilterMeta.get(catKey);
-    const knownOptions = fm ? new Set(fm.options.map(String)) : new Set();
-    const expanded = expandCompositeValues(row.values.map(String), knownOptions);
+    const expanded = expandCompositeValues(row.values.map(String));
 
     const sCatKey = `${row._id.sport}|${row._id.category}`;
     let inner = valuesByCatBrand.get(sCatKey);
