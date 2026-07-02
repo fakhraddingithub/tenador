@@ -59,7 +59,7 @@ export default function VariantSelector({
                 {label}
                 {selectedValue && (
                   <span className="mr-1 font-normal text-gray-400">
-                    <span dir="ltr" style={{ unicodeBidi: "isolate" }}>
+                    <span dir="ltr" style={{ direction: "ltr", unicodeBidi: "isolate" }}>
                       {displayLabel(attrKey, selectedValue)}
                     </span>
                   </span>
@@ -163,7 +163,7 @@ export default function VariantSelector({
                           : "border-gray-200 text-gray-700 hover:border-[#aa4725]/50"
                       }`}
                   >
-                    <span dir="ltr" style={{ unicodeBidi: "isolate" }}>
+                    <span dir="ltr" style={{ direction: "ltr", unicodeBidi: "isolate" }}>
                       {text}
                     </span>
                   </button>

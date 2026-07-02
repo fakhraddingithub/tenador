@@ -834,7 +834,7 @@ export default function ProductEditPage() {
                           key={unit}
                           type="text"
                           dir="ltr"
-                          style={{ unicodeBidi: "isolate" }}
+                          style={{ direction: "ltr", unicodeBidi: "isolate" }}
                           className="border rounded-[var(--radius)] px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-400"
                           placeholder={`${attr.label} — ${unit}${ui === 0 ? ' (اصلی)' : ''}`}
                           value={variantInputBuffer[attr.name]?.[unit] || ''}
@@ -866,7 +866,7 @@ export default function ProductEditPage() {
                     <input
                       type="text"
                       dir="ltr"
-                      style={{ unicodeBidi: "isolate" }}
+                      style={{ direction: "ltr", unicodeBidi: "isolate" }}
                       className="flex-1 border rounded-[var(--radius)] px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-400"
                       placeholder={`مقدار جدید برای ${attr.label}…`}
                       value={variantInputBuffer[attr.name] || ''}
@@ -900,7 +900,7 @@ export default function ProductEditPage() {
                         key={val}
                         className="inline-flex items-center gap-1 px-3 py-1 bg-purple-100 text-purple-800 rounded-full text-sm font-medium"
                       >
-                        <span dir="ltr" style={{ unicodeBidi: "isolate" }}>
+                        <span dir="ltr" style={{ direction: "ltr", unicodeBidi: "isolate" }}>
                           {display}
                         </span>
                         <button
