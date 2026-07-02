@@ -21,6 +21,7 @@
 
 import React, { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import styles from "@/styles/BrandSection.module.css";
 
 // حداقل تعدادِ لوگو در «یک ست» تا یک ست از پهن‌ترین ویوپورت (≈۴K) عریض‌تر شود.
@@ -291,22 +292,26 @@ const BrandsTicker = ({ brands = EMPTY_BRANDS, sportSlug = "" }) => {
               {vectorLogo ? (
                 <span className={styles.logoMask} aria-hidden="true" />
               ) : (
-                <img
+                <Image
                   src={tintedLogo}
                   alt=""
+                  fill
+                  sizes="(max-width: 480px) 100px, (max-width: 768px) 150px, 170px"
                   className={styles.logoTintedImage}
                   aria-hidden="true"
                   loading="lazy"
-                  decoding="async"
+                  unoptimized
                 />
               )}
               {/* تصویرِ واقعیِ برند — فقط روی هاور نمایان می‌شود (رنگِ اصلی) */}
-              <img
+              <Image
                 src={brand.logo}
                 alt={brand.name}
+                fill
+                sizes="(max-width: 480px) 100px, (max-width: 768px) 150px, 170px"
                 className={styles.logoImage}
                 loading="lazy"
-                decoding="async"
+                unoptimized={vectorLogo}
               />
             </Link>
           );
