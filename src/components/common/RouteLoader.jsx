@@ -1,14 +1,9 @@
 "use client";
 
-import { useEffect } from "react";
 import Image from "next/image";
 import styles from "./RouteLoader.module.css";
 
 export default function RouteLoader() {
-  useEffect(() => {
-    window.scrollTo({ top: 0, left: 0, behavior: "instant" });
-  }, []);
-
   return (
     <div className={styles.overlay} role="status" aria-label="در حال بارگذاری">
       <div className={styles.panel}>
