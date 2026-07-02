@@ -4,7 +4,7 @@ import 'react-toastify/dist/ReactToastify.css';
 import AdminLayout from "@/components/admin/Layout"
 import SiteNavbar from "@/components/features/navbar/SiteNavbar"
 import ScrollToTop from "@/components/common/ScrollToTop"
-import NavigationLoadingProvider from "@/components/common/NavigationLoadingProvider"
+import NavigationLoader from "@/components/common/NavigationLoader"
 
 export const metadata = {
   title: 'فروشگاه ورزشی تنادور | پنل مدیریت',
@@ -25,18 +25,17 @@ export default function RootLayout({ children }) {
         className="min-h-screen bg-[var(--color-background)] text-[var(--color-text)] antialiased selection:bg-[var(--color-primary)] selection:text-white"
         style={{ fontFamily: 'var(--font-sans)' }}
       >
-        <NavigationLoadingProvider>
-          <ScrollToTop />
-          <main className="min-h-screen overflow-x-hidden">
+        <NavigationLoader />
+        <ScrollToTop />
+        <main className="min-h-screen overflow-x-hidden">
           {/* نوبار اصلی سایت — بالای نوبار پنل مدیریت (دو نوبار روی‌هم چیده می‌شوند) */}
-            <SiteNavbar />
+          <SiteNavbar />
           {/* بدون transform: عناصرِ fixed پنل ادمین (سایدبار و دستگیره) باید نسبت به
               viewport ثابت بمانند. یک ancestorِ دارای transform، آن‌ها را به‌جای viewport
               نسبت به خودش ثابت می‌کند و با اسکرول صفحه جابه‌جا می‌شوند. به‌جای آن، خودِ
               سایدبار/هدر/دستگیره با top-[75px] زیر نوبار سایت (۷۵px) قرار می‌گیرند. */}
-            <AdminLayout>{children}</AdminLayout>
-          </main>
-        </NavigationLoadingProvider>
+          <AdminLayout>{children}</AdminLayout>
+        </main>
 
         <ToastContainer
           position="top-left"

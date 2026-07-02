@@ -4,11 +4,10 @@ import { useEffect } from "react";
 import Image from "next/image";
 import styles from "./RouteLoader.module.css";
 
-export default function RouteLoader({ scrollOnMount = true }) {
+export default function RouteLoader() {
   useEffect(() => {
-    if (!scrollOnMount) return;
     window.scrollTo({ top: 0, left: 0, behavior: "instant" });
-  }, [scrollOnMount]);
+  }, []);
 
   return (
     <div className={styles.overlay} role="status" aria-label="در حال بارگذاری">
