@@ -65,9 +65,48 @@ export function buildProductTemplate({
   const variantAttributeInstructions = (category.variantAttributes || [])
     .map((attr) => {
       const rule = attr.prompt ? ` | Guide: ${attr.prompt}` : "";
+      const units = Array.isArray(attr.units) ? attr.units.filter(Boolean) : [];
+      if (attr.multiUnit && units.length > 0) {
+        return `  - KEY: "${attr.name}" | Persian Label (context only): ${attr.label} | Type: multi-unit variant | variantOptions must contain ONLY primary "${units[0]}" values as strings | Units in order: ${JSON.stringify(units)}${rule}`;
+      }
       return `  - KEY: "${attr.name}" | Persian Label (context only): ${attr.label} | Type: array of strings${rule}`;
     })
     .join("\n");
+
+  const multiUnitVariantAttributes = (category.variantAttributes || []).filter((attr) => {
+    const units = Array.isArray(attr.units) ? attr.units.filter(Boolean) : [];
+    return attr.multiUnit && units.length > 0;
+  });
+
+  const multiUnitVariantInstructions = multiUnitVariantAttributes
+    .map((attr) => {
+      const units = attr.units.filter(Boolean);
+      const placeholderUnits = Object.fromEntries(
+        units.map((unit) => [unit, `<real ${unit} value for this size, as a string>`])
+      );
+      return `  - KEY: "${attr.name}"
+    Persian Label: ${attr.label}
+    Units: ${JSON.stringify(units)}
+    Primary unit: "${units[0]}"
+    JSON shape (structure only — the placeholders below are NOT real values, do not copy them literally):
+      "variantOptions": { "${attr.name}": ["<primary value 1>", "<primary value 2>", "..."] }
+      "variantMeta": {
+        "${attr.name}": {
+          "<primary value 1>": { "units": ${JSON.stringify(placeholderUnits)}, "images": [] }
+        }
+      }
+    Important: the object key under variantMeta.${attr.name} MUST exactly equal the matching primary value from variantOptions.${attr.name}.
+    CRITICAL — completeness: if the raw content describes a size RANGE (e.g. "36 to 46", "sizes 36-46", "از 36 تا 46") rather than
+    listing every value individually, you MUST enumerate every single value in that range in variantOptions.${attr.name} — one
+    entry per available size — using the increment implied by the raw content (e.g. whole sizes, or half sizes if the text
+    mentions half sizes such as "36.5"). Do NOT collapse a range into just two or three sample values.
+    CRITICAL — real conversions only: every value inside a "units" object represents the exact SAME physical size expressed in
+    different measurement systems. These values must be accurate, mutually-consistent, real-world unit conversions for this
+    product type (use standard, well-known conversion tables for the domain, e.g. real EU↔CM↔US shoe-size charts, real
+    grip/handle size charts, etc.). NEVER invent a conversion by arithmetic pattern (e.g. never do "primary × 2" or similar
+    guesses) and never reuse the same conversion offset across unrelated products or unrelated attributes.`;
+    })
+    .join("\n\n");
 
   // ─── Technical Stats ──────────────────────────────────────────────────────
   const technicalStatsInstructions = (category.technicalStats || [])
@@ -217,6 +256,39 @@ variantOptions:
 - Extract EVERY value mentioned in the raw content for each key.
   Example: { "Grip": ["L2", "L3", "L4"] }
 - If no variant attributes are defined → return {}.
+- For normal/non-unit variant attributes, keep the current behavior: array of plain strings.
+- For multi-unit variant attributes:
+  - variantOptions MUST still be an array of strings, never objects.
+  - Put ONLY the primary unit values in variantOptions. The primary unit is the first unit listed for that attribute.
+  - Put all unit conversions/display values in variantMeta, keyed by the same primary value.
+  - DO NOT write combined strings like "EU 47 / CM 30.5" in variantOptions.
+  - DO NOT create separate variants for secondary units. Secondary units are display metadata only.
+  - Preserve fractional or half-step values exactly as strings, e.g. "47 1/3" or "36.5" — only if the raw content actually
+    uses that format for this product; do not invent fractional formatting that isn't present in the source.
+  - If the raw content states a RANGE of sizes (e.g. "36 to 46") instead of listing each one, expand it into every individual
+    size in that range — do not shorten it to just a couple of example values.
+  - Every value you place in variantMeta.<key>.<value>.units MUST be a real, accurate, mutually-consistent conversion of that
+    exact size across all listed units (use standard real-world conversion tables for this product type). Never derive a
+    secondary unit value by an arbitrary formula or pattern — only use correct, known conversions.
+
+variantMeta:
+- This is a JSON object for value-level variant metadata.
+- Always include this field. If there is no metadata → return {}.
+- Shape:
+  {
+    "variantAttributeKey": {
+      "variantOptionPrimaryValue": {
+        "units": { "unitLabel": "value as string" },
+        "images": []
+      }
+    }
+  }
+- For every multi-unit variant value, variantMeta is REQUIRED.
+- The variantMeta key must exactly match a value from variantOptions for the same attribute.
+- The units object must include every unit label defined for that attribute, including the primary unit.
+- Use strings for unit values, even when they look numeric.
+- If an attribute is not multi-unit, do not add units for it. You may omit it from variantMeta unless value-level images are explicitly available.
+${multiUnitVariantInstructions ? `\nMulti-unit variant attributes for this category:\n${multiUnitVariantInstructions}` : "- No multi-unit variant attributes are defined for this category."}
 
 technicalStats:
 - A flat JSON object for radar chart scoring.
@@ -250,6 +322,9 @@ ${globalAttributeInstructions || "  (none defined)"}
 
 Variant Attributes (array-value fields → output in "variantOptions"):
 ${variantAttributeInstructions || "  (none defined)"}
+
+Variant Metadata (value-level metadata → output in "variantMeta"):
+${multiUnitVariantInstructions || "  No multi-unit metadata is required. Return {} unless raw content explicitly provides value-level images."}
 
 Category Technical Stats (integer 0–100 → output in "technicalStats"):
 ${technicalStatsInstructions || "  (none defined)"}
@@ -308,6 +383,7 @@ Output exactly this structure with no extra fields:
   "variantOptions": {
     "English_key": ["value1", "value2"]
   },
+  "variantMeta": {},
   "technicalStats": {
     "stat_name": 85
   },
