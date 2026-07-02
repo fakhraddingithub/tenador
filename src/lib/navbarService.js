@@ -181,22 +181,45 @@ async function buildNavbarData() {
   // نگاشت‌ها: مقادیرِ هر برند در هر دسته + اجتماعِ مقادیرِ هر دسته (برای تب‌ها)
   const valuesByCatBrand = new Map(); // `${sport}|${category}` → Map(brandId → Set(values))
   const valuesByCat = new Map(); // categoryId → Set(values)
+  function expandCompositeValues(values, knownOptions) {
+    const out = [];
+    for (const raw of values) {
+      const v = String(raw);
+      if (v.includes("،")) {
+        const parts = v
+          .split("،")
+          .map((p) => p.trim())
+          .filter(Boolean);
+        if (parts.length >= 2 && parts.every((p) => knownOptions.has(p))) {
+          out.push(...parts);
+          continue;
+        }
+      }
+      out.push(v);
+    }
+    return out;
+  }
+
   for (const row of attrBrandAgg) {
+    const catKey = row._id.category.toString();
+    const fm = catFilterMeta.get(catKey);
+    const knownOptions = fm ? new Set(fm.options.map(String)) : new Set();
+    const expanded = expandCompositeValues(row.values.map(String), knownOptions);
+
     const sCatKey = `${row._id.sport}|${row._id.category}`;
     let inner = valuesByCatBrand.get(sCatKey);
     if (!inner) {
       inner = new Map();
       valuesByCatBrand.set(sCatKey, inner);
     }
-    inner.set(row._id.brand.toString(), new Set(row.values.map(String)));
+    inner.set(row._id.brand.toString(), new Set(expanded));
 
-    const catKey = row._id.category.toString();
     let cu = valuesByCat.get(catKey);
     if (!cu) {
       cu = new Set();
       valuesByCat.set(catKey, cu);
     }
-    for (const v of row.values) cu.add(String(v));
+    for (const v of expanded) cu.add(v);
   }
 
   // ───────────────────────────────────────────────────────────────────────
