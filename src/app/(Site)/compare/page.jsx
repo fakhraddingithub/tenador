@@ -36,6 +36,7 @@ export default function ComparePage() {
 
     // برای بستن دراپ داون وقتی بیرون کلیک میشه
     const searchRef = useRef(null);
+    const historyPushedRef = useRef(false);
 
     useEffect(() => {
         let mounted = true;
@@ -51,6 +52,16 @@ export default function ComparePage() {
             }
         })();
         return () => { mounted = false; };
+    }, []);
+
+    useEffect(() => {
+        const handlePopState = () => {
+            setLockedCategory(null);
+            setSelectedProducts([]);
+            historyPushedRef.current = false;
+        };
+        window.addEventListener('popstate', handlePopState);
+        return () => window.removeEventListener('popstate', handlePopState);
     }, []);
 
     // Debounce Search
@@ -88,6 +99,10 @@ export default function ComparePage() {
 
         if (selectedProducts.length === 0) {
             setLockedCategory(product.category); // قفل کردن دسته بندی با محصول اول
+            if (!historyPushedRef.current) {
+                window.history.pushState({ compareLocked: true }, '', window.location.pathname);
+                historyPushedRef.current = true;
+            }
         }
 
         // استفاده از رنگ محصول در صورت وجود، وگرنه پالت پیش‌فرض
@@ -106,11 +121,10 @@ export default function ComparePage() {
 
     const handleSelectCategory = (category) => {
         setLockedCategory(category);
-    };
-
-    const handleBackToCategories = () => {
-        setLockedCategory(null);
-        setSelectedProducts([]);
+        if (!historyPushedRef.current) {
+            window.history.pushState({ compareLocked: true }, '', window.location.pathname);
+            historyPushedRef.current = true;
+        }
     };
 
     const handleRemoveProduct = (productId) => {
@@ -120,6 +134,7 @@ export default function ComparePage() {
         // اگر همه محصولات پاک شدند، قفل دسته بندی باز شود تا بتواند هر محصولی را سرچ کند
         if (newProducts.length === 0) {
             setLockedCategory(null);
+            historyPushedRef.current = false;
         } else {
             // بروزرسانی رنگ ها: فقط برای محصولاتی که رنگ ندارند، یک رنگ از پالت اختصاص داده شود
             const updatedColors = newProducts.map((p, idx) => ({
@@ -153,21 +168,13 @@ export default function ComparePage() {
                 )}
 
                 {lockedCategory && (
-                    <div className="flex items-start justify-between gap-4 mb-4">
-                        <div>
-                            <h2 className="text-xl md:text-2xl font-bold text-[var(--color-text)]">
-                                مقایسه محصولات {lockedCategory.title}
-                            </h2>
-                            <p className="text-sm text-neutral-500 mt-1">
-                                محصول مورد نظرتان را در کادر زیر جستجو کنید تا به نمودار مقایسه اضافه شود.
-                            </p>
-                        </div>
-                        <button
-                            onClick={handleBackToCategories}
-                            className="shrink-0 text-xs font-bold text-neutral-400 hover:text-[var(--color-primary)] transition-colors whitespace-nowrap mt-1"
-                        >
-                            بازگشت به دسته‌بندی‌ها
-                        </button>
+                    <div className="text-center mb-6 space-y-2">
+                        <h1 className="text-4xl font-bold text-[var(--color-primary)]">
+                            مقایسه محصولات {lockedCategory.title}
+                        </h1>
+                        <p className="text-neutral-500">
+                            محصول مورد نظرتان را در کادر زیر جستجو کنید تا به نمودار مقایسه اضافه شود.
+                        </p>
                     </div>
                 )}
 
@@ -244,35 +251,62 @@ export default function ComparePage() {
                                     <button
                                         key={cat._id}
                                         onClick={() => handleSelectCategory(cat)}
-                                        className="group relative overflow-hidden rounded-2xl border border-neutral-100 bg-white shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all duration-300 text-right"
+                                        className="group relative overflow-hidden rounded-[6px] border border-neutral-100 bg-white shadow-sm hover:shadow-2xl hover:-translate-y-1.5 transition-all duration-500 text-right"
                                     >
-                                        <div className="relative w-full aspect-square bg-neutral-50 overflow-hidden">
+                                        <div className="relative w-full aspect-square overflow-hidden bg-neutral-900">
+                                            {/* لایه‌های موّاج گرادیانی تزیینی پشت تصویر */}
+                                            <div
+                                                className="absolute -top-10 -right-10 w-40 h-40 rounded-full blur-2xl opacity-60 group-hover:opacity-90 group-hover:scale-125 transition-all duration-700"
+                                                style={{ background: "radial-gradient(circle, var(--color-primary) 0%, transparent 70%)" }}
+                                            />
+                                            <div
+                                                className="absolute -bottom-14 -left-10 w-48 h-48 rounded-full blur-2xl opacity-40 group-hover:opacity-70 group-hover:scale-125 transition-all duration-700"
+                                                style={{ background: "radial-gradient(circle, var(--color-secondary) 0%, transparent 70%)" }}
+                                            />
+
                                             {cat.image ? (
                                                 <img
                                                     src={cat.image}
                                                     alt={cat.title}
-                                                    className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
+                                                    className="relative z-[1] w-full h-full object-cover opacity-90 group-hover:opacity-100 group-hover:scale-110 transition-all duration-700 mix-blend-luminosity group-hover:mix-blend-normal"
                                                 />
                                             ) : (
-                                                <div className="w-full h-full flex items-center justify-center text-neutral-300">
+                                                <div className="relative z-[1] w-full h-full flex items-center justify-center text-white/30">
                                                     {cat.icon ? (
-                                                        <img src={cat.icon} alt="" className="w-10 h-10 object-contain opacity-60" />
+                                                        <img src={cat.icon} alt="" className="w-12 h-12 object-contain opacity-70" />
                                                     ) : (
-                                                        <FiSearch size={28} />
+                                                        <FiSearch size={32} />
                                                     )}
                                                 </div>
                                             )}
-                                            <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/0 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+
+                                            {/* موج گرادیانی پایین کارت، روی تصویر */}
+                                            <svg
+                                                className="absolute bottom-0 left-0 w-full h-16 z-[2] text-white group-hover:h-20 transition-all duration-500"
+                                                viewBox="0 0 400 60"
+                                                preserveAspectRatio="none"
+                                            >
+                                                <path
+                                                    d="M0,30 C100,60 300,0 400,30 L400,60 L0,60 Z"
+                                                    fill="currentColor"
+                                                />
+                                            </svg>
+
+                                            <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/10 to-transparent z-[1]" />
                                         </div>
-                                        <div className="p-3 flex items-center justify-between gap-2">
+
+                                        <div className="relative z-[3] p-4 flex items-center justify-between gap-2 -mt-1">
                                             <div className="flex items-center gap-2 min-w-0">
                                                 {cat.icon && (
-                                                    <img src={cat.icon} alt="" className="w-5 h-5 object-contain shrink-0" />
+                                                    <img src={cat.icon} alt="" className="w-6 h-6 object-contain shrink-0" />
                                                 )}
-                                                <span className="font-bold text-sm text-neutral-800 truncate">{cat.title}</span>
+                                                <span className="font-extrabold text-lg text-neutral-900 truncate tracking-tight">
+                                                    {cat.title}
+                                                </span>
                                             </div>
-                                            <span className="shrink-0 text-[10px] font-bold text-[var(--color-primary)] bg-[var(--color-primary)]/10 px-2 py-1 rounded-lg group-hover:bg-[var(--color-primary)] group-hover:text-white transition-colors">
+                                            <span className="shrink-0 flex items-center gap-1.5 text-[11px] font-bold text-white bg-[var(--color-primary)] px-3 py-2 rounded-[6px] shadow-md shadow-[var(--color-primary)]/30 group-hover:px-4 group-hover:shadow-lg group-hover:shadow-[var(--color-primary)]/50 transition-all duration-300">
                                                 مقایسه
+                                                <FiSearch size={11} className="group-hover:translate-x-[-2px] transition-transform duration-300" />
                                             </span>
                                         </div>
                                     </button>
@@ -356,9 +390,22 @@ export default function ComparePage() {
                             </div>
                         </div>
                         <div className="lg:w-1/3 bg-white p-8 rounded-[var(--radius)] shadow-sm border border-neutral-100">
-                            <div className="w-full h-[500px]">
+                            <div className="w-full h-[280px]">
                                 <CompareBarChart products={selectedProducts} categoryStats={lockedCategory?.technicalStats} />
                             </div>
+                            {/* رنگ‌بندیِ نام محصولات، درست زیر نمودار میله‌ای */}
+                            {selectedProducts.length > 0 && (
+                                <div className="flex flex-wrap gap-x-4 gap-y-2 justify-center mt-4 pt-4 border-t border-neutral-100">
+                                    {selectedProducts.map((p) => (
+                                        <div key={p._id} className="flex items-center gap-1.5">
+                                            <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: p.color }} />
+                                            <span className="text-[11px] font-extrabold truncate max-w-[130px]" style={{ color: p.color }}>
+                                                {p.title || p.name}
+                                            </span>
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
                         </div>
                     </div>
                     {/* بعد از بخش چارت و مقایسه فعلی */}
@@ -472,10 +519,24 @@ function CompareChart({ products, categoryStats }) {
     return (
         <div ref={wrapperRef} style={{ width: '100%', height: '100%' }}>
             <style jsx>{`
-                div :global(.recharts-wrapper):focus,
-                div :global(.recharts-wrapper) :global(*):focus,
-                div :global(.recharts-surface):focus {
+                div :global(.recharts-wrapper),
+                div :global(.recharts-wrapper) *,
+                div :global(.recharts-surface),
+                div :global(.recharts-surface) *,
+                div :global(svg),
+                div :global(svg) * {
                     outline: none !important;
+                }
+                div :global(.recharts-wrapper):focus,
+                div :global(.recharts-wrapper):focus-visible,
+                div :global(.recharts-wrapper) *:focus,
+                div :global(.recharts-wrapper) *:focus-visible,
+                div :global(.recharts-surface):focus,
+                div :global(.recharts-surface):focus-visible,
+                div :global(.recharts-surface) *:focus,
+                div :global(.recharts-surface) *:focus-visible {
+                    outline: none !important;
+                    box-shadow: none !important;
                 }
             `}</style>
             <ResponsiveContainer width="100%" height="100%">
