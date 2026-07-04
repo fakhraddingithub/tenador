@@ -95,7 +95,7 @@ export default function VariantSelector({
               )}
             </div>
 
-            <div className="grid grid-cols-5 gap-2">
+            <div className="grid grid-cols-5 justify-start gap-2">
               {values.map((val) => {
                 const isSelected = selectedValue === val;
                 const img = getValueImage ? getValueImage(attrKey, val) : null;
@@ -118,7 +118,8 @@ export default function VariantSelector({
                       aria-label={`${label}: ${text}`}
                       aria-pressed={isSelected}
                       aria-disabled={disabled}
-                      className={`relative w-full aspect-square rounded-lg overflow-hidden border-2 transition-all
+                      className={`relative shrink-0 rounded-lg overflow-hidden border-2 transition-all
+                        ${compact ? "w-12 h-12 sm:w-14 sm:h-14" : "w-14 h-14 sm:w-16 sm:h-16"}
                         ${
                           disabled
                             ? "border-gray-100 opacity-40 grayscale cursor-not-allowed"
@@ -147,8 +148,13 @@ export default function VariantSelector({
                     title={disabled ? `${text} (ناموجود برای این انتخاب)` : text}
                     aria-pressed={isSelected}
                     aria-disabled={disabled}
-                    className={`relative w-full aspect-square rounded-lg border-2 text-xs sm:text-sm font-medium transition-all select-none
-                      flex items-center justify-center p-1 text-center leading-tight overflow-hidden
+                    className={`relative rounded-lg border-2 text-sm font-medium transition-all select-none
+                      flex items-center justify-center px-1 text-center leading-tight overflow-hidden
+                      ${
+                        compact
+                          ? "w-[52px] sm:w-[60px] h-10"
+                          : "w-[56px] h-11"
+                      }
                       ${
                         disabled
                           ? "border-gray-100 text-gray-300 bg-gray-50 line-through cursor-not-allowed"
