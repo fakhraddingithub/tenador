@@ -134,7 +134,6 @@ export default async function UsedProductsPage() {
             src={headerImage}
             alt="بازار دست‌دوم"
             className="w-full h-full object-cover"
-            onError={(e) => { e.target.style.display = "none"; }}
           />
         </div>
       )}
