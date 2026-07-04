@@ -12,7 +12,6 @@ import {
 const menuItems = [
   { id: 'profile',   label: 'پروفایل کاربری',      icon: User,       href: '/p-user/profile' },
   { id: 'orders',    label: 'سفارش‌های من',          icon: ShoppingBag, href: '/p-user/orders' },
-  { id: 'cart',      label: 'سبد خرید',              icon: ShoppingBag, href: '/p-user/cart' },
   { id: 'wishlist',  label: 'لیست علاقه‌مندی‌ها',   icon: Heart,       href: '/p-user/wishlist' },
   { id: 'payments',  label: 'تاریخچه پرداخت‌ها',    icon: CreditCard,  href: '/p-user/payments' },
   { id: 'addresses', label: 'آدرس‌های من',           icon: MapPin,      href: '/p-user/addresses' },
