@@ -268,7 +268,7 @@ export default function ComparePage() {
                                                 <img
                                                     src={cat.image}
                                                     alt={cat.title}
-                                                    className="relative z-[1] w-full h-full object-cover opacity-90 group-hover:opacity-100 group-hover:scale-110 transition-all duration-700 mix-blend-luminosity group-hover:mix-blend-normal"
+                                                    className="relative z-[1] w-full h-full object-cover group-hover:scale-110 transition-all duration-700"
                                                 />
                                             ) : (
                                                 <div className="relative z-[1] w-full h-full flex items-center justify-center text-white/30">
@@ -291,11 +291,9 @@ export default function ComparePage() {
                                                     fill="currentColor"
                                                 />
                                             </svg>
-
-                                            <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/10 to-transparent z-[1]" />
                                         </div>
 
-                                        <div className="relative z-[3] p-4 flex items-center justify-between gap-2 -mt-1">
+                                        <div className="relative z-[3] p-4 flex flex-col gap-3">
                                             <div className="flex items-center gap-2 min-w-0">
                                                 {cat.icon && (
                                                     <img src={cat.icon} alt="" className="w-6 h-6 object-contain shrink-0" />
@@ -304,9 +302,9 @@ export default function ComparePage() {
                                                     {cat.title}
                                                 </span>
                                             </div>
-                                            <span className="shrink-0 flex items-center gap-1.5 text-[11px] font-bold text-white bg-[var(--color-primary)] px-3 py-2 rounded-[6px] shadow-md shadow-[var(--color-primary)]/30 group-hover:px-4 group-hover:shadow-lg group-hover:shadow-[var(--color-primary)]/50 transition-all duration-300">
+                                            <span className="w-full flex items-center justify-center gap-1.5 text-[12px] font-bold text-white bg-[var(--color-primary)] py-2.5 rounded-[6px] shadow-md shadow-[var(--color-primary)]/30 group-hover:shadow-lg group-hover:shadow-[var(--color-primary)]/50 transition-all duration-300">
                                                 مقایسه
-                                                <FiSearch size={11} className="group-hover:translate-x-[-2px] transition-transform duration-300" />
+                                                <FiSearch size={12} className="group-hover:translate-x-[-2px] transition-transform duration-300" />
                                             </span>
                                         </div>
                                     </button>
