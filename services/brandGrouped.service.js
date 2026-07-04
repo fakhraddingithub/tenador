@@ -10,7 +10,7 @@
  *
  * خروجی هر فراخوانی:
  *   {
- *     index?:      [{ key, serieId, title, slug, productCount, image, logo }]  // فقط در offset=0
+ *     index?:      [{ key, serieId, title, shortDescription, slug, productCount, image, logo }]  // فقط در offset=0
  *     sections:    [{ key, serie, productCount, products: [...priced] }]
  *     nextOffset:  number   // اندیس بعدی برای ادامه‌ی بارگذاری
  *     hasMore:     boolean
@@ -47,7 +47,7 @@ function toObjectId(v) {
  */
 async function buildSeriesTree(brandId) {
   const series = await Serie.find({ brand: brandId })
-    .select("_id title name slug parentSerie level order image logo colors")
+    .select("_id title name shortDescription slug parentSerie level order image logo colors")
     .sort({ order: 1, createdAt: -1 })
     .lean();
 
@@ -236,6 +236,7 @@ async function _getBrandGroupedSections(params) {
         key: rid,
         serieId: rid,
         title: root.title || root.name || "",
+        shortDescription: root.shortDescription || "",
         slug: root.slug || null,
         productCount: c,
         image: root.image || null,
@@ -248,6 +249,7 @@ async function _getBrandGroupedSections(params) {
       key: OTHER_KEY,
       serieId: null,
       title: "سایر محصولات",
+      shortDescription: "",
       slug: null,
       productCount: otherCount,
       image: null,
@@ -301,6 +303,7 @@ async function _getBrandGroupedSections(params) {
       serie: {
         _id: entry.serieId,
         title: entry.title,
+        shortDescription: entry.shortDescription,
         slug: entry.slug,
         image: entry.image,
         logo: entry.logo,

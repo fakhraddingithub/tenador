@@ -42,6 +42,8 @@ export default function SerieEditForm({ id,brandId }) {
 
     description: "",
 
+    shortDescription: "",
+
     brand: "",
 
     parentSerie: "",
@@ -99,6 +101,8 @@ export default function SerieEditForm({ id,brandId }) {
 
           description: data?.description || "",
 
+          shortDescription: data?.shortDescription || "",
+
           brand: data?.brand?._id || data?.brand || "",
 
           parentSerie: data?.parentSerie?._id || data?.parentSerie || "",
@@ -143,7 +147,7 @@ export default function SerieEditForm({ id,brandId }) {
     if (id) {
       fetchData();
     }
-  }, [id]);
+  }, [id, brandId]);
 
   /*
    |------------------------------------------------------------------
@@ -478,6 +482,24 @@ export default function SerieEditForm({ id,brandId }) {
                   required
                 />
               </div>
+            </div>
+
+            {/* Short Description */}
+
+            <div className="space-y-2">
+              <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest flex items-center gap-2">
+                <FaQuoteRight />
+                توضیحات کوتاه
+              </label>
+
+              <textarea
+                name="shortDescription"
+                value={formData.shortDescription}
+                onChange={handleChange}
+                rows={3}
+                className="w-full p-6 bg-gray-50 rounded-[2rem] leading-7 text-sm"
+                placeholder="خلاصه کوتاه برای نمایش زیر عنوان سری..."
+              />
             </div>
 
             {/* Description */}

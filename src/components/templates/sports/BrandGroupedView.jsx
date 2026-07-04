@@ -433,6 +433,11 @@ export default function BrandGroupedView({
                         </h2>
                       )}
                       <span className="block w-12 h-1 rounded-full bg-[var(--color-primary)]" />
+                      {section.serie?.shortDescription && (
+                        <p className="max-w-2xl text-center text-xs md:text-sm leading-6 text-gray-500">
+                          {section.serie.shortDescription}
+                        </p>
+                      )}
                     </div>
                   </div>
 

@@ -28,6 +28,12 @@ const schema = new mongoose.Schema(
       default: "",
     },
 
+    shortDescription: {
+      type: String,
+      default: "",
+      trim: true,
+    },
+
     colors: {
       primary: String,
       secondary: String,

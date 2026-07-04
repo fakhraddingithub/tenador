@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 
 import { toast } from "react-toastify";
 
@@ -23,24 +23,15 @@ import { useRouter } from "next/navigation";
 
 import ImageUpload from "./ImageUpload";
 
-export default function SerieCreateForm({
-  initialData,
-
-  brandId,
-  brandName,
-
-  parentSeries = [],
-}) {
-  const router = useRouter();
-
-  const [loading, setLoading] = useState(false);
-
-  const [formData, setFormData] = useState({
+function buildInitialFormData(initialData, brandId) {
+  return {
     name: initialData?.name || "",
 
     title: initialData?.title || "",
 
     description: initialData?.description || "",
+
+    shortDescription: initialData?.shortDescription || "",
 
     brand: brandId,
 
@@ -61,31 +52,24 @@ export default function SerieCreateForm({
     headImage: initialData?.headImage || "",
 
     image: initialData?.image || "",
-  });
+  };
+}
 
-  /*
-   |--------------------------------------------------------------------------
-   | AI Sync
-   |--------------------------------------------------------------------------
-   */
+export default function SerieCreateForm({
+  initialData,
 
-  useEffect(() => {
-    if (initialData) {
-      setFormData((prev) => ({
-        ...prev,
+  brandId,
+  brandName,
 
-        ...initialData,
+  parentSeries = [],
+}) {
+  const router = useRouter();
 
-        brand: brandId,
+  const [loading, setLoading] = useState(false);
 
-        colors: {
-          primary: initialData?.colors?.primary || prev.colors.primary,
-
-          secondary: initialData?.colors?.secondary || prev.colors.secondary,
-        },
-      }));
-    }
-  }, [initialData, brandId]);
+  const [formData, setFormData] = useState(() =>
+    buildInitialFormData(initialData, brandId)
+  );
 
   /*
    |--------------------------------------------------------------------------
@@ -396,6 +380,24 @@ export default function SerieCreateForm({
                   required
                 />
               </div>
+            </div>
+
+            {/* Short Description */}
+
+            <div className="space-y-2">
+              <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest flex items-center gap-2">
+                <FaQuoteRight />
+                توضیحات کوتاه
+              </label>
+
+              <textarea
+                name="shortDescription"
+                value={formData.shortDescription}
+                onChange={handleChange}
+                rows={3}
+                className="w-full p-6 bg-gray-50 rounded-[2rem] leading-7 text-sm"
+                placeholder="خلاصه کوتاه برای نمایش زیر عنوان سری..."
+              />
             </div>
 
             {/* Description */}

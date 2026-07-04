@@ -35,12 +35,12 @@ function toObjectId(v) {
  */
 async function buildChildTree(parentSerieId) {
   const parent = await Serie.findById(parentSerieId)
-    .select("_id title name slug level brand image logo headImage colors")
+    .select("_id title name shortDescription slug level brand image logo headImage colors")
     .lean();
   if (!parent) return null;
 
   const allSeries = await Serie.find({ brand: parent.brand })
-    .select("_id title name slug parentSerie level order image logo colors")
+    .select("_id title name shortDescription slug parentSerie level order image logo colors")
     .sort({ order: 1, createdAt: -1 })
     .lean();
 
@@ -182,6 +182,7 @@ async function _getSerieGroupedSections(params) {
         key: cId,
         serieId: cId,
         title: child.title || child.name || "",
+        shortDescription: child.shortDescription || "",
         slug: child.slug || null,
         productCount: c,
         image: child.image || null,
@@ -194,6 +195,7 @@ async function _getSerieGroupedSections(params) {
       key: DIRECT_KEY,
       serieId: null,
       title: parent.title || parent.name || "سایر محصولات",
+      shortDescription: parent.shortDescription || "",
       slug: null,
       productCount: directCount,
       image: null,
@@ -240,6 +242,7 @@ async function _getSerieGroupedSections(params) {
       serie: {
         _id: entry.serieId,
         title: entry.title,
+        shortDescription: entry.shortDescription,
         slug: entry.slug,
         image: entry.image,
         logo: entry.logo,

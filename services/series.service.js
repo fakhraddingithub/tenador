@@ -110,6 +110,7 @@ async function _getSeriesBySport(sportSlug) {
         name: { $first: "$serieDoc.name" },
         title: { $first: "$serieDoc.title" },
         description: { $first: "$serieDoc.description" },
+        shortDescription: { $first: "$serieDoc.shortDescription" },
 
         slug: { $first: "$serieDoc.slug" },
 
@@ -177,6 +178,7 @@ async function _getSeriesBySport(sportSlug) {
     name: serie.name || "",
     title: serie.title || "",
     description: serie.description || "",
+    shortDescription: serie.shortDescription || "",
 
     slug: serie.slug || "",
 

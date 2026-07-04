@@ -18,6 +18,7 @@ export async function POST(req) {
       name,
       title,
       description,
+      shortDescription,
       colors,
       logo,
       headImage,
@@ -151,6 +152,7 @@ export async function POST(req) {
       name,
       title,
       description,
+      shortDescription,
 
       colors,
 

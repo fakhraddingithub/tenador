@@ -59,6 +59,7 @@ Example:
 
 3. LANGUAGE RULE
 - title → Persian
+- shortDescription → Persian
 - description → Persian
 - name → English
 
@@ -108,6 +109,10 @@ ${getPrompt("name")}
 title:
 ${getPrompt("title")}
 
+shortDescription:
+- Write one concise Persian sentence for storefront section headings.
+- Keep it shorter than description.
+
 description:
 ${getPrompt("description")}
 
@@ -142,6 +147,8 @@ EXPECTED JSON FORMAT
   "name": "Blade V9",
   
   "title": "بلید ورژن ۹",
+
+  "shortDescription": "خلاصه‌ای کوتاه درباره ویژگی اصلی این سری...",
 
   "description": "توضیح کامل فارسی درباره سری محصولات...",
 

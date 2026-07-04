@@ -27,6 +27,7 @@ export default function ModernSerieAIFlow({ brandId, brandName }) {
   const [aiResult, setAiResult] = useState("");
   const [parsedData, setParsedData] = useState(null);
   const [series, setSeries] = useState([]);
+  const [manualMode, setManualMode] = useState(false);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -65,6 +66,7 @@ export default function ModernSerieAIFlow({ brandId, brandName }) {
     { id: 2, label: "دریافت دستور", icon: <FaRobot /> },
     { id: 3, label: "تایید نهایی", icon: <FaCheckCircle /> },
   ];
+  const displayBrandName = brandName || brand?.title || brand?.name || "";
   console.log(brand);
 
   const generatePrompt = () => {
@@ -108,35 +110,44 @@ export default function ModernSerieAIFlow({ brandId, brandName }) {
     );
   }
 
-  // اگر دیتا پارس شده باشد، فرم نهایی را نشان بده
-  if (parsedData) {
+  // اگر دیتا پارس شده باشد یا ادمین بخواهد بدون پرامپت بسازد، فرم نهایی را نشان بده
+  if (parsedData || manualMode) {
     return (
       <div className="max-w-4xl mx-auto animate-in fade-in duration-700">
         <div className="flex justify-between items-center mb-8 bg-white p-6 rounded-[2rem] border border-gray-100 shadow-sm">
           <div className="flex items-center gap-4">
-            <div className="w-12 h-12 bg-green-500 text-white rounded-full flex items-center justify-center shadow-lg shadow-green-200">
-              <FaCheckCircle size={24} />
+            <div className={`w-12 h-12 text-white rounded-full flex items-center justify-center shadow-lg ${
+              manualMode ? "bg-black shadow-gray-200" : "bg-green-500 shadow-green-200"
+            }`}>
+              {manualMode ? <FaSave size={22} /> : <FaCheckCircle size={24} />}
             </div>
             <div>
-              <h2 className="font-bold text-xl">اطلاعات آماده است!</h2>
+              <h2 className="font-bold text-xl">
+                {manualMode ? "فرم ساخت سری" : "اطلاعات آماده است!"}
+              </h2>
               <p className="text-gray-400 text-xs font-bold">
-                می‌توانید فیلدها را بازبینی و ثبت کنید.
+                {manualMode
+                  ? "همه فیلدها را دستی تکمیل و ثبت کنید."
+                  : "می‌توانید فیلدها را بازبینی و ثبت کنید."}
               </p>
             </div>
           </div>
           <button
-            onClick={() => setParsedData(null)}
+            onClick={() => {
+              setParsedData(null);
+              setManualMode(false);
+            }}
             className="text-xs font-bold text-red-500 hover:underline"
           >
-            ویرایش مجدد JSON
+            {manualMode ? "بازگشت به فلو هوشمند" : "ویرایش مجدد JSON"}
           </button>
         </div>
 
         {/* کامپوننت فرم ساخت سری که دیتای استخراج شده را به عنوان مقدار اولیه می‌گیرد */}
         <SerieCreateForm
-          initialData={parsedData}
+          initialData={parsedData || undefined}
           brandId={brandId}
-          brandName={brandName}
+          brandName={displayBrandName}
           parentSeries={series}
         />
       </div>
@@ -145,6 +156,17 @@ export default function ModernSerieAIFlow({ brandId, brandName }) {
 
   return (
     <div className="max-w-4xl mx-auto my-10 space-y-8 animate-in fade-in duration-500">
+      <div className="flex justify-end">
+        <button
+          type="button"
+          onClick={() => setManualMode(true)}
+          className="bg-white text-black border border-gray-100 shadow-sm px-5 py-3 rounded-2xl text-xs font-bold flex items-center gap-2 hover:border-[var(--color-primary)] hover:text-[var(--color-primary)] transition-all"
+        >
+          <FaSave />
+          ساخت سری بدون پرامپت
+        </button>
+      </div>
+
       {/* استپر افقی با عرض یکسان */}
       <div className="flex justify-between items-center px-12 relative">
         <div className="absolute top-1/2 left-0 w-full h-1 bg-gray-100 -translate-y-1/2 z-0 rounded-full" />
