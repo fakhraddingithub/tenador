@@ -1,6 +1,6 @@
 import { notFound } from "next/navigation";
-import mongoose from "mongoose";
 import connectToDB from "base/configs/db";
+import Sport from "base/models/Sport";
 import UsedProduct from "base/models/UsedProduct";
 import Category from "base/models/Category";
 import Product from "base/models/Product";
@@ -14,17 +14,28 @@ export const revalidate = 3600;
 
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || "https://tenador.com";
 
-export async function generateMetadata({ params }) {
-  const { categoryId } = await params;
-  if (!mongoose.isValidObjectId(categoryId)) return { title: "صفحه پیدا نشد" };
-
+async function resolveCategory(sportSlug, categorySlug) {
   await connectToDB();
 
-  const category = await Category.findById(categoryId).select("title slug image icon").lean();
-  if (!category) return { title: "صفحه پیدا نشد" };
+  const sport = await Sport.findOne({ slug: sportSlug }).select("_id slug title").lean();
+  if (!sport) return null;
 
-  // شناساییِ محصولاتِ اصلیِ این دسته، برای شمارش/برند/تصویرِ نمونه از محصولاتِ دست‌دومِ موجود
-  const categoryProducts = await Product.find({ category: categoryId }).select("_id").lean();
+  const category = await Category.findOne({ sport: sport._id, slug: categorySlug })
+    .select("_id title slug image icon")
+    .lean();
+  if (!category) return null;
+
+  return { sport, category };
+}
+
+export async function generateMetadata({ params }) {
+  const { sportSlug, categorySlug } = await params;
+  const resolved = await resolveCategory(sportSlug, categorySlug);
+  if (!resolved) return { title: "صفحه پیدا نشد" };
+
+  const { category } = resolved;
+
+  const categoryProducts = await Product.find({ category: category._id }).select("_id").lean();
   const idList = categoryProducts.map((p) => p._id);
 
   const [productCount, sampleUsedProducts] = await Promise.all([
@@ -44,17 +55,14 @@ export async function generateMetadata({ params }) {
     ...new Set(sampleUsedProducts.map((p) => p.baseProduct?.brand?.title).filter(Boolean)),
   ];
 
-  const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || "https://tenador.com";
-  const pageUrl = `${SITE_URL}/second-hand/category/${categoryId}`;
+  const pageUrl = `${SITE_URL}/second-hand/${sportSlug}/${categorySlug}`;
   const title = `${category.title} دست‌دوم | خرید و فروش ${category.title} کارکرده`;
-
   const description =
     productCount > 0
       ? `خرید ${category.title} دست‌دوم با کارت سلامت معتبر — ${productCount} کالای موجود${
           brandNames.length ? ` از برندهایی مثل ${brandNames.slice(0, 3).join("، ")}` : ""
         }. تجهیزات ورزشی کارکرده با ضمانت کیفیت از تنادور.`
       : `خرید ${category.title} دست‌دوم با کارت سلامت معتبر — تجهیزات ورزشی کارکرده با ضمانت کیفیت از تنادور.`;
-
   const keywords = [
     `${category.title} دست‌دوم`,
     `${category.title} کارکرده`,
@@ -63,7 +71,6 @@ export async function generateMetadata({ params }) {
     ...brandNames.map((b) => `${category.title} ${b} دست‌دوم`),
   ].join(", ");
 
-  // اولویتِ تصویر: تصویرِ خودِ دسته → عکسِ اولین محصولِ دست‌دومِ نمونه → عکسِ اصلیِ محصولِ پایه
   const rawImage =
     category.image ||
     sampleUsedProducts[0]?.images?.[0] ||
@@ -114,13 +121,12 @@ export async function generateMetadata({ params }) {
 }
 
 export default async function UsedProductsByCategoryPage({ params }) {
-  const { categoryId } = await params;
-  if (!mongoose.isValidObjectId(categoryId)) notFound();
+  const { sportSlug, categorySlug } = await params;
+  const resolved = await resolveCategory(sportSlug, categorySlug);
+  if (!resolved) notFound();
 
-  await connectToDB();
-
-  const category = await Category.findById(categoryId).select("title slug").lean();
-  if (!category) notFound();
+  const { category } = resolved;
+  const categoryId = category._id;
 
   // محصولاتِ اصلیِ همین دسته‌بندی، برای فیلترِ محصولاتِ دست‌دوم بر اساسِ آن‌ها
   const categoryProductIds = await Product.find({ category: categoryId }).select("_id").lean();
@@ -219,7 +225,7 @@ export default async function UsedProductsByCategoryPage({ params }) {
 
   const absUrl = (u) =>
     u ? (u.startsWith("http") ? u : `${SITE_URL}${u}`) : null;
-  const pageUrl = `${SITE_URL}/second-hand/category/${categoryId}`;
+  const pageUrl = `${SITE_URL}/second-hand/${sportSlug}/${categorySlug}`;
   const pageTitle = `${category.title} دست‌دوم`;
 
   const itemListElement = products.slice(0, 30).map((p, i) => {
@@ -304,3 +310,4 @@ export default async function UsedProductsByCategoryPage({ params }) {
     </>
   );
 }
+

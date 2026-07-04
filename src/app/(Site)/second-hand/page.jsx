@@ -2,6 +2,7 @@ import connectToDB from "base/configs/db";
 import UsedProduct from "base/models/UsedProduct";
 import SiteSetting from "base/models/SiteSetting";
 import SecondHandCategoryGrid from "@/components/features/secondHandCategoryGrid/SecondHandCategoryGrid";
+import SportHero from "@/components/templates/sports/SportHero";
 
 // تغییراتِ ادمین از طریقِ revalidatePath("/second-hand", "layout") باطل می‌شوند؛
 // TTL زمان‌محور → ۱ساعت برای کاهشِ ISR Writes.
@@ -51,14 +52,18 @@ export default async function UsedProductsPage() {
     .populate({
       path: "baseProduct",
       select: "category",
-      populate: { path: "category", select: "title slug icon image" },
+      populate: {
+        path: "category",
+        select: "title slug icon image sport",
+        populate: { path: "sport", select: "slug" },
+      },
     })
     .lean();
 
   const categoryMap = new Map();
   for (const p of rawProducts) {
     const cat = p.baseProduct?.category;
-    if (!cat?._id) continue;
+    if (!cat?._id || !cat?.sport?.slug) continue;
     const key = cat._id.toString();
     if (!categoryMap.has(key)) {
       categoryMap.set(key, {
@@ -67,6 +72,7 @@ export default async function UsedProductsPage() {
         name: cat.title,
         title: cat.title,
         slug: cat.slug,
+        sportSlug: cat.sport.slug,
         icon: cat.icon || null,
         image: cat.image || null,
       });
@@ -85,7 +91,7 @@ export default async function UsedProductsPage() {
     item: {
       "@type": "CollectionPage",
       name: `${c.title} دست‌دوم`,
-      url: `${SITE_URL}/second-hand/category/${c._id}`,
+      url: `${SITE_URL}/second-hand/${c.sportSlug}/${c.slug}`,
     },
   }));
 
@@ -128,15 +134,7 @@ export default async function UsedProductsPage() {
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbSchema) }}
       />
-      {headerImage && (
-        <div className="relative h-[120px] md:h-[220px] w-full overflow-hidden">
-          <img
-            src={headerImage}
-            alt="بازار دست‌دوم"
-            className="w-full h-full object-cover"
-          />
-        </div>
-      )}
+      <SportHero image={headerImage} title="بازار دست‌دوم" alt="بازار دست‌دوم" />
       <SecondHandCategoryGrid categories={categories} />
     </>
   );

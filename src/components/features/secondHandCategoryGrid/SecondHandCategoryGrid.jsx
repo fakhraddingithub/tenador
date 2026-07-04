@@ -104,7 +104,7 @@ export default function SecondHandCategoryGrid({ categories = [] }) {
 function CategoryCard({ category, className }) {
   return (
     <Link
-      href={`/second-hand/category/${category._id}`}
+      href={`/second-hand/${category.sportSlug}/${category.slug}`}
       className={`relative group block w-full h-full overflow-hidden bg-gray-100 ${className}`}
       style={{ borderRadius: "6px" }}
     >
@@ -179,4 +179,3 @@ function CategoryCard({ category, className }) {
     </Link>
   );
 }
-
