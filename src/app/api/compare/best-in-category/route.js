@@ -21,7 +21,7 @@ export async function GET(request) {
     for (const stat of category.technicalStats) {
       const bestProduct = await Product.findOne({ category: categoryId })
         .sort({ [`technicalStats.${stat.name}`]: -1 }) // مرتب‌سازی نزولی بر اساس امتیاز شاخص
-        .select('title name mainImage technicalStats')
+        .select('title name slug mainImage technicalStats')
         .populate('category', 'title technicalStats')
         .lean();
 

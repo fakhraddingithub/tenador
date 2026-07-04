@@ -192,7 +192,6 @@ export default function ProductComparisonGraph({ technicalStats = {} }) {
         strokeWidth={2}
         fill={currentColor}
         fillOpacity={0.45}
-        // اضافه کردن بولت ثابت روی خطوط نمودار اصلی
         dot={{ r: 4, fill: "#ffffff", stroke: currentColor, strokeWidth: 2, fillOpacity: 1 }}
         activeDot={{ r: 6, fill: currentColor, stroke: "#ffffff", strokeWidth: 2 }}
       />
@@ -310,7 +309,7 @@ export default function ProductComparisonGraph({ technicalStats = {} }) {
 
       <div className="mt-6 text-center">
         <p className="text-[11px] text-gray-500 font-bold uppercase tracking-tighter">
-          تحلیل فنی و مقایسه عملکرد — پارامترها از کانفیگ دسته‌بندی استخراج شده‌اند
+          تحلیل فنی و مقایسه عملکرد
         </p>
       </div>
     </div>
