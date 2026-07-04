@@ -95,7 +95,14 @@ export default function VariantSelector({
               )}
             </div>
 
-            <div className="grid grid-cols-5 justify-start gap-2">
+            <div
+              className="flex flex-wrap gap-4"
+              style={{
+                maxWidth: compact
+                  ? "calc((3.75rem * 5) + (1rem * 4))"
+                  : "calc((4rem * 5) + (1rem * 4))",
+              }}
+            >
               {values.map((val) => {
                 const isSelected = selectedValue === val;
                 const img = getValueImage ? getValueImage(attrKey, val) : null;
