@@ -12,6 +12,12 @@ import {
     PolarRadiusAxis,
     ResponsiveContainer,
     Tooltip,
+    BarChart,
+    Bar,
+    XAxis,
+    YAxis,
+    CartesianGrid,
+    Legend,
 } from 'recharts';
 import { toast } from 'react-toastify';
 import { MdDescription } from 'react-icons/md';
@@ -25,9 +31,27 @@ export default function ComparePage() {
     const [isSearching, setIsSearching] = useState(false);
     const [selectedProducts, setSelectedProducts] = useState([]);
     const [lockedCategory, setLockedCategory] = useState(null);
+    const [categories, setCategories] = useState([]);
+    const [categoriesLoading, setCategoriesLoading] = useState(true);
 
     // برای بستن دراپ داون وقتی بیرون کلیک میشه
     const searchRef = useRef(null);
+
+    useEffect(() => {
+        let mounted = true;
+        (async () => {
+            try {
+                const res = await fetch('/api/compare/categories');
+                const data = await res.json();
+                if (mounted) setCategories(data.categories || []);
+            } catch (err) {
+                console.error('Error fetching compare categories:', err);
+            } finally {
+                if (mounted) setCategoriesLoading(false);
+            }
+        })();
+        return () => { mounted = false; };
+    }, []);
 
     // Debounce Search
     useEffect(() => {
@@ -80,6 +104,15 @@ export default function ComparePage() {
         setResults([]);
     };
 
+    const handleSelectCategory = (category) => {
+        setLockedCategory(category);
+    };
+
+    const handleBackToCategories = () => {
+        setLockedCategory(null);
+        setSelectedProducts([]);
+    };
+
     const handleRemoveProduct = (productId) => {
         const newProducts = selectedProducts.filter((p) => p._id !== productId);
         setSelectedProducts(newProducts);
@@ -105,15 +138,36 @@ export default function ComparePage() {
         اگر انتخاب شده، با انیمیشن به بالای صفحه منتقل می شود. 
         */}
             <div
-                className={`w-full max-w-4xl mx-auto px-4 transition-all duration-700 ease-[cubic-bezier(0.87,0,0.13,1)] ${selectedProducts.length === 0
+                className={`w-full max-w-4xl mx-auto px-4 transition-all duration-700 ease-[cubic-bezier(0.87,0,0.13,1)] ${selectedProducts.length === 0 && !lockedCategory
                     ? 'h-screen flex flex-col items-center justify-center'
                     : 'pt-10 pb-6'
                     }`}
             >
-                {selectedProducts.length === 0 && (
+                {selectedProducts.length === 0 && !lockedCategory && (
                     <div className="text-center mb-8 space-y-3 opacity-100 transition-opacity duration-500">
                         <h1 className="text-4xl font-bold text-[var(--color-primary)]">مقایسه تخصصی محصولات</h1>
-                        <p className="text-neutral-500">نام اولین محصول برای مقایسه را وارد کنید</p>
+                        <p className="text-neutral-500">
+                            نام اولین محصول را جستجو کنید یا یکی از دسته‌بندی‌های زیر را برای شروع مقایسه انتخاب کنید
+                        </p>
+                    </div>
+                )}
+
+                {lockedCategory && (
+                    <div className="flex items-start justify-between gap-4 mb-4">
+                        <div>
+                            <h2 className="text-xl md:text-2xl font-bold text-[var(--color-text)]">
+                                مقایسه محصولات {lockedCategory.title}
+                            </h2>
+                            <p className="text-sm text-neutral-500 mt-1">
+                                محصول مورد نظرتان را در کادر زیر جستجو کنید تا به نمودار مقایسه اضافه شود.
+                            </p>
+                        </div>
+                        <button
+                            onClick={handleBackToCategories}
+                            className="shrink-0 text-xs font-bold text-neutral-400 hover:text-[var(--color-primary)] transition-colors whitespace-nowrap mt-1"
+                        >
+                            بازگشت به دسته‌بندی‌ها
+                        </button>
                     </div>
                 )}
 
@@ -177,25 +231,76 @@ export default function ComparePage() {
                         </div>
                     )}
                 </div>
+
+                {selectedProducts.length === 0 && !lockedCategory && (
+                    <div className="w-full mt-10">
+                        {categoriesLoading ? (
+                            <div className="flex justify-center py-8">
+                                <div className="w-6 h-6 border-2 border-[var(--color-primary)] border-t-transparent rounded-full animate-spin" />
+                            </div>
+                        ) : categories.length > 0 ? (
+                            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
+                                {categories.map((cat) => (
+                                    <button
+                                        key={cat._id}
+                                        onClick={() => handleSelectCategory(cat)}
+                                        className="group relative overflow-hidden rounded-2xl border border-neutral-100 bg-white shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all duration-300 text-right"
+                                    >
+                                        <div className="relative w-full aspect-square bg-neutral-50 overflow-hidden">
+                                            {cat.image ? (
+                                                <img
+                                                    src={cat.image}
+                                                    alt={cat.title}
+                                                    className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
+                                                />
+                                            ) : (
+                                                <div className="w-full h-full flex items-center justify-center text-neutral-300">
+                                                    {cat.icon ? (
+                                                        <img src={cat.icon} alt="" className="w-10 h-10 object-contain opacity-60" />
+                                                    ) : (
+                                                        <FiSearch size={28} />
+                                                    )}
+                                                </div>
+                                            )}
+                                            <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/0 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+                                        </div>
+                                        <div className="p-3 flex items-center justify-between gap-2">
+                                            <div className="flex items-center gap-2 min-w-0">
+                                                {cat.icon && (
+                                                    <img src={cat.icon} alt="" className="w-5 h-5 object-contain shrink-0" />
+                                                )}
+                                                <span className="font-bold text-sm text-neutral-800 truncate">{cat.title}</span>
+                                            </div>
+                                            <span className="shrink-0 text-[10px] font-bold text-[var(--color-primary)] bg-[var(--color-primary)]/10 px-2 py-1 rounded-lg group-hover:bg-[var(--color-primary)] group-hover:text-white transition-colors">
+                                                مقایسه
+                                            </span>
+                                        </div>
+                                    </button>
+                                ))}
+                            </div>
+                        ) : null}
+                    </div>
+                )}
             </div>
 
             {/* بخش محتوای مقایسه 
         فقط زمانی نمایش داده میشود که حداقل یک محصول انتخاب شده باشد
         */}
-            {selectedProducts.length > 0 && (
+            {(selectedProducts.length > 0 || lockedCategory) && (
                 <div className="max-w-7xl mx-auto px-4 pb-20 animate-in fade-in slide-in-from-bottom-10 duration-700">
 
                     {/* 1. کارت‌های محصولات انتخاب شده */}
-                    <div className="flex flex-wrap gap-4 justify-center mb-12">
-                        {selectedProducts.map((product) => (
-                            <div
-                                key={product._id}
-                                className="relative rounded-2xl p-2 pl-4 shadow-sm flex items-center gap-3 w-full sm:w-72 border-2 transition-all hover:shadow-lg group"
-                                style={{
-                                    backgroundColor: `${product.color}10`, // اوپاسیتی ۱۰٪ هماهنگ با چارت
-                                    borderColor: `${product.color}30`
-                                }}
-                            >
+                    {selectedProducts.length > 0 && (
+                        <div className="flex flex-wrap gap-4 justify-center mb-12">
+                            {selectedProducts.map((product) => (
+                                <div
+                                    key={product._id}
+                                    className="relative rounded-2xl p-2 pl-4 shadow-sm flex items-center gap-3 w-full sm:w-72 border-2 transition-all hover:shadow-lg group"
+                                    style={{
+                                        backgroundColor: `${product.color}10`, // اوپاسیتی ۱۰٪ هماهنگ با چارت
+                                        borderColor: `${product.color}30`
+                                    }}
+                                >
 
 
                                 {/* تصویر محصول */}
@@ -238,14 +343,22 @@ export default function ComparePage() {
                                 >
                                     <FiTrash2 size={18} />
                                 </button>
-                            </div>
-                        ))}
-                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    )}
 
-                    {/* 2. نمودار عنکبوتی (Radar Chart) */}
-                    <div className=" items-center mb-16 bg-white p-8 rounded-[var(--radius)] shadow-sm border border-neutral-100">
-                        <div className="w-full h-[500px]">
-                            <CompareChart products={selectedProducts} categoryStats={lockedCategory?.technicalStats} />
+                    {/* 2. نمودار عنکبوتی + نمودار میله‌ای */}
+                    <div className="flex flex-col lg:flex-row gap-6 mb-16">
+                        <div className="lg:w-2/3 bg-white p-8 rounded-[var(--radius)] shadow-sm border border-neutral-100">
+                            <div className="w-full h-[500px]">
+                                <CompareChart products={selectedProducts} categoryStats={lockedCategory?.technicalStats} />
+                            </div>
+                        </div>
+                        <div className="lg:w-1/3 bg-white p-8 rounded-[var(--radius)] shadow-sm border border-neutral-100">
+                            <div className="w-full h-[500px]">
+                                <CompareBarChart products={selectedProducts} categoryStats={lockedCategory?.technicalStats} />
+                            </div>
                         </div>
                     </div>
                     {/* بعد از بخش چارت و مقایسه فعلی */}
@@ -358,6 +471,13 @@ function CompareChart({ products, categoryStats }) {
 
     return (
         <div ref={wrapperRef} style={{ width: '100%', height: '100%' }}>
+            <style jsx>{`
+                div :global(.recharts-wrapper):focus,
+                div :global(.recharts-wrapper) :global(*):focus,
+                div :global(.recharts-surface):focus {
+                    outline: none !important;
+                }
+            `}</style>
             <ResponsiveContainer width="100%" height="100%">
                 <RadarChart cx="50%" cy="50%" outerRadius="75%" data={chartData}>
                     <PolarGrid stroke="#e5e5e5" />
@@ -366,7 +486,7 @@ function CompareChart({ products, categoryStats }) {
                         tick={customTick}
                         tickLine={false}
                     />
-                    <PolarRadiusAxis tickCount={10} angle={30} domain={[0, 100]} tick={{ fill: '#9ca3af', fontSize: 11 }} />
+                    <PolarRadiusAxis angle={90} ticks={[20, 40, 60, 80, 100]} domain={[0, 100]} tick={{ fill: '#9ca3af', fontSize: 11 }} />
                     <Tooltip
                         contentStyle={{
                             borderRadius: 'var(--radius)',
@@ -394,11 +514,74 @@ function CompareChart({ products, categoryStats }) {
                             strokeWidth={2}
                             fill={product.color}
                             fillOpacity={0.2}
+                            dot={{ r: 4, fill: "#ffffff", stroke: product.color, strokeWidth: 2, fillOpacity: 1 }}
+                            activeDot={{ r: 6, fill: product.color, stroke: "#ffffff", strokeWidth: 2 }}
                         />
                     ))}
                 </RadarChart>
             </ResponsiveContainer>
         </div>
+    );
+}
+
+function CompareBarChart({ products, categoryStats }) {
+    if (!categoryStats || categoryStats.length === 0 || !products || products.length === 0) {
+        return (
+            <div className="h-full flex items-center justify-center text-neutral-400 text-sm">
+                برای مشاهده نمودار میله‌ای، حداقل یک محصول اضافه کنید.
+            </div>
+        );
+    }
+
+    const chartData = categoryStats.map((stat) => {
+        const dataPoint = { subject: stat.label };
+        products.forEach((prod) => {
+            dataPoint[prod._id] = prod.technicalStats?.[stat.name] || 0;
+        });
+        return dataPoint;
+    });
+
+    return (
+        <ResponsiveContainer width="100%" height="100%">
+            <BarChart data={chartData} margin={{ top: 10, right: 10, left: -10, bottom: 0 }}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#e5e5e5" vertical={false} />
+                <XAxis
+                    dataKey="subject"
+                    tick={{ fill: '#4b5563', fontSize: 11, fontWeight: 700 }}
+                    tickLine={false}
+                    axisLine={{ stroke: '#e5e5e5' }}
+                    interval={0}
+                    angle={-20}
+                    textAnchor="end"
+                    height={50}
+                />
+                <YAxis
+                    domain={[0, 100]}
+                    tick={{ fill: '#9ca3af', fontSize: 11 }}
+                    tickLine={false}
+                    axisLine={false}
+                />
+                <Tooltip
+                    contentStyle={{
+                        borderRadius: 'var(--radius)',
+                        border: 'none',
+                        boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)',
+                        direction: 'rtl',
+                    }}
+                    formatter={(value) => [`${value} از 100`, undefined]}
+                />
+                {products.map((product) => (
+                    <Bar
+                        key={product._id}
+                        name={product.title || product.name}
+                        dataKey={product._id}
+                        fill={product.color}
+                        radius={[4, 4, 0, 0]}
+                        maxBarSize={28}
+                    />
+                ))}
+            </BarChart>
+        </ResponsiveContainer>
     );
 }
 
