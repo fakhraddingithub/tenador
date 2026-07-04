@@ -124,7 +124,7 @@ export async function POST(req) {
       tested: !!tested,
     });
 
-    try { revalidatePath("/second-hand"); } catch {}
+    try { revalidatePath("/second-hand", "layout"); } catch {}
 
     // ─── ارسال Web Push به همهٔ مشترکین (فقط برای محصولاتِ available) ───
     // fire-and-forget: با after() بعد از ارسالِ پاسخ اجرا می‌شود تا save ادمین را بلاک نکند،

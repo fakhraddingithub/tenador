@@ -1,15 +1,9 @@
 import connectToDB from "base/configs/db";
 import UsedProduct from "base/models/UsedProduct";
-import Brand from "base/models/Brand";
-import Category from "base/models/Category";
-import Product from "base/models/Product";
-import HealthCard from "base/models/HealthCard";
 import SiteSetting from "base/models/SiteSetting";
-import UsedProductsPageClient from "@/components/templates/secondHands/UsedProductsPageClient";
-import { getFilterableAttributes } from "base/services/product.service";
-import { getCachedRate, eurToToman } from "@/lib/Exchangerate";
+import SecondHandCategoryGrid from "@/components/features/secondHandCategoryGrid/SecondHandCategoryGrid";
 
-// تغییراتِ ادمین از طریقِ revalidatePath("/second-hand") باطل می‌شوند؛
+// تغییراتِ ادمین از طریقِ revalidatePath("/second-hand", "layout") باطل می‌شوند؛
 // TTL زمان‌محور → ۱ساعت برای کاهشِ ISR Writes.
 export const revalidate = 3600;
 
@@ -56,135 +50,44 @@ export default async function UsedProductsPage() {
   const rawProducts = await UsedProduct.find({ status: "available" })
     .populate({
       path: "baseProduct",
-      // attributes + color برای فیلترِ ویژگی/رنگِ دکمه‌ای روی صفحهٔ دست‌دوم
-      select: "name mainImage shortDescription basePrice brand category sku attributes color",
-      populate: [
-        { path: "brand", select: "title slug logo icon" },
-        { path: "category", select: "title slug" },
-      ],
+      select: "category",
+      populate: { path: "category", select: "title slug icon image" },
     })
-    .sort({ createdAt: -1 })
     .lean();
 
-  const rate = await getCachedRate();
+  const categoryMap = new Map();
+  for (const p of rawProducts) {
+    const cat = p.baseProduct?.category;
+    if (!cat?._id) continue;
+    const key = cat._id.toString();
+    if (!categoryMap.has(key)) {
+      categoryMap.set(key, {
+        _id: key,
+        id: key,
+        name: cat.title,
+        title: cat.title,
+        slug: cat.slug,
+        icon: cat.icon || null,
+        image: cat.image || null,
+      });
+    }
+  }
+  const categories = Array.from(categoryMap.values());
+
   const headerSetting = await SiteSetting.findOne({
     key: "secondhand_header_image",
   }).lean();
   const headerImage = headerSetting?.value || null;
-  const allHealthCards = await HealthCard.find().lean();
-  // تبدیل آرایه کارت‌ها به یک آبجکت واحد برای دسترسی سریع
-  // خروجی چیزی شبیه این می‌شود: { engine: "وضعیت موتور", body: "سلامت بدنه", ... }
-  const cardFieldMap = {};
-  // ترتیب فیلدهای هر کارت سلامت (بر اساس دسته‌بندی) تا نمایش امتیازها هم‌ترتیب باشد
-  const cardOrderByCat = {};
-  allHealthCards.forEach((card) => {
-    const catId = card.category?.toString();
-    card.fields.forEach((field, i) => {
-      cardFieldMap[field.key] = field.label;
-      if (catId) {
-        (cardOrderByCat[catId] ||= {})[field.key] = i;
-      }
-    });
-  });
-  // حذف محصولاتی که baseProduct آنها null است
-  const products = rawProducts
-    .filter((p) => p.baseProduct)
-    .map((p) => {
-      const currentHealthScores = p.healthScores || [];
-      // ترتیب نمایش امتیازها بر اساس ترتیب فیلدها در کارت سلامتِ همان دسته‌بندی
-      const orderMap = cardOrderByCat[p.baseProduct.category?._id?.toString()] || {};
-      const orderOf = (key) => (key in orderMap ? orderMap[key] : Infinity);
-      return {
-        _id: p._id.toString(),
-        slug: p.slug || null,
-        tested: !!p.tested,
-        overallScore: p.overallScore,
-        healthScores: currentHealthScores
-          .map((s) => ({
-            key: s.key,
-            // اگر در نقشه کارت سلامت بود، لیبل فارسی را بگذار، وگرنه خودِ کلید را
-            label: cardFieldMap[s.key] || s.key,
-            rating: s.rating,
-            note: s.note || "",
-          }))
-          .sort((a, b) => orderOf(a.key) - orderOf(b.key)),
-        price: eurToToman(p.price, rate),
-        name: p.name,
-        description: p.description.trim()
-          ? p.description
-          : p.baseProduct.shortDescription,
-        images: p.images || [],
-        status: p.status,
-        createdAt: p.createdAt?.toISOString(),
-        baseProduct: {
-          _id: p.baseProduct._id.toString(),
-          name: p.baseProduct.name,
-          mainImage: p.baseProduct.mainImage,
-          basePrice: p.baseProduct.basePrice,
-          sku: p.baseProduct.sku,
-          // برای فیلترِ ویژگی/رنگِ دکمه‌ای
-          attributes: p.baseProduct.attributes || {},
-          color: p.baseProduct.color || null,
-          brand: p.baseProduct.brand
-            ? {
-                _id: p.baseProduct.brand._id.toString(),
-                title: p.baseProduct.brand.title,
-                slug: p.baseProduct.brand.slug,
-                logo: p.baseProduct.brand.logo,
-                icon: p.baseProduct.brand.icon,
-              }
-            : null,
-          category: p.baseProduct.category
-            ? {
-                _id: p.baseProduct.category._id.toString(),
-                title: p.baseProduct.category.title,
-                slug: p.baseProduct.category.slug,
-              }
-            : null,
-        },
-      };
-    });
-  const filterableAttributes = await getFilterableAttributes();
 
-  // ─────────────────────────────────────────────
-  // داده‌ی ساختاریافته (JSON-LD) برای ایندکس‌شدنِ صفحه‌ی فهرستِ دست‌دوم در گوگل.
-  // از داده‌ی واقعیِ همین صفحه ساخته می‌شود (نه مقدارِ ثابت): CollectionPage شامل
-  // ItemList از محصولاتِ موجود + BreadcrumbList. قیمت‌ها به تومان (IRT) هستند تا
-  // واحدِ پول در اسنیپت دیده شود، هم‌راستا با اسکیمای صفحه‌ی محصول.
-  // ─────────────────────────────────────────────
-  const absUrl = (u) =>
-    u ? (u.startsWith("http") ? u : `${SITE_URL}${u}`) : null;
-
-  const itemListElement = products.slice(0, 30).map((p, i) => {
-    const img = absUrl(p.images?.[0] || p.baseProduct?.mainImage);
-    const productUrl = p.slug ? `${SITE_URL}/second-hand/${p.slug}` : undefined;
-    return {
-      "@type": "ListItem",
-      position: i + 1,
-      item: {
-        "@type": "Product",
-        name: p.name,
-        ...(img && { image: [img] }),
-        ...(productUrl && { url: productUrl }),
-        ...(p.baseProduct?.sku && { sku: p.baseProduct.sku }),
-        ...(p.baseProduct?.brand?.title && {
-          brand: { "@type": "Brand", name: p.baseProduct.brand.title },
-        }),
-        ...(p.baseProduct?.category?.title && {
-          category: p.baseProduct.category.title,
-        }),
-        offers: {
-          "@type": "Offer",
-          priceCurrency: "IRT",
-          // رشته‌ی صحیح بدون اعشار — هم‌راستا با اسکیمای صفحه‌ی محصول
-          price: String(Math.round(p.price || 0)),
-          availability: "https://schema.org/InStock",
-          itemCondition: "https://schema.org/UsedCondition",
-          ...(productUrl && { url: productUrl }),
-        },
-      },
-    };
-  });
+  const itemListElement = categories.map((c, i) => ({
+    "@type": "ListItem",
+    position: i + 1,
+    item: {
+      "@type": "CollectionPage",
+      name: `${c.title} دست‌دوم`,
+      url: `${SITE_URL}/second-hand/category/${c._id}`,
+    },
+  }));
 
   const collectionSchema = {
     "@context": "https://schema.org",
@@ -196,7 +99,7 @@ export default async function UsedProductsPage() {
     isPartOf: { "@type": "WebSite", name: "تنادور", url: SITE_URL },
     mainEntity: {
       "@type": "ItemList",
-      numberOfItems: products.length,
+      numberOfItems: categories.length,
       itemListElement,
     },
   };
@@ -225,11 +128,17 @@ export default async function UsedProductsPage() {
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbSchema) }}
       />
-      <UsedProductsPageClient
-        products={products}
-        headerImage={headerImage}
-        filterableAttributes={filterableAttributes}
-      />
+      {headerImage && (
+        <div className="relative h-[120px] md:h-[220px] w-full overflow-hidden">
+          <img
+            src={headerImage}
+            alt="بازار دست‌دوم"
+            className="w-full h-full object-cover"
+            onError={(e) => { e.target.style.display = "none"; }}
+          />
+        </div>
+      )}
+      <SecondHandCategoryGrid categories={categories} />
     </>
   );
 }

@@ -124,7 +124,7 @@ export async function PUT(req, { params }) {
       });
 
     try {
-      revalidatePath("/second-hand");
+      revalidatePath("/second-hand", "layout");
       if (usedProduct.slug) revalidatePath(`/second-hand/${usedProduct.slug}`);
     } catch {}
 

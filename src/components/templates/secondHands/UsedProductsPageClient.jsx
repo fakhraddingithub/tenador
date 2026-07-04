@@ -22,7 +22,14 @@ const DEFAULT_FILTERS = {
   onlyInStock: false,
 };
 
-export default function UsedProductsPageClient({ products: initialProducts, headerImage, filterableAttributes = [] }) {
+export default function UsedProductsPageClient({
+  products: initialProducts,
+  headerImage,
+  filterableAttributes = [],
+  heroEyebrow = 'بازار',
+  heroTitle = 'دست‌دوم',
+  heroSubtitle = 'تجهیزات ورزشی کارکرده با کارت سلامت معتبر — با اطمینان بخر',
+}) {
   const [searchTerm, setSearchTerm] = useState('');
   const [filters, setFilters]       = useState(DEFAULT_FILTERS);
 
@@ -134,14 +141,14 @@ export default function UsedProductsPageClient({ products: initialProducts, head
 
         <div className="absolute inset-0 z-20 flex flex-col justify-center items-center text-center px-4">
           <span className="text-[var(--color-secondary)] font-bold mb-2 tracking-[0.2em] text-sm uppercase flex items-center gap-2">
-            <FiTag size={14} /> بازار
+            <FiTag size={14} /> {heroEyebrow}
           </span>
           <h1 className="text-4xl md:text-5xl font-bold text-white mb-3 drop-shadow-xl">
-            دست‌دوم
+            {heroTitle}
           </h1>
           <div className="w-16 h-1 bg-[var(--color-primary)] rounded-full mb-3" />
           <p className="text-gray-200 max-w-xl text-sm md:text-base font-medium leading-relaxed opacity-90">
-            تجهیزات ورزشی کارکرده با کارت سلامت معتبر — با اطمینان بخر
+            {heroSubtitle}
           </p>
         </div>
       </div>
