@@ -46,6 +46,7 @@ export async function PUT(req, { params }) {
       description, 
       logo, 
       icon, 
+      monochromeLogo,
       image, 
       prompts 
     } = body;
@@ -64,6 +65,7 @@ export async function PUT(req, { params }) {
     if (description !== undefined) brand.description = description.trim();
     if (logo !== undefined) brand.logo = logo.trim();
     if (icon !== undefined) brand.icon = icon.trim();
+    if (monochromeLogo !== undefined) brand.monochromeLogo = monochromeLogo.trim();
     if (image !== undefined) brand.image = image.trim();
 
     if (prompts !== undefined && Array.isArray(prompts)) {

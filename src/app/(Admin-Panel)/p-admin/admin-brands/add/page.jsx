@@ -9,7 +9,7 @@ import { toast } from 'react-toastify';
 export default function AddBrand() {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
-  const [uploading, setUploading] = useState({ logo: false, icon: false, image: false });
+  const [uploading, setUploading] = useState({ logo: false, icon: false, monochromeLogo: false, image: false });
 
   const initialPrompts = [
     { field: 'name', context: `Identify the exact technical name of the model/series. Remove any Persian characters. Format it as a URL-friendly string if possible.` },
@@ -28,7 +28,7 @@ export default function AddBrand() {
 
   const [formData, setFormData] = useState({
     name: '', title: '', country: '', foundedYear: '', description: '',
-    logo: '', icon: '', image: '',
+    logo: '', icon: '', monochromeLogo: '', image: '',
     prompts: initialPrompts,
   });
 
@@ -218,6 +218,16 @@ export default function AddBrand() {
                     onSelect={(f) => uploadImage(f, 'icon')}
                     isSquare
                     small
+                  />
+                </div>
+
+                <div>
+                  <p className="text-[10px] font-bold uppercase text-gray-400 mb-3 tracking-widest text-center">لوگوی مونوکروم (Monochrome Logo)</p>
+                  <UploadField
+                    url={formData.monochromeLogo}
+                    loading={uploading.monochromeLogo}
+                    onSelect={(f) => uploadImage(f, 'monochromeLogo')}
+                    isSquare
                   />
                 </div>
               </div>

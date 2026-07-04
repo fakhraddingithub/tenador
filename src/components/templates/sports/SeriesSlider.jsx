@@ -88,10 +88,10 @@ function SerieCard({ serie, sportSlug, limited = false }) {
         )}
 
         {/* لوگو - هماهنگ شده با سایز موبایل */}
-        {(serie.logo || serie.brand?.logo) && (
+        {(serie.logo || serie.brand?.monochromeLogo || serie.brand?.logo) && (
           <div className="absolute top-3 left-4 md:top-4 md:left-5 z-40">
             <img
-              src={serie.logo || serie.brand?.logo}
+              src={serie.logo || serie.brand?.monochromeLogo || serie.brand?.logo}
               alt={serie.title || serie.brand?.title || "logo"}
               className="h-[32px] sm:h-[40px] md:h-[55px] w-auto object-contain transition-transform duration-500"
               style={{
@@ -175,7 +175,7 @@ function SerieCard({ serie, sportSlug, limited = false }) {
                 hovered && limited ? "translateY(-4px)" : "translateY(0)",
             }}
           >
-            {serie.title}
+            {serie.brand?.title ? `${serie.brand.title} ${serie.title}` : serie.title}
           </h3>
         </div>
       </div>

@@ -302,7 +302,48 @@ export default function ProductComparisonGraph({ technicalStats = {} }) {
               labelFormatter={(label) => `شاخص: ${label}`}
             />
             {renderRadars()}
-            <Legend verticalAlign="bottom" wrapperStyle={{ paddingTop: 12, fontSize: 12, fontWeight: 800 }} />
+            <Legend
+              verticalAlign="bottom"
+              content={({ payload }) => (
+                <ul
+                  style={{
+                    display: "flex",
+                    justifyContent: "center",
+                    flexWrap: "wrap",
+                    gap: 16,
+                    paddingTop: 12,
+                    margin: 0,
+                    listStyle: "none",
+                  }}
+                >
+                  {payload.map((entry, index) => (
+                    <li
+                      key={`legend-item-${index}`}
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        gap: 6,
+                        fontSize: 12,
+                        fontWeight: 800,
+                        color: "#374151",
+                      }}
+                    >
+                      <span
+                        style={{
+                          display: "inline-block",
+                          width: 10,
+                          height: 10,
+                          borderRadius: "50%",
+                          backgroundColor: entry.color,
+                          flexShrink: 0,
+                        }}
+                      />
+                      {entry.value}
+                    </li>
+                  ))}
+                </ul>
+              )}
+            />
           </RadarChart>
         </ResponsiveContainer>
       </div>

@@ -17,6 +17,7 @@ export async function POST(req) {
       description = "",
       logo = "",
       icon = "",
+      monochromeLogo = "",
       image = "",
       prompts = [],
     } = body;
@@ -81,6 +82,7 @@ export async function POST(req) {
       description: description.trim(),
       logo: logo.trim(),
       icon: icon.trim(),
+      monochromeLogo: monochromeLogo.trim(),
       image: image.trim(),
       prompts: sanitizedPrompts,
     });

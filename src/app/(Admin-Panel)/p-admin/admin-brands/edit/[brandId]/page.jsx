@@ -12,12 +12,12 @@ export default function EditBrand() {
 
   const [loading, setLoading] = useState(true); // لودینگ اولیه صفحه
   const [saving, setSaving] = useState(false); // لودینگ دکمه ثبت
-  const [uploading, setUploading] = useState({ logo: false, icon: false, image: false });
+  const [uploading, setUploading] = useState({ logo: false, icon: false, monochromeLogo: false, image: false });
   const defaultPromptFields = ['name', 'title', 'description'];
 
   const [formData, setFormData] = useState({
     name: '', title: '', country: '', foundedYear: '', description: '',
-    logo: '', icon: '', image: '', prompts: [],
+    logo: '', icon: '', monochromeLogo: '', image: '', prompts: [],
   });
 
   // ۱. دریافت اطلاعات برند برای ویرایش
@@ -42,6 +42,7 @@ export default function EditBrand() {
           description: data.brand.description || '',
           logo: data.brand.logo || '',
           icon: data.brand.icon || '',
+          monochromeLogo: data.brand.monochromeLogo || '',
           image: data.brand.image || '',
           prompts: mergedPrompts,
         });
@@ -262,6 +263,16 @@ export default function EditBrand() {
                     onSelect={(f) => uploadImage(f, 'icon')}
                     isSquare
                     small
+                  />
+                </div>
+
+                <div className="group">
+                  <p className="text-[10px] font-bold uppercase text-gray-500 mb-3 tracking-[0.2em] text-center group-hover:text-[var(--color-secondary)] transition-colors">لوگوی مونوکروم (Monochrome Logo)</p>
+                  <UploadField
+                    url={formData.monochromeLogo}
+                    loading={uploading.monochromeLogo}
+                    onSelect={(f) => uploadImage(f, 'monochromeLogo')}
+                    isSquare
                   />
                 </div>
               </div>

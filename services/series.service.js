@@ -151,6 +151,7 @@ async function _getSeriesBySport(sportSlug) {
             title: "$brandDoc.title",
             slug: "$brandDoc.slug",
             logo: "$brandDoc.logo",
+            monochromeLogo: "$brandDoc.monochromeLogo",
             image: "$brandDoc.image",
           },
         },
@@ -219,6 +220,7 @@ async function _getSeriesBySport(sportSlug) {
           title: serie.brand.title || "",
           slug: serie.brand.slug || "",
           logo: serie.brand.logo || "",
+          monochromeLogo: serie.brand.monochromeLogo || "",
           image: serie.brand.image || "",
         }
       : null,

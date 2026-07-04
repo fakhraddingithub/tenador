@@ -48,6 +48,11 @@ const schema = new mongoose.Schema(
       default: "",
     },
 
+    monochromeLogo: {
+      type: String,
+      default: "",
+    },
+
     image: {
       type: String,
       default: "",
