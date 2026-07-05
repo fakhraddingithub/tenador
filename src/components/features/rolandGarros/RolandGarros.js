@@ -3,14 +3,17 @@
 import { FiArrowLeft, FiCircle } from "react-icons/fi";
 import Image from "next/image";
 import Link from "next/link";
+import { normalizeRolandGarrosBanner } from "@/lib/rolandGarrosBanner";
 
-export default function RolandGarros() {
+export default function RolandGarros({ content }) {
+  const banner = normalizeRolandGarrosBanner(content);
+
   return (
     <section className="relative overflow-hidden bg-[#1a1c22] py-20 sm:py-24 lg:py-28">
       {/* متن پس‌زمینه */}
       <div className="pointer-events-none absolute top-[10%] left-1/2 z-0 w-full -translate-x-1/2 text-center">
         <h2 className="whitespace-nowrap text-[28vw] sm:text-[22vw] lg:text-[16vw] font-black italic leading-none tracking-[-0.08em] text-white/[0.03]">
-          Roland Garros
+          {banner.backgroundText}
         </h2>
       </div>
 
@@ -28,29 +31,29 @@ export default function RolandGarros() {
                   size={12}
                 />
                 <span className="text-sm font-bold tracking-widest text-[#aa4725] uppercase">
-                  کالکشن رسمی 2026
+                  {banner.eyebrow}
                 </span>
               </div>
 
               <h3 className="mb-6 text-center lg:text-right text-3xl font-bold leading-[1.15] text-white sm:text-5xl lg:text-6xl">
-                رولاند <span className="text-[#aa4725]">گاروس </span>
+                {banner.titlePrefix}{" "}
+                <span className="text-[#aa4725]">{banner.titleHighlight} </span>
                 <span className="mt-3 block text-left text-xl sm:text-2xl lg:text-3xl font-black italic tracking-[-0.06em] text-white/70">
-                  Roland <span className="text-[#aa4725]">Garros</span>
+                  {banner.englishTitlePrefix}{" "}
+                  <span className="text-[#aa4725]">{banner.englishTitleHighlight}</span>
                 </span>
               </h3>
 
               <p className="mx-auto lg:mr-0 lg:ml-auto mb-8 max-w-md text-center lg:text-right text-base leading-relaxed text-gray-300 font-light sm:text-lg lg:text-lg">
-                تجربه‌ای که از قلب پاریس می‌آید. راکت‌ها و اکسسوری‌هایی که مرز
-                بین هنر و ورزش را از بین برده‌اند؛ برای کسانی که به دنبال اصالت
-                هستند.
+                {banner.description}
               </p>
 
               <div className="flex flex-col items-center gap-5 sm:flex-row sm:justify-center lg:justify-end">
                 <Link
-                  href="/wilson/roland-garros"
+                  href={banner.ctaHref}
                   className="group/btn inline-flex items-center justify-center gap-3 rounded-2xl border-2 border-[#aa4725] bg-[#aa4725] px-8 py-4 text-base font-black text-white shadow-[0_20px_40px_rgba(170,71,37,0.3)] transition-all duration-300 hover:scale-105 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#ffbf00] focus-visible:ring-offset-2 focus-visible:ring-offset-[#20232a] sm:px-10 sm:py-5 sm:text-lg"
                 >
-                  <span>مشاهده محصولات</span>
+                  <span>{banner.ctaLabel}</span>
                   <FiArrowLeft
                     size={22}
                     className="transition-transform group-hover/btn:-translate-x-2"
@@ -59,10 +62,10 @@ export default function RolandGarros() {
 
                 <div className="flex flex-col items-center sm:items-start">
                   <span className="text-2xl font-black italic text-white sm:text-3xl">
-                    ۱۰۰٪
+                    {banner.statValue}
                   </span>
                   <span className="text-xs font-bold text-gray-500">
-                    اصالت تضمین شده
+                    {banner.statLabel}
                   </span>
                 </div>
               </div>
@@ -76,8 +79,8 @@ export default function RolandGarros() {
 
               <div className="relative aspect-[4/5] overflow-hidden rounded-[14px] border-4 border-[#20232a] shadow-[0_35px_90px_-20px_rgba(0,0,0,0.5)] sm:aspect-[16/11]">
                 <Image
-                  src="/images/roland-garros.webp"
-                  alt="محصولات رولاند گاروس"
+                  src={banner.imageUrl}
+                  alt={banner.imageAlt}
                   fill
                   priority
                   className="object-cover transition-transform duration-[3s] hover:scale-110"
@@ -89,10 +92,10 @@ export default function RolandGarros() {
               <div className="absolute -bottom-5 -right-3 hidden rounded-[14px] bg-white p-4 shadow-2xl transition-transform duration-500 md:block lg:-bottom-6 lg:-right-6 lg:p-5">
                 <div className="flex flex-col items-center gap-1">
                   <span className="text-3xl font-black italic tracking-tighter text-[#20232a] lg:text-4xl">
-                    PARIS
+                    {banner.cornerTitle}
                   </span>
                   <span className="text-[10px] font-bold tracking-widest text-[#aa4725] uppercase">
-                    تورنمنت 2026
+                    {banner.cornerSubtitle}
                   </span>
                 </div>
               </div>

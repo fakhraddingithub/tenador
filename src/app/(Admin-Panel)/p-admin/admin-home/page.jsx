@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { motion } from 'framer-motion';
 import {
   FiLayout, FiImage, FiChevronLeft, FiLayers,
-  FiGrid, FiTrendingUp,
+  FiGrid, FiTrendingUp, FiAward,
 } from 'react-icons/fi';
 import { FaArrowRight } from 'react-icons/fa';
 
@@ -30,6 +30,14 @@ const sections = [
     icon: FiTrendingUp,
     title: 'اسلایدرهای محصول',
     desc: 'انتخاب و چیدمان محصولات اسلایدرهای «پرفروش‌ها» و «شگفت‌انگیزها» با جستجو و کشیدن و رها کردن.',
+    badge: 'فعال',
+    badgeColor: 'bg-green-50 text-green-600',
+  },
+  {
+    href: '/p-admin/admin-home/roland-garros',
+    icon: FiAward,
+    title: 'بنر رولند گاروس',
+    desc: 'ویرایش تمام متن‌ها، تصویر و لینک دکمه بنر رولند گاروس صفحه اصلی.',
     badge: 'فعال',
     badgeColor: 'bg-green-50 text-green-600',
   },
