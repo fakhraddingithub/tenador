@@ -2,7 +2,6 @@ import { NextResponse } from "next/server";
 import { revalidatePath } from "next/cache";
 import connectToDB from "base/configs/db";
 import SiteSetting from "base/models/SiteSetting";
-import requireAdmin from "@/lib/requireAdmin";
 import { revalidateContent } from "@/lib/revalidate";
 import {
   normalizeRolandGarrosBanner,
@@ -13,11 +12,6 @@ import {
 
 export async function GET() {
   try {
-    const admin = await requireAdmin();
-    if (!admin) {
-      return NextResponse.json({ error: "دسترسی غیرمجاز" }, { status: 401 });
-    }
-
     await connectToDB();
     const setting = await SiteSetting.findOne({
       key: ROLAND_GARROS_BANNER_SETTING_KEY,
@@ -35,11 +29,6 @@ export async function GET() {
 
 export async function PUT(req) {
   try {
-    const admin = await requireAdmin();
-    if (!admin) {
-      return NextResponse.json({ error: "دسترسی غیرمجاز" }, { status: 401 });
-    }
-
     const body = await req.json();
     const { banner, errors } = validateRolandGarrosBanner(body?.banner);
 
