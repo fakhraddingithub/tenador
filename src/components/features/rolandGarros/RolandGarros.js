@@ -1,13 +1,10 @@
 "use client";
 
-import Button from "@/components/ui/Button";
 import { FiArrowLeft, FiCircle } from "react-icons/fi";
 import Image from "next/image";
-import { useRouter } from "next/navigation";
+import Link from "next/link";
 
 export default function RolandGarros() {
-  const router = useRouter();
-
   return (
     <section className="relative overflow-hidden bg-[#1a1c22] py-20 sm:py-24 lg:py-28">
       {/* متن پس‌زمینه */}
@@ -49,16 +46,16 @@ export default function RolandGarros() {
               </p>
 
               <div className="flex flex-col items-center gap-5 sm:flex-row sm:justify-center lg:justify-end">
-                <Button
-                  onClick={() => router.push("/wilson/roland-garros")}
-                  className="group/btn inline-flex items-center gap-3 rounded-2xl !bg-[#aa4725] !px-8 !py-4 !text-base !font-black !text-white shadow-[0_20px_40px_rgba(170,71,37,0.3)] transition-all hover:scale-105 sm:!px-10 sm:!py-5 sm:!text-lg"
+                <Link
+                  href="/wilson/roland-garros"
+                  className="group/btn inline-flex items-center justify-center gap-3 rounded-2xl border-2 border-[#aa4725] bg-[#aa4725] px-8 py-4 text-base font-black text-white shadow-[0_20px_40px_rgba(170,71,37,0.3)] transition-all duration-300 hover:scale-105 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#ffbf00] focus-visible:ring-offset-2 focus-visible:ring-offset-[#20232a] sm:px-10 sm:py-5 sm:text-lg"
                 >
                   <span>مشاهده محصولات</span>
                   <FiArrowLeft
                     size={22}
                     className="transition-transform group-hover/btn:-translate-x-2"
                   />
-                </Button>
+                </Link>
 
                 <div className="flex flex-col items-center sm:items-start">
                   <span className="text-2xl font-black italic text-white sm:text-3xl">

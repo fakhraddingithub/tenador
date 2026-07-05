@@ -515,28 +515,7 @@ function CompareChart({ products, categoryStats }) {
     };
 
     return (
-        <div ref={wrapperRef} style={{ width: '100%', height: '100%' }}>
-            <style jsx>{`
-                div :global(.recharts-wrapper),
-                div :global(.recharts-wrapper) *,
-                div :global(.recharts-surface),
-                div :global(.recharts-surface) *,
-                div :global(svg),
-                div :global(svg) * {
-                    outline: none !important;
-                }
-                div :global(.recharts-wrapper):focus,
-                div :global(.recharts-wrapper):focus-visible,
-                div :global(.recharts-wrapper) *:focus,
-                div :global(.recharts-wrapper) *:focus-visible,
-                div :global(.recharts-surface):focus,
-                div :global(.recharts-surface):focus-visible,
-                div :global(.recharts-surface) *:focus,
-                div :global(.recharts-surface) *:focus-visible {
-                    outline: none !important;
-                    box-shadow: none !important;
-                }
-            `}</style>
+        <div ref={wrapperRef} className="compare-radar-chart-wrapper" style={{ width: '100%', height: '100%' }}>
             <ResponsiveContainer width="100%" height="100%">
                 <RadarChart cx="50%" cy="50%" outerRadius="75%" data={chartData}>
                     <PolarGrid stroke="#e5e5e5" />
@@ -610,9 +589,7 @@ function CompareBarChart({ products, categoryStats }) {
                     tickLine={false}
                     axisLine={{ stroke: '#e5e5e5' }}
                     interval={0}
-                    angle={-20}
-                    textAnchor="end"
-                    height={50}
+                    height={30}
                 />
                 <YAxis
                     domain={[0, 100]}

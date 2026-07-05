@@ -420,3 +420,18 @@
   font-family: var(--font-sans) !important;
   direction: rtl;
 }
+
+/* حذفِ کادرِ فوکوسِ پیش‌فرضِ مرورگر روی نمودارِ راداریِ صفحه‌ی مقایسه — فقط همین یک نمودار */
+.compare-radar-chart-wrapper svg,
+.compare-radar-chart-wrapper svg *,
+.compare-radar-chart-wrapper .recharts-wrapper,
+.compare-radar-chart-wrapper .recharts-wrapper * {
+  outline: none !important;
+}
+.compare-radar-chart-wrapper svg:focus,
+.compare-radar-chart-wrapper svg:focus-visible,
+.compare-radar-chart-wrapper .recharts-wrapper:focus,
+.compare-radar-chart-wrapper .recharts-wrapper:focus-visible {
+  outline: none !important;
+  box-shadow: none !important;
+}
