@@ -14,7 +14,6 @@ import {
   FiUploadCloud,
 } from "react-icons/fi";
 import AdminLoader from "@/components/admin/AdminLoader";
-import RolandGarros from "@/components/features/rolandGarros/RolandGarros";
 import { showToast } from "@/lib/toast";
 import { showError } from "@/lib/swal";
 import { DEFAULT_ROLAND_GARROS_BANNER } from "@/lib/rolandGarrosBanner";
@@ -305,7 +304,7 @@ export default function RolandGarrosBannerManager() {
         </span>
       </div>
 
-      <div className="grid gap-6 xl:grid-cols-[minmax(0,520px)_minmax(0,1fr)]">
+      <div className="max-w-3xl">
         <form
           onSubmit={handleSubmit}
           className="overflow-hidden rounded-2xl border bg-white shadow-sm"
@@ -397,21 +396,6 @@ export default function RolandGarrosBannerManager() {
             </div>
           </div>
         </form>
-
-        <div className="min-w-0 space-y-3">
-          <div className="flex items-center gap-2 text-xs font-bold text-gray-500">
-            <FiImage className="text-[var(--color-primary)]" />
-            پیش‌نمایش با استایل واقعی صفحه اصلی
-          </div>
-          <div
-            className="overflow-hidden rounded-2xl border bg-white p-3 shadow-sm"
-            style={{ borderColor: "#e8e4df" }}
-          >
-            <div className="pointer-events-none overflow-hidden rounded-xl">
-              <RolandGarros content={form} />
-            </div>
-          </div>
-        </div>
       </div>
     </div>
   );
