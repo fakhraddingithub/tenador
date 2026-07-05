@@ -88,6 +88,11 @@ const ProductSchema = new mongoose.Schema(
       default: {},
     },
 
+    customTabItems: {
+      type: [mongoose.Schema.Types.ObjectId],
+      default: [],
+    },
+
     // متادیتای سطحِ مقدارِ واریانت (Change 2/3): تصاویرِ مشترک هر مقدار و مقادیرِ چندواحدی.
     // شکل: { [attrName]: { [value]: { images: [String], units: { [unitLabel]: String } } } }
     // اختیاری و افزایشی؛ نبودنش = رفتارِ قبلی (تصاویر فقط در سطحِ واریانت).

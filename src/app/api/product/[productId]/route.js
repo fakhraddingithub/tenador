@@ -8,6 +8,7 @@ import { cookies } from "next/headers";
 import connectToDB from "base/configs/db";
 
 import Product from "base/models/Product";
+import Category from "base/models/Category";
 import Variant from "base/models/Variant";
 import "base/models/LimitedEdition";
 
@@ -136,6 +137,7 @@ export async function PUT(request, { params }) {
       athlete,
       attributes,
       technicalStats,
+      customTabItems,
       label,
       isActive, // ✨ اضافه شد: دریافت وضعیت فعال/غیرفعال از فرانت‌اند
       variantOptions,
@@ -235,6 +237,15 @@ export async function PUT(request, { params }) {
       }
     }
 
+    let resolvedCustomTabItemIds = [];
+    if (Array.isArray(customTabItems) && customTabItems.length > 0 && category) {
+      const targetCategory = await Category.findById(category).select("customTab").lean();
+      const categoryItems = targetCategory?.customTab?.items || [];
+      resolvedCustomTabItemIds = customTabItems
+        .map((title) => categoryItems.find((it) => it.title === title)?._id)
+        .filter(Boolean);
+    }
+
     // --------------------------------------------------
     // آپدیت محصول
     // --------------------------------------------------
@@ -259,6 +270,8 @@ export async function PUT(request, { params }) {
 
     product.technicalStats =
       technicalStats && typeof technicalStats === "object" ? technicalStats : {};
+
+    product.customTabItems = resolvedCustomTabItemIds;
 
     product.variantMeta =
       variantMeta && typeof variantMeta === "object" ? variantMeta : {};

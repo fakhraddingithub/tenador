@@ -114,6 +114,13 @@ export function buildProductTemplate({
     .join("\n");
 
   const globalTechnicalPrompt = (category.technicalStatsPrompt || "").trim();
+  const customTabItemTitles =
+    category.customTab?.enabled && Array.isArray(category.customTab?.items)
+      ? category.customTab.items.map((item) => item.title).filter(Boolean)
+      : [];
+  const customTabInstructions = customTabItemTitles.length
+    ? customTabItemTitles.map((title) => `  - "${title}"`).join("\n")
+    : "";
 
   // ─── Reference Lists ──────────────────────────────────────────────────────
   const brandList = brands.map((b) => ({
@@ -298,6 +305,13 @@ technicalStats:
 ${globalTechnicalPrompt ? `\nScoring Guidance:\n${globalTechnicalPrompt}` : ""}
 - If no technical stats are defined for this category → return {}.
 
+${customTabItemTitles.length ? `customTabItems:
+- customTabItems must be a plain array of strings, each EXACTLY matching one of the titles listed below (character-for-character).
+- Pick ONLY the titles that genuinely apply to this specific product based on the raw content.
+- Do not paraphrase, translate, or invent new titles not in the list.
+- Omit this field entirely (or use an empty array) if none of the listed items apply to this product.
+` : ""}
+
 tag:
 ${fieldRules.tag}
 - Must be a JSON array of Persian strings.
@@ -328,6 +342,13 @@ ${multiUnitVariantInstructions || "  No multi-unit metadata is required. Return 
 
 Category Technical Stats (integer 0–100 → output in "technicalStats"):
 ${technicalStatsInstructions || "  (none defined)"}
+
+${customTabItemTitles.length ? `Category custom tab items - pick ONLY the ones that genuinely apply to this specific product,
+based on the raw content. Use the EXACT title strings below, verbatim (do not paraphrase,
+translate, or invent new titles not in this list). If none apply, output an empty array.
+Available titles for "${category.customTab.name}":
+${customTabInstructions}
+` : ""}
 
 =================================================================
 AVAILABLE BRANDS
@@ -386,7 +407,8 @@ Output exactly this structure with no extra fields:
   "variantMeta": {},
   "technicalStats": {
     "stat_name": 85
-  },
+  }${customTabItemTitles.length ? `,
+  "customTabItems": ["<exact title from the list above>", "..."]` : ""},
   "tag": [],
   "mainImage": "",
   "gallery": []

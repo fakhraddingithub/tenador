@@ -21,6 +21,8 @@ const ProductTemplate = ({ product, reviews = [], reviewStats }) => {
             description={product.longDescription}
             attributes={product.attributes}
             technicalStats={technicalStats}
+            customTab={product.category.customTab}
+            customTabItemIds={product.customTabItems || []}
             productId={product._id}
             reviews={reviews}
             reviewStats={reviewStats}

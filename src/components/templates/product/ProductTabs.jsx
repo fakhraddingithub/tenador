@@ -12,15 +12,36 @@ const ProductTabs = ({
   description,
   attributes,
   technicalStats,
+  customTab,
+  customTabItemIds = [],
   productId,
   reviews = [],
   reviewStats = { count: 0, average: 0 },
 }) => {
   const [activeTab, setActiveTab] = useState("description");
+  const customTabItemIdSet = new Set(
+    customTabItemIds.map((id) => id?.toString?.() || String(id))
+  );
+  const matchingCustomItems =
+    customTab?.enabled && Array.isArray(customTab?.items)
+      ? customTab.items.filter((item) =>
+          customTabItemIdSet.has(item._id?.toString?.() || String(item._id))
+        )
+      : [];
 
   const tabs = [
     { id: "description", label: "توضیحات تخصصی", icon: FiFileText },
     { id: "attributes", label: "مشخصات فنی", icon: FiSettings },
+    ...(matchingCustomItems.length > 0
+      ? [
+          {
+            id: "customTab",
+            label: customTab.name || "اطلاعات بیشتر",
+            iconUrl: customTab.icon || null,
+            isCustom: true,
+          },
+        ]
+      : []),
     {
       id: "reviews",
       label: "نظرات کاربران",
@@ -47,7 +68,15 @@ const ProductTabs = ({
             >
               <div className="flex items-center gap-2">
                 <span className={`${isActive ? "opacity-100" : "opacity-40"}`}>
-                  <tab.icon className="text-sm" />
+                  {tab.isCustom ? (
+                    tab.iconUrl ? (
+                      <img src={tab.iconUrl} alt="" className="w-4 h-4 object-contain inline-block" />
+                    ) : (
+                      <FiFileText className="text-sm" />
+                    )
+                  ) : (
+                    <tab.icon className="text-sm" />
+                  )}
                 </span>
                 <span>{tab.label}</span>
                 {tab.count > 0 && (
@@ -88,6 +117,29 @@ const ProductTabs = ({
             {activeTab === "attributes" && (
               <div className="bg-gray-50/50 rounded-[6px] p-1 border border-gray-100">
                 <ProductAttributesTable attributes={attributes} technicalStats={technicalStats} />
+              </div>
+            )}
+            {activeTab === "customTab" && (
+              <div className="space-y-4 px-2">
+                {matchingCustomItems.map((item) => (
+                  <div key={item._id} className="p-4 bg-gray-50/50 rounded-[6px] border border-gray-100">
+                    {item.link ? (
+                      <a
+                        href={item.link}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="font-bold text-[#1a1a1a] hover:text-[#aa4725] transition-colors inline-flex items-center gap-1"
+                      >
+                        {item.title}
+                      </a>
+                    ) : (
+                      <h4 className="font-bold text-[#1a1a1a]">{item.title}</h4>
+                    )}
+                    {item.description && (
+                      <p className="mt-1.5 text-sm text-gray-500 leading-7">{item.description}</p>
+                    )}
+                  </div>
+                ))}
               </div>
             )}
             {activeTab === "reviews" && (

@@ -177,7 +177,20 @@ export async function PUT(req, { params }) {
      |--------------------------------------------------------------------------
      */
 
+    if (Array.isArray(body.sportImages)) {
+      serie.sportImages = body.sportImages
+        .filter((entry) => entry && entry.sport)
+        .map((entry) => ({
+          sport: entry.sport,
+          image: typeof entry.image === "string" ? entry.image.trim() : "",
+          headImage:
+            typeof entry.headImage === "string" ? entry.headImage.trim() : "",
+        }));
+    }
+
     Object.keys(body).forEach((key) => {
+      if (key === "sportImages") return;
+
       serie[key] = body[key];
     });
 

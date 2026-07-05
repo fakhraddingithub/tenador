@@ -45,6 +45,7 @@ export async function PUT(req, { params }) {
       megaMenuFilterAttribute, // ویژگیِ فیلترِ مگامنو (نامِ ویژگی یا null)
       technicalStats,
       technicalStatsPrompt,
+      customTab,
       prompts,
       image,
       icon
@@ -154,6 +155,31 @@ export async function PUT(req, { params }) {
 
     if (technicalStatsPrompt !== undefined) {
       category.technicalStatsPrompt = technicalStatsPrompt;
+    }
+
+    // ۴. به‌روزرسانی تب سفارشی دسته‌بندی
+    if (customTab !== undefined) {
+      if (customTab?.items && Array.isArray(customTab.items)) {
+        for (const item of customTab.items) {
+          if (!item.title?.trim()) {
+            return NextResponse.json({ error: "همه‌ی آیتم‌های تب سفارشی باید عنوان داشته باشند" }, { status: 400 });
+          }
+        }
+      }
+      category.customTab = {
+        enabled: !!customTab?.enabled,
+        name: (customTab?.name || "").trim(),
+        icon: (customTab?.icon || "").trim(),
+        items: Array.isArray(customTab?.items)
+          ? customTab.items.map((item) => ({
+              // حیاتی: آیتم‌های موجود باید _id اصلی خود را حفظ کنند تا ارتباط محصولات قبلی قطع نشود.
+              ...(item._id ? { _id: item._id } : {}),
+              title: item.title.trim(),
+              description: (item.description || "").trim(),
+              link: (item.link || "").trim(),
+            }))
+          : [],
+      };
     }
 
     if (prompts !== undefined) {

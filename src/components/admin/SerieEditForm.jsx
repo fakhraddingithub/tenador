@@ -23,6 +23,7 @@ import {
 import { useRouter } from "next/navigation";
 
 import ImageUpload from "./ImageUpload";
+import SerieSportImagesManager from "./SerieSportImagesManager";
 
 export default function SerieEditForm({ id,brandId }) {
   const router = useRouter();
@@ -63,6 +64,8 @@ export default function SerieEditForm({ id,brandId }) {
     headImage: "",
 
     image: "",
+
+    sportImages: [],
   });
 
   /*
@@ -122,6 +125,8 @@ export default function SerieEditForm({ id,brandId }) {
           headImage: data?.headImage || "",
 
           image: data?.image || "",
+
+          sportImages: data?.sportImages || [],
         });
 
         setBrandName(data?.brand?.title || "");
@@ -306,6 +311,29 @@ export default function SerieEditForm({ id,brandId }) {
                 folder="series/covers"
               />
             </div>
+          </div>
+
+          <div className="bg-white p-6 rounded-[3rem] shadow-sm border border-gray-50 space-y-4">
+            <h3 className="text-[10px] font-bold uppercase text-gray-400 tracking-widest">
+              تصاویر اختصاصی هر ورزش (اختیاری)
+            </h3>
+
+            <p className="text-xs text-gray-400 leading-relaxed">
+              اگر این سری در چند ورزش محصول دارد و می‌خواهید برای هرکدام تصویر
+              جداگانه نمایش داده شود، از اینجا اضافه کنید. برای ورزش‌هایی که
+              تصویر اختصاصی ندارند، همان «تصویر اصلی» و «تصویر هدر» بالا
+              استفاده می‌شود.
+            </p>
+
+            <SerieSportImagesManager
+              sportImages={formData.sportImages}
+              onChange={(sportImages) =>
+                setFormData((p) => ({
+                  ...p,
+                  sportImages,
+                }))
+              }
+            />
           </div>
 
           {/* Colors */}

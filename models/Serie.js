@@ -54,6 +54,27 @@ const schema = new mongoose.Schema(
       default: "",
     },
 
+    sportImages: {
+      type: [
+        {
+          sport: {
+            type: mongoose.Schema.Types.ObjectId,
+            ref: "Sport",
+            required: true,
+          },
+          image: {
+            type: String,
+            default: "",
+          },
+          headImage: {
+            type: String,
+            default: "",
+          },
+        },
+      ],
+      default: [],
+    },
+
     brand: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "Brand",

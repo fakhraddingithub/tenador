@@ -22,7 +22,8 @@ export async function POST(req) {
       colors,
       logo,
       headImage,
-      image,
+      image = "",
+      sportImages = [],
 
       brand,
 
@@ -141,6 +142,17 @@ export async function POST(req) {
 
     const level = parentSerieDoc ? parentSerieDoc.level + 1 : 0;
 
+    const sanitizedSportImages = Array.isArray(sportImages)
+      ? sportImages
+          .filter((entry) => entry && entry.sport)
+          .map((entry) => ({
+            sport: entry.sport,
+            image: typeof entry.image === "string" ? entry.image.trim() : "",
+            headImage:
+              typeof entry.headImage === "string" ? entry.headImage.trim() : "",
+          }))
+      : [];
+
     /*
      |--------------------------------------------------------------------------
      | Create Serie
@@ -158,7 +170,8 @@ export async function POST(req) {
 
       logo,
       headImage,
-      image,
+      image: image.trim(),
+      sportImages: sanitizedSportImages,
 
       brand,
 

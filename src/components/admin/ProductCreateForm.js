@@ -88,9 +88,11 @@ export default function ProductCreateForm({ initialData = {} }) {
     sport: '',
     attributes: {},
     technicalStats: {},
+    customTabItems: [],
     label: 'none',
     isActive: true,
     ...initialData,
+    customTabItems: initialData?.customTabItems || [],
     // Override athlete to guarantee array form
     athlete: initialAthletes,
   });
@@ -173,6 +175,7 @@ export default function ProductCreateForm({ initialData = {} }) {
   const categoryAttributes = selectedCategory?.attributes || [];
   const categoryVariantAttributes = selectedCategory?.variantAttributes || [];
   const categoryTechnicalStats = selectedCategory?.technicalStats || [];
+  const categoryCustomTab = selectedCategory?.customTab;
 
   /** When category changes, re-normalize attributes from initialData */
   useEffect(() => {
@@ -435,6 +438,7 @@ export default function ProductCreateForm({ initialData = {} }) {
         ...formData,
         attributes: normalizedAttributes,
         technicalStats: normalizedStats,
+        customTabItems: formData.customTabItems || [],
         basePrice: Number(formData.basePrice) || 0,
         tag: normalizedTag,
         athlete: Array.isArray(formData.athlete) ? formData.athlete : [],
@@ -1025,6 +1029,37 @@ export default function ProductCreateForm({ initialData = {} }) {
                 </div>
               </div>
             ))}
+          </div>
+        </div>
+      )}
+
+      {categoryCustomTab?.enabled && categoryCustomTab.items?.length > 0 && (
+        <div className="space-y-3 border-t pt-6">
+          <h3 className="text-sm font-bold text-neutral-700">{categoryCustomTab.name || 'تب سفارشی'}</h3>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+            {categoryCustomTab.items.map((item) => {
+              const checked = (formData.customTabItems || []).includes(item.title);
+              return (
+                <label
+                  key={item._id}
+                  className="flex items-center gap-2 p-2.5 bg-neutral-50 border border-neutral-200 rounded-lg cursor-pointer text-sm"
+                >
+                  <input
+                    type="checkbox"
+                    checked={checked}
+                    onChange={(e) =>
+                      setFormData((prev) => ({
+                        ...prev,
+                        customTabItems: e.target.checked
+                          ? [...(prev.customTabItems || []), item.title]
+                          : (prev.customTabItems || []).filter((t) => t !== item.title),
+                      }))
+                    }
+                  />
+                  <span className="font-bold truncate">{item.title}</span>
+                </label>
+              );
+            })}
           </div>
         </div>
       )}

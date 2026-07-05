@@ -116,6 +116,7 @@ async function _getSeriesBySport(sportSlug) {
 
         image: { $first: "$serieDoc.image" },
         headImage: { $first: "$serieDoc.headImage" },
+        sportImages: { $first: "$serieDoc.sportImages" },
 
         logo: { $first: "$serieDoc.logo" },
 
@@ -173,58 +174,66 @@ async function _getSeriesBySport(sportSlug) {
     },
   ]);
 
-  return results.map((serie) => ({
-    _id: serie._id.toString(),
+  return results.map((serie) => {
+    const sportOverride = (serie.sportImages || []).find(
+      (entry) => entry?.sport && String(entry.sport) === String(sport._id)
+    );
+    const resolvedImage = sportOverride?.image || serie.image || "";
+    const resolvedHeadImage = sportOverride?.headImage || serie.headImage || "";
 
-    name: serie.name || "",
-    title: serie.title || "",
-    description: serie.description || "",
-    shortDescription: serie.shortDescription || "",
+    return {
+      _id: serie._id.toString(),
 
-    slug: serie.slug || "",
+      name: serie.name || "",
+      title: serie.title || "",
+      description: serie.description || "",
+      shortDescription: serie.shortDescription || "",
 
-    image: serie.image || "",
-    headImage: serie.headImage || "",
+      slug: serie.slug || "",
 
-    logo: serie.logo || "",
+      image: resolvedImage,
+      headImage: resolvedHeadImage,
 
-    colors: serie.colors || {
-      primary: "",
-      secondary: "",
-    },
+      logo: serie.logo || "",
 
-    level: serie.level || 0,
+      colors: serie.colors || {
+        primary: "",
+        secondary: "",
+      },
 
-    isLimitedEdition:
-      serie.isLimitedEdition || false,
+      level: serie.level || 0,
 
-    isNewSerie: serie.isNewSerie || false,
+      isLimitedEdition:
+        serie.isLimitedEdition || false,
 
-    productCount: serie.productCount || 0,
+      isNewSerie: serie.isNewSerie || false,
 
-    createdAt: serie.createdAt || null,
-    updatedAt: serie.updatedAt || null,
+      productCount: serie.productCount || 0,
 
-    parentSerie: serie.parentSerie?._id
-      ? {
-          _id: serie.parentSerie._id.toString(),
-          title: serie.parentSerie.title || "",
-          slug: serie.parentSerie.slug || "",
-          image: serie.parentSerie.image || "",
-        }
-      : null,
+      createdAt: serie.createdAt || null,
+      updatedAt: serie.updatedAt || null,
 
-    brand: serie.brand?._id
-      ? {
-          _id: serie.brand._id.toString(),
-          title: serie.brand.title || "",
-          slug: serie.brand.slug || "",
-          logo: serie.brand.logo || "",
-          monochromeLogo: serie.brand.monochromeLogo || "",
-          image: serie.brand.image || "",
-        }
-      : null,
-  }));
+      parentSerie: serie.parentSerie?._id
+        ? {
+            _id: serie.parentSerie._id.toString(),
+            title: serie.parentSerie.title || "",
+            slug: serie.parentSerie.slug || "",
+            image: serie.parentSerie.image || "",
+          }
+        : null,
+
+      brand: serie.brand?._id
+        ? {
+            _id: serie.brand._id.toString(),
+            title: serie.brand.title || "",
+            slug: serie.brand.slug || "",
+            logo: serie.brand.logo || "",
+            monochromeLogo: serie.brand.monochromeLogo || "",
+            image: serie.brand.image || "",
+          }
+        : null,
+    };
+  });
 }
 
 export const getSeriesBySport = unstable_cache(

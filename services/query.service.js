@@ -166,7 +166,17 @@ async function _validatePath(slugs) {
                 isActive: true,
               })
             ) {
-              resolved = { sport, brand, serie };
+              const sportOverride = (serie.sportImages || []).find(
+                (entry) => entry?.sport && String(entry.sport) === String(sport._id)
+              );
+              const resolvedSerie = sportOverride
+                ? {
+                    ...serie,
+                    image: sportOverride.image || serie.image,
+                    headImage: sportOverride.headImage || serie.headImage,
+                  }
+                : serie;
+              resolved = { sport, brand, serie: resolvedSerie };
             }
           }
         }

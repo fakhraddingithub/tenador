@@ -63,6 +63,24 @@ const TechnicalStatSchema = new mongoose.Schema(
   { _id: false },
 );
 
+const CustomTabItemSchema = new mongoose.Schema({
+  title: {
+    type: String,
+    required: true,
+    trim: true,
+  },
+  description: {
+    type: String,
+    trim: true,
+    default: "",
+  },
+  link: {
+    type: String,
+    trim: true,
+    default: "",
+  },
+});
+
 const CategorySchema = new mongoose.Schema(
   {
     title: {
@@ -143,6 +161,13 @@ const CategorySchema = new mongoose.Schema(
 
     technicalStatsPrompt: {
       type: String,
+    },
+
+    customTab: {
+      enabled: { type: Boolean, default: false },
+      name: { type: String, trim: true, default: "" },
+      icon: { type: String, default: "" },
+      items: { type: [CustomTabItemSchema], default: [] },
     },
 
     parent: {

@@ -35,12 +35,12 @@ function toObjectId(v) {
  */
 async function buildChildTree(parentSerieId) {
   const parent = await Serie.findById(parentSerieId)
-    .select("_id title name shortDescription slug level brand image logo headImage colors")
+    .select("_id title name shortDescription slug level brand image logo headImage colors sportImages")
     .lean();
   if (!parent) return null;
 
   const allSeries = await Serie.find({ brand: parent.brand })
-    .select("_id title name shortDescription slug parentSerie level order image logo colors")
+    .select("_id title name shortDescription slug parentSerie level order image logo colors sportImages")
     .sort({ order: 1, createdAt: -1 })
     .lean();
 
@@ -178,6 +178,12 @@ async function _getSerieGroupedSections(params) {
     const cId = child._id.toString();
     const c = countByChild.get(cId) || 0;
     if (c > 0) {
+      const sportOverride = sportId
+        ? (child.sportImages || []).find(
+            (entry) => entry?.sport && String(entry.sport) === String(sportId)
+          )
+        : null;
+
       index.push({
         key: cId,
         serieId: cId,
@@ -185,7 +191,7 @@ async function _getSerieGroupedSections(params) {
         shortDescription: child.shortDescription || "",
         slug: child.slug || null,
         productCount: c,
-        image: child.image || null,
+        image: sportOverride?.image || child.image || null,
         logo: child.logo || null,
       });
     }

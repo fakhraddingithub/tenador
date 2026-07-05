@@ -201,6 +201,12 @@ export default function EditCategory() {
   const [currentStat, setCurrentStat] = useState({ name: '', label: '', description: '' });
   const [technicalStatsPrompt, setTechnicalStatsPrompt] = useState('');
   const [editingStatId, setEditingStatId] = useState(null);
+  const [customTabEnabled, setCustomTabEnabled] = useState(false);
+  const [customTabName, setCustomTabName] = useState('');
+  const [customTabIcon, setCustomTabIcon] = useState('');
+  const [customTabItems, setCustomTabItems] = useState([]);
+  const [currentTabItem, setCurrentTabItem] = useState({ title: '', description: '', link: '' });
+  const [editingTabItemIndex, setEditingTabItemIndex] = useState(null);
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
@@ -253,6 +259,18 @@ export default function EditCategory() {
           id: stat.id || stat._id || `stat-${Math.random().toString(36).substr(2, 9)}`
         })));
 
+        setCustomTabEnabled(cat.customTab?.enabled || false);
+        setCustomTabName(cat.customTab?.name || '');
+        setCustomTabIcon(cat.customTab?.icon || '');
+        setCustomTabItems(
+          (cat.customTab?.items || []).map((item) => ({
+            _id: item._id,
+            title: item.title || '',
+            description: item.description || '',
+            link: item.link || '',
+          }))
+        );
+
         setVariantAttributes((cat.variantAttributes || []).map(v => ({
           ...v,
           id: v.id || v._id || `vattr-${Math.random().toString(36).substr(2, 9)}`,
@@ -285,14 +303,18 @@ export default function EditCategory() {
 
     const fd = new FormData();
     fd.append('file', file);
-    fd.append('folder', 'categories');
+    fd.append('folder', field === 'customTabIcon' ? 'categories/customTabIcons' : 'categories');
 
     try {
       const res = await fetch('/api/upload', { method: 'POST', body: fd });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'خطا در آپلود');
-      setFormData((prev) => ({ ...prev, [field]: data.url }));
-      showToast.success(`${field === 'icon' ? 'آیکون' : 'تصویر'} با موفقیت آپلود شد`);
+      if (field === 'customTabIcon') {
+        setCustomTabIcon(data.url);
+      } else {
+        setFormData((prev) => ({ ...prev, [field]: data.url }));
+      }
+      showToast.success(`${field === 'image' ? 'تصویر' : 'آیکون'} با موفقیت آپلود شد`);
     } catch (err) {
       showError('خطا', err.message);
     } finally {
@@ -329,6 +351,41 @@ export default function EditCategory() {
 
   const removeStat = (id) => {
     setTechnicalStats(prev => prev.filter(s => s.id !== id));
+  };
+
+  const handleAddOrUpdateTabItem = () => {
+    if (!currentTabItem.title.trim()) return;
+    if (editingTabItemIndex !== null) {
+      setCustomTabItems((prev) =>
+        prev.map((it, i) =>
+          i === editingTabItemIndex
+            ? { ...(it._id ? { _id: it._id } : {}), ...currentTabItem }
+            : it
+        )
+      );
+      setEditingTabItemIndex(null);
+    } else {
+      setCustomTabItems((prev) => [...prev, { ...currentTabItem }]);
+    }
+    setCurrentTabItem({ title: '', description: '', link: '' });
+  };
+
+  const handleEditTabItem = (index) => {
+    const item = customTabItems[index];
+    setCurrentTabItem({
+      title: item.title || '',
+      description: item.description || '',
+      link: item.link || '',
+    });
+    setEditingTabItemIndex(index);
+  };
+
+  const removeTabItem = (index) => {
+    setCustomTabItems((prev) => prev.filter((_, i) => i !== index));
+    if (editingTabItemIndex === index) {
+      setEditingTabItemIndex(null);
+      setCurrentTabItem({ title: '', description: '', link: '' });
+    }
   };
 
   const copyParentFileds = (parentId) => {
@@ -553,6 +610,12 @@ export default function EditCategory() {
         megaMenuFilterAttribute: formData.megaMenuFilterAttribute || null,
         technicalStats: technicalStats,
         technicalStatsPrompt: technicalStatsPrompt,
+        customTab: {
+          enabled: customTabEnabled,
+          name: customTabName,
+          icon: customTabIcon,
+          items: customTabItems,
+        },
         prompts: productPrompts.filter((p) => p.context.trim() !== ''),
       };
 
@@ -1020,6 +1083,126 @@ export default function EditCategory() {
                     * این پرامپت برای تمامی شاخص‌های تعریف شده در این بخش به صورت یکپارچه عمل می‌کند.
                   </p>
                 </div>
+              )}
+            </div>
+
+            {/* Custom Tab Section */}
+            <div className="border-t pt-8 space-y-6">
+              <div className="flex items-center gap-3">
+                <div className="p-2 rounded-lg bg-purple-100 text-purple-600">
+                  <FiLayers size={18} />
+                </div>
+                <div className="flex-1">
+                  <h3 className="text-lg font-bold">تب سفارشی صفحه محصول (اختیاری)</h3>
+                  <p className="text-xs text-neutral-500">
+                    مثلا «تکنولوژی‌ها» برای راکت تنیس؛ فقط برای محصولاتی نمایش داده می‌شود که آیتم مرتبط دارند.
+                  </p>
+                </div>
+                <label className="flex items-center gap-2 cursor-pointer shrink-0">
+                  <input
+                    type="checkbox"
+                    checked={customTabEnabled}
+                    onChange={(e) => setCustomTabEnabled(e.target.checked)}
+                    className="w-5 h-5 accent-[var(--color-primary)]"
+                  />
+                  <span className="text-sm font-bold">فعال</span>
+                </label>
+              </div>
+
+              {customTabEnabled && (
+                <>
+                  <div className="grid md:grid-cols-2 gap-4">
+                    <Input
+                      label="نام تب (فارسی)"
+                      value={customTabName}
+                      onChange={(e) => setCustomTabName(e.target.value)}
+                      placeholder="مثال: تکنولوژی‌ها"
+                    />
+                    <div>
+                      <label className="block text-xs font-bold text-neutral-500 mb-2">آیکون تب</label>
+                      <div className="flex items-center gap-4 bg-neutral-50 border border-neutral-200 rounded-[var(--radius)] p-4">
+                        <div className="w-16 h-16 rounded-2xl bg-white border-2 border-dashed border-neutral-200 flex items-center justify-center relative overflow-hidden">
+                          {customTabIcon ? (
+                            <img src={customTabIcon} alt="" className="w-full h-full object-contain p-2" />
+                          ) : (
+                            <FiLayers size={22} className="text-neutral-300" />
+                          )}
+                          {uploadingField === 'customTabIcon' && (
+                            <div className="absolute inset-0 bg-white/80 flex items-center justify-center">
+                              <FiLoader className="animate-spin text-[var(--color-primary)]" size={18} />
+                            </div>
+                          )}
+                        </div>
+                        <div className="flex-1">
+                          <label
+                            htmlFor="custom-tab-edit-icon"
+                            className="bg-white border border-neutral-200 hover:border-[var(--color-primary)] px-4 py-2 rounded-lg text-xs font-bold cursor-pointer transition-all inline-block"
+                          >
+                            آپلود آیکون
+                          </label>
+                          {customTabIcon && (
+                            <button
+                              type="button"
+                              onClick={() => setCustomTabIcon('')}
+                              className="mr-2 text-xs font-bold text-red-500 hover:text-red-600"
+                            >
+                              حذف
+                            </button>
+                          )}
+                          <p className="text-[10px] text-neutral-400 mt-2 italic">PNG یا SVG پیشنهاد می‌شود</p>
+                          <input
+                            type="file"
+                            id="custom-tab-edit-icon"
+                            className="hidden"
+                            onChange={(e) => uploadFile(e.target.files[0], 'customTabIcon')}
+                            accept="image/*"
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className={`rounded-[var(--radius)] p-6 space-y-5 border-2 ${editingTabItemIndex !== null ? 'bg-purple-50/30 border-purple-200' : 'bg-neutral-50 border-transparent'}`}>
+                    <Input
+                      label="عنوان آیتم"
+                      value={currentTabItem.title}
+                      onChange={(e) => setCurrentTabItem((p) => ({ ...p, title: e.target.value }))}
+                      placeholder="مثال: FORTYFIVE"
+                    />
+                    <Textarea
+                      label="توضیح کوتاه"
+                      value={currentTabItem.description}
+                      onChange={(e) => setCurrentTabItem((p) => ({ ...p, description: e.target.value }))}
+                      placeholder="توضیح کوتاهی درباره این آیتم"
+                    />
+                    <Input
+                      label="لینک (اختیاری)"
+                      value={currentTabItem.link}
+                      onChange={(e) => setCurrentTabItem((p) => ({ ...p, link: e.target.value }))}
+                      placeholder="https://..."
+                    />
+                    <Button type="button" variant="primary" onClick={handleAddOrUpdateTabItem}>
+                      {editingTabItemIndex !== null ? 'بروزرسانی آیتم' : 'افزودن آیتم'}
+                    </Button>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    {customTabItems.map((item, index) => (
+                      <div key={item._id || index} className="flex items-center justify-between p-3 bg-white border border-neutral-200 rounded-lg shadow-sm">
+                        <div className="flex flex-col min-w-0">
+                          <span className="font-bold text-sm truncate">{item.title}</span>
+                          {item.description && (
+                            <span className="text-[11px] text-neutral-400 truncate">{item.description}</span>
+                          )}
+                        </div>
+                        <div className="flex gap-2 shrink-0">
+                          <button type="button" onClick={() => handleEditTabItem(index)} className="p-2 text-blue-500 hover:bg-blue-50 rounded-md transition"><FiEdit3 size={14} /></button>
+                          <button type="button" onClick={() => removeTabItem(index)} className="p-2 text-red-500 hover:bg-red-50 rounded-md transition"><FiTrash2 size={14} /></button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </>
               )}
             </div>
 

@@ -411,15 +411,15 @@ export default function BrandGroupedView({
                   className="scroll-mt-24"
                 >
                   {/* هدر بخشِ سری — لوگوی برند سمت چپ، نام سری مرکز‌چین با خط زیرین رنگ اصلی */}
-                  <div className="relative mb-7 flex items-center justify-center rounded-[var(--radius)] bg-white border border-gray-100 shadow-sm py-7 px-16">
+                  <div className="relative mb-7 flex h-[112px] md:h-[118px] items-center justify-center rounded-[var(--radius)] bg-white border border-gray-100 shadow-sm px-16 md:px-20 py-3">
                     {pageInfo?.logo && (
                       <img
                         src={pageInfo.logo}
                         alt={brandTitle}
-                        className="absolute left-4 top-1/2 -translate-y-1/2 h-9 md:h-10 w-auto object-contain opacity-90"
+                        className="absolute left-4 md:left-6 top-1/2 -translate-y-1/2 h-12 md:h-16 max-h-[64px] w-auto object-contain opacity-90"
                       />
                     )}
-                    <div className="flex flex-col items-center gap-2">
+                    <div className="flex flex-col items-center gap-1.5">
                       {section.serie?.slug && sportSlug && brandSlug ? (
                         <Link
                           href={`/${sportSlug}/${brandSlug}/${section.serie.slug}`}
@@ -433,11 +433,9 @@ export default function BrandGroupedView({
                         </h2>
                       )}
                       <span className="block w-12 h-1 rounded-full bg-[var(--color-primary)]" />
-                      {section.serie?.shortDescription && (
-                        <p className="max-w-2xl text-center text-xs md:text-sm leading-6 text-gray-500">
-                          {section.serie.shortDescription}
-                        </p>
-                      )}
+                      <p className="h-5 md:h-6 max-w-2xl overflow-hidden text-center text-xs md:text-sm leading-5 md:leading-6 text-gray-500">
+                        {section.serie?.shortDescription || "\u00a0"}
+                      </p>
                     </div>
                   </div>
 

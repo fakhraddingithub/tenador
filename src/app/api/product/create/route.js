@@ -113,6 +113,7 @@ export async function POST(req) {
       sport,
       attributes,
       technicalStats,
+      customTabItems,
       label,
       isActive, // ✨ اضافه شد: دریافت وضعیت فعال بودن از فرانت‌اند
       variantOptions,
@@ -138,6 +139,19 @@ export async function POST(req) {
     const foundCategory = await Category.findById(category);
     if (!foundCategory) {
       return Response.json({ error: "Category not found" }, { status: 404 });
+    }
+
+    // تبدیل تایتل‌های انتخاب‌شده (از AI یا انتخاب دستی ادمین) به شناسه‌ی واقعیِ آیتم در دسته‌بندی
+    let resolvedCustomTabItemIds = [];
+    if (Array.isArray(customTabItems) && customTabItems.length > 0) {
+      const categoryItems = foundCategory.customTab?.items || [];
+      resolvedCustomTabItemIds = customTabItems
+        .map((title) => categoryItems.find((it) => it.title === title)?._id)
+        .filter(Boolean);
+      const unmatchedCount = customTabItems.length - resolvedCustomTabItemIds.length;
+      if (unmatchedCount > 0) {
+        console.warn(`${unmatchedCount} customTabItems title(s) did not match any item in category "${foundCategory.title}" and were skipped.`);
+      }
     }
 
     /* -------------------------------
@@ -212,6 +226,7 @@ export async function POST(req) {
       sport: sport || undefined,
       attributes: attributes || {},
       technicalStats: technicalStats || {},
+      customTabItems: resolvedCustomTabItemIds,
       variantMeta: variantMeta && typeof variantMeta === "object" ? variantMeta : {},
       label: label || "none",
       isActive: isActive !== undefined ? isActive : true, // ✨ اضافه شد: اگر ارسال نشود به صورت پیش‌فرض true خواهد بود

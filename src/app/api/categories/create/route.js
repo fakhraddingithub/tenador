@@ -22,7 +22,8 @@ export async function POST(req) {
       variantAttributes, // فیلد جدید اضافه شد
       megaMenuFilterAttribute, // ویژگیِ انتخاب‌شده برای فیلترِ مگامنو (نامِ ویژگی یا null)
       technicalStats,
-      technicalStatsPrompt
+      technicalStatsPrompt,
+      customTab
     } = body;
 
     // ۱. اعتبارسنجی فیلدهای اجباری پایه
@@ -99,6 +100,15 @@ export async function POST(req) {
       }
     }
 
+    // ۵. اعتبارسنجی تب سفارشی دسته‌بندی
+    if (customTab?.items && Array.isArray(customTab.items)) {
+      for (const item of customTab.items) {
+        if (!item.title?.trim()) {
+          return Response.json({ error: "همه‌ی آیتم‌های تب سفارشی باید عنوان داشته باشند" }, { status: 400 });
+        }
+      }
+    }
+
     // ۵. ایجاد کتگوری در دیتابیس (مطابق مدل جدید)
     // ترتیب نمایش در محدوده‌ی همین ورزش محاسبه می‌شود
     const lastCategory = await Category.findOne({ sport })
@@ -129,6 +139,18 @@ export async function POST(req) {
       megaMenuFilterAttribute: normalizedMegaFilter,
       technicalStats: technicalStats || [],
       technicalStatsPrompt: technicalStatsPrompt || "",
+      customTab: {
+        enabled: !!customTab?.enabled,
+        name: (customTab?.name || "").trim(),
+        icon: (customTab?.icon || "").trim(),
+        items: Array.isArray(customTab?.items)
+          ? customTab.items.map((item) => ({
+              title: item.title.trim(),
+              description: (item.description || "").trim(),
+              link: (item.link || "").trim(),
+            }))
+          : [],
+      },
     });
 
     // ۶. ثبت در سیستم اسلاگ‌های مرکزی
