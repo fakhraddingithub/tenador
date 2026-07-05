@@ -562,6 +562,25 @@ function CompareChart({ products, categoryStats }) {
     );
 }
 
+function AngledAxisTick({ x, y, payload }) {
+    return (
+        <g transform={`translate(${x},${y})`}>
+            <text
+                x={-8}
+                y={0}
+                dy={12}
+                textAnchor="end"
+                transform="rotate(-20)"
+                fill="#4b5563"
+                fontSize={11}
+                fontWeight={700}
+            >
+                {payload.value}
+            </text>
+        </g>
+    );
+}
+
 function CompareBarChart({ products, categoryStats }) {
     if (!categoryStats || categoryStats.length === 0 || !products || products.length === 0) {
         return (
@@ -585,11 +604,11 @@ function CompareBarChart({ products, categoryStats }) {
                 <CartesianGrid strokeDasharray="3 3" stroke="#e5e5e5" vertical={false} />
                 <XAxis
                     dataKey="subject"
-                    tick={{ fill: '#4b5563', fontSize: 11, fontWeight: 700 }}
+                    tick={<AngledAxisTick />}
                     tickLine={false}
                     axisLine={{ stroke: '#e5e5e5' }}
                     interval={0}
-                    height={30}
+                    height={50}
                 />
                 <YAxis
                     domain={[0, 100]}
