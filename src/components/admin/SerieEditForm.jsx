@@ -23,7 +23,7 @@ import {
 import { useRouter } from "next/navigation";
 
 import ImageUpload from "./ImageUpload";
-import SerieSportImagesManager from "./SerieSportImagesManager";
+import SerieSportContentManager from "./SerieSportContentManager";
 
 export default function SerieEditForm({ id,brandId }) {
   const router = useRouter();
@@ -315,17 +315,14 @@ export default function SerieEditForm({ id,brandId }) {
 
           <div className="bg-white p-6 rounded-[3rem] shadow-sm border border-gray-50 space-y-4">
             <h3 className="text-[10px] font-bold uppercase text-gray-400 tracking-widest">
-              تصاویر اختصاصی هر ورزش (اختیاری)
+              محتوای اختصاصی هر ورزش
             </h3>
 
             <p className="text-xs text-gray-400 leading-relaxed">
-              اگر این سری در چند ورزش محصول دارد و می‌خواهید برای هرکدام تصویر
-              جداگانه نمایش داده شود، از اینجا اضافه کنید. برای ورزش‌هایی که
-              تصویر اختصاصی ندارند، همان «تصویر اصلی» و «تصویر هدر» بالا
-              استفاده می‌شود.
+              برای هر ورزش می‌توانید تصویر اصلی، تصویر هدر، توضیحات و توضیح کوتاه جداگانه ثبت کنید. اگر ورزشی مقدار اختصاصی نداشته باشد، مقدار عمومی سری استفاده می‌شود.
             </p>
 
-            <SerieSportImagesManager
+            <SerieSportContentManager
               sportImages={formData.sportImages}
               onChange={(sportImages) =>
                 setFormData((p) => ({

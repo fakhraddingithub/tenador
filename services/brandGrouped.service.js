@@ -27,6 +27,7 @@ import Variant from "base/models/Variant";
 import { getCachedRate } from "@/lib/Exchangerate";
 import { buildLenientPersianRegexSource } from "@/lib/persianNormalize";
 import { attachListingPrices } from "base/services/priceEngine";
+import { resolveSerieSportContent } from "@/lib/serieSportContent";
 
 const OTHER_KEY = "__other__";
 
@@ -47,7 +48,7 @@ function toObjectId(v) {
  */
 async function buildSeriesTree(brandId) {
   const series = await Serie.find({ brand: brandId })
-    .select("_id title name shortDescription slug parentSerie level order image logo colors")
+    .select("_id title name description shortDescription slug parentSerie level order image logo headImage colors sportImages")
     .sort({ order: 1, createdAt: -1 })
     .lean();
 
@@ -232,14 +233,18 @@ async function _getBrandGroupedSections(params) {
     const rid = root._id.toString();
     const c = countByRoot.get(rid) || 0;
     if (c > 0) {
+      const resolved = resolveSerieSportContent(root, sportId);
+
       index.push({
         key: rid,
         serieId: rid,
         title: root.title || root.name || "",
-        shortDescription: root.shortDescription || "",
+        description: resolved.description,
+        shortDescription: resolved.shortDescription,
         slug: root.slug || null,
         productCount: c,
-        image: root.image || null,
+        image: resolved.image || null,
+        headImage: resolved.headImage || null,
         logo: root.logo || null,
       });
     }
@@ -249,10 +254,12 @@ async function _getBrandGroupedSections(params) {
       key: OTHER_KEY,
       serieId: null,
       title: "سایر محصولات",
+      description: "",
       shortDescription: "",
       slug: null,
       productCount: otherCount,
       image: null,
+      headImage: null,
       logo: null,
     });
   }
@@ -303,9 +310,11 @@ async function _getBrandGroupedSections(params) {
       serie: {
         _id: entry.serieId,
         title: entry.title,
+        description: entry.description,
         shortDescription: entry.shortDescription,
         slug: entry.slug,
         image: entry.image,
+        headImage: entry.headImage,
         logo: entry.logo,
       },
       productCount: entry.productCount,

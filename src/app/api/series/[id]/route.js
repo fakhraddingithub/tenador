@@ -5,6 +5,7 @@ import connectToDB from "base/configs/db";
 import Serie from "base/models/Serie";
 import Brand from "base/models/Brand";
 import { revalidateContent } from "@/lib/revalidate";
+import { sanitizeSerieSportEntries } from "@/lib/serieSportContent";
 
 export async function GET(req, { params }) {
   try {
@@ -178,14 +179,7 @@ export async function PUT(req, { params }) {
      */
 
     if (Array.isArray(body.sportImages)) {
-      serie.sportImages = body.sportImages
-        .filter((entry) => entry && entry.sport)
-        .map((entry) => ({
-          sport: entry.sport,
-          image: typeof entry.image === "string" ? entry.image.trim() : "",
-          headImage:
-            typeof entry.headImage === "string" ? entry.headImage.trim() : "",
-        }));
+      serie.sportImages = sanitizeSerieSportEntries(body.sportImages);
     }
 
     Object.keys(body).forEach((key) => {

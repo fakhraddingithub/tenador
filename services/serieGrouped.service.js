@@ -15,6 +15,7 @@ import Serie from "base/models/Serie";
 import Product from "base/models/Product";
 import { getCachedRate } from "@/lib/Exchangerate";
 import { attachListingPrices } from "base/services/priceEngine";
+import { resolveSerieSportContent } from "@/lib/serieSportContent";
 
 const DIRECT_KEY = "__direct__";
 
@@ -35,12 +36,12 @@ function toObjectId(v) {
  */
 async function buildChildTree(parentSerieId) {
   const parent = await Serie.findById(parentSerieId)
-    .select("_id title name shortDescription slug level brand image logo headImage colors sportImages")
+    .select("_id title name description shortDescription slug level brand image logo headImage colors sportImages")
     .lean();
   if (!parent) return null;
 
   const allSeries = await Serie.find({ brand: parent.brand })
-    .select("_id title name shortDescription slug parentSerie level order image logo colors sportImages")
+    .select("_id title name description shortDescription slug parentSerie level order image logo headImage colors sportImages")
     .sort({ order: 1, createdAt: -1 })
     .lean();
 
@@ -178,33 +179,35 @@ async function _getSerieGroupedSections(params) {
     const cId = child._id.toString();
     const c = countByChild.get(cId) || 0;
     if (c > 0) {
-      const sportOverride = sportId
-        ? (child.sportImages || []).find(
-            (entry) => entry?.sport && String(entry.sport) === String(sportId)
-          )
-        : null;
+      const resolved = resolveSerieSportContent(child, sportId);
 
       index.push({
         key: cId,
         serieId: cId,
         title: child.title || child.name || "",
-        shortDescription: child.shortDescription || "",
+        description: resolved.description,
+        shortDescription: resolved.shortDescription,
         slug: child.slug || null,
         productCount: c,
-        image: sportOverride?.image || child.image || null,
+        image: resolved.image || null,
+        headImage: resolved.headImage || null,
         logo: child.logo || null,
       });
     }
   }
   if (directCount > 0) {
+    const resolved = resolveSerieSportContent(parent, sportId);
+
     index.push({
       key: DIRECT_KEY,
       serieId: null,
       title: parent.title || parent.name || "سایر محصولات",
-      shortDescription: parent.shortDescription || "",
+      description: resolved.description,
+      shortDescription: resolved.shortDescription,
       slug: null,
       productCount: directCount,
-      image: null,
+      image: resolved.image || null,
+      headImage: resolved.headImage || null,
       logo: null,
     });
   }
@@ -248,9 +251,11 @@ async function _getSerieGroupedSections(params) {
       serie: {
         _id: entry.serieId,
         title: entry.title,
+        description: entry.description,
         shortDescription: entry.shortDescription,
         slug: entry.slug,
         image: entry.image,
+        headImage: entry.headImage,
         logo: entry.logo,
       },
       productCount: entry.productCount,

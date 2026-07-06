@@ -2,6 +2,7 @@ import { unstable_cache } from "next/cache";
 import connectToDB from "base/configs/db";
 import Product from "base/models/Product";
 import Sport from "base/models/Sport";
+import { resolveSerieSportContent } from "@/lib/serieSportContent";
 
 /**
  * دریافت سری‌های مرتبط با یک ورزش
@@ -142,6 +143,10 @@ async function _getSeriesBySport(sportSlug) {
             title: "$parentSerieDoc.title",
             slug: "$parentSerieDoc.slug",
             image: "$parentSerieDoc.image",
+            headImage: "$parentSerieDoc.headImage",
+            description: "$parentSerieDoc.description",
+            shortDescription: "$parentSerieDoc.shortDescription",
+            sportImages: "$parentSerieDoc.sportImages",
           },
         },
 
@@ -175,24 +180,20 @@ async function _getSeriesBySport(sportSlug) {
   ]);
 
   return results.map((serie) => {
-    const sportOverride = (serie.sportImages || []).find(
-      (entry) => entry?.sport && String(entry.sport) === String(sport._id)
-    );
-    const resolvedImage = sportOverride?.image || serie.image || "";
-    const resolvedHeadImage = sportOverride?.headImage || serie.headImage || "";
+    const resolved = resolveSerieSportContent(serie, sport._id);
 
     return {
       _id: serie._id.toString(),
 
       name: serie.name || "",
       title: serie.title || "",
-      description: serie.description || "",
-      shortDescription: serie.shortDescription || "",
+      description: resolved.description,
+      shortDescription: resolved.shortDescription,
 
       slug: serie.slug || "",
 
-      image: resolvedImage,
-      headImage: resolvedHeadImage,
+      image: resolved.image,
+      headImage: resolved.headImage,
 
       logo: serie.logo || "",
 
@@ -214,12 +215,22 @@ async function _getSeriesBySport(sportSlug) {
       updatedAt: serie.updatedAt || null,
 
       parentSerie: serie.parentSerie?._id
-        ? {
-            _id: serie.parentSerie._id.toString(),
-            title: serie.parentSerie.title || "",
-            slug: serie.parentSerie.slug || "",
-            image: serie.parentSerie.image || "",
-          }
+        ? (() => {
+            const parentResolved = resolveSerieSportContent(
+              serie.parentSerie,
+              sport._id
+            );
+
+            return {
+              _id: serie.parentSerie._id.toString(),
+              title: serie.parentSerie.title || "",
+              slug: serie.parentSerie.slug || "",
+              image: parentResolved.image,
+              headImage: parentResolved.headImage,
+              description: parentResolved.description,
+              shortDescription: parentResolved.shortDescription,
+            };
+          })()
         : null,
 
       brand: serie.brand?._id

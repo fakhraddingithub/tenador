@@ -16,6 +16,7 @@ import Serie from "base/models/Serie";
 import LimitedEdition from "base/models/LimitedEdition";
 import { getCachedRate } from "@/lib/Exchangerate";
 import { attachListingPrices } from "base/services/priceEngine";
+import { withResolvedSerieSportContent } from "@/lib/serieSportContent";
 
 // سنتینل واحد برای ۴۰۴ — صفحه‌ی کنترلر با بررسی res.notFound === true تابع
 // notFound() نکست را صدا می‌زند.
@@ -166,16 +167,10 @@ async function _validatePath(slugs) {
                 isActive: true,
               })
             ) {
-              const sportOverride = (serie.sportImages || []).find(
-                (entry) => entry?.sport && String(entry.sport) === String(sport._id)
+              const resolvedSerie = withResolvedSerieSportContent(
+                serie,
+                sport._id
               );
-              const resolvedSerie = sportOverride
-                ? {
-                    ...serie,
-                    image: sportOverride.image || serie.image,
-                    headImage: sportOverride.headImage || serie.headImage,
-                  }
-                : serie;
               resolved = { sport, brand, serie: resolvedSerie };
             }
           }
@@ -243,7 +238,10 @@ async function _resolveContext(slugs) {
     const seriesWithCounts = await Promise.all(
       (fullBrand?.series || []).map(async (serie) => {
         const count = await Product.countDocuments({ serie: serie._id, isActive: true });
-        return { ...serie, productCount: count };
+        return {
+          ...withResolvedSerieSportContent(serie, search.sport?._id),
+          productCount: count,
+        };
       })
     );
 

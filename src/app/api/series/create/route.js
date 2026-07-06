@@ -7,6 +7,7 @@ import Brand from "base/models/Brand";
 // ۱. ایمپورت کردن اکشن رجیستر اسلاگ
 import { registerSlug } from "base/actions/registerSlug";
 import { revalidateContent } from "@/lib/revalidate";
+import { sanitizeSerieSportEntries } from "@/lib/serieSportContent";
 
 export async function POST(req) {
   try {
@@ -142,16 +143,7 @@ export async function POST(req) {
 
     const level = parentSerieDoc ? parentSerieDoc.level + 1 : 0;
 
-    const sanitizedSportImages = Array.isArray(sportImages)
-      ? sportImages
-          .filter((entry) => entry && entry.sport)
-          .map((entry) => ({
-            sport: entry.sport,
-            image: typeof entry.image === "string" ? entry.image.trim() : "",
-            headImage:
-              typeof entry.headImage === "string" ? entry.headImage.trim() : "",
-          }))
-      : [];
+    const sanitizedSportImages = sanitizeSerieSportEntries(sportImages);
 
     /*
      |--------------------------------------------------------------------------

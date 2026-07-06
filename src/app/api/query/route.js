@@ -8,6 +8,7 @@ import Athlete from "base/models/Athlete";
 import Product from "base/models/Product";
 import Category from "base/models/Category";
 import Serie from "base/models/Serie";
+import { withResolvedSerieSportContent } from "@/lib/serieSportContent";
 
 export async function POST(req) {
   try {
@@ -93,7 +94,7 @@ export async function POST(req) {
             isActive: true 
           });
           return {
-            ...serie,
+            ...withResolvedSerieSportContent(serie, search.sport?._id),
             productCount: count
           };
         })
@@ -131,7 +132,7 @@ export async function POST(req) {
         sport: search.sport,
         athlete: search.athlete,
         category: search.category,
-        serie: search.serie, 
+        serie: withResolvedSerieSportContent(search.serie, search.sport?._id),
         product: search.product,
       },
       results: products,
