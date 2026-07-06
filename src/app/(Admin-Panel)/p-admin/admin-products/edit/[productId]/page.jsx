@@ -3,6 +3,8 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import { FaEdit, FaBox, FaImages, FaTags, FaCogs, FaPalette, FaRunning, FaLayerGroup } from 'react-icons/fa';
+import { FiChevronDown, FiChevronUp } from 'react-icons/fi';
+import { AnimatePresence, motion } from 'framer-motion';
 import Button from '@/components/admin/Button';
 import AdminLoader from '@/components/admin/AdminLoader';
 import Input from '@/components/admin/Input';
@@ -52,6 +54,71 @@ function generateCombinations(options) {
   return result;
 }
 
+function makeValueImagePanelKey(attrName, value) {
+  return JSON.stringify([attrName, value]);
+}
+
+function makeSafeDomId(value) {
+  return String(value).replace(/[^a-zA-Z0-9_-]/g, '-');
+}
+
+function AnimatedCollapse({ id, isOpen, children, className = '' }) {
+  return (
+    <AnimatePresence initial={false}>
+      {isOpen && (
+        <motion.div
+          id={id}
+          initial={{ height: 0, opacity: 0 }}
+          animate={{ height: 'auto', opacity: 1 }}
+          exit={{ height: 0, opacity: 0 }}
+          transition={{ duration: 0.24, ease: 'easeInOut' }}
+          className="overflow-hidden"
+        >
+          <div className={className}>{children}</div>
+        </motion.div>
+      )}
+    </AnimatePresence>
+  );
+}
+
+function CollapsibleSection({
+  id,
+  title,
+  icon,
+  isOpen,
+  onToggle,
+  children,
+  className = 'bg-white p-8 rounded-[2.5rem] shadow-sm border border-gray-100',
+  titleClassName = 'font-bold text-gray-800',
+  headerExtra = null,
+  bodyClassName = '',
+}) {
+  const contentId = `${id}-content`;
+
+  return (
+    <div className={className}>
+      <button
+        type="button"
+        onClick={onToggle}
+        aria-expanded={isOpen}
+        aria-controls={contentId}
+        className={`flex items-center gap-2 border-b pb-4 w-full text-right transition-colors hover:text-gray-900 ${
+          isOpen ? 'mb-6' : 'mb-0'
+        }`}
+      >
+        {icon}
+        <h2 className={titleClassName}>{title}</h2>
+        {headerExtra}
+        <span className="mr-auto text-gray-400 transition-transform duration-200">
+          {isOpen ? <FiChevronUp /> : <FiChevronDown />}
+        </span>
+      </button>
+      <AnimatedCollapse id={contentId} isOpen={isOpen} className={bodyClassName}>
+        {children}
+      </AnimatedCollapse>
+    </div>
+  );
+}
 // کلید ترکیب از util مشترک ساخته می‌شود (makeComboKey) — هم‌خوان با سرور و فرمِ ساخت.
 
 /**
@@ -147,6 +214,13 @@ export default function ProductEditPage() {
   // متادیتای سطحِ مقدار: تصاویرِ مشترکِ هر مقدار { [attr]: { [value]: { images: [] } } }
   const [variantMeta, setVariantMeta] = useState({});
 
+  const [openSections, setOpenSections] = useState({});
+  const [expandedValueImagePanels, setExpandedValueImagePanels] = useState({});
+
+  const isSectionOpen = (sectionKey) => Boolean(openSections[sectionKey]);
+  const toggleSection = (sectionKey) => {
+    setOpenSections((prev) => ({ ...prev, [sectionKey]: !prev[sectionKey] }));
+  };
   // ترکیب‌هایی که ادمین «قیمت ویژه» را برایشان باز کرده. قیمت اختیاری است؛ خالی
   // بودنش یعنی قیمت پایه‌ی محصول اعمال می‌شود (هیچ‌جا الزامی نیست).
   const [expandedPrices, setExpandedPrices] = useState(() => new Set());
@@ -334,6 +408,21 @@ export default function ProductEditPage() {
     }));
   };
 
+  const getValueImages = (attrName, value) =>
+    (variantMeta[attrName]?.[value]?.images || []).filter(Boolean);
+
+  const isValueImagePanelOpen = (attrName, value) => {
+    const panelKey = makeValueImagePanelKey(attrName, value);
+    return expandedValueImagePanels[panelKey] ?? getValueImages(attrName, value).length > 0;
+  };
+
+  const toggleValueImagePanel = (attrName, value) => {
+    const panelKey = makeValueImagePanelKey(attrName, value);
+    setExpandedValueImagePanels((prev) => ({
+      ...prev,
+      [panelKey]: !(prev[panelKey] ?? getValueImages(attrName, value).length > 0),
+    }));
+  };
   // فقط متادیتای مقادیرِ موجود را نگه می‌دارد (هرسِ مقادیرِ حذف‌شده)
   const buildCleanVariantMeta = () => {
     const clean = {};
@@ -581,7 +670,7 @@ export default function ProductEditPage() {
   return (
     <form onSubmit={handleSubmit} className="max-w-5xl mx-auto space-y-8 pb-20">
 
-      {/* ── Header ── */}
+      {/* Header */}
       <div className="flex justify-between items-center bg-white p-6 rounded-3xl shadow-sm border border-gray-100">
         <div className="flex items-center gap-4">
           <div className="bg-blue-50 p-4 rounded-2xl text-blue-600">
@@ -597,12 +686,15 @@ export default function ProductEditPage() {
         </Button>
       </div>
 
-      {/* ── General Info ── */}
-      <div className="bg-white p-8 rounded-[2.5rem] shadow-sm border border-gray-100 space-y-6">
-        <div className="flex items-center gap-2 border-b pb-4 mb-6">
-          <FaBox className="text-gray-400" />
-          <h2 className="font-bold text-gray-800">اطلاعات پایه</h2>
-        </div>
+      {/* General Info */}
+      <CollapsibleSection
+        id="basic-info"
+        title="اطلاعات پایه"
+        icon={<FaBox className="text-gray-400" />}
+        isOpen={isSectionOpen('basicInfo')}
+        onToggle={() => toggleSection('basicInfo')}
+        bodyClassName="space-y-6"
+      >
         <Input
           label="نام محصول"
           value={formData.name}
@@ -620,14 +712,16 @@ export default function ProductEditPage() {
           value={formData.longDescription}
           onChange={e => updateField('longDescription', e.target.value)}
         />
-      </div>
+      </CollapsibleSection>
 
-      {/* ── Color Picker ── */}
-      <div className="bg-white p-8 rounded-[2.5rem] shadow-sm border border-gray-100">
-        <div className="flex items-center gap-2 border-b pb-4 mb-6">
-          <FaPalette className="text-gray-400" />
-          <h2 className="font-bold text-gray-800">رنگ محصول</h2>
-        </div>
+      {/* Color Picker */}
+      <CollapsibleSection
+        id="product-color"
+        title="رنگ محصول"
+        icon={<FaPalette className="text-gray-400" />}
+        isOpen={isSectionOpen('color')}
+        onToggle={() => toggleSection('color')}
+      >
         <div className="flex items-center gap-4 flex-wrap">
           <input
             type="color"
@@ -654,15 +748,16 @@ export default function ProductEditPage() {
             </>
           )}
         </div>
-      </div>
+      </CollapsibleSection>
 
-      {/* ── Relations & Pricing ── */}
-      <div className="bg-white p-8 rounded-[2.5rem] shadow-sm border border-gray-100">
-        <div className="flex items-center gap-2 border-b pb-4 mb-6">
-          <FaCogs className="text-gray-400" />
-          <h2 className="font-bold text-gray-800">ارتباطات و قیمت</h2>
-        </div>
-
+      {/* Relations & Pricing */}
+      <CollapsibleSection
+        id="relations-pricing"
+        title="ارتباطات و قیمت"
+        icon={<FaCogs className="text-gray-400" />}
+        isOpen={isSectionOpen('relations')}
+        onToggle={() => toggleSection('relations')}
+      >
         <div className="grid md:grid-cols-3 gap-6">
           <Select
             label="برند"
@@ -686,7 +781,6 @@ export default function ProductEditPage() {
               }
             />
           )}
-          {/* لیمیتد ادیشن — مخصوص برند انتخاب‌شده (مثل Roland Garros) */}
           {formData.brand && (
             <Select
               label="لیمیتد ادیشن (Limited Edition)"
@@ -732,8 +826,6 @@ export default function ProductEditPage() {
               { value: 'limited', label: 'تعداد محدود' },
             ]}
           />
-          
-          {/* ✨ اضافه شد: انتخابگر وضعیت فعال/غیرفعال محصول در گرید ارتباطات */}
           <Select
             label="وضعیت نمایش محصول"
             value={formData.isActive ? 'true' : 'false'}
@@ -744,20 +836,22 @@ export default function ProductEditPage() {
             ]}
           />
         </div>
-      </div>
+      </CollapsibleSection>
 
-      {/* ── Athletes (multi-select checkboxes) ── */}
+      {/* Athletes */}
       {athletes.length > 0 && (
-        <div className="bg-white p-8 rounded-[2.5rem] shadow-sm border border-gray-100">
-          <div className="flex items-center gap-2 border-b pb-4 mb-6">
-            <FaRunning className="text-gray-400" />
-            <h2 className="font-bold text-gray-800">ورزشکاران</h2>
-            {Array.isArray(formData.athlete) && formData.athlete.length > 0 && (
-              <span className="mr-auto text-xs text-[var(--color-primary)] font-medium">
-                {formData.athlete.length} نفر انتخاب شده
-              </span>
-            )}
-          </div>
+        <CollapsibleSection
+          id="athletes"
+          title="ورزشکاران"
+          icon={<FaRunning className="text-gray-400" />}
+          isOpen={isSectionOpen('athletes')}
+          onToggle={() => toggleSection('athletes')}
+          headerExtra={Array.isArray(formData.athlete) && formData.athlete.length > 0 ? (
+            <span className="text-xs text-[var(--color-primary)] font-medium">
+              {formData.athlete.length} نفر انتخاب شده
+            </span>
+          ) : null}
+        >
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2 max-h-52 overflow-y-auto pr-1">
             {athletes.map(a => {
               const selected =
@@ -781,16 +875,18 @@ export default function ProductEditPage() {
               );
             })}
           </div>
-        </div>
+        </CollapsibleSection>
       )}
 
-      {/* ── Category Attributes ── */}
+      {/* Category Attributes */}
       {categoryAttributes.length > 0 && (
-        <div className="bg-white p-8 rounded-[2.5rem] shadow-sm border border-gray-100">
-          <div className="flex items-center gap-2 border-b pb-4 mb-6">
-            <FaTags className="text-gray-400" />
-            <h2 className="font-bold text-gray-800">ویژگی‌های ثابت</h2>
-          </div>
+        <CollapsibleSection
+          id="fixed-attributes"
+          title="ویژگی‌های ثابت"
+          icon={<FaTags className="text-gray-400" />}
+          isOpen={isSectionOpen('fixedAttributes')}
+          onToggle={() => toggleSection('fixedAttributes')}
+        >
           <div className="overflow-hidden border rounded-2xl">
             <table className="w-full">
               <tbody className="divide-y divide-gray-100">
@@ -813,21 +909,22 @@ export default function ProductEditPage() {
               </tbody>
             </table>
           </div>
-        </div>
+        </CollapsibleSection>
       )}
 
-      {/* ── Variant Attributes ── */}
+      {/* Variant Attributes */}
       {categoryVariantAttributes.length > 0 && (
-        <div className="bg-white p-8 rounded-[2.5rem] shadow-sm border border-gray-100">
-          <div className="flex items-center gap-2 border-b pb-4 mb-6">
-            <FaLayerGroup className="text-gray-400" />
-            <h2 className="font-bold text-gray-800">ویژگی‌های متغیر (واریانت‌ها)</h2>
-          </div>
+        <CollapsibleSection
+          id="variant-attributes"
+          title="ویژگی‌های متغیر (واریانت‌ها)"
+          icon={<FaLayerGroup className="text-gray-400" />}
+          isOpen={isSectionOpen('variants')}
+          onToggle={() => toggleSection('variants')}
+        >
           <p className="text-xs text-gray-400 mb-6">
             برای هر ویژگی مقادیر موجود را اضافه یا حذف کنید. تصاویر در بخش «تصاویر هر مقدار» بارگذاری می‌شوند؛ تعیین قیمت برای هر ترکیب اختیاری است (خالی = قیمت پایه).
           </p>
 
-          {/* Tag inputs per variantAttribute */}
           <div className="space-y-4 mb-8">
             {categoryVariantAttributes.map(attr => (
               <div key={attr.name} className="border rounded-2xl p-4 bg-purple-50/30">
@@ -845,7 +942,7 @@ export default function ProductEditPage() {
                           key={unit}
                           type="text"
                           dir="ltr"
-                          style={{ direction: "ltr", unicodeBidi: "isolate" }}
+                          style={{ direction: 'ltr', unicodeBidi: 'isolate' }}
                           className="border rounded-[var(--radius)] px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-400"
                           placeholder={`${attr.label} — ${unit}${ui === 0 ? ' (اصلی)' : ''}`}
                           value={variantInputBuffer[attr.name]?.[unit] || ''}
@@ -877,9 +974,9 @@ export default function ProductEditPage() {
                     <input
                       type="text"
                       dir="ltr"
-                      style={{ direction: "ltr", unicodeBidi: "isolate" }}
+                      style={{ direction: 'ltr', unicodeBidi: 'isolate' }}
                       className="flex-1 border rounded-[var(--radius)] px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-400"
-                      placeholder={`مقدار جدید برای ${attr.label}…`}
+                      placeholder={`مقدار جدید برای ${attr.label}...`}
                       value={variantInputBuffer[attr.name] || ''}
                       onChange={e =>
                         setVariantInputBuffer(prev => ({ ...prev, [attr.name]: e.target.value }))
@@ -911,7 +1008,7 @@ export default function ProductEditPage() {
                         key={val}
                         className="inline-flex items-center gap-1 px-3 py-1 bg-purple-100 text-purple-800 rounded-full text-sm font-medium"
                       >
-                        <span dir="ltr" style={{ direction: "ltr", unicodeBidi: "isolate" }}>
+                        <span dir="ltr" style={{ direction: 'ltr', unicodeBidi: 'isolate' }}>
                           {display}
                         </span>
                         <button
@@ -933,15 +1030,13 @@ export default function ProductEditPage() {
             ))}
           </div>
 
-          {/* تصاویرِ هر مقدار (مشترک بین واریانت‌ها) */}
           {categoryVariantAttributes.some(
             (attr) => (variantOptions[attr.name] || []).length > 0
           ) && (
             <div className="mb-8 border rounded-2xl p-4 bg-blue-50/30">
               <h4 className="font-semibold mb-1 text-blue-800">تصاویر هر مقدار</h4>
               <p className="text-xs text-gray-500 mb-4">
-                تصاویری که برای هر مقدار (مثلاً هر رنگ) بارگذاری می‌کنید بین همه‌ی
-                واریانت‌هایی که آن مقدار را دارند مشترک است؛ لازم نیست برای هر سایز جدا آپلود کنید.
+                تصاویری که برای هر مقدار (مثلا هر رنگ) بارگذاری می‌کنید بین همه واریانت‌هایی که آن مقدار را دارند مشترک است؛ لازم نیست برای هر سایز جدا آپلود کنید.
               </p>
               <div className="space-y-5">
                 {categoryVariantAttributes.map((attr) => {
@@ -951,16 +1046,40 @@ export default function ProductEditPage() {
                     <div key={attr.name}>
                       <p className="text-sm font-bold text-gray-700 mb-2">{attr.label}</p>
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        {values.map((val) => (
-                          <div key={val} className="border rounded-2xl p-3 bg-white">
-                            <p className="text-xs font-semibold text-gray-600 mb-2">{val}</p>
-                            <VariantValueImageUpload
-                              value={variantMeta[attr.name]?.[val]?.images || []}
-                              onChange={(imgs) => setValueImages(attr.name, val, imgs)}
-                              folder="product/variant-values"
-                            />
-                          </div>
-                        ))}
+                        {values.map((val, valueIndex) => {
+                          const valueImages = getValueImages(attr.name, val);
+                          const isValueOpen = isValueImagePanelOpen(attr.name, val);
+                          const contentId = `variant-value-image-${makeSafeDomId(attr.name)}-${valueIndex}`;
+
+                          return (
+                            <div key={val} className="border rounded-2xl p-3 bg-white">
+                              <button
+                                type="button"
+                                onClick={() => toggleValueImagePanel(attr.name, val)}
+                                aria-expanded={isValueOpen}
+                                aria-controls={contentId}
+                                className="flex w-full items-center gap-2 text-right"
+                              >
+                                <span className="text-xs font-semibold text-gray-600 truncate">{val}</span>
+                                {valueImages.length > 0 && (
+                                  <span className="text-[10px] font-bold text-blue-700 bg-blue-50 border border-blue-100 rounded-full px-2 py-0.5">
+                                    {valueImages.length} عکس
+                                  </span>
+                                )}
+                                <span className="mr-auto text-gray-400">
+                                  {isValueOpen ? <FiChevronUp size={14} /> : <FiChevronDown size={14} />}
+                                </span>
+                              </button>
+                              <AnimatedCollapse id={contentId} isOpen={isValueOpen} className="pt-3">
+                                <VariantValueImageUpload
+                                  value={valueImages}
+                                  onChange={(imgs) => setValueImages(attr.name, val, imgs)}
+                                  folder="product/variant-values"
+                                />
+                              </AnimatedCollapse>
+                            </div>
+                          );
+                        })}
                       </div>
                     </div>
                   );
@@ -969,7 +1088,6 @@ export default function ProductEditPage() {
             </div>
           )}
 
-          {/* Combination detail cards */}
           {combinations.length > 0 && (
             <div>
               <div className="flex flex-wrap items-center justify-between gap-3 mb-2">
@@ -998,8 +1116,7 @@ export default function ProductEditPage() {
               </div>
 
               <p className="text-xs text-gray-500 mb-4">
-                فقط ترکیب‌هایی که تیک دارند ساخته می‌شوند؛ برداشتن تیک یک ترکیبِ موجود
-                باعث حذف آن واریانت هنگام ذخیره می‌شود.
+                فقط ترکیب‌هایی که تیک دارند ساخته می‌شوند؛ برداشتن تیک یک ترکیب موجود باعث حذف آن واریانت هنگام ذخیره می‌شود.
               </p>
 
               <div className="space-y-4">
@@ -1015,7 +1132,6 @@ export default function ProductEditPage() {
                         isSelected ? 'border-purple-200' : 'border-gray-200 opacity-60'
                       }`}
                     >
-                      {/* Combo label row + انتخاب ساخت */}
                       <div className="flex flex-wrap items-center gap-2 mb-4">
                         <label className="flex items-center cursor-pointer select-none">
                           <input
@@ -1042,7 +1158,6 @@ export default function ProductEditPage() {
                         )}
                       </div>
 
-                      {/* قیمت ویژه (اختیاری) — تصاویر در بخش «تصاویر هر مقدار» مدیریت می‌شوند */}
                       {isPriceVisible(key, detail) ? (
                         <div className="flex items-end gap-2">
                           <div className="flex-1">
@@ -1083,18 +1198,22 @@ export default function ProductEditPage() {
               </div>
             </div>
           )}
-        </div>
+        </CollapsibleSection>
       )}
 
-      {/* ── Technical Stats ── */}
+      {/* Technical Stats */}
       {categoryTechnicalStats.length > 0 && (
-        <div className="bg-white p-8 rounded-[2.5rem] shadow-sm border border-gray-100">
-          <div className="flex items-center gap-2 border-b pb-4 mb-6">
+        <CollapsibleSection
+          id="technical-stats"
+          title="تحلیل فنی (نمودار رادار)"
+          icon={(
             <div className="bg-orange-50 p-2 rounded-lg text-orange-500">
               <FaCogs size={20} />
             </div>
-            <h2 className="font-bold text-gray-800">تحلیل فنی (نمودار رادار)</h2>
-          </div>
+          )}
+          isOpen={isSectionOpen('technicalStats')}
+          onToggle={() => toggleSection('technicalStats')}
+        >
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {categoryTechnicalStats.map(stat => (
               <div
@@ -1124,12 +1243,19 @@ export default function ProductEditPage() {
               </div>
             ))}
           </div>
-        </div>
+        </CollapsibleSection>
       )}
 
       {categoryCustomTab?.enabled && categoryCustomTab.items?.length > 0 && (
-        <div className="space-y-3 border-t pt-6 bg-white p-8 rounded-[2.5rem] shadow-sm border border-gray-100">
-          <h3 className="text-sm font-bold text-neutral-700">{categoryCustomTab.name || 'تب سفارشی'}</h3>
+        <CollapsibleSection
+          id="custom-tab"
+          title={categoryCustomTab.name || 'تب سفارشی'}
+          icon={null}
+          isOpen={isSectionOpen('customTab')}
+          onToggle={() => toggleSection('customTab')}
+          className="space-y-3 border-t pt-6 bg-white p-8 rounded-[2.5rem] shadow-sm border border-gray-100"
+          titleClassName="text-sm font-bold text-neutral-700"
+        >
           <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
             {categoryCustomTab.items.map((item) => {
               const checked = (formData.customTabItems || []).includes(item.title);
@@ -1155,15 +1281,17 @@ export default function ProductEditPage() {
               );
             })}
           </div>
-        </div>
+        </CollapsibleSection>
       )}
 
-      {/* ── Media & Tags ── */}
-      <div className="bg-white p-8 rounded-[2.5rem] shadow-sm border border-gray-100">
-        <div className="flex items-center gap-2 border-b pb-4 mb-6">
-          <FaImages className="text-gray-400" />
-          <h2 className="font-bold text-gray-800">رسانه و تگ‌ها</h2>
-        </div>
+      {/* Media & Tags */}
+      <CollapsibleSection
+        id="media-tags"
+        title="رسانه و تگ‌ها"
+        icon={<FaImages className="text-gray-400" />}
+        isOpen={isSectionOpen('media')}
+        onToggle={() => toggleSection('media')}
+      >
         <div className="grid md:grid-cols-2 gap-8">
           <ImageUpload
             label="تصویر اصلی محصول"
@@ -1186,7 +1314,7 @@ export default function ProductEditPage() {
             onChange={e => updateField('tag', e.target.value)}
           />
         </div>
-      </div>
+      </CollapsibleSection>
 
     </form>
   );
