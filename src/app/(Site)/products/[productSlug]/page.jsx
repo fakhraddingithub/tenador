@@ -5,6 +5,7 @@ import { getCachedRate, eurToToman } from "@/lib/Exchangerate";
 import { generateProductMetadata } from "@/lib/seo/productSeo";
 import { generateProductSchema } from "@/lib/seo/productSchema";
 import { generateBreadcrumbSchema } from "@/lib/seo/breadcrumbSchema";
+import { resolveSerieSportContent } from "@/lib/serieSportContent";
 
 // ⚠️ اسلاگ‌های فارسی در URL با کش روتِ Next ناسازگارند: Next مسیرِ دیکدشده را
 // خام داخل هدر x-next-cache-tags می‌گذارد و کاراکتر غیر-ASCII باعث
@@ -65,6 +66,22 @@ export default async function ProductPage({ params }) {
     variants: convertedVariants,
   };
 
+  const productHeaderImage =
+    resolveSerieSportContent(product.serie, product.sport?._id || product.sport)
+      .headImage ||
+    product.brand?.image ||
+    product.category?.image ||
+    "/images/default-category.jpg";
+
+  const productHeaderAlt =
+    product.serie?.title ||
+    product.serie?.name ||
+    product.brand?.title ||
+    product.brand?.name ||
+    product.category?.title ||
+    product.category?.name ||
+    product.name;
+
   const productSchema = generateProductSchema(product, reviewStats);
   const breadcrumbSchema = generateBreadcrumbSchema(product);
 
@@ -85,8 +102,8 @@ export default async function ProductPage({ params }) {
 
       <div className="hidden md:block relative h-[200px] w-full overflow-hidden">
         <img
-          src={product.category.image || "/images/default-category.jpg"}
-          alt={product.category.name}
+          src={productHeaderImage}
+          alt={productHeaderAlt}
           className="w-full h-full object-cover scale-105"
         />
         <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent z-10" />
