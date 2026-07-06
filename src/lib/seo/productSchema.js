@@ -1,4 +1,5 @@
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL;
+const TOMAN_TO_RIAL = 10;
 
 /**
  * ساخت اسکیمای محصول برای نتایج گوگل (JSON-LD).
@@ -28,12 +29,9 @@ export function generateProductSchema(product, reviewStats) {
       ? { ratingValue: average, reviewCount: ratedCount }
       : { ratingValue: 5, reviewCount: 1 };
 
-  // قیمت پایه به «تومان» است و واحدِ پولِ فروشگاه هم تومان است؛ از کدِ «IRT» با
-  // همان مقدارِ تومانی استفاده می‌شود تا نتیجه مثل «۶۰٬۹۰۰٬۰۰۰ IRT» رندر شود.
-  // مقدار به‌صورتِ رشته‌ی صحیح (بدون اعشار) خروجی داده می‌شود: تومان هیچ بخشِ
-  // اعشاری ندارد، و ارسالِ price به‌صورت رشته‌ی فقط-رقم از افزوده‌شدنِ «۰۰.» توسطِ
-  // فرمت‌کنندهٔ خودکارِ گوگل جلوگیری می‌کند.
-  const priceInToman = String(Math.round(product.basePrice || 0));
+  // Google product snippets expect ISO 4217 currency codes. Toman has no
+  // official code, so publish the equivalent Rial amount for structured data.
+  const priceInRial = String(Math.round(product.basePrice || 0) * TOMAN_TO_RIAL);
 
   return {
     "@context": "https://schema.org/",
@@ -69,9 +67,9 @@ export function generateProductSchema(product, reviewStats) {
 
       url: `${SITE_URL}/products/${product.slug}`,
 
-      priceCurrency: "IRT",
+      priceCurrency: "IRR",
 
-      price: priceInToman,
+      price: priceInRial,
 
       availability: "https://schema.org/InStock",
 

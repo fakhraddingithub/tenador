@@ -249,8 +249,8 @@ export default async function UsedProductsByCategoryPage({ params }) {
         }),
         offers: {
           "@type": "Offer",
-          priceCurrency: "IRT",
-          price: String(Math.round(p.price || 0)),
+          priceCurrency: "IRR",
+          price: String(Math.round(p.price || 0) * 10),
           availability: "https://schema.org/InStock",
           itemCondition: "https://schema.org/UsedCondition",
           ...(productUrl && { url: productUrl }),
