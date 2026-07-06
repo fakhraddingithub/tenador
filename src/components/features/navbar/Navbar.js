@@ -150,6 +150,7 @@ function MobileCategoryDrawer({ navData, onClose }) {
   const [activeFilterValue, setActiveFilterValue] = useState(null);
   // دسته‌ی فعال (مَسترِ پنل A) که محتوای پنل B را هدایت می‌کند
   const [activeCategoryId, setActiveCategoryId] = useState(null);
+  const [expandedCategoryId, setExpandedCategoryId] = useState(null);
 
   const toggleFilterValue = (v) =>
     setActiveFilterValue((prev) => (prev === v ? null : v));
@@ -158,6 +159,7 @@ function MobileCategoryDrawer({ navData, onClose }) {
   const selectSport = (id) => {
     setActiveSportId(id);
     setActiveCategoryId(null);
+    setExpandedCategoryId(null);
   };
 
   const activeSport =
@@ -169,13 +171,15 @@ function MobileCategoryDrawer({ navData, onClose }) {
   const rootCategories = categories.filter(
     (c) => !c.parent || !catIdSet.has(c.parent),
   );
+  const childrenOf = (id) =>
+    categories.filter((c) => c.parent && c.parent === id);
 
   // Auto-Mount: اگر دسته‌ی فعال معتبر نباشد، اولین دسته انتخاب می‌شود تا پنل B هرگز خالی نماند
-  const effectiveCatId = rootCategories.some((c) => c._id === activeCategoryId)
+  const effectiveCatId = categories.some((c) => c._id === activeCategoryId)
     ? activeCategoryId
     : rootCategories[0]?._id || null;
   const activeCategory =
-    rootCategories.find((c) => c._id === effectiveCatId) || null;
+    categories.find((c) => c._id === effectiveCatId) || null;
 
   // ── فیلترِ ویژگیِ دسته‌ی فعال (پویا) — همان داده‌ی مگامنوی دسکتاپ از navbarService ──
   const megaMenuFilter = activeCategory?.megaMenuFilter || null;
@@ -186,10 +190,19 @@ function MobileCategoryDrawer({ navData, onClose }) {
       : null;
 
   // موتورِ وراثتِ URL — اگر مقداری فعال باشد ?[attrName]=<value> افزوده می‌شود
-  const withFilter = (href) =>
-    appliedValue
-      ? `${href}?${encodeURIComponent(megaMenuFilter.name)}=${encodeURIComponent(appliedValue)}`
+  const withFilterForCategory = (category, href) => {
+    const filter = category?.megaMenuFilter || null;
+    const value =
+      filter && (filter.values || []).includes(activeFilterValue)
+        ? activeFilterValue
+        : null;
+
+    return value
+      ? `${href}?${encodeURIComponent(filter.name)}=${encodeURIComponent(value)}`
       : href;
+  };
+
+  const withFilter = (href) => withFilterForCategory(activeCategory, href);
 
   // ── برندهای پنل B: عضویت از دسته‌ی فعال (از روی محصول)، فیلترشده با مقدارِ فعال ──
   const categoryBrands = activeCategory?.brands || [];
@@ -290,32 +303,94 @@ function MobileCategoryDrawer({ navData, onClose }) {
         <div className="flex flex-row flex-1 min-h-0 overflow-hidden">
           {/* PANE A — مَستر/دسته‌ها (در RTL سمت راست) — ۴۰٪ */}
           <div className="w-[40%] flex-shrink-0 overflow-y-auto border-l border-white/10">
+            {activeSport?.slug && (
+              <Link
+                href={`/${activeSport.slug}`}
+                onClick={onClose}
+                className="m-2 mb-1 flex min-h-10 items-center justify-center rounded-[6px] border border-[#aa4725]/30 bg-[#aa4725]/10 px-2 py-2 text-center text-[11px] font-bold leading-5 text-[#ffbf00] transition-colors hover:border-[#aa4725]/70 hover:bg-[#aa4725]/20"
+              >
+                مشاهده صفحه {activeSport.title}
+              </Link>
+            )}
+
             {rootCategories.length > 0 ? (
-              rootCategories.map((cat) => {
-                const isActive = cat._id === effectiveCatId;
-                return (
-                  <button
-                    key={cat._id}
-                    onClick={() => setActiveCategoryId(cat._id)}
-                    className={`w-full text-right px-3 py-3 flex items-center gap-2 border-b border-white/[0.04] transition-colors ${
-                      isActive
-                        ? "bg-white/5 text-white font-medium border-r-2 border-r-[#aa4725]"
-                        : "text-gray-400 hover:text-white hover:bg-white/[0.03] border-r-2 border-r-transparent"
-                    }`}
-                  >
-                    {cat.icon && (
-                      <img
-                        src={cat.icon}
-                        alt=""
-                        className="w-4 h-4 invert opacity-80 flex-shrink-0"
-                      />
-                    )}
-                    <span className="text-xs leading-tight truncate">
-                      {cat.title}
-                    </span>
-                  </button>
-                );
-              })
+              <ul className="pb-2">
+                {rootCategories.map((cat) => {
+                  const kids = childrenOf(cat._id);
+                  const isActive = cat._id === effectiveCatId;
+                  const isExpanded = expandedCategoryId === cat._id;
+
+                  return (
+                    <li key={cat._id}>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setActiveCategoryId(cat._id);
+                          setExpandedCategoryId((prev) =>
+                            kids.length > 0 && prev !== cat._id
+                              ? cat._id
+                              : null,
+                          );
+                        }}
+                        aria-expanded={kids.length > 0 ? isExpanded : undefined}
+                        className={`w-full text-right px-3 py-3 flex items-center gap-2 border-b border-white/[0.04] transition-colors ${
+                          isActive
+                            ? "bg-white/5 text-white font-medium border-r-2 border-r-[#aa4725]"
+                            : "text-gray-400 hover:text-white hover:bg-white/[0.03] border-r-2 border-r-transparent"
+                        }`}
+                      >
+                        {cat.icon && (
+                          <img
+                            src={cat.icon}
+                            alt=""
+                            className="w-4 h-4 invert opacity-80 flex-shrink-0"
+                          />
+                        )}
+                        <span className="min-w-0 flex-1 text-xs leading-tight truncate">
+                          {cat.title}
+                        </span>
+                        {kids.length > 0 && (
+                          <FiChevronLeft
+                            size={14}
+                            className={`flex-shrink-0 opacity-60 transition-transform ${
+                              isExpanded ? "-rotate-90" : ""
+                            }`}
+                          />
+                        )}
+                      </button>
+
+                      {kids.length > 0 && (
+                        <div
+                          className={`grid transition-[grid-template-rows] duration-300 ease-out ${
+                            isExpanded ? "grid-rows-[1fr]" : "grid-rows-[0fr]"
+                          }`}
+                        >
+                          <div className="overflow-hidden">
+                            <ul className="bg-black/15 py-1">
+                              {kids.map((child) => (
+                                <li key={child._id}>
+                                  <Link
+                                    href={withFilterForCategory(
+                                      child,
+                                      `/${activeSport.slug}/${child.slug}`,
+                                    )}
+                                    onClick={onClose}
+                                    className="mr-3 flex items-center gap-1.5 border-r border-white/10 px-3 py-2 text-right text-[11px] font-medium leading-5 text-gray-400 transition-colors hover:bg-white/[0.04] hover:text-[#aa4725]"
+                                  >
+                                    <span className="min-w-0 flex-1 truncate">
+                                      {child.title}
+                                    </span>
+                                  </Link>
+                                </li>
+                              ))}
+                            </ul>
+                          </div>
+                        </div>
+                      )}
+                    </li>
+                  );
+                })}
+              </ul>
             ) : (
               <p className="text-gray-500 text-[12px] p-4 text-center">
                 موردی یافت نشد
@@ -368,11 +443,11 @@ function MobileCategoryDrawer({ navData, onClose }) {
         </div>
 
         {/* ───────── فوتر: جمعه بازار ───────── */}
-        <div className="flex-shrink-0 border-t border-white/10 p-3">
+        <div className="flex-shrink-0 border-t border-white/10 px-3 pb-6 pt-3">
           <Link
             href="/second-hand"
             onClick={onClose}
-            className="flex items-center justify-between gap-2 px-3 py-2.5 rounded-[6px] bg-gradient-to-l from-[#aa4725]/15 to-[#aa4725]/5 border border-[#aa4725]/30 hover:border-[#aa4725]/70 transition-all"
+            className="flex min-h-[50px] items-center justify-between gap-2 px-3 py-3.5 rounded-[6px] bg-gradient-to-l from-[#aa4725]/15 to-[#aa4725]/5 border border-[#aa4725]/30 hover:border-[#aa4725]/70 transition-all"
           >
             <span className="text-[#aa4725] text-xs font-bold">جمعه بازار</span>
             <FiShoppingCart size={15} className="text-[#aa4725]" />
@@ -481,6 +556,13 @@ useEffect(() => {
     setSearchResults([]);
     setMobileSearchOpen(false);
   };
+
+  useEffect(() => {
+    setIsCategoryOpen(false);
+  }, [pathname]);
+
+  const mobileActionButtonClass =
+    "flex h-9 w-9 items-center justify-center rounded-[6px] text-white transition-colors hover:bg-white/10 hover:text-[#aa4725]";
 
   return (
     <>
@@ -672,7 +754,8 @@ useEffect(() => {
               <div className="flex items-center gap-2 flex-shrink-0">
                 <button
                   onClick={() => setIsCategoryOpen(!isCategoryOpen)}
-                  className="text-white p-1"
+                  aria-label="دسته‌بندی محصولات"
+                  className="flex h-9 w-9 items-center justify-center rounded-[6px] text-white transition-colors hover:bg-white/10"
                 >
                   {isCategoryOpen ? (
                     <FiX size={24} />
@@ -692,37 +775,44 @@ useEffect(() => {
               </div>
 
               {/* سمت چپ: یوزر، سرچ و سبد خرید */}
-              <div className="flex items-center gap-3 flex-shrink-0">
+              <div className="flex items-center justify-start gap-1.5 flex-shrink-0">
                 {/* دکمه ورود یا پروفایل کاربر در نوبار (جابجا شده از منو به سمت راست سرچ) */}
                 {user ? (
                   <Link
                     href="/p-user"
-                    className="rounded-[var(--radius)] text-white border border-white px-3 py-2 flex items-center gap-1.5 justify-center hover:text-[#aa4725] transition-colors text-sm"
+                    aria-label="حساب کاربری"
+                    title={firstName || "حساب کاربری"}
+                    className={`${mobileActionButtonClass} border border-white/20`}
                   >
-                    <span className="font-medium">{firstName}</span>
-                    <FiUser size={21} />
+                    <FiUser size={20} />
+                    <span className="sr-only">{firstName || "حساب کاربری"}</span>
                   </Link>
                 ) : (
                   <Link
                     href="/login-register"
-                    className="text-white text-[11px] font-bold border border-white/20 px-2.5 py-1 rounded-[6px] hover:bg-white hover:text-black transition-all"
+                    aria-label="ورود یا ثبت‌نام"
+                    className={`${mobileActionButtonClass} border border-white/20`}
                   >
-                    ورود
+                    <FiUser size={20} />
                   </Link>
                 )}
 
                 {user && <UserNotificationBell />}
 
                 <button
+                  type="button"
                   onClick={() => setMobileSearchOpen(true)}
-                  className="text-white flex items-center justify-center"
+                  aria-label="جستجو"
+                  className={mobileActionButtonClass}
                 >
                   <FiSearch size={21} />
                 </button>
 
-                <div
-                  className="relative cursor-pointer"
+                <button
+                  type="button"
+                  className={`${mobileActionButtonClass} relative cursor-pointer`}
                   onClick={() => setOpenCart(true)}
+                  aria-label="سبد خرید"
                 >
                   <FiShoppingCart size={21} className="text-white" />
                   {cartCount > 0 && (
@@ -730,7 +820,7 @@ useEffect(() => {
                       {cartCount}
                     </span>
                   )}
-                </div>
+                </button>
               </div>
             </div>
           )}
