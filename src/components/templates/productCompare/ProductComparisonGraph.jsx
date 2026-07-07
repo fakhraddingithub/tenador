@@ -281,6 +281,27 @@ export default function ProductComparisonGraph({ technicalStats = {} }) {
       )}
 
       <div ref={wrapperRef} className="h-[420px] w-full bg-white rounded-md p-4">
+        <style jsx>{`
+          div :global(.recharts-wrapper),
+          div :global(.recharts-wrapper) *,
+          div :global(.recharts-surface),
+          div :global(.recharts-surface) *,
+          div :global(svg),
+          div :global(svg) * {
+            outline: none !important;
+          }
+          div :global(.recharts-wrapper):focus,
+          div :global(.recharts-wrapper):focus-visible,
+          div :global(.recharts-wrapper) *:focus,
+          div :global(.recharts-wrapper) *:focus-visible,
+          div :global(.recharts-surface):focus,
+          div :global(.recharts-surface):focus-visible,
+          div :global(.recharts-surface) *:focus,
+          div :global(.recharts-surface) *:focus-visible {
+            outline: none !important;
+            box-shadow: none !important;
+          }
+        `}</style>
         <ResponsiveContainer width="100%" height="100%">
           <RadarChart cx="50%" cy="50%" outerRadius="78%" data={data}>
             <PolarGrid stroke="#e5e7eb" />

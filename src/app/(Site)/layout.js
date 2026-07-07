@@ -16,6 +16,45 @@ import ScrollToTop from "@/components/common/ScrollToTop";
 import NavigationLoader from "@/components/common/NavigationLoader";
 
 const SITE_URL = (process.env.NEXT_PUBLIC_SITE_URL || "https://tenador.com").replace(/\/+$/, "");
+const SITE_IMAGE_FALLBACK_SRC = "/images/default-site-image.png";
+
+function siteImageFallbackScript(src) {
+  return `
+    (() => {
+      const fallbackSrc = ${JSON.stringify(src)};
+
+      const applyFallback = (img) => {
+        if (!(img instanceof HTMLImageElement)) return;
+
+        const fallbackUrl = new URL(fallbackSrc, window.location.origin).href;
+        const currentSrc = img.currentSrc || img.src || "";
+
+        if (img.dataset.fallbackApplied === "true" || currentSrc === fallbackUrl) {
+          return;
+        }
+
+        img.dataset.fallbackApplied = "true";
+        img.removeAttribute("srcset");
+        img.removeAttribute("sizes");
+
+        const picture = img.parentElement?.tagName === "PICTURE" ? img.parentElement : null;
+        picture?.querySelectorAll("source").forEach((source) => {
+          source.removeAttribute("srcset");
+        });
+
+        img.src = fallbackSrc;
+      };
+
+      window.addEventListener(
+        "error",
+        (event) => {
+          applyFallback(event.target);
+        },
+        true
+      );
+    })();
+  `;
+}
 
 export const metadata = {
   metadataBase: new URL(SITE_URL),
@@ -143,6 +182,12 @@ export default async function RootLayout({ children }) {
           type="application/ld+json"
           dangerouslySetInnerHTML={{
             __html: JSON.stringify(jsonLd),
+          }}
+        />
+
+        <script
+          dangerouslySetInnerHTML={{
+            __html: siteImageFallbackScript(SITE_IMAGE_FALLBACK_SRC),
           }}
         />
       </head>
