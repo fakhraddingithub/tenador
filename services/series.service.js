@@ -2,7 +2,10 @@ import { unstable_cache } from "next/cache";
 import connectToDB from "base/configs/db";
 import Product from "base/models/Product";
 import Sport from "base/models/Sport";
-import { resolveSerieSportContent } from "@/lib/serieSportContent";
+import {
+  resolveSerieSportContent,
+  resolveSerieSportFlags,
+} from "@/lib/serieSportContent";
 
 /**
  * دریافت سری‌های مرتبط با یک ورزش
@@ -54,10 +57,38 @@ async function _getSeriesBySport(sportSlug) {
     // (جدید یا لیمیتد ادیشن) — سطح سری دیگر ملاک نیست
     // ─────────────────────────────────────────
     {
+      $addFields: {
+        serieSportEntry: {
+          $first: {
+            $filter: {
+              input: { $ifNull: ["$serieDoc.sportImages", []] },
+              as: "entry",
+              cond: { $eq: ["$$entry.sport", sport._id] },
+            },
+          },
+        },
+      },
+    },
+
+    {
+      $addFields: {
+        serieIsNewForSport: {
+          $ifNull: ["$serieSportEntry.isNewSerie", "$serieDoc.isNewSerie"],
+        },
+        serieIsLimitedForSport: {
+          $ifNull: [
+            "$serieSportEntry.isLimitedEdition",
+            "$serieDoc.isLimitedEdition",
+          ],
+        },
+      },
+    },
+
+    {
       $match: {
         $or: [
-          { "serieDoc.isNewSerie": true },
-          { "serieDoc.isLimitedEdition": true },
+          { serieIsNewForSport: true },
+          { serieIsLimitedForSport: true },
         ],
       },
     },
@@ -181,6 +212,7 @@ async function _getSeriesBySport(sportSlug) {
 
   return results.map((serie) => {
     const resolved = resolveSerieSportContent(serie, sport._id);
+    const flags = resolveSerieSportFlags(serie, sport._id);
 
     return {
       _id: serie._id.toString(),
@@ -204,10 +236,9 @@ async function _getSeriesBySport(sportSlug) {
 
       level: serie.level || 0,
 
-      isLimitedEdition:
-        serie.isLimitedEdition || false,
+      isLimitedEdition: flags.isLimitedEdition,
 
-      isNewSerie: serie.isNewSerie || false,
+      isNewSerie: flags.isNewSerie,
 
       productCount: serie.productCount || 0,
 

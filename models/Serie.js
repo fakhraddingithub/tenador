@@ -79,6 +79,14 @@ const schema = new mongoose.Schema(
             default: "",
             trim: true,
           },
+          isLimitedEdition: {
+            type: Boolean,
+            default: false,
+          },
+          isNewSerie: {
+            type: Boolean,
+            default: false,
+          },
         },
       ],
       default: [],

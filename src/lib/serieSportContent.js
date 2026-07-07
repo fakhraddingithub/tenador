@@ -7,6 +7,18 @@ function clean(value) {
   return typeof value === "string" ? value.trim() : "";
 }
 
+function toBoolean(value) {
+  return value === true;
+}
+
+function resolveBoolean(serie, entry, field) {
+  if (entry && entry[field] !== undefined && entry[field] !== null) {
+    return entry[field] === true;
+  }
+
+  return serie?.[field] === true;
+}
+
 export function sanitizeSerieSportEntries(entries) {
   if (!Array.isArray(entries)) return [];
 
@@ -23,6 +35,8 @@ export function sanitizeSerieSportEntries(entries) {
       headImage: clean(entry.headImage),
       description: clean(entry.description),
       shortDescription: clean(entry.shortDescription),
+      isLimitedEdition: toBoolean(entry.isLimitedEdition),
+      isNewSerie: toBoolean(entry.isNewSerie),
     });
   }
 
@@ -52,11 +66,21 @@ export function resolveSerieSportContent(serie, sportId) {
   };
 }
 
+export function resolveSerieSportFlags(serie, sportId) {
+  const entry = getSerieSportEntry(serie, sportId);
+
+  return {
+    isLimitedEdition: resolveBoolean(serie, entry, "isLimitedEdition"),
+    isNewSerie: resolveBoolean(serie, entry, "isNewSerie"),
+  };
+}
+
 export function withResolvedSerieSportContent(serie, sportId) {
   if (!serie) return serie;
 
   return {
     ...serie,
     ...resolveSerieSportContent(serie, sportId),
+    ...resolveSerieSportFlags(serie, sportId),
   };
 }
