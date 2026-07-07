@@ -29,6 +29,16 @@ const SCORE_RANGES = [
   { label: 'متوسط (۱ تا ۴)', min: 1, max: 4  },
 ];
 
+const getFilterItemIcon = (item, type) => {
+  if (!item || typeof item !== 'object') return '';
+
+  if (type === 'brands') {
+    return item.icon || item.logo || item.monochromeLogo || item.image || '';
+  }
+
+  return item.icon || item.image || '';
+};
+
 export default function UsedFilterSidebar({
   products,
   filters,
@@ -40,6 +50,8 @@ export default function UsedFilterSidebar({
   const brands     = useMemo(() => [...new Map(products.map(p => p.baseProduct?.brand).filter(Boolean).map(b => [b._id, b])).values()], [products]);
   const categories = useMemo(() => [...new Map(products.map(p => p.baseProduct?.category).filter(Boolean).map(c => [c._id, c])).values()], [products]);
   const maxPrice   = useMemo(() => Math.max(...products.map(p => p.price || 0), 50_000_000), [products]);
+  const brandsHaveIcons = brands.some(b => getFilterItemIcon(b, 'brands'));
+  const categoriesHaveIcons = categories.some(c => getFilterItemIcon(c, 'categories'));
 
   const toggleArr = (key, id) => {
     setFilters(prev => ({
@@ -79,20 +91,37 @@ export default function UsedFilterSidebar({
       {brands.length > 0 && (
         <Section title="برند">
           <div className="space-y-2 max-h-48 overflow-y-auto pl-1">
-            {brands.map(b => (
-              <label key={b._id} className="flex items-center gap-2 cursor-pointer group">
-                <input
-                  type="checkbox"
-                  checked={filters.brands.includes(b._id)}
-                  onChange={() => toggleArr('brands', b._id)}
-                  className="accent-[var(--color-primary)] w-4 h-4 rounded"
-                />
-                {b.logo && <img src={b.logo} alt={b.title} className="w-4 h-4 object-contain" />}
-                <span className="text-sm text-gray-600 group-hover:text-[var(--color-primary)] transition-colors">
-                  {b.title}
-                </span>
-              </label>
-            ))}
+            {brands.map((b) => {
+              const iconSrc = getFilterItemIcon(b, 'brands');
+              return (
+                <label key={b._id} className="flex min-w-0 items-center gap-2 cursor-pointer group">
+                  <input
+                    type="checkbox"
+                    checked={filters.brands.includes(b._id)}
+                    onChange={() => toggleArr('brands', b._id)}
+                    className="accent-[var(--color-primary)] w-4 h-4 rounded shrink-0"
+                  />
+                  {brandsHaveIcons && (
+                    <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-[6px] border border-gray-100 bg-gray-50">
+                      {iconSrc && (
+                        <img
+                          src={iconSrc}
+                          alt={b.title || b.name || ''}
+                          className="h-5 w-5 object-contain"
+                          loading="lazy"
+                          onError={(event) => {
+                            event.currentTarget.style.display = 'none';
+                          }}
+                        />
+                      )}
+                    </span>
+                  )}
+                  <span className="min-w-0 truncate text-sm text-gray-600 group-hover:text-[var(--color-primary)] transition-colors">
+                    {b.title}
+                  </span>
+                </label>
+              );
+            })}
           </div>
         </Section>
       )}
@@ -101,19 +130,37 @@ export default function UsedFilterSidebar({
       {categories.length > 0 && (
         <Section title="دسته‌بندی">
           <div className="space-y-2 max-h-48 overflow-y-auto pl-1">
-            {categories.map(c => (
-              <label key={c._id} className="flex items-center gap-2 cursor-pointer group">
-                <input
-                  type="checkbox"
-                  checked={filters.categories.includes(c._id)}
-                  onChange={() => toggleArr('categories', c._id)}
-                  className="accent-[var(--color-primary)] w-4 h-4 rounded"
-                />
-                <span className="text-sm text-gray-600 group-hover:text-[var(--color-primary)] transition-colors">
-                  {c.title}
-                </span>
-              </label>
-            ))}
+            {categories.map((c) => {
+              const iconSrc = getFilterItemIcon(c, 'categories');
+              return (
+                <label key={c._id} className="flex min-w-0 items-center gap-2 cursor-pointer group">
+                  <input
+                    type="checkbox"
+                    checked={filters.categories.includes(c._id)}
+                    onChange={() => toggleArr('categories', c._id)}
+                    className="accent-[var(--color-primary)] w-4 h-4 rounded shrink-0"
+                  />
+                  {categoriesHaveIcons && (
+                    <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-[6px] border border-gray-100 bg-gray-50">
+                      {iconSrc && (
+                        <img
+                          src={iconSrc}
+                          alt={c.title || c.name || ''}
+                          className="h-5 w-5 object-contain"
+                          loading="lazy"
+                          onError={(event) => {
+                            event.currentTarget.style.display = 'none';
+                          }}
+                        />
+                      )}
+                    </span>
+                  )}
+                  <span className="min-w-0 truncate text-sm text-gray-600 group-hover:text-[var(--color-primary)] transition-colors">
+                    {c.title}
+                  </span>
+                </label>
+              );
+            })}
           </div>
         </Section>
       )}

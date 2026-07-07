@@ -4,10 +4,21 @@ import MobileFilterDrawer from "@/components/features/filters/MobileFilterDrawer
 import AttributeFilters from "@/components/features/filters/AttributeFilters";
 import { countActiveAttrFilters } from "@/lib/attributeFilters";
 
+const getFilterItemIcon = (item, type) => {
+  if (!item || typeof item !== "object") return "";
+
+  if (type === "brands") {
+    return item.icon || item.logo || item.monochromeLogo || item.image || "";
+  }
+
+  return item.icon || item.image || "";
+};
+
 export default function FilterSidebar({
   initialProducts,
   filters,
   setFilters,
+  hideSportFilter = false,
   // فیلترهای ویژگیِ پویای دسته‌بندی (دکمه‌های انتخابی + گریدِ رنگ) — کامپوننتِ
   // مشترکِ AttributeFilters همه‌جا از همین props استفاده می‌کند.
   attributeMeta = [],
@@ -74,13 +85,15 @@ export default function FilterSidebar({
 
       <div className="bg-white rounded-[6px] border border-gray-100 shadow-sm overflow-hidden">
         {/* فیلتر ورزش (Sport) */}
-        <FilterGroup
-          title="ورزش تخصصی"
-          items={sports}
-          type="sports"
-          filters={filters}
-          setFilters={setFilters}
-        />
+        {!hideSportFilter && (
+          <FilterGroup
+            title="ورزش تخصصی"
+            items={sports}
+            type="sports"
+            filters={filters}
+            setFilters={setFilters}
+          />
+        )}
 
         {/* فیلتر دسته‌بندی (Category) */}
         <FilterGroup
@@ -157,6 +170,7 @@ export default function FilterSidebar({
 // کامپوننت کمکی برای گروه‌های فیلتر
 function FilterGroup({ title, items, type, filters, setFilters }) {
   const [isOpen, setIsOpen] = useState(true);
+  const hasIcons = items.some((item) => getFilterItemIcon(item, type));
 
   const toggleItem = (id) => {
     // تبدیل ID به رشته برای اطمینان از مقایسه درست
@@ -195,15 +209,17 @@ function FilterGroup({ title, items, type, filters, setFilters }) {
             // استخراج ID به صورت رشته
             const id = (item._id || item).toString();
             const label = item.title || item.name || item;
+            const iconSrc = getFilterItemIcon(item, type);
             const isActive = filters[type]?.includes(id);
 
             return (
-              <div
+              <button
+                type="button"
                 key={id}
-                onClick={() => toggleItem(id)} // اینجا مستقیم روی دیو کلیک می‌کنیم
-                className="flex items-center justify-between group cursor-pointer"
+                onClick={() => toggleItem(id)}
+                className="w-full flex items-center justify-between group cursor-pointer text-right"
               >
-                <div className="flex items-center gap-3">
+                <div className="flex min-w-0 items-center gap-3">
                   <div
                     className={`w-5 h-5 rounded-[4px] border-2 flex items-center justify-center transition-all 
                       ${isActive ? "bg-[#aa4725] border-[#aa4725]" : "border-gray-200 group-hover:border-[#aa4725]"}`}
@@ -212,13 +228,28 @@ function FilterGroup({ title, items, type, filters, setFilters }) {
                       <div className="w-1.5 h-1.5 bg-white rounded-full shadow-sm" />
                     )}
                   </div>
+                  {hasIcons && (
+                    <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-[6px] border border-gray-100 bg-gray-50">
+                      {iconSrc && (
+                        <img
+                          src={iconSrc}
+                          alt={label}
+                          className="h-5 w-5 object-contain"
+                          loading="lazy"
+                          onError={(event) => {
+                            event.currentTarget.style.display = "none";
+                          }}
+                        />
+                      )}
+                    </span>
+                  )}
                   <span
-                    className={`text-xs font-bold transition-colors ${isActive ? "text-[#aa4725]" : "text-gray-500 group-hover:text-gray-800"}`}
+                    className={`min-w-0 truncate text-xs font-bold transition-colors ${isActive ? "text-[#aa4725]" : "text-gray-500 group-hover:text-gray-800"}`}
                   >
                     {label}
                   </span>
                 </div>
-              </div>
+              </button>
             );
           })}
         </div>

@@ -147,6 +147,7 @@ export async function POST(req) {
           ? customTab.items.map((item) => ({
               title: item.title.trim(),
               description: (item.description || "").trim(),
+              image: (item.image || "").trim(),
               link: (item.link || "").trim(),
             }))
           : [],

@@ -263,7 +263,7 @@ The color code may appear in formats like:
   const [customTabName, setCustomTabName] = useState('');
   const [customTabIcon, setCustomTabIcon] = useState('');
   const [customTabItems, setCustomTabItems] = useState([]);
-  const [currentTabItem, setCurrentTabItem] = useState({ title: '', description: '', link: '' });
+  const [currentTabItem, setCurrentTabItem] = useState({ title: '', description: '', link: '', image: '' });
   const [editingTabItemIndex, setEditingTabItemIndex] = useState(null);
 
   const sensors = useSensors(
@@ -324,7 +324,13 @@ The color code may appear in formats like:
 
     const fd = new FormData();
     fd.append('file', file);
-    fd.append('folder', field === 'customTabIcon' ? 'categories/customTabIcons' : 'categories');
+    const uploadFolder =
+      field === 'customTabIcon'
+        ? 'categories/customTabIcons'
+        : field === 'customTabItemImage'
+          ? 'categories/customTabItems'
+          : 'categories';
+    fd.append('folder', uploadFolder);
 
     try {
       const res = await fetch('/api/upload', { method: 'POST', body: fd });
@@ -332,10 +338,12 @@ The color code may appear in formats like:
       if (!res.ok) throw new Error(data.error || 'خطا در آپلود');
       if (field === 'customTabIcon') {
         setCustomTabIcon(data.url);
+      } else if (field === 'customTabItemImage') {
+        setCurrentTabItem((prev) => ({ ...prev, image: data.url }));
       } else {
         setFormData((prev) => ({ ...prev, [field]: data.url }));
       }
-      showToast.success(`${field === 'image' ? 'تصویر' : 'آیکون'} با موفقیت آپلود شد`);
+      showToast.success(`${field === 'image' || field === 'customTabItemImage' ? 'تصویر' : 'آیکون'} با موفقیت آپلود شد`);
     } catch (err) {
       showError('خطا', err.message);
     } finally {
@@ -392,11 +400,17 @@ The color code may appear in formats like:
     } else {
       setCustomTabItems((prev) => [...prev, { ...currentTabItem }]);
     }
-    setCurrentTabItem({ title: '', description: '', link: '' });
+    setCurrentTabItem({ title: '', description: '', link: '', image: '' });
   };
 
   const handleEditTabItem = (index) => {
-    setCurrentTabItem(customTabItems[index]);
+    const item = customTabItems[index];
+    setCurrentTabItem({
+      title: item.title || '',
+      description: item.description || '',
+      link: item.link || '',
+      image: item.image || '',
+    });
     setEditingTabItemIndex(index);
   };
 
@@ -404,7 +418,7 @@ The color code may appear in formats like:
     setCustomTabItems((prev) => prev.filter((_, i) => i !== index));
     if (editingTabItemIndex === index) {
       setEditingTabItemIndex(null);
-      setCurrentTabItem({ title: '', description: '', link: '' });
+      setCurrentTabItem({ title: '', description: '', link: '', image: '' });
     }
   };
 
@@ -1278,6 +1292,48 @@ The color code may appear in formats like:
                   </div>
 
                   <div className={`rounded-[var(--radius)] p-6 space-y-5 border-2 ${editingTabItemIndex !== null ? 'bg-purple-50/30 border-purple-200' : 'bg-neutral-50 border-transparent'}`}>
+                    <div>
+                      <label className="block text-xs font-bold text-neutral-500 mb-2">عکس آیتم (لوگو)</label>
+                      <div className="flex items-center gap-4 bg-white border border-neutral-200 rounded-lg p-4">
+                        <div className="w-20 h-20 rounded-lg bg-neutral-50 border-2 border-dashed border-neutral-200 flex items-center justify-center relative overflow-hidden">
+                          {currentTabItem.image ? (
+                            <img src={currentTabItem.image} alt="" className="w-full h-full object-contain p-2" />
+                          ) : (
+                            <FiImage size={24} className="text-neutral-300" />
+                          )}
+                          {uploadingField === 'customTabItemImage' && (
+                            <div className="absolute inset-0 bg-white/80 flex items-center justify-center">
+                              <FiLoader className="animate-spin text-[var(--color-primary)]" size={18} />
+                            </div>
+                          )}
+                        </div>
+                        <div className="flex-1">
+                          <label
+                            htmlFor="custom-tab-item-image"
+                            className="bg-white border border-neutral-200 hover:border-[var(--color-primary)] px-4 py-2 rounded-lg text-xs font-bold cursor-pointer transition-all inline-block"
+                          >
+                            آپلود عکس آیتم
+                          </label>
+                          {currentTabItem.image && (
+                            <button
+                              type="button"
+                              onClick={() => setCurrentTabItem((p) => ({ ...p, image: '' }))}
+                              className="mr-2 text-xs font-bold text-red-500 hover:text-red-600"
+                            >
+                              حذف
+                            </button>
+                          )}
+                          <p className="text-[10px] text-neutral-400 mt-2 italic">برای لوگو یا نشان آیتم؛ PNG یا SVG پیشنهاد می‌شود</p>
+                          <input
+                            type="file"
+                            id="custom-tab-item-image"
+                            className="hidden"
+                            onChange={(e) => uploadFile(e.target.files[0], 'customTabItemImage')}
+                            accept="image/*"
+                          />
+                        </div>
+                      </div>
+                    </div>
                     <Input
                       label="عنوان آیتم"
                       value={currentTabItem.title}
@@ -1303,12 +1359,21 @@ The color code may appear in formats like:
 
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                     {customTabItems.map((item, index) => (
-                      <div key={index} className="flex items-center justify-between p-3 bg-white border border-neutral-200 rounded-lg shadow-sm">
-                        <div className="flex flex-col min-w-0">
-                          <span className="font-bold text-sm truncate">{item.title}</span>
-                          {item.description && (
-                            <span className="text-[11px] text-neutral-400 truncate">{item.description}</span>
-                          )}
+                      <div key={index} className="flex items-center justify-between gap-3 p-3 bg-white border border-neutral-200 rounded-lg shadow-sm">
+                        <div className="flex items-center gap-3 min-w-0">
+                          <div className="w-10 h-10 rounded-md bg-neutral-50 border border-neutral-200 flex items-center justify-center overflow-hidden shrink-0">
+                            {item.image ? (
+                              <img src={item.image} alt="" className="w-full h-full object-contain p-1.5" />
+                            ) : (
+                              <FiImage size={16} className="text-neutral-300" />
+                            )}
+                          </div>
+                          <div className="flex flex-col min-w-0">
+                            <span className="font-bold text-sm truncate">{item.title}</span>
+                            {item.description && (
+                              <span className="text-[11px] text-neutral-400 truncate">{item.description}</span>
+                            )}
+                          </div>
                         </div>
                         <div className="flex gap-2 shrink-0">
                           <button type="button" onClick={() => handleEditTabItem(index)} className="p-2 text-blue-500 hover:bg-blue-50 rounded-md transition"><FiEdit3 size={14} /></button>

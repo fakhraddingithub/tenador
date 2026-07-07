@@ -176,6 +176,7 @@ export async function PUT(req, { params }) {
               ...(item._id ? { _id: item._id } : {}),
               title: item.title.trim(),
               description: (item.description || "").trim(),
+              image: (item.image || "").trim(),
               link: (item.link || "").trim(),
             }))
           : [],

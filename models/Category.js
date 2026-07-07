@@ -74,6 +74,11 @@ const CustomTabItemSchema = new mongoose.Schema({
     trim: true,
     default: "",
   },
+  image: {
+    type: String,
+    trim: true,
+    default: "",
+  },
   link: {
     type: String,
     trim: true,
