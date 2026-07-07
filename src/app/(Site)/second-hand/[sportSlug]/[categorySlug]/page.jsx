@@ -12,7 +12,7 @@ import { getCachedRate, eurToToman } from "@/lib/Exchangerate";
 
 export const revalidate = 3600;
 
-const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || "https://tenador.com";
+const SITE_URL = (process.env.NEXT_PUBLIC_SITE_URL || "https://tenador.com").replace(/\/+$/, "");
 
 async function resolveCategory(sportSlug, categorySlug) {
   await connectToDB();

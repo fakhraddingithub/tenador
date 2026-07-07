@@ -97,7 +97,7 @@ export async function generateMetadata({ params }) {
     filters.category ||
     filters.sport;
 
-  const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || "https://tenador.com";
+  const SITE_URL = (process.env.NEXT_PUBLIC_SITE_URL || "https://tenador.com").replace(/\/+$/, "");
   const title = `خرید تجهیزات ${activeEntity.title || activeEntity.name}`;
   const description =
     activeEntity.description ||

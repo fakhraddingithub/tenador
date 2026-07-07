@@ -15,7 +15,7 @@ import CartCleanup from "@/components/features/cart/CartCleanup";
 import ScrollToTop from "@/components/common/ScrollToTop";
 import NavigationLoader from "@/components/common/NavigationLoader";
 
-const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || "https://tenador.com";
+const SITE_URL = (process.env.NEXT_PUBLIC_SITE_URL || "https://tenador.com").replace(/\/+$/, "");
 
 export const metadata = {
   metadataBase: new URL(SITE_URL),

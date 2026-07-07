@@ -8,7 +8,7 @@ import SportHero from "@/components/templates/sports/SportHero";
 // TTL زمان‌محور → ۱ساعت برای کاهشِ ISR Writes.
 export const revalidate = 3600;
 
-const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || "https://tenador.com";
+const SITE_URL = (process.env.NEXT_PUBLIC_SITE_URL || "https://tenador.com").replace(/\/+$/, "");
 const PAGE_TITLE = "بازار دست‌دوم | فروش تجهیزات ورزشی کارکرده";
 const PAGE_DESC = "خرید و فروش تجهیزات ورزشی دست‌دوم با کارت سلامت معتبر";
 

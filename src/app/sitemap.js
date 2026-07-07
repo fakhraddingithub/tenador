@@ -5,7 +5,7 @@ import Sport from "base/models/Sport";
 
 import connectToDB from "base/configs/db";
 
-const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL;
+const SITE_URL = (process.env.NEXT_PUBLIC_SITE_URL || "https://tenador.com").replace(/\/+$/, "");
 
 export default async function sitemap() {
   await connectToDB();

@@ -1,4 +1,4 @@
-const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL;
+const SITE_URL = (process.env.NEXT_PUBLIC_SITE_URL || "https://tenador.com").replace(/\/+$/, "");
 
 // مسیرِ نان‌خرده‌ها (breadcrumb) ساختارِ تو-در-توی جدید را منعکس می‌کند:
 // خانه ← ورزش (/[sportSlug]) ← دسته (/[sportSlug]/[categorySlug]) ← محصول.

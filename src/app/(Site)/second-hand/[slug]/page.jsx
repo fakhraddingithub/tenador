@@ -31,7 +31,7 @@ function buildLookup(rawSlug) {
     : { slug };
 }
 
-const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || "https://tenador.com";
+const SITE_URL = (process.env.NEXT_PUBLIC_SITE_URL || "https://tenador.com").replace(/\/+$/, "");
 
 export async function generateMetadata({ params }) {
   const { slug } = await params;

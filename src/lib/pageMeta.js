@@ -5,7 +5,7 @@
  *   - توضیحات: اولین متنِ معنادار (زیرعنوانِ هیرو / متن / مقدمه)، کوتاه‌شده تا ~۱۶۰ نویسه
  *   - og:image: اولین تصویرِ موجود در بلوک‌های صفحه
  */
-const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || "https://tenador.com";
+const SITE_URL = (process.env.NEXT_PUBLIC_SITE_URL || "https://tenador.com").replace(/\/+$/, "");
 
 function deriveTitle(sections, fallback) {
   const hero = sections.find((b) => b?.type === "hero" && b.title);

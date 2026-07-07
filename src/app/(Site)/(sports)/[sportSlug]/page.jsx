@@ -22,7 +22,7 @@ export async function generateMetadata({ params }) {
   ]);
   if (ctx.notFound || !data) return { title: "صفحه پیدا نشد" };
 
-  const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || "https://tenador.com";
+  const SITE_URL = (process.env.NEXT_PUBLIC_SITE_URL || "https://tenador.com").replace(/\/+$/, "");
   const title = `خرید تجهیزات و لوازم ${data.info.title || data.info.name}`;
   const description =
     data.info.description || `بهترین قیمت تجهیزات تخصصی ${data.info.title}`;
