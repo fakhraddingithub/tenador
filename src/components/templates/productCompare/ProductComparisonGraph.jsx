@@ -282,14 +282,11 @@ export default function ProductComparisonGraph({ technicalStats = {} }) {
 
       <div ref={wrapperRef} className="pcg-chart-wrapper h-[420px] w-full bg-white rounded-md p-4">
         <style jsx>{`
-          .pcg-chart-wrapper,
-          .pcg-chart-wrapper * {
+          .pcg-chart-wrapper :global(*) {
             outline: none !important;
           }
-          .pcg-chart-wrapper:focus,
-          .pcg-chart-wrapper:focus-visible,
-          .pcg-chart-wrapper *:focus,
-          .pcg-chart-wrapper *:focus-visible {
+          .pcg-chart-wrapper :global(*:focus),
+          .pcg-chart-wrapper :global(*:focus-visible) {
             outline: none !important;
             box-shadow: none !important;
             border: none !important;
