@@ -197,7 +197,7 @@ export async function PUT(req, { params }) {
     // ذخیره تغییرات (Trigger pre-save hooks)
     await category.save();
 
-    revalidateContent(["navbar", "categories"]);
+    revalidateContent(["navbar", "categories", "products"]);
 
     return NextResponse.json({
       message: "دسته‌بندی با موفقیت به‌روزرسانی شد",
@@ -225,7 +225,7 @@ export async function DELETE(req, { params }) {
       return NextResponse.json({ error: "دسته‌بندی پیدا نشد" }, { status: 404 });
     }
 
-    revalidateContent(["navbar", "categories"]);
+    revalidateContent(["navbar", "categories", "products"]);
 
     return NextResponse.json({ message: "دسته‌بندی با موفقیت حذف شد" });
   } catch (error) {

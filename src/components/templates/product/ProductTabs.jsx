@@ -23,7 +23,7 @@ const getItemLinkProps = (link) => {
 
 const CustomTabItemLogo = ({ item, linkProps }) => {
   const className =
-    "group flex h-16 w-16 shrink-0 items-center justify-center overflow-hidden rounded-[6px] border border-gray-100 bg-white p-1 transition-colors duration-200 hover:border-[#aa4725]/30 sm:h-[72px] sm:w-[72px]";
+    "group flex h-16 w-16 shrink-0 items-center justify-center overflow-hidden p-1 sm:h-[72px] sm:w-[72px]";
 
   const logo = item.image ? (
     <img
@@ -53,7 +53,7 @@ const CustomTabItemCard = ({ item }) => {
     "text-base font-extrabold leading-7 text-[#1a1a1a] transition-colors duration-200 hover:text-[#aa4725]";
 
   return (
-    <article className="flex h-full items-start gap-4 rounded-[6px] border border-gray-100 bg-gray-50/70 p-4 text-right shadow-sm shadow-gray-100/50 transition-colors duration-200 hover:border-[#aa4725]/20 sm:p-5">
+    <article className="flex h-full items-start gap-4 p-2 text-right sm:p-3">
       <CustomTabItemLogo item={item} linkProps={linkProps} />
       <div className="min-w-0 flex-1 pt-1">
         <div className="relative inline-flex max-w-full pr-3 before:absolute before:right-0 before:top-1/2 before:h-5 before:w-0.5 before:-translate-y-1/2 before:rounded-full before:bg-[#aa4725] before:content-['']">

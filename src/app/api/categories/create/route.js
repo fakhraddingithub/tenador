@@ -166,7 +166,7 @@ export async function POST(req) {
       parentSlug: parent || null, 
     });
 
-    revalidateContent(["navbar", "categories"]);
+    revalidateContent(["navbar", "categories", "products"]);
 
     return Response.json(
       { message: "کتگوری با موفقیت ایجاد شد", category: created },
