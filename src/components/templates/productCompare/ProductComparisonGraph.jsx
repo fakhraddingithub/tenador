@@ -280,26 +280,19 @@ export default function ProductComparisonGraph({ technicalStats = {} }) {
         </div>
       )}
 
-      <div ref={wrapperRef} className="h-[420px] w-full bg-white rounded-md p-4">
+      <div ref={wrapperRef} className="pcg-chart-wrapper h-[420px] w-full bg-white rounded-md p-4">
         <style jsx>{`
-          div :global(.recharts-wrapper),
-          div :global(.recharts-wrapper) *,
-          div :global(.recharts-surface),
-          div :global(.recharts-surface) *,
-          div :global(svg),
-          div :global(svg) * {
+          .pcg-chart-wrapper,
+          .pcg-chart-wrapper * {
             outline: none !important;
           }
-          div :global(.recharts-wrapper):focus,
-          div :global(.recharts-wrapper):focus-visible,
-          div :global(.recharts-wrapper) *:focus,
-          div :global(.recharts-wrapper) *:focus-visible,
-          div :global(.recharts-surface):focus,
-          div :global(.recharts-surface):focus-visible,
-          div :global(.recharts-surface) *:focus,
-          div :global(.recharts-surface) *:focus-visible {
+          .pcg-chart-wrapper:focus,
+          .pcg-chart-wrapper:focus-visible,
+          .pcg-chart-wrapper *:focus,
+          .pcg-chart-wrapper *:focus-visible {
             outline: none !important;
             box-shadow: none !important;
+            border: none !important;
           }
         `}</style>
         <ResponsiveContainer width="100%" height="100%">
