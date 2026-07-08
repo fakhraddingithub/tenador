@@ -1,9 +1,9 @@
-import CommentsModeration from "@/components/admin/comments/CommentsModeration";
+import { redirect } from "next/navigation";
 
-export const metadata = {
-  title: "مدیریت نظرات | پنل تنادور",
-};
-
-export default function AdminCommentsPage() {
-  return <CommentsModeration />;
+/**
+ * فاز ۲: مدیریت نظرات به تبِ «نظرات» در مرکز پشتیبانی منتقل شد.
+ * لینک قدیمی /p-admin/admin-comments همچنان زنده است.
+ */
+export default function AdminCommentsRedirect() {
+  redirect("/p-admin/support?tab=comments");
 }
