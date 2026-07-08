@@ -10,6 +10,7 @@ export async function GET(request) {
     const { searchParams } = new URL(request.url);
     const q = searchParams.get('q');
     const categoryId = searchParams.get('categoryId');
+    const includeInactive = searchParams.get('includeInactive') === 'true';
 
     if (!q || q.length < 2) {
       return NextResponse.json({ products: [] }, { status: 200 });
@@ -17,7 +18,10 @@ export async function GET(request) {
 
     // ساخت کوئری جستجو (برای سرعت بالا فقط 5 نتیجه اول برمیگردد)
     // محصولات غیرفعال (isActive: false) نباید در نتایج جستجو ظاهر شوند.
-    const query = { name: { $regex: q, $options: 'i' }, isActive: true };
+    const query = { name: { $regex: q, $options: 'i' } };
+    if (!includeInactive) {
+      query.isActive = true;
+    }
     
     // محدود کردن جستجو به دسته بندی محصول اول
     if (categoryId) query.category = categoryId;

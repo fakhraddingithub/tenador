@@ -68,7 +68,7 @@ export default function UsedProductForm({ initialData }) {
     if (!productQuery || productQuery.length < 2 || selectedProduct) return;
     const t = setTimeout(async () => {
       try {
-        const res = await fetch(`/api/compare/search?q=${encodeURIComponent(productQuery)}`);
+        const res = await fetch(`/api/compare/search?q=${encodeURIComponent(productQuery)}&includeInactive=true`);
         const d = await res.json();
         setProductResults(d.products || []);
       } catch {}
