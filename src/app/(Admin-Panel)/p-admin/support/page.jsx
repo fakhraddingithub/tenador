@@ -6,7 +6,7 @@
  * کامپوننت‌های موجود بدون تغییرِ منطق در بدنه‌ی هر تب لود می‌شوند.
  * URL-sync سبک: ?tab=comments|messages|instagram
  */
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { Suspense, useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { FaCommentDots, FaEnvelopeOpenText, FaInstagram, FaHeadset } from "react-icons/fa";
 
@@ -17,7 +17,7 @@ import InstagramInbox from "@/components/admin/support/InstagramInbox";
 
 const VALID = new Set(["comments", "messages", "instagram"]);
 
-export default function SupportPage() {
+function SupportPageContent() {
   const router = useRouter();
   const search = useSearchParams();
   const initial = search.get("tab");
@@ -93,5 +93,13 @@ export default function SupportPage() {
         {tab === "instagram" && <InstagramInbox />}
       </div>
     </div>
+  );
+}
+
+export default function SupportPage() {
+  return (
+    <Suspense fallback={null}>
+      <SupportPageContent />
+    </Suspense>
   );
 }
