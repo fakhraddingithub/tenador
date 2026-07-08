@@ -6,7 +6,7 @@
  * منطق موجودِ PagesList و بخش‌های admin-home کاملاً حفظ می‌شود.
  * URL-sync سبک: ?tab=home|content
  */
-import { useMemo, useState } from "react";
+import { Suspense, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { motion } from "framer-motion";
@@ -129,7 +129,7 @@ function HomeSectionsPanel() {
   );
 }
 
-export default function AdminPagesRoot() {
+function AdminPagesContent() {
   const router = useRouter();
   const search = useSearchParams();
   const initial = search.get("tab");
@@ -180,5 +180,13 @@ export default function AdminPagesRoot() {
         {tab === "home" ? <HomeSectionsPanel /> : <PagesList />}
       </div>
     </div>
+  );
+}
+
+export default function AdminPagesRoot() {
+  return (
+    <Suspense fallback={null}>
+      <AdminPagesContent />
+    </Suspense>
   );
 }
