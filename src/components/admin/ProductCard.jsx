@@ -1,87 +1,145 @@
 'use client';
 
-import { FaEdit, FaTrash, FaLayerGroup, FaTags, FaRunning, FaMoneyBillWave, FaImage } from 'react-icons/fa';
+import Image from 'next/image';
+import { FaEdit, FaTrash, FaImage } from 'react-icons/fa';
 
-export default function ProductCard({ product, onEdit, onDelete, onViewVariants }) {
+/**
+ * کارت محصول (پنل ادمین) — نسخهٔ فاز ۱
+ * دقیقاً هم‌فرم کارت محصولِ سایت (components/modules/cart/ProductCard.js) با تفاوت‌ها:
+ *   • قیمت به یورو (به‌جای تومان)
+ *   • دو دکمهٔ ویرایش/حذف به‌جای اکشن‌های سبد/علاقه‌مندی و بدون دکمهٔ واریانت‌ها
+ *   • نام دو خطی: خط بالا فارسی، خط پایین انگلیسی (splitName مانند کارت سایت)
+ *   • روی کارت: دسته‌بندی و ورزش (به‌جای برند)
+ * توکن‌ها از admin-scope (پریمری = سبز درباری، رادیوس = ۶ پیکسل)
+ */
+export default function ProductCard({ product, onEdit, onDelete }) {
+  const { mainImage, name, category, sport, brand, basePrice } = product;
+
+  const splitName = (text = '') => {
+    const match = text.match(/[a-zA-Z(].*/);
+    if (match) {
+      return {
+        farsi: text.substring(0, match.index).trim(),
+        english: match[0].trim(),
+      };
+    }
+    return { farsi: text, english: '' };
+  };
+  const { farsi, english } = splitName(name || '');
+
+  const priceEur = Number(basePrice || 0);
+  const formattedEur = priceEur.toLocaleString('en-US', {
+    minimumFractionDigits: priceEur % 1 === 0 ? 0 : 2,
+    maximumFractionDigits: 2,
+  });
+
   return (
-    <div className="group bg-white rounded-2xl border overflow-hidden hover:shadow-xl transition-all duration-300 flex flex-col h-full" style={{ borderColor: '#e8e4df' }}>
+    <div
+      className="group relative bg-white flex flex-col h-full overflow-hidden transition-all duration-500 hover:shadow-[0_20px_40px_rgba(0,66,37,0.08)] hover:-translate-y-1"
+      style={{
+        border: '1px solid var(--admin-border)',
+        borderRadius: 'var(--admin-radius)',
+      }}
+    >
+      {/* بج برند (سمت چپ‌بالا) — اختیاری */}
+      {brand?.icon && (
+        <div className="absolute top-3 left-3 z-20">
+          <Image src={brand.icon} alt="brand" width={30} height={30} className="object-contain" />
+        </div>
+      )}
 
-      {/* Image */}
-      <div className="relative h-48 overflow-hidden bg-gray-50">
-        {product.mainImage ? (
-          <img
-            src={product.mainImage}
-            alt={product.name}
-            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+      {/* تصویر مربعی (contain، پس‌زمینهٔ روشن — مثل کارت سایت) */}
+      <div
+        className="relative w-full aspect-square overflow-hidden"
+        style={{ background: '#fcfcfc' }}
+      >
+        {mainImage ? (
+          <Image
+            src={mainImage}
+            alt={name || 'product'}
+            fill
+            sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 25vw"
+            className="object-contain p-3 transition-all duration-500 group-hover:scale-110"
           />
         ) : (
-          <div className="w-full h-full flex flex-col items-center justify-center text-gray-200 gap-2">
+          <div className="w-full h-full flex flex-col items-center justify-center gap-2" style={{ color: 'var(--admin-border-strong)' }}>
             <FaImage size={32} />
             <span className="text-xs font-bold">بدون تصویر</span>
           </div>
         )}
+      </div>
 
-        {/* Brand badge */}
-        <div className="absolute top-3 right-3">
-          <span className="bg-white/90 backdrop-blur-sm px-2.5 py-1 rounded-lg text-[10px] font-black text-gray-700 shadow-sm border border-gray-100/50">
-            {product.brand?.name || 'بدون برند'}
+      {/* نوار متاداده — دسته‌بندی و ورزش (جایگزین سوآچ‌های واریانتِ کارت سایت) */}
+      <div
+        className="flex items-center justify-between px-4 h-[40px] text-[11px] font-bold border-t"
+        style={{ borderColor: 'var(--admin-border)', color: 'var(--admin-text-muted)' }}
+      >
+        <span className="truncate max-w-[45%]" title={category?.title || '-'}>
+          {category?.title || 'بدون دسته'}
+        </span>
+        <span
+          className="truncate max-w-[45%] text-left"
+          title={sport?.name || '-'}
+          style={{ color: 'var(--color-primary)' }}
+        >
+          {sport?.name || 'بدون ورزش'}
+        </span>
+      </div>
+
+      {/* محتوا — نام دو خطی + قیمت یورو + اکشن‌ها */}
+      <div className="p-4 pt-3 flex flex-col items-center text-center flex-1">
+        <div className="mb-4 h-[60px] flex flex-col justify-start w-full">
+          <h3
+            className="text-[14px] font-bold leading-6 mb-1 line-clamp-1"
+            style={{ color: 'var(--admin-text)' }}
+          >
+            {farsi || '—'}
+          </h3>
+          <p
+            dir="ltr"
+            className="text-[12px] font-medium leading-4 line-clamp-1"
+            style={{ color: 'var(--admin-text-muted)' }}
+          >
+            {english}
+          </p>
+        </div>
+
+        {/* قیمت یورو */}
+        <div className="mt-auto flex flex-col items-center mb-4" dir="ltr">
+          <span
+            className="text-[20px] font-black leading-none"
+            style={{ color: 'var(--color-primary)' }}
+          >
+            € {formattedEur}
           </span>
         </div>
 
-        {/* Price badge */}
-        <div className="absolute bottom-3 left-3">
-          <div
-            className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl shadow-lg text-xs font-black text-white"
-            style={{ background: 'var(--color-primary)' }}
-          >
-            <FaMoneyBillWave size={10} style={{ color: 'var(--color-secondary)' }} />
-            {(product.basePrice || 0).toLocaleString('fa-IR')}
-            <span className="text-[9px] opacity-70 font-bold">تومان</span>
-          </div>
-        </div>
-      </div>
-
-      {/* Content */}
-      <div className="p-4 flex flex-col flex-1">
-        <h3 className="text-sm font-black text-gray-800 mb-0.5 line-clamp-1 group-hover:text-[var(--color-primary)] transition-colors">
-          {product.name}
-        </h3>
-        <p className="text-xs font-bold text-gray-400 mb-4">{product.modelName || 'مدل نامشخص'}</p>
-
-        <div className="space-y-2 mb-4 flex-1">
-          <div className="flex items-center justify-between text-[11px] font-bold py-1.5 border-b border-gray-50">
-            <span className="text-gray-400 flex items-center gap-1.5">
-              <FaLayerGroup size={10} style={{ color: 'var(--color-secondary)' }} /> دسته‌بندی
-            </span>
-            <span className="text-gray-700">{product.category?.title || '-'}</span>
-          </div>
-          <div className="flex items-center justify-between text-[11px] font-bold py-1.5">
-            <span className="text-gray-400 flex items-center gap-1.5">
-              <FaRunning size={10} style={{ color: 'var(--color-secondary)' }} /> ورزش
-            </span>
-            <span className="text-gray-700">{product.sport?.name || '-'}</span>
-          </div>
-        </div>
-
-        {/* Actions */}
-        <div className="flex gap-2 mt-auto">
+        {/* اکشن‌ها — ویرایش (پُر) + حذف (آیکون) */}
+        <div className="flex gap-2 w-full">
           <button
-            onClick={() => onEdit(product)}
-            className="flex-[1.5] flex items-center justify-center gap-1.5 py-2 rounded-xl text-xs font-black bg-gray-900 text-white hover:bg-[var(--color-primary)] transition-all active:scale-95"
+            onClick={() => onEdit?.(product)}
+            className="flex-1 inline-flex items-center justify-center gap-1.5 py-2 text-xs font-bold transition-all active:scale-95"
+            style={{
+              borderRadius: 'var(--admin-radius)',
+              background: 'var(--color-primary)',
+              color: '#fff',
+              border: '1px solid var(--color-primary)',
+            }}
           >
-            <FaEdit size={11} /> ویرایش
+            <FaEdit size={12} /> ویرایش
           </button>
           <button
-            onClick={() => onViewVariants(product)}
-            className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-xl text-xs font-black bg-gray-50 text-gray-700 border border-gray-100 hover:border-[var(--color-secondary)] hover:text-[var(--color-primary)] transition-all active:scale-95"
+            onClick={() => onDelete?.(product)}
+            className="w-10 h-10 inline-flex items-center justify-center transition-all active:scale-95"
+            style={{
+              borderRadius: 'var(--admin-radius)',
+              background: '#fbe9ea',
+              color: 'var(--admin-danger)',
+              border: '1px solid #f2c8ca',
+            }}
+            title="حذف"
           >
-            <FaTags size={11} /> واریانت
-          </button>
-          <button
-            onClick={() => onDelete(product)}
-            className="w-9 h-9 flex items-center justify-center rounded-xl bg-red-50 text-red-400 hover:bg-red-500 hover:text-white transition-all active:scale-95 border border-red-100 flex-shrink-0"
-          >
-            <FaTrash size={11} />
+            <FaTrash size={12} />
           </button>
         </div>
       </div>

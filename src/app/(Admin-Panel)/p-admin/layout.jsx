@@ -1,4 +1,5 @@
 import '@/app/globals.css';
+import '@/styles/admin-theme.css';
 import { ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import AdminLayout from "@/components/admin/Layout"
@@ -22,28 +23,27 @@ export default function RootLayout({ children }) {
         />
       </head>
       <body
-        className="min-h-screen bg-[var(--color-background)] text-[var(--color-text)] antialiased selection:bg-[var(--color-primary)] selection:text-white"
+        className="min-h-screen bg-[var(--color-background)] text-[var(--color-text)] antialiased"
         style={{ fontFamily: 'var(--font-sans)' }}
       >
         <NavigationLoader />
         <ScrollToTop />
         <main className="min-h-screen overflow-x-hidden">
-          {/* نوبار اصلی سایت — بالای نوبار پنل مدیریت (دو نوبار روی‌هم چیده می‌شوند) */}
+          {/* نوبار سایت — رنگ‌های سایت (خارج از admin-scope) دست‌نخورده می‌مانند */}
           <SiteNavbar />
-          {/* بدون transform: عناصرِ fixed پنل ادمین (سایدبار و دستگیره) باید نسبت به
-              viewport ثابت بمانند. یک ancestorِ دارای transform، آن‌ها را به‌جای viewport
-              نسبت به خودش ثابت می‌کند و با اسکرول صفحه جابه‌جا می‌شوند. به‌جای آن، خودِ
-              سایدبار/هدر/دستگیره با top-[75px] زیر نوبار سایت (۷۵px) قرار می‌گیرند. */}
-          <AdminLayout>{children}</AdminLayout>
+          {/* از این‌جا به بعد داخل admin-scope هستیم: پریمری = سبز درباری، رادیوس = ۶ پیکسل */}
+          <div className="admin-scope">
+            <AdminLayout>{children}</AdminLayout>
+          </div>
         </main>
 
         <ToastContainer
           position="top-left"
           autoClose={3000}
           hideProgressBar={false}
-          newestOnTop={true}
+          newestOnTop
           closeOnClick
-          rtl={true}
+          rtl
           pauseOnFocusLoss
           draggable
           pauseOnHover

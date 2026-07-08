@@ -1,0 +1,159 @@
+/* ─────────────────────────────────────────────────────────────
+   Admin Panel Theme — British Racing Green
+   فقط داخل .admin-scope اعمال می‌شود؛ رنگ‌های سایت دست‌نخورده می‌مانند.
+   ───────────────────────────────────────────────────────────── */
+
+.admin-scope {
+  /* Brand */
+  --color-primary: #004225;          /* British Racing Green */
+  --color-primary-hover: #0a5c37;
+  --color-primary-soft: #e6efe9;
+  --color-primary-dark: #00311a;
+  --color-secondary: #c9a84c;        /* هایلایت طلایی هارمونیک با سبز */
+  --color-secondary-soft: #f5efd8;
+
+  /* Surfaces */
+  --admin-bg: #f4f5f2;
+  --admin-sidebar-bg: #0f1a15;
+  --admin-card: #ffffff;
+  --admin-border: #e3e6df;
+  --admin-border-strong: #cfd4c8;
+  --admin-text: #14201a;
+  --admin-text-muted: #6b7a70;
+
+  /* Feedback */
+  --admin-success: #0a5c37;
+  --admin-warning: #c48a1a;
+  --admin-danger: #b0333a;
+  --admin-info: #205a7a;
+
+  /* Shape & motion */
+  --admin-radius: 6px;
+  --admin-radius-lg: 8px;
+  --admin-radius-sm: 4px;
+  --admin-shadow-sm: 0 1px 2px rgba(15, 26, 21, 0.05);
+  --admin-shadow: 0 4px 14px rgba(15, 26, 21, 0.08);
+  --admin-shadow-lg: 0 12px 32px rgba(15, 26, 21, 0.12);
+
+  color: var(--admin-text);
+  background: var(--admin-bg);
+}
+
+/* ─── الگوهای مشترک — کارت، دکمه، فرم، جدول ─── */
+
+.admin-scope .a-card {
+  background: var(--admin-card);
+  border: 1px solid var(--admin-border);
+  border-radius: var(--admin-radius);
+  box-shadow: var(--admin-shadow-sm);
+}
+.admin-scope .a-card-hover:hover {
+  border-color: var(--admin-border-strong);
+  box-shadow: var(--admin-shadow);
+  transform: translateY(-1px);
+  transition: all .2s ease;
+}
+
+/* PageHeader — عنوان + توضیح + اکشن‌ها بالا-چپ */
+.admin-scope .a-page-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 16px 20px;
+  background: var(--admin-card);
+  border: 1px solid var(--admin-border);
+  border-radius: var(--admin-radius);
+  margin-bottom: 20px;
+}
+.admin-scope .a-page-title {
+  font-weight: 800;
+  font-size: 18px;
+  line-height: 1.2;
+  color: var(--admin-text);
+}
+.admin-scope .a-page-subtitle {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--admin-text-muted);
+  margin-top: 4px;
+}
+.admin-scope .a-page-actions {
+  display: flex;
+  gap: 8px;
+  flex-shrink: 0;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+@media (max-width: 640px) {
+  .admin-scope .a-page-header {
+    flex-direction: column;
+    align-items: stretch;
+    padding: 14px;
+  }
+  .admin-scope .a-page-actions { justify-content: stretch; }
+  .admin-scope .a-page-actions > * { flex: 1; }
+}
+
+/* Segmented control (جایگزین تب‌های افقی صفحه‌ی مالی) */
+.admin-scope .a-segmented {
+  display: inline-flex;
+  gap: 2px;
+  padding: 4px;
+  background: var(--admin-primary-soft, var(--color-primary-soft));
+  border: 1px solid var(--admin-border);
+  border-radius: var(--admin-radius);
+}
+.admin-scope .a-segmented > button {
+  padding: 8px 16px;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--admin-text-muted);
+  border-radius: calc(var(--admin-radius) - 2px);
+  transition: all .18s ease;
+  white-space: nowrap;
+}
+.admin-scope .a-segmented > button[data-active="true"] {
+  background: var(--color-primary);
+  color: #fff;
+  box-shadow: var(--admin-shadow-sm);
+}
+.admin-scope .a-segmented > button:not([data-active="true"]):hover {
+  background: rgba(0, 66, 37, 0.06);
+  color: var(--color-primary);
+}
+@media (max-width: 640px) {
+  .admin-scope .a-segmented { display: flex; width: 100%; overflow-x: auto; }
+  .admin-scope .a-segmented > button { flex: 1; }
+}
+
+/* Nav active state — سبز */
+.admin-scope .nav-item-active {
+  background: rgba(10, 92, 55, 0.14);
+  color: #fff;
+}
+.admin-scope .nav-item-active::before {
+  content: '';
+  position: absolute;
+  right: 0; top: 50%; transform: translateY(-50%);
+  width: 3px; height: 60%;
+  background: var(--color-secondary);
+  border-radius: 4px 0 0 4px;
+}
+
+/* Scrollbar */
+.admin-scope .admin-scrollbar::-webkit-scrollbar { width: 3px; }
+.admin-scope .admin-scrollbar::-webkit-scrollbar-track { background: transparent; }
+.admin-scope .admin-scrollbar::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.12); border-radius: 10px; }
+
+/* یکسان‌سازی رادیوس در همه‌ی المان‌های ادمین: مقادیر پیشین rounded-xl / 2xl را با ۶ پیکسل هماهنگ کن */
+.admin-scope .rounded-xl,
+.admin-scope .rounded-2xl,
+.admin-scope .rounded-3xl { border-radius: var(--admin-radius) !important; }
+.admin-scope .rounded-lg { border-radius: var(--admin-radius) !important; }
+
+/* موبایل: عرض ثابت سایدبار و حذف حاشیه‌ی محتوا */
+@media (max-width: 1023px) {
+  .admin-scope .admin-aside-mobile { width: 280px !important; }
+  .admin-scope .admin-main-mobile { margin-right: 0 !important; }
+}

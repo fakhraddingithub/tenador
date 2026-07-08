@@ -1,22 +1,17 @@
 "use client";
 
-import Image from "next/image";
 import styles from "./RouteLoader.module.css";
 
+/**
+ * لودر روت — نسخهٔ ساده‌شدهٔ فاز ۱:
+ * فقط یک دایرهٔ چرخانِ سبز درباری در وسط صفحه، بدون لوگو یا انیمیشن اضافه.
+ * رنگ خودکار با تم ادمین هارمونی دارد (var(--color-primary))؛ در بیرون از
+ * admin-scope هم مقدارِ سراسری --color-primary سایت را می‌گیرد و بی‌ریسک است.
+ */
 export default function RouteLoader() {
   return (
     <div className={styles.overlay} role="status" aria-label="در حال بارگذاری">
-      <div className={styles.panel}>
-        <Image
-          src="/logo/logo.svg"
-          alt="تنادور"
-          width={180}
-          height={72}
-          priority
-          className={styles.logo}
-        />
-        <span className={styles.loader} aria-hidden="true" />
-      </div>
+      <span className={styles.spinner} aria-hidden="true" />
     </div>
   );
 }

@@ -151,30 +151,8 @@ export default function AdminAthletes() {
                 </div>
               </div>
 
-              {/* Body */}
-              <div className="p-4 flex-1 space-y-3">
-                <div className="grid grid-cols-3 gap-2 py-2 border-b border-gray-50">
-                  {[
-                    { icon: FaTextHeight, label: 'قد', value: `${athlete.height || '-'} CM` },
-                    { icon: FaWeightHanging, label: 'وزن', value: `${athlete.weight || '-'} KG` },
-                    { icon: FaAward, label: 'مدال', value: athlete.honors?.length || 0 },
-                  ].map((item, idx) => (
-                    <div key={idx} className={`text-center ${idx === 1 ? 'border-x border-gray-50' : ''}`}>
-                      <p className="text-[10px] text-gray-400 uppercase font-bold mb-1 flex items-center justify-center gap-1">
-                        <item.icon size={9} /> {item.label}
-                      </p>
-                      <p className="text-xs font-bold text-gray-700">{item.value}</p>
-                    </div>
-                  ))}
-                </div>
-
-                <div className="flex items-center gap-2 text-xs text-gray-500 bg-gray-50 px-3 py-2 rounded-[var(--radius)]">
-                  <FaCalendarAlt style={{ color: 'var(--color-primary)' }} size={11} />
-                  <span className="font-bold">
-                    متولد: {athlete.birthDate ? new Date(athlete.birthDate).toLocaleDateString('fa-IR') : 'نامشخص'}
-                  </span>
-                </div>
-              </div>
+              {/* Body — عمداً خالی مانده؛ اطلاعات قد/وزن/تاریخ تولد/افتخارات از کارت
+                  ورزشکار حذف شدند (درخواست فاز ۱ ری‌دیزاین) */}
 
               {/* Footer */}
               <div className="px-4 pb-4 flex gap-2">
