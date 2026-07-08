@@ -5,24 +5,75 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  background: rgba(255, 255, 255, 0.55);
-  backdrop-filter: blur(6px) saturate(120%);
-  -webkit-backdrop-filter: blur(6px) saturate(120%);
+  width: 100%;
+  min-height: 100vh;
+  background: rgba(248, 250, 252, 0.48);
+  backdrop-filter: blur(24px) saturate(70%);
+  -webkit-backdrop-filter: blur(24px) saturate(70%);
 }
 
-.spinner {
-  width: 44px;
-  height: 44px;
+.panel {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 48px;
+  background: #fff;
+  padding: 40px 56px;
+  border-radius: 6px;
+  border: 1px solid rgba(255, 255, 255, 0.72);
+  backdrop-filter: blur(18px) saturate(145%);
+  -webkit-backdrop-filter: blur(18px) saturate(145%);
+  box-shadow: 0 18px 50px rgba(15, 23, 42, 0.16);
+}
+
+.logo {
+  width: auto;
+  height: 64px;
+  object-fit: contain;
+}
+
+.loader {
+  height: 60px;
+  aspect-ratio: 2;
+  border-bottom: 3px solid #aa4725;
+  position: relative;
+  overflow: hidden;
+}
+
+.loader::before {
+  content: "";
+  position: absolute;
+  inset: auto 42.5% 0;
+  aspect-ratio: 1;
   border-radius: 50%;
-  border: 3px solid rgba(0, 66, 37, 0.18);
-  border-top-color: var(--color-primary, #004225);
-  animation: rl-spin 0.75s linear infinite;
+  background: #ffbf00;
+  animation:
+    l1-0 0.5s cubic-bezier(0, 900, 1, 900) infinite,
+    l1-1 2s linear infinite;
 }
 
-@keyframes rl-spin {
-  to { transform: rotate(360deg); }
+@keyframes l1-0 {
+  0%,
+  2% {
+    bottom: 0%;
+  }
+  98%,
+  to {
+    bottom: 0.1%;
+  }
+}
+
+@keyframes l1-1 {
+  0% {
+    translate: -500%;
+  }
+  to {
+    translate: 500%;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .spinner { animation-duration: 2s; }
+  .loader::before {
+    animation: none;
+  }
 }
