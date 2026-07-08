@@ -3,6 +3,7 @@
 
 import { useState, useEffect, useRef, useCallback } from "react";
 import { toast } from "react-toastify";
+import { formatIranDateTimeLocal } from "@/lib/iranDateTime";
 
 const TYPES = [
   { value: "global",    label: "همه محصولات",      hasTargets: false },
@@ -278,8 +279,8 @@ export default function DiscountRuleForm({ initial, onSuccess, onCancel }) {
       ...defaultForm, ...initial,
       discount:   initial.discount   || defaultForm.discount,
       conditions: { ...defaultForm.conditions, ...initial.conditions },
-      startAt:    initial.startAt ? new Date(initial.startAt).toISOString().slice(0, 16) : "",
-      endAt:      initial.endAt   ? new Date(initial.endAt).toISOString().slice(0, 16)   : "",
+      startAt:    initial.startAt ? formatIranDateTimeLocal(initial.startAt) : "",
+      endAt:      initial.endAt   ? formatIranDateTimeLocal(initial.endAt)   : "",
       usageLimit: initial.usageLimit ?? "",
     });
 

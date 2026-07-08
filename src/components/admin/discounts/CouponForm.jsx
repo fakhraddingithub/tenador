@@ -6,6 +6,7 @@
 
 import { useState, useEffect, useRef, useCallback } from "react";
 import { toast } from "react-toastify";
+import { formatIranDateTimeLocal } from "@/lib/iranDateTime";
 
 const APPLICABLE_OPTIONS = [
   { value: "all",      label: "همه محصولات",  hasTargets: false },
@@ -190,8 +191,7 @@ async function resolveTargetLabels(searchType, ids) {
   return ids.map((id) => ({ _id: String(id), label: String(id), image: null }));
 }
 
-const toLocalInput = (date) =>
-  date ? new Date(date).toISOString().slice(0, 16) : "";
+const toLocalInput = (date) => (date ? formatIranDateTimeLocal(date) : "");
 
 // ─── Main Form ────────────────────────────────────────────────────────────────
 export default function CouponForm({ initial, onSuccess, onCancel }) {

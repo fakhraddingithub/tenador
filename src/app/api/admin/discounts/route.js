@@ -1,6 +1,7 @@
 // app/api/admin/discounts/route.js
 import connectToDB from "base/configs/db";
 import DiscountRule from "base/models/DiscountRule";
+import { parseIranDateTimeLocal } from "@/lib/iranDateTime";
 import { NextResponse } from "next/server";
 import jwt from "jsonwebtoken";
 
@@ -62,7 +63,14 @@ export async function POST(req) {
     }
   }
 
-  if (new Date(body.startAt) >= new Date(body.endAt)) {
+  const startAt = parseIranDateTimeLocal(body.startAt);
+  const endAt = parseIranDateTimeLocal(body.endAt);
+
+  if (!startAt || !endAt) {
+    return NextResponse.json({ error: "تاریخ شروع یا پایان نامعتبر است" }, { status: 400 });
+  }
+
+  if (startAt >= endAt) {
     return NextResponse.json({ error: "تاریخ شروع باید قبل از تاریخ پایان باشد" }, { status: 400 });
   }
 
@@ -74,6 +82,6 @@ export async function POST(req) {
     return NextResponse.json({ error: "درصد تخفیف نمی‌تواند بیشتر از ۱۰۰ باشد" }, { status: 400 });
   }
 
-  const rule = await DiscountRule.create(body);
+  const rule = await DiscountRule.create({ ...body, startAt, endAt });
   return NextResponse.json(rule, { status: 201 });
 }

@@ -8,6 +8,7 @@
 import { NextResponse } from "next/server";
 import connectToDB from "base/configs/db";
 import Coupon from "base/models/Coupon";
+import { parseIranDateTimeLocal } from "@/lib/iranDateTime";
 
 const CODE_REGEX = /^[A-Z0-9_-]{3,30}$/;
 
@@ -80,8 +81,8 @@ export async function PATCH(req, { params }) {
 
     // ─── بازه زمانی ───
     if (body.startAt !== undefined) {
-      const startAt = new Date(body.startAt);
-      if (isNaN(startAt.getTime())) {
+      const startAt = parseIranDateTimeLocal(body.startAt);
+      if (!startAt) {
         return NextResponse.json(
           { error: "تاریخ شروع معتبر نیست" },
           { status: 422 }
@@ -91,8 +92,8 @@ export async function PATCH(req, { params }) {
     }
 
     if (body.endAt !== undefined) {
-      const endAt = new Date(body.endAt);
-      if (isNaN(endAt.getTime())) {
+      const endAt = parseIranDateTimeLocal(body.endAt);
+      if (!endAt) {
         return NextResponse.json(
           { error: "تاریخ پایان معتبر نیست" },
           { status: 422 }

@@ -12,12 +12,15 @@ import { NextResponse } from "next/server";
 import connectToDB from "base/configs/db";
 import Coupon from "base/models/Coupon";
 import Order from "base/models/Order";
+import { parseIranDateTimeLocal } from "@/lib/iranDateTime";
 
 // کد معتبر: حروف انگلیسی، عدد، خط تیره و زیرخط — ۳ تا ۳۰ کاراکتر
 const CODE_REGEX = /^[A-Z0-9_-]{3,30}$/;
 
 function validateCouponPayload(body, { partial = false } = {}) {
   const errors = [];
+  let parsedStartAt = null;
+  let parsedEndAt = null;
 
   if (!partial || body.code !== undefined) {
     const code = String(body.code || "").trim().toUpperCase();
@@ -41,11 +44,11 @@ function validateCouponPayload(body, { partial = false } = {}) {
   }
 
   if (!partial || body.startAt !== undefined || body.endAt !== undefined) {
-    const startAt = new Date(body.startAt);
-    const endAt = new Date(body.endAt);
-    if (isNaN(startAt.getTime()) || isNaN(endAt.getTime())) {
+    parsedStartAt = parseIranDateTimeLocal(body.startAt);
+    parsedEndAt = parseIranDateTimeLocal(body.endAt);
+    if (!parsedStartAt || !parsedEndAt) {
       errors.push("تاریخ شروع و پایان الزامی و معتبر هستند");
-    } else if (endAt <= startAt) {
+    } else if (parsedEndAt <= parsedStartAt) {
       errors.push("تاریخ پایان باید بعد از تاریخ شروع باشد");
     }
   }
@@ -61,7 +64,7 @@ function validateCouponPayload(body, { partial = false } = {}) {
     }
   }
 
-  return errors;
+  return { errors, parsedStartAt, parsedEndAt };
 }
 
 export async function GET() {
@@ -98,7 +101,7 @@ export async function POST(req) {
 
     const body = await req.json();
 
-    const errors = validateCouponPayload(body);
+    const { errors, parsedStartAt, parsedEndAt } = validateCouponPayload(body);
     if (errors.length) {
       return NextResponse.json({ error: errors[0] }, { status: 422 });
     }
@@ -119,8 +122,8 @@ export async function POST(req) {
         kind: body.discount.kind,
         value: Number(body.discount.value),
       },
-      startAt: new Date(body.startAt),
-      endAt: new Date(body.endAt),
+      startAt: parsedStartAt,
+      endAt: parsedEndAt,
       usageLimit: body.usageLimit ? Number(body.usageLimit) : null,
       perUserLimit:
         body.perUserLimit === null || body.perUserLimit === ""
