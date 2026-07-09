@@ -60,16 +60,24 @@ const TRACKING_STATUS_LABELS = {
   RETURNED: "مرجوعی",
 };
 
-const swalTheme = {
-  confirmButtonColor: "#aa4725",
-  cancelButtonColor: "#9ca3af",
-  customClass: {
-    popup: "rounded-2xl font-[Vazirmatn] text-right",
-    confirmButton: "rounded-[6px] font-bold",
-    cancelButton: "rounded-[6px] font-bold",
-  },
-  rtl: true,
-};
+function readAdminThemeColor(token, fallback) {
+  if (typeof document === "undefined") return fallback;
+  const scope = document.querySelector(".admin-scope") || document.documentElement;
+  return getComputedStyle(scope).getPropertyValue(token).trim() || fallback;
+}
+
+function getSwalTheme() {
+  return {
+    confirmButtonColor: readAdminThemeColor("--color-primary", "#004225"),
+    cancelButtonColor: "#9ca3af",
+    customClass: {
+      popup: "rounded-2xl font-[Vazirmatn] text-right",
+      confirmButton: "rounded-[6px] font-bold",
+      cancelButton: "rounded-[6px] font-bold",
+    },
+    rtl: true,
+  };
+}
 
 /* ─── Helpers ───────────────────────────────────────────────────────── */
 
@@ -185,7 +193,7 @@ function ApproveModal({ payment, orderTotal, onConfirm, onClose }) {
         className="bg-white rounded-2xl shadow-2xl w-full max-w-sm overflow-hidden"
         dir="rtl" onClick={(e) => e.stopPropagation()}
       >
-        <div className="bg-[#aa4725] px-5 py-4 flex items-center justify-between">
+        <div className="bg-[var(--color-primary)] px-5 py-4 flex items-center justify-between">
           <div className="flex items-center gap-2 text-white">
             <BadgeCheck size={18} />
             <span className="font-bold text-sm">تأیید پرداخت رسید بانکی</span>
@@ -213,7 +221,7 @@ function ApproveModal({ payment, orderTotal, onConfirm, onClose }) {
                 onKeyDown={(e) => e.key === "Enter" && handleSubmit()}
                 placeholder="مبلغ را به تومان وارد کنید"
                 className="w-full border border-gray-300 rounded-xl px-4 py-3 text-sm font-bold text-gray-800
-                  focus:outline-none focus:ring-2 focus:ring-[#aa4725]/30 focus:border-[#aa4725] transition"
+                  focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)]/30 focus:border-[var(--color-primary)] transition"
               />
               <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs text-gray-400">تومان</span>
             </div>
@@ -222,7 +230,7 @@ function ApproveModal({ payment, orderTotal, onConfirm, onClose }) {
           {/* ─── مبلغ یورو (اختیاری) — مستقل از تومان ─── */}
           <div>
             <label className="flex items-center gap-1.5 text-sm font-bold text-gray-700 mb-2">
-              <Euro size={13} className="text-[#aa4725]" />
+              <Euro size={13} className="text-[var(--color-primary)]" />
               مبلغ یورو
               <span className="text-[10px] font-medium text-gray-400">(اختیاری)</span>
             </label>
@@ -234,7 +242,7 @@ function ApproveModal({ payment, orderTotal, onConfirm, onClose }) {
                 placeholder="در صورت پرداخت یورویی، مبلغ را وارد کنید"
                 dir="ltr"
                 className="w-full border border-gray-300 rounded-xl px-4 py-3 text-sm font-bold text-gray-800 text-left
-                  focus:outline-none focus:ring-2 focus:ring-[#aa4725]/30 focus:border-[#aa4725] transition"
+                  focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)]/30 focus:border-[var(--color-primary)] transition"
               />
               <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-gray-400">€</span>
             </div>
@@ -245,7 +253,7 @@ function ApproveModal({ payment, orderTotal, onConfirm, onClose }) {
           </div>
           <div className="flex gap-3">
             <button onClick={handleSubmit} disabled={loading}
-              className="flex-1 bg-[#aa4725] hover:bg-[#8f3b1e] text-white font-bold py-2.5 rounded-xl text-sm
+              className="flex-1 bg-[var(--color-primary)] hover:bg-[var(--color-primary-hover)] text-white font-bold py-2.5 rounded-xl text-sm
                 transition flex items-center justify-center gap-2 disabled:opacity-60">
               {loading ? <Loader2 size={15} className="animate-spin" /> : <BadgeCheck size={15} />}
               تأیید پرداخت
@@ -300,7 +308,7 @@ function EditPaymentModal({ payment, currency, onConfirm, onClose }) {
         className="bg-white rounded-2xl shadow-2xl w-full max-w-sm overflow-hidden"
         dir="rtl" onClick={(e) => e.stopPropagation()}
       >
-        <div className="bg-[#aa4725] px-5 py-4 flex items-center justify-between">
+        <div className="bg-[var(--color-primary)] px-5 py-4 flex items-center justify-between">
           <div className="flex items-center gap-2 text-white">
             <Pencil size={16} />
             <span className="font-bold text-sm">ویرایش مبلغ پرداخت {isEUR ? "(یورو)" : "(تومان)"}</span>
@@ -328,7 +336,7 @@ function EditPaymentModal({ payment, currency, onConfirm, onClose }) {
                 onKeyDown={(e) => e.key === "Enter" && handleSubmit()}
                 dir="ltr"
                 className="w-full border border-gray-300 rounded-xl px-4 py-3 text-sm font-bold text-gray-800 text-left
-                  focus:outline-none focus:ring-2 focus:ring-[#aa4725]/30 focus:border-[#aa4725] transition"
+                  focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)]/30 focus:border-[var(--color-primary)] transition"
               />
               <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-gray-400">{unit}</span>
             </div>
@@ -343,7 +351,7 @@ function EditPaymentModal({ payment, currency, onConfirm, onClose }) {
             <ChevronRight size={16} className="text-gray-300 rotate-180" />
             <div className="text-center flex-1">
               <p className="text-gray-400 mb-0.5">مبلغ جدید</p>
-              <p className={`font-black ${changed ? "text-[#aa4725]" : "text-gray-600"}`} dir="ltr">
+              <p className={`font-black ${changed ? "text-[var(--color-primary)]" : "text-gray-600"}`} dir="ltr">
                 {valid ? <>{isEUR ? "€ " : ""}{fmt(parsed)}</> : "—"}
               </p>
             </div>
@@ -356,7 +364,7 @@ function EditPaymentModal({ payment, currency, onConfirm, onClose }) {
 
           <div className="flex gap-3">
             <button onClick={handleSubmit} disabled={loading || !valid}
-              className="flex-1 bg-[#aa4725] hover:bg-[#8f3b1e] text-white font-bold py-2.5 rounded-xl text-sm
+              className="flex-1 bg-[var(--color-primary)] hover:bg-[var(--color-primary-hover)] text-white font-bold py-2.5 rounded-xl text-sm
                 transition flex items-center justify-center gap-2 disabled:opacity-60">
               {loading ? <Loader2 size={15} className="animate-spin" /> : <Save size={15} />}
               ذخیره تغییر
@@ -474,7 +482,7 @@ function AddItemModal({ orderId, onSuccess, onClose }) {
         className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden"
         dir="rtl" onClick={(e) => e.stopPropagation()}
       >
-        <div className="bg-[#aa4725] px-5 py-4 flex items-center justify-between">
+        <div className="bg-[var(--color-primary)] px-5 py-4 flex items-center justify-between">
           <div className="flex items-center gap-2 text-white">
             <Plus size={18} />
             <span className="font-bold text-sm">افزودن آیتم به سفارش</span>
@@ -496,7 +504,7 @@ function AddItemModal({ orderId, onSuccess, onClose }) {
                   onFocus={() => query && results.length && setOpenList(true)}
                   placeholder="نام محصول را تایپ کنید..."
                   className="w-full border border-gray-300 rounded-xl pr-9 pl-3 py-2.5 text-sm font-bold text-gray-800
-                    focus:outline-none focus:ring-2 focus:ring-[#aa4725]/30 focus:border-[#aa4725] transition"
+                    focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)]/30 focus:border-[var(--color-primary)] transition"
                 />
                 {searching && <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs text-gray-400">جستجو...</span>}
               </div>
@@ -537,7 +545,7 @@ function AddItemModal({ orderId, onSuccess, onClose }) {
               {/* واریانت‌ها */}
               {loadingVariants ? (
                 <div className="flex items-center justify-center gap-2 py-3 text-sm text-gray-400">
-                  <Loader2 size={15} className="animate-spin text-[#aa4725]" /> بارگذاری واریانت‌ها...
+                  <Loader2 size={15} className="animate-spin text-[var(--color-primary)]" /> بارگذاری واریانت‌ها...
                 </div>
               ) : needsVariant ? (
                 <div className="space-y-2">
@@ -548,9 +556,9 @@ function AddItemModal({ orderId, onSuccess, onClose }) {
                       return (
                         <label key={String(v._id)}
                           className={`flex items-center gap-2 p-2.5 rounded-xl cursor-pointer transition border
-                            ${selected ? "bg-[#aa4725]/10 border-[#aa4725]/30" : "bg-white border-gray-100 hover:border-[#aa4725]/30"}`}>
+                            ${selected ? "bg-[var(--color-primary)]/10 border-[var(--color-primary)]/30" : "bg-white border-gray-100 hover:border-[var(--color-primary)]/30"}`}>
                           <input type="radio" name="variant" checked={selected}
-                            onChange={() => setVariantId(String(v._id))} className="accent-[#aa4725]" />
+                            onChange={() => setVariantId(String(v._id))} className="accent-[var(--color-primary)]" />
                           <div className="text-right flex-1 min-w-0">
                             <p className="text-xs font-bold text-gray-800 truncate">{v.label}</p>
                             {v.sub && <p className="text-[10px] text-gray-400 truncate">{v.sub}</p>}
@@ -571,15 +579,15 @@ function AddItemModal({ orderId, onSuccess, onClose }) {
                 <label className="block text-xs font-bold text-gray-500 mb-2">تعداد</label>
                 <div className="flex items-center gap-3">
                   <button onClick={() => setQuantity((q) => Math.max(1, q - 1))}
-                    className="w-9 h-9 rounded-xl border border-gray-200 flex items-center justify-center text-gray-600 hover:border-[#aa4725] hover:text-[#aa4725] transition">
+                    className="w-9 h-9 rounded-xl border border-gray-200 flex items-center justify-center text-gray-600 hover:border-[var(--color-primary)] hover:text-[var(--color-primary)] transition">
                     <Minus size={14} />
                   </button>
                   <input type="number" min="1" value={quantity}
                     onChange={(e) => setQuantity(Math.max(1, Math.floor(Number(e.target.value) || 1)))}
                     className="w-16 text-center border border-gray-300 rounded-xl py-2 text-sm font-black text-gray-800
-                      focus:outline-none focus:ring-2 focus:ring-[#aa4725]/30 focus:border-[#aa4725]" />
+                      focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)]/30 focus:border-[var(--color-primary)]" />
                   <button onClick={() => setQuantity((q) => q + 1)}
-                    className="w-9 h-9 rounded-xl border border-gray-200 flex items-center justify-center text-gray-600 hover:border-[#aa4725] hover:text-[#aa4725] transition">
+                    className="w-9 h-9 rounded-xl border border-gray-200 flex items-center justify-center text-gray-600 hover:border-[var(--color-primary)] hover:text-[var(--color-primary)] transition">
                     <Plus size={14} />
                   </button>
                 </div>
@@ -590,7 +598,7 @@ function AddItemModal({ orderId, onSuccess, onClose }) {
               </p>
 
               <button onClick={handleSubmit} disabled={!canSubmit}
-                className="w-full bg-[#aa4725] hover:bg-[#8f3b1e] text-white font-bold py-2.5 rounded-xl text-sm
+                className="w-full bg-[var(--color-primary)] hover:bg-[var(--color-primary-hover)] text-white font-bold py-2.5 rounded-xl text-sm
                   transition flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed">
                 {submitting ? <Loader2 size={15} className="animate-spin" /> : <Plus size={15} />}
                 افزودن به سفارش
@@ -680,11 +688,11 @@ function BarcodeScanner({ onScan, onClose }) {
           onChange={(e) => setManualCode(e.target.value)}
           placeholder="کد رهگیری یا بارکد را وارد کنید..."
           className="flex-1 border border-gray-300 rounded-xl px-3 py-2.5 text-sm font-mono
-            focus:outline-none focus:ring-2 focus:ring-[#aa4725]/30 focus:border-[#aa4725] transition"
+            focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)]/30 focus:border-[var(--color-primary)] transition"
           dir="ltr"
         />
         <button type="submit"
-          className="bg-[#aa4725] text-white text-sm font-bold px-4 py-2.5 rounded-xl hover:bg-[#8f3b1e] transition">
+          className="bg-[var(--color-primary)] text-white text-sm font-bold px-4 py-2.5 rounded-xl hover:bg-[var(--color-primary-hover)] transition">
           تأیید
         </button>
       </form>
@@ -695,13 +703,13 @@ function BarcodeScanner({ onScan, onClose }) {
           <button onClick={startScanner}
             className="w-full flex items-center justify-center gap-2 py-4 text-sm font-bold text-gray-600
               hover:bg-gray-50 transition">
-            <QrCode size={18} className="text-[#aa4725]" />
+            <QrCode size={18} className="text-[var(--color-primary)]" />
             اسکن با دوربین
           </button>
         )}
         {phase === "starting" && (
           <div className="flex items-center justify-center gap-2 py-6 text-sm text-gray-500">
-            <Loader2 size={16} className="animate-spin text-[#aa4725]" />
+            <Loader2 size={16} className="animate-spin text-[var(--color-primary)]" />
             در حال راه‌اندازی دوربین...
           </div>
         )}
@@ -723,7 +731,7 @@ function BarcodeScanner({ onScan, onClose }) {
               <AlertTriangle size={13} /> {cameraError}
             </p>
             <button onClick={() => { setCameraError(""); setPhase("idle"); }}
-              className="text-xs text-[#aa4725] font-bold hover:underline">
+              className="text-xs text-[var(--color-primary)] font-bold hover:underline">
               تلاش مجدد
             </button>
           </div>
@@ -751,7 +759,7 @@ function ProcurementModal({ item, onConfirm, onClose }) {
         className="bg-white rounded-2xl shadow-2xl w-full max-w-sm overflow-hidden"
         dir="rtl" onClick={(e) => e.stopPropagation()}
       >
-        <div className="bg-[#0d0d0d] px-5 py-4 flex items-center justify-between">
+        <div className="bg-[var(--admin-sidebar-bg)] px-5 py-4 flex items-center justify-between">
           <div className="flex items-center gap-2 text-white">
             <Package size={16} />
             <span className="font-bold text-sm">وضعیت تأمین محصول</span>
@@ -802,7 +810,7 @@ function ProcurementModal({ item, onConfirm, onClose }) {
           <button
             onClick={() => choice && onConfirm(choice)}
             disabled={!choice}
-            className="w-full bg-[#aa4725] hover:bg-[#8f3b1e] text-white font-bold py-3 rounded-xl text-sm
+            className="w-full bg-[var(--color-primary)] hover:bg-[var(--color-primary-hover)] text-white font-bold py-3 rounded-xl text-sm
               transition flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
           >
             <Scan size={16} />
@@ -932,14 +940,14 @@ function ScanModal({ target, orderId, mode = "choose", onSuccess, onClose }) {
         dir="rtl" onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
-        <div className="bg-[#0d0d0d] px-5 py-4 flex items-center justify-between">
+        <div className="bg-[var(--admin-sidebar-bg)] px-5 py-4 flex items-center justify-between">
           <div className="flex items-center gap-3">
             {step === "procurement" ? (
-              <div className="w-8 h-8 rounded-xl bg-[#aa4725] flex items-center justify-center">
+              <div className="w-8 h-8 rounded-xl bg-[var(--color-primary)] flex items-center justify-center">
                 <Package size={15} className="text-white" />
               </div>
             ) : (
-              <div className="w-8 h-8 rounded-xl bg-[#aa4725] flex items-center justify-center">
+              <div className="w-8 h-8 rounded-xl bg-[var(--color-primary)] flex items-center justify-center">
                 <Scan size={15} className="text-white" />
               </div>
             )}
@@ -1027,7 +1035,7 @@ function ScanModal({ target, orderId, mode = "choose", onSuccess, onClose }) {
 
               {scanning && (
                 <div className="flex items-center justify-center gap-2 py-4 text-sm text-gray-500">
-                  <Loader2 size={16} className="animate-spin text-[#aa4725]" />
+                  <Loader2 size={16} className="animate-spin text-[var(--color-primary)]" />
                   در حال بررسی بارکد...
                 </div>
               )}
@@ -1125,7 +1133,7 @@ function PaymentCard({ payment, orderTotal, onViewReceipt, onApprove, onReject, 
             {onEdit && (
               <button onClick={onEdit} title="ویرایش مبلغ"
                 className="w-6 h-6 flex items-center justify-center rounded-lg text-gray-400
-                  hover:text-[#aa4725] hover:bg-[#aa4725]/10 transition">
+                  hover:text-[var(--color-primary)] hover:bg-[var(--color-primary)]/10 transition">
                 <Pencil size={12} />
               </button>
             )}
@@ -1165,7 +1173,7 @@ function PaymentCard({ payment, orderTotal, onViewReceipt, onApprove, onReject, 
                   key={idx}
                   onClick={() => onViewReceipt(url)}
                   className="group relative rounded-xl overflow-hidden border border-gray-200
-                    hover:border-[#aa4725] transition aspect-video bg-gray-100"
+                    hover:border-[var(--color-primary)] transition aspect-video bg-gray-100"
                 >
                   <img
                     src={url}
@@ -1286,7 +1294,7 @@ function TrackingPanel({ orderId, orderFulfillmentStatus, onStatusChange }) {
 
   const handleRemoveTracking = async (trackingItemId) => {
     const result = await Swal.fire({
-      ...swalTheme,
+      ...getSwalTheme(),
       title: "حذف بارکد از سفارش",
       text: "آیا مطمئن هستید که می‌خواهید این بارکد را از سفارش جدا کنید؟",
       showCancelButton: true,
@@ -1363,8 +1371,8 @@ function TrackingPanel({ orderId, orderFulfillmentStatus, onStatusChange }) {
           <button
             onClick={() => setScanModal({ ...target, mode: "choose" })}
             className="w-full flex items-center justify-center gap-2 py-2.5 border-2 border-dashed
-              border-[#aa4725]/40 hover:border-[#aa4725] rounded-xl text-sm font-bold
-              text-[#aa4725]/70 hover:text-[#aa4725] bg-[#aa4725]/5 hover:bg-[#aa4725]/10 transition"
+              border-[var(--color-primary)]/40 hover:border-[var(--color-primary)] rounded-xl text-sm font-bold
+              text-[var(--color-primary)]/70 hover:text-[var(--color-primary)] bg-[var(--color-primary)]/5 hover:bg-[var(--color-primary)]/10 transition"
           >
             <Plus size={16} />
             {addLabel} ({remainText} عدد باقی‌مانده)
@@ -1384,7 +1392,7 @@ function TrackingPanel({ orderId, orderFulfillmentStatus, onStatusChange }) {
   if (loading) {
     return (
       <div className="flex items-center justify-center py-8 gap-2 text-sm text-gray-400">
-        <Loader2 size={16} className="animate-spin text-[#aa4725]" />
+        <Loader2 size={16} className="animate-spin text-[var(--color-primary)]" />
         در حال بارگذاری اطلاعات ترکینگ...
       </div>
     );
@@ -1494,7 +1502,7 @@ function TrackingPanel({ orderId, orderFulfillmentStatus, onStatusChange }) {
                     {/* ─── خط محصول اصلی ─── */}
                     <div className="space-y-2">
                       <p className="text-xs font-bold text-gray-500 flex items-center gap-1.5">
-                        <Package size={12} className="text-[#aa4725]" />
+                        <Package size={12} className="text-[var(--color-primary)]" />
                         محصول اصلی
                       </p>
 
@@ -1549,13 +1557,13 @@ function TrackingPanel({ orderId, orderFulfillmentStatus, onStatusChange }) {
                             <img src={f.product.mainImage} alt=""
                               className="w-8 h-8 rounded-lg object-cover border border-gray-200 shrink-0" />
                           ) : (
-                            <span className="w-8 h-8 rounded-lg bg-[#aa4725]/10 flex items-center justify-center shrink-0">
-                              <Tag size={13} className="text-[#aa4725]" />
+                            <span className="w-8 h-8 rounded-lg bg-[var(--color-primary)]/10 flex items-center justify-center shrink-0">
+                              <Tag size={13} className="text-[var(--color-primary)]" />
                             </span>
                           )}
                           <div className="min-w-0">
                             <p className="text-[11px] text-gray-400 leading-tight">
-                              {f.nodeLabel} <span className="text-[#aa4725]">(انتخاب فرایند)</span>
+                              {f.nodeLabel} <span className="text-[var(--color-primary)]">(انتخاب فرایند)</span>
                             </p>
                             <p className="text-xs font-bold text-gray-700 truncate leading-snug">
                               {f.product?.name}
@@ -1659,7 +1667,7 @@ function EurPanel({ orderId, priceEUR, paymentsEUR = [], onChange, onEditPayment
 
   const handleDeletePayment = async (paymentId) => {
     const result = await Swal.fire({
-      ...swalTheme,
+      ...getSwalTheme(),
       title: "حذف پرداخت یورویی",
       text: "آیا از حذف این پرداخت یورو مطمئن هستید؟",
       showCancelButton: true,
@@ -1687,12 +1695,12 @@ function EurPanel({ orderId, priceEUR, paymentsEUR = [], onChange, onEditPayment
     <div className="bg-white rounded-2xl border border-gray-100 p-5 space-y-4">
       <div className="flex items-center justify-between">
         <h3 className="text-sm font-bold text-gray-700 flex items-center gap-2">
-          <span className="w-7 h-7 rounded-xl bg-[#aa4725] flex items-center justify-center">
+          <span className="w-7 h-7 rounded-xl bg-[var(--color-primary)] flex items-center justify-center">
             <Euro size={14} className="text-white" />
           </span>
           سیستم یورو (EUR)
         </h3>
-        <span className="text-[10px] font-bold text-[#aa4725] bg-[#aa4725]/10 border border-[#aa4725]/20 px-2 py-0.5 rounded-full">
+        <span className="text-[10px] font-bold text-[var(--color-primary)] bg-[var(--color-primary)]/10 border border-[var(--color-primary)]/20 px-2 py-0.5 rounded-full">
           مستقل از تومان
         </span>
       </div>
@@ -1706,7 +1714,7 @@ function EurPanel({ orderId, priceEUR, paymentsEUR = [], onChange, onEditPayment
             className={`flex items-center gap-1 text-[11px] font-bold px-2.5 py-1 rounded-lg transition
               ${editPrice
                 ? "bg-gray-200 text-gray-600"
-                : "bg-[#aa4725]/10 text-[#aa4725] hover:bg-[#aa4725]/20"}`}
+                : "bg-[var(--color-primary)]/10 text-[var(--color-primary)] hover:bg-[var(--color-primary)]/20"}`}
           >
             <Edit3 size={10} />
             {editPrice ? "انصراف" : hasPrice ? "ویرایش" : "تعیین قیمت"}
@@ -1726,14 +1734,14 @@ function EurPanel({ orderId, priceEUR, paymentsEUR = [], onChange, onEditPayment
                 placeholder="مبلغ را به یورو وارد کنید"
                 dir="ltr"
                 className="w-full border border-gray-300 rounded-xl px-4 py-2.5 text-sm font-bold text-gray-800 text-left
-                  focus:outline-none focus:ring-2 focus:ring-[#aa4725]/30 focus:border-[#aa4725] transition"
+                  focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)]/30 focus:border-[var(--color-primary)] transition"
               />
               <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-gray-400">€</span>
             </div>
             <button
               onClick={handleSavePrice}
               disabled={savingPrice}
-              className="w-full bg-[#aa4725] hover:bg-[#8f3b1e] text-white font-bold py-2.5 rounded-xl text-sm
+              className="w-full bg-[var(--color-primary)] hover:bg-[var(--color-primary-hover)] text-white font-bold py-2.5 rounded-xl text-sm
                 transition flex items-center justify-center gap-2 disabled:opacity-60"
             >
               {savingPrice ? <Loader2 size={14} className="animate-spin" /> : <Save size={14} />}
@@ -1756,7 +1764,7 @@ function EurPanel({ orderId, priceEUR, paymentsEUR = [], onChange, onEditPayment
       {paymentsEUR.length > 0 ? (
         <div className="space-y-2">
           <p className="text-xs font-bold text-gray-500 flex items-center gap-1.5">
-            <Wallet size={12} className="text-[#aa4725]" />
+            <Wallet size={12} className="text-[var(--color-primary)]" />
             پرداخت‌های یورویی
           </p>
           {paymentsEUR.map((p) => (
@@ -1777,7 +1785,7 @@ function EurPanel({ orderId, priceEUR, paymentsEUR = [], onChange, onEditPayment
                   onClick={() => onEditPayment?.(p)}
                   title="ویرایش مبلغ"
                   className="opacity-0 group-hover:opacity-100 w-7 h-7 flex items-center justify-center
-                    text-gray-400 hover:text-[#aa4725] transition rounded-lg hover:bg-[#aa4725]/10"
+                    text-gray-400 hover:text-[var(--color-primary)] transition rounded-lg hover:bg-[var(--color-primary)]/10"
                 >
                   <Pencil size={12} />
                 </button>
@@ -1901,7 +1909,7 @@ export default function AdminOrderDetailClient({ orderId }) {
 
   const handleRejectPayment = async (paymentId) => {
     const result = await Swal.fire({
-      ...swalTheme,
+      ...getSwalTheme(),
       title: "رد رسید بانکی",
       html: `<div dir="rtl" class="text-right space-y-3">
         <p class="text-sm text-gray-600">دلیل رد (اختیاری):</p>
@@ -1975,7 +1983,7 @@ export default function AdminOrderDetailClient({ orderId }) {
   const handleRemoveItem = async (item) => {
     if (!item._id) return;
     const result = await Swal.fire({
-      ...swalTheme,
+      ...getSwalTheme(),
       title: "حذف آیتم از سفارش",
       text: `«${item.product?.name || "این آیتم"}» از سفارش حذف شود؟ مبلغ کل و مانده دوباره محاسبه می‌شوند.`,
       showCancelButton: true,
@@ -2033,9 +2041,9 @@ export default function AdminOrderDetailClient({ orderId }) {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center" style={{ background: "var(--admin-bg, #f5f3f0)" }}>
+      <div className="min-h-screen flex items-center justify-center" style={{ background: "var(--admin-bg, #f4f5f2)" }}>
         <div className="flex flex-col items-center gap-3">
-          <Loader2 size={32} className="animate-spin text-[#aa4725]" />
+          <Loader2 size={32} className="animate-spin text-[var(--color-primary)]" />
           <p className="text-sm text-gray-500">در حال بارگذاری سفارش...</p>
         </div>
       </div>
@@ -2044,12 +2052,12 @@ export default function AdminOrderDetailClient({ orderId }) {
 
   if (!order) {
     return (
-      <div className="min-h-screen flex items-center justify-center" style={{ background: "var(--admin-bg, #f5f3f0)" }}>
+      <div className="min-h-screen flex items-center justify-center" style={{ background: "var(--admin-bg, #f4f5f2)" }}>
         <div className="text-center space-y-3">
           <AlertCircle size={40} className="text-red-400 mx-auto" />
           <p className="text-sm text-gray-600 font-bold">سفارش یافت نشد</p>
           <button onClick={() => router.back()}
-            className="text-sm text-[#aa4725] hover:underline">
+            className="text-sm text-[var(--color-primary)] hover:underline">
             بازگشت
           </button>
         </div>
@@ -2065,7 +2073,7 @@ export default function AdminOrderDetailClient({ orderId }) {
   ).length || 0;
 
   return (
-    <div className="min-h-screen" style={{ background: "var(--admin-bg, #f5f3f0)" }} dir="rtl">
+    <div className="min-h-screen" style={{ background: "var(--admin-bg, #f4f5f2)" }} dir="rtl">
       <div className="max-w-4xl mx-auto p-5 space-y-5">
 
         {/* ─── Header ─── */}
@@ -2074,13 +2082,13 @@ export default function AdminOrderDetailClient({ orderId }) {
             <button
               onClick={() => router.push("/p-admin/admin-orders")}
               className="w-9 h-9 flex items-center justify-center bg-white border border-gray-200
-                rounded-xl hover:border-[#aa4725] hover:text-[#aa4725] text-gray-500 transition"
+                rounded-xl hover:border-[var(--color-primary)] hover:text-[var(--color-primary)] text-gray-500 transition"
             >
               <ArrowLeft size={16} />
             </button>
             <div>
               <h1 className="text-lg font-black text-gray-900 flex items-center gap-2">
-                <div className="w-7 h-7 bg-[#aa4725] rounded-xl flex items-center justify-center">
+                <div className="w-7 h-7 bg-[var(--color-primary)] rounded-xl flex items-center justify-center">
                   <ShoppingCart size={13} className="text-white" />
                 </div>
                 جزئیات سفارش
@@ -2099,7 +2107,7 @@ export default function AdminOrderDetailClient({ orderId }) {
             <button
               onClick={fetchOrder} disabled={loading}
               className="flex items-center gap-1.5 bg-white border border-gray-200 text-gray-600
-                hover:border-[#aa4725] hover:text-[#aa4725] text-xs font-bold px-3 py-2 rounded-xl transition"
+                hover:border-[var(--color-primary)] hover:text-[var(--color-primary)] text-xs font-bold px-3 py-2 rounded-xl transition"
             >
               <RefreshCw size={13} className={loading ? "animate-spin" : ""} />
               بروزرسانی
@@ -2113,7 +2121,7 @@ export default function AdminOrderDetailClient({ orderId }) {
             onClick={() => setActiveTab("details")}
             className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl text-sm font-bold transition
               ${activeTab === "details"
-                ? "bg-[#aa4725] text-white shadow-sm"
+                ? "bg-[var(--color-primary)] text-white shadow-sm"
                 : "text-gray-500 hover:text-gray-700 hover:bg-gray-50"}`}
           >
             <Eye size={15} />
@@ -2123,7 +2131,7 @@ export default function AdminOrderDetailClient({ orderId }) {
             onClick={() => setActiveTab("tracking")}
             className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl text-sm font-bold transition
               ${activeTab === "tracking"
-                ? "bg-[#aa4725] text-white shadow-sm"
+                ? "bg-[var(--color-primary)] text-white shadow-sm"
                 : "text-gray-500 hover:text-gray-700 hover:bg-gray-50"}`}
           >
             <Scan size={15} />
@@ -2134,7 +2142,7 @@ export default function AdminOrderDetailClient({ orderId }) {
               onClick={() => setActiveTab("installment")}
               className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl text-sm font-bold transition
                 ${activeTab === "installment"
-                  ? "bg-[#aa4725] text-white shadow-sm"
+                  ? "bg-[var(--color-primary)] text-white shadow-sm"
                   : "text-gray-500 hover:text-gray-700 hover:bg-gray-50"}`}
             >
               <Calendar size={15} />
@@ -2161,7 +2169,7 @@ export default function AdminOrderDetailClient({ orderId }) {
                   className={`flex items-center gap-1.5 text-xs font-bold px-3 py-1.5 rounded-lg transition
                     ${editStatus
                       ? "bg-gray-200 text-gray-600"
-                      : "bg-[#aa4725]/10 text-[#aa4725] hover:bg-[#aa4725]/20"}`}
+                      : "bg-[var(--color-primary)]/10 text-[var(--color-primary)] hover:bg-[var(--color-primary)]/20"}`}
                 >
                   <Edit3 size={11} />
                   {editStatus ? "انصراف" : "ویرایش وضعیت"}
@@ -2175,7 +2183,7 @@ export default function AdminOrderDetailClient({ orderId }) {
                       <label className="text-xs font-bold text-gray-500 mb-1.5 block">وضعیت پرداخت</label>
                       <select value={payStatus} onChange={(e) => setPayStatus(e.target.value)}
                         className="w-full border border-gray-300 rounded-xl px-3 py-2 text-sm font-bold text-gray-700
-                          focus:outline-none focus:ring-2 focus:ring-[#aa4725]/30 focus:border-[#aa4725]">
+                          focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)]/30 focus:border-[var(--color-primary)]">
                         {Object.entries(PAYMENT_STATUS).map(([k, v]) => (
                           <option key={k} value={k}>{v.label}</option>
                         ))}
@@ -2185,7 +2193,7 @@ export default function AdminOrderDetailClient({ orderId }) {
                       <label className="text-xs font-bold text-gray-500 mb-1.5 block">وضعیت ارسال</label>
                       <select value={fulStatus} onChange={(e) => setFulStatus(e.target.value)}
                         className="w-full border border-gray-300 rounded-xl px-3 py-2 text-sm font-bold text-gray-700
-                          focus:outline-none focus:ring-2 focus:ring-[#aa4725]/30 focus:border-[#aa4725]">
+                          focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)]/30 focus:border-[var(--color-primary)]">
                         {Object.entries(FULFILLMENT_STATUS).map(([k, v]) => (
                           <option key={k} value={k}>{v.label}</option>
                         ))}
@@ -2193,7 +2201,7 @@ export default function AdminOrderDetailClient({ orderId }) {
                     </div>
                   </div>
                   <button onClick={handleSaveStatus} disabled={saving}
-                    className="w-full bg-[#aa4725] hover:bg-[#8f3b1e] text-white font-bold py-2.5 rounded-xl text-sm
+                    className="w-full bg-[var(--color-primary)] hover:bg-[var(--color-primary-hover)] text-white font-bold py-2.5 rounded-xl text-sm
                       transition flex items-center justify-center gap-2 disabled:opacity-60">
                     {saving ? <Loader2 size={14} className="animate-spin" /> : <Save size={14} />}
                     ذخیره وضعیت
@@ -2216,7 +2224,7 @@ export default function AdminOrderDetailClient({ orderId }) {
             {/* User & Address */}
             <div className="bg-white rounded-2xl border border-gray-100 p-5 space-y-3">
               <h3 className="text-sm font-bold text-gray-700 flex items-center gap-2">
-                <Users size={14} className="text-[#aa4725]" />
+                <Users size={14} className="text-[var(--color-primary)]" />
                 اطلاعات خریدار
               </h3>
               <div className="space-y-2">
@@ -2230,7 +2238,7 @@ export default function AdminOrderDetailClient({ orderId }) {
                     <button
                       type="button"
                       onClick={() => router.push(`/p-admin/users/coaches/${order.user.coach._id}/credit/${order._id}`)}
-                      className="font-semibold text-[#aa4725] hover:underline truncate"
+                      className="font-semibold text-[var(--color-primary)] hover:underline truncate"
                     >
                       {order.user.coach.name}
                     </button>
@@ -2257,13 +2265,13 @@ export default function AdminOrderDetailClient({ orderId }) {
             <div className="bg-white rounded-2xl border border-gray-100 p-5 space-y-3">
               <div className="flex items-center justify-between">
                 <h3 className="text-sm font-bold text-gray-700 flex items-center gap-2">
-                  <Package size={14} className="text-[#aa4725]" />
+                  <Package size={14} className="text-[var(--color-primary)]" />
                   اقلام سفارش
                 </h3>
                 <button
                   onClick={() => setAddItemOpen(true)}
                   className="flex items-center gap-1.5 text-xs font-bold px-3 py-1.5 rounded-lg
-                    bg-[#aa4725]/10 text-[#aa4725] hover:bg-[#aa4725]/20 transition"
+                    bg-[var(--color-primary)]/10 text-[var(--color-primary)] hover:bg-[var(--color-primary)]/20 transition"
                 >
                   <Plus size={12} /> افزودن آیتم
                 </button>
@@ -2322,7 +2330,7 @@ export default function AdminOrderDetailClient({ orderId }) {
                               disabled={busy || !itemId || item.quantity <= 1}
                               onClick={() => handleEditItemQty(item, item.quantity - 1)}
                               className="w-6 h-6 rounded-lg border border-gray-200 flex items-center justify-center
-                                text-gray-500 hover:border-[#aa4725] hover:text-[#aa4725] transition
+                                text-gray-500 hover:border-[var(--color-primary)] hover:text-[var(--color-primary)] transition
                                 disabled:opacity-40 disabled:cursor-not-allowed"
                             >
                               <Minus size={11} />
@@ -2334,7 +2342,7 @@ export default function AdminOrderDetailClient({ orderId }) {
                               disabled={busy || !itemId}
                               onClick={() => handleEditItemQty(item, item.quantity + 1)}
                               className="w-6 h-6 rounded-lg border border-gray-200 flex items-center justify-center
-                                text-gray-500 hover:border-[#aa4725] hover:text-[#aa4725] transition
+                                text-gray-500 hover:border-[var(--color-primary)] hover:text-[var(--color-primary)] transition
                                 disabled:opacity-40 disabled:cursor-not-allowed"
                             >
                               <Plus size={11} />
@@ -2384,7 +2392,7 @@ export default function AdminOrderDetailClient({ orderId }) {
             {order.payments?.length > 0 && (
               <div className="bg-white rounded-2xl border border-gray-100 p-5 space-y-3">
                 <h3 className="text-sm font-bold text-gray-700 flex items-center gap-2">
-                  <ReceiptText size={14} className="text-[#aa4725]" />
+                  <ReceiptText size={14} className="text-[var(--color-primary)]" />
                   رسیدها و پرداخت‌ها
                 </h3>
 
@@ -2469,7 +2477,7 @@ export default function AdminOrderDetailClient({ orderId }) {
           <div className="bg-white rounded-2xl border border-gray-100 p-5">
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-sm font-bold text-gray-700 flex items-center gap-2">
-                <Scan size={14} className="text-[#aa4725]" />
+                <Scan size={14} className="text-[var(--color-primary)]" />
                 شناسایی و ترکینگ محصولات
               </h3>
               {order.paymentStatus !== "PAID" && (
@@ -2491,12 +2499,12 @@ export default function AdminOrderDetailClient({ orderId }) {
           <div className="bg-white rounded-2xl border border-gray-100 p-5">
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-sm font-bold text-gray-700 flex items-center gap-2">
-                <Calendar size={14} className="text-[#aa4725]" />
+                <Calendar size={14} className="text-[var(--color-primary)]" />
                 مدیریت اقساط سفارش
               </h3>
               <a
                 href={`/p-admin/financial/installments/${installment._id}`}
-                className="flex items-center gap-1.5 text-xs font-bold text-[#aa4725] hover:underline"
+                className="flex items-center gap-1.5 text-xs font-bold text-[var(--color-primary)] hover:underline"
               >
                 <ExternalLink size={12} />
                 صفحه کامل اقساط

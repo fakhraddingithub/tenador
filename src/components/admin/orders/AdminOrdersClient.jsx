@@ -116,13 +116,13 @@ function OrderRow({ order, onSelect, isHighlighted }) {
       className={`group cursor-pointer border-b border-gray-100 transition-colors
         ${isHighlighted
           ? "bg-amber-50/80 hover:bg-amber-50"
-          : "hover:bg-[#aa4725]/5"}`}
+          : "hover:bg-[var(--color-primary)]/5"}`}
       onClick={() => onSelect(order)}
     >
       {/* Priority / New indicator */}
       <td className="px-2 py-3.5 w-1">
         {newOrder && (
-          <div className="w-2 h-2 rounded-full bg-[#aa4725] mx-auto animate-pulse" title="سفارش جدید" />
+          <div className="w-2 h-2 rounded-full bg-[var(--color-primary)] mx-auto animate-pulse" title="سفارش جدید" />
         )}
         {!newOrder && unseen && (
           <div className="w-2 h-2 rounded-full bg-amber-400 mx-auto" title="نیاز به بررسی" />
@@ -133,7 +133,7 @@ function OrderRow({ order, onSelect, isHighlighted }) {
       <td className="px-4 py-3.5">
         <div className="flex items-center gap-2">
           <span className={`font-mono text-xs font-bold px-2 py-0.5 rounded-lg
-            ${unseen ? "bg-[#aa4725]/10 text-[#aa4725]" : "bg-gray-100 text-gray-700"}`}>
+            ${unseen ? "bg-[var(--color-primary)]/10 text-[var(--color-primary)]" : "bg-gray-100 text-gray-700"}`}>
             {order.trackingCode}
           </span>
           {pendingReceipts > 0 && (
@@ -142,7 +142,7 @@ function OrderRow({ order, onSelect, isHighlighted }) {
             </span>
           )}
           {newOrder && (
-            <span className="text-[9px] bg-[#aa4725] text-white font-black px-1.5 py-0.5 rounded-full">
+            <span className="text-[9px] bg-[var(--color-primary)] text-white font-black px-1.5 py-0.5 rounded-full">
               جدید
             </span>
           )}
@@ -192,8 +192,8 @@ function OrderRow({ order, onSelect, isHighlighted }) {
       <td className="px-4 py-3.5 text-center">
         <button className={`w-7 h-7 rounded-lg flex items-center justify-center transition-all
           ${unseen
-            ? "bg-[#aa4725] text-white"
-            : "bg-gray-100 group-hover:bg-[#aa4725] text-gray-400 group-hover:text-white"}`}>
+            ? "bg-[var(--color-primary)] text-white"
+            : "bg-gray-100 group-hover:bg-[var(--color-primary)] text-gray-400 group-hover:text-white"}`}>
           <Eye size={13} />
         </button>
       </td>
@@ -209,7 +209,7 @@ function FilterSelect({ label, value, onChange, options }) {
       <select
         value={value} onChange={(e) => onChange(e.target.value)}
         className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm font-bold text-gray-700
-          focus:outline-none focus:ring-2 focus:ring-[#aa4725]/30 focus:border-[#aa4725] bg-white transition"
+          focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)]/30 focus:border-[var(--color-primary)] bg-white transition"
       >
         {options.map((o) => (
           <option key={o.value} value={o.value}>{o.label}</option>
@@ -294,14 +294,14 @@ export default function AdminOrdersClient() {
   };
 
   return (
-    <div className="min-h-screen" style={{ background: "var(--admin-bg, #f5f3f0)" }}>
+    <div className="min-h-screen" style={{ background: "var(--admin-bg, #f4f5f2)" }}>
       <div className="max-w-7xl mx-auto p-5 space-y-5">
 
         {/* ─── Page Header ─── */}
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <h1 className="text-xl font-black text-gray-900 flex items-center gap-2.5">
-              <div className="w-8 h-8 bg-[#aa4725] rounded-xl flex items-center justify-center">
+              <div className="w-8 h-8 bg-[var(--color-primary)] rounded-xl flex items-center justify-center">
                 <ShoppingCart size={15} className="text-white" />
               </div>
               مدیریت سفارشات
@@ -315,7 +315,7 @@ export default function AdminOrdersClient() {
               onClick={() => setSortUnseen(!sortUnseen)}
               className={`flex items-center gap-1.5 text-xs font-bold px-3 py-2 rounded-xl border transition
                 ${sortUnseen
-                  ? "bg-[#aa4725] border-[#aa4725] text-white"
+                  ? "bg-[var(--color-primary)] border-[var(--color-primary)] text-white"
                   : "bg-white border-gray-200 text-gray-600 hover:border-gray-300"}`}
             >
               <Bell size={13} />
@@ -324,7 +324,7 @@ export default function AdminOrdersClient() {
             <button
               onClick={() => fetchOrders()} disabled={loading}
               className="flex items-center gap-2 bg-white border border-gray-200 text-gray-600
-                hover:border-[#aa4725] hover:text-[#aa4725] text-xs font-bold px-4 py-2 rounded-xl transition"
+                hover:border-[var(--color-primary)] hover:text-[var(--color-primary)] text-xs font-bold px-4 py-2 rounded-xl transition"
             >
               <RefreshCw size={13} className={loading ? "animate-spin" : ""} />
               بروزرسانی
@@ -337,7 +337,7 @@ export default function AdminOrdersClient() {
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
             {/* فاز ۳ — «درآمد تأیید شده» حذف شد و گرید به ۴ ستون هماهنگ شد */}
             <StatCard title="کل سفارشات" value={new Intl.NumberFormat("fa-IR").format(stats.total)}
-              icon={ShoppingCart} color="bg-[#aa4725]/10 text-[#aa4725]" />
+              icon={ShoppingCart} color="bg-[var(--color-primary)]/10 text-[var(--color-primary)]" />
             <StatCard title="پرداخت نشده" value={new Intl.NumberFormat("fa-IR").format(stats.unpaid)}
               icon={XCircle} color="bg-red-100 text-red-600" />
             <StatCard title="پرداخت کامل" value={new Intl.NumberFormat("fa-IR").format(stats.paid)}
@@ -354,16 +354,16 @@ export default function AdminOrdersClient() {
               <motion.div
                 initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }}
                 exit={{ opacity: 0, height: 0 }}
-                className="bg-[#aa4725]/5 border border-[#aa4725]/30 rounded-2xl px-4 py-3 flex items-center gap-3"
+                className="bg-[var(--color-primary)]/5 border border-[var(--color-primary)]/30 rounded-2xl px-4 py-3 flex items-center gap-3"
               >
-                <div className="w-8 h-8 bg-[#aa4725] rounded-xl flex items-center justify-center flex-shrink-0">
+                <div className="w-8 h-8 bg-[var(--color-primary)] rounded-xl flex items-center justify-center flex-shrink-0">
                   <Sparkles size={15} className="text-white" />
                 </div>
                 <div>
-                  <p className="text-sm font-bold text-[#aa4725]">
+                  <p className="text-sm font-bold text-[var(--color-primary)]">
                     {new Intl.NumberFormat("fa-IR").format(newOrdersCount)} سفارش جدید در ۲۴ ساعت اخیر
                   </p>
-                  <p className="text-xs text-[#aa4725]/70 mt-0.5">
+                  <p className="text-xs text-[var(--color-primary)]/70 mt-0.5">
                     این سفارش‌ها در بالای لیست نمایش داده می‌شوند
                   </p>
                 </div>
@@ -401,17 +401,17 @@ export default function AdminOrdersClient() {
                 type="text" value={search} onChange={(e) => setSearch(e.target.value)}
                 placeholder="جستجو با کد رهگیری یا نام خریدار..."
                 className="w-full pr-9 pl-4 py-2.5 text-sm border border-gray-200 rounded-xl
-                  focus:outline-none focus:ring-2 focus:ring-[#aa4725]/30 focus:border-[#aa4725] transition"
+                  focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)]/30 focus:border-[var(--color-primary)] transition"
               />
             </div>
             <button type="submit"
-              className="bg-[#aa4725] text-white text-sm font-bold px-5 py-2.5 rounded-xl hover:bg-[#8f3b1e] transition">
+              className="bg-[var(--color-primary)] text-white text-sm font-bold px-5 py-2.5 rounded-xl hover:bg-[var(--color-primary-hover)] transition">
               جستجو
             </button>
             <button type="button" onClick={() => setShowFilters(!showFilters)}
               className={`flex items-center gap-1.5 text-sm font-bold px-4 py-2.5 rounded-xl border transition
                 ${showFilters
-                  ? "bg-[#aa4725]/10 border-[#aa4725]/30 text-[#aa4725]"
+                  ? "bg-[var(--color-primary)]/10 border-[var(--color-primary)]/30 text-[var(--color-primary)]"
                   : "bg-gray-50 border-gray-200 text-gray-600 hover:border-gray-300"}`}>
               <Filter size={13} />
               فیلتر
@@ -453,7 +453,7 @@ export default function AdminOrdersClient() {
         <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden">
           {loading ? (
             <div className="flex flex-col items-center justify-center py-20 gap-3">
-              <Loader2 size={28} className="animate-spin text-[#aa4725]" />
+              <Loader2 size={28} className="animate-spin text-[var(--color-primary)]" />
               <p className="text-sm text-gray-400">در حال بارگذاری سفارشات...</p>
             </div>
           ) : sortedOrders.length === 0 ? (
@@ -504,7 +504,7 @@ export default function AdminOrdersClient() {
                   onClick={() => setPage((p) => Math.max(1, p - 1))}
                   disabled={page === 1}
                   className="w-8 h-8 rounded-lg flex items-center justify-center border border-gray-200 text-gray-500
-                    hover:border-[#aa4725] hover:text-[#aa4725] disabled:opacity-40 disabled:cursor-not-allowed transition"
+                    hover:border-[var(--color-primary)] hover:text-[var(--color-primary)] disabled:opacity-40 disabled:cursor-not-allowed transition"
                 >
                   <ChevronRight size={14} />
                 </button>
@@ -517,8 +517,8 @@ export default function AdminOrdersClient() {
                       onClick={() => setPage(p)}
                       className={`w-8 h-8 rounded-lg text-xs font-bold border transition
                         ${p === page
-                          ? "bg-[#aa4725] border-[#aa4725] text-white"
-                          : "border-gray-200 text-gray-600 hover:border-[#aa4725] hover:text-[#aa4725]"}`}
+                          ? "bg-[var(--color-primary)] border-[var(--color-primary)] text-white"
+                          : "border-gray-200 text-gray-600 hover:border-[var(--color-primary)] hover:text-[var(--color-primary)]"}`}
                     >
                       {new Intl.NumberFormat("fa-IR").format(p)}
                     </button>
@@ -528,7 +528,7 @@ export default function AdminOrdersClient() {
                   onClick={() => setPage((p) => Math.min(pagination.totalPages, p + 1))}
                   disabled={page === pagination.totalPages}
                   className="w-8 h-8 rounded-lg flex items-center justify-center border border-gray-200 text-gray-500
-                    hover:border-[#aa4725] hover:text-[#aa4725] disabled:opacity-40 disabled:cursor-not-allowed transition"
+                    hover:border-[var(--color-primary)] hover:text-[var(--color-primary)] disabled:opacity-40 disabled:cursor-not-allowed transition"
                 >
                   <ChevronLeft size={14} />
                 </button>
