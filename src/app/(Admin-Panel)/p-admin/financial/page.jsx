@@ -1,5 +1,13 @@
 "use client";
 
+/**
+ * فاز ۳ — بازطراحی صفحه‌ی «مدیریت مالی»
+ * - جایگزینی تب‌های قدیمی با «Segmented Control» مشترک (SectionTabs)
+ * - استفاده از PageHeader مشترک (عنوان + توضیح + آیکن)
+ * - لینک‌های بیرونی (تحلیل، اقساط، تخفیف‌ها) به‌صورت چیپ‌های ثانویه‌ی هماهنگ
+ * - بدون هیچ تغییر در منطق یا API — فقط لایه‌ی نمایشی
+ */
+
 import { useState } from "react";
 import Link from "next/link";
 import { motion } from "framer-motion";
@@ -9,95 +17,70 @@ import { FaMoneyBillWave } from "react-icons/fa";
 import BankAccountManager from "@/components/admin/financial/BankAccountManager";
 import ExchangeRateManager from "@/components/admin/financial/ExchangeRateManager";
 import FinancingSettingsManager from "@/components/admin/financial/FinancingSettingsManager";
+import PageHeader from "@/components/admin/PageHeader";
+import SectionTabs from "@/components/admin/SectionTabs";
 
 const TABS = [
-  { key: "bank", title: "حساب بانکی", icon: MdAccountBalance },
-  { key: "exchange", title: "نرخ تبدیل ارز", icon: MdOutlineCurrencyExchange },
-  { key: "financing", title: "تنظیمات اقساط", icon: MdPercent },
+  { value: "bank", label: "حساب بانکی", icon: MdAccountBalance },
+  { value: "exchange", label: "نرخ تبدیل ارز", icon: MdOutlineCurrencyExchange },
+  { value: "financing", label: "تنظیمات اقساط", icon: MdPercent },
+];
+
+const EXTERNAL_LINKS = [
+  { href: "/p-admin/financial/analytics", label: "تحلیل و هوش فروش", icon: FiBarChart2 },
+  { href: "/p-admin/financial/installments", label: "مدیریت اقساط", icon: FiCalendar },
+  { href: "/p-admin/discounts", label: "تخفیف‌ها", icon: FiTag },
 ];
 
 export default function FinancialManagementPage() {
   const [active, setActive] = useState("bank");
 
   return (
-    <div dir="rtl">
-      {/* Header */}
-      <div className="flex items-center gap-3 mb-6">
-        <div
-          className="w-9 h-9 rounded-[var(--radius)] flex items-center justify-center"
-          style={{ background: "rgba(170,71,37,0.1)" }}
-        >
-          <FaMoneyBillWave size={18} style={{ color: "var(--color-primary)" }} />
-        </div>
-        <div>
-          <h1 className="text-base font-bold text-gray-900">مدیریت مالی</h1>
-          <p className="text-xs font-bold text-gray-400">
-            نرخ تبدیل ارز، تخفیف‌ها و اطلاعات حساب بانکی
-          </p>
+    <div dir="rtl" className="space-y-5">
+      <PageHeader
+        icon={<FaMoneyBillWave size={16} />}
+        title="مدیریت مالی"
+        subtitle="نرخ تبدیل ارز، تخفیف‌ها و اطلاعات حساب بانکی"
+      />
+
+      {/* Segmented Control — بخش‌های اصلی مالی */}
+      <div className="flex flex-wrap items-center gap-3">
+        <SectionTabs tabs={TABS} value={active} onChange={setActive} />
+
+        {/* لینک‌های بیرونی هماهنگ با تم — چیپ ثانویه */}
+        <div className="flex flex-wrap items-center gap-2">
+          {EXTERNAL_LINKS.map((l) => {
+            const Icon = l.icon;
+            return (
+              <Link
+                key={l.href}
+                href={l.href}
+                className="group inline-flex items-center gap-2 px-3 py-2 text-xs font-bold transition-colors border"
+                style={{
+                  color: "var(--admin-text-muted)",
+                  background: "var(--admin-card)",
+                  borderColor: "var(--admin-border)",
+                  borderRadius: "var(--admin-radius)",
+                }}
+              >
+                <Icon size={13} />
+                <span>{l.label}</span>
+                <FiArrowLeft
+                  size={12}
+                  className="opacity-50 group-hover:-translate-x-0.5 transition-transform"
+                />
+              </Link>
+            );
+          })}
         </div>
       </div>
 
-      {/* Tabs / section navigation */}
-      <div className="flex flex-wrap items-center gap-2 mb-6">
-        {TABS.map((tab) => {
-          const Icon = tab.icon;
-          const isActive = active === tab.key;
-          return (
-            <button
-              key={tab.key}
-              onClick={() => setActive(tab.key)}
-              className={`flex items-center gap-2 px-4 py-2.5 rounded-[var(--radius)] text-sm font-bold transition-all border-2
-                ${isActive
-                  ? "text-white border-transparent shadow-sm"
-                  : "bg-white text-gray-500 border-gray-200 hover:border-[var(--color-primary)]/40 hover:text-gray-700"}`}
-              style={isActive ? { background: "var(--color-primary)" } : {}}
-            >
-              <Icon size={16} />
-              {tab.title}
-            </button>
-          );
-        })}
-
-        {/* بخش تحلیل مالی و هوش فروش — داشبورد اختصاصی */}
-        <Link
-          href="/p-admin/financial/analytics"
-          className="flex items-center gap-2 px-4 py-2.5 rounded-[var(--radius)] text-sm font-bold transition-all border-2
-            bg-white text-gray-500 border-gray-200 hover:border-[var(--color-primary)]/40 hover:text-gray-700 group"
-        >
-          <FiBarChart2 size={16} />
-          تحلیل و هوش فروش
-          <FiArrowLeft size={14} className="opacity-50 group-hover:-translate-x-0.5 transition-transform" />
-        </Link>
-
-        {/* بخش مدیریت اقساط — صفحه‌ی اختصاصی (فهرست + جزئیات) */}
-        <Link
-          href="/p-admin/financial/installments"
-          className="flex items-center gap-2 px-4 py-2.5 rounded-[var(--radius)] text-sm font-bold transition-all border-2
-            bg-white text-gray-500 border-gray-200 hover:border-[var(--color-primary)]/40 hover:text-gray-700 group"
-        >
-          <FiCalendar size={16} />
-          مدیریت اقساط
-          <FiArrowLeft size={14} className="opacity-50 group-hover:-translate-x-0.5 transition-transform" />
-        </Link>
-
-        {/* بخش تخفیف‌ها — مستقیماً به صفحه‌ی تخفیف‌ها لینک می‌شود */}
-        <Link
-          href="/p-admin/discounts"
-          className="flex items-center gap-2 px-4 py-2.5 rounded-[var(--radius)] text-sm font-bold transition-all border-2
-            bg-white text-gray-500 border-gray-200 hover:border-[var(--color-primary)]/40 hover:text-gray-700 group"
-        >
-          <FiTag size={16} />
-          تخفیف‌ها
-          <FiArrowLeft size={14} className="opacity-50 group-hover:-translate-x-0.5 transition-transform" />
-        </Link>
-      </div>
-
-      {/* Section content */}
+      {/* محتوای تب فعال */}
       <motion.div
         key={active}
-        initial={{ opacity: 0, y: 8 }}
+        initial={{ opacity: 0, y: 6 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.25 }}
+        transition={{ duration: 0.22 }}
       >
         {active === "bank" && <BankAccountManager />}
         {active === "exchange" && <ExchangeRateManager />}

@@ -8,7 +8,7 @@ import {
   ShoppingCart, Search, Filter, ChevronRight, ChevronLeft,
   Eye, CheckCircle, XCircle, Clock, Package, Truck,
   Home, AlertCircle, RefreshCw, Receipt, CreditCard,
-  TrendingUp, Users, BadgeCheck, ChevronDown, Ban, Loader2,
+  Users, BadgeCheck, ChevronDown, Ban, Loader2,
   ReceiptText, Inbox, Sparkles, Bell, ShoppingBag
 } from "lucide-react";
 
@@ -334,7 +334,8 @@ export default function AdminOrdersClient() {
 
         {/* ─── Stats Grid ─── */}
         {stats && (
-          <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-3">
+          {/* فاز ۳ — «درآمد تأیید شده» حذف شد و گرید به ۴ ستون هماهنگ شد */}
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
             <StatCard title="کل سفارشات" value={new Intl.NumberFormat("fa-IR").format(stats.total)}
               icon={ShoppingCart} color="bg-[#aa4725]/10 text-[#aa4725]" />
             <StatCard title="پرداخت نشده" value={new Intl.NumberFormat("fa-IR").format(stats.unpaid)}
@@ -343,8 +344,6 @@ export default function AdminOrdersClient() {
               icon={CheckCircle} color="bg-green-100 text-green-600" />
             <StatCard title="در حال پردازش" value={new Intl.NumberFormat("fa-IR").format(stats.processing)}
               icon={Package} color="bg-blue-100 text-blue-600" />
-            <StatCard title="درآمد تأیید شده" value={formatPrice(stats.totalRevenue)}
-              sub="تومان" icon={TrendingUp} color="bg-teal-100 text-teal-600" />
           </div>
         )}
 
