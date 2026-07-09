@@ -27,7 +27,7 @@ export async function POST(request) {
       return NextResponse.json({ message: 'Invalid password' }, { status: 401 });
     }
 
-    const accessToken = tokenGenrator({ userId: user._id, phone: user.phone });
+    const accessToken = tokenGenrator({ userId: user._id, phone: user.phone, role: user.role });
     const refreshToken = generateRefreshToken({ userId: user._id, phone: user.phone });
 
     const response = NextResponse.json(

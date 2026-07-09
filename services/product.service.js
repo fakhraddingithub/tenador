@@ -238,7 +238,7 @@ export const getPageDataBySlug = unstable_cache(
       .populate("athlete")
       .populate("category")
       .populate("variants")
-      .sort({ createdAt: -1 })
+      .sort({ order: 1, createdAt: -1 })
       .lean();
 
     const priced = await attachListingPrices(products, rate);

@@ -109,6 +109,15 @@ const ProductSchema = new mongoose.Schema(
       index: true,
     },
 
+    // ترتیب نمایش محصول در صفحه‌ی دسته‌بندی‌اش (درگ‌اند‌دراپ در پنل ادمین).
+    // محصولات جدید تا وقتی ادمین ترتیب را دستی تغییر ندهد 0 می‌مانند و طبق
+    // createdAt (جدیدترین اول) مرتب می‌شوند؛ دقیقاً همان رفتار قبلی.
+    order: {
+      type: Number,
+      default: 0,
+      index: true,
+    },
+
     variants: [{ type: mongoose.Schema.Types.ObjectId, ref: "Variant" }],
   },
   { timestamps: true },

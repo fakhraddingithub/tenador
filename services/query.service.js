@@ -279,7 +279,7 @@ async function _queryBySlugs(slugs) {
   //   product.variants فقط آرایه‌ای از ObjectId است و کارت هیچ سوآچی نشان نمی‌دهد.
   const products = await Product.find(finalFilter)
     .populate("brand sport athlete category serie limitedEdition variants")
-    .sort({ createdAt: -1 })
+    .sort({ order: 1, createdAt: -1 })
     .lean();
 
   // قیمت‌ها سمت سرور و دسته‌ای محاسبه می‌شوند تا کارت‌ها price-API نزنند

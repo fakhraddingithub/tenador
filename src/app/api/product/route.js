@@ -32,7 +32,8 @@ export async function GET(req) {
       .populate('athlete')
       .populate('category')
       .populate('serie')
-      .populate('limitedEdition');
+      .populate('limitedEdition')
+      .sort({ order: 1, createdAt: -1 });
 
     if (withVariants) productsQuery = productsQuery.populate('variants');
 
