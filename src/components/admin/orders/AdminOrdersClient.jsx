@@ -334,8 +334,8 @@ export default function AdminOrdersClient() {
 
         {/* ─── Stats Grid ─── */}
         {stats && (
-          {/* فاز ۳ — «درآمد تأیید شده» حذف شد و گرید به ۴ ستون هماهنگ شد */}
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+            {/* فاز ۳ — «درآمد تأیید شده» حذف شد و گرید به ۴ ستون هماهنگ شد */}
             <StatCard title="کل سفارشات" value={new Intl.NumberFormat("fa-IR").format(stats.total)}
               icon={ShoppingCart} color="bg-[#aa4725]/10 text-[#aa4725]" />
             <StatCard title="پرداخت نشده" value={new Intl.NumberFormat("fa-IR").format(stats.unpaid)}
