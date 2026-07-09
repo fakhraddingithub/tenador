@@ -6,8 +6,8 @@ import OrderFlowBuilder from "./OrderFlowBuilder";
 import { FiArrowRight, FiCheck, FiAlertTriangle } from "react-icons/fi";
 
 const COLORS = {
-  primary: "#aa4725",
-  secondary: "#ffbf00",
+  primary: "#004225",
+  secondary: "#c9a84c",
   border: "#e8e4df",
   muted: "#9c9189",
   bg: "#f5f3f0",

@@ -8,7 +8,6 @@ import {
   FaPlus,
   FaArrowRight,
   FaChevronLeft,
-  FaTag,
   FaCodeBranch,
   FaCrown,
 } from "react-icons/fa";
@@ -32,7 +31,7 @@ import {
   arrayMove,
 } from "@dnd-kit/sortable";
 
-export default function SerieChildrenAdminPage({ serieId,brandId }) {
+export default function SerieChildrenAdminPage({ serieId, brandId }) {
   const router = useRouter();
 
   const [serie, setSerie] = useState(null);
@@ -40,16 +39,12 @@ export default function SerieChildrenAdminPage({ serieId,brandId }) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (serieId) {
-      fetchSerieData();
-    }
+    if (serieId) fetchSerieData();
   }, [serieId]);
 
   const fetchSerieData = async () => {
     try {
       setLoading(true);
-
-      // اطلاعات خود سری
       const serieRes = await fetch(`/api/series/${serieId}`);
       const serieData = await serieRes.json();
 
@@ -57,25 +52,12 @@ export default function SerieChildrenAdminPage({ serieId,brandId }) {
         toast.error("خطا در دریافت اطلاعات سری");
         return;
       }
-
-      if (!serieRes.ok) {
-        throw new Error("Serie fetch failed");
-      }
-      
       const currentSerie = serieData?.data || serieData;
-      
-
       setSerie(currentSerie);
 
-      // دریافت زیرسری‌ها
-      const childrenRes = await fetch(
-        `/api/series/${serieId}/children`
-      );
-
+      const childrenRes = await fetch(`/api/series/${serieId}/children`);
       const childrenData = await childrenRes.json();
-      if (childrenRes.ok) {
-        setChildren(childrenData.children || []);
-      }
+      if (childrenRes.ok) setChildren(childrenData.children || []);
     } catch (error) {
       toast.error("خطا در بارگذاری اطلاعات");
     } finally {
@@ -83,7 +65,6 @@ export default function SerieChildrenAdminPage({ serieId,brandId }) {
     }
   };
 
-  // ─── جابه‌جایی زیرسری‌ها (drag & drop) — ترتیب در دیتابیس ذخیره می‌شود ───
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } })
   );
@@ -91,7 +72,6 @@ export default function SerieChildrenAdminPage({ serieId,brandId }) {
   const handleDragEnd = async (event) => {
     const { active, over } = event;
     if (!over || active.id === over.id) return;
-
     const oldIndex = children.findIndex((c) => c._id === active.id);
     const newIndex = children.findIndex((c) => c._id === over.id);
     if (oldIndex === -1 || newIndex === -1) return;
@@ -99,7 +79,6 @@ export default function SerieChildrenAdminPage({ serieId,brandId }) {
     const reordered = arrayMove(children, oldIndex, newIndex).map(
       (item, index) => ({ ...item, order: index })
     );
-
     setChildren(reordered);
 
     try {
@@ -126,6 +105,7 @@ export default function SerieChildrenAdminPage({ serieId,brandId }) {
       confirmButtonColor: "#ef4444",
       confirmButtonText: "بله حذف کن",
       cancelButtonText: "لغو",
+      customClass: { popup: "rounded-2xl font-[Vazirmatn] text-right" },
     });
 
     if (result.isConfirmed) {
@@ -133,14 +113,13 @@ export default function SerieChildrenAdminPage({ serieId,brandId }) {
         const res = await fetch(`/api/series/${childSerieId}`, {
           method: "DELETE",
         });
-
         if (res.ok) {
           toast.success("زیرسری حذف شد");
           fetchSerieData();
         } else {
           toast.error("خطا در حذف");
         }
-      } catch (error) {
+      } catch {
         toast.error("خطای سرور");
       }
     }
@@ -149,118 +128,95 @@ export default function SerieChildrenAdminPage({ serieId,brandId }) {
   if (loading) return <AdminLoader />;
 
   return (
-    <div className="max-w-7xl mx-auto p-6 space-y-10 pb-20">
-      {/* Top Bar */}
-      <div className="flex justify-between items-center">
+    <div dir="rtl" className="w-full space-y-6">
+      {/* Header */}
+      <div className="flex items-center justify-between">
         <button
           onClick={() => router.back()}
-          className="group flex items-center gap-2 bg-white px-5 py-2.5 rounded-2xl shadow-sm border border-gray-100 text-sm font-bold text-gray-600 hover:bg-black hover:text-white transition-all"
+          className="group flex items-center gap-2 px-4 py-2.5 rounded-[var(--radius)] bg-white border border-gray-100 text-sm font-bold text-gray-600 hover:bg-gray-900 hover:text-white transition-all"
         >
-          <FaChevronLeft
-            className="group-hover:-translate-x-1 transition-transform"
-            size={12}
-          />
-          <span>بازگشت</span>
+          <FaChevronLeft size={11} className="group-hover:-translate-x-0.5 transition-transform" />
+          بازگشت
         </button>
+
+        <Link
+          href={`/p-admin/admin-brands/${brandId}/add-serie`}
+          className="flex items-center gap-2 px-4 py-2.5 rounded-[var(--radius)] text-sm font-bold text-white hover:shadow-lg hover:shadow-[var(--color-primary)]/25 hover:-translate-y-0.5 active:scale-95 transition-all"
+          style={{ background: "var(--color-primary)" }}
+        >
+          <FaPlus size={12} />
+          ایجاد زیرسری جدید
+        </Link>
       </div>
 
-      {/* Hero */}
-      <div className="relative overflow-hidden bg-black rounded-[3rem] p-10 text-white shadow-2xl">
-        <div className="absolute top-0 left-0 w-72 h-72 bg-white/5 rounded-full blur-3xl"></div>
+      {/* Serie summary card */}
+      <div className="bg-white rounded-2xl border border-gray-100 p-5 shadow-sm flex flex-col md:flex-row items-center gap-5">
+        <div className="w-20 h-20 rounded-2xl bg-gray-50 border border-gray-100 p-2 flex items-center justify-center overflow-hidden shrink-0">
+          <img
+            src={serie?.image || "/placeholder.jpg"}
+            alt=""
+            className="w-full h-full object-cover rounded-xl"
+          />
+        </div>
 
-        <div className="relative z-10 flex flex-col lg:flex-row justify-between gap-10">
-          <div className="flex items-start gap-6">
-            <div className="w-28 h-28 rounded-[2rem] overflow-hidden bg-white/10 border border-white/10 p-3 flex items-center justify-center">
-              <img
-                src={serie?.image || "/placeholder.jpg"}
-                alt=""
-                className="w-full h-full object-cover rounded-[1.5rem]"
-              />
-            </div>
+        <div className="flex-1 text-center md:text-right min-w-0">
+          <p className="text-[10px] uppercase tracking-widest text-gray-400 font-bold">
+            Parent Serie
+          </p>
+          <h1 className="text-lg md:text-xl font-bold text-gray-900 mt-1 truncate">
+            {serie?.title}
+          </h1>
+          <p className="text-[11px] uppercase tracking-widest text-gray-400 font-bold mt-0.5">
+            {serie?.name}
+          </p>
+          {serie?.description && (
+            <p className="mt-2 text-xs text-gray-500 leading-6 line-clamp-2 max-w-2xl">
+              {serie.description}
+            </p>
+          )}
+        </div>
 
-            <div className="space-y-4">
-              <div>
-                <p className="text-[10px] uppercase tracking-[0.4em] text-gray-500 font-bold">
-                  Parent Serie
-                </p>
-
-                <h1 className="text-5xl font-black tracking-tight">
-                  {serie?.title}
-                </h1>
-
-                <p className="text-gray-400 uppercase text-xs tracking-[0.3em] mt-2">
-                  {serie?.name}
-                </p>
-              </div>
-
-              <p className="max-w-2xl text-gray-300 leading-8 text-sm">
-                {serie?.description}
-              </p>
-
-              <div className="flex flex-wrap gap-3 pt-2">
-                {serie?.tag === "limited-edition" && (
-                  <div className="flex items-center gap-2 px-4 py-2 rounded-2xl bg-yellow-500/10 border border-yellow-500/20 text-yellow-400 text-xs font-bold">
-                    <FaCrown />
-                    LIMITED EDITION
-                  </div>
-                )}
-
-                <div className="flex items-center gap-2 px-4 py-2 rounded-2xl bg-white/5 border border-white/10 text-white text-xs font-bold">
-                  <FaCodeBranch />
-                  {children.length} CHILD SERIES
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <div className="flex items-start gap-3">
-            <Link
-              href={`/p-admin/admin-brands/${brandId}/add-serie`}
+        <div className="flex flex-wrap gap-2 justify-center md:justify-end">
+          {serie?.tag === "limited-edition" && (
+            <span
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-[var(--radius)] text-[10px] font-bold uppercase tracking-widest bg-yellow-50 border border-yellow-100"
+              style={{ color: "var(--color-secondary)" }}
             >
-              <button className="bg-white text-black px-7 py-4 rounded-2xl font-bold text-xs flex items-center gap-2 hover:scale-105 active:scale-95 transition-all">
-                <FaPlus />
-                ایجاد زیرسری جدید
-              </button>
-            </Link>
-          </div>
+              <FaCrown size={10} /> Limited
+            </span>
+          )}
+          <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-[var(--radius)] text-[10px] font-bold uppercase tracking-widest bg-gray-50 border border-gray-100 text-gray-500">
+            <FaCodeBranch size={10} /> {children.length} Child
+          </span>
         </div>
       </div>
 
       {/* Children Grid */}
-      <div className="space-y-8">
-        <div className="flex items-end justify-between px-2">
+      <div className="space-y-4">
+        <div className="flex items-end justify-between">
           <div>
-            <h2 className="text-3xl font-bold text-gray-900">
-              زیرسری‌های این مدل
-            </h2>
-
-            <p className="text-gray-400 text-sm mt-2">
+            <h2 className="text-base font-bold text-gray-900">زیرسری‌های این مدل</h2>
+            <p className="text-xs font-bold text-gray-400 mt-0.5">
               تمام نسخه‌ها و نسل‌های مرتبط با این سری
             </p>
           </div>
         </div>
 
         {children.length === 0 ? (
-          <div className="bg-white border border-dashed border-gray-200 rounded-[3rem] p-20 text-center">
-            <div className="w-24 h-24 rounded-full bg-gray-100 mx-auto flex items-center justify-center">
-              <FaLayerGroup className="text-3xl text-gray-300" />
+          <div className="bg-white rounded-2xl border-2 border-dashed border-gray-200 py-16 text-center">
+            <div className="w-14 h-14 bg-gray-50 rounded-2xl flex items-center justify-center mx-auto mb-4 text-gray-300">
+              <FaLayerGroup size={24} />
             </div>
-
-            <h3 className="mt-8 text-2xl font-bold text-gray-800">
-              هیچ زیرسری‌ای وجود ندارد
-            </h3>
-
-            <p className="text-gray-400 mt-3 max-w-md mx-auto leading-7">
-              هنوز هیچ نسخه یا نسل جدیدی برای این سری ثبت نشده است.
+            <p className="text-gray-400 font-bold text-sm">هیچ زیرسری‌ای وجود ندارد</p>
+            <p className="text-gray-400 text-xs mt-1">
+              هنوز هیچ نسخه یا نسل جدیدی برای این سری ثبت نشده است
             </p>
-
             <Link
-              href={`/p-admin/admin-series/${serieId}/add-child`}
+              href={`/p-admin/admin-brands/${brandId}/add-serie`}
+              className="inline-flex items-center gap-2 mt-5 px-5 py-2.5 rounded-[var(--radius)] text-sm font-bold text-white hover:-translate-y-0.5 transition-all"
+              style={{ background: "var(--color-primary)" }}
             >
-              <button className="mt-8 bg-black text-white px-8 py-4 rounded-2xl font-bold text-sm inline-flex items-center gap-3 hover:scale-105 transition-all">
-                <FaPlus />
-                ایجاد اولین زیرسری
-              </button>
+              <FaPlus size={12} /> ایجاد اولین زیرسری
             </Link>
           </div>
         ) : (
@@ -269,121 +225,112 @@ export default function SerieChildrenAdminPage({ serieId,brandId }) {
             collisionDetection={closestCenter}
             onDragEnd={handleDragEnd}
           >
-          <SortableContext
-            items={children.map((c) => c._id)}
-            strategy={rectSortingStrategy}
-          >
-          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-8">
-            {children.map((child) => (
-              <SortableGridItem key={child._id} id={child._id}>
-              <div
-                onClick={() =>
-                  router.push(`/admin/series/${child._id}`)
-                }
-                className="group bg-white rounded-[3.5rem] border border-gray-100 overflow-hidden shadow-sm hover:shadow-2xl hover:-translate-y-2 transition-all cursor-pointer"
-              >
-                {/* Image */}
-                <div className="relative h-64 overflow-hidden bg-gray-50">
-                  <img
-                    src={child.image || "/placeholder.jpg"}
-                    alt=""
-                    className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700"
-                  />
-
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity flex items-end p-8">
-                    <span className="text-white text-xs font-bold flex items-center gap-2">
-                      MANAGE SUB SERIE
-                      <FaArrowRight />
-                    </span>
-                  </div>
-
-                  {child.tag === "limited-edition" && (
-                    <div className="absolute top-5 left-5 bg-yellow-400 text-black px-4 py-2 rounded-2xl text-[10px] font-black uppercase tracking-widest flex items-center gap-2 shadow-xl">
-                      <FaCrown />
-                      Limited
-                    </div>
-                  )}
-                </div>
-
-                {/* Content */}
-                <div className="p-8">
-                  <div className="flex justify-between items-start gap-4">
-                    <div>
-                      <h3 className="text-2xl font-bold text-gray-900 group-hover:text-[var(--color-primary)] transition-colors">
-                        {child.title}
-                      </h3>
-
-                      <p className="text-gray-400 text-[10px] font-bold uppercase tracking-[0.25em] mt-2">
-                        {child.name}
-                      </p>
-                    </div>
-
-                    <div className="w-14 h-14 rounded-2xl bg-gray-50 border border-gray-100 flex items-center justify-center p-2">
-                      <img
-                        src={child.logo}
-                        alt=""
-                        className="w-full h-full object-contain"
-                      />
-                    </div>
-                  </div>
-
-                  <p className="mt-6 text-sm text-gray-500 leading-7 line-clamp-3 min-h-[80px]">
-                    {child.description}
-                  </p>
-
-                  {/* Colors */}
-                  <div className="flex items-center gap-3 mt-6">
-                    <div
-                      className="w-7 h-7 rounded-full border-2 border-white shadow-md"
-                      style={{
-                        backgroundColor:
-                          child?.colors?.primary || "#000",
-                      }}
-                    />
-
-                    <div
-                      className="w-7 h-7 rounded-full border-2 border-white shadow-md"
-                      style={{
-                        backgroundColor:
-                          child?.colors?.secondary || "#fff",
-                      }}
-                    />
-                  </div>
-
-                  {/* Actions */}
-                  <div className="flex gap-3 pt-6 mt-6 border-t border-gray-100">
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-
+            <SortableContext
+              items={children.map((c) => c._id)}
+              strategy={rectSortingStrategy}
+            >
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
+                {children.map((child) => (
+                  <SortableGridItem key={child._id} id={child._id}>
+                    <ChildCard
+                      child={child}
+                      serie={serie}
+                      onOpen={() => router.push(`/admin/series/${child._id}`)}
+                      onEdit={() =>
                         router.push(
                           `/p-admin/admin-brands/${serie.brand}/${child._id}/edit`
-                        );
-                      }}
-                      className="flex-1 py-4 rounded-2xl bg-gray-50 hover:bg-gray-100 text-gray-500 hover:text-black transition-all"
-                    >
-                      <FaEdit className="mx-auto" />
-                    </button>
-
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleDeleteSerie(child._id);
-                      }}
-                      className="flex-1 py-4 rounded-2xl bg-gray-50 hover:bg-red-50 text-gray-400 hover:text-red-500 transition-all"
-                    >
-                      <FaTrash className="mx-auto" />
-                    </button>
-
-                  </div>
-                </div>
+                        )
+                      }
+                      onDelete={() => handleDeleteSerie(child._id)}
+                    />
+                  </SortableGridItem>
+                ))}
               </div>
-              </SortableGridItem>
-            ))}
-          </div>
-          </SortableContext>
+            </SortableContext>
           </DndContext>
         )}
+      </div>
+    </div>
+  );
+}
+
+function ChildCard({ child, onOpen, onEdit, onDelete }) {
+  return (
+    <div className="group relative bg-white rounded-2xl border border-gray-100 overflow-hidden hover:shadow-xl hover:-translate-y-1 transition-all duration-300">
+      <div className="h-1 w-full" style={{ background: "var(--color-primary)" }} />
+
+      <button onClick={onOpen} className="block w-full text-right">
+        <div className="relative h-36 bg-gray-50 overflow-hidden">
+          <img
+            src={child.image || "/placeholder.jpg"}
+            alt=""
+            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+          />
+          {child.tag === "limited-edition" && (
+            <div
+              className="absolute top-3 left-3 px-2.5 py-1 rounded-[var(--radius)] text-[9px] font-bold uppercase tracking-widest bg-white/95 shadow-sm inline-flex items-center gap-1"
+              style={{ color: "var(--color-secondary)" }}
+            >
+              <FaCrown size={9} /> Limited
+            </div>
+          )}
+        </div>
+      </button>
+
+      <div className="px-5 py-4">
+        <div className="flex items-start justify-between gap-3 mb-3">
+          <div className="min-w-0">
+            <h3 className="text-sm font-bold text-gray-900 truncate group-hover:text-[var(--color-primary)] transition-colors">
+              {child.title}
+            </h3>
+            <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 mt-0.5 truncate">
+              {child.name}
+            </p>
+          </div>
+          {child.logo && (
+            <div className="w-10 h-10 rounded-[var(--radius)] bg-gray-50 border border-gray-100 p-1.5 shrink-0">
+              <img src={child.logo} alt="" className="w-full h-full object-contain opacity-70" />
+            </div>
+          )}
+        </div>
+
+        {child.description && (
+          <p className="text-[11px] text-gray-500 leading-6 line-clamp-2 mb-3">
+            {child.description}
+          </p>
+        )}
+
+        <div className="flex items-center gap-1.5 mb-3">
+          <span
+            className="w-4 h-4 rounded-full border border-white shadow-sm ring-1 ring-gray-100"
+            style={{ backgroundColor: child?.colors?.primary || "#000" }}
+          />
+          <span
+            className="w-4 h-4 rounded-full border border-white shadow-sm ring-1 ring-gray-100"
+            style={{ backgroundColor: child?.colors?.secondary || "#fff" }}
+          />
+        </div>
+
+        <div className="flex gap-2">
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              onEdit();
+            }}
+            className="flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-[var(--radius)] text-xs font-bold bg-gray-50 text-gray-700 hover:bg-gray-900 hover:text-white transition-all"
+          >
+            <FaEdit size={12} /> ویرایش
+          </button>
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              onDelete();
+            }}
+            className="w-10 h-10 flex items-center justify-center rounded-[var(--radius)] bg-red-50 text-red-400 hover:bg-red-500 hover:text-white transition-all border border-red-100"
+          >
+            <FaTrash size={13} />
+          </button>
+        </div>
       </div>
     </div>
   );

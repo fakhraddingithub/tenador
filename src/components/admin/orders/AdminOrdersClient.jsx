@@ -343,7 +343,7 @@ export default function AdminOrdersClient() {
             <StatCard title="پرداخت کامل" value={new Intl.NumberFormat("fa-IR").format(stats.paid)}
               icon={CheckCircle} color="bg-green-100 text-green-600" />
             <StatCard title="در حال پردازش" value={new Intl.NumberFormat("fa-IR").format(stats.processing)}
-              icon={Package} color="bg-blue-100 text-blue-600" />
+              icon={Package} color="bg-[color:var(--color-primary)]/10 text-[var(--color-primary)]" />
           </div>
         )}
 

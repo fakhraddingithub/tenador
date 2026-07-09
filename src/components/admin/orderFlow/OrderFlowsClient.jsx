@@ -15,8 +15,8 @@ import {
 } from "react-icons/fi";
 
 const COLORS = {
-  primary: "#aa4725",
-  secondary: "#ffbf00",
+  primary: "#004225",
+  secondary: "#c9a84c",
   border: "#e8e4df",
   muted: "#9c9189",
   bg: "#f5f3f0",
@@ -149,7 +149,7 @@ export default function OrderFlowsClient() {
         <Link
           href="/p-admin/admin-order-flows/create"
           className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-bold text-white shadow-sm transition-all hover:opacity-90 hover:shadow-md"
-          style={{ background: `linear-gradient(135deg, ${COLORS.primary}, #c0562e)` }}
+          style={{ background: `linear-gradient(135deg, ${COLORS.primary}, #0a5c37)` }}
         >
           <FiPlus size={15} />
           فرایند جدید

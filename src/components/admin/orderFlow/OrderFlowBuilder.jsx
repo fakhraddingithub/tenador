@@ -24,8 +24,8 @@ import {
 
 // ─── رنگ‌ها بر اساس تم پروژه ───
 const COLORS = {
-  primary: "#aa4725",
-  secondary: "#ffbf00",
+  primary: "#004225",
+  secondary: "#c9a84c",
   bg: "#f5f3f0",
   card: "#ffffff",
   border: "#e8e4df",
@@ -35,7 +35,7 @@ const COLORS = {
   service: "#8b5cf6",
   start: "#10b981",
   edge: "#94a3b8",
-  edgeActive: "#aa4725",
+  edgeActive: "#004225",
 };
 
 const NODE_WIDTH = 220;
@@ -716,7 +716,7 @@ export default function OrderFlowBuilder({
               onClick={handleSave}
               disabled={isSaving}
               className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl font-bold text-sm text-white transition-all hover:opacity-90 disabled:opacity-60"
-              style={{ background: `linear-gradient(135deg, ${COLORS.primary}, #c0562e)` }}
+              style={{ background: `linear-gradient(135deg, ${COLORS.primary}, #0a5c37)` }}
             >
               {isSaving ? (
                 <>

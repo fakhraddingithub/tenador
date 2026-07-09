@@ -585,7 +585,7 @@ function AddItemModal({ orderId, onSuccess, onClose }) {
                 </div>
               </div>
 
-              <p className="text-[11px] text-gray-400 leading-relaxed bg-blue-50/60 border border-blue-100 rounded-xl px-3 py-2">
+              <p className="text-[11px] text-gray-400 leading-relaxed bg-[color:var(--color-primary)]/5 border border-[color:var(--color-primary)]/15 rounded-xl px-3 py-2">
                 قیمت این آیتم سمت سرور و دقیقاً از همان موتور قیمت‌گذاری سفارش (شامل تخفیف‌های فعال) محاسبه و به‌صورت اسنپ‌شات ثبت می‌شود.
               </p>
 
