@@ -102,10 +102,6 @@ export default function SortableSportCard({ sport, handleDelete }) {
           </h3>
         </div>
 
-        <p className="text-gray-500 text-sm leading-relaxed line-clamp-2 min-h-[40px] mb-5 font-medium">
-          {sport.description || "توضیحاتی برای این ورزش ثبت نشده است."}
-        </p>
-
         {/* اکشن‌ها — ردیف ۱: ویرایش + حذف */}
         <div className="flex items-center gap-2 border-t border-gray-50 pt-4">
           <Link

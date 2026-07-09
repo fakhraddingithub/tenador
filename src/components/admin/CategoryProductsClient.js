@@ -343,7 +343,7 @@ export default function CategoryProductsClient({ categoryId }) {
 
       {/* Products grid */}
       {loading ? (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
+        <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-5">
           {[1, 2, 3, 4].map((i) => (
             <div key={i} className="h-72 bg-gray-100 animate-pulse rounded-2xl" />
           ))}
@@ -378,7 +378,7 @@ export default function CategoryProductsClient({ categoryId }) {
           )}
         </div>
       ) : hasActiveFilter ? (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
+        <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-5">
           {filteredProducts.map((product) => (
             <ProductCard
               key={product._id}
@@ -397,7 +397,7 @@ export default function CategoryProductsClient({ categoryId }) {
             items={filteredProducts.map((p) => p._id)}
             strategy={rectSortingStrategy}
           >
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
+            <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-5">
               {filteredProducts.map((product) => (
                 <SortableGridItem key={product._id} id={product._id}>
                   <ProductCard
