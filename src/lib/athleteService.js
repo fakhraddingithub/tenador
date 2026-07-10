@@ -34,5 +34,5 @@ export const getShowcaseAthletes = unstable_cache(
     );
   },
   ["showcase-athletes"],
-  { revalidate: 300, tags: ["athletes"] }
+  { revalidate: 10800, tags: ["athletes"] }
 );

@@ -53,5 +53,5 @@ export const getApprovedReviews = unstable_cache(
     };
   },
   ["approved-reviews"],
-  { revalidate: 300, tags: ["comments"] }
+  { revalidate: 10800, tags: ["comments"] }
 );

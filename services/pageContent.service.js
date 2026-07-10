@@ -45,7 +45,7 @@ async function _getPageContent(slug) {
 }
 
 export const getPageContent = unstable_cache(_getPageContent, ["page-content"], {
-  revalidate: 300,
+  revalidate: 10800,
   tags: ["pages"],
 });
 

@@ -18,5 +18,5 @@ export const getHomeRolandGarrosBanner = unstable_cache(
     return normalizeRolandGarrosBanner(setting?.value);
   },
   ["home-roland-garros-banner"],
-  { revalidate: 300, tags: [ROLAND_GARROS_BANNER_CACHE_TAG] }
+  { revalidate: 10800, tags: [ROLAND_GARROS_BANNER_CACHE_TAG] }
 );

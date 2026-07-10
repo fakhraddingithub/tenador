@@ -179,7 +179,7 @@ export const getProductBySlug = unstable_cache(
     }
   },
   ["product-by-slug"],
-  { revalidate: 300, tags: ["products"] }
+  { revalidate: 10800, tags: ["products"] }
 );
 
 /**
@@ -212,7 +212,7 @@ export const getFilterableAttributes = unstable_cache(
     return Array.from(map.values());
   },
   ["filterable-attributes"],
-  { revalidate: 300, tags: ["categories"] }
+  { revalidate: 10800, tags: ["categories"] }
 );
 
 export const getPageDataBySlug = unstable_cache(
@@ -254,5 +254,5 @@ export const getPageDataBySlug = unstable_cache(
     );
   },
   ["page-data-by-slug"],
-  { revalidate: 300, tags: ["products", "sports", "categories", "brands"] }
+  { revalidate: 10800, tags: ["products", "sports", "categories", "brands"] }
 );

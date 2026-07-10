@@ -281,5 +281,5 @@ async function _getSeriesBySport(sportSlug) {
 export const getSeriesBySport = unstable_cache(
   _getSeriesBySport,
   ["series-by-sport"],
-  { revalidate: 300, tags: ["products", "series", "sports"] }
+  { revalidate: 10800, tags: ["products", "series", "sports"] }
 );

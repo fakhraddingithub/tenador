@@ -15,7 +15,7 @@ export const getActiveEvents = unstable_cache(
     return JSON.parse(JSON.stringify(events));
   },
   ["active-events"],
-  { revalidate: 300, tags: ["events"] }
+  { revalidate: 10800, tags: ["events"] }
 );
 
 export const getAllEventsForAdmin = unstable_cache(
@@ -38,7 +38,7 @@ export const getEventBySlug = unstable_cache(
     return JSON.parse(JSON.stringify(event));
   },
   ["event-by-slug"],
-  { revalidate: 300, tags: ["events"] }
+  { revalidate: 10800, tags: ["events"] }
 );
 
 export const getEventTemplates = unstable_cache(
