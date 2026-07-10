@@ -273,5 +273,5 @@ export const getCachedNavbar = unstable_cache(
     return JSON.parse(JSON.stringify(data));
   },
   ["navbar-data"],
-  { revalidate: 600, tags: ["navbar"] },
+  { revalidate: 10800, tags: ["navbar"] },
 );

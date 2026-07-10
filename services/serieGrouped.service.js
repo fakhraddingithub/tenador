@@ -280,5 +280,5 @@ async function _getSerieGroupedSections(params) {
 export const getSerieGroupedSections = unstable_cache(
   _getSerieGroupedSections,
   ["serie-grouped-sections"],
-  { revalidate: 60, tags: ["products", "series"] }
+  { revalidate: 10800, tags: ["products", "series"] }
 );

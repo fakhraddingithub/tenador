@@ -40,7 +40,7 @@ async function _getTickerBrands() {
 export const getTickerBrands = unstable_cache(
   async () => JSON.parse(JSON.stringify(await _getTickerBrands())),
   ["ticker-brands"],
-  { revalidate: 600, tags: ["brands"] }
+  { revalidate: 10800, tags: ["brands"] }
 );
 
 async function _getSportTickerBrands(sportId) {
@@ -73,5 +73,5 @@ export const getSportTickerBrands = unstable_cache(
   async (sportId) =>
     JSON.parse(JSON.stringify(await _getSportTickerBrands(sportId))),
   ["sport-ticker-brands"],
-  { revalidate: 600, tags: ["brands", "products"] }
+  { revalidate: 10800, tags: ["brands", "products"] }
 );

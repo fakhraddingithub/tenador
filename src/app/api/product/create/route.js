@@ -282,7 +282,7 @@ export async function POST(req) {
     }
 
     // باطل‌سازی کش محتوا تا محصول جدید بلافاصله در صفحات نمایش داده شود
-    revalidateContent();
+    revalidateContent(["products"]);
 
     return Response.json(
       { message: "Product and variants created successfully", product },

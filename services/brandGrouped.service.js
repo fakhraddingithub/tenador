@@ -339,5 +339,5 @@ async function _getBrandGroupedSections(params) {
 export const getBrandGroupedSections = unstable_cache(
   _getBrandGroupedSections,
   ["brand-grouped-sections"],
-  { revalidate: 60, tags: ["products", "series", "brands"] }
+  { revalidate: 10800, tags: ["products", "series", "brands"] }
 );

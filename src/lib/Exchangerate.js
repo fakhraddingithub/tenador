@@ -19,5 +19,5 @@ export const getCachedRate = unstable_cache(
     return doc?.rateToToman ?? null;
   },
   ["exchange-rate"],
-  { revalidate: 600, tags: ["exchange-rate"] }
+  { revalidate: 10800, tags: ["exchange-rate"] }
 );

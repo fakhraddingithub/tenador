@@ -39,7 +39,7 @@ export const getProducts = unstable_cache(
     return JSON.parse(JSON.stringify(priced));
   },
   ["all-products"],
-  { revalidate: 60, tags: ["products"] }
+  { revalidate: 10800, tags: ["products"] }
 );
 
 /**
@@ -69,7 +69,7 @@ export const getHomeProducts = unstable_cache(
     return JSON.parse(JSON.stringify({ bestSellers, offers }));
   },
   ["home-products"],
-  { revalidate: 60, tags: ["products"] }
+  { revalidate: 10800, tags: ["products"] }
 );
 
 /**
@@ -139,7 +139,7 @@ export const getHomeSliderProducts = unstable_cache(
     return JSON.parse(JSON.stringify({ bestSellers, offers }));
   },
   ["home-slider-products"],
-  { revalidate: 60, tags: ["products", "home-sliders"] }
+  { revalidate: 10800, tags: ["products", "home-sliders"] }
 );
 
 export const getProductBySlug = unstable_cache(

@@ -14,5 +14,5 @@ export const getFirstSport = unstable_cache(
     return sport ? JSON.parse(JSON.stringify(sport)) : null;
   },
   ["first-sport"],
-  { revalidate: 600, tags: ["sports"] },
+  { revalidate: 10800, tags: ["sports"] },
 );

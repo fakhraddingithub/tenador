@@ -299,7 +299,7 @@ async function _queryBySlugs(slugs) {
 export const queryBySlugs = unstable_cache(
   _queryBySlugs,
   ["query-by-slugs"],
-  { revalidate: 60, tags: ["products", "sports", "categories", "brands", "series", "limited-editions"] }
+  { revalidate: 10800, tags: ["products", "sports", "categories", "brands", "series", "limited-editions"] }
 );
 
 /**
@@ -314,5 +314,5 @@ export const resolvePageContext = unstable_cache(
     return JSON.parse(JSON.stringify({ notFound: false, filters: ctx.filters }));
   },
   ["resolve-page-context"],
-  { revalidate: 60, tags: ["products", "sports", "categories", "brands", "series", "limited-editions"] }
+  { revalidate: 10800, tags: ["products", "sports", "categories", "brands", "series", "limited-editions"] }
 );

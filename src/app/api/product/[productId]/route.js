@@ -299,7 +299,7 @@ export async function PUT(request, { params }) {
       .populate("variants")
       .lean();
 
-    revalidateContent();
+    revalidateContent(["products"]);
 
     return NextResponse.json(
       {
@@ -363,7 +363,7 @@ export async function DELETE(request, { params }) {
     // حذف محصول
     await Product.findByIdAndDelete(productId);
 
-    revalidateContent();
+    revalidateContent(["products"]);
 
     return NextResponse.json(
       {
