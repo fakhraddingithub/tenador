@@ -23,7 +23,7 @@ import AttributeFilterCard from "@/components/templates/products/AttributeFilter
 import MobileFilterDrawer from "@/components/features/filters/MobileFilterDrawer";
 import useFilterScrollAnchor from "@/hooks/useFilterScrollAnchor";
 import ProductGridSkeleton from "@/components/templates/sports/ProductCardSkeleton";
-import { FiShoppingBag, FiLayers, FiFilter, FiRotateCcw } from "react-icons/fi";
+import { FiShoppingBag, FiFilter, FiRotateCcw } from "react-icons/fi";
 
 const BATCH_SECTIONS = 2;
 
@@ -307,38 +307,38 @@ export default function BrandGroupedView({
 
             {/* نویگیشن سری‌ها (پرش به بخش) */}
             {index.length > 0 && (
-              <div className="bg-white rounded-[6px] border border-gray-100 shadow-sm p-5">
-                <h4 className="text-sm font-bold text-[#1a1a1a] mb-4 flex items-center gap-2">
-                  <FiLayers className="text-[var(--color-primary)]" size={14} />
+              <div className="bg-white rounded-[6px] border border-gray-100 shadow-sm overflow-hidden">
+                <h4 className="p-5 text-sm font-bold text-[#1a1a1a]">
                   سری‌ها
                 </h4>
-                <div className="flex flex-col gap-1 max-h-72 overflow-y-auto custom-scrollbar">
+                <div className="px-5 pb-5 flex flex-col gap-3 max-h-52 overflow-y-auto custom-scrollbar">
                   {index.map((entry) =>
                     entry.slug && sportSlug && brandSlug ? (
                       <Link
                         key={entry.key}
-                        href={`/${sportSlug}/${brandSlug}/${entry.slug}`}
-                        className="flex items-center justify-between gap-2 px-3 py-2 rounded-[6px] text-right hover:bg-gray-50 transition-colors group"
+                        href={"/" + sportSlug + "/" + brandSlug + "/" + entry.slug}
+                        className="w-full flex items-center justify-between group cursor-pointer text-right"
                       >
-                        <span className="text-xs font-bold text-gray-600 group-hover:text-[var(--color-primary)] truncate">
-                          {entry.title}
-                        </span>
-                        <span className="text-[10px] font-bold text-gray-400 bg-gray-100 rounded-full px-2 py-0.5 shrink-0">
-                          {entry.productCount.toLocaleString("fa-IR")}
-                        </span>
+                        <div className="flex min-w-0 items-center gap-3">
+                          <div className="w-5 h-5 shrink-0 rounded-[4px] border-2 border-gray-200 flex items-center justify-center transition-all group-hover:border-[#aa4725]" />
+                          <span className="min-w-0 truncate text-xs font-bold text-gray-500 transition-colors group-hover:text-gray-800">
+                            {entry.title}
+                          </span>
+                        </div>
                       </Link>
                     ) : (
                       <button
+                        type="button"
                         key={entry.key}
                         onClick={() => jumpTo(entry.key)}
-                        className="flex items-center justify-between gap-2 px-3 py-2 rounded-[6px] text-right hover:bg-gray-50 transition-colors group"
+                        className="w-full flex items-center justify-between group cursor-pointer text-right"
                       >
-                        <span className="text-xs font-bold text-gray-600 group-hover:text-[var(--color-primary)] truncate">
-                          {entry.title}
-                        </span>
-                        <span className="text-[10px] font-bold text-gray-400 bg-gray-100 rounded-full px-2 py-0.5 shrink-0">
-                          {entry.productCount.toLocaleString("fa-IR")}
-                        </span>
+                        <div className="flex min-w-0 items-center gap-3">
+                          <div className="w-5 h-5 shrink-0 rounded-[4px] border-2 border-gray-200 flex items-center justify-center transition-all group-hover:border-[#aa4725]" />
+                          <span className="min-w-0 truncate text-xs font-bold text-gray-500 transition-colors group-hover:text-gray-800">
+                            {entry.title}
+                          </span>
+                        </div>
                       </button>
                     )
                   )}
