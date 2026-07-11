@@ -31,7 +31,7 @@ export async function GET(req, { params }) {
 
     const user = await User.findById(userId)
       .select("-password -otp")
-      .populate("coach", "name coachCode avatar phone email")
+      .populate("coach", "name lastName coachCode avatar phone email")
       .lean();
 
     if (!user) {
@@ -78,7 +78,7 @@ export async function GET(req, { params }) {
     let students = [];
     if (user.role === "coach") {
       students = await User.find({ coach: userId })
-        .select("name phone email avatar createdAt isBanned")
+        .select("name lastName phone email avatar createdAt isBanned")
         .sort({ createdAt: -1 })
         .lean();
     }
@@ -110,7 +110,7 @@ export async function PATCH(req, { params }) {
       return NextResponse.json({ message: "کاربر یافت نشد" }, { status: 404 });
     }
 
-    const editableFields = ["name", "email", "phone", "avatar"];
+    const editableFields = ["name", "lastName", "email", "phone", "avatar"];
     for (const field of editableFields) {
       if (body[field] !== undefined) {
         user[field] = body[field] === "" ? undefined : body[field];
@@ -143,7 +143,7 @@ export async function PATCH(req, { params }) {
 
     const updated = await User.findById(userId)
       .select("-password -otp")
-      .populate("coach", "name coachCode avatar phone email")
+      .populate("coach", "name lastName coachCode avatar phone email")
       .lean();
 
     return NextResponse.json(

@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
 import connectToDB from 'base/configs/db';
 import User from 'base/models/User';
+import { getUserFullName } from "base/utils/userName";
 import { verifyToken } from 'base/utils/auth';
 
 async function getUserFromToken() {
@@ -50,7 +51,7 @@ export async function POST(req) {
       $addToSet: { students: student._id }
     });
 
-    return NextResponse.json({ message: `شما با موفقیت به عنوان شاگرد ${coach.name} ثبت شدید` }, { status: 200 });
+    return NextResponse.json({ message: `شما با موفقیت به عنوان شاگرد ${getUserFullName(coach)} ثبت شدید` }, { status: 200 });
   } catch (error) {
     console.error(error);
     return NextResponse.json({ message: 'Internal server error' }, { status: 500 });

@@ -1,5 +1,7 @@
 "use client";
 
+import { getUserFullName } from "base/utils/userName";
+
 import { useState, useEffect, useRef, useCallback } from "react";
 import { usePathname } from "next/navigation";
 import {
@@ -480,8 +482,7 @@ export default function Navbar({ navData: initialNavData = [] }) {
   const mobileSearchRef = useRef(null);
   const debounceRef = useRef(null);
 
-  const firstName =
-    (user?.name || user?.userName)?.split(" ")[0] || "";
+  const userDisplayName = getUserFullName(user, user?.userName || "");
 
  // تعداد آیتم‌ها همیشه از منبع واحد (getCart نرمال‌شده) خوانده می‌شود
  // تا بج دقیقاً با محتوای سبد یکسان بماند.
@@ -669,7 +670,7 @@ useEffect(() => {
                     size="sm"
                   >
                     <FiUser size={15} />
-                    <span>{firstName}</span>
+                    <span>{userDisplayName}</span>
                   </Button>
                 </Link>
               ) : (
@@ -746,7 +747,7 @@ useEffect(() => {
                   >
                     <FiUser size={15} />
                     <span className="max-w-[82px] truncate">
-                      {firstName || "داشبورد"}
+                      {userDisplayName || "\u062f\u0627\u0634\u0628\u0648\u0631\u062f"}
                     </span>
                   </Button>
                 </Link>

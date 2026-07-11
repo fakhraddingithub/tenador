@@ -45,7 +45,7 @@ export async function GET(req) {
 
     const [items, total, counts] = await Promise.all([
       Comment.find(filter)
-        .populate("user", "name phone avatar")
+        .populate("user", "name lastName phone avatar")
         .populate("product", "name mainImage slug")
         .populate({ path: "parent", select: "text" })
         .sort({ createdAt: -1 })

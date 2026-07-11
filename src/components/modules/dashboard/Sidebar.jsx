@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { motion } from 'framer-motion'
+import { getUserFullName } from 'base/utils/userName'
 import {
   User, ShoppingBag, Heart, CreditCard,
   MapPin, Wallet, Ticket, LogOut, GraduationCap,
@@ -54,7 +55,7 @@ export default function Sidebar({ isOpen, setIsOpen }) {
               {user.avatar ? (
                 <img
                   src={user.avatar}
-                  alt={user.name}
+                  alt={getUserFullName(user)}
                   className="w-11 h-11 rounded-full object-cover border-2 border-slate-200 flex-shrink-0"
                 />
               ) : (
@@ -63,7 +64,7 @@ export default function Sidebar({ isOpen, setIsOpen }) {
                 </div>
               )}
               <div className="min-w-0 flex-1">
-                <p className="text-sm font-bold text-slate-800 truncate">{user.name}</p>
+                <p className="text-sm font-bold text-slate-800 truncate">{getUserFullName(user)}</p>
                 <p className="text-[10px] text-slate-400 truncate">{user.phone || user.email}</p>
               </div>
             </div>

@@ -27,7 +27,7 @@ export async function GET(request) {
     });
     if (!userinfoRes.ok) throw new Error('Failed to fetch Google user info');
 
-    const { sub, email, name, picture } = await userinfoRes.json();
+    const { sub, email, name, given_name: givenName, family_name: familyName, picture } = await userinfoRes.json();
     if (!sub || !email) throw new Error('Incomplete Google user info');
 
     await connectToDB();
@@ -44,7 +44,8 @@ export async function GET(request) {
           provider: 'google',
           googleId: sub,
           email: email.toLowerCase().trim(),
-          name: name || '',
+          name: givenName || name || '',
+          lastName: familyName || '',
           avatar: picture || '',
           role: 'user',
           level: 0,

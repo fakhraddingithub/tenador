@@ -49,7 +49,8 @@ const UserSchema = new mongoose.Schema(
     // ------------------
     // Profile
     // ------------------
-    name: { type: String },
+    name: { type: String, trim: true },
+    lastName: { type: String, trim: true },
     avatar: { type: String },
 
     // ------------------

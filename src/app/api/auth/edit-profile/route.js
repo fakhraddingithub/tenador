@@ -20,7 +20,7 @@ export async function PUT(request) {
       return NextResponse.json({ message: 'Invalid token' }, { status: 401 });
     }
 
-    const { name, avatar } = await request.json();
+    const { name, lastName, avatar } = await request.json();
 
     // Find user
     const user = await User.findById(payload.userId);
@@ -30,11 +30,12 @@ export async function PUT(request) {
 
     // Update fields (restrict sensitive ones)
     if (name !== undefined) user.name = name;
+    if (lastName !== undefined) user.lastName = lastName;
     if (avatar !== undefined) user.avatar = avatar;
 
     await user.save();
 
-    return NextResponse.json({ message: 'Profile updated successfully', user: { id: user._id, phone: user.phone, name: user.name, avatar: user.avatar } }, { status: 200 });
+    return NextResponse.json({ message: 'Profile updated successfully', user: { id: user._id, phone: user.phone, name: user.name, lastName: user.lastName, avatar: user.avatar } }, { status: 200 });
   } catch (error) {
     console.error('Edit profile error:', error);
     return NextResponse.json({ message: 'Internal server error' }, { status: 500 });

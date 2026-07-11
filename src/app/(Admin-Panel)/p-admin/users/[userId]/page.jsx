@@ -5,6 +5,7 @@ import { useParams, useRouter } from 'next/navigation'
 import { motion } from 'framer-motion'
 import { toast } from 'react-toastify'
 import AdminLoader from '@/components/admin/AdminLoader'
+import { getUserFullName } from 'base/utils/userName'
 import {
   ArrowRight, User, Mail, Phone, Calendar, Save, Edit3, X,
   Shield, GraduationCap, Wallet, Ban, CheckCircle2, MapPin,
@@ -84,6 +85,7 @@ export default function AdminUserDetailsPage() {
         const u = json.user
         setForm({
           name: u.name || '',
+          lastName: u.lastName || '',
           email: u.email || '',
           phone: u.phone || '',
           role: u.role || 'user',
@@ -130,6 +132,7 @@ export default function AdminUserDetailsPage() {
     const u = data.user
     setForm({
       name: u.name || '',
+      lastName: u.lastName || '',
       email: u.email || '',
       phone: u.phone || '',
       role: u.role || 'user',
@@ -170,7 +173,7 @@ export default function AdminUserDetailsPage() {
             <ArrowRight size={18} />
           </button>
           {user.avatar ? (
-            <img src={user.avatar} alt={user.name} className="w-12 h-12 rounded-full object-cover" />
+            <img src={user.avatar} alt={getUserFullName(user)} className="w-12 h-12 rounded-full object-cover" />
           ) : (
             <div className="w-12 h-12 rounded-full flex items-center justify-center font-bold text-white" style={{ background: 'var(--color-primary)' }}>
               {(user.name || '؟').charAt(0)}
@@ -178,7 +181,7 @@ export default function AdminUserDetailsPage() {
           )}
           <div>
             <h1 className="text-base font-bold text-gray-800 flex items-center gap-2">
-              {user.name || 'بدون نام'}
+              {getUserFullName(user, "\u0628\u062f\u0648\u0646 \u0646\u0627\u0645")}
               {user.isBanned && (
                 <span className="inline-flex items-center gap-1 text-[10px] font-bold text-red-600 bg-red-50 px-2 py-0.5 rounded-full">
                   <Ban size={10} /> مسدود
@@ -228,7 +231,8 @@ export default function AdminUserDetailsPage() {
             <SectionTitle icon={User} title="اطلاعات حساب کاربری" />
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               {[
-                { key: 'name', label: 'نام و نام خانوادگی', icon: User, type: 'text' },
+                { key: 'name', label: '\u0646\u0627\u0645', icon: User, type: 'text' },
+                { key: 'lastName', label: '\u0646\u0627\u0645 \u062e\u0627\u0646\u0648\u0627\u062f\u06af\u06cc', icon: User, type: 'text' },
                 { key: 'email', label: 'ایمیل', icon: Mail, type: 'email' },
                 { key: 'phone', label: 'شماره تلفن', icon: Phone, type: 'tel' },
               ].map((f) => (
@@ -444,7 +448,7 @@ export default function AdminUserDetailsPage() {
                         </div>
                       )}
                       <div className="min-w-0">
-                        <span className="text-xs font-bold text-gray-800 block truncate">{s.name || 'بدون نام'}</span>
+                        <span className="text-xs font-bold text-gray-800 block truncate">{getUserFullName(s, "\u0628\u062f\u0648\u0646 \u0646\u0627\u0645")}</span>
                         <span className="text-[10px] font-mono text-gray-400 block">{s.phone || '—'} · {fmtDate(s.createdAt)}</span>
                       </div>
                     </div>
@@ -469,14 +473,14 @@ export default function AdminUserDetailsPage() {
                 className="flex items-center gap-3 p-3 rounded-[var(--radius)] border border-amber-100 bg-amber-50/40 hover:bg-amber-50 cursor-pointer transition-colors"
               >
                 {user.coach.avatar ? (
-                  <img src={user.coach.avatar} alt={user.coach.name} className="w-11 h-11 rounded-full object-cover" />
+                  <img src={user.coach.avatar} alt={getUserFullName(user.coach)} className="w-11 h-11 rounded-full object-cover" />
                 ) : (
                   <div className="w-11 h-11 rounded-full bg-slate-900 text-[var(--color-primary)] flex items-center justify-center font-bold">
                     {(user.coach.name || 'م').charAt(0)}
                   </div>
                 )}
                 <div>
-                  <span className="text-xs font-bold text-gray-800 block">{user.coach.name}</span>
+                  <span className="text-xs font-bold text-gray-800 block">{getUserFullName(user.coach)}</span>
                   <span className="text-[10px] font-mono text-amber-600 block mt-0.5">{user.coach.coachCode}</span>
                 </div>
               </div>

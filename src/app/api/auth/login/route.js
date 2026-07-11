@@ -31,7 +31,7 @@ export async function POST(request) {
     const refreshToken = generateRefreshToken({ userId: user._id, phone: user.phone });
 
     const response = NextResponse.json(
-      { message: 'Login successful', user: { id: user._id, phone: user.phone, name: user.name } },
+      { message: 'Login successful', user: { id: user._id, phone: user.phone, name: user.name, lastName: user.lastName } },
       { status: 200 }
     );
 

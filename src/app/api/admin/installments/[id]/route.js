@@ -8,6 +8,7 @@
 import { NextResponse } from "next/server";
 import mongoose from "mongoose";
 import connectToDB from "base/configs/db";
+import { getUserFullName } from "base/utils/userName";
 import "base/models/registerModels";
 import Installment from "base/models/Installment";
 import { deriveCheckStatus, summarizeInstallment } from "base/services/installmentService";
@@ -25,7 +26,7 @@ export async function GET(req, { params }) {
       .populate({
         path: "order",
         select: "trackingCode totalPrice subtotalPrice discountAmount couponDiscount coupon priceEUR paymentMethod paymentStatus fulfillmentStatus orderDate user",
-        populate: { path: "user", select: "name phone email" },
+        populate: { path: "user", select: "name lastName phone email" },
       })
       .populate({ path: "downPayment", select: "amount status bankReceipt createdAt" })
       .lean();
@@ -79,7 +80,7 @@ export async function GET(req, { params }) {
             fulfillmentStatus: inst.order.fulfillmentStatus,
             orderDate: inst.order.orderDate,
           },
-          customer: { name: u.name || "—", phone: u.phone || "", email: u.email || "" },
+          customer: { name: getUserFullName(u, "\u2014"), phone: u.phone || "", email: u.email || "" },
           downPayment: {
             _id: inst.downPayment?._id || null,
             amount: summary.downPaymentAmount,

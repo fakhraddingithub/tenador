@@ -1,5 +1,7 @@
 "use client";
 
+import { getUserFullName } from "base/utils/userName";
+
 import { useState, useEffect, useCallback, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
@@ -2228,10 +2230,10 @@ export default function AdminOrderDetailClient({ orderId }) {
                 اطلاعات خریدار
               </h3>
               <div className="space-y-2">
-                {order.user?.name && <InfoRow icon={Users} label="نام" value={order.user.name} />}
+                {getUserFullName(order.user) && <InfoRow icon={Users} label="نام" value={getUserFullName(order.user)} />}
                 {order.user?.phone && <InfoRow icon={Phone} label="تلفن" value={order.user.phone} />}
                 {order.user?.email && <InfoRow icon={Mail} label="ایمیل" value={order.user.email} />}
-                {order.user?.coach?.name && (
+                {getUserFullName(order.user?.coach) && (
                   <div className="flex items-center gap-2 text-xs">
                     <GraduationCap size={12} className="text-gray-400 flex-shrink-0" />
                     <span className="text-gray-400 w-14 flex-shrink-0">مربی:</span>
@@ -2240,7 +2242,7 @@ export default function AdminOrderDetailClient({ orderId }) {
                       onClick={() => router.push(`/p-admin/users/coaches/${order.user.coach._id}/credit/${order._id}`)}
                       className="font-semibold text-[var(--color-primary)] hover:underline truncate"
                     >
-                      {order.user.coach.name}
+                      {getUserFullName(order.user.coach)}
                     </button>
                   </div>
                 )}

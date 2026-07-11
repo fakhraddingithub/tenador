@@ -7,11 +7,14 @@ export async function POST(request) {
   try {
     await connectToDB();
 
-    const { phone, password, name } = await request.json();
+    const { phone, password, name, lastName } = await request.json();
+
+    const normalizedName = typeof name === "string" ? name.trim() : "";
+    const normalizedLastName = typeof lastName === "string" ? lastName.trim() : "";
 
     // ۱. اعتبار سنجی فیلدهای اجباری
-    if (!phone || !password) {
-      return NextResponse.json({ message: 'شماره تلفن و رمز عبور الزامی هستند' }, { status: 400 });
+    if (!phone || !password || !normalizedName || !normalizedLastName) {
+      return NextResponse.json({ message: "\u0646\u0627\u0645\u060c \u0646\u0627\u0645 \u062e\u0627\u0646\u0648\u0627\u062f\u06af\u06cc\u060c \u0634\u0645\u0627\u0631\u0647 \u062a\u0644\u0641\u0646 \u0648 \u0631\u0645\u0632 \u0639\u0628\u0648\u0631 \u0627\u0644\u0632\u0627\u0645\u06cc \u0647\u0633\u062a\u0646\u062f" }, { status: 400 });
     }
 
     if (!validatePhone(phone)) {
@@ -38,7 +41,8 @@ export async function POST(request) {
       provider: 'local',
       phone: phone.trim(),
       password: hashedPassword,
-      name: name ? name.trim() : '',
+      name: normalizedName,
+      lastName: normalizedLastName,
       role: 'user',       // بر اساس default اسکیما
       level: 0,          // بر اساس default اسکیما
       phoneVerified: false // برای ثبت نام لوکال ابتدا تایید نشده است
@@ -54,7 +58,7 @@ export async function POST(request) {
     const response = NextResponse.json(
       { 
         message: 'ثبت نام با موفقیت انجام شد', 
-        user: { id: newUser._id, phone: newUser.phone, name: newUser.name, role: newUser.role } 
+        user: { id: newUser._id, phone: newUser.phone, name: newUser.name, lastName: newUser.lastName, role: newUser.role }
       }, 
       { status: 201 }
     );

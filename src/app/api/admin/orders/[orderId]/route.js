@@ -155,8 +155,8 @@ export async function GET(req, { params }) {
     const fullOrder = await Order.findById(orderId)
       .populate({
         path: "user",
-        select: "name phone email coach",
-        populate: { path: "coach", model: "User", select: "name _id" },
+        select: "name lastName phone email coach",
+        populate: { path: "coach", model: "User", select: "name lastName _id" },
       })
       .populate({
         path: "payments",
@@ -275,8 +275,8 @@ export async function PATCH(req, { params }) {
     )
       .populate({
         path: "user",
-        select: "name phone email coach",
-        populate: { path: "coach", model: "User", select: "name _id" },
+        select: "name lastName phone email coach",
+        populate: { path: "coach", model: "User", select: "name lastName _id" },
       })
       .populate({
         path: "payments",

@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
 import connectToDB from 'base/configs/db';
 import User from 'base/models/User';
+import { splitFullName } from 'base/utils/userName';
 import { verifyToken } from 'base/utils/auth';
 
 async function getUserFromToken() {
@@ -53,7 +54,9 @@ export async function PUT(req, { params }) {
       targetUser.coachCode = coachCode;
       
       // جایگزینی نام و آواتار تایید شده در فیلدهای اصلی پروفایل مربی
-      targetUser.name = targetUser.coachApplication.fullName;
+      const verifiedName = splitFullName(targetUser.coachApplication.fullName);
+      targetUser.name = verifiedName.name;
+      targetUser.lastName = verifiedName.lastName;
       targetUser.avatar = targetUser.coachApplication.personalImage;
       
       targetUser.coachApplication.status = 'approved';

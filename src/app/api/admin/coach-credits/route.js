@@ -34,7 +34,7 @@ export async function GET(req) {
 
   const [rules, total] = await Promise.all([
     CoachCredit.find(filter)
-      .populate("coach", "name phone coachCode")
+      .populate("coach", "name lastName phone coachCode")
       .sort({ priority: 1, createdAt: -1 })
       .skip((page - 1) * limit)
       .limit(limit)

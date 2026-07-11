@@ -21,6 +21,25 @@ import User from "base/models/User";
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
+const USER_FULL_NAME_EXPR = {
+  $let: {
+    vars: {
+      fullName: {
+        $trim: {
+          input: {
+            $concat: [
+              { $ifNull: ["$user.name", ""] },
+              " ",
+              { $ifNull: ["$user.lastName", ""] },
+            ],
+          },
+        },
+      },
+    },
+    in: { $cond: [{ $ne: ["$$fullName", ""] }, "$$fullName", "\u2014"] },
+  },
+};
+
 // سفارش‌های معتبر برای محاسبه‌ی درآمد (لغوشده‌ها کنار گذاشته می‌شوند)
 const NON_CANCELED = { fulfillmentStatus: { $ne: "CANCELED" } };
 
@@ -263,7 +282,7 @@ async function receivables(now = new Date()) {
               _id: 0,
               orderId: "$_id",
               trackingCode: "$order.trackingCode",
-              customer: { $ifNull: ["$user.name", "—"] },
+              customer: USER_FULL_NAME_EXPR,
               phone: { $ifNull: ["$user.phone", ""] },
               amount: 1,
               overdue: 1,
@@ -329,7 +348,7 @@ async function customerAnalytics(from, to) {
       $project: {
         _id: 0,
         userId: "$_id",
-        name: { $ifNull: ["$user.name", "—"] },
+        name: USER_FULL_NAME_EXPR,
         phone: { $ifNull: ["$user.phone", ""] },
         lifetimeRevenue: 1,
         lifetimeOrders: 1,

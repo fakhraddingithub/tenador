@@ -1,5 +1,7 @@
 "use client";
 
+import { getUserFullName } from "base/utils/userName";
+
 import { useState, useEffect } from "react";
 import {
   GraduationCap, Users, Wallet, Phone, Mail,
@@ -26,12 +28,12 @@ function StudentCard({ student }) {
       >
         {/* Avatar */}
         <div className="w-10 h-10 rounded-full bg-slate-900 text-[var(--color-primary)] flex items-center justify-center font-bold text-sm flex-shrink-0">
-          {student.name?.charAt(0) || "ش"}
+          {getUserFullName(student)?.charAt(0) || "ش"}
         </div>
 
         {/* Info */}
         <div className="flex-1 min-w-0">
-          <p className="text-sm font-bold text-slate-800 truncate">{student.name}</p>
+          <p className="text-sm font-bold text-slate-800 truncate">{getUserFullName(student)}</p>
           <p className="text-[10px] text-slate-400">{student.phone}</p>
         </div>
 
@@ -130,19 +132,19 @@ export default function CoachDashboardPage() {
           {coach.avatar ? (
             <img
               src={coach.avatar}
-              alt={coach.name}
+              alt={getUserFullName(coach)}
               className="w-14 h-14 rounded-full object-cover border-2 border-slate-200 flex-shrink-0"
             />
           ) : (
             <div className="w-14 h-14 rounded-full bg-slate-900 text-[var(--color-primary)] flex items-center justify-center font-bold text-xl flex-shrink-0">
-              {coach.name?.charAt(0) || "م"}
+              {getUserFullName(coach)?.charAt(0) || "م"}
             </div>
           )}
 
           {/* Info */}
           <div className="flex-1 min-w-0 space-y-1">
             <div className="flex items-center gap-2 flex-wrap">
-              <h2 className="text-sm font-bold text-slate-800">{coach.name}</h2>
+              <h2 className="text-sm font-bold text-slate-800">{getUserFullName(coach)}</h2>
               {coach.coachCode && (
                 <span className="text-[10px] font-mono bg-slate-100 text-slate-600 px-2 py-0.5 rounded-md font-bold">
                   {coach.coachCode}

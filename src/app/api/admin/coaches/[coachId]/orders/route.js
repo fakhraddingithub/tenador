@@ -43,7 +43,7 @@ export async function GET(req, { params }) {
     }
 
     const coach = await User.findById(coachId)
-      .select("name email phone coachCode avatar walletBalance")
+      .select("name lastName email phone coachCode avatar walletBalance")
       .lean();
 
     if (!coach) {
@@ -51,7 +51,7 @@ export async function GET(req, { params }) {
     }
 
     const students = await User.find({ coach: coachId })
-      .select("name email phone createdAt")
+      .select("name lastName email phone createdAt")
       .lean();
 
     const studentIds = students.map((s) => s._id);

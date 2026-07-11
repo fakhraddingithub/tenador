@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { toast } from 'react-toastify'
+import { getUserFullName } from 'base/utils/userName'
 import { 
   User, Mail, Phone, Calendar, Edit3, CheckCircle2,
   Copy, Download, Award, ShieldCheck, Save, X, QrCode,
@@ -71,6 +72,7 @@ export default function ProfileModule() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           name: formData.name,
+          lastName: formData.lastName,
           email: formData.email,
           phone: formData.phone,
           // فیلدهای مربی (سرور برای کاربر غیرمربی نادیده می‌گیرد)
@@ -346,7 +348,8 @@ export default function ProfileModule() {
               >
                 <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                   {[
-                    { label: 'نام و نام خانوادگی', key: 'name', type: 'text', icon: User },
+                    { label: '\u0646\u0627\u0645', key: 'name', type: 'text', icon: User },
+                    { label: '\u0646\u0627\u0645 \u062e\u0627\u0646\u0648\u0627\u062f\u06af\u06cc', key: 'lastName', type: 'text', icon: User },
                     { label: 'نشانی ایمیل', key: 'email', type: 'email', icon: Mail },
                     { label: 'شماره تلفن همراه', key: 'phone', type: 'tel', icon: Phone },
                   ].map((field) => (
@@ -500,7 +503,8 @@ export default function ProfileModule() {
                 className="grid grid-cols-1 gap-y-5 gap-x-6 sm:grid-cols-2 text-sm"
               >
                 {[
-                  { label: 'نام و نام خانوادگی', value: user?.name || 'ثبت نشده', icon: User },
+                  { label: '\u0646\u0627\u0645', value: user?.name || '\u062b\u0628\u062a \u0646\u0634\u062f\u0647', icon: User },
+                  { label: '\u0646\u0627\u0645 \u062e\u0627\u0646\u0648\u0627\u062f\u06af\u06cc', value: user?.lastName || '\u062b\u0628\u062a \u0646\u0634\u062f\u0647', icon: User },
                   { label: 'نشانی ایمیل', value: user?.email || 'ثبت نشده', icon: Mail },
                   { label: 'شماره تلفن همراه', value: user?.phone || 'ثبت نشده', icon: Phone },
                   { 
@@ -553,8 +557,8 @@ export default function ProfileModule() {
                 <div className="relative">
                   <div className="h-20 w-20 overflow-hidden rounded-full border-2 border-[#ffbf00] bg-neutral-800 shadow-lg shadow-black/40">
                     <img 
-                      src={user?.avatar || "https://ui-avatars.com/api/?name=" + (user?.name || "Coach") + "&background=101010&color=ffbf00"} 
-                      alt={user?.name} 
+                      src={user?.avatar || "https://ui-avatars.com/api/?name=" + (getUserFullName(user, "Coach")) + "&background=101010&color=ffbf00"}
+                      alt={getUserFullName(user)}
                       className="h-full w-full object-cover"
                     />
                   </div>
@@ -564,7 +568,7 @@ export default function ProfileModule() {
                 </div>
 
                 <div className="space-y-0.5">
-                  <h3 className="text-base font-bold text-white tracking-tight">{user?.name}</h3>
+                  <h3 className="text-base font-bold text-white tracking-tight">{getUserFullName(user)}</h3>
                   <p className="text-[11px] text-neutral-400 font-medium">مربی تخصصی مجموعه</p>
                 </div>
 
@@ -626,12 +630,12 @@ export default function ProfileModule() {
                 <span className="text-xs font-bold text-slate-400 block">مربی اختصاصی شما</span>
                 <div className="flex items-center gap-3 bg-slate-50 p-3 rounded-xl border border-slate-100">
                   <img 
-                    src={user?.coach?.avatar || "https://ui-avatars.com/api/?name=" + (user?.coach?.name || "Coach")} 
+                    src={user?.coach?.avatar || "https://ui-avatars.com/api/?name=" + (getUserFullName(user?.coach, "Coach"))}
                     className="h-12 w-12 rounded-full border border-slate-200 object-cover" 
-                    alt={user?.coach?.name} 
+                    alt={getUserFullName(user?.coach)}
                   />
                   <div>
-                    <h4 className="text-sm font-bold text-slate-800">{user?.coach?.name}</h4>
+                    <h4 className="text-sm font-bold text-slate-800">{getUserFullName(user?.coach)}</h4>
                     <span className="text-[11px] text-slate-400 block mt-0.5">مشاور و برنامه دهنده تخصصی شما</span>
                   </div>
                 </div>

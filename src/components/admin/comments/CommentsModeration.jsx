@@ -1,5 +1,7 @@
 "use client";
 
+import { getUserFullName } from "base/utils/userName";
+
 import { useCallback, useEffect, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { toast } from "react-toastify";
@@ -223,7 +225,7 @@ export default function CommentsModeration() {
                     <div className="mb-2 flex flex-wrap items-center gap-2">
                       <span className="inline-flex items-center gap-1.5 text-sm font-bold text-[#1a1a1a]">
                         <FaUser className="text-xs text-gray-400" />
-                        {c.user?.name?.trim() || c.user?.phone || "کاربر حذف‌شده"}
+                        {getUserFullName(c.user, c.user?.phone || "\u06a9\u0627\u0631\u0628\u0631 \u062d\u0630\u0641\u200c\u0634\u062f\u0647")}
                       </span>
                       {c.isVerifiedPurchase && (
                         <span className="inline-flex items-center gap-1 rounded-full border border-emerald-200 bg-emerald-50 px-2 py-0.5 text-[11px] font-bold text-emerald-700">

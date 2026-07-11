@@ -4,6 +4,7 @@ import { useState, useEffect, useRef, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { motion, AnimatePresence } from 'framer-motion'
 import { toast } from 'react-toastify'
+import { getUserFullName } from 'base/utils/userName'
 import {
   Megaphone, Send, Users, Shield, UserCheck, User as UserIcon,
   Search, X, Check, ArrowRight, AlertTriangle, History, Loader2,
@@ -319,7 +320,7 @@ export default function SendUserNotificationPage() {
                   <div className="flex flex-wrap gap-2">
                     {selected.map((u) => (
                       <span key={u._id} className="inline-flex items-center gap-1.5 bg-[var(--color-primary)]/[0.08] text-[var(--color-primary)] text-xs font-bold pr-2 pl-1 py-1 rounded-full border border-[var(--color-primary)]/20">
-                        {u.name || u.phone || 'کاربر'}
+                        {getUserFullName(u, u.phone || "\u06a9\u0627\u0631\u0628\u0631")}
                         <button onClick={() => removeUser(u._id)} className="w-4 h-4 rounded-full bg-[var(--color-primary)]/15 hover:bg-[var(--color-primary)]/30 flex items-center justify-center">
                           <X size={10} />
                         </button>
@@ -364,7 +365,7 @@ export default function SendUserNotificationPage() {
                               </span>
                             )}
                             <span className="flex flex-col min-w-0 flex-1">
-                              <span className="text-xs font-bold text-gray-800 truncate">{u.name || 'بدون نام'}</span>
+                              <span className="text-xs font-bold text-gray-800 truncate">{getUserFullName(u, "\u0628\u062f\u0648\u0646 \u0646\u0627\u0645")}</span>
                               <span className="text-[10px] font-bold text-gray-400 font-mono truncate">{u.phone || u.email || '—'}</span>
                             </span>
                             <span className="text-[9px] font-bold text-gray-500 bg-gray-100 px-1.5 py-0.5 rounded">{roleLabel(u.role)}</span>
@@ -481,7 +482,7 @@ export default function SendUserNotificationPage() {
                   <Row label="هدف" value={
                     targetType === 'all' ? 'همه‌ی کاربران'
                       : targetType === 'role' ? `نقش: ${roleLabel(targetRole)}`
-                      : targetType === 'single' ? (selected[0]?.name || 'یک کاربر')
+                      : targetType === 'single' ? (getUserFullName(selected[0], "\u06cc\u06a9 \u06a9\u0627\u0631\u0628\u0631"))
                       : `${Number(selected.length).toLocaleString('fa-IR')} کاربر`
                   } />
                   <Row label="تعداد گیرنده" value={

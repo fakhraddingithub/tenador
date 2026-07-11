@@ -1,5 +1,7 @@
 "use client";
 
+import { getUserFullName } from "base/utils/userName";
+
 import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
@@ -152,7 +154,7 @@ function OrderRow({ order, onSelect, isHighlighted }) {
       {/* User */}
       <td className="px-4 py-3.5">
         <div>
-          <p className="text-xs font-bold text-gray-800">{order.user?.name || "—"}</p>
+          <p className="text-xs font-bold text-gray-800">{getUserFullName(order.user) || "—"}</p>
           <p className="text-[10px] text-gray-400">{order.user?.phone || ""}</p>
         </div>
       </td>

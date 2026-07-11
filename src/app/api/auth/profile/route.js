@@ -23,7 +23,7 @@ export async function GET(req) {
 
     const user = await User.findById(authUser.userId)
       .select('-password')
-      .populate('coach', 'name avatar coachCode');
+      .populate('coach', 'name lastName avatar coachCode');
     if (!user) {
       return NextResponse.json({ message: 'User not found' }, { status: 404 });
     }
@@ -37,6 +37,7 @@ export async function GET(req) {
         user: {
           id: user._id,
           name: user.name,
+          lastName: user.lastName,
           phone: user.phone,
           email: user.email,
           avatar: user.avatar,
@@ -75,10 +76,11 @@ export async function PATCH(req) {
     }
 
     const body = await req.json();
-    const { name, email, phone, avatar, certificateImage } = body;
+    const { name, lastName, email, phone, avatar, certificateImage } = body;
 
     // فیلدهای عمومی پروفایل (در دسترس همه کاربران)
     if (typeof name === 'string') user.name = name.trim();
+    if (typeof lastName === 'string') user.lastName = lastName.trim();
     if (typeof email === 'string') user.email = email.trim() || undefined;
     if (typeof phone === 'string') user.phone = phone.trim();
 

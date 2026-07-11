@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import { motion, AnimatePresence } from 'framer-motion'
 import { toast } from 'react-toastify'
 import AdminLoader from '@/components/admin/AdminLoader'
+import { getUserFullName } from 'base/utils/userName'
 import {
   Users, UserCheck, UserX, ShieldAlert, Search, Filter,
   MoreVertical, Shield, Ban, CheckCircle, ArrowLeftRight,
@@ -96,7 +97,7 @@ export default function AdminUsersManagement() {
   const filteredUsers = users.filter(user => {
     const q = searchQuery.toLowerCase()
     const matchesSearch =
-      (user.name || '').toLowerCase().includes(q) ||
+      getUserFullName(user).toLowerCase().includes(q) ||
       (user.email || '').toLowerCase().includes(q) ||
       (user.phone || '').includes(searchQuery) ||
       (user.coachCode && user.coachCode.toLowerCase().includes(q))
@@ -247,7 +248,7 @@ export default function AdminUsersManagement() {
                   <td className="p-4">
                     <div className="flex items-center gap-3">
                       {user.avatar ? (
-                        <img src={user.avatar} alt={user.name} className="w-9 h-9 rounded-[var(--radius)] object-cover flex-shrink-0" />
+                        <img src={user.avatar} alt={getUserFullName(user)} className="w-9 h-9 rounded-[var(--radius)] object-cover flex-shrink-0" />
                       ) : (
                         <div
                           className="w-9 h-9 rounded-[var(--radius)] flex items-center justify-center font-bold text-xs text-white flex-shrink-0"
@@ -257,7 +258,7 @@ export default function AdminUsersManagement() {
                         </div>
                       )}
                       <div>
-                        <span className="font-bold text-gray-800 text-xs block">{user.name || 'بدون نام'}</span>
+                        <span className="font-bold text-gray-800 text-xs block">{getUserFullName(user, "\u0628\u062f\u0648\u0646 \u0646\u0627\u0645")}</span>
                         {user.role === 'coach' && user.coachCode && (
                           <span className="inline-flex items-center gap-1 text-[9px] bg-amber-50 border border-amber-200 text-amber-700 px-1.5 py-0.5 rounded-lg font-bold font-mono mt-0.5">
                             {user.coachCode}

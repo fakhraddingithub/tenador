@@ -1,5 +1,7 @@
 "use client";
 
+import { getUserFullName } from "base/utils/userName";
+
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
@@ -172,18 +174,18 @@ export default function AdminCoachesManagement() {
                     <img
                       src={coach.avatar}
                       className="h-10 w-10 rounded-full object-cover border border-slate-200 flex-shrink-0"
-                      alt={coach.name}
+                      alt={getUserFullName(coach)}
                     />
                   ) : (
                     <div className="h-10 w-10 rounded-full bg-slate-900 text-[var(--color-primary)] flex items-center justify-center font-bold text-sm flex-shrink-0">
-                      {coach.name ? coach.name.charAt(0) : "م"}
+                      {getUserFullName(coach) ? getUserFullName(coach).charAt(0) : "م"}
                     </div>
                   )}
 
                   {/* Name + code + unreviewed badge */}
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 flex-wrap">
-                      <h3 className="text-sm font-bold text-slate-800 truncate">{coach.name}</h3>
+                      <h3 className="text-sm font-bold text-slate-800 truncate">{getUserFullName(coach)}</h3>
                       {coach.hasUnreviewed && (
                         <span className="text-[9px] font-bold bg-amber-500 text-white px-1.5 py-0.5 rounded-full whitespace-nowrap flex-shrink-0">
                           {coach.unreviewedOrderCount} سفارش جدید
@@ -244,7 +246,7 @@ export default function AdminCoachesManagement() {
                     <div className="flex items-center gap-2">
                       <div className="h-2 w-2 rounded-full bg-amber-500 animate-pulse" />
                       <h3 className="text-sm font-bold text-slate-800">
-                        {app.coachApplication?.fullName || app.name}
+                        {app.coachApplication?.fullName || getUserFullName(app)}
                       </h3>
                     </div>
                     <p className="text-xs text-slate-500 font-mono flex flex-wrap items-center gap-2">
@@ -278,7 +280,7 @@ export default function AdminCoachesManagement() {
                     <span className="text-[11px] text-slate-500 block font-bold">تصویر پرسنلی متقاضی</span>
                     {app.coachApplication?.personalImage ? (
                       <div
-                        onClick={() => setPreviewImage({ url: app.coachApplication.personalImage, title: `عکس پرسنلی - ${app.coachApplication?.fullName || app.name}` })}
+                        onClick={() => setPreviewImage({ url: app.coachApplication.personalImage, title: `عکس پرسنلی - ${app.coachApplication?.fullName || getUserFullName(app)}` })}
                         className="relative h-28 w-28 mx-auto rounded-[var(--radius)] overflow-hidden border border-slate-200 group/img cursor-pointer shadow-2xs"
                       >
                         <img src={app.coachApplication.personalImage} className="h-full w-full object-cover group-hover/img:scale-105 transition-transform duration-300" alt="پرسنلی" />
@@ -307,7 +309,7 @@ export default function AdminCoachesManagement() {
                         </a>
                       ) : (
                         <div
-                          onClick={() => setPreviewImage({ url: app.coachApplication.certificateImage, title: `مدرک مربیگری - ${app.coachApplication?.fullName || app.name}` })}
+                          onClick={() => setPreviewImage({ url: app.coachApplication.certificateImage, title: `مدرک مربیگری - ${app.coachApplication?.fullName || getUserFullName(app)}` })}
                           className="relative h-28 w-full max-w-[200px] mx-auto rounded-[var(--radius)] overflow-hidden border border-slate-200 group/img cursor-pointer shadow-2xs"
                         >
                           <img src={app.coachApplication.certificateImage} className="h-full w-full object-cover group-hover/img:scale-105 transition-transform duration-300" alt="مدرک" />
@@ -339,7 +341,7 @@ export default function AdminCoachesManagement() {
                       >
                         <div className="flex items-center gap-1.5 text-rose-600 font-bold text-sm border-b border-slate-100 pb-2.5">
                           <MessageSquare size={16} />
-                          <span>ثبت دلیل رد درخواست {app.coachApplication?.fullName || app.name}</span>
+                          <span>ثبت دلیل رد درخواست {app.coachApplication?.fullName || getUserFullName(app)}</span>
                         </div>
                         <div className="space-y-3">
                           <textarea

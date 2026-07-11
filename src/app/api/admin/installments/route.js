@@ -13,6 +13,7 @@
 
 import { NextResponse } from "next/server";
 import connectToDB from "base/configs/db";
+import { getUserFullName } from "base/utils/userName";
 import "base/models/registerModels";
 import Installment from "base/models/Installment";
 import { summarizeInstallment } from "base/services/installmentService";
@@ -42,7 +43,7 @@ export async function GET(req) {
       .populate({
         path: "order",
         select: "trackingCode totalPrice paymentStatus fulfillmentStatus user",
-        populate: { path: "user", select: "name phone email" },
+        populate: { path: "user", select: "name lastName phone email" },
       })
       .populate({ path: "downPayment", select: "amount status" })
       .sort({ createdAt: -1 })
@@ -72,7 +73,7 @@ export async function GET(req) {
             fulfillmentStatus: inst.order.fulfillmentStatus,
           },
           customer: {
-            name: u.name || "—",
+            name: getUserFullName(u, "\u2014"),
             phone: u.phone || "",
           },
           downPayment: { amount: summary.downPaymentAmount, paid: summary.downPaymentPaid },

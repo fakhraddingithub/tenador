@@ -30,7 +30,7 @@ export async function PATCH(req, { params }) {
     params.id,
     { $set: body },
     { new: true, runValidators: true }
-  ).populate("coach", "name phone coachCode");
+  ).populate("coach", "name lastName phone coachCode");
 
   if (!rule) return NextResponse.json({ error: "پیدا نشد" }, { status: 404 });
   return NextResponse.json(rule);

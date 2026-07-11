@@ -1,5 +1,7 @@
 "use client";
 
+import { getUserFullName } from "base/utils/userName";
+
 import { useState, useEffect } from "react";
 import { useRouter, useParams } from "next/navigation";
 import Link from "next/link";
@@ -122,10 +124,10 @@ function StudentSection({ student, coachId }) {
       >
         <div className="flex items-center gap-3 min-w-0">
           <div className="w-9 h-9 rounded-full bg-slate-900 text-[var(--color-primary)] flex items-center justify-center font-bold text-sm flex-shrink-0">
-            {student.name?.charAt(0) || "ش"}
+            {getUserFullName(student)?.charAt(0) || "ش"}
           </div>
           <div className="min-w-0">
-            <p className="text-sm font-bold text-slate-800 truncate">{student.name}</p>
+            <p className="text-sm font-bold text-slate-800 truncate">{getUserFullName(student)}</p>
             <p className="text-[10px] text-slate-400 dir-ltr">{student.phone}</p>
           </div>
         </div>
@@ -210,7 +212,7 @@ export default function CoachDetailPage() {
         <span className="text-slate-300">/</span>
         <h1 className="text-sm font-bold text-slate-800 flex items-center gap-1.5">
           <GraduationCap size={16} className="text-[var(--color-primary)]" />
-          {coach.name}
+          {getUserFullName(coach)}
         </h1>
       </div>
 
@@ -222,12 +224,12 @@ export default function CoachDetailPage() {
             {coach.avatar ? (
               <img
                 src={coach.avatar}
-                alt={coach.name}
+                alt={getUserFullName(coach)}
                 className="w-16 h-16 rounded-full object-cover border-2 border-slate-200"
               />
             ) : (
               <div className="w-16 h-16 rounded-full bg-slate-900 text-[var(--color-primary)] flex items-center justify-center font-bold text-2xl">
-                {coach.name?.charAt(0) || "م"}
+                {getUserFullName(coach)?.charAt(0) || "م"}
               </div>
             )}
           </div>
@@ -235,7 +237,7 @@ export default function CoachDetailPage() {
           {/* Info */}
           <div className="flex-1 min-w-0 space-y-1.5">
             <div className="flex items-center gap-2 flex-wrap">
-              <h2 className="text-base font-bold text-slate-800">{coach.name}</h2>
+              <h2 className="text-base font-bold text-slate-800">{getUserFullName(coach)}</h2>
               {coach.coachCode && (
                 <span className="text-[10px] font-mono bg-slate-100 text-slate-600 px-2 py-0.5 rounded-md font-bold">
                   {coach.coachCode}

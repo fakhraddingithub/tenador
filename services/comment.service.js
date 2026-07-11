@@ -2,6 +2,7 @@ import { unstable_cache } from "next/cache";
 import connectToDB from "base/configs/db";
 import "base/models/registerModels";
 import Comment from "base/models/Comment";
+import { getUserFullName } from "base/utils/userName";
 
 /**
  * نظرهای تأییدشده‌ی یک محصول + خلاصه‌ی امتیاز.
@@ -23,13 +24,13 @@ export const getApprovedReviews = unstable_cache(
       parent: null,
       $or: [{ status: "approved" }, { status: { $exists: false }, approved: true }],
     })
-      .populate("user", "name avatar")
+      .populate("user", "name lastName avatar")
       .sort({ createdAt: -1 })
       .lean();
 
     const reviews = docs.map((c) => ({
       id: String(c._id),
-      author: c.user?.name?.trim() || "کاربر تنادور",
+      author: getUserFullName(c.user, "\u06a9\u0627\u0631\u0628\u0631 \u062a\u0646\u0627\u062f\u0648\u0631"),
       avatar: c.user?.avatar || null,
       text: c.text,
       rating: c.rating || 0,

@@ -64,6 +64,7 @@ export async function GET(req) {
         coach: {
           _id: coach._id,
           name: coach.name,
+          lastName: coach.lastName,
           avatar: coach.avatar,
           coachCode: coach.coachCode,
           studentsCount,

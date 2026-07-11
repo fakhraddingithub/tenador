@@ -1,4 +1,6 @@
 "use client";
+
+import { getUserFullName } from "base/utils/userName";
 // components/admin/discounts/CoachCreditCard.jsx
 
 function formatDate(d) {
@@ -48,7 +50,7 @@ export default function CoachCreditCard({ rule, onEdit, onDelete, onToggle }) {
 
             {rule.scope === "specific_coach" && rule.coach && (
               <span>
-                مربی: {rule.coach.name || rule.coach.phone}{" "}
+                مربی: {getUserFullName(rule.coach, rule.coach.phone)}{" "}
                 {rule.coach.coachCode ? `(${rule.coach.coachCode})` : ""}
               </span>
             )}

@@ -1,5 +1,7 @@
 "use client";
 
+import { getUserFullName } from "base/utils/userName";
+
 import { useState, useEffect } from "react";
 import { useRouter, useParams } from "next/navigation";
 import {
@@ -58,7 +60,7 @@ function OrderSummary({ order }) {
       {order.user && (
         <div className="flex items-center gap-2 text-xs text-gray-600 bg-gray-50 rounded-xl p-3">
           <Users size={13} className="text-gray-400 flex-shrink-0" />
-          <span className="font-bold">{order.user.name}</span>
+          <span className="font-bold">{getUserFullName(order.user)}</span>
           {order.user.phone && (
             <span className="text-gray-400 flex items-center gap-1">
               <Phone size={10} /> {order.user.phone}
@@ -232,18 +234,18 @@ export default function CoachCreditPage() {
           {coach.avatar ? (
             <img
               src={coach.avatar}
-              alt={coach.name}
+              alt={getUserFullName(coach)}
               className="w-14 h-14 rounded-full object-cover border-2 border-slate-200 flex-shrink-0"
             />
           ) : (
             <div className="w-14 h-14 rounded-full bg-slate-900 text-[var(--color-primary)] flex items-center justify-center font-bold text-xl flex-shrink-0">
-              {coach.name?.charAt(0) || "م"}
+              {getUserFullName(coach)?.charAt(0) || "م"}
             </div>
           )}
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2 flex-wrap">
               <GraduationCap size={14} className="text-[var(--color-primary)]" />
-              <h2 className="text-sm font-bold text-slate-800">{coach.name}</h2>
+              <h2 className="text-sm font-bold text-slate-800">{getUserFullName(coach)}</h2>
               {coach.coachCode && (
                 <span className="text-[10px] font-mono bg-slate-100 text-slate-600 px-2 py-0.5 rounded-md font-bold">
                   {coach.coachCode}

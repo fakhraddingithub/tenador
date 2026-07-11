@@ -170,7 +170,7 @@ export async function PATCH(req, { params }) {
           .select("trackingCode user totalPrice")
           .lean();
         const userDoc = order?.user
-          ? await User.findById(order.user).select("email name").lean()
+          ? await User.findById(order.user).select("email name lastName").lean()
           : null;
         if (userDoc?.email) {
           if (allCleared) {

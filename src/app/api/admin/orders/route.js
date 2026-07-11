@@ -86,6 +86,18 @@ export async function GET(req) {
             $or: [
               { trackingCode: { $regex: search, $options: "i" } },
               { "userObj.name": { $regex: search, $options: "i" } },
+              { "userObj.lastName": { $regex: search, $options: "i" } },
+              {
+                $expr: {
+                  $regexMatch: {
+                    input: {
+                      $trim: { input: { $concat: [{ $ifNull: ["$userObj.name", ""] }, " ", { $ifNull: ["$userObj.lastName", ""] }] } },
+                    },
+                    regex: search,
+                    options: "i",
+                  },
+                },
+              },
               { "userObj.phone": { $regex: search, $options: "i" } },
             ],
           },
@@ -129,7 +141,7 @@ export async function GET(req) {
       // جستجوی معمولی با trackingCode
       total = await Order.countDocuments(filter);
       orders = await Order.find(filter)
-        .populate("user", "name phone email")
+        .populate("user", "name lastName phone email")
         .populate({
           path: "payments",
           select: "method amount status bankReceipt onlinePayment createdAt",

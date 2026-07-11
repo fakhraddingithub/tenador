@@ -28,7 +28,7 @@ export async function GET() {
 
     // واکشی تمام کاربران با وضعیت pending
     const applications = await User.find({ 'coachApplication.status': 'pending' })
-      .select('name email phone coachApplication createdAt');
+      .select('name lastName email phone coachApplication createdAt');
 
     return NextResponse.json({ applications }, { status: 200 });
   } catch (error) {

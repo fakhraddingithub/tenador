@@ -28,7 +28,7 @@ export async function GET() {
     }
 
     const coach = await User.findById(auth.userId)
-      .select("name email phone avatar coachCode walletBalance role")
+      .select("name lastName email phone avatar coachCode walletBalance role")
       .lean();
 
     if (!coach || coach.role !== "coach") {
@@ -37,7 +37,7 @@ export async function GET() {
 
     // Students of this coach
     const students = await User.find({ coach: auth.userId })
-      .select("name phone email createdAt")
+      .select("name lastName phone email createdAt")
       .lean();
 
     // All wallet transactions for this coach

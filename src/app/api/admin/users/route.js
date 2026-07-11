@@ -24,6 +24,18 @@ export async function GET(req) {
       const rx = { $regex: search, $options: "i" };
       filter.$or = [
         { name: rx },
+        { lastName: rx },
+        {
+          $expr: {
+            $regexMatch: {
+              input: {
+                $trim: { input: { $concat: [{ $ifNull: ["$name", ""] }, " ", { $ifNull: ["$lastName", ""] }] } },
+              },
+              regex: search,
+              options: "i",
+            },
+          },
+        },
         { email: rx },
         { phone: rx },
         { coachCode: rx },
@@ -46,7 +58,7 @@ export async function GET(req) {
     else if (status === "banned") filter.isBanned = true;
 
     const users = await User.find(filter)
-      .select("name email phone role coachCode isBanned avatar level walletBalance createdAt")
+      .select("name lastName email phone role coachCode isBanned avatar level walletBalance createdAt")
       .sort({ createdAt: -1 })
       .limit(500)
       .lean();

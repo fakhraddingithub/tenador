@@ -11,6 +11,7 @@
  */
 
 import Notification, { NOTIFICATION_TYPES } from "base/models/Notification";
+import { getUserFullName } from "base/utils/userName";
 
 /** نگاشت نوع → بخش سایدبار (برای بَج‌ها) */
 export const SECTION_BY_TYPE = {
@@ -62,7 +63,7 @@ export async function notifyNewPayment(order) {
  */
 export async function notifyCoachStudentOrder(order, coach) {
   if (!order?._id || !coach?._id) return;
-  const coachName = coach.name || "مربی";
+  const coachName = getUserFullName(coach, "\u0645\u0631\u0628\u06cc");
   await safeCreate({
     type: "coach_student_order",
     message: `شاگرد ${coachName} سفارش ثبت کرده، برای او کردیت ثبت کنید`,
@@ -77,7 +78,7 @@ export async function notifyCoachStudentOrder(order, coach) {
 /** درخواست مربیگری جدید */
 export async function notifyCoachApplication(applicant) {
   if (!applicant?._id) return;
-  const name = applicant.coachApplication?.fullName || applicant.name || "یک کاربر";
+  const name = applicant.coachApplication?.fullName || getUserFullName(applicant, "\u06cc\u06a9 \u06a9\u0627\u0631\u0628\u0631");
   await safeCreate({
     type: "coach_application",
     message: `${name} درخواست مربیگری ثبت کرده است`,

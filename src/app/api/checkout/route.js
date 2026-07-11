@@ -534,7 +534,7 @@ export async function POST(req) {
     try {
       const buyer = await User.findById(user.userId).select("coach").lean();
       if (buyer?.coach) {
-        const coach = await User.findById(buyer.coach).select("name").lean();
+        const coach = await User.findById(buyer.coach).select("name lastName").lean();
         if (coach) await notifyCoachStudentOrder(order, coach);
       }
     } catch (notifErr) {

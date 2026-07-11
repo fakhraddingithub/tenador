@@ -13,12 +13,12 @@ export async function GET(req) {
     // Single coach detail (used by legacy sidebar panel and credit page)
     if (coachId) {
       const coach = await User.findById(coachId)
-        .select("name email phone coachCode avatar walletBalance")
+        .select("name lastName email phone coachCode avatar walletBalance")
         .lean();
       if (!coach) return NextResponse.json({ error: "مربی یافت نشد" }, { status: 404 });
 
       const students = await User.find({ coach: coachId })
-        .select("name email phone createdAt")
+        .select("name lastName email phone createdAt")
         .lean();
 
       return NextResponse.json({ coach, students });
@@ -26,7 +26,7 @@ export async function GET(req) {
 
     // All coaches — enriched with student count, wallet balance, unreviewed orders
     const coaches = await User.find({ role: "coach" })
-      .select("name email phone coachCode createdAt avatar walletBalance")
+      .select("name lastName email phone coachCode createdAt avatar walletBalance")
       .sort({ createdAt: -1 })
       .lean();
 
