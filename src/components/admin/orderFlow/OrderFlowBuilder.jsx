@@ -1,5 +1,6 @@
 "use client";
 
+import AdminInput from "@/components/admin/AdminInput";
 import { useState, useCallback, useRef, useEffect } from "react";
 import {
   FiPlus,
@@ -953,7 +954,7 @@ function NodeEditor({
                       style={{ border: `1px solid ${COLORS.border}`, fontFamily: "Vazirmatn, sans-serif" }}
                       placeholder="مقدار (مثلا: 25)"
                     />
-                    <input
+                    <AdminInput
                       type="number"
                       value={opt.priceModifier}
                       onChange={(e) =>

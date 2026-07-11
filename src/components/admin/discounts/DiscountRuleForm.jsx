@@ -1,6 +1,7 @@
 "use client";
 // src/components/admin/discounts/DiscountRuleForm.jsx
 
+import AdminInput from "@/components/admin/AdminInput";
 import { useState, useEffect, useRef, useCallback } from "react";
 import { toast } from "react-toastify";
 import { formatIranDateTimeLocal } from "@/lib/iranDateTime";
@@ -426,7 +427,7 @@ export default function DiscountRuleForm({ initial, onSuccess, onCancel }) {
           </select>
         </Field>
         <Field label="مقدار تخفیف *">
-          <input type="number" min={0} max={form.discount.kind === "percent" ? 100 : undefined}
+          <AdminInput type="number" formatNumber={form.discount.kind === "amount"} min={0} max={form.discount.kind === "percent" ? 100 : undefined}
             value={form.discount.value} onChange={(e) => set("discount.value", e.target.value)}
             required className={inputCls} placeholder={form.discount.kind === "percent" ? "مثلاً: ۲۰" : "مثلاً: ۵۰۰۰۰"} />
         </Field>
@@ -447,7 +448,7 @@ export default function DiscountRuleForm({ initial, onSuccess, onCancel }) {
         <p className="text-sm font-medium text-gray-700">شرایط اعمال</p>
         <div className="grid grid-cols-2 gap-3">
           <Field label="حداقل سبد خرید (تومان)">
-            <input type="number" min={0} value={form.conditions.minCartValue}
+            <AdminInput type="number" min={0} value={form.conditions.minCartValue}
               onChange={(e) => set("conditions.minCartValue", e.target.value)} className={inputCls} />
           </Field>
           <Field label="حداکثر استفاده کل">

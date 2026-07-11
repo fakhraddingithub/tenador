@@ -3,6 +3,7 @@ import { OAuth2Client } from 'google-auth-library';
 import connectToDB from 'base/configs/db';
 import User from 'base/models/User';
 import { tokenGenrator, generateRefreshToken } from 'base/utils/auth';
+import { splitFullName } from 'base/utils/userName';
 
 const client = new OAuth2Client(
   process.env.GOOGLE_CLIENT_ID,
@@ -10,6 +11,35 @@ const client = new OAuth2Client(
   `${process.env.NEXT_PUBLIC_BASE_URL}/api/auth/google/callback`
 );
 
+function getGoogleProfileNames({ name, givenName, familyName }) {
+  const fullName = typeof name === 'string' ? name.trim() : '';
+  const parsedFullName = splitFullName(fullName);
+
+  return {
+    fullName,
+    firstName: (typeof givenName === 'string' ? givenName.trim() : '') || parsedFullName.name,
+    lastName: (typeof familyName === 'string' ? familyName.trim() : '') || parsedFullName.lastName,
+  };
+}
+
+function syncMissingGoogleNames(user, googleNames) {
+  const currentName = typeof user.name === 'string' ? user.name.trim() : '';
+  const currentLastName = typeof user.lastName === 'string' ? user.lastName.trim() : '';
+  const hasLegacyFullName =
+    !currentLastName && googleNames.fullName && currentName === googleNames.fullName;
+  let changed = false;
+
+  if ((!currentName || hasLegacyFullName) && googleNames.firstName && user.name !== googleNames.firstName) {
+    user.name = googleNames.firstName;
+    changed = true;
+  }
+  if ((!currentLastName || hasLegacyFullName) && googleNames.lastName && user.lastName !== googleNames.lastName) {
+    user.lastName = googleNames.lastName;
+    changed = true;
+  }
+
+  return changed;
+}
 export async function GET(request) {
   try {
     const { searchParams } = new URL(request.url);
@@ -30,22 +60,32 @@ export async function GET(request) {
     const { sub, email, name, given_name: givenName, family_name: familyName, picture } = await userinfoRes.json();
     if (!sub || !email) throw new Error('Incomplete Google user info');
 
+    const googleNames = getGoogleProfileNames({ name, givenName, familyName });
+
     await connectToDB();
 
     let user = await User.findOne({ googleId: sub });
-    if (!user) {
+    if (user) {
+      let shouldSave = syncMissingGoogleNames(user, googleNames);
+      if (!user.avatar && picture) {
+        user.avatar = picture;
+        shouldSave = true;
+      }
+      if (shouldSave) await user.save();
+    } else {
       user = await User.findOne({ email: email.toLowerCase().trim() });
       if (user) {
         user.googleId = sub;
-        if (!user.avatar) user.avatar = picture;
+        syncMissingGoogleNames(user, googleNames);
+        if (!user.avatar && picture) user.avatar = picture;
         await user.save();
       } else {
         user = new User({
           provider: 'google',
           googleId: sub,
           email: email.toLowerCase().trim(),
-          name: givenName || name || '',
-          lastName: familyName || '',
+          name: googleNames.firstName,
+          lastName: googleNames.lastName,
           avatar: picture || '',
           role: 'user',
           level: 0,
@@ -53,7 +93,6 @@ export async function GET(request) {
         await user.save();
       }
     }
-
     const accessToken = tokenGenrator({ userId: user._id, email: user.email, role: user.role });
     const refreshToken = generateRefreshToken({ userId: user._id, email: user.email });
 

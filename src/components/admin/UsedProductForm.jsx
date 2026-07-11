@@ -1,5 +1,6 @@
 'use client';
 
+import AdminInput from "@/components/admin/AdminInput";
 import { useState, useEffect, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { FiPlus, FiX, FiSave, FiUploadCloud, FiLoader, FiCheck } from 'react-icons/fi';
@@ -435,7 +436,7 @@ export default function UsedProductForm({ initialData }) {
       <section className="grid grid-cols-2 gap-5">
         <div className="space-y-2">
           <label className="text-sm font-bold text-neutral-600">قیمت</label>
-          <input
+          <AdminInput
             type="number"
             value={price}
             onChange={e => setPrice(e.target.value)}

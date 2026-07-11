@@ -1,5 +1,6 @@
 "use client";
 
+import AdminInput from "@/components/admin/AdminInput";
 import { getUserFullName } from "base/utils/userName";
 
 import { useState, useEffect, useCallback, useRef } from "react";
@@ -217,7 +218,7 @@ function ApproveModal({ payment, orderTotal, onConfirm, onClose }) {
               مبلغ تأیید شده (تومان) <span className="text-red-500">*</span>
             </label>
             <div className="relative">
-              <input
+              <AdminInput
                 ref={inputRef} type="number" value={amount}
                 onChange={(e) => setAmount(e.target.value)}
                 onKeyDown={(e) => e.key === "Enter" && handleSubmit()}
@@ -237,7 +238,7 @@ function ApproveModal({ payment, orderTotal, onConfirm, onClose }) {
               <span className="text-[10px] font-medium text-gray-400">(اختیاری)</span>
             </label>
             <div className="relative">
-              <input
+              <AdminInput
                 type="number" step="any" min="0" value={eurAmount}
                 onChange={(e) => setEurAmount(e.target.value)}
                 onKeyDown={(e) => e.key === "Enter" && handleSubmit()}
@@ -332,7 +333,7 @@ function EditPaymentModal({ payment, currency, onConfirm, onClose }) {
               مبلغ جدید ({unit}) <span className="text-red-500">*</span>
             </label>
             <div className="relative">
-              <input
+              <AdminInput
                 ref={inputRef} type="number" step={isEUR ? "any" : "1"} min="0" value={value}
                 onChange={(e) => setValue(e.target.value)}
                 onKeyDown={(e) => e.key === "Enter" && handleSubmit()}
@@ -1726,7 +1727,7 @@ function EurPanel({ orderId, priceEUR, paymentsEUR = [], onChange, onEditPayment
         {editPrice ? (
           <div className="space-y-2">
             <div className="relative">
-              <input
+              <AdminInput
                 type="number"
                 step="any"
                 min="0"

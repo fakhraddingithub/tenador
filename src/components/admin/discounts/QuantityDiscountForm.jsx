@@ -5,6 +5,7 @@
 // مانند قوانین تخفیف معمولی، قابل اعمال روی همه محصولات، محصول خاص،
 // برند، سری یا دسته‌بندی است.
 
+import AdminInput from "@/components/admin/AdminInput";
 import { useState, useEffect, useRef, useCallback } from "react";
 import { toast } from "react-toastify";
 
@@ -337,8 +338,9 @@ export default function QuantityDiscountForm({ initial, onSuccess, onCancel }) {
                 <span className="text-[11px] text-gray-500">
                   {tier.discount.kind === "percent" ? "درصد تخفیف" : "مبلغ تخفیف هر واحد"}
                 </span>
-                <input
+                <AdminInput
                   type="number"
+                  formatNumber={tier.discount.kind === "amount"}
                   min={1}
                   max={tier.discount.kind === "percent" ? 100 : undefined}
                   value={tier.discount.value}

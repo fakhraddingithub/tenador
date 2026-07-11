@@ -1,5 +1,6 @@
 'use client'
 
+import AdminInput from "@/components/admin/AdminInput";
 import { useState, useEffect } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { motion } from 'framer-motion'
@@ -300,7 +301,7 @@ export default function AdminUserDetailsPage() {
                 <label className="text-[11px] font-bold text-gray-400 block">موجودی کیف پول</label>
                 {editing ? (
                   <div className="relative">
-                    <input
+                    <AdminInput
                       type="number"
                       value={form.walletBalance}
                       onChange={(e) => setForm({ ...form, walletBalance: e.target.value })}

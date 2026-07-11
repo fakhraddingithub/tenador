@@ -94,6 +94,7 @@ export default function AuthForm({ isLogin, onSubmit, loading }) {
               value={form.name}
               onChange={update}
               disabled={loading}
+              required
               autoComplete="given-name"
               className={inputClass(errors.name)}
             />
@@ -107,6 +108,7 @@ export default function AuthForm({ isLogin, onSubmit, loading }) {
               value={form.lastName}
               onChange={update}
               disabled={loading}
+              required
               autoComplete="family-name"
               className={inputClass(errors.lastName)}
             />

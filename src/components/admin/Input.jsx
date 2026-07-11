@@ -1,9 +1,12 @@
 'use client';
 
+import AdminInput from './AdminInput';
+
 export default function Input({
   label,
   name,
   type = 'text',
+  formatNumber = false,
   value,
   onChange,
   placeholder,
@@ -14,6 +17,8 @@ export default function Input({
   className = '',
   ...props
 }) {
+  const InputComponent = formatNumber ? AdminInput : 'input';
+
   return (
     <div className="mb-5">
       {label && (
@@ -31,7 +36,7 @@ export default function Input({
             <Icon size={16} />
           </div>
         )}
-        <input
+        <InputComponent
           id={name}
           name={name}
           type={type}

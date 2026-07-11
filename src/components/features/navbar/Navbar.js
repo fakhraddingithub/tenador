@@ -670,7 +670,7 @@ useEffect(() => {
                     size="sm"
                   >
                     <FiUser size={15} />
-                    <span>{userDisplayName}</span>
+                    <span>{user.name || "User"}</span>
                   </Button>
                 </Link>
               ) : (
@@ -747,7 +747,7 @@ useEffect(() => {
                   >
                     <FiUser size={15} />
                     <span className="max-w-[82px] truncate">
-                      {userDisplayName || "\u062f\u0627\u0634\u0628\u0648\u0631\u062f"}
+                      {user.name || "\u062f\u0627\u0634\u0628\u0648\u0631\u062f"}
                     </span>
                   </Button>
                 </Link>

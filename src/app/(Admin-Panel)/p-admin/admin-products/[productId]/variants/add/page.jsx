@@ -134,6 +134,7 @@ export default function AddVariant() {
                 label="قیمت (یورو)"
                 name="price"
                 type="number"
+                formatNumber
                 min="0"
                 step="0.01"
                 value={formData.price}

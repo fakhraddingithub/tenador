@@ -1,5 +1,6 @@
 'use client';
 
+import AdminInput from "@/components/admin/AdminInput";
 import { useState, useEffect, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import Button from '@/components/admin/Button';
@@ -626,6 +627,7 @@ export default function ProductCreateForm({ initialData = {} }) {
         <Input
           label="قیمت پایه"
           type="number"
+          formatNumber
           value={formData.basePrice}
           onChange={e => updateField('basePrice', e.target.value)}
         />
@@ -959,7 +961,7 @@ export default function ProductCreateForm({ initialData = {} }) {
                               قیمت ویژه (یورو){' '}
                               <span className="text-gray-400 font-normal">— خالی = قیمت پایه</span>
                             </label>
-                            <input
+                            <AdminInput
                               type="number"
                               min="0"
                               className="w-full border rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"

@@ -1,5 +1,6 @@
 "use client";
 
+import AdminInput from "@/components/admin/AdminInput";
 import { getUserFullName } from "base/utils/userName";
 
 import { useState, useEffect } from "react";
@@ -309,7 +310,7 @@ export default function CoachCreditPage() {
               <label className="text-xs font-bold text-slate-600">
                 مبلغ کردیت (تومان)
               </label>
-              <input
+              <AdminInput
                 type="number"
                 value={amount}
                 onChange={(e) => setAmount(e.target.value)}

@@ -4,6 +4,7 @@
 // فرم ساخت/ویرایش کد تخفیف — هم‌خانواده با DiscountRuleForm.
 // اعتبارسنجی و اعمال کد هنگام خرید از قبل در priceEngine انجام می‌شود.
 
+import AdminInput from "@/components/admin/AdminInput";
 import { useState, useEffect, useRef, useCallback } from "react";
 import { toast } from "react-toastify";
 import { formatIranDateTimeLocal } from "@/lib/iranDateTime";
@@ -323,8 +324,9 @@ export default function CouponForm({ initial, onSuccess, onCancel }) {
           </select>
         </Field>
         <Field label="مقدار تخفیف *">
-          <input
+          <AdminInput
             type="number"
+            formatNumber={form.discount.kind === "amount"}
             min={1}
             max={form.discount.kind === "percent" ? 100 : undefined}
             value={form.discount.value}
@@ -399,7 +401,7 @@ export default function CouponForm({ initial, onSuccess, onCancel }) {
             />
           </Field>
           <Field label="حداقل سبد خرید (تومان)">
-            <input
+            <AdminInput
               type="number"
               min={0}
               value={form.minCartValue}

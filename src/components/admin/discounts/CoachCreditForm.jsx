@@ -1,5 +1,6 @@
 "use client";
 // components/admin/discounts/CoachCreditForm.jsx
+import AdminInput from "@/components/admin/AdminInput";
 import { useState, useEffect } from "react";
 import { toast } from "react-toastify";
 
@@ -206,8 +207,9 @@ export default function CoachCreditForm({ initial, onSuccess, onCancel }) {
           </select>
         </Field>
         <Field label="مقدار *">
-          <input
+          <AdminInput
             type="number"
+            formatNumber={form.credit.kind === "amount"}
             min={0}
             max={form.credit.kind === "percent" ? 100 : undefined}
             value={form.credit.value}
@@ -223,7 +225,7 @@ export default function CoachCreditForm({ initial, onSuccess, onCancel }) {
       <div className="border border-gray-100 rounded-xl p-4 space-y-3 bg-gray-50">
         <p className="text-sm font-medium text-gray-700">شرایط پرداخت کردیت</p>
         <Field label="حداقل مبلغ خرید شاگرد (تومان)">
-          <input
+          <AdminInput
             type="number"
             min={0}
             value={form.conditions.minPurchaseAmount}
