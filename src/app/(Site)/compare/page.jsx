@@ -566,11 +566,11 @@ function AngledAxisTick({ x, y, payload }) {
     return (
         <g transform={`translate(${x},${y})`}>
             <text
-                x={-8}
+                x={0}
                 y={0}
-                dy={12}
+                dy={10}
                 textAnchor="end"
-                transform="rotate(-20)"
+                transform="rotate(-90)"
                 fill="#4b5563"
                 fontSize={11}
                 fontWeight={700}
@@ -608,7 +608,7 @@ function CompareBarChart({ products, categoryStats }) {
                     tickLine={false}
                     axisLine={{ stroke: '#e5e5e5' }}
                     interval={0}
-                    height={50}
+                    height={90}
                 />
                 <YAxis
                     domain={[0, 100]}

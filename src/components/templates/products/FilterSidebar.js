@@ -44,12 +44,14 @@ export default function FilterSidebar({
   const brands = getUniqueItems(initialProducts, "brand");
   const sports = getUniqueItems(initialProducts, "sport");
   const categories = getUniqueItems(initialProducts, "category");
+  const series = getUniqueItems(initialProducts, "serie");
 
   const resetFilters = () => {
     setFilters({
       brands: [],
       categories: [],
       sports: [],
+      series: [],
       minPrice: 0,
       maxPrice: 50000000,
     });
@@ -113,6 +115,13 @@ export default function FilterSidebar({
           setFilters={setFilters}
         />
 
+        <FilterGroup
+          title="سری محصولات"
+          items={series}
+          type="series"
+          filters={filters}
+          setFilters={setFilters}
+        />
         {/* فیلتر قیمت عددی */}
         <div className="p-5 border-b border-gray-50">
           <h4 className="text-sm font-bold text-[#1a1a1a] mb-4">
