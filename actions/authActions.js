@@ -32,7 +32,13 @@ export async function loginAction({ phone, password, callbackUrl = '/' }) {
       return { error: 'رمز عبور اشتباه است' };
     }
 
-    const accessToken = tokenGenrator({ userId: user._id, phone: user.phone });
+    // The admin middleware authorizes /p-admin from the role claim. Keep the
+    // local-login token consistent with Google login and the login API.
+    const accessToken = tokenGenrator({
+      userId: user._id,
+      phone: user.phone,
+      role: user.role,
+    });
     const refreshToken = generateRefreshToken({ userId: user._id, phone: user.phone });
 
     const cookieStore = await cookies();
