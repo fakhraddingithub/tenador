@@ -395,9 +395,9 @@ export default function ComparePage() {
                             {selectedProducts.length > 0 && (
                                 <div className="flex flex-wrap gap-x-4 gap-y-2 justify-center mt-4 pt-4 border-t border-neutral-100">
                                     {selectedProducts.map((p) => (
-                                        <div key={p._id} className="flex items-center gap-1.5">
+                                        <div key={p._id} className="flex max-w-full items-start gap-1.5">
                                             <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: p.color }} />
-                                            <span className="text-[11px] font-extrabold truncate max-w-[130px]" style={{ color: p.color }}>
+                                            <span className="min-w-0 whitespace-normal break-words text-[11px] font-extrabold leading-5 [overflow-wrap:anywhere]" style={{ color: p.color }}>
                                                 {p.title || p.name}
                                             </span>
                                         </div>
@@ -566,11 +566,11 @@ function AngledAxisTick({ x, y, payload }) {
     return (
         <g transform={`translate(${x},${y})`}>
             <text
-                x={8}
+                x={-8}
                 y={0}
-                dy={4}
-                textAnchor="start"
-                transform="rotate(90)"
+                textAnchor="end"
+                direction="ltr"
+                transform="rotate(-90)"
                 fill="#4b5563"
                 fontSize={11}
                 fontWeight={700}
