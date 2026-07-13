@@ -566,11 +566,11 @@ function AngledAxisTick({ x, y, payload }) {
     return (
         <g transform={`translate(${x},${y})`}>
             <text
-                x={-8}
+                x={8}
                 y={0}
-                textAnchor="end"
+                textAnchor="start"
                 direction="ltr"
-                transform="rotate(-90)"
+                transform="rotate(90)"
                 fill="#4b5563"
                 fontSize={11}
                 fontWeight={700}
