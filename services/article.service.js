@@ -1,4 +1,4 @@
-import mongoose from "mongoose";
+import { runWithOptionalTransaction } from "base/utils/mongoTransactions";
 import Article from "base/models/Article";
 import ArticleCategory from "base/models/ArticleCategory";
 import ArticleRedirect from "base/models/ArticleRedirect";
@@ -18,22 +18,7 @@ function snapshot(article) {
   return value;
 }
 
-async function inTransaction(work) {
-  const session = await mongoose.startSession();
-  try {
-    let result;
-    await session.withTransaction(async () => {
-      result = await work(session);
-    });
-    return result;
-  } catch (error) {
-    const unsupported = error?.code === 20 || /Transaction numbers are only allowed/.test(error?.message || "");
-    if (!unsupported) throw error;
-    return work(null);
-  } finally {
-    await session.endSession();
-  }
-}
+const inTransaction = runWithOptionalTransaction;
 
 function withSession(query, session) {
   return session ? query.session(session) : query;
