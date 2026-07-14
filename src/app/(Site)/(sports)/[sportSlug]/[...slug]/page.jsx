@@ -7,7 +7,7 @@ import { queryBySlugs, resolvePageContext } from "base/services/query.service";
 import { getBrandGroupedSections } from "base/services/brandGrouped.service";
 import { getSerieGroupedSections } from "base/services/serieGrouped.service";
 import { getPublicArticle } from "base/services/publicArticle.service";
-import PublicArticlePage from "@/components/features/articles/PublicArticlePage";
+import { buildArticlePath } from "base/utils/articleSlug";
 import { articleMetadata } from "@/lib/articleSeo";
 
 // تعداد بخش‌های سری در بارگذاری اولیه‌ی سرور (SSR) — سبک برای SEO و سرعت
@@ -159,7 +159,7 @@ export default async function SportDynamicSlugPage({ params, searchParams }) {
       const articleResult = await getPublicArticle(sportSlug, slug[0]);
       if (articleResult?.kind === "redirect") permanentRedirect(articleResult.location);
       if (articleResult?.kind === "article") {
-        return <PublicArticlePage article={articleResult.article} relatedArticles={articleResult.relatedArticles} entities={articleResult.entities} />;
+        permanentRedirect(buildArticlePath(articleResult.article.category.slug, articleResult.article.slug));
       }
     }
     notFound();

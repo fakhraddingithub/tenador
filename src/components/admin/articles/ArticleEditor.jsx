@@ -55,7 +55,7 @@ export default function ArticleEditor({ articleId = null }) {
   const category = categories.find((item) => String(item._id) === String(article.category));
   const wordCount = useMemo(() => countArticleWords([article.title, article.excerpt, article.blocks]), [article.title, article.excerpt, article.blocks]);
   const readingTime = wordCount ? Math.max(1, Math.ceil(wordCount / 200)) : 0;
-  const livePath = buildArticlePath(category?.slug, article.slug) || "/category/article";
+  const livePath = buildArticlePath(category?.slug, article.slug) || "/articles/category/article";
 
   useEffect(() => {
     if (!articleId || !dirty || !article.title || !article.category) return;

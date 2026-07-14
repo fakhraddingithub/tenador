@@ -15,6 +15,6 @@ export function buildArticlePath(categorySlug, articleSlug) {
   const category = normalizeArticleSlug(categorySlug);
   const article = normalizeArticleSlug(articleSlug);
   if (!category || !article) return null;
-  return `/${encodeURIComponent(category)}/${encodeURIComponent(article)}`;
+  return `/articles/${encodeURIComponent(category)}/${encodeURIComponent(article)}`;
 }
 
