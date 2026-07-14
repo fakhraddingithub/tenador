@@ -19,6 +19,11 @@
 import "base/models/Address";
 import "base/models/Admin";
 import "base/models/AdminRole";
+import "base/models/Article";
+import "base/models/ArticleCategory";
+import "base/models/ArticleRedirect";
+import "base/models/ArticleRevision";
+import "base/models/ArticleTag";
 import "base/models/Athlete";
 import "base/models/Ban";
 import "base/models/Banner";

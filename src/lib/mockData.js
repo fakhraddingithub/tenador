@@ -251,51 +251,6 @@ export const AMAZING_OFFER_PRODUCTS = [
   },
 ];
 
-export const ARTICLES = [
-  {
-    id: 1,
-    title: 'راهنمای انتخاب راکت تنیس مناسب',
-    image: '/images/article-1.webp',
-    slug: 'tennis-racket-guide',
-    excerpt: 'نکات کلیدی برای انتخاب راکت تنیس متناسب با سطح بازی شما',
-  },
-  {
-    id: 2,
-    title: 'تکنیک‌های پیشرفته بدمینتون',
-    image: '/images/article-2.webp',
-    slug: 'badminton-techniques',
-    excerpt: 'آموزش حرفه‌ای ضربات اسمش و دراپ در بدمینتون',
-  },
-  {
-    id: 3,
-    title: 'تفاوت پدل و تنیس',
-    image: '/images/article-3.webp',
-    slug: 'padel-vs-tennis',
-    excerpt: 'مقایسه کامل دو ورزش پدل و تنیس از نظر قوانین و تجهیزات',
-  },
-  {
-    id: 4,
-    title: 'بهترین برندهای راکت اسکواش',
-    image: '/images/article-4.webp',
-    slug: 'squash-brands',
-    excerpt: 'معرفی برترین سازندگان راکت‌های اسکواش در جهان',
-  },
-  {
-    id: 5,
-    title: 'آموزش پینگ‌پنگ برای مبتدیان',
-    image: '/images/article-5.webp',
-    slug: 'pingpong-beginners',
-    excerpt: 'راهنمای گام به گام شروع بازی پینگ‌پنگ',
-  },
-  {
-    id: 6,
-    title: 'نگهداری راکت‌های ورزشی',
-    image: '/images/article-6.webp',
-    slug: 'racket-maintenance',
-    excerpt: 'چگونه از راکت خود مراقبت کنیم تا عمر بیشتری داشته باشد',
-  },
-];
-
 export const BRAND_LOGOS = [
   'Wilson',
   'Babolat',

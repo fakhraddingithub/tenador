@@ -6,6 +6,9 @@ import BrandsTicker from "@/components/features/brandsTicker/BrandsTicker";
 import { notFound } from "next/navigation";
 import { getCachedRate } from "@/lib/Exchangerate";
 import { getSportTickerBrands } from "base/services/brandTicker.service";
+import { getPublicArticleCategory } from "base/services/publicArticle.service";
+import ArticleCategoryPage from "@/components/features/articles/ArticleCategoryPage";
+import { articleCategoryMetadata } from "@/lib/articleSeo";
 
 // ⚠️ اسلاگ‌های فارسی با هدر x-next-cache-tags ناسازگارند (باگ Next: کاراکتر
 // غیر-ASCII در هدر → ERR_INVALID_CHAR → خطای ۵۰۰). داینامیک رندر می‌شود تا هدر
@@ -20,7 +23,10 @@ export async function generateMetadata({ params }) {
     resolvePageContext([sportSlug]),
     getPageDataBySlug(sportSlug),
   ]);
-  if (ctx.notFound || !data) return { title: "صفحه پیدا نشد" };
+  if (ctx.notFound || !data) {
+    const articleCategory = await getPublicArticleCategory(sportSlug);
+    return articleCategory ? articleCategoryMetadata(articleCategory.category) : { title: "صفحه پیدا نشد" };
+  }
 
   const SITE_URL = (process.env.NEXT_PUBLIC_SITE_URL || "https://tenador.com").replace(/\/+$/, "");
   const title = `خرید تجهیزات و لوازم ${data.info.title || data.info.name}`;
@@ -71,7 +77,11 @@ export default async function DynamicSportPage({ params }) {
     getCachedRate(),
   ]);
 
-  if (ctx.notFound || !data) notFound();
+  if (ctx.notFound || !data) {
+    const articleCategory = await getPublicArticleCategory(sportSlug);
+    if (!articleCategory) notFound();
+    return <ArticleCategoryPage category={articleCategory.category} articles={articleCategory.articles} />;
+  }
 
   const serializedSportInfo = JSON.parse(JSON.stringify(data.info));
   const serializedProducts = JSON.parse(JSON.stringify(data.products));

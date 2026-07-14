@@ -1,4 +1,4 @@
-import { notFound } from "next/navigation";
+import { notFound, permanentRedirect } from "next/navigation";
 import SportPageClient from "@/components/templates/sports/SportPageClient";
 import BrandGroupedView from "@/components/templates/sports/BrandGroupedView";
 import SerieGroupedView from "@/components/templates/sports/SerieGroupedView";
@@ -6,6 +6,9 @@ import { getCachedRate } from "@/lib/Exchangerate";
 import { queryBySlugs, resolvePageContext } from "base/services/query.service";
 import { getBrandGroupedSections } from "base/services/brandGrouped.service";
 import { getSerieGroupedSections } from "base/services/serieGrouped.service";
+import { getPublicArticle } from "base/services/publicArticle.service";
+import PublicArticlePage from "@/components/features/articles/PublicArticlePage";
+import { articleMetadata } from "@/lib/articleSeo";
 
 // تعداد بخش‌های سری در بارگذاری اولیه‌ی سرور (SSR) — سبک برای SEO و سرعت
 const INITIAL_SECTIONS = 2;
@@ -86,6 +89,10 @@ export async function generateMetadata({ params }) {
 
   // مسیر باید دقیقاً یکی از ۶ الگوی مجاز باشد؛ در غیر این صورت متادیتای ۴۰۴
   if (ctx.notFound) {
+    if ((slug || []).length === 1) {
+      const articleResult = await getPublicArticle(sportSlug, slug[0]);
+      if (articleResult?.kind === "article") return articleMetadata(articleResult.article);
+    }
     return { title: "صفحه پیدا نشد" };
   }
 
@@ -148,6 +155,13 @@ export default async function SportDynamicSlugPage({ params, searchParams }) {
   const ctx = await resolvePageContext(slugs);
 
   if (ctx.notFound) {
+    if ((slug || []).length === 1) {
+      const articleResult = await getPublicArticle(sportSlug, slug[0]);
+      if (articleResult?.kind === "redirect") permanentRedirect(articleResult.location);
+      if (articleResult?.kind === "article") {
+        return <PublicArticlePage article={articleResult.article} relatedArticles={articleResult.relatedArticles} entities={articleResult.entities} />;
+      }
+    }
     notFound();
   }
 

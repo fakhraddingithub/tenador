@@ -4,6 +4,9 @@ import Brand from "base/models/Brand";
 import Sport from "base/models/Sport";
 
 import connectToDB from "base/configs/db";
+import { getPublicArticleSitemap } from "base/services/publicArticle.service";
+import { isReservedArticleRoot } from "base/utils/articleRoutes";
+import { buildArticlePath } from "base/utils/articleSlug";
 
 const SITE_URL = (process.env.NEXT_PUBLIC_SITE_URL || "https://tenador.com").replace(/\/+$/, "");
 
@@ -42,6 +45,9 @@ export default async function sitemap() {
   // -------------------------
   // Static Pages
   // -------------------------
+  const articleContent = await getPublicArticleSitemap();
+  const occupiedRootSlugs = new Set([...sports, ...brands].map((item) => item.slug).filter(Boolean));
+
   const staticPages = [
     {
       url: SITE_URL,
@@ -119,11 +125,30 @@ export default async function sitemap() {
     priority: 0.6,
   }));
 
+  const articleCategoryUrls = articleContent.categories
+    .filter((category) => category.slug && !occupiedRootSlugs.has(category.slug) && !isReservedArticleRoot(category.slug))
+    .map((category) => ({
+      url: `${SITE_URL}/${category.slug}`,
+      lastModified: category.updatedAt,
+      changeFrequency: "weekly",
+      priority: 0.7,
+    }));
+
+  const articleUrls = articleContent.articles
+    .filter((article) => article.slug && article.category?.slug && !occupiedRootSlugs.has(article.category.slug) && !isReservedArticleRoot(article.category.slug))
+    .map((article) => ({
+      url: `${SITE_URL}${buildArticlePath(article.category.slug, article.slug)}`,
+      lastModified: article.updatedAt || article.publishedAt,
+      changeFrequency: "monthly",
+      priority: 0.7,
+    }));
   return [
     ...staticPages,
     ...sportUrls,
     ...productUrls,
     ...categoryUrls,
     ...brandUrls,
+    ...articleCategoryUrls,
+    ...articleUrls,
   ];
 }

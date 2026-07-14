@@ -212,6 +212,18 @@ export const PERMISSION_MODULES = [
       { key: "managePermissions", title: "مدیریت دسترسی‌ها و نقش‌ها" },
     ],
   },
+  {
+    key: "articles",
+    title: "\u0645\u0642\u0627\u0644\u0627\u062a",
+    description: "\u0645\u062f\u06cc\u0631\u06cc\u062a \u0645\u0642\u0627\u0644\u0627\u062a\u060c \u062f\u0633\u062a\u0647\u200c\u0628\u0646\u062f\u06cc\u060c \u0627\u0646\u062a\u0634\u0627\u0631 \u0648 \u0646\u0633\u062e\u0647\u200c\u0647\u0627",
+    permissions: [
+      { key: "view", title: "\u0645\u0634\u0627\u0647\u062f\u0647 \u0645\u0642\u0627\u0644\u0627\u062a" },
+      { key: "create", title: "\u0627\u06cc\u062c\u0627\u062f \u0645\u0642\u0627\u0644\u0647" },
+      { key: "edit", title: "\u0648\u06cc\u0631\u0627\u06cc\u0634 \u0648 \u0646\u0633\u062e\u0647\u200c\u0647\u0627" },
+      { key: "publish", title: "\u0627\u0646\u062a\u0634\u0627\u0631 \u0648 \u0632\u0645\u0627\u0646\u200c\u0628\u0646\u062f\u06cc" },
+      { key: "delete", title: "\u0627\u0646\u062a\u0642\u0627\u0644 \u0628\u0647 \u0632\u0628\u0627\u0644\u0647\u200c\u062f\u0627\u0646" },
+    ],
+  },
 ];
 
 /** کلید کامل یک دسترسی: `${moduleKey}.${actionKey}` */

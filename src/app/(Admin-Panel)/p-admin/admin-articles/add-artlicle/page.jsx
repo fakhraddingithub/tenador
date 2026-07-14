@@ -1,3 +1,7 @@
-export default function AboutUsPage() {
-    return <h1>About us</h1>
-  }
+export const dynamic = "force-dynamic";
+
+import { redirect } from "next/navigation";
+
+export default function LegacyAddArticlePage() {
+  redirect("/p-admin/admin-articles/new");
+}

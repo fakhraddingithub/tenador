@@ -88,6 +88,10 @@ export const metadata = {
 
   applicationName: "Tenador",
 
+  alternates: {
+    types: { "application/rss+xml": `${SITE_URL}/rss.xml` },
+  },
+
   robots: {
     index: true,
     follow: true,
@@ -153,6 +157,8 @@ export default async function RootLayout({ children }) {
     "@context": "https://schema.org",
 
     "@type": "Store",
+
+    "@id": `${SITE_URL}/#organization`,
 
     name: "تنادور",
 

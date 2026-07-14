@@ -60,7 +60,6 @@ export default async function Home() {
       <RolandGarros content={rolandGarrosBanner} />
       <BrandsTicker brands={tickerBrands} />
       <ShowcaseAthletes data={athletes} />
-      {/* <Articles /> */}
     </>
   );
 }

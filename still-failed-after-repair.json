@@ -1,0 +1,32 @@
+[
+  {
+    "publicId": "product/variant-values/file_gdpkoz",
+    "bytes": 107315,
+    "folder": "product/variant-values",
+    "reason": "getaddrinfo ENOTFOUND upload.imagekit.io"
+  },
+  {
+    "publicId": "coach-docs/file_tuwxnf",
+    "bytes": 1342224,
+    "folder": "coach-docs",
+    "reason": "دانلود ناموفق: HTTP 401"
+  },
+  {
+    "publicId": "coach-docs/file_ui20vb",
+    "bytes": 4113171,
+    "folder": "coach-docs",
+    "reason": "دانلود ناموفق: HTTP 401"
+  },
+  {
+    "publicId": "coach-docs/file_jploch",
+    "bytes": 4113171,
+    "folder": "coach-docs",
+    "reason": "دانلود ناموفق: HTTP 401"
+  },
+  {
+    "publicId": "coach-docs/file_lqkhq0",
+    "bytes": 4113171,
+    "folder": "coach-docs",
+    "reason": "دانلود ناموفق: HTTP 401"
+  }
+]
