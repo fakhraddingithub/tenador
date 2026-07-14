@@ -268,7 +268,12 @@ async function _queryBySlugs(slugs, resolvedContext = null) {
   const ctx = resolvedContext || await _resolveContext(slugs);
   if (ctx.notFound) return NOT_FOUND;
 
-  const { search, filters } = ctx;
+  const filters = ctx.filters || {};
+  // resolvePageContext intentionally exposes only the serializable `filters`
+  // shape. When that already-resolved context is reused by the page, derive
+  // the database filter from it instead of assuming the private `search`
+  // object is present.
+  const search = ctx.search || filters;
 
   const finalFilter = {};
   if (search.brand) finalFilter.brand = search.brand._id;
