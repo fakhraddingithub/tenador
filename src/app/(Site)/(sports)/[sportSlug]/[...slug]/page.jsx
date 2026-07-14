@@ -243,7 +243,7 @@ export default async function SportDynamicSlugPage({ params, searchParams }) {
   }
 
   // ─── سایر صفحات (ورزش، دسته): الگوهای ۲ از این مسیر سرو می‌شوند ───
-  const searchData = await queryBySlugs(slugs);
+  const searchData = await queryBySlugs(slugs, ctx);
 
   // محافظِ دوم: اگر بینِ resolve و query وضعیت تغییر کرده باشد (مثلاً حذفِ آخرین
   // محصولِ یک ترکیب)، باز هم ۴۰۴ سخت می‌دهیم — بدونِ fallbackِ خاموش.
@@ -264,6 +264,13 @@ export default async function SportDynamicSlugPage({ params, searchParams }) {
       filters={searchData.filters}
       products={searchData.results}
       totalResults={searchData.totalResults}
+      listingFilter={{
+        sport: searchData.filters.sport?._id,
+        category: searchData.filters.category?._id,
+        brand: searchData.filters.brand?._id,
+        serie: searchData.filters.serie?._id,
+        limitedEdition: searchData.filters.limitedEdition?._id,
+      }}
       rate={rate}
       page={page}
       title={`تنادور – ${pageInfo.title || pageInfo.name || ""}`}

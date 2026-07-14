@@ -5,7 +5,6 @@
  * Replaces server-to-self fetch calls in SSR pages with a cached function call.
  */
 
-import { unstable_cache } from "next/cache";
 import connectToDB from "base/configs/db";
 import Brand from "base/models/Brand";
 import Sport from "base/models/Sport";
@@ -14,8 +13,7 @@ import Product from "base/models/Product";
 import Category from "base/models/Category";
 import Serie from "base/models/Serie";
 import LimitedEdition from "base/models/LimitedEdition";
-import { getCachedRate } from "@/lib/Exchangerate";
-import { attachListingPrices } from "base/services/priceEngine";
+import { getProductListingPage } from "base/services/productListing.service";
 import { withResolvedSerieSportContent } from "@/lib/serieSportContent";
 
 // سنتینل واحد برای ۴۰۴ — صفحه‌ی کنترلر با بررسی res.notFound === true تابع
@@ -76,8 +74,13 @@ async function _validatePath(slugs) {
     return NOT_FOUND;
   }
 
+  const normalizedSlugs = slugs.map((slug) => String(slug));
+  if (normalizedSlugs.some((slug) => !slug || slug.length > 160)) {
+    return NOT_FOUND;
+  }
+
   await connectToDB();
-  const [s1, s2, s3] = slugs.map((s) => String(s));
+  const [s1, s2, s3] = normalizedSlugs;
 
   let resolved = NOT_FOUND;
 
@@ -228,22 +231,22 @@ async function _resolveContext(slugs) {
   // آمار برند (سری‌ها + تعداد محصول) — برای هدرِ صفحاتِ برند/سری
   let brandStats = null;
   if (search.brand) {
-    const [totalBrandProducts, fullBrand] = await Promise.all([
+    const [totalBrandProducts, fullBrand, seriesCounts] = await Promise.all([
       Product.countDocuments({ brand: search.brand._id, isActive: true }),
       Brand.findById(search.brand._id)
         .populate({ path: "series", options: { sort: { order: 1, createdAt: -1 } } })
         .lean(),
+      Product.aggregate([
+        { $match: { brand: search.brand._id, isActive: true, serie: { $ne: null } } },
+        { $group: { _id: "$serie", count: { $sum: 1 } } },
+      ]),
     ]);
 
-    const seriesWithCounts = await Promise.all(
-      (fullBrand?.series || []).map(async (serie) => {
-        const count = await Product.countDocuments({ serie: serie._id, isActive: true });
-        return {
-          ...withResolvedSerieSportContent(serie, search.sport?._id),
-          productCount: count,
-        };
-      })
-    );
+    const countMap = new Map(seriesCounts.map((item) => [String(item._id), item.count]));
+    const seriesWithCounts = (fullBrand?.series || []).map((serie) => ({
+      ...withResolvedSerieSportContent(serie, search.sport?._id),
+      productCount: countMap.get(String(serie._id)) || 0,
+    }));
 
     brandStats = { ...search.brand, totalProductCount: totalBrandProducts, series: seriesWithCounts };
   }
@@ -261,58 +264,44 @@ async function _resolveContext(slugs) {
   return { notFound: false, search, filters };
 }
 
-async function _queryBySlugs(slugs) {
-  const ctx = await _resolveContext(slugs);
+async function _queryBySlugs(slugs, resolvedContext = null) {
+  const ctx = resolvedContext || await _resolveContext(slugs);
   if (ctx.notFound) return NOT_FOUND;
 
   const { search, filters } = ctx;
 
-  const finalFilter = { isActive: true };
+  const finalFilter = {};
   if (search.brand) finalFilter.brand = search.brand._id;
   if (search.sport) finalFilter.sport = search.sport._id;
   if (search.category) finalFilter.category = search.category._id;
   if (search.serie) finalFilter.serie = search.serie._id;
   if (search.limitedEdition) finalFilter.limitedEdition = search.limitedEdition._id;
 
-  // ⚠️ variants باید populate شوند تا سوآچ‌های تصویر واریانت روی کارت محصول
-  //   نمایش داده شوند — دقیقاً مثل صفحه‌ی اصلی ورزش (getPageDataBySlug). بدون این،
-  //   product.variants فقط آرایه‌ای از ObjectId است و کارت هیچ سوآچی نشان نمی‌دهد.
-  const products = await Product.find(finalFilter)
-    .populate("brand sport athlete category serie limitedEdition variants")
-    .sort({ order: 1, createdAt: -1 })
-    .lean();
-
-  // قیمت‌ها سمت سرور و دسته‌ای محاسبه می‌شوند تا کارت‌ها price-API نزنند
-  const rate = await getCachedRate();
-  const priced = await attachListingPrices(products, rate);
+  const listing = await getProductListingPage({ filter: finalFilter });
 
   return JSON.parse(
     JSON.stringify({
       notFound: false,
       filters,
-      results: priced,
-      totalResults: priced.length,
+      results: listing.products,
+      totalResults: listing.totalResults,
     })
   );
 }
 
-export const queryBySlugs = unstable_cache(
-  _queryBySlugs,
-  ["query-by-slugs"],
-  { revalidate: 10800, tags: ["products", "sports", "categories", "brands", "series", "limited-editions"] }
-);
+// Do not cache arbitrary URL segments. Crawlers can otherwise turn every
+// unique 404 into a permanent ISR write.
+export async function queryBySlugs(slugs, resolvedContext = null) {
+  return _queryBySlugs(slugs, resolvedContext);
+}
 
 /**
  * فقط موجودیت‌های صفحه (filters) — بدون بارگذاری محصولات.
  * برای صفحه‌ی برند (نمای گروه‌بندی‌شده + infinite scroll) استفاده می‌شود تا
  * بارِ اولیه سبک بماند و همه‌ی محصولات یک‌جا لود نشوند.
  */
-export const resolvePageContext = unstable_cache(
-  async (slugs) => {
-    const ctx = await _resolveContext(slugs);
-    if (ctx.notFound) return { notFound: true };
-    return JSON.parse(JSON.stringify({ notFound: false, filters: ctx.filters }));
-  },
-  ["resolve-page-context"],
-  { revalidate: 10800, tags: ["products", "sports", "categories", "brands", "series", "limited-editions"] }
-);
+export async function resolvePageContext(slugs) {
+  const ctx = await _resolveContext(slugs);
+  if (ctx.notFound) return { notFound: true };
+  return JSON.parse(JSON.stringify({ notFound: false, filters: ctx.filters }));
+}

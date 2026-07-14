@@ -27,21 +27,12 @@ export default function ProductList({ products = [], rate, onAddToCart, onToggle
 
   const total = Array.isArray(products) ? products.length : 0;
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
-
-  // با تغییر فیلتر/سرچ (آرایه‌ی products عوض می‌شود) به صفحه‌ی اول برگرد
-  useEffect(() => {
-    setPage(1);
-  }, [products]);
-
-  // اگر تعداد صفحات کم شد و page بیرون از بازه افتاد، اصلاح کن
-  useEffect(() => {
-    if (page > totalPages) setPage(totalPages);
-  }, [page, totalPages]);
+  const effectivePage = Math.min(page, totalPages);
 
   const visibleProducts = useMemo(() => {
-    const start = (page - 1) * PAGE_SIZE;
+    const start = (effectivePage - 1) * PAGE_SIZE;
     return (products || []).slice(start, start + PAGE_SIZE);
-  }, [products, page]);
+  }, [products, effectivePage]);
 
   // ── پخشِ تدریجیِ کلاینت‌ساید (progressive reveal) ──
   // تعداد کارت‌های واقعیِ نمایش‌داده‌شده از صفحه‌ی فعلی. در رندرِ اول فقط
@@ -68,10 +59,6 @@ export default function ProductList({ products = [], rate, onAddToCart, onToggle
     return () => cancelAnimationFrame(raf);
   }, [visibleProducts]);
 
-  if (!Array.isArray(products) || products.length === 0) {
-    return <div className="py-10 text-center text-gray-500">محصولی برای نمایش وجود ندارد</div>;
-  }
-
   const goTo = (p) => {
     const next = Math.min(Math.max(1, p), totalPages);
     setPage(next);
@@ -86,13 +73,17 @@ export default function ProductList({ products = [], rate, onAddToCart, onToggle
       for (let i = 1; i <= totalPages; i++) add(i);
     } else {
       add(1);
-      if (page > 3) add("…");
-      for (let i = Math.max(2, page - 1); i <= Math.min(totalPages - 1, page + 1); i++) add(i);
-      if (page < totalPages - 2) add("…");
+      if (effectivePage > 3) add("…");
+      for (let i = Math.max(2, effectivePage - 1); i <= Math.min(totalPages - 1, effectivePage + 1); i++) add(i);
+      if (effectivePage < totalPages - 2) add("…");
       add(totalPages);
     }
     return out;
-  }, [page, totalPages]);
+  }, [effectivePage, totalPages]);
+
+  if (!Array.isArray(products) || products.length === 0) {
+    return <div className="py-10 text-center text-gray-500">محصولی برای نمایش وجود ندارد</div>;
+  }
 
   return (
     <>
@@ -122,8 +113,8 @@ export default function ProductList({ products = [], rate, onAddToCart, onToggle
       {totalPages > 1 && (
         <nav className="flex items-center justify-center gap-2 mt-10 select-none" dir="ltr">
           <button
-            onClick={() => goTo(page - 1)}
-            disabled={page === 1}
+            onClick={() => goTo(effectivePage - 1)}
+            disabled={effectivePage === 1}
             className="px-3 py-2 rounded-[6px] border border-gray-200 bg-white text-sm font-bold text-gray-600 hover:border-[var(--color-primary)] hover:text-[var(--color-primary)] disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
           >
             قبلی
@@ -137,7 +128,7 @@ export default function ProductList({ products = [], rate, onAddToCart, onToggle
                 key={n}
                 onClick={() => goTo(n)}
                 className={`min-w-[40px] px-3 py-2 rounded-[6px] border text-sm font-bold transition-colors ${
-                  n === page
+                  n === effectivePage
                     ? "border-[var(--color-primary)] bg-[var(--color-primary)] text-white"
                     : "border-gray-200 bg-white text-gray-600 hover:border-[var(--color-primary)] hover:text-[var(--color-primary)]"
                 }`}
@@ -148,8 +139,8 @@ export default function ProductList({ products = [], rate, onAddToCart, onToggle
           )}
 
           <button
-            onClick={() => goTo(page + 1)}
-            disabled={page === totalPages}
+            onClick={() => goTo(effectivePage + 1)}
+            disabled={effectivePage === totalPages}
             className="px-3 py-2 rounded-[6px] border border-gray-200 bg-white text-sm font-bold text-gray-600 hover:border-[var(--color-primary)] hover:text-[var(--color-primary)] disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
           >
             بعدی

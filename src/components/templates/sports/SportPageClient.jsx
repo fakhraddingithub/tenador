@@ -3,6 +3,7 @@
 import { useState, useMemo, useEffect, useRef } from "react";
 import ProductList from "@/components/templates/products/ProductList";
 import useFilterScrollAnchor from "@/hooks/useFilterScrollAnchor";
+import useDeferredProducts from "@/hooks/useDeferredProducts";
 import FilterSidebar from "@/components/templates/products/FilterSidebar";
 import SearchBar from "@/components/templates/products/SearchBar";
 import SeriesSlider from "@/components/templates/sports/SeriesSlider";
@@ -22,6 +23,8 @@ export default function SportPageClient({
   filters = {},
   rate,
   series = [],
+  totalResults,
+  listingFilter = {},
   // Optional slots — used by the themed Event page to reuse this exact layout.
   // All default to null/undefined so the Sport page renders byte-identically.
   titleOverride = null, // override the computed hero <h1>
@@ -30,6 +33,11 @@ export default function SportPageClient({
   cardOverlay = null, // forwarded to ProductList → each ProductCard (event flair)
   campaignBadge = null, // forwarded to ProductList → each ProductCard badge stack
 }) {
+  const { products, isLoadingMore } = useDeferredProducts(
+    initialProducts,
+    totalResults,
+    listingFilter,
+  );
   const [searchTerm, setSearchTerm] = useState("");
 
   const [localFilters, setLocalFilters] = useState({
@@ -47,8 +55,8 @@ export default function SportPageClient({
   // رویداد که category پاس نمی‌دهند، هیچ فیلتر ویژگی نشان نمی‌دهند.
   // ─────────────────────────────────────────────
   const attributeMeta = useMemo(
-    () => buildAttributeMeta(filters?.category?.attributes, initialProducts),
-    [filters?.category, initialProducts],
+    () => buildAttributeMeta(filters?.category?.attributes, products),
+    [filters?.category, products],
   );
 
   const [attrFilters, setAttrFilters] = useState({});
@@ -140,20 +148,20 @@ export default function SportPageClient({
   // ─────────────────────────────────────────────
   const pageLimitedEditions = useMemo(() => {
     const map = new Map();
-    for (const product of initialProducts) {
+    for (const product of products) {
       const le = product.limitedEdition;
       if (le && typeof le === "object" && le._id && le.slug) {
         map.set(le._id.toString(), le);
       }
     }
     return Array.from(map.values());
-  }, [initialProducts]);
+  }, [products]);
 
   // ─────────────────────────────────────────────
   // Product Filtering
   // ─────────────────────────────────────────────
   const filteredProducts = useMemo(() => {
-    return initialProducts.filter((product) => {
+    return products.filter((product) => {
       const matchesSearch = product.name
         ?.toLowerCase()
         .includes(searchTerm.toLowerCase());
@@ -196,7 +204,7 @@ export default function SportPageClient({
         matchesAttributes
       );
     });
-  }, [searchTerm, localFilters, initialProducts, attrFilters, attributeMeta]);
+  }, [searchTerm, localFilters, products, attrFilters, attributeMeta]);
 
   // با تغییرِ فیلتر و کوتاه‌شدنِ لیست، نمای صفحه را به ناحیه‌ی فیلتر لنگر می‌اندازد
   // (جلوگیری از افتادن روی فوتر). signal = تعدادِ نتایج.
@@ -249,7 +257,7 @@ export default function SportPageClient({
         <aside className="w-full lg:w-1/4">
           <div className="sticky top-24">
             <FilterSidebar
-              initialProducts={initialProducts}
+              initialProducts={products}
               filters={localFilters}
               setFilters={setLocalFilters}
               hideSportFilter={true}
@@ -276,6 +284,7 @@ export default function SportPageClient({
               <span className="text-[var(--color-text)] font-bold">
                 {filteredProducts.length}
               </span>
+              {isLoadingMore && <span className="text-xs">در حال تکمیل…</span>}
             </div>
           </div>
 

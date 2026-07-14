@@ -5,6 +5,7 @@ import ProductList from "./ProductList";
 import FilterSidebar from "./FilterSidebar"; // این کامپوننت را در ادامه می‌سازیم
 import SearchBar from "./SearchBar";
 import useFilterScrollAnchor from "@/hooks/useFilterScrollAnchor";
+import useDeferredProducts from "@/hooks/useDeferredProducts";
 import {
   buildAttributeMeta,
   parseAttrFiltersFromParams,
@@ -12,7 +13,12 @@ import {
   productMatchesAttrFilters,
 } from "@/lib/attributeFilters";
 
-export default function ProductListClient({ products: initialProducts, rate, filterableAttributes = [] }) {
+export default function ProductListClient({ products: initialProducts, totalResults, rate, filterableAttributes = [] }) {
+  const { products, isLoadingMore } = useDeferredProducts(
+    initialProducts,
+    totalResults,
+    {},
+  );
   const [searchTerm, setSearchTerm] = useState("");
   const [filters, setFilters] = useState({
     brands: [],      // حتماً آرایه خالی باشد
@@ -28,8 +34,8 @@ export default function ProductListClient({ products: initialProducts, rate, fil
   // مشترکِ صفحه‌ی دسته)؛ ویژگیِ «رنگ» خودش گریدِ ۱۶ سواچ می‌شود.
   // ─────────────────────────────────────────────
   const attrMeta = useMemo(
-    () => buildAttributeMeta(filterableAttributes, initialProducts),
-    [filterableAttributes, initialProducts],
+    () => buildAttributeMeta(filterableAttributes, products),
+    [filterableAttributes, products],
   );
 
   // فیلترهای اعمال‌شده — شکلِ مشترک: { [name]: [value, ...] }
@@ -68,7 +74,7 @@ export default function ProductListClient({ products: initialProducts, rate, fil
 
   // منطق فیلترینگ فوق حرفه‌ای
   const filteredProducts = useMemo(() => {
-    return initialProducts.filter((product) => {
+    return products.filter((product) => {
       // سرچ متنی
       const matchesSearch = product.name.toLowerCase().includes(searchTerm.toLowerCase());
 
@@ -92,7 +98,7 @@ export default function ProductListClient({ products: initialProducts, rate, fil
 
       return matchesSearch && matchesBrand && matchesSport && matchesCategory && matchesPrice && matchesAttributes;
     });
-  }, [searchTerm, filters, initialProducts, attrFilters, attrMeta]);
+  }, [searchTerm, filters, products, attrFilters, attrMeta]);
 
   // با تغییرِ فیلتر و کوتاه‌شدنِ لیست، نمای صفحه را به ناحیه‌ی فیلتر لنگر می‌اندازد
   // (جلوگیری از افتادن روی فوتر). signal = تعدادِ نتایج.
@@ -109,7 +115,7 @@ export default function ProductListClient({ products: initialProducts, rate, fil
       {/* Sidebar: فیلترهای پیشرفته */}
       <aside className="w-full lg:w-1/4">
         <FilterSidebar
-          initialProducts={initialProducts}
+          initialProducts={products}
           filters={filters}
           setFilters={setFilters}
           attributeMeta={attrMeta}
@@ -126,6 +132,7 @@ export default function ProductListClient({ products: initialProducts, rate, fil
           </div>
           <div className="text-sm font-bold text-gray-500">
              نمایش <span className="text-[#aa4725]">{filteredProducts.length}</span> محصول
+             {isLoadingMore && <span className="mr-1 text-gray-400">(در حال تکمیل فهرست…)</span>}
           </div>
         </div>
 

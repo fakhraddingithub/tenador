@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import Link from 'next/link';
 import { motion } from 'framer-motion';
@@ -25,51 +25,41 @@ export default function SportCategoriesDetail() {
 
   const [sport, setSport] = useState(null);
   const [categories, setCategories] = useState([]);
-  const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
 
-  useEffect(() => {
-    if (sportId) {
-      fetchSport();
-      fetchCategories();
-      fetchProducts();
-    }
-  }, [sportId]);
-
-  const fetchSport = async () => {
+  const fetchSport = useCallback(async () => {
     try {
       const res = await fetch(`/api/sports/${sportId}`);
       const data = await res.json();
       if (res.ok) setSport(data.sport);
     } catch { /* عدم بارگذاری نام ورزش نباید گرید را مختل کند */ }
-  };
+  }, [sportId]);
 
   // فقط دسته‌های همین ورزش (فیلتر سخت‌گیر سمت سرور)
-  const fetchCategories = async () => {
+  const fetchCategories = useCallback(async () => {
     try {
       const res = await fetch(`/api/categories?sportId=${sportId}`);
       const data = await res.json();
       setCategories(data.categories || []);
     } catch { showToast.error('خطا در بارگذاری'); } finally { setLoading(false); }
-  };
+  }, [sportId]);
 
-  const fetchProducts = async () => {
-    try {
-      const res = await fetch('/api/product');
-      const data = await res.json();
-      setProducts(data.products || []);
-    } catch { console.error('products fetch error'); }
-  };
-
-  const getProductCount = (categoryId) => products.filter(p => p.category?._id === categoryId).length;
+  useEffect(() => {
+    if (!sportId) return;
+    const timer = setTimeout(() => {
+      fetchSport();
+      fetchCategories();
+    }, 0);
+    return () => clearTimeout(timer);
+  }, [sportId, fetchSport, fetchCategories]);
 
   const handleDelete = async (category) => {
     const confirmed = await confirmDelete('حذف دسته‌بندی', `آیا مطمئن هستید که می‌خواهید "${category.title}" را حذف کنید؟`);
     if (!confirmed) return;
     try {
       const res = await fetch(`/api/categories/${category._id}`, { method: 'DELETE' });
-      if (res.ok) { showToast.success('دسته‌بندی حذف شد'); fetchCategories(); fetchProducts(); }
+      if (res.ok) { showToast.success('دسته‌بندی حذف شد'); fetchCategories(); }
       else { const data = await res.json(); showError('خطا', data.error || 'خطا در حذف'); }
     } catch { showError('خطا', 'خطا در ارتباط با سرور'); }
   };
@@ -160,7 +150,7 @@ export default function SportCategoriesDetail() {
                 >
                   <SortableCategoryCard
                     category={category}
-                    count={getProductCount(category._id)}
+                    count={category.productCount || 0}
                     handleDelete={handleDelete}
                   />
                 </motion.div>

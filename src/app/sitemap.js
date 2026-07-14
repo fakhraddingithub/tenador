@@ -10,6 +10,8 @@ import { buildArticlePath } from "base/utils/articleSlug";
 
 const SITE_URL = (process.env.NEXT_PUBLIC_SITE_URL || "https://tenador.com").replace(/\/+$/, "");
 
+export const revalidate = 86400;
+
 export default async function sitemap() {
   await connectToDB();
 

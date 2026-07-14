@@ -14,6 +14,24 @@ const nextConfig = {
     },
   },
 
+  // These force-dynamic pages contain no server-rendered user data. Vercel's
+  // dedicated CDN header can cache them without running Node middleware for
+  // every public request (including crawler-generated 404s).
+  async headers() {
+    const headers = [
+      {
+        key: "Vercel-CDN-Cache-Control",
+        value: "public, s-maxage=3600, stale-while-revalidate=86400",
+      },
+    ];
+    const sports = "tennis|padel|badminton|squash|beachtennis|pickleball|ping-pong";
+    return [
+      { source: `/:sport(${sports})`, headers },
+      { source: `/:sport(${sports})/:path*`, headers },
+      { source: "/articles/:path*", headers },
+    ];
+  },
+
   // ریدایرکت دائمی مسیر قدیمیِ «رویدادها» به مسیر جدید «Collection».
   // اسلاگ‌ها بدون تغییر باقی مانده‌اند؛ فقط بخش مسیر تغییر کرده است.
   async redirects() {

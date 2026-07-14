@@ -19,14 +19,13 @@ export async function generateMetadata({ params }) {
   const { sportSlug } = await params;
 
   // RULE 2: یک سگمنتیِ ریشه فقط می‌تواند SPORT یا BRAND باشد؛ هر چیزِ دیگر ۴۰۴
-  const [ctx, data] = await Promise.all([
-    resolvePageContext([sportSlug]),
-    getPageDataBySlug(sportSlug),
-  ]);
-  if (ctx.notFound || !data) {
+  const ctx = await resolvePageContext([sportSlug]);
+  if (ctx.notFound) {
     const articleCategory = await getPublicArticleCategory(sportSlug);
     return articleCategory ? articleCategoryMetadata(articleCategory.category) : { title: "صفحه پیدا نشد" };
   }
+  const data = await getPageDataBySlug(sportSlug);
+  if (!data) return { title: "صفحه پیدا نشد" };
 
   const SITE_URL = (process.env.NEXT_PUBLIC_SITE_URL || "https://tenador.com").replace(/\/+$/, "");
   const title = `خرید تجهیزات و لوازم ${data.info.title || data.info.name}`;
@@ -70,18 +69,19 @@ export default async function DynamicSportPage({ params }) {
 
   // RULE 2: ریشه فقط SPORT یا BRAND — validatorِ سخت‌گیر تصمیم می‌گیرد، نه صرفِ
   // وجودِ اسلاگ در رجیستری (که اسلاگِ دسته/سری را هم می‌پذیرفت → soft-404).
-  const [ctx, data, series, rate] = await Promise.all([
-    resolvePageContext([sportSlug]),
-    getPageDataBySlug(sportSlug),
-    getSeriesBySport(sportSlug),
-    getCachedRate(),
-  ]);
-
-  if (ctx.notFound || !data) {
+  const ctx = await resolvePageContext([sportSlug]);
+  if (ctx.notFound) {
     const articleCategory = await getPublicArticleCategory(sportSlug);
     if (!articleCategory) notFound();
     return <ArticleCategoryPage category={articleCategory.category} articles={articleCategory.articles} />;
   }
+
+  const [data, series, rate] = await Promise.all([
+    getPageDataBySlug(sportSlug),
+    getSeriesBySport(sportSlug),
+    getCachedRate(),
+  ]);
+  if (!data) notFound();
 
   const serializedSportInfo = JSON.parse(JSON.stringify(data.info));
   const serializedProducts = JSON.parse(JSON.stringify(data.products));
@@ -96,6 +96,8 @@ export default async function DynamicSportPage({ params }) {
       <SportPageClient
         pageInfo={serializedSportInfo}
         products={serializedProducts}
+        totalResults={data.totalResults}
+        listingFilter={{ sport: serializedSportInfo._id }}
         title={title}
         rate={rate}
         series={serializedSeries}

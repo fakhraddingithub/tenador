@@ -11,7 +11,7 @@ export const revalidate = 3600;
 
 export default async function ProductsPage() {
 
-  const [products, rate, filterableAttributes, firstSport] = await Promise.all([
+  const [listing, rate, filterableAttributes, firstSport] = await Promise.all([
     getProducts(),
     getCachedRate(),
     getFilterableAttributes(),
@@ -34,7 +34,8 @@ export default async function ProductsPage() {
         </h1>
 
         <ProductListClient
-          products={products}
+          products={listing.products}
+          totalResults={listing.totalResults}
           rate={rate}
           filterableAttributes={filterableAttributes}
         />

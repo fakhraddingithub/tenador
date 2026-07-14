@@ -8,6 +8,13 @@ import "base/models/Category";
 import "base/models/Variant";
 import "base/models/Serie";
 import "base/models/LimitedEdition";
+import requireAdmin from "@/lib/requireAdmin";
+
+const ADMIN_LIST_FIELDS = "name slug sku mainImage basePrice isActive order brand sport category serie limitedEdition createdAt";
+
+function escapeRegExp(value) {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
 
 export async function GET(req) {
   try {
@@ -19,28 +26,56 @@ export async function GET(req) {
     const categoryId = searchParams.get("category"); // فیلتر بر اساس دسته‌بندی
     const limitedEditionId = searchParams.get("limitedEdition"); // فیلتر بر اساس لیمیتد ادیشن
     const withVariants = searchParams.get("withVariants") === "true"; // populate واریانت‌ها
+    const search = String(searchParams.get("search") || "").trim();
+    const returnAll = searchParams.get("all") === "true";
+    const requestedPage = Math.max(1, Number(searchParams.get("page")) || 1);
+    const requestedLimit = Math.min(100, Math.max(1, Number(searchParams.get("limit")) || 25));
+
+    if (isAdmin && !(await requireAdmin())) {
+      return NextResponse.json({ error: "دسترسی غیرمجاز" }, { status: 401 });
+    }
 
     // ۲. شرط داینامیک دیتابیس:
     // اگر ادمین بود آبجکت خالی {} (یعنی همه محصولات) و اگر نبود فقط { isActive: true }
     const query = isAdmin ? {} : { isActive: true };
     if (categoryId) query.category = categoryId;
     if (limitedEditionId) query.limitedEdition = limitedEditionId;
+    if (search) query.name = { $regex: escapeRegExp(search), $options: "i" };
 
     let productsQuery = Product.find(query)
-      .populate('brand')
-      .populate('sport')
-      .populate('athlete')
-      .populate('category')
-      .populate('serie')
-      .populate('limitedEdition')
+      .select(isAdmin ? ADMIN_LIST_FIELDS : undefined)
+      .populate('brand', 'name title slug icon')
+      .populate('sport', 'name title slug')
+      .populate('athlete', 'name title slug')
+      .populate('category', 'name title slug')
+      .populate('serie', 'name title slug')
+      .populate('limitedEdition', 'name title slug')
       .sort({ order: 1, createdAt: -1 });
 
     if (withVariants) productsQuery = productsQuery.populate('variants');
 
-    const products = await productsQuery.lean();
+    const isPaginated = isAdmin && !returnAll;
+    if (isPaginated) {
+      productsQuery = productsQuery
+        .skip((requestedPage - 1) * requestedLimit)
+        .limit(requestedLimit);
+    }
+
+    const [products, total] = await Promise.all([
+      productsQuery.lean(),
+      isPaginated ? Product.countDocuments(query) : Promise.resolve(null),
+    ]);
 
     return NextResponse.json({
       products: products || [],
+      ...(isPaginated && {
+        pagination: {
+          page: requestedPage,
+          limit: requestedLimit,
+          total,
+          totalPages: Math.max(1, Math.ceil(total / requestedLimit)),
+        },
+      }),
     });
   } catch (error) {
     console.error('Error fetching products:', error);

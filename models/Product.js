@@ -142,6 +142,10 @@ ProductSchema.virtual("comments", {
 });
 
 ProductSchema.index({ sport: 1, category: 1, brand: 1, isActive: 1 });
+ProductSchema.index({ isActive: 1, order: 1, createdAt: -1 });
+ProductSchema.index({ sport: 1, isActive: 1, order: 1, createdAt: -1 });
+ProductSchema.index({ sport: 1, category: 1, isActive: 1, order: 1, createdAt: -1 });
+ProductSchema.index({ category: 1, order: 1, createdAt: -1 });
 
 export default mongoose.models.Product ||
   mongoose.model("Product", ProductSchema);

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { ProductCard } from "@/components/admin";
@@ -44,12 +44,7 @@ export default function CategoryProductsClient({ categoryId }) {
   const [brandFilter, setBrandFilter] = useState("all");
   const [serieFilter, setSerieFilter] = useState("all");
 
-  useEffect(() => {
-    fetchCategory();
-    fetchProducts();
-  }, [categoryId]);
-
-  const fetchCategory = async () => {
+  const fetchCategory = useCallback(async () => {
     try {
       const res = await fetch(`/api/categories/${categoryId}`);
       if (!res.ok) throw new Error();
@@ -58,11 +53,16 @@ export default function CategoryProductsClient({ categoryId }) {
     } catch {
       showToast.error("خطا در بارگذاری دسته‌بندی");
     }
-  };
+  }, [categoryId]);
 
-  const fetchProducts = async () => {
+  const fetchProducts = useCallback(async () => {
     try {
-      const res = await fetch("/api/product?isAdmin=true");
+      const params = new URLSearchParams({
+        isAdmin: "true",
+        all: "true",
+        category: categoryId,
+      });
+      const res = await fetch(`/api/product?${params}`);
       if (!res.ok) throw new Error();
       const data = await res.json();
       setProducts(data.products || []);
@@ -71,7 +71,15 @@ export default function CategoryProductsClient({ categoryId }) {
     } finally {
       setLoading(false);
     }
-  };
+  }, [categoryId]);
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      fetchCategory();
+      fetchProducts();
+    }, 0);
+    return () => clearTimeout(timer);
+  }, [fetchCategory, fetchProducts]);
 
   const categoryProducts = useMemo(
     () =>
@@ -146,12 +154,6 @@ export default function CategoryProductsClient({ categoryId }) {
   }, [categoryProducts, brandFilter]);
 
   // اگر برند عوض شد و سری قدیم دیگر معتبر نیست → ریست
-  useEffect(() => {
-    if (serieFilter !== "all" && !availableSeries.find((s) => s._id === serieFilter)) {
-      setSerieFilter("all");
-    }
-  }, [availableSeries, serieFilter]);
-
   const filteredProducts = useMemo(() => {
     return categoryProducts.filter((p) => {
       if (brandFilter !== "all" && p.brand?._id !== brandFilter) return false;
@@ -285,7 +287,10 @@ export default function CategoryProductsClient({ categoryId }) {
           <FilterSelect
             label="برند"
             value={brandFilter}
-            onChange={(v) => setBrandFilter(v)}
+            onChange={(v) => {
+              setBrandFilter(v);
+              setSerieFilter("all");
+            }}
             options={[
               { value: "all", label: "همه برندها" },
               ...availableBrands.map((b) => ({ value: b._id, label: b.title || b.name })),

@@ -128,8 +128,55 @@ async function getArticleInternal(categorySlug, articleSlug) {
   return { kind: "redirect", statusCode: redirect.statusCode, location: buildArticlePath(target.category.slug, target.slug) };
 }
 
-export const getPublicArticleCategory = unstable_cache(getCategoryInternal, ["public-article-category"], { revalidate: 300, tags: ["articles"] });
-export const getPublicArticle = unstable_cache(getArticleInternal, ["public-article"], { revalidate: 300, tags: ["articles", "products", "categories", "brands", "sports", "series"] });
+const getCachedPublicArticleCategory = unstable_cache(getCategoryInternal, ["public-article-category"], { revalidate: 300, tags: ["articles"] });
+const getCachedPublicArticle = unstable_cache(getArticleInternal, ["public-article"], { revalidate: 300, tags: ["articles", "products", "categories", "brands", "sports", "series"] });
+
+// Only cache known content. Caching null for arbitrary catch-all URLs lets bots
+// create an unbounded number of unique ISR entries.
+export async function getPublicArticleCategory(slug) {
+  const normalizedSlug = normalizeArticleSlug(slug);
+  if (!normalizedSlug || normalizedSlug.length > 160) return null;
+  await connectToDB();
+  if (await rootSlugIsOccupied(normalizedSlug)) return null;
+  const exists = await ArticleCategory.exists({ slug: normalizedSlug, status: "active" });
+  if (!exists) return null;
+  return getCachedPublicArticleCategory(normalizedSlug);
+}
+
+export async function getPublicArticle(categorySlug, articleSlug) {
+  const normalizedCategorySlug = normalizeArticleSlug(categorySlug);
+  const normalizedArticleSlug = normalizeArticleSlug(articleSlug);
+  if (
+    !normalizedCategorySlug ||
+    !normalizedArticleSlug ||
+    normalizedCategorySlug.length > 160 ||
+    normalizedArticleSlug.length > 160
+  ) return null;
+  await connectToDB();
+  if (await rootSlugIsOccupied(normalizedCategorySlug)) return null;
+
+  const category = await ArticleCategory.findOne({
+    slug: normalizedCategorySlug,
+    status: "active",
+  }).select("_id").lean();
+  const [articleExists, redirectExists] = await Promise.all([
+    category
+      ? Article.exists({
+          category: category._id,
+          slug: normalizedArticleSlug,
+          ...publicArticleFilter(),
+        })
+      : Promise.resolve(null),
+    ArticleRedirect.exists({
+      fromCategorySlug: normalizedCategorySlug,
+      fromArticleSlug: normalizedArticleSlug,
+      active: true,
+    }),
+  ]);
+
+  if (!articleExists && !redirectExists) return null;
+  return getCachedPublicArticle(normalizedCategorySlug, normalizedArticleSlug);
+}
 
 export const getPublicArticleSitemap = unstable_cache(async () => {
   await connectToDB();
@@ -167,11 +214,15 @@ export const getPublicArticleHub = unstable_cache(async () => {
   });
 }, ["public-article-hub"], { revalidate: 300, tags: ["articles"] });
 
-export const getLegacyArticleTarget = unstable_cache(async (value) => {
+const getCachedLegacyArticleTarget = unstable_cache(async (value) => {
   await connectToDB();
-  if (!mongoose.isValidObjectId(value)) return null;
   const article = await Article.findOne({ _id: value, ...publicArticleFilter() }).select("slug category").populate("category", "slug status").lean();
   if (!article || article.category?.status !== "active") return null;
   const occupied = await Promise.all([Sport.exists({ slug: article.category.slug }), Brand.exists({ slug: article.category.slug })]);
   return isReservedArticleRoot(article.category.slug) || occupied.some(Boolean) ? null : buildArticlePath(article.category.slug, article.slug);
 }, ["legacy-public-article"], { revalidate: 300, tags: ["articles"] });
+
+export async function getLegacyArticleTarget(value) {
+  if (!mongoose.isValidObjectId(value)) return null;
+  return getCachedLegacyArticleTarget(String(value));
+}

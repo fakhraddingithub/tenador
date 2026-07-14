@@ -10,6 +10,7 @@ import Variant from "base/models/Variant";
 import SiteSetting from "base/models/SiteSetting";
 import { getCachedRate } from "@/lib/Exchangerate";
 import { attachListingPrices } from "base/services/priceEngine";
+import { getProductListingPage } from "base/services/productListing.service";
 
 const modelsMap = { Sport, Brand, Athlete, Category };
 
@@ -24,19 +25,7 @@ export const HOME_SLIDER_KEYS = {
 
 export const getProducts = unstable_cache(
   async () => {
-    await connectToDB();
-    const rate = await getCachedRate();
-    const products = await Product.find({ isActive: true })
-      .populate("brand")
-      .populate("sport")
-      .populate("athlete")
-      .populate("category")
-      .populate("variants")
-      .lean();
-    // قیمت‌ها سمت سرور و به‌صورت دسته‌ای محاسبه می‌شوند تا کارت‌ها دیگر هیچ
-    // درخواست price-API نزنند (ریشه‌ی پر شدن کانکشن‌های دیتابیس)
-    const priced = await attachListingPrices(products, rate);
-    return JSON.parse(JSON.stringify(priced));
+    return getProductListingPage();
   },
   ["all-products"],
   { revalidate: 10800, tags: ["products"] }
@@ -229,25 +218,18 @@ export const getPageDataBySlug = unstable_cache(
     }
 
     const entityInfo = await EntityModel.findOne({ slug }).lean();
+    if (!entityInfo) return null;
 
-    const productQuery = { [slugData.filterField]: entityInfo._id, isActive: true };
-    const rate = await getCachedRate();
-    const products = await Product.find(productQuery)
-      .populate("brand")
-      .populate("sport")
-      .populate("athlete")
-      .populate("category")
-      .populate("variants")
-      .sort({ order: 1, createdAt: -1 })
-      .lean();
-
-    const priced = await attachListingPrices(products, rate);
+    const listing = await getProductListingPage({
+      filter: { [slugData.filterField]: entityInfo._id },
+    });
 
     return JSON.parse(
       JSON.stringify({
         type: slugData.type,
         info: entityInfo,
-        products: priced,
+        products: listing.products,
+        totalResults: listing.totalResults,
         label: slugData.label,
         slugData,
       })
