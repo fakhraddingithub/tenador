@@ -1,12 +1,12 @@
 import { NextResponse } from "next/server";
-import { v2 as cloudinary } from "cloudinary";
+import ImageKit from "imagekit";
 
 export const runtime = "nodejs";
 
-cloudinary.config({
-  cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
-  api_key: process.env.CLOUDINARY_API_KEY,
-  api_secret: process.env.CLOUDINARY_API_SECRET,
+const imagekit = new ImageKit({
+  publicKey: process.env.IMAGEKIT_PUBLIC_KEY,
+  privateKey: process.env.IMAGEKIT_PRIVATE_KEY,
+  urlEndpoint: process.env.IMAGEKIT_URL_ENDPOINT,
 });
 
 // فرمت‌های مجاز: تصاویر + PDF (برای حکم/مدرک مربیگری)
@@ -64,53 +64,42 @@ export async function POST(req) {
     }
 
     const buffer = Buffer.from(await file.arrayBuffer());
+    const isPdf =
+      file.type === "application/pdf" || /\.pdf$/i.test(file.name || "");
 
-    const result = await new Promise((resolve, reject) => {
-      const stream = cloudinary.uploader.upload_stream(
-        {
-          folder,
-          // auto تا هم تصویر و هم PDF به‌درستی شناسایی و ذخیره شود
-          resource_type: "auto",
-          allowed_formats: ["jpg", "jpeg", "png", "webp", "svg", "pdf"],
-          use_filename: true,
-          unique_filename: true,
-        },
-        (error, result) => {
-          if (error) reject(error);
-          else resolve(result);
-        }
-      );
-
-      stream.end(buffer);
+    // مدارک/احکامِ مربیگری (PDF) به‌صورت private آپلود می‌شوند تا مستقیم و
+    // بدون امضا قابلِ دسترسی نباشند — نمایش‌شان از طریق روتِ پراکسیِ
+    // src/app/api/files/pdf/route.js (که یک URL امضاشده‌ی موقت می‌سازد) انجام می‌شود.
+    const result = await imagekit.upload({
+      file: buffer,
+      fileName: file.name || (isPdf ? "document.pdf" : "image"),
+      folder: `/${folder}`,
+      useUniqueFileName: true,
+      isPrivateFile: isPdf,
     });
 
-    // تأییدِ موفقیتِ واقعیِ آپلود: گاهی Cloudinary بدونِ پرتابِ خطا پاسخی برمی‌گرداند
-    // که secure_url یا public_id ندارد (آپلودِ ناقص). در این حالت فایل واقعاً روی
-    // Cloudinary ذخیره نشده؛ پس نباید آدرسِ ناقص را با وضعیتِ ۲۰۰ برگردانیم، وگرنه
-    // یک URL خراب در دیتابیس ذخیره می‌شود در حالی که تصویری پشتِ آن وجود ندارد.
-    if (!result || !result.secure_url || !result.public_id) {
+    // تأییدِ نهایی: اگر آدرس یا شناسه‌ی معتبر برنگشت، یعنی آپلود واقعاً کامل نشده
+    if (!result || !result.url || !result.fileId) {
       console.error("UPLOAD VERIFICATION FAILED:", { fileName: file.name, result });
       return NextResponse.json(
         {
-          error: `آپلودِ فایل «${file.name || "نامشخص"}» ناموفق بود: پاسخِ Cloudinary فاقدِ آدرسِ معتبر بود. لطفاً دوباره تلاش کنید.`,
+          error: `آپلودِ فایل «${file.name || "نامشخص"}» ناموفق بود: پاسخِ ImageKit فاقدِ آدرسِ معتبر بود. لطفاً دوباره تلاش کنید.`,
         },
         { status: 502 }
       );
     }
 
     return NextResponse.json({
-      url: result.secure_url,
-      publicId: result.public_id,
+      url: result.url,
+      publicId: result.fileId, // برای سازگاری با کدهای قبلی که publicId چک می‌کنند
       folder,
     });
-
   } catch (error) {
     console.error("UPLOAD ERROR:", error);
 
-    // پیام خطای Cloudinary (مثلاً فرمت غیرمجاز) در صورت وجود به کاربر برگردانده می‌شود
-    const cloudinaryMsg = error?.message;
+    const msg = error?.message;
     return NextResponse.json(
-      { error: cloudinaryMsg ? `خطا در آپلود فایل: ${cloudinaryMsg}` : "خطا در آپلود فایل" },
+      { error: msg ? `خطا در آپلود فایل: ${msg}` : "خطا در آپلود فایل" },
       { status: 500 }
     );
   }

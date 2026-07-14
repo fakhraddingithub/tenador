@@ -32,21 +32,23 @@ const nextConfig = {
   },
 
   images: {
-    // بهینه‌سازی تصاویر از طریق Cloudinary انجام می‌شود (نه Image Optimization ورسل)
-    // تا مصرف Transformations ورسل صفر بماند. منطق در src/lib/cloudinaryLoader.js
+    // بهینه‌سازی تصاویر از طریق ImageKit انجام می‌شود (نه Image Optimization ورسل)
+    // تا مصرف Transformations ورسل صفر بماند. منطق در src/lib/imagekitLoader.js
+    // (که آدرس‌های قدیمیِ Cloudinary را هم تا پایان مهاجرت پشتیبانی می‌کند)
     loader: "custom",
-    loaderFile: "./src/lib/cloudinaryLoader.js",
+    loaderFile: "./src/lib/imagekitLoader.js",
     // تعداد سایزهای مختلفی که Next.js برای srcset تولید می‌کند را محدود می‌کنیم
-    // تا تعداد transformation های منحصربه‌فردِ Cloudinary (که هرکدام کِردیت مصرف
-    // می‌کنند) کمتر شود. پیش‌فرضِ Next حدود ۱۶ سایز (۸ device + ۸ image) است که
-    // به‌ازای هر عکس ۱۶ ترنسفورمِ جدا می‌ساخت. اینجا فقط ۷ سایز (۴+۳) داریم که
-    // برای همه‌ی صفحه‌نمایش‌ها (موبایل تا دسکتاپ بزرگ) کیفیت را حفظ می‌کند.
+    // تا تعداد ترنسفورم/بندویدثِ مصرفی کمتر شود (به‌جای ۸+۸ پیش‌فرض، فقط ۴+۳).
     deviceSizes: [640, 828, 1200, 1920],
     imageSizes: [64, 128, 256],
     remotePatterns: [
       {
         protocol: "https",
-        hostname: "res.cloudinary.com",
+        hostname: "res.cloudinary.com", // آدرس‌های قدیمی تا پایان مهاجرت
+      },
+      {
+        protocol: "https",
+        hostname: "ik.imagekit.io", // آدرس‌های جدید ImageKit
       },
     ],
   },

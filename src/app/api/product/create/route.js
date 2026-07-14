@@ -3,18 +3,8 @@ import Product from "base/models/Product";
 import Category from "base/models/Category";
 import Variant from "base/models/Variant";
 import { createSlug } from "base/utils/slugify";
-import { v2 as cloudinary } from "cloudinary";
 import { revalidateContent } from "@/lib/revalidate";
 import { makeComboKey } from "@/lib/variantKey";
-
-/* ----------------------------------
-   Cloudinary config
----------------------------------- */
-cloudinary.config({
-  cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
-  api_key: process.env.CLOUDINARY_API_KEY,
-  api_secret: process.env.CLOUDINARY_API_SECRET,
-});
 
 /* ----------------------------------
    Generate unique SKU
@@ -31,31 +21,6 @@ async function generateUniqueSKU(name) {
   }
 
   return sku;
-}
-
-/* ----------------------------------
-   Cloudinary helpers
----------------------------------- */
-function extractPublicId(url) {
-  const parts = url.split("/upload/")[1];
-  const withoutVersion = parts.replace(/v\d+\//, "");
-  return withoutVersion.replace(/\.[^/.]+$/, "");
-}
-
-async function renameCloudinaryImage(imageUrl, sku, index = null) {
-  if (!imageUrl) return null;
-  if (imageUrl.includes(sku)) return imageUrl;
-  
-  const oldPublicId = extractPublicId(imageUrl);
-  const folder = oldPublicId.split("/").slice(0, -1).join("/");
-  try {
-    const newPublicId = index !== null ? `${folder}/${sku}-${index}` : `${folder}/${sku}`;
-    const result = await cloudinary.uploader.rename(oldPublicId, newPublicId, { overwrite: true });
-    return result.secure_url;
-  } catch (error) {
-    console.warn(`⚠️ Cloudinary Rename skipped for ${imageUrl}:`, error.message);
-    return imageUrl; 
-  }
 }
 
 /* ----------------------------------
@@ -188,10 +153,11 @@ export async function POST(req) {
         Generate SKU & Rename Images
      ------------------------------- */
     const sku = await generateUniqueSKU(name);
-    const normalizedMainImage = await renameCloudinaryImage(mainImage, sku);
-    const normalizedGallery = Array.isArray(gallery)
-      ? await Promise.all(gallery.map((img, i) => renameCloudinaryImage(img, sku, i + 1)))
-      : [];
+    // نکته‌ی مهاجرت به ImageKit: فایل‌ها دیگر بعد از ساختِ محصول بر اساسِ SKU
+    // rename نمی‌شوند (fileId لازم برای rename در فرانت‌اند ذخیره نمی‌شود).
+    // آدرس‌های برگشتی از آپلود همان‌طور که هستند ذخیره می‌شوند.
+    const normalizedMainImage = mainImage || null;
+    const normalizedGallery = Array.isArray(gallery) ? gallery : [];
 
     /* -------------------------------
         Format Arrays (Tag & Athlete)
@@ -257,9 +223,8 @@ export async function POST(req) {
             if (matchedDetail) {
               if (matchedDetail.price) specificPrice = Number(matchedDetail.price);
               if (Array.isArray(matchedDetail.images) && matchedDetail.images.length > 0) {
-                specificImages = await Promise.all(
-                  matchedDetail.images.map((imgUrl, i) => renameCloudinaryImage(imgUrl, variantSku, i + 1))
-                );
+                // بدون rename — آدرس‌های آپلودشده مستقیماً استفاده می‌شوند
+                specificImages = matchedDetail.images;
               }
             }
           }

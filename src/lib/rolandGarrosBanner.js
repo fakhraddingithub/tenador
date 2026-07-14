@@ -87,12 +87,16 @@ export function validateRolandGarrosBanner(value) {
     errors.push("لینک دکمه باید با / یا http شروع شود");
   }
 
+  // آدرسِ داخلیِ سایت، یا آدرسِ ImageKit (فعلی)، یا آدرسِ قدیمیِ Cloudinary
+  // (برای بنرهایی که قبل از مهاجرت ساخته شده‌اند) پذیرفته می‌شود.
+  const imagekitEndpoint = process.env.NEXT_PUBLIC_IMAGEKIT_URL_ENDPOINT || "";
   if (
     banner.imageUrl &&
     !banner.imageUrl.startsWith("/") &&
-    !banner.imageUrl.startsWith("https://res.cloudinary.com/")
+    !banner.imageUrl.startsWith("https://res.cloudinary.com/") &&
+    !(imagekitEndpoint && banner.imageUrl.startsWith(imagekitEndpoint))
   ) {
-    errors.push("تصویر بنر باید آدرس داخلی سایت یا آدرس Cloudinary باشد");
+    errors.push("تصویر بنر باید آدرس داخلی سایت یا آدرس ImageKit باشد");
   }
 
   return {
