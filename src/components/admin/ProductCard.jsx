@@ -1,6 +1,7 @@
 'use client';
 
 import Image from 'next/image';
+import Link from 'next/link';
 import { FaEdit, FaTrash, FaImage } from 'react-icons/fa';
 
 /**
@@ -13,7 +14,7 @@ import { FaEdit, FaTrash, FaImage } from 'react-icons/fa';
  * توکن‌ها از admin-scope (پریمری = سبز درباری، رادیوس = ۶ پیکسل)
  */
 export default function ProductCard({ product, onEdit, onDelete }) {
-  const { mainImage, name, category, sport, brand, basePrice } = product;
+  const { mainImage, name, slug, category, sport, brand, basePrice } = product;
 
   const splitName = (text = '') => {
     const match = text.match(/[a-zA-Z(].*/);
@@ -41,6 +42,9 @@ export default function ProductCard({ product, onEdit, onDelete }) {
         borderRadius: 'var(--admin-radius)',
       }}
     >
+      {/* لینک سراسری کارت → صفحهٔ محصول در سایت (مثل کارت محصولِ سایت) */}
+      {slug && <Link href={`/products/${slug}`} className="absolute inset-0 z-10" />}
+
       {/* بج برند (سمت چپ‌بالا) — اختیاری */}
       {brand?.icon && (
         <div className="absolute top-3 left-3 z-20">
@@ -115,7 +119,7 @@ export default function ProductCard({ product, onEdit, onDelete }) {
         </div>
 
         {/* اکشن‌ها — ویرایش (پُر) + حذف (آیکون) */}
-        <div className="flex gap-2 w-full">
+        <div className="relative z-20 flex gap-2 w-full">
           <button
             onClick={() => onEdit?.(product)}
             className="flex-1 inline-flex items-center justify-center gap-1.5 py-2 text-xs font-bold transition-all active:scale-95"

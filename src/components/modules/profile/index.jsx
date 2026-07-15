@@ -4,10 +4,12 @@ import { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { toast } from 'react-toastify'
 import { getUserFullName } from 'base/utils/userName'
-import { 
+import NextLink from 'next/link'
+import {
   User, Mail, Phone, Calendar, Edit3, CheckCircle2,
   Copy, Download, Award, ShieldCheck, Save, X, QrCode,
-  Upload, Link, Loader2, Users, AlertCircle, FileText
+  Upload, Link, Loader2, Users, AlertCircle, FileText,
+  LogOut, GraduationCap
 } from 'lucide-react'
 
 // تشخیص اینکه آدرس آپلودشده PDF است یا تصویر (برای نمایش پیش‌نمایش مناسب)
@@ -274,6 +276,17 @@ export default function ProfileModule() {
       setConfirmLoading(false);
     }
   };
+
+  // خروج از حساب — فقط در موبایل نمایش داده می‌شود (دسکتاپ دکمه‌ی خروج را در سایدبار دارد)
+  const handleLogout = async () => {
+    try {
+      await fetch('/api/auth/logout', { method: 'POST' })
+      try { localStorage.removeItem('authUser') } catch {}
+      window.location.href = '/'
+    } catch {
+      toast.error('خطا در خروج از حساب')
+    }
+  }
 
   const handleCopyText = (text, type) => {
     if (!text) return
@@ -714,6 +727,30 @@ export default function ProfileModule() {
             )}
           </div>
         )}
+      </div>
+
+      {/* موبایل: پنل مربیگری + خروج از حساب — دسکتاپ این‌ها را در سایدبار دارد */}
+      <div className="lg:hidden space-y-3 print:hidden">
+        {user?.isCoach && (
+          <NextLink
+            href="/p-user/coach"
+            className="flex w-full items-center justify-center gap-2 rounded-[var(--radius)] border border-[hsl(var(--border))] bg-white py-3 text-sm font-bold text-slate-700 shadow-xs transition-colors hover:bg-amber-50/60 hover:text-amber-700"
+          >
+            <GraduationCap size={18} className="text-amber-500" />
+            پنل مربیگری
+            <span className="text-[9px] font-bold bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded-full">
+              مربی
+            </span>
+          </NextLink>
+        )}
+
+        <button
+          onClick={handleLogout}
+          className="flex w-full items-center justify-center gap-2 rounded-[var(--radius)] border border-rose-200 bg-white py-3 text-sm font-bold text-rose-600 shadow-xs transition-colors hover:bg-rose-50/60"
+        >
+          <LogOut size={18} />
+          خروج از حساب کاربری
+        </button>
       </div>
 
       {/* ========================================================          کامپوننت مودال انیمیشنی ثبت درخواست مربیگری (Premium U======================================================== */}

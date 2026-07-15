@@ -14,6 +14,7 @@ import { UserProvider } from "@/components/features/auth/UserContext";
 import CartCleanup from "@/components/features/cart/CartCleanup";
 import ScrollToTop from "@/components/common/ScrollToTop";
 import NavigationLoader from "@/components/common/NavigationLoader";
+import InitialLoadLoader from "@/components/common/InitialLoadLoader";
 
 const SITE_URL = (process.env.NEXT_PUBLIC_SITE_URL || "https://tenador.com").replace(/\/+$/, "");
 const SITE_IMAGE_FALLBACK_SRC = "/images/default-site-image.png";
@@ -199,6 +200,7 @@ export default async function RootLayout({ children }) {
       </head>
 
       <body className="bg-[var(--color-background)] text-[var(--color-text)]">
+        <InitialLoadLoader />
         <NavigationLoader />
         <UserProvider>
           <ScrollToTop />

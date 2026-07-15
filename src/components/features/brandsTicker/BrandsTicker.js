@@ -19,10 +19,36 @@
  * مسیرِ کلیک: sportSlug → /[sportSlug]/[brandSlug] ، وگرنه /[brandSlug].
  */
 
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import styles from "@/styles/BrandSection.module.css";
+
+// آستانه‌ی حرکتِ اشاره‌گر تا «کلیک» به «درگ» تبدیل شود (px) — کمتر از این مقدار
+// کلیکِ عادی روی برند حفظ می‌شود و ناوبری اتفاق می‌افتد.
+const DRAG_THRESHOLD = 6;
+
+// خواندنِ translateXِ جاریِ ترَک از ماتریسِ computed (px) — در حینِ انیمیشنِ CSS
+// درصدها به px حل شده‌اند، پس همیشه مقدارِ پیکسلیِ لحظه‌ای برمی‌گردد.
+function getTrackTranslateX(el) {
+  const transform = getComputedStyle(el).transform;
+  if (!transform || transform === "none") return 0;
+  try {
+    return new DOMMatrixReadOnly(transform).m41;
+  } catch {
+    return 0;
+  }
+}
+
+// نگاشتِ هر آفستِ دلخواه به بازه‌ی (-period, 0] — دقیقاً همان بازه‌ای که انیمیشنِ
+// CSS می‌پیماید (۰ تا -۵۰٪ = -oneSetWidth). چون ترَک دو نسخه‌ی یکسان است، این
+// wrap کاملاً بدونِ پرش (seamless) دیده می‌شود و درگ در هر دو جهت پر می‌ماند.
+function normalizeOffset(x, period) {
+  if (!period) return x;
+  let n = x % period;
+  if (n > 0) n -= period;
+  return n;
+}
 
 // حداقل تعدادِ لوگو در «یک ست» تا یک ست از پهن‌ترین ویوپورت (≈۴K) عریض‌تر شود.
 // هر لوگوی دسکتاپ ≈ ۲۲۰px (۱۷۰ + ۵۰ مارجین) → ۲۰×۲۲۰ ≈ ۴۴۰۰px.
@@ -259,6 +285,115 @@ const BrandsTicker = ({ brands = EMPTY_BRANDS, sportSlug = "" }) => {
     return [...set, ...set];
   }, [brandList]);
 
+  // ── درگ برای اسکرول (ماوس + لمس) روی همان انیمیشنِ خودکارِ CSS ────────────────
+  const sectionRef = useRef(null);
+  const trackRef = useRef(null);
+  const hasDraggedRef = useRef(false);
+  const dragRef = useRef({
+    pointerDown: false,
+    dragging: false,
+    startX: 0,
+    baseOffset: 0,
+    lastOffset: 0,
+    oneSetWidth: 0,
+    duration: 0,
+  });
+
+  useEffect(() => {
+    const section = sectionRef.current;
+    const track = trackRef.current;
+    if (!section || !track) return undefined;
+
+    const drag = dragRef.current;
+
+    const onPointerDown = (e) => {
+      if (e.pointerType === "mouse" && e.button !== 0) return;
+      drag.pointerDown = true;
+      drag.dragging = false;
+      drag.startX = e.clientX;
+      hasDraggedRef.current = false;
+    };
+
+    // لحظه‌ی عبور از آستانه: انیمیشن را «فریز» می‌کنیم و از موقعیتِ زنده‌ی فعلی
+    // ادامه می‌دهیم تا هیچ پرشی رخ ندهد.
+    const beginDrag = (e) => {
+      drag.dragging = true;
+      hasDraggedRef.current = true;
+      drag.duration = parseFloat(getComputedStyle(track).animationDuration) || 0;
+      drag.oneSetWidth = track.scrollWidth / 2 || 0;
+      drag.baseOffset = getTrackTranslateX(track);
+      drag.startX = e.clientX;
+      track.style.animation = "none";
+      track.style.transform = `translateX(${drag.baseOffset}px)`;
+    };
+
+    const onPointerMove = (e) => {
+      if (!drag.pointerDown) return;
+      if (!drag.dragging) {
+        if (Math.abs(e.clientX - drag.startX) < DRAG_THRESHOLD) return;
+        beginDrag(e);
+      }
+      const offset = normalizeOffset(
+        drag.baseOffset + (e.clientX - drag.startX),
+        drag.oneSetWidth
+      );
+      drag.lastOffset = offset;
+      track.style.transform = `translateX(${offset}px)`;
+      e.preventDefault();
+    };
+
+    // رها کردن: انیمیشنِ خودکارِ CSS را با animation-delayِ منفی دقیقاً از همان
+    // نقطه‌ای که درگ رها شد از سر می‌گیریم (ادامه‌ی نرم و بی‌پرش).
+    const endDrag = () => {
+      if (!drag.pointerDown) return;
+      drag.pointerDown = false;
+      if (!drag.dragging) return;
+      drag.dragging = false;
+
+      // بدونِ انیمیشنِ خودکار (مثلاً prefers-reduced-motion) همان‌جا فریز می‌ماند.
+      if (!drag.duration || !drag.oneSetWidth) return;
+
+      const period = drag.oneSetWidth;
+      let n = drag.lastOffset % period;
+      if (n > 0) n -= period; // (-period, 0]
+      const fraction = -n / period; // [0, 1)
+
+      track.style.transform = "";
+      track.style.animation = ""; // بازگشت به انیمیشنِ کلاسِ CSS
+      track.style.animationDelay = `${-(fraction * drag.duration)}s`;
+    };
+
+    // جلوگیری از درگِ گوستِ تصویر/انتخابِ متن هنگام فشردنِ اشاره‌گر.
+    const onDragStart = (e) => {
+      if (drag.pointerDown) e.preventDefault();
+    };
+
+    // فقط وقتی واقعاً درگ رخ داده، کلیکِ ناوبریِ برند را خنثی می‌کنیم؛ تپِ عادی
+    // دست‌نخورده باقی می‌ماند.
+    const onClickCapture = (e) => {
+      if (!hasDraggedRef.current) return;
+      hasDraggedRef.current = false;
+      e.preventDefault();
+      e.stopPropagation();
+    };
+
+    section.addEventListener("pointerdown", onPointerDown);
+    window.addEventListener("pointermove", onPointerMove, { passive: false });
+    window.addEventListener("pointerup", endDrag);
+    window.addEventListener("pointercancel", endDrag);
+    section.addEventListener("dragstart", onDragStart);
+    section.addEventListener("click", onClickCapture, true);
+
+    return () => {
+      section.removeEventListener("pointerdown", onPointerDown);
+      window.removeEventListener("pointermove", onPointerMove);
+      window.removeEventListener("pointerup", endDrag);
+      window.removeEventListener("pointercancel", endDrag);
+      section.removeEventListener("dragstart", onDragStart);
+      section.removeEventListener("click", onClickCapture, true);
+    };
+  }, [brandList.length]);
+
   if (brandList.length === 0) return null;
 
   // فقط اولین رخدادِ هر برند در دسترسِ صفحه‌کلید/اسکرین‌ریدر است؛ تکرارها و
@@ -266,8 +401,13 @@ const BrandsTicker = ({ brands = EMPTY_BRANDS, sportSlug = "" }) => {
   const seen = new Set();
 
   return (
-    <section className={styles.brandSection} aria-label="برندها">
-      <div className={styles.brandTrack}>
+    <section
+      ref={sectionRef}
+      className={styles.brandSection}
+      aria-label="برندها"
+      style={{ touchAction: "pan-y" }}
+    >
+      <div ref={trackRef} className={styles.brandTrack}>
         {loop.map((brand, index) => {
           const decorative = seen.has(brand.slug);
           if (!decorative) seen.add(brand.slug);

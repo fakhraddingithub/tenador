@@ -6,6 +6,7 @@ import AdminLayout from "@/components/admin/Layout"
 import SiteNavbar from "@/components/features/navbar/SiteNavbar"
 import ScrollToTop from "@/components/common/ScrollToTop"
 import NavigationLoader from "@/components/common/NavigationLoader"
+import InitialLoadLoader from "@/components/common/InitialLoadLoader"
 
 export const metadata = {
   title: 'فروشگاه ورزشی تنادور | پنل مدیریت',
@@ -26,6 +27,7 @@ export default function RootLayout({ children }) {
         className="min-h-screen bg-[var(--color-background)] text-[var(--color-text)] antialiased"
         style={{ fontFamily: 'var(--font-sans)' }}
       >
+        <InitialLoadLoader />
         <NavigationLoader />
         <ScrollToTop />
         <main className="min-h-screen overflow-x-hidden">

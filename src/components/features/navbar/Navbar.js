@@ -301,10 +301,11 @@ function MobileCategoryDrawer({ navData, onClose }) {
           </div>
         )}
 
-        {/* ───────── بدنه: دو پنلِ ۴۰/۶۰ با اسکرولِ مستقل (ارتفاعِ مقید به فضای زیرِ سقف) ───────── */}
-        <div className="flex flex-row flex-1 min-h-0 overflow-hidden">
+        {/* ───────── بدنه: ستونِ اسکرول‌شونده — دو پنلِ ۴۰/۶۰ + کارتِ جمعه بازار بلافاصله زیرشان ───────── */}
+        <div className="flex-1 min-h-0 overflow-y-auto flex flex-col">
+        <div className="flex flex-row">
           {/* PANE A — مَستر/دسته‌ها (در RTL سمت راست) — ۴۰٪ */}
-          <div className="w-[40%] flex-shrink-0 overflow-y-auto border-l border-white/10">
+          <div className="w-[40%] flex-shrink-0 border-l border-white/10">
             {activeSport?.slug && (
               <Link
                 href={`/${activeSport.slug}`}
@@ -401,7 +402,7 @@ function MobileCategoryDrawer({ navData, onClose }) {
           </div>
 
           {/* PANE B — دیتیل/برندها (در RTL سمت چپ) — ۶۰٪ */}
-          <div className="w-[60%] flex-1 overflow-y-auto p-2 bg-black/20">
+          <div className="w-[60%] flex-1 p-2 bg-black/20">
             {/* لینکِ مشاهده‌ی صفحه‌ی دسته‌ی فعال */}
             {activeCategory && (
               <Link
@@ -444,16 +445,17 @@ function MobileCategoryDrawer({ navData, onClose }) {
           </div>
         </div>
 
-        {/* ───────── فوتر: جمعه بازار ───────── */}
-        <div className="flex-shrink-0 border-t border-white/10 px-3 pb-6 pt-3">
+        {/* ───────── جمعه بازار — بلافاصله زیرِ بخشِ دسته‌ها و برندها ───────── */}
+        <div className="border-t border-white/10 px-3 pb-6 pt-3">
           <Link
             href="/second-hand"
             onClick={onClose}
-            className="flex min-h-[50px] items-center justify-between gap-2 px-3 py-3.5 rounded-[6px] bg-gradient-to-l from-[#aa4725]/15 to-[#aa4725]/5 border border-[#aa4725]/30 hover:border-[#aa4725]/70 transition-all"
+            className="flex min-h-[60px] items-center justify-between gap-2 px-4 py-4 rounded-[6px] bg-gradient-to-l from-[#aa4725]/15 to-[#aa4725]/5 border border-[#aa4725]/30 hover:border-[#aa4725]/70 transition-all"
           >
-            <span className="text-[#aa4725] text-xs font-bold">جمعه بازار</span>
-            <FiShoppingCart size={15} className="text-[#aa4725]" />
+            <span className="text-[#aa4725] text-sm font-bold">جمعه بازار</span>
+            <FiShoppingCart size={18} className="text-[#aa4725]" />
           </Link>
+        </div>
         </div>
       </motion.div>
     </>
@@ -477,6 +479,8 @@ export default function Navbar({ navData: initialNavData = [] }) {
   const [searchResults, setSearchResults] = useState([]);
   const [isSearching, setIsSearching] = useState(false);
   const [showSearchDropdown, setShowSearchDropdown] = useState(false);
+  // موبایل: باز بودن سرچ‌بارِ درون‌خطی (کل ردیف نوبار را موقتاً جایگزین می‌کند)
+  const [isMobileSearchOpen, setIsMobileSearchOpen] = useState(false);
 
   const desktopSearchRef = useRef(null);
   const mobileSearchRef = useRef(null);
@@ -521,6 +525,8 @@ useEffect(() => {
 
       if (!isInsideSearch) {
         setShowSearchDropdown(false);
+        // کلیک بیرون از سرچ‌بار/دراپ‌داون → بستن سرچ‌بارِ موبایل هم
+        setIsMobileSearchOpen(false);
       }
     };
     document.addEventListener("pointerdown", handler, true);
@@ -572,7 +578,7 @@ useEffect(() => {
     <>
       <nav
         onMouseLeave={() => setIsCategoryOpen(false)}
-        className="fixed top-0 right-0 left-0 z-50 bg-[#20232ae6] border-b border-white/10 h-[118px] lg:h-[75px]"
+        className="fixed top-0 right-0 left-0 z-50 bg-[#20232ae6] border-b border-white/10 h-[64px] lg:h-[75px]"
       >
         {/* ===== DESKTOP ===== */}
         <div className="hidden lg:block container mx-auto px-4 h-full">
@@ -709,7 +715,64 @@ useEffect(() => {
         </div>
 
         {/* ===== MOBILE ===== */}
-        <div className="lg:hidden flex h-full flex-col justify-center gap-2 container mx-auto px-4 py-2.5">
+        <div className="lg:hidden flex h-full items-center container mx-auto px-4">
+          {isMobileSearchOpen ? (
+            /* حالت جستجو: سرچ‌بار درون‌خطی جایگزین کل ردیف نوبار می‌شود */
+            <div className="relative w-full" ref={mobileSearchRef}>
+              <FiSearch
+                size={18}
+                className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-white/55"
+              />
+              <input
+                type="search"
+                autoFocus
+                placeholder="جستجو در محصولات..."
+                value={searchQuery}
+                onChange={(e) => handleSearch(e.target.value)}
+                onFocus={() =>
+                  searchQuery.length >= 2 && setShowSearchDropdown(true)
+                }
+                className="h-10 w-full rounded-[var(--radius)] border border-white/10 bg-white/[0.06] pr-10 pl-11 text-sm text-white placeholder:text-gray-400/80 outline-none transition-colors focus:border-[#aa4725]/50 focus:bg-white/[0.09]"
+              />
+              <button
+                type="button"
+                onClick={() => {
+                  setIsMobileSearchOpen(false);
+                  closeSearch();
+                }}
+                aria-label="بستن جستجو"
+                className="absolute left-1.5 top-1/2 flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-[6px] text-white/70 transition-colors hover:bg-white/10 hover:text-white"
+              >
+                <FiX size={20} />
+              </button>
+              {showSearchDropdown && (
+                <div className="absolute top-full right-0 left-0 mt-2 bg-[#20232ae6] border border-white/10 rounded-[var(--radius)] shadow-2xl z-[200] max-h-[60vh] overflow-y-auto">
+                  {isSearching ? (
+                    <p className="text-center text-gray-400 text-sm py-5">
+                      در حال جستجو...
+                    </p>
+                  ) : searchResults.length > 0 ? (
+                    <div className="p-2 space-y-0.5">
+                      {searchResults.map((p) => (
+                        <SearchResultItem
+                          key={p._id}
+                          product={p}
+                          onClick={() => {
+                            closeSearch();
+                            setIsMobileSearchOpen(false);
+                          }}
+                        />
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="text-center text-gray-400 text-sm py-5">
+                      محصولی یافت نشد
+                    </p>
+                  )}
+                </div>
+              )}
+            </div>
+          ) : (
           <div className="flex min-h-[45px] items-center justify-between w-full">
             {/* سمت راست: دسته‌بندی محصولات و لوگو */}
             <div className="flex items-center gap-2 flex-shrink-0">
@@ -736,8 +799,17 @@ useEffect(() => {
               </Link>
             </div>
 
-            {/* سمت چپ: داشبورد کاربر و سبد خرید */}
+            {/* سمت چپ: جستجو، داشبورد کاربر و سبد خرید */}
             <div className="flex items-center justify-start gap-1.5 flex-shrink-0">
+              <button
+                type="button"
+                className={mobileActionButtonClass}
+                onClick={() => setIsMobileSearchOpen(true)}
+                aria-label="جستجو"
+              >
+                <FiSearch size={21} className="text-white" />
+              </button>
+
               {user ? (
                 <Link href="/p-user">
                   <Button
@@ -778,46 +850,7 @@ useEffect(() => {
               </button>
             </div>
           </div>
-
-          <div className="relative w-full" ref={mobileSearchRef}>
-            <FiSearch
-              size={18}
-              className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-white/55"
-            />
-            <input
-              type="search"
-              placeholder="جستجو در محصولات..."
-              value={searchQuery}
-              onChange={(e) => handleSearch(e.target.value)}
-              onFocus={() =>
-                searchQuery.length >= 2 && setShowSearchDropdown(true)
-              }
-              className="h-10 w-full rounded-[var(--radius)] border border-white/10 bg-white/[0.06] pr-10 pl-4 text-sm text-white placeholder:text-gray-400/80 outline-none transition-colors focus:border-[#aa4725]/50 focus:bg-white/[0.09]"
-            />
-            {showSearchDropdown && (
-              <div className="absolute top-full right-0 left-0 mt-2 bg-[#20232ae6] border border-white/10 rounded-[var(--radius)] shadow-2xl z-[200] max-h-[60vh] overflow-y-auto">
-                {isSearching ? (
-                  <p className="text-center text-gray-400 text-sm py-5">
-                    در حال جستجو...
-                  </p>
-                ) : searchResults.length > 0 ? (
-                  <div className="p-2 space-y-0.5">
-                    {searchResults.map((p) => (
-                      <SearchResultItem
-                        key={p._id}
-                        product={p}
-                        onClick={closeSearch}
-                      />
-                    ))}
-                  </div>
-                ) : (
-                  <p className="text-center text-gray-400 text-sm py-5">
-                    محصولی یافت نشد
-                  </p>
-                )}
-              </div>
-            )}
-          </div>
+          )}
 
           {/* منوی کشویی چندسطحی موبایل (با باز/بسته شدن دوباره، به سطح ۱ ریست می‌شود) */}
           <AnimatePresence>
@@ -832,7 +865,7 @@ useEffect(() => {
         </div>
       </nav>
 
-      {!isHomePage && <div className="h-[118px] lg:h-[75px]" />}
+      {!isHomePage && <div className="h-[64px] lg:h-[75px]" />}
       <CartDrawer isOpen={openCart} onClose={() => setOpenCart(false)} />
     </>
   );
