@@ -87,7 +87,7 @@ dynamically. It was removed:
   navigation** (instead of a server `redirect()`), so the island mounts fresh with the new
   auth state. Logout clears the cached `authUser` before reloading.
 - Result: `/`, `/products`, `/second-hand` are `○` (Static+ISR); `/products/[slug]`,
-  `/[sportSlug]/**`, `/second-hand/[slug]` are `●` (on-demand ISR). See §3.
+  `/[sportSlug]/**`, `/second-hand/[sportSlug]` are `●` (on-demand ISR). See §3.
 
 ---
 
@@ -105,7 +105,7 @@ static/ISR. Verified in the build output:
 | `/[sportSlug]` | `●` ISR 5m | **SSG on-demand**, cached `getPageDataBySlug` | First visit renders+caches |
 | `/[sportSlug]/[...slug]` | `●` ISR 5m | **SSG on-demand**, cached `queryBySlugs` | First visit renders+caches |
 | `/second-hand` | `○` ISR 10m | **Static + ISR** | Catalog content |
-| `/second-hand/[slug]` | `●` ISR 5m | **SSG on-demand** | First visit renders+caches |
+| `/second-hand/[sportSlug]` | `●` ISR 5m | **SSG on-demand** | First visit renders+caches |
 | `/p-user/**` | `○`/`ƒ` | **CSR / dynamic** | Per-user, auth-gated, non-cacheable |
 | `/p-admin/**` | `○`/`ƒ` | **CSR / dynamic** | Auth-gated dashboards |
 | `/api/product/[id]/price`, `/api/cart/price` | `ƒ` | **Dynamic (never cached)** | Depend on auth cookie, flash sales, user role/level |

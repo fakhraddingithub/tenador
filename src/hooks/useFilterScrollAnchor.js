@@ -7,25 +7,25 @@ import { useEffect, useLayoutEffect, useRef } from "react";
 const useIsoLayoutEffect =
   typeof window !== "undefined" ? useLayoutEffect : useEffect;
 
+// ارتفاعِ نوبارِ fixed سایت (h-[64px] موبایل / lg:h-[75px] دسکتاپ) + کمی فاصله،
+// تا وقتی نما به ابتدای ناحیه‌ی فیلتر برمی‌گردد، زیرِ نوبار پنهان نشود.
+const FIXED_NAV_OFFSET = 90;
+
 /**
  * src/hooks/useFilterScrollAnchor.js
  *
- * با هر «به‌روزرسانیِ نتیجه‌ی فیلتر»، موقعیتِ اسکرولِ کاربر را دقیقاً همان‌جا که
- * بود نگه می‌دارد — نه پرش به بالا، نه افتادنِ نما روی فوتر.
+ * با هر «به‌روزرسانیِ نتیجه‌ی فیلتر» نمای کاربر را روی ناحیه‌ی «فیلتر + نتایج»
+ * نگه می‌دارد:
  *
- * مشکل: وقتی نتیجه‌ی فیلتر کوتاه‌تر می‌شود، ارتفاعِ سند کم می‌شود و مرورگر اسکرول
- * را به بیشینه‌ی جدید clamp می‌کند → نمای کاربر ناگهان روی فوتر/فضای پایین می‌افتد
- * (پرشِ ناخواسته). راه‌حل: به کانتینرِ ردیفِ «فیلتر + نتایج» فقط به‌اندازه‌ای
- * min-height می‌دهیم که ارتفاعِ سند برای حفظِ اسکرولِ فعلی کافی بماند؛ سپس اگر
- * مرورگر حین reflow اسکرول را جابه‌جا کرده بود، همان مقدارِ قبلی را برمی‌گردانیم.
+ *  - اگر سند هنوز برای اسکرولِ فعلی جا دارد → هیچ جابه‌جایی‌ای رخ نمی‌دهد
+ *    (سایدبارِ فیلتر دقیقاً همان‌جا که بود می‌ماند؛ فقط لیست عوض می‌شود).
+ *  - اگر نتیجه‌ی فیلتر آن‌قدر کوتاه شد که سند دیگر جای اسکرولِ فعلی را ندارد
+ *    (مرورگر اسکرول را clamp می‌کند و نما روی فوتر می‌افتد) → به‌جای ماندن روی
+ *    فوتر، نما به ابتدای ناحیه‌ی فیلتر+نتایج برمی‌گردد (زیرِ نوبارِ fixed).
  *
- * رفتار:
- *  - هیچ‌وقت خودش اسکرول را جابه‌جا نمی‌کند؛ فقط جابه‌جاییِ ناخواسته‌ی مرورگر را
- *    خنثی می‌کند (سایدبارِ فیلتر در همان جای قبلی می‌ماند).
- *  - جبرانِ ارتفاع با هر تغییرِ فیلتر از نو محاسبه می‌شود (اگر لیست دوباره بلند
- *    شود، فضای خالیِ اضافه برداشته می‌شود).
- *  - با pagination/infinite-scroll تداخلی ندارد: بلندشدنِ لیست کسری ایجاد نمی‌کند.
- *  - پیش از paint (useLayoutEffect) اجرا می‌شود تا هیچ فریمِ پرش‌داری دیده نشود.
+ * پیش از paint (useLayoutEffect) اجرا می‌شود تا هیچ فریمِ پرش‌داری دیده نشود،
+ * و هرگز نما را به پایین نمی‌بَرد (فقط در صورتِ نیاز به بالا برمی‌گردد).
+ * با pagination/infinite-scroll تداخلی ندارد: بلندشدنِ لیست کسری ایجاد نمی‌کند.
  *
  * @param {React.RefObject<HTMLElement>} anchorRef ref به کانتینرِ ردیفِ فیلتر+نتایج
  * @param {*} signal مقداری که با هر «به‌روزرسانیِ نتیجه‌ی فیلتر» تغییر می‌کند
@@ -50,22 +50,30 @@ export default function useFilterScrollAnchor(anchorRef, signal) {
     // موقعیتِ فعلی را ثبت می‌کنیم.
     const scrollY = window.scrollY;
     const viewportHeight = window.innerHeight;
-
-    // جبرانِ قبلی را آزاد کن تا ارتفاعِ طبیعیِ محتوا سنجیده شود.
-    el.style.minHeight = "";
-    const naturalHeight = el.offsetHeight;
     const docHeight = document.documentElement.scrollHeight;
 
-    // اگر سندِ کوتاه‌شده دیگر جای اسکرولِ فعلی را ندارد، دقیقاً همان کسری را
-    // به کانتینر اضافه کن تا اسکرول سرِ جایش معتبر بماند.
+    // کسری = چقدر از اسکرولِ فعلی دیگر در سندِ کوتاه‌شده جا نمی‌شود.
     const deficit = scrollY + viewportHeight - docHeight;
-    if (deficit > 0) {
-      el.style.minHeight = `${naturalHeight + deficit}px`;
+
+    if (deficit <= 0) {
+      // سند هنوز جا دارد؛ اگر مرورگر حین reflow اسکرول را جابه‌جا کرده بود،
+      // همان مقدارِ قبلی را برگردان (بدون هیچ پرشی).
+      if (window.scrollY !== scrollY) {
+        window.scrollTo({ top: scrollY, behavior: "auto" });
+      }
+      return;
     }
 
-    // اگر مرورگر حین reflow اسکرول را clamp کرده بود، همان مقدارِ قبلی را برگردان.
-    if (window.scrollY !== scrollY) {
-      window.scrollTo({ top: scrollY, behavior: "auto" });
+    // سند کوتاه‌تر از اسکرولِ فعلی شده → نما را به ابتدای ناحیه‌ی فیلتر+نتایج
+    // برگردان (موقعیتِ مطلق در سند، مستقل از این‌که clamp رخ داده یا نه).
+    const anchorTop = Math.max(
+      0,
+      el.getBoundingClientRect().top + window.scrollY - FIXED_NAV_OFFSET,
+    );
+    // هرگز به پایین اسکرول نکن؛ فقط اگر کاربر پایین‌تر از ناحیه است، بالا بیا.
+    const target = Math.min(scrollY, anchorTop);
+    if (window.scrollY !== target) {
+      window.scrollTo({ top: target, behavior: "auto" });
     }
   }, [signal]);
 }

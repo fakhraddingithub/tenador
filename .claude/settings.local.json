@@ -206,7 +206,11 @@
       "Bash(git -C \"I:\\\\develope\\\\JS learn\\\\leaning project\\\\porjects\\\\tenador\" log --oneline -3 -- \"src/app/\\(Site\\)/articles/[articleId]\" \"src/app/\\(Site\\)/second-hand/[slug]\")",
       "Bash(sed 's|.*\\(Site\\)||')",
       "Bash(git -C \"I:\\\\develope\\\\JS learn\\\\leaning project\\\\porjects\\\\tenador\" log --oneline -2 -- \"src/app/\\(Site\\)/second-hand/[sportSlug]\")",
-      "Bash(git -C \"I:\\\\develope\\\\JS learn\\\\leaning project\\\\porjects\\\\tenador\" log --oneline -2 -- \"src/app/\\(Site\\)/articles/[articleId]\")"
+      "Bash(git -C \"I:\\\\develope\\\\JS learn\\\\leaning project\\\\porjects\\\\tenador\" log --oneline -2 -- \"src/app/\\(Site\\)/articles/[articleId]\")",
+      "PowerShell(npx eslint \"src/hooks/useFilterScrollAnchor.js\")",
+      "Bash(ping -n 4 127.0.0.1)",
+      "Bash(taskkill //F //IM node.exe)",
+      "Bash(git -C \"I:/develope/JS learn/leaning project/porjects/tenador\" status --short)"
     ]
   }
 }

@@ -33,8 +33,11 @@ function buildLookup(rawSlug) {
 
 const SITE_URL = (process.env.NEXT_PUBLIC_SITE_URL || "https://tenador.com").replace(/\/+$/, "");
 
+// نام پارامتر [sportSlug] است چون Next.js اجازه‌ی دو نامِ متفاوت برای یک سطحِ
+// داینامیک را نمی‌دهد (این مسیر با second-hand/[sportSlug]/[categorySlug] هم‌سطح
+// است)؛ مقدارِ واقعیِ آن اسلاگِ محصولِ دست‌دوم است.
 export async function generateMetadata({ params }) {
-  const { slug } = await params;
+  const { sportSlug: slug } = await params;
   await connectToDB();
   const item = await UsedProduct.findOne(buildLookup(slug))
     .select("name images")
@@ -72,7 +75,7 @@ export async function generateMetadata({ params }) {
 }
 
 export default async function UsedProductPage({ params }) {
-  const { slug } = await params;
+  const { sportSlug: slug } = await params;
 
   await connectToDB();
 
