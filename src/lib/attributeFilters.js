@@ -161,6 +161,85 @@ export function productMatchesAttrFilters(product, attrFilters = {}, attrMeta = 
   return true;
 }
 
+/**
+ * متادیتای فیلتر برای «ویژگی‌های واریانت» (مثل سایز گریپ، وزن، …) — مقادیر از
+ * variant.attributes همه‌ی محصولاتِ لودشده جمع می‌شوند (کلاینت‌ساید، بدون درخواست
+ * اضافه). برچسب‌ها از تعریفِ دسته (category.variantAttributes) خوانده می‌شوند و
+ * ترتیبِ نمایش هم مطابق همان تعریف است؛ ویژگی‌های خارج از تعریف در انتها.
+ * count = تعدادِ محصولاتی که آن مقدار را دارند (نه تعداد واریانت‌ها).
+ */
+export function buildVariantAttributeMeta(variantAttributeDefs = [], products = []) {
+  const defs = Array.isArray(variantAttributeDefs) ? variantAttributeDefs : [];
+  const labelByName = new Map(defs.map((a) => [a.name, a.label || a.name]));
+  const orderByName = new Map(defs.map((a, i) => [a.name, i]));
+
+  // name -> Map(value -> تعداد محصولات دارای آن مقدار)
+  const counts = new Map();
+  for (const p of products) {
+    const seen = new Map(); // مقادیرِ یکتای هر ویژگی در همین محصول
+    for (const v of p?.variants || []) {
+      for (const [name, raw] of Object.entries(v?.attributes || {})) {
+        const val = String(raw ?? "").trim();
+        if (!val) continue;
+        if (!seen.has(name)) seen.set(name, new Set());
+        seen.get(name).add(val);
+      }
+    }
+    for (const [name, vals] of seen) {
+      if (!counts.has(name)) counts.set(name, new Map());
+      const m = counts.get(name);
+      for (const val of vals) m.set(val, (m.get(val) || 0) + 1);
+    }
+  }
+
+  const meta = [];
+  for (const [name, m] of counts) {
+    let entries = [...m.entries()];
+    const allNumeric = entries.every(([v]) => isNumericValue(v));
+    if (allNumeric) {
+      entries.sort((a, b) => Number(a[0]) - Number(b[0]));
+    } else {
+      entries.sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0], "fa"));
+    }
+    meta.push({
+      name,
+      label: labelByName.get(name) || name,
+      type: allNumeric ? "number" : "text",
+      options: entries.slice(0, 30).map(([value, count]) => ({ value, count })),
+    });
+  }
+
+  meta.sort(
+    (a, b) =>
+      (orderByName.has(a.name) ? orderByName.get(a.name) : Number.MAX_SAFE_INTEGER) -
+      (orderByName.has(b.name) ? orderByName.get(b.name) : Number.MAX_SAFE_INTEGER),
+  );
+  return meta;
+}
+
+/**
+ * آیا محصول با فیلترهای ویژگیِ واریانت مطابقت دارد؟
+ * منطق: یک واریانتِ واحد باید «همه‌ی» ویژگی‌های انتخاب‌شده را هم‌زمان داشته باشد
+ * (AND بین ویژگی‌ها روی همان واریانت، OR درون هر ویژگی) — تا ترکیب‌های ناموجود
+ * (مثلاً گریپ ۲ + قرمز که با هم در هیچ واریانتی نیستند) نمایش داده نشوند.
+ */
+export function productMatchesVariantAttrFilters(product, variantFilters = {}) {
+  const active = Object.entries(variantFilters).filter(
+    ([, sel]) => Array.isArray(sel) && sel.length > 0,
+  );
+  if (active.length === 0) return true;
+
+  const variants = Array.isArray(product?.variants) ? product.variants : [];
+  if (variants.length === 0) return false;
+
+  return variants.some((v) =>
+    active.every(([name, sel]) => {
+      const pv = String(v?.attributes?.[name] ?? "").trim();
+      return sel.some((s) => String(s).trim() === pv);
+    }),
+  );
+}
+
 /** تعداد فیلترهای ویژگیِ فعال — برای بج شمارنده‌ی موبایل. */
 export function countActiveAttrFilters(attrFilters = {}) {
   let n = 0;

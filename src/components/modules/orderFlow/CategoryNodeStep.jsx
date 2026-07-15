@@ -1,10 +1,18 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useDeferredValue, useEffect, useMemo, useState } from "react";
 import Image from "next/image";
 import { motion, AnimatePresence } from "framer-motion";
-import { FiCheck, FiTag, FiX } from "react-icons/fi";
+import { FiCheck, FiSearch, FiTag, FiX } from "react-icons/fi";
 import { eurToToman, formatToman } from "@/lib/currency";
+import {
+  buildAttributeMeta,
+  buildVariantAttributeMeta,
+  productMatchesAttrFilters,
+  productMatchesVariantAttrFilters,
+} from "@/lib/attributeFilters";
+import { normalizeForCompare } from "@/lib/persianNormalize";
+import ProductPickerToolbar from "./ProductPickerToolbar";
 
 /* ─── helpers (هم‌راستا با QuickViewModal) ─── */
 function groupVariantOptions(variants = []) {
@@ -33,6 +41,23 @@ function findMatchingVariant(variants = [], selection = {}) {
 
 function buildLabelMap(variantAttributes = []) {
   return Object.fromEntries(variantAttributes.map((a) => [a.name, a.label]));
+}
+
+/* گزینه‌های فیلتر از روی یک فیلدِ ref populate‌شده (برند/سری) — مرتب بر اساس فراوانی */
+function buildRefOptions(products = [], field) {
+  const map = new Map(); // id -> { value, label, count }
+  for (const p of products) {
+    const ref = p?.[field];
+    if (!ref || typeof ref !== "object" || !ref._id) continue;
+    const id = String(ref._id);
+    if (!map.has(id)) {
+      map.set(id, { value: id, label: ref.title || ref.name || id, count: 0 });
+    }
+    map.get(id).count += 1;
+  }
+  return [...map.values()].sort(
+    (a, b) => b.count - a.count || a.label.localeCompare(b.label, "fa")
+  );
 }
 
 function getNodeCategoryId(node) {
@@ -90,6 +115,13 @@ export default function CategoryNodeStep({
     ...(value?.selectedVariantAttributes || {}),
   })); // attrName -> value
 
+  // ─── جستجو و فیلتر (کاملاً کلاینت‌ساید روی همان محصولاتِ لودشده) ───
+  // state در همین کامپوننت می‌ماند تا در طول ماندن روی همین مرحله حفظ شود.
+  const [searchTerm, setSearchTerm] = useState("");
+  const [pickerFilters, setPickerFilters] = useState({}); // { [groupId]: [value, ...] }
+  // تایپِ سریع، فیلترِ عقب‌افتاده — رندرِ اینپوت هیچ‌وقت پشتِ فیلترکردن نمی‌ماند
+  const deferredSearch = useDeferredValue(searchTerm);
+
   // ─── واکشی محصولات دسته‌بندی + نرخ ارز ───
   useEffect(() => {
     if (!categoryId) return;
@@ -118,6 +150,132 @@ export default function CategoryNodeStep({
       cancelled = true;
     };
   }, [categoryId]);
+
+  // ─── متادیتای فیلترها — به‌صورت خودکار از محصولاتِ همین دسته ساخته می‌شود ───
+
+  // تعریفِ دسته (با populate: attributes + variantAttributes) از روی اولین محصول
+  const categoryDef = useMemo(() => {
+    const cat = products.find(
+      (p) => p?.category && typeof p.category === "object"
+    )?.category;
+    return cat || null;
+  }, [products]);
+
+  // ویژگی‌های ثابتِ «قابل فیلتر» دسته — همان هلپر مشترکِ فیلترهای سایت.
+  // فقط ویژگی‌هایی می‌مانند که واقعاً بین محصولات تنوع دارند (≥۲ گزینه).
+  const attrMeta = useMemo(() => {
+    const meta = buildAttributeMeta(categoryDef?.attributes || [], products);
+    return meta.filter((m) =>
+      m.type === "color"
+        ? products.some((p) => p?.color || p?.attributes?.[m.name])
+        : (m.options?.length || 0) >= 2
+    );
+  }, [categoryDef, products]);
+
+  // ویژگی‌های واریانت (گریپ، وزن، …) — از variant.attributes همه‌ی محصولات؛
+  // نام‌هایی که در ویژگی‌های ثابت هم هستند حذف می‌شوند تا فیلترِ تکراری نسازیم.
+  const variantAttrMeta = useMemo(() => {
+    const fixedNames = new Set(attrMeta.map((m) => m.name));
+    return buildVariantAttributeMeta(categoryDef?.variantAttributes || [], products).filter(
+      (m) => !fixedNames.has(m.name) && (m.options?.length || 0) >= 2
+    );
+  }, [categoryDef, products, attrMeta]);
+
+  // گزینه‌های برند و سری — فقط وقتی بین محصولات تنوع دارند نمایش داده می‌شوند
+  const brandOptions = useMemo(
+    () => buildRefOptions(products, "brand"),
+    [products]
+  );
+  const serieOptions = useMemo(
+    () => buildRefOptions(products, "serie"),
+    [products]
+  );
+
+  // گروه‌های فیلتر برای تولبار — id با پیشوند تا برند/سری/ثابت/واریانت از هم جدا بمانند
+  const filterGroups = useMemo(() => {
+    const groups = [];
+    if (brandOptions.length >= 2)
+      groups.push({ id: "brand", label: "برند", type: "chips", options: brandOptions });
+    if (serieOptions.length >= 2)
+      groups.push({ id: "serie", label: "سری", type: "chips", options: serieOptions });
+    for (const m of attrMeta) {
+      groups.push({
+        id: `attr:${m.name}`,
+        label: m.label,
+        type: m.type === "color" ? "color" : "chips",
+        options: (m.options || []).map((o) => ({ value: o.value, label: o.value, count: o.count })),
+      });
+    }
+    for (const m of variantAttrMeta) {
+      groups.push({
+        id: `vattr:${m.name}`,
+        label: m.label,
+        type: "chips",
+        options: (m.options || []).map((o) => ({ value: o.value, label: o.value, count: o.count })),
+      });
+    }
+    return groups;
+  }, [brandOptions, serieOptions, attrMeta, variantAttrMeta]);
+
+  // ایندکسِ جستجو — یک‌بار برای هر محصول ساخته می‌شود (نام + SKU + تگ + برند + سری)
+  const searchIndex = useMemo(() => {
+    const map = new Map();
+    for (const p of products) {
+      const parts = [
+        p?.name,
+        p?.sku,
+        ...(Array.isArray(p?.tag) ? p.tag : []),
+        p?.brand?.title,
+        p?.brand?.name,
+        p?.serie?.title,
+        p?.serie?.name,
+      ];
+      map.set(
+        String(p._id),
+        normalizeForCompare(parts.filter(Boolean).join(" ")).toLowerCase()
+      );
+    }
+    return map;
+  }, [products]);
+
+  // ─── اعمال جستجو + همه‌ی فیلترها (memoized؛ AND بین گروه‌ها، OR درون هر گروه) ───
+  const filteredProducts = useMemo(() => {
+    const query = normalizeForCompare(deferredSearch).toLowerCase();
+    const brandSel = pickerFilters.brand || [];
+    const serieSel = pickerFilters.serie || [];
+    const fixedFilters = {};
+    const variantFilters = {};
+    for (const [id, sel] of Object.entries(pickerFilters)) {
+      if (!Array.isArray(sel) || sel.length === 0) continue;
+      if (id.startsWith("attr:")) fixedFilters[id.slice(5)] = sel;
+      else if (id.startsWith("vattr:")) variantFilters[id.slice(6)] = sel;
+    }
+
+    return products.filter((p) => {
+      if (query && !searchIndex.get(String(p._id))?.includes(query)) return false;
+      if (
+        brandSel.length &&
+        !brandSel.includes(String(p?.brand?._id ?? p?.brand ?? ""))
+      )
+        return false;
+      if (
+        serieSel.length &&
+        !serieSel.includes(String(p?.serie?._id ?? p?.serie ?? ""))
+      )
+        return false;
+      if (!productMatchesAttrFilters(p, fixedFilters, attrMeta)) return false;
+      if (!productMatchesVariantAttrFilters(p, variantFilters)) return false;
+      return true;
+    });
+  }, [products, deferredSearch, pickerFilters, attrMeta, searchIndex]);
+
+  const isFiltering =
+    deferredSearch.trim() !== "" || Object.keys(pickerFilters).length > 0;
+
+  const clearSearchAndFilters = () => {
+    setSearchTerm("");
+    setPickerFilters({});
+  };
 
   const selectedProduct = useMemo(
     () => products.find((p) => String(p._id) === String(selectedProductId)) || null,
@@ -237,10 +395,14 @@ export default function CategoryNodeStep({
   /* ─── render ─── */
   if (loading) {
     return (
-      <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
-        {[1, 2, 3, 4, 5, 6, 7, 8].map((i) => (
-          <div key={i} className="h-32 rounded-[6px] bg-gray-100 animate-pulse" />
-        ))}
+      <div className="space-y-3">
+        {/* جای‌نگه‌دارِ نوار جستجو/فیلتر — تا بعد از لود، پرش چیدمان نداشته باشیم */}
+        <div className="h-9 rounded-[6px] bg-gray-100 animate-pulse" />
+        <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
+          {[1, 2, 3, 4, 5, 6, 7, 8].map((i) => (
+            <div key={i} className="h-32 rounded-[6px] bg-gray-100 animate-pulse" />
+          ))}
+        </div>
       </div>
     );
   }
@@ -260,6 +422,19 @@ export default function CategoryNodeStep({
         )}
       </div>
 
+      {/* ─── جستجو + فیلترهای پویا (فقط وقتی محصولی هست) ─── */}
+      {products.length > 0 && (
+        <ProductPickerToolbar
+          searchTerm={searchTerm}
+          onSearchChange={setSearchTerm}
+          groups={filterGroups}
+          filters={pickerFilters}
+          onFiltersChange={setPickerFilters}
+          resultCount={filteredProducts.length}
+          totalCount={products.length}
+        />
+      )}
+
       {/* ─── شبکه‌ی محصولات (هنگام تمرکز روی یک محصول، کم‌رنگ و تار می‌شود) ─── */}
       <motion.div
         animate={{
@@ -276,9 +451,27 @@ export default function CategoryNodeStep({
             <FiTag className="w-8 h-8 mx-auto mb-3 text-gray-300" />
             <p className="text-sm text-gray-400">محصولی در این دسته‌بندی یافت نشد</p>
           </div>
+        ) : filteredProducts.length === 0 ? (
+          // نتیجه‌ی جستجو/فیلتر خالی است — با امکانِ پاک‌کردنِ سریع
+          <div className="rounded-[6px] border border-dashed border-gray-300 bg-gray-50 py-10 text-center">
+            <FiSearch className="w-8 h-8 mx-auto mb-3 text-gray-300" />
+            <p className="text-sm text-gray-400">
+              محصولی با این جستجو و فیلترها پیدا نشد
+            </p>
+            {isFiltering && (
+              <button
+                type="button"
+                onClick={clearSearchAndFilters}
+                className="mt-3 inline-flex items-center gap-1.5 px-4 h-8 rounded-[6px] border border-gray-200 bg-white text-xs font-medium text-gray-600 hover:text-[#aa4725] hover:border-[#aa4725]/50 transition-colors"
+              >
+                <FiX className="w-3.5 h-3.5" />
+                پاک کردن جستجو و فیلترها
+              </button>
+            )}
+          </div>
         ) : (
           <div className="grid grid-cols-3 sm:grid-cols-4 gap-2 pb-1">
-            {products.map((p) => {
+            {filteredProducts.map((p) => {
               const selected = String(p._id) === String(selectedProductId);
               const priceToman = eurToToman(Number(p.basePrice), rate);
               const { farsi, english } = splitName(p.name);

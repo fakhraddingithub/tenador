@@ -47,7 +47,9 @@ export async function GET(req) {
       .populate('brand', 'name title slug icon')
       .populate('sport', 'name title slug')
       .populate('athlete', 'name title slug')
-      .populate('category', 'name title slug')
+      // با withVariants (انتخاب محصول در مودال فرایند سفارش) تعریف ویژگی‌های دسته هم
+      // لازم است: برچسب واریانت‌ها (labelMap) و ساخت فیلترهای پویا از همین‌ها ساخته می‌شوند.
+      .populate('category', withVariants ? 'name title slug attributes variantAttributes' : 'name title slug')
       .populate('serie', 'name title slug')
       .populate('limitedEdition', 'name title slug')
       .sort({ order: 1, createdAt: -1 });
