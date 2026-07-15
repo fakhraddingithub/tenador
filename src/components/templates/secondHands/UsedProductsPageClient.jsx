@@ -17,7 +17,8 @@ import {
 const DEFAULT_FILTERS = {
   brands:      [],
   categories:  [],
-  maxPrice:    50_000_000,
+  minPrice:    0,
+  maxPrice:    0, // 0 = بدون سقف
   scoreRange:  null,
   onlyInStock: false,
 };
@@ -64,11 +65,6 @@ export default function UsedProductsPageClient({
   // ── Wishlist ──
   const [wishlist, setWishlist] = useState([]);
 
-  const maxPrice = useMemo(
-    () => Math.max(...initialProducts.map(p => p.price || 0), 50_000_000),
-    [initialProducts]
-  );
-
   const filteredProducts = useMemo(() => {
     return initialProducts.filter(product => {
       const name  = product.name || '';
@@ -85,7 +81,10 @@ export default function UsedProductsPageClient({
         filters.categories.length === 0 ||
         filters.categories.includes(cat?._id?.toString() || cat?.toString());
 
-      const matchesPrice = product.price <= filters.maxPrice;
+      // maxPrice=0 یعنی بدون سقف — همان قراردادِ فیلترِ قیمتِ مشترک
+      const matchesPrice =
+        (product.price || 0) >= (filters.minPrice || 0) &&
+        (!filters.maxPrice || (product.price || 0) <= filters.maxPrice);
 
       const matchesScore =
         !filters.scoreRange ||
@@ -103,7 +102,7 @@ export default function UsedProductsPageClient({
   const anchorRef = useRef(null);
   useFilterScrollAnchor(anchorRef, filteredProducts.length);
 
-  const resetFilters = () => setFilters({ ...DEFAULT_FILTERS, maxPrice });
+  const resetFilters = () => setFilters(DEFAULT_FILTERS);
 
   const openQuickView = (product) => {
     setSelectedProduct(product);

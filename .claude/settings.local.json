@@ -188,7 +188,25 @@
       "PowerShell(npx eslint --quiet --format compact \"src/components/features/navbar/Navbar.js\" \"src/components/modules/dashboard/BottomTabBar.jsx\" \"src/components/modules/profile/index.jsx\" \"src/app/\\(User-Dashboard\\)/p-user/layout.jsx\")",
       "PowerShell(npx eslint --quiet \"src/components/features/navbar/Navbar.js\" \"src/components/modules/dashboard/BottomTabBar.jsx\" \"src/components/modules/profile/index.jsx\" \"src/app/\\(User-Dashboard\\)/p-user/layout.jsx\")",
       "PowerShell(npx eslint \"src/components/admin/ProductCard.jsx\")",
-      "PowerShell(npx next build --no-turbopack 2>&1 | Select-Object -Last 40)"
+      "PowerShell(npx next build --no-turbopack 2>&1 | Select-Object -Last 40)",
+      "PowerShell(9572,2104,8508,984,6184,7760,3460,4720 | ForEach-Object { try { Stop-Process -Id $_ -Force -Confirm:$false -ErrorAction Stop; \"killed $_\" } catch { \"skip $_ : $\\($_.Exception.Message\\)\" } })",
+      "PowerShell(596,9108,984,3556,4132,1380,6152,10628 | ForEach-Object { try { Stop-Process -Id $_ -Force -Confirm:$false -ErrorAction Stop; \"killed $_\" } catch { \"skip $_\" } })",
+      "PowerShell(node --version; $os = Get-CimInstance Win32_OperatingSystem; \"RAM free: {0:N1} GB / {1:N1} GB\" -f \\($os.FreePhysicalMemory/1MB\\), \\($os.TotalVisibleMemorySize/1MB\\))",
+      "Bash(where nvm *)",
+      "Bash(nvm list *)",
+      "Read(//c/Program Files/nodejs/**)",
+      "Bash(where node *)",
+      "PowerShell(Get-WinEvent *)",
+      "Bash(NODE_OPTIONS=\"--max-old-space-size=4096\" npm run build)",
+      "Bash(cp \"C:\\\\Users\\\\saleh\\\\AppData\\\\Local\\\\Temp\\\\claude\\\\I--develope-JS-learn-leaning-project-porjects-tenador\\\\123b20e4-0316-4515-b96c-ddabcb3d2fb7\\\\scratchpad\\\\get-slugs.mjs\" ./__tmp-get-slugs.mjs)",
+      "Bash(rm -f ./__tmp-get-slugs.mjs)",
+      "Bash(curl *)",
+      "Bash(mv \"C:\\\\Users\\\\saleh\\\\AppData\\\\Local\\\\Temp\\\\claude\\\\I--develope-JS-learn-leaning-project-porjects-tenador\\\\123b20e4-0316-4515-b96c-ddabcb3d2fb7\\\\scratchpad\\\\articleId-route.js.bak\" \"src/app/\\(Site\\)/articles/[articleId]/route.js\")",
+      "Bash(mv \"C:\\\\Users\\\\saleh\\\\AppData\\\\Local\\\\Temp\\\\claude\\\\I--develope-JS-learn-leaning-project-porjects-tenador\\\\123b20e4-0316-4515-b96c-ddabcb3d2fb7\\\\scratchpad\\\\route-backup/second-hand-slug\" \"src/app/\\(Site\\)/second-hand/[slug]\")",
+      "Bash(git -C \"I:\\\\develope\\\\JS learn\\\\leaning project\\\\porjects\\\\tenador\" log --oneline -3 -- \"src/app/\\(Site\\)/articles/[articleId]\" \"src/app/\\(Site\\)/second-hand/[slug]\")",
+      "Bash(sed 's|.*\\(Site\\)||')",
+      "Bash(git -C \"I:\\\\develope\\\\JS learn\\\\leaning project\\\\porjects\\\\tenador\" log --oneline -2 -- \"src/app/\\(Site\\)/second-hand/[sportSlug]\")",
+      "Bash(git -C \"I:\\\\develope\\\\JS learn\\\\leaning project\\\\porjects\\\\tenador\" log --oneline -2 -- \"src/app/\\(Site\\)/articles/[articleId]\")"
     ]
   }
 }

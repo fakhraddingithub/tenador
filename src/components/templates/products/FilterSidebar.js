@@ -1,7 +1,10 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { FaChevronDown, FaFilter, FaHistory } from "react-icons/fa";
 import MobileFilterDrawer from "@/components/features/filters/MobileFilterDrawer";
 import AttributeFilters from "@/components/features/filters/AttributeFilters";
+import PriceRangeFilter, {
+  getListingPriceToman,
+} from "@/components/features/filters/PriceRangeFilter";
 import { countActiveAttrFilters } from "@/lib/attributeFilters";
 
 const getFilterItemIcon = (item, type) => {
@@ -46,6 +49,16 @@ export default function FilterSidebar({
   const categories = getUniqueItems(initialProducts, "category");
   const series = getUniqueItems(initialProducts, "serie");
 
+  // دامنه‌ی اسلایدرِ قیمت از روی قیمتِ نمایشیِ (تومان) محصولاتِ همین صفحه
+  const priceBounds = useMemo(() => {
+    let maxSeen = 0;
+    for (const p of initialProducts) {
+      const v = getListingPriceToman(p);
+      if (v > maxSeen) maxSeen = v;
+    }
+    return { min: 0, max: maxSeen };
+  }, [initialProducts]);
+
   const resetFilters = () => {
     setFilters({
       brands: [],
@@ -53,7 +66,7 @@ export default function FilterSidebar({
       sports: [],
       series: [],
       minPrice: 0,
-      maxPrice: 50000000,
+      maxPrice: 0, // 0 = بدون سقف
     });
     setAttrFilters({});
   };
@@ -65,7 +78,7 @@ export default function FilterSidebar({
     (filters.sports?.length || 0) +
     (filters.series?.length || 0) +
     (filters.minPrice > 0 ? 1 : 0) +
-    (filters.maxPrice < 50000000 ? 1 : 0) +
+    (filters.maxPrice > 0 ? 1 : 0) +
     countActiveAttrFilters(attrFilters);
 
   return (
@@ -122,46 +135,15 @@ export default function FilterSidebar({
           filters={filters}
           setFilters={setFilters}
         />
-        {/* فیلتر قیمت عددی */}
-        <div className="p-5 border-b border-gray-50">
-          <h4 className="text-sm font-bold text-[#1a1a1a] mb-4">
-            محدوده قیمت (تومان)
-          </h4>
-          <div className="flex flex-col gap-4">
-            <div className="flex gap-2">
-              <input
-                type="number"
-                placeholder="از"
-                value={filters.minPrice}
-                onChange={(e) =>
-                  setFilters({ ...filters, minPrice: Number(e.target.value) })
-                }
-                className="w-1/2 h-10 bg-gray-50 border border-gray-100 rounded-[6px] text-xs px-2 focus:border-[#aa4725] outline-none font-bold"
-              />
-              <input
-                type="number"
-                placeholder="تا"
-                value={filters.maxPrice}
-                onChange={(e) =>
-                  setFilters({ ...filters, maxPrice: Number(e.target.value) })
-                }
-                className="w-1/2 h-10 bg-gray-50 border border-gray-100 rounded-[6px] text-xs px-2 focus:border-[#aa4725] outline-none font-bold"
-              />
-            </div>
-            {/* اسلایدر بصری */}
-            <input
-              type="range"
-              min="0"
-              max="50000000"
-              step="500000"
-              value={filters.maxPrice}
-              onChange={(e) =>
-                setFilters({ ...filters, maxPrice: Number(e.target.value) })
-              }
-              className="w-full accent-[#aa4725] h-1 bg-gray-100 rounded-lg appearance-none cursor-pointer"
-            />
-          </div>
-        </div>
+        {/* فیلتر قیمت — کامپوننتِ مشترکِ اسلایدرِ دوسَره + اینپوت‌های هزارگان‌دار */}
+        <PriceRangeFilter
+          className="p-5 border-b border-gray-50"
+          bounds={priceBounds}
+          value={{ min: filters.minPrice || 0, max: filters.maxPrice || 0 }}
+          onChange={({ min, max }) =>
+            setFilters({ ...filters, minPrice: min, maxPrice: max })
+          }
+        />
 
         {/* ویژگی‌های پویای دسته‌بندی (رنگ، وزن، اندازه صفحه و ...) —
             کامپوننتِ مشترکِ دکمه‌ایِ AttributeFilters (شاملِ گریدِ ۱۶ رنگ). */}

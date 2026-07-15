@@ -417,6 +417,9 @@ export async function resolveEventProducts(productSelection = {}) {
       // id کار می‌کند؛ فقط برچسبِ نمایشی title/name می‌شود.)
       .populate("sport", "name title slug order")
       .populate("category", "name title slug order")
+      // serie هم populate می‌شود تا فیلترِ «سری محصولات» در سایدبارِ صفحهٔ کمپین
+      // نامِ سری را نشان دهد نه _id خام (همان دلیلِ sport/category بالا).
+      .populate("serie", "name title slug order")
       .lean(),
     getCachedRate(),
   ]);

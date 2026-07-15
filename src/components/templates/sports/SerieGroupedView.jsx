@@ -8,12 +8,15 @@
  * زیرسری هدایت می‌کند. بخش‌ها به‌صورت تدریجی (infinite scroll) بارگذاری می‌شوند.
  */
 
-import { useState, useRef, useEffect, useCallback } from "react";
+import { useState, useRef, useEffect, useCallback, useMemo } from "react";
 import Link from "next/link";
 import ProductCard from "@/components/modules/cart/ProductCard";
 import QuickViewModal from "@/components/modules/cart/QuickViewModal";
 import SearchBar from "@/components/templates/products/SearchBar";
 import MobileFilterDrawer from "@/components/features/filters/MobileFilterDrawer";
+import PriceRangeFilter, {
+  getListingPriceToman,
+} from "@/components/features/filters/PriceRangeFilter";
 import useFilterScrollAnchor from "@/hooks/useFilterScrollAnchor";
 import { FiShoppingBag, FiLayers, FiLoader, FiFilter, FiRotateCcw } from "react-icons/fi";
 
@@ -43,9 +46,10 @@ export default function SerieGroupedView({
   // توکنی که فقط با «اعمالِ فیلتر» (ریستِ نتایج) بالا می‌رود، نه با loadMore.
   const [filterToken, setFilterToken] = useState(0);
 
+  // قیمت‌ها عددی به تومان؛ 0 یعنی بدون کف/سقف (همان قراردادِ API)
   const [searchTerm, setSearchTerm] = useState("");
-  const [minPrice, setMinPrice] = useState("");
-  const [maxPrice, setMaxPrice] = useState("");
+  const [minPrice, setMinPrice] = useState(0);
+  const [maxPrice, setMaxPrice] = useState(0);
 
   const [selectedProduct, setSelectedProduct] = useState(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -199,9 +203,22 @@ export default function SerieGroupedView({
 
   const resetFilters = () => {
     setSearchTerm("");
-    setMinPrice("");
-    setMaxPrice("");
+    setMinPrice(0);
+    setMaxPrice(0);
   };
+
+  // دامنه‌ی اسلایدرِ قیمت از روی قیمتِ تومانِ محصولاتِ بارگذاری‌شده (کامپوننتِ
+  // مشترک آن را گرد و فقط رو به بالا نگه می‌دارد تا با فیلترشدنِ نتایج جمع نشود).
+  const priceBounds = useMemo(() => {
+    let maxSeen = 0;
+    for (const section of sections) {
+      for (const p of section.products || []) {
+        const v = getListingPriceToman(p);
+        if (v > maxSeen) maxSeen = v;
+      }
+    }
+    return { min: 0, max: maxSeen };
+  }, [sections]);
 
   // تعداد فیلترهای فعالِ سایدبار — فقط برای بجِ دکمه‌ی موبایلِ MobileFilterDrawer.
   const activeCount =
@@ -299,25 +316,17 @@ export default function SerieGroupedView({
               </div>
             )}
 
-            {/* فیلتر قیمت */}
-            <div className="bg-white rounded-[6px] border border-gray-100 shadow-sm p-5">
-              <h4 className="text-sm font-bold text-[#1a1a1a] mb-4">محدوده قیمت (تومان)</h4>
-              <div className="flex gap-2">
-                <input
-                  type="number"
-                  placeholder="از"
-                  value={minPrice}
-                  onChange={(e) => setMinPrice(e.target.value)}
-                  className="w-1/2 h-10 bg-gray-50 border border-gray-100 rounded-[6px] text-xs px-2 focus:border-[var(--color-primary)] outline-none font-bold"
-                />
-                <input
-                  type="number"
-                  placeholder="تا"
-                  value={maxPrice}
-                  onChange={(e) => setMaxPrice(e.target.value)}
-                  className="w-1/2 h-10 bg-gray-50 border border-gray-100 rounded-[6px] text-xs px-2 focus:border-[var(--color-primary)] outline-none font-bold"
-                />
-              </div>
+            {/* فیلتر قیمت — کامپوننتِ مشترکِ اسلایدرِ دوسَره + اینپوت‌های هزارگان‌دار */}
+            <div className="bg-white rounded-[6px] border border-gray-100 shadow-sm">
+              <PriceRangeFilter
+                className="p-5"
+                bounds={priceBounds}
+                value={{ min: minPrice, max: maxPrice }}
+                onChange={({ min, max }) => {
+                  setMinPrice(min);
+                  setMaxPrice(max);
+                }}
+              />
             </div>
           </div>
           </MobileFilterDrawer>

@@ -5,6 +5,7 @@ import ProductList from "@/components/templates/products/ProductList";
 import useFilterScrollAnchor from "@/hooks/useFilterScrollAnchor";
 import useDeferredProducts from "@/hooks/useDeferredProducts";
 import FilterSidebar from "@/components/templates/products/FilterSidebar";
+import { getListingPriceToman } from "@/components/features/filters/PriceRangeFilter";
 import SearchBar from "@/components/templates/products/SearchBar";
 import SeriesSlider from "@/components/templates/sports/SeriesSlider";
 import LimitedEditionsStrip from "@/components/templates/sports/LimitedEditionsStrip";
@@ -45,7 +46,7 @@ export default function SportPageClient({
     categories: [],
     series: [], // ✨ اضافه شد: آمادگی برای فیلتر کردن کلاینت‌ساید بر اساس سری
     minPrice: 0,
-    maxPrice: 50000000,
+    maxPrice: 0, // 0 = بدون سقف
   });
 
   // ─────────────────────────────────────────────
@@ -185,9 +186,11 @@ export default function SportPageClient({
           product.serie?._id?.toString() || product.serie?.toString(),
         );
 
+      // بر اساس قیمتِ نمایشیِ تومان (نه basePrice که یورو است)؛ maxPrice=0 یعنی بدون سقف
+      const priceToman = getListingPriceToman(product);
       const matchesPrice =
-        product.basePrice >= localFilters.minPrice &&
-        product.basePrice <= localFilters.maxPrice;
+        priceToman >= (localFilters.minPrice || 0) &&
+        (!localFilters.maxPrice || priceToman <= localFilters.maxPrice);
 
       const matchesAttributes = productMatchesAttrFilters(
         product,
@@ -315,7 +318,7 @@ export default function SportPageClient({
                     categories: [],
                     series: [],
                     minPrice: 0,
-                    maxPrice: 50000000,
+                    maxPrice: 0,
                   });
                   applyAttrFilters({});
                 }}
