@@ -214,15 +214,3 @@ export const getPublicArticleHub = unstable_cache(async () => {
   });
 }, ["public-article-hub"], { revalidate: 300, tags: ["articles"] });
 
-const getCachedLegacyArticleTarget = unstable_cache(async (value) => {
-  await connectToDB();
-  const article = await Article.findOne({ _id: value, ...publicArticleFilter() }).select("slug category").populate("category", "slug status").lean();
-  if (!article || article.category?.status !== "active") return null;
-  const occupied = await Promise.all([Sport.exists({ slug: article.category.slug }), Brand.exists({ slug: article.category.slug })]);
-  return isReservedArticleRoot(article.category.slug) || occupied.some(Boolean) ? null : buildArticlePath(article.category.slug, article.slug);
-}, ["legacy-public-article"], { revalidate: 300, tags: ["articles"] });
-
-export async function getLegacyArticleTarget(value) {
-  if (!mongoose.isValidObjectId(value)) return null;
-  return getCachedLegacyArticleTarget(String(value));
-}

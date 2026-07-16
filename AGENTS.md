@@ -91,7 +91,8 @@ Beyond the storefront, several self-contained subsystems each span a model + ser
 
 | Subsystem | Entry point(s) | Notes |
 |---|---|---|
-| Events / campaigns | `services/event.service.js`, `services/eventProductResolver.js`, `models/Event.js` | Campaign platform with theme/effect system and resolver-driven product selection |
+| Events / campaigns | `services/event.service.js`, `services/eventProductResolver.js`, `models/Event.js` | Campaign platform with theme/effect system and resolver-driven product selection; public pages live at `/collection/[slug]` (old `/events` paths 301-redirect in `next.config.mjs`) |
+| Articles / blog | `services/article.service.js` (admin CRUD), `services/publicArticle.service.js` (public), `models/Article*.js` | Block-based articles (same block idea as CMS pages) with categories, tags, revision snapshots, and slug-change redirects; article-category slugs live at the URL root, so they are collision-checked against sport/brand slugs and the reserved-route list in `utils/articleRoutes.js`; supports scheduled publishing (`publicArticleFilter`) |
 | Admin notifications | `services/notificationService.js`, `models/Notification.js` | Bell/sidebar UI; beware the payment dual-path/webhook early-return gotcha |
 | User broadcasts | `services/userNotificationService.js`, `models/UserNotification*.js` | Admin→user broadcasts with watermark read-tracking |
 | Reviews / comments | `services/comment.service.js`, `models/Comment.js` | Moderated, one-per-product, "verified purchase" badge |
@@ -113,7 +114,8 @@ Beyond the storefront, several self-contained subsystems each span a model + ser
 ### Key Conventions
 
 - **RTL/Persian first:** The app is fully right-to-left. UI components use Vazirmatn font (loaded in `src/app/globals.css`). Always consider RTL layout when building new UI. Farsi inline comments are common throughout the codebase.
-- **Images via Cloudinary:** All product, athlete, and brand images are uploaded to and served from Cloudinary. The `next.config.mjs` remote pattern allows `res.cloudinary.com`. Never use local `/public` for user-uploaded content.
+- **Images via ImageKit (migrated from Cloudinary):** Uploads go through `POST /api/upload` using the ImageKit SDK; coach-document PDFs are uploaded as private files and served through the signed-URL proxy at `src/app/api/files/pdf/route.js`. `next/image` uses a custom loader (`src/lib/imagekitLoader.js`) so Vercel image optimization is bypassed entirely; the loader still passes through legacy `res.cloudinary.com` URLs until the DB migration (`scripts/migrate-cloudinary-to-imagekit*.mjs`) is fully done, and skips transforms for SVGs (adds `tr=orig-true` to stop ImageKit rasterizing them). Never use local `/public` for user-uploaded content.
+- **React Compiler is enabled** (`reactCompiler: true` in `next.config.mjs`) — don't add manual `useMemo`/`useCallback` for plain render memoization.
 - **Tailwind v4:** No `tailwind.config.js` — configuration is done via CSS variables in `globals.css`. Primary color: `#aa4725`, secondary: `#ffbf00`.
 - **Mixed JS/JSX:** Most files are `.js` or `.jsx`, not TypeScript. `tsconfig.json` exists but `strict` is off.
 - **Path aliases:** `@/*` maps to `src/*`; `base/*` maps to the repo root.
@@ -124,7 +126,8 @@ Required in `.env` (no `.env.example` exists):
 
 ```
 MONGODB_URI_TENADOR / MONGODB_URI_LOCAL / MONGODB_URI_WAREHOUSE
-CLOUDINARY_CLOUD_NAME / CLOUDINARY_API_KEY / CLOUDINARY_API_SECRET / CLOUDINARY_URL
+IMAGEKIT_PUBLIC_KEY / IMAGEKIT_PRIVATE_KEY / IMAGEKIT_URL_ENDPOINT / NEXT_PUBLIC_IMAGEKIT_URL_ENDPOINT
+CLOUDINARY_CLOUD_NAME / CLOUDINARY_API_KEY / CLOUDINARY_API_SECRET   # legacy — only the one-off Cloudinary→ImageKit migration scripts need these
 AccessTokenPrivateKey / RefreshTokenPrivateKey
 GOOGLE_CLIENT_ID / GOOGLE_CLIENT_SECRET
 NEXT_PUBLIC_BASE_URL / NEXT_PUBLIC_SITE_URL / NEXT_PUBLIC_LOGO_URL

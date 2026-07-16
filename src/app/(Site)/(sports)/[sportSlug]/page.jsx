@@ -7,6 +7,7 @@ import { notFound } from "next/navigation";
 import { getCachedRate } from "@/lib/Exchangerate";
 import { getSportTickerBrands } from "base/services/brandTicker.service";
 import { getPublicArticleCategory } from "base/services/publicArticle.service";
+import { decodeSlugParam } from "base/utils/articleSlug";
 import ArticleCategoryPage from "@/components/features/articles/ArticleCategoryPage";
 import { articleCategoryMetadata } from "@/lib/articleSeo";
 
@@ -21,7 +22,7 @@ export async function generateMetadata({ params }) {
   // RULE 2: یک سگمنتیِ ریشه فقط می‌تواند SPORT یا BRAND باشد؛ هر چیزِ دیگر ۴۰۴
   const ctx = await resolvePageContext([sportSlug]);
   if (ctx.notFound) {
-    const articleCategory = await getPublicArticleCategory(sportSlug);
+    const articleCategory = await getPublicArticleCategory(decodeSlugParam(sportSlug));
     return articleCategory ? articleCategoryMetadata(articleCategory.category) : { title: "صفحه پیدا نشد" };
   }
   const data = await getPageDataBySlug(sportSlug);
@@ -71,7 +72,7 @@ export default async function DynamicSportPage({ params }) {
   // وجودِ اسلاگ در رجیستری (که اسلاگِ دسته/سری را هم می‌پذیرفت → soft-404).
   const ctx = await resolvePageContext([sportSlug]);
   if (ctx.notFound) {
-    const articleCategory = await getPublicArticleCategory(sportSlug);
+    const articleCategory = await getPublicArticleCategory(decodeSlugParam(sportSlug));
     if (!articleCategory) notFound();
     return <ArticleCategoryPage category={articleCategory.category} articles={articleCategory.articles} />;
   }

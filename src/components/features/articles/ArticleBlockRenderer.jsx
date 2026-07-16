@@ -15,7 +15,7 @@ function safeHeadingId(block) {
 
 function normalizeHeadingLevels(blocks = []) {
   let previous = 1;
-  return normalizeHeadingLevels(blocks).map((block) => {
+  return blocks.map((block) => {
     if (block.type !== "heading") return block;
     const requested = Number(String(block.data?.level || "h2").slice(1));
     previous = Math.max(2, Math.min(4, Number.isFinite(requested) ? requested : 2, previous + 1));

@@ -210,7 +210,11 @@
       "PowerShell(npx eslint \"src/hooks/useFilterScrollAnchor.js\")",
       "Bash(ping -n 4 127.0.0.1)",
       "Bash(taskkill //F //IM node.exe)",
-      "Bash(git -C \"I:/develope/JS learn/leaning project/porjects/tenador\" status --short)"
+      "Bash(git -C \"I:/develope/JS learn/leaning project/porjects/tenador\" status --short)",
+      "Bash(rm -rf .next)",
+      "Bash(grep -o 'AccessTokenPrivateKey=.\\\\{0,3\\\\}' .env)",
+      "Bash(grep -o '[$\\\\\\\\\"'\"'\"' ]')",
+      "Bash(taskkill //PID 5732 //F)"
     ]
   }
 }

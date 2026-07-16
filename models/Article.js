@@ -63,7 +63,11 @@ ArticleSchema.index({ title: "text", excerpt: "text" });
 ArticleSchema.pre("validate", function () {
   this.slug = normalizeArticleSlug(this.slug || this.title);
   this.tags = [...new Set((this.tags || []).map(String))];
-  this.readingTime = calculateReadingTime(this.blocks);
+  // this.blocks یک DocumentArray مونگوس است (با ارجاع چرخه‌ای به سند والد)؛
+  // برای شمارش کلمات باید دادهٔ خالص به calculateReadingTime داده شود.
+  this.readingTime = calculateReadingTime(
+    typeof this.blocks?.toObject === "function" ? this.blocks.toObject() : this.blocks,
+  );
   if (this.status === "published" && !this.publishedAt) this.publishedAt = new Date();
   if (this.status === "scheduled" && !this.publishedAt) {
     this.invalidate("publishedAt", "publishedAt is required for scheduled articles");

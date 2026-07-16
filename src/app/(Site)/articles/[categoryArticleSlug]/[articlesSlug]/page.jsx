@@ -1,5 +1,6 @@
 import { notFound, permanentRedirect } from "next/navigation";
 import { getPublicArticle } from "base/services/publicArticle.service";
+import { decodeSlugParam } from "base/utils/articleSlug";
 import PublicArticlePage from "@/components/features/articles/PublicArticlePage";
 import { articleMetadata } from "@/lib/articleSeo";
 
@@ -7,7 +8,7 @@ export const dynamic = "force-dynamic";
 
 export async function generateMetadata({ params }) {
   const { categoryArticleSlug, articlesSlug } = await params;
-  const result = await getPublicArticle(categoryArticleSlug, articlesSlug);
+  const result = await getPublicArticle(decodeSlugParam(categoryArticleSlug), decodeSlugParam(articlesSlug));
 
   if (result?.kind === "article") {
     return articleMetadata(result.article);
@@ -21,7 +22,7 @@ export async function generateMetadata({ params }) {
 
 export default async function ArticlePage({ params }) {
   const { categoryArticleSlug, articlesSlug } = await params;
-  const result = await getPublicArticle(categoryArticleSlug, articlesSlug);
+  const result = await getPublicArticle(decodeSlugParam(categoryArticleSlug), decodeSlugParam(articlesSlug));
 
   if (result?.kind === "redirect") {
     permanentRedirect(result.location);
