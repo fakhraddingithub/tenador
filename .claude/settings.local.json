@@ -214,7 +214,11 @@
       "Bash(rm -rf .next)",
       "Bash(grep -o 'AccessTokenPrivateKey=.\\\\{0,3\\\\}' .env)",
       "Bash(grep -o '[$\\\\\\\\\"'\"'\"' ]')",
-      "Bash(taskkill //PID 5732 //F)"
+      "Bash(taskkill //PID 5732 //F)",
+      "Bash(npx playwright *)",
+      "Bash(npm init *)",
+      "Bash(npm i *)",
+      "Bash(git --no-pager diff -- src/components/features/comparisonBanner/ComparisonBanner.jsx)"
     ]
   }
 }
