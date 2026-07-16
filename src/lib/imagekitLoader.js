@@ -12,8 +12,16 @@ const IMAGEKIT_ENDPOINT = process.env.NEXT_PUBLIC_IMAGEKIT_URL_ENDPOINT || "";
 export default function imagekitLoader({ src, width, quality }) {
   if (typeof src !== "string") return src;
 
-  // SVG را ترنسفورم نکن (وکتور است و نیازی به ریسایز/تبدیل فرمت ندارد)
+  // SVG را ترنسفورم نکن (وکتور است و نیازی به ریسایز/تبدیل فرمت ندارد).
+  // نکته‌ی مهم: ImageKit به‌صورتِ پیش‌فرض (در سطحِ تنظیماتِ حساب) SVG ها را
+  // خودکار به فرمتِ رستر (PNG/JPEG) تبدیل می‌کند، حتی بدونِ هیچ پارامترِ
+  // ترنسفورمی در URL — این باعثِ تار/کوچک‌شدنِ نمایشِ لوگوها/آیکون‌ها می‌شود.
+  // با tr=orig-true این تبدیلِ خودکار را صریحاً غیرفعال می‌کنیم.
   if (/\.svg(\?|$)/i.test(src)) {
+    if (IMAGEKIT_ENDPOINT && src.startsWith(IMAGEKIT_ENDPOINT)) {
+      const sep = src.includes("?") ? "&" : "?";
+      return `${src}${sep}tr=orig-true`;
+    }
     return src;
   }
 
