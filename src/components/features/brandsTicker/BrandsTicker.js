@@ -22,11 +22,8 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
+import useDragClickGuard from "@/hooks/useDragClickGuard";
 import styles from "@/styles/BrandSection.module.css";
-
-// آستانه‌ی حرکتِ اشاره‌گر تا «کلیک» به «درگ» تبدیل شود (px) — کمتر از این مقدار
-// کلیکِ عادی روی برند حفظ می‌شود و ناوبری اتفاق می‌افتد.
-const DRAG_THRESHOLD = 6;
 
 // خواندنِ translateXِ جاریِ ترَک از ماتریسِ computed (px) — در حینِ انیمیشنِ CSS
 // درصدها به px حل شده‌اند، پس همیشه مقدارِ پیکسلیِ لحظه‌ای برمی‌گردد.
@@ -286,12 +283,10 @@ const BrandsTicker = ({ brands = EMPTY_BRANDS, sportSlug = "" }) => {
   }, [brandList]);
 
   // ── درگ برای اسکرول (ماوس + لمس) روی همان انیمیشنِ خودکارِ CSS ────────────────
-  const sectionRef = useRef(null);
+  // تشخیصِ کلیک/درگ و بلعیدنِ کلیکِ بعد از درگ در useDragClickGuard است؛ اینجا
+  // فقط مکانیکِ اسکرولِ خودِ ترَک پیاده شده.
   const trackRef = useRef(null);
-  const hasDraggedRef = useRef(false);
   const dragRef = useRef({
-    pointerDown: false,
-    dragging: false,
     startX: 0,
     baseOffset: 0,
     lastOffset: 0,
@@ -299,100 +294,61 @@ const BrandsTicker = ({ brands = EMPTY_BRANDS, sportSlug = "" }) => {
     duration: 0,
   });
 
-  useEffect(() => {
-    const section = sectionRef.current;
+  // لحظه‌ی عبور از آستانه: انیمیشن را «فریز» می‌کنیم و از موقعیتِ زنده‌ی فعلی
+  // ادامه می‌دهیم تا هیچ پرشی رخ ندهد.
+  const handleDragStart = (e) => {
     const track = trackRef.current;
-    if (!section || !track) return undefined;
-
+    if (!track) return;
     const drag = dragRef.current;
 
-    const onPointerDown = (e) => {
-      if (e.pointerType === "mouse" && e.button !== 0) return;
-      drag.pointerDown = true;
-      drag.dragging = false;
-      drag.startX = e.clientX;
-      hasDraggedRef.current = false;
-    };
+    drag.duration = parseFloat(getComputedStyle(track).animationDuration) || 0;
+    drag.oneSetWidth = track.scrollWidth / 2 || 0;
+    drag.baseOffset = getTrackTranslateX(track);
+    drag.lastOffset = drag.baseOffset;
+    drag.startX = e.clientX;
+    track.style.animation = "none";
+    track.style.transform = `translateX(${drag.baseOffset}px)`;
+  };
 
-    // لحظه‌ی عبور از آستانه: انیمیشن را «فریز» می‌کنیم و از موقعیتِ زنده‌ی فعلی
-    // ادامه می‌دهیم تا هیچ پرشی رخ ندهد.
-    const beginDrag = (e) => {
-      drag.dragging = true;
-      hasDraggedRef.current = true;
-      drag.duration = parseFloat(getComputedStyle(track).animationDuration) || 0;
-      drag.oneSetWidth = track.scrollWidth / 2 || 0;
-      drag.baseOffset = getTrackTranslateX(track);
-      drag.startX = e.clientX;
-      track.style.animation = "none";
-      track.style.transform = `translateX(${drag.baseOffset}px)`;
-    };
+  const handleDragMove = (e) => {
+    const track = trackRef.current;
+    if (!track) return;
+    const drag = dragRef.current;
 
-    const onPointerMove = (e) => {
-      if (!drag.pointerDown) return;
-      if (!drag.dragging) {
-        if (Math.abs(e.clientX - drag.startX) < DRAG_THRESHOLD) return;
-        beginDrag(e);
-      }
-      const offset = normalizeOffset(
-        drag.baseOffset + (e.clientX - drag.startX),
-        drag.oneSetWidth
-      );
-      drag.lastOffset = offset;
-      track.style.transform = `translateX(${offset}px)`;
-      e.preventDefault();
-    };
+    const offset = normalizeOffset(
+      drag.baseOffset + (e.clientX - drag.startX),
+      drag.oneSetWidth
+    );
+    drag.lastOffset = offset;
+    track.style.transform = `translateX(${offset}px)`;
+    e.preventDefault(); // جلوگیری از انتخابِ متن حینِ درگ
+  };
 
-    // رها کردن: انیمیشنِ خودکارِ CSS را با animation-delayِ منفی دقیقاً از همان
-    // نقطه‌ای که درگ رها شد از سر می‌گیریم (ادامه‌ی نرم و بی‌پرش).
-    const endDrag = () => {
-      if (!drag.pointerDown) return;
-      drag.pointerDown = false;
-      if (!drag.dragging) return;
-      drag.dragging = false;
+  // رها کردن: انیمیشنِ خودکارِ CSS را با animation-delayِ منفی دقیقاً از همان
+  // نقطه‌ای که درگ رها شد از سر می‌گیریم (ادامه‌ی نرم و بی‌پرش).
+  const handleDragEnd = () => {
+    const track = trackRef.current;
+    if (!track) return;
+    const drag = dragRef.current;
 
-      // بدونِ انیمیشنِ خودکار (مثلاً prefers-reduced-motion) همان‌جا فریز می‌ماند.
-      if (!drag.duration || !drag.oneSetWidth) return;
+    // بدونِ انیمیشنِ خودکار (مثلاً prefers-reduced-motion) همان‌جا فریز می‌ماند.
+    if (!drag.duration || !drag.oneSetWidth) return;
 
-      const period = drag.oneSetWidth;
-      let n = drag.lastOffset % period;
-      if (n > 0) n -= period; // (-period, 0]
-      const fraction = -n / period; // [0, 1)
+    const period = drag.oneSetWidth;
+    let n = drag.lastOffset % period;
+    if (n > 0) n -= period; // (-period, 0]
+    const fraction = -n / period; // [0, 1)
 
-      track.style.transform = "";
-      track.style.animation = ""; // بازگشت به انیمیشنِ کلاسِ CSS
-      track.style.animationDelay = `${-(fraction * drag.duration)}s`;
-    };
+    track.style.transform = "";
+    track.style.animation = ""; // بازگشت به انیمیشنِ کلاسِ CSS
+    track.style.animationDelay = `${-(fraction * drag.duration)}s`;
+  };
 
-    // جلوگیری از درگِ گوستِ تصویر/انتخابِ متن هنگام فشردنِ اشاره‌گر.
-    const onDragStart = (e) => {
-      if (drag.pointerDown) e.preventDefault();
-    };
-
-    // فقط وقتی واقعاً درگ رخ داده، کلیکِ ناوبریِ برند را خنثی می‌کنیم؛ تپِ عادی
-    // دست‌نخورده باقی می‌ماند.
-    const onClickCapture = (e) => {
-      if (!hasDraggedRef.current) return;
-      hasDraggedRef.current = false;
-      e.preventDefault();
-      e.stopPropagation();
-    };
-
-    section.addEventListener("pointerdown", onPointerDown);
-    window.addEventListener("pointermove", onPointerMove, { passive: false });
-    window.addEventListener("pointerup", endDrag);
-    window.addEventListener("pointercancel", endDrag);
-    section.addEventListener("dragstart", onDragStart);
-    section.addEventListener("click", onClickCapture, true);
-
-    return () => {
-      section.removeEventListener("pointerdown", onPointerDown);
-      window.removeEventListener("pointermove", onPointerMove);
-      window.removeEventListener("pointerup", endDrag);
-      window.removeEventListener("pointercancel", endDrag);
-      section.removeEventListener("dragstart", onDragStart);
-      section.removeEventListener("click", onClickCapture, true);
-    };
-  }, [brandList.length]);
+  const sectionRef = useDragClickGuard({
+    onDragStart: handleDragStart,
+    onDragMove: handleDragMove,
+    onDragEnd: handleDragEnd,
+  });
 
   if (brandList.length === 0) return null;
 

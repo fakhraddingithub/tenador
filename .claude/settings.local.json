@@ -218,7 +218,19 @@
       "Bash(npx playwright *)",
       "Bash(npm init *)",
       "Bash(npm i *)",
-      "Bash(git --no-pager diff -- src/components/features/comparisonBanner/ComparisonBanner.jsx)"
+      "Bash(git --no-pager diff -- src/components/features/comparisonBanner/ComparisonBanner.jsx)",
+      "Bash(taskkill //PID 3496 //F)",
+      "Bash(echo \"--- exit: $? ---\")",
+      "Bash(echo \"home: $\\(curl -s -o /dev/null -w '%{http_code}' --max-time 300 http://localhost:3000/\\)\")",
+      "Bash(taskkill //PID 7600 //F)",
+      "Bash(sed -i 's/await page.waitForTimeout\\(1200\\);\\\\n  const after = await tx\\(\\);/X/' regress.mjs)",
+      "Bash(sed -i 's|await page.locator\\(.\\\\.series-next-btn.\\).first\\(\\).click\\(\\);|await page.locator\\(\".series-next-btn\"\\).first\\(\\).click\\(\\);\\\\n  await page.waitForTimeout\\(600\\);|' regress.mjs)",
+      "Bash(git --no-pager diff --stat)",
+      "Bash(git --no-pager log --oneline -3)",
+      "Bash(git --no-pager show HEAD --stat --oneline)",
+      "Bash(git --no-pager show HEAD:src/components/features/comparisonBanner/ComparisonBanner.jsx)",
+      "Bash(git --no-pager diff -- src/components/templates/sports/SeriesSlider.jsx)",
+      "Bash(git --no-pager diff -- src/components/features/brandsTicker/BrandsTicker.js)"
     ]
   }
 }

@@ -8,6 +8,7 @@ import {
   FiArrowRight,
   FiPlusCircle,
 } from "react-icons/fi";
+import useDragClickGuard from "@/hooks/useDragClickGuard";
 
 import { Swiper, SwiperSlide } from "swiper/react";
 import { Navigation, Autoplay, Pagination } from "swiper/modules";
@@ -184,6 +185,10 @@ function SerieCard({ serie, sportSlug, limited = false }) {
 }
 
 export default function SeriesSlider({ series = [], sportSlug, sportTitle }) {
+  // قبل از return زودهنگام صدا زده می‌شود تا ترتیبِ هوک‌ها ثابت بماند.
+  // حرکتِ خودِ اسلایدر با Swiper است؛ این هوک فقط کلیکِ بعد از درگ را می‌بلعد.
+  const sliderRef = useDragClickGuard();
+
   if (!series?.length) return null;
 
   const isLimitedEdition = series.every((s) => s.isLimitedEdition);
@@ -265,7 +270,7 @@ export default function SeriesSlider({ series = [], sportSlug, sportTitle }) {
           </div>
         </div>
 
-        <div className="relative w-full">
+        <div className="relative w-full" ref={sliderRef}>
           <GrungeFilter />
           <Swiper
             modules={[Navigation, Pagination, Autoplay]}
