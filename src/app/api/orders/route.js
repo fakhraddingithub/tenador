@@ -14,6 +14,7 @@ import { verifyToken } from "base/utils/auth";
 import Order from "base/models/Order";
 import UsedProduct from "base/models/UsedProduct";
 import Product from "base/models/Product";
+import Variant from "base/models/Variant";
 import User from "base/models/User";
 
 async function getUserFromToken() {
@@ -61,6 +62,11 @@ export async function GET() {
         path:   "items.product",
         model:  "Product",
         select: "name mainImage sku",
+      })
+      .populate({
+        path:   "items.variant",
+        model:  "Variant",
+        select: "sku attributes images",
       })
       .populate({
         path:   "items.usedProduct",

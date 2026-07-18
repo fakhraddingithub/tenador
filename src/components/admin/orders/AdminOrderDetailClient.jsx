@@ -2254,6 +2254,18 @@ export default function AdminOrderDetailClient({ orderId }) {
                     <MapPin size={11} /> آدرس تحویل
                   </p>
                   <div className="text-xs text-gray-600 leading-6 bg-gray-50 rounded-xl px-3 py-2">
+                    {order.address.snapshot.fullName && (
+                      <p>
+                        <span className="text-gray-400">گیرنده: </span>
+                        <span className="font-semibold text-gray-700">{order.address.snapshot.fullName}</span>
+                      </p>
+                    )}
+                    {order.address.snapshot.phone && (
+                      <p>
+                        <span className="text-gray-400">تلفن گیرنده: </span>
+                        <span className="font-semibold text-gray-700 font-mono" dir="ltr">{order.address.snapshot.phone}</span>
+                      </p>
+                    )}
                     <p>{order.address.snapshot.province} — {order.address.snapshot.city}</p>
                     <p>{order.address.snapshot.addressLine}</p>
                     {order.address.snapshot.postalCode && (

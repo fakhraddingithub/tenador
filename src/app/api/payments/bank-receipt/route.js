@@ -123,10 +123,32 @@ export async function POST(req) {
           { status: 400 },
         );
       }
+
+      // مانده‌ی واقعی سفارش = مبلغ کل − مجموع پرداخت‌های تأییدشده‌ی قبلی
+      // (برای ادامه‌ی پرداختِ سفارش‌های «پرداخت جزئی»؛ همان منطق مسیر تأیید ادمین)
+      const approvedPayments = await Payment.find({
+        _id:    { $in: order.payments },
+        status: "PAID",
+      })
+        .select("amount")
+        .lean();
+      const alreadyPaidTotal = approvedPayments.reduce(
+        (s, p) => s + (Number(p.amount) || 0),
+        0,
+      );
+      const remainingAmount = order.totalPrice - alreadyPaidTotal;
+
+      if (remainingAmount <= 0) {
+        return NextResponse.json(
+          { message: "مانده‌ای برای پرداخت این سفارش باقی نمانده است" },
+          { status: 400 },
+        );
+      }
+
       const payment = await Payment.create({
         order:  order._id,
         method: "BANK_RECEIPT",
-        amount: order.totalPrice,
+        amount: remainingAmount,
         status: "PENDING",
         bankReceipt: {
           imageUrls,                    // ← آرایه URLها

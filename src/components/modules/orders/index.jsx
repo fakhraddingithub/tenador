@@ -460,14 +460,15 @@ function OrderCard({ order, onDelete, onViewDetail, reviewedIds, onReview }) {
             جزئیات
           </button>
 
-          {/* دکمه پرداخت — اگر پرداخت نشده */}
-          {order.paymentStatus === 'UNPAID' && (
+          {/* دکمه پرداخت — پرداخت‌نشده، یا فیش‌بانکیِ دارای مانده (اقساطی از مسیر اقساط ادامه می‌یابد) */}
+          {(order.paymentStatus === 'UNPAID' ||
+            (order.paymentStatus === 'PARTIALLY_PAID' && order.paymentMethod === 'BANK_RECEIPT')) && (
             <a
               href={`/p-user/payments/${order.trackingCode}`}
               className="inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-2 rounded-[6px] bg-emerald-600 text-white hover:bg-emerald-700 transition-colors"
             >
               <MdOutlinePayment className="text-sm" />
-              پرداخت
+              {order.paymentStatus === 'PARTIALLY_PAID' ? 'ادامه پرداخت' : 'پرداخت'}
             </a>
           )}
 

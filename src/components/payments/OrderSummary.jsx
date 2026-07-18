@@ -25,6 +25,12 @@ const OrderSummary = ({ order }) => {
     ONLINE:        'پرداخت آنلاین',
   };
 
+  // پرداخت‌های تأییدشده‌ی قبلی (سفارش‌های «پرداخت جزئی») — مانده = کل − پرداخت‌شده
+  const paidTotal = (order.payments ?? [])
+    .filter((p) => p?.status === 'PAID')
+    .reduce((sum, p) => sum + (Number(p.amount) || 0), 0);
+  const remainingAmount = Math.max((order.totalPrice ?? 0) - paidTotal, 0);
+
   return (
     <div className="bg-white rounded-[6px] border border-gray-200 p-6 shadow-md mb-6">
       <div className="flex items-center gap-2 border-b border-gray-100 pb-4 mb-4">
@@ -168,12 +174,28 @@ const OrderSummary = ({ order }) => {
         </div>
       )}
 
+      {/* پرداخت‌شده تاکنون — فقط برای سفارش‌های دارای پرداخت جزئی تأییدشده */}
+      {paidTotal > 0 && (
+        <div className="space-y-2 mb-4 text-sm">
+          <div className="flex justify-between items-center text-gray-500">
+            <span>مبلغ کل سفارش</span>
+            <span className="font-medium text-gray-800">{formatPrice(order.totalPrice)}</span>
+          </div>
+          <div className="flex justify-between items-center text-emerald-600">
+            <span>پرداخت‌شده تاکنون</span>
+            <span className="font-medium">− {formatPrice(paidTotal)}</span>
+          </div>
+        </div>
+      )}
+
       {/* مبلغ قابل پرداخت */}
       <div className="flex justify-between items-center bg-[var(--color-primary)]/5 p-4 rounded-[6px] border border-[var(--color-primary)]/10">
-        <span className="font-bold text-[#1a1a1a] text-sm">مبلغ قابل پرداخت:</span>
+        <span className="font-bold text-[#1a1a1a] text-sm">
+          {paidTotal > 0 ? 'مانده قابل پرداخت:' : 'مبلغ قابل پرداخت:'}
+        </span>
         <div className="flex items-baseline gap-1">
           <span className="text-xl font-bold text-[var(--color-primary)] tracking-tight">
-            {new Intl.NumberFormat('fa-IR').format(order.totalPrice)}
+            {new Intl.NumberFormat('fa-IR').format(remainingAmount)}
           </span>
           <span className="text-xs font-bold text-[var(--color-primary)]/70">تومان</span>
         </div>
