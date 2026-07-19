@@ -519,8 +519,18 @@ const OrdersModule = () => {
       const res = await fetch('/api/orders', { credentials: 'include' })
       if (res.ok) {
         const data = await res.json()
-        setOrders(data.orders ?? [])
+        const list = data.orders ?? []
+        setOrders(list)
         setRole(data.role ?? 'user')
+
+        // دیپ‌لینک از بخشِ پرداخت‌ها: ?order=<trackingCode> → بازکردنِ خودکارِ جزئیات
+        try {
+          const code = new URLSearchParams(window.location.search).get('order')
+          if (code) {
+            const match = list.find((o) => o.trackingCode === code)
+            if (match) setDetailOrder(match)
+          }
+        } catch { /* بی‌صدا */ }
       } else {
         toast.error('خطا در بارگذاری سفارش‌ها')
       }
