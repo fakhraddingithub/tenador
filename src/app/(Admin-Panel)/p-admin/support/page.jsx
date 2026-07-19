@@ -1,39 +1,39 @@
 "use client";
 
 /**
- * صفحه‌ی پشتیبانی — یکپارچه (فاز ۲).
- * سه تب: «نظرات»، «پیام‌های تماس»، «اینستاگرام».
+ * صفحه‌ی پشتیبانی — یکپارچه.
+ * سه تب: «تیکت‌ها» (پیش‌فرض)، «نظرات»، «پیام‌های تماس».
  * کامپوننت‌های موجود بدون تغییرِ منطق در بدنه‌ی هر تب لود می‌شوند.
- * URL-sync سبک: ?tab=comments|messages|instagram
+ * URL-sync سبک: ?tab=tickets|comments|messages
  */
 import { Suspense, useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { FaCommentDots, FaEnvelopeOpenText, FaInstagram, FaHeadset } from "react-icons/fa";
+import { FaCommentDots, FaEnvelopeOpenText, FaTicketAlt, FaHeadset } from "react-icons/fa";
 
 import SectionTabs from "@/components/admin/SectionTabs";
 import CommentsModeration from "@/components/admin/comments/CommentsModeration";
 import ContactMessagesInbox from "@/components/admin/support/ContactMessagesInbox";
-import InstagramInbox from "@/components/admin/support/InstagramInbox";
+import TicketsBoard from "@/components/admin/support/TicketsBoard";
 
-const VALID = new Set(["comments", "messages", "instagram"]);
+const VALID = new Set(["tickets", "comments", "messages"]);
 
 function SupportPageContent() {
   const router = useRouter();
   const search = useSearchParams();
   const initial = search.get("tab");
-  const [tab, setTab] = useState(VALID.has(initial) ? initial : "comments");
+  const [tab, setTab] = useState(VALID.has(initial) ? initial : "tickets");
 
   const [contactNew, setContactNew] = useState(0);
-  const [igUnread, setIgUnread] = useState(0);
+  const [ticketsOpen, setTicketsOpen] = useState(0);
 
   const syncBadges = useCallback(async () => {
     try {
-      const [c, ig] = await Promise.all([
+      const [c, t] = await Promise.all([
         fetch("/api/admin/contact-messages?status=new&limit=1").then((r) => (r.ok ? r.json() : null)).catch(() => null),
-        fetch("/api/admin/instagram/unread").then((r) => (r.ok ? r.json() : null)).catch(() => null),
+        fetch("/api/admin/tickets/stats").then((r) => (r.ok ? r.json() : null)).catch(() => null),
       ]);
       if (c) setContactNew(Number(c?.counts?.new || 0));
-      if (ig) setIgUnread(Number(ig?.unread || 0));
+      if (t) setTicketsOpen(Number(t?.counts?.open || 0));
     } catch {}
   }, []);
 
@@ -52,11 +52,11 @@ function SupportPageContent() {
 
   const tabs = useMemo(
     () => [
+      { value: "tickets", label: "تیکت‌ها", icon: FaTicketAlt, badge: ticketsOpen },
       { value: "comments", label: "نظرات", icon: FaCommentDots },
       { value: "messages", label: "پیام‌های تماس", icon: FaEnvelopeOpenText, badge: contactNew },
-      { value: "instagram", label: "اینستاگرام", icon: FaInstagram, badge: igUnread },
     ],
-    [contactNew, igUnread]
+    [contactNew, ticketsOpen]
   );
 
   return (
@@ -79,7 +79,7 @@ function SupportPageContent() {
               مرکز پشتیبانی
             </h1>
             <p className="text-xs font-bold mt-0.5" style={{ color: "var(--admin-text-muted)" }}>
-              مدیریت یکپارچه‌ی نظرات، پیام‌های تماس و دایرکت‌های اینستاگرام
+              مدیریت یکپارچه‌ی تیکت‌ها، نظرات و پیام‌های تماس
             </p>
           </div>
         </div>
@@ -88,9 +88,9 @@ function SupportPageContent() {
 
       {/* Body — تنها یک تب در هر لحظه mount می‌شود تا polling چند-برابر نشود */}
       <div className="min-w-0">
+        {tab === "tickets" && <TicketsBoard />}
         {tab === "comments" && <CommentsModeration />}
         {tab === "messages" && <ContactMessagesInbox />}
-        {tab === "instagram" && <InstagramInbox />}
       </div>
     </div>
   );

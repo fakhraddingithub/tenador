@@ -234,7 +234,11 @@
       "Bash(xargs wc -l)",
       "Bash(grep -vE \"^\\\\s*$\")",
       "Bash(npx prettier *)",
-      "Bash(grep -v \"//\")"
+      "Bash(grep -v \"//\")",
+      "Bash(cd *)",
+      "Bash(sed -i 's#| Instagram DM inbox | `services/instagramService.js`, `src/lib/instagram.js`, `models/Instagram\\\\*.js` | Meta webhook + send API + chat UI; 24h messaging window |#| Support tickets | `models/Ticket.js`, `models/TicketMessage.js`, `api/tickets`, `api/admin/tickets` | Department/priority ticket system with per-ticket chat \\(user dashboard + admin panel\\), attachments via `/api/upload`, email notice on admin reply |#' AGENTS.md)",
+      "Bash(sed -i '/^INSTAGRAM_ACCESS_TOKEN/d' AGENTS.md)",
+      "Bash(tasklist //FI \"IMAGENAME eq node.exe\")"
     ]
   }
 }

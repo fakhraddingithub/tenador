@@ -1,66 +1,130 @@
+/**
+ * src/app/api/tickets/[id]/route.js
+ *
+ * GET   → جزئیات یک تیکتِ خودِ کاربر + تاریخچه‌ی کامل پیام‌ها
+ * PATCH → { action: "close" | "reopen" } — بستن/بازکردن مجدد توسط کاربر
+ *
+ * تیکت بسته حذف نمی‌شود؛ تاریخچه همیشه قابل مشاهده است (فقط ارسال پیام مسدود می‌شود).
+ */
+
+import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
 import connectToDB from "base/configs/db";
+import { verifyToken } from "base/utils/auth";
+import "base/models/registerModels";
 import Ticket from "base/models/Ticket";
+import TicketMessage from "base/models/TicketMessage";
+
+async function getUserFromToken() {
+  const cookieStore = await cookies();
+  const token = cookieStore.get("accessToken")?.value;
+  if (!token) return null;
+  return verifyToken(token) || null;
+}
 
 export async function GET(req, { params }) {
   try {
     await connectToDB();
-    const { id } = params;
-    const ticket = await Ticket.findById(id).populate('department user request answer');
+
+    const user = await getUserFromToken();
+    if (!user) {
+      return NextResponse.json(
+        { message: "احراز هویت لازم است" },
+        { status: 401 },
+      );
+    }
+
+    const { id } = await params;
+
+    // مالکیت در خودِ کوئری اعمال می‌شود — تیکتِ کاربر دیگر هرگز برنمی‌گردد
+    const ticket = await Ticket.findOne({ _id: id, user: user.userId })
+      .populate("relatedOrder", "trackingCode totalPrice paymentStatus createdAt")
+      .populate("relatedPayment", "amount status method createdAt")
+      .populate("assignedAdmin", "name lastName")
+      .lean();
+
     if (!ticket) {
-      return NextResponse.json({ error: "Ticket not found" }, { status: 404 });
+      return NextResponse.json(
+        { message: "تیکت یافت نشد" },
+        { status: 404 },
+      );
     }
-    return NextResponse.json({ ticket });
+
+    const messages = await TicketMessage.find({ ticket: ticket._id })
+      .sort({ createdAt: 1 })
+      .populate("sender", "name lastName avatar")
+      .lean();
+
+    return NextResponse.json({ ticket, messages }, { status: 200 });
   } catch (error) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
-  }
-}
-
-export async function PUT(req, { params }) {
-  try {
-    await connectToDB();
-    const { id } = params;
-    const body = await req.json();
-    const { title, body: ticketBody, department, priority, user, request } = body;
-
-    // Validation
-    if (!title || !ticketBody || !department || !user) {
-      return NextResponse.json({ error: "Title, body, department, and user are required" }, { status: 400 });
-    }
-
-    const updatedTicket = await Ticket.findByIdAndUpdate(
-      id,
-      {
-        title: title.trim(),
-        body: ticketBody.trim(),
-        department,
-        priority: priority || 3,
-        user,
-        request
-      },
-      { new: true }
+    console.error("[GET Ticket Error]:", error);
+    return NextResponse.json(
+      { message: "خطای داخلی سرور در دریافت تیکت" },
+      { status: 500 },
     );
-
-    if (!updatedTicket) {
-      return NextResponse.json({ error: "Ticket not found" }, { status: 404 });
-    }
-
-    return NextResponse.json({ ticket: updatedTicket });
-  } catch (error) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }
 
-export async function DELETE(req, { params }) {
+export async function PATCH(req, { params }) {
   try {
     await connectToDB();
-    const { id } = params;
-    const deletedTicket = await Ticket.findByIdAndDelete(id);
-    if (!deletedTicket) {
-      return NextResponse.json({ error: "Ticket not found" }, { status: 404 });
+
+    const user = await getUserFromToken();
+    if (!user) {
+      return NextResponse.json(
+        { message: "احراز هویت لازم است" },
+        { status: 401 },
+      );
     }
-    return NextResponse.json({ message: "Ticket deleted successfully" });
+
+    const { id } = await params;
+    const { action } = await req.json();
+
+    const ticket = await Ticket.findOne({ _id: id, user: user.userId });
+    if (!ticket) {
+      return NextResponse.json(
+        { message: "تیکت یافت نشد" },
+        { status: 404 },
+      );
+    }
+
+    if (action === "close") {
+      if (ticket.status === "closed") {
+        return NextResponse.json(
+          { message: "تیکت قبلاً بسته شده است" },
+          { status: 400 },
+        );
+      }
+      ticket.status = "closed";
+      ticket.closedBy = "user";
+      ticket.closedAt = new Date();
+      await ticket.save();
+      return NextResponse.json({ ticket }, { status: 200 });
+    }
+
+    if (action === "reopen") {
+      if (ticket.status !== "closed") {
+        return NextResponse.json(
+          { message: "تیکت بسته نیست" },
+          { status: 400 },
+        );
+      }
+      ticket.status = "open";
+      ticket.closedBy = null;
+      ticket.closedAt = null;
+      await ticket.save();
+      return NextResponse.json({ ticket }, { status: 200 });
+    }
+
+    return NextResponse.json(
+      { message: "عملیات نامعتبر است" },
+      { status: 400 },
+    );
   } catch (error) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    console.error("[PATCH Ticket Error]:", error);
+    return NextResponse.json(
+      { message: "خطای داخلی سرور" },
+      { status: 500 },
+    );
   }
 }

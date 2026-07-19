@@ -59,7 +59,7 @@ export default function AdminLayout({ children }) {
     byType: {},
     sections: { orders: 0, coachCredits: 0, coachApplications: 0 },
   });
-  const [igUnread, setIgUnread] = useState(0);
+  const [ticketsOpen, setTicketsOpen] = useState(0);
   const [contactNew, setContactNew] = useState(0);
 
   const refreshContactNew = useCallback(async () => {
@@ -71,12 +71,12 @@ export default function AdminLayout({ children }) {
     } catch {}
   }, []);
 
-  const refreshIgUnread = useCallback(async () => {
+  const refreshTicketsOpen = useCallback(async () => {
     try {
-      const res = await fetch("/api/admin/instagram/unread");
+      const res = await fetch("/api/admin/tickets/stats");
       if (!res.ok) return;
       const data = await res.json();
-      setIgUnread(Number(data?.unread || 0));
+      setTicketsOpen(Number(data?.counts?.open || 0));
     } catch {}
   }, []);
 
@@ -96,10 +96,10 @@ export default function AdminLayout({ children }) {
   }, [refreshCounts]);
 
   useEffect(() => {
-    refreshIgUnread();
-    const id = setInterval(refreshIgUnread, 30000);
+    refreshTicketsOpen();
+    const id = setInterval(refreshTicketsOpen, 30000);
     return () => clearInterval(id);
-  }, [refreshIgUnread]);
+  }, [refreshTicketsOpen]);
 
   useEffect(() => {
     refreshContactNew();
@@ -111,12 +111,12 @@ export default function AdminLayout({ children }) {
     setMobileOpen(false);
   }, [pathname]);
 
-  // بَج «پشتیبانی» = مجموعِ پیام‌های نخوانده + فرم تماس (نظرات فعلاً بدون بَج)
+  // بَج «پشتیبانی» = تیکت‌های در انتظار پاسخ + فرم تماس (نظرات فعلاً بدون بَج)
   const badgeForHref = (href) => {
     const s = counts.sections || {};
     if (href === "/p-admin/admin-orders") return s.orders || 0;
     if (href === "/p-admin/users") return (s.coachCredits || 0) + (s.coachApplications || 0);
-    if (href === "/p-admin/support") return (igUnread || 0) + (contactNew || 0);
+    if (href === "/p-admin/support") return (ticketsOpen || 0) + (contactNew || 0);
     return 0;
   };
 

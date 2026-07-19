@@ -15,6 +15,7 @@
  */
 
 import nodemailer from 'nodemailer';
+import { DEPARTMENT_LABELS as TICKET_DEPARTMENT_LABELS } from 'base/utils/ticketMeta';
 
 // ─── Transporter ─────────────────────────────────────────────────────────────
 function createTransporter() {
@@ -577,6 +578,94 @@ export async function sendInstallmentReminderEmail(order, installment, dueChecks
     `${anyOverdue ? 'یادآوری اقساط سررسیدگذشته' : 'یادآوری سررسید اقساط'} — سفارش ${order.trackingCode}`,
     html,
   );
+}
+
+/**
+ * ایمیل «پاسخ پشتیبانی به تیکت» — فقط وقتی ادمین پاسخ می‌دهد ارسال می‌شود
+ * (پیام‌های خود کاربر ایمیل ندارند).
+ *
+ * @param {Object} ticket        - سند تیکت (باید _id، subject و department داشته باشد)
+ * @param {string} replyText     - متن پاسخ ادمین (خالی اگر فقط پیوست بوده)
+ * @param {number} attachmentsCount - تعداد پیوست‌های پاسخ
+ * @param {string} customerEmail
+ */
+export async function sendTicketReplyEmail(ticket, replyText, attachmentsCount, customerEmail) {
+  if (!customerEmail) return;
+
+  const logoUrl = process.env.NEXT_PUBLIC_LOGO_URL ?? `${process.env.NEXT_PUBLIC_BASE_URL ?? ''}/logo.png`;
+  const baseUrl = process.env.NEXT_PUBLIC_BASE_URL ?? '';
+  const ticketUrl = `${baseUrl}/p-user/tickets/${ticket._id}`;
+
+  const departmentLabel = TICKET_DEPARTMENT_LABELS[ticket.department] ?? ticket.department ?? '—';
+
+  const replyBlock = replyText
+    ? `<div style="margin-top:16px; border:1px solid rgba(170,71,37,0.2); background:rgba(170,71,37,0.04); border-radius:8px; padding:14px 16px;">
+        <div style="font-size:11px; font-weight:700; color:#aa4725; margin-bottom:8px;">متن پاسخ پشتیبانی</div>
+        <p style="font-size:14px; color:#1a1a1a; line-height:2; margin:0; white-space:pre-line;">${escapeHtml(replyText)}</p>
+      </div>`
+    : '';
+
+  const attachmentNote = attachmentsCount > 0
+    ? `<p style="font-size:12px;color:#888;margin-top:12px;">📎 این پاسخ ${new Intl.NumberFormat('fa-IR').format(attachmentsCount)} پیوست دارد — برای مشاهده وارد گفتگو شوید.</p>`
+    : '';
+
+  const html = `
+<!DOCTYPE html>
+<html dir="rtl" lang="fa">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Vazirmatn:wght@400;500;600;700&display=swap');
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Vazirmatn', Tahoma, Arial, sans-serif; background: #f5f0eb; direction: rtl; }
+  </style>
+</head>
+<body style="background:#f5f0eb; padding: 24px 16px;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="max-width:560px; margin:0 auto;">
+    <tr>
+      <td style="background:#fff; border-radius:12px 12px 0 0; padding:28px 32px; text-align:center;">
+        <img src="${logoUrl}" alt="Tenador" height="44" style="display:inline-block;max-width:160px;object-fit:contain;" onerror="this.style.display='none'">
+        <h1 style="color:#aa4725; font-size:19px; font-weight:700; margin-top:12px;">💬 پشتیبانی به تیکت شما پاسخ داد</h1>
+      </td>
+    </tr>
+    <tr>
+      <td style="background:#fff; padding:24px 32px;">
+        <p style="font-size:15px;color:#555;margin:0 0 16px; line-height:1.8;">
+          با سلام،<br>کارشناسان پشتیبانی تنادور به تیکت شما پاسخ داده‌اند.
+        </p>
+        <table width="100%" cellpadding="0" cellspacing="0" style="border:1px solid #f0ece8; border-radius:8px; overflow:hidden; font-size:13px;">
+          <tr>
+            <td style="padding:10px 16px; color:#888; border-bottom:1px solid #f0ece8; width:35%;">موضوع تیکت</td>
+            <td style="padding:10px 16px; color:#1a1a1a; font-weight:700; border-bottom:1px solid #f0ece8;">${escapeHtml(ticket.subject ?? '—')}</td>
+          </tr>
+          <tr>
+            <td style="padding:10px 16px; color:#888;">دپارتمان</td>
+            <td style="padding:10px 16px; color:#1a1a1a; font-weight:700;">${escapeHtml(departmentLabel)}</td>
+          </tr>
+        </table>
+        ${replyBlock}
+        ${attachmentNote}
+        <div style="margin-top:24px; text-align:center;">
+          <a href="${ticketUrl}" style="display:inline-block; background:#aa4725; color:#fff; text-decoration:none; font-size:14px; font-weight:700; padding:11px 32px; border-radius:8px;">
+            ادامه گفتگو
+          </a>
+        </div>
+      </td>
+    </tr>
+    <tr>
+      <td style="background:#1a1a1a; border-radius:0 0 12px 12px; padding:18px 32px; text-align:center;">
+        <p style="color:#888; font-size:11px; line-height:1.7; margin:0;">
+          این ایمیل به صورت خودکار ارسال شده است.<br>
+          &copy; تمامی حقوق برای فروشگاه تنادور محفوظ است.
+        </p>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>`.trim();
+
+  await sendSingle(customerEmail, `پاسخ پشتیبانی — ${ticket.subject}`, html);
 }
 
 /**
