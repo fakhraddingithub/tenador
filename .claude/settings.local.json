@@ -232,7 +232,9 @@
       "Bash(git --no-pager diff -- src/components/templates/sports/SeriesSlider.jsx)",
       "Bash(git --no-pager diff -- src/components/features/brandsTicker/BrandsTicker.js)",
       "Bash(xargs wc -l)",
-      "Bash(grep -vE \"^\\\\s*$\")"
+      "Bash(grep -vE \"^\\\\s*$\")",
+      "Bash(npx prettier *)",
+      "Bash(grep -v \"//\")"
     ]
   }
 }
