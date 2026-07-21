@@ -12,6 +12,8 @@ import MatchResultCard, {
   PriceTag,
 } from '@/components/templates/productMatch/MatchResultCard';
 import { findClosestProducts } from '@/components/templates/productMatch/matchEngine';
+import BestInCategorySection from '@/components/templates/productMatch/BestInCategorySection';
+import AttributeGuideSection from '@/components/templates/productMatch/AttributeGuideSection';
 
 const clamp = (v, min, max) => Math.min(max, Math.max(min, v));
 
@@ -263,6 +265,10 @@ export default function MatchCategoryPage() {
             </div>
           </>
         )}
+
+        {/* بخش‌های پایینی — مستقل از انتخاب محصول پایه، مثل صفحه مقایسه */}
+        <BestInCategorySection categoryId={category._id} onSelectProduct={handleSelectBase} />
+        <AttributeGuideSection category={category} />
       </div>
     </div>
   );
