@@ -238,7 +238,19 @@
       "Bash(cd *)",
       "Bash(sed -i 's#| Instagram DM inbox | `services/instagramService.js`, `src/lib/instagram.js`, `models/Instagram\\\\*.js` | Meta webhook + send API + chat UI; 24h messaging window |#| Support tickets | `models/Ticket.js`, `models/TicketMessage.js`, `api/tickets`, `api/admin/tickets` | Department/priority ticket system with per-ticket chat \\(user dashboard + admin panel\\), attachments via `/api/upload`, email notice on admin reply |#' AGENTS.md)",
       "Bash(sed -i '/^INSTAGRAM_ACCESS_TOKEN/d' AGENTS.md)",
-      "Bash(tasklist //FI \"IMAGENAME eq node.exe\")"
+      "Bash(tasklist //FI \"IMAGENAME eq node.exe\")",
+      "Bash(rm -f \"src/app/api/admin/notifications/route.js\" \"src/app/api/admin/notifications/counts/route.js\" \"src/app/api/admin/notifications/read-all/route.js\" \"src/app/api/admin/notifications/[id]/read/route.js\")",
+      "Bash(rmdir \"src/app/api/admin/notifications/counts\" \"src/app/api/admin/notifications/read-all\" \"src/app/api/admin/notifications/[id]/read\" \"src/app/api/admin/notifications/[id]\")",
+      "WebFetch(domain:www.extreme-tennis.fr)",
+      "PowerShell(node \"C:\\\\Users\\\\saleh\\\\AppData\\\\Local\\\\Temp\\\\claude\\\\I--develope-JS-learn-leaning-project-porjects-tenador\\\\cb2bd49d-a10c-4ce8-9512-24aa43e581bd\\\\scratchpad\\\\engineCheck.mjs\")",
+      "Bash(git config *)",
+      "Bash(echo \"=== exit $? ===\")",
+      "Bash(git rev-list *)",
+      "Bash(rm -f .git/refs/remotes/origin/master)",
+      "Bash(git fetch *)",
+      "Skill(claude-in-chrome)",
+      "Bash(git update-ref *)",
+      "PowerShell(Stop-Process *)"
     ]
   }
 }
