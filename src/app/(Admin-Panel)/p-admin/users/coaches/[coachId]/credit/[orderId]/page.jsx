@@ -11,6 +11,7 @@ import {
   Calendar, Hash, CreditCard,
 } from "lucide-react";
 import AdminLoader from "@/components/admin/AdminLoader";
+import MarkNotificationsRead from "@/components/admin/MarkNotificationsRead";
 
 /* ─── Status helpers ────────────────────────────────────────────────── */
 
@@ -216,6 +217,8 @@ export default function CoachCreditPage() {
 
   return (
     <div className="p-6 max-w-2xl mx-auto space-y-6 text-right" dir="rtl">
+      {/* مشاهده‌ی صفحه‌ی کردیت سفارش → اعلانِ «شاگردِ مربی سفارش ثبت کرده» خوانده می‌شود */}
+      <MarkNotificationsRead filter={{ order: orderId }} />
       {/* Header */}
       <div className="flex items-center gap-3">
         <button

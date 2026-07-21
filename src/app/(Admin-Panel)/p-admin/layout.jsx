@@ -3,6 +3,7 @@ import '@/styles/admin-theme.css';
 import { ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import AdminLayout from "@/components/admin/Layout"
+import { NotificationProvider } from "@/components/admin/NotificationProvider"
 import SiteNavbar from "@/components/features/navbar/SiteNavbar"
 import ScrollToTop from "@/components/common/ScrollToTop"
 import NavigationLoader from "@/components/common/NavigationLoader"
@@ -35,7 +36,9 @@ export default function RootLayout({ children }) {
           <SiteNavbar />
           {/* از این‌جا به بعد داخل admin-scope هستیم: پریمری = سبز درباری، رادیوس = ۶ پیکسل */}
           <div className="admin-scope">
-            <AdminLayout>{children}</AdminLayout>
+            <NotificationProvider>
+              <AdminLayout>{children}</AdminLayout>
+            </NotificationProvider>
           </div>
         </main>
 

@@ -19,6 +19,7 @@ export const NOTIFICATION_TYPES = [
   "new_payment",
   "coach_student_order",
   "coach_application",
+  "new_ticket",
 ];
 
 const NotificationSchema = new mongoose.Schema(
@@ -36,6 +37,7 @@ const NotificationSchema = new mongoose.Schema(
     // ارجاع به موجودیت مرتبط — فقط موارد مربوط به هر نوع پر می‌شوند
     order: { type: mongoose.Schema.Types.ObjectId, ref: "Order", default: null },
     coach: { type: mongoose.Schema.Types.ObjectId, ref: "User", default: null },
+    ticket: { type: mongoose.Schema.Types.ObjectId, ref: "Ticket", default: null },
     // برای coach_application و coach_student_order: کاربری که اقدام را انجام داده
     actor: { type: mongoose.Schema.Types.ObjectId, ref: "User", default: null },
 
@@ -51,6 +53,10 @@ const NotificationSchema = new mongoose.Schema(
 // واکشی سریع «جدیدترین‌های خوانده‌نشده» و شمارش بَج‌ها بر اساس نوع
 NotificationSchema.index({ isRead: 1, createdAt: -1 });
 NotificationSchema.index({ type: 1, isRead: 1 });
+// علامت‌گذاری «خوانده‌شده» هنگام مشاهده‌ی موجودیت مرتبط
+NotificationSchema.index({ order: 1, isRead: 1 });
+NotificationSchema.index({ ticket: 1, isRead: 1 });
+NotificationSchema.index({ coach: 1, isRead: 1 });
 
 export default mongoose.models.Notification ||
   mongoose.model("Notification", NotificationSchema);

@@ -19,7 +19,10 @@ export const SECTION_BY_TYPE = {
   new_payment: "orders",
   coach_student_order: "coachCredits",
   coach_application: "coachApplications",
+  new_ticket: "support",
 };
+
+const SECTIONS = ["orders", "coachCredits", "coachApplications", "support"];
 
 /* ─────────────────────────  ساخت اعلان  ───────────────────────── */
 
@@ -87,6 +90,61 @@ export async function notifyCoachApplication(applicant) {
   });
 }
 
+/** تیکت پشتیبانی جدید یا پاسخ کاربر روی تیکت — نیاز به رسیدگی ادمین */
+export async function notifyNewTicket(ticket, { reply = false } = {}) {
+  if (!ticket?._id) return;
+  const subject = String(ticket.subject || "").slice(0, 80);
+  await safeCreate({
+    type: "new_ticket",
+    message: reply
+      ? `پاسخ جدید روی تیکت «${subject}»`
+      : `تیکت پشتیبانی جدید: «${subject}»`,
+    ticket: ticket._id,
+    actor: ticket.user?._id || ticket.user || null,
+    link: `/p-admin/support/tickets/${ticket._id}`,
+  });
+}
+
+/* ─────────────────────────  علامت‌گذاری خوانده‌شده  ───────────────────────── */
+
+/**
+ * ساختِ کوئریِ mongo برای علامت‌گذاری خوانده‌شده — تابعِ خالص و تست‌پذیر.
+ * برمی‌گرداند { query, allowed }. اگر filter هیچ scope و نه all داشته باشد،
+ * allowed=false تا از پاک‌کردنِ ناخواسته‌ی همه‌ی اعلان‌ها جلوگیری شود.
+ */
+export function buildReadQuery(filter = {}) {
+  const query = { isRead: false };
+
+  if (filter.order) query.order = filter.order;
+  if (filter.coach) query.coach = filter.coach;
+  if (filter.ticket) query.ticket = filter.ticket;
+  if (filter.type) {
+    const types = Array.isArray(filter.type) ? filter.type : [filter.type];
+    query.type = { $in: types.filter((t) => NOTIFICATION_TYPES.includes(t)) };
+  }
+  if (Array.isArray(filter.ids) && filter.ids.length) query._id = { $in: filter.ids };
+
+  const hasScope = Object.keys(query).length > 1;
+  // اجازه فقط با scope مشخص یا all صریح؛ در غیر این‌صورت هیچ چیزی آپدیت نمی‌شود
+  return { query, allowed: hasScope || filter.all === true };
+}
+
+/**
+ * علامت‌گذاری متمرکز اعلان‌ها به‌عنوان خوانده‌شده.
+ * فیلتر بر اساس یکی از: entity ref (order/coach/ticket)، type، ids، یا all.
+ * فقط اعلان‌های خوانده‌نشده آپدیت می‌شوند و شمارشِ به‌روز برمی‌گردد.
+ */
+export async function markNotificationsRead(filter = {}) {
+  const { query, allowed } = buildReadQuery(filter);
+  if (!allowed) return getNotificationCounts();
+
+  await Notification.updateMany(query, {
+    $set: { isRead: true, readAt: new Date() },
+  });
+
+  return getNotificationCounts();
+}
+
 /* ─────────────────────────  واکشی اعلان  ───────────────────────── */
 
 /**
@@ -104,7 +162,7 @@ export async function getNotificationCounts() {
     if (r._id in byType) byType[r._id] = r.count;
   }
 
-  const sections = { orders: 0, coachCredits: 0, coachApplications: 0 };
+  const sections = Object.fromEntries(SECTIONS.map((s) => [s, 0]));
   for (const type of NOTIFICATION_TYPES) {
     const section = SECTION_BY_TYPE[type];
     if (section) sections[section] += byType[type];

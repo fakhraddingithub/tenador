@@ -22,6 +22,7 @@ import {
   TICKET_PRIORITIES,
 } from "base/utils/ticketMeta";
 import { sanitizeAttachments } from "@/lib/ticketUtils";
+import { notifyNewTicket } from "base/services/notificationService";
 
 async function getUserFromToken() {
   const cookieStore = await cookies();
@@ -158,6 +159,9 @@ export async function POST(req) {
       body,
       attachments,
     });
+
+    // اعلانِ پنل ادمین (خطا بلعیده می‌شود؛ جریان تیکت هرگز نمی‌شکند)
+    await notifyNewTicket(ticket);
 
     return NextResponse.json({ ticket: { _id: ticket._id } }, { status: 201 });
   } catch (error) {

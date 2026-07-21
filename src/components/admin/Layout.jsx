@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
@@ -17,13 +17,16 @@ import {
   FaCalendarAlt,
   FaHeadset,
   FaFileAlt,
+  FaBars,
+  FaTimes,
 } from "react-icons/fa";
 import { HiOutlineLogout } from "react-icons/hi";
 import { AiFillProduct } from "react-icons/ai";
 import { RiMenuFoldLine, RiMenuUnfoldLine } from "react-icons/ri";
 import { FiGitBranch } from "react-icons/fi";
-import { ShoppingCart, ChevronLeft } from "lucide-react";
+import { ShoppingCart } from "lucide-react";
 import NotificationBell from "./NotificationBell";
+import { useNotifications } from "./NotificationProvider";
 
 /* ─── منوی ساید‌بار (بازساخته‌شده — فاز ۱)
    حذف: صفحه اصلی، ورزشکاران، دسته‌بندی‌ها، نظرات، پیام‌های تماس، پشتیبانی اینستاگرام
@@ -54,71 +57,12 @@ export default function AdminLayout({ children }) {
   const [time, setTime] = useState("");
   const [mounted, setMounted] = useState(false);
 
-  const [counts, setCounts] = useState({
-    total: 0,
-    byType: {},
-    sections: { orders: 0, coachCredits: 0, coachApplications: 0 },
-  });
-  const [ticketsOpen, setTicketsOpen] = useState(0);
-  const [contactNew, setContactNew] = useState(0);
-
-  const refreshContactNew = useCallback(async () => {
-    try {
-      const res = await fetch("/api/admin/contact-messages?status=new&limit=1");
-      if (!res.ok) return;
-      const data = await res.json();
-      setContactNew(Number(data?.counts?.new || 0));
-    } catch {}
-  }, []);
-
-  const refreshTicketsOpen = useCallback(async () => {
-    try {
-      const res = await fetch("/api/admin/tickets/stats");
-      if (!res.ok) return;
-      const data = await res.json();
-      setTicketsOpen(Number(data?.counts?.open || 0));
-    } catch {}
-  }, []);
-
-  const refreshCounts = useCallback(async () => {
-    try {
-      const res = await fetch("/api/admin/notifications/counts");
-      if (!res.ok) return;
-      const data = await res.json();
-      if (data?.counts) setCounts(data.counts);
-    } catch {}
-  }, []);
-
-  useEffect(() => {
-    refreshCounts();
-    const id = setInterval(refreshCounts, 45000);
-    return () => clearInterval(id);
-  }, [refreshCounts]);
-
-  useEffect(() => {
-    refreshTicketsOpen();
-    const id = setInterval(refreshTicketsOpen, 30000);
-    return () => clearInterval(id);
-  }, [refreshTicketsOpen]);
-
-  useEffect(() => {
-    refreshContactNew();
-    const id = setInterval(refreshContactNew, 45000);
-    return () => clearInterval(id);
-  }, [refreshContactNew]);
+  // حالت اعلان‌ها از لایه‌ی متمرکز (تنها منبعِ حقیقت — بدون polling محلی)
+  const { badgeFor } = useNotifications();
 
   useEffect(() => {
     setMobileOpen(false);
   }, [pathname]);
-
-  // بَج «پشتیبانی» = تیکت‌های در انتظار پاسخ + فرم تماس (نظرات فعلاً بدون بَج)
-  const badgeForHref = (href) => {
-    const s = counts.sections || {};
-    if (href === "/p-admin/admin-orders") return s.orders || 0;
-    if (href === "/p-admin/users") return (s.coachCredits || 0) + (s.coachApplications || 0);
-    if (href === "/p-admin/support") return (ticketsOpen || 0) + (contactNew || 0);
-    return 0;
-  };
 
   useEffect(() => {
     setMounted(true);
@@ -214,7 +158,7 @@ export default function AdminLayout({ children }) {
             const Icon = item.icon;
             const isDashboard = item.href === "/p-admin";
             const isActive = isDashboard ? pathname === "/p-admin" : pathname.startsWith(item.href);
-            const badge = badgeForHref(item.href);
+            const badge = badgeFor(item.href);
             return (
               <Link key={item.href} href={item.href} onClick={() => setMobileOpen(false)}
                 title={!sidebarOpen ? item.title : ""}
@@ -280,7 +224,7 @@ export default function AdminLayout({ children }) {
           </div>
 
           <div className="flex items-center gap-2 sm:gap-3 flex-shrink-0">
-            <NotificationBell total={counts.total} onCountsChange={setCounts} />
+            <NotificationBell />
 
             <div className="flex items-center gap-2 px-3 py-1.5 text-xs font-bold tabular-nums"
               style={{ background: "var(--color-primary-soft)", color: "var(--color-primary)", borderRadius: "var(--admin-radius)" }}>
@@ -348,8 +292,16 @@ export default function AdminLayout({ children }) {
         animate={{ right: mobileOpen ? "280px" : 0 }} transition={{ duration: 0.3, ease: "easeInOut" }}
         className="fixed top-[150px] z-[60] lg:hidden flex items-center justify-center h-16 w-7 rounded-l-[6px] rounded-r-none text-white shadow-lg shadow-black/25 ring-1 ring-white/10 active:scale-95 transition-transform"
         style={{ background: "var(--admin-sidebar-bg)" }}>
-        <ChevronLeft size={18} className="transition-transform duration-300"
-          style={{ transform: mobileOpen ? "rotate(180deg)" : "none" }} />
+        <AnimatePresence mode="wait" initial={false}>
+          <motion.span key={mobileOpen ? "close" : "menu"}
+            initial={{ opacity: 0, rotate: -90, scale: 0.6 }}
+            animate={{ opacity: 1, rotate: 0, scale: 1 }}
+            exit={{ opacity: 0, rotate: 90, scale: 0.6 }}
+            transition={{ duration: 0.18, ease: "easeInOut" }}
+            className="flex items-center justify-center">
+            {mobileOpen ? <FaTimes size={18} /> : <FaBars size={18} />}
+          </motion.span>
+        </AnimatePresence>
       </motion.button>
     </div>
   );

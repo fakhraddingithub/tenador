@@ -14,6 +14,7 @@ import "base/models/registerModels";
 import Ticket from "base/models/Ticket";
 import TicketMessage from "base/models/TicketMessage";
 import { sanitizeAttachments } from "@/lib/ticketUtils";
+import { notifyNewTicket } from "base/services/notificationService";
 
 async function getUserFromToken() {
   const cookieStore = await cookies();
@@ -71,6 +72,9 @@ export async function POST(req, { params }) {
     ticket.status = "open";
     ticket.lastMessageAt = new Date();
     await ticket.save();
+
+    // پاسخ کاربر → نیازِ رسیدگیِ ادمین → اعلانِ پنل (خطا بلعیده می‌شود)
+    await notifyNewTicket(ticket, { reply: true });
 
     const populated = await TicketMessage.findById(message._id)
       .populate("sender", "name lastName avatar")

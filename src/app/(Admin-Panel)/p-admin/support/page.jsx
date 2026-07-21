@@ -6,7 +6,7 @@
  * کامپوننت‌های موجود بدون تغییرِ منطق در بدنه‌ی هر تب لود می‌شوند.
  * URL-sync سبک: ?tab=tickets|comments|messages
  */
-import { Suspense, useCallback, useEffect, useMemo, useState } from "react";
+import { Suspense, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { FaCommentDots, FaEnvelopeOpenText, FaTicketAlt, FaHeadset } from "react-icons/fa";
 
@@ -14,6 +14,7 @@ import SectionTabs from "@/components/admin/SectionTabs";
 import CommentsModeration from "@/components/admin/comments/CommentsModeration";
 import ContactMessagesInbox from "@/components/admin/support/ContactMessagesInbox";
 import TicketsBoard from "@/components/admin/support/TicketsBoard";
+import { useNotifications } from "@/components/admin/NotificationProvider";
 
 const VALID = new Set(["tickets", "comments", "messages"]);
 
@@ -23,25 +24,9 @@ function SupportPageContent() {
   const initial = search.get("tab");
   const [tab, setTab] = useState(VALID.has(initial) ? initial : "tickets");
 
-  const [contactNew, setContactNew] = useState(0);
-  const [ticketsOpen, setTicketsOpen] = useState(0);
-
-  const syncBadges = useCallback(async () => {
-    try {
-      const [c, t] = await Promise.all([
-        fetch("/api/admin/contact-messages?status=new&limit=1").then((r) => (r.ok ? r.json() : null)).catch(() => null),
-        fetch("/api/admin/tickets/stats").then((r) => (r.ok ? r.json() : null)).catch(() => null),
-      ]);
-      if (c) setContactNew(Number(c?.counts?.new || 0));
-      if (t) setTicketsOpen(Number(t?.counts?.open || 0));
-    } catch {}
-  }, []);
-
-  useEffect(() => {
-    syncBadges();
-    const id = setInterval(syncBadges, 45000);
-    return () => clearInterval(id);
-  }, [syncBadges]);
+  // بَج‌ها از لایه‌ی متمرکز (همان اعداد سایدبار و زنگوله — بدون polling جداگانه)
+  const { byType, contactNew } = useNotifications();
+  const ticketsUnread = byType?.new_ticket || 0;
 
   const handleChange = (v) => {
     setTab(v);
@@ -52,11 +37,11 @@ function SupportPageContent() {
 
   const tabs = useMemo(
     () => [
-      { value: "tickets", label: "تیکت‌ها", icon: FaTicketAlt, badge: ticketsOpen },
+      { value: "tickets", label: "تیکت‌ها", icon: FaTicketAlt, badge: ticketsUnread },
       { value: "comments", label: "نظرات", icon: FaCommentDots },
       { value: "messages", label: "پیام‌های تماس", icon: FaEnvelopeOpenText, badge: contactNew },
     ],
-    [contactNew, ticketsOpen]
+    [contactNew, ticketsUnread]
   );
 
   return (

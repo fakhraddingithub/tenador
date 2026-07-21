@@ -6,6 +6,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { toast } from 'react-toastify'
 import AdminLoader from '@/components/admin/AdminLoader'
 import { getUserFullName } from 'base/utils/userName'
+import { useNotifications } from '@/components/admin/NotificationProvider'
 import {
   Users, UserCheck, UserX, ShieldAlert, Search, Filter,
   MoreVertical, Shield, Ban, CheckCircle, ArrowLeftRight,
@@ -23,6 +24,8 @@ const roleLabels = {
 
 export default function AdminUsersManagement() {
   const router = useRouter()
+  const { sections } = useNotifications()
+  const coachBadge = (sections?.coachApplications || 0) + (sections?.coachCredits || 0)
   const [users, setUsers] = useState([])
   const [loading, setLoading] = useState(true)
   const [searchQuery, setSearchQuery] = useState('')
@@ -154,12 +157,18 @@ export default function AdminUsersManagement() {
           </button>
           <button
             onClick={() => router.push('/p-admin/users/coaches')}
-            className="inline-flex items-center gap-2 text-white text-xs font-bold px-4 py-2.5 rounded-[var(--radius)] transition-all hover:shadow-lg hover:-translate-y-0.5 active:scale-95"
+            className="relative inline-flex items-center gap-2 text-white text-xs font-bold px-4 py-2.5 rounded-[var(--radius)] transition-all hover:shadow-lg hover:-translate-y-0.5 active:scale-95"
             style={{ background: '#0d0d0d' }}
           >
             <GraduationCap size={15} style={{ color: 'var(--color-secondary)' }} />
             مدیریت مربیان
             <ArrowLeftRight size={13} className="opacity-50" />
+            {coachBadge > 0 && (
+              <span className="absolute -top-2 -left-2 min-w-[18px] h-[18px] px-1 flex items-center justify-center rounded-full text-[9.5px] font-bold tabular-nums text-[#1a1a1a] ring-2 ring-white"
+                style={{ background: 'var(--color-secondary)' }}>
+                {coachBadge > 99 ? '۹۹+' : coachBadge.toLocaleString('fa-IR')}
+              </span>
+            )}
           </button>
         </div>
       </div>

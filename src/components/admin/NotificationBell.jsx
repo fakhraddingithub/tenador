@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import { FiBell } from "react-icons/fi";
@@ -9,9 +9,11 @@ import {
   BadgeDollarSign,
   GraduationCap,
   UserPlus,
+  LifeBuoy,
   CheckCheck,
   Inbox,
 } from "lucide-react";
+import { useNotifications } from "./NotificationProvider";
 
 /* ─── پیکربندی نوع اعلان (آیکون + رنگ) ─────────────────────────────── */
 const TYPE_CONFIG = {
@@ -34,6 +36,11 @@ const TYPE_CONFIG = {
     Icon: UserPlus,
     color: "#6366f1",
     label: "درخواست مربیگری",
+  },
+  new_ticket: {
+    Icon: LifeBuoy,
+    color: "#0ea5e9",
+    label: "پشتیبانی",
   },
 };
 
@@ -109,36 +116,18 @@ function NotificationItem({ item, onClick, index }) {
 }
 
 /* ─── کامپوننت اصلی زنگوله ───────────────────────────────────────────── */
-export default function NotificationBell({ total = 0, onCountsChange }) {
+export default function NotificationBell() {
   const router = useRouter();
+  const { items, total, loading, refresh, markRead } = useNotifications();
   const [open, setOpen] = useState(false);
-  const [items, setItems] = useState([]);
-  const [loading, setLoading] = useState(false);
-  const [marking, setMarking] = useState(false);
   const wrapRef = useRef(null);
 
   const hasUnread = total > 0;
 
-  /* واکشی لیست هنگام باز شدن */
-  const loadList = useCallback(async () => {
-    setLoading(true);
-    try {
-      const res = await fetch("/api/admin/notifications?limit=20");
-      const data = await res.json();
-      if (res.ok) {
-        setItems(data.notifications || []);
-        if (data.counts) onCountsChange?.(data.counts);
-      }
-    } catch {
-      /* بی‌صدا */
-    } finally {
-      setLoading(false);
-    }
-  }, [onCountsChange]);
-
+  /* واکشیِ تازه هنگام باز شدن (نه هر بار — Provider خودش poll می‌کند) */
   useEffect(() => {
-    if (open) loadList();
-  }, [open, loadList]);
+    if (open) refresh();
+  }, [open, refresh]);
 
   /* بستن با کلیک بیرون + ESC */
   useEffect(() => {
@@ -155,39 +144,16 @@ export default function NotificationBell({ total = 0, onCountsChange }) {
     };
   }, [open]);
 
-  const handleItemClick = async (item) => {
-    // علامت‌گذاری خوانده‌شده (در صورت نیاز) سپس ناوبری
-    if (!item.isRead) {
-      setItems((prev) =>
-        prev.map((n) => (n._id === item._id ? { ...n, isRead: true } : n))
-      );
-      try {
-        const res = await fetch(`/api/admin/notifications/${item._id}/read`, {
-          method: "POST",
-        });
-        const data = await res.json();
-        if (res.ok && data.counts) onCountsChange?.(data.counts);
-      } catch {
-        /* بی‌صدا */
-      }
-    }
+  const handleItemClick = (item) => {
+    // علامت‌گذاری خوانده‌شده (متمرکز) سپس ناوبری — صفحه‌ی مقصد هم دوباره تضمین می‌کند
+    if (!item.isRead) markRead({ ids: [item._id] });
     setOpen(false);
     if (item.link) router.push(item.link);
   };
 
-  const handleMarkAll = async () => {
-    if (marking || total === 0) return;
-    setMarking(true);
-    setItems((prev) => prev.map((n) => ({ ...n, isRead: true })));
-    try {
-      const res = await fetch("/api/admin/notifications/read-all", { method: "POST" });
-      const data = await res.json();
-      if (res.ok && data.counts) onCountsChange?.(data.counts);
-    } catch {
-      /* بی‌صدا */
-    } finally {
-      setMarking(false);
-    }
+  const handleMarkAll = () => {
+    if (total === 0) return;
+    markRead({ all: true });
   };
 
   const badgeText = total > 99 ? "۹۹+" : Number(total).toLocaleString("fa-IR");
@@ -272,7 +238,7 @@ export default function NotificationBell({ total = 0, onCountsChange }) {
               </div>
               <button
                 onClick={handleMarkAll}
-                disabled={total === 0 || marking}
+                disabled={total === 0}
                 className="flex items-center gap-1.5 text-[11px] font-bold text-white/45 hover:text-[var(--color-secondary)] disabled:opacity-30 disabled:hover:text-white/45 transition-colors"
               >
                 <CheckCheck size={13} />

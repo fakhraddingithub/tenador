@@ -7,6 +7,8 @@ import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import { toast } from "react-toastify";
 import AdminLoader from "@/components/admin/AdminLoader";
+import MarkNotificationsRead from "@/components/admin/MarkNotificationsRead";
+import { useNotifications } from "@/components/admin/NotificationProvider";
 import {
   GraduationCap,
   Users,
@@ -29,6 +31,8 @@ const pdfViewerUrl = (url) => `/api/files/pdf?url=${encodeURIComponent(url)}`;
 
 export default function AdminCoachesManagement() {
   const router = useRouter();
+  const { byType } = useNotifications();
+  const pendingApplications = byType?.coach_application || 0;
   const [activeTab, setActiveTab] = useState("list");
   const [coaches, setCoaches] = useState([]);
   const [applications, setApplications] = useState([]);
@@ -134,10 +138,16 @@ export default function AdminCoachesManagement() {
           </button>
           <button
             onClick={() => setActiveTab("applications")}
-            className={`flex items-center gap-1.5 px-4 py-2 text-xs font-bold rounded-lg transition-all ${activeTab === "applications" ? "bg-white text-slate-900 shadow-xs" : "text-slate-500 hover:text-slate-800"}`}
+            className={`relative flex items-center gap-1.5 px-4 py-2 text-xs font-bold rounded-lg transition-all ${activeTab === "applications" ? "bg-white text-slate-900 shadow-xs" : "text-slate-500 hover:text-slate-800"}`}
           >
             <ClipboardList size={14} />
             بررسی درخواست‌ها ({applications.length})
+            {pendingApplications > 0 && (
+              <span className="absolute -top-1.5 -left-1.5 min-w-[18px] h-[18px] px-1 flex items-center justify-center rounded-full text-[9.5px] font-bold tabular-nums text-[#1a1a1a]"
+                style={{ background: "var(--color-secondary)" }}>
+                {pendingApplications > 99 ? "۹۹+" : pendingApplications.toLocaleString("fa-IR")}
+              </span>
+            )}
           </button>
         </div>
       </div>
@@ -233,6 +243,8 @@ export default function AdminCoachesManagement() {
       ) : (
         /* ── Applications ─────────────────────────────────────────────── */
         <div className="space-y-5">
+          {/* مشاهده‌ی تبِ درخواست‌ها → اعلان‌های «درخواست مربیگری» خوانده می‌شوند */}
+          <MarkNotificationsRead filter={{ type: "coach_application" }} />
           {applications.length > 0 ? (
             applications.map((app) => (
               <div
