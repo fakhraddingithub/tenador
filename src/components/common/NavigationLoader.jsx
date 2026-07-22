@@ -3,7 +3,6 @@
 import { useEffect, useRef, useState, useTransition } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import RouteLoader from "./RouteLoader";
-import { NOT_FOUND_RENDERED_EVENT } from "./navigationLoaderEvents";
 
 // مسیرهایی که در همین نشستِ کلاینتی یک‌بار کامل لود شده‌اند (pathname + search).
 // بازدیدِ دوباره‌ی این مسیرها از کشِ روتر فوری است؛ نمایش لودر فقط یک فلاشِ
@@ -18,7 +17,9 @@ export default function NavigationLoader() {
   const [showLoader, setShowLoader] = useState(false);
   const pendingRouteRef = useRef(null);
 
-  // ناوبریِ عادی که کامل شد pathname عوض می‌شود؛ لودر را ببند.
+  // مقصد که واقعاً رندر شد (از جمله صفحه‌ی ۴۰۴)، pathname عوض می‌شود؛ لودر را
+  // ببند. نباید فقط به isPending تکیه کرد چون router.push به صفحه‌ی notFound
+  // همیشه ترنزیشن را درست جمع نمی‌کند و لودر گیر می‌کند.
   useEffect(() => {
     if (pendingRouteRef.current) {
       visitedRoutes.add(pendingRouteRef.current);
@@ -26,23 +27,6 @@ export default function NavigationLoader() {
     }
     setShowLoader(false);
   }, [pathname]);
-
-  // مسیرِ ۴۰۴: وقتی router.push به notFound می‌رسد، App Router نه ترنزیشن را جمع
-  // می‌کند (isPending روی true می‌ماند) و نه usePathname را عوض می‌کند؛ پس effectِ
-  // بالا اجرا نمی‌شود و لودر گیر می‌کند. خودِ صفحه‌ی ۴۰۴ هنگامِ رندر این رویداد را
-  // می‌فرستد ([[NotFoundLoaderReset]]) تا لودر قطعی بسته شود.
-  useEffect(() => {
-    function handleNotFoundRendered() {
-      if (pendingRouteRef.current) {
-        visitedRoutes.add(pendingRouteRef.current);
-        pendingRouteRef.current = null;
-      }
-      setShowLoader(false);
-    }
-    window.addEventListener(NOT_FOUND_RENDERED_EVENT, handleNotFoundRendered);
-    return () =>
-      window.removeEventListener(NOT_FOUND_RENDERED_EVENT, handleNotFoundRendered);
-  }, []);
 
   // صفحه‌ای که کاربر الان روی آن است، از همان ابتدا «بازدیدشده» حساب می‌شود
   useEffect(() => {

@@ -30,6 +30,8 @@
  * و اتریبیوت‌های خارج از مدیریتش دست‌نخورده می‌مانند).
  */
 
+import InitialLoadLoaderDismiss from "./InitialLoadLoaderDismiss";
+
 const OVERLAY_HTML = `
 <style>
 #__tnd-initial-loader{position:fixed;inset:0;z-index:9999;display:flex;align-items:center;justify-content:center;width:100%;min-height:100vh;pointer-events:none;opacity:1;transition:opacity .3s ease}
@@ -93,9 +95,14 @@ html[data-tnd-il-done] #__tnd-initial-loader{display:none!important}
 
 export default function InitialLoadLoader() {
   return (
-    <div
-      suppressHydrationWarning
-      dangerouslySetInnerHTML={{ __html: OVERLAY_HTML }}
-    />
+    <>
+      <div
+        suppressHydrationWarning
+        dangerouslySetInnerHTML={{ __html: OVERLAY_HTML }}
+      />
+      {/* پشتیبانِ بستن از سمتِ ری‌اکت — برای صفحاتی مثل ۴۰۴ که اسکریپتِ inlineِ بالا
+          روی آن‌ها اجرا نمی‌شود (بدنه فقط به‌صورتِ داده‌ی RSC می‌آید). */}
+      <InitialLoadLoaderDismiss />
+    </>
   );
 }
