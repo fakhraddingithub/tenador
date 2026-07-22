@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState, useTransition } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, usePathname } from "next/navigation";
 import RouteLoader from "./RouteLoader";
 
 // مسیرهایی که در همین نشستِ کلاینتی یک‌بار کامل لود شده‌اند (pathname + search).
@@ -12,9 +12,21 @@ const visitedRoutes = new Set();
 
 export default function NavigationLoader() {
   const router = useRouter();
+  const pathname = usePathname();
   const [isPending, startTransition] = useTransition();
   const [showLoader, setShowLoader] = useState(false);
   const pendingRouteRef = useRef(null);
+
+  // مقصد که واقعاً رندر شد (از جمله صفحه‌ی ۴۰۴)، pathname عوض می‌شود؛ لودر را
+  // ببند. نباید فقط به isPending تکیه کرد چون router.push به صفحه‌ی notFound
+  // همیشه ترنزیشن را درست جمع نمی‌کند و لودر گیر می‌کند.
+  useEffect(() => {
+    if (pendingRouteRef.current) {
+      visitedRoutes.add(pendingRouteRef.current);
+      pendingRouteRef.current = null;
+    }
+    setShowLoader(false);
+  }, [pathname]);
 
   // صفحه‌ای که کاربر الان روی آن است، از همان ابتدا «بازدیدشده» حساب می‌شود
   useEffect(() => {

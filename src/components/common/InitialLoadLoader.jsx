@@ -32,7 +32,7 @@
 
 const OVERLAY_HTML = `
 <style>
-#__tnd-initial-loader{position:fixed;inset:0;z-index:9999;display:flex;align-items:center;justify-content:center;width:100%;min-height:100vh;background:rgba(248,250,252,0.48);backdrop-filter:blur(24px) saturate(70%);-webkit-backdrop-filter:blur(24px) saturate(70%);opacity:1;transition:opacity .3s ease}
+#__tnd-initial-loader{position:fixed;inset:0;z-index:9999;display:flex;align-items:center;justify-content:center;width:100%;min-height:100vh;pointer-events:none;opacity:1;transition:opacity .3s ease}
 html[data-tnd-il-done] #__tnd-initial-loader{display:none!important}
 #__tnd-initial-loader .tnd-il-panel{display:flex;flex-direction:column;align-items:center;gap:48px;background:#fff;padding:40px 56px;border-radius:6px;border:1px solid rgba(255,255,255,.72);box-shadow:0 18px 50px rgba(15,23,42,.16)}
 #__tnd-initial-loader .tnd-il-logo{width:auto;height:64px;object-fit:contain}
