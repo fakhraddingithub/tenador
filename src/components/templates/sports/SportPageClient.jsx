@@ -24,6 +24,9 @@ export default function SportPageClient({
   filters = {},
   rate,
   series = [],
+  // ایندکس سبک همه‌ی سری‌ها ({_id, parentSerie, brand, level, order, ...}) برای
+  // فیلتر «سری» ریشه‌محور؛ اگر پاس داده نشود ([]) رفتار قبلی (سری مستقیم) حفظ می‌شود.
+  seriesIndex = [],
   totalResults,
   listingFilter = {},
   // Optional slots — used by the themed Event page to reuse this exact layout.
@@ -159,6 +162,84 @@ export default function SportPageClient({
   }, [products]);
 
   // ─────────────────────────────────────────────
+  // فیلتر «سری» ریشه‌محور: هر سری از روی parentSerie تا ریشه (level 0) بالا
+  // می‌رود؛ انتخابِ ریشه، محصولاتِ کلِ زیرمجموعه را شامل می‌شود. سری‌ای که در
+  // ایندکس نباشد ریشه‌ی خودش حساب می‌شود (= همان رفتار قبلی).
+  // ─────────────────────────────────────────────
+  const serieRootResolver = useMemo(() => {
+    const byId = new Map(seriesIndex.map((s) => [String(s._id), s]));
+    const rootCache = new Map();
+    const rootOf = (id) => {
+      const key = String(id);
+      if (rootCache.has(key)) return rootCache.get(key);
+      let cur = byId.get(key);
+      const seen = new Set([key]);
+      while (cur?.parentSerie && byId.has(String(cur.parentSerie))) {
+        const parentId = String(cur.parentSerie);
+        if (seen.has(parentId)) break; // محافظ در برابر حلقه در داده
+        seen.add(parentId);
+        cur = byId.get(parentId);
+      }
+      const rootId = cur ? String(cur._id) : key;
+      rootCache.set(key, rootId);
+      return rootId;
+    };
+    return { byId, rootOf };
+  }, [seriesIndex]);
+
+  const serieBrandId = (doc) =>
+    doc?.brand ? String(doc.brand._id || doc.brand) : null;
+
+  // گزینه‌های فیلتر سری: فقط ریشه‌های سری‌هایِ محصولاتِ همین صفحه؛ و اگر برندی
+  // انتخاب شده باشد فقط ریشه‌های همان برند(ها).
+  const seriesFilterOptions = useMemo(() => {
+    const roots = new Map();
+    for (const product of products) {
+      const sid =
+        product.serie?._id?.toString() ||
+        (product.serie ? product.serie.toString() : null);
+      if (!sid) continue;
+      const rootId = serieRootResolver.rootOf(sid);
+      if (roots.has(rootId)) continue;
+      // اگر ریشه در ایندکس نبود (ایندکس خالی/ناقص)، همان آبجکتِ populate شده‌ی
+      // محصول به‌عنوان گزینه استفاده می‌شود — دقیقاً رفتار قبلی.
+      const doc =
+        serieRootResolver.byId.get(rootId) ||
+        (rootId === sid && typeof product.serie === "object"
+          ? product.serie
+          : null);
+      if (doc) roots.set(rootId, doc);
+    }
+    let options = Array.from(roots.values());
+    if (localFilters.brands.length > 0) {
+      options = options.filter((s) => {
+        const brandId = serieBrandId(s);
+        return !brandId || localFilters.brands.includes(brandId);
+      });
+    }
+    return options.sort(
+      (a, b) =>
+        (a.order ?? Number.MAX_SAFE_INTEGER) -
+        (b.order ?? Number.MAX_SAFE_INTEGER),
+    );
+  }, [products, serieRootResolver, localFilters.brands]);
+
+  // با تغییرِ انتخابِ برند، سری‌های انتخاب‌شده‌ای که به برند(های) جدید تعلق
+  // ندارند حذف می‌شوند تا فیلترِ نامرئی باقی نماند.
+  const applyLocalFilters = (next) => {
+    if (next.series?.length && next.brands?.length) {
+      const prunedSeries = next.series.filter((id) => {
+        const brandId = serieBrandId(serieRootResolver.byId.get(id));
+        return !brandId || next.brands.includes(brandId);
+      });
+      if (prunedSeries.length !== next.series.length) {
+        next = { ...next, series: prunedSeries };
+      }
+    }
+    setLocalFilters(next);
+  };
+
+  // ─────────────────────────────────────────────
   // Product Filtering
   // ─────────────────────────────────────────────
   const filteredProducts = useMemo(() => {
@@ -179,12 +260,14 @@ export default function SportPageClient({
           product.category?._id?.toString() || product.category?.toString(),
         );
 
+      const productSerieId =
+        product.serie?._id?.toString() ||
+        (product.serie ? product.serie.toString() : null);
       const matchesSerie =
         !localFilters.series ||
         localFilters.series.length === 0 ||
-        localFilters.series.includes(
-          product.serie?._id?.toString() || product.serie?.toString(),
-        );
+        (!!productSerieId &&
+          localFilters.series.includes(serieRootResolver.rootOf(productSerieId)));
 
       // بر اساس قیمتِ نمایشیِ تومان (نه basePrice که یورو است)؛ maxPrice=0 یعنی بدون سقف
       const priceToman = getListingPriceToman(product);
@@ -207,7 +290,7 @@ export default function SportPageClient({
         matchesAttributes
       );
     });
-  }, [searchTerm, localFilters, products, attrFilters, attributeMeta]);
+  }, [searchTerm, localFilters, products, attrFilters, attributeMeta, serieRootResolver]);
 
   // با تغییرِ فیلتر و کوتاه‌شدنِ لیست، نمای صفحه را به ناحیه‌ی فیلتر لنگر می‌اندازد
   // (جلوگیری از افتادن روی فوتر). signal = تعدادِ نتایج.
@@ -262,8 +345,9 @@ export default function SportPageClient({
             <FilterSidebar
               initialProducts={products}
               filters={localFilters}
-              setFilters={setLocalFilters}
+              setFilters={applyLocalFilters}
               hideSportFilter={true}
+              seriesOptions={seriesFilterOptions}
               attributeMeta={attributeMeta}
               attrFilters={attrFilters}
               setAttrFilters={applyAttrFilters}

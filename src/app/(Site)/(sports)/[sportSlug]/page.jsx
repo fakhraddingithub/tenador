@@ -1,5 +1,5 @@
 import { getPageDataBySlug } from "base/services/product.service";
-import { getSeriesBySport } from "base/services/series.service";
+import { getSeriesBySport, getSeriesFilterIndex } from "base/services/series.service";
 import { resolvePageContext } from "base/services/query.service";
 import SportPageClient from "@/components/templates/sports/SportPageClient";
 import BrandsTicker from "@/components/features/brandsTicker/BrandsTicker";
@@ -77,9 +77,10 @@ export default async function DynamicSportPage({ params }) {
     return <ArticleCategoryPage category={articleCategory.category} articles={articleCategory.articles} />;
   }
 
-  const [data, series, rate] = await Promise.all([
+  const [data, series, seriesIndex, rate] = await Promise.all([
     getPageDataBySlug(sportSlug),
     getSeriesBySport(sportSlug),
+    getSeriesFilterIndex(),
     getCachedRate(),
   ]);
   if (!data) notFound();
@@ -102,6 +103,7 @@ export default async function DynamicSportPage({ params }) {
         title={title}
         rate={rate}
         series={serializedSeries}
+        seriesIndex={seriesIndex}
       />
       {/* نوار برندهای همین ورزش — در پایینِ صفحه */}
       {tickerBrands.length > 0 && (

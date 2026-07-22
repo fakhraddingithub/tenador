@@ -1,6 +1,7 @@
 import { unstable_cache } from "next/cache";
 import connectToDB from "base/configs/db";
 import Product from "base/models/Product";
+import Serie from "base/models/Serie";
 import Sport from "base/models/Sport";
 import {
   resolveSerieSportContent,
@@ -282,4 +283,23 @@ export const getSeriesBySport = unstable_cache(
   _getSeriesBySport,
   ["series-by-sport"],
   { revalidate: 10800, tags: ["products", "series", "sports"] }
+);
+
+/**
+ * ایندکسِ سبکِ همه‌ی سری‌ها برای فیلترِ کلاینت‌سایدِ سایدبار:
+ * از روی parentSerie می‌توان هر سری را به سری ریشه‌اش (level 0) رساند تا فیلترِ
+ * «سری» فقط ریشه‌ها را نشان دهد و انتخابِ ریشه کلِ زیرمجموعه را شامل شود.
+ */
+async function _getSeriesFilterIndex() {
+  await connectToDB();
+  const series = await Serie.find({})
+    .select("title name slug parentSerie brand level order")
+    .lean();
+  return JSON.parse(JSON.stringify(series));
+}
+
+export const getSeriesFilterIndex = unstable_cache(
+  _getSeriesFilterIndex,
+  ["series-filter-index"],
+  { revalidate: 10800, tags: ["series"] }
 );

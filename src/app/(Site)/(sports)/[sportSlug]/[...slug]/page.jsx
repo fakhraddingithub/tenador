@@ -6,6 +6,7 @@ import { getCachedRate } from "@/lib/Exchangerate";
 import { queryBySlugs, resolvePageContext } from "base/services/query.service";
 import { getBrandGroupedSections } from "base/services/brandGrouped.service";
 import { getSerieGroupedSections } from "base/services/serieGrouped.service";
+import { getSeriesFilterIndex } from "base/services/series.service";
 import { getPublicArticle } from "base/services/publicArticle.service";
 import { buildArticlePath } from "base/utils/articleSlug";
 import { articleMetadata } from "@/lib/articleSeo";
@@ -258,6 +259,13 @@ export default async function SportDynamicSlugPage({ params, searchParams }) {
     searchData.filters.category ||
     searchData.filters.sport;
 
+  // فیلترِ «سری» ریشه‌محور فقط برای صفحه‌های ورزش/دسته — صفحه‌های سری و
+  // لیمیتد ادیشن همان رفتار قبلی سایدبار را نگه می‌دارند.
+  const seriesIndex =
+    !searchData.filters.serie && !searchData.filters.limitedEdition
+      ? await getSeriesFilterIndex()
+      : [];
+
   return (
     <SportPageClient
       pageInfo={pageInfo}
@@ -272,6 +280,7 @@ export default async function SportDynamicSlugPage({ params, searchParams }) {
         limitedEdition: searchData.filters.limitedEdition?._id,
       }}
       rate={rate}
+      seriesIndex={seriesIndex}
       page={page}
       title={`تنادور – ${pageInfo.title || pageInfo.name || ""}`}
     />

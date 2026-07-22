@@ -22,6 +22,9 @@ export default function FilterSidebar({
   filters,
   setFilters,
   hideSportFilter = false,
+  // اگر پاس داده شود، به‌جای استخراج سری‌ها از محصولات، همین لیست (مثلاً فقط
+  // سری‌های ریشه) به‌عنوان گزینه‌های فیلتر «سری» نمایش داده می‌شود.
+  seriesOptions = null,
   // فیلترهای ویژگیِ پویای دسته‌بندی (دکمه‌های انتخابی + گریدِ رنگ) — کامپوننتِ
   // مشترکِ AttributeFilters همه‌جا از همین props استفاده می‌کند.
   attributeMeta = [],
@@ -47,7 +50,7 @@ export default function FilterSidebar({
   const brands = getUniqueItems(initialProducts, "brand");
   const sports = getUniqueItems(initialProducts, "sport");
   const categories = getUniqueItems(initialProducts, "category");
-  const series = getUniqueItems(initialProducts, "serie");
+  const series = seriesOptions ?? getUniqueItems(initialProducts, "serie");
 
   // دامنه‌ی اسلایدرِ قیمت از روی قیمتِ نمایشیِ (تومان) محصولاتِ همین صفحه
   const priceBounds = useMemo(() => {
