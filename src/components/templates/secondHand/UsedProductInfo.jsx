@@ -111,7 +111,7 @@ const UsedProductInfo = ({ product }) => {
       {/* لوگو برند */}
       {baseProduct.brand?.logo && (
         <Link
-          href={`/brands/${baseProduct.brand.slug || baseProduct.brand._id}`}
+          href={`/${baseProduct.brand.slug || baseProduct.brand._id}`}
           className="self-end absolute top-0 left-0"
         >
           <img

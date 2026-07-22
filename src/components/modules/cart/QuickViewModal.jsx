@@ -394,7 +394,7 @@ export default function QuickViewModal({
             </div>
             {product.brand?.logo && (
               <a
-                href={`/brands/${product.brand.slug || product.brand._id}`}
+                href={`/${product.brand.slug || product.brand._id}`}
                 onClick={(e) => e.stopPropagation()}
                 className="shrink-0"
                 title={product.brand.title || product.brand.name}

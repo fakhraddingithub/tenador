@@ -64,13 +64,8 @@ export default async function sitemap() {
       changeFrequency: "daily",
       priority: 0.9,
     },
-
-    {
-      url: `${SITE_URL}/brands`,
-      lastModified: new Date(),
-      changeFrequency: "weekly",
-      priority: 0.7,
-    },
+    // صفحه‌ی /brands وجود ندارد (۴۰۴) — از sitemap حذف شد؛ برندها در ریشه
+    // (/[brandSlug]) آدرس‌دهی و جداگانه در brandUrls اضافه می‌شوند.
   ];
 
   // -------------------------
@@ -115,17 +110,20 @@ export default async function sitemap() {
     }));
 
   // -------------------------
-  // Brand URLs
+  // Brand URLs — برندها مثل ورزش‌ها در ریشه آدرس‌دهی می‌شوند: /[brandSlug]
+  // (مسیر /brand/... هرگز در اپ وجود نداشته و نباید تولید شود)
   // -------------------------
-  const brandUrls = brands.map((brand) => ({
-    url: `${SITE_URL}/brand/${brand.slug}`,
+  const brandUrls = brands
+    .filter((brand) => brand.slug)
+    .map((brand) => ({
+      url: `${SITE_URL}/${brand.slug}`,
 
-    lastModified: brand.updatedAt,
+      lastModified: brand.updatedAt,
 
-    changeFrequency: "weekly",
+      changeFrequency: "weekly",
 
-    priority: 0.6,
-  }));
+      priority: 0.6,
+    }));
 
   const articleCategoryUrls = articleContent.categories
     .filter((category) => category.slug && !occupiedRootSlugs.has(category.slug) && !isReservedArticleRoot(category.slug))

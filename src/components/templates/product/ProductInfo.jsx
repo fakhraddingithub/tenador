@@ -307,7 +307,7 @@ const ProductInfo = ({ product, selectedVariant, onVariantChange, onSelectionCha
       {/* Brand logo */}
       {product.brand?.logo && (
         <Link
-          href={`/brands/${product.brand.slug || product.brand._id}`}
+          href={`/${product.brand.slug || product.brand._id}`}
           className="self-end absolute top-0 left-0"
         >
           <img

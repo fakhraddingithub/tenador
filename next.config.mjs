@@ -46,6 +46,27 @@ const nextConfig = {
         destination: "/collection/:slug*",
         permanent: true,
       },
+      // مسیرهای /brand/... و /sport/... هرگز در اپ وجود نداشته‌اند، اما sitemap
+      // قدیمی /brand/[slug] تولید می‌کرد و گوگل الگوی /sport/[slug] را هم از روی
+      // آن حدس زده و کرال می‌کند. ریدایرکت دائمی به آدرس کانونیکالِ ریشه
+      // (/[slug]) تا این URLها از صف کشف/ایندکس گوگل پاک شوند.
+      {
+        source: "/brand/:slug*",
+        destination: "/:slug*",
+        permanent: true,
+      },
+      {
+        source: "/sport/:slug*",
+        destination: "/:slug*",
+        permanent: true,
+      },
+      // لینک‌های قدیمی صفحه‌ی محصول به /brands/[slug] اشاره می‌کردند در حالی که
+      // صفحه‌ی برند در ریشه است؛ /brands هم صفحه‌ی واقعی ندارد.
+      {
+        source: "/brands/:slug*",
+        destination: "/:slug*",
+        permanent: true,
+      },
     ];
   },
 
