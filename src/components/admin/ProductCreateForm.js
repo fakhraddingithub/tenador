@@ -9,9 +9,11 @@ import Textarea from '@/components/admin/Textarea';
 import Select from '@/components/admin/Select';
 import ImageUpload from '@/components/admin/ImageUpload';
 import VariantValueImageUpload from '@/components/admin/VariantValueImageUpload';
+import VariantValuesEditor from '@/components/admin/VariantValuesEditor';
 import { showToast } from '@/lib/toast';
 import { showError } from '@/lib/swal';
 import { makeComboKey } from '@/lib/variantKey';
+import { renameVariantValue } from '@/lib/variantValueOps';
 
 // ---------------------------
 // Helpers
@@ -350,6 +352,26 @@ export default function ProductCreateForm({ initialData = {} }) {
       ...prev,
       [attrName]: (prev[attrName] || []).filter(v => v !== value),
     }));
+  }
+
+  // جابه‌جایی (drag & drop) — فقط ترتیبِ آرایه‌ی مقادیر عوض می‌شود؛ کلیدهای ترکیب
+  // (makeComboKey) به مقدار وابسته‌اند نه ترتیب، پس قیمت/تصویر/انتخابِ ترکیب‌ها دست‌نخورده می‌ماند.
+  function reorderVariantValue(attrName, newValues) {
+    setVariantOptions(prev => ({ ...prev, [attrName]: newValues }));
+  }
+
+  // ویرایشِ نامِ یک مقدار — استیت‌های وابسته یک‌جا و هماهنگ مهاجرت می‌کنند.
+  function handleRenameVariantValue(attrName, oldVal, newVal) {
+    const res = renameVariantValue({
+      attrName, oldVal, newVal,
+      variantOptions, variantMeta, variantDetails,
+      deselectedCombos, expandedPrices,
+    });
+    setVariantOptions(res.variantOptions);
+    setVariantMeta(res.variantMeta);
+    setVariantDetails(res.variantDetails);
+    setDeselectedCombos(res.deselectedCombos);
+    setExpandedPrices(res.expandedPrices);
   }
 
   // ---------------------------
@@ -804,38 +826,15 @@ export default function ProductCreateForm({ initialData = {} }) {
                   </div>
                 )}
 
-                {/* Value tags */}
-                <div className="flex flex-wrap gap-2 min-h-[2rem]">
-                  {(variantOptions[attr.name] || []).map(val => {
-                    const u = attr.multiUnit ? variantMeta[attr.name]?.[val]?.units : null;
-                    const display = u
-                      ? (attr.units || []).map(unit => `${u[unit] ?? '—'} ${unit}`).join(' / ')
-                      : val;
-                    return (
-                      <span
-                        key={val}
-                        className="inline-flex items-center gap-1 px-3 py-1 bg-purple-100 text-purple-800 rounded-full text-sm font-medium"
-                      >
-                        <span dir="ltr" style={{ direction: "ltr", unicodeBidi: "isolate" }}>
-                          {display}
-                        </span>
-                        <button
-                          type="button"
-                          onClick={() => removeVariantValue(attr.name, val)}
-                          className="text-purple-400 hover:text-red-600 font-bold leading-none ml-1"
-                          title="حذف"
-                        >
-                          ×
-                        </button>
-                      </span>
-                    );
-                  })}
-                  {!(variantOptions[attr.name] || []).length && (
-                    <span className="text-xs text-gray-400 italic">
-                      هنوز مقداری اضافه نشده
-                    </span>
-                  )}
-                </div>
+                {/* Value tags — قابلِ ویرایش و جابه‌جایی (drag & drop) */}
+                <VariantValuesEditor
+                  attr={attr}
+                  values={variantOptions[attr.name] || []}
+                  variantMeta={variantMeta}
+                  onReorder={reorderVariantValue}
+                  onRename={handleRenameVariantValue}
+                  onRemove={removeVariantValue}
+                />
               </div>
             ))}
           </div>
