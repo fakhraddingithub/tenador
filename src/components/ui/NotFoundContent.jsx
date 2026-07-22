@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { Home, ShoppingBag } from "lucide-react";
+import NotFoundLoaderReset from "@/components/common/NotFoundLoaderReset";
 
 /**
  * محتوای صفحه ۴۰۴ — هماهنگ با تم و رنگ‌بندی سایت تنادور.
@@ -13,6 +14,8 @@ export default function NotFoundContent() {
       dir="rtl"
       className="min-h-[70vh] flex items-center justify-center px-4 py-16 bg-[var(--color-background)]"
     >
+      {/* به NavigationLoader خبر می‌دهد که صفحه‌ی ۴۰۴ رندر شد تا لودر بسته شود */}
+      <NotFoundLoaderReset />
       <div className="max-w-xl w-full text-center">
         {/* عدد ۴۰۴ با توپ تنیس به عنوان صفرِ میانی */}
         <div className="relative mb-8 flex items-center justify-center select-none">
