@@ -11,7 +11,7 @@ import {
   Eye, CheckCircle, XCircle, Clock, Package, Truck,
   Home, AlertCircle, RefreshCw, Receipt, CreditCard,
   Users, BadgeCheck, ChevronDown, Ban, Loader2,
-  ReceiptText, Inbox, Sparkles, Bell, ShoppingBag
+  ReceiptText, Inbox, Sparkles, ShoppingBag
 } from "lucide-react";
 
 /* ─── Constants ─────────────────────────────────────────────────────── */
@@ -235,7 +235,6 @@ export default function AdminOrdersClient() {
   const [paymentMethod, setPaymentMethod] = useState("all");
   const [page, setPage] = useState(1);
   const [showFilters, setShowFilters] = useState(false);
-  const [sortUnseen, setSortUnseen] = useState(true);
 
   const fetchOrders = useCallback(async (resetPage = false) => {
     setLoading(true);
@@ -272,15 +271,9 @@ export default function AdminOrdersClient() {
 
   const handleFilterChange = () => { fetchOrders(true); };
 
-  // مرتب‌سازی: سفارش‌های جدید و دیده‌نشده اول
-  const sortedOrders = sortUnseen
-    ? [...orders].sort((a, b) => {
-        const aUnseen = isUnseen(a) ? 1 : 0;
-        const bUnseen = isUnseen(b) ? 1 : 0;
-        if (bUnseen !== aUnseen) return bUnseen - aUnseen;
-        return new Date(b.createdAt) - new Date(a.createdAt);
-      })
-    : orders;
+  // ترتیب نمایش همان ترتیب سرور است: تاریخ ثبت، جدیدترین اول.
+  // سفارش‌های دیده‌نشده فقط با هایلایت بصری متمایز می‌شوند، نه با جابه‌جایی.
+  const sortedOrders = orders;
 
   const pendingReceiptsCount = orders.reduce(
     (acc, o) =>
@@ -313,16 +306,6 @@ export default function AdminOrdersClient() {
             </p>
           </div>
           <div className="flex items-center gap-2">
-            <button
-              onClick={() => setSortUnseen(!sortUnseen)}
-              className={`flex items-center gap-1.5 text-xs font-bold px-3 py-2 rounded-xl border transition
-                ${sortUnseen
-                  ? "bg-[var(--color-primary)] border-[var(--color-primary)] text-white"
-                  : "bg-white border-gray-200 text-gray-600 hover:border-gray-300"}`}
-            >
-              <Bell size={13} />
-              اولویت جدید
-            </button>
             <button
               onClick={() => fetchOrders()} disabled={loading}
               className="flex items-center gap-2 bg-white border border-gray-200 text-gray-600

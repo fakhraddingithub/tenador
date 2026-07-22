@@ -7,7 +7,8 @@
  *
  * تغییرات:
  * - جستجو روی نام کاربر هم اضافه شد (با lookup)
- * - سفارش‌های جدید/دیده‌نشده (reviewedAt ندارند) با sort اضافه‌تر قابل برگشت هستند
+ * - مرتب‌سازی همیشه بر اساس تاریخ ثبت (جدیدترین اول)؛ سفارش‌های دیده‌نشده با
+ *   هایلایت بصری در کلاینت مشخص می‌شوند، نه با جابه‌جایی در ترتیب
  */
 
 import { NextResponse } from "next/server";
@@ -102,7 +103,8 @@ export async function GET(req) {
             ],
           },
         },
-        { $sort: { reviewedAt: 1, createdAt: -1 } },
+        // جدیدترین اول؛ _id به‌عنوان tiebreaker تا صفحه‌بندی پایدار بماند
+        { $sort: { createdAt: -1, _id: -1 } },
       ];
 
       const countPipeline = [...pipeline, { $count: "total" }];
@@ -147,7 +149,7 @@ export async function GET(req) {
           select: "method amount status bankReceipt onlinePayment createdAt",
         })
         .populate("items.product", "name mainImage sku")
-        .sort({ reviewedAt: 1, createdAt: -1 }) // سفارش‌های بررسی‌نشده اول
+        .sort({ createdAt: -1, _id: -1 }) // جدیدترین اول؛ _id برای صفحه‌بندی پایدار
         .skip(skip)
         .limit(limit)
         .lean();
