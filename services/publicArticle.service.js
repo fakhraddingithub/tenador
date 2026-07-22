@@ -65,7 +65,7 @@ export async function resolveArticleEntities(article) {
       if (ids(data.categories).length) query.category = { $in: ids(data.categories) };
       if (block.type === "bestSellers") query.label = "best_seller";
       if (block.type === "amazingOffers") query.label = "discount";
-      const docs = await Product.find(query).sort({ createdAt: -1 }).limit(limit).populate("brand category variants").lean();
+      const docs = await Product.find(query).sort({ order: 1, createdAt: -1 }).limit(limit).populate("brand category variants").lean();
       return [String(block.id), docs];
     })),
   ]);

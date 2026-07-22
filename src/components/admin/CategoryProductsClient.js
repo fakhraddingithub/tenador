@@ -4,19 +4,6 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { ProductCard } from "@/components/admin";
-import SortableGridItem from "@/components/admin/SortableGridItem";
-import {
-  DndContext,
-  closestCenter,
-  PointerSensor,
-  useSensor,
-  useSensors,
-} from "@dnd-kit/core";
-import {
-  SortableContext,
-  rectSortingStrategy,
-  arrayMove,
-} from "@dnd-kit/sortable";
 import { showToast } from "@/lib/toast";
 import { confirmDelete, showError } from "@/lib/swal";
 import {
@@ -30,7 +17,6 @@ import {
   FaInfoCircle,
   FaFilter,
   FaTimes,
-  FaArrowsAlt,
 } from "react-icons/fa";
 
 export default function CategoryProductsClient({ categoryId }) {
@@ -85,51 +71,15 @@ export default function CategoryProductsClient({ categoryId }) {
     () =>
       products
         .filter((p) => p.category?._id === categoryId)
-        // مرتب‌سازی پایدار بر اساس فیلد order — محصولاتی که هنوز ترتیب دستی
-        // نگرفته‌اند (order=0 پیش‌فرض) همان ترتیبِ آمده از سرور (جدیدترین اول) را حفظ می‌کنند
-        .sort((a, b) => (a.order ?? 0) - (b.order ?? 0)),
+        // ترتیب دستی از این صفحه حذف شده (به صفحه محصولات سری منتقل شد) —
+        // اینجا فقط بر اساس آخرین ویرایش (جدیدترین اول) نمایش می‌دهیم
+        .sort(
+          (a, b) =>
+            new Date(b.updatedAt || b.createdAt) -
+            new Date(a.updatedAt || a.createdAt)
+        ),
     [products, categoryId]
   );
-
-  const sensors = useSensors(
-    useSensor(PointerSensor, { activationConstraint: { distance: 5 } })
-  );
-
-  const handleDragEnd = async (event) => {
-    const { active, over } = event;
-    if (!over || active.id === over.id) return;
-
-    const oldIndex = categoryProducts.findIndex((p) => p._id === active.id);
-    const newIndex = categoryProducts.findIndex((p) => p._id === over.id);
-    if (oldIndex === -1 || newIndex === -1) return;
-
-    const reordered = arrayMove(categoryProducts, oldIndex, newIndex).map(
-      (item, index) => ({ ...item, order: index })
-    );
-
-    // به‌روزرسانیِ خوش‌بینانه: ترتیبِ جدید را داخلِ آرایه‌ی اصلیِ محصولات هم می‌نویسیم
-    // تا categoryProducts (که از همین آرایه مشتق می‌شود) بلافاصله ترتیبِ جدید را نشان دهد
-    const orderMap = new Map(reordered.map((item) => [item._id, item.order]));
-    setProducts((prev) =>
-      prev.map((p) =>
-        orderMap.has(p._id) ? { ...p, order: orderMap.get(p._id) } : p
-      )
-    );
-
-    try {
-      const res = await fetch("/api/product/reorder", {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          products: reordered.map((p) => ({ id: p._id, order: p.order })),
-        }),
-      });
-      if (!res.ok) throw new Error();
-    } catch {
-      showError("خطا", "خطا در ذخیره ترتیب محصولات");
-      fetchProducts();
-    }
-  };
 
   // برندهای موجود در این دسته
   const availableBrands = useMemo(() => {
@@ -330,22 +280,6 @@ export default function CategoryProductsClient({ categoryId }) {
         </div>
       </div>
 
-      {/* راهنمای درگ‌اند‌دراپ */}
-      {!loading && categoryProducts.length > 1 && (
-        <div
-          className={`flex items-center gap-2 text-xs font-bold px-4 py-2.5 rounded-[var(--radius)] ${
-            hasActiveFilter
-              ? "bg-amber-50 text-amber-600 border border-amber-100"
-              : "bg-gray-50 text-gray-500 border border-gray-100"
-          }`}
-        >
-          <FaArrowsAlt size={12} />
-          {hasActiveFilter
-            ? "برای تغییر ترتیب نمایش محصولات با درگ‌اند‌دراپ، ابتدا فیلترها را پاک کنید."
-            : "برای تغییر ترتیب نمایش محصولات در سایت، کارت‌ها را بکشید و جابه‌جا کنید."}
-        </div>
-      )}
-
       {/* Products grid */}
       {loading ? (
         <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-5">
@@ -382,7 +316,7 @@ export default function CategoryProductsClient({ categoryId }) {
             </button>
           )}
         </div>
-      ) : hasActiveFilter ? (
+      ) : (
         <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-5">
           {filteredProducts.map((product) => (
             <ProductCard
@@ -396,28 +330,6 @@ export default function CategoryProductsClient({ categoryId }) {
             />
           ))}
         </div>
-      ) : (
-        <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
-          <SortableContext
-            items={filteredProducts.map((p) => p._id)}
-            strategy={rectSortingStrategy}
-          >
-            <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-5">
-              {filteredProducts.map((product) => (
-                <SortableGridItem key={product._id} id={product._id}>
-                  <ProductCard
-                    product={product}
-                    onDelete={handleDeleteProduct}
-                    onEdit={() => router.push(`/p-admin/admin-products/edit/${product._id}`)}
-                    onViewVariants={() =>
-                      router.push(`/p-admin/admin-products/${product._id}/variants`)
-                    }
-                  />
-                </SortableGridItem>
-              ))}
-            </div>
-          </SortableContext>
-        </DndContext>
       )}
     </div>
   );

@@ -10,6 +10,7 @@ import {
   FaChevronLeft,
   FaCodeBranch,
   FaCrown,
+  FaBox,
 } from "react-icons/fa";
 
 import { useRouter } from "next/navigation";
@@ -236,6 +237,11 @@ export default function SerieChildrenAdminPage({ serieId, brandId }) {
                       child={child}
                       serie={serie}
                       onOpen={() => router.push(`/admin/series/${child._id}`)}
+                      onProducts={() =>
+                        router.push(
+                          `/p-admin/admin-brands/${brandId}/${child._id}/products`
+                        )
+                      }
                       onEdit={() =>
                         router.push(
                           `/p-admin/admin-brands/${serie.brand}/${child._id}/edit`
@@ -254,7 +260,7 @@ export default function SerieChildrenAdminPage({ serieId, brandId }) {
   );
 }
 
-function ChildCard({ child, onOpen, onEdit, onDelete }) {
+function ChildCard({ child, onOpen, onProducts, onEdit, onDelete }) {
   return (
     <div className="group relative bg-white rounded-2xl border border-gray-100 overflow-hidden hover:shadow-xl hover:-translate-y-1 transition-all duration-300">
       <div className="h-1 w-full" style={{ background: "var(--color-primary)" }} />
@@ -312,6 +318,15 @@ function ChildCard({ child, onOpen, onEdit, onDelete }) {
         </div>
 
         <div className="flex gap-2">
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              onProducts();
+            }}
+            className="flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-[var(--radius)] text-xs font-bold bg-gray-50 text-gray-700 hover:bg-[var(--color-primary)] hover:text-white transition-all"
+          >
+            <FaBox size={12} /> محصولات
+          </button>
           <button
             onClick={(e) => {
               e.stopPropagation();

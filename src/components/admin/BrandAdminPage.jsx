@@ -297,6 +297,11 @@ export default function BrandAdminPage({ brandId }) {
                       onOpen={() =>
                         router.push(`/p-admin/admin-brands/${brandId}/${serie._id}`)
                       }
+                      onProducts={() =>
+                        router.push(
+                          `/p-admin/admin-brands/${brandId}/${serie._id}/products`
+                        )
+                      }
                       onEdit={() =>
                         router.push(`/p-admin/admin-brands/${brandId}/${serie._id}/edit`)
                       }
@@ -368,7 +373,7 @@ function StatMini({ icon: Icon, label, value }) {
   );
 }
 
-function SerieCard({ serie, brandId, onOpen, onEdit, onDelete }) {
+function SerieCard({ serie, brandId, onOpen, onProducts, onEdit, onDelete }) {
   return (
     <div className="group relative bg-white rounded-2xl border border-gray-100 overflow-hidden hover:shadow-xl hover:-translate-y-1 transition-all duration-300">
       <div className="h-1 w-full" style={{ background: "var(--color-primary)" }} />
@@ -411,6 +416,15 @@ function SerieCard({ serie, brandId, onOpen, onEdit, onDelete }) {
         </div>
 
         <div className="flex gap-2">
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              onProducts();
+            }}
+            className="flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-[var(--radius)] text-xs font-bold bg-gray-50 text-gray-700 hover:bg-[var(--color-primary)] hover:text-white transition-all"
+          >
+            <FaBox size={12} /> محصولات
+          </button>
           <button
             onClick={(e) => {
               e.stopPropagation();

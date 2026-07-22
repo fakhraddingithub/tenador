@@ -122,7 +122,7 @@ export async function POST(req) {
     // ----------- ۵) اجرای کوئری نهایی محصولات -----------
     const products = await Product.find(finalFilter)
       .populate("brand sport athlete category serie")
-      .sort({ createdAt: -1 }) // جدیدترین‌ها اول
+      .sort({ order: 1, createdAt: -1 }) // ترتیب دستی ادمین، سپس جدیدترین‌ها
       .lean();
 
     // ----------- ۶) پاسخ نهایی -----------

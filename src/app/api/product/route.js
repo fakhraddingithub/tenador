@@ -10,7 +10,7 @@ import "base/models/Serie";
 import "base/models/LimitedEdition";
 import requireAdmin from "@/lib/requireAdmin";
 
-const ADMIN_LIST_FIELDS = "name slug sku mainImage basePrice isActive order brand sport category serie limitedEdition createdAt";
+const ADMIN_LIST_FIELDS = "name slug sku mainImage basePrice isActive order brand sport category serie limitedEdition createdAt updatedAt";
 
 function escapeRegExp(value) {
   return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
@@ -24,6 +24,7 @@ export async function GET(req) {
     const { searchParams } = new URL(req.url);
     const isAdmin = searchParams.get("isAdmin") === "true";
     const categoryId = searchParams.get("category"); // فیلتر بر اساس دسته‌بندی
+    const serieId = searchParams.get("serie"); // فیلتر بر اساس سری
     const limitedEditionId = searchParams.get("limitedEdition"); // فیلتر بر اساس لیمیتد ادیشن
     const withVariants = searchParams.get("withVariants") === "true"; // populate واریانت‌ها
     const search = String(searchParams.get("search") || "").trim();
@@ -39,6 +40,7 @@ export async function GET(req) {
     // اگر ادمین بود آبجکت خالی {} (یعنی همه محصولات) و اگر نبود فقط { isActive: true }
     const query = isAdmin ? {} : { isActive: true };
     if (categoryId) query.category = categoryId;
+    if (serieId) query.serie = serieId;
     if (limitedEditionId) query.limitedEdition = limitedEditionId;
     if (search) query.name = { $regex: escapeRegExp(search), $options: "i" };
 

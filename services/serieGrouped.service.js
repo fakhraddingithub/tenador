@@ -234,7 +234,7 @@ async function _getSerieGroupedSections(params) {
       // variants باید populate شوند تا کوییک‌ویو سلکتورها را و کارت سوآچ‌های
       // واریانت را نشان دهد (variantMeta روی خود محصول است و خودکار همراه می‌آید)
       .populate("brand sport athlete category serie limitedEdition variants")
-      .sort({ createdAt: -1 })
+      .sort({ order: 1, createdAt: -1 })
       .lean();
 
     const priced = await attachListingPrices(raw, rate);
