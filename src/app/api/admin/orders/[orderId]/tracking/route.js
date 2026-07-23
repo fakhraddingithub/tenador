@@ -23,6 +23,7 @@ import {
 } from "@/lib/warehouseDb";
 import { verifyToken } from "base/utils/auth";
 import Order from "base/models/Order";
+import { syncOrderFulfillmentFromTracking } from "@/lib/orderFulfillmentSync";
 
 async function getAdminUser() {
   const cookieStore = await cookies();
@@ -70,6 +71,10 @@ export async function GET(req, { params }) {
     
     await connectToDB();
     const { orderId } = await params;
+
+    // read-repair: وضعیت بارکدها ممکن است در پروژه‌ی انبار (خارج از این اپ)
+    // تغییر کرده باشد — قبل از خواندن، وضعیت سفارش همگام می‌شود
+    await syncOrderFulfillmentFromTracking(orderId);
 
     const order = await Order.findById(orderId)
       .populate("items.product", "name mainImage sku")
@@ -515,6 +520,11 @@ export async function POST(req, { params }) {
       updatedFulfillment = freshOrder.fulfillmentStatus;
     }
 
+    // همگام‌سازی خودکار با وضعیت بارکدها (مثلاً اسکنِ بارکدی که همین حالا
+    // DELIVERED است، یا برعکس، سفارشِ تحویل‌شده‌ای که بارکد جدید گرفت)
+    const syncedStatus = await syncOrderFulfillmentFromTracking(orderId);
+    if (syncedStatus) updatedFulfillment = syncedStatus;
+
     return NextResponse.json(
       {
         message: "بارکد با موفقیت به سفارش اختصاص داده شد",
@@ -597,6 +607,9 @@ export async function DELETE(req, { params }) {
     });
 
     await item.save();
+
+    // حذف بارکد ممکن است ترکیب باقی‌مانده را «همه تحویل‌شده» کند (یا برعکس)
+    await syncOrderFulfillmentFromTracking(orderId);
 
     return NextResponse.json(
       { message: "بارکد از سفارش جدا شد" },

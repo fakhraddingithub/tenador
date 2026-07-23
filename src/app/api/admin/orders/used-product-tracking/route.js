@@ -23,6 +23,7 @@ import {
 import { verifyToken } from "base/utils/auth";
 import UsedProduct from "base/models/UsedProduct";
 import Order from "base/models/Order";
+import { syncOrderFulfillmentFromTracking } from "@/lib/orderFulfillmentSync";
 
 async function getAdminUser() {
   const cookieStore = await cookies();
@@ -136,6 +137,9 @@ export async function POST(req) {
         order:                 order._id,
       });
 
+      // بارکد جدید به سفارش وصل شد → وضعیت سفارش با وضعیت بارکدها همگام شود
+      await syncOrderFulfillmentFromTracking(orderId);
+
       return NextResponse.json({
         message:     "بارکد با موفقیت اختصاص داده شد",
         trackingId:  item.trackingId,
@@ -189,6 +193,9 @@ export async function POST(req) {
         status:               "reserved",
         order:                order._id,
       });
+
+      // بارکد جدید به سفارش وصل شد → وضعیت سفارش با وضعیت بارکدها همگام شود
+      await syncOrderFulfillmentFromTracking(orderId);
 
       return NextResponse.json({
         message:     "بارکد جدید با موفقیت ساخته شد",

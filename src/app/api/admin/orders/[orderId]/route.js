@@ -15,6 +15,7 @@ import { verifyToken } from "base/utils/auth";
 import Order from "base/models/Order";
 import Installment from "base/models/Installment";
 import { deriveCheckStatus, summarizeInstallment } from "base/services/installmentService";
+import { syncOrderFulfillmentFromTracking } from "@/lib/orderFulfillmentSync";
 
 // فقط برای ثبت شدن مدل‌ها در Mongoose / جلوگیری از MissingSchemaError
 import "base/models/Payment";
@@ -151,6 +152,10 @@ export async function GET(req, { params }) {
         },
       }
     );
+
+    // read-repair: همگام‌سازی وضعیت سفارش با وضعیت بارکدهای انبار
+    // (وضعیت بارکدها در پروژه‌ی انبار — خارج از این اپ — تغییر می‌کند)
+    await syncOrderFulfillmentFromTracking(orderId);
 
     const fullOrder = await Order.findById(orderId)
       .populate({

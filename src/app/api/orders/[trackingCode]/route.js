@@ -13,6 +13,7 @@ import Payment from "base/models/Payment";
 import UsedProduct from "base/models/UsedProduct"; // اضافه شدن مدل محصول دست دوم
 import { verifyToken } from "base/utils/auth";
 import { cookies } from "next/headers";
+import { syncOrderFulfillmentFromTracking } from "@/lib/orderFulfillmentSync";
 
 async function getUserFromToken() {
   const cookieStore = await cookies();
@@ -57,6 +58,12 @@ export async function GET(req, { params }) {
     if (order.user.toString() !== user.userId) {
       return NextResponse.json({ message: "Forbidden" }, { status: 403 });
     }
+
+    // read-repair: اگر همه‌ی بارکدهای انبار تحویل شده باشند (یا برعکس)،
+    // وضعیت سفارش همین‌جا همگام و روی همین پاسخ اعمال می‌شود. خطاها داخل
+    // خود تابع بلعیده می‌شوند تا صفحه‌ی سفارش کاربر به دیتابیس انبار وابسته نشود.
+    const syncedStatus = await syncOrderFulfillmentFromTracking(order._id);
+    if (syncedStatus) order.fulfillmentStatus = syncedStatus;
 
     // غنی‌سازی و همسان‌سازی داده‌ها برای فرانت‌اندر
     if (order.items) {
