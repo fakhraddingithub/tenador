@@ -202,14 +202,6 @@ export default function CoachDetailPage() {
     <div className="p-6 max-w-4xl mx-auto space-y-6 text-right" dir="rtl">
       {/* Header */}
       <div className="flex items-center gap-3">
-        <button
-          onClick={() => router.push("/p-admin/users/coaches")}
-          className="flex items-center gap-1.5 text-xs text-slate-500 hover:text-slate-800 transition-colors"
-        >
-          <ArrowRight size={14} />
-          بازگشت
-        </button>
-        <span className="text-slate-300">/</span>
         <h1 className="text-sm font-bold text-slate-800 flex items-center gap-1.5">
           <GraduationCap size={16} className="text-[var(--color-primary)]" />
           {getUserFullName(coach)}

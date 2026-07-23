@@ -441,12 +441,6 @@ export default function AdminTicketChat({ ticketId }) {
       {/* هدر */}
       <div className="flex items-start justify-between gap-3 flex-wrap mb-5">
         <div className="min-w-0">
-          <Link
-            href="/p-admin/support?tab=tickets"
-            className="inline-flex items-center gap-1.5 text-xs font-bold text-gray-500 hover:text-[var(--color-primary)] transition-colors mb-2"
-          >
-            <FaArrowRight size={11} /> بازگشت به تیکت‌ها
-          </Link>
           <div className="flex items-center gap-2 flex-wrap">
             <h1 className="text-lg font-black text-gray-800 truncate">
               {ticket.subject}

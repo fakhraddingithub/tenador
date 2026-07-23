@@ -94,14 +94,7 @@ export default function ProductVariants() {
       <div className="space-y-6">
         <div className="flex items-center justify-between">
           <div>
-            <Button
-              variant="secondary"
-              size="sm"
-              onClick={() => router.push('/p-admin/admin-products')}
-            >
-              ← بازگشت به لیست محصولات
-            </Button>
-            <h2 className="text-xl font-semibold text-gray-800 mt-4">
+            <h2 className="text-xl font-semibold text-gray-800">
               واریانت‌های محصول: {product?.name || ''}
             </h2>
           </div>

@@ -221,14 +221,6 @@ export default function CoachCreditPage() {
       <MarkNotificationsRead filter={{ order: orderId }} />
       {/* Header */}
       <div className="flex items-center gap-3">
-        <button
-          onClick={() => router.push(`/p-admin/users/coaches/${coachId}`)}
-          className="flex items-center gap-1.5 text-xs text-slate-500 hover:text-slate-800 transition-colors"
-        >
-          <ArrowRight size={14} />
-          بازگشت به صفحه مربی
-        </button>
-        <span className="text-slate-300">/</span>
         <h1 className="text-sm font-bold text-slate-800">افزودن کردیت</h1>
       </div>
 

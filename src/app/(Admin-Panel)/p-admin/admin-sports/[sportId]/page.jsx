@@ -92,9 +92,6 @@ export default function SportCategoriesDetail() {
       {/* Header — همان الگوی صفحه‌ی دسته‌بندی‌ها، اما در اسکوپِ یک ورزش */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
         <div>
-          <Link href="/p-admin/admin-sports" className="inline-flex items-center gap-1.5 text-xs font-bold mb-2 hover:gap-2.5 transition-all" style={{ color: 'var(--color-primary)' }}>
-            <FaArrowRight size={11} /> بازگشت به ورزش‌ها
-          </Link>
           <h1 className="text-xl font-bold text-gray-900 flex items-center gap-2">
             <FaShapes style={{ color: 'var(--color-secondary)' }} size={18} />
             دسته‌بندی‌های <span style={{ color: 'var(--color-primary)' }}>{sportName || 'ورزش'}</span>

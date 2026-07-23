@@ -19,13 +19,6 @@ function PageHeader({ title, subtitle, backHref = '/p-admin', actions }) {
   return (
     <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
       <div>
-        <Link
-          href={backHref}
-          className="inline-flex items-center gap-1.5 text-xs font-bold mb-2 transition-all hover:gap-2.5"
-          style={{ color: 'var(--color-primary)' }}
-        >
-          <FiArrowRight size={13} /> بازگشت به داشبورد
-        </Link>
         <h1 className="text-xl font-bold text-gray-900">{title}</h1>
         {subtitle && <p className="text-sm font-bold text-gray-400 mt-0.5">{subtitle}</p>}
       </div>

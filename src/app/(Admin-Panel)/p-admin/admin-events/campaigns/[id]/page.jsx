@@ -10,15 +10,6 @@ export default async function EditCampaignPage({ params }) {
   const { id } = await params;
   return (
     <div dir="rtl">
-      <div className="mb-4">
-        <Link
-          href="/p-admin/admin-events/campaigns"
-          className="inline-flex items-center gap-1.5 text-xs font-bold hover:gap-2.5 transition-all"
-          style={{ color: 'var(--color-primary)' }}
-        >
-          <FaArrowRight size={11} /> بازگشت به Collections
-        </Link>
-      </div>
       <EventForm eventId={id} />
     </div>
   );

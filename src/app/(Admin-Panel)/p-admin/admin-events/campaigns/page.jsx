@@ -9,15 +9,6 @@ export const metadata = {
 export default function CampaignsPage() {
   return (
     <div dir="rtl">
-      <div className="mb-6">
-        <Link
-          href="/p-admin/admin-events"
-          className="inline-flex items-center gap-1.5 text-xs font-bold mb-2 hover:gap-2.5 transition-all"
-          style={{ color: 'var(--color-primary)' }}
-        >
-          <FaArrowRight size={11} /> بازگشت به Collection
-        </Link>
-      </div>
       <EventList />
     </div>
   );

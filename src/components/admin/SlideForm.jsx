@@ -99,14 +99,6 @@ export default function SlideForm({ initialData = {}, mode = 'create', slideId }
     <div dir="rtl">
       {/* Header */}
       <div className="flex items-center gap-3 mb-6">
-        <Link
-          href="/p-admin/admin-home/slider"
-          className="inline-flex items-center gap-1.5 text-xs font-bold hover:gap-2.5 transition-all"
-          style={{ color: 'var(--color-primary)' }}
-        >
-          <FiArrowRight size={12} /> بازگشت به لیست
-        </Link>
-        <div className="h-4 w-px bg-gray-200" />
         <h1 className="text-base font-bold text-gray-900">
           {mode === 'edit' ? 'ویرایش اسلاید' : 'اسلاید جدید'}
         </h1>

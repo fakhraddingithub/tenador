@@ -95,13 +95,6 @@ export default function AdminBrands() {
       {/* Header */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
         <div>
-          <Link
-            href="/p-admin"
-            className="inline-flex items-center gap-1.5 text-xs font-bold mb-2 hover:gap-2.5 transition-all"
-            style={{ color: 'var(--color-primary)' }}
-          >
-            <FaArrowRight size={11} /> بازگشت به داشبورد
-          </Link>
           <h1 className="text-xl font-bold text-gray-900">
             مرکز <span style={{ color: 'var(--color-primary)' }}>برندها</span>
           </h1>

@@ -330,16 +330,6 @@ export default function SerieFormLayout({
           </div>
         </div>
 
-        {onBack ? (
-          <button
-            type="button"
-            onClick={onBack}
-            aria-label="بازگشت"
-            className="inline-flex h-10 w-10 items-center justify-center rounded-[6px] border border-gray-200 bg-gray-50 text-gray-700 transition hover:bg-gray-100"
-          >
-            <FaArrowRight />
-          </button>
-        ) : null}
       </div>
 
       <AccordionBox

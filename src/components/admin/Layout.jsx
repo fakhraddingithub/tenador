@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   FaChartPie,
@@ -23,7 +23,7 @@ import {
 import { HiOutlineLogout } from "react-icons/hi";
 import { AiFillProduct } from "react-icons/ai";
 import { RiMenuFoldLine, RiMenuUnfoldLine } from "react-icons/ri";
-import { FiGitBranch } from "react-icons/fi";
+import { FiGitBranch, FiArrowRight } from "react-icons/fi";
 import { ShoppingCart } from "lucide-react";
 import NotificationBell from "./NotificationBell";
 import { useNotifications } from "./NotificationProvider";
@@ -51,6 +51,7 @@ const menuItems = [
 
 export default function AdminLayout({ children }) {
   const pathname = usePathname();
+  const router = useRouter();
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [mobileOpen, setMobileOpen] = useState(false);
   const [prices, setPrices] = useState({ usd: "---", eur: "---" });
@@ -96,6 +97,14 @@ export default function AdminLayout({ children }) {
   const farsiNumber = new Intl.NumberFormat("fa-IR");
   const sidebarWidth = sidebarOpen ? 260 : 76;
 
+  // صفحه‌های داخلی = عمقِ بیشتر از /p-admin/<section>. صفحه‌های سطح‌بالا
+  // (داشبورد و ریشه‌ی هر بخش) دکمه‌ی بازگشت ندارند.
+  const isNested = pathname.split("/").filter(Boolean).length > 2;
+  const goBack = () => {
+    if (window.history.length > 1) router.back();
+    else router.push("/p-admin");
+  };
+
   return (
     <div className="min-h-screen flex" dir="rtl" style={{ background: "var(--admin-bg)", fontFamily: 'var(--font-sans)' }}>
       {/* ─── Sidebar ─── */}
@@ -140,6 +149,12 @@ export default function AdminLayout({ children }) {
               <RiMenuFoldLine size={18} />
             </button>
           )}
+          {/* بستن — فقط موبایل */}
+          <button onClick={() => setMobileOpen(false)} aria-label="بستن منو"
+            className="lg:hidden w-8 h-8 flex items-center justify-center text-white/70 hover:text-white hover:bg-white/10 transition-all"
+            style={{ borderRadius: "var(--admin-radius)" }}>
+            <FaTimes size={18} />
+          </button>
         </div>
 
         {!sidebarOpen && (
@@ -216,6 +231,20 @@ export default function AdminLayout({ children }) {
         <header className="sticky top-[75px] z-40 flex items-center justify-between gap-2 px-4 sm:px-6 py-3 border-b"
           style={{ background: "rgba(244,245,242,0.9)", backdropFilter: "blur(16px)", borderColor: "var(--admin-border)" }}>
           <div className="flex items-center gap-2 min-w-0">
+            {/* همبرگر — فقط موبایل: باز کردن ساید‌بار */}
+            <button type="button" aria-label="باز کردن منو" onClick={() => setMobileOpen(true)}
+              className="lg:hidden flex-shrink-0 w-9 h-9 flex items-center justify-center transition-all hover:shadow-sm"
+              style={{ background: "var(--admin-card)", border: "1px solid var(--admin-border)", color: "var(--color-primary)", borderRadius: "var(--admin-radius)" }}>
+              <FaBars size={16} />
+            </button>
+            {/* دکمه‌ی بازگشتِ یکپارچه — فقط صفحه‌های داخلی؛ به صفحه‌ی قبلی برمی‌گردد */}
+            {isNested && (
+              <button type="button" onClick={goBack} aria-label="بازگشت"
+                className="flex-shrink-0 flex items-center gap-1.5 px-3 h-9 text-xs font-bold transition-all hover:shadow-sm"
+                style={{ background: "var(--admin-card)", border: "1px solid var(--admin-border)", color: "var(--color-primary)", borderRadius: "var(--admin-radius)" }}>
+                <FiArrowRight size={14} /> بازگشت
+              </button>
+            )}
             <span className="hidden sm:inline text-xs font-bold" style={{ color: "var(--admin-text-muted)" }}>پنل مدیریت</span>
             <span className="hidden sm:inline" style={{ color: "var(--admin-border)" }}>/</span>
             <span className="text-xs font-bold truncate" style={{ color: "var(--color-primary)" }}>
@@ -287,22 +316,6 @@ export default function AdminLayout({ children }) {
         )}
       </AnimatePresence>
 
-      <motion.button type="button" aria-label={mobileOpen ? "بستن منو" : "باز کردن منو"} aria-expanded={mobileOpen}
-        onClick={() => setMobileOpen((v) => !v)} initial={false}
-        animate={{ right: mobileOpen ? "280px" : 0 }} transition={{ duration: 0.3, ease: "easeInOut" }}
-        className="fixed top-[150px] z-[60] lg:hidden flex items-center justify-center h-16 w-7 rounded-l-[6px] rounded-r-none text-white shadow-lg shadow-black/25 ring-1 ring-white/10 active:scale-95 transition-transform"
-        style={{ background: "var(--admin-sidebar-bg)" }}>
-        <AnimatePresence mode="wait" initial={false}>
-          <motion.span key={mobileOpen ? "close" : "menu"}
-            initial={{ opacity: 0, rotate: -90, scale: 0.6 }}
-            animate={{ opacity: 1, rotate: 0, scale: 1 }}
-            exit={{ opacity: 0, rotate: 90, scale: 0.6 }}
-            transition={{ duration: 0.18, ease: "easeInOut" }}
-            className="flex items-center justify-center">
-            {mobileOpen ? <FaTimes size={18} /> : <FaBars size={18} />}
-          </motion.span>
-        </AnimatePresence>
-      </motion.button>
     </div>
   );
 }

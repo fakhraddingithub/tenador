@@ -159,13 +159,6 @@ export default function AdminForm({ adminId = null }) {
         style={{ borderColor: '#e8e4df' }}
       >
         <div>
-          <Link
-            href="/p-admin/users/admins"
-            className="inline-flex items-center gap-1.5 text-xs font-bold mb-2 hover:gap-2.5 transition-all"
-            style={{ color: 'var(--color-primary)' }}
-          >
-            <ArrowRight size={12} /> بازگشت به مدیریت ادمین‌ها
-          </Link>
           <h1 className="text-base font-bold text-gray-800 flex items-center gap-2">
             <UserCog className="text-[var(--color-primary)]" size={20} />
             {isEdit ? 'ویرایش ادمین' : 'افزودن ادمین جدید'}

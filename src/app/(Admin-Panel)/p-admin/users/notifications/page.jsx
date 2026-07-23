@@ -199,14 +199,6 @@ export default function SendUserNotificationPage() {
           </h1>
           <p className="text-xs font-bold text-gray-400">پیام‌ها در زنگوله‌ی نوبارِ سایت برای کاربرانِ هدف نمایش داده می‌شوند</p>
         </div>
-        <button
-          onClick={() => router.push('/p-admin/users')}
-          className="inline-flex items-center gap-2 text-xs font-bold px-4 py-2.5 rounded-[var(--radius)] border bg-white hover:bg-gray-50 transition-all"
-          style={{ borderColor: '#e8e4df', color: '#6b6259' }}
-        >
-          بازگشت به کاربران
-          <ArrowRight size={14} />
-        </button>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-5 gap-5">

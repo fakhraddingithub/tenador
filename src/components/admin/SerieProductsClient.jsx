@@ -135,13 +135,6 @@ export default function SerieProductsClient({ serieId, brandId }) {
       {/* Header */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <Link
-            href={`/p-admin/admin-brands/${brandId}`}
-            className="inline-flex items-center gap-1.5 text-xs font-bold mb-2 hover:gap-2.5 transition-all"
-            style={{ color: "var(--color-primary)" }}
-          >
-            <FaChevronLeft size={11} /> بازگشت به برند
-          </Link>
           <div className="flex items-center gap-3">
             <div
               className="w-11 h-11 rounded-[var(--radius)] flex items-center justify-center text-white"

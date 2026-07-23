@@ -198,13 +198,6 @@ export default function BrandAdminPage({ brandId }) {
       {/* Header — همان الگوی صفحه لیست برندها */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <Link
-            href="/p-admin/admin-brands"
-            className="inline-flex items-center gap-1.5 text-xs font-bold mb-2 hover:gap-2.5 transition-all"
-            style={{ color: "var(--color-primary)" }}
-          >
-            <FaArrowRight size={11} /> بازگشت به مرکز برندها
-          </Link>
           <h1 className="text-xl font-bold text-gray-900">
             برند <span style={{ color: "var(--color-primary)" }}>{brand?.title}</span>
           </h1>

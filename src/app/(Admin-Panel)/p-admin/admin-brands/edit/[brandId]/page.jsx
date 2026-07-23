@@ -124,9 +124,6 @@ export default function EditBrand() {
       {/* --- Header Section --- */}
       <header className="max-w-5xl mx-auto px-6 py-10 flex justify-between items-end">
         <div>
-          <Link href="/p-admin/admin-brands" className="flex items-center gap-2 text-gray-400 text-sm font-bold mb-2 hover:text-[var(--color-primary)] transition-colors group">
-            <FaArrowRight size={12} className="group-hover:-translate-x-1 transition-transform" /> بازگشت به لیست
-          </Link>
           <h1 className="text-4xl font-bold text-gray-800 tracking-tight">
             ویرایش برند <span className="text-[var(--color-secondary)]">{formData.title || formData.name}</span>
           </h1>

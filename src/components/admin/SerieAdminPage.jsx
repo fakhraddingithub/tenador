@@ -131,15 +131,7 @@ export default function SerieChildrenAdminPage({ serieId, brandId }) {
   return (
     <div dir="rtl" className="w-full space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <button
-          onClick={() => router.back()}
-          className="group flex items-center gap-2 px-4 py-2.5 rounded-[var(--radius)] bg-white border border-gray-100 text-sm font-bold text-gray-600 hover:bg-gray-900 hover:text-white transition-all"
-        >
-          <FaChevronLeft size={11} className="group-hover:-translate-x-0.5 transition-transform" />
-          بازگشت
-        </button>
-
+      <div className="flex items-center justify-end">
         <Link
           href={`/p-admin/admin-brands/${brandId}/add-serie`}
           className="flex items-center gap-2 px-4 py-2.5 rounded-[var(--radius)] text-sm font-bold text-white hover:shadow-lg hover:shadow-[var(--color-primary)]/25 hover:-translate-y-0.5 active:scale-95 transition-all"

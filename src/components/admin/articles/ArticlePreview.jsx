@@ -16,7 +16,6 @@ export default async function ArticlePreview({ articleId }) {
   return (
     <div className="mx-auto max-w-5xl">
       <div className="a-card sticky top-[132px] z-20 mb-4 flex items-center gap-3 p-3">
-        <Link href="/p-admin/admin-articles" aria-label="بازگشت به فهرست مقالات" className="rounded-[var(--admin-radius)] p-2 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-primary)]"><FiArrowRight aria-hidden="true" /></Link>
         <div><strong className="block text-sm">پیش‌نمایش مقاله</strong><small className="text-gray-400">این صفحه برای مشتریان منتشر نشده است.</small></div>
         <Link href={`/p-admin/admin-articles/${articleId}`} className="mr-auto inline-flex items-center gap-2 rounded-[var(--admin-radius)] bg-[var(--color-primary)] px-4 py-2 text-sm font-bold text-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-primary)]"><FiEdit3 aria-hidden="true" /> ویرایش</Link>
       </div>

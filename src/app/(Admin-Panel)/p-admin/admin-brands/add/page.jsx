@@ -81,9 +81,6 @@ export default function AddBrand() {
       {/* --- Header Section --- */}
       <header className="max-w-5xl mx-auto px-6 py-10 flex justify-between items-end">
         <div>
-          <Link href="/p-admin/admin-brands" className="flex items-center gap-2 text-[var(--color-primary)] text-sm font-bold mb-2 hover:translate-x-1 transition-transform">
-            <FaArrowRight size={12} /> بازگشت به برندها
-          </Link>
           <h1 className="text-4xl font-bold text-gray-800 tracking-tight">
             ثبت برند <span className="text-[var(--color-primary)]">جدید</span>
           </h1>

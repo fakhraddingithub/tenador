@@ -15,21 +15,6 @@ export default function AdminInstallmentsPage() {
         icon={<FaMoneyBillWave size={16} />}
         title="مدیریت اقساط"
         subtitle="پیگیری چک‌ها، تأیید پرداخت و تأیید سفارش‌های اقساطی"
-        actions={
-          <Link
-            href="/p-admin/financial"
-            className="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-bold transition-colors border"
-            style={{
-              color: "var(--admin-text-muted)",
-              background: "var(--admin-card)",
-              borderColor: "var(--admin-border)",
-              borderRadius: "var(--admin-radius)",
-            }}
-          >
-            <FiArrowRight size={13} />
-            بازگشت به مدیریت مالی
-          </Link>
-        }
       />
 
       <InstallmentsManager />

@@ -92,14 +92,6 @@ export default function AdminBannersPage() {
     <div dir="rtl" className="space-y-5">
       {/* Header */}
       <div className="flex items-center gap-3">
-        <Link
-          href="/p-admin/admin-home"
-          className="inline-flex items-center gap-1.5 text-xs font-bold hover:gap-2.5 transition-all"
-          style={{ color: 'var(--color-primary)' }}
-        >
-          <FiArrowRight size={12} /> بازگشت
-        </Link>
-        <div className="h-4 w-px bg-gray-200" />
         <div className="flex items-center gap-3">
           <div className="w-9 h-9 rounded-xl flex items-center justify-center" style={{ background: 'rgba(170,71,37,0.1)' }}>
             <FiGrid size={17} style={{ color: 'var(--color-primary)' }} />

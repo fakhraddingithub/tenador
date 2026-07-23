@@ -93,13 +93,6 @@ export default function SliderManagement() {
       {/* Header */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
         <div>
-          <Link
-            href="/p-admin/admin-home"
-            className="inline-flex items-center gap-1.5 text-xs font-bold mb-2 hover:gap-2.5 transition-all"
-            style={{ color: 'var(--color-primary)' }}
-          >
-            <FiArrowRight size={12} /> بازگشت
-          </Link>
           <h1 className="text-xl font-bold text-gray-900 flex items-center gap-2">
             <FiImage style={{ color: 'var(--color-secondary)' }} />
             مدیریت اسلایدر

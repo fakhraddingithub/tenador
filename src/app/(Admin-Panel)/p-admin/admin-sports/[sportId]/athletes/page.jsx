@@ -102,13 +102,6 @@ export default function SportAthletesPage() {
       {/* Header — منطبق بر الگوی صفحه‌ی «دسته‌بندی‌های ورزش» */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
         <div>
-          <Link
-            href={`/p-admin/admin-sports/${sportId}`}
-            className="inline-flex items-center gap-1.5 text-xs font-bold mb-2 hover:gap-2.5 transition-all"
-            style={{ color: "var(--color-primary)" }}
-          >
-            <FaArrowRight size={11} /> بازگشت به {sportName}
-          </Link>
           <h1 className="text-xl font-bold" style={{ color: "var(--admin-text)" }}>
             قهرمانانِ <span style={{ color: "var(--color-primary)" }}>{sportName}</span>
           </h1>

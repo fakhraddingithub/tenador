@@ -277,13 +277,6 @@ export default function RolandGarrosBannerManager() {
     <div dir="rtl" className="space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-4">
         <div>
-          <Link
-            href="/p-admin/admin-home"
-            className="mb-2 inline-flex items-center gap-1.5 text-xs font-bold transition-all hover:gap-2.5"
-            style={{ color: "var(--color-primary)" }}
-          >
-            <FiArrowRight size={12} /> بازگشت
-          </Link>
           <h1 className="flex items-center gap-2 text-xl font-bold text-gray-900">
             <FiAward style={{ color: "var(--color-secondary)" }} />
             بنر رولند گاروس

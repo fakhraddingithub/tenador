@@ -23,13 +23,6 @@ export default function AdminEvents() {
     <div dir="rtl">
       {/* Header */}
       <div className="mb-8">
-        <Link
-          href="/p-admin"
-          className="inline-flex items-center gap-1.5 text-xs font-bold mb-2 hover:gap-2.5 transition-all"
-          style={{ color: 'var(--color-primary)' }}
-        >
-          <FaArrowRight size={11} /> بازگشت به داشبورد
-        </Link>
         <h1 className="text-xl font-bold text-gray-900 flex items-center gap-2">
           <FaCalendarAlt style={{ color: 'var(--color-secondary)' }} size={18} />
           مدیریت <span style={{ color: 'var(--color-primary)' }}>Collection</span>
