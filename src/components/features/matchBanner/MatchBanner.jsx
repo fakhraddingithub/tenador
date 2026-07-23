@@ -3,7 +3,6 @@
 import Link from "next/link";
 import { motion, useReducedMotion } from "framer-motion";
 import { FiChevronLeft, FiTarget } from "react-icons/fi";
-import { MdAutoAwesome } from "react-icons/md";
 
 // یک ردیف اسلایدر تزئینی — پر شدن نوار با هاور روی بنر جابه‌جا می‌شود
 function TunerRow({ label, fill, hoverFill, delay }) {
@@ -45,25 +44,20 @@ export default function MatchBanner() {
             </svg>
           </div>
 
-          {/* سمت راست: متن و محتوا */}
-          <div className="relative z-10 flex-1 min-w-0 text-right py-0 @2xl:pr-14">
-            <div className="inline-flex items-center gap-1.5 bg-[#ffbf00]/10 border border-[#ffbf00]/25 text-[#ffbf00] text-[10px] @lg:text-xs font-bold px-2.5 py-1 rounded-full mb-2 @lg:mb-4">
-              <MdAutoAwesome className="size-3 @lg:size-4" />
-              تطبیق هوشمند محصول
-            </div>
-
-            <h2 className="text-xl @lg:text-3xl @2xl:text-5xl font-black text-white mb-2 @lg:mb-6 leading-tight">
+          {/* سمت راست: متن و محتوا — تایپوگرافی سیال مشترک با بنر مقایسه */}
+          <div className="relative z-10 flex-1 min-w-0 text-right @2xl:pr-12">
+            <h2 className="font-black text-white leading-tight text-[clamp(1.25rem,0.375rem_+_4.4cqw,3rem)] mb-[clamp(0.5rem,2.5cqw,1.5rem)]">
               انتخاب بعدی‌تان را <br />
               <span className="text-[#ffbf00]">هوشمندانه پیدا کنید</span>
             </h2>
 
-            <p className="text-gray-400 text-xs @lg:text-lg max-w-md mb-3 @lg:mb-8 font-light line-clamp-2 @lg:line-clamp-none">
+            <p className="text-gray-400 font-light max-w-md ml-0 ml-auto line-clamp-2 @lg:line-clamp-none text-[clamp(0.75rem,0.55rem_+_1cqw,1.125rem)] mb-[clamp(0.75rem,0.125rem_+_3.125cqw,2rem)]">
               محصول فعلی خود را انتخاب کنید، شاخص‌های فنی را تنظیم کنید و نزدیک‌ترین گزینه‌ها را همان لحظه ببینید.
             </p>
 
-            <div className="inline-flex items-center gap-2 @lg:gap-4 bg-white text-[#20232a] px-4 py-3 @lg:px-8 @lg:py-4 rounded-[6px] font-black text-sm @lg:text-lg transition-all group-hover:bg-[#ffbf00] group-hover:scale-105 shadow-xl">
+            <div className="inline-flex items-center bg-white text-[#20232a] rounded-[6px] font-black shadow-xl transition-all group-hover:scale-105 group-hover:bg-[#ffbf00] gap-[clamp(0.5rem,0.3rem_+_0.8cqw,1rem)] px-[clamp(1rem,0.5rem_+_2.4cqw,2rem)] py-[clamp(0.75rem,0.6rem_+_0.8cqw,1rem)] text-[clamp(0.875rem,0.75rem_+_0.65cqw,1.125rem)]">
               <span>یافتن بهترین جایگزین</span>
-              <FiChevronLeft className="size-5 @lg:size-6 shrink-0 group-hover:-translate-x-2 transition-transform" />
+              <FiChevronLeft className="shrink-0 group-hover:-translate-x-2 transition-transform size-[clamp(1.25rem,1.1rem_+_0.5cqw,1.5rem)]" />
             </div>
           </div>
 

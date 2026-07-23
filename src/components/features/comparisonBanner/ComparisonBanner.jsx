@@ -21,21 +21,20 @@ export default function ComparisonBanner() {
              </svg>
           </div>
 
-          {/* سمت راست: متن و محتوا */}
-          <div className="relative z-10 flex-1 min-w-0 text-right py-0 @2xl:pr-20">
-
-            <h2 className="text-xl @lg:text-3xl @2xl:text-5xl font-black text-white mb-2 @lg:mb-6 leading-tight">
+          {/* سمت راست: متن و محتوا — تایپوگرافی سیال مشترک با بنر تطبیق */}
+          <div className="relative z-10 flex-1 min-w-0 text-right @2xl:pr-12">
+            <h2 className="font-black text-white leading-tight text-[clamp(1.25rem,0.375rem_+_4.4cqw,3rem)] mb-[clamp(0.5rem,2.5cqw,1.5rem)]">
               ابزار هوشمند <br />
               <span className="text-[#aa4725]">مقایسه محصولات</span>
             </h2>
 
-            <p className="text-gray-400 text-xs @lg:text-lg max-w-md ml-0 ml-auto mb-3 @lg:mb-8 font-light line-clamp-2 @lg:line-clamp-none">
+            <p className="text-gray-400 font-light max-w-md ml-0 ml-auto line-clamp-2 @lg:line-clamp-none text-[clamp(0.75rem,0.55rem_+_1cqw,1.125rem)] mb-[clamp(0.75rem,0.125rem_+_3.125cqw,2rem)]">
               مشخصات فنی را کنار هم بگذارید، نمودارها را تحلیل کنید و بهترین انتخاب را برای بازی خود داشته باشید.
             </p>
 
-            <div className="inline-flex items-center gap-2 @lg:gap-4 bg-white text-[#20232a] px-4 py-3 @lg:px-8 @lg:py-4 rounded-[6px] fon6pxk text-sm @lg:text-lg transition-all group-hover:bg-[#aa4725] group-hover:text-white group-hover:scale-105 shadow-xl">
+            <div className="inline-flex items-center bg-white text-[#20232a] rounded-[6px] font-black shadow-xl transition-all group-hover:scale-105 group-hover:bg-[#aa4725] group-hover:text-white gap-[clamp(0.5rem,0.3rem_+_0.8cqw,1rem)] px-[clamp(1rem,0.5rem_+_2.4cqw,2rem)] py-[clamp(0.75rem,0.6rem_+_0.8cqw,1rem)] text-[clamp(0.875rem,0.75rem_+_0.65cqw,1.125rem)]">
               <span>شروع مقایسه فنی</span>
-              <FiChevronLeft className="size-5 @lg:size-6 shrink-0 group-hover:-translate-x-2 transition-transform" />
+              <FiChevronLeft className="shrink-0 group-hover:-translate-x-2 transition-transform size-[clamp(1.25rem,1.1rem_+_0.5cqw,1.5rem)]" />
             </div>
           </div>
 
@@ -43,7 +42,7 @@ export default function ComparisonBanner() {
           <div className="relative z-10 shrink-0 @lg:flex-1 flex justify-center items-center h-full @lg:min-h-[250px] @lg:w-full">
              {/* آیکون بزرگ مقایسه با استایل نئون */}
              <div className="relative">
-                <div className="absolute inset-0 bg-[#aa4725] blur-[80px] opacity-20 rounded-[6px] animat6pxe"></div>
+                <div className="absolute inset-0 bg-[#aa4725] blur-[80px] opacity-20 rounded-[6px] animate-pulse"></div>
                 <div className="relative bg-[#262932] border border-white/10 p-4 @lg:p-10 rounded-[6px] rotate-12 transition-transform duration-700 group-hover:rotate-0">
                    <MdCompareArrows className="size-12 @lg:size-[120px] text-white opacity-90" />
                 </div>
