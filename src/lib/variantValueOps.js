@@ -62,12 +62,18 @@ function remapComboKeyedSet(set, attrName, oldVal, newVal) {
  * ورودی، تصویری از استیت‌های مرتبطِ فرم است؛ خروجی، نسخه‌ی مهاجرت‌یافته‌ی همان‌ها.
  * فراخوان مسئولِ اعتبارسنجی (خالی‌نبودن، تکراری‌نبودن) پیش از صداکردنِ این تابع است.
  *
+ * newUnits (اختیاری): برای ویژگیِ چندواحدی، نقشه‌ی کاملِ واحدها { unit: value } که
+ * جایگزینِ units فعلیِ همان مقدار می‌شود. مقدارِ کلیدی (oldVal→newVal) همان مقدارِ
+ * واحدِ اصلی است؛ پس ادمین می‌تواند هم واحدِ اصلی (که کلید را جابه‌جا می‌کند) و هم
+ * واحدهای فرعی را یک‌جا ویرایش کند. برای ویژگیِ تک‌واحدی حذف می‌شود.
+ *
  * @returns {{ variantOptions, variantMeta, variantDetails, deselectedCombos, expandedPrices }}
  */
 export function renameVariantValue({
   attrName,
   oldVal,
   newVal,
+  newUnits,
   variantOptions = {},
   variantMeta = {},
   variantDetails = {},
@@ -83,10 +89,16 @@ export function renameVariantValue({
 
   // variantMeta: انتقالِ ورودیِ مقدار (تصاویر/واحدها) از کلیدِ قدیمی به جدید
   let newVariantMeta = variantMeta;
-  if (variantMeta[attrName] && Object.prototype.hasOwnProperty.call(variantMeta[attrName], oldVal)) {
-    const attrMeta = { ...variantMeta[attrName] };
-    attrMeta[newVal] = attrMeta[oldVal];
-    delete attrMeta[oldVal];
+  const hasOldEntry =
+    variantMeta[attrName] &&
+    Object.prototype.hasOwnProperty.call(variantMeta[attrName], oldVal);
+  if (hasOldEntry || newUnits) {
+    const attrMeta = { ...(variantMeta[attrName] || {}) };
+    const entry = { ...(attrMeta[oldVal] || {}) };
+    if (oldVal !== newVal) delete attrMeta[oldVal];
+    // اگر نقشه‌ی جدیدِ واحدها آمده جایگزینش کن، وگرنه units قبلی حفظ می‌شود
+    if (newUnits) entry.units = { ...newUnits };
+    attrMeta[newVal] = entry;
     newVariantMeta = { ...variantMeta, [attrName]: attrMeta };
   }
 

@@ -539,9 +539,9 @@ export default function ProductEditPage() {
   }
 
   // ویرایشِ نامِ یک مقدار — استیت‌های وابسته یک‌جا و هماهنگ مهاجرت می‌کنند.
-  function handleRenameVariantValue(attrName, oldVal, newVal) {
+  function handleRenameVariantValue(attrName, oldVal, newVal, newUnits) {
     const res = renameVariantValue({
-      attrName, oldVal, newVal,
+      attrName, oldVal, newVal, newUnits,
       variantOptions, variantMeta, variantDetails,
       deselectedCombos, expandedPrices,
     });
