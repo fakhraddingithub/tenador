@@ -162,66 +162,102 @@ export default function SportPageClient({
   }, [products]);
 
   // ─────────────────────────────────────────────
-  // فیلتر «سری» ریشه‌محور: هر سری از روی parentSerie تا ریشه (level 0) بالا
-  // می‌رود؛ انتخابِ ریشه، محصولاتِ کلِ زیرمجموعه را شامل می‌شود. سری‌ای که در
-  // ایندکس نباشد ریشه‌ی خودش حساب می‌شود (= همان رفتار قبلی).
+  // فیلتر «سری» سلسله‌مراتبی: هر سری از روی parentSerie تا ریشه (level 0) بالا
+  // می‌رود. chainOf زنجیره‌ی [خودش، والد، …، ریشه] را می‌دهد؛ انتخابِ هر عضو
+  // زنجیره (ریشه یا زیرسری) کلِ زیرمجموعه‌ی همان عضو را شامل می‌شود. سری‌ای که
+  // در ایندکس نباشد زنجیره‌اش فقط خودش است (= همان رفتار قبلی).
   // ─────────────────────────────────────────────
   const serieRootResolver = useMemo(() => {
     const byId = new Map(seriesIndex.map((s) => [String(s._id), s]));
-    const rootCache = new Map();
-    const rootOf = (id) => {
+    const chainCache = new Map();
+    const chainOf = (id) => {
       const key = String(id);
-      if (rootCache.has(key)) return rootCache.get(key);
-      let cur = byId.get(key);
+      if (chainCache.has(key)) return chainCache.get(key);
+      const chain = [key];
       const seen = new Set([key]);
+      let cur = byId.get(key);
       while (cur?.parentSerie && byId.has(String(cur.parentSerie))) {
         const parentId = String(cur.parentSerie);
         if (seen.has(parentId)) break; // محافظ در برابر حلقه در داده
         seen.add(parentId);
+        chain.push(parentId);
         cur = byId.get(parentId);
       }
-      const rootId = cur ? String(cur._id) : key;
-      rootCache.set(key, rootId);
-      return rootId;
+      chainCache.set(key, chain);
+      return chain;
     };
-    return { byId, rootOf };
+    const rootOf = (id) => {
+      const chain = chainOf(id);
+      return chain[chain.length - 1];
+    };
+    return { byId, chainOf, rootOf };
   }, [seriesIndex]);
 
   const serieBrandId = (doc) =>
     doc?.brand ? String(doc.brand._id || doc.brand) : null;
 
-  // گزینه‌های فیلتر سری: فقط ریشه‌های سری‌هایِ محصولاتِ همین صفحه؛ و اگر برندی
-  // انتخاب شده باشد فقط ریشه‌های همان برند(ها).
+  // گزینه‌های فیلتر سری: همه‌ی سری‌های روی زنجیره‌ی اجدادِ محصولاتِ همین صفحه،
+  // به‌صورت سلسله‌مراتبی (ریشه‌ها + زیرسری‌ها با _depth برای تورفتگی در سایدبار).
+  // اگر برندی انتخاب شده باشد فقط گروه‌های ریشه‌ی همان برند(ها) می‌مانند.
   const seriesFilterOptions = useMemo(() => {
-    const roots = new Map();
+    // همه‌ی سری‌های حاضر: خودِ سریِ هر محصول + تمام اجدادش تا ریشه
+    const present = new Map();
     for (const product of products) {
       const sid =
         product.serie?._id?.toString() ||
         (product.serie ? product.serie.toString() : null);
       if (!sid) continue;
-      const rootId = serieRootResolver.rootOf(sid);
-      if (roots.has(rootId)) continue;
-      // اگر ریشه در ایندکس نبود (ایندکس خالی/ناقص)، همان آبجکتِ populate شده‌ی
-      // محصول به‌عنوان گزینه استفاده می‌شود — دقیقاً رفتار قبلی.
-      const doc =
-        serieRootResolver.byId.get(rootId) ||
-        (rootId === sid && typeof product.serie === "object"
-          ? product.serie
-          : null);
-      if (doc) roots.set(rootId, doc);
+      for (const id of serieRootResolver.chainOf(sid)) {
+        if (present.has(id)) continue;
+        // اگر سری در ایندکس نبود (ایندکس خالی/ناقص)، همان آبجکتِ populate شده‌ی
+        // محصول به‌عنوان گزینه استفاده می‌شود — دقیقاً رفتار قبلی.
+        const doc =
+          serieRootResolver.byId.get(id) ||
+          (id === sid && typeof product.serie === "object"
+            ? product.serie
+            : null);
+        if (doc) present.set(id, doc);
+      }
     }
-    let options = Array.from(roots.values());
+
+    // محدودسازی برند بر اساس برندِ ریشه‌ی گروه تا گروه‌ها یکپارچه بمانند
+    let entries = Array.from(present.entries());
     if (localFilters.brands.length > 0) {
-      options = options.filter((s) => {
-        const brandId = serieBrandId(s);
+      entries = entries.filter(([id, doc]) => {
+        const rootDoc = present.get(serieRootResolver.rootOf(id)) || doc;
+        const brandId = serieBrandId(rootDoc);
         return !brandId || localFilters.brands.includes(brandId);
       });
     }
-    return options.sort(
-      (a, b) =>
-        (a.order ?? Number.MAX_SAFE_INTEGER) -
-        (b.order ?? Number.MAX_SAFE_INTEGER),
-    );
+
+    // ساخت درخت و پیمایش DFS: هر ریشه، بعد زیرسری‌هایش (مرتب بر اساس order)
+    const kept = new Set(entries.map(([id]) => id));
+    const childrenOf = new Map();
+    const roots = [];
+    for (const [id, doc] of entries) {
+      const parentId =
+        doc?.parentSerie && kept.has(String(doc.parentSerie))
+          ? String(doc.parentSerie)
+          : null;
+      if (parentId) {
+        if (!childrenOf.has(parentId)) childrenOf.set(parentId, []);
+        childrenOf.get(parentId).push({ id, doc });
+      } else {
+        roots.push({ id, doc });
+      }
+    }
+    const byOrder = (a, b) =>
+      (a.doc.order ?? Number.MAX_SAFE_INTEGER) -
+      (b.doc.order ?? Number.MAX_SAFE_INTEGER);
+    const options = [];
+    const walk = ({ id, doc }, depth) => {
+      options.push({ ...doc, _depth: depth });
+      (childrenOf.get(id) || [])
+        .sort(byOrder)
+        .forEach((child) => walk(child, depth + 1));
+    };
+    roots.sort(byOrder).forEach((root) => walk(root, 0));
+    return options;
   }, [products, serieRootResolver, localFilters.brands]);
 
   // با تغییرِ انتخابِ برند، سری‌های انتخاب‌شده‌ای که به برند(های) جدید تعلق
@@ -229,7 +265,11 @@ export default function SportPageClient({
   const applyLocalFilters = (next) => {
     if (next.series?.length && next.brands?.length) {
       const prunedSeries = next.series.filter((id) => {
-        const brandId = serieBrandId(serieRootResolver.byId.get(id));
+        // برندِ گروه از ریشه گرفته می‌شود — هم‌راستا با محدودسازیِ گزینه‌ها
+        const brandId = serieBrandId(
+          serieRootResolver.byId.get(serieRootResolver.rootOf(id)) ||
+            serieRootResolver.byId.get(id),
+        );
         return !brandId || next.brands.includes(brandId);
       });
       if (prunedSeries.length !== next.series.length) {
@@ -263,11 +303,15 @@ export default function SportPageClient({
       const productSerieId =
         product.serie?._id?.toString() ||
         (product.serie ? product.serie.toString() : null);
+      // تطبیق سلسله‌مراتبی: محصول وقتی می‌ماند که سریِ خودش یا یکی از اجدادش
+      // انتخاب شده باشد (انتخابِ والد = کل زیرمجموعه، انتخابِ زیرسری = خودش)
       const matchesSerie =
         !localFilters.series ||
         localFilters.series.length === 0 ||
         (!!productSerieId &&
-          localFilters.series.includes(serieRootResolver.rootOf(productSerieId)));
+          serieRootResolver
+            .chainOf(productSerieId)
+            .some((id) => localFilters.series.includes(id)));
 
       // بر اساس قیمتِ نمایشیِ تومان (نه basePrice که یورو است)؛ maxPrice=0 یعنی بدون سقف
       const priceToman = getListingPriceToman(product);

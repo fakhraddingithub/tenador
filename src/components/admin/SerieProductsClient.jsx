@@ -50,6 +50,9 @@ export default function SerieProductsClient({ serieId, brandId }) {
         isAdmin: "true",
         all: "true",
         serie: serieId,
+        // محصولات زیرسری‌ها (در هر عمق) هم در همین لیستِ واحد می‌آیند تا ادمین
+        // ترتیب کل سلسله‌مراتب سری را یک‌جا تعیین کند
+        includeDescendants: "true",
       });
       const res = await fetch(`/api/product?${params}`);
       if (!res.ok) throw new Error();
@@ -151,7 +154,11 @@ export default function SerieProductsClient({ serieId, brandId }) {
                 محصولات سری {serie?.title || ""}
               </h1>
               <p className="text-xs font-bold text-gray-400 mt-0.5">
-                {products.length} محصول — ترتیب این صفحه، ترتیب نمایش محصولات در کل سایت است
+                {products.length} محصول
+                {products.some(
+                  (p) => p.serie && String(p.serie._id) !== String(serieId)
+                ) && " (شامل زیرسری‌ها)"}
+                {" — ترتیب این صفحه، ترتیب نمایش محصولات در کل سایت است"}
               </p>
             </div>
           </div>
@@ -194,14 +201,23 @@ export default function SerieProductsClient({ serieId, brandId }) {
             <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-5">
               {products.map((product) => (
                 <SortableGridItem key={product._id} id={product._id}>
-                  <ProductCard
-                    product={product}
-                    onDelete={handleDeleteProduct}
-                    onEdit={() => router.push(`/p-admin/admin-products/edit/${product._id}`)}
-                    onViewVariants={() =>
-                      router.push(`/p-admin/admin-products/${product._id}/variants`)
-                    }
-                  />
+                  <div className="relative">
+                    {/* برچسب زیرسری — تا در لیستِ ترکیبی معلوم باشد هر محصول متعلق به کدام زیرسری است */}
+                    {product.serie &&
+                      String(product.serie._id) !== String(serieId) && (
+                        <span className="absolute top-3 right-3 z-20 pointer-events-none text-[10px] font-bold px-2 py-0.5 rounded-full bg-white/90 border border-gray-200 text-gray-600 shadow-sm">
+                          {product.serie.title || product.serie.name}
+                        </span>
+                      )}
+                    <ProductCard
+                      product={product}
+                      onDelete={handleDeleteProduct}
+                      onEdit={() => router.push(`/p-admin/admin-products/edit/${product._id}`)}
+                      onViewVariants={() =>
+                        router.push(`/p-admin/admin-products/${product._id}/variants`)
+                      }
+                    />
+                  </div>
                 </SortableGridItem>
               ))}
             </div>

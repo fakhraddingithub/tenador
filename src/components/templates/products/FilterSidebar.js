@@ -205,13 +205,26 @@ function FilterGroup({ title, items, type, filters, setFilters }) {
             const label = item.title || item.name || item;
             const iconSrc = getFilterItemIcon(item, type);
             const isActive = filters[type]?.includes(id);
+            // عمق سلسله‌مراتب (فیلتر سری): زیرسری‌ها تورفته و با خطِ اتصال زیر
+            // والدشان نمایش داده می‌شوند؛ برای بقیه‌ی فیلترها همیشه ۰ است.
+            const depth = item._depth || 0;
 
             return (
               <button
                 type="button"
                 key={id}
                 onClick={() => toggleItem(id)}
-                className="w-full flex items-center justify-between group cursor-pointer text-right"
+                className={`w-full flex items-center justify-between group cursor-pointer text-right ${
+                  depth > 0 ? "border-r-2 border-gray-100 pr-3" : ""
+                }`}
+                style={
+                  depth > 0
+                    ? {
+                        marginRight: `${(depth - 1) * 14 + 8}px`,
+                        width: `calc(100% - ${(depth - 1) * 14 + 8}px)`,
+                      }
+                    : undefined
+                }
               >
                 <div className="flex min-w-0 items-center gap-3">
                   <div
@@ -238,7 +251,15 @@ function FilterGroup({ title, items, type, filters, setFilters }) {
                     </span>
                   )}
                   <span
-                    className={`min-w-0 truncate text-xs font-bold transition-colors ${isActive ? "text-[#aa4725]" : "text-gray-500 group-hover:text-gray-800"}`}
+                    className={`min-w-0 truncate transition-colors ${
+                      depth > 0 ? "text-[11px] font-medium" : "text-xs font-bold"
+                    } ${
+                      isActive
+                        ? "text-[#aa4725]"
+                        : depth > 0
+                          ? "text-gray-400 group-hover:text-gray-700"
+                          : "text-gray-500 group-hover:text-gray-800"
+                    }`}
                   >
                     {label}
                   </span>

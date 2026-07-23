@@ -6,7 +6,7 @@ import "base/models/Sport";
 import "base/models/Athlete";
 import "base/models/Category";
 import "base/models/Variant";
-import "base/models/Serie";
+import Serie from "base/models/Serie";
 import "base/models/LimitedEdition";
 import requireAdmin from "@/lib/requireAdmin";
 
@@ -25,6 +25,9 @@ export async function GET(req) {
     const isAdmin = searchParams.get("isAdmin") === "true";
     const categoryId = searchParams.get("category"); // فیلتر بر اساس دسته‌بندی
     const serieId = searchParams.get("serie"); // فیلتر بر اساس سری
+    // شامل‌کردن محصولات کل زیردرختِ سری (زیرسری‌ها در هر عمق) — opt-in تا
+    // رفتار سایر مصرف‌کننده‌های پارامتر serie تغییری نکند
+    const includeDescendants = searchParams.get("includeDescendants") === "true";
     const limitedEditionId = searchParams.get("limitedEdition"); // فیلتر بر اساس لیمیتد ادیشن
     const withVariants = searchParams.get("withVariants") === "true"; // populate واریانت‌ها
     const search = String(searchParams.get("search") || "").trim();
@@ -40,7 +43,35 @@ export async function GET(req) {
     // اگر ادمین بود آبجکت خالی {} (یعنی همه محصولات) و اگر نبود فقط { isActive: true }
     const query = isAdmin ? {} : { isActive: true };
     if (categoryId) query.category = categoryId;
-    if (serieId) query.serie = serieId;
+    if (serieId) {
+      if (includeDescendants) {
+        // BFS روی parentSerie: سری داده‌شده + همه‌ی زیرسری‌ها در هر عمق
+        const allSeries = await Serie.find({}).select("_id parentSerie").lean();
+        const childrenByParent = new Map();
+        for (const s of allSeries) {
+          const p = s.parentSerie ? s.parentSerie.toString() : null;
+          if (!p) continue;
+          if (!childrenByParent.has(p)) childrenByParent.set(p, []);
+          childrenByParent.get(p).push(s._id);
+        }
+        const ids = [serieId];
+        const seen = new Set([String(serieId)]);
+        const queue = [String(serieId)];
+        while (queue.length > 0) {
+          const cur = queue.shift();
+          for (const childId of childrenByParent.get(cur) || []) {
+            const key = childId.toString();
+            if (seen.has(key)) continue;
+            seen.add(key);
+            ids.push(childId);
+            queue.push(key);
+          }
+        }
+        query.serie = { $in: ids };
+      } else {
+        query.serie = serieId;
+      }
+    }
     if (limitedEditionId) query.limitedEdition = limitedEditionId;
     if (search) query.name = { $regex: escapeRegExp(search), $options: "i" };
 
