@@ -15,7 +15,7 @@ export async function GET(req) {
 
     // واکشی سری‌ها (فقط فیلدهای مورد نیاز برای سبک شدن پاسخ)
     const series = await Serie.find(filter)
-      .select("_id name title shortDescription level parentSerie")
+      .select("_id name title shortDescription level parentSerie order")
       .sort({ order: 1, createdAt: -1 });
 
     return NextResponse.json({ series }, { status: 200 });

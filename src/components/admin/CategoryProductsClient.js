@@ -24,6 +24,9 @@ export default function CategoryProductsClient({ categoryId }) {
 
   const [category, setCategory] = useState(null);
   const [products, setProducts] = useState([]);
+  // ایندکس کامل سری‌ها — populate لیست محصولات parentSerie ندارد، پس زنجیره‌ی
+  // والدها (برای فیلتر سلسله‌مراتبی سری) از این ایندکس ساخته می‌شود
+  const [seriesIndex, setSeriesIndex] = useState([]);
   const [loading, setLoading] = useState(true);
 
   // فیلترها
@@ -63,9 +66,37 @@ export default function CategoryProductsClient({ categoryId }) {
     const timer = setTimeout(() => {
       fetchCategory();
       fetchProducts();
+      fetch("/api/series")
+        .then((res) => (res.ok ? res.json() : { series: [] }))
+        .then((data) => setSeriesIndex(data.series || []))
+        .catch(() => {});
     }, 0);
     return () => clearTimeout(timer);
   }, [fetchCategory, fetchProducts]);
+
+  // زنجیره‌ی والدهای هر سری (خودش + والد + ... تا ریشه) — همان منطق فیلتر
+  // سری در ویترین (SportPageClient) تا ادمین و سایت هم‌رفتار بمانند
+  const serieChains = useMemo(() => {
+    const byId = new Map(seriesIndex.map((s) => [String(s._id), s]));
+    const cache = new Map();
+    const chainOf = (id) => {
+      const key = String(id);
+      if (cache.has(key)) return cache.get(key);
+      const chain = [key];
+      const seen = new Set([key]);
+      let cur = byId.get(key);
+      while (cur?.parentSerie && byId.has(String(cur.parentSerie))) {
+        const parentId = String(cur.parentSerie);
+        if (seen.has(parentId)) break; // محافظ در برابر حلقه در داده
+        seen.add(parentId);
+        chain.push(parentId);
+        cur = byId.get(parentId);
+      }
+      cache.set(key, chain);
+      return chain;
+    };
+    return { byId, chainOf };
+  }, [seriesIndex]);
 
   const categoryProducts = useMemo(
     () =>
@@ -90,27 +121,64 @@ export default function CategoryProductsClient({ categoryId }) {
     return Array.from(map.values());
   }, [categoryProducts]);
 
-  // سری‌های موجود در محصولاتی که با برند انتخاب‌شده تطبیق دارند
+  // سری‌های موجود در محصولاتی که با برند انتخاب‌شده تطبیق دارند — سری خود
+  // محصول + همه‌ی والدها، مسطح‌شده به‌صورت درختی (والد و بعد زیرسری‌ها) با depth
   const availableSeries = useMemo(() => {
-    const map = new Map();
+    const present = new Map(); // id → doc
     categoryProducts
       .filter((p) =>
         brandFilter === "all" ? true : p.brand?._id === brandFilter
       )
       .forEach((p) => {
-        if (p.serie?._id) map.set(p.serie._id, p.serie);
+        if (!p.serie?._id) return;
+        for (const id of serieChains.chainOf(p.serie._id)) {
+          if (present.has(id)) continue;
+          const doc =
+            serieChains.byId.get(id) ||
+            (id === String(p.serie._id) ? p.serie : null);
+          if (doc) present.set(id, doc);
+        }
       });
-    return Array.from(map.values());
-  }, [categoryProducts, brandFilter]);
+
+    const kept = new Set(present.keys());
+    const childrenOf = new Map();
+    const roots = [];
+    for (const [id, doc] of present) {
+      const parentId =
+        doc?.parentSerie && kept.has(String(doc.parentSerie))
+          ? String(doc.parentSerie)
+          : null;
+      if (parentId) {
+        if (!childrenOf.has(parentId)) childrenOf.set(parentId, []);
+        childrenOf.get(parentId).push({ id, doc });
+      } else {
+        roots.push({ id, doc });
+      }
+    }
+    const byOrder = (a, b) =>
+      (a.doc.order ?? Number.MAX_SAFE_INTEGER) -
+      (b.doc.order ?? Number.MAX_SAFE_INTEGER);
+    const out = [];
+    const walk = ({ id, doc }, depth) => {
+      out.push({ id, doc, depth });
+      (childrenOf.get(id) || []).sort(byOrder).forEach((c) => walk(c, depth + 1));
+    };
+    roots.sort(byOrder).forEach((r) => walk(r, 0));
+    return out;
+  }, [categoryProducts, brandFilter, serieChains]);
 
   // اگر برند عوض شد و سری قدیم دیگر معتبر نیست → ریست
   const filteredProducts = useMemo(() => {
     return categoryProducts.filter((p) => {
       if (brandFilter !== "all" && p.brand?._id !== brandFilter) return false;
-      if (serieFilter !== "all" && p.serie?._id !== serieFilter) return false;
+      if (serieFilter !== "all") {
+        // انتخاب والد = کل زیرمجموعه؛ انتخاب زیرسری = فقط همان شاخه
+        if (!p.serie?._id) return false;
+        if (!serieChains.chainOf(p.serie._id).includes(serieFilter)) return false;
+      }
       return true;
     });
-  }, [categoryProducts, brandFilter, serieFilter]);
+  }, [categoryProducts, brandFilter, serieFilter, serieChains]);
 
   const hasActiveFilter = brandFilter !== "all" || serieFilter !== "all";
 
@@ -247,7 +315,14 @@ export default function CategoryProductsClient({ categoryId }) {
             disabled={availableSeries.length === 0}
             options={[
               { value: "all", label: "همه سری‌ها" },
-              ...availableSeries.map((s) => ({ value: s._id, label: s.title || s.name })),
+              // زیرسری‌ها با تورفتگی و «└» زیر والدشان — داخل <option> فقط
+              // متن قابل استایل است
+              ...availableSeries.map((s) => ({
+                value: s.id,
+                label: `${"   ".repeat(s.depth)}${
+                  s.depth > 0 ? "└ " : ""
+                }${s.doc.title || s.doc.name}`,
+              })),
             ]}
           />
         </div>
