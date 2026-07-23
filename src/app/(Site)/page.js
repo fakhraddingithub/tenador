@@ -6,6 +6,7 @@ import BrandsTicker from "@/components/features/brandsTicker/BrandsTicker";
 import AmazingOffers from "@/components/features/amazingOffers/AmazingOffers";
 import RolandGarros from "@/components/features/rolandGarros/RolandGarros";
 import ComparisonBanner from "@/components/features/comparisonBanner/ComparisonBanner";
+import MatchBanner from "@/components/features/matchBanner/MatchBanner";
 import ShowcaseAthletes from "@/components/features/ShowcaseAthletes/ShowcaseAthletes";
 
 // سرویس‌ها را وارد کنید (فرض بر این است که این سرویس‌ها را دارید یا باید بسازید)
@@ -54,7 +55,11 @@ export default async function Home() {
       <Hero slides={JSON.parse(JSON.stringify(slides))} />
       <BannerSection />
       <SportsGrid categories={JSON.parse(JSON.stringify(sports))} />
-      <ComparisonBanner />
+      {/* بنرهای مقایسه و تطبیق — دسکتاپ کنار هم، موبایل زیر هم */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 items-stretch">
+        <ComparisonBanner />
+        <MatchBanner />
+      </div>
       <BestSellers products={bestSellers} rate={rate} />
       <AmazingOffers products={offers} rate={rate} />
       <RolandGarros content={rolandGarrosBanner} />
