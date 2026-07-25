@@ -1,10 +1,9 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import Image from "next/image";
 import {
   FaTimes,
-  FaShoppingCart,
   FaHeart,
   FaRegHeart,
   FaPlus,
@@ -14,6 +13,8 @@ import { toast } from "react-toastify";
 import { useOrderFlowCart } from "@/components/modules/orderFlow/useOrderFlowCart";
 import GalleryImageViewer from "@/components/ui/GalleryImageViewer";
 import VariantSelector from "@/components/templates/product/VariantSelector";
+import AddToCartButton from "@/components/templates/product/AddToCartButton";
+import { flyToCart } from "@/lib/flyToCart";
 import {
   buildGalleryImages,
   valueImages,
@@ -83,6 +84,7 @@ function QuickViewContent({
   const [unitSelection, setUnitSelection] = useState({}); // واحدِ فعالِ هر ویژگیِ چندواحدی
   const [selectedImage, setSelectedImage] = useState(null);
   const [errorMessage, setErrorMessage] = useState(""); // پیامِ inline انتخاب ویژگی (مثل صفحه‌ی محصول)
+  const addToCartWrapperRef = useRef(null); // مبدأِ انیمیشنِ پرواز به سبد
 
   // واریانتِ انتخاب‌شده «مشتق» است، نه استیتِ مستقل: همیشه از variants همین محصول و
   // selection جاری محاسبه می‌شود، پس امکان ندارد با محصول/انتخابِ نمایش‌داده‌شده
@@ -187,18 +189,9 @@ function QuickViewContent({
       ? Math.round(((baseTomanPrice - displayPrice) / baseTomanPrice) * 100)
       : 0;
 
-  // ── موجودی ────────────────────────────────────────────────────────────────
-  // ponytail: در این دیتامدل «تعداد موجودی» وجود ندارد (models/Variant.js فیلد stock
-  // ندارد)؛ معیارِ موجود بودن، وجودِ واریانتِ متناظر با ترکیبِ انتخاب‌شده است. اگر
-  // بعداً stock عددی اضافه شد، همین‌جا به سقفِ تعداد هم وصل شود.
-  const availability = !hasVariants
-    ? "available"
-    : !isSelectionComplete
-    ? "pending"
-    : selectedVariant
-    ? "available"
-    : "unavailable";
-
+  // نکته: کوییک‌ویو هیچ نشانگرِ موجودی نمایش نمی‌دهد (نه چیپ، نه برچسب، نه متن).
+  // اعتبارسنجیِ موجود بودنِ ترکیب دست‌نخورده در handleAddToCart باقی است و مقادیرِ
+  // بدونِ واریانتِ معتبر همچنان با isValueDisabled غیرقابلِ انتخاب می‌مانند.
   function handleAddToCart() {
     let variantId = null;
 
@@ -210,11 +203,11 @@ function QuickViewContent({
         // تبدیل کلید ویژگی به لیبل فارسی
         const missingLabels = missingKeys.map((k) => labelMap[k] || k).join(" و ");
         setErrorMessage(`لطفاً ${missingLabels} را انتخاب کنید.`);
-        return;
+        return false; // اعتبارسنجی ناموفق → دکمه نباید لودینگ/تایید نشان دهد
       }
       if (!selectedVariant) {
         setErrorMessage("این ترکیب در حال حاضر موجود نیست.");
-        return;
+        return false; // اعتبارسنجی ناموفق → دکمه نباید لودینگ/تایید نشان دهد
       }
       variantId = selectedVariant._id;
     }
@@ -226,9 +219,13 @@ function QuickViewContent({
       variantId,
       onAdded: () => {
         setErrorMessage(""); // پاک کردن خطا در صورت موفقیت
+        // انیمیشن پرواز — همان رفتارِ صفحه‌ی محصول؛ تصویرِ واریانتِ انتخاب‌شده پرواز می‌کند
+        flyToCart(displayedImage, addToCartWrapperRef.current);
         toast.success("به سبد خرید اضافه شد");
       },
     });
+
+    return true; // اعتبارسنجی موفق → انیمیشنِ لودینگ/تایید اجرا شود
   }
 
   return (
@@ -438,29 +435,6 @@ function QuickViewContent({
             />
           )}
 
-          {/* ── موجودیِ ترکیبِ انتخاب‌شده ── */}
-          {hasVariants && (
-            <div className="flex items-center gap-2 text-xs font-bold">
-              {availability === "available" && (
-                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-green-50 text-green-700 border border-green-200">
-                  <span className="w-1.5 h-1.5 rounded-full bg-green-500" />
-                  موجود در انبار
-                </span>
-              )}
-              {availability === "unavailable" && (
-                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-red-50 text-red-600 border border-red-200">
-                  <span className="w-1.5 h-1.5 rounded-full bg-red-500" />
-                  این ترکیب موجود نیست
-                </span>
-              )}
-              {availability === "pending" && (
-                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-gray-50 text-gray-500 border border-gray-200">
-                  برای مشاهده‌ی موجودی، ویژگی‌ها را انتخاب کنید
-                </span>
-              )}
-            </div>
-          )}
-
           {/* ── تخفیف تعدادی ── */}
           {hasQuantityTiers && (
             <div className="bg-purple-50/70 border border-purple-100 rounded-lg p-3 space-y-2">
@@ -574,26 +548,18 @@ function QuickViewContent({
             {/* دکمه‌ها */}
             <div className="flex gap-2 sm:gap-3">
               {/* دکمه همیشه فعال است؛ اگر ویژگی‌ای انتخاب نشده باشد، هنگام کلیک
-                  پیامِ inline بالای دکمه نمایش داده می‌شود (handleAddToCart) */}
-              <button
-                onClick={handleAddToCart}
-                className="
-                  flex-[5] h-12 sm:h-13 lg:h-14
-                  rounded-lg font-bold text-sm sm:text-base lg:text-lg
-                  flex items-center justify-center gap-2 sm:gap-3
-                  transition-all shadow-xl
-                  bg-[#aa4725] text-white hover:bg-[#8e3b1e] shadow-[#aa4725]/20 active:scale-95
-                "
-              >
-                <FaShoppingCart size={17} />
-                افزودن به سبد خرید
-              </button>
+                  پیامِ inline بالای دکمه نمایش داده می‌شود (handleAddToCart) و چون
+                  false برمی‌گرداند، انیمیشنِ لودینگ/تایید اجرا نمی‌شود.
+                  همان کامپوننتِ صفحه‌ی محصول است تا hover/tap/لودینگ/تایید/shimmer یکی باشد. */}
+              <div className="flex-[5] flex" ref={addToCartWrapperRef}>
+                <AddToCartButton onAddToCart={handleAddToCart} />
+              </div>
 
               <button
                 onClick={onToggleWishlist}
                 className={`
-                  flex-1 h-12 sm:h-13 lg:h-14
-                  flex items-center justify-center rounded-lg border-2 transition-all
+                  flex-1 h-[52px]
+                  flex items-center justify-center rounded-[6px] border-2 transition-all
                   min-w-[46px]
                   ${
                     isWishlisted

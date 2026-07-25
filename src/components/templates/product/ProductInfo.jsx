@@ -8,6 +8,7 @@ import AddToCartButton from "./AddToCartButton";
 import WishlistButton from "./WishlistButton";
 import VariantSelector from "./VariantSelector";
 import { useOrderFlowCart } from "@/components/modules/orderFlow/useOrderFlowCart";
+import { flyToCart } from "@/lib/flyToCart";
 import {
   valueImages,
   attrUnits,
@@ -185,62 +186,6 @@ const ProductInfo = ({ product, selectedVariant, onVariantChange, onSelectionCha
     setQuantity(newQty);
   }
 
- // فانکشن ساخت انیمیشن پرواز عکس محصول به سبد خرید
- const triggerFlyToCartAnimation = () => {
-  const cartIcon = document.getElementById("cart-nav-icon");
-  const buttonElem = addToCartWrapperRef.current;
-  
-  // گرفتن آدرس عکس محصول (مطمئن شوید مسیر درست است)
-  const productImgSrc = product.mainImage || product.image; 
-
-  if (!cartIcon || !buttonElem || !productImgSrc) return;
-
-  const btnRect = buttonElem.getBoundingClientRect();
-  const cartRect = cartIcon.getBoundingClientRect();
-
-  // ایجاد المان تصویر برای پرواز
-  const flyer = document.createElement("img");
-  flyer.src = productImgSrc;
-
-  // استایل‌های تصویر متحرک
-  Object.assign(flyer.style, {
-    position: "fixed",
-    top: `${btnRect.top}px`,
-    left: `${btnRect.left + btnRect.width / 2 - 25}px`, // مرکز کردن نسبت به دکمه
-    width: "60px",
-    height: "60px",
-    objectFit: "cover",
-    borderRadius: "12px", // کمی گرد برای زیبایی
-    boxShadow: "0 10px 25px rgba(0,0,0,0.2)",
-    zIndex: "9999",
-    pointerEvents: "none",
-    transition: "all 0.9s cubic-bezier(0.42, 0, 0.58, 1)", // حرکت نرم شتاب‌دار
-    opacity: "1",
-  });
-
-  document.body.appendChild(flyer);
-
-  // شروع انیمیشن
-  requestAnimationFrame(() => {
-    flyer.style.top = `${cartRect.top}px`;
-    flyer.style.left = `${cartRect.left}px`;
-    flyer.style.width = "20px"; // کوچک شدن همزمان با رسیدن به سبد
-    flyer.style.height = "20px";
-    flyer.style.opacity = "0.2";
-    flyer.style.transform = "rotate(360deg)"; // یک چرخش جذاب هنگام پرواز
-  });
-
-  // پاکسازی و افکت لرزش سبد خرید
-  setTimeout(() => {
-    if (document.body.contains(flyer)) {
-      document.body.removeChild(flyer);
-    }
-    // افکت لرزش سبد خرید در هدر
-    cartIcon.classList.add("cart-bounce");
-    setTimeout(() => cartIcon.classList.remove("cart-bounce"), 300);
-  }, 900);
-};
-
   function handleAddToCart() {
     let variantId = null;
 
@@ -268,7 +213,8 @@ const ProductInfo = ({ product, selectedVariant, onVariantChange, onSelectionCha
       variantId,
       onAdded: () => {
         setErrorMessage(""); // پاک کردن خطا در صورت موفقیت
-        triggerFlyToCartAnimation(); // اجرای انیمیشن پرواز
+        // اجرای انیمیشن پرواز
+        flyToCart(product.mainImage || product.image, addToCartWrapperRef.current);
       },
     });
 
