@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { FaSync } from "react-icons/fa";
 import { toast } from "react-toastify";
 import Swal from "sweetalert2";
+import { getApiErrorMessage } from "@/lib/apiClientError";
 
 import SerieFormLayout from "./SerieFormLayout";
 
@@ -123,7 +124,7 @@ export default function SerieEditForm({ id, brandId }) {
           router.refresh();
         });
       } else {
-        toast.error(result.error || "خطا در بروزرسانی سری");
+        toast.error(getApiErrorMessage(result, "خطا در بروزرسانی سری"));
       }
     } catch (error) {
       console.error(error);

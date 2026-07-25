@@ -15,6 +15,7 @@ import "base/models/LimitedEdition";
 import { verifyToken } from "base/utils/auth";
 import { revalidateContent } from "@/lib/revalidate";
 import { makeComboKey } from "@/lib/variantKey";
+import { handleApiError } from "@/lib/apiError";
 
 // --------------------------------------------------
 // Helpers
@@ -82,12 +83,7 @@ export async function GET(request, { params }) {
       { status: 200 }
     );
   } catch (err) {
-    console.error("GET PRODUCT ERROR:", err);
-
-    return NextResponse.json(
-      { error: err.message || "خطا در دریافت محصول" },
-      { status: 500 }
-    );
+    return handleApiError(err, "خطا در دریافت محصول");
   }
 }
 
@@ -309,12 +305,7 @@ export async function PUT(request, { params }) {
       { status: 200 }
     );
   } catch (err) {
-    console.error("UPDATE PRODUCT ERROR:", err);
-
-    return NextResponse.json(
-      { error: err.message || "خطا در ویرایش محصول" },
-      { status: 500 }
-    );
+    return handleApiError(err, "خطا در ویرایش محصول");
   }
 }
 
@@ -372,11 +363,6 @@ export async function DELETE(request, { params }) {
       { status: 200 }
     );
   } catch (err) {
-    console.error("DELETE PRODUCT ERROR:", err);
-
-    return NextResponse.json(
-      { error: err.message || "خطا در حذف محصول" },
-      { status: 500 }
-    );
+    return handleApiError(err, "خطا در حذف محصول");
   }
 }

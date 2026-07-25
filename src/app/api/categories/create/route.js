@@ -4,6 +4,7 @@ import Category from "base/models/Category";
 import Sport from "base/models/Sport";
 import { registerSlug } from "base/actions/registerSlug";
 import { revalidateContent } from "@/lib/revalidate";
+import { handleApiError } from "@/lib/apiError";
 
 export async function POST(req) {
   try {
@@ -174,10 +175,6 @@ export async function POST(req) {
     );
 
   } catch (err) {
-    console.error("CATEGORY POST ERROR:", err);
-    return Response.json(
-      { error: "مشکلی در سرور رخ داد", detail: err.message },
-      { status: 500 }
-    );
+    return handleApiError(err, "خطا در ایجاد دسته‌بندی");
   }
 }

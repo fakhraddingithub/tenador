@@ -6,6 +6,7 @@ import Serie from "base/models/Serie";
 import Brand from "base/models/Brand";
 import { revalidateContent } from "@/lib/revalidate";
 import { sanitizeSerieSportEntries } from "@/lib/serieSportContent";
+import { handleApiError } from "@/lib/apiError";
 
 export async function GET(req, { params }) {
   try {
@@ -31,19 +32,7 @@ export async function GET(req, { params }) {
       status: 200,
     });
   } catch (error) {
-    console.error(
-      "GET Single Serie Error:",
-      error
-    );
-
-    return NextResponse.json(
-      {
-        error:
-          "خطا در بازیابی اطلاعات سری",
-      },
-
-      { status: 500 }
-    );
+    return handleApiError(error, "خطا در بازیابی اطلاعات سری");
   }
 }
 
@@ -203,19 +192,7 @@ export async function PUT(req, { params }) {
       { status: 200 }
     );
   } catch (error) {
-    console.error(
-      "PUT Error:",
-      error
-    );
-
-    return NextResponse.json(
-      {
-        error:
-          "خطا در ویرایش اطلاعات",
-      },
-
-      { status: 500 }
-    );
+    return handleApiError(error, "خطا در ویرایش سری");
   }
 }
 
@@ -301,17 +278,6 @@ export async function DELETE(req, { params }) {
       { status: 200 }
     );
   } catch (error) {
-    console.error(
-      "DELETE Error:",
-      error
-    );
-
-    return NextResponse.json(
-      {
-        error: "خطا در عملیات حذف",
-      },
-
-      { status: 500 }
-    );
+    return handleApiError(error, "خطا در حذف سری");
   }
 }

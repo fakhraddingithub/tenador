@@ -2,6 +2,7 @@ import connectToDB from "base/configs/db";
 import Sport from "base/models/Sport";
 import { registerSlug } from "base/actions/registerSlug";
 import { revalidateContent } from "@/lib/revalidate";
+import { apiError, handleApiError } from "@/lib/apiError";
 
 export async function POST(req) {
   try {
@@ -18,17 +19,15 @@ export async function POST(req) {
 
     // basic validation
     if (!name || !name.trim()) {
-      return Response.json(
-        { error: "Name is required" },
-        { status: 400 }
-      );
+      return apiError("«نام انگلیسی ورزش» الزامی است", 400, {
+        fieldErrors: { name: "«نام انگلیسی ورزش» الزامی است" },
+      });
     }
 
     if (!title || !title.trim()) {
-      return Response.json(
-        { error: "Title is required" },
-        { status: 400 }
-      );
+      return apiError("«عنوان فارسی ورزش» الزامی است", 400, {
+        fieldErrors: { title: "«عنوان فارسی ورزش» الزامی است" },
+      });
     }
 
     const normalizedName = name.trim();
@@ -36,10 +35,9 @@ export async function POST(req) {
     // duplicate check (name)
     const exists = await Sport.findOne({ name: normalizedName });
     if (exists) {
-      return Response.json(
-        { error: "Sport with this name already exists" },
-        { status: 409 }
-      );
+      return apiError("ورزشی با این نام قبلاً ثبت شده است", 409, {
+        fieldErrors: { name: "ورزشی با این نام قبلاً ثبت شده است" },
+      });
     }
     const count = await Sport.countDocuments();
     // create sport (slug handled by model)
@@ -74,17 +72,6 @@ export async function POST(req) {
       { status: 201 }
     );
   } catch (err) {
-    // mongoose validation error
-    if (err.name === "ValidationError") {
-      return Response.json(
-        { error: err.message },
-        { status: 400 }
-      );
-    }
-
-    return Response.json(
-      { error: "Internal server error" },
-      { status: 500 }
-    );
+    return handleApiError(err, "خطا در ایجاد ورزش");
   }
 }

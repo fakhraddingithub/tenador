@@ -2,6 +2,7 @@ import connectToDB from "base/configs/db";
 import Brand from "base/models/Brand";
 import { NextResponse } from "next/server";
 import { revalidateContent } from "@/lib/revalidate";
+import { handleApiError } from "@/lib/apiError";
 
 export async function GET(req, { params }) {
   try {
@@ -25,11 +26,7 @@ export async function GET(req, { params }) {
 
     return NextResponse.json({ brand });
   } catch (error) {
-    console.log(error);
-    return NextResponse.json(
-      { error: error.message },
-      { status: 500 }
-    );
+    return handleApiError(error, "خطا در دریافت برند");
   }
 }
 
@@ -86,10 +83,7 @@ export async function PUT(req, { params }) {
       brand,
     });
   } catch (error) {
-    return NextResponse.json(
-      { error: error.message },
-      { status: 500 }
-    );
+    return handleApiError(error, "خطا در به‌روزرسانی برند");
   }
 }
 
@@ -112,9 +106,6 @@ export async function DELETE(req, { params }) {
       message: "برند با موفقیت حذف شد",
     });
   } catch (error) {
-    return NextResponse.json(
-      { error: error.message },
-      { status: 500 }
-    );
+    return handleApiError(error, "خطا در حذف برند");
   }
 }

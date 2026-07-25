@@ -2,6 +2,7 @@ import connectToDB from "base/configs/db";
 import Sport from "base/models/Sport";
 import { NextResponse } from "next/server";
 import { revalidateContent } from "@/lib/revalidate";
+import { handleApiError } from "@/lib/apiError";
 
 export async function GET(req, { params }) {
   try {
@@ -18,10 +19,7 @@ export async function GET(req, { params }) {
 
     return NextResponse.json({ sport });
   } catch (error) {
-    return NextResponse.json(
-      { error: error.message },
-      { status: 500 }
-    );
+    return handleApiError(error, "خطا در دریافت ورزش");
   }
 }
 
@@ -62,10 +60,7 @@ export async function PUT(req, { params }) {
       sport,
     });
   } catch (error) {
-    return NextResponse.json(
-      { error: error.message },
-      { status: 500 }
-    );
+    return handleApiError(error, "خطا در به‌روزرسانی ورزش");
   }
 }
 
@@ -88,9 +83,6 @@ export async function DELETE(req, { params }) {
       message: "ورزش با موفقیت حذف شد",
     });
   } catch (error) {
-    return NextResponse.json(
-      { error: error.message },
-      { status: 500 }
-    );
+    return handleApiError(error, "خطا در حذف ورزش");
   }
 }

@@ -5,6 +5,7 @@ import Variant from "base/models/Variant";
 import { createSlug } from "base/utils/slugify";
 import { revalidateContent } from "@/lib/revalidate";
 import { makeComboKey } from "@/lib/variantKey";
+import { apiError, handleApiError } from "@/lib/apiError";
 
 /* ----------------------------------
    Generate unique SKU
@@ -90,11 +91,21 @@ export async function POST(req) {
     /* -------------------------------
         Validate Required Fields
      ------------------------------- */
-    const requiredFields = { name, shortDescription, longDescription, category, mainImage, brand, sport };
+    const requiredLabels = {
+      name: "نام محصول",
+      shortDescription: "توضیح کوتاه",
+      longDescription: "توضیح کامل",
+      category: "دسته‌بندی",
+      mainImage: "تصویر اصلی",
+      brand: "برند",
+      sport: "ورزش",
+    };
 
-    for (const key in requiredFields) {
-      if (!requiredFields[key]) {
-        return Response.json({ error: `${key} is required` }, { status: 400 });
+    for (const key of Object.keys(requiredLabels)) {
+      if (!body[key]) {
+        return apiError(`«${requiredLabels[key]}» الزامی است`, 400, {
+          fieldErrors: { [key]: `«${requiredLabels[key]}» الزامی است` },
+        });
       }
     }
 
@@ -103,7 +114,9 @@ export async function POST(req) {
      ------------------------------- */
     const foundCategory = await Category.findById(category);
     if (!foundCategory) {
-      return Response.json({ error: "Category not found" }, { status: 404 });
+      return apiError("دسته‌بندی انتخاب‌شده یافت نشد", 404, {
+        fieldErrors: { category: "دسته‌بندی انتخاب‌شده یافت نشد" },
+      });
     }
 
     // تبدیل تایتل‌های انتخاب‌شده (از AI یا انتخاب دستی ادمین) به شناسه‌ی واقعیِ آیتم در دسته‌بندی
@@ -126,7 +139,7 @@ export async function POST(req) {
     if (attributes) {
       for (const key of Object.keys(attributes)) {
         if (!allowedAttrs.includes(key)) {
-          return Response.json({ error: `Attribute "${key}" is not allowed` }, { status: 400 });
+          return apiError(`ویژگی «${key}» در این دسته‌بندی مجاز نیست`, 400);
         }
       }
       for (const attr of foundCategory.attributes) {
@@ -140,7 +153,7 @@ export async function POST(req) {
     if (technicalStats) {
       for (const key of Object.keys(technicalStats)) {
         if (!allowedStats.includes(key)) {
-          return Response.json({ error: `شاخص فنی "${key}" در این دسته تعریف نشده است` }, { status: 400 });
+          return apiError(`شاخص فنی «${key}» در این دسته تعریف نشده است`, 400);
         }
         const val = technicalStats[key];
         if (isNaN(val) || val < 0 || val > 100) {
@@ -255,10 +268,6 @@ export async function POST(req) {
     );
 
   } catch (err) {
-    console.error(err);
-    return Response.json(
-      { error: "Internal server error", detail: err.message },
-      { status: 500 }
-    );
+    return handleApiError(err, "خطا در ایجاد محصول");
   }
 }

@@ -2,6 +2,7 @@ import connectToDB from "base/configs/db";
 import Brand from "base/models/Brand";
 import { registerSlug } from "base/actions/registerSlug";
 import { revalidateContent } from "@/lib/revalidate";
+import { apiError, handleApiError } from "@/lib/apiError";
 
 export async function POST(req) {
   try {
@@ -24,26 +25,25 @@ export async function POST(req) {
 
     // validation
     if (!name || !name.trim()) {
-      return Response.json(
-        { error: "Name is required" },
-        { status: 400 }
-      );
+      return apiError("«نام انگلیسی برند» الزامی است", 400, {
+        fieldErrors: { name: "«نام انگلیسی برند» الزامی است" },
+      });
     }
 
     if (!title || !title.trim()) {
-      return Response.json(
-        { error: "Title is required" },
-        { status: 400 }
-      );
+      return apiError("«عنوان فارسی برند» الزامی است", 400, {
+        fieldErrors: { title: "«عنوان فارسی برند» الزامی است" },
+      });
     }
 
     const normalizedName = name.trim();
 
     // check name regex (same as model, fail fast)
     if (!/^[a-zA-Z0-9\s\-_]+$/.test(normalizedName)) {
-      return Response.json(
-        { error: "Name format is invalid" },
-        { status: 400 }
+      return apiError(
+        "نام انگلیسی باید فقط شامل حروف انگلیسی، اعداد و علائم مجاز (- _) باشد",
+        400,
+        { fieldErrors: { name: "فرمت نام انگلیسی نامعتبر است" } }
       );
     }
 
@@ -61,10 +61,9 @@ export async function POST(req) {
     // duplicate check
     const exists = await Brand.findOne({ name: normalizedName });
     if (exists) {
-      return Response.json(
-        { error: "Brand already exists" },
-        { status: 409 }
-      );
+      return apiError("برندی با این نام قبلاً ثبت شده است", 409, {
+        fieldErrors: { name: "برندی با این نام قبلاً ثبت شده است" },
+      });
     }
 
     // create brand (در انتهای ترتیب نمایش قرار می‌گیرد)
@@ -109,16 +108,6 @@ export async function POST(req) {
       { status: 201 }
     );
   } catch (err) {
-    if (err.name === "ValidationError") {
-      return Response.json(
-        { error: err.message },
-        { status: 400 }
-      );
-    }
-
-    return Response.json(
-      { error: "Internal server error" },
-      { status: 500 }
-    );
+    return handleApiError(err, "خطا در ایجاد برند");
   }
 }

@@ -4,6 +4,7 @@ import Category from "base/models/Category";
 import Sport from "base/models/Sport";
 import { NextResponse } from "next/server";
 import { revalidateContent } from "@/lib/revalidate";
+import { handleApiError } from "@/lib/apiError";
 
 // ---------------------------------------------------------
 // GET: دریافت جزئیات یک کتگوری
@@ -23,7 +24,7 @@ export async function GET(req, { params }) {
 
     return NextResponse.json({ category });
   } catch (error) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    return handleApiError(error, "خطا در دریافت دسته‌بندی");
   }
 }
 
@@ -204,11 +205,11 @@ export async function PUT(req, { params }) {
       category,
     });
   } catch (error) {
-    // مدیریت خطای تداخل احتمالی نام ویژگی‌ها از سمت دیتابیس
-    if (error.message.includes("نمی‌توانند همزمان")) {
+    // خطای منطقیِ عمدی (تداخل نام ویژگی‌ها) پیام فارسیِ خودش را دارد → ۴۰۰
+    if (error?.message?.includes("نمی‌توانند همزمان")) {
       return NextResponse.json({ error: error.message }, { status: 400 });
     }
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    return handleApiError(error, "خطا در به‌روزرسانی دسته‌بندی");
   }
 }
 
@@ -229,7 +230,6 @@ export async function DELETE(req, { params }) {
 
     return NextResponse.json({ message: "دسته‌بندی با موفقیت حذف شد" });
   } catch (error) {
-    console.error(error);
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    return handleApiError(error, "خطا در حذف دسته‌بندی");
   }
 }

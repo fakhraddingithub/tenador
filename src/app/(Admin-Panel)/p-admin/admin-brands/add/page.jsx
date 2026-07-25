@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { FaArrowRight, FaCloudUploadAlt, FaGlobeAmericas, FaCalendarAlt, FaCheckCircle, FaRocket, FaMagic, FaParagraph } from 'react-icons/fa';
 import { toast } from 'react-toastify';
+import { getApiErrorMessage } from '@/lib/apiClientError';
 
 export default function AddBrand() {
   const router = useRouter();
@@ -66,11 +67,12 @@ export default function AddBrand() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),
       });
-      if (!res.ok) throw new Error();
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(getApiErrorMessage(data, 'خطا در ثبت برند'));
       toast.success('برند با موفقیت ثبت شد!');
       router.push('/p-admin/admin-brands');
-    } catch {
-      toast.error('خطا در ثبت برند');
+    } catch (err) {
+      toast.error(err.message || 'خطا در ثبت برند');
     } finally {
       setLoading(false);
     }

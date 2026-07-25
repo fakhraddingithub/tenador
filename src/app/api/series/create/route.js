@@ -8,6 +8,7 @@ import Brand from "base/models/Brand";
 import { registerSlug } from "base/actions/registerSlug";
 import { revalidateContent } from "@/lib/revalidate";
 import { sanitizeSerieSportEntries } from "@/lib/serieSportContent";
+import { handleApiError } from "@/lib/apiError";
 
 export async function POST(req) {
   try {
@@ -227,40 +228,6 @@ export async function POST(req) {
       { status: 201 }
     );
   } catch (error) {
-    console.error("❌ Error in Serie Creation:", error);
-
-    /*
-     |--------------------------------------------------------------------------
-     | Mongoose Validation
-     |--------------------------------------------------------------------------
-     |
-     */
-
-    if (error.name === "ValidationError") {
-      const messages = Object.values(error.errors).map((err) => err.message);
-
-      return NextResponse.json(
-        {
-          error: messages[0],
-        },
-
-        { status: 400 }
-      );
-    }
-
-    /*
-     |--------------------------------------------------------------------------
-     | General Error
-     |--------------------------------------------------------------------------
-     |
-     */
-
-    return NextResponse.json(
-      {
-        error: "خطای داخلی سرور در هنگام ایجاد سری",
-      },
-
-      { status: 500 }
-    );
+    return handleApiError(error, "خطا در ایجاد سری");
   }
 }

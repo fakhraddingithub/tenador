@@ -5,6 +5,7 @@ import connectToDB from "base/configs/db";
 import LimitedEdition from "base/models/LimitedEdition";
 import { registerSlug } from "base/actions/registerSlug";
 import { revalidateContent } from "@/lib/revalidate";
+import { handleApiError } from "@/lib/apiError";
 
 export async function POST(req) {
   try {
@@ -81,16 +82,6 @@ export async function POST(req) {
       { status: 201 }
     );
   } catch (error) {
-    console.error("❌ Error in LimitedEdition Creation:", error);
-
-    if (error.name === "ValidationError") {
-      const messages = Object.values(error.errors).map((err) => err.message);
-      return NextResponse.json({ error: messages[0] }, { status: 400 });
-    }
-
-    return NextResponse.json(
-      { error: "خطای داخلی سرور در هنگام ایجاد لیمیتد ادیشن" },
-      { status: 500 }
-    );
+    return handleApiError(error, "خطا در ایجاد لیمیتد ادیشن");
   }
 }

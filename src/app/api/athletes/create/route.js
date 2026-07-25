@@ -2,6 +2,7 @@ import connectToDB from "base/configs/db";
 import Athlete from "base/models/Athlete";
 import Sport from "base/models/Sport";
 import { registerSlug } from "base/actions/registerSlug";
+import { apiError, handleApiError } from "@/lib/apiError";
 
 export async function POST(req) {
   try {
@@ -27,37 +28,38 @@ export async function POST(req) {
     /* ---------- validations ---------- */
 
     if (!name?.trim() || !title?.trim()) {
-      return Response.json(
-        { error: "Name and Title are required" },
-        { status: 400 }
-      );
+      return apiError("«نام» و «عنوان» ورزشکار الزامی هستند", 400);
     }
 
     // regex validation
     const nameRegex = /^[a-zA-Z0-9\s\-_]+$/;
     if (!nameRegex.test(name)) {
-      return Response.json(
-        { error: "Name must contain only English letters, numbers, spaces, - or _" },
-        { status: 400 }
+      return apiError(
+        "نام انگلیسی باید فقط شامل حروف انگلیسی، اعداد و علائم مجاز (- _) باشد",
+        400,
+        { fieldErrors: { name: "فرمت نام انگلیسی نامعتبر است" } }
       );
     }
 
     if (!sport) {
-      return Response.json({ error: "Sport ID is required" }, { status: 400 });
+      return apiError("«ورزش» ورزشکار الزامی است", 400, {
+        fieldErrors: { sport: "«ورزش» ورزشکار الزامی است" },
+      });
     }
 
     // چک کردن وجود ورزش و ورزشکار تکراری به صورت همزمان برای بهینه‌سازی (Optional)
     const sportFound = await Sport.findById(sport);
     if (!sportFound) {
-      return Response.json({ error: "Sport not found" }, { status: 404 });
+      return apiError("ورزش انتخاب‌شده یافت نشد", 404, {
+        fieldErrors: { sport: "ورزش انتخاب‌شده یافت نشد" },
+      });
     }
 
     const exists = await Athlete.findOne({ name: name.trim(), sport });
     if (exists) {
-      return Response.json(
-        { error: "Athlete already exists for this sport" },
-        { status: 409 }
-      );
+      return apiError("ورزشکاری با این نام در این ورزش قبلاً ثبت شده است", 409, {
+        fieldErrors: { name: "ورزشکاری با این نام در این ورزش قبلاً ثبت شده است" },
+      });
     }
 
     /* ---------- create ---------- */
@@ -100,10 +102,6 @@ export async function POST(req) {
       { status: 201 }
     );
   } catch (err) {
-    console.error("Athlete Creation Error:", err); // لاگ کردن خطا برای دیباگ راحت‌تر
-    return Response.json(
-      { error: err.message || "Internal Server Error" },
-      { status: 500 }
-    );
+    return handleApiError(err, "خطا در ایجاد ورزشکار");
   }
 }

@@ -5,6 +5,7 @@ import { useRouter, useParams } from 'next/navigation';
 import Link from 'next/link';
 import { FaArrowRight, FaCloudUploadAlt, FaGlobeAmericas, FaCalendarAlt, FaCheckCircle, FaRocket, FaEdit, FaParagraph, FaMagic } from 'react-icons/fa';
 import { toast } from 'react-toastify';
+import { getApiErrorMessage } from '@/lib/apiClientError';
 
 export default function EditBrand() {
   const router = useRouter();
@@ -100,11 +101,12 @@ export default function EditBrand() {
         body: JSON.stringify(payload),
       });
 
-      if (!res.ok) throw new Error();
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(getApiErrorMessage(data, 'خطا در به‌روزرسانی برند'));
       toast.success('تغییرات با موفقیت در منظومه ثبت شد! ✨');
       router.push('/p-admin/admin-brands');
-    } catch {
-      toast.error('خطا در به‌روزرسانی برند');
+    } catch (err) {
+      toast.error(err.message || 'خطا در به‌روزرسانی برند');
     } finally {
       setSaving(false);
     }

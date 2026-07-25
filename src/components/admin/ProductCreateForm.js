@@ -12,6 +12,7 @@ import VariantValueImageUpload from '@/components/admin/VariantValueImageUpload'
 import VariantValuesEditor from '@/components/admin/VariantValuesEditor';
 import { showToast } from '@/lib/toast';
 import { showError } from '@/lib/swal';
+import { getApiErrorMessage } from '@/lib/apiClientError';
 import { makeComboKey } from '@/lib/variantKey';
 import { renameVariantValue } from '@/lib/variantValueOps';
 
@@ -485,8 +486,8 @@ export default function ProductCreateForm({ initialData = {} }) {
         body: JSON.stringify(payload),
       });
 
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error);
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(getApiErrorMessage(data, 'خطا در ایجاد محصول'));
 
       showToast.success('محصول ساخته شد');
       router.push(

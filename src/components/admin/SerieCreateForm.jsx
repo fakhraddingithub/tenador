@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "react-toastify";
 import Swal from "sweetalert2";
+import { getApiErrorMessage } from "@/lib/apiClientError";
 
 import SerieFormLayout from "./SerieFormLayout";
 
@@ -71,7 +72,7 @@ export default function SerieCreateForm({
           router.refresh();
         });
       } else {
-        toast.error(result.error || "خطا در ثبت سری");
+        toast.error(getApiErrorMessage(result, "خطا در ثبت سری"));
       }
     } catch (error) {
       console.error(error);
