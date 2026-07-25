@@ -7,7 +7,7 @@ import { ProductCard } from '@/components/admin';
 import AdminLoader from '@/components/admin/AdminLoader';
 import { showToast } from '@/lib/toast';
 import { confirmDelete, showError } from '@/lib/swal';
-import { FiPlus, FiBox, FiSearch } from 'react-icons/fi';
+import { FiPlus, FiBox, FiSearch, FiFilter, FiX } from 'react-icons/fi';
 
 export default function AdminProducts() {
   const router = useRouter();
@@ -16,6 +16,58 @@ export default function AdminProducts() {
   const [search, setSearch] = useState('');
   const [page, setPage] = useState(1);
   const [pagination, setPagination] = useState({ page: 1, total: 0, totalPages: 1 });
+
+  // ─── فیلترها ───
+  const [sportFilter, setSportFilter] = useState('');
+  const [categoryFilter, setCategoryFilter] = useState('');
+  const [brandFilter, setBrandFilter] = useState('');
+  const [serieFilter, setSerieFilter] = useState(''); // فقط سری‌های ریشه (level 0)
+
+  // گزینه‌های فیلتر
+  const [sports, setSports] = useState([]);
+  const [brands, setBrands] = useState([]);
+  const [categories, setCategories] = useState([]);
+  const [rootSeries, setRootSeries] = useState([]);
+
+  // بارگذاری اولیه‌ی ورزش‌ها و برندها (یک‌بار)
+  useEffect(() => {
+    fetch('/api/sports')
+      .then((r) => (r.ok ? r.json() : { sports: [] }))
+      .then((d) => setSports(d.sports || []))
+      .catch(() => {});
+    fetch('/api/brands')
+      .then((r) => (r.ok ? r.json() : { brands: [] }))
+      .then((d) => setBrands(d.brands || []))
+      .catch(() => {});
+  }, []);
+
+  // دسته‌بندی‌ها — با انتخاب ورزش محدود می‌شوند
+  useEffect(() => {
+    const url = sportFilter ? `/api/categories?sportId=${sportFilter}` : '/api/categories';
+    fetch(url)
+      .then((r) => (r.ok ? r.json() : { categories: [] }))
+      .then((d) => setCategories(d.categories || []))
+      .catch(() => {});
+  }, [sportFilter]);
+
+  // سری‌های ریشه — با انتخاب برند محدود می‌شوند
+  useEffect(() => {
+    const url = brandFilter ? `/api/series?brand=${brandFilter}` : '/api/series';
+    fetch(url)
+      .then((r) => (r.ok ? r.json() : { series: [] }))
+      .then((d) => setRootSeries((d.series || []).filter((s) => (s.level ?? 0) === 0)))
+      .catch(() => {});
+  }, [brandFilter]);
+
+  const hasActiveFilter = sportFilter || categoryFilter || brandFilter || serieFilter;
+
+  const resetFilters = () => {
+    setSportFilter('');
+    setCategoryFilter('');
+    setBrandFilter('');
+    setSerieFilter('');
+    setPage(1);
+  };
 
   const fetchProducts = useCallback(async (signal) => {
     setLoading(true);
@@ -26,6 +78,14 @@ export default function AdminProducts() {
         limit: '25',
       });
       if (search.trim()) params.set('search', search.trim());
+      if (sportFilter) params.set('sport', sportFilter);
+      if (categoryFilter) params.set('category', categoryFilter);
+      if (brandFilter) params.set('brand', brandFilter);
+      // سری والد: خودِ سری + تمام زیرسری‌ها در هر عمق
+      if (serieFilter) {
+        params.set('serie', serieFilter);
+        params.set('includeDescendants', 'true');
+      }
       const res = await fetch(`/api/product?${params}`, { signal });
       if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
       const text = await res.text();
@@ -41,7 +101,7 @@ export default function AdminProducts() {
     } finally {
       setLoading(false);
     }
-  }, [page, search]);
+  }, [page, search, sportFilter, categoryFilter, brandFilter, serieFilter]);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -121,6 +181,60 @@ export default function AdminProducts() {
         )}
       </div>
 
+      {/* Mobile search */}
+      <div className="relative md:hidden mb-4">
+        <FiSearch className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400" size={15} />
+        <input
+          type="text"
+          placeholder="جستجو در انبار..."
+          value={search}
+          onChange={(e) => { setSearch(e.target.value); setPage(1); }}
+          className="w-full pr-9 pl-4 py-2.5 text-sm font-bold bg-white border-2 border-gray-200 rounded-[var(--radius)] focus:outline-none focus:border-[var(--color-primary)] transition-all"
+        />
+      </div>
+
+      {/* Filters bar */}
+      <div className="bg-white rounded-2xl border border-gray-100 p-4 mb-6">
+        <div className="flex items-center gap-2 mb-3">
+          <FiFilter size={14} style={{ color: 'var(--color-primary)' }} />
+          <span className="text-xs font-bold text-gray-600">فیلتر محصولات</span>
+          {hasActiveFilter && (
+            <button
+              onClick={resetFilters}
+              className="mr-auto inline-flex items-center gap-1 text-[11px] font-bold text-gray-500 hover:text-red-500 transition-colors"
+            >
+              <FiX size={12} /> حذف فیلترها
+            </button>
+          )}
+        </div>
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+          <FilterSelect
+            label="ورزش"
+            value={sportFilter}
+            onChange={(v) => { setSportFilter(v); setCategoryFilter(''); setPage(1); }}
+            options={[{ value: '', label: 'همه ورزش‌ها' }, ...sports.map((s) => ({ value: s._id, label: s.title || s.name }))]}
+          />
+          <FilterSelect
+            label="دسته‌بندی"
+            value={categoryFilter}
+            onChange={(v) => { setCategoryFilter(v); setPage(1); }}
+            options={[{ value: '', label: 'همه دسته‌ها' }, ...categories.map((c) => ({ value: c._id, label: c.title || c.name }))]}
+          />
+          <FilterSelect
+            label="برند"
+            value={brandFilter}
+            onChange={(v) => { setBrandFilter(v); setSerieFilter(''); setPage(1); }}
+            options={[{ value: '', label: 'همه برندها' }, ...brands.map((b) => ({ value: b._id, label: b.title || b.name }))]}
+          />
+          <FilterSelect
+            label="سری والد"
+            value={serieFilter}
+            onChange={(v) => { setSerieFilter(v); setPage(1); }}
+            options={[{ value: '', label: 'همه سری‌ها' }, ...rootSeries.map((s) => ({ value: s._id, label: s.title || s.name }))]}
+          />
+        </div>
+      </div>
+
       {/* Content */}
       {loading ? (
         <AdminLoader />
@@ -190,6 +304,23 @@ export default function AdminProducts() {
           )}
         </>
       )}
+    </div>
+  );
+}
+
+function FilterSelect({ label, value, onChange, options }) {
+  return (
+    <div className="min-w-0">
+      <label className="block text-[10px] font-bold uppercase tracking-wide text-gray-400 mb-1">{label}</label>
+      <select
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        className="w-full truncate border-2 border-gray-200 rounded-[var(--radius)] px-2.5 py-2 text-xs font-bold text-gray-700 bg-white cursor-pointer focus:outline-none focus:border-[var(--color-primary)] transition-all"
+      >
+        {options.map((o) => (
+          <option key={o.value || 'all'} value={o.value}>{o.label}</option>
+        ))}
+      </select>
     </div>
   );
 }

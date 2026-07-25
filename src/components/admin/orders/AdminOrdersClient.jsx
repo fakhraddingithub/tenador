@@ -11,7 +11,8 @@ import {
   Eye, CheckCircle, XCircle, Clock, Package, Truck,
   Home, AlertCircle, RefreshCw, Receipt, CreditCard,
   Users, BadgeCheck, ChevronDown, Ban, Loader2,
-  ReceiptText, Inbox, Sparkles, ShoppingBag
+  ReceiptText, Inbox, Sparkles, ShoppingBag,
+  X, MapPin, Phone, Hash, ExternalLink, User
 } from "lucide-react";
 
 /* ─── Constants ─────────────────────────────────────────────────────── */
@@ -41,6 +42,27 @@ const PAYMENT_METHOD = {
 
 function formatPrice(v) {
   return new Intl.NumberFormat("fa-IR").format(Number(v ?? 0));
+}
+
+// برچسبِ واریانتِ یک آیتم — از اسنپ‌شات لحظه‌ی ثبت، وگرنه از خودِ واریانت
+function variantLabelOf(item) {
+  const snap = Array.isArray(item?.variantSnapshot) ? item.variantSnapshot : [];
+  if (snap.length > 0) {
+    return snap
+      .map((s) => {
+        const val = s?.units
+          ? Object.values(s.units).filter(Boolean).join("، ")
+          : s?.value;
+        return val ? `${s?.label || s?.name || ""}: ${val}`.trim() : val;
+      })
+      .filter(Boolean)
+      .join(" · ");
+  }
+  const attrs = item?.variant?.attributes;
+  if (attrs && typeof attrs === "object") {
+    return Object.entries(attrs).map(([k, v]) => `${k}: ${v}`).join(" · ");
+  }
+  return item?.variant?.sku || "";
 }
 
 function toFarsiDate(dateStr) {
@@ -101,7 +123,7 @@ function StatCard({ title, value, icon: Icon, color, sub }) {
 }
 
 /* ─── Order Row ─────────────────────────────────────────────────────── */
-function OrderRow({ order, onSelect, isHighlighted }) {
+function OrderRow({ order, onSelect, onView, isHighlighted }) {
   const payCfg = PAYMENT_STATUS[order.paymentStatus];
   const fulCfg = FULFILLMENT_STATUS[order.fulfillmentStatus];
   const methodCfg = PAYMENT_METHOD[order.paymentMethod];
@@ -192,7 +214,10 @@ function OrderRow({ order, onSelect, isHighlighted }) {
 
       {/* Action */}
       <td className="px-4 py-3.5 text-center">
-        <button className={`w-7 h-7 rounded-lg flex items-center justify-center transition-all
+        <button
+          onClick={(e) => { e.stopPropagation(); onView(order); }}
+          title="مشاهده جزئیات"
+          className={`w-7 h-7 rounded-lg flex items-center justify-center transition-all
           ${unseen
             ? "bg-[var(--color-primary)] text-white"
             : "bg-gray-100 group-hover:bg-[var(--color-primary)] text-gray-400 group-hover:text-white"}`}>
@@ -221,6 +246,286 @@ function FilterSelect({ label, value, onChange, options }) {
   );
 }
 
+/* ─── Order Card (mobile) ───────────────────────────────────────────── */
+function OrderCard({ order, onView, onOpen }) {
+  const payCfg = PAYMENT_STATUS[order.paymentStatus];
+  const fulCfg = FULFILLMENT_STATUS[order.fulfillmentStatus];
+  const methodCfg = PAYMENT_METHOD[order.paymentMethod];
+  const unseen = isUnseen(order);
+  const newOrder = isNewOrder(order);
+
+  return (
+    <div className={`p-4 ${unseen ? "bg-amber-50/50" : ""}`}>
+      <div className="flex items-center gap-2 mb-2.5">
+        {(newOrder || unseen) && (
+          <span className={`w-2 h-2 rounded-full flex-shrink-0 ${newOrder ? "bg-[var(--color-primary)] animate-pulse" : "bg-amber-400"}`} />
+        )}
+        <span className={`font-mono text-xs font-bold px-2 py-0.5 rounded-lg ${unseen ? "bg-[var(--color-primary)]/10 text-[var(--color-primary)]" : "bg-gray-100 text-gray-700"}`}>
+          {order.trackingCode}
+        </span>
+        <span className="text-[10px] text-gray-400 mr-auto">{toFarsiDate(order.createdAt)}</span>
+      </div>
+
+      <div className="flex items-center justify-between gap-2 mb-3">
+        <div className="min-w-0">
+          <p className="text-xs font-bold text-gray-800 truncate">{getUserFullName(order.user) || "—"}</p>
+          <p className="text-[10px] text-gray-400">{order.user?.phone || ""}</p>
+        </div>
+        <div className="text-left flex-shrink-0">
+          <span className="text-sm font-black text-gray-800">{formatPrice(order.totalPrice)}</span>
+          <span className="text-[10px] text-gray-400 mr-0.5">ت</span>
+        </div>
+      </div>
+
+      <div className="flex items-center flex-wrap gap-1.5 mb-3">
+        <StatusBadge config={payCfg} size="xs" />
+        <StatusBadge config={fulCfg} size="xs" />
+        {methodCfg && (
+          <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-gray-500 bg-gray-50 border border-gray-200 rounded-full px-2 py-0.5">
+            <methodCfg.icon size={10} />
+            {methodCfg.label}
+          </span>
+        )}
+      </div>
+
+      <div className="flex items-center gap-2">
+        <button
+          onClick={() => onView(order)}
+          className="flex-1 inline-flex items-center justify-center gap-1.5 px-3 py-2 text-[11px] font-bold text-white bg-[var(--color-primary)] rounded-lg"
+        >
+          <Eye size={13} /> مشاهده جزئیات
+        </button>
+        <button
+          onClick={() => onOpen(order)}
+          className="inline-flex items-center justify-center gap-1.5 px-3 py-2 text-[11px] font-bold text-gray-600 bg-gray-50 border border-gray-200 rounded-lg"
+        >
+          <ExternalLink size={13} /> ویرایش
+        </button>
+      </div>
+    </div>
+  );
+}
+
+/* ─── Order Detail Modal (read-only summary) ────────────────────────── */
+function ModalSection({ title, icon: Icon, children }) {
+  return (
+    <div className="bg-white rounded-2xl border border-gray-100 p-4">
+      <div className="flex items-center gap-2 mb-3">
+        {Icon && <Icon size={14} className="text-[var(--color-primary)]" />}
+        <h3 className="text-xs font-black text-gray-700">{title}</h3>
+      </div>
+      {children}
+    </div>
+  );
+}
+
+function InfoRow({ label, value }) {
+  return (
+    <div className="flex items-start justify-between gap-3 py-1.5 border-b border-gray-50 last:border-0">
+      <span className="text-[11px] font-bold text-gray-400 flex-shrink-0">{label}</span>
+      <span className="text-[11px] font-bold text-gray-700 text-left break-words">{value ?? "—"}</span>
+    </div>
+  );
+}
+
+function OrderDetailModal({ orderId, onClose, onOpenFull }) {
+  const [order, setOrder] = useState(null);
+  const [installment, setInstallment] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+
+  // مودال با key={orderId} در والد رندر می‌شود، پس هر بار تازه mount می‌شود و
+  // مقدار اولیه‌ی loading/error درست است (نیازی به setState همگام در ابتدای افکت نیست)
+  useEffect(() => {
+    if (!orderId) return;
+    let active = true;
+    fetch(`/api/admin/orders/${orderId}`)
+      .then(async (r) => {
+        const d = await r.json().catch(() => ({}));
+        if (!r.ok) throw new Error(d.message || "خطا در دریافت سفارش");
+        return d;
+      })
+      .then((d) => {
+        if (!active) return;
+        setOrder(d.order);
+        setInstallment(d.installment || null);
+      })
+      .catch((e) => active && setError(e.message))
+      .finally(() => active && setLoading(false));
+    return () => { active = false; };
+  }, [orderId]);
+
+  // بستن با Escape
+  useEffect(() => {
+    const onKey = (e) => e.key === "Escape" && onClose();
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [onClose]);
+
+  const payCfg = order && PAYMENT_STATUS[order.paymentStatus];
+  const fulCfg = order && FULFILLMENT_STATUS[order.fulfillmentStatus];
+  const methodCfg = order && PAYMENT_METHOD[order.paymentMethod];
+  const addr = order?.address?.snapshot;
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center" dir="rtl">
+      <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={onClose} />
+      <motion.div
+        initial={{ opacity: 0, y: 40, scale: 0.98 }}
+        animate={{ opacity: 1, y: 0, scale: 1 }}
+        className="relative w-full sm:max-w-2xl bg-[var(--admin-bg,#f4f5f2)] rounded-t-3xl sm:rounded-3xl shadow-2xl max-h-[92vh] sm:max-h-[88vh] flex flex-col overflow-hidden"
+      >
+        {/* Header */}
+        <div className="flex items-center justify-between gap-3 px-5 py-4 bg-white border-b border-gray-100 flex-shrink-0">
+          <div className="flex items-center gap-2.5 min-w-0">
+            <div className="w-8 h-8 bg-[var(--color-primary)] rounded-xl flex items-center justify-center flex-shrink-0">
+              <ShoppingCart size={15} className="text-white" />
+            </div>
+            <div className="min-w-0">
+              <h2 className="text-sm font-black text-gray-900 truncate">جزئیات سفارش</h2>
+              {order && <p className="text-[11px] font-mono text-gray-400">{order.trackingCode}</p>}
+            </div>
+          </div>
+          <button onClick={onClose} className="w-8 h-8 flex items-center justify-center rounded-lg text-gray-400 hover:bg-gray-100 hover:text-gray-600 transition flex-shrink-0">
+            <X size={18} />
+          </button>
+        </div>
+
+        {/* Body */}
+        <div className="flex-1 overflow-y-auto p-4 sm:p-5 space-y-3">
+          {loading ? (
+            <div className="flex flex-col items-center justify-center py-20 gap-3">
+              <Loader2 size={26} className="animate-spin text-[var(--color-primary)]" />
+              <p className="text-sm text-gray-400">در حال بارگذاری...</p>
+            </div>
+          ) : error ? (
+            <div className="flex flex-col items-center justify-center py-20 gap-2">
+              <AlertCircle size={32} className="text-red-400" />
+              <p className="text-sm font-bold text-gray-500">{error}</p>
+            </div>
+          ) : order ? (
+            <>
+              {/* Status row */}
+              <div className="flex flex-wrap items-center gap-2">
+                <StatusBadge config={payCfg} />
+                <StatusBadge config={fulCfg} />
+                {methodCfg && (
+                  <span className="inline-flex items-center gap-1 text-xs font-semibold text-gray-500 bg-white border border-gray-200 rounded-full px-2.5 py-1">
+                    <methodCfg.icon size={11} /> {methodCfg.label}
+                  </span>
+                )}
+              </div>
+
+              {/* Order + Customer */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <ModalSection title="اطلاعات سفارش" icon={Hash}>
+                  <InfoRow label="کد رهگیری" value={<span className="font-mono">{order.trackingCode}</span>} />
+                  <InfoRow label="تاریخ ثبت" value={toFarsiDate(order.createdAt)} />
+                  <InfoRow label="تعداد اقلام" value={formatPrice(order.items?.reduce((s, i) => s + (i.quantity || 0), 0))} />
+                  {order.description ? <InfoRow label="توضیحات" value={order.description} /> : null}
+                </ModalSection>
+
+                <ModalSection title="اطلاعات مشتری" icon={User}>
+                  <InfoRow label="نام" value={getUserFullName(order.user)} />
+                  <InfoRow label="تلفن" value={order.user?.phone ? <span className="font-mono">{order.user.phone}</span> : "—"} />
+                  <InfoRow label="ایمیل" value={order.user?.email ? <span className="font-mono">{order.user.email}</span> : "—"} />
+                </ModalSection>
+              </div>
+
+              {/* Items */}
+              <ModalSection title="اقلام سفارش" icon={Package}>
+                <div className="space-y-2">
+                  {(order.items || []).map((item, idx) => {
+                    const vLabel = variantLabelOf(item);
+                    return (
+                      <div key={idx} className="flex items-center gap-3 py-2 border-b border-gray-50 last:border-0">
+                        <div className="w-11 h-11 rounded-lg bg-gray-50 border border-gray-100 flex items-center justify-center overflow-hidden flex-shrink-0">
+                          {item.product?.mainImage ? (
+                            <img src={item.product.mainImage} alt="" className="w-full h-full object-cover" />
+                          ) : (
+                            <Package size={16} className="text-gray-300" />
+                          )}
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <p className="text-xs font-bold text-gray-800 truncate">{item.product?.name || "محصول"}</p>
+                          {vLabel ? <p className="text-[10px] text-gray-400 truncate">{vLabel}</p> : null}
+                          {(item.flowSelections || []).filter((s) => s.nodeType === "category" || s.selectedProductName || s.nodeLabel).length > 0 && (
+                            <p className="text-[10px] text-[var(--color-primary)]/80 truncate">
+                              {item.flowSelections.map((s) => s.nodeLabel || s.selectedProductName).filter(Boolean).join("، ")}
+                            </p>
+                          )}
+                        </div>
+                        <div className="text-left flex-shrink-0">
+                          <p className="text-[11px] font-black text-gray-800">{formatPrice(item.unitPrice)} <span className="text-[9px] text-gray-400">ت</span></p>
+                          <p className="text-[10px] text-gray-400">تعداد: {formatPrice(item.quantity)}</p>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </ModalSection>
+
+              {/* Price summary + Payment */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <ModalSection title="خلاصه مبلغ" icon={Receipt}>
+                  <InfoRow label="جمع اقلام" value={`${formatPrice(order.subtotalPrice)} ت`} />
+                  {order.discountAmount > 0 && <InfoRow label="تخفیف" value={`${formatPrice(order.discountAmount)} ت`} />}
+                  {order.couponDiscount > 0 && <InfoRow label={`تخفیف کد ${order.coupon?.code || ""}`} value={`${formatPrice(order.couponDiscount)} ت`} />}
+                  <InfoRow label="مبلغ کل" value={<span className="text-[var(--color-primary)] font-black">{formatPrice(order.totalPrice)} ت</span>} />
+                  {order.priceEUR ? <InfoRow label="مبلغ یورویی" value={`€ ${formatPrice(order.priceEUR)}`} /> : null}
+                </ModalSection>
+
+                <ModalSection title="پرداخت" icon={CreditCard}>
+                  <InfoRow label="روش" value={methodCfg?.label} />
+                  <InfoRow label="وضعیت" value={payCfg?.label} />
+                  {(order.payments || []).map((p, i) => (
+                    <InfoRow key={i} label={PAYMENT_METHOD[p.method]?.label || p.method}
+                      value={`${formatPrice(p.amount)} ت · ${PAYMENT_STATUS[p.status]?.label || p.status}`} />
+                  ))}
+                  {installment ? <InfoRow label="اقساط" value={`${formatPrice(installment.numberOfChecks)} چک`} /> : null}
+                </ModalSection>
+              </div>
+
+              {/* Shipping + Tracking */}
+              <ModalSection title="ارسال و رهگیری" icon={MapPin}>
+                {addr ? (
+                  <>
+                    <InfoRow label="گیرنده" value={addr.fullName} />
+                    <InfoRow label="تلفن" value={addr.phone ? <span className="font-mono">{addr.phone}</span> : "—"} />
+                    <InfoRow label="استان / شهر" value={[addr.province, addr.city].filter(Boolean).join(" - ") || "—"} />
+                    <InfoRow label="نشانی" value={addr.addressLine} />
+                    <InfoRow label="کد پستی" value={addr.postalCode ? <span className="font-mono">{addr.postalCode}</span> : "—"} />
+                  </>
+                ) : (
+                  <p className="text-[11px] font-bold text-gray-400 py-1">نشانی ثبت نشده است</p>
+                )}
+                <InfoRow label="وضعیت ارسال" value={fulCfg?.label} />
+                <InfoRow label="کد رهگیری سفارش" value={<span className="font-mono">{order.trackingCode}</span>} />
+              </ModalSection>
+            </>
+          ) : null}
+        </div>
+
+        {/* Footer */}
+        <div className="flex items-center gap-2 px-5 py-3.5 bg-white border-t border-gray-100 flex-shrink-0">
+          <button
+            onClick={() => onOpenFull(orderId)}
+            className="flex-1 inline-flex items-center justify-center gap-2 py-2.5 rounded-xl text-sm font-bold text-white bg-[var(--color-primary)] hover:bg-[var(--color-primary-hover)] transition"
+          >
+            <ExternalLink size={15} /> باز کردن صفحه کامل سفارش
+          </button>
+          <button
+            onClick={onClose}
+            className="px-5 py-2.5 rounded-xl text-sm font-bold text-gray-600 bg-gray-100 hover:bg-gray-200 transition"
+          >
+            بستن
+          </button>
+        </div>
+      </motion.div>
+    </div>
+  );
+}
+
 /* ─── Main Component ─────────────────────────────────────────────────── */
 export default function AdminOrdersClient() {
   const router = useRouter();
@@ -235,6 +540,7 @@ export default function AdminOrdersClient() {
   const [paymentMethod, setPaymentMethod] = useState("all");
   const [page, setPage] = useState(1);
   const [showFilters, setShowFilters] = useState(false);
+  const [viewOrderId, setViewOrderId] = useState(null); // مودال جزئیات سفارش
 
   const fetchOrders = useCallback(async (resetPage = false) => {
     setLoading(true);
@@ -287,6 +593,8 @@ export default function AdminOrdersClient() {
   const handleSelectOrder = (order) => {
     router.push(`/p-admin/admin-orders/${order._id}`);
   };
+
+  const handleViewOrder = (order) => setViewOrderId(order._id);
 
   return (
     <div className="min-h-screen" style={{ background: "var(--admin-bg, #f4f5f2)" }}>
@@ -448,7 +756,20 @@ export default function AdminOrdersClient() {
               <p className="text-xs text-gray-300">فیلترها را تغییر دهید یا جستجو را پاک کنید</p>
             </div>
           ) : (
-            <div className="overflow-x-auto">
+            <>
+            {/* Mobile cards */}
+            <div className="md:hidden divide-y divide-gray-100">
+              {sortedOrders.map((order) => (
+                <OrderCard
+                  key={order._id}
+                  order={order}
+                  onView={handleViewOrder}
+                  onOpen={handleSelectOrder}
+                />
+              ))}
+            </div>
+            {/* Desktop table */}
+            <div className="hidden md:block overflow-x-auto">
               <table className="w-full" dir="rtl">
                 <thead>
                   <tr className="border-b border-gray-100 bg-gray-50/80">
@@ -469,12 +790,14 @@ export default function AdminOrdersClient() {
                       key={order._id}
                       order={order}
                       onSelect={handleSelectOrder}
+                      onView={handleViewOrder}
                       isHighlighted={isUnseen(order)}
                     />
                   ))}
                 </tbody>
               </table>
             </div>
+            </>
           )}
 
           {/* Pagination */}
@@ -522,6 +845,18 @@ export default function AdminOrdersClient() {
           )}
         </div>
       </div>
+
+      {/* Order detail modal */}
+      <AnimatePresence>
+        {viewOrderId && (
+          <OrderDetailModal
+            key={viewOrderId}
+            orderId={viewOrderId}
+            onClose={() => setViewOrderId(null)}
+            onOpenFull={(id) => { setViewOrderId(null); router.push(`/p-admin/admin-orders/${id}`); }}
+          />
+        )}
+      </AnimatePresence>
     </div>
   );
 }

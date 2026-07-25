@@ -26,7 +26,7 @@ export default async function EditOrderFlowPage({ params }) {
   const plainFlow = JSON.parse(JSON.stringify(flow));
 
   return (
-    <div style={{ height: "calc(100vh - 130px)" }}>
+    <div className="flex flex-col" style={{ height: "calc(100dvh - 120px)" }}>
       <div className="mb-4">
         <h1 className="text-lg font-bold text-gray-800">
           ویرایش: {plainFlow.name}
@@ -36,11 +36,8 @@ export default async function EditOrderFlowPage({ params }) {
         </p>
       </div>
       <div
-        className="rounded-2xl overflow-hidden"
-        style={{
-          border: "1px solid #e8e4df",
-          height: "calc(100% - 56px)",
-        }}
+        className="rounded-2xl overflow-hidden flex-1 min-h-0"
+        style={{ border: "1px solid #e8e4df" }}
       >
         <OrderFlowForm initialFlow={plainFlow} />
       </div>

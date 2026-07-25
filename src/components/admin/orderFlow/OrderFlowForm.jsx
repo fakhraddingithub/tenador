@@ -1,9 +1,9 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import OrderFlowBuilder from "./OrderFlowBuilder";
-import { FiArrowRight, FiCheck, FiAlertTriangle } from "react-icons/fi";
+import { FiArrowRight, FiCheck, FiAlertTriangle, FiSave } from "react-icons/fi";
 
 const COLORS = {
   primary: "#004225",
@@ -29,6 +29,9 @@ export default function OrderFlowForm({ initialFlow = null }) {
   });
 
   const [graphData, setGraphData] = useState(null); // { nodes, edges }
+  // ارجاع به تابعِ ذخیره‌ی داخلِ Builder تا دکمه‌ی ذخیره‌ی همیشه‌مرئیِ بالای صفحه
+  // هم بتواند گراف را ذخیره کند (رفعِ مشکلِ «برای یافتن دکمه ذخیره باید زوم کرد»)
+  const saveRef = useRef(null);
 
   useEffect(() => {
     fetch("/api/categories")
@@ -104,9 +107,37 @@ export default function OrderFlowForm({ initialFlow = null }) {
         </div>
       )}
 
+      {/* نوار اکشن همیشه‌مرئی — دکمه ذخیره بالای صفحه تا بدون زوم در دسترس باشد */}
+      <div
+        className="flex items-center justify-between gap-3 px-4 sm:px-6 py-2.5"
+        style={{ background: "white", borderBottom: `1px solid ${COLORS.border}` }}
+      >
+        <span className="text-xs font-bold" style={{ color: COLORS.muted }}>
+          تنظیمات و گراف فرایند
+        </span>
+        <button
+          onClick={() => saveRef.current?.()}
+          disabled={isSaving}
+          className="flex items-center gap-2 px-4 py-2 rounded-xl font-bold text-xs sm:text-sm text-white transition-all hover:opacity-90 disabled:opacity-60"
+          style={{ background: `linear-gradient(135deg, ${COLORS.primary}, #0a5c37)` }}
+        >
+          {isSaving ? (
+            <>
+              <span className="w-4 h-4 border-2 border-white/40 border-t-white rounded-full animate-spin" />
+              در حال ذخیره...
+            </>
+          ) : (
+            <>
+              <FiSave size={15} />
+              ذخیره فرایند
+            </>
+          )}
+        </button>
+      </div>
+
       {/* بخش تنظیمات اولیه */}
       <div
-        className="px-6 py-4 grid grid-cols-1 md:grid-cols-4 gap-4"
+        className="px-4 sm:px-6 py-4 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4 flex-shrink-0"
         style={{ background: "white", borderBottom: `1px solid ${COLORS.border}` }}
       >
         <div>
@@ -178,13 +209,14 @@ export default function OrderFlowForm({ initialFlow = null }) {
         </div>
       </div>
 
-      {/* گراف */}
-      <div className="flex-1" style={{ minHeight: 560 }}>
+      {/* گراف — min-h-0 اجازه می‌دهد فرزندِ فلکس کوچک شود و اسکرول داخلی درست کار کند */}
+      <div className="flex-1 min-h-0">
         <OrderFlowBuilder
           initialFlow={initialFlow}
           categories={categories}
           onSave={handleSave}
           isSaving={isSaving}
+          onRegisterSave={(fn) => { saveRef.current = fn; }}
         />
       </div>
     </div>

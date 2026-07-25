@@ -24,6 +24,8 @@ export async function GET(req) {
     const { searchParams } = new URL(req.url);
     const isAdmin = searchParams.get("isAdmin") === "true";
     const categoryId = searchParams.get("category"); // فیلتر بر اساس دسته‌بندی
+    const sportId = searchParams.get("sport"); // فیلتر بر اساس ورزش
+    const brandId = searchParams.get("brand"); // فیلتر بر اساس برند
     const serieId = searchParams.get("serie"); // فیلتر بر اساس سری
     // شامل‌کردن محصولات کل زیردرختِ سری (زیرسری‌ها در هر عمق) — opt-in تا
     // رفتار سایر مصرف‌کننده‌های پارامتر serie تغییری نکند
@@ -43,6 +45,8 @@ export async function GET(req) {
     // اگر ادمین بود آبجکت خالی {} (یعنی همه محصولات) و اگر نبود فقط { isActive: true }
     const query = isAdmin ? {} : { isActive: true };
     if (categoryId) query.category = categoryId;
+    if (sportId) query.sport = sportId;
+    if (brandId) query.brand = brandId;
     if (serieId) {
       if (includeDescendants) {
         // BFS روی parentSerie: سری داده‌شده + همه‌ی زیرسری‌ها در هر عمق

@@ -42,6 +42,12 @@ const COLORS = {
 const NODE_WIDTH = 220;
 const NODE_HEIGHT = 80;
 
+// کوتاه‌سازی متن تا داخلِ کارتِ نود (SVG text به‌خودی‌خود کلیپ نمی‌شود)
+const truncate = (str, max) => {
+  const s = String(str ?? "");
+  return s.length > max ? s.slice(0, max) + "…" : s;
+};
+
 // ─── تولید ID منحصربه‌فرد ───
 let _id = 1;
 const genId = () => `node_${Date.now()}_${_id++}`;
@@ -61,6 +67,7 @@ export default function OrderFlowBuilder({
   categories = [],
   onSave,
   isSaving = false,
+  onRegisterSave,
 }) {
   const [nodes, setNodes] = useState(
     initialFlow?.nodes
@@ -259,6 +266,11 @@ export default function OrderFlowBuilder({
     onSave?.({ nodes: exportNodes, edges });
   }, [nodes, edges, onSave]);
 
+  // ثبتِ تابعِ ذخیره برای دکمه‌ی همیشه‌مرئیِ بالای صفحه (OrderFlowForm)
+  useEffect(() => {
+    onRegisterSave?.(handleSave);
+  }, [handleSave, onRegisterSave]);
+
   // ─── Zoom با scroll ───
   const handleWheel = useCallback((e) => {
     e.preventDefault();
@@ -394,9 +406,7 @@ export default function OrderFlowBuilder({
             fill="#1e293b"
             fontFamily="Vazirmatn, sans-serif"
           >
-            {node.label.length > 20
-              ? node.label.slice(0, 20) + "…"
-              : node.label}
+            {truncate(node.label, 20)}
           </text>
 
           {/* زیرعنوان */}
@@ -407,12 +417,15 @@ export default function OrderFlowBuilder({
             fill={COLORS.muted}
             fontFamily="Vazirmatn, sans-serif"
           >
-            {isStart
-              ? "نقطه شروع"
-              : node.type === "category"
-              ? categories.find((c) => c._id === node.categoryId)?.title ||
-                "دسته‌بندی انتخاب نشده"
-              : node.serviceName || "خدمت بدون نام"}
+            {truncate(
+              isStart
+                ? "نقطه شروع"
+                : node.type === "category"
+                ? categories.find((c) => c._id === node.categoryId)?.title ||
+                  "دسته‌بندی انتخاب نشده"
+                : node.serviceName || "خدمت بدون نام",
+              22
+            )}
           </text>
 
           {/* تگ اجباری */}
@@ -468,14 +481,14 @@ export default function OrderFlowBuilder({
 
   return (
     <div
-      className="flex h-full"
+      className="flex flex-col lg:flex-row h-full min-h-0"
       style={{ fontFamily: "Vazirmatn, sans-serif", direction: "rtl" }}
     >
       {/* ─── Canvas ─── */}
       <div
         ref={containerRef}
-        className="flex-1 relative overflow-hidden"
-        style={{ background: "#f8f9fb", minHeight: 600 }}
+        className="flex-1 relative overflow-hidden min-h-[220px] lg:min-h-0"
+        style={{ background: "#f8f9fb" }}
         onMouseMove={handleMouseMove}
         onMouseUp={handleMouseUp}
         onMouseDown={handleCanvasMouseDown}
@@ -580,21 +593,19 @@ export default function OrderFlowBuilder({
         </div>
       </div>
 
-      {/* ─── پنل سمت راست ─── */}
+      {/* ─── پنل ابزار ─── */}
+      {/* موبایل: تمام‌عرض، زیرِ بوم، با ارتفاعِ محدود و اسکرولِ داخلی.
+          دسکتاپ: ستونِ کنارِ بوم با امکانِ جمع‌شدن (۳۲۰↔۴۰). */}
       <div
-        className="flex flex-col"
-        style={{
-          width: showPanel ? 320 : 40,
-          borderLeft: `1px solid ${COLORS.border}`,
-          background: "white",
-          transition: "width 0.3s ease",
-          overflow: "hidden",
-        }}
+        className={`flex flex-col bg-white flex-shrink-0 w-full border-t lg:border-t-0 lg:border-l lg:h-full overflow-hidden transition-all duration-300 max-h-[50%] lg:max-h-none ${
+          showPanel ? "lg:w-80" : "lg:w-10"
+        }`}
+        style={{ borderColor: COLORS.border }}
       >
-        {/* تاگل پنل */}
+        {/* تاگل پنل — فقط دسکتاپ (روی موبایل پنل همیشه باز و اسکرول‌شونده است) */}
         <button
           onClick={() => setShowPanel((v) => !v)}
-          className="flex items-center justify-center w-full py-2 hover:bg-gray-50 transition-colors"
+          className="hidden lg:flex items-center justify-center w-full py-2 hover:bg-gray-50 transition-colors"
           style={{ borderBottom: `1px solid ${COLORS.border}`, minHeight: 40 }}
         >
           {showPanel ? (

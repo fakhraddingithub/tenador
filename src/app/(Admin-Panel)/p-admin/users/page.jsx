@@ -234,8 +234,8 @@ export default function AdminUsersManagement() {
           </div>
         </div>
 
-        {/* Table */}
-        <div className="overflow-x-auto">
+        {/* Table — desktop */}
+        <div className="hidden md:block overflow-x-auto">
           <table className="w-full text-sm text-right">
             <thead>
               <tr className="border-b text-xs font-bold text-gray-500 uppercase" style={{ borderColor: '#f0ede9', background: '#faf9f8' }}>
@@ -364,6 +364,85 @@ export default function AdminUsersManagement() {
               )}
             </tbody>
           </table>
+        </div>
+
+        {/* Cards — mobile */}
+        <div className="md:hidden divide-y" style={{ borderColor: '#f5f3f0' }}>
+          {filteredUsers.length > 0 ? filteredUsers.map((user) => (
+            <div key={user._id} className="p-4">
+              <div
+                onClick={() => openDetails(user._id)}
+                className="flex items-center gap-3 cursor-pointer"
+              >
+                {user.avatar ? (
+                  <img src={user.avatar} alt={getUserFullName(user)} className="w-10 h-10 rounded-[var(--radius)] object-cover flex-shrink-0" />
+                ) : (
+                  <div className="w-10 h-10 rounded-[var(--radius)] flex items-center justify-center font-bold text-sm text-white flex-shrink-0" style={{ background: 'var(--color-primary)' }}>
+                    {(user.name || '؟').charAt(0)}
+                  </div>
+                )}
+                <div className="min-w-0 flex-1">
+                  <span className="font-bold text-gray-800 text-sm block truncate">{getUserFullName(user, "بدون نام")}</span>
+                  <span className="block text-gray-400 font-mono text-[11px] truncate">{user.phone || user.email || '—'}</span>
+                </div>
+                {!user.isBanned ? (
+                  <span className="inline-flex items-center gap-1 text-[10px] font-bold text-emerald-700 bg-emerald-50 px-2 py-1 rounded-full flex-shrink-0">
+                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" /> فعال
+                  </span>
+                ) : (
+                  <span className="inline-flex items-center gap-1 text-[10px] font-bold text-red-600 bg-red-50 px-2 py-1 rounded-full flex-shrink-0">
+                    <span className="w-1.5 h-1.5 rounded-full bg-red-500" /> مسدود
+                  </span>
+                )}
+              </div>
+
+              <div className="flex items-center flex-wrap gap-2 mt-3">
+                {user.role === 'admin' ? (
+                  <span className="inline-flex items-center gap-1 text-[11px] font-bold text-purple-700 bg-purple-50 px-2 py-0.5 rounded-[var(--radius)] border border-purple-100">
+                    <Shield size={10} /> مدیر کل
+                  </span>
+                ) : user.role === 'coach' ? (
+                  <span className="inline-flex items-center gap-1 text-[11px] font-bold text-amber-700 bg-amber-50 px-2 py-0.5 rounded-[var(--radius)] border border-amber-100">
+                    <GraduationCap size={10} /> مربی {user.coachCode ? `· ${user.coachCode}` : ''}
+                  </span>
+                ) : (
+                  <span className="inline-flex items-center gap-1 text-[11px] font-bold text-gray-600 bg-gray-100 px-2 py-0.5 rounded-[var(--radius)]">
+                    {roleLabels[user.role] || 'کاربر عادی'}
+                  </span>
+                )}
+                <span className="text-[11px] font-bold text-gray-400 font-mono mr-auto">
+                  {user.createdAt ? new Date(user.createdAt).toLocaleDateString('fa-IR') : '—'}
+                </span>
+              </div>
+
+              <div className="flex items-center gap-2 mt-3">
+                <button
+                  onClick={() => openDetails(user._id)}
+                  className="flex-1 inline-flex items-center justify-center gap-1.5 px-3 py-2 text-[11px] font-bold text-gray-700 bg-gray-50 border border-gray-100 rounded-[var(--radius)]"
+                >
+                  <Eye size={13} className="text-gray-400" /> جزئیات
+                </button>
+                <button
+                  onClick={() => handleToggleBlock(user)}
+                  className={`flex-1 inline-flex items-center justify-center gap-1.5 px-3 py-2 text-[11px] font-bold rounded-[var(--radius)] border ${!user.isBanned ? 'text-red-600 bg-red-50 border-red-100' : 'text-emerald-600 bg-emerald-50 border-emerald-100'}`}
+                >
+                  {!user.isBanned ? <Ban size={13} /> : <CheckCircle size={13} />}
+                  {!user.isBanned ? 'مسدود' : 'رفع مسدودیت'}
+                </button>
+                <button
+                  onClick={() => handleChangeRole(user)}
+                  className="inline-flex items-center justify-center px-3 py-2 text-[11px] font-bold text-gray-700 bg-gray-50 border border-gray-100 rounded-[var(--radius)]"
+                  title={user.role === 'admin' ? 'تغییر به کاربر' : 'ارتقا به مدیر'}
+                >
+                  <Key size={13} className="text-gray-400" />
+                </button>
+              </div>
+            </div>
+          )) : (
+            <div className="p-10 text-center text-xs font-bold text-gray-400">
+              هیچ کاربری با این مشخصات یافت نشد.
+            </div>
+          )}
         </div>
       </div>
     </div>
