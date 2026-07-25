@@ -18,7 +18,9 @@ const POPULATES = [
   { path: "brand", select: "name title slug icon logo" },
   { path: "sport", select: "name title slug image headImage" },
   { path: "athlete", select: "name title slug image" },
-  { path: "category", select: "name title slug" },
+  // variantAttributes لازم است تا کوییک‌ویو برچسبِ فارسیِ ویژگی‌ها و واحدهای
+  // چندواحدی را داشته باشد (بدونش کلیدِ خام مثل gripSize نمایش داده می‌شود).
+  { path: "category", select: "name title slug variantAttributes" },
   { path: "serie", select: "name title slug level" },
   { path: "limitedEdition", select: "name title slug" },
   { path: "variants", select: "sku price attributes images stock isActive" },

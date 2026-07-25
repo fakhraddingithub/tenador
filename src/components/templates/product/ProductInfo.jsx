@@ -8,40 +8,19 @@ import AddToCartButton from "./AddToCartButton";
 import WishlistButton from "./WishlistButton";
 import VariantSelector from "./VariantSelector";
 import { useOrderFlowCart } from "@/components/modules/orderFlow/useOrderFlowCart";
-import { valueImages, attrUnits, unitValue, valueAvailable } from "@/lib/variantImages";
+import {
+  valueImages,
+  attrUnits,
+  unitValue,
+  valueAvailable,
+  groupVariantOptions,
+  findMatchingVariant,
+  buildLabelMap,
+} from "@/lib/variantImages";
 
 /* ─────────────────────────────────────────
    Helpers
 ───────────────────────────────────────── */
-
-function groupVariantOptions(variants = []) {
-  const map = {};
-  for (const variant of variants) {
-    for (const [key, val] of Object.entries(variant.attributes || {})) {
-      if (!map[key]) map[key] = new Set();
-      map[key].add(val);
-    }
-  }
-  return Object.fromEntries(
-    Object.entries(map).map(([k, s]) => [k, Array.from(s)])
-  );
-}
-
-function findMatchingVariant(variants = [], selection = {}) {
-  if (!Object.keys(selection).length) return null;
-  return (
-    variants.find((v) => {
-      const attrs = v.attributes || {};
-      return Object.entries(selection).every(([k, val]) => attrs[k] === val);
-    }) || null
-  );
-}
-
-function buildLabelMap(variantAttributes = []) {
-  return Object.fromEntries(
-    variantAttributes.map((a) => [a.name, a.label])
-  );
-}
 
 // نمایش مقدار تخفیف یک پله (درصد یا مبلغ ثابت تومان)
 function formatTierValue(tier) {

@@ -42,6 +42,11 @@ export default function VariantSelector({
   const displayLabel = (attrKey, val) =>
     (getValueLabel ? getValueLabel(attrKey, val) : null) ?? val;
 
+  // در کوییک‌ویو گزینه‌ها تمیز نمایش داده می‌شوند: بدون متنِ «ناموجود» و بدون خط‌خوردگی.
+  // جلوگیری از انتخاب همچنان با disabled/aria-disabled انجام می‌شود.
+  const titleFor = (text, disabled) =>
+    disabled && !compact ? `${text} (ناموجود برای این انتخاب)` : text;
+
   return (
     <div className={compact ? "flex flex-col gap-4 sm:gap-5" : "space-y-5"}>
       {optionKeys.map((attrKey) => {
@@ -121,7 +126,7 @@ export default function VariantSelector({
                       type="button"
                       disabled={disabled}
                       onClick={() => !disabled && onSelect(attrKey, val)}
-                      title={disabled ? `${text} (ناموجود برای این انتخاب)` : text}
+                      title={titleFor(text, disabled)}
                       aria-label={`${label}: ${text}`}
                       aria-pressed={isSelected}
                       aria-disabled={disabled}
@@ -152,7 +157,7 @@ export default function VariantSelector({
                     type="button"
                     disabled={disabled}
                     onClick={() => !disabled && onSelect(attrKey, val)}
-                    title={disabled ? `${text} (ناموجود برای این انتخاب)` : text}
+                    title={titleFor(text, disabled)}
                     aria-pressed={isSelected}
                     aria-disabled={disabled}
                     className={`relative rounded-lg border-2 text-sm font-medium transition-all select-none
@@ -164,7 +169,7 @@ export default function VariantSelector({
                       }
                       ${
                         disabled
-                          ? "border-gray-100 text-gray-300 bg-gray-50 line-through cursor-not-allowed"
+                          ? `border-gray-100 text-gray-300 bg-gray-50 cursor-not-allowed ${compact ? "" : "line-through"}`
                           : isSelected
                           ? "border-[#aa4725] bg-[#aa4725]/5 text-[#aa4725] shadow-sm"
                           : "border-gray-200 text-gray-700 hover:border-[#aa4725]/50"

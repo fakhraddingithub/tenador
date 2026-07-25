@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo, useEffect } from "react";
+import { useState, useEffect } from "react";
 import Image from "next/image";
 import {
   FaTimes,
@@ -14,80 +14,87 @@ import { toast } from "react-toastify";
 import { useOrderFlowCart } from "@/components/modules/orderFlow/useOrderFlowCart";
 import GalleryImageViewer from "@/components/ui/GalleryImageViewer";
 import VariantSelector from "@/components/templates/product/VariantSelector";
-import { buildGalleryImages, valueImages, attrUnits, unitValue, valueAvailable } from "@/lib/variantImages";
+import {
+  buildGalleryImages,
+  valueImages,
+  attrUnits,
+  unitValue,
+  valueAvailable,
+  groupVariantOptions,
+  findMatchingVariant,
+  buildLabelMap,
+  defaultSelection,
+} from "@/lib/variantImages";
 
 /* ─────────────────────────────────────────
    Helpers
 ───────────────────────────────────────── */
-function groupVariantOptions(variants = []) {
-  const map = {};
-  for (const v of variants) {
-    for (const [key, val] of Object.entries(v.attributes || {})) {
-      if (!map[key]) map[key] = new Set();
-      map[key].add(val);
-    }
-  }
-  return Object.fromEntries(
-    Object.entries(map).map(([k, s]) => [k, Array.from(s)]),
-  );
-}
-
-function findMatchingVariant(variants = [], selection = {}) {
-  if (!Object.keys(selection).length) return null;
-  return (
-    variants.find((v) => {
-      const attrs = v.attributes || {};
-      return Object.entries(selection).every(([k, val]) => attrs[k] === val);
-    }) || null
-  );
-}
-
-function buildLabelMap(variantAttributes = []) {
-  return Object.fromEntries(variantAttributes.map((a) => [a.name, a.label]));
-}
+// اعداد فارسی
+const fa = (n) => Number(n || 0).toLocaleString("fa-IR");
 
 // نمایش مقدار تخفیف یک پله تعدادی (درصد یا مبلغ ثابت تومان)
 function formatTierValue(tier) {
   if (!tier) return "";
   return tier.kind === "percent"
-    ? `${tier.value}٪`
-    : `${Number(tier.value).toLocaleString("fa-IR")} تومان`;
+    ? `${fa(tier.value)}٪`
+    : `${fa(tier.value)} تومان`;
 }
 
 /* ─────────────────────────────────────────
-   Component
+   Wrapper — چرخه‌ی عمر
+   ─────────────────────────────────────────
+   کوییک‌ویو در همه‌ی صفحات به‌صورتِ «یک نمونه‌ی مشترک برای کلِ گرید» رندر می‌شود و
+   فقط prop محصولش عوض می‌شود. قبلاً return null داخلِ بدنه‌ی همان کامپوننتِ استیت‌دار
+   بود، پس نمونه هرگز unmount نمی‌شد و استیتِ محصولِ قبلی (انتخابِ ویژگی، واریانت،
+   تعداد، تصویر) روی محصولِ بعدی باقی می‌ماند — تا حدِ افزودنِ واریانتِ محصولِ قبلی
+   به سبد.
+   راه‌حلِ ریشه‌ای (نه دور زدن): تمام استیت به کامپوننتِ درونی منتقل شده و اینجا با
+   key={product._id} ساخته می‌شود. با هر محصولِ جدید نمونه‌ی تازه mount می‌شود و با
+   بسته شدن مودال کامل unmount می‌شود؛ پس نشتِ استیت از نظرِ ساختاری ممکن نیست.
+   چون این کار در همین فایل انجام شده، همه‌ی فراخوان‌ها (و فراخوان‌های آینده) بدون
+   تغییر درست کار می‌کنند.
+─────────────────────────────────────────── */
+export default function QuickViewModal({ product, isOpen, ...rest }) {
+  if (!isOpen || !product) return null;
+  return <QuickViewContent key={product._id} product={product} {...rest} />;
+}
+
+/* ─────────────────────────────────────────
+   Content — همه‌ی استیتِ وابسته به محصول
 ───────────────────────────────────────── */
-export default function QuickViewModal({
+function QuickViewContent({
   product,
   rate,
-  isOpen,
   onClose,
   onToggleWishlist,
   isWishlisted,
 }) {
+  const hasVariants =
+    Array.isArray(product.variants) && product.variants.length > 0;
+
+  const labelMap = buildLabelMap(product.category?.variantAttributes);
+  const variantOptions = groupVariantOptions(product.variants);
+  const optionKeys = Object.keys(variantOptions);
+
+  // استیت‌ها با lazy initializer از روی همین محصول ساخته می‌شوند؛ چون کامپوننت به
+  // ازای هر محصول تازه mount می‌شود، نیازی به effect پاک‌سازی نیست.
   const [quantity, setQuantity] = useState(1);
-  const [selection, setSelection] = useState({});
+  const [selection, setSelection] = useState(() => defaultSelection(variantOptions));
   const [unitSelection, setUnitSelection] = useState({}); // واحدِ فعالِ هر ویژگیِ چندواحدی
-  const [selectedVariant, setSelectedVariant] = useState(null);
+  const [selectedImage, setSelectedImage] = useState(null);
   const [errorMessage, setErrorMessage] = useState(""); // پیامِ inline انتخاب ویژگی (مثل صفحه‌ی محصول)
+
+  // واریانتِ انتخاب‌شده «مشتق» است، نه استیتِ مستقل: همیشه از variants همین محصول و
+  // selection جاری محاسبه می‌شود، پس امکان ندارد با محصول/انتخابِ نمایش‌داده‌شده
+  // ناهمگام شود (منبعِ اصلیِ افزودنِ واریانتِ اشتباه به سبد).
+  const isSelectionComplete =
+    optionKeys.length > 0 && optionKeys.every((k) => selection[k]);
+  const selectedVariant = isSelectionComplete
+    ? findMatchingVariant(product.variants, selection)
+    : null;
 
   // افزودن به سبد با پشتیبانی از فرایند سفارش
   const { requestAddToCart, flowModal } = useOrderFlowCart();
-
-  const hasVariants =
-    Array.isArray(product?.variants) && product.variants.length > 0;
-
-  const labelMap = useMemo(
-    () => buildLabelMap(product?.category?.variantAttributes),
-    [product?.category],
-  );
-
-  const variantOptions = useMemo(
-    () => groupVariantOptions(product?.variants),
-    [product?.variants],
-  );
-
-  const optionKeys = Object.keys(variantOptions);
 
   // چندواحدی: واحدِ فعال، برچسبِ مقدار در آن واحد، و تعویضِ واحد
   const getActiveUnit = (attrKey) =>
@@ -98,85 +105,67 @@ export default function QuickViewModal({
     setUnitSelection((prev) => ({ ...prev, [attrKey]: unit }));
 
   // گالریِ یکتاسازی‌شده با اولویتِ تصاویرِ مقادیرِ انتخاب‌شده (مثلاً رنگ انتخاب‌شده)
-  const activeGalleryImages = useMemo(
-    () => buildGalleryImages(product, selection),
-    [product, selection],
-  );
-
-  const [selectedImage, setSelectedImage] = useState(null);
+  const activeGalleryImages = buildGalleryImages(product, selection);
   const displayedImage =
-    selectedImage ?? activeGalleryImages[0] ?? product?.mainImage;
+    selectedImage ?? activeGalleryImages[0] ?? product.mainImage;
 
   function handleVariantSelect(attrKey, value) {
-    const newSelection = { ...selection, [attrKey]: value };
-    setSelection(newSelection);
+    setSelection((prev) => ({ ...prev, [attrKey]: value }));
     setErrorMessage(""); // با انتخابِ ویژگی، پیامِ خطا پاک می‌شود
     // گالری با اولویتِ تصاویرِ مقدارِ انتخاب‌شده به‌روزرسانی می‌شود؛ انتخابِ دستیِ
     // تصویر صفر می‌شود تا تصویرِ همان مقدار جلو بیفتد.
     setSelectedImage(null);
-
-    if (optionKeys.every((k) => newSelection[k])) {
-      setSelectedVariant(findMatchingVariant(product.variants, newSelection));
-    } else {
-      setSelectedVariant(null);
-    }
   }
-
-  // ── قیمت پایه به تومان ────────────────────────────────────────────────────
-  const baseTomanPrice = useMemo(() => {
-    const eurPrice = selectedVariant
-      ? Number(selectedVariant.price)
-      : Number(product?.basePrice);
-    return Math.floor(Math.round(eurPrice * (rate || 0)) / 1000) * 1000;
-  }, [selectedVariant, product?.basePrice, rate]);
 
   // ── دریافت داده‌های تخفیف از price API ─────────────────────────────────────
   const [priceApiData, setPriceApiData] = useState(null);
 
   useEffect(() => {
-    if (!product?._id || !rate) return;
     let cancelled = false;
-    setPriceApiData(null);
     fetch(`/api/product/${product._id}/price`)
       .then((r) => r.json())
-      .then((data) => { if (!cancelled && !data.error) setPriceApiData(data); })
+      .then((data) => {
+        // پاسخ فقط وقتی پذیرفته می‌شود که واقعاً مالِ همین محصول باشد
+        if (cancelled || data?.error) return;
+        if (String(data.productId) !== String(product._id)) return;
+        setPriceApiData(data);
+      })
       .catch(() => {});
     return () => { cancelled = true; };
-  }, [product?._id, rate]);
+  }, [product._id]);
 
-  // ── قیمت نهایی و تخفیف (با توجه به واریانت انتخاب‌شده) ────────────────────
-  const { finalTomanPrice, discountPercent, hasDiscount } = useMemo(() => {
-    if (!priceApiData) return { finalTomanPrice: baseTomanPrice, discountPercent: 0, hasDiscount: false };
+  // ── قیمت‌ها ────────────────────────────────────────────────────────────────
+  // منبعِ اصلی، عددهای سرور است (basePriceToman/finalPriceToman) تا با priceEngine
+  // یکی بماند؛ تا پیش از رسیدنِ پاسخ، تبدیلِ محلیِ basePrice × rate نمایش داده می‌شود.
+  const priceRow =
+    (selectedVariant &&
+      priceApiData?.variants?.find(
+        (v) => String(v._id) === String(selectedVariant._id),
+      )) ||
+    priceApiData;
 
-    if (selectedVariant) {
-      // پیدا کردن واریانت در داده price API
-      const vData = priceApiData.variants?.find((v) => String(v._id) === String(selectedVariant._id));
-      if (vData && vData.finalPriceToman < vData.basePriceToman) {
-        return { finalTomanPrice: vData.finalPriceToman, discountPercent: vData.discountPercent || 0, hasDiscount: true };
-      }
-      return { finalTomanPrice: baseTomanPrice, discountPercent: 0, hasDiscount: false };
-    }
+  const localToman = (() => {
+    const eur = Number(selectedVariant?.price || product.basePrice || 0);
+    const effRate = Number(priceApiData?.rate || rate || 0);
+    return Math.floor(Math.round(eur * effRate) / 1000) * 1000;
+  })();
 
-    // بدون واریانت: تخفیف کلی محصول
-    if (priceApiData.finalPriceToman < priceApiData.basePriceToman) {
-      return { finalTomanPrice: priceApiData.finalPriceToman, discountPercent: priceApiData.discountPercent || 0, hasDiscount: true };
-    }
-    return { finalTomanPrice: baseTomanPrice, discountPercent: 0, hasDiscount: false };
-  }, [priceApiData, selectedVariant, baseTomanPrice]);
+  const baseTomanPrice = priceRow ? priceRow.basePriceToman : localToman;
+  const finalTomanPrice = priceRow ? priceRow.finalPriceToman : localToman;
+  const hasDiscount = finalTomanPrice < baseTomanPrice;
 
   // ── تخفیف تعدادی (از سیستم مدیریت تخفیف‌ها — price API) ────────────────────
   const quantityDiscount = priceApiData?.quantityDiscount ?? null;
   const hasQuantityTiers = Boolean(quantityDiscount?.tiers?.length);
 
   // بهترین پله‌ای که تعداد فعلی به آن رسیده است (هم‌منطق با priceEngine سرور)
-  const activeQuantityTier = useMemo(() => {
-    if (!hasQuantityTiers) return null;
-    let best = null;
-    for (const t of quantityDiscount.tiers) {
-      if (quantity >= t.minQty && (!best || t.minQty > best.minQty)) best = t;
-    }
-    return best;
-  }, [quantityDiscount, hasQuantityTiers, quantity]);
+  const activeQuantityTier = hasQuantityTiers
+    ? quantityDiscount.tiers.reduce(
+        (best, t) =>
+          quantity >= t.minQty && (!best || t.minQty > best.minQty) ? t : best,
+        null,
+      )
+    : null;
 
   const qtyDiscountPerUnit = activeQuantityTier
     ? Math.max(
@@ -197,6 +186,18 @@ export default function QuickViewModal({
     baseTomanPrice > 0
       ? Math.round(((baseTomanPrice - displayPrice) / baseTomanPrice) * 100)
       : 0;
+
+  // ── موجودی ────────────────────────────────────────────────────────────────
+  // ponytail: در این دیتامدل «تعداد موجودی» وجود ندارد (models/Variant.js فیلد stock
+  // ندارد)؛ معیارِ موجود بودن، وجودِ واریانتِ متناظر با ترکیبِ انتخاب‌شده است. اگر
+  // بعداً stock عددی اضافه شد، همین‌جا به سقفِ تعداد هم وصل شود.
+  const availability = !hasVariants
+    ? "available"
+    : !isSelectionComplete
+    ? "pending"
+    : selectedVariant
+    ? "available"
+    : "unavailable";
 
   function handleAddToCart() {
     let variantId = null;
@@ -229,8 +230,6 @@ export default function QuickViewModal({
       },
     });
   }
-
-  if (!isOpen || !product) return null;
 
   return (
     <div
@@ -439,6 +438,29 @@ export default function QuickViewModal({
             />
           )}
 
+          {/* ── موجودیِ ترکیبِ انتخاب‌شده ── */}
+          {hasVariants && (
+            <div className="flex items-center gap-2 text-xs font-bold">
+              {availability === "available" && (
+                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-green-50 text-green-700 border border-green-200">
+                  <span className="w-1.5 h-1.5 rounded-full bg-green-500" />
+                  موجود در انبار
+                </span>
+              )}
+              {availability === "unavailable" && (
+                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-red-50 text-red-600 border border-red-200">
+                  <span className="w-1.5 h-1.5 rounded-full bg-red-500" />
+                  این ترکیب موجود نیست
+                </span>
+              )}
+              {availability === "pending" && (
+                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-gray-50 text-gray-500 border border-gray-200">
+                  برای مشاهده‌ی موجودی، ویژگی‌ها را انتخاب کنید
+                </span>
+              )}
+            </div>
+          )}
+
           {/* ── تخفیف تعدادی ── */}
           {hasQuantityTiers && (
             <div className="bg-purple-50/70 border border-purple-100 rounded-lg p-3 space-y-2">
@@ -464,7 +486,7 @@ export default function QuickViewModal({
                             : "bg-white text-purple-700 border-purple-200"
                         }`}
                       >
-                        {t.minQty}+ عدد → {formatTierValue(t)}
+                        {fa(t.minQty)}+ عدد ← {formatTierValue(t)}
                       </span>
                     );
                   })}
@@ -485,19 +507,19 @@ export default function QuickViewModal({
                     {/* قیمت اصلی خط‌خورده */}
                     <div className="flex items-baseline gap-1">
                       <span className="text-sm text-gray-300 line-through">
-                        {baseTomanPrice.toLocaleString()}
+                        {fa(baseTomanPrice)}
                       </span>
                       <span className="text-[10px] text-gray-300 line-through">تومان</span>
                       {effectiveDiscountPercent > 0 && (
                         <span className="text-[10px] font-bold text-white bg-red-500 px-1.5 py-0.5 rounded-full">
-                          {effectiveDiscountPercent}٪
+                          {fa(effectiveDiscountPercent)}٪
                         </span>
                       )}
                     </div>
                     {/* قیمت تخفیف‌خورده */}
                     <div className="flex items-baseline gap-1">
                       <span className="text-2xl sm:text-3xl font-bold text-[#aa4725]">
-                        {displayPrice.toLocaleString()}
+                        {fa(displayPrice)}
                       </span>
                       <span className="text-xs sm:text-sm font-bold text-[#aa4725]">
                         تومان
@@ -507,7 +529,7 @@ export default function QuickViewModal({
                 ) : (
                   <div className="flex items-baseline gap-1">
                     <span className="text-2xl sm:text-3xl font-bold text-[#aa4725]">
-                      {displayPrice.toLocaleString()}
+                      {fa(displayPrice)}
                     </span>
                     <span className="text-xs sm:text-sm font-bold text-[#aa4725]">
                       تومان
@@ -520,16 +542,19 @@ export default function QuickViewModal({
               <div className="flex items-center bg-gray-100 rounded-lg p-1 border border-gray-200">
                 <button
                   onClick={() => setQuantity((q) => q + 1)}
+                  aria-label="افزایش تعداد"
                   className="w-9 h-9 sm:w-10 sm:h-10 flex items-center justify-center bg-white rounded-md shadow-sm hover:text-[#aa4725] transition-all"
                 >
                   <FaPlus size={11} />
                 </button>
                 <span className="px-3 sm:px-4 font-bold text-base sm:text-lg text-[#1a1a1a] min-w-[2.5rem] text-center">
-                  {quantity}
+                  {fa(quantity)}
                 </span>
                 <button
                   onClick={() => setQuantity((q) => Math.max(1, q - 1))}
-                  className="w-9 h-9 sm:w-10 sm:h-10 flex items-center justify-center bg-white rounded-md shadow-sm hover:text-[#aa4725] transition-all"
+                  disabled={quantity <= 1}
+                  aria-label="کاهش تعداد"
+                  className="w-9 h-9 sm:w-10 sm:h-10 flex items-center justify-center bg-white rounded-md shadow-sm hover:text-[#aa4725] transition-all disabled:opacity-40 disabled:hover:text-inherit"
                 >
                   <FaMinus size={11} />
                 </button>

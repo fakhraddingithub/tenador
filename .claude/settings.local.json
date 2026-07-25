@@ -254,7 +254,9 @@
       "PowerShell(npx eslint \"src/components/templates/productMatch/BestInCategorySection.jsx\" \"src/components/templates/productMatch/AttributeGuideSection.jsx\" \"src/app/\\(Site\\)/match/[categorySlug]/page.jsx\")",
       "PowerShell(Get-NetTCPConnection *)",
       "PowerShell(try { \\(Invoke-WebRequest -Uri \"http://localhost:3000/match\" -UseBasicParsing -TimeoutSec 30\\).StatusCode } catch { $_.Exception.Message })",
-      "PowerShell(try { \\(Invoke-WebRequest -Uri \"http://localhost:3000/match/racket\" -UseBasicParsing -TimeoutSec 180\\).StatusCode } catch { $_.Exception.Message })"
+      "PowerShell(try { \\(Invoke-WebRequest -Uri \"http://localhost:3000/match/racket\" -UseBasicParsing -TimeoutSec 180\\).StatusCode } catch { $_.Exception.Message })",
+      "PowerShell(try { $r = Invoke-WebRequest -Uri \"http://localhost:3000/\" -UseBasicParsing -TimeoutSec 120; $r.StatusCode } catch { $_.Exception.Message })",
+      "PowerShell(try { $r = Invoke-WebRequest -Uri \"http://localhost:3000/\" -UseBasicParsing -TimeoutSec 200; $r.StatusCode } catch { $_.Exception.Message })"
     ]
   }
 }

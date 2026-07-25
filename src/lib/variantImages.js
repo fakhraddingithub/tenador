@@ -51,6 +51,54 @@ export function valueImageSwatches(product) {
   return out;
 }
 
+/* ── انتخابِ واریانت (مشترکِ صفحه محصول و کوییک‌ویو) ─────────────────────────
+   این توابع قبلاً در ProductInfo.jsx و QuickViewModal.jsx کپیِ عین‌به‌عین بودند.
+   خالص و بدون وابستگی به React‌اند تا هم قابلِ اشتراک باشند و هم قابلِ تست. */
+
+// { attrName: [values…] } — مقادیرِ ممکنِ هر ویژگی، به ترتیبِ ظهور در واریانت‌ها
+export function groupVariantOptions(variants = []) {
+  const map = {};
+  for (const variant of variants) {
+    for (const [key, val] of Object.entries(variantAttrsToObject(variant))) {
+      if (!map[key]) map[key] = new Set();
+      map[key].add(val);
+    }
+  }
+  return Object.fromEntries(
+    Object.entries(map).map(([k, s]) => [k, Array.from(s)])
+  );
+}
+
+// تنها واریانتی که همه‌ی مقادیرِ selection را دارد (یا null)
+export function findMatchingVariant(variants = [], selection = {}) {
+  if (!Object.keys(selection).length) return null;
+  return (
+    (variants || []).find((v) => {
+      const attrs = variantAttrsToObject(v);
+      return Object.entries(selection).every(([k, val]) => attrs[k] === val);
+    }) || null
+  );
+}
+
+// { attrName: برچسبِ فارسی } از روی category.variantAttributes
+export function buildLabelMap(variantAttributes = []) {
+  return Object.fromEntries((variantAttributes || []).map((a) => [a.name, a.label]));
+}
+
+/**
+ * انتخابِ پیش‌فرض: هر ویژگی‌ای که فقط یک مقدار دارد از ابتدا انتخاب می‌شود.
+ * محصولِ تک‌واریانتی در نتیجه کاملاً انتخاب می‌شود (همه‌ی ویژگی‌هایش تک‌مقداری‌اند)،
+ * پس قیمت و موجودیِ درست بلافاصله نمایش داده می‌شود. هیچ حدسِ مبهمی زده نمی‌شود:
+ * ویژگیِ چندمقداری بدونِ انتخاب می‌ماند.
+ */
+export function defaultSelection(variantOptions = {}) {
+  return Object.fromEntries(
+    Object.entries(variantOptions)
+      .filter(([, values]) => values.length === 1)
+      .map(([key, values]) => [key, values[0]])
+  );
+}
+
 /**
  * در دسترس بودنِ یک مقدار با توجه به انتخابِ جاری (cascade filtering, Bug 2):
  * مقدار «در دسترس» است اگر دستِ‌کم یک واریانت وجود داشته باشد که آن مقدار را برای
