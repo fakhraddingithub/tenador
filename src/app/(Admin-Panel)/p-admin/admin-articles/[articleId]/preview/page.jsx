@@ -1,5 +1,3 @@
-export const dynamic = "force-dynamic";
-
 import ArticlePreview from "@/components/admin/articles/ArticlePreview";
 
 export const metadata = { title: "پیش‌نمایش مقاله | پنل تنادور" };

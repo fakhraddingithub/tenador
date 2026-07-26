@@ -13,7 +13,11 @@ import "base/models/registerModels";
 import Installment from "base/models/Installment";
 import { deriveCheckStatus, summarizeInstallment } from "base/services/installmentService";
 
+import requireAdmin, { unauthorized } from "@/lib/requireAdmin";
+
 export async function GET(req, { params }) {
+  if (!(await requireAdmin())) return unauthorized();
+
   try {
     await connectToDB();
 

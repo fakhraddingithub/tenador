@@ -4,24 +4,23 @@
  */
 
 import { NextResponse } from "next/server";
-import { cookies } from "next/headers";
 import mongoose from "mongoose";
 
 import connectToDB from "base/configs/db";
-import { verifyToken } from "base/utils/auth";
-import User from "base/models/User";
 import Order from "base/models/Order";
 import "base/models/Product";
 
+import requireAdmin, { unauthorized } from "@/lib/requireAdmin";
+
+import User from "base/models/User";
+// نقش ادمین از دیتابیس بررسی می‌شود (توکن به‌تنهایی قابل‌اعتماد نیست).
 async function getAdminUser() {
-  const cookieStore = await cookies();
-  const token = cookieStore.get("accessToken")?.value;
-  if (!token) return null;
-  const decoded = verifyToken(token);
-  return decoded || null;
+  return await requireAdmin();
 }
 
 export async function GET(req, { params }) {
+  if (!(await requireAdmin())) return unauthorized();
+
   try {
     await connectToDB();
 

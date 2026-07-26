@@ -12,7 +12,11 @@ import connectToDB from "base/configs/db";
 import "base/models/registerModels";
 import { previewRecipientCount } from "base/services/userNotificationService";
 
+import requireAdmin, { unauthorized } from "@/lib/requireAdmin";
+
 export async function GET(req) {
+  if (!(await requireAdmin())) return unauthorized();
+
   try {
     await connectToDB();
 

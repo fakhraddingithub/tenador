@@ -8,6 +8,7 @@ import AdminInput from "@/components/admin/AdminInput";
 import { useState, useEffect, useRef, useCallback } from "react";
 import { toast } from "react-toastify";
 import { formatIranDateTimeLocal } from "@/lib/iranDateTime";
+import { useCategories } from "@/hooks/useAdminRefData";
 
 const APPLICABLE_OPTIONS = [
   { value: "all",      label: "همه محصولات",  hasTargets: false },
@@ -135,16 +136,12 @@ function TargetSearchField({ searchType, selectedItems, onAdd, onRemove }) {
 
 // ─── انتخاب دسته‌بندی‌ها (لیست کامل با چک‌باکس) ────────────────────────────────
 function CategoryTargetField({ selectedIds, onChange }) {
-  const [categories, setCategories] = useState([]);
-  const [loading, setLoading] = useState(true);
+  // 🟢 داده‌ی مرجع — مشترک با بقیه‌ی فرم‌های ادمین
+  const { categories, isLoading: loading, error } = useCategories();
 
   useEffect(() => {
-    fetch("/api/categories")
-      .then((res) => res.json())
-      .then((data) => setCategories(data.categories || []))
-      .catch(() => toast.error("خطا در دریافت دسته‌بندی‌ها"))
-      .finally(() => setLoading(false));
-  }, []);
+    if (error) toast.error("خطا در دریافت دسته‌بندی‌ها");
+  }, [error]);
 
   if (loading) return <p className="text-xs text-gray-400 py-2">در حال بارگذاری دسته‌بندی‌ها...</p>;
 

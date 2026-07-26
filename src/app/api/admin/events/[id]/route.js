@@ -3,8 +3,12 @@ import connectToDB from "base/configs/db";
 import Event from "base/models/Event";
 import { revalidateContent } from "@/lib/revalidate";
 
+import requireAdmin, { unauthorized } from "@/lib/requireAdmin";
+
 // GET /api/admin/events/:id
 export async function GET(req, { params }) {
+  if (!(await requireAdmin())) return unauthorized();
+
   await connectToDB();
   const { id } = await params;
   const event = await Event.findById(id).lean();
@@ -14,6 +18,8 @@ export async function GET(req, { params }) {
 
 // PUT /api/admin/events/:id
 export async function PUT(req, { params }) {
+  if (!(await requireAdmin())) return unauthorized();
+
   await connectToDB();
   const { id } = await params;
   const body = await req.json();
@@ -47,6 +53,8 @@ export async function PUT(req, { params }) {
 
 // DELETE /api/admin/events/:id
 export async function DELETE(req, { params }) {
+  if (!(await requireAdmin())) return unauthorized();
+
   await connectToDB();
   const { id } = await params;
   const event = await Event.findByIdAndDelete(id).lean();

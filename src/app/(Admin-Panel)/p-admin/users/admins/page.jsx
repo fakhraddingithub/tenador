@@ -8,7 +8,9 @@
  */
 
 import { useState, useEffect } from 'react'
+import useSWR from 'swr'
 import { useRouter } from 'next/navigation'
+
 import Link from 'next/link'
 import { motion } from 'framer-motion'
 import { toast } from 'react-toastify'
@@ -21,48 +23,33 @@ import {
 import RolesManager from '@/components/admin/admins/RolesManager'
 import AdminLoader from '@/components/admin/AdminLoader'
 
+// 🟡 پیکربندیِ دسترسی (ادمین‌ها/نقش‌ها/مجوزها) — پنجره‌ی کوتاه
+const ACL_TTL = { dedupingInterval: 10_000 }
+
 export default function AdminAdminsManagement() {
   const router = useRouter()
 
-  const [admins, setAdmins] = useState([])
-  const [stats, setStats] = useState({ total: 0, active: 0, inactive: 0 })
-  const [modules, setModules] = useState([])
-  const [rolesCount, setRolesCount] = useState(0)
-  const [loading, setLoading] = useState(true)
   const [searchQuery, setSearchQuery] = useState('')
   const [statusFilter, setStatusFilter] = useState('all')
   const [rolesOpen, setRolesOpen] = useState(false)
 
-  const fetchData = async () => {
-    try {
-      const [adminsRes, permsRes, rolesRes] = await Promise.all([
-        fetch('/api/admin/admins'),
-        fetch('/api/admin/permissions'),
-        fetch('/api/admin/roles'),
-      ])
-      const [adminsData, permsData, rolesData] = await Promise.all([
-        adminsRes.json(),
-        permsRes.json(),
-        rolesRes.json(),
-      ])
+  // 🟡 پیکربندیِ دسترسی — کشِ کوتاه. اجرای واقعیِ مجوزها همیشه سمتِ سرور با
+  // requireAdmin انجام می‌شود، پس کش فقط روی نمایش اثر دارد؛ با این حال پنجره
+  // عمداً کوتاه است و هر تغییری mutate می‌شود.
+  const { data: adminsData, isLoading, error, mutate: fetchData } =
+    useSWR('/api/admin/admins', ACL_TTL)
+  const { data: permsData } = useSWR('/api/admin/permissions', ACL_TTL)
+  const { data: rolesData } = useSWR('/api/admin/roles', ACL_TTL)
 
-      if (adminsRes.ok) {
-        setAdmins(adminsData.admins || [])
-        setStats(adminsData.stats || { total: 0, active: 0, inactive: 0 })
-      } else {
-        toast.error(adminsData.message || 'خطا در دریافت ادمین‌ها')
-      }
+  const admins = adminsData?.admins || []
+  const stats = adminsData?.stats || { total: 0, active: 0, inactive: 0 }
+  const modules = permsData?.modules || []
+  const rolesCount = (rolesData?.roles || []).length
+  const loading = isLoading
 
-      setModules(permsData.modules || [])
-      setRolesCount((rolesData.roles || []).length)
-    } catch {
-      toast.error('خطا در ارتباط با سرور')
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  useEffect(() => { fetchData() }, [])
+  useEffect(() => {
+    if (error) toast.error('خطا در ارتباط با سرور')
+  }, [error])
 
   // ─── فعال/غیرفعال‌سازی سریع ───
   const handleToggleActive = async (admin) => {
@@ -76,14 +63,22 @@ export default function AdminAdminsManagement() {
       const data = await res.json()
       if (!res.ok) throw new Error(data.message || 'خطا در بروزرسانی')
 
-      setAdmins((prev) =>
-        prev.map((a) => (a._id === admin._id ? { ...a, isActive: nextActive } : a))
+      // به‌روزرسانیِ خوش‌بینانه‌ی همان کشِ SWR (بدون واکشیِ دوباره)
+      fetchData(
+        (cur) =>
+          cur && {
+            ...cur,
+            admins: (cur.admins || []).map((a) =>
+              a._id === admin._id ? { ...a, isActive: nextActive } : a
+            ),
+            stats: cur.stats && {
+              ...cur.stats,
+              active: cur.stats.active + (nextActive ? 1 : -1),
+              inactive: cur.stats.inactive + (nextActive ? -1 : 1),
+            },
+          },
+        { revalidate: false }
       )
-      setStats((s) => ({
-        ...s,
-        active: s.active + (nextActive ? 1 : -1),
-        inactive: s.inactive + (nextActive ? -1 : 1),
-      }))
       toast.success(nextActive ? 'حساب ادمین فعال شد' : 'حساب ادمین غیرفعال شد')
     } catch (err) {
       toast.error(err.message)

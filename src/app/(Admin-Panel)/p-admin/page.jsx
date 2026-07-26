@@ -27,17 +27,19 @@ export default function AdminDashboard() {
     fetchStats();
   }, []);
 
+  // یک درخواست با countDocuments — به‌جای پنج اندپوینتِ لیست که کلِ کالکشن‌ها را
+  // برمی‌گرداندند تا فقط طولشان خوانده شود.
   const fetchStats = async () => {
     try {
-      const endpoints = ['/api/sports', '/api/brands', '/api/athletes', '/api/product', '/api/categories'];
-      const responses = await Promise.all(endpoints.map(url => fetch(url)));
-      const [sports, brands, athletes, products, categories] = await Promise.all(responses.map(res => res.json()));
+      const res = await fetch('/api/admin/stats');
+      if (!res.ok) throw new Error('stats request failed');
+      const data = await res.json();
       setStats({
-        sports: sports.sports?.length || 0,
-        brands: brands.brands?.length || 0,
-        athletes: athletes.athletes?.length || 0,
-        products: products.products?.length || 0,
-        categories: categories.categories?.length || 0,
+        sports: data.sports || 0,
+        brands: data.brands || 0,
+        athletes: data.athletes || 0,
+        products: data.products || 0,
+        categories: data.categories || 0,
       });
     } catch (error) {
       console.error('Error fetching stats:', error);

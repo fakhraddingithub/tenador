@@ -3,6 +3,8 @@ import { revalidatePath } from "next/cache";
 import connectToDB from "base/configs/db";
 import SiteSetting from "base/models/SiteSetting";
 import { revalidateContent } from "@/lib/revalidate";
+import requireAdmin, { unauthorized } from "@/lib/requireAdmin";
+
 import {
   normalizeRolandGarrosBanner,
   validateRolandGarrosBanner,
@@ -11,6 +13,8 @@ import {
 } from "@/lib/rolandGarrosBanner";
 
 export async function GET() {
+  if (!(await requireAdmin())) return unauthorized();
+
   try {
     await connectToDB();
     const setting = await SiteSetting.findOne({
@@ -28,6 +32,8 @@ export async function GET() {
 }
 
 export async function PUT(req) {
+  if (!(await requireAdmin())) return unauthorized();
+
   try {
     const body = await req.json();
     const { banner, errors } = validateRolandGarrosBanner(body?.banner);

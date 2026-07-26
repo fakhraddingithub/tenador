@@ -13,6 +13,7 @@
  */
 
 import { useState, useEffect } from 'react';
+import useSWR from 'swr';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { toast } from 'react-toastify';
@@ -22,6 +23,9 @@ import {
 } from 'lucide-react';
 
 import PermissionPicker from './PermissionPicker';
+
+// 🟡 پیکربندیِ دسترسی — پنجره‌ی کوتاه
+const ACL_TTL = { dedupingInterval: 10_000 };
 
 const emptyForm = {
   name: '',
@@ -40,27 +44,21 @@ export default function AdminForm({ adminId = null }) {
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
 
-  const [modules, setModules] = useState([]);
-  const [roles, setRoles] = useState([]);
   const [formData, setFormData] = useState(emptyForm);
 
-  // ─── بارگذاری رجیستری دسترسی‌ها، نقش‌ها و (در حالت ویرایش) خود ادمین ───
+  // 🟡 رجیستریِ مجوزها و نقش‌ها — مشترک بین صفحات ادمین، پنجره‌ی کوتاه
+  const { data: permissionsData } = useSWR('/api/admin/permissions', ACL_TTL);
+  const { data: rolesData } = useSWR('/api/admin/roles', ACL_TTL);
+  const modules = permissionsData?.modules || [];
+  const roles = rolesData?.roles || [];
+
+  // ─── بارگذاریِ خودِ ادمین در حالت ویرایش (رکوردِ تکی — بدون کش) ───
   useEffect(() => {
     const load = async () => {
       try {
-        const requests = [
-          fetch('/api/admin/permissions'),
-          fetch('/api/admin/roles'),
-        ];
-        if (isEdit) requests.push(fetch(`/api/admin/admins/${adminId}`));
-
-        const responses = await Promise.all(requests);
-        const [permissionsData, rolesData, adminData] = await Promise.all(
-          responses.map((res) => res.json())
-        );
-
-        setModules(permissionsData.modules || []);
-        setRoles(rolesData.roles || []);
+        const adminData = isEdit
+          ? await (await fetch(`/api/admin/admins/${adminId}`)).json()
+          : null;
 
         if (isEdit) {
           if (!adminData?.admin) {

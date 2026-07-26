@@ -8,23 +8,21 @@
  */
 
 import { NextResponse } from "next/server";
-import { cookies } from "next/headers";
 import {
   connectWarehouseDB,
   getItemTrackingModel,
   getWarehouseModel,
 } from "@/lib/warehouseDb";
-import { verifyToken } from "base/utils/auth";
+import requireAdmin, { unauthorized } from "@/lib/requireAdmin";
 
+// نقش ادمین از دیتابیس بررسی می‌شود (توکن به‌تنهایی قابل‌اعتماد نیست).
 async function getAdminUser() {
-  const cookieStore = await cookies();
-  const token = cookieStore.get("accessToken")?.value;
-  if (!token) return null;
-  const decoded = verifyToken(token);
-  return decoded;
+  return await requireAdmin();
 }
 
 export async function GET(req) {
+  if (!(await requireAdmin())) return unauthorized();
+
   try {
     const admin = await getAdminUser();
    

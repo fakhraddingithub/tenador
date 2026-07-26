@@ -1,29 +1,25 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import useSWR from 'swr';
 import Link from 'next/link';
 import { FiPlus, FiEdit3, FiTrash2, FiLayers } from 'react-icons/fi';
 import { showToast } from '@/lib/toast';
 import { confirmDelete } from '@/lib/swal';
 import AdminLoader from '@/components/admin/AdminLoader';
 
+// 🟢 محتوا/داده‌ی مرجع — پنجره‌ی ۵ دقیقه‌ای
+const CONTENT_TTL = { dedupingInterval: 300_000 };
+
 export default function HealthCardsPage() {
-  const [cards, setCards] = useState([]);
-  const [loading, setLoading] = useState(true);
+  // 🟢 HealthCard ها — داده‌ی مرجعِ بازارِ دست‌دوم
+  const { data, isLoading: loading, error, mutate: fetchCards } =
+    useSWR('/api/admin/healthcards', CONTENT_TTL);
+  const cards = data?.cards || [];
 
-  useEffect(() => { fetchCards(); }, []);
-
-  const fetchCards = async () => {
-    try {
-      const res = await fetch('/api/admin/healthcards');
-      const data = await res.json();
-      setCards(data.cards || []);
-    } catch {
-      showToast.error('خطا در بارگذاری');
-    } finally {
-      setLoading(false);
-    }
-  };
+  useEffect(() => {
+    if (error) showToast.error('خطا در بارگذاری');
+  }, [error]);
 
   const handleDelete = async (card) => {
     const ok = await confirmDelete('حذف HealthCard', `آیا مطمئنید؟ "${card.category?.title}" حذف می‌شود.`);
@@ -31,7 +27,10 @@ export default function HealthCardsPage() {
     try {
       const res = await fetch(`/api/admin/healthcards/${card._id}`, { method: 'DELETE' });
       if (res.ok) {
-        setCards(prev => prev.filter(c => c._id !== card._id));
+        fetchCards(
+          (cur) => cur && { ...cur, cards: (cur.cards || []).filter(c => c._id !== card._id) },
+          { revalidate: false },
+        );
         showToast.success('حذف شد');
       }
     } catch {

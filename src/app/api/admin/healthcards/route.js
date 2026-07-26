@@ -3,7 +3,11 @@ import connectToDB from "base/configs/db";
 import HealthCard from "base/models/HealthCard";
 import Category from "base/models/Category";
 
+import requireAdmin, { unauthorized } from "@/lib/requireAdmin";
+
 export async function GET() {
+  if (!(await requireAdmin())) return unauthorized();
+
   try {
     await connectToDB();
     const cards = await HealthCard.find()
@@ -18,6 +22,8 @@ export async function GET() {
 }
 
 export async function POST(req) {
+  if (!(await requireAdmin())) return unauthorized();
+
   try {
     await connectToDB();
     const body = await req.json();

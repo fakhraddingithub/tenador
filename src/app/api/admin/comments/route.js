@@ -10,28 +10,16 @@
  */
 
 import { NextResponse } from "next/server";
-import { cookies } from "next/headers";
 import connectToDB from "base/configs/db";
 import "base/models/registerModels";
-import { verifyToken } from "base/utils/auth";
 import Comment from "base/models/Comment";
-import User from "base/models/User";
-
-async function requireAdmin() {
-  const cookieStore = await cookies();
-  const token = cookieStore.get("accessToken")?.value;
-  if (!token) return null;
-  const decoded = verifyToken(token);
-  if (!decoded?.userId) return null;
-  const user = await User.findById(decoded.userId).select("role").lean();
-  if (!user || user.role !== "admin") return null;
-  return user;
-}
+import requireAdmin, { unauthorized } from "@/lib/requireAdmin";
 
 export async function GET(req) {
+  if (!(await requireAdmin())) return unauthorized();
+
   try {
     await connectToDB();
-
 
     const { searchParams } = new URL(req.url);
     const status = searchParams.get("status") || "pending";

@@ -143,6 +143,12 @@ const UserSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
+/* ───────────────────────────  ایندکس‌ها  ───────────────────────────
+   لیستِ کاربرانِ پنل ادمین با { createdAt: -1 } مرتب و روی role / isBanned
+   فیلتر می‌شود؛ بدون ایندکس هر درخواست کلِ کالکشن را می‌پیمود.                */
+UserSchema.index({ role: 1, createdAt: -1 });
+UserSchema.index({ isBanned: 1, createdAt: -1 });
+
 // Orders
 UserSchema.virtual("orders", {
   ref: "Order",

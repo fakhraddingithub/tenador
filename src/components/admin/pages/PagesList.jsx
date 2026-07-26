@@ -1,10 +1,14 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import useSWR from 'swr';
 import Link from "next/link";
 import { motion } from "framer-motion";
 import { toast } from "react-toastify";
 import { FaFileAlt, FaExternalLinkAlt, FaPen } from "react-icons/fa";
+
+// 🟢 محتوا/داده‌ی مرجع — پنجره‌ی ۵ دقیقه‌ای
+const CONTENT_TTL = { dedupingInterval: 300_000 };
 
 function formatDate(value) {
   if (!value) return "—";
@@ -20,23 +24,13 @@ function formatDate(value) {
 }
 
 export default function PagesList() {
-  const [pages, setPages] = useState([]);
-  const [loading, setLoading] = useState(true);
+  // 🟢 فهرستِ صفحات CMS — محتوا، به‌ندرت تغییر می‌کند
+  const { data, isLoading: loading, error } = useSWR("/api/admin/pages", CONTENT_TTL);
+  const pages = data?.pages || [];
 
   useEffect(() => {
-    (async () => {
-      try {
-        const res = await fetch("/api/admin/pages", { credentials: "include" });
-        if (!res.ok) throw new Error();
-        const data = await res.json();
-        setPages(data.pages || []);
-      } catch {
-        toast.error("خطا در بارگذاری فهرست صفحات");
-      } finally {
-        setLoading(false);
-      }
-    })();
-  }, []);
+    if (error) toast.error("خطا در بارگذاری فهرست صفحات");
+  }, [error]);
 
   return (
     <div className="max-w-5xl mx-auto">

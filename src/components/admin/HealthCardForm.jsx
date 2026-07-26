@@ -1,7 +1,8 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { useCategories } from '@/hooks/useAdminRefData';
 import { FiPlus, FiX, FiSave, FiMenu } from 'react-icons/fi';
 import {
   DndContext, closestCenter, PointerSensor, useSensor, useSensors,
@@ -53,21 +54,14 @@ function SortableFieldRow({ field, onRemove }) {
 export default function HealthCardForm({ initialData, categoryLocked }) {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
-  const [categories, setCategories] = useState([]);
   const [categoryId, setCategoryId] = useState(initialData?.category?._id || initialData?.category || '');
   const [fields, setFields] = useState(
     initialData?.fields || []
   );
   const [newField, setNewField] = useState({ key: '', label: '' });
 
-  useEffect(() => {
-    if (!categoryLocked) {
-      fetch('/api/categories')
-        .then(r => r.json())
-        .then(d => setCategories(d.categories || []))
-        .catch(() => {});
-    }
-  }, [categoryLocked]);
+  // 🟢 داده‌ی مرجع — وقتی دسته قفل است اصلاً واکشی نمی‌شود (مثل قبل)
+  const { categories } = useCategories(null, !categoryLocked);
 
   const addField = () => {
     const key = newField.key.trim().toLowerCase().replace(/\s+/g, '_');

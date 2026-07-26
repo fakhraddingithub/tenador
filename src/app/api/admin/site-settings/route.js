@@ -3,6 +3,8 @@ import { revalidatePath } from "next/cache";
 import connectToDB from "base/configs/db";
 import SiteSetting from "base/models/SiteSetting";
 
+import requireAdmin, { unauthorized } from "@/lib/requireAdmin";
+
 // مسیرهایی که با تغییر یک کلید تنظیم باید دوباره ساخته شوند
 const REVALIDATE_PATHS = {
   secondhand_header_image: ["/second-hand"],
@@ -10,6 +12,8 @@ const REVALIDATE_PATHS = {
 
 // GET /api/admin/site-settings?key=secondhand_header_image  →  { value }
 export async function GET(req) {
+  if (!(await requireAdmin())) return unauthorized();
+
   try {
     await connectToDB();
     const { searchParams } = new URL(req.url);
@@ -27,6 +31,8 @@ export async function GET(req) {
 
 // PUT /api/admin/site-settings  { key, value }  →  upsert + revalidate
 export async function PUT(req) {
+  if (!(await requireAdmin())) return unauthorized();
+
   try {
     await connectToDB();
     const { key, value } = await req.json();

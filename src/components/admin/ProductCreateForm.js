@@ -3,6 +3,7 @@
 import AdminInput from "@/components/admin/AdminInput";
 import { useState, useEffect, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
+import { useSports, useBrands, useCategories, useAthletes, useLimitedEditions } from '@/hooks/useAdminRefData';
 import Button from '@/components/admin/Button';
 import Input from '@/components/admin/Input';
 import Textarea from '@/components/admin/Textarea';
@@ -63,11 +64,6 @@ export default function ProductCreateForm({ initialData = {} }) {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
 
-  const [sports, setSports] = useState([]);
-  const [brands, setBrands] = useState([]);
-  const [athletes, setAthletes] = useState([]);
-  const [categories, setCategories] = useState([]);
-  const [limitedEditions, setLimitedEditions] = useState([]);
 
   // Normalize athlete from initialData to always be an array
   const initialAthletes = Array.isArray(initialData.athlete)
@@ -126,51 +122,19 @@ export default function ProductCreateForm({ initialData = {} }) {
   // ---------------------------
   // Data Fetching
   // ---------------------------
-  useEffect(() => {
-    fetchBaseData();
-  }, []);
+  // 🟢 داده‌ی مرجع — کشِ مشترک با بقیه‌ی فرم‌های ادمین (۵ دقیقه)
+  const { sports } = useSports();
+  const { brands } = useBrands();
+  const { categories } = useCategories();
+  const { athletes: allAthletes } = useAthletes();
 
-  useEffect(() => {
-    if (formData.sport) fetchAthletes(formData.sport);
-    else setAthletes([]);
-  }, [formData.sport]);
+  // ورزشکارها همان‌طور که قبلاً بود سمتِ کلاینت با ورزشِ انتخابی فیلتر می‌شوند
+  const athletes = formData.sport
+    ? allAthletes.filter((a) => (a.sport?._id || a.sport) === formData.sport)
+    : [];
 
-  async function fetchBaseData() {
-    try {
-      const [sportsRes, brandsRes, categoriesRes, limitedEditionsRes] = await Promise.all([
-        fetch('/api/sports'),
-        fetch('/api/brands'),
-        fetch('/api/categories'),
-        fetch('/api/limited-editions'),
-      ]);
-      const [sportsData, brandsData, categoriesData, limitedEditionsData] = await Promise.all([
-        sportsRes.json(),
-        brandsRes.json(),
-        categoriesRes.json(),
-        limitedEditionsRes.json(),
-      ]);
-      setSports(sportsData.sports || []);
-      setBrands(brandsData.brands || []);
-      setCategories(categoriesData.categories || []);
-      setLimitedEditions(limitedEditionsData.limitedEditions || []);
-    } catch (err) {
-      showError('خطا', 'خطا در بارگذاری داده‌های پایه');
-    }
-  }
-
-  async function fetchAthletes(sportId) {
-    try {
-      const res = await fetch('/api/athletes');
-      const data = await res.json();
-      setAthletes(
-        (data.athletes || []).filter(
-          a => (a.sport?._id || a.sport) === sportId
-        )
-      );
-    } catch {
-      setAthletes([]);
-    }
-  }
+  // 🟢 نسخه‌های محدود — همان ردهٔ داده‌ی مرجع
+  const { limitedEditions } = useLimitedEditions();
 
   // ---------------------------
   // Derived category data

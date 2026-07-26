@@ -2,10 +2,12 @@ import { NextResponse } from "next/server";
 import { revalidateTag } from "next/cache";
 import connectToDB from "base/configs/db";
 import { ExchangeRate, RateHistory } from "base/models/ExchangeRate";
-import User from "base/models/User";
+import requireAdmin, { unauthorized } from "@/lib/requireAdmin";
 
 // GET /api/admin/exchange-rate
 export async function GET() {
+  if (!(await requireAdmin())) return unauthorized();
+
   try {
     await connectToDB();
 
@@ -29,6 +31,8 @@ export async function GET() {
 
 // POST /api/admin/exchange-rate
 export async function POST(req) {
+  if (!(await requireAdmin())) return unauthorized();
+
   try {
     await connectToDB();
     const { rateToToman, note } = await req.json();

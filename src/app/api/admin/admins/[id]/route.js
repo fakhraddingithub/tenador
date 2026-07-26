@@ -12,7 +12,11 @@ import Admin from "base/models/Admin";
 import AdminRole from "base/models/AdminRole";
 import { sanitizePermissions } from "@/lib/permissions";
 
+import requireAdmin, { unauthorized } from "@/lib/requireAdmin";
+
 export async function GET(req, { params }) {
+  if (!(await requireAdmin())) return unauthorized();
+
   try {
     await connectToDB();
 
@@ -37,6 +41,8 @@ export async function GET(req, { params }) {
 }
 
 export async function PUT(req, { params }) {
+  if (!(await requireAdmin())) return unauthorized();
+
   try {
     await connectToDB();
 
@@ -140,6 +146,8 @@ export async function PUT(req, { params }) {
 }
 
 export async function DELETE(req, { params }) {
+  if (!(await requireAdmin())) return unauthorized();
+
   try {
     await connectToDB();
 

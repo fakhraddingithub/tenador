@@ -11,6 +11,16 @@ import CouponCard from "./CouponCard";
 import QuantityDiscountForm from "./QuantityDiscountForm";
 import QuantityDiscountCard from "./QuantityDiscountCard";
 import AdminLoader from "@/components/admin/AdminLoader";
+import useSWR from "swr";
+
+// 🟡 تخفیف‌ها، تخفیفِ تعدادی و کدهای تخفیف: کشِ کوتاه. عمداً پایین نگه داشته
+// شده چون ورودیِ worker قیمت‌اند و ادمین باید اثرِ تغییرِ یک قانون را تقریباً
+// بلافاصله ببیند. بعد از هر ویرایش/حذف هم mutate() صدا زده می‌شود که این
+// پنجره را دور می‌زند.
+const DISCOUNT_TTL = { dedupingInterval: 10_000 };
+
+// 🔴 «کردیت مربیان» (کیف‌پول/پول) عمداً با SWR کش نمی‌شود و همان fetch مستقیم
+// را نگه می‌دارد.
 
 const TABS = [
   { id: "discounts", label: "قوانین تخفیف" },
@@ -33,34 +43,52 @@ const TYPE_LABELS = {
 
 export default function DiscountManager() {
   const [activeTab, setActiveTab] = useState("discounts");
-  const [discounts, setDiscounts] = useState([]);
-  const [quantityDiscounts, setQuantityDiscounts] = useState([]);
-  const [coupons, setCoupons] = useState([]);
+
   const [coachCredits, setCoachCredits] = useState([]);
-  const [loading, setLoading] = useState(false);
+  const [manualLoading, setManualLoading] = useState(false);
   const [showForm, setShowForm] = useState(false);
   const [editItem, setEditItem] = useState(null);
   const [filterType, setFilterType] = useState("");
   const [filterActive, setFilterActive] = useState("");
 
-  const fetchDiscounts = useCallback(async () => {
-    setLoading(true);
-    try {
-      const params = new URLSearchParams();
-      if (filterType) params.set("type", filterType);
-      if (filterActive !== "") params.set("active", filterActive);
-      const res = await fetch(`/api/admin/discounts?${params}`);
-      const data = await res.json();
-      setDiscounts(data.rules || []);
-    } catch {
-      toast.error("خطا در دریافت تخفیف‌ها");
-    } finally {
-      setLoading(false);
-    }
-  }, [filterType, filterActive]);
+  // ─── 🟡 تخفیف‌ها و تخفیفِ تعدادی (SWR، فقط تبِ فعال واکشی می‌شود) ───
+  const discountsParams = new URLSearchParams();
+  if (filterType) discountsParams.set("type", filterType);
+  if (filterActive !== "") discountsParams.set("active", filterActive);
 
+  const {
+    data: discountsData,
+    isLoading: discountsLoading,
+    mutate: mutateDiscounts,
+  } = useSWR(
+    activeTab === "discounts" ? `/api/admin/discounts?${discountsParams}` : null,
+    DISCOUNT_TTL,
+  );
+
+  const {
+    data: quantityData,
+    isLoading: quantityLoading,
+    mutate: mutateQuantity,
+  } = useSWR(
+    activeTab === "quantity" ? "/api/admin/quantity-discounts" : null,
+    DISCOUNT_TTL,
+  );
+
+  const discounts = discountsData?.rules || [];
+  const quantityDiscounts = quantityData?.items || [];
+
+  // ─── 🟡 کدهای تخفیف: قانون‌اند نه موجودی، و بعد از هر تغییر mutate می‌شوند ───
+  const {
+    data: couponsData,
+    isLoading: couponsLoading,
+    mutate: mutateCoupons,
+  } = useSWR(activeTab === "coupons" ? "/api/admin/coupons" : null, DISCOUNT_TTL);
+
+  const coupons = couponsData?.coupons || [];
+
+  // ─── 🔴 کردیت مربیان (کیف‌پول/پول): بدون کش، دقیقاً مثل قبل ───
   const fetchCoachCredits = useCallback(async () => {
-    setLoading(true);
+    setManualLoading(true);
     try {
       const res = await fetch("/api/admin/coach-credits");
       const data = await res.json();
@@ -68,42 +96,28 @@ export default function DiscountManager() {
     } catch {
       toast.error("خطا در دریافت کردیت‌ها");
     } finally {
-      setLoading(false);
+      setManualLoading(false);
     }
   }, []);
 
-  const fetchCoupons = useCallback(async () => {
-    setLoading(true);
-    try {
-      const res = await fetch("/api/admin/coupons");
-      const data = await res.json();
-      setCoupons(data.coupons || []);
-    } catch {
-      toast.error("خطا در دریافت کدهای تخفیف");
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  const fetchQuantityDiscounts = useCallback(async () => {
-    setLoading(true);
-    try {
-      const res = await fetch("/api/admin/quantity-discounts");
-      const data = await res.json();
-      setQuantityDiscounts(data.items || []);
-    } catch {
-      toast.error("خطا در دریافت تخفیف‌های تعدادی");
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
+  // یک microtask تأخیر تا setManualLoading(true) مستقیماً در بدنه‌ی effect اجرا
+  // نشود (همان الگویی که EventList قبلاً برای این هشدار داشت).
   useEffect(() => {
-    if (activeTab === "discounts") fetchDiscounts();
-    else if (activeTab === "quantity") fetchQuantityDiscounts();
-    else if (activeTab === "coupons") fetchCoupons();
-    else fetchCoachCredits();
-  }, [activeTab, fetchDiscounts, fetchQuantityDiscounts, fetchCoupons, fetchCoachCredits]);
+    let cancelled = false;
+    Promise.resolve().then(() => {
+      if (cancelled) return;
+      if (activeTab === "coachCredits") fetchCoachCredits();
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [activeTab, fetchCoachCredits]);
+
+  const loading =
+    manualLoading ||
+    (activeTab === "discounts" && discountsLoading) ||
+    (activeTab === "quantity" && quantityLoading) ||
+    (activeTab === "coupons" && couponsLoading);
 
   const API_BASE = {
     discount: "/api/admin/discounts",
@@ -112,10 +126,12 @@ export default function DiscountManager() {
     credit: "/api/admin/coach-credits",
   };
 
+  // بعد از هر ساخت/ویرایش/حذف: mutate() بدونِ توجه به dedupingInterval
+  // بلافاصله دوباره واکشی می‌کند، پس ادمین همیشه نتیجه‌ی کارش را می‌بیند.
   const refreshByType = (type) => {
-    if (type === "discount") fetchDiscounts();
-    else if (type === "quantity") fetchQuantityDiscounts();
-    else if (type === "coupon") fetchCoupons();
+    if (type === "discount") mutateDiscounts();
+    else if (type === "quantity") mutateQuantity();
+    else if (type === "coupon") mutateCoupons();
     else fetchCoachCredits();
   };
 
@@ -145,9 +161,9 @@ export default function DiscountManager() {
   const handleFormSuccess = () => {
     setShowForm(false);
     setEditItem(null);
-    if (activeTab === "discounts") fetchDiscounts();
-    else if (activeTab === "quantity") fetchQuantityDiscounts();
-    else if (activeTab === "coupons") fetchCoupons();
+    if (activeTab === "discounts") mutateDiscounts();
+    else if (activeTab === "quantity") mutateQuantity();
+    else if (activeTab === "coupons") mutateCoupons();
     else fetchCoachCredits();
   };
 

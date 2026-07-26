@@ -2,7 +2,11 @@ import { NextResponse } from "next/server";
 import connectToDB from "base/configs/db";
 import OrderFlow from "base/models/OrderFlow";
 
+import requireAdmin, { unauthorized } from "@/lib/requireAdmin";
+
 export async function GET(req) {
+  if (!(await requireAdmin())) return unauthorized();
+
   try {
     await connectToDB();
     const flows = await OrderFlow.find({})
@@ -16,6 +20,8 @@ export async function GET(req) {
 }
 
 export async function POST(req) {
+  if (!(await requireAdmin())) return unauthorized();
+
   try {
     await connectToDB();
     const body = await req.json();

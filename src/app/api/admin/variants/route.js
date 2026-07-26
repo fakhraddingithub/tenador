@@ -4,7 +4,11 @@ import { NextResponse } from "next/server";
 import connectToDB from "base/configs/db";
 import Variant from "base/models/Variant";
 
+import requireAdmin, { unauthorized } from "@/lib/requireAdmin";
+
 export async function GET(req) {
+  if (!(await requireAdmin())) return unauthorized();
+
   try {
     await connectToDB();
     const { searchParams } = new URL(req.url);

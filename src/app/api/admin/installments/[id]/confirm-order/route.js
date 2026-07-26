@@ -18,7 +18,11 @@ import Installment from "base/models/Installment";
 import Payment from "base/models/Payment";
 import Order from "base/models/Order";
 
+import requireAdmin, { unauthorized } from "@/lib/requireAdmin";
+
 export async function POST(req, { params }) {
+  if (!(await requireAdmin())) return unauthorized();
+
   try {
     await connectToDB();
 

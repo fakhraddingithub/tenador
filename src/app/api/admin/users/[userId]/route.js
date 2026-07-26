@@ -7,11 +7,13 @@
 
 import { NextResponse } from "next/server";
 import connectToDB from "base/configs/db";
-import User from "base/models/User";
 import Address from "base/models/Address";
 import Order from "base/models/Order";
 import Payment from "base/models/Payment";
 
+import requireAdmin, { unauthorized } from "@/lib/requireAdmin";
+
+import User from "base/models/User";
 async function generateUniqueCoachCode() {
   let code = "";
   let isUnique = false;
@@ -25,6 +27,8 @@ async function generateUniqueCoachCode() {
 }
 
 export async function GET(req, { params }) {
+  if (!(await requireAdmin())) return unauthorized();
+
   try {
     await connectToDB();
     const { userId } = await params;
@@ -100,6 +104,8 @@ export async function GET(req, { params }) {
 }
 
 export async function PATCH(req, { params }) {
+  if (!(await requireAdmin())) return unauthorized();
+
   try {
     await connectToDB();
     const { userId } = await params;

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { useSports } from "@/hooks/useAdminRefData";
 import {
   FaArrowRight,
   FaChevronDown,
@@ -205,7 +206,7 @@ export default function SerieFormLayout({
   submitLabel = "ثبت سری",
   onBack,
 }) {
-  const [sports, setSports] = useState([]);
+
   const [selectedSport, setSelectedSport] = useState("");
   const [openBoxes, setOpenBoxes] = useState({ default: true });
 
@@ -213,20 +214,8 @@ export default function SerieFormLayout({
     ? formData.sportImages
     : [];
 
-  useEffect(() => {
-    let mounted = true;
-
-    fetch("/api/sports")
-      .then((res) => res.json())
-      .then((data) => {
-        if (mounted) setSports(data.sports || []);
-      })
-      .catch((error) => console.error("Error fetching sports:", error));
-
-    return () => {
-      mounted = false;
-    };
-  }, []);
+  // 🟢 ورزش‌ها — کشِ مشترکِ داده‌ی مرجع
+  const { sports } = useSports();
 
   const usedSportIds = useMemo(
     () => new Set(sportImages.map((entry) => sportIdOf(entry.sport))),

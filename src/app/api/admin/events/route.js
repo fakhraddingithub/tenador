@@ -3,8 +3,12 @@ import connectToDB from "base/configs/db";
 import Event from "base/models/Event";
 import { revalidateContent } from "@/lib/revalidate";
 
+import requireAdmin, { unauthorized } from "@/lib/requireAdmin";
+
 // GET /api/admin/events
 export async function GET(req) {
+  if (!(await requireAdmin())) return unauthorized();
+
   await connectToDB();
   const { searchParams } = new URL(req.url);
 
@@ -35,6 +39,8 @@ export async function GET(req) {
 
 // POST /api/admin/events
 export async function POST(req) {
+  if (!(await requireAdmin())) return unauthorized();
+
   await connectToDB();
   const body = await req.json();
 

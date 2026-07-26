@@ -2,7 +2,11 @@ import { NextResponse } from "next/server";
 import connectToDB from "base/configs/db";
 import OrderFlow from "base/models/OrderFlow";
 
+import requireAdmin, { unauthorized } from "@/lib/requireAdmin";
+
 export async function GET(req, { params }) {
+  if (!(await requireAdmin())) return unauthorized();
+
   try {
     await connectToDB();
     const {flowId}= await params
@@ -19,6 +23,8 @@ export async function GET(req, { params }) {
 }
 
 export async function PUT(req, { params }) {
+  if (!(await requireAdmin())) return unauthorized();
+
   try {
     await connectToDB();
     const {flowId}= await params
@@ -42,6 +48,8 @@ export async function PUT(req, { params }) {
 }
 
 export async function DELETE(req, { params }) {
+  if (!(await requireAdmin())) return unauthorized();
+
   try {
     await connectToDB();
     const {flowId}= await params

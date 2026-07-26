@@ -15,7 +15,9 @@
     "check:mongodb": "node scripts/check-mongodb.js",
     "worker:prices": "node workers/priceWorker.js",
     "worker:discounts": "node workers/discountWorker.js",
-    "worker:installment-reminders": "node workers/installmentReminderWorker.js"
+    "worker:installment-reminders": "node workers/installmentReminderWorker.js",
+    "ensure:indexes": "node scripts/ensureIndexes.js",
+    "verify:admin-auth": "node scripts/verify-admin-auth.mjs"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",
@@ -39,7 +41,6 @@
     "mongoose": "^9.0.0",
     "next": "^16.0.7",
     "nodemailer": "^8.0.10",
-    "openai": "^6.14.0",
     "react": "^19.2.1",
     "react-dom": "^19.2.1",
     "react-icons": "^5.5.0",
@@ -49,6 +50,7 @@
     "sanitize-html": "^2.17.0",
     "sweetalert2": "^11.26.10",
     "swiper": "^12.0.3",
+    "swr": "^2.4.2",
     "web-push": "^3.6.7",
     "xlsx": "^0.18.5",
     "zustand": "^5.0.9"

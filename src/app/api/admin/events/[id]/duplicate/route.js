@@ -3,8 +3,12 @@ import connectToDB from "base/configs/db";
 import Event from "base/models/Event";
 import { revalidateContent } from "@/lib/revalidate";
 
+import requireAdmin, { unauthorized } from "@/lib/requireAdmin";
+
 // POST /api/admin/events/:id/duplicate
 export async function POST(req, { params }) {
+  if (!(await requireAdmin())) return unauthorized();
+
   await connectToDB();
 
   const { id } = await params;

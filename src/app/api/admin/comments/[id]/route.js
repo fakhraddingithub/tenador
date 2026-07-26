@@ -6,30 +6,17 @@
  */
 
 import { NextResponse } from "next/server";
-import { cookies } from "next/headers";
 import connectToDB from "base/configs/db";
 import "base/models/registerModels";
-import { verifyToken } from "base/utils/auth";
 import Comment from "base/models/Comment";
-import User from "base/models/User";
 import { revalidateContent } from "@/lib/revalidate";
-
-async function requireAdmin() {
-  const cookieStore = await cookies();
-  const token = cookieStore.get("accessToken")?.value;
-  if (!token) return null;
-  const decoded = verifyToken(token);
-  if (!decoded?.userId) return null;
-  const user = await User.findById(decoded.userId).select("role").lean();
-  if (!user || user.role !== "admin") return null;
-  return user;
-}
+import requireAdmin, { unauthorized } from "@/lib/requireAdmin";
 
 export async function PATCH(req, { params }) {
+  if (!(await requireAdmin())) return unauthorized();
+
   try {
     await connectToDB();
-
-   
 
     const { id } = await params;
     const { status } = await req.json().catch(() => ({}));
@@ -57,9 +44,10 @@ export async function PATCH(req, { params }) {
 }
 
 export async function DELETE(req, { params }) {
+  if (!(await requireAdmin())) return unauthorized();
+
   try {
     await connectToDB();
-
 
     const { id } = await params;
     const deleted = await Comment.findByIdAndDelete(id);

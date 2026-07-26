@@ -1,17 +1,9 @@
 import { NextResponse } from 'next/server';
-import { cookies } from 'next/headers';
 import connectToDB from 'base/configs/db';
-import User from 'base/models/User';
 import { splitFullName } from 'base/utils/userName';
-import { verifyToken } from 'base/utils/auth';
+import requireAdmin, { unauthorized } from '@/lib/requireAdmin';
 
-async function getUserFromToken() {
-  const cookieStore = await cookies();
-  const token = cookieStore.get("accessToken")?.value;
-  if (!token) return null;
-  return verifyToken(token);
-}
-
+import User from 'base/models/User';
 // تابع کمکی برای ساخت کد منحصربه‌فرد مربیگری (مانند: TR4921)
 async function generateUniqueCoachCode() {
   let isUnique = false;
@@ -26,18 +18,12 @@ async function generateUniqueCoachCode() {
 }
 
 export async function PUT(req, { params }) {
+  // تأیید درخواست، نقش کاربر را به «مربی» ارتقا می‌دهد؛ بنابراین نقشِ درخواست‌کننده
+  // حتماً باید از دیتابیس بررسی شود (نه صرفاً از روی توکن).
+  if (!(await requireAdmin())) return unauthorized();
+
   try {
     await connectToDB();
-    const authUser = await getUserFromToken();
-
-    if (!authUser) {
-      return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
-    }
-
-    // const adminUser = await User.findById(authUser.userId);
-    // if (!adminUser || adminUser.role !== 'admin') {
-    //   return NextResponse.json({ message: 'Forbidden' }, { status: 403 });
-    // }
 
     const { id } = await params; // آی‌دی کاربری که درخواست مربیگری داده است
     const { action, rejectionReason } = await req.json(); // action: "approved" یا "rejected"

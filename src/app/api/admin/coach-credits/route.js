@@ -4,22 +4,17 @@ import CoachCredit from "base/models/CoachCredit";
 import { NextResponse } from "next/server";
 import jwt from "jsonwebtoken";
 
-function getAdminFromRequest(req) {
-  const token =
-    req.cookies.get("token")?.value ||
-    req.headers.get("authorization")?.replace("Bearer ", "");
-  if (!token) return null;
-  try {
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    if (decoded.role !== "admin") return null;
-    return decoded;
-  } catch {
-    return null;
-  }
+import requireAdmin, { unauthorized } from "@/lib/requireAdmin";
+
+// نقش ادمین از دیتابیس بررسی می‌شود (توکن به‌تنهایی قابل‌اعتماد نیست).
+async function getAdminFromRequest() {
+  return await requireAdmin();
 }
 
 // GET /api/admin/coach-credits
 export async function GET(req) {
+  if (!(await requireAdmin())) return unauthorized();
+
   const admin = getAdminFromRequest(req);
   // if (!admin) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
@@ -47,6 +42,8 @@ export async function GET(req) {
 
 // POST /api/admin/coach-credits
 export async function POST(req) {
+  if (!(await requireAdmin())) return unauthorized();
+
   const admin = getAdminFromRequest(req);
   // if (!admin) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 

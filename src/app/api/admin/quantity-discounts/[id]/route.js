@@ -10,12 +10,16 @@ import mongoose from "mongoose";
 import connectToDB from "base/configs/db";
 import QuantityDiscount from "base/models/QuantityDiscount";
 import { revalidateContent } from "@/lib/revalidate";
+import requireAdmin, { unauthorized } from "@/lib/requireAdmin";
+
 import {
   validateQuantityDiscountPayload,
   normalizeTiers,
 } from "@/lib/quantityDiscountValidation";
 
 export async function PATCH(req, { params }) {
+  if (!(await requireAdmin())) return unauthorized();
+
   try {
     await connectToDB();
     const { id } = await params;
@@ -65,6 +69,8 @@ export async function PATCH(req, { params }) {
 }
 
 export async function DELETE(req, { params }) {
+  if (!(await requireAdmin())) return unauthorized();
+
   try {
     await connectToDB();
     const { id } = await params;

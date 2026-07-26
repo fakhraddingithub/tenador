@@ -26,19 +26,16 @@
  */
 
 import { NextResponse } from "next/server";
-import { cookies } from "next/headers";
 import mongoose from "mongoose";
 
 import connectToDB from "base/configs/db";
-import { verifyToken } from "base/utils/auth";
 import Order from "base/models/Order";
 
+import requireAdmin, { unauthorized } from "@/lib/requireAdmin";
+
+// نقش ادمین از دیتابیس بررسی می‌شود (توکن به‌تنهایی قابل‌اعتماد نیست).
 async function getAdminUser() {
-  const cookieStore = await cookies();
-  const token = cookieStore.get("accessToken")?.value;
-  if (!token) return null;
-  const decoded = verifyToken(token);
-  return decoded || null;
+  return await requireAdmin();
 }
 
 // خروجی استاندارد بخش یورو برای کلاینت — با خواندن lean (مستقل از اسکیمای کش‌شده)
@@ -53,6 +50,8 @@ async function eurPayload(orderId) {
 
 /* ─── PATCH: تنظیم قیمت یورویی سفارش ─────────────────────────────────── */
 export async function PATCH(req, { params }) {
+  if (!(await requireAdmin())) return unauthorized();
+
   try {
     await connectToDB();
 
@@ -110,6 +109,8 @@ export async function PATCH(req, { params }) {
 
 /* ─── POST: افزودن یک پرداخت یورویی ──────────────────────────────────── */
 export async function POST(req, { params }) {
+  if (!(await requireAdmin())) return unauthorized();
+
   try {
     await connectToDB();
 
@@ -175,6 +176,8 @@ export async function POST(req, { params }) {
 
 /* ─── PUT: ویرایش مبلغِ یک پرداخت یورویی موجود ───────────────────────── */
 export async function PUT(req, { params }) {
+  if (!(await requireAdmin())) return unauthorized();
+
   try {
     await connectToDB();
 
@@ -262,6 +265,8 @@ export async function PUT(req, { params }) {
 
 /* ─── DELETE: حذف یک پرداخت یورویی ───────────────────────────────────── */
 export async function DELETE(req, { params }) {
+  if (!(await requireAdmin())) return unauthorized();
+
   try {
     await connectToDB();
 

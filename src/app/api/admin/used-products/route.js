@@ -7,12 +7,16 @@ import Variant from "base/models/Variant";
 import { validateHealthScores, calcOverallScore } from "@/lib/healthcard";
 import { broadcastPush } from "@/lib/push";
 
+import requireAdmin, { unauthorized } from "@/lib/requireAdmin";
+
 // trailing slash را حذف می‌کنیم تا URLها به //path تبدیل نشوند
 const SITE_URL = (process.env.NEXT_PUBLIC_SITE_URL || "https://tenador.com").replace(/\/+$/, "");
 // آیکن نوتیفیکیشن باید PNG باشد — مرورگرها SVG را به‌عنوان آیکن نوتیفیکیشن رندر نمی‌کنند
 const NOTIF_ICON_URL = `${SITE_URL}/android-chrome-192x192.png`;
 
 export async function GET(req) {
+  if (!(await requireAdmin())) return unauthorized();
+
   try {
     await connectToDB();
     const { searchParams } = new URL(req.url);
@@ -54,6 +58,8 @@ export async function GET(req) {
 }
 
 export async function POST(req) {
+  if (!(await requireAdmin())) return unauthorized();
+
   try {
     await connectToDB();
     const body = await req.json();

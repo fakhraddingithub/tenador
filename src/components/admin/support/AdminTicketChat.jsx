@@ -37,6 +37,7 @@ import {
   PRIORITY_LABELS,
   STATUS_LABELS,
 } from "base/utils/ticketMeta";
+import useVisiblePoll from "@/hooks/useVisiblePoll";
 
 const POLL_INTERVAL = 15000;
 const MAX_FILES = 6;
@@ -313,11 +314,7 @@ export default function AdminTicketChat({ ticketId }) {
     [ticketId]
   );
 
-  useEffect(() => {
-    load();
-    const id = setInterval(() => load(true), POLL_INTERVAL);
-    return () => clearInterval(id);
-  }, [load]);
+  useVisiblePoll(load, POLL_INTERVAL);
 
   useEffect(() => {
     if (!messages.length) return;

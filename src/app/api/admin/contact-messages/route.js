@@ -3,6 +3,8 @@ import connectToDB from "base/configs/db";
 import "base/models/registerModels";
 import ContactMessage from "base/models/ContactMessage";
 
+import requireAdmin, { unauthorized } from "@/lib/requireAdmin";
+
 export const runtime = "nodejs";
 
 /**
@@ -10,6 +12,8 @@ export const runtime = "nodejs";
  * فهرستِ پیام‌های فرم تماس + شمارشِ هر وضعیت.
  */
 export async function GET(req) {
+  if (!(await requireAdmin())) return unauthorized();
+
   await connectToDB();
 
   const { searchParams } = new URL(req.url);

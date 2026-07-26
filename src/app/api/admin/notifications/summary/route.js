@@ -10,23 +10,23 @@
  */
 
 import { NextResponse } from "next/server";
-import { cookies } from "next/headers";
 import connectToDB from "base/configs/db";
 import "base/models/registerModels";
-import { verifyToken } from "base/utils/auth";
 import ContactMessage from "base/models/ContactMessage";
 import { getRecentNotifications } from "base/services/notificationService";
 
+import requireAdmin, { unauthorized } from "@/lib/requireAdmin";
+
 export const runtime = "nodejs";
 
+// نقش ادمین از دیتابیس بررسی می‌شود (توکن به‌تنهایی قابل‌اعتماد نیست).
 async function getAdminUser() {
-  const cookieStore = await cookies();
-  const token = cookieStore.get("accessToken")?.value;
-  if (!token) return null;
-  return verifyToken(token) || null;
+  return await requireAdmin();
 }
 
 export async function GET(req) {
+  if (!(await requireAdmin())) return unauthorized();
+
   try {
     await connectToDB();
 

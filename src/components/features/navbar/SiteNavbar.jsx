@@ -1,8 +1,6 @@
-"use client";
-
-import { useEffect, useState } from "react";
 import Navbar from "@/components/features/navbar/Navbar";
 import { UserProvider } from "@/components/features/auth/UserContext";
+import { getCachedNavbar } from "@/lib/navbarService";
 
 /**
  * SiteNavbar — wrapper نازک برای استفاده‌ی مجدد از «نوبار اصلی سایت» در لایه‌های
@@ -12,22 +10,20 @@ import { UserProvider } from "@/components/features/auth/UserContext";
  * فراهم بودند:
  *   ۱) `UserProvider` تا useUser() کاربرِ واردشده را بشناسد.
  *   ۲) prop `navData` برای منوی دسته‌بندی (مگامنو).
- * این wrapper هر دو را تأمین می‌کند و خودِ کامپوننت Navbar را بدون هیچ تغییری
- * رندر می‌کند.
+ *
+ * سرور-کامپوننت است و مثل layout گروه (Site) مستقیماً getCachedNavbar را صدا
+ * می‌زند — نه fetch به /api/navbar. این یک رفت‌وبرگشتِ HTTP (و یک invocation)
+ * را به‌ازای هر بازدید از پنل حذف می‌کند و پرشِ مگامنو بعد از hydrate را هم.
  */
-export default function SiteNavbar() {
-  const [navData, setNavData] = useState([]);
-
-  useEffect(() => {
-    fetch("/api/navbar")
-      .then((r) => (r.ok ? r.json() : []))
-      .then((d) => setNavData(Array.isArray(d) ? d : []))
-      .catch(() => {});
-  }, []);
+export default async function SiteNavbar() {
+  // مثل layout گروه (Site): اگر دیتابیس در دسترس نباشد صفحه ۵۰۰ می‌شود.
+  // (catch اینجا گذاشته نشده چون خطای داخلِ unstable_cache به‌هرحال به رندر
+  // نشت می‌کند و catch حسِ کاذبِ مقاومت می‌دهد.)
+  const navData = await getCachedNavbar();
 
   return (
     <UserProvider>
-      <Navbar navData={navData} />
+      <Navbar navData={Array.isArray(navData) ? navData : []} />
     </UserProvider>
   );
 }

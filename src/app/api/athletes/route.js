@@ -5,7 +5,8 @@ import Athlete from "base/models/Athlete";
 
 export async function GET(req) {
   await connectToDB();
-  const athletes = await Athlete.find({}).populate('sport');
+  // lean(): مدل Athlete هیچ virtual ندارد — خروجیِ JSON بدون تغییر می‌ماند.
+  const athletes = await Athlete.find({}).populate('sport').lean();
   return NextResponse.json({
     athletes,
   });

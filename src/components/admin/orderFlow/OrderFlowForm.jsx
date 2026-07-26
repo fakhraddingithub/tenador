@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
+import { useCategories } from "@/hooks/useAdminRefData";
 import OrderFlowBuilder from "./OrderFlowBuilder";
 import { FiArrowRight, FiCheck, FiAlertTriangle, FiSave } from "react-icons/fi";
 
@@ -15,8 +16,6 @@ const COLORS = {
 
 export default function OrderFlowForm({ initialFlow = null }) {
   const router = useRouter();
-  const [categories, setCategories] = useState([]);
-  const [loadingCats, setLoadingCats] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [toast, setToast] = useState(null); // { type: 'success'|'error', msg }
 
@@ -33,15 +32,8 @@ export default function OrderFlowForm({ initialFlow = null }) {
   // هم بتواند گراف را ذخیره کند (رفعِ مشکلِ «برای یافتن دکمه ذخیره باید زوم کرد»)
   const saveRef = useRef(null);
 
-  useEffect(() => {
-    fetch("/api/categories")
-      .then((r) => r.json())
-      .then((d) => {
-        setCategories(d.categories || []);
-        setLoadingCats(false);
-      })
-      .catch(() => setLoadingCats(false));
-  }, []);
+  // 🟢 دسته‌بندی‌ها — کشِ مشترکِ داده‌ی مرجع
+  const { categories, isLoading: loadingCats } = useCategories();
 
   const showToast = (type, msg) => {
     setToast({ type, msg });

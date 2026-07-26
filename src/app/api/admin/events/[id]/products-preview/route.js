@@ -3,9 +3,13 @@ import connectToDB from "base/configs/db";
 import Event from "base/models/Event";
 import { resolveEventProducts } from "base/services/eventProductResolver";
 
+import requireAdmin, { unauthorized } from "@/lib/requireAdmin";
+
 // GET /api/admin/events/:id/products-preview
 // Returns resolved product list for the event's selection rules (admin preview)
 export async function GET(req, { params }) {
+  if (!(await requireAdmin())) return unauthorized();
+
   await connectToDB();
 
   const { id } = await params;

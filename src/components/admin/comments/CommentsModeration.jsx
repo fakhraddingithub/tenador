@@ -2,7 +2,8 @@
 
 import { getUserFullName } from "base/utils/userName";
 
-import { useCallback, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
+import useSWR from "swr";
 import { motion, AnimatePresence } from "framer-motion";
 import { toast } from "react-toastify";
 import Swal from "sweetalert2";
@@ -47,42 +48,37 @@ const STATUS_BADGE = {
 };
 const STATUS_LABEL = { pending: "در انتظار", approved: "تأییدشده", rejected: "ردشده" };
 
+// 🟡 نظارتِ نظرات — فوریتِ زمانی ندارد
+const COMMENT_TTL = { dedupingInterval: 60_000 };
+
 export default function CommentsModeration() {
   const [status, setStatus] = useState("pending");
   const [page, setPage] = useState(1);
-  const [comments, setComments] = useState([]);
-  const [counts, setCounts] = useState({ pending: 0, approved: 0, rejected: 0 });
-  const [pagination, setPagination] = useState({ page: 1, pages: 1, total: 0 });
-  const [loading, setLoading] = useState(true);
   const [busyId, setBusyId] = useState(null);
 
-  const fetchComments = useCallback(async () => {
-    setLoading(true);
-    try {
-      const res = await fetch(
-        `/api/admin/comments?status=${status}&page=${page}&limit=20`,
-        { credentials: "include" }
-      );
-      if (res.ok) {
-        const data = await res.json();
-        setComments(data.comments ?? []);
-        setCounts(data.counts ?? { pending: 0, approved: 0, rejected: 0 });
-        setPagination(data.pagination ?? { page: 1, pages: 1, total: 0 });
-      } else if (res.status === 403) {
-        toast.error("دسترسی غیرمجاز");
-      } else {
-        toast.error("خطا در بارگذاری نظرات");
-      }
-    } catch {
-      toast.error("خطا در ارتباط با سرور");
-    } finally {
-      setLoading(false);
-    }
-  }, [status, page]);
+  // 🟡 صفِ نظارتِ نظرات — فوریتِ زمانی ندارد، پنجره‌ی یک‌دقیقه‌ای.
+  // fetcher سراسری خطای HTTP را throw می‌کند و status را روی خطا می‌گذارد،
+  // پس تفکیکِ ۴۰۳ (که این صفحه به آن وابسته است) حفظ می‌شود.
+  const {
+    data,
+    isLoading: loading,
+    error,
+    mutate: fetchComments,
+  } = useSWR(
+    `/api/admin/comments?status=${status}&page=${page}&limit=20`,
+    COMMENT_TTL,
+  );
+
+  const comments = data?.comments ?? [];
+  const counts = data?.counts ?? { pending: 0, approved: 0, rejected: 0 };
+  const pagination = data?.pagination ?? { page: 1, pages: 1, total: 0 };
 
   useEffect(() => {
-    fetchComments();
-  }, [fetchComments]);
+    if (!error) return;
+    if (error.status === 403) toast.error("دسترسی غیرمجاز");
+    else if (error.status) toast.error("خطا در بارگذاری نظرات");
+    else toast.error("خطا در ارتباط با سرور");
+  }, [error]);
 
   const changeStatus = async (id, newStatus) => {
     setBusyId(id);
@@ -95,13 +91,26 @@ export default function CommentsModeration() {
       });
       if (res.ok) {
         toast.success(newStatus === "approved" ? "نظر تأیید شد" : "نظر رد شد");
-        // از فهرستِ فیلترِ فعلی حذف می‌شود (مگر در حالت «همه»)
-        setComments((prev) =>
-          status === "all"
-            ? prev.map((c) => (c._id === id ? { ...c, status: newStatus } : c))
-            : prev.filter((c) => c._id !== id)
+        // از فهرستِ فیلترِ فعلی حذف می‌شود (مگر در حالت «همه») — روی کشِ SWR
+        fetchComments(
+          (cur) =>
+            cur && {
+              ...cur,
+              comments:
+                status === "all"
+                  ? (cur.comments ?? []).map((c) =>
+                      c._id === id ? { ...c, status: newStatus } : c,
+                    )
+                  : (cur.comments ?? []).filter((c) => c._id !== id),
+              counts: recountAfterChange(
+                cur.counts ?? counts,
+                cur.comments ?? comments,
+                id,
+                newStatus,
+              ),
+            },
+          { revalidate: false },
         );
-        setCounts((prev) => recountAfterChange(prev, comments, id, newStatus));
       } else {
         const d = await res.json().catch(() => ({}));
         toast.error(d.message || "خطا در بروزرسانی");
@@ -136,10 +145,21 @@ export default function CommentsModeration() {
       if (res.ok) {
         toast.success("نظر حذف شد");
         const removed = comments.find((c) => c._id === id);
-        setComments((prev) => prev.filter((c) => c._id !== id));
-        if (removed?.status in counts) {
-          setCounts((prev) => ({ ...prev, [removed.status]: Math.max(0, prev[removed.status] - 1) }));
-        }
+        fetchComments(
+          (cur) =>
+            cur && {
+              ...cur,
+              comments: (cur.comments ?? []).filter((c) => c._id !== id),
+              counts:
+                removed && cur.counts && removed.status in cur.counts
+                  ? {
+                      ...cur.counts,
+                      [removed.status]: Math.max(0, cur.counts[removed.status] - 1),
+                    }
+                  : cur.counts,
+            },
+          { revalidate: false },
+        );
       } else {
         toast.error("خطا در حذف");
       }

@@ -8,6 +8,7 @@ import SiteNavbar from "@/components/features/navbar/SiteNavbar"
 import ScrollToTop from "@/components/common/ScrollToTop"
 import NavigationLoader from "@/components/common/NavigationLoader"
 import InitialLoadLoader from "@/components/common/InitialLoadLoader"
+import AdminSWRConfig from "@/components/admin/AdminSWRConfig"
 
 export const metadata = {
   title: 'فروشگاه ورزشی تنادور | پنل مدیریت',
@@ -36,9 +37,11 @@ export default function RootLayout({ children }) {
           <SiteNavbar />
           {/* از این‌جا به بعد داخل admin-scope هستیم: پریمری = سبز درباری، رادیوس = ۶ پیکسل */}
           <div className="admin-scope">
-            <NotificationProvider>
-              <AdminLayout>{children}</AdminLayout>
-            </NotificationProvider>
+            <AdminSWRConfig>
+              <NotificationProvider>
+                <AdminLayout>{children}</AdminLayout>
+              </NotificationProvider>
+            </AdminSWRConfig>
           </div>
         </main>
 

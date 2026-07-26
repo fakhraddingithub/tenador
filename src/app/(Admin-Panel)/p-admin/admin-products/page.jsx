@@ -8,6 +8,10 @@ import AdminLoader from '@/components/admin/AdminLoader';
 import { showToast } from '@/lib/toast';
 import { confirmDelete, showError } from '@/lib/swal';
 import { FiPlus, FiBox, FiSearch, FiFilter, FiX } from 'react-icons/fi';
+import useSWR from 'swr';
+
+// 🟢 داده‌ی مرجع (ورزش/برند/دسته/سری) — به‌ندرت تغییر می‌کند، پنجره‌ی ۵ دقیقه‌ای.
+const REF_DATA = { dedupingInterval: 300_000 };
 
 export default function AdminProducts() {
   const router = useRouter();
@@ -23,41 +27,24 @@ export default function AdminProducts() {
   const [brandFilter, setBrandFilter] = useState('');
   const [serieFilter, setSerieFilter] = useState(''); // فقط سری‌های ریشه (level 0)
 
-  // گزینه‌های فیلتر
-  const [sports, setSports] = useState([]);
-  const [brands, setBrands] = useState([]);
-  const [categories, setCategories] = useState([]);
-  const [rootSeries, setRootSeries] = useState([]);
+  // ─── گزینه‌های فیلتر (🟢 داده‌ی مرجع — با SWR کش می‌شود) ───
+  // این چهار درخواست قبلاً در هر بار ورود به صفحه دوباره زده می‌شدند. حالا در
+  // پنجره‌ی REF_DATA از کش خوانده می‌شوند؛ رفت‌وبرگشت بین صفحات پنل صفر درخواست.
+  const { data: sportsRes } = useSWR('/api/sports', REF_DATA);
+  const { data: brandsRes } = useSWR('/api/brands', REF_DATA);
+  const { data: categoriesRes } = useSWR(
+    sportFilter ? `/api/categories?sportId=${sportFilter}` : '/api/categories',
+    REF_DATA,
+  );
+  const { data: seriesRes } = useSWR(
+    brandFilter ? `/api/series?brand=${brandFilter}` : '/api/series',
+    REF_DATA,
+  );
 
-  // بارگذاری اولیه‌ی ورزش‌ها و برندها (یک‌بار)
-  useEffect(() => {
-    fetch('/api/sports')
-      .then((r) => (r.ok ? r.json() : { sports: [] }))
-      .then((d) => setSports(d.sports || []))
-      .catch(() => {});
-    fetch('/api/brands')
-      .then((r) => (r.ok ? r.json() : { brands: [] }))
-      .then((d) => setBrands(d.brands || []))
-      .catch(() => {});
-  }, []);
-
-  // دسته‌بندی‌ها — با انتخاب ورزش محدود می‌شوند
-  useEffect(() => {
-    const url = sportFilter ? `/api/categories?sportId=${sportFilter}` : '/api/categories';
-    fetch(url)
-      .then((r) => (r.ok ? r.json() : { categories: [] }))
-      .then((d) => setCategories(d.categories || []))
-      .catch(() => {});
-  }, [sportFilter]);
-
-  // سری‌های ریشه — با انتخاب برند محدود می‌شوند
-  useEffect(() => {
-    const url = brandFilter ? `/api/series?brand=${brandFilter}` : '/api/series';
-    fetch(url)
-      .then((r) => (r.ok ? r.json() : { series: [] }))
-      .then((d) => setRootSeries((d.series || []).filter((s) => (s.level ?? 0) === 0)))
-      .catch(() => {});
-  }, [brandFilter]);
+  const sports = sportsRes?.sports || [];
+  const brands = brandsRes?.brands || [];
+  const categories = categoriesRes?.categories || [];
+  const rootSeries = (seriesRes?.series || []).filter((s) => (s.level ?? 0) === 0);
 
   const hasActiveFilter = sportFilter || categoryFilter || brandFilter || serieFilter;
 

@@ -8,7 +8,11 @@ import Sport from "base/models/Sport";
 import Variant from "base/models/Variant";
 import { NextResponse } from "next/server";
 
+import requireAdmin, { unauthorized } from "@/lib/requireAdmin";
+
 export async function GET(req) {
+  if (!(await requireAdmin())) return unauthorized();
+
   await connectToDB();
 
   const { searchParams } = new URL(req.url);

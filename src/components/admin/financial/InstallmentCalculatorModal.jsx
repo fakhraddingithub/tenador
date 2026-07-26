@@ -4,7 +4,6 @@ import { useState, useRef, useEffect } from "react";
 import { createPortal } from "react-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { X, Calculator, Download, Loader2 } from "lucide-react";
-import { toPng } from "html-to-image";
 import { showToast } from "@/lib/toast";
 import {
   formatThousands,
@@ -78,6 +77,9 @@ export default function InstallmentCalculatorModal({ open, onClose, defaultRate 
     if (!slipRef.current) return;
     setExporting(true);
     try {
+      // html-to-image فقط هنگام کلیکِ «دانلود» لازم است — با import پویا از
+      // باندلِ اولیه‌ی صفحه خارج می‌شود.
+      const { toPng } = await import("html-to-image");
       const dataUrl = await toPng(slipRef.current, {
         pixelRatio: 3,
         backgroundColor: "#ffffff",

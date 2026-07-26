@@ -19,6 +19,8 @@ import {
   useState,
 } from "react";
 
+import useVisiblePoll from "@/hooks/useVisiblePoll";
+
 const EMPTY_COUNTS = {
   total: 0,
   byType: {},
@@ -63,17 +65,8 @@ export function NotificationProvider({ children }) {
     }
   }, [applyPayload]);
 
-  /* poll + refetch روی focus */
-  useEffect(() => {
-    refresh();
-    const id = setInterval(refresh, POLL_MS);
-    const onFocus = () => refresh();
-    window.addEventListener("focus", onFocus);
-    return () => {
-      clearInterval(id);
-      window.removeEventListener("focus", onFocus);
-    };
-  }, [refresh]);
+  /* poll — فقط وقتی تب دیده می‌شود (بازگشت به تب خودش refetch می‌کند) */
+  useVisiblePoll(refresh, POLL_MS);
 
   /**
    * علامت‌گذاری خوانده‌شده — خوش‌بینانه (فوری در UI) سپس سرور.

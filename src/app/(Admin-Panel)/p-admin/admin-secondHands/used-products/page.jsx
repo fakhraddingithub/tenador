@@ -1,41 +1,37 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import useSWR from 'swr';
 import Link from 'next/link';
 import { FiPlus, FiEdit3, FiTrash2, FiPackage } from 'react-icons/fi';
 import { showToast } from '@/lib/toast';
 import { confirmDelete } from '@/lib/swal';
 import AdminLoader from '@/components/admin/AdminLoader';
 
+// 🟢 محتوا/داده‌ی مرجع — پنجره‌ی ۵ دقیقه‌ای
+const CONTENT_TTL = { dedupingInterval: 300_000 };
+
 const STATUS_LABEL = { available: 'موجود', sold: 'فروخته شده' };
 const STATUS_COLOR = { available: 'bg-green-50 text-green-600', sold: 'bg-red-50 text-red-500' };
 
 export default function UsedProductsPage() {
-  const [items, setItems] = useState([]);
-  const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
-  const [pages, setPages] = useState(1);
   const [status, setStatus] = useState('');
-  const [loading, setLoading] = useState(true);
 
-  useEffect(() => { fetchItems(); }, [page, status]);
+  // 🟢 محصولات دست‌دوم — محتوای کاتالوگ
+  const usedParams = new URLSearchParams({ page });
+  if (status) usedParams.set('status', status);
 
-  const fetchItems = async () => {
-    setLoading(true);
-    try {
-      const params = new URLSearchParams({ page });
-      if (status) params.set('status', status);
-      const res = await fetch(`/api/admin/used-products?${params}`);
-      const data = await res.json();
-      setItems(data.items || []);
-      setTotal(data.total || 0);
-      setPages(data.pages || 1);
-    } catch {
-      showToast.error('خطا در بارگذاری');
-    } finally {
-      setLoading(false);
-    }
-  };
+  const { data, isLoading: loading, error, mutate: fetchItems } =
+    useSWR(`/api/admin/used-products?${usedParams}`, CONTENT_TTL);
+
+  const items = data?.items || [];
+  const total = data?.total || 0;
+  const pages = data?.pages || 1;
+
+  useEffect(() => {
+    if (error) showToast.error('خطا در بارگذاری');
+  }, [error]);
 
   const handleDelete = async (item) => {
     const ok = await confirmDelete('حذف محصول دست‌دوم', `"${item.baseProduct?.name}" حذف می‌شود`);
@@ -43,8 +39,14 @@ export default function UsedProductsPage() {
     try {
       const res = await fetch(`/api/admin/used-products/${item._id}`, { method: 'DELETE' });
       if (res.ok) {
-        setItems(prev => prev.filter(i => i._id !== item._id));
-        setTotal(prev => prev - 1);
+        fetchItems(
+          (cur) => cur && {
+            ...cur,
+            items: (cur.items || []).filter(i => i._id !== item._id),
+            total: Math.max(0, (cur.total || 0) - 1),
+          },
+          { revalidate: false },
+        );
         showToast.success('حذف شد');
       }
     } catch {

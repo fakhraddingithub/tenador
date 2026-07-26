@@ -13,7 +13,6 @@
  */
 
 import { NextResponse } from "next/server";
-import { cookies } from "next/headers";
 import connectToDB from "base/configs/db";
 import {
   connectWarehouseDB,
@@ -21,16 +20,14 @@ import {
   getUsedItemTrackingModel,
   getWarehouseModel,
 } from "@/lib/warehouseDb";
-import { verifyToken } from "base/utils/auth";
 import Order from "base/models/Order";
 import { syncOrderFulfillmentFromTracking } from "@/lib/orderFulfillmentSync";
 
+import requireAdmin, { unauthorized } from "@/lib/requireAdmin";
+
+// نقش ادمین از دیتابیس بررسی می‌شود (توکن به‌تنهایی قابل‌اعتماد نیست).
 async function getAdminUser() {
-  const cookieStore = await cookies();
-  const token = cookieStore.get("accessToken")?.value;
-  if (!token) return null;
-  const decoded = verifyToken(token);
-  return decoded;
+  return await requireAdmin();
 }
 
 /**
@@ -66,6 +63,8 @@ function orderHasPendingPurchase(order) {
 
 /* ─── GET: لیست tracking items مرتبط با سفارش ──────────────────── */
 export async function GET(req, { params }) {
+  if (!(await requireAdmin())) return unauthorized();
+
   try {
     const admin = await getAdminUser();
     
@@ -269,6 +268,8 @@ export async function GET(req, { params }) {
 
 /* ─── POST: ثبت بارکد برای آیتم سفارش ──────────────────────────── */
 export async function POST(req, { params }) {
+  if (!(await requireAdmin())) return unauthorized();
+
   try {
     const admin = await getAdminUser();
     if (!admin)
@@ -549,6 +550,8 @@ export async function POST(req, { params }) {
 
 /* ─── DELETE: حذف tracking item از سفارش ───────────────────────── */
 export async function DELETE(req, { params }) {
+  if (!(await requireAdmin())) return unauthorized();
+
   try {
     const admin = await getAdminUser();
     if (!admin)

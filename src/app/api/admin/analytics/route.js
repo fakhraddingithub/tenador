@@ -13,6 +13,8 @@
 import { NextResponse } from "next/server";
 import { computeAnalytics } from "base/services/analyticsService";
 
+import requireAdmin, { unauthorized } from "@/lib/requireAdmin";
+
 const DAY_MS = 24 * 60 * 60 * 1000;
 
 function parseDate(value, fallback) {
@@ -22,6 +24,8 @@ function parseDate(value, fallback) {
 }
 
 export async function GET(req) {
+  if (!(await requireAdmin())) return unauthorized();
+
   try {
     const { searchParams } = new URL(req.url);
     const now = new Date();

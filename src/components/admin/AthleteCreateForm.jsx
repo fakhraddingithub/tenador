@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { toast } from "react-toastify";
+import { useBrands } from "@/hooks/useAdminRefData";
 import Swal from "sweetalert2";
 import { 
   FaSave, FaTrophy, FaUser, FaTrash, FaIdCard, 
@@ -21,19 +22,14 @@ export default function AthleteCreateForm({ initialData, sports, isEdit = false 
   });
   
   const [loading, setLoading] = useState(false);
-  const [allSponsors, setAllSponsors] = useState([]); 
   const [sponsorSearch, setSponsorSearch] = useState("");
 
+  // 🟢 برندها (اسپانسرها) — کشِ مشترکِ داده‌ی مرجع
+  const { brands: allSponsors, error: sponsorsError } = useBrands();
+
   useEffect(() => {
-    const fetchSponsors = async () => {
-        try {
-            const res = await fetch('/api/brands');
-            const data = await res.json();
-            setAllSponsors(data.brands || []);
-        } catch (e) { toast.error("خطا در دریافت لیست برندها"); }
-    };
-    fetchSponsors();
-  }, []);
+    if (sponsorsError) toast.error("خطا در دریافت لیست برندها");
+  }, [sponsorsError]);
 
   useEffect(() => {
     if (initialData) {

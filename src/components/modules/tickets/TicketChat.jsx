@@ -40,6 +40,7 @@ import {
   attachmentHref,
 } from './constants'
 import AttachmentUploader from './AttachmentUploader'
+import useVisiblePoll from '@/hooks/useVisiblePoll'
 
 const POLL_INTERVAL = 15000
 
@@ -174,11 +175,7 @@ const TicketChat = ({ ticketId }) => {
     [ticketId],
   )
 
-  useEffect(() => {
-    load()
-    const interval = setInterval(() => load(true), POLL_INTERVAL)
-    return () => clearInterval(interval)
-  }, [load])
+  useVisiblePoll(load, POLL_INTERVAL)
 
   // اسکرول به انتهای گفتگو بعد از اولین بارگذاری و پیام جدید
   useEffect(() => {

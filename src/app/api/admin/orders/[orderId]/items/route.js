@@ -19,27 +19,25 @@
  */
 
 import { NextResponse } from "next/server";
-import { cookies } from "next/headers";
 import mongoose from "mongoose";
 
 import connectToDB from "base/configs/db";
-import { verifyToken } from "base/utils/auth";
 import "base/models/registerModels";
 import Order from "base/models/Order";
 import Payment from "base/models/Payment";
 import Product from "base/models/Product";
 import Variant from "base/models/Variant";
-import User from "base/models/User";
 import UsedProduct from "base/models/UsedProduct";
 import { computeCartPrice } from "base/services/priceEngine";
 import { recomputeOrderTotals, derivePaymentStatus } from "base/services/orderRecalc";
 import { buildVariantSnapshot } from "@/lib/variantImages";
 
+import requireAdmin, { unauthorized } from "@/lib/requireAdmin";
+
+import User from "base/models/User";
+// نقش ادمین از دیتابیس بررسی می‌شود (توکن به‌تنهایی قابل‌اعتماد نیست).
 async function getAdminUser() {
-  const cookieStore = await cookies();
-  const token = cookieStore.get("accessToken")?.value;
-  if (!token) return null;
-  return verifyToken(token) || null;
+  return await requireAdmin();
 }
 
 const isId = (v) => v && mongoose.Types.ObjectId.isValid(v);
@@ -70,6 +68,8 @@ async function recalcAndApply(order, session) {
 
 /* ─── POST: افزودن آیتم جدید ─────────────────────────────────────────── */
 export async function POST(req, { params }) {
+  if (!(await requireAdmin())) return unauthorized();
+
   try {
     await connectToDB();
 
@@ -214,6 +214,8 @@ export async function POST(req, { params }) {
 
 /* ─── PATCH: تغییر تعداد یک آیتم ─────────────────────────────────────── */
 export async function PATCH(req, { params }) {
+  if (!(await requireAdmin())) return unauthorized();
+
   try {
     await connectToDB();
 
@@ -290,6 +292,8 @@ export async function PATCH(req, { params }) {
 
 /* ─── DELETE: حذف یک آیتم ────────────────────────────────────────────── */
 export async function DELETE(req, { params }) {
+  if (!(await requireAdmin())) return unauthorized();
+
   try {
     await connectToDB();
 

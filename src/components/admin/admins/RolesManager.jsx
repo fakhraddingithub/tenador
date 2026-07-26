@@ -8,6 +8,7 @@
  */
 
 import { useState, useEffect } from 'react';
+import useSWR from 'swr';
 import { toast } from 'react-toastify';
 import Swal from 'sweetalert2';
 import {
@@ -18,34 +19,37 @@ import PermissionPicker from './PermissionPicker';
 
 const emptyRole = { name: '', description: '', permissions: [] };
 
+// 🟡 پیکربندیِ دسترسی — پنجره‌ی کوتاه
+const ACL_TTL = { dedupingInterval: 10_000 };
+
 export default function RolesManager({ open, onClose, modules, onRolesChanged }) {
-  const [roles, setRoles] = useState([]);
-  const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
 
   // null = حالت لیست | { _id? , name, description, permissions } = فرم ساخت/ویرایش
   const [editingRole, setEditingRole] = useState(null);
 
+  // 🟡 نقش‌ها — فقط وقتی مودال باز است واکشی می‌شود (کلیدِ null در حالت بسته)
+  const { data, isLoading: loading, error, mutate: fetchRoles } = useSWR(
+    open ? '/api/admin/roles' : null,
+    ACL_TTL,
+  );
+  const roles = data?.roles || [];
+
+  // microtask تأخیر — همان الگوی بقیه‌ی پنل برای پرهیز از cascading render
   useEffect(() => {
-    if (open) {
-      fetchRoles();
-      setEditingRole(null);
-    }
+    if (!open) return;
+    let cancelled = false;
+    Promise.resolve().then(() => {
+      if (!cancelled) setEditingRole(null);
+    });
+    return () => {
+      cancelled = true;
+    };
   }, [open]);
 
-  const fetchRoles = async () => {
-    setLoading(true);
-    try {
-      const res = await fetch('/api/admin/roles');
-      const data = await res.json();
-      if (res.ok) setRoles(data.roles || []);
-      else toast.error(data.message || 'خطا در دریافت نقش‌ها');
-    } catch {
-      toast.error('خطا در ارتباط با سرور');
-    } finally {
-      setLoading(false);
-    }
-  };
+  useEffect(() => {
+    if (error) toast.error('خطا در ارتباط با سرور');
+  }, [error]);
 
   const handleSaveRole = async () => {
     if (!editingRole?.name?.trim()) return toast.error('نام نقش الزامی است');

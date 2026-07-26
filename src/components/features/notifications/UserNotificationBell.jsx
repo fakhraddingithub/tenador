@@ -5,6 +5,7 @@ import { createPortal } from "react-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { FiBell } from "react-icons/fi";
 import { CheckCheck, Inbox, Megaphone } from "lucide-react";
+import useVisiblePoll from "@/hooks/useVisiblePoll";
 
 /* ─── زمانِ نسبی فارسی ──────────────────────────────────────────────── */
 function timeAgo(dateStr) {
@@ -147,14 +148,11 @@ export default function UserNotificationBell() {
     }
   }, []);
 
-  /* واکشی اولیه + پولینگِ شمارش هر ۶۰ ثانیه (وقتی بسته است) */
-  useEffect(() => {
-    refreshCount();
-    const id = setInterval(() => {
-      if (!open) refreshCount();
-    }, 60000);
-    return () => clearInterval(id);
-  }, [refreshCount, open]);
+  /* واکشی اولیه + پولینگِ شمارش هر ۶۰ ثانیه — فقط وقتی تب دیده می‌شود و پنل بسته است */
+  const pollCount = useCallback(() => {
+    if (!open) refreshCount();
+  }, [open, refreshCount]);
+  useVisiblePoll(pollCount, 60000);
 
   /* باز کردن: بَج فوراً صفر، لیست واکشی، و «همه خوانده‌شده» در سرور ثبت */
   const openPanel = useCallback(() => {

@@ -13,12 +13,16 @@ import { NextResponse } from "next/server";
 import connectToDB from "base/configs/db";
 import QuantityDiscount from "base/models/QuantityDiscount";
 import { revalidateContent } from "@/lib/revalidate";
+import requireAdmin, { unauthorized } from "@/lib/requireAdmin";
+
 import {
   validateQuantityDiscountPayload,
   normalizeTiers,
 } from "@/lib/quantityDiscountValidation";
 
 export async function GET() {
+  if (!(await requireAdmin())) return unauthorized();
+
   try {
     await connectToDB();
 
@@ -37,6 +41,8 @@ export async function GET() {
 }
 
 export async function POST(req) {
+  if (!(await requireAdmin())) return unauthorized();
+
   try {
     await connectToDB();
     const body = await req.json();

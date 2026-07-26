@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import useSWR from "swr";
 import Link from "next/link";
 import {
   FiPlus,
@@ -14,6 +15,9 @@ import {
   FiSearch,
 } from "react-icons/fi";
 
+// 🟡 تعریفِ فرایندِ سفارش — پیکربندی، نه داده‌ی مالی
+const FLOW_TTL = { dedupingInterval: 60_000 };
+
 const COLORS = {
   primary: "#004225",
   secondary: "#c9a84c",
@@ -24,8 +28,6 @@ const COLORS = {
 };
 
 export default function OrderFlowsClient() {
-  const [flows, setFlows] = useState([]);
-  const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [toast, setToast] = useState(null);
   const [deleteConfirm, setDeleteConfirm] = useState(null); // flowId
@@ -35,25 +37,32 @@ export default function OrderFlowsClient() {
     setTimeout(() => setToast(null), 3000);
   };
 
-  const loadFlows = async () => {
-    setLoading(true);
-    try {
-      const res = await fetch("/api/admin/order-flows");
-      const data = await res.json();
-      setFlows(data.flows || []);
-    } catch {
-      showToast("error", "خطا در دریافت فرایندها");
-    }
-    setLoading(false);
-  };
+  // 🟡 تعریفِ فرایندها — پیکربندیِ ادمین، به‌ندرت تغییر می‌کند
+  const { data, isLoading: loading, error, mutate: loadFlows } = useSWR(
+    "/api/admin/order-flows",
+    FLOW_TTL,
+  );
+  const flows = data?.flows || [];
 
-  useEffect(() => { loadFlows(); }, []);
+  useEffect(() => {
+    if (!error) return;
+    let cancelled = false;
+    Promise.resolve().then(() => {
+      if (!cancelled) showToast("error", "خطا در دریافت فرایندها");
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [error]);
 
   const handleDelete = async (flowId) => {
     try {
       const res = await fetch(`/api/admin/order-flows/${flowId}`, { method: "DELETE" });
       if (!res.ok) throw new Error();
-      setFlows((prev) => prev.filter((f) => f._id !== flowId));
+      loadFlows(
+        (cur) => cur && { ...cur, flows: (cur.flows || []).filter((f) => f._id !== flowId) },
+        { revalidate: false },
+      );
       showToast("success", "فرایند حذف شد");
     } catch {
       showToast("error", "خطا در حذف فرایند");
@@ -70,8 +79,12 @@ export default function OrderFlowsClient() {
       });
       const data = await res.json();
       if (!res.ok) throw new Error();
-      setFlows((prev) =>
-        prev.map((f) => (f._id === flow._id ? data.flow : f))
+      loadFlows(
+        (cur) => cur && {
+          ...cur,
+          flows: (cur.flows || []).map((f) => (f._id === flow._id ? data.flow : f)),
+        },
+        { revalidate: false },
       );
       showToast("success", flow.isActive ? "فرایند غیرفعال شد" : "فرایند فعال شد");
     } catch {

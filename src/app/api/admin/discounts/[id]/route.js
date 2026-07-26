@@ -4,8 +4,12 @@ import DiscountRule from "base/models/DiscountRule";
 import { parseIranDateTimeLocal } from "@/lib/iranDateTime";
 import { NextResponse } from "next/server";
 
+import requireAdmin, { unauthorized } from "@/lib/requireAdmin";
+
 // GET /api/admin/discounts/[id]
 export async function GET(req, { params }) {
+  if (!(await requireAdmin())) return unauthorized();
+
   await connectToDB();
   const { id } = await params;
   const rule = await DiscountRule.findById(id).lean();
@@ -15,6 +19,8 @@ export async function GET(req, { params }) {
 
 // PATCH /api/admin/discounts/[id]
 export async function PATCH(req, { params }) {
+  if (!(await requireAdmin())) return unauthorized();
+
   await connectToDB();
   const { id } = await params;
   const body = await req.json();
@@ -49,6 +55,8 @@ export async function PATCH(req, { params }) {
 
 // DELETE /api/admin/discounts/[id]
 export async function DELETE(req, { params }) {
+  if (!(await requireAdmin())) return unauthorized();
+
   await connectToDB();
   const { id } = await params;
   const rule = await DiscountRule.findByIdAndDelete(id);

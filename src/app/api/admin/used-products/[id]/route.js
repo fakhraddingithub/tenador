@@ -7,7 +7,6 @@
  */
 
 import { NextResponse } from "next/server";
-import { cookies } from "next/headers";
 import { revalidatePath } from "next/cache";
 import connectToDB from "base/configs/db";
 import UsedProduct from "base/models/UsedProduct";
@@ -15,17 +14,16 @@ import Product from "base/models/Product";
 import Variant from "base/models/Variant"; 
 import Order from "base/models/Order";
 import { validateHealthScores, calcOverallScore } from "@/lib/healthcard";
-import { verifyToken } from "base/utils/auth";
+import requireAdmin, { unauthorized } from "@/lib/requireAdmin";
 
+// نقش ادمین از دیتابیس بررسی می‌شود (توکن به‌تنهایی قابل‌اعتماد نیست).
 async function getAdminUser() {
-  const cookieStore = await cookies();
-  const token = cookieStore.get("accessToken")?.value;
-  if (!token) return null;
-  const decoded = verifyToken(token);
-  return decoded;
+  return await requireAdmin();
 }
 
 export async function GET(_, { params }) {
+  if (!(await requireAdmin())) return unauthorized();
+
   try {
     await connectToDB();
     const { id } = await params;
@@ -53,6 +51,8 @@ export async function GET(_, { params }) {
 }
 
 export async function PUT(req, { params }) {
+  if (!(await requireAdmin())) return unauthorized();
+
   try {
     await connectToDB();
     const admin = await getAdminUser();
@@ -136,6 +136,8 @@ export async function PUT(req, { params }) {
 }
 
 export async function DELETE(req, { params }) {
+  if (!(await requireAdmin())) return unauthorized();
+
   try {
     await connectToDB();
     const admin = await getAdminUser();

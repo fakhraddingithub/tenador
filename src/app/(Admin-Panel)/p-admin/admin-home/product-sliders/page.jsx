@@ -1,33 +1,27 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import useSWR from "swr";
 import Link from "next/link";
 import { FiArrowRight, FiTrendingUp, FiZap, FiInfo } from "react-icons/fi";
 import AdminLoader from "@/components/admin/AdminLoader";
 import ProductSliderManager from "@/components/admin/home/ProductSliderManager";
 
-export default function ProductSlidersPage() {
-  const [loading, setLoading] = useState(true);
-  const [data, setData] = useState({ bestsellers: [], offers: [] });
-  const [error, setError] = useState(false);
+// 🟢 محتوا — پنجره‌ی ۵ دقیقه‌ای
+const CONTENT_TTL = { dedupingInterval: 300_000 };
 
-  useEffect(() => {
-    (async () => {
-      try {
-        const res = await fetch("/api/admin/home-sliders");
-        const json = await res.json();
-        if (!res.ok) throw new Error();
-        setData({
-          bestsellers: json.bestsellers || [],
-          offers: json.offers || [],
-        });
-      } catch {
-        setError(true);
-      } finally {
-        setLoading(false);
-      }
-    })();
-  }, []);
+export default function ProductSlidersPage() {
+  // 🟢 اسلایدرهای صفحه‌ی اصلی — محتوا. فقط بارگذاریِ اولیه از این‌جاست؛
+  // ذخیره‌ی ترتیب داخلِ ProductSliderManager با PUT انجام می‌شود و همان‌جا
+  // پاسخِ سرور را نگه می‌دارد، پس این کش با آن تداخلی ندارد.
+  const { data: json, isLoading: loading, error } = useSWR(
+    "/api/admin/home-sliders",
+    CONTENT_TTL,
+  );
+
+  const data = {
+    bestsellers: json?.bestsellers || [],
+    offers: json?.offers || [],
+  };
 
   return (
     <div dir="rtl">

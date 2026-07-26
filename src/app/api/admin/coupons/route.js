@@ -14,6 +14,8 @@ import Coupon from "base/models/Coupon";
 import Order from "base/models/Order";
 import { parseIranDateTimeLocal } from "@/lib/iranDateTime";
 
+import requireAdmin, { unauthorized } from "@/lib/requireAdmin";
+
 // کد معتبر: حروف انگلیسی، عدد، خط تیره و زیرخط — ۳ تا ۳۰ کاراکتر
 const CODE_REGEX = /^[A-Z0-9_-]{3,30}$/;
 
@@ -68,6 +70,8 @@ function validateCouponPayload(body, { partial = false } = {}) {
 }
 
 export async function GET() {
+  if (!(await requireAdmin())) return unauthorized();
+
   try {
     await connectToDB();
 
@@ -96,6 +100,8 @@ export async function GET() {
 }
 
 export async function POST(req) {
+  if (!(await requireAdmin())) return unauthorized();
+
   try {
     await connectToDB();
 

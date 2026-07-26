@@ -4,23 +4,25 @@
  * GET  → تاریخچه‌ی اعلان‌های ارسال‌شده به کاربران (برای پنل ادمین)
  * POST → ساخت و ارسال یک اعلان جدید به کاربران
  *
- * ⚠️ بررسی دسترسیِ ادمین روی هر دو متد (GET تاریخچه و POST ارسال) عمداً برداشته
- * شده است.
+ * هر دو متد با requireAdmin محافظت می‌شوند (نقش از دیتابیس بررسی می‌شود).
+ * پیش‌تر این بررسی برداشته شده بود؛ یعنی هر کاربرِ ناشناسی می‌توانست برای همه‌ی
+ * کاربران اعلان بفرستد.
  *
  * ⚠️ کاملاً جدا از /api/admin/notifications (اعلان‌های داخلی خودِ پنل).
  */
 
 import { NextResponse } from "next/server";
-import { cookies } from "next/headers";
 import connectToDB from "base/configs/db";
 import "base/models/registerModels";
-import { verifyToken } from "base/utils/auth";
+import requireAdmin, { unauthorized } from "@/lib/requireAdmin";
 import {
   createUserNotification,
   getSentNotifications,
 } from "base/services/userNotificationService";
 
 export async function GET(req) {
+  if (!(await requireAdmin())) return unauthorized();
+
   try {
     await connectToDB();
 
@@ -36,21 +38,14 @@ export async function GET(req) {
 }
 
 export async function POST(req) {
+  const admin = await requireAdmin();
+  if (!admin) return unauthorized();
+
   try {
     await connectToDB();
 
-    // ⚠️ بررسی دسترسیِ ادمین برای «ارسال/ساخت اعلان» عمداً برداشته شده است.
-    // فقط برای انتسابِ createdBy، در صورت وجود توکن، شناسه‌ی کاربر خوانده می‌شود
-    // (بدون هیچ اجبار یا ردِ درخواست).
-    let actorId = null;
-    try {
-      const cookieStore = await cookies();
-      const token = cookieStore.get("accessToken")?.value;
-      const decoded = token ? verifyToken(token) : null;
-      actorId = decoded?.userId || null;
-    } catch {
-      /* بی‌صدا */
-    }
+    // شناسه‌ی ادمینِ ارسال‌کننده برای انتسابِ createdBy
+    const actorId = admin._id;
 
     const body = await req.json().catch(() => ({}));
     const { title, message, targetType, targetRole, targetUserIds } = body;

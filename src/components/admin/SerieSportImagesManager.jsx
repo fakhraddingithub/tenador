@@ -1,30 +1,19 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useSports } from "@/hooks/useAdminRefData";
 import { FiPlus, FiTrash2 } from "react-icons/fi";
 
 import ImageUpload from "./ImageUpload";
 
 export default function SerieSportImagesManager({ sportImages = [], onChange }) {
-  const [sports, setSports] = useState([]);
+
   const [pendingSportId, setPendingSportId] = useState("");
   const [pendingImage, setPendingImage] = useState("");
   const [pendingHeadImage, setPendingHeadImage] = useState("");
 
-  useEffect(() => {
-    let mounted = true;
-
-    fetch("/api/sports")
-      .then((res) => res.json())
-      .then((data) => {
-        if (mounted) setSports(data.sports || []);
-      })
-      .catch((err) => console.error("Error fetching sports:", err));
-
-    return () => {
-      mounted = false;
-    };
-  }, []);
+  // 🟢 ورزش‌ها — کشِ مشترکِ داده‌ی مرجع
+  const { sports } = useSports();
 
   const usedSportIds = new Set(sportImages.map((entry) => String(entry.sport)));
   const availableSports = sports.filter(

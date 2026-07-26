@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect } from "react";
+import useSWR from "swr";
 import Link from "next/link";
 import { motion } from "framer-motion";
 import { toast } from "react-toastify";
@@ -28,38 +29,30 @@ const tabs = [
   { key: "archived", label: "بایگانی" },
 ];
 
+// 🟡 کمپین‌ها محتوا هستند نه پول؛ پنجره‌ی یک‌دقیقه‌ای. هر تغییرِ وضعیت/کپی/حذف
+// با mutate() فوراً تازه‌سازی می‌کند و این پنجره را دور می‌زند.
+const EVENT_TTL = { dedupingInterval: 60_000 };
+
 export default function EventList() {
-  const [events, setEvents] = useState([]);
-  const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("");
 
-  const fetchEvents = useCallback(async () => {
-    setLoading(true);
-    try {
-      const params = new URLSearchParams({ limit: "100" });
-      if (statusFilter) params.set("status", statusFilter);
-      const res = await fetch(`/api/admin/events?${params}`);
-      const data = await res.json();
-      setEvents(data.events || []);
-    } catch {
-      toast.error("خطا در بارگذاری Collection");
-    } finally {
-      setLoading(false);
-    }
-  }, [statusFilter]);
+  // 🟡 داده‌ی کمپین/محتوا (نه مالی) — کشِ کوتاه.
+  const params = new URLSearchParams({ limit: "100" });
+  if (statusFilter) params.set("status", statusFilter);
 
-  // Defer to a microtask so the synchronous setLoading(true) inside fetchEvents
-  // doesn't run directly in the effect body (avoids cascading-render warning).
+  const {
+    data,
+    isLoading: loading,
+    error,
+    mutate: fetchEvents,
+  } = useSWR(`/api/admin/events?${params}`, EVENT_TTL);
+
+  const events = data?.events || [];
+
   useEffect(() => {
-    let cancelled = false;
-    Promise.resolve().then(() => {
-      if (!cancelled) fetchEvents();
-    });
-    return () => {
-      cancelled = true;
-    };
-  }, [fetchEvents]);
+    if (error) toast.error("خطا در بارگذاری Collection");
+  }, [error]);
 
   const changeStatus = async (event, status) => {
     try {

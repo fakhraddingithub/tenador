@@ -7,11 +7,9 @@
  */
 
 import { NextResponse } from "next/server";
-import { cookies } from "next/headers";
 import mongoose from "mongoose";
 
 import connectToDB from "base/configs/db";
-import { verifyToken } from "base/utils/auth";
 import Order from "base/models/Order";
 import Installment from "base/models/Installment";
 import { deriveCheckStatus, summarizeInstallment } from "base/services/installmentService";
@@ -24,13 +22,11 @@ import "base/models/Variant";
 import "base/models/UsedProduct";
 import "base/models/User";
 
-async function getAdminUser() {
-  const cookieStore = await cookies();
-  const token = cookieStore.get("accessToken")?.value;
-  if (!token) return null;
+import requireAdmin, { unauthorized } from "@/lib/requireAdmin";
 
-  const decoded = verifyToken(token);
-  return decoded || null;
+// نقش ادمین از دیتابیس بررسی می‌شود (توکن به‌تنهایی قابل‌اعتماد نیست).
+async function getAdminUser() {
+  return await requireAdmin();
 }
 
 // تبدیل attributes واریانت (Map) به آبجکت ساده تا در JSON درست سریالایز شود
@@ -119,6 +115,8 @@ function normalizeOrderItems(items = []) {
 
 /* ─── GET: جزئیات سفارش ─────────────────────────────────────────────── */
 export async function GET(req, { params }) {
+  if (!(await requireAdmin())) return unauthorized();
+
   try {
     await connectToDB();
 
@@ -215,6 +213,8 @@ export async function GET(req, { params }) {
 
 /* ─── PATCH: بروزرسانی وضعیت ────────────────────────────────────────── */
 export async function PATCH(req, { params }) {
+  if (!(await requireAdmin())) return unauthorized();
+
   try {
     await connectToDB();
 

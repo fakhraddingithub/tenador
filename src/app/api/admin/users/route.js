@@ -7,9 +7,12 @@
 
 import { NextResponse } from "next/server";
 import connectToDB from "base/configs/db";
-import User from "base/models/User";
+import requireAdmin, { unauthorized } from "@/lib/requireAdmin";
 
+import User from "base/models/User";
 export async function GET(req) {
+  if (!(await requireAdmin())) return unauthorized();
+
   try {
     await connectToDB();
 

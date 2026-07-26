@@ -3,7 +3,11 @@ import { revalidatePath } from "next/cache";
 import connectToDB from "base/configs/db";
 import HealthCard from "base/models/HealthCard";
 
+import requireAdmin, { unauthorized } from "@/lib/requireAdmin";
+
 export async function GET(_, { params }) {
+  if (!(await requireAdmin())) return unauthorized();
+
   try {
     await connectToDB();
     const { id } = await params;
@@ -19,6 +23,8 @@ export async function GET(_, { params }) {
 }
 
 export async function PUT(req, { params }) {
+  if (!(await requireAdmin())) return unauthorized();
+
   try {
     await connectToDB();
     const body = await req.json();
@@ -49,6 +55,8 @@ export async function PUT(req, { params }) {
 }
 
 export async function DELETE(_, { params }) {
+  if (!(await requireAdmin())) return unauthorized();
+
   try {
     await connectToDB();
     const { id } = await params;

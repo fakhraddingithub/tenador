@@ -6,6 +6,8 @@ import { revalidateContent } from "@/lib/revalidate";
 import { PAGE_SLUGS, getPageDefault } from "@/lib/pageDefaults";
 import { getPageForAdmin } from "base/services/pageContent.service";
 
+import requireAdmin, { unauthorized } from "@/lib/requireAdmin";
+
 export const runtime = "nodejs";
 
 /**
@@ -13,6 +15,8 @@ export const runtime = "nodejs";
  * GET /api/admin/pages?slug=about → محتوای کاملِ یک صفحه برای ویرایش
  */
 export async function GET(req) {
+  if (!(await requireAdmin())) return unauthorized();
+
   const { searchParams } = new URL(req.url);
   const slug = searchParams.get("slug");
 
@@ -49,6 +53,8 @@ export async function GET(req) {
  * body: { slug, title, sections, seo, published }
  */
 export async function PUT(req) {
+  if (!(await requireAdmin())) return unauthorized();
+
   try {
     const body = await req.json();
     const slug = String(body.slug || "").trim();

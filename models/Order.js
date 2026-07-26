@@ -279,6 +279,18 @@ const OrderSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
+/* ───────────────────────────  ایندکس‌ها  ───────────────────────────
+   لیستِ سفارشاتِ پنل ادمین همیشه با { createdAt: -1, _id: -1 } مرتب می‌شود و
+   روی paymentStatus / fulfillmentStatus فیلتر می‌خورد. بدون این ایندکس‌ها هر
+   بار پیمایشِ کاملِ کالکشن + مرتب‌سازی در حافظه انجام می‌شد (که با رشد سفارش‌ها
+   به سقفِ ۳۲ مگابایتیِ مرتب‌سازیِ مونگو می‌خورد و صفحه خطا می‌دهد).
+   ـــ _id به‌عنوان tiebreaker تا صفحه‌بندی پایدار بماند.                      */
+OrderSchema.index({ createdAt: -1, _id: -1 });
+OrderSchema.index({ paymentStatus: 1, createdAt: -1 });
+OrderSchema.index({ fulfillmentStatus: 1, createdAt: -1 });
+// شمارشِ سفارش‌های دیده‌نشده در بَجِ سایدبار
+OrderSchema.index({ reviewedAt: 1 });
+
 OrderSchema.virtual("itemsCount").get(function () {
   return this.items.reduce((sum, i) => sum + i.quantity, 0);
 });

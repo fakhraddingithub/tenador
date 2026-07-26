@@ -33,6 +33,10 @@ const connectToDB = async () => {
       // total = instances × maxPoolSize زیر حد کلاستر بماند.
       maxPoolSize: 5,
       minPoolSize: 0,
+      // ایندکس‌ها با اسکریپت/مهاجرت ساخته می‌شوند، نه هنگام اتصال. در محیط
+      // سرورلس هر cold start در غیر این صورت برای هر مدل یک createIndexes
+      // می‌فرستاد — تأخیرِ بی‌دلیل روی درخواستِ اول.
+      autoIndex: false,
       // اگر کانکشن idle بماند بسته شود تا اتصال‌ها آزاد شوند
       maxIdleTimeMS: 30000,
       serverSelectionTimeoutMS: 10000,
