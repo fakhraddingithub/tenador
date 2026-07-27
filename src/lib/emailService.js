@@ -686,3 +686,64 @@ export async function sendInstallmentCompletedEmail(order, installment, customer
 
   await sendSingle(customerEmail, `تکمیل اقساط — سفارش ${order.trackingCode}`, html);
 }
+
+/**
+ * ایمیل «کد بازیابی رمز عبور» — کد ۵ رقمی برای فرآیند فراموشی رمز عبور.
+ *
+ * @param {string} to
+ * @param {string} code               کد ۵ رقمی (متن ساده — فقط در همین ایمیل ارسال می‌شود)
+ * @param {number} expiresInMinutes
+ */
+export async function sendPasswordResetCodeEmail(to, code, expiresInMinutes = 10) {
+  const logoUrl = process.env.NEXT_PUBLIC_LOGO_URL ?? `${process.env.NEXT_PUBLIC_BASE_URL ?? ''}/logo.png`;
+
+  const html = `
+<!DOCTYPE html>
+<html dir="rtl" lang="fa">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Vazirmatn:wght@400;500;600;700&display=swap');
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Vazirmatn', Tahoma, Arial, sans-serif; background: #f5f0eb; direction: rtl; }
+  </style>
+</head>
+<body style="background:#f5f0eb; padding: 24px 16px;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="max-width:560px; margin:0 auto;">
+    <tr>
+      <td style="background:#fff; border-radius:12px 12px 0 0; padding:28px 32px; text-align:center;">
+        <img src="${logoUrl}" alt="Tenador" height="44" style="display:inline-block;max-width:160px;object-fit:contain;" onerror="this.style.display='none'">
+        <h1 style="color:#aa4725; font-size:19px; font-weight:700; margin-top:12px;">🔐 بازیابی رمز عبور</h1>
+      </td>
+    </tr>
+    <tr>
+      <td style="background:#fff; padding:24px 32px;">
+        <p style="font-size:15px;color:#555;margin:0 0 20px; line-height:1.8;">
+          با سلام،<br>برای بازیابی رمز عبور حساب کاربری‌تان در تنادور، از کد زیر استفاده کنید:
+        </p>
+        <div style="text-align:center; margin:24px 0;">
+          <span style="display:inline-block; background:rgba(170,71,37,0.08); border:1px solid rgba(170,71,37,0.25); border-radius:10px; padding:16px 32px; font-size:32px; font-weight:700; letter-spacing:8px; color:#aa4725; direction:ltr;">${code}</span>
+        </div>
+        <p style="font-size:13px;color:#888;margin:0; line-height:1.8; text-align:center;">
+          این کد تا ${expiresInMinutes} دقیقه دیگر معتبر است.
+        </p>
+        <p style="font-size:12px;color:#888;margin-top:20px; line-height:1.8;">
+          اگر شما درخواست بازیابی رمز عبور نداده‌اید، این ایمیل را نادیده بگیرید؛ رمز عبور شما تغییر نخواهد کرد.
+        </p>
+      </td>
+    </tr>
+    <tr>
+      <td style="background:#1a1a1a; border-radius:0 0 12px 12px; padding:18px 32px; text-align:center;">
+        <p style="color:#888; font-size:11px; line-height:1.7; margin:0;">
+          این ایمیل به صورت خودکار ارسال شده است. لطفاً پاسخ ندهید.<br>
+          &copy; تمامی حقوق برای فروشگاه تنادور محفوظ است.
+        </p>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>`.trim();
+
+  await sendSingle(to, 'کد بازیابی رمز عبور — تنادور', html);
+}

@@ -5,6 +5,7 @@ import { AnimatePresence, motion } from 'framer-motion';
 import { useRouter, useSearchParams } from 'next/navigation';
 import AuthForm from '@/components/auth/AuthForm';
 import GoogleButton from '@/components/auth/GoogleButton';
+import ForgotPasswordEmailFlow from '@/components/auth/ForgotPasswordEmailFlow';
 import { useForgotPassword } from '@/components/auth/useForgotPassword';
 import { showToast } from '@/lib/toast';
 import { loginAction } from 'base/actions/authActions';
@@ -79,73 +80,102 @@ function AuthContent() {
     window.location.href = `/api/auth/google?callbackUrl=${encodeURIComponent(callbackUrl)}`;
   };
 
+  const isForgotEmail = mode === 'forgot-email';
+
   return (
     <div className="w-full max-w-md bg-white border border-[hsl(var(--border))] rounded-2xl p-6 shadow-xl shadow-slate-200/50">
       {/* Tabs */}
-      <div className="flex justify-center gap-10 mb-8 text-sm font-bold relative">
-        {['login', 'register'].map((item) => (
-          <button
-            key={item}
-            onClick={() => setMode(item)}
-            className={`pb-2 transition-all relative
-              ${mode === item
-                ? 'text-[#aa4725]'
-                : 'text-slate-400 hover:text-slate-600'
-              }`}
-          >
-            {item === 'login' ? 'ورود به حساب' : 'ایجاد حساب'}
-            {mode === item && (
-              <motion.div
-                layoutId="activeTab"
-                className="absolute bottom-0 left-0 right-0 h-0.5 bg-[#aa4725]"
-              />
-            )}
-          </button>
-        ))}
-      </div>
+      {!isForgotEmail && (
+        <div className="flex justify-center gap-10 mb-8 text-sm font-bold relative">
+          {['login', 'register'].map((item) => (
+            <button
+              key={item}
+              onClick={() => setMode(item)}
+              className={`pb-2 transition-all relative
+                ${mode === item
+                  ? 'text-[#aa4725]'
+                  : 'text-slate-400 hover:text-slate-600'
+                }`}
+            >
+              {item === 'login' ? 'ورود به حساب' : 'ایجاد حساب'}
+              {mode === item && (
+                <motion.div
+                  layoutId="activeTab"
+                  className="absolute bottom-0 left-0 right-0 h-0.5 bg-[#aa4725]"
+                />
+              )}
+            </button>
+          ))}
+        </div>
+      )}
 
       {/* Form Slider */}
       <div className="relative overflow-hidden">
         <AnimatePresence mode="wait">
-          <motion.div
-            key={mode}
-            initial={{ opacity: 0, x: mode === 'login' ? 30 : -30 }}
-            animate={{ opacity: 1, x: 0 }}
-            exit={{ opacity: 0, x: mode === 'login' ? -30 : 30 }}
-            transition={{ duration: 0.3, ease: "easeInOut" }}
-          >
-            <AuthForm
-              isLogin={mode === 'login'}
-              onSubmit={handleSubmit}
-              loading={loading}
-            />
+          {isForgotEmail ? (
+            <motion.div
+              key="forgot-email"
+              initial={{ opacity: 0, x: 30 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: -30 }}
+              transition={{ duration: 0.3, ease: "easeInOut" }}
+            >
+              <ForgotPasswordEmailFlow
+                onBack={() => setMode('login')}
+                callbackUrl={callbackUrl}
+              />
+            </motion.div>
+          ) : (
+            <motion.div
+              key={mode}
+              initial={{ opacity: 0, x: mode === 'login' ? 30 : -30 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: mode === 'login' ? -30 : 30 }}
+              transition={{ duration: 0.3, ease: "easeInOut" }}
+            >
+              <AuthForm
+                isLogin={mode === 'login'}
+                onSubmit={handleSubmit}
+                loading={loading}
+              />
 
-            {mode === 'login' && (
-              <div className="text-right">
-                <button
-                  onClick={forgotPassword}
-                  className="mt-4 text-xs font-medium text-[#aa4725] hover:underline"
-                >
-                  رمز عبور را فراموش کرده‌اید؟
-                </button>
-              </div>
-            )}
-          </motion.div>
+              {mode === 'login' && (
+                <div className="text-right flex flex-col items-end gap-1">
+                  <button
+                    onClick={forgotPassword}
+                    className="mt-4 text-xs font-medium text-[#aa4725] hover:underline"
+                  >
+                    رمز عبور را فراموش کرده‌اید؟
+                  </button>
+                  <button
+                    onClick={() => setMode('forgot-email')}
+                    className="text-xs font-medium text-slate-400 hover:text-slate-600 hover:underline"
+                  >
+                    بازیابی رمز عبور با ایمیل
+                  </button>
+                </div>
+              )}
+            </motion.div>
+          )}
         </AnimatePresence>
       </div>
 
-      {/* Divider */}
-      <div className="my-8 flex items-center gap-4">
-        <span className="flex-1 h-px bg-slate-100" />
-        <span className="text-xs font-medium text-slate-400">یا ورود با</span>
-        <span className="flex-1 h-px bg-slate-100" />
-      </div>
+      {!isForgotEmail && (
+        <>
+          {/* Divider */}
+          <div className="my-8 flex items-center gap-4">
+            <span className="flex-1 h-px bg-slate-100" />
+            <span className="text-xs font-medium text-slate-400">یا ورود با</span>
+            <span className="flex-1 h-px bg-slate-100" />
+          </div>
 
-      <GoogleButton onClick={handleGoogleLogin} disabled={loading} />
+          <GoogleButton onClick={handleGoogleLogin} disabled={loading} />
 
-      <p className="mt-6 text-center text-[10px] text-slate-400">
-        با ورود به سایت، تمامی قوانین و مقررات ما را می‌پذیرید.
-      </p>
+          <p className="mt-6 text-center text-[10px] text-slate-400">
+            با ورود به سایت، تمامی قوانین و مقررات ما را می‌پذیرید.
+          </p>
+        </>
+      )}
     </div>
   );
 }
