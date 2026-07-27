@@ -89,7 +89,7 @@ export default function ForgotPasswordEmailFlow({ onBack, callbackUrl = '/' }) {
       const data = await res.json();
       if (!res.ok) {
         setError(data.message || 'کد نامعتبر است');
-        setDigits(Array(CODE_LENGTH).fill(''));
+        applyDigits(Array(CODE_LENGTH).fill(''));
         digitRefs.current[0]?.focus();
         return;
       }
@@ -101,15 +101,21 @@ export default function ForgotPasswordEmailFlow({ onBack, callbackUrl = '/' }) {
     }
   };
 
-  const firstEmptyIndex = () => {
-    const idx = digits.findIndex((d) => d === '');
-    return idx === -1 ? CODE_LENGTH - 1 : idx;
+  // شاخصِ «آخرین خانه‌ی مجاز برای فوکوس» در یک ref نگه داشته می‌شود (نه state) تا
+  // بلافاصله پس از تایپ هر رقم به‌روز باشد — با state، فوکوسِ برنامه‌ای روی خانه‌ی
+  // بعدی زودتر از re-render اجرا می‌شد و onFocus آن با مقدار قدیمی digits آن را
+  // به عقب برمی‌گرداند (باگ «فوکوس خودکار به خانه‌ی بعد نمی‌رود»).
+  const allowedIndexRef = useRef(0);
+
+  const applyDigits = (next) => {
+    setDigits(next);
+    const idx = next.findIndex((d) => d === '');
+    allowedIndexRef.current = idx === -1 ? CODE_LENGTH - 1 : idx;
   };
 
   const handleDigitFocus = (i) => {
-    const allowed = firstEmptyIndex();
-    if (i > allowed) {
-      digitRefs.current[allowed]?.focus();
+    if (i > allowedIndexRef.current) {
+      digitRefs.current[allowedIndexRef.current]?.focus();
     }
   };
 
@@ -119,7 +125,7 @@ export default function ForgotPasswordEmailFlow({ onBack, callbackUrl = '/' }) {
     setError('');
     const next = [...digits];
     next[i] = v;
-    setDigits(next);
+    applyDigits(next);
     if (i < CODE_LENGTH - 1) {
       digitRefs.current[i + 1]?.focus();
     }
@@ -133,19 +139,15 @@ export default function ForgotPasswordEmailFlow({ onBack, callbackUrl = '/' }) {
     e.preventDefault();
     setError('');
     if (digits[i]) {
-      setDigits((prev) => {
-        const next = [...prev];
-        next[i] = '';
-        return next;
-      });
+      const next = [...digits];
+      next[i] = '';
+      applyDigits(next);
       return;
     }
     if (i > 0) {
-      setDigits((prev) => {
-        const next = [...prev];
-        next[i - 1] = '';
-        return next;
-      });
+      const next = [...digits];
+      next[i - 1] = '';
+      applyDigits(next);
       digitRefs.current[i - 1]?.focus();
     }
   };
@@ -157,7 +159,7 @@ export default function ForgotPasswordEmailFlow({ onBack, callbackUrl = '/' }) {
     setError('');
     const next = Array(CODE_LENGTH).fill('');
     for (let idx = 0; idx < pasted.length; idx += 1) next[idx] = pasted[idx];
-    setDigits(next);
+    applyDigits(next);
     digitRefs.current[Math.min(pasted.length, CODE_LENGTH - 1)]?.focus();
     if (next.every((d) => d !== '')) {
       verifyCode(next.join(''));
@@ -180,7 +182,7 @@ export default function ForgotPasswordEmailFlow({ onBack, callbackUrl = '/' }) {
         return;
       }
       setResetToken(data.resetToken);
-      setDigits(Array(CODE_LENGTH).fill(''));
+      applyDigits(Array(CODE_LENGTH).fill(''));
       digitRefs.current[0]?.focus();
       setCooldown(RESEND_COOLDOWN_SECONDS);
     } catch {
@@ -260,7 +262,10 @@ export default function ForgotPasswordEmailFlow({ onBack, callbackUrl = '/' }) {
       {step === 'code' && (
         <div className="space-y-4">
           <p className="text-sm text-slate-500">کد ۵ رقمی ارسال‌شده به ایمیل خود را وارد کنید.</p>
-          <div className="flex justify-center gap-2" dir="ltr">
+          {/* globals.css دارد `* { direction: rtl }` — dir="ltr" روی این عنصر توسط آن
+              قانون author-level بی‌اثر می‌شود، پس با یک کلاس Tailwind با ویژگیِ
+              دلخواه ست می‌شود تا اولویتِ بیشتری نسبت به سلکتور همگانی داشته باشد */}
+          <div className="flex justify-center gap-2 [direction:ltr]">
             {digits.map((d, i) => (
               <input
                 key={i}
@@ -273,7 +278,7 @@ export default function ForgotPasswordEmailFlow({ onBack, callbackUrl = '/' }) {
                 disabled={loading}
                 inputMode="numeric"
                 maxLength={1}
-                className={`w-11 h-11 text-center text-lg font-bold border ${error ? 'border-red-500' : 'border-[hsl(var(--border))]'} rounded-[var(--radius)] bg-white text-[hsl(var(--foreground))] focus:outline-none focus:border-[hsl(var(--primary))] transition`}
+                className={`w-11 h-11 text-center text-lg font-bold border [direction:ltr] ${error ? 'border-red-500' : 'border-[hsl(var(--border))]'} rounded-[var(--radius)] bg-white text-[hsl(var(--foreground))] focus:outline-none focus:border-[hsl(var(--primary))] transition`}
               />
             ))}
           </div>

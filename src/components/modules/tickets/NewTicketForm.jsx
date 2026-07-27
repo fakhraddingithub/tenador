@@ -15,7 +15,6 @@ import Link from 'next/link'
 import { toast } from 'react-toastify'
 import {
   Ticket,
-  ArrowRight,
   Loader2,
   Search,
   X,
@@ -146,6 +145,7 @@ const NewTicketForm = () => {
   const router = useRouter()
 
   const [department, setDepartment] = useState('support')
+  const [departmentOpen, setDepartmentOpen] = useState(false)
   const [priority, setPriority] = useState('medium')
   const [subject, setSubject] = useState('')
   const [body, setBody] = useState('')
@@ -224,6 +224,9 @@ const NewTicketForm = () => {
     }
   }
 
+  const selectedDepartment = TICKET_DEPARTMENT[department]
+  const SelectedDepartmentIcon = selectedDepartment.icon
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 12 }}
@@ -240,10 +243,9 @@ const NewTicketForm = () => {
         </h1>
         <Link
           href="/p-user/tickets"
-          className="inline-flex items-center gap-1 text-xs font-semibold text-gray-500 hover:text-[#aa4725] transition-colors"
+          className="text-xs font-semibold text-gray-500 hover:text-[#aa4725] transition-colors"
         >
-          <ArrowRight size={14} />
-          بازگشت به تیکت‌ها
+          مشاهده تیکت‌ها
         </Link>
       </div>
 
@@ -256,27 +258,56 @@ const NewTicketForm = () => {
           <label className="block text-xs font-semibold text-gray-500 mb-2">
             دپارتمان <span className="text-red-500">*</span>
           </label>
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-            {DEPARTMENT_KEYS.map((key) => {
-              const cfg = TICKET_DEPARTMENT[key]
-              const DeptIcon = cfg.icon
-              const isActive = department === key
-              return (
-                <button
-                  key={key}
-                  type="button"
-                  onClick={() => setDepartment(key)}
-                  className={`flex items-center gap-2 px-3 py-2.5 rounded-[6px] border text-xs font-semibold transition-all ${
-                    isActive
-                      ? 'bg-[#aa4725] text-white border-[#aa4725] shadow-sm'
-                      : 'bg-white text-gray-600 border-gray-200 hover:border-[#aa4725]/40'
-                  }`}
-                >
-                  <DeptIcon size={14} className={isActive ? '' : 'text-gray-400'} />
-                  {cfg.label}
-                </button>
-              )
-            })}
+          <div className="relative">
+            <button
+              type="button"
+              onClick={() => setDepartmentOpen((open) => !open)}
+              aria-expanded={departmentOpen}
+              aria-haspopup="listbox"
+              className="flex w-full items-center justify-between gap-2 rounded-[6px] border border-[#aa4725] bg-[#aa4725] px-3 py-2.5 text-xs font-semibold text-white shadow-sm transition-all"
+            >
+              <span className="flex items-center gap-2">
+                <SelectedDepartmentIcon size={14} />
+                {selectedDepartment.label}
+              </span>
+              <ChevronDown
+                size={15}
+                className={`transition-transform ${departmentOpen ? 'rotate-180' : ''}`}
+              />
+            </button>
+
+            {departmentOpen && (
+              <div
+                role="listbox"
+                className="absolute right-0 left-0 top-full z-30 mt-1 grid gap-1 rounded-[6px] border border-gray-200 bg-white p-1.5 shadow-lg sm:grid-cols-2"
+              >
+                {DEPARTMENT_KEYS.map((key) => {
+                  const cfg = TICKET_DEPARTMENT[key]
+                  const DeptIcon = cfg.icon
+                  const isActive = department === key
+                  return (
+                    <button
+                      key={key}
+                      type="button"
+                      role="option"
+                      aria-selected={isActive}
+                      onClick={() => {
+                        setDepartment(key)
+                        setDepartmentOpen(false)
+                      }}
+                      className={`flex items-center gap-2 rounded-[6px] border px-3 py-2.5 text-xs font-semibold transition-all ${
+                        isActive
+                          ? 'border-[#aa4725] bg-[#aa4725] text-white shadow-sm'
+                          : 'border-gray-200 bg-white text-gray-600 hover:border-[#aa4725]/40'
+                      }`}
+                    >
+                      <DeptIcon size={14} className={isActive ? '' : 'text-gray-400'} />
+                      {cfg.label}
+                    </button>
+                  )
+                })}
+              </div>
+            )}
           </div>
         </div>
 
@@ -294,7 +325,7 @@ const NewTicketForm = () => {
                   key={key}
                   type="button"
                   onClick={() => setPriority(key)}
-                  className={`inline-flex items-center gap-1.5 text-xs font-semibold px-3.5 py-1.5 rounded-full transition-all duration-150 ${
+                  className={`inline-flex items-center gap-1.5 text-xs font-semibold px-3.5 py-1.5 rounded-[6px] transition-all duration-150 ${
                     isActive
                       ? 'bg-[#aa4725] text-white shadow-sm'
                       : 'bg-gray-100 text-gray-500 hover:bg-gray-200'

@@ -22,8 +22,10 @@ export async function loginAction({ phone, password, callbackUrl = '/' }) {
       return { error: 'شماره موبایل نامعتبر است' };
     }
 
-    const user = await User.findOne({ phone, provider: 'local' });
-    if (!user) {
+    // بدون فیلتر provider — کاربری که با گوگل ثبت‌نام کرده و بعداً شماره تلفن +
+    // رمز عبور تنظیم کرده نیز باید بتواند با ورود محلی وارد شود.
+    const user = await User.findOne({ phone });
+    if (!user || !user.password) {
       return { error: 'کاربری با این مشخصات یافت نشد' };
     }
 

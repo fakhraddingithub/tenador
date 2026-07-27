@@ -81,7 +81,24 @@ export async function PATCH(req) {
     // فیلدهای عمومی پروفایل (در دسترس همه کاربران)
     if (typeof name === 'string') user.name = name.trim();
     if (typeof lastName === 'string') user.lastName = lastName.trim();
-    if (typeof email === 'string') user.email = email.trim() || undefined;
+
+    // ایمیل بدون حساسیت به حروف بزرگ/کوچک بررسی می‌شود — ایندکس یکتای Mongo به‌تنهایی
+    // این تفاوت را تشخیص نمی‌دهد (دو سند با کیس متفاوت را دو مقدار جدا می‌بیند)
+    if (typeof email === 'string') {
+      const trimmedEmail = email.trim();
+      if (trimmedEmail) {
+        const escaped = trimmedEmail.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        const duplicate = await User.findOne({
+          _id: { $ne: user._id },
+          email: { $regex: `^${escaped}$`, $options: 'i' },
+        });
+        if (duplicate) {
+          return NextResponse.json({ message: 'این ایمیل قبلاً توسط کاربر دیگری ثبت شده است' }, { status: 409 });
+        }
+      }
+      user.email = trimmedEmail || undefined;
+    }
+
     if (typeof phone === 'string') user.phone = phone.trim();
 
     // فیلدهای مخصوص مربی: فقط برای کاربر با نقش coach اعمال می‌شوند

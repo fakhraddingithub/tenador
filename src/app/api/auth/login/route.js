@@ -17,8 +17,10 @@ export async function POST(request) {
       return NextResponse.json({ message: 'Invalid phone number' }, { status: 400 });
     }
 
-    const user = await User.findOne({ phone, provider: 'local' });
-    if (!user) {
+    // بدون فیلتر provider — کاربری که با گوگل ثبت‌نام کرده و بعداً شماره تلفن +
+    // رمز عبور تنظیم کرده نیز باید بتواند با ورود محلی وارد شود.
+    const user = await User.findOne({ phone });
+    if (!user || !user.password) {
       return NextResponse.json({ message: 'User not found or not a local user' }, { status: 404 });
     }
 
