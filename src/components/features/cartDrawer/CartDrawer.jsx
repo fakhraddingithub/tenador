@@ -8,6 +8,7 @@
 
 import { useEffect, useState, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 import {
     FaTimes,
     FaPlus,
@@ -246,9 +247,13 @@ export default function CartDrawer({ isOpen, onClose }) {
                                         <div className="flex-1 flex flex-col justify-between min-w-0">
                                             {/* نام محصول */}
                                             <div>
-                                                <p className="font-bold text-gray-800 mb-1 truncate">
+                                                <Link
+                                                    href={item.product.href}
+                                                    onClick={onClose}
+                                                    className="block font-bold text-gray-800 mb-1 truncate hover:text-[#aa4725]"
+                                                >
                                                     {item.product?.name}
-                                                </p>
+                                                </Link>
 
                                                 {/* ویژگی‌های واریانت */}
                                                 {item.variant && Object.keys(item.variant.attributes || {}).length > 0 && (

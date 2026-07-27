@@ -1,10 +1,12 @@
 import { useState } from 'react';
 import { FiX, FiMapPin, FiPlus, FiCheck, FiPhone, FiUser, FiHome } from 'react-icons/fi';
 import { toast } from 'react-toastify';
+import { joinAddressName } from '@/lib/addressName.mjs';
 
 const initialFormState = {
   title: '',
-  fullName: '',
+  firstName: '',
+  lastName: '',
   phone: '',
   city: '',
   addressLine: '',
@@ -33,8 +35,12 @@ const AddressModal = ({
 
   const validateForm = () => {
     // title دیگه اجباری نیست
-    if (!formData.fullName.trim()) {
-      toast.error('نام و نام خانوادگی الزامی است');
+    if (!formData.firstName.trim()) {
+      toast.error('نام الزامی است');
+      return false;
+    }
+    if (!formData.lastName.trim()) {
+      toast.error('نام خانوادگی الزامی است');
       return false;
     }
     if (!formData.phone.trim() || !/^09\d{9}$/.test(formData.phone)) {
@@ -59,10 +65,16 @@ const AddressModal = ({
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!validateForm()) return;
+    const addressData = {
+      ...formData,
+      fullName: joinAddressName(formData.firstName, formData.lastName),
+    };
+    delete addressData.firstName;
+    delete addressData.lastName;
 
     // ─── آدرس موقت: بدون ذخیره در دیتابیس ───
     if (!saveAddress) {
-      onSelectAddress({ ...formData, _id: null, isTemporary: true });
+      onSelectAddress({ ...addressData, _id: null, isTemporary: true });
       setFormData(initialFormState);
       setShowForm(false);
       onClose();
@@ -71,7 +83,7 @@ const AddressModal = ({
 
     // ─── آدرس دائمی: ذخیره در دیتابیس ───
     setIsSubmitting(true);
-    const newAddress = await onAddAddress({ ...formData, saveAddress });
+    const newAddress = await onAddAddress({ ...addressData, saveAddress });
     setIsSubmitting(false);
 
     if (newAddress) {
@@ -219,14 +231,35 @@ const AddressModal = ({
 
                 {/* نام */}
                 <div className="space-y-1">
-                  <label className="text-xs text-gray-500">نام و نام خانوادگی</label>
+                  <label className="text-xs text-gray-500">نام</label>
                   <div className="relative">
                     <FiUser className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 w-4 h-4" />
                     <input
                       type="text"
+                      name="firstName"
+                      autoComplete="given-name"
                       placeholder="نام تحویل گیرنده"
-                      value={formData.fullName}
-                      onChange={(e) => handleInputChange('fullName', e.target.value)}
+                      value={formData.firstName}
+                      onChange={(e) => handleInputChange('firstName', e.target.value)}
+                      required
+                      className="w-full border border-gray-300 rounded-[6px] py-2.5 pr-9 pl-3 text-sm focus:outline-none focus:border-[#aa4725] focus:ring-2 focus:ring-[#aa4725]/20 transition"
+                    />
+                  </div>
+                </div>
+
+                {/* نام خانوادگی */}
+                <div className="space-y-1">
+                  <label className="text-xs text-gray-500">نام خانوادگی</label>
+                  <div className="relative">
+                    <FiUser className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 w-4 h-4" />
+                    <input
+                      type="text"
+                      name="lastName"
+                      autoComplete="family-name"
+                      placeholder="نام خانوادگی تحویل گیرنده"
+                      value={formData.lastName}
+                      onChange={(e) => handleInputChange('lastName', e.target.value)}
+                      required
                       className="w-full border border-gray-300 rounded-[6px] py-2.5 pr-9 pl-3 text-sm focus:outline-none focus:border-[#aa4725] focus:ring-2 focus:ring-[#aa4725]/20 transition"
                     />
                   </div>

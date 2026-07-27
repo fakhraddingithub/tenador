@@ -132,6 +132,7 @@ export const useCart = () => {
           product: {
             product: {
               name:             item.product?.name,
+              href:             item.product?.href,
               mainImage:        item.product?.mainImage,
               shortDescription: item.product?.shortDescription ?? '',
             },

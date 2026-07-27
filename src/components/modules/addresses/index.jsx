@@ -11,6 +11,7 @@ import {
 import { useState, useEffect } from 'react'
 import { toast } from 'react-toastify'
 import Swal from 'sweetalert2'
+import { joinAddressName, splitAddressName } from '@/lib/addressName.mjs'
 
 const AddressesModule = () => {
   const [addresses, setAddresses] = useState([])
@@ -22,7 +23,8 @@ const AddressesModule = () => {
 
   const [formData, setFormData] = useState({
     title: '',
-    fullName: '',
+    firstName: '',
+    lastName: '',
     city: '',
     phone: '',
     postalCode: '',
@@ -67,7 +69,13 @@ const AddressesModule = () => {
     const res = await fetch(url, {
       method,
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ ...formData, user: user.id }),
+      body: JSON.stringify({
+        ...formData,
+        fullName: joinAddressName(formData.firstName, formData.lastName),
+        firstName: undefined,
+        lastName: undefined,
+        user: user.id,
+      }),
     })
 
     if (res.ok) {
@@ -101,7 +109,7 @@ const AddressesModule = () => {
   }
 
   const handleEdit = (address) => {
-    setFormData({ ...address })
+    setFormData({ ...address, ...splitAddressName(address.fullName) })
     setEditingAddress(address)
     setIsModalOpen(true)
   }
@@ -111,7 +119,8 @@ const AddressesModule = () => {
     setEditingAddress(null)
     setFormData({
       title: '',
-      fullName: '',
+      firstName: '',
+      lastName: '',
       city: '',
       phone: '',
       postalCode: '',
@@ -328,16 +337,35 @@ const AddressesModule = () => {
      
              <div className="space-y-1">
                <label className="text-xs text-[hsl(var(--muted-foreground))]">
-                 نام و نام خانوادگی
+                 نام
                </label>
                <input
                  className="w-full rounded-md border border-[hsl(var(--border))] px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[hsl(var(--primary))]"
-                 value={formData.fullName}
+                 name="firstName"
+                 autoComplete="given-name"
+                 value={formData.firstName}
                  onChange={(e) =>
-                   setFormData({ ...formData, fullName: e.target.value })
+                   setFormData({ ...formData, firstName: e.target.value })
                  }
+                 required
                />
              </div>
+           </div>
+
+           <div className="space-y-1">
+             <label className="text-xs text-[hsl(var(--muted-foreground))]">
+               نام خانوادگی
+             </label>
+             <input
+               className="w-full rounded-md border border-[hsl(var(--border))] px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[hsl(var(--primary))]"
+               name="lastName"
+               autoComplete="family-name"
+               value={formData.lastName}
+               onChange={(e) =>
+                 setFormData({ ...formData, lastName: e.target.value })
+               }
+               required
+             />
            </div>
      
            {/* City & Phone */}

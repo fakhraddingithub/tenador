@@ -5,6 +5,7 @@
  */
 
 import { FiPlus, FiMinus, FiTrash2 } from 'react-icons/fi';
+import Link from 'next/link';
 import { formatPriceWithCurrency } from 'base/utils/formatters';
 import { flowSignature } from '@/lib/cart';
 import FlowSelectionsList from '@/components/modules/orderFlow/FlowSelectionsList';
@@ -45,6 +46,7 @@ const CartItems = ({ items, onUpdateQuantity, onRemoveItem, onRemoveFlowSelectio
       {items.map((item, index) => {
         const productName  = item.product?.product?.name      ?? item.product?.name;
         const productImage = item.product?.product?.mainImage ?? item.product?.mainImage;
+        const productHref  = item.product?.product?.href      ?? item.product?.href;
         const hasDiscount  = (item.discountToman ?? 0) > 0;
 
         // واریانت: شکلِ غنی‌شده‌ی useCart (item.variant) در اولویت است؛ سپس
@@ -108,7 +110,7 @@ const CartItems = ({ items, onUpdateQuantity, onRemoveItem, onRemoveFlowSelectio
               {/* اطلاعات */}
               <div className="flex-1 min-w-0 flex flex-col">
                 {/* نام محصول — هماهنگ با ProductHeader */}
-                <div className="mb-1.5">
+                <Link href={productHref} className="mb-1.5 block hover:text-[#aa4725]">
                   {farsi && (
                     <h3 className="text-sm md:text-base font-bold text-[#1a1a1a] leading-snug tracking-tight">
                       {farsi}
@@ -128,7 +130,7 @@ const CartItems = ({ items, onUpdateQuantity, onRemoveItem, onRemoveFlowSelectio
                       {productName}
                     </h3>
                   )}
-                </div>
+                </Link>
 
                 {/* واریانت — زیر نام محصول */}
                 {variantAttrs && Object.keys(variantAttrs).length > 0 && (

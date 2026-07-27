@@ -224,6 +224,9 @@ export async function POST(request) {
           // اصلاح نام و تصویر محصول بر اساس دست‌دوم یا نو بودن کالا
           product: p ? {
             _id: p._id.toString(),
+            href: up
+              ? `/second-hand/${up.slug || up._id}`
+              : `/products/${p.slug}`,
             name: up ? up.name : p.name, // اگر دست‌دوم بود نام خود دست‌دوم، در غیر این صورت نام اصلی
             // برای دست‌دوم اولین تصویر گالری خودش نمایش داده می‌شود نه تصویر محصول پایه
             mainImage: up ? (up.images?.[0] || p.mainImage) : p.mainImage,

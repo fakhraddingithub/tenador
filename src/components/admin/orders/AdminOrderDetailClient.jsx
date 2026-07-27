@@ -17,7 +17,7 @@ import {
   ArrowLeft, Scan, QrCode, Barcode, CheckSquare, Square,
   ShoppingBag, Warehouse, Plus, Trash2, AlertTriangle,
   ChevronDown, ChevronUp, GraduationCap, Euro, Wallet,
-  Search, Minus, Pencil,
+  Search, Minus, Pencil, Download,
 } from "lucide-react";
 import OrderFlowSelectionsView from "@/components/order/OrderFlowSelectionsView";
 import VariantSummary from "@/components/order/VariantSummary";
@@ -62,6 +62,85 @@ const TRACKING_STATUS_LABELS = {
   DELIVERED: "تحویل داده شده",
   RETURNED: "مرجوعی",
 };
+
+function downloadAddressPdf(order) {
+  const address = order.address?.snapshot;
+  const printWindow = window.open("", "_blank", "width=760,height=700");
+
+  if (!address || !printWindow) {
+    toast.error("امکان باز کردن فایل PDF وجود ندارد؛ لطفاً اجازه باز شدن پنجره جدید را بدهید.");
+    return;
+  }
+
+  printWindow.document.write(`
+    <!doctype html>
+    <html dir="rtl" lang="fa">
+      <head>
+        <meta charset="utf-8" />
+        <title>address-${order.trackingCode || order._id}</title>
+        <style>
+          @import url("https://cdn.jsdelivr.net/gh/rastikerdar/vazirmatn@v33.003/Vazirmatn-font-face.css");
+          * { box-sizing: border-box; }
+          body {
+            margin: 0;
+            padding: 12mm;
+            color: #374151;
+            background: #fff;
+            font-family: Vazirmatn, Tahoma, sans-serif;
+          }
+          .label {
+            width: 100%;
+            border: 1px solid #e5e7eb;
+            border-radius: 12px;
+            padding: 18px;
+          }
+          .title {
+            margin: 0 0 14px;
+            padding-bottom: 10px;
+            color: #aa4725;
+            border-bottom: 1px solid #f3f4f6;
+            font-size: 16px;
+            font-weight: 700;
+          }
+          .row { display: flex; gap: 10px; margin: 8px 0; line-height: 1.9; }
+          .key { width: 92px; flex: none; color: #9ca3af; font-size: 12px; }
+          .value { color: #374151; font-size: 14px; font-weight: 600; }
+          .address { font-weight: 400; }
+          .tracking { margin-top: 14px; color: #9ca3af; font-size: 11px; }
+          @page { size: A5 portrait; margin: 10mm; }
+          @media print { body { padding: 0; } }
+        </style>
+      </head>
+      <body>
+        <section class="label">
+          <h1 class="title">آدرس تحویل</h1>
+          <div class="row"><span class="key">گیرنده:</span><span class="value" id="recipient"></span></div>
+          <div class="row"><span class="key">تلفن گیرنده:</span><span class="value" id="phone" dir="ltr"></span></div>
+          <div class="row"><span class="key">شهر:</span><span class="value" id="city"></span></div>
+          <div class="row"><span class="key">آدرس:</span><span class="value address" id="address"></span></div>
+          <div class="row"><span class="key">کد پستی:</span><span class="value" id="postalCode"></span></div>
+          <div class="tracking" id="trackingCode"></div>
+        </section>
+      </body>
+    </html>
+  `);
+  printWindow.document.close();
+
+  const setText = (id, value) => {
+    printWindow.document.getElementById(id).textContent = value || "—";
+  };
+  setText("recipient", address.fullName);
+  setText("phone", address.phone);
+  setText("city", [address.province, address.city].filter(Boolean).join(" - "));
+  setText("address", address.addressLine);
+  setText("postalCode", address.postalCode);
+  setText("trackingCode", `کد سفارش: ${order.trackingCode || order._id}`);
+
+  printWindow.document.fonts.ready.then(() => {
+    printWindow.focus();
+    printWindow.print();
+  });
+}
 
 function readAdminThemeColor(token, fallback) {
   if (typeof document === "undefined") return fallback;
@@ -2250,9 +2329,19 @@ export default function AdminOrderDetailClient({ orderId }) {
               </div>
               {order.address?.snapshot && (
                 <div className="border-t border-gray-100 pt-3">
-                  <p className="text-xs font-bold text-gray-500 mb-2 flex items-center gap-1.5">
-                    <MapPin size={11} /> آدرس تحویل
-                  </p>
+                  <div className="mb-2 flex items-center justify-between gap-2">
+                    <p className="text-xs font-bold text-gray-500 flex items-center gap-1.5">
+                      <MapPin size={11} /> آدرس تحویل
+                    </p>
+                    <button
+                      type="button"
+                      onClick={() => downloadAddressPdf(order)}
+                      className="inline-flex items-center gap-1.5 rounded-lg border border-gray-200 px-2.5 py-1.5 text-[11px] font-bold text-gray-600 transition hover:border-[var(--color-primary)] hover:text-[var(--color-primary)]"
+                    >
+                      <Download size={12} />
+                      دانلود PDF
+                    </button>
+                  </div>
                   <div className="text-xs text-gray-600 leading-6 bg-gray-50 rounded-xl px-3 py-2">
                     {order.address.snapshot.fullName && (
                       <p>
