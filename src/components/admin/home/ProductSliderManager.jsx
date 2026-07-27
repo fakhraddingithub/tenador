@@ -12,18 +12,23 @@ import { showToast } from "@/lib/toast";
  *  - جستجوی محصول با نام (autocomplete با debounce؛ از /api/admin/discounts/search)
  *  - افزودن بدون تکرار
  *  - جابه‌جایی با کشیدن و رها کردن (@hello-pangea/dnd)
- *  - ذخیره‌ی خودکار (optimistic + بازگردانی در صورت خطا)
+ *
+ * این کامپوننت «کنترل‌شده» است: فهرست و ذخیره‌سازی هر دو از صفحه‌ی والد
+ * می‌آیند، چون منبعِ حقیقت کشِ SWR است. اگر این‌جا یک نسخه‌ی محلی نگه داشته
+ * می‌شد، بعد از جابه‌جایی کشِ صفحه کهنه می‌ماند و بازدیدِ بعدی ترتیبِ قدیمی را
+ * نشان می‌داد.
  *
  * @param {"bestsellers"|"offers"} sliderKey
- * @param {Array<{_id,label,sub,image}>} initialItems
+ * @param {Array<{_id,label,sub,image}>} items
+ * @param {(nextItems: Array) => Promise<void>} onPersist  خوش‌بینانه + rollback
  */
 export default function ProductSliderManager({
   sliderKey,
   title,
   subtitle,
-  initialItems = [],
+  items = [],
+  onPersist,
 }) {
-  const [items, setItems] = useState(initialItems);
   const [query, setQuery] = useState("");
   const [results, setResults] = useState([]);
   const [searching, setSearching] = useState(false);
@@ -32,7 +37,6 @@ export default function ProductSliderManager({
 
   const wrapRef = useRef(null);
   const timer = useRef(null);
-  const lastSaved = useRef(initialItems); // برای بازگردانی هنگام خطا
 
   // بستن دراپ‌داون با کلیک بیرون
   useEffect(() => {
@@ -43,34 +47,19 @@ export default function ProductSliderManager({
     return () => document.removeEventListener("mousedown", onDown);
   }, []);
 
-  // ذخیره‌ی فهرستِ مرتب در سرور
+  // ذخیره‌ی فهرستِ مرتب — بازگردانیِ خطا در والد (rollbackOnError) انجام می‌شود
   const persist = useCallback(
     async (nextItems) => {
       setSaving(true);
       try {
-        const res = await fetch("/api/admin/home-sliders", {
-          method: "PUT",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            slider: sliderKey,
-            productIds: nextItems.map((i) => i._id),
-          }),
-        });
-        const data = await res.json();
-        if (!res.ok) throw new Error(data.error || "خطا در ذخیره");
-        // سرور فهرستِ پاک‌سازی‌شده (بدون محصولاتِ حذف‌شده) را برمی‌گرداند
-        const serverItems = Array.isArray(data.items) ? data.items : nextItems;
-        lastSaved.current = serverItems;
-        setItems(serverItems);
+        await onPersist(nextItems);
       } catch (err) {
-        // بازگردانی به آخرین وضعیتِ ذخیره‌شده
-        setItems(lastSaved.current);
         showToast.error(err.message || "ذخیره ناموفق بود");
       } finally {
         setSaving(false);
       }
     },
-    [sliderKey]
+    [onPersist]
   );
 
   const runSearch = useCallback(async (q) => {
@@ -111,7 +100,6 @@ export default function ProductSliderManager({
       ...items,
       { _id: id, label: item.label, sub: item.sub || "", image: item.image || null },
     ];
-    setItems(next);
     setQuery("");
     setResults([]);
     setOpen(false);
@@ -119,9 +107,7 @@ export default function ProductSliderManager({
   };
 
   const removeProduct = (id) => {
-    const next = items.filter((p) => p._id !== id);
-    setItems(next);
-    persist(next);
+    persist(items.filter((p) => p._id !== id));
   };
 
   const onDragEnd = (result) => {
@@ -129,7 +115,6 @@ export default function ProductSliderManager({
     const next = Array.from(items);
     const [moved] = next.splice(result.source.index, 1);
     next.splice(result.destination.index, 0, moved);
-    setItems(next);
     persist(next);
   };
 

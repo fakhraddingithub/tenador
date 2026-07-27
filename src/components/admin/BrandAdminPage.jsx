@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import useSWR from "swr";
 import {
   FaBox,
   FaLayerGroup,
@@ -30,6 +30,8 @@ import {
   rectSortingStrategy,
   arrayMove,
 } from "@dnd-kit/sortable";
+import { useLimitedEditions, ADMIN_REF_TTL } from "@/hooks/useAdminRefData";
+import { optimisticReorder } from "@/lib/adminCache";
 
 const swalTheme = {
   confirmButtonColor: "var(--color-primary)",
@@ -45,25 +47,34 @@ const swalTheme = {
 export default function BrandAdminPage({ brandId }) {
   const router = useRouter();
 
-  const [brand, setBrand] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [brandData, setBrandData] = useState([]);
-  const [limitedEditions, setLimitedEditions] = useState([]);
+  // 🟢 برند + سری‌هایش — پاسخِ کامل در کش می‌ماند و ترتیبِ سری‌ها هم روی همین
+  // کش (`data.brand.series`) جابه‌جا می‌شود؛ هیچ نسخه‌ی محلیِ موازی‌ای نیست.
+  const {
+    data: brandRes,
+    isLoading: loading,
+    mutate: fetchBrandData,
+  } = useSWR(brandId ? `/api/brands/${brandId}` : null, ADMIN_REF_TTL);
 
-  useEffect(() => {
-    fetchBrandData();
-    fetchLimitedEditions();
-  }, [brandId]);
+  const brand = brandRes?.brand;
+  // فقط سری‌های ریشه در گرید نشان داده می‌شوند (filter ترتیب را حفظ می‌کند)
+  const rootSeries = (brand?.series || []).filter((s) => !s.parentSerie);
 
-  const fetchLimitedEditions = async () => {
-    try {
-      const res = await fetch(`/api/limited-editions?brand=${brandId}`);
-      const data = await res.json();
-      setLimitedEditions(data.limitedEditions || []);
-    } catch {
-      /* اختیاری */
-    }
-  };
+  const { limitedEditions, mutate: fetchLimitedEditions } =
+    useLimitedEditions(brandId);
+
+  // شمارشِ محصولاتِ برند — کلید تا رسیدنِ slug برند null است
+  const brandSlug = brand?.slug;
+  const { data: productsRes } = useSWR(
+    brandSlug ? ["/api/query", brandSlug] : null,
+    ([url, slug]) =>
+      fetch(url, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ slugs: [slug] }),
+      }).then((r) => r.json()),
+    ADMIN_REF_TTL,
+  );
+  const brandData = productsRes?.results || [];
 
   const handleDeleteLimitedEdition = async (limitedEdition) => {
     const result = await Swal.fire({
@@ -93,30 +104,6 @@ export default function BrandAdminPage({ brandId }) {
     }
   };
 
-  const fetchBrandData = async () => {
-    try {
-      const res = await fetch(`/api/brands/${brandId}`);
-      const data = await res.json();
-
-      const rootSeries =
-        data?.brand?.series?.filter((serie) => !serie.parentSerie) || [];
-
-      setBrand({ ...data.brand, series: rootSeries });
-
-      const productsRes = await fetch(`/api/query`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ slugs: [data.brand.slug] }),
-      });
-      const productData = await productsRes.json();
-      setBrandData(productData.results || []);
-    } catch (error) {
-      toast.error("خطا در بارگذاری اطلاعات برند");
-    } finally {
-      setLoading(false);
-    }
-  };
-
   const handleDeleteBrand = () => {
     Swal.fire({
       ...swalTheme,
@@ -141,28 +128,34 @@ export default function BrandAdminPage({ brandId }) {
   const handleDragEnd = async (event) => {
     const { active, over } = event;
     if (!over || active.id === over.id) return;
-    const series = brand?.series || [];
-    const oldIndex = series.findIndex((s) => s._id === active.id);
-    const newIndex = series.findIndex((s) => s._id === over.id);
+    const oldIndex = rootSeries.findIndex((s) => s._id === active.id);
+    const newIndex = rootSeries.findIndex((s) => s._id === over.id);
     if (oldIndex === -1 || newIndex === -1) return;
 
-    const reordered = arrayMove(series, oldIndex, newIndex).map(
+    const reordered = arrayMove(rootSeries, oldIndex, newIndex).map(
       (item, index) => ({ ...item, order: index })
     );
-    setBrand((prev) => ({ ...prev, series: reordered }));
+    // زیرسری‌ها هم در همین آرایه‌اند و دست‌نخورده می‌مانند؛ چون گرید با filter
+    // ساخته می‌شود، ترتیبِ جدیدِ ریشه‌ها همان‌طور که هست نمایش داده می‌شود.
+    const children = (brand?.series || []).filter((s) => s.parentSerie);
+    const nextCache = {
+      ...brandRes,
+      brand: { ...brand, series: [...reordered, ...children] },
+    };
 
     try {
-      const res = await fetch("/api/series/reorder", {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          series: reordered.map((s) => ({ id: s._id, order: s.order })),
+      await optimisticReorder(fetchBrandData, nextCache, () =>
+        fetch("/api/series/reorder", {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            series: reordered.map((s) => ({ id: s._id, order: s.order })),
+          }),
         }),
-      });
-      if (!res.ok) throw new Error();
+      );
     } catch {
-      toast.error("خطا در ذخیره ترتیب سری‌ها");
-      fetchBrandData();
+      // ترتیب قبلی توسط SWR بازگردانده شده
+      toast.error("خطا در ذخیره ترتیب سری‌ها — ترتیب قبلی بازگردانده شد");
     }
   };
 
@@ -202,7 +195,7 @@ export default function BrandAdminPage({ brandId }) {
             برند <span style={{ color: "var(--color-primary)" }}>{brand?.title}</span>
           </h1>
           <p className="text-sm font-bold text-gray-400 mt-0.5">
-            {brand?.series?.length || 0} سری • {brandData.length} محصول
+            {rootSeries.length} سری • {brandData.length} محصول
           </p>
         </div>
 
@@ -248,7 +241,7 @@ export default function BrandAdminPage({ brandId }) {
         </div>
 
         <div className="grid grid-cols-2 gap-3 w-full lg:w-auto">
-          <StatMini icon={FaLayerGroup} label="سری‌ها" value={brand?.series?.length || 0} />
+          <StatMini icon={FaLayerGroup} label="سری‌ها" value={rootSeries.length} />
           <StatMini icon={FaBox} label="محصولات" value={brandData.length} />
         </div>
       </div>
@@ -268,7 +261,7 @@ export default function BrandAdminPage({ brandId }) {
           </Link>
         </div>
 
-        {(brand?.series?.length ?? 0) === 0 ? (
+        {rootSeries.length === 0 ? (
           <div className="bg-white rounded-2xl border-2 border-dashed border-gray-200 py-16 text-center">
             <div className="w-14 h-14 bg-gray-50 rounded-2xl flex items-center justify-center mx-auto mb-4 text-gray-300">
               <FaLayerGroup size={24} />
@@ -278,11 +271,11 @@ export default function BrandAdminPage({ brandId }) {
         ) : (
           <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
             <SortableContext
-              items={(brand?.series || []).map((s) => s._id)}
+              items={rootSeries.map((s) => s._id)}
               strategy={rectSortingStrategy}
             >
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
-                {brand.series.map((serie) => (
+                {rootSeries.map((serie) => (
                   <SortableGridItem key={serie._id} id={serie._id}>
                     <SerieCard
                       serie={serie}

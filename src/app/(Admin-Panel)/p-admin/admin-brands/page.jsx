@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import Link from 'next/link';
 import { motion } from 'framer-motion';
 import {
@@ -15,6 +15,8 @@ import {
 } from "@dnd-kit/sortable";
 import SortableBrandCard from "@/components/admin/SortableBrandCard";
 import AdminLoader from "@/components/admin/AdminLoader";
+import { useBrands } from "@/hooks/useAdminRefData";
+import { optimisticReorder } from "@/lib/adminCache";
 
 const swalTheme = {
   confirmButtonColor: 'var(--color-primary)',
@@ -28,23 +30,10 @@ const swalTheme = {
 };
 
 export default function AdminBrands() {
-  const [brands, setBrands] = useState([]);
-  const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
 
-  useEffect(() => { fetchBrands(); }, []);
-
-  const fetchBrands = async () => {
-    try {
-      const res = await fetch('/api/brands');
-      const data = await res.json();
-      setBrands(data.brands || []);
-    } catch {
-      /* handle silently */
-    } finally {
-      setLoading(false);
-    }
-  };
+  // 🟢 همان کلیدِ /api/brands که دراپ‌داون‌های فرم‌ها استفاده می‌کنند — کشِ مشترک.
+  const { brands, isLoading: loading, mutate: fetchBrands } = useBrands();
 
   const handleDelete = async (brand) => {
     const result = await Swal.fire({
@@ -80,14 +69,18 @@ export default function AdminBrands() {
     const newIndex = brands.findIndex((item) => item._id === over.id);
     const reordered = arrayMove(brands, oldIndex, newIndex);
     const updated = reordered.map((item, index) => ({ ...item, order: index }));
-    setBrands(updated);
     try {
-      await fetch("/api/brands/reorder", {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ brands: updated.map((b) => ({ id: b._id, order: b.order })) }),
-      });
-    } catch (error) { console.error(error); }
+      await optimisticReorder(fetchBrands, { brands: updated }, () =>
+        fetch("/api/brands/reorder", {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ brands: updated.map((b) => ({ id: b._id, order: b.order })) }),
+        }),
+      );
+    } catch {
+      // SWR ترتیب قبلی را برگردانده — فقط اطلاع‌رسانی
+      Swal.fire({ ...swalTheme, title: 'ترتیب ذخیره نشد', text: 'ترتیب قبلی بازگردانده شد.', icon: 'error' });
+    }
   };
 
   return (

@@ -7,6 +7,7 @@ import { FiArrowRight, FiUploadCloud, FiSave, FiLoader, FiType, FiFileText, FiIm
 import { toast, ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import AdminLoader from '@/components/admin/AdminLoader';
+import { invalidateAdminCache } from '@/lib/adminCache';
 
 export default function EditSport() {
   const router = useRouter();
@@ -93,6 +94,7 @@ export default function EditSport() {
       });
 
       if (res.ok) {
+        invalidateAdminCache('/api/sports');
         toast.success("تغییرات با موفقیت ذخیره شد");
         setTimeout(() => router.push('/p-admin/admin-sports'), 1500);
       } else {

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import Link from 'next/link';
 import { motion } from 'framer-motion';
 import { FiArrowRight, FiPlus, FiEdit3, FiTrash2, FiActivity, FiSearch } from 'react-icons/fi';
@@ -13,6 +13,17 @@ import {
 } from "@dnd-kit/sortable";
 import SortableSportCard from "@/components/templates/sports/SortableSportCard";
 import AdminLoader from "@/components/admin/AdminLoader";
+import { useSports } from "@/hooks/useAdminRefData";
+import { optimisticReorder } from "@/lib/adminCache";
+
+const swalErrorTheme = {
+  confirmButtonColor: 'var(--color-primary)',
+  customClass: {
+    popup: 'rounded-2xl font-[Vazirmatn] text-right',
+    confirmButton: 'rounded-[var(--radius)] font-bold',
+  },
+  rtl: true,
+};
 
 /* ─── Page Header pattern (reused across pages) ─── */
 function PageHeader({ title, subtitle, backHref = '/p-admin', actions }) {
@@ -28,23 +39,11 @@ function PageHeader({ title, subtitle, backHref = '/p-admin', actions }) {
 }
 
 export default function AdminSports() {
-  const [sports, setSports] = useState([]);
-  const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
 
-  useEffect(() => { fetchSports(); }, []);
-
-  const fetchSports = async () => {
-    try {
-      const res = await fetch('/api/sports');
-      const data = await res.json();
-      setSports(data.sports || []);
-    } catch (error) {
-      console.error('Error fetching sports:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
+  // 🟢 همان کلیدِ /api/sports که دراپ‌داون‌های فرم‌ها استفاده می‌کنند — کشِ مشترک،
+  // پس بازگشت به این صفحه در پنجره‌ی ۵ دقیقه‌ای هیچ درخواستی نمی‌زند.
+  const { sports, isLoading: loading, mutate } = useSports();
 
   const handleDelete = async (id) => {
     const result = await Swal.fire({
@@ -68,7 +67,10 @@ export default function AdminSports() {
       try {
         const res = await fetch(`/api/sports/${id}`, { method: 'DELETE' });
         if (res.ok) {
-          setSports(prev => prev.filter(s => s._id !== id));
+          mutate(
+            (cur) => cur && { ...cur, sports: (cur.sports || []).filter(s => s._id !== id) },
+            { revalidate: false },
+          );
           Swal.fire({
             title: 'حذف شد!',
             icon: 'success',
@@ -96,14 +98,23 @@ export default function AdminSports() {
     const newIndex = sports.findIndex((item) => item._id === over.id);
     const reordered = arrayMove(sports, oldIndex, newIndex);
     const updated = reordered.map((item, index) => ({ ...item, order: index }));
-    setSports(updated);
     try {
-      await fetch("/api/sports/reorder", {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ sports: updated.map((s) => ({ id: s._id, order: s.order })) }),
+      await optimisticReorder(mutate, { sports: updated }, () =>
+        fetch("/api/sports/reorder", {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ sports: updated.map((s) => ({ id: s._id, order: s.order })) }),
+        }),
+      );
+    } catch {
+      // SWR خودش ترتیب قبلی را برگردانده؛ فقط باید به ادمین اطلاع داده شود
+      Swal.fire({
+        ...swalErrorTheme,
+        title: 'ترتیب ذخیره نشد',
+        text: 'ترتیب قبلی بازگردانده شد. دوباره تلاش کنید.',
+        icon: 'error',
       });
-    } catch (error) { console.error(error); }
+    }
   };
 
   return (

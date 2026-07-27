@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import useSWR from "swr";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { ProductCard } from "@/components/admin";
@@ -25,57 +25,39 @@ import {
   FaLayerGroup,
   FaArrowsAlt,
 } from "react-icons/fa";
+import { ADMIN_REF_TTL } from "@/hooks/useAdminRefData";
+import { optimisticReorder } from "@/lib/adminCache";
+
+// محصولات زیرسری‌ها (در هر عمق) هم در همین لیستِ واحد می‌آیند تا ادمین
+// ترتیب کل سلسله‌مراتب سری را یک‌جا تعیین کند
+const productsKey = (serieId) =>
+  `/api/product?${new URLSearchParams({
+    isAdmin: "true",
+    all: "true",
+    serie: serieId,
+    includeDescendants: "true",
+  })}`;
 
 export default function SerieProductsClient({ serieId, brandId }) {
   const router = useRouter();
 
-  const [serie, setSerie] = useState(null);
-  const [products, setProducts] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const { data: serieRes } = useSWR(
+    serieId ? `/api/series/${serieId}` : null,
+    ADMIN_REF_TTL,
+  );
+  const serie = serieRes?.data || serieRes?.serie || serieRes;
 
-  const fetchSerie = useCallback(async () => {
-    try {
-      const res = await fetch(`/api/series/${serieId}`);
-      if (!res.ok) throw new Error();
-      const data = await res.json();
-      setSerie(data?.data || data?.serie || data);
-    } catch {
-      showToast.error("خطا در بارگذاری سری");
-    }
-  }, [serieId]);
+  const {
+    data: productsRes,
+    isLoading: loading,
+    mutate: fetchProducts,
+  } = useSWR(serieId ? productsKey(serieId) : null, ADMIN_REF_TTL);
 
-  const fetchProducts = useCallback(async () => {
-    try {
-      const params = new URLSearchParams({
-        isAdmin: "true",
-        all: "true",
-        serie: serieId,
-        // محصولات زیرسری‌ها (در هر عمق) هم در همین لیستِ واحد می‌آیند تا ادمین
-        // ترتیب کل سلسله‌مراتب سری را یک‌جا تعیین کند
-        includeDescendants: "true",
-      });
-      const res = await fetch(`/api/product?${params}`);
-      if (!res.ok) throw new Error();
-      const data = await res.json();
-      // مرتب‌سازی پایدار بر اساس order — محصولات بدون ترتیب دستی (order=0)
-      // همان ترتیب سرور (جدیدترین اول) را حفظ می‌کنند
-      setProducts(
-        (data.products || []).sort((a, b) => (a.order ?? 0) - (b.order ?? 0))
-      );
-    } catch {
-      showToast.error("خطا در بارگذاری محصولات");
-    } finally {
-      setLoading(false);
-    }
-  }, [serieId]);
-
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      fetchSerie();
-      fetchProducts();
-    }, 0);
-    return () => clearTimeout(timer);
-  }, [fetchSerie, fetchProducts]);
+  // مرتب‌سازی پایدار بر اساس order — محصولات بدون ترتیب دستی (order=0)
+  // همان ترتیب سرور (جدیدترین اول) را حفظ می‌کنند
+  const products = (productsRes?.products || [])
+    .slice()
+    .sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } })
@@ -92,20 +74,23 @@ export default function SerieProductsClient({ serieId, brandId }) {
     const reordered = arrayMove(products, oldIndex, newIndex).map(
       (item, index) => ({ ...item, order: index })
     );
-    setProducts(reordered);
 
     try {
-      const res = await fetch("/api/product/reorder", {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          products: reordered.map((p) => ({ id: p._id, order: p.order })),
-        }),
-      });
-      if (!res.ok) throw new Error();
+      await optimisticReorder(
+        fetchProducts,
+        { ...productsRes, products: reordered },
+        () =>
+          fetch("/api/product/reorder", {
+            method: "PUT",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              products: reordered.map((p) => ({ id: p._id, order: p.order })),
+            }),
+          }),
+      );
     } catch {
-      showError("خطا", "خطا در ذخیره ترتیب محصولات");
-      fetchProducts();
+      // ترتیب قبلی توسط SWR بازگردانده شده
+      showError("خطا", "ترتیب ذخیره نشد — ترتیب قبلی بازگردانده شد");
     }
   };
 

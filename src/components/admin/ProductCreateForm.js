@@ -16,6 +16,7 @@ import { showError } from '@/lib/swal';
 import { getApiErrorMessage } from '@/lib/apiClientError';
 import { makeComboKey } from '@/lib/variantKey';
 import { renameVariantValue } from '@/lib/variantValueOps';
+import { invalidateAdminCache } from '@/lib/adminCache';
 
 // ---------------------------
 // Helpers
@@ -452,6 +453,8 @@ export default function ProductCreateForm({ initialData = {} }) {
 
       const data = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(getApiErrorMessage(data, 'خطا در ایجاد محصول'));
+
+      invalidateAdminCache('/api/product');
 
       showToast.success('محصول ساخته شد');
       router.push(

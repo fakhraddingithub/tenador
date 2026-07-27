@@ -44,6 +44,7 @@ import Input from '@/components/admin/Input';
 import Select from '@/components/admin/Select';
 import { showToast } from '@/lib/toast';
 import { showError } from '@/lib/swal';
+import { invalidateAdminCache } from '@/lib/adminCache';
 
 // --- Sortable Item Component ---
 function SortableAttribute({ attr, onRemove, onEdit }) {
@@ -670,6 +671,7 @@ The color code may appear in formats like:
       const data = await res.json();
 
       if (res.ok) {
+        invalidateAdminCache('/api/categories');
         showToast.success('دسته‌بندی با موفقیت ایجاد شد');
         router.push('/p-admin/admin-categories');
       } else {

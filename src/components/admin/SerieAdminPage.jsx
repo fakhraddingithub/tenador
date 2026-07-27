@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import useSWR from "swr";
 import {
   FaLayerGroup,
   FaEdit,
@@ -31,40 +31,27 @@ import {
   rectSortingStrategy,
   arrayMove,
 } from "@dnd-kit/sortable";
+import { ADMIN_REF_TTL } from "@/hooks/useAdminRefData";
+import { optimisticReorder } from "@/lib/adminCache";
 
 export default function SerieChildrenAdminPage({ serieId, brandId }) {
   const router = useRouter();
 
-  const [serie, setSerie] = useState(null);
-  const [children, setChildren] = useState([]);
-  const [loading, setLoading] = useState(true);
+  // 🟢 خودِ سری و زیرسری‌هایش — دو کلید مستقل، هر دو با پنجره‌ی ۵ دقیقه‌ای
+  const { data: serieRes, isLoading: loadingSerie } = useSWR(
+    serieId ? `/api/series/${serieId}` : null,
+    ADMIN_REF_TTL,
+  );
+  const serie = serieRes?.data || serieRes;
 
-  useEffect(() => {
-    if (serieId) fetchSerieData();
-  }, [serieId]);
+  const {
+    data: childrenRes,
+    isLoading: loadingChildren,
+    mutate: mutateChildren,
+  } = useSWR(serieId ? `/api/series/${serieId}/children` : null, ADMIN_REF_TTL);
+  const children = childrenRes?.children || [];
 
-  const fetchSerieData = async () => {
-    try {
-      setLoading(true);
-      const serieRes = await fetch(`/api/series/${serieId}`);
-      const serieData = await serieRes.json();
-
-      if (!serieRes.ok) {
-        toast.error("خطا در دریافت اطلاعات سری");
-        return;
-      }
-      const currentSerie = serieData?.data || serieData;
-      setSerie(currentSerie);
-
-      const childrenRes = await fetch(`/api/series/${serieId}/children`);
-      const childrenData = await childrenRes.json();
-      if (childrenRes.ok) setChildren(childrenData.children || []);
-    } catch (error) {
-      toast.error("خطا در بارگذاری اطلاعات");
-    } finally {
-      setLoading(false);
-    }
-  };
+  const loading = loadingSerie || loadingChildren;
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } })
@@ -80,20 +67,23 @@ export default function SerieChildrenAdminPage({ serieId, brandId }) {
     const reordered = arrayMove(children, oldIndex, newIndex).map(
       (item, index) => ({ ...item, order: index })
     );
-    setChildren(reordered);
 
     try {
-      const res = await fetch("/api/series/reorder", {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          series: reordered.map((c) => ({ id: c._id, order: c.order })),
-        }),
-      });
-      if (!res.ok) throw new Error();
+      await optimisticReorder(
+        mutateChildren,
+        { ...childrenRes, children: reordered },
+        () =>
+          fetch("/api/series/reorder", {
+            method: "PUT",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              series: reordered.map((c) => ({ id: c._id, order: c.order })),
+            }),
+          }),
+      );
     } catch {
-      toast.error("خطا در ذخیره ترتیب زیرسری‌ها");
-      fetchSerieData();
+      // ترتیب قبلی توسط SWR بازگردانده شده
+      toast.error("خطا در ذخیره ترتیب زیرسری‌ها — ترتیب قبلی بازگردانده شد");
     }
   };
 
@@ -116,7 +106,7 @@ export default function SerieChildrenAdminPage({ serieId, brandId }) {
         });
         if (res.ok) {
           toast.success("زیرسری حذف شد");
-          fetchSerieData();
+          mutateChildren();
         } else {
           toast.error("خطا در حذف");
         }

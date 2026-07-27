@@ -1,6 +1,7 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState } from 'react';
+import useSWR from 'swr';
 import { useRouter, useParams } from 'next/navigation';
 import Link from 'next/link';
 import { motion } from 'framer-motion';
@@ -18,41 +19,29 @@ import {
 } from "@dnd-kit/sortable";
 import SortableCategoryCard from "@/components/admin/SortableCategoryCard";
 import AdminLoader from "@/components/admin/AdminLoader";
+import { useCategories, ADMIN_REF_TTL } from "@/hooks/useAdminRefData";
+import { optimisticReorder } from "@/lib/adminCache";
 
 export default function SportCategoriesDetail() {
   const router = useRouter();
   const { sportId } = useParams();
 
-  const [sport, setSport] = useState(null);
-  const [categories, setCategories] = useState([]);
-  const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
 
-  const fetchSport = useCallback(async () => {
-    try {
-      const res = await fetch(`/api/sports/${sportId}`);
-      const data = await res.json();
-      if (res.ok) setSport(data.sport);
-    } catch { /* عدم بارگذاری نام ورزش نباید گرید را مختل کند */ }
-  }, [sportId]);
+  // 🟢 نامِ ورزش — عدم بارگذاری‌اش نباید گرید را مختل کند، پس خطایش نادیده می‌ماند
+  const { data: sportRes } = useSWR(
+    sportId ? `/api/sports/${sportId}` : null,
+    ADMIN_REF_TTL,
+  );
+  const sport = sportRes?.sport;
 
-  // فقط دسته‌های همین ورزش (فیلتر سخت‌گیر سمت سرور)
-  const fetchCategories = useCallback(async () => {
-    try {
-      const res = await fetch(`/api/categories?sportId=${sportId}`);
-      const data = await res.json();
-      setCategories(data.categories || []);
-    } catch { showToast.error('خطا در بارگذاری'); } finally { setLoading(false); }
-  }, [sportId]);
-
-  useEffect(() => {
-    if (!sportId) return;
-    const timer = setTimeout(() => {
-      fetchSport();
-      fetchCategories();
-    }, 0);
-    return () => clearTimeout(timer);
-  }, [sportId, fetchSport, fetchCategories]);
+  // 🟢 فقط دسته‌های همین ورزش (فیلتر سخت‌گیر سمت سرور) — همان کلیدی که
+  // useCategories(sportId) در فرم‌ها می‌سازد، پس کش مشترک است.
+  const {
+    categories,
+    isLoading: loading,
+    mutate: fetchCategories,
+  } = useCategories(sportId, Boolean(sportId));
 
   const handleDelete = async (category) => {
     const confirmed = await confirmDelete('حذف دسته‌بندی', `آیا مطمئن هستید که می‌خواهید "${category.title}" را حذف کنید؟`);
@@ -75,14 +64,18 @@ export default function SportCategoriesDetail() {
     const newIndex = categories.findIndex((item) => item._id === over.id);
     const reordered = arrayMove(categories, oldIndex, newIndex);
     const updated = reordered.map((item, index) => ({ ...item, order: index }));
-    setCategories(updated);
     try {
-      await fetch("/api/categories/reorder", {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ categories: updated.map((c) => ({ id: c._id, order: c.order })) }),
-      });
-    } catch (error) { console.error(error); }
+      await optimisticReorder(fetchCategories, { categories: updated }, () =>
+        fetch("/api/categories/reorder", {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ categories: updated.map((c) => ({ id: c._id, order: c.order })) }),
+        }),
+      );
+    } catch {
+      // SWR ترتیب قبلی را برگردانده — فقط اطلاع‌رسانی
+      showToast.error('ترتیب ذخیره نشد — ترتیب قبلی بازگردانده شد');
+    }
   };
 
   const sportName = sport?.title || sport?.name || '';

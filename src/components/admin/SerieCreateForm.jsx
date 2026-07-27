@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "react-toastify";
 import Swal from "sweetalert2";
+import { invalidateAdminCache } from "@/lib/adminCache";
 import { getApiErrorMessage } from "@/lib/apiClientError";
 
 import SerieFormLayout from "./SerieFormLayout";
@@ -68,6 +69,8 @@ export default function SerieCreateForm({
           text: `سری ${formData.title} ایجاد گردید.`,
           confirmButtonColor: "var(--color-primary)",
         }).then(() => {
+          invalidateAdminCache("/api/series");
+          invalidateAdminCache("/api/brands");
           router.push(`/p-admin/admin-brands/${brandId}`);
           router.refresh();
         });

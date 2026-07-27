@@ -18,6 +18,7 @@ import { showToast } from '@/lib/toast';
 import { showError } from '@/lib/swal';
 import { makeComboKey } from '@/lib/variantKey';
 import { renameVariantValue } from '@/lib/variantValueOps';
+import { invalidateAdminCache } from '@/lib/adminCache';
 
 // ---------------------------
 // Helpers
@@ -667,6 +668,8 @@ export default function ProductEditPage() {
 
       const data = await res.json();
       if (!res.ok) throw new Error(data.error);
+
+      invalidateAdminCache('/api/product');
 
       showToast.success('تغییرات با موفقیت ذخیره شد');
       router.push(

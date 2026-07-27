@@ -6,6 +6,7 @@ import Link from 'next/link';
 import { FiArrowRight, FiPlusCircle, FiImage, FiActivity, FiType, FiFileText, FiLoader, FiUploadCloud } from 'react-icons/fi';
 import { toast, ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
+import { invalidateAdminCache } from '@/lib/adminCache';
 
 const NAME_REGEX = /^[a-zA-Z0-9\s\-_]+$/;
 
@@ -81,6 +82,8 @@ export default function AddSport() {
       if (!res.ok) {
         throw new Error(data.error || 'خطا در ایجاد ورزش');
       }
+
+      invalidateAdminCache('/api/sports');
 
       toast.success('ورزش جدید با موفقیت ایجاد شد');
       setTimeout(() => router.push('/p-admin/admin-sports'), 1500);

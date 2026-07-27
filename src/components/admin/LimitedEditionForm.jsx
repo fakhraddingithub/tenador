@@ -8,6 +8,7 @@
 import { useState, useEffect } from "react";
 import { toast } from "react-toastify";
 import Swal from "sweetalert2";
+import { invalidateAdminCache } from "@/lib/adminCache";
 import {
   FaSave,
   FaCrown,
@@ -100,6 +101,7 @@ export default function LimitedEditionForm({ brandId, limitedEditionId = null })
           confirmButtonColor: "var(--color-primary)",
           customClass: { popup: "rounded-2xl font-[Vazirmatn] text-right" },
         }).then(() => {
+          invalidateAdminCache("/api/limited-editions");
           router.push(`/p-admin/admin-brands/${brandId}`);
           router.refresh();
         });

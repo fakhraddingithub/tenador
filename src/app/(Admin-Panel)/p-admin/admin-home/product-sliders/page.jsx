@@ -10,10 +10,10 @@ import ProductSliderManager from "@/components/admin/home/ProductSliderManager";
 const CONTENT_TTL = { dedupingInterval: 300_000 };
 
 export default function ProductSlidersPage() {
-  // 🟢 اسلایدرهای صفحه‌ی اصلی — محتوا. فقط بارگذاریِ اولیه از این‌جاست؛
-  // ذخیره‌ی ترتیب داخلِ ProductSliderManager با PUT انجام می‌شود و همان‌جا
-  // پاسخِ سرور را نگه می‌دارد، پس این کش با آن تداخلی ندارد.
-  const { data: json, isLoading: loading, error } = useSWR(
+  // 🟢 اسلایدرهای صفحه‌ی اصلی — محتوا. کشِ این کلید تنها منبعِ حقیقت است؛
+  // ProductSliderManager کنترل‌شده است و ذخیره از همین‌جا انجام می‌شود تا
+  // بعد از هر تغییر، کش هم بلافاصله به‌روز باشد.
+  const { data: json, isLoading: loading, error, mutate } = useSWR(
     "/api/admin/home-sliders",
     CONTENT_TTL,
   );
@@ -21,6 +21,33 @@ export default function ProductSlidersPage() {
   const data = {
     bestsellers: json?.bestsellers || [],
     offers: json?.offers || [],
+  };
+
+  // ذخیره‌ی خوش‌بینانه: لیست بلافاصله جابه‌جا می‌شود و اگر PUT شکست بخورد،
+  // rollbackOnError ترتیبِ قبلی را برمی‌گرداند.
+  const persistSlider = (sliderKey) => async (nextItems) => {
+    await mutate(
+      async () => {
+        const res = await fetch("/api/admin/home-sliders", {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            slider: sliderKey,
+            productIds: nextItems.map((i) => i._id),
+          }),
+        });
+        const body = await res.json();
+        if (!res.ok) throw new Error(body.error || "خطا در ذخیره");
+        // سرور فهرستِ پاک‌سازی‌شده (بدون محصولاتِ حذف‌شده) را برمی‌گرداند
+        return Array.isArray(body.items) ? body.items : nextItems;
+      },
+      {
+        optimisticData: (cur) => ({ ...cur, [sliderKey]: nextItems }),
+        populateCache: (serverItems, cur) => ({ ...cur, [sliderKey]: serverItems }),
+        rollbackOnError: true,
+        revalidate: false,
+      },
+    );
   };
 
   return (
@@ -60,13 +87,15 @@ export default function ProductSlidersPage() {
             sliderKey="bestsellers"
             title="پرفروش‌ترین محصولات"
             subtitle="اسلایدر «پرفروش‌ها» در صفحه اصلی"
-            initialItems={data.bestsellers}
+            items={data.bestsellers}
+            onPersist={persistSlider("bestsellers")}
           />
           <ProductSliderManager
             sliderKey="offers"
             title="پیشنهادهای شگفت‌انگیز"
             subtitle="اسلایدر «شگفت‌انگیزها» در صفحه اصلی"
-            initialItems={data.offers}
+            items={data.offers}
+            onPersist={persistSlider("offers")}
           />
         </div>
       )}

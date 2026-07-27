@@ -10,6 +10,7 @@ import {
   FiSave, FiLink, FiType, FiLayers, FiImage,
 } from 'react-icons/fi';
 import Swal from 'sweetalert2';
+import { invalidateAdminCache } from '@/lib/adminCache';
 
 const swalTheme = {
   confirmButtonColor: 'var(--color-primary)',
@@ -83,6 +84,7 @@ export default function SlideForm({ initialData = {}, mode = 'create', slideId }
           title: mode === 'edit' ? 'تغییرات ذخیره شد' : 'اسلاید ایجاد شد',
           icon: 'success',
         });
+        invalidateAdminCache('/api/slides');
         setTimeout(() => router.push('/p-admin/admin-home/slider'), 1200);
       } else {
         const d = await res.json();

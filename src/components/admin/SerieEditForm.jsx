@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { FaSync } from "react-icons/fa";
 import { toast } from "react-toastify";
 import Swal from "sweetalert2";
+import { invalidateAdminCache } from "@/lib/adminCache";
 import { getApiErrorMessage } from "@/lib/apiClientError";
 
 import SerieFormLayout from "./SerieFormLayout";
@@ -120,6 +121,8 @@ export default function SerieEditForm({ id, brandId }) {
           text: `سری ${formData.title} بروزرسانی شد.`,
           confirmButtonColor: "var(--color-primary)",
         }).then(() => {
+          invalidateAdminCache("/api/series");
+          invalidateAdminCache("/api/brands");
           router.push(`/p-admin/admin-brands/${formData.brand}`);
           router.refresh();
         });

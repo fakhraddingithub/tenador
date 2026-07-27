@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
 import { ProductCard } from '@/components/admin';
@@ -15,11 +15,11 @@ const REF_DATA = { dedupingInterval: 300_000 };
 
 export default function AdminProducts() {
   const router = useRouter();
-  const [products, setProducts] = useState([]);
-  const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
+  // کلیدِ SWR از عبارتِ debounce‌شده ساخته می‌شود تا هر کلیدِ کیبورد یک کلیدِ
+  // کشِ تازه (و یک درخواست) نسازد — همان ۳۰۰ms قبلی.
+  const [debouncedSearch, setDebouncedSearch] = useState('');
   const [page, setPage] = useState(1);
-  const [pagination, setPagination] = useState({ page: 1, total: 0, totalPages: 1 });
 
   // ─── فیلترها ───
   const [sportFilter, setSportFilter] = useState('');
@@ -56,48 +56,39 @@ export default function AdminProducts() {
     setPage(1);
   };
 
-  const fetchProducts = useCallback(async (signal) => {
-    setLoading(true);
-    try {
-      const params = new URLSearchParams({
-        isAdmin: 'true',
-        page: String(page),
-        limit: '25',
-      });
-      if (search.trim()) params.set('search', search.trim());
-      if (sportFilter) params.set('sport', sportFilter);
-      if (categoryFilter) params.set('category', categoryFilter);
-      if (brandFilter) params.set('brand', brandFilter);
-      // سری والد: خودِ سری + تمام زیرسری‌ها در هر عمق
-      if (serieFilter) {
-        params.set('serie', serieFilter);
-        params.set('includeDescendants', 'true');
-      }
-      const res = await fetch(`/api/product?${params}`, { signal });
-      if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
-      const text = await res.text();
-      if (!text) { setProducts([]); return; }
-      const data = JSON.parse(text);
-      setProducts(data.products || []);
-      setPagination(data.pagination || { page: 1, total: 0, totalPages: 1 });
-    } catch (error) {
-      if (error.name === 'AbortError') return;
-      console.error('Error fetching products:', error);
-      showToast.error('خطا در بارگذاری محصولات');
-      setProducts([]);
-    } finally {
-      setLoading(false);
-    }
-  }, [page, search, sportFilter, categoryFilter, brandFilter, serieFilter]);
+  useEffect(() => {
+    const timer = setTimeout(() => setDebouncedSearch(search.trim()), 300);
+    return () => clearTimeout(timer);
+  }, [search]);
+
+  const listParams = new URLSearchParams({
+    isAdmin: 'true',
+    page: String(page),
+    limit: '25',
+  });
+  if (debouncedSearch) listParams.set('search', debouncedSearch);
+  if (sportFilter) listParams.set('sport', sportFilter);
+  if (categoryFilter) listParams.set('category', categoryFilter);
+  if (brandFilter) listParams.set('brand', brandFilter);
+  // سری والد: خودِ سری + تمام زیرسری‌ها در هر عمق
+  if (serieFilter) {
+    listParams.set('serie', serieFilter);
+    listParams.set('includeDescendants', 'true');
+  }
+
+  // 🟢 فهرست محصولات — هر ترکیبِ فیلتر/صفحه کلیدِ کشِ خودش را دارد، پس
+  // برگشتن به همان فیلتر در پنجره‌ی ۵ دقیقه‌ای بدون درخواست رسم می‌شود.
+  const { data, isLoading: loading, error, mutate: fetchProducts } = useSWR(
+    `/api/product?${listParams}`,
+    REF_DATA,
+  );
+
+  const products = data?.products || [];
+  const pagination = data?.pagination || { page: 1, total: 0, totalPages: 1 };
 
   useEffect(() => {
-    const controller = new AbortController();
-    const timer = setTimeout(() => fetchProducts(controller.signal), 300);
-    return () => {
-      clearTimeout(timer);
-      controller.abort();
-    };
-  }, [fetchProducts]);
+    if (error) showToast.error('خطا در بارگذاری محصولات');
+  }, [error]);
 
   const handleDelete = async (product) => {
     const confirmed = await confirmDelete('حذف محصول', `آیا مطمئن هستید که می‌خواهید "${product.name}" را حذف کنید؟`);

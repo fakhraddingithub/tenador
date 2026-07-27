@@ -1,6 +1,7 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
+import useSWR from 'swr';
 import { motion, AnimatePresence } from 'framer-motion';
 import { FiArrowRight, FiGrid, FiPlus, FiEdit3, FiTrash2, FiEye, FiEyeOff } from 'react-icons/fi';
 import Link from 'next/link';
@@ -8,6 +9,7 @@ import BannerEditor from '@/components/admin/banners/BannerEditor';
 import BannerRenderer from '@/components/banners/BannerRenderer';
 import StripBannerRenderer from '@/components/banners/StripBannerRenderer';
 import Swal from 'sweetalert2';
+import { ADMIN_REF_TTL } from '@/hooks/useAdminRefData';
 
 const swalTheme = {
   confirmButtonColor: 'var(--color-primary)',
@@ -28,21 +30,12 @@ const POSITIONS = [
 ];
 
 export default function AdminBannersPage() {
-  const [banners, setBanners] = useState([]);
-  const [loading, setLoading] = useState(true);
   const [editingBanner, setEditingBanner] = useState(null);
   const [creatingPosition, setCreatingPosition] = useState(null);
 
-  useEffect(() => { fetchBanners(); }, []);
-
-  const fetchBanners = async () => {
-    setLoading(true);
-    try {
-      const res = await fetch('/api/banners?admin=true');
-      const data = await res.json();
-      if (data.success) setBanners(data.banners);
-    } catch { /* handle */ } finally { setLoading(false); }
-  };
+  // 🟢 بنرهای صفحه‌ی اصلی — محتوا، پنجره‌ی ۵ دقیقه‌ای
+  const { data, mutate: fetchBanners } = useSWR('/api/banners?admin=true', ADMIN_REF_TTL);
+  const banners = data?.success ? data.banners : [];
 
   const handleDelete = async (id) => {
     const result = await Swal.fire({
@@ -58,7 +51,12 @@ export default function AdminBannersPage() {
     try {
       const res = await fetch(`/api/banners/${id}`, { method: 'DELETE' });
       const data = await res.json();
-      if (data.success) setBanners((p) => p.filter((b) => b._id !== id));
+      if (data.success) {
+        fetchBanners(
+          (cur) => cur && { ...cur, banners: (cur.banners || []).filter((b) => b._id !== id) },
+          { revalidate: false },
+        );
+      }
     } catch { /* handle */ }
   };
 
@@ -70,7 +68,15 @@ export default function AdminBannersPage() {
         body: JSON.stringify({ isActive: !banner.isActive }),
       });
       const data = await res.json();
-      if (data.success) setBanners((p) => p.map((b) => (b._id === banner._id ? data.banner : b)));
+      if (data.success) {
+        fetchBanners(
+          (cur) => cur && {
+            ...cur,
+            banners: (cur.banners || []).map((b) => (b._id === banner._id ? data.banner : b)),
+          },
+          { revalidate: false },
+        );
+      }
     } catch { /* handle */ }
   };
 

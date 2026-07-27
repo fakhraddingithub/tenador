@@ -1,6 +1,7 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
+import useSWR from 'swr';
 import Link from 'next/link';
 import Image from 'next/image';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -12,6 +13,8 @@ import {
 import { MdOutlineDragIndicator } from 'react-icons/md';
 import Swal from 'sweetalert2';
 import AdminLoader from '@/components/admin/AdminLoader';
+import { ADMIN_REF_TTL } from '@/hooks/useAdminRefData';
+import { optimisticReorder } from '@/lib/adminCache';
 
 const swalTheme = {
   confirmButtonColor: 'var(--color-primary)',
@@ -25,39 +28,33 @@ const swalTheme = {
 };
 
 export default function SliderManagement() {
-  const [slides, setSlides] = useState([]);
-  const [loading, setLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
 
-  useEffect(() => { fetchSlides(); }, []);
-
-  const fetchSlides = async () => {
-    try {
-      const res = await fetch('/api/slides?position=home');
-      const data = await res.json();
-      setSlides(data);
-    } catch {
-      Swal.fire({ ...swalTheme, title: 'خطا در بارگذاری', icon: 'error' });
-    } finally {
-      setLoading(false);
-    }
-  };
+  // 🟢 اسلایدهای صفحه‌ی اصلی — پاسخِ این endpoint خودش یک آرایه است، پس شکلِ
+  // کش هم آرایه است (نه پوشش‌دار).
+  const { data, isLoading: loading, mutate } = useSWR(
+    '/api/slides?position=home',
+    ADMIN_REF_TTL,
+  );
+  const slides = Array.isArray(data) ? data : [];
 
   const onDragEnd = async (result) => {
     if (!result.destination) return;
     const items = Array.from(slides);
     const [reordered] = items.splice(result.source.index, 1);
     items.splice(result.destination.index, 0, reordered);
-    setSlides(items);
     setIsSaving(true);
     try {
-      await fetch('/api/slides/reorder', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ position: 'home', orderedIds: items.map((s) => s._id) }),
-      });
+      await optimisticReorder(mutate, items, () =>
+        fetch('/api/slides/reorder', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ position: 'home', orderedIds: items.map((s) => s._id) }),
+        }),
+      );
     } catch {
-      fetchSlides();
+      // ترتیب قبلی توسط SWR بازگردانده شده
+      Swal.fire({ ...swalTheme, title: 'ترتیب ذخیره نشد', text: 'ترتیب قبلی بازگردانده شد.', icon: 'error' });
     } finally {
       setIsSaving(false);
     }
@@ -80,7 +77,10 @@ export default function SliderManagement() {
     try {
       const res = await fetch(`/api/slides/${id}`, { method: 'DELETE' });
       if (res.ok) {
-        setSlides((prev) => prev.filter((s) => s._id !== id));
+        mutate(
+          (cur) => (Array.isArray(cur) ? cur.filter((s) => s._id !== id) : cur),
+          { revalidate: false },
+        );
         Swal.fire({ ...swalTheme, title: 'اسلاید حذف شد', icon: 'success' });
       } else throw new Error();
     } catch {

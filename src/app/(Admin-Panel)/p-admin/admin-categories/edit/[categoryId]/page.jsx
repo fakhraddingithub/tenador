@@ -45,6 +45,7 @@ import Input from '@/components/admin/Input';
 import Select from '@/components/admin/Select';
 import { showToast } from '@/lib/toast';
 import { showError } from '@/lib/swal';
+import { invalidateAdminCache } from '@/lib/adminCache';
 
 // --- Sortable Item Component ---
 function SortableAttribute({ attr, onRemove, onEdit }) {
@@ -638,6 +639,7 @@ export default function EditCategory() {
       const data = await res.json();
 
       if (res.ok) {
+        invalidateAdminCache('/api/categories');
         showToast.success('تغییرات با موفقیت ذخیره شد');
         router.push('/p-admin/admin-categories');
       } else {

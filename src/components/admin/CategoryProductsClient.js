@@ -1,6 +1,7 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
+import useSWR from "swr";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { ProductCard } from "@/components/admin";
@@ -18,61 +19,41 @@ import {
   FaFilter,
   FaTimes,
 } from "react-icons/fa";
+import { useSeries, ADMIN_REF_TTL } from "@/hooks/useAdminRefData";
 
 export default function CategoryProductsClient({ categoryId }) {
   const router = useRouter();
-
-  const [category, setCategory] = useState(null);
-  const [products, setProducts] = useState([]);
-  // ایندکس کامل سری‌ها — populate لیست محصولات parentSerie ندارد، پس زنجیره‌ی
-  // والدها (برای فیلتر سلسله‌مراتبی سری) از این ایندکس ساخته می‌شود
-  const [seriesIndex, setSeriesIndex] = useState([]);
-  const [loading, setLoading] = useState(true);
 
   // فیلترها
   const [brandFilter, setBrandFilter] = useState("all");
   const [serieFilter, setSerieFilter] = useState("all");
 
-  const fetchCategory = useCallback(async () => {
-    try {
-      const res = await fetch(`/api/categories/${categoryId}`);
-      if (!res.ok) throw new Error();
-      const data = await res.json();
-      setCategory(data.category);
-    } catch {
-      showToast.error("خطا در بارگذاری دسته‌بندی");
-    }
-  }, [categoryId]);
+  const { data: categoryRes } = useSWR(
+    categoryId ? `/api/categories/${categoryId}` : null,
+    ADMIN_REF_TTL,
+  );
+  const category = categoryRes?.category;
 
-  const fetchProducts = useCallback(async () => {
-    try {
-      const params = new URLSearchParams({
-        isAdmin: "true",
-        all: "true",
-        category: categoryId,
-      });
-      const res = await fetch(`/api/product?${params}`);
-      if (!res.ok) throw new Error();
-      const data = await res.json();
-      setProducts(data.products || []);
-    } catch {
-      showToast.error("خطا در بارگذاری محصولات");
-    } finally {
-      setLoading(false);
-    }
-  }, [categoryId]);
+  // 🟢 محصولات این دسته
+  const {
+    data: productsRes,
+    isLoading: loading,
+    mutate: fetchProducts,
+  } = useSWR(
+    categoryId
+      ? `/api/product?${new URLSearchParams({
+          isAdmin: "true",
+          all: "true",
+          category: categoryId,
+        })}`
+      : null,
+    ADMIN_REF_TTL,
+  );
+  const products = productsRes?.products || [];
 
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      fetchCategory();
-      fetchProducts();
-      fetch("/api/series")
-        .then((res) => (res.ok ? res.json() : { series: [] }))
-        .then((data) => setSeriesIndex(data.series || []))
-        .catch(() => {});
-    }, 0);
-    return () => clearTimeout(timer);
-  }, [fetchCategory, fetchProducts]);
+  // ایندکس کامل سری‌ها — populate لیست محصولات parentSerie ندارد، پس زنجیره‌ی
+  // والدها (برای فیلتر سلسله‌مراتبی سری) از این ایندکس ساخته می‌شود
+  const { series: seriesIndex } = useSeries();
 
   // زنجیره‌ی والدهای هر سری (خودش + والد + ... تا ریشه) — همان منطق فیلتر
   // سری در ویترین (SportPageClient) تا ادمین و سایت هم‌رفتار بمانند
