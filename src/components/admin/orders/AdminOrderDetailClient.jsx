@@ -14,7 +14,7 @@ import {
   Receipt, CreditCard, Users, BadgeCheck, X, Image as ImageIcon,
   Edit3, Save, DollarSign, Ban, Loader2, ReceiptText,
   ExternalLink, MapPin, Phone, Mail, Hash, Calendar, Tag,
-  ArrowLeft, Scan, QrCode, Barcode, CheckSquare, Square,
+  Scan, QrCode, Barcode, CheckSquare, Square,
   ShoppingBag, Warehouse, Plus, Trash2, AlertTriangle,
   ChevronDown, ChevronUp, GraduationCap, Euro, Wallet,
   Search, Minus, Pencil, Download,
@@ -1353,7 +1353,7 @@ function TrackingItemBadge({ trackingItem, onRemove }) {
 }
 
 /* ─── Order Items Tracking Panel ─────────────────────────────────────── */
-function TrackingPanel({ orderId, orderFulfillmentStatus, onStatusChange }) {
+function TrackingPanel({ orderId, orderItems, orderFulfillmentStatus, onStatusChange }) {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [scanModal, setScanModal] = useState(null); // {item, itemIndex}
@@ -1523,6 +1523,7 @@ function TrackingPanel({ orderId, orderFulfillmentStatus, onStatusChange }) {
 
       {/* Per-item tracking */}
       {data.itemsWithTracking.map((item) => {
+        const orderItem = orderItems?.[item.index];
         const flowList = item.flowTracking || [];
         const mainRequired = item.isUsed ? 1 : item.quantity;
         const itemRequired =
@@ -1554,7 +1555,16 @@ function TrackingPanel({ orderId, orderFulfillmentStatus, onStatusChange }) {
                     </span>
                   )}
                 </p>
-                <p className="text-xs text-gray-400 font-mono">{item.product?.sku}</p>
+                {(orderItem?.variantSnapshot?.length ||
+                  (item.variant?.attributes &&
+                    Object.keys(item.variant.attributes).length > 0)) && (
+                  <div className="mt-1.5">
+                    <VariantSummary
+                      snapshot={orderItem?.variantSnapshot}
+                      attributes={item.variant?.attributes}
+                    />
+                  </div>
+                )}
               </div>
               <div className="flex items-center gap-2 flex-shrink-0">
                 <span className={`text-xs font-black px-2.5 py-1 rounded-full ${isComplete
@@ -2153,6 +2163,14 @@ export default function AdminOrderDetailClient({ orderId }) {
   const pendingReceipts = order.payments?.filter(
     (p) => p.method === "BANK_RECEIPT" && p.status === "PENDING"
   ).length || 0;
+  const hasOrderDiscount =
+    Number(order.discountAmount || 0) > 0 ||
+    Number(order.couponDiscount || 0) > 0;
+  const subtotalPrice =
+    order.subtotalPrice ??
+    Number(order.totalPrice || 0) +
+      Number(order.discountAmount || 0) +
+      Number(order.couponDiscount || 0);
 
   return (
     <div className="min-h-screen" style={{ background: "var(--admin-bg, #f4f5f2)" }} dir="rtl">
@@ -2161,13 +2179,6 @@ export default function AdminOrderDetailClient({ orderId }) {
         {/* ─── Header ─── */}
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <button
-              onClick={() => router.push("/p-admin/admin-orders")}
-              className="w-9 h-9 flex items-center justify-center bg-white border border-gray-200
-                rounded-xl hover:border-[var(--color-primary)] hover:text-[var(--color-primary)] text-gray-500 transition"
-            >
-              <ArrowLeft size={16} />
-            </button>
             <div>
               <h1 className="text-lg font-black text-gray-900 flex items-center gap-2">
                 <div className="w-7 h-7 bg-[var(--color-primary)] rounded-xl flex items-center justify-center">
@@ -2407,9 +2418,6 @@ export default function AdminOrderDetailClient({ orderId }) {
                           </span>
                         )}
                       </p>
-                      {item.product?.sku && (
-                        <p className="text-xs text-gray-400 font-mono">{item.product.sku}</p>
-                      )}
                       {(item.variantSnapshot?.length ||
                         (item.variant?.attributes &&
                           Object.keys(item.variant.attributes).length > 0)) && (
@@ -2473,6 +2481,12 @@ export default function AdminOrderDetailClient({ orderId }) {
                 })}
               </div>
               <div className="border-t border-gray-100 pt-3 space-y-1.5 text-xs">
+                {hasOrderDiscount && (
+                  <div className="flex justify-between text-gray-500">
+                    <span>مبلغ کل</span>
+                    <span>{formatPrice(subtotalPrice)} تومان</span>
+                  </div>
+                )}
                 {order.discountAmount > 0 && (
                   <div className="flex justify-between text-gray-500">
                     <span>تخفیف محصول</span>
@@ -2593,6 +2607,7 @@ export default function AdminOrderDetailClient({ orderId }) {
             </div>
             <TrackingPanel
               orderId={orderId}
+              orderItems={order.items}
               orderFulfillmentStatus={order.fulfillmentStatus}
               onStatusChange={fetchOrder}
             />
