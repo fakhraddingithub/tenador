@@ -158,8 +158,8 @@ const CartSummary = ({
         )}
 
         <div className="flex items-center justify-between">
-          <span className="text-slate-500">هزینه ارسال</span>
-          <span className="font-semibold text-emerald-600">رایگان</span>
+          {/* <span className="text-slate-500">هزینه ارسال</span>
+          <span className="font-semibold text-emerald-600">رایگان</span> */}
         </div>
       </div>
 

@@ -228,7 +228,13 @@ const AddressModal = ({
                     />
                   </div>
                 </div>
+              </div>
 
+              <p className="inline-flex rounded-full bg-amber-50 px-3 py-1 text-[11px] font-medium text-amber-700">
+                نام و نام خانوادگی را به فارسی وارد کنید
+              </p>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {/* نام */}
                 <div className="space-y-1">
                   <label className="text-xs text-gray-500">نام</label>
@@ -264,7 +270,9 @@ const AddressModal = ({
                     />
                   </div>
                 </div>
+              </div>
 
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {/* موبایل */}
                 <div className="space-y-1">
                   <label className="text-xs text-gray-500">شماره موبایل</label>

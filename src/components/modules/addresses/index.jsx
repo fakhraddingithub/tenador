@@ -8,6 +8,7 @@ import {
   FaTrash,
   FaStar,
 } from 'react-icons/fa'
+import { FiHome, FiMapPin, FiPhone, FiUser } from 'react-icons/fi'
 import { useState, useEffect } from 'react'
 import { toast } from 'react-toastify'
 import Swal from 'sweetalert2'
@@ -308,7 +309,7 @@ const AddressesModule = () => {
          transition={{ type: "spring", stiffness: 300, damping: 25 }}
          className="
            relative z-10
-           w-full max-w-lg
+           w-full max-w-2xl
            rounded-lg
            bg-white
            p-6
@@ -320,109 +321,128 @@ const AddressesModule = () => {
          </h2>
      
          <form onSubmit={handleSubmit} className="space-y-4 text-sm">
-           {/* Title & Name */}
-           <div className="grid grid-cols-2 gap-4">
+           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
              <div className="space-y-1">
-               <label className="text-xs text-[hsl(var(--muted-foreground))]">
-                 عنوان
+               <label className="text-xs text-gray-500">
+                 عنوان آدرس
+                 <span className="text-gray-400 mr-1">(اختیاری)</span>
                </label>
-               <input
-                 className="w-full rounded-md border border-[hsl(var(--border))] px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[hsl(var(--primary))]"
-                 value={formData.title}
-                 onChange={(e) =>
-                   setFormData({ ...formData, title: e.target.value })
-                 }
-               />
+               <div className="relative">
+                 <FiHome className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 w-4 h-4" />
+                 <input
+                   type="text"
+                   placeholder="مثلاً خانه"
+                   value={formData.title}
+                   onChange={(e) =>
+                     setFormData({ ...formData, title: e.target.value })
+                   }
+                   className="w-full border border-gray-300 rounded-[6px] py-2.5 pr-9 pl-3 text-sm focus:outline-none focus:border-[#aa4725] focus:ring-2 focus:ring-[#aa4725]/20 transition"
+                 />
+               </div>
              </div>
-     
+           </div>
+
+           <p className="inline-flex rounded-full bg-amber-50 px-3 py-1 text-[11px] font-medium text-amber-700">
+             نام و نام خانوادگی را به فارسی وارد کنید
+           </p>
+
+           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
              <div className="space-y-1">
-               <label className="text-xs text-[hsl(var(--muted-foreground))]">
-                 نام
-               </label>
-               <input
-                 className="w-full rounded-md border border-[hsl(var(--border))] px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[hsl(var(--primary))]"
-                 name="firstName"
-                 autoComplete="given-name"
-                 value={formData.firstName}
-                 onChange={(e) =>
-                   setFormData({ ...formData, firstName: e.target.value })
-                 }
-                 required
-               />
+               <label className="text-xs text-gray-500">نام</label>
+               <div className="relative">
+                 <FiUser className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 w-4 h-4" />
+                 <input
+                   type="text"
+                   name="firstName"
+                   autoComplete="given-name"
+                   placeholder="نام تحویل گیرنده"
+                   value={formData.firstName}
+                   onChange={(e) =>
+                     setFormData({ ...formData, firstName: e.target.value })
+                   }
+                   required
+                   className="w-full border border-gray-300 rounded-[6px] py-2.5 pr-9 pl-3 text-sm focus:outline-none focus:border-[#aa4725] focus:ring-2 focus:ring-[#aa4725]/20 transition"
+                 />
+               </div>
+             </div>
+
+             <div className="space-y-1">
+               <label className="text-xs text-gray-500">نام خانوادگی</label>
+               <div className="relative">
+                 <FiUser className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 w-4 h-4" />
+                 <input
+                   type="text"
+                   name="lastName"
+                   autoComplete="family-name"
+                   placeholder="نام خانوادگی تحویل گیرنده"
+                   value={formData.lastName}
+                   onChange={(e) =>
+                     setFormData({ ...formData, lastName: e.target.value })
+                   }
+                   required
+                   className="w-full border border-gray-300 rounded-[6px] py-2.5 pr-9 pl-3 text-sm focus:outline-none focus:border-[#aa4725] focus:ring-2 focus:ring-[#aa4725]/20 transition"
+                 />
+               </div>
+             </div>
+           </div>
+
+           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+             <div className="space-y-1">
+               <label className="text-xs text-gray-500">شماره موبایل</label>
+               <div className="relative">
+                 <FiPhone className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 w-4 h-4" />
+                 <input
+                   type="tel"
+                   placeholder="09xxxxxxxxx"
+                   value={formData.phone}
+                   onChange={(e) =>
+                     setFormData({ ...formData, phone: e.target.value })
+                   }
+                   className="w-full border border-gray-300 rounded-[6px] py-2.5 pr-9 pl-3 text-sm focus:outline-none focus:border-[#aa4725] focus:ring-2 focus:ring-[#aa4725]/20 transition"
+                 />
+               </div>
+             </div>
+
+             <div className="space-y-1">
+               <label className="text-xs text-gray-500">شهر</label>
+               <div className="relative">
+                 <FiMapPin className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 w-4 h-4" />
+                 <input
+                   type="text"
+                   placeholder="نام شهر"
+                   value={formData.city}
+                   onChange={(e) =>
+                     setFormData({ ...formData, city: e.target.value })
+                   }
+                   className="w-full border border-gray-300 rounded-[6px] py-2.5 pr-9 pl-3 text-sm focus:outline-none focus:border-[#aa4725] focus:ring-2 focus:ring-[#aa4725]/20 transition"
+                 />
+               </div>
              </div>
            </div>
 
            <div className="space-y-1">
-             <label className="text-xs text-[hsl(var(--muted-foreground))]">
-               نام خانوادگی
-             </label>
+             <label className="text-xs text-gray-500">کد پستی</label>
              <input
-               className="w-full rounded-md border border-[hsl(var(--border))] px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[hsl(var(--primary))]"
-               name="lastName"
-               autoComplete="family-name"
-               value={formData.lastName}
-               onChange={(e) =>
-                 setFormData({ ...formData, lastName: e.target.value })
-               }
-               required
-             />
-           </div>
-     
-           {/* City & Phone */}
-           <div className="grid grid-cols-2 gap-4">
-             <div className="space-y-1">
-               <label className="text-xs text-[hsl(var(--muted-foreground))]">
-                 شهر
-               </label>
-               <input
-                 className="w-full rounded-md border border-[hsl(var(--border))] px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[hsl(var(--primary))]"
-                 value={formData.city}
-                 onChange={(e) =>
-                   setFormData({ ...formData, city: e.target.value })
-                 }
-               />
-             </div>
-     
-             <div className="space-y-1">
-               <label className="text-xs text-[hsl(var(--muted-foreground))]">
-                 شماره تلفن
-               </label>
-               <input
-                 className="w-full rounded-md border border-[hsl(var(--border))] px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[hsl(var(--primary))]"
-                 value={formData.phone}
-                 onChange={(e) =>
-                   setFormData({ ...formData, phone: e.target.value })
-                 }
-               />
-             </div>
-           </div>
-     
-           {/* Postal Code */}
-           <div className="space-y-1">
-             <label className="text-xs text-[hsl(var(--muted-foreground))]">
-               کد پستی
-             </label>
-             <input
-               className="w-full rounded-md border border-[hsl(var(--border))] px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[hsl(var(--primary))]"
+               type="text"
+               placeholder="۱۰ رقم"
                value={formData.postalCode}
                onChange={(e) =>
                  setFormData({ ...formData, postalCode: e.target.value })
                }
+               className="w-full border border-gray-300 rounded-[6px] py-2.5 px-3 text-sm focus:outline-none focus:border-[#aa4725] focus:ring-2 focus:ring-[#aa4725]/20 transition"
              />
            </div>
-     
-           {/* Address */}
+
            <div className="space-y-1">
-             <label className="text-xs text-[hsl(var(--muted-foreground))]">
-               آدرس کامل
-             </label>
+             <label className="text-xs text-gray-500">آدرس کامل</label>
              <textarea
                rows={3}
-               className="w-full resize-none rounded-md border border-[hsl(var(--border))] px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[hsl(var(--primary))]"
+               placeholder="خیابان، کوچه، پلاک، واحد ..."
                value={formData.addressLine}
                onChange={(e) =>
                  setFormData({ ...formData, addressLine: e.target.value })
                }
+               className="w-full border border-gray-300 rounded-[6px] py-2.5 px-3 text-sm resize-none focus:outline-none focus:border-[#aa4725] focus:ring-2 focus:ring-[#aa4725]/20 transition"
              />
            </div>
      
