@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import connectToDB from 'base/configs/db';
 import User from 'base/models/User';
 import PasswordResetToken from 'base/models/PasswordResetToken';
-import { hasher, validatePassword, tokenGenrator, generateRefreshToken } from 'base/utils/auth';
+import { hasher, tokenGenrator, generateRefreshToken } from 'base/utils/auth';
 import { hashResetToken } from '@/lib/passwordResetEmail';
 
 const GENERIC_INVALID = { message: 'نشست بازیابی نامعتبر یا منقضی شده است؛ دوباره ایمیل خود را وارد کنید' };
@@ -25,11 +25,8 @@ export async function POST(request) {
       return NextResponse.json({ message: 'رمز عبور و تکرار آن یکسان نیستند' }, { status: 400 });
     }
 
-    if (!validatePassword(password)) {
-      return NextResponse.json(
-        { message: 'رمز عبور باید حداقل ۸ کاراکتر، شامل حروف بزرگ، کوچک، عدد و کاراکتر ویژه باشد' },
-        { status: 400 },
-      );
+    if (password.length < 8) {
+      return NextResponse.json({ message: 'رمز عبور باید حداقل ۸ کاراکتر باشد' }, { status: 400 });
     }
 
     const doc = await PasswordResetToken.findOne({ tokenHash: hashResetToken(resetToken) });
@@ -42,7 +39,7 @@ export async function POST(request) {
       return NextResponse.json({ message: 'ابتدا کد ارسال‌شده را تأیید کنید' }, { status: 400 });
     }
 
-    const user = await User.findOne({ _id: doc.user, provider: 'local' });
+    const user = await User.findById(doc.user);
     if (!user) {
       return NextResponse.json(GENERIC_INVALID, { status: 400 });
     }

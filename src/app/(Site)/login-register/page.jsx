@@ -6,14 +6,12 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import AuthForm from '@/components/auth/AuthForm';
 import GoogleButton from '@/components/auth/GoogleButton';
 import ForgotPasswordEmailFlow from '@/components/auth/ForgotPasswordEmailFlow';
-import { useForgotPassword } from '@/components/auth/useForgotPassword';
 import { showToast } from '@/lib/toast';
 import { loginAction } from 'base/actions/authActions';
 
 function AuthContent() {
   const [mode, setMode] = useState('login');
   const [loading, setLoading] = useState(false);
-  const { forgotPassword } = useForgotPassword();
 
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -140,18 +138,12 @@ function AuthContent() {
               />
 
               {mode === 'login' && (
-                <div className="text-right flex flex-col items-end gap-1">
-                  <button
-                    onClick={forgotPassword}
-                    className="mt-4 text-xs font-medium text-[#aa4725] hover:underline"
-                  >
-                    رمز عبور را فراموش کرده‌اید؟
-                  </button>
+                <div className="mt-4 text-center">
                   <button
                     onClick={() => setMode('forgot-email')}
-                    className="text-xs font-medium text-slate-400 hover:text-slate-600 hover:underline"
+                    className="text-xs font-medium text-[hsl(var(--primary))] hover:underline"
                   >
-                    بازیابی رمز عبور با ایمیل
+                    رمز عبور را فراموش کرده‌اید؟
                   </button>
                 </div>
               )}

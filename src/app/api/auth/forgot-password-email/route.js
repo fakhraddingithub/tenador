@@ -39,10 +39,9 @@ export async function POST(request) {
       return NextResponse.json(GENERIC_RATE_LIMITED, { status: 429 });
     }
 
-    const user = await User.findOne({
-      email: emailMatchQuery(normalizedEmail),
-      provider: 'local',
-    });
+    // بدون فیلتر provider — هم کاربرانی که با گوگل ثبت‌نام کرده‌اند ایمیل دارند
+    // و هم کاربران محلی که ایمیل ثبت کرده‌اند باید پیدا شوند.
+    const user = await User.findOne({ email: emailMatchQuery(normalizedEmail) });
 
     if (!user) {
       return NextResponse.json(GENERIC_NO_ACCOUNT, { status: 404 });

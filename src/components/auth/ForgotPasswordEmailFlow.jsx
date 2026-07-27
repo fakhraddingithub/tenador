@@ -1,7 +1,7 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { FaEnvelope, FaLock, FaEye, FaEyeSlash, FaKey, FaArrowRight } from 'react-icons/fa';
+import { useState, useEffect, useRef } from 'react';
+import { FaEnvelope, FaLock, FaEye, FaEyeSlash, FaArrowRight } from 'react-icons/fa';
 
 // همان کلاس‌های AuthForm.jsx — برای هم‌رنگی دقیق با صفحه‌ی ورود/ثبت‌نام
 const inputClass = (error) => `
@@ -25,13 +25,14 @@ const buttonClass = `
   disabled:opacity-50
 `;
 
-const PASSWORD_PATTERN = /^(?=.*?[A-Z])(?=.*?[a-z])(?=.*?[0-9])(?=.*?[#?!@$ %^&*-]).{8,}$/;
 const RESEND_COOLDOWN_SECONDS = 45;
+const CODE_LENGTH = 5;
 
 export default function ForgotPasswordEmailFlow({ onBack, callbackUrl = '/' }) {
   const [step, setStep] = useState('email'); // email | code | password
   const [email, setEmail] = useState('');
-  const [code, setCode] = useState('');
+  const [digits, setDigits] = useState(Array(CODE_LENGTH).fill(''));
+  const digitRefs = useRef([]);
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -76,23 +77,20 @@ export default function ForgotPasswordEmailFlow({ onBack, callbackUrl = '/' }) {
     }
   };
 
-  const submitCode = async (e) => {
-    e.preventDefault();
+  const verifyCode = async (codeValue) => {
     setError('');
-    if (!/^\d{5}$/.test(code)) {
-      setError('کد باید ۵ رقم باشد');
-      return;
-    }
     setLoading(true);
     try {
       const res = await fetch('/api/auth/forgot-password-email/verify', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ resetToken, code }),
+        body: JSON.stringify({ resetToken, code: codeValue }),
       });
       const data = await res.json();
       if (!res.ok) {
         setError(data.message || 'کد نامعتبر است');
+        setDigits(Array(CODE_LENGTH).fill(''));
+        digitRefs.current[0]?.focus();
         return;
       }
       setStep('password');
@@ -100,6 +98,69 @@ export default function ForgotPasswordEmailFlow({ onBack, callbackUrl = '/' }) {
       setError('خطا در ارتباط با سرور');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const firstEmptyIndex = () => {
+    const idx = digits.findIndex((d) => d === '');
+    return idx === -1 ? CODE_LENGTH - 1 : idx;
+  };
+
+  const handleDigitFocus = (i) => {
+    const allowed = firstEmptyIndex();
+    if (i > allowed) {
+      digitRefs.current[allowed]?.focus();
+    }
+  };
+
+  const handleDigitChange = (i, value) => {
+    const v = value.replace(/\D/g, '').slice(-1);
+    if (!v) return;
+    setError('');
+    const next = [...digits];
+    next[i] = v;
+    setDigits(next);
+    if (i < CODE_LENGTH - 1) {
+      digitRefs.current[i + 1]?.focus();
+    }
+    if (next.every((d) => d !== '')) {
+      verifyCode(next.join(''));
+    }
+  };
+
+  const handleDigitKeyDown = (i, e) => {
+    if (e.key !== 'Backspace') return;
+    e.preventDefault();
+    setError('');
+    if (digits[i]) {
+      setDigits((prev) => {
+        const next = [...prev];
+        next[i] = '';
+        return next;
+      });
+      return;
+    }
+    if (i > 0) {
+      setDigits((prev) => {
+        const next = [...prev];
+        next[i - 1] = '';
+        return next;
+      });
+      digitRefs.current[i - 1]?.focus();
+    }
+  };
+
+  const handleDigitPaste = (e) => {
+    e.preventDefault();
+    const pasted = e.clipboardData.getData('text').replace(/\D/g, '').slice(0, CODE_LENGTH);
+    if (!pasted) return;
+    setError('');
+    const next = Array(CODE_LENGTH).fill('');
+    for (let idx = 0; idx < pasted.length; idx += 1) next[idx] = pasted[idx];
+    setDigits(next);
+    digitRefs.current[Math.min(pasted.length, CODE_LENGTH - 1)]?.focus();
+    if (next.every((d) => d !== '')) {
+      verifyCode(next.join(''));
     }
   };
 
@@ -119,7 +180,8 @@ export default function ForgotPasswordEmailFlow({ onBack, callbackUrl = '/' }) {
         return;
       }
       setResetToken(data.resetToken);
-      setCode('');
+      setDigits(Array(CODE_LENGTH).fill(''));
+      digitRefs.current[0]?.focus();
       setCooldown(RESEND_COOLDOWN_SECONDS);
     } catch {
       setError('خطا در ارتباط با سرور');
@@ -133,10 +195,6 @@ export default function ForgotPasswordEmailFlow({ onBack, callbackUrl = '/' }) {
     setError('');
     if (password.length < 8) {
       setError('رمز عبور حداقل ۸ کاراکتر باشد');
-      return;
-    }
-    if (!PASSWORD_PATTERN.test(password)) {
-      setError('رمز عبور باید شامل حروف بزرگ، کوچک، عدد و کاراکتر ویژه باشد');
       return;
     }
     if (password !== confirmPassword) {
@@ -200,33 +258,36 @@ export default function ForgotPasswordEmailFlow({ onBack, callbackUrl = '/' }) {
       )}
 
       {step === 'code' && (
-        <form onSubmit={submitCode} className="space-y-4">
+        <div className="space-y-4">
           <p className="text-sm text-slate-500">کد ۵ رقمی ارسال‌شده به ایمیل خود را وارد کنید.</p>
-          <div className="relative">
-            <FaKey className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm" />
-            <input
-              value={code}
-              onChange={(e) => { setCode(e.target.value.replace(/\D/g, '').slice(0, 5)); setError(''); }}
-              disabled={loading}
-              placeholder="کد ۵ رقمی"
-              inputMode="numeric"
-              dir="ltr"
-              className={inputClass(error) + ' text-center tracking-widest'}
-            />
+          <div className="flex justify-center gap-2" dir="ltr">
+            {digits.map((d, i) => (
+              <input
+                key={i}
+                ref={(el) => { digitRefs.current[i] = el; }}
+                value={d}
+                onChange={(e) => handleDigitChange(i, e.target.value)}
+                onKeyDown={(e) => handleDigitKeyDown(i, e)}
+                onFocus={() => handleDigitFocus(i)}
+                onPaste={handleDigitPaste}
+                disabled={loading}
+                inputMode="numeric"
+                maxLength={1}
+                className={`w-11 h-11 text-center text-lg font-bold border ${error ? 'border-red-500' : 'border-[hsl(var(--border))]'} rounded-[var(--radius)] bg-white text-[hsl(var(--foreground))] focus:outline-none focus:border-[hsl(var(--primary))] transition`}
+              />
+            ))}
           </div>
-          {error && <p className="text-xs text-red-500">{error}</p>}
-          <button type="submit" disabled={loading} className={buttonClass}>
-            {loading ? 'در حال بررسی…' : 'تأیید کد'}
-          </button>
+          {error && <p className="text-xs text-red-500 text-center">{error}</p>}
+          {loading && <p className="text-xs text-slate-400 text-center">در حال بررسی…</p>}
           <button
             type="button"
             onClick={resend}
             disabled={cooldown > 0 || loading}
-            className="w-full text-xs font-medium text-[#aa4725] hover:underline disabled:text-slate-400 disabled:no-underline disabled:cursor-not-allowed"
+            className="w-full text-xs font-medium text-[hsl(var(--primary))] hover:underline disabled:text-slate-400 disabled:no-underline disabled:cursor-not-allowed"
           >
             {cooldown > 0 ? `ارسال مجدد کد (${cooldown} ثانیه)` : 'ارسال مجدد کد'}
           </button>
-        </form>
+        </div>
       )}
 
       {step === 'password' && (

@@ -77,7 +77,7 @@ export default function ContactSection({ block, accent }) {
 
           {/* فرم */}
           <Reveal y={28} delay={0.1}>
-            <div className="h-full bg-white rounded-[6px] p-7 sm:p-9 border border-gray-100 shadow-xl">
+            <div className="h-full">
               <ContactForm accent={accent} />
             </div>
           </Reveal>
