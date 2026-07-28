@@ -17,6 +17,7 @@ import "base/models/registerModels";
 import Installment from "base/models/Installment";
 import Payment from "base/models/Payment";
 import Order from "base/models/Order";
+import { markOrderUsedProductsSold } from "@/lib/usedProductOrderStatus";
 
 import requireAdmin, { unauthorized } from "@/lib/requireAdmin";
 
@@ -68,6 +69,8 @@ export async function POST(req, { params }) {
       order.reviewedAt = new Date();
       await order.save();
     }
+
+    await markOrderUsedProductsSold(order);
 
     return NextResponse.json(
       {

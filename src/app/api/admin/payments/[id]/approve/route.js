@@ -4,6 +4,7 @@ import Payment from "base/models/Payment";
 import Order from "base/models/Order";
 import { notifyNewPayment } from "base/services/notificationService";
 import mongoose from "mongoose";
+import { markOrderUsedProductsSold } from "@/lib/usedProductOrderStatus";
 
 import requireAdmin, { unauthorized } from "@/lib/requireAdmin";
 
@@ -51,6 +52,10 @@ export async function POST(req, { params }) {
     }
 
     if (payment.status === "PAID") {
+      const processedOrder = await Order.findById(payment.order);
+      if (processedOrder?.paymentStatus === "PAID") {
+        await markOrderUsedProductsSold(processedOrder);
+      }
       return NextResponse.json(
         { message: "این پرداخت قبلاً تأیید شده است" },
         { status: 400 },
@@ -99,6 +104,10 @@ export async function POST(req, { params }) {
 
       await session.commitTransaction();
       session.endSession();
+
+      if (isFullyPaid) {
+        await markOrderUsedProductsSold(order);
+      }
 
       // اعلان تأیید پرداخت برای پنل مدیریت (مسیر رسید بانکی).
       // webhook-success به‌دلیل PAID بودن سفارش زودتر return می‌کند و اعلان تکراری نمی‌سازد.

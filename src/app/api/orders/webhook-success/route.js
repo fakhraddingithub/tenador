@@ -20,6 +20,7 @@ import User from "base/models/User";
 import { computeCoachCredit } from "base/services/priceEngine";
 import { notifyNewPayment } from "base/services/notificationService";
 import { sendOrderConfirmationEmail } from "@/lib/emailService";
+import { markOrderUsedProductsSold } from "@/lib/usedProductOrderStatus";
 
 export async function POST(req) {
   try {
@@ -43,6 +44,7 @@ export async function POST(req) {
     }
 
     if (order.paymentStatus === "PAID") {
+      await markOrderUsedProductsSold(order);
       return NextResponse.json({ message: "سفارش قبلاً پردازش شده است" }, { status: 200 });
     }
 
@@ -66,6 +68,7 @@ export async function POST(req) {
       paymentStatus:     "PAID",
       fulfillmentStatus: "PROCESSING",
     });
+    await markOrderUsedProductsSold(order);
 
     // ─── اعلان تأیید پرداخت برای پنل مدیریت (غیرمسدودکننده) ───
     // چون این endpoint در صورت PAID بودن زودتر return می‌کند، اعلان تکراری ساخته نمی‌شود.

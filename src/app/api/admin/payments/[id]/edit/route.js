@@ -22,6 +22,7 @@ import "base/models/registerModels";
 import Payment from "base/models/Payment";
 import Order from "base/models/Order";
 import { derivePaymentStatus } from "base/services/orderRecalc";
+import { markOrderUsedProductsSold } from "@/lib/usedProductOrderStatus";
 
 import requireAdmin, { unauthorized } from "@/lib/requireAdmin";
 
@@ -109,6 +110,10 @@ export async function PATCH(req, { params }) {
 
       await session.commitTransaction();
       session.endSession();
+
+      if (order.paymentStatus === "PAID") {
+        await markOrderUsedProductsSold(order);
+      }
 
       return NextResponse.json(
         {

@@ -14,6 +14,7 @@ import Order from "base/models/Order";
 import Installment from "base/models/Installment";
 import { deriveCheckStatus, summarizeInstallment } from "base/services/installmentService";
 import { syncOrderFulfillmentFromTracking } from "@/lib/orderFulfillmentSync";
+import { markOrderUsedProductsSold } from "@/lib/usedProductOrderStatus";
 
 // فقط برای ثبت شدن مدل‌ها در Mongoose / جلوگیری از MissingSchemaError
 import "base/models/Payment";
@@ -313,6 +314,10 @@ export async function PATCH(req, { params }) {
         { message: "سفارش یافت نشد" },
         { status: 404 }
       );
+    }
+
+    if (order.paymentStatus === "PAID") {
+      await markOrderUsedProductsSold(order);
     }
 
     order.items = normalizeOrderItems(order.items);

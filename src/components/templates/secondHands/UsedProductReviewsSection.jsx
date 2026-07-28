@@ -42,19 +42,15 @@ export default function UsedProductReviewsSection({ reviews = [] }) {
   if (reviews.length === 0) return null;
 
   return (
-    <section className="bg-[#f7f5f2] py-16 md:py-20" dir="rtl">
+    <section className="bg-white pb-20 pt-4 text-black md:pb-20 md:pt-6" dir="rtl">
       <div className="container mx-auto px-4 md:px-12 lg:px-16 xl:px-20">
-        <div className="mb-9 flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
-          <div>
-            <p className="mb-2 text-xs font-black tracking-wide text-[#aa4725]">
-              تجربه‌ی خرید واقعی
-            </p>
-            <h2 className="text-2xl font-black text-gray-900 md:text-4xl">
-              نظر خریداران محصولات دست‌دوم
-            </h2>
-          </div>
-          <p className="max-w-md border-r-2 border-[#aa4725]/20 pr-3 text-sm leading-7 text-gray-500">
-            این دیدگاه‌ها فقط توسط خریداران تأییدشده ثبت و پس از بررسی تنادور منتشر شده‌اند.
+        <div className="relative mb-12">
+          <h2 className="text-2xl font-black leading-tight text-gray-900 md:text-4xl">
+            <span className="text-[#aa4725]">تجربه‌ی خرید </span>
+            <span>واقعی</span>
+          </h2>
+          <p className="mt-2 max-w-md border-r-2 border-[#aa4725]/20 pr-3 text-sm font-light italic text-gray-500 md:mt-4 md:border-r-4 md:pr-4 md:text-lg">
+            نظر خریداران محصولات دست‌دوم
           </p>
         </div>
 
