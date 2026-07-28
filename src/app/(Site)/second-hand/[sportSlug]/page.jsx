@@ -8,6 +8,7 @@ import Category from "base/models/Category";
 import UsedProductTemplate from "@/components/templates/secondHand/UsedProductTemplate";
 import { notFound } from "next/navigation";
 import { getCachedRate, eurToToman } from "@/lib/Exchangerate";
+import TaxonomyBreadcrumbs from "@/components/seo/TaxonomyBreadcrumbs";
 
 // ⚠️ اسلاگ‌های فارسی با هدر x-next-cache-tags ناسازگارند (باگ Next: کاراکتر
 // غیر-ASCII در هدر → ERR_INVALID_CHAR → خطای ۵۰۰). داینامیک رندر می‌شود تا هدر
@@ -203,8 +204,25 @@ export default async function UsedProductPage({ params }) {
   };
 
   return (
-    <div className="max-w-7xl mx-auto px-4 py-8">
-      <UsedProductTemplate product={product} />
-    </div>
+    <>
+      <TaxonomyBreadcrumbs
+        items={[
+          { name: "خانه", href: "/", url: SITE_URL },
+          {
+            name: "بازار دست‌دوم",
+            href: "/second-hand",
+            url: `${SITE_URL}/second-hand`,
+          },
+          {
+            name: product.name,
+            href: `/second-hand/${encodeURIComponent(raw.slug || slug)}`,
+            url: `${SITE_URL}/second-hand/${encodeURIComponent(raw.slug || slug)}`,
+          },
+        ]}
+      />
+      <div className="max-w-7xl mx-auto px-4 py-8">
+        <UsedProductTemplate product={product} />
+      </div>
+    </>
   );
 }

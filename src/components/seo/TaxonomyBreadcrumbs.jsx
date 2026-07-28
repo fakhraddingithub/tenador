@@ -1,8 +1,12 @@
 import Link from "next/link";
 import { buildTaxonomyBreadcrumbs } from "@/lib/seo/taxonomySeo";
 
-export default function TaxonomyBreadcrumbs({ filters }) {
-  const items = buildTaxonomyBreadcrumbs(filters);
+export default function TaxonomyBreadcrumbs({
+  filters,
+  items: providedItems,
+  includeStructuredData = true,
+}) {
+  const items = providedItems || buildTaxonomyBreadcrumbs(filters);
   if (items.length < 2) return null;
 
   const jsonLd = {
@@ -18,12 +22,14 @@ export default function TaxonomyBreadcrumbs({ filters }) {
 
   return (
     <>
-      <script
-        type="application/ld+json"
-        dangerouslySetInnerHTML={{
-          __html: JSON.stringify(jsonLd).replace(/</g, "\\u003c"),
-        }}
-      />
+      {includeStructuredData && (
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{
+            __html: JSON.stringify(jsonLd).replace(/</g, "\\u003c"),
+          }}
+        />
+      )}
       <nav
         aria-label="مسیر صفحه"
         className="mx-auto w-full max-w-[1440px] px-4 py-4 text-sm text-neutral-500 lg:px-8 md:text-base"
@@ -32,7 +38,10 @@ export default function TaxonomyBreadcrumbs({ filters }) {
           {items.map((item, index) => {
             const isCurrent = index === items.length - 1;
             return (
-              <li key={item.href} className="flex items-center gap-2.5">
+              <li
+                key={`${item.href || item.url || item.name}-${index}`}
+                className="flex items-center gap-2.5"
+              >
                 {index > 0 && <span aria-hidden="true">/</span>}
                 {isCurrent ? (
                   <span
@@ -41,10 +50,12 @@ export default function TaxonomyBreadcrumbs({ filters }) {
                   >
                     {item.name}
                   </span>
-                ) : (
+                ) : item.href ? (
                   <Link href={item.href} className="hover:text-[var(--color-primary)]">
                     {item.name}
                   </Link>
+                ) : (
+                  <span className="text-neutral-600">{item.name}</span>
                 )}
               </li>
             );

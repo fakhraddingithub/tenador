@@ -11,7 +11,15 @@ const CommentSchema = new mongoose.Schema(
     product: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "Product",
-      required: true,
+      default: null,
+    },
+
+    // نظرِ محصول دست‌دوم مستقل از Product نگه داشته می‌شود تا هر کالای
+    // یکتای خریداری‌شده فقط یک‌بار قابل بررسی باشد.
+    usedProduct: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "UsedProduct",
+      default: null,
     },
 
     // فقط برای نظری که از مسیر سفارش (خرید تأییدشده) ثبت شده تنظیم می‌شود
@@ -37,6 +45,16 @@ const CommentSchema = new mongoose.Schema(
       type: String,
       required: true,
       trim: true,
+    },
+
+    // تصاویر واقعی کالای دست‌دوم پس از دریافت توسط خریدار
+    images: {
+      type: [String],
+      default: [],
+      validate: {
+        validator: (value) => Array.isArray(value) && value.length <= 4,
+        message: "حداکثر ۴ تصویر برای هر نظر مجاز است",
+      },
     },
 
     rating: {
@@ -83,6 +101,8 @@ CommentSchema.pre("save", function () {
 // واکشی سریعِ نظرهای تأییدشده‌ی یک محصول و کنترل تکراری‌نبودنِ نظر کاربر
 CommentSchema.index({ product: 1, status: 1, parent: 1 });
 CommentSchema.index({ user: 1, product: 1, parent: 1 });
+CommentSchema.index({ usedProduct: 1, status: 1, parent: 1 });
+CommentSchema.index({ user: 1, usedProduct: 1, parent: 1 });
 
 CommentSchema.set("toJSON", { virtuals: true });
 CommentSchema.set("toObject", { virtuals: true });

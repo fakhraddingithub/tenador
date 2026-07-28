@@ -5,11 +5,12 @@
  * تأیید ادمین به‌صورت عمومی نمایش داده نمی‌شود.
  *
  * بدنه:
- *   product  (الزامی)  — شناسه‌ی محصول
+ *   product / usedProduct — دقیقاً یکی از شناسه‌های محصول نو یا دست‌دوم
  *   text     (الزامی)  — متن نظر
  *   rating   (اختیاری) — ۱ تا ۵ (برای نظرهای سطح‌بالا)
  *   parent   (اختیاری) — شناسه‌ی نظر والد (پاسخ به نظر دیگر)
  *   orderId  (اختیاری) — اگر نظر از مسیر سفارشِ تحویل‌شده ثبت شود
+ *   images   (اختیاری) — حداکثر ۴ تصویر؛ فقط برای خرید دست‌دوم تأییدشده
  *
  * کاربر هرگز از بدنه خوانده نمی‌شود؛ همیشه از توکن استخراج می‌شود.
  */
@@ -21,6 +22,7 @@ import "base/models/registerModels";
 import { verifyToken } from "base/utils/auth";
 import Comment from "base/models/Comment";
 import Product from "base/models/Product";
+import UsedProduct from "base/models/UsedProduct";
 import Order from "base/models/Order";
 import { revalidateContent } from "@/lib/revalidate";
 
@@ -29,6 +31,31 @@ const REVIEWABLE_FULFILLMENT = ["SENT", "DELIVERED"];
 
 const MIN_TEXT = 3;
 const MAX_TEXT = 1000;
+const MAX_IMAGES = 4;
+
+function isTrustedImageUrl(value) {
+  if (typeof value !== "string" || value.length > 2048) return false;
+
+  try {
+    const url = new URL(value);
+    if (url.protocol !== "https:") return false;
+
+    const configuredEndpoints = [
+      process.env.IMAGEKIT_URL_ENDPOINT,
+      process.env.NEXT_PUBLIC_IMAGEKIT_URL_ENDPOINT,
+    ].filter(Boolean);
+
+    return configuredEndpoints.some((endpoint) => {
+      try {
+        return url.hostname === new URL(endpoint).hostname;
+      } catch {
+        return false;
+      }
+    });
+  } catch {
+    return false;
+  }
+}
 
 async function getAuthUser() {
   const cookieStore = await cookies();
@@ -50,11 +77,14 @@ export async function POST(req) {
     }
 
     const body = await req.json().catch(() => ({}));
-    const { product, text, rating, parent, orderId } = body;
+    const { product, usedProduct, text, rating, parent, orderId } = body;
 
     // ── اعتبارسنجی پایه ──
-    if (!product) {
-      return NextResponse.json({ message: "شناسه‌ی محصول الزامی است" }, { status: 400 });
+    if ((!product && !usedProduct) || (product && usedProduct)) {
+      return NextResponse.json(
+        { message: "دقیقاً یک شناسه‌ی محصول معتبر الزامی است" },
+        { status: 400 }
+      );
     }
 
     const trimmed = typeof text === "string" ? text.trim() : "";
@@ -80,8 +110,13 @@ export async function POST(req) {
       ratingValue = r;
     }
 
-    // محصول باید وجود داشته باشد و فعال باشد
-    const productDoc = await Product.findById(product).select("_id").lean();
+    const targetId = usedProduct || product;
+    const targetField = usedProduct ? "usedProduct" : "product";
+
+    // محصول باید وجود داشته باشد
+    const productDoc = usedProduct
+      ? await UsedProduct.findById(usedProduct).select("_id").lean()
+      : await Product.findById(product).select("_id").lean();
     if (!productDoc) {
       return NextResponse.json({ message: "محصول یافت نشد" }, { status: 404 });
     }
@@ -90,14 +125,19 @@ export async function POST(req) {
 
     // ── پاسخ به یک نظر ──
     if (isReply) {
-      const parentDoc = await Comment.findById(parent).select("_id product").lean();
-      if (!parentDoc || String(parentDoc.product) !== String(product)) {
+      const parentDoc = await Comment.findById(parent)
+        .select("_id product usedProduct")
+        .lean();
+      if (
+        !parentDoc ||
+        String(parentDoc[targetField] || "") !== String(targetId)
+      ) {
         return NextResponse.json({ message: "نظر والد نامعتبر است" }, { status: 400 });
       }
 
       const reply = await Comment.create({
         user: auth.userId,
-        product,
+        [targetField]: targetId,
         parent,
         text: trimmed,
         status: "pending",
@@ -112,7 +152,7 @@ export async function POST(req) {
     // ── نظر سطح‌بالا: جلوگیری از نظر تکراری برای یک محصول ──
     const existing = await Comment.findOne({
       user: auth.userId,
-      product,
+      [targetField]: targetId,
       parent: null,
     })
       .select("_id status")
@@ -134,13 +174,15 @@ export async function POST(req) {
         .select("items fulfillmentStatus")
         .lean();
 
-      const containsProduct =
-        order?.items?.some(
-          (it) =>
-            it.itemType !== "used_product" &&
+      const containsProduct = order?.items?.some((it) =>
+        usedProduct
+          ? it.itemType === "used_product" &&
+            it.usedProduct &&
+            String(it.usedProduct) === String(usedProduct)
+          : it.itemType !== "used_product" &&
             it.product &&
             String(it.product) === String(product)
-        ) || false;
+      ) || false;
 
       const eligibleStatus = order
         ? REVIEWABLE_FULFILLMENT.includes(order.fulfillmentStatus)
@@ -163,12 +205,36 @@ export async function POST(req) {
       linkedOrder = orderId;
     }
 
+    const imageUrls = Array.isArray(body.images)
+      ? [...new Set(body.images.map((url) => String(url).trim()).filter(Boolean))]
+      : [];
+
+    if (imageUrls.length > MAX_IMAGES) {
+      return NextResponse.json(
+        { message: "حداکثر ۴ تصویر برای هر نظر مجاز است" },
+        { status: 400 }
+      );
+    }
+    if (imageUrls.some((url) => !isTrustedImageUrl(url))) {
+      return NextResponse.json(
+        { message: "آدرس یکی از تصاویر نامعتبر است" },
+        { status: 400 }
+      );
+    }
+    if (imageUrls.length > 0 && (!usedProduct || !verified)) {
+      return NextResponse.json(
+        { message: "تصویر فقط برای نظر خرید تأییدشده‌ی دست‌دوم مجاز است" },
+        { status: 403 }
+      );
+    }
+
     const comment = await Comment.create({
       user: auth.userId,
-      product,
+      [targetField]: targetId,
       order: linkedOrder,
       text: trimmed,
       rating: ratingValue,
+      images: imageUrls,
       isVerifiedPurchase: verified,
       status: "pending",
     });

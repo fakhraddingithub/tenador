@@ -315,17 +315,28 @@ function OrderCard({ order, onDelete, onViewDetail, reviewedIds, onReview }) {
   const previewItems = order.items?.slice(0, 3) ?? []
   const extraCount   = (order.items?.length ?? 0) - 3
 
-  // محصولاتِ یکتا (فقط Product، نه دست‌دوم) که در سفارشِ ارسال/تحویل‌شده هستند
+  // محصولاتِ یکتا (نو و دست‌دوم) که در سفارشِ ارسال/تحویل‌شده هستند
   // و کاربر هنوز برایشان نظر ثبت نکرده — هر کدام یک دکمه‌ی «ثبت نظر» می‌گیرند
   const isReviewable = REVIEWABLE_FULFILLMENT.includes(order.fulfillmentStatus)
   const reviewableProducts = isReviewable
     ? Array.from(
         new Map(
           (order.items ?? [])
-            .filter((it) => it.itemType !== 'used_product' && it.product?._id)
-            .map((it) => [String(it.product._id), it.product])
+            .filter((it) => it.product?._id)
+            .map((it) => {
+              const isUsed = it.itemType === 'used_product'
+              const key = `${isUsed ? 'used' : 'product'}:${it.product._id}`
+              return [
+                key,
+                {
+                  ...it.product,
+                  reviewKey: key,
+                  reviewType: isUsed ? 'used_product' : 'product',
+                },
+              ]
+            })
         ).values()
-      ).filter((p) => !reviewedIds?.has(String(p._id)))
+      ).filter((p) => !reviewedIds?.has(p.reviewKey))
     : []
 
   return (
@@ -433,7 +444,7 @@ function OrderCard({ order, onDelete, onViewDetail, reviewedIds, onReview }) {
               const { farsi, english } = splitName(product.name)
               return (
                 <button
-                  key={product._id}
+                  key={product.reviewKey}
                   onClick={() => onReview(order, product)}
                   className="inline-flex items-center gap-1.5 rounded-[6px] border border-[#aa4725]/30 bg-white px-3 py-1.5 text-xs font-semibold text-[#aa4725] transition-colors hover:bg-[#aa4725] hover:text-white focus:outline-none focus-visible:ring-2 focus-visible:ring-[#aa4725]/40"
                 >
@@ -547,15 +558,17 @@ const OrdersModule = () => {
       const res = await fetch('/api/comments/mine', { credentials: 'include' })
       if (res.ok) {
         const data = await res.json()
-        setReviewedIds(new Set(data.reviewedProductIds ?? []))
+        const productKeys = (data.reviewedProductIds ?? []).map((id) => `product:${id}`)
+        const usedProductKeys = (data.reviewedUsedProductIds ?? []).map((id) => `used:${id}`)
+        setReviewedIds(new Set([...productKeys, ...usedProductKeys]))
       }
     } catch {
       /* بی‌صدا — نبودِ این داده فقط یعنی دکمه‌ها نمایش داده می‌شوند */
     }
   }
 
-  const markReviewed = (productId) =>
-    setReviewedIds((prev) => new Set(prev).add(productId))
+  const markReviewed = (reviewKey) =>
+    setReviewedIds((prev) => new Set(prev).add(reviewKey))
 
   useEffect(() => {
     fetchOrders()

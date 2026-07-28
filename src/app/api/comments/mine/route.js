@@ -30,12 +30,20 @@ export async function GET() {
     }
 
     const docs = await Comment.find({ user: auth.userId, parent: null })
-      .select("product")
+      .select("product usedProduct")
       .lean();
 
-    const reviewedProductIds = [...new Set(docs.map((d) => String(d.product)))];
+    const reviewedProductIds = [
+      ...new Set(docs.filter((d) => d.product).map((d) => String(d.product))),
+    ];
+    const reviewedUsedProductIds = [
+      ...new Set(docs.filter((d) => d.usedProduct).map((d) => String(d.usedProduct))),
+    ];
 
-    return NextResponse.json({ reviewedProductIds }, { status: 200 });
+    return NextResponse.json(
+      { reviewedProductIds, reviewedUsedProductIds },
+      { status: 200 }
+    );
   } catch (error) {
     console.error("[GET /api/comments/mine]", error);
     return NextResponse.json({ message: "خطای داخلی سرور" }, { status: 500 });

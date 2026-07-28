@@ -3,6 +3,9 @@ import UsedProduct from "base/models/UsedProduct";
 import SiteSetting from "base/models/SiteSetting";
 import SecondHandCategoryGrid from "@/components/features/secondHandCategoryGrid/SecondHandCategoryGrid";
 import SportHero from "@/components/templates/sports/SportHero";
+import TaxonomyBreadcrumbs from "@/components/seo/TaxonomyBreadcrumbs";
+import UsedProductReviewsSection from "@/components/templates/secondHands/UsedProductReviewsSection";
+import { getApprovedUsedProductReviews } from "base/services/comment.service";
 
 // تغییراتِ ادمین از طریقِ revalidatePath("/second-hand", "layout") باطل می‌شوند؛
 // TTL زمان‌محور → ۱ساعت برای کاهشِ ISR Writes.
@@ -80,9 +83,10 @@ export default async function UsedProductsPage() {
   }
   const categories = Array.from(categoryMap.values());
 
-  const headerSetting = await SiteSetting.findOne({
-    key: "secondhand_header_image",
-  }).lean();
+  const [headerSetting, reviews] = await Promise.all([
+    SiteSetting.findOne({ key: "secondhand_header_image" }).lean(),
+    getApprovedUsedProductReviews(12),
+  ]);
   const headerImage = headerSetting?.value || null;
 
   const itemListElement = categories.map((c, i) => ({
@@ -135,7 +139,19 @@ export default async function UsedProductsPage() {
         dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbSchema) }}
       />
       <SportHero image={headerImage} title="بازار دست‌دوم" alt="بازار دست‌دوم" />
+      <TaxonomyBreadcrumbs
+        includeStructuredData={false}
+        items={[
+          { name: "خانه", href: "/", url: SITE_URL },
+          {
+            name: "بازار دست‌دوم",
+            href: "/second-hand",
+            url: `${SITE_URL}/second-hand`,
+          },
+        ]}
+      />
       <SecondHandCategoryGrid categories={categories} />
+      <UsedProductReviewsSection reviews={reviews} />
     </>
   );
 }

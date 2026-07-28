@@ -7,6 +7,7 @@ import Product from "base/models/Product";
 import HealthCard from "base/models/HealthCard";
 import SiteSetting from "base/models/SiteSetting";
 import UsedProductsPageClient from "@/components/templates/secondHands/UsedProductsPageClient";
+import TaxonomyBreadcrumbs from "@/components/seo/TaxonomyBreadcrumbs";
 import { getFilterableAttributes } from "base/services/product.service";
 import { getCachedRate, eurToToman } from "@/lib/Exchangerate";
 
@@ -33,7 +34,7 @@ export async function generateMetadata({ params }) {
   const resolved = await resolveCategory(sportSlug, categorySlug);
   if (!resolved) return { title: "صفحه پیدا نشد" };
 
-  const { category } = resolved;
+  const { sport, category } = resolved;
 
   const categoryProducts = await Product.find({ category: category._id }).select("_id").lean();
   const idList = categoryProducts.map((p) => p._id);
@@ -306,6 +307,25 @@ export default async function UsedProductsByCategoryPage({ params }) {
         heroEyebrow="بازار"
         heroTitle={pageTitle}
         heroSubtitle={`محصولات دست‌دوم ${category.title} با کارت سلامت معتبر — با اطمینان بخر`}
+        belowHero={
+          <TaxonomyBreadcrumbs
+            includeStructuredData={false}
+            items={[
+              { name: "خانه", href: "/", url: SITE_URL },
+              {
+                name: "بازار دست‌دوم",
+                href: "/second-hand",
+                url: `${SITE_URL}/second-hand`,
+              },
+              { name: sport.title, url: pageUrl },
+              {
+                name: pageTitle,
+                href: `/second-hand/${sportSlug}/${categorySlug}`,
+                url: pageUrl,
+              },
+            ]}
+          />
+        }
       />
     </>
   );

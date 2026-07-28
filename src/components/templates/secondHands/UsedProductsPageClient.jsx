@@ -30,6 +30,7 @@ export default function UsedProductsPageClient({
   heroEyebrow = 'بازار',
   heroTitle = 'دست‌دوم',
   heroSubtitle = 'تجهیزات ورزشی کارکرده با کارت سلامت معتبر — با اطمینان بخر',
+  belowHero = null,
 }) {
   const [searchTerm, setSearchTerm] = useState('');
   const [filters, setFilters]       = useState(DEFAULT_FILTERS);
@@ -151,6 +152,8 @@ export default function UsedProductsPageClient({
           </p>
         </div>
       </div>
+
+      {belowHero}
 
       {/* ─── بدنه اصلی ─── */}
       <div

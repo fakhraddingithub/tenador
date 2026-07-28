@@ -1,13 +1,16 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { FaTimes, FaCheckCircle } from "react-icons/fa";
+import { FaTimes, FaCheckCircle, FaCamera, FaTrash } from "react-icons/fa";
 import { toast } from "react-toastify";
 import RatingStars from "@/components/reviews/RatingStars";
 
 const MIN_TEXT = 3;
 const MAX_TEXT = 1000;
+const MAX_IMAGES = 4;
+const MAX_IMAGE_SIZE = 5 * 1024 * 1024;
+const ALLOWED_IMAGE_TYPES = ["image/jpeg", "image/png", "image/webp"];
 
 /**
  * مودال ثبت نظر از مسیر سفارش — orderId و product را به API می‌فرستد تا
@@ -22,10 +25,78 @@ const MAX_TEXT = 1000;
 export default function ReviewModal({ order, product, onClose, onDone }) {
   const [rating, setRating] = useState(0);
   const [text, setText] = useState("");
+  const [images, setImages] = useState([]);
   const [submitting, setSubmitting] = useState(false);
+  const previewUrls = useRef(new Set());
+  const isUsedProduct = product.reviewType === "used_product";
 
   const trimmedLen = text.trim().length;
   const valid = trimmedLen >= MIN_TEXT && trimmedLen <= MAX_TEXT;
+
+  useEffect(
+    () => () => {
+      for (const url of previewUrls.current) URL.revokeObjectURL(url);
+      previewUrls.current.clear();
+    },
+    []
+  );
+
+  function addImages(event) {
+    const selected = Array.from(event.target.files || []);
+    event.target.value = "";
+
+    if (images.length + selected.length > MAX_IMAGES) {
+      toast.info(`حداکثر ${MAX_IMAGES.toLocaleString("fa-IR")} تصویر می‌توانید ثبت کنید`);
+      return;
+    }
+
+    for (const file of selected) {
+      if (!ALLOWED_IMAGE_TYPES.includes(file.type)) {
+        toast.error("فقط تصاویر JPG، PNG و WebP مجاز هستند");
+        return;
+      }
+      if (file.size > MAX_IMAGE_SIZE) {
+        toast.error("حجم هر تصویر نباید بیشتر از ۵ مگابایت باشد");
+        return;
+      }
+    }
+
+    const nextImages = selected.map((file) => {
+      const preview = URL.createObjectURL(file);
+      previewUrls.current.add(preview);
+      return { file, preview };
+    });
+    setImages((current) => [...current, ...nextImages]);
+  }
+
+  function removeImage(index) {
+    setImages((current) => {
+      URL.revokeObjectURL(current[index].preview);
+      previewUrls.current.delete(current[index].preview);
+      return current.filter((_, itemIndex) => itemIndex !== index);
+    });
+  }
+
+  async function uploadImages() {
+    return Promise.all(
+      images.map(async ({ file }) => {
+        const formData = new FormData();
+        formData.append("file", file);
+        formData.append("folder", "used-product-reviews");
+
+        const response = await fetch("/api/upload", {
+          method: "POST",
+          body: formData,
+          credentials: "include",
+        });
+        const result = await response.json().catch(() => ({}));
+        if (!response.ok || !result.url) {
+          throw new Error(result.error || "آپلود یکی از تصاویر ناموفق بود");
+        }
+        return result.url;
+      })
+    );
+  }
 
   async function handleSubmit(e) {
     e.preventDefault();
@@ -33,32 +104,38 @@ export default function ReviewModal({ order, product, onClose, onDone }) {
 
     setSubmitting(true);
     try {
+      const uploadedImages = isUsedProduct && images.length > 0
+        ? await uploadImages()
+        : [];
       const res = await fetch("/api/comments", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
         body: JSON.stringify({
-          product: product._id,
+          ...(isUsedProduct
+            ? { usedProduct: product._id }
+            : { product: product._id }),
           orderId: order._id,
           text: text.trim(),
           rating: rating || undefined,
+          images: uploadedImages,
         }),
       });
       const data = await res.json().catch(() => ({}));
 
       if (res.ok) {
         toast.success(data.message || "نظر شما ثبت شد");
-        onDone?.(String(product._id));
+        onDone?.(product.reviewKey || `product:${product._id}`);
         onClose();
       } else if (res.status === 409) {
         toast.info("شما قبلاً برای این محصول نظر ثبت کرده‌اید");
-        onDone?.(String(product._id));
+        onDone?.(product.reviewKey || `product:${product._id}`);
         onClose();
       } else {
         toast.error(data.message || "خطا در ثبت نظر");
       }
-    } catch {
-      toast.error("خطا در ارتباط با سرور");
+    } catch (error) {
+      toast.error(error.message || "خطا در ارتباط با سرور");
     } finally {
       setSubmitting(false);
     }
@@ -79,7 +156,7 @@ export default function ReviewModal({ order, product, onClose, onDone }) {
           animate={{ y: 0, opacity: 1 }}
           exit={{ y: 60, opacity: 0 }}
           transition={{ type: "spring", damping: 26, stiffness: 300 }}
-          className="flex w-full flex-col overflow-hidden rounded-t-3xl bg-white shadow-2xl sm:max-w-md sm:rounded-2xl"
+          className="flex max-h-[92vh] w-full flex-col overflow-hidden rounded-t-3xl bg-white shadow-2xl sm:max-w-md sm:rounded-2xl"
           dir="rtl"
           role="dialog"
           aria-modal="true"
@@ -101,7 +178,7 @@ export default function ReviewModal({ order, product, onClose, onDone }) {
             </button>
           </div>
 
-          <form onSubmit={handleSubmit} className="space-y-4 p-5">
+          <form onSubmit={handleSubmit} className="space-y-4 overflow-y-auto p-5">
             {/* محصول */}
             <div className="flex items-center gap-3 rounded-xl border border-gray-100 bg-gray-50/60 p-3">
               {product.mainImage && (
@@ -140,6 +217,59 @@ export default function ReviewModal({ order, product, onClose, onDone }) {
                 {trimmedLen}/{MAX_TEXT}
               </div>
             </div>
+
+            {isUsedProduct && (
+              <div className="space-y-2">
+                <div className="flex items-center justify-between gap-3">
+                  <div>
+                    <p className="text-xs font-bold text-gray-700">
+                      تصاویر محصول دریافت‌شده
+                    </p>
+                    <p className="mt-0.5 text-[11px] text-gray-400">
+                      اختیاری؛ حداکثر ۴ تصویر JPG، PNG یا WebP
+                    </p>
+                  </div>
+                  {images.length < MAX_IMAGES && (
+                    <label className="inline-flex cursor-pointer items-center gap-1.5 rounded-lg border border-[#aa4725]/25 bg-[#aa4725]/5 px-3 py-2 text-xs font-bold text-[#aa4725] transition hover:bg-[#aa4725]/10">
+                      <FaCamera />
+                      افزودن عکس
+                      <input
+                        type="file"
+                        accept="image/jpeg,image/png,image/webp"
+                        multiple
+                        className="sr-only"
+                        onChange={addImages}
+                      />
+                    </label>
+                  )}
+                </div>
+
+                {images.length > 0 && (
+                  <div className="grid grid-cols-4 gap-2">
+                    {images.map((image, index) => (
+                      <div
+                        key={`${image.file.name}-${image.file.lastModified}-${index}`}
+                        className="group relative aspect-square overflow-hidden rounded-lg border border-gray-200 bg-gray-50"
+                      >
+                        <img
+                          src={image.preview}
+                          alt={`تصویر انتخابی ${index + 1}`}
+                          className="h-full w-full object-cover"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => removeImage(index)}
+                          aria-label="حذف تصویر"
+                          className="absolute left-1 top-1 flex h-6 w-6 items-center justify-center rounded-full bg-black/65 text-[10px] text-white transition hover:bg-red-600"
+                        >
+                          <FaTrash />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
 
             <button
               type="submit"

@@ -16,6 +16,7 @@ import {
   FaCheckCircle,
   FaUser,
   FaReply,
+  FaExpand,
 } from "react-icons/fa";
 import RatingStars from "@/components/reviews/RatingStars";
 
@@ -55,6 +56,7 @@ export default function CommentsModeration() {
   const [status, setStatus] = useState("pending");
   const [page, setPage] = useState(1);
   const [busyId, setBusyId] = useState(null);
+  const [lightboxImage, setLightboxImage] = useState(null);
 
   // 🟡 صفِ نظارتِ نظرات — فوریتِ زمانی ندارد، پنجره‌ی یک‌دقیقه‌ای.
   // fetcher سراسری خطای HTTP را throw می‌کند و status را روی خطا می‌گذارد،
@@ -288,6 +290,25 @@ export default function CommentsModeration() {
                         </span>
                       </a>
                     )}
+                    {c.usedProduct && (
+                      <a
+                        href={c.usedProduct.slug ? `/second-hand/${c.usedProduct.slug}` : "#"}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="mb-2 inline-flex items-center gap-2 rounded-lg border border-[#aa4725]/20 bg-[#aa4725]/5 px-2.5 py-1.5 transition-colors hover:border-[#aa4725]/40"
+                      >
+                        {c.usedProduct.images?.[0] && (
+                          <img
+                            src={c.usedProduct.images[0]}
+                            alt=""
+                            className="h-7 w-7 rounded object-cover"
+                          />
+                        )}
+                        <span className="max-w-[220px] truncate text-xs font-semibold text-[#aa4725]">
+                          دست‌دوم: {c.usedProduct.name}
+                        </span>
+                      </a>
+                    )}
 
                     {/* rating */}
                     {c.rating > 0 && (
@@ -300,6 +321,34 @@ export default function CommentsModeration() {
                     <p className="whitespace-pre-line text-sm leading-relaxed text-gray-700">
                       {c.text}
                     </p>
+
+                    {Array.isArray(c.images) && c.images.length > 0 && (
+                      <div className="mt-3">
+                        <p className="mb-2 text-[11px] font-bold text-gray-500">
+                          تصاویر ثبت‌شده توسط خریدار
+                        </p>
+                        <div className="flex flex-wrap gap-2">
+                          {c.images.map((imageUrl, index) => (
+                            <button
+                              key={`${imageUrl}-${index}`}
+                              type="button"
+                              onClick={() => setLightboxImage(imageUrl)}
+                              className="group relative h-20 w-20 overflow-hidden rounded-lg border border-gray-200 bg-gray-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#aa4725]"
+                              aria-label={`نمایش بزرگ تصویر ${index + 1}`}
+                            >
+                              <img
+                                src={imageUrl}
+                                alt={`تصویر محصول دریافت‌شده ${index + 1}`}
+                                className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
+                              />
+                              <span className="absolute inset-0 flex items-center justify-center bg-black/0 text-white opacity-0 transition group-hover:bg-black/30 group-hover:opacity-100">
+                                <FaExpand />
+                              </span>
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    )}
 
                     <p className="mt-2 text-[11px] text-gray-400">{formatDate(c.createdAt)}</p>
                   </div>
@@ -365,6 +414,43 @@ export default function CommentsModeration() {
           )}
         </div>
       )}
+
+      <AnimatePresence>
+        {lightboxImage && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 p-4 backdrop-blur-sm"
+            onClick={() => setLightboxImage(null)}
+            role="dialog"
+            aria-modal="true"
+            aria-label="پیش‌نمایش تصویر نظر"
+          >
+            <motion.div
+              initial={{ opacity: 0, scale: 0.96 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.96 }}
+              className="relative max-h-[90vh] max-w-5xl"
+              onClick={(event) => event.stopPropagation()}
+            >
+              <img
+                src={lightboxImage}
+                alt="تصویر بزرگ محصول دریافت‌شده"
+                className="max-h-[88vh] max-w-full rounded-xl object-contain shadow-2xl"
+              />
+              <button
+                type="button"
+                onClick={() => setLightboxImage(null)}
+                className="absolute left-3 top-3 flex h-10 w-10 items-center justify-center rounded-full bg-black/65 text-white transition hover:bg-black"
+                aria-label="بستن تصویر"
+              >
+                <FaTimes />
+              </button>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

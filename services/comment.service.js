@@ -56,3 +56,45 @@ export const getApprovedReviews = unstable_cache(
   ["approved-reviews"],
   { revalidate: 10800, tags: ["comments"] }
 );
+
+/**
+ * تازه‌ترین تجربه‌های تأییدشده‌ی خریداران محصولات دست‌دوم برای صفحه‌ی بازار.
+ */
+export const getApprovedUsedProductReviews = unstable_cache(
+  async (limit = 12) => {
+    await connectToDB();
+
+    const safeLimit = Math.min(24, Math.max(1, Number(limit) || 12));
+    const docs = await Comment.find({
+      usedProduct: { $ne: null },
+      parent: null,
+      status: "approved",
+      isVerifiedPurchase: true,
+    })
+      .populate("user", "name lastName avatar")
+      .populate("usedProduct", "name slug images")
+      .sort({ createdAt: -1 })
+      .limit(safeLimit)
+      .lean();
+
+    return docs
+      .filter((comment) => comment.usedProduct)
+      .map((comment) => ({
+        id: String(comment._id),
+        author: getUserFullName(comment.user, "کاربر تنادور"),
+        avatar: comment.user?.avatar || null,
+        text: comment.text,
+        rating: comment.rating || 0,
+        images: Array.isArray(comment.images) ? comment.images.slice(0, 4) : [],
+        createdAt: comment.createdAt,
+        product: {
+          id: String(comment.usedProduct._id),
+          name: comment.usedProduct.name,
+          slug: comment.usedProduct.slug || null,
+          image: comment.usedProduct.images?.[0] || null,
+        },
+      }));
+  },
+  ["approved-used-product-reviews"],
+  { revalidate: 10800, tags: ["comments"] }
+);

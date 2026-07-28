@@ -35,6 +35,7 @@ export async function GET(req) {
       Comment.find(filter)
         .populate("user", "name lastName phone avatar")
         .populate("product", "name mainImage slug")
+        .populate("usedProduct", "name images slug")
         .populate({ path: "parent", select: "text" })
         .sort({ createdAt: -1 })
         .skip((page - 1) * limit)
