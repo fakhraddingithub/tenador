@@ -1,18 +1,16 @@
 'use client';
 
-import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 import { FiSearch, FiTarget } from 'react-icons/fi';
 
 // شبکه دسته‌بندی‌ها برای شروع یافتن نزدیک‌ترین محصول
 export default function CategoryGrid({ categories }) {
-  const router = useRouter();
-
   return (
     <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
       {categories.map((cat) => (
-        <button
+        <Link
           key={cat._id}
-          onClick={() => router.push(`/match/${cat.slug}`)}
+          href={`/match/${cat.slug}`}
           className="group relative overflow-hidden rounded-[6px] border border-neutral-100 bg-white shadow-sm hover:shadow-2xl hover:-translate-y-1.5 transition-all duration-500 text-right"
         >
           <div className="relative w-full aspect-square overflow-hidden bg-neutral-900">
@@ -54,7 +52,7 @@ export default function CategoryGrid({ categories }) {
               <FiTarget size={12} />
             </span>
           </div>
-        </button>
+        </Link>
       ))}
     </div>
   );

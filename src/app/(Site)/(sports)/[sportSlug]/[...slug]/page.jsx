@@ -10,6 +10,11 @@ import { getSeriesFilterIndex } from "base/services/series.service";
 import { getPublicArticle } from "base/services/publicArticle.service";
 import { buildArticlePath } from "base/utils/articleSlug";
 import { articleMetadata } from "@/lib/articleSeo";
+import TaxonomyBreadcrumbs from "@/components/seo/TaxonomyBreadcrumbs";
+import TaxonomyStructuredData from "@/components/seo/TaxonomyStructuredData";
+import { buildTaxonomyMetadata } from "@/lib/seo/taxonomySeo";
+
+const SITE_URL = (process.env.NEXT_PUBLIC_SITE_URL || "https://tenador.com").replace(/\/+$/, "");
 
 // تعداد بخش‌های سری در بارگذاری اولیه‌ی سرور (SSR) — سبک برای SEO و سرعت
 const INITIAL_SECTIONS = 2;
@@ -104,12 +109,7 @@ export async function generateMetadata({ params }) {
     filters.brand ||
     filters.category ||
     filters.sport;
-
-  const SITE_URL = (process.env.NEXT_PUBLIC_SITE_URL || "https://tenador.com").replace(/\/+$/, "");
-  const title = `خرید تجهیزات ${activeEntity.title || activeEntity.name}`;
-  const description =
-    activeEntity.description ||
-    `بهترین قیمت تجهیزات ${activeEntity.title || activeEntity.name}`;
+  const { title, description } = buildTaxonomyMetadata(filters);
   const pageUrl = `${SITE_URL}/${slugs.join("/")}`;
   const rawImage = activeEntity.headImage || activeEntity.image;
   const imageUrl = rawImage
@@ -193,19 +193,27 @@ export default async function SportDynamicSlugPage({ params, searchParams }) {
     const pageInfo = filters.brand;
 
     return (
-      <BrandGroupedView
-        pageInfo={pageInfo}
-        filters={filters}
-        rate={rate}
-        brandId={brandId}
-        sportId={sportId}
-        categoryId={categoryId}
-        attrFilters={attrFilters}
-        filterMeta={buildFilterMeta(filters.category)}
-        initialData={initialData}
-        page={page}
-        title={`تنادور – ${pageInfo.title || pageInfo.name || ""}`}
-      />
+      <>
+        <TaxonomyStructuredData
+          filters={filters}
+          products={initialData}
+          canonical={`${SITE_URL}/${slugs.join("/")}`}
+        />
+        <TaxonomyBreadcrumbs filters={filters} />
+        <BrandGroupedView
+          pageInfo={pageInfo}
+          filters={filters}
+          rate={rate}
+          brandId={brandId}
+          sportId={sportId}
+          categoryId={categoryId}
+          attrFilters={attrFilters}
+          filterMeta={buildFilterMeta(filters.category)}
+          initialData={initialData}
+          page={page}
+          title={`تنادور – ${pageInfo.title || pageInfo.name || ""}`}
+        />
+      </>
     );
   }
 
@@ -228,18 +236,26 @@ export default async function SportDynamicSlugPage({ params, searchParams }) {
     const pageInfo = filters.serie;
 
     return (
-      <SerieGroupedView
-        pageInfo={pageInfo}
-        filters={filters}
-        rate={rate}
-        serieId={serieId}
-        sportId={sportId}
-        categoryId={categoryId}
-        brandSlug={brandSlug}
-        initialData={initialData}
-        page={page}
-        title={`تنادور – ${pageInfo.title || pageInfo.name || ""}`}
-      />
+      <>
+        <TaxonomyStructuredData
+          filters={filters}
+          products={initialData}
+          canonical={`${SITE_URL}/${slugs.join("/")}`}
+        />
+        <TaxonomyBreadcrumbs filters={filters} />
+        <SerieGroupedView
+          pageInfo={pageInfo}
+          filters={filters}
+          rate={rate}
+          serieId={serieId}
+          sportId={sportId}
+          categoryId={categoryId}
+          brandSlug={brandSlug}
+          initialData={initialData}
+          page={page}
+          title={`تنادور – ${pageInfo.title || pageInfo.name || ""}`}
+        />
+      </>
     );
   }
 
@@ -267,22 +283,30 @@ export default async function SportDynamicSlugPage({ params, searchParams }) {
       : [];
 
   return (
-    <SportPageClient
-      pageInfo={pageInfo}
-      filters={searchData.filters}
-      products={searchData.results}
-      totalResults={searchData.totalResults}
-      listingFilter={{
-        sport: searchData.filters.sport?._id,
-        category: searchData.filters.category?._id,
-        brand: searchData.filters.brand?._id,
-        serie: searchData.filters.serie?._id,
-        limitedEdition: searchData.filters.limitedEdition?._id,
-      }}
-      rate={rate}
-      seriesIndex={seriesIndex}
-      page={page}
-      title={`تنادور – ${pageInfo.title || pageInfo.name || ""}`}
-    />
+    <>
+      <TaxonomyStructuredData
+        filters={searchData.filters}
+        products={searchData.results}
+        canonical={`${SITE_URL}/${slugs.join("/")}`}
+      />
+      <TaxonomyBreadcrumbs filters={searchData.filters} />
+      <SportPageClient
+        pageInfo={pageInfo}
+        filters={searchData.filters}
+        products={searchData.results}
+        totalResults={searchData.totalResults}
+        listingFilter={{
+          sport: searchData.filters.sport?._id,
+          category: searchData.filters.category?._id,
+          brand: searchData.filters.brand?._id,
+          serie: searchData.filters.serie?._id,
+          limitedEdition: searchData.filters.limitedEdition?._id,
+        }}
+        rate={rate}
+        seriesIndex={seriesIndex}
+        page={page}
+        title={`تنادور – ${pageInfo.title || pageInfo.name || ""}`}
+      />
+    </>
   );
 }

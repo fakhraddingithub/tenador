@@ -20,14 +20,20 @@ export function generateProductSchema(product, reviewStats) {
         : `${SITE_URL}${img}`
     );
 
-  // امتیاز واقعی از نظرهای تأییدشده؛ در نبودِ نظرِ امتیازدار به ۵/۱ برمی‌گردد
-  // تا اسنیپت ستاره‌ها در نتایج گوگل حفظ شود.
+  // AggregateRating فقط از نظرهای واقعی و تأییدشده ساخته می‌شود. اعلام امتیاز
+  // ساختگی برای محصول بدون نظر با محتوای قابل مشاهده صفحه تطابق ندارد.
   const ratedCount = reviewStats?.ratedCount || 0;
   const average = reviewStats?.average || 0;
   const aggregateRating =
     ratedCount > 0 && average > 0
-      ? { ratingValue: average, reviewCount: ratedCount }
-      : { ratingValue: 5, reviewCount: 1 };
+      ? {
+          "@type": "AggregateRating",
+          ratingValue: average,
+          reviewCount: ratedCount,
+          bestRating: 5,
+          worstRating: 1,
+        }
+      : null;
 
   // Google product snippets expect ISO 4217 currency codes. Toman has no
   // official code, so publish the equivalent Rial amount for structured data.
@@ -47,20 +53,16 @@ export function generateProductSchema(product, reviewStats) {
 
     mpn: product.sku,
 
-    brand: {
-      "@type": "Brand",
-      name: product.brand?.name || "",
-    },
+    ...(product.brand && {
+      brand: {
+        "@type": "Brand",
+        name: product.brand.title || product.brand.name,
+      },
+    }),
 
-    category: product.category?.name,
+    category: product.category?.title || product.category?.name,
 
-    aggregateRating: {
-      "@type": "AggregateRating",
-      ratingValue: aggregateRating.ratingValue,
-      reviewCount: aggregateRating.reviewCount,
-      bestRating: 5,
-      worstRating: 1,
-    },
+    ...(aggregateRating && { aggregateRating }),
 
     offers: {
       "@type": "Offer",
@@ -78,7 +80,8 @@ export function generateProductSchema(product, reviewStats) {
 
       seller: {
         "@type": "Organization",
-        name: "فروشگاه ورزشی",
+        name: "تنادور",
+        url: SITE_URL,
       },
     },
   };

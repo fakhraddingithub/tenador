@@ -24,6 +24,13 @@ import { getHomeRolandGarrosBanner } from "base/services/homeRolandGarros.servic
 // بازتولیدِ پرتکرارِ زمان‌محور نیست. TTL از ۶۰ث به ۱ساعت افزایش یافت تا ISR Writes کم شود.
 export const revalidate = 3600;
 
+export const metadata = {
+  title: "فروشگاه آنلاین تجهیزات تنیس و پدل",
+  description:
+    "خرید آنلاین راکت، کفش، پوشاک و تجهیزات تخصصی تنیس و پدل از برندهای معتبر با ضمانت اصالت و ارسال سریع.",
+  alternates: { canonical: "/" },
+};
+
 export default async function Home() {
   // ۱. اتصال به دیتابیس
   await connectToDB();

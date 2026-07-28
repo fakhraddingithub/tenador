@@ -6,6 +6,7 @@ import { generateProductMetadata } from "@/lib/seo/productSeo";
 import { generateProductSchema } from "@/lib/seo/productSchema";
 import { generateBreadcrumbSchema } from "@/lib/seo/breadcrumbSchema";
 import { resolveSerieSportContent } from "@/lib/serieSportContent";
+import { notFound } from "next/navigation";
 
 // ⚠️ اسلاگ‌های فارسی در URL با کش روتِ Next ناسازگارند: Next مسیرِ دیکدشده را
 // خام داخل هدر x-next-cache-tags می‌گذارد و کاراکتر غیر-ASCII باعث
@@ -35,12 +36,12 @@ export default async function ProductPage({ params }) {
   const { productSlug } = await params;
 
   if (!productSlug) {
-    throw new Error("اسلاگ محصول معتبر نیست");
+    notFound();
   }
 
   const fetchProduct = await getProductBySlug(productSlug);
   if (!fetchProduct || fetchProduct.error) {
-    throw new Error("محصول مورد نظر یافت نشد");
+    notFound();
   }
 
   // نظرهای تأییدشده (کش‌شده با تگ comments) — موازی با نرخ تبدیل

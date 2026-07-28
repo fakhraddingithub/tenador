@@ -2,6 +2,10 @@ import Product from "base/models/Product";
 import Category from "base/models/Category";
 import Brand from "base/models/Brand";
 import Sport from "base/models/Sport";
+import Serie from "base/models/Serie";
+import LimitedEdition from "base/models/LimitedEdition";
+import Event from "base/models/Event";
+import UsedProduct from "base/models/UsedProduct";
 
 import connectToDB from "base/configs/db";
 import { getPublicArticleSitemap } from "base/services/publicArticle.service";
@@ -12,142 +16,309 @@ const SITE_URL = (process.env.NEXT_PUBLIC_SITE_URL || "https://tenador.com").rep
 
 export const revalidate = 86400;
 
+const id = (value) => (value ? String(value) : "");
+const hasSlug = (item) => Boolean(item?.slug);
+
+function latestDate(items) {
+  const timestamps = items
+    .map((item) => item?.updatedAt && new Date(item.updatedAt).getTime())
+    .filter(Number.isFinite);
+  return timestamps.length ? new Date(Math.max(...timestamps)) : undefined;
+}
+
+function entry(url, lastModified, changeFrequency = "weekly", priority = 0.7) {
+  return {
+    url: `${SITE_URL}${url}`,
+    ...(lastModified && { lastModified }),
+    changeFrequency,
+    priority,
+  };
+}
+
 export default async function sitemap() {
   await connectToDB();
 
-  // -------------------------
-  // Products
-  // -------------------------
-  const products = await Product.find({})
-    .select("slug updatedAt")
-    .lean();
+  // Sitemap روزی یک‌بار بازتولید می‌شود. همه کوئری‌ها lean و select شده‌اند و
+  // فقط فیلدهای لازم برای اعتبارسنجی قرارداد URL را می‌خوانند.
+  const [
+    products,
+    sports,
+    categories,
+    brands,
+    series,
+    limitedEditions,
+    events,
+    usedProducts,
+    articleContent,
+  ] = await Promise.all([
+    Product.find({ isActive: true, slug: { $exists: true, $ne: "" } })
+      .select("slug updatedAt sport category brand serie limitedEdition")
+      .lean(),
+    Sport.find({ slug: { $exists: true, $ne: "" } })
+      .select("slug updatedAt")
+      .lean(),
+    Category.find({ slug: { $exists: true, $ne: "" }, sport: { $ne: null } })
+      .select("slug updatedAt sport")
+      .lean(),
+    Brand.find({ slug: { $exists: true, $ne: "" } })
+      .select("slug updatedAt")
+      .lean(),
+    Serie.find({ slug: { $exists: true, $ne: "" } })
+      .select("slug updatedAt brand parentSerie")
+      .lean(),
+    LimitedEdition.find({ slug: { $exists: true, $ne: "" } })
+      .select("slug updatedAt brand")
+      .lean(),
+    Event.find({ status: "active", slug: { $exists: true, $ne: "" } })
+      .select("slug updatedAt")
+      .lean(),
+    UsedProduct.find({ status: "available", slug: { $exists: true, $ne: "" } })
+      .select("slug updatedAt baseProduct")
+      .populate({ path: "baseProduct", select: "sport category" })
+      .lean(),
+    getPublicArticleSitemap(),
+  ]);
 
-  // -------------------------
-  // Sports
-  // -------------------------
-  const sports = await Sport.find({})
-    .select("slug updatedAt")
-    .lean();
+  const sportById = new Map(sports.map((item) => [id(item._id), item]));
+  const categoryById = new Map(categories.map((item) => [id(item._id), item]));
+  const brandById = new Map(brands.map((item) => [id(item._id), item]));
+  const serieById = new Map(series.map((item) => [id(item._id), item]));
+  const limitedEditionById = new Map(
+    limitedEditions.map((item) => [id(item._id), item]),
+  );
 
-  // -------------------------
-  // Categories (تو-در-توی ورزش: /[sportSlug]/[categorySlug])
-  // -------------------------
-  const categories = await Category.find({})
-    .select("slug updatedAt sport")
-    .populate("sport", "slug")
-    .lean();
+  const activeSportIds = new Set();
+  const activeCategoryIds = new Set();
+  const activeBrandIds = new Set();
+  const sportBrandKeys = new Set();
+  const sportCategoryBrandKeys = new Set();
+  const sportBrandSerieKeys = new Set();
+  const brandLimitedEditionKeys = new Set();
 
-  // -------------------------
-  // Brands
-  // -------------------------
-  const brands = await Brand.find({})
-    .select("slug updatedAt")
-    .lean();
+  for (const product of products) {
+    const sportId = id(product.sport);
+    const categoryId = id(product.category);
+    const brandId = id(product.brand);
 
-  // -------------------------
-  // Static Pages
-  // -------------------------
-  const articleContent = await getPublicArticleSitemap();
-  const occupiedRootSlugs = new Set([...sports, ...brands].map((item) => item.slug).filter(Boolean));
+    if (sportId) activeSportIds.add(sportId);
+    if (categoryId) activeCategoryIds.add(categoryId);
+    if (brandId) activeBrandIds.add(brandId);
 
-  const staticPages = [
-    {
-      url: SITE_URL,
-      lastModified: new Date(),
-      changeFrequency: "daily",
-      priority: 1,
-    },
+    if (sportId && brandId) {
+      sportBrandKeys.add(`${sportId}:${brandId}`);
+    }
+    if (sportId && categoryId && brandId) {
+      sportCategoryBrandKeys.add(`${sportId}:${categoryId}:${brandId}`);
+    }
 
-    {
-      url: `${SITE_URL}/products`,
-      lastModified: new Date(),
-      changeFrequency: "daily",
-      priority: 0.9,
-    },
-    // صفحه‌ی /brands وجود ندارد (۴۰۴) — از sitemap حذف شد؛ برندها در ریشه
-    // (/[brandSlug]) آدرس‌دهی و جداگانه در brandUrls اضافه می‌شوند.
+    // Resolver صفحه سری، وجود محصول در کل زیردرخت سری را معتبر می‌داند؛ پس
+    // علاوه بر سری مستقیم محصول، تمام والدهای همان برند نیز URL معتبر دارند.
+    let serieId = id(product.serie);
+    const visited = new Set();
+    while (sportId && brandId && serieId && !visited.has(serieId)) {
+      visited.add(serieId);
+      const serie = serieById.get(serieId);
+      if (!serie || id(serie.brand) !== brandId) break;
+      sportBrandSerieKeys.add(`${sportId}:${brandId}:${serieId}`);
+      serieId = id(serie.parentSerie);
+    }
+
+    const limitedEditionId = id(product.limitedEdition);
+    const limitedEdition = limitedEditionById.get(limitedEditionId);
+    if (
+      brandId &&
+      limitedEdition &&
+      id(limitedEdition.brand) === brandId
+    ) {
+      brandLimitedEditionKeys.add(`${brandId}:${limitedEditionId}`);
+    }
+  }
+
+  const staticUrls = [
+    entry("", latestDate(products), "daily", 1),
+    entry("/products", latestDate(products), "daily", 0.9),
+    entry("/about", undefined, "monthly", 0.5),
+    entry("/contact", undefined, "monthly", 0.5),
+    entry("/faq", undefined, "monthly", 0.6),
+    entry("/how-to-order", undefined, "monthly", 0.6),
+    entry("/shipping", undefined, "monthly", 0.5),
+    entry("/returns", undefined, "monthly", 0.5),
+    entry("/payment", undefined, "monthly", 0.5),
+    entry("/terms", undefined, "yearly", 0.3),
+    entry("/articles", undefined, "daily", 0.8),
+    entry("/collection", latestDate(events), "daily", 0.7),
+    entry("/second-hand", latestDate(usedProducts), "daily", 0.8),
+    entry("/match", undefined, "monthly", 0.7),
+    entry("/compare", undefined, "monthly", 0.7),
   ];
 
-  // -------------------------
-  // Sport URLs — /[sportSlug]
-  // -------------------------
-  const sportUrls = sports
-    .filter((s) => s.slug)
-    .map((sport) => ({
-      url: `${SITE_URL}/${sport.slug}`,
-      lastModified: sport.updatedAt,
-      changeFrequency: "weekly",
-      priority: 0.8,
-    }));
+  const sportUrls = [...activeSportIds]
+    .map((sportId) => sportById.get(sportId))
+    .filter(hasSlug)
+    .map((sport) => entry(`/${sport.slug}`, sport.updatedAt, "weekly", 0.8));
 
-  // -------------------------
-  // Product URLs
-  // -------------------------
-  const productUrls = products.map((product) => ({
-    url: `${SITE_URL}/products/${product.slug}`,
+  const categoryUrls = [...activeCategoryIds]
+    .map((categoryId) => categoryById.get(categoryId))
+    .filter((category) => {
+      const sport = sportById.get(id(category?.sport));
+      return hasSlug(category) && hasSlug(sport);
+    })
+    .map((category) => {
+      const sport = sportById.get(id(category.sport));
+      return entry(
+        `/${sport.slug}/${category.slug}`,
+        category.updatedAt,
+        "weekly",
+        0.8,
+      );
+    });
 
-    lastModified: product.updatedAt,
+  const brandUrls = [...activeBrandIds]
+    .map((brandId) => brandById.get(brandId))
+    .filter(hasSlug)
+    .map((brand) => entry(`/${brand.slug}`, brand.updatedAt, "weekly", 0.7));
 
-    changeFrequency: "weekly",
+  const sportBrandUrls = [...sportBrandKeys].flatMap((key) => {
+    const [sportId, brandId] = key.split(":");
+    const sport = sportById.get(sportId);
+    const brand = brandById.get(brandId);
+    return hasSlug(sport) && hasSlug(brand)
+      ? [entry(`/${sport.slug}/${brand.slug}`, latestDate([sport, brand]))]
+      : [];
+  });
 
-    priority: 0.8,
-  }));
+  const categoryBrandUrls = [...sportCategoryBrandKeys].flatMap((key) => {
+    const [sportId, categoryId, brandId] = key.split(":");
+    const sport = sportById.get(sportId);
+    const category = categoryById.get(categoryId);
+    const brand = brandById.get(brandId);
+    return hasSlug(sport) && hasSlug(category) && hasSlug(brand)
+      ? [
+          entry(
+            `/${sport.slug}/${category.slug}/${brand.slug}`,
+            latestDate([category, brand]),
+          ),
+        ]
+      : [];
+  });
 
-  // -------------------------
-  // Category URLs — تو-در-توی ورزش: /[sportSlug]/[categorySlug]
-  // دسته‌های بدون ورزش (داده‌ی قدیمی) مسیر معتبری ندارند و رد می‌شوند.
-  // -------------------------
-  const categoryUrls = categories
-    .filter((category) => category.sport?.slug && category.slug)
-    .map((category) => ({
-      url: `${SITE_URL}/${category.sport.slug}/${category.slug}`,
+  const serieUrls = [...sportBrandSerieKeys].flatMap((key) => {
+    const [sportId, brandId, serieId] = key.split(":");
+    const sport = sportById.get(sportId);
+    const brand = brandById.get(brandId);
+    const serie = serieById.get(serieId);
+    return hasSlug(sport) && hasSlug(brand) && hasSlug(serie)
+      ? [
+          entry(
+            `/${sport.slug}/${brand.slug}/${serie.slug}`,
+            latestDate([serie, brand]),
+            "weekly",
+            0.8,
+          ),
+        ]
+      : [];
+  });
 
-      lastModified: category.updatedAt,
+  const limitedEditionUrls = [...brandLimitedEditionKeys].flatMap((key) => {
+    const [brandId, limitedEditionId] = key.split(":");
+    const brand = brandById.get(brandId);
+    const limitedEdition = limitedEditionById.get(limitedEditionId);
+    return hasSlug(brand) && hasSlug(limitedEdition)
+      ? [
+          entry(
+            `/${brand.slug}/${limitedEdition.slug}`,
+            latestDate([limitedEdition, brand]),
+            "weekly",
+            0.8,
+          ),
+        ]
+      : [];
+  });
 
-      changeFrequency: "weekly",
+  const productUrls = products.map((product) =>
+    entry(`/products/${product.slug}`, product.updatedAt, "weekly", 0.9),
+  );
 
-      priority: 0.7,
-    }));
+  const collectionUrls = events.map((event) =>
+    entry(`/collection/${event.slug}`, event.updatedAt, "weekly", 0.7),
+  );
 
-  // -------------------------
-  // Brand URLs — برندها مثل ورزش‌ها در ریشه آدرس‌دهی می‌شوند: /[brandSlug]
-  // (مسیر /brand/... هرگز در اپ وجود نداشته و نباید تولید شود)
-  // -------------------------
-  const brandUrls = brands
-    .filter((brand) => brand.slug)
-    .map((brand) => ({
-      url: `${SITE_URL}/${brand.slug}`,
+  const usedProductUrls = usedProducts.map((product) =>
+    entry(`/second-hand/${product.slug}`, product.updatedAt, "weekly", 0.7),
+  );
 
-      lastModified: brand.updatedAt,
+  const usedCategoryKeys = new Map();
+  for (const usedProduct of usedProducts) {
+    const sportId = id(usedProduct.baseProduct?.sport);
+    const categoryId = id(usedProduct.baseProduct?.category);
+    if (sportId && categoryId) {
+      usedCategoryKeys.set(`${sportId}:${categoryId}`, usedProduct.updatedAt);
+    }
+  }
 
-      changeFrequency: "weekly",
+  const usedCategoryUrls = [...usedCategoryKeys].flatMap(
+    ([key, lastModified]) => {
+      const [sportId, categoryId] = key.split(":");
+      const sport = sportById.get(sportId);
+      const category = categoryById.get(categoryId);
+      return hasSlug(sport) && hasSlug(category)
+        ? [
+            entry(
+              `/second-hand/${sport.slug}/${category.slug}`,
+              lastModified,
+              "daily",
+              0.7,
+            ),
+          ]
+        : [];
+    },
+  );
 
-      priority: 0.6,
-    }));
+  const occupiedRootSlugs = new Set(
+    [...sports, ...brands].map((item) => item.slug).filter(Boolean),
+  );
 
   const articleCategoryUrls = articleContent.categories
-    .filter((category) => category.slug && !occupiedRootSlugs.has(category.slug) && !isReservedArticleRoot(category.slug))
-    .map((category) => ({
-      url: `${SITE_URL}/${category.slug}`,
-      lastModified: category.updatedAt,
-      changeFrequency: "weekly",
-      priority: 0.7,
-    }));
+    .filter(
+      (category) =>
+        category.slug &&
+        !occupiedRootSlugs.has(category.slug) &&
+        !isReservedArticleRoot(category.slug),
+    )
+    .map((category) =>
+      entry(`/${category.slug}`, category.updatedAt, "weekly", 0.7),
+    );
 
   const articleUrls = articleContent.articles
-    .filter((article) => article.slug && article.category?.slug && !occupiedRootSlugs.has(article.category.slug) && !isReservedArticleRoot(article.category.slug))
-    .map((article) => ({
-      url: `${SITE_URL}${buildArticlePath(article.category.slug, article.slug)}`,
-      lastModified: article.updatedAt || article.publishedAt,
-      changeFrequency: "monthly",
-      priority: 0.7,
-    }));
+    .filter(
+      (article) =>
+        article.slug &&
+        article.category?.slug &&
+        !occupiedRootSlugs.has(article.category.slug) &&
+        !isReservedArticleRoot(article.category.slug),
+    )
+    .map((article) =>
+      entry(
+        buildArticlePath(article.category.slug, article.slug),
+        article.updatedAt || article.publishedAt,
+        "monthly",
+        0.7,
+      ),
+    );
+
   return [
-    ...staticPages,
+    ...staticUrls,
     ...sportUrls,
-    ...productUrls,
     ...categoryUrls,
     ...brandUrls,
+    ...sportBrandUrls,
+    ...categoryBrandUrls,
+    ...serieUrls,
+    ...limitedEditionUrls,
+    ...productUrls,
+    ...collectionUrls,
+    ...usedProductUrls,
+    ...usedCategoryUrls,
     ...articleCategoryUrls,
     ...articleUrls,
   ];

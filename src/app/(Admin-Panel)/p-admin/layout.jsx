@@ -13,6 +13,11 @@ import AdminSWRConfig from "@/components/admin/AdminSWRConfig"
 export const metadata = {
   title: 'فروشگاه ورزشی تنادور | پنل مدیریت',
   description: 'پنل مدیریت یکپارچه فروشگاه ورزشی تنادور',
+  robots: {
+    index: false,
+    follow: false,
+    nocache: true,
+  },
 };
 
 export default function RootLayout({ children }) {

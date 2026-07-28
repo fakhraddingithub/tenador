@@ -10,6 +10,10 @@ import { getPublicArticleCategory } from "base/services/publicArticle.service";
 import { decodeSlugParam } from "base/utils/articleSlug";
 import ArticleCategoryPage from "@/components/features/articles/ArticleCategoryPage";
 import { articleCategoryMetadata } from "@/lib/articleSeo";
+import { buildTaxonomyMetadata } from "@/lib/seo/taxonomySeo";
+import TaxonomyStructuredData from "@/components/seo/TaxonomyStructuredData";
+
+const SITE_URL = (process.env.NEXT_PUBLIC_SITE_URL || "https://tenador.com").replace(/\/+$/, "");
 
 // ⚠️ اسلاگ‌های فارسی با هدر x-next-cache-tags ناسازگارند (باگ Next: کاراکتر
 // غیر-ASCII در هدر → ERR_INVALID_CHAR → خطای ۵۰۰). داینامیک رندر می‌شود تا هدر
@@ -28,10 +32,7 @@ export async function generateMetadata({ params }) {
   const data = await getPageDataBySlug(sportSlug);
   if (!data) return { title: "صفحه پیدا نشد" };
 
-  const SITE_URL = (process.env.NEXT_PUBLIC_SITE_URL || "https://tenador.com").replace(/\/+$/, "");
-  const title = `خرید تجهیزات و لوازم ${data.info.title || data.info.name}`;
-  const description =
-    data.info.description || `بهترین قیمت تجهیزات تخصصی ${data.info.title}`;
+  const { title, description } = buildTaxonomyMetadata(ctx.filters);
   const pageUrl = `${SITE_URL}/${sportSlug}`;
   const rawImage = data.info.image;
   const imageUrl = rawImage
@@ -95,6 +96,11 @@ export default async function DynamicSportPage({ params }) {
 
   return (
     <>
+      <TaxonomyStructuredData
+        filters={ctx.filters}
+        products={serializedProducts}
+        canonical={`${SITE_URL}/${sportSlug}`}
+      />
       <SportPageClient
         pageInfo={serializedSportInfo}
         products={serializedProducts}

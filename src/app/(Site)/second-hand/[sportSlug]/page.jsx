@@ -40,12 +40,14 @@ export async function generateMetadata({ params }) {
   const { sportSlug: slug } = await params;
   await connectToDB();
   const item = await UsedProduct.findOne(buildLookup(slug))
-    .select("name images")
+    .select("name slug images")
     .populate({ path: "baseProduct", select: "mainImage" })
     .lean();
 
   const name = item?.name || "محصول دست‌دوم";
   const description = `خرید ${name} دست‌دوم با ضمانت اصالت و ارسال سریع از تنادور`;
+  const canonicalSlug = item?.slug || decodeSlug(slug);
+  const canonical = `${SITE_URL}/second-hand/${encodeURIComponent(canonicalSlug)}`;
   const rawImage = item?.images?.[0] || item?.baseProduct?.mainImage || null;
   const imageUrl = rawImage
     ? rawImage.startsWith("http") ? rawImage : `${SITE_URL}${rawImage}`
@@ -55,9 +57,15 @@ export async function generateMetadata({ params }) {
     title: name,
     description,
     metadataBase: new URL(SITE_URL),
+    alternates: { canonical },
+    robots: {
+      index: Boolean(item),
+      follow: true,
+    },
     openGraph: {
       title: name,
       description,
+      url: canonical,
       siteName: "تنادور",
       locale: "fa_IR",
       type: "website",

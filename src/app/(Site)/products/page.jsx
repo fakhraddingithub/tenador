@@ -9,6 +9,13 @@ import { getCachedRate } from "@/lib/Exchangerate";
 // TTL زمان‌محور از ۶۰ث به ۱ساعت افزایش یافت تا ISR Writes کاهش یابد.
 export const revalidate = 3600;
 
+export const metadata = {
+  title: "خرید تجهیزات تنیس و پدل",
+  description:
+    "مشاهده و خرید تجهیزات تخصصی تنیس و پدل از برندهای معتبر؛ شامل راکت، کفش، پوشاک و لوازم جانبی با ضمانت اصالت.",
+  alternates: { canonical: "/products" },
+};
+
 export default async function ProductsPage() {
 
   const [listing, rate, filterableAttributes, firstSport] = await Promise.all([

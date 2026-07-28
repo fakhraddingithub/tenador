@@ -8,6 +8,8 @@ import EventCountdown from "@/components/features/events/EventCountdown";
 import EventCardOverlay from "@/components/features/events/EventCardOverlay";
 import SportPageClient from "@/components/templates/sports/SportPageClient";
 
+const SITE_URL = (process.env.NEXT_PUBLIC_SITE_URL || "https://tenador.com").replace(/\/+$/, "");
+
 // رویدادها با تگ‌های events/limited-editions کش و در تغییرِ ادمین باطل می‌شوند؛
 // TTL زمان‌محور → ۱ساعت برای کاهشِ ISR Writes.
 export const revalidate = 3600;
@@ -25,21 +27,33 @@ export async function generateMetadata({ params }) {
     slug: collectionSlug,
     status: "active",
   })
-    .select("name shortDescription seo social visualIdentity")
+    .select("name slug shortDescription description seo social visualIdentity")
     .lean();
 
   if (!event) return {};
 
   const title = event.seo?.title || event.name;
-  const description = event.seo?.description || event.shortDescription || "";
+  const description =
+    event.seo?.description ||
+    event.shortDescription ||
+    event.description ||
+    `مشاهده و خرید محصولات منتخب کالکشن ${event.name} با بررسی قیمت، مشخصات و موجودی در تنادور.`;
   const ogImage = event.social?.ogImage || resolveHeaderImage(event.visualIdentity);
+  const canonical = `${SITE_URL}/collection/${event.slug}`;
 
   return {
-    title: `${title} | تنادور`,
+    title,
     description,
+    keywords: event.seo?.keywords || [],
+    alternates: { canonical },
+    robots: { index: true, follow: true },
     openGraph: {
       title: event.social?.ogTitle || title,
       description: event.social?.ogDescription || description,
+      url: canonical,
+      siteName: "تنادور",
+      locale: "fa_IR",
+      type: "website",
       images: ogImage ? [ogImage] : [],
     },
     twitter: {
@@ -72,6 +86,43 @@ export default async function EventPage({ params }) {
     getCachedRate(),
   ]);
 
+  const canonical = `${SITE_URL}/collection/${serialized.slug}`;
+  const collectionDescription =
+    serialized.seo?.description ||
+    serialized.shortDescription ||
+    serialized.description ||
+    `مشاهده و خرید محصولات منتخب کالکشن ${serialized.name} با بررسی قیمت، مشخصات و موجودی در تنادور.`;
+  const collectionItems = products
+    .filter((product) => product?.slug)
+    .slice(0, 24)
+    .map((product, index) => ({
+      "@type": "ListItem",
+      position: index + 1,
+      url: `${SITE_URL}/products/${product.slug}`,
+      name: product.name || product.title,
+    }));
+  const collectionSchema = {
+    "@context": "https://schema.org",
+    "@type": "CollectionPage",
+    "@id": `${canonical}#collection`,
+    url: canonical,
+    name: serialized.seo?.title || serialized.name,
+    description: collectionDescription,
+    isPartOf: {
+      "@type": "WebSite",
+      "@id": `${SITE_URL}/#website`,
+      name: "تنادور",
+      url: SITE_URL,
+    },
+    ...(collectionItems.length > 0 && {
+      mainEntity: {
+        "@type": "ItemList",
+        numberOfItems: collectionItems.length,
+        itemListElement: collectionItems,
+      },
+    }),
+  };
+
   // pageInfo mirrors the Sport page's shape — title + header image + slug.
   const pageInfo = {
     title: serialized.name,
@@ -99,6 +150,12 @@ export default async function EventPage({ params }) {
 
   return (
     <EventThemeWrapper theme={serialized.theme}>
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{
+          __html: JSON.stringify(collectionSchema).replace(/</g, "\\u003c"),
+        }}
+      />
       {/*
         The Event page is a THEMED INSTANCE of the Sport slug page — same layout,
         filter sidebar, search bar, product grid and cards. Differences:

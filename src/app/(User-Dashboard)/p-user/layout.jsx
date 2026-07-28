@@ -7,6 +7,15 @@ import NavigationLoader from '@/components/common/NavigationLoader'
 import InitialLoadLoader from '@/components/common/InitialLoadLoader'
 import DashboardBody from './DashboardBody'
 
+export const metadata = {
+  title: "حساب کاربری",
+  robots: {
+    index: false,
+    follow: false,
+    nocache: true,
+  },
+};
+
 // سرور-کامپوننت تا <SiteNavbar /> بتواند navData را روی سرور بگیرد.
 // بخش‌های stateful (سایدبار و ترنزیشن صفحه) در DashboardBody کلاینتی هستند.
 export default function RootLayout({ children }) {

@@ -7,8 +7,9 @@ import Link from "next/link";
 export const revalidate = 3600;
 
 export const metadata = {
-  title: "Collection | تنادور",
+  title: "کالکشن‌ها و کمپین‌های تنادور",
   description: "آخرین Collectionهای فروشگاه ورزشی تنادور — فروش ویژه، Collectionهای فصلی و تجربه‌های منحصر‌به‌فرد",
+  alternates: { canonical: "/collection" },
 };
 
 export default async function EventsPage() {
