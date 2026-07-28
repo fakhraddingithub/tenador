@@ -34,7 +34,7 @@ export async function generateMetadata({ params }) {
   const resolved = await resolveCategory(sportSlug, categorySlug);
   if (!resolved) return { title: "صفحه پیدا نشد" };
 
-  const { sport, category } = resolved;
+  const { category } = resolved;
 
   const categoryProducts = await Product.find({ category: category._id }).select("_id").lean();
   const idList = categoryProducts.map((p) => p._id);
@@ -126,7 +126,7 @@ export default async function UsedProductsByCategoryPage({ params }) {
   const resolved = await resolveCategory(sportSlug, categorySlug);
   if (!resolved) notFound();
 
-  const { category } = resolved;
+  const { sport, category } = resolved;
   const categoryId = category._id;
 
   // محصولاتِ اصلیِ همین دسته‌بندی، برای فیلترِ محصولاتِ دست‌دوم بر اساسِ آن‌ها
