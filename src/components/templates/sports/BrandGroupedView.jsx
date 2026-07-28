@@ -41,6 +41,7 @@ export default function BrandGroupedView({
   filterMeta = null,
   initialData = {},
   title = "",
+  belowHero = null,
 }) {
   // مقدارِ فعالِ کارتِ فیلترِ سایدبار = مقدارِ فیلترِ هم‌نام با ویژگیِ مگامنو
   const activeFilterValue =
@@ -291,6 +292,8 @@ export default function BrandGroupedView({
           <div className="w-20 h-1 bg-[var(--color-primary)] rounded-full mb-4" />
         </div>
       </div>
+
+      {belowHero}
 
       {/* ───────────────── Main ───────────────── */}
       <div

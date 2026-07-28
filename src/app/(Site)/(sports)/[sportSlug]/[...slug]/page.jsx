@@ -199,7 +199,6 @@ export default async function SportDynamicSlugPage({ params, searchParams }) {
           products={initialData}
           canonical={`${SITE_URL}/${slugs.join("/")}`}
         />
-        <TaxonomyBreadcrumbs filters={filters} />
         <BrandGroupedView
           pageInfo={pageInfo}
           filters={filters}
@@ -212,6 +211,7 @@ export default async function SportDynamicSlugPage({ params, searchParams }) {
           initialData={initialData}
           page={page}
           title={`تنادور – ${pageInfo.title || pageInfo.name || ""}`}
+          belowHero={<TaxonomyBreadcrumbs filters={filters} />}
         />
       </>
     );
@@ -242,7 +242,6 @@ export default async function SportDynamicSlugPage({ params, searchParams }) {
           products={initialData}
           canonical={`${SITE_URL}/${slugs.join("/")}`}
         />
-        <TaxonomyBreadcrumbs filters={filters} />
         <SerieGroupedView
           pageInfo={pageInfo}
           filters={filters}
@@ -254,6 +253,7 @@ export default async function SportDynamicSlugPage({ params, searchParams }) {
           initialData={initialData}
           page={page}
           title={`تنادور – ${pageInfo.title || pageInfo.name || ""}`}
+          belowHero={<TaxonomyBreadcrumbs filters={filters} />}
         />
       </>
     );
@@ -289,7 +289,6 @@ export default async function SportDynamicSlugPage({ params, searchParams }) {
         products={searchData.results}
         canonical={`${SITE_URL}/${slugs.join("/")}`}
       />
-      <TaxonomyBreadcrumbs filters={searchData.filters} />
       <SportPageClient
         pageInfo={pageInfo}
         filters={searchData.filters}
@@ -306,6 +305,7 @@ export default async function SportDynamicSlugPage({ params, searchParams }) {
         seriesIndex={seriesIndex}
         page={page}
         title={`تنادور – ${pageInfo.title || pageInfo.name || ""}`}
+        belowHero={<TaxonomyBreadcrumbs filters={searchData.filters} />}
       />
     </>
   );

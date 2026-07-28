@@ -32,6 +32,7 @@ export default function SerieGroupedView({
   brandSlug = "",
   initialData = {},
   title = "",
+  belowHero = null,
 }) {
   const serieTitle = pageInfo?.title || pageInfo?.name || "";
   const sportSlug = filters?.sport?.slug || "";
@@ -252,6 +253,8 @@ export default function SerieGroupedView({
           <div className="w-20 h-1 bg-[var(--color-primary)] rounded-full mb-4" />
         </div>
       </div>
+
+      {belowHero}
 
       {/* ───────────────── Main ───────────────── */}
       <div
