@@ -8,6 +8,7 @@ import "react-toastify/dist/ReactToastify.css";
 import Navbar from "@/components/features/navbar/Navbar";
 import WhatsAppSupport from "@/components/features/WhatsAppSupport/WhatsAppSupport";
 import Footer from "@/components/features/footer/Footer";
+import PushOptInBanner from "@/components/features/push/PushOptInBanner";
 
 import { getCachedNavbar } from "@/lib/navbarService";
 import { UserProvider } from "@/components/features/auth/UserContext";
@@ -209,6 +210,7 @@ export default async function RootLayout({ children }) {
           <Navbar navData={navData} />
 
           <WhatsAppSupport />
+          <PushOptInBanner />
 
           <main className="min-h-screen">{children}</main>
 

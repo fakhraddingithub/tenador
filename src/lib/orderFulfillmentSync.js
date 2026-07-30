@@ -29,6 +29,7 @@ import {
   getItemTrackingModel,
   getUsedItemTrackingModel,
 } from "@/lib/warehouseDb";
+import { notifyOrderDelivered } from "@/lib/reviewRequestNotice";
 
 /**
  * تصمیم خالص: وضعیت بعدی سفارش یا null (بدون تغییر)
@@ -89,7 +90,11 @@ export async function syncOrderFulfillmentFromTracking(orderId) {
       { _id: id, fulfillmentStatus: order.fulfillmentStatus },
       { $set: { fulfillmentStatus: next } }
     );
-    return res.modifiedCount > 0 ? next : null;
+    if (res.modifiedCount > 0) {
+      if (next === "DELIVERED") notifyOrderDelivered(id);
+      return next;
+    }
+    return null;
   } catch (err) {
     console.warn("[orderFulfillmentSync]", err?.message);
     return null;

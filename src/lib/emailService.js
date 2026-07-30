@@ -438,7 +438,7 @@ export async function sendOrderConfirmationEmail(order, customerEmail, installme
 }
 
 // ─── ایمیل ساده‌ی اعلانی (قالب مشترک برای رویدادهای اقساط) ───────────────────
-function buildSimpleNoticeHtml({ title, emoji, greeting, rows = [], note }) {
+function buildSimpleNoticeHtml({ title, emoji, greeting, rows = [], note, ctaPath = '/p-user/installments', ctaLabel = 'مشاهده اقساط من' }) {
   const logoUrl = process.env.NEXT_PUBLIC_LOGO_URL ?? `${process.env.NEXT_PUBLIC_BASE_URL ?? ''}/logo.png`;
   const baseUrl = process.env.NEXT_PUBLIC_BASE_URL ?? '';
 
@@ -476,8 +476,8 @@ function buildSimpleNoticeHtml({ title, emoji, greeting, rows = [], note }) {
         </table>
         ${note ? `<p style="font-size:12px;color:#888;margin-top:16px; line-height:1.8;">${note}</p>` : ''}
         <div style="margin-top:24px; text-align:center;">
-          <a href="${baseUrl}/p-user/installments" style="display:inline-block; background:#aa4725; color:#fff; text-decoration:none; font-size:14px; font-weight:700; padding:11px 28px; border-radius:8px;">
-            مشاهده اقساط من
+          <a href="${baseUrl}${ctaPath}" style="display:inline-block; background:#aa4725; color:#fff; text-decoration:none; font-size:14px; font-weight:700; padding:11px 28px; border-radius:8px;">
+            ${ctaLabel}
           </a>
         </div>
       </td>
@@ -685,6 +685,45 @@ export async function sendInstallmentCompletedEmail(order, installment, customer
   });
 
   await sendSingle(customerEmail, `تکمیل اقساط — سفارش ${order.trackingCode}`, html);
+}
+
+/**
+ * ایمیل «سفارش تحویل داده شد» — دعوت به ثبت نظر (اعتبار کیف پول هدیه).
+ */
+export async function sendReviewRequestEmail(order, customerEmail) {
+  const html = buildSimpleNoticeHtml({
+    title: 'سفارش شما تحویل داده شد',
+    emoji: '📦',
+    greeting: 'با سلام،<br>سفارش شما با موفقیت تحویل داده شد. با ثبت نظر برای محصولات این سفارش، اعتبار کیف پول هدیه بگیرید.',
+    rows: [
+      { label: 'کد سفارش', value: escapeHtml(order.trackingCode ?? '—') },
+    ],
+    note: 'نظر شما پس از تأیید توسط تیم ما، اعتبار هدیه به کیف پولتان اضافه می‌شود.',
+    ctaPath: '/p-user/orders',
+    ctaLabel: 'ثبت نظر برای سفارش',
+  });
+
+  await sendSingle(customerEmail, `سفارش شما تحویل داده شد — ${order.trackingCode}`, html);
+}
+
+/**
+ * ایمیل «کیف پول شارژ شد» — بابت نظر تأییدشده روی سفارش.
+ */
+export async function sendWalletCreditEmail({ trackingCode, amount }, customerEmail) {
+  const html = buildSimpleNoticeHtml({
+    title: 'کیف پول شما شارژ شد',
+    emoji: '🎁',
+    greeting: 'با سلام،<br>بابت ثبت نظر تأییدشده، اعتباری به کیف پول شما اضافه شد. از همراهی شما سپاسگزاریم.',
+    rows: [
+      { label: 'کد سفارش', value: escapeHtml(trackingCode ?? '—') },
+      { label: 'مبلغ اعتبار', value: formatPrice(amount) },
+    ],
+    note: 'این اعتبار در خریدهای بعدی شما در فروشگاه قابل استفاده است.',
+    ctaPath: '/p-user',
+    ctaLabel: 'مشاهده حساب کاربری',
+  });
+
+  await sendSingle(customerEmail, `کیف پول شما شارژ شد — سفارش ${trackingCode}`, html);
 }
 
 /**

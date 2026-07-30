@@ -12,11 +12,12 @@ import { useState } from "react";
 import Link from "next/link";
 import { motion } from "framer-motion";
 import { MdAccountBalance, MdOutlineCurrencyExchange, MdPercent } from "react-icons/md";
-import { FiTag, FiArrowLeft, FiCalendar, FiBarChart2 } from "react-icons/fi";
+import { FiTag, FiArrowLeft, FiCalendar, FiBarChart2, FiGift } from "react-icons/fi";
 import { FaMoneyBillWave } from "react-icons/fa";
 import BankAccountManager from "@/components/admin/financial/BankAccountManager";
 import ExchangeRateManager from "@/components/admin/financial/ExchangeRateManager";
 import FinancingSettingsManager from "@/components/admin/financial/FinancingSettingsManager";
+import ReviewCreditSettingsManager from "@/components/admin/financial/ReviewCreditSettingsManager";
 import PageHeader from "@/components/admin/PageHeader";
 import SectionTabs from "@/components/admin/SectionTabs";
 
@@ -24,6 +25,7 @@ const TABS = [
   { value: "bank", label: "حساب بانکی", icon: MdAccountBalance },
   { value: "exchange", label: "نرخ تبدیل ارز", icon: MdOutlineCurrencyExchange },
   { value: "financing", label: "تنظیمات اقساط", icon: MdPercent },
+  { value: "review-credit", label: "پاداش نظر", icon: FiGift },
 ];
 
 const EXTERNAL_LINKS = [
@@ -85,6 +87,7 @@ export default function FinancialManagementPage() {
         {active === "bank" && <BankAccountManager />}
         {active === "exchange" && <ExchangeRateManager />}
         {active === "financing" && <FinancingSettingsManager />}
+        {active === "review-credit" && <ReviewCreditSettingsManager />}
       </motion.div>
     </div>
   );

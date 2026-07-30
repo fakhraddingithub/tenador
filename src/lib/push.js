@@ -68,24 +68,17 @@ async function sendToSubscription(sub, payloadString) {
 }
 
 /**
- * ارسال نوتیفیکیشن به همهٔ اشتراک‌های ثبت‌شده.
- * @param {{title:string, body:string, url?:string, icon?:string, badge?:string, tag?:string, data?:object}} payload
+ * ارسالِ موازیِ یک payload به فهرستی از اشتراک‌ها + جمع‌بندیِ نتیجه.
  * @returns {Promise<{sent:number, failed:number, removed:number, total:number}>}
  */
-export async function broadcastPush(payload) {
-  if (!ensureVapid()) return { sent: 0, failed: 0, removed: 0, total: 0 };
-
-  await connectToDB();
-  const subs = await PushSubscription.find({}).lean();
+async function dispatchToSubscriptions(subs, payload) {
   if (subs.length === 0) return { sent: 0, failed: 0, removed: 0, total: 0 };
 
   const payloadString = JSON.stringify(payload);
-
   let sent = 0;
   let failed = 0;
   let removed = 0;
 
-  // ارسالِ موازی اما کنترل‌شده (تعداد اشتراک‌ها معمولاً متوسط است)
   const results = await Promise.allSettled(
     subs.map((sub) => sendToSubscription(sub, payloadString))
   );
@@ -98,10 +91,40 @@ export async function broadcastPush(payload) {
     }
   }
 
-  console.log(
-    `[push] broadcast → total ${subs.length}, sent ${sent}, failed ${failed}, removed ${removed}`
-  );
   return { sent, failed, removed, total: subs.length };
+}
+
+/**
+ * ارسال نوتیفیکیشن به همهٔ اشتراک‌های ثبت‌شده.
+ * @param {{title:string, body:string, url?:string, icon?:string, badge?:string, tag?:string, data?:object}} payload
+ * @returns {Promise<{sent:number, failed:number, removed:number, total:number}>}
+ */
+export async function broadcastPush(payload) {
+  if (!ensureVapid()) return { sent: 0, failed: 0, removed: 0, total: 0 };
+
+  await connectToDB();
+  const subs = await PushSubscription.find({}).lean();
+  const result = await dispatchToSubscriptions(subs, payload);
+
+  console.log(
+    `[push] broadcast → total ${result.total}, sent ${result.sent}, failed ${result.failed}, removed ${result.removed}`
+  );
+  return result;
+}
+
+/**
+ * ارسال نوتیفیکیشن به تمامِ اشتراک‌های (دستگاه‌های) یک کاربرِ مشخص.
+ * @param {string} userId
+ * @param {{title:string, body:string, url?:string, icon?:string, badge?:string, tag?:string, data?:object}} payload
+ * @returns {Promise<{sent:number, failed:number, removed:number, total:number}>}
+ */
+export async function sendPushToUser(userId, payload) {
+  if (!ensureVapid()) return { sent: 0, failed: 0, removed: 0, total: 0 };
+  if (!userId) return { sent: 0, failed: 0, removed: 0, total: 0 };
+
+  await connectToDB();
+  const subs = await PushSubscription.find({ userId }).lean();
+  return dispatchToSubscriptions(subs, payload);
 }
 
 export { ensureVapid };

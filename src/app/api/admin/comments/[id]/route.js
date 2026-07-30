@@ -11,6 +11,7 @@ import "base/models/registerModels";
 import Comment from "base/models/Comment";
 import { revalidateContent } from "@/lib/revalidate";
 import requireAdmin, { unauthorized } from "@/lib/requireAdmin";
+import { grantReviewCreditIfEligible } from "@/lib/reviewCreditGranting";
 
 export async function PATCH(req, { params }) {
   if (!(await requireAdmin())) return unauthorized();
@@ -30,8 +31,14 @@ export async function PATCH(req, { params }) {
       return NextResponse.json({ message: "نظر یافت نشد" }, { status: 404 });
     }
 
+    const wasApproved = comment.status === "approved";
     comment.status = status;
     await comment.save(); // hook فلگ approved را همگام می‌کند
+
+    // فقط در گذارِ واقعی به approved اعتبار کیف پول اعطا شود، نه هر ذخیره‌ی دوباره
+    if (!wasApproved && status === "approved") {
+      await grantReviewCreditIfEligible(comment);
+    }
 
     // نمایش عمومی نظرها وابسته به وضعیت است → کش نظرها باید باطل شود
     revalidateContent(["comments"]);
