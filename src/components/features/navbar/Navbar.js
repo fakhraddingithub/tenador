@@ -82,10 +82,11 @@ function SearchResultItem({ product, onClick }) {
 // ---- Audience Tabs (ستونِ «مخاطبِ هدف» — پیش از ورزش‌ها) ----
 // انتخابش کاملاً کلاینتی است (روی navData ی از پیش کش‌شده فیلتر می‌کند)؛
 // «همه محصولات» = null یعنی بدونِ فیلتر.
-function AudienceTabs({ selected, onSelect, className = "" }) {
+function AudienceTabs({ selected, onSelect, availableAudiences, className = "" }) {
+  const options = AUDIENCE_OPTIONS.filter((a) => availableAudiences.has(a));
   return (
     <div className={`flex flex-wrap gap-1.5 ${className}`}>
-      {["همه محصولات", ...AUDIENCE_OPTIONS].map((label) => {
+      {["همه محصولات", ...options].map((label) => {
         const value = label === "همه محصولات" ? null : label;
         const isActive = selected === value;
         return (
@@ -234,7 +235,7 @@ function CategoryMenu({
 //   سقف (۱۰۰٪): تب‌های ورزش + نوارِ فیلترِ ویژگیِ دسته‌ی فعال (پویا)
 //   بدنه: پنل A (راست، ۴۰٪) لیستِ دسته‌ها (مَستر) | پنل B (چپ، ۶۰٪) برندها (دیتیل)
 // هر دو پنل اسکرولِ مستقل دارند؛ ارتفاعِ بدنه به فضای باقی‌مانده‌ی زیرِ سقف مقید است.
-function MobileCategoryDrawer({ navData, onClose, selectedAudience, onSelectAudience }) {
+function MobileCategoryDrawer({ navData, onClose, selectedAudience, onSelectAudience, availableAudiences }) {
   // ورزشِ فعال (تب‌های سقف) — پیش‌فرض اولین ورزش
   const [activeSportId, setActiveSportId] = useState(navData[0]?._id || null);
   // مقدارِ فعالِ فیلتر (مخصوصِ دسته‌ی فعال)؛ کلیکِ دوباره خاموش می‌کند
@@ -341,7 +342,7 @@ function MobileCategoryDrawer({ navData, onClose, selectedAudience, onSelectAudi
 
         {/* ───────── سقف: تب‌های مخاطبِ هدف (اسکرولِ افقی) ───────── */}
         <div className="flex gap-1.5 overflow-x-auto px-3 py-2.5 border-b border-white/10 flex-shrink-0">
-          <AudienceTabs selected={selectedAudience} onSelect={onSelectAudience} />
+          <AudienceTabs selected={selectedAudience} onSelect={onSelectAudience} availableAudiences={availableAudiences} />
         </div>
 
         {/* ───────── سقف: تب‌های ورزش (اسکرولِ افقی) ───────── */}
@@ -975,6 +976,7 @@ useEffect(() => {
                 onClose={() => setIsCategoryOpen(false)}
                 selectedAudience={selectedAudience}
                 onSelectAudience={setSelectedAudience}
+                availableAudiences={availableAudiences}
               />
             )}
           </AnimatePresence>
