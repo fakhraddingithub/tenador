@@ -264,7 +264,7 @@ async function _resolveContext(slugs) {
   return { notFound: false, search, filters };
 }
 
-async function _queryBySlugs(slugs, resolvedContext = null) {
+async function _queryBySlugs(slugs, resolvedContext = null, extraFilter = {}) {
   const ctx = resolvedContext || await _resolveContext(slugs);
   if (ctx.notFound) return NOT_FOUND;
 
@@ -281,6 +281,8 @@ async function _queryBySlugs(slugs, resolvedContext = null) {
   if (search.category) finalFilter.category = search.category._id;
   if (search.serie) finalFilter.serie = search.serie._id;
   if (search.limitedEdition) finalFilter.limitedEdition = search.limitedEdition._id;
+  // مخاطبِ هدف (navbar audience tabs) — مستقلِ کاملِ فیلترهای موجودیتی بالا
+  if (extraFilter.targetAudience) finalFilter.targetAudience = extraFilter.targetAudience;
 
   const listing = await getProductListingPage({ filter: finalFilter });
 
@@ -296,8 +298,8 @@ async function _queryBySlugs(slugs, resolvedContext = null) {
 
 // Do not cache arbitrary URL segments. Crawlers can otherwise turn every
 // unique 404 into a permanent ISR write.
-export async function queryBySlugs(slugs, resolvedContext = null) {
-  return _queryBySlugs(slugs, resolvedContext);
+export async function queryBySlugs(slugs, resolvedContext = null, extraFilter = {}) {
+  return _queryBySlugs(slugs, resolvedContext, extraFilter);
 }
 
 /**

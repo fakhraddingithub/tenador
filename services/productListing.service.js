@@ -15,7 +15,16 @@ const LISTING_FIELDS = [
 ].join(" ");
 
 // باید با Product.js:targetAudience.enum یکسان بماند
-const TARGET_AUDIENCE_VALUES = ["مردانه", "زنانه", "بچگانه", "همه"];
+export const TARGET_AUDIENCE_VALUES = ["مردانه", "زنانه", "بچگانه", "همه"];
+
+// مقدارِ ورودی را به شرطِ Mongo برای targetAudience تبدیل می‌کند (یا null اگر
+// نامعتبر باشد). محصولاتِ «همه» (یونیسکس) زیرِ هر فیلترِ مخاطبِ خاص هم نمایش داده
+// می‌شوند. هر مصرف‌کننده‌ی دیگری (brandGrouped، query.service) هم از همین هلپر
+// استفاده می‌کند تا منطقِ اتحاد با «همه» یک‌جا و یکسان بماند.
+export function buildTargetAudienceMatch(value) {
+  if (!value || !TARGET_AUDIENCE_VALUES.includes(value)) return null;
+  return { $in: [...new Set([value, "همه"])] };
+}
 
 const POPULATES = [
   { path: "brand", select: "name title slug icon logo" },
@@ -40,11 +49,11 @@ export function sanitizeListingFilter(input = {}) {
     filter[key] = value;
   }
   if (input.targetAudience) {
-    if (!TARGET_AUDIENCE_VALUES.includes(input.targetAudience)) {
+    const match = buildTargetAudienceMatch(input.targetAudience);
+    if (!match) {
       throw new TypeError("Invalid product listing filter: targetAudience");
     }
-    // محصولاتِ «همه» (یونیسکس) زیرِ هر فیلترِ مخاطبِ خاص هم نمایش داده می‌شوند
-    filter.targetAudience = { $in: [...new Set([input.targetAudience, "همه"])] };
+    filter.targetAudience = match;
   }
   return filter;
 }

@@ -5,6 +5,7 @@ import SerieGroupedView from "@/components/templates/sports/SerieGroupedView";
 import { getCachedRate } from "@/lib/Exchangerate";
 import { queryBySlugs, resolvePageContext } from "base/services/query.service";
 import { getBrandGroupedSections } from "base/services/brandGrouped.service";
+import { TARGET_AUDIENCE_VALUES } from "base/services/productListing.service";
 import { getSerieGroupedSections } from "base/services/serieGrouped.service";
 import { getSeriesFilterIndex } from "base/services/series.service";
 import { getPublicArticle } from "base/services/publicArticle.service";
@@ -151,6 +152,11 @@ export default async function SportDynamicSlugPage({ params, searchParams }) {
   // سگمنتِ مسیر. سگمنتِ اضافیِ مسیر توسطِ validatorِ سخت‌گیر (طول + Mirror) رد می‌شود.
   const sp = (await searchParams) || {};
   const page = Math.max(1, Number(sp.page) || 1);
+  // مخاطبِ هدف (navbar audience tabs) — مقدارِ نامعتبر/ناشناخته بی‌سروصدا نادیده
+  // گرفته می‌شود (بدونِ فیلتر)، نه ۵۰۰، دقیقاً مثلِ رفتارِ سایرِ پارامترهای صفحه.
+  const targetAudience = TARGET_AUDIENCE_VALUES.includes(sp.targetAudience)
+    ? sp.targetAudience
+    : null;
 
   // اعتبارسنجیِ قطعیِ مسیر — اگر یکی از ۶ الگوی مجاز نباشد، ۴۰۴ سخت
   const ctx = await resolvePageContext(slugs);
@@ -188,6 +194,7 @@ export default async function SportDynamicSlugPage({ params, searchParams }) {
       offset: 0,
       limit: INITIAL_SECTIONS,
       withIndex: true,
+      targetAudience,
     });
 
     const pageInfo = filters.brand;
@@ -210,6 +217,7 @@ export default async function SportDynamicSlugPage({ params, searchParams }) {
           filterMeta={buildFilterMeta(filters.category)}
           initialData={initialData}
           page={page}
+          targetAudience={targetAudience}
           title={`تنادور – ${pageInfo.title || pageInfo.name || ""}`}
           belowHero={<TaxonomyBreadcrumbs filters={filters} />}
         />
@@ -260,7 +268,7 @@ export default async function SportDynamicSlugPage({ params, searchParams }) {
   }
 
   // ─── سایر صفحات (ورزش، دسته): الگوهای ۲ از این مسیر سرو می‌شوند ───
-  const searchData = await queryBySlugs(slugs, ctx);
+  const searchData = await queryBySlugs(slugs, ctx, { targetAudience });
 
   // محافظِ دوم: اگر بینِ resolve و query وضعیت تغییر کرده باشد (مثلاً حذفِ آخرین
   // محصولِ یک ترکیب)، باز هم ۴۰۴ سخت می‌دهیم — بدونِ fallbackِ خاموش.
@@ -300,6 +308,7 @@ export default async function SportDynamicSlugPage({ params, searchParams }) {
           brand: searchData.filters.brand?._id,
           serie: searchData.filters.serie?._id,
           limitedEdition: searchData.filters.limitedEdition?._id,
+          targetAudience,
         }}
         rate={rate}
         seriesIndex={seriesIndex}

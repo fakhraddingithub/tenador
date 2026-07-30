@@ -10,6 +10,7 @@
  *   attrName?, attrValue?, attrSource? → فرمتِ قدیمیِ تک‌ویژگی (برای سازگاری)
  *   offset (پیش‌فرض 0), limit (پیش‌فرض 2)
  *   minPrice?, maxPrice?, search?
+ *   targetAudience? → مخاطبِ هدف (navbar audience tabs)
  *   withIndex=1  → فهرست کاملِ بخش‌ها (برای نویگیشن سری‌ها) را هم برگردان
  *
  * محاسبه و کش در services/brandGrouped.service.js انجام می‌شود.
@@ -72,6 +73,7 @@ export async function GET(req) {
       maxPrice: toInt(searchParams.get("maxPrice"), 0),
       search: searchParams.get("search") || "",
       withIndex: searchParams.get("withIndex") === "1",
+      targetAudience: searchParams.get("targetAudience") || null,
     });
 
     return NextResponse.json(data, { status: 200 });

@@ -42,6 +42,7 @@ export default function BrandGroupedView({
   initialData = {},
   title = "",
   belowHero = null,
+  targetAudience = null,
 }) {
   // مقدارِ فعالِ کارتِ فیلترِ سایدبار = مقدارِ فیلترِ هم‌نام با ویژگیِ مگامنو
   const activeFilterValue =
@@ -110,9 +111,10 @@ export default function BrandGroupedView({
       if (f.maxPrice > 0) params.set("maxPrice", String(f.maxPrice));
       if (f.search) params.set("search", f.search);
       if (withIndex) params.set("withIndex", "1");
+      if (targetAudience) params.set("targetAudience", targetAudience);
       return `/api/brands/grouped?${params.toString()}`;
     },
-    [brandId, sportId, categoryId, attrFilters]
+    [brandId, sportId, categoryId, attrFilters, targetAudience]
   );
 
   // ─── بارگذاری batch بعدی (scroll) ───

@@ -28,6 +28,7 @@ import { getCachedRate } from "@/lib/Exchangerate";
 import { buildLenientPersianRegexSource } from "@/lib/persianNormalize";
 import { attachListingPrices } from "base/services/priceEngine";
 import { resolveSerieSportContent } from "@/lib/serieSportContent";
+import { buildTargetAudienceMatch } from "base/services/productListing.service";
 
 const OTHER_KEY = "__other__";
 
@@ -94,11 +95,14 @@ async function buildSeriesTree(brandId) {
  * قیمت تومانی اعمال می‌شود. `extra` قطعه‌ی match اضافیِ از پیش‌ساخته‌ی فیلترِ ویژگی است
  * (برای ویژگیِ ثابت: attributes.<name>؛ برای متغیر: _id ∈ productIdsِ واریانت).
  */
-function buildBaseMatch({ brandId, sportId, categoryId, search, extra }) {
+function buildBaseMatch({ brandId, sportId, categoryId, search, extra, targetAudience }) {
   const match = { isActive: true, brand: toObjectId(brandId) };
   if (sportId) match.sport = toObjectId(sportId);
   if (categoryId) match.category = toObjectId(categoryId);
   if (extra && typeof extra === "object") Object.assign(match, extra);
+  // مخاطبِ هدف (navbar audience tabs) — مستقلِ کاملِ فیلترهای موجودیتی/ویژگی بالا
+  const audienceMatch = buildTargetAudienceMatch(targetAudience);
+  if (audienceMatch) match.targetAudience = audienceMatch;
   if (search && search.trim()) {
     match.name = { $regex: escapeRegex(search.trim()), $options: "i" };
   }
@@ -191,6 +195,7 @@ async function _getBrandGroupedSections(params) {
     maxPrice = 0, // 0 یعنی بدون سقف
     search = "",
     withIndex = false,
+    targetAudience = null,
   } = params || {};
 
   if (!brandId) {
@@ -206,7 +211,7 @@ async function _getBrandGroupedSections(params) {
       buildAttrMatches(attrFilters),
     ]);
 
-  const baseMatch = buildBaseMatch({ brandId, sportId, categoryId, search, extra });
+  const baseMatch = buildBaseMatch({ brandId, sportId, categoryId, search, extra, targetAudience });
 
   // ── شمارش محصولات هر سری با یک aggregation و رول‌آپ به سری ریشه ──
   const countAgg = await Product.aggregate([

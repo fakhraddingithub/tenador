@@ -2,7 +2,7 @@
 
 import { getUserFullName } from "base/utils/userName";
 
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { usePathname } from "next/navigation";
 import {
   FiSearch,
@@ -107,38 +107,85 @@ function AudienceTabs({ selected, onSelect, className = "" }) {
   );
 }
 
+// تابع کمکی برای استایل دکمه‌های لیست در ستون‌های مگامنو (ورزش‌ها + مخاطبِ هدف)
+// — سطحِ ماژول تا هم CategoryMenu و هم AudienceColumn عیناً همان استایل را به‌کار ببرند.
+const listButtonStyle = (isActive) => `
+  group w-full flex items-center gap-3 px-4 py-2.5 rounded-[6px] transition-all text-[15px] font-medium
+  ${
+    isActive
+      ? "bg-[#ffffff1a] text-[#aa4725]"
+      : "text-gray-300 hover:bg-[#ffffff1a] hover:text-[#aa4725]"
+  }
+`;
+
+// ---- Audience Column (ستونِ اختصاصیِ مخاطبِ هدف — دسکتاپ، پیش از ستونِ ورزش‌ها) ----
+// باریک‌تر از سایر ستون‌ها (فقط چند برچسبِ کوتاه لازم دارد)؛ دقیقاً با همان
+// توکن‌های تایپوگرافی/رنگ/هاور/حالتِ فعالِ ستونِ ورزش‌ها (listButtonStyle) رندر می‌شود.
+// گزینه‌ای که هیچ محصولی ندارد (availableAudiences آن را شامل نشود) اصلاً رندر نمی‌شود؛
+// «همه محصولات» چون فیلتر نیست همیشه نمایش داده می‌شود.
+function AudienceColumn({ selected, onSelect, availableAudiences }) {
+  const options = AUDIENCE_OPTIONS.filter((a) => availableAudiences.has(a));
+
+  return (
+    <div className="w-[150px] shrink-0 border-l border-white/[0.06] p-3 overflow-y-auto bg-white/[0.01]">
+      <p className="text-[11px] font-bold text-gray-500 mb-4 px-2 uppercase tracking-widest">
+        مخاطب هدف
+      </p>
+      <ul className="space-y-1">
+        <li>
+          <button
+            type="button"
+            onClick={() => onSelect(null)}
+            className={listButtonStyle(selected === null)}
+          >
+            <span className="flex-grow text-right">همه محصولات</span>
+          </button>
+        </li>
+        {options.map((label) => (
+          <li key={label}>
+            <button
+              type="button"
+              onClick={() => onSelect(label)}
+              className={listButtonStyle(selected === label)}
+            >
+              <span className="flex-grow text-right">{label}</span>
+            </button>
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+
 // ---- Mega Menu ----
-function CategoryMenu({ navData, onClose, selectedAudience, onSelectAudience }) {
+function CategoryMenu({
+  navData,
+  onClose,
+  selectedAudience,
+  onSelectAudience,
+  availableAudiences,
+}) {
   const [activeSportId, setActiveSportId] = useState(navData[0]?._id || null);
 
   // پیدا کردن ورزش فعال
   const activeSport =
     navData.find((s) => s._id === activeSportId) || navData[0];
 
-  // تابع کمکی برای استایل دکمه‌های لیست در ستون اول (ورزش‌ها)
-  const listButtonStyle = (isActive) => `
-    group w-full flex items-center gap-3 px-4 py-2.5 rounded-[6px] transition-all text-[15px] font-medium
-    ${
-      isActive
-        ? "bg-[#ffffff1a] text-[#aa4725]"
-        : "text-gray-300 hover:bg-[#ffffff1a] hover:text-[#aa4725]"
-    }
-  `;
-
   return (
     <div
       dir="rtl"
-      className="absolute top-full right-0 mt-2 w-[950px] bg-[#20232ae6] border border-white/10 shadow-2xl rounded-[6px] overflow-hidden z-[100] text-right"
+      className="absolute top-full right-0 mt-2 w-[1100px] bg-[#20232ae6] border border-white/10 shadow-2xl rounded-[6px] overflow-hidden z-[100] text-right"
       onMouseLeave={onClose}
     >
       <div className="flex h-[480px]">
-        {/* ستون اول: ورزش‌ها */}
+        {/* ستونِ اختصاصیِ مخاطبِ هدف — پیش از ستونِ ورزش‌ها */}
+        <AudienceColumn
+          selected={selectedAudience}
+          onSelect={onSelectAudience}
+          availableAudiences={availableAudiences}
+        />
+        {/* ستون ورزش‌ها */}
         <div className="w-[30%] border-l border-white/[0.06] p-3 overflow-y-auto bg-white/[0.01]">
-          <AudienceTabs
-            selected={selectedAudience}
-            onSelect={onSelectAudience}
-            className="mb-4 px-2"
-          />
           <p className="text-[11px] font-bold text-gray-500 mb-4 px-2 uppercase tracking-widest">
             رشته‌های ورزشی
           </p>
@@ -527,6 +574,17 @@ export default function Navbar({ navData: initialNavData = [] }) {
   // (بدونِ round-trip یا کلیدِ کشِ تازه). null = «همه محصولات» (بدونِ فیلتر).
   const [selectedAudience, setSelectedAudience] = useState(null);
   const filteredNavData = filterNavDataByAudience(navData, selectedAudience);
+  // مجموعه‌ی سراسریِ مخاطب‌هایی که دست‌کم یک محصول دارند — از روی audiences ی
+  // از پیش‌محاسبه‌شده‌ی navbarService (بدون کوئریِ تازه)؛ برای پنهان‌کردنِ گزینه‌های
+  // خالی در ستونِ دسکتاپ. عمداً از navData ی خام (نه فیلترشده) ساخته می‌شود تا با
+  // انتخابِ یک مخاطب، گزینه‌های خواهر پنهان نشوند.
+  const availableAudiences = useMemo(() => {
+    const set = new Set();
+    navData.forEach((sport) => {
+      (sport.audiences || []).forEach((a) => set.add(a));
+    });
+    return set;
+  }, [navData]);
 
   const [searchQuery, setSearchQuery] = useState("");
   const [searchResults, setSearchResults] = useState([]);
@@ -664,6 +722,7 @@ useEffect(() => {
                     onClose={() => setIsCategoryOpen(false)}
                     selectedAudience={selectedAudience}
                     onSelectAudience={setSelectedAudience}
+                    availableAudiences={availableAudiences}
                   />
                 )}
               </div>
