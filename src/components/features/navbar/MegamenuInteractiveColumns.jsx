@@ -26,6 +26,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { FiChevronLeft } from "react-icons/fi";
+import { withQueryParams } from "@/lib/navbarAudience";
 
 // آیکونِ ماسک‌شده با رنگِ متن — عیناً مثلِ مگامنوی اصلی
 const iconMaskStyle = (url) => ({
@@ -70,7 +71,7 @@ const childButtonStyle = (isActive) => `
   }
 `;
 
-export default function MegamenuInteractiveColumns({ sport, onClose }) {
+export default function MegamenuInteractiveColumns({ sport, onClose, selectedAudience }) {
   // مقدارِ فعالِ فیلتر — پیش‌فرض null؛ کلیکِ دوباره روی همان تب آن را خاموش می‌کند
   const [activeFilterValue, setActiveFilterValue] = useState(null);
   // دسته‌ی هاورشده که ستون‌های ۳/۴ را هدایت می‌کند
@@ -108,11 +109,13 @@ export default function MegamenuInteractiveColumns({ sport, onClose }) {
       ? activeFilterValue
       : null;
 
-  // موتورِ وراثتِ URL — اگر مقداری فعال باشد ?[attrName]=<value> افزوده می‌شود
+  // موتورِ وراثتِ URL — فیلترِ ویژگیِ دسته (?[attrName]=<value>) و مخاطبِ هدف
+  // (?targetAudience=<value>) هر دو، مستقل از هم، به لینک‌ها افزوده می‌شوند
   const withFilter = (href) =>
-    appliedValue
-      ? `${href}?${encodeURIComponent(megaMenuFilter.name)}=${encodeURIComponent(appliedValue)}`
-      : href;
+    withQueryParams(href, {
+      ...(appliedValue && { [megaMenuFilter.name]: appliedValue }),
+      targetAudience: selectedAudience,
+    });
 
   // ── برندهای همین دسته (رابطه از روی محصول)، فیلترشده با مقدارِ فعال ──
   const categoryBrands = activeCategory?.brands || [];

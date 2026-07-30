@@ -44,6 +44,7 @@ const FIELD_LABELS = {
   attributes: "ویژگی‌ها",
   variantAttributes: "ویژگی‌های متغیر",
   technicalStats: "شاخص‌های فنی",
+  targetAudience: "مخاطب هدف",
 };
 
 function labelFor(field) {

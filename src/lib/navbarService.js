@@ -224,14 +224,75 @@ async function buildNavbarData() {
   }
 
   // ───────────────────────────────────────────────────────────────────────
-  // ۴) چسباندنِ فیلترِ ویژگی به هر دسته: تب‌های مقدار (megaMenuFilter) و
+  // ۴) مخاطبِ هدف (targetAudience) — مستقل از مکانیزمِ megaMenuFilterAttribute
+  //    بالا (Stage 0: عمداً بدونِ ادغام). فیلدِ ثابتِ محصول است، نه یک ویژگیِ
+  //    پویا؛ پس فقط یک aggregation ساده به تفکیکِ (ورزش، دسته، برند) لازم است.
+  // ───────────────────────────────────────────────────────────────────────
+  const audienceAgg = await Product.aggregate([
+    {
+      $match: {
+        isActive: true,
+        sport: { $ne: null },
+        category: { $ne: null },
+        brand: { $ne: null },
+        targetAudience: { $nin: [null, ""] },
+      },
+    },
+    {
+      $group: {
+        _id: { sport: "$sport", category: "$category", brand: "$brand" },
+        values: { $addToSet: "$targetAudience" },
+      },
+    },
+  ]);
+
+  const audienceByCatBrand = new Map(); // `${sport}|${category}` → Map(brandId → Set(values))
+  const audienceByCategory = new Map(); // categoryId → Set(values)
+  const audienceBySport = new Map(); // sportId → Set(values)
+
+  for (const row of audienceAgg) {
+    const { sport: sportId, category: categoryId, brand: brandId } = row._id;
+    const sKey = sportId.toString();
+    const cKey = categoryId.toString();
+    const bKey = brandId.toString();
+    const values = row.values.map(String);
+
+    const scKey = `${sKey}|${cKey}`;
+    let inner = audienceByCatBrand.get(scKey);
+    if (!inner) {
+      inner = new Map();
+      audienceByCatBrand.set(scKey, inner);
+    }
+    inner.set(bKey, new Set(values));
+
+    let catSet = audienceByCategory.get(cKey);
+    if (!catSet) {
+      catSet = new Set();
+      audienceByCategory.set(cKey, catSet);
+    }
+    for (const v of values) catSet.add(v);
+
+    let sportSet = audienceBySport.get(sKey);
+    if (!sportSet) {
+      sportSet = new Set();
+      audienceBySport.set(sKey, sportSet);
+    }
+    for (const v of values) sportSet.add(v);
+  }
+
+  // ───────────────────────────────────────────────────────────────────────
+  // ۵) چسباندنِ فیلترِ ویژگی به هر دسته: تب‌های مقدار (megaMenuFilter) و
   //    مقادیرِ هر برند (brand.filterValues) — برای فیلترِ category→brand در مگامنو.
   // ───────────────────────────────────────────────────────────────────────
   for (const sport of sports) {
     sport.categories.sort(byOrder);
+    sport.audiences = Array.from(audienceBySport.get(sport._id.toString()) || []);
 
     for (const category of sport.categories) {
       category.brands?.sort(byOrder);
+      category.audiences = Array.from(
+        audienceByCategory.get(category._id.toString()) || [],
+      );
 
       const fm = catFilterMeta.get(category._id.toString());
       const present = fm ? valuesByCat.get(category._id.toString()) : null;
@@ -252,14 +313,18 @@ async function buildNavbarData() {
           label: fm.label,
           values: ordered,
         };
-
-        const brandVals = valuesByCatBrand.get(`${sport._id}|${category._id}`);
-        for (const brand of category.brands || []) {
-          const set = brandVals?.get(brand._id.toString());
-          brand.filterValues = set ? Array.from(set) : [];
-        }
       } else {
         category.megaMenuFilter = null;
+      }
+
+      const brandVals = valuesByCatBrand.get(`${sport._id}|${category._id}`);
+      const catAudienceVals = audienceByCatBrand.get(`${sport._id}|${category._id}`);
+      for (const brand of category.brands || []) {
+        const set = brandVals?.get(brand._id.toString());
+        brand.filterValues = set ? Array.from(set) : [];
+        brand.audiences = Array.from(
+          catAudienceVals?.get(brand._id.toString()) || [],
+        );
       }
     }
   }

@@ -11,8 +11,11 @@ export const STOREFRONT_MAX_PAGE_SIZE = 60;
 const LISTING_FIELDS = [
   "name", "slug", "shortDescription", "basePrice", "label", "mainImage",
   "gallery", "brand", "sport", "athlete", "category", "serie", "limitedEdition",
-  "attributes", "variantMeta", "variants", "order",
+  "attributes", "variantMeta", "variants", "order", "targetAudience",
 ].join(" ");
+
+// باید با Product.js:targetAudience.enum یکسان بماند
+const TARGET_AUDIENCE_VALUES = ["مردانه", "زنانه", "بچگانه", "همه"];
 
 const POPULATES = [
   { path: "brand", select: "name title slug icon logo" },
@@ -35,6 +38,13 @@ export function sanitizeListingFilter(input = {}) {
       throw new TypeError(`Invalid product listing filter: ${key}`);
     }
     filter[key] = value;
+  }
+  if (input.targetAudience) {
+    if (!TARGET_AUDIENCE_VALUES.includes(input.targetAudience)) {
+      throw new TypeError("Invalid product listing filter: targetAudience");
+    }
+    // محصولاتِ «همه» (یونیسکس) زیرِ هر فیلترِ مخاطبِ خاص هم نمایش داده می‌شوند
+    filter.targetAudience = { $in: [...new Set([input.targetAudience, "همه"])] };
   }
   return filter;
 }

@@ -7,7 +7,7 @@ export async function GET(req) {
   try {
     const { searchParams } = new URL(req.url);
     const filter = {};
-    for (const key of ["sport", "category", "brand", "athlete", "serie", "limitedEdition"]) {
+    for (const key of ["sport", "category", "brand", "athlete", "serie", "limitedEdition", "targetAudience"]) {
       const value = searchParams.get(key);
       if (value) filter[key] = value;
     }

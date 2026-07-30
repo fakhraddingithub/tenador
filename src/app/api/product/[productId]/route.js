@@ -135,6 +135,7 @@ export async function PUT(request, { params }) {
       technicalStats,
       customTabItems,
       label,
+      targetAudience,
       isActive, // ✨ اضافه شد: دریافت وضعیت فعال/غیرفعال از فرانت‌اند
       variantOptions,
       variantDetails,
@@ -273,6 +274,8 @@ export async function PUT(request, { params }) {
       variantMeta && typeof variantMeta === "object" ? variantMeta : {};
 
     product.label = label || "none";
+
+    product.targetAudience = targetAudience || null;
 
     // ✨ اضافه شد: اگر isActive فرستاده شده بود مقدار را به‌روزرسانی کن، در غیر این صورت مقدار قبلی را حفظ کن
     product.isActive = typeof isActive === "boolean" ? isActive : product.isActive;

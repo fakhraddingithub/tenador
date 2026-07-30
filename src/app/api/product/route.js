@@ -10,7 +10,7 @@ import Serie from "base/models/Serie";
 import "base/models/LimitedEdition";
 import requireAdmin from "@/lib/requireAdmin";
 
-const ADMIN_LIST_FIELDS = "name slug sku mainImage basePrice isActive order brand sport category serie limitedEdition createdAt updatedAt";
+const ADMIN_LIST_FIELDS = "name slug sku mainImage basePrice isActive order brand sport category serie limitedEdition targetAudience createdAt updatedAt";
 
 function escapeRegExp(value) {
   return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
@@ -31,6 +31,7 @@ export async function GET(req) {
     // رفتار سایر مصرف‌کننده‌های پارامتر serie تغییری نکند
     const includeDescendants = searchParams.get("includeDescendants") === "true";
     const limitedEditionId = searchParams.get("limitedEdition"); // فیلتر بر اساس لیمیتد ادیشن
+    const targetAudience = searchParams.get("targetAudience"); // فیلتر بر اساس مخاطب هدف
     const withVariants = searchParams.get("withVariants") === "true"; // populate واریانت‌ها
     const search = String(searchParams.get("search") || "").trim();
     const returnAll = searchParams.get("all") === "true";
@@ -77,6 +78,7 @@ export async function GET(req) {
       }
     }
     if (limitedEditionId) query.limitedEdition = limitedEditionId;
+    if (targetAudience) query.targetAudience = targetAudience;
     if (search) query.name = { $regex: escapeRegExp(search), $options: "i" };
 
     let productsQuery = Product.find(query)

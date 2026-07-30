@@ -91,6 +91,7 @@ export default function ProductCreateForm({ initialData = {} }) {
     technicalStats: {},
     customTabItems: [],
     label: 'none',
+    targetAudience: '',
     isActive: true,
     ...initialData,
     customTabItems: initialData?.customTabItems || [],
@@ -650,6 +651,18 @@ export default function ProductCreateForm({ initialData = {} }) {
             { value: 'new', label: 'جدید' },
             { value: 'hot', label: 'پرطرفدار' },
             { value: 'limited', label: 'تعداد محدود' },
+          ]}
+        />
+
+        <Select
+          label="مخاطب هدف"
+          value={formData.targetAudience}
+          onChange={e => updateField('targetAudience', e.target.value)}
+          options={[
+            { value: 'مردانه', label: 'مردانه' },
+            { value: 'زنانه', label: 'زنانه' },
+            { value: 'بچگانه', label: 'بچگانه' },
+            { value: 'همه', label: 'همه' },
           ]}
         />
 

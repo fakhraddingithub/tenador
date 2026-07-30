@@ -163,6 +163,7 @@ export function buildProductTemplate({
     color: getPromptContext(category.prompts, "color"),
     basePrice: getPromptContext(category.prompts, "basePrice"),
     label: getPromptContext(category.prompts, "label"),
+    targetAudience: getPromptContext(category.prompts, "targetAudience"),
     tag: getPromptContext(category.prompts, "tag"),
   };
 
@@ -217,6 +218,13 @@ ${fieldRules.basePrice}
 label:
 ${fieldRules.label}
 - Allowed values: "new" | "discount" | "best_seller" | "" (empty string if none)
+
+targetAudience:
+${fieldRules.targetAudience}
+- Allowed values: "مردانه" | "زنانه" | "بچگانه" | "همه"
+- Choose exactly ONE based on who the product is actually made/marketed for.
+- Use "همه" only for genuinely unisex/general-purpose products (e.g. balls, courts, general accessories)
+  where the raw content gives no gender/age-specific signal — do not default to it just to avoid a choice.
 
 score:
 - DO NOT include this field at all.
@@ -392,6 +400,7 @@ Output exactly this structure with no extra fields:
   "color": "#hexcode",
   "basePrice": 0,
   "label": "",
+  "targetAudience": "مردانه | زنانه | بچگانه | همه",
   "brand": "ID_FROM_BRANDS_LIST",
   "serie": "ID_FROM_SERIES_LIST_OR_EMPTY_STRING",
   "limitedEdition": "ID_FROM_LIMITED_EDITIONS_LIST_OR_EMPTY_STRING",

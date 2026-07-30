@@ -23,6 +23,11 @@ import UserNotificationBell from "@/components/features/notifications/UserNotifi
 import { useUser } from "@/components/features/auth/UserContext";
 import { getCartTotalQuantity } from "@/lib/cart";
 import MegamenuInteractiveColumns from "@/components/features/navbar/MegamenuInteractiveColumns";
+import {
+  AUDIENCE_OPTIONS,
+  filterNavDataByAudience,
+  withQueryParams,
+} from "@/lib/navbarAudience";
 
 const NAVIGATION_ITEMS = [
   { id: 1, label: "جمعه بازار", href: "/second-hand" },
@@ -74,8 +79,36 @@ function SearchResultItem({ product, onClick }) {
   );
 }
 
+// ---- Audience Tabs (ستونِ «مخاطبِ هدف» — پیش از ورزش‌ها) ----
+// انتخابش کاملاً کلاینتی است (روی navData ی از پیش کش‌شده فیلتر می‌کند)؛
+// «همه محصولات» = null یعنی بدونِ فیلتر.
+function AudienceTabs({ selected, onSelect, className = "" }) {
+  return (
+    <div className={`flex flex-wrap gap-1.5 ${className}`}>
+      {["همه محصولات", ...AUDIENCE_OPTIONS].map((label) => {
+        const value = label === "همه محصولات" ? null : label;
+        const isActive = selected === value;
+        return (
+          <button
+            key={label}
+            type="button"
+            onClick={() => onSelect(value)}
+            className={`px-3 py-1.5 rounded-[6px] text-xs font-bold whitespace-nowrap transition-all ${
+              isActive
+                ? "bg-[#aa4725] text-white"
+                : "bg-white/5 text-gray-300 hover:bg-white/10 hover:text-[#aa4725]"
+            }`}
+          >
+            {label}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
 // ---- Mega Menu ----
-function CategoryMenu({ navData, onClose }) {
+function CategoryMenu({ navData, onClose, selectedAudience, onSelectAudience }) {
   const [activeSportId, setActiveSportId] = useState(navData[0]?._id || null);
 
   // پیدا کردن ورزش فعال
@@ -101,6 +134,11 @@ function CategoryMenu({ navData, onClose }) {
       <div className="flex h-[480px]">
         {/* ستون اول: ورزش‌ها */}
         <div className="w-[30%] border-l border-white/[0.06] p-3 overflow-y-auto bg-white/[0.01]">
+          <AudienceTabs
+            selected={selectedAudience}
+            onSelect={onSelectAudience}
+            className="mb-4 px-2"
+          />
           <p className="text-[11px] font-bold text-gray-500 mb-4 px-2 uppercase tracking-widest">
             رشته‌های ورزشی
           </p>
@@ -108,7 +146,7 @@ function CategoryMenu({ navData, onClose }) {
             {navData.map((sport) => (
               <li key={sport._id}>
                 <Link
-                  href={`/${sport.slug}`}
+                  href={withQueryParams(`/${sport.slug}`, { targetAudience: selectedAudience })}
                   prefetch
                   onClick={onClose}
                   onMouseEnter={() => setActiveSportId(sport._id)}
@@ -134,7 +172,11 @@ function CategoryMenu({ navData, onClose }) {
         </div>
         {/* ستون‌های دوم/سوم/چهارم: درختِ دسته‌ها + نوار جنسیت + برندها
             (کامپوننتِ کلاینتِ ایزوله — state تعاملیِ جنسیت آنجا نگه‌داری می‌شود) */}
-        <MegamenuInteractiveColumns sport={activeSport} onClose={onClose} />
+        <MegamenuInteractiveColumns
+          sport={activeSport}
+          onClose={onClose}
+          selectedAudience={selectedAudience}
+        />
       </div>
     </div>
   );
@@ -145,7 +187,7 @@ function CategoryMenu({ navData, onClose }) {
 //   سقف (۱۰۰٪): تب‌های ورزش + نوارِ فیلترِ ویژگیِ دسته‌ی فعال (پویا)
 //   بدنه: پنل A (راست، ۴۰٪) لیستِ دسته‌ها (مَستر) | پنل B (چپ، ۶۰٪) برندها (دیتیل)
 // هر دو پنل اسکرولِ مستقل دارند؛ ارتفاعِ بدنه به فضای باقی‌مانده‌ی زیرِ سقف مقید است.
-function MobileCategoryDrawer({ navData, onClose }) {
+function MobileCategoryDrawer({ navData, onClose, selectedAudience, onSelectAudience }) {
   // ورزشِ فعال (تب‌های سقف) — پیش‌فرض اولین ورزش
   const [activeSportId, setActiveSportId] = useState(navData[0]?._id || null);
   // مقدارِ فعالِ فیلتر (مخصوصِ دسته‌ی فعال)؛ کلیکِ دوباره خاموش می‌کند
@@ -191,7 +233,8 @@ function MobileCategoryDrawer({ navData, onClose }) {
       ? activeFilterValue
       : null;
 
-  // موتورِ وراثتِ URL — اگر مقداری فعال باشد ?[attrName]=<value> افزوده می‌شود
+  // موتورِ وراثتِ URL — فیلترِ ویژگیِ دسته (?[attrName]=<value>) و مخاطبِ هدف
+  // (?targetAudience=<value>) هر دو، مستقل از هم، به لینک‌ها افزوده می‌شوند
   const withFilterForCategory = (category, href) => {
     const filter = category?.megaMenuFilter || null;
     const value =
@@ -199,9 +242,10 @@ function MobileCategoryDrawer({ navData, onClose }) {
         ? activeFilterValue
         : null;
 
-    return value
-      ? `${href}?${encodeURIComponent(filter.name)}=${encodeURIComponent(value)}`
-      : href;
+    return withQueryParams(href, {
+      ...(value && { [filter.name]: value }),
+      targetAudience: selectedAudience,
+    });
   };
 
   const withFilter = (href) => withFilterForCategory(activeCategory, href);
@@ -246,6 +290,11 @@ function MobileCategoryDrawer({ navData, onClose }) {
           >
             <FiX size={22} />
           </button>
+        </div>
+
+        {/* ───────── سقف: تب‌های مخاطبِ هدف (اسکرولِ افقی) ───────── */}
+        <div className="flex gap-1.5 overflow-x-auto px-3 py-2.5 border-b border-white/10 flex-shrink-0">
+          <AudienceTabs selected={selectedAudience} onSelect={onSelectAudience} />
         </div>
 
         {/* ───────── سقف: تب‌های ورزش (اسکرولِ افقی) ───────── */}
@@ -308,7 +357,7 @@ function MobileCategoryDrawer({ navData, onClose }) {
           <div className="w-[40%] flex-shrink-0 border-l border-white/10">
             {activeSport?.slug && (
               <Link
-                href={`/${activeSport.slug}`}
+                href={withQueryParams(`/${activeSport.slug}`, { targetAudience: selectedAudience })}
                 onClick={onClose}
                 className="m-2 mb-1 flex min-h-10 items-center justify-center rounded-[6px] border border-[#aa4725]/30 bg-[#aa4725]/10 px-2 py-2 text-center text-[11px] font-bold leading-5 text-[#ffbf00] transition-colors hover:border-[#aa4725]/70 hover:bg-[#aa4725]/20"
               >
@@ -474,6 +523,10 @@ export default function Navbar({ navData: initialNavData = [] }) {
   const [openCart, setOpenCart] = useState(false);
   const [isCategoryOpen, setIsCategoryOpen] = useState(false);
   const navData = Array.isArray(initialNavData) ? initialNavData : [];
+  // انتخابِ مخاطبِ هدف — کاملاً کلاینتی، روی navData ی از پیش کش‌شده فیلتر می‌کند
+  // (بدونِ round-trip یا کلیدِ کشِ تازه). null = «همه محصولات» (بدونِ فیلتر).
+  const [selectedAudience, setSelectedAudience] = useState(null);
+  const filteredNavData = filterNavDataByAudience(navData, selectedAudience);
 
   const [searchQuery, setSearchQuery] = useState("");
   const [searchResults, setSearchResults] = useState([]);
@@ -607,8 +660,10 @@ useEffect(() => {
 
                 {isCategoryOpen && navData.length > 0 && (
                   <CategoryMenu
-                    navData={navData}
+                    navData={filteredNavData}
                     onClose={() => setIsCategoryOpen(false)}
+                    selectedAudience={selectedAudience}
+                    onSelectAudience={setSelectedAudience}
                   />
                 )}
               </div>
@@ -857,8 +912,10 @@ useEffect(() => {
             {isCategoryOpen && (
               <MobileCategoryDrawer
                 key="mobile-cat-drawer"
-                navData={navData}
+                navData={filteredNavData}
                 onClose={() => setIsCategoryOpen(false)}
+                selectedAudience={selectedAudience}
+                onSelectAudience={setSelectedAudience}
               />
             )}
           </AnimatePresence>

@@ -21,6 +21,14 @@ const ProductSchema = new mongoose.Schema(
       default: "none",
     },
 
+    // مخاطبِ هدف — مستقل از مکانیزمِ Category.megaMenuFilterAttribute.
+    // فعلاً اختیاری (Stage 1)؛ پس از Backfill کاملِ داده‌های قدیمی، required می‌شود (Stage 4).
+    targetAudience: {
+      type: String,
+      enum: ["مردانه", "زنانه", "بچگانه", "همه"],
+      default: null,
+    },
+
     category: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "Category",
@@ -143,6 +151,7 @@ ProductSchema.virtual("comments", {
 
 ProductSchema.index({ sport: 1, category: 1, brand: 1, isActive: 1 });
 ProductSchema.index({ isActive: 1, order: 1, createdAt: -1 });
+ProductSchema.index({ targetAudience: 1, isActive: 1, order: 1, createdAt: -1 });
 ProductSchema.index({ sport: 1, isActive: 1, order: 1, createdAt: -1 });
 ProductSchema.index({ sport: 1, category: 1, isActive: 1, order: 1, createdAt: -1 });
 ProductSchema.index({ category: 1, order: 1, createdAt: -1 });

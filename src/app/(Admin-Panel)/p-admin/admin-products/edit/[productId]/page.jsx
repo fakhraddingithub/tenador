@@ -202,6 +202,7 @@ export default function ProductEditPage() {
     technicalStats: {},
     customTabItems: [],
     label: 'none',
+    targetAudience: '',
     isActive: true, // ✨ اضافه شد: مقدار اولیه وضعیت فعال بودن
   });
 
@@ -307,6 +308,7 @@ export default function ProductEditPage() {
             customTabItems: customTabItemTitles,
 
             label: p.label || 'none',
+            targetAudience: p.targetAudience || '',
             isActive: p.isActive ?? true, // ✨ اضافه شد: دریافت وضعیت فعلی محصول از دیتابیس
           });
 
@@ -648,6 +650,7 @@ export default function ProductEditPage() {
         technicalStats: normalizedStats,
         customTabItems: formData.customTabItems || [],
         label: formData.label,
+        targetAudience: formData.targetAudience,
         isActive: formData.isActive, // ✨ اضافه شد: ارسال وضعیت محصول در ریکوئست آپدیت
         // Always send variantOptions so backend can sync
         variantOptions,
@@ -851,6 +854,17 @@ export default function ProductEditPage() {
               { value: 'new', label: 'جدید' },
               { value: 'hot', label: 'پرطرفدار' },
               { value: 'limited', label: 'تعداد محدود' },
+            ]}
+          />
+          <Select
+            label="مخاطب هدف"
+            value={formData.targetAudience}
+            onChange={e => updateField('targetAudience', e.target.value)}
+            options={[
+              { value: 'مردانه', label: 'مردانه' },
+              { value: 'زنانه', label: 'زنانه' },
+              { value: 'بچگانه', label: 'بچگانه' },
+              { value: 'همه', label: 'همه' },
             ]}
           />
           <Select

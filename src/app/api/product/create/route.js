@@ -81,6 +81,7 @@ export async function POST(req) {
       technicalStats,
       customTabItems,
       label,
+      targetAudience,
       isActive, // ✨ اضافه شد: دریافت وضعیت فعال بودن از فرانت‌اند
       variantOptions,
       variantDetails,
@@ -208,6 +209,7 @@ export async function POST(req) {
       customTabItems: resolvedCustomTabItemIds,
       variantMeta: variantMeta && typeof variantMeta === "object" ? variantMeta : {},
       label: label || "none",
+      targetAudience: targetAudience || null,
       isActive: isActive !== undefined ? isActive : true, // ✨ اضافه شد: اگر ارسال نشود به صورت پیش‌فرض true خواهد بود
     });
 
