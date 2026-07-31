@@ -221,12 +221,6 @@ const ProductInfo = ({ product, selectedVariant, onVariantChange, onSelectionCha
     return true; // اعتبارسنجی موفق → افزودن انجام شد
   }
 
-  const handleWishlist = (isWishlisted) => {
-    console.log(
-      isWishlisted ? "به علاقه‌مندی‌ها اضافه شد" : "از علاقه‌مندی‌ها حذف شد"
-    );
-  };
-
   return (
     <div className="flex flex-col h-full justify-between gap-6 relative">
       {/* Brand logo */}
@@ -519,7 +513,7 @@ const ProductInfo = ({ product, selectedVariant, onVariantChange, onSelectionCha
                 پیامِ inline بالای دکمه نمایش داده می‌شود (handleAddToCart) */}
             <AddToCartButton onAddToCart={handleAddToCart} />
           </div>
-          <WishlistButton onToggle={handleWishlist} />
+          <WishlistButton product={product} />
         </div>
       </div>
 

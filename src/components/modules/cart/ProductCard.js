@@ -5,9 +5,11 @@ import Image from "next/image";
 import Link from "next/link";
 import { FaEye, FaRegHeart, FaHeart, FaArrowLeft } from "react-icons/fa";
 import { valueImageSwatches } from "@/lib/variantImages";
+import useWishlist from "@/hooks/useWishlist";
 
-export default function ProductCard({ product, rate, onQuickView, onToggleWishlist, isWishlisted = false, overlay = null, campaignBadge = null }) {
+export default function ProductCard({ product, rate, onQuickView, overlay = null, campaignBadge = null }) {
   const { mainImage, name, slug, basePrice, label } = product;
+  const { isWishlisted, toggle: toggleWishlist, isLoading: wishlistLoading } = useWishlist(product);
 
   // ── قیمت‌ها از سرور می‌آیند (attachListingPrices) — دیگر هیچ درخواست price-API
   //    به ازای هر کارت زده نمی‌شود. در صورت نبودِ مقدار سروری، fallback محلی. ──
@@ -152,7 +154,8 @@ export default function ProductCard({ product, rate, onQuickView, onToggleWishli
           <ActionButton
             icon={isWishlisted ? <FaHeart className="text-red-500" /> : <FaRegHeart />}
             label={isWishlisted ? "حذف از لیست" : "افزودن به علاقه مندی"}
-            onClick={(e) => { e.preventDefault(); onToggleWishlist(); }}
+            disabled={wishlistLoading}
+            onClick={(e) => { e.preventDefault(); e.stopPropagation(); toggleWishlist(); }}
           />
         </div>
       </div>
@@ -160,14 +163,14 @@ export default function ProductCard({ product, rate, onQuickView, onToggleWishli
   );
 }
 
-function ActionButton({ icon, label, onClick }) {
+function ActionButton({ icon, label, onClick, disabled = false }) {
   return (
     <div className="relative group/btn flex flex-col items-center">
       <span className="absolute -top-9 bg-gray-800 text-white text-[9px] px-2 py-1 rounded-[3px] whitespace-nowrap opacity-0 group-hover/btn:opacity-100 transition-all duration-300 pointer-events-none transform translate-y-1 group-hover/btn:translate-y-0">
         {label}
         <span className="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent border-t-gray-800" />
       </span>
-      <button onClick={onClick} className="text-gray-800 hover:text-[var(--color-primary)] transition-colors duration-300 text-[18px]">{icon}</button>
+      <button type="button" onClick={onClick} disabled={disabled} aria-label={label} className="text-gray-800 hover:text-[var(--color-primary)] transition-colors duration-300 text-[18px] disabled:cursor-wait disabled:opacity-50">{icon}</button>
     </div>
   );
 }

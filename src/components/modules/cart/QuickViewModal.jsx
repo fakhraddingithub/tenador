@@ -15,6 +15,7 @@ import GalleryImageViewer from "@/components/ui/GalleryImageViewer";
 import VariantSelector from "@/components/templates/product/VariantSelector";
 import AddToCartButton from "@/components/templates/product/AddToCartButton";
 import { flyToCart } from "@/lib/flyToCart";
+import useWishlist from "@/hooks/useWishlist";
 import {
   buildGalleryImages,
   valueImages,
@@ -67,9 +68,8 @@ function QuickViewContent({
   product,
   rate,
   onClose,
-  onToggleWishlist,
-  isWishlisted,
 }) {
+  const { isWishlisted, toggle: toggleWishlist, isLoading: wishlistLoading } = useWishlist(product);
   const hasVariants =
     Array.isArray(product.variants) && product.variants.length > 0;
 
@@ -556,11 +556,13 @@ function QuickViewContent({
               </div>
 
               <button
-                onClick={onToggleWishlist}
+                onClick={toggleWishlist}
+                disabled={wishlistLoading}
+                aria-label={isWishlisted ? "حذف از علاقه‌مندی‌ها" : "افزودن به علاقه‌مندی‌ها"}
                 className={`
                   flex-1 h-[52px]
                   flex items-center justify-center rounded-[6px] border-2 transition-all
-                  min-w-[46px]
+                  min-w-[46px] disabled:cursor-wait disabled:opacity-60
                   ${
                     isWishlisted
                       ? "bg-red-50 border-red-100 text-red-500"

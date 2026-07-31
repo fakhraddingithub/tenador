@@ -6,6 +6,8 @@ import ScrollToTop from '@/components/common/ScrollToTop'
 import NavigationLoader from '@/components/common/NavigationLoader'
 import InitialLoadLoader from '@/components/common/InitialLoadLoader'
 import DashboardBody from './DashboardBody'
+import { ToastContainer } from 'react-toastify'
+import 'react-toastify/dist/ReactToastify.css'
 
 export const metadata = {
   title: "حساب کاربری",
@@ -41,6 +43,7 @@ export default function RootLayout({ children }) {
 
           <DashboardBody>{children}</DashboardBody>
         </div>
+        <ToastContainer position="top-left" autoClose={3000} rtl />
       </body>
     </html>
   )

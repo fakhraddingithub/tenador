@@ -1,24 +1,23 @@
 "use client";
 
-import { useState } from "react";
 import { FiHeart } from "react-icons/fi";
 import { FaHeart } from "react-icons/fa";
 import { motion, AnimatePresence } from "framer-motion";
+import useWishlist from "@/hooks/useWishlist";
 
-const WishlistButton = ({ onToggle }) => {
-  const [active, setActive] = useState(false);
+const WishlistButton = ({ product }) => {
+  const { isWishlisted: active, toggle, isLoading } = useWishlist(product);
 
   const handleClick = () => {
-    const next = !active;
-    setActive(next);
-    onToggle?.(next);
+    toggle();
   };
 
   return (
     <button
       onClick={handleClick}
+      disabled={isLoading}
       aria-label={active ? "حذف از علاقه‌مندی‌ها" : "افزودن به علاقه‌مندی‌ها"}
-      className="relative outline-none group"
+      className="relative outline-none group disabled:cursor-wait disabled:opacity-60"
     >
       <motion.div
         whileTap={{ scale: 0.85 }}
