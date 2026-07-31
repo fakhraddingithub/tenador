@@ -421,10 +421,13 @@ const AddressesModule = () => {
            </div>
 
            <div className="space-y-1">
-             <label className="text-xs text-gray-500">کد پستی</label>
+             <label className="text-xs text-gray-500">
+               کد پستی
+               <span className="text-gray-400 mr-1">(اختیاری)</span>
+             </label>
              <input
                type="text"
-               placeholder="۱۰ رقم"
+               placeholder="کد پستی"
                value={formData.postalCode}
                onChange={(e) =>
                  setFormData({ ...formData, postalCode: e.target.value })

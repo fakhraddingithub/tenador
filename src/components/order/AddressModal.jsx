@@ -55,10 +55,6 @@ const AddressModal = ({
       toast.error('آدرس کامل الزامی است');
       return false;
     }
-    if (!formData.postalCode.trim() || !/^\d{10}$/.test(formData.postalCode)) {
-      toast.error('کد پستی باید ۱۰ رقمی باشد');
-      return false;
-    }
     return true;
   };
 
@@ -165,7 +161,9 @@ const AddressModal = ({
                                 <FiPhone className="w-3 h-3" />
                                 {address.phone}
                               </span>
-                              <span>کد پستی: {address.postalCode}</span>
+                              {address.postalCode && (
+                                <span>کد پستی: {address.postalCode}</span>
+                              )}
                             </div>
                           </div>
                           {selected && (
@@ -307,10 +305,13 @@ const AddressModal = ({
 
               {/* کد پستی */}
               <div className="space-y-1">
-                <label className="text-xs text-gray-500">کد پستی</label>
+                <label className="text-xs text-gray-500">
+                  کد پستی
+                  <span className="text-gray-400 mr-1">(اختیاری)</span>
+                </label>
                 <input
                   type="text"
-                  placeholder="۱۰ رقم"
+                  placeholder="کد پستی"
                   value={formData.postalCode}
                   onChange={(e) => handleInputChange('postalCode', e.target.value)}
                   className="w-full border border-gray-300 rounded-[6px] py-2.5 px-3 text-sm focus:outline-none focus:border-[#aa4725] focus:ring-2 focus:ring-[#aa4725]/20 transition"

@@ -4,7 +4,5 @@ export const validateAddress = (data) => {
     if (!/^09\d{9}$/.test(data.phone)) return 'شماره موبایل معتبر نیست';
     if (!data.city?.trim()) return 'شهر الزامی است';
     if (!data.addressLine?.trim()) return 'آدرس کامل الزامی است';
-    if (!/^\d{10}$/.test(data.postalCode)) return 'کد پستی باید ۱۰ رقمی باشد';
     return null;
   };
-  

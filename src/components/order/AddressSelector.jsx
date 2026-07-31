@@ -48,7 +48,9 @@ const AddressSelector = ({ selectedAddress, onOpenModal }) => {
 
           <div className="flex flex-wrap items-center gap-4 text-xs text-gray-500">
             <span>تلفن: {selectedAddress.phone}</span>
-            <span>کد پستی: {selectedAddress.postalCode}</span>
+            {selectedAddress.postalCode && (
+              <span>کد پستی: {selectedAddress.postalCode}</span>
+            )}
           </div>
         </div>
       ) : (
