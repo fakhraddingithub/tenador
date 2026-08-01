@@ -86,9 +86,18 @@ export async function syncOrderFulfillmentFromTracking(orderId) {
     const next = decideAutoFulfillment(order.fulfillmentStatus, statuses);
     if (!next) return null;
 
+    const set = { fulfillmentStatus: next };
+    // گذارِ واقعی به DELIVERED → پایه‌ی زمانِ پیگیریِ سه‌روزه؛ چرخه‌ی
+    // پیگیری هم برای این تحویلِ تازه ریست می‌شود (اگر قبلاً PROCESSING شده
+    // و دوباره DELIVERED شده باشد).
+    if (next === "DELIVERED") {
+      set.deliveredAt = new Date();
+      set.reviewFollowUpSentAt = null;
+    }
+
     const res = await Order.updateOne(
       { _id: id, fulfillmentStatus: order.fulfillmentStatus },
-      { $set: { fulfillmentStatus: next } }
+      { $set: set }
     );
     if (res.modifiedCount > 0) {
       if (next === "DELIVERED") notifyOrderDelivered(id);

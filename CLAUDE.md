@@ -23,7 +23,10 @@ npm run migrate:category-sport   # Drops global slug unique indexes, adds per-sp
 npm run worker:prices
 npm run worker:discounts
 npm run worker:installment-reminders   # Sends installment due-date reminders
+npm run worker:review-followup         # Sends "did your order arrive?" follow-up 3 days after delivery
 ```
+
+`installment-reminders` and `review-followup` are periodic scans (not BullMQ), designed to be triggered by an external scheduler rather than run continuously. In production they run via **Vercel Cron** (`vercel.json`), which calls `GET /api/cron/installment-reminders` and `GET /api/cron/review-followup` — both check an `Authorization: Bearer $CRON_SECRET` header (Vercel sets this automatically when `CRON_SECRET` is configured as a project env var) and 401 otherwise. The `npm run worker:*` scripts remain for local/manual runs.
 
 ## Architecture
 
@@ -135,4 +138,5 @@ EMAIL_HOST / EMAIL_PORT / EMAIL_USER / EMAIL_PASS / EMAIL_FROM / ADMIN_EMAIL
 BULLMQ_QUEUE / BATCH_SIZE / PRECOMPUTE_CONCURRENCY / PRICE_CACHE_TTL
 REDIS_URL                                                    # BullMQ connection (workers)
 NEXT_PUBLIC_VAPID_PUBLIC_KEY / VAPID_PRIVATE_KEY / VAPID_SUBJECT   # Web push
+CRON_SECRET                                                  # Authenticates Vercel Cron requests to /api/cron/*
 ```

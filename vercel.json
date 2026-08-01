@@ -1,0 +1,6 @@
+{
+  "crons": [
+    { "path": "/api/cron/installment-reminders", "schedule": "0 6 * * *" },
+    { "path": "/api/cron/review-followup", "schedule": "0 7 * * *" }
+  ]
+}

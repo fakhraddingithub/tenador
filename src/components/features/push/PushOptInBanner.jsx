@@ -65,9 +65,19 @@ export default function PushOptInBanner() {
         // ثبتِ Service Worker (در ریشهٔ سایت تا scope کامل داشته باشد)
         const registration = await navigator.serviceWorker.register('/sw.js');
 
-        // ۴) اگر از قبل subscribe شده → بنر را نشان نده
+        // ۴) اگر از قبل subscribe شده → بنر را نشان نده، ولی دوباره به سرور
+        //    اطلاع بده تا در صورت لاگین‌شدنِ کاربر بعد از subscribe اولیه (که
+        //    وقتش userId نداشت)، رکورد به حساب فعلی لینک شود — وگرنه
+        //    sendPushToUser هیچ‌وقت این اشتراک را پیدا نمی‌کند.
         const existing = await registration.pushManager.getSubscription();
-        if (existing) return;
+        if (existing) {
+          fetch('/api/push/subscribe', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ subscription: existing.toJSON() }),
+          }).catch(() => {});
+          return;
+        }
 
         if (!cancelled) setVisible(true);
       } catch (err) {

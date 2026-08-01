@@ -17,6 +17,7 @@
     "worker:prices": "node workers/priceWorker.js",
     "worker:discounts": "node workers/discountWorker.js",
     "worker:installment-reminders": "node workers/installmentReminderWorker.js",
+    "worker:review-followup": "node workers/reviewFollowUpWorker.js",
     "ensure:indexes": "node scripts/ensureIndexes.js",
     "verify:admin-auth": "node scripts/verify-admin-auth.mjs"
   },

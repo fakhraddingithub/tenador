@@ -220,6 +220,11 @@ const OrderSchema = new mongoose.Schema(
       default: "WAITING",
     },
 
+    // فقط توسط orderFulfillmentSync.js ست می‌شود (نه PATCH دستی ادمین) — پایه‌ی
+    // زمان‌بندیِ پیگیریِ «آیا سفارش به‌دستتان رسید؟» سه روز بعد.
+    deliveredAt: { type: Date, default: null },
+    reviewFollowUpSentAt: { type: Date, default: null },
+
     address: {
       ref: {
         type: mongoose.Schema.Types.ObjectId,

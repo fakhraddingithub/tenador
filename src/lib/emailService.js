@@ -707,6 +707,25 @@ export async function sendReviewRequestEmail(order, customerEmail) {
 }
 
 /**
+ * ایمیل «سفارش به‌دستتان رسید؟» — پیگیریِ سه‌روزه پس از تحویل.
+ */
+export async function sendDeliveryFollowUpEmail(order, customerEmail) {
+  const html = buildSimpleNoticeHtml({
+    title: 'سفارش شما به‌دستتان رسید؟',
+    emoji: '📬',
+    greeting: 'با سلام،<br>چند روزی از تحویل سفارش شما می‌گذرد. لطفاً از دریافت آن اطمینان حاصل کنید؛ اگر مشکلی وجود داشت یا هنوز آن را دریافت نکرده‌اید، حتماً به ما اطلاع دهید.',
+    rows: [
+      { label: 'کد سفارش', value: escapeHtml(order.trackingCode ?? '—') },
+    ],
+    note: 'در صورت دریافت سفارش، خوشحال می‌شویم نظر شما را هم بخوانیم — اعتبار کیف پول هدیه می‌گیرید.',
+    ctaPath: '/p-user/orders',
+    ctaLabel: 'مشاهده سفارش من',
+  });
+
+  await sendSingle(customerEmail, `سفارش شما به‌دستتان رسید؟ — ${order.trackingCode}`, html);
+}
+
+/**
  * ایمیل «کیف پول شارژ شد» — بابت نظر تأییدشده روی سفارش.
  */
 export async function sendWalletCreditEmail({ trackingCode, amount }, customerEmail) {
