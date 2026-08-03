@@ -167,7 +167,7 @@ const OrderSummary = ({ order }) => {
           )}
           {order.couponDiscount > 0 && (
             <div className="flex justify-between items-center text-emerald-600">
-              <span>تخفیف کد «{order.coupon?.code}»</span>
+              <span>{order.coupon?.isManual ? "تخفیف مدیریت" : `تخفیف کد «${order.coupon?.code}»`}</span>
               <span className="font-medium">− {formatPrice(order.couponDiscount)}</span>
             </div>
           )}

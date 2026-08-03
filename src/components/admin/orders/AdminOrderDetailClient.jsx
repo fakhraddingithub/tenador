@@ -1925,6 +1925,113 @@ function EurPanel({ orderId, priceEUR, paymentsEUR = [], onChange, onEditPayment
 }
 
 /* ─── Main Page ─────────────────────────────────────────────────────── */
+/* ─── Management Discount Modal (تخفیف مدیریت) ──────────────────────── */
+// اعمالِ یک تخفیف دستیِ متعلق به همین سفارش — دقیقاً همان فیلد/محاسبه‌ی کوپن،
+// فقط بدون ساختن کدِ تخفیفِ سراسری.
+function ManagementDiscountModal({ order, orderId, onSuccess, onClose }) {
+  const hasRealCoupon = Boolean(order.coupon?.code) && !order.coupon?.isManual;
+  const [amount, setAmount] = useState(
+    order.coupon?.isManual ? String(order.couponDiscount || "") : ""
+  );
+  const [submitting, setSubmitting] = useState(false);
+  const inputRef = useRef(null);
+
+  useEffect(() => { setTimeout(() => inputRef.current?.focus(), 100); }, []);
+
+  const parsed = Math.floor(Number(String(amount).replace(/,/g, "")));
+  const valid = Number.isFinite(parsed) && parsed > 0;
+
+  const handleSubmit = async () => {
+    if (!valid) { toast.error("مبلغ تخفیف را به‌درستی وارد کنید"); return; }
+    setSubmitting(true);
+    try {
+      const res = await fetch(`/api/admin/orders/${orderId}/discount`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ amount: parsed }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.message || "خطا در اعمال تخفیف");
+      toast.success(data.message || "تخفیف مدیریت اعمال شد");
+      onSuccess();
+      onClose();
+    } catch (err) {
+      toast.error(err.message || "خطا در اعمال تخفیف");
+      setSubmitting(false);
+    }
+  };
+
+  return (
+    <motion.div
+      initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+      className="fixed inset-0 z-[260] flex items-center justify-center p-4"
+      style={{ background: "rgba(0,0,0,0.5)", backdropFilter: "blur(4px)" }}
+      onClick={onClose}
+    >
+      <motion.div
+        initial={{ scale: 0.92, opacity: 0, y: 20 }} animate={{ scale: 1, opacity: 1, y: 0 }}
+        exit={{ scale: 0.92, opacity: 0, y: 20 }}
+        transition={{ type: "spring", damping: 24, stiffness: 280 }}
+        className="bg-white rounded-2xl shadow-2xl w-full max-w-sm overflow-hidden"
+        dir="rtl" onClick={(e) => e.stopPropagation()}
+      >
+        <div className="bg-[var(--color-primary)] px-5 py-4 flex items-center justify-between">
+          <div className="flex items-center gap-2 text-white">
+            <Tag size={16} />
+            <span className="font-bold text-sm">تخفیف مدیریت</span>
+          </div>
+          <button onClick={onClose} className="text-white/70 hover:text-white transition">
+            <X size={18} />
+          </button>
+        </div>
+        <div className="p-5 space-y-4">
+          {hasRealCoupon && (
+            <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 text-xs text-amber-700 leading-relaxed">
+              <div className="flex items-center gap-1.5 font-bold mb-1">
+                <AlertTriangle size={12} /><span>این سفارش کد تخفیف دارد</span>
+              </div>
+              <p>
+                کد «{order.coupon.code}» به مبلغ {formatPrice(order.couponDiscount)} تومان روی این سفارش فعال است؛
+                ابتدا باید آن حذف شود (این مسیر جایگزینِ خودکار انجام نمی‌دهد).
+              </p>
+            </div>
+          )}
+          <div>
+            <label className="block text-sm font-bold text-gray-700 mb-2">
+              مبلغ تخفیف (تومان) <span className="text-red-500">*</span>
+            </label>
+            <div className="relative">
+              <AdminInput
+                ref={inputRef} type="number" min="1" value={amount}
+                onChange={(e) => setAmount(e.target.value)}
+                onKeyDown={(e) => e.key === "Enter" && handleSubmit()}
+                disabled={hasRealCoupon}
+                placeholder="مبلغ را به تومان وارد کنید"
+                className="w-full border border-gray-300 rounded-xl px-4 py-3 text-sm font-bold text-gray-800
+                  focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)]/30 focus:border-[var(--color-primary)] transition
+                  disabled:opacity-50"
+              />
+              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs text-gray-400">تومان</span>
+            </div>
+          </div>
+          <div className="flex gap-3">
+            <button onClick={handleSubmit} disabled={submitting || !valid || hasRealCoupon}
+              className="flex-1 bg-[var(--color-primary)] hover:bg-[var(--color-primary-hover)] text-white font-bold py-2.5 rounded-xl text-sm
+                transition flex items-center justify-center gap-2 disabled:opacity-60">
+              {submitting ? <Loader2 size={15} className="animate-spin" /> : <Tag size={15} />}
+              اعمال تخفیف
+            </button>
+            <button onClick={onClose}
+              className="flex-1 bg-gray-100 hover:bg-gray-200 text-gray-600 font-bold py-2.5 rounded-xl text-sm transition">
+              انصراف
+            </button>
+          </div>
+        </div>
+      </motion.div>
+    </motion.div>
+  );
+}
+
 export default function AdminOrderDetailClient({ orderId }) {
   const router = useRouter();
   const [order, setOrder] = useState(null);
@@ -1940,6 +2047,8 @@ export default function AdminOrderDetailClient({ orderId }) {
   const [addItemOpen, setAddItemOpen] = useState(false);
   const [editPaymentTarget, setEditPaymentTarget] = useState(null); // { payment, currency }
   const [itemBusy, setItemBusy] = useState(null); // item._id در حال تغییر
+  const [discountModalOpen, setDiscountModalOpen] = useState(false);
+  const [discountBusy, setDiscountBusy] = useState(false);
 
   const fetchOrder = useCallback(async () => {
     setLoading(true);
@@ -2099,6 +2208,32 @@ export default function AdminOrderDetailClient({ orderId }) {
       toast.error(err.message || "خطا در حذف آیتم");
     } finally {
       setItemBusy(null);
+    }
+  };
+
+  // ─── حذف تخفیف مدیریت ───
+  const handleRemoveDiscount = async () => {
+    const result = await Swal.fire({
+      ...getSwalTheme(),
+      title: "حذف تخفیف مدیریت",
+      text: "تخفیف مدیریت از این سفارش حذف شود؟ مبلغ کل دوباره محاسبه می‌شود.",
+      showCancelButton: true,
+      confirmButtonText: "بله، حذف کن",
+      cancelButtonText: "انصراف",
+      confirmButtonColor: "#dc2626",
+    });
+    if (!result.isConfirmed) return;
+    setDiscountBusy(true);
+    try {
+      const res = await fetch(`/api/admin/orders/${orderId}/discount`, { method: "DELETE" });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.message || "خطا");
+      toast.success(data.message || "تخفیف مدیریت حذف شد");
+      await fetchOrder();
+    } catch (err) {
+      toast.error(err.message || "خطا در حذف تخفیف");
+    } finally {
+      setDiscountBusy(false);
     }
   };
 
@@ -2494,10 +2629,41 @@ export default function AdminOrderDetailClient({ orderId }) {
                   </div>
                 )}
                 {order.couponDiscount > 0 && (
-                  <div className="flex justify-between text-gray-500">
-                    <span>تخفیف کوپن {order.coupon?.code && `(${order.coupon.code})`}</span>
-                    <span className="text-green-600">- {formatPrice(order.couponDiscount)} تومان</span>
+                  <div className="flex justify-between items-center text-gray-500">
+                    <span>
+                      {order.coupon?.isManual
+                        ? "تخفیف مدیریت"
+                        : `تخفیف کوپن ${order.coupon?.code ? `(${order.coupon.code})` : ""}`}
+                    </span>
+                    <span className="flex items-center gap-2">
+                      <span className="text-green-600">- {formatPrice(order.couponDiscount)} تومان</span>
+                      {order.coupon?.isManual && (
+                        <>
+                          <button
+                            onClick={() => setDiscountModalOpen(true)}
+                            className="text-[10px] font-bold text-gray-400 hover:text-[var(--color-primary)]"
+                          >
+                            ویرایش
+                          </button>
+                          <button
+                            disabled={discountBusy}
+                            onClick={handleRemoveDiscount}
+                            className="text-[10px] font-bold text-red-400 hover:text-red-600 disabled:opacity-40"
+                          >
+                            حذف
+                          </button>
+                        </>
+                      )}
+                    </span>
                   </div>
+                )}
+                {!order.coupon?.code && (
+                  <button
+                    onClick={() => setDiscountModalOpen(true)}
+                    className="flex items-center gap-1.5 text-[11px] font-bold text-[var(--color-primary)] hover:underline"
+                  >
+                    <Tag size={11} /> افزودن تخفیف مدیریت
+                  </button>
                 )}
                 <div className="flex justify-between font-black text-sm text-gray-900 border-t border-gray-100 pt-2">
                   <span>مبلغ نهایی</span>
@@ -2677,6 +2843,18 @@ export default function AdminOrderDetailClient({ orderId }) {
             currency={editPaymentTarget.currency}
             onConfirm={handleEditPayment}
             onClose={() => setEditPaymentTarget(null)}
+          />
+        )}
+      </AnimatePresence>
+
+      {/* Management Discount Modal (تخفیف مدیریت) */}
+      <AnimatePresence>
+        {discountModalOpen && (
+          <ManagementDiscountModal
+            order={order}
+            orderId={orderId}
+            onSuccess={fetchOrder}
+            onClose={() => setDiscountModalOpen(false)}
           />
         )}
       </AnimatePresence>

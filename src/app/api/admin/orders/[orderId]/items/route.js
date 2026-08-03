@@ -24,12 +24,11 @@ import mongoose from "mongoose";
 import connectToDB from "base/configs/db";
 import "base/models/registerModels";
 import Order from "base/models/Order";
-import Payment from "base/models/Payment";
 import Product from "base/models/Product";
 import Variant from "base/models/Variant";
 import UsedProduct from "base/models/UsedProduct";
 import { computeCartPrice } from "base/services/priceEngine";
-import { recomputeOrderTotals, derivePaymentStatus } from "base/services/orderRecalc";
+import { recalcAndApply } from "base/services/orderRecalc";
 import { buildVariantSnapshot } from "@/lib/variantImages";
 
 import requireAdmin, { unauthorized } from "@/lib/requireAdmin";
@@ -41,30 +40,6 @@ async function getAdminUser() {
 }
 
 const isId = (v) => v && mongoose.Types.ObjectId.isValid(v);
-
-/**
- * مجموع پرداخت‌های تأییدشده‌ی تومانی + بازمحاسبه‌ی مبالغ و وضعیت پرداخت روی سند.
- * (روی همان session اجرا می‌شود.)
- */
-async function recalcAndApply(order, session) {
-  const totals = recomputeOrderTotals(order);
-  order.subtotalPrice = totals.subtotalPrice;
-  order.discountAmount = totals.discountAmount;
-  order.couponDiscount = totals.couponDiscount;
-  order.totalPrice = totals.totalPrice;
-
-  // مجموع پرداخت‌های PAID — برای تعیین مجدد وضعیت پرداخت
-  const paidPayments = await Payment.find({
-    _id: { $in: order.payments || [] },
-    status: "PAID",
-  })
-    .session(session)
-    .lean();
-  const totalPaid = paidPayments.reduce((s, p) => s + (p.amount || 0), 0);
-
-  order.paymentStatus = derivePaymentStatus(totalPaid, order.totalPrice);
-  // fulfillmentStatus عمداً دست‌نخورده می‌ماند — جریانِ ارسال را ادمین دستی مدیریت می‌کند.
-}
 
 /* ─── POST: افزودن آیتم جدید ─────────────────────────────────────────── */
 export async function POST(req, { params }) {

@@ -185,6 +185,9 @@ const OrderSchema = new mongoose.Schema(
     coupon: {
       code: { type: String, default: null },
       _id:  { type: mongoose.Schema.Types.ObjectId, ref: "Coupon", default: null },
+      // تخفیف مدیریت: مبلغ به‌صورت دستی توسط ادمین روی همین سفارش ثبت شده — کد
+      // کوپنِ سراسری نیست (بدون سند Coupon)، فقط برای برچسب‌زنیِ نمایش استفاده می‌شود.
+      isManual: { type: Boolean, default: false },
     },
 
     paymentMethod: {

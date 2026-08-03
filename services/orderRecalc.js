@@ -17,6 +17,8 @@
  *                       =  Σ(unitPrice × qty) − couponDiscount
  */
 
+import Payment from "base/models/Payment";
+
 /**
  * بازمحاسبه‌ی subtotalPrice / discountAmount / couponDiscount / totalPrice از روی
  * آرایه‌ی فعلیِ آیتم‌ها و کوپنِ ذخیره‌شده.
@@ -66,4 +68,31 @@ export function derivePaymentStatus(totalPaid, totalPrice) {
   if (paid <= 0) return "UNPAID";
   if (paid >= total) return "PAID";
   return "PARTIALLY_PAID";
+}
+
+/**
+ * بازمحاسبه‌ی مبالغ روی سندِ سفارش (recomputeOrderTotals) + تعیین مجددِ وضعیتِ
+ * پرداخت از روی مجموع پرداخت‌های PAID. روی همان session اجرا می‌شود تا با
+ * ویرایش‌های ادمین (آیتم‌ها یا تخفیف مدیریت) هم‌خوان بماند.
+ *
+ * @param {import("mongoose").Document} order
+ * @param {import("mongoose").ClientSession} session
+ */
+export async function recalcAndApply(order, session) {
+  const totals = recomputeOrderTotals(order);
+  order.subtotalPrice = totals.subtotalPrice;
+  order.discountAmount = totals.discountAmount;
+  order.couponDiscount = totals.couponDiscount;
+  order.totalPrice = totals.totalPrice;
+
+  const paidPayments = await Payment.find({
+    _id: { $in: order.payments || [] },
+    status: "PAID",
+  })
+    .session(session)
+    .lean();
+  const totalPaid = paidPayments.reduce((s, p) => s + (p.amount || 0), 0);
+
+  order.paymentStatus = derivePaymentStatus(totalPaid, order.totalPrice);
+  // fulfillmentStatus عمداً دست‌نخورده می‌ماند — جریانِ ارسال را ادمین دستی مدیریت می‌کند.
 }

@@ -209,7 +209,9 @@ function OrderDetailModal({ order, onClose, isStore = false }) {
                 )}
                 {(order.couponDiscount ?? 0) > 0 && (
                   <div className="flex justify-between px-4 py-2.5 text-emerald-600">
-                    <span className="text-gray-500">تخفیف کد «{order.coupon?.code}»</span>
+                    <span className="text-gray-500">
+                      {order.coupon?.isManual ? "تخفیف مدیریت" : `تخفیف کد «${order.coupon?.code}»`}
+                    </span>
                     <span className="font-medium">− {formatPrice(order.couponDiscount)} تومان</span>
                   </div>
                 )}

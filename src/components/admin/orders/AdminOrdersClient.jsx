@@ -470,7 +470,12 @@ function OrderDetailModal({ orderId, onClose, onOpenFull }) {
                 <ModalSection title="خلاصه مبلغ" icon={Receipt}>
                   <InfoRow label="جمع اقلام" value={`${formatPrice(order.subtotalPrice)} ت`} />
                   {order.discountAmount > 0 && <InfoRow label="تخفیف" value={`${formatPrice(order.discountAmount)} ت`} />}
-                  {order.couponDiscount > 0 && <InfoRow label={`تخفیف کد ${order.coupon?.code || ""}`} value={`${formatPrice(order.couponDiscount)} ت`} />}
+                  {order.couponDiscount > 0 && (
+                    <InfoRow
+                      label={order.coupon?.isManual ? "تخفیف مدیریت" : `تخفیف کد ${order.coupon?.code || ""}`}
+                      value={`${formatPrice(order.couponDiscount)} ت`}
+                    />
+                  )}
                   <InfoRow label="مبلغ کل" value={<span className="text-[var(--color-primary)] font-black">{formatPrice(order.totalPrice)} ت</span>} />
                   {order.priceEUR ? <InfoRow label="مبلغ یورویی" value={`€ ${formatPrice(order.priceEUR)}`} /> : null}
                 </ModalSection>
