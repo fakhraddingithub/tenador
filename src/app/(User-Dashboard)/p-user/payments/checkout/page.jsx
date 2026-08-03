@@ -8,13 +8,13 @@ const Page = () => {
   return (
     <div className="min-h-screen flex flex-col">
       <ToastContainer position="top-center" autoClose={3000} rtl theme="light" />
-      <header className="bg-white border-b border-gray-200 py-4 px-6 sticky top-0 z-50">
+      <header className="bg-white border-b border-gray-200 py-3.5 px-4 sm:py-4 sm:px-6 sticky top-0 z-50">
         <div className="max-w-4xl mx-auto flex justify-between items-center">
-          <h1 className="text-xl font-bold text-[var(--color-primary)]">پرداخت سفارش</h1>
+          <h1 className="text-lg sm:text-xl font-bold text-[var(--color-primary)]">پرداخت سفارش</h1>
           <div className="hidden sm:block text-sm text-gray-500 font-medium">پایانه پرداخت امن (SSL)</div>
         </div>
       </header>
-      <div className="flex-grow bg-gray-50 py-8 px-4">
+      <div className="flex-grow bg-gray-50 py-5 px-3 sm:py-8 sm:px-4">
         <div className="max-w-6xl mx-auto">
           <CheckoutPaymentPage />
         </div>

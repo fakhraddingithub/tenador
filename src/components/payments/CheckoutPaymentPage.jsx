@@ -286,7 +286,7 @@ const CheckoutPaymentPage = () => {
           <OrderSummary order={pseudoOrder} />
         </div>
 
-        <div className="md:w-2/3 flex flex-col gap-6 md:px-6">
+        <div className="md:w-2/3 flex flex-col gap-4 sm:gap-6 md:px-6">
           <BankInfoBox />
 
           <ReceiptUploader onFileChange={setReceiptUrls} />

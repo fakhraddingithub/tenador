@@ -206,12 +206,12 @@ export default function NotificationBell() {
       <AnimatePresence>
         {open && (
           <motion.div
-            initial={{ opacity: 0, y: -8, scale: 0.97 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: -8, scale: 0.97 }}
+            initial={{ opacity: 0, x: "-50%", y: -8, scale: 0.97 }}
+            animate={{ opacity: 1, x: "-50%", y: 0, scale: 1 }}
+            exit={{ opacity: 0, x: "-50%", y: -8, scale: 0.97 }}
             transition={{ duration: 0.18, ease: [0.4, 0, 0.2, 1] }}
             dir="rtl"
-            className="absolute left-0 mt-2 w-[360px] max-w-[calc(100vw-2rem)] rounded-2xl overflow-hidden z-[60] origin-top-left"
+            className="absolute left-1/2 mt-2 w-[min(360px,calc(100vw-2rem))] rounded-2xl overflow-hidden z-[60] origin-top"
             style={{
               background: "#0d0d0d",
               boxShadow: "0 20px 50px -12px rgba(0,0,0,0.55), 0 0 0 1px rgba(255,255,255,0.06)",
@@ -224,12 +224,12 @@ export default function NotificationBell() {
             />
 
             {/* هدر پنل */}
-            <div className="flex items-center justify-between px-4 py-3 border-b border-white/[0.06]">
-              <div className="flex items-center gap-2">
-                <span className="text-white font-bold text-sm">اعلان‌ها</span>
+            <div className="flex items-center justify-between gap-2 px-3.5 py-2.5 sm:px-4 sm:py-3 border-b border-white/[0.06]">
+              <div className="flex items-center gap-2 min-w-0">
+                <span className="text-white font-bold text-sm shrink-0">اعلان‌ها</span>
                 {total > 0 && (
                   <span
-                    className="text-[10px] font-bold px-1.5 py-0.5 rounded-full"
+                    className="text-[10px] font-bold px-1.5 py-0.5 rounded-full shrink-0"
                     style={{ background: "rgba(255,191,0,0.15)", color: "var(--color-secondary)" }}
                   >
                     {Number(total).toLocaleString("fa-IR")} جدید
@@ -239,7 +239,7 @@ export default function NotificationBell() {
               <button
                 onClick={handleMarkAll}
                 disabled={total === 0}
-                className="flex items-center gap-1.5 text-[11px] font-bold text-white/45 hover:text-[var(--color-secondary)] disabled:opacity-30 disabled:hover:text-white/45 transition-colors"
+                className="flex items-center gap-1.5 text-[11px] font-bold text-white/45 hover:text-[var(--color-secondary)] disabled:opacity-30 disabled:hover:text-white/45 transition-colors shrink-0"
               >
                 <CheckCheck size={13} />
                 خواندن همه
@@ -247,7 +247,7 @@ export default function NotificationBell() {
             </div>
 
             {/* بدنه */}
-            <div className="max-h-[400px] overflow-y-auto admin-scrollbar divide-y divide-white/[0.04]">
+            <div className="max-h-[65vh] sm:max-h-[400px] overflow-y-auto admin-scrollbar divide-y divide-white/[0.04]">
               {loading ? (
                 <div className="py-3">
                   {[0, 1, 2, 3].map((i) => (

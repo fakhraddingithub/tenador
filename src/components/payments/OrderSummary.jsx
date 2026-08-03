@@ -32,36 +32,36 @@ const OrderSummary = ({ order }) => {
   const remainingAmount = Math.max((order.totalPrice ?? 0) - paidTotal, 0);
 
   return (
-    <div className="bg-white rounded-[6px] border border-gray-200 p-6 shadow-md mb-6">
-      <div className="flex items-center gap-2 border-b border-gray-100 pb-4 mb-4">
-        <MdOutlineReceiptLong className="text-[var(--color-primary)] text-2xl" />
-        <h2 className="text-lg font-bold text-[#1a1a1a] tracking-tight">خلاصه سفارش</h2>
+    <div className="bg-white rounded-[6px] border border-gray-200 p-4 sm:p-6 shadow-md mb-6">
+      <div className="flex items-center gap-2 border-b border-gray-100 pb-3 sm:pb-4 mb-3 sm:mb-4">
+        <MdOutlineReceiptLong className="text-[var(--color-primary)] text-xl sm:text-2xl" />
+        <h2 className="text-base sm:text-lg font-bold text-[#1a1a1a] tracking-tight">خلاصه سفارش</h2>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
-        <div className="flex flex-col">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4 mb-5 sm:mb-6">
+        <div className="flex flex-col min-w-0">
           <span className="text-gray-500 text-xs mb-1">کد پیگیری:</span>
-          <div className="flex items-center gap-2 font-mono text-gray-800 font-bold bg-gray-50 px-3 py-1.5 rounded border border-gray-100 w-fit text-sm">
-            <MdOutlineConfirmationNumber className="text-gray-400" />
+          <div className="flex items-center gap-2 font-mono text-gray-800 font-bold bg-gray-50 px-3 py-1.5 rounded border border-gray-100 w-full sm:w-fit text-sm">
+            <MdOutlineConfirmationNumber className="text-gray-400 flex-shrink-0" />
             {order.trackingCode || (
-              <span className="font-sans text-[11px] text-gray-400">
+              <span className="font-sans text-[11px] text-gray-400 leading-relaxed">
                 پس از تکمیل پرداخت صادر می‌شود
               </span>
             )}
           </div>
         </div>
-        <div className="flex flex-col">
+        <div className="flex flex-col min-w-0">
           <span className="text-gray-500 text-xs mb-1">روش پرداخت:</span>
           <div className="flex items-center gap-2 text-gray-800 font-medium text-sm">
-            <MdOutlinePayment className="text-gray-400" />
+            <MdOutlinePayment className="text-gray-400 flex-shrink-0" />
             {paymentMethodLabel[order.paymentMethod] ?? order.paymentMethod}
           </div>
         </div>
       </div>
 
       {/* اقلام سفارش */}
-      <div className="space-y-0 mb-6">
-        <span className="text-gray-500 text-xs block mb-3">اقلام سفارش:</span>
+      <div className="space-y-0 mb-5 sm:mb-6">
+        <span className="text-gray-500 text-xs block mb-2.5 sm:mb-3">اقلام سفارش:</span>
 
         {order.items.map((item, idx) => {
           // ۱. تشخیص هوشمند کالا دست‌دوم
@@ -77,10 +77,10 @@ const OrderSummary = ({ order }) => {
           return (
             <div
               key={item.usedProduct?._id || item.product?._id || idx}
-              className="flex gap-3 py-4 border-b border-[var(--color-primary)]/20 last:border-0"
+              className="flex gap-2.5 sm:gap-3 py-3 sm:py-4 border-b border-[var(--color-primary)]/20 last:border-0"
             >
               {/* تصویر */}
-              <div className="relative w-16 h-16 flex-shrink-0 border border-[var(--color-primary)]/20 rounded-xl overflow-hidden">
+              <div className="relative w-12 h-12 sm:w-16 sm:h-16 flex-shrink-0 border border-[var(--color-primary)]/20 rounded-xl overflow-hidden">
                 {productImage && (
                   <img
                     src={productImage}
@@ -133,9 +133,9 @@ const OrderSummary = ({ order }) => {
                 )}
 
                 {/* قیمت و تعداد */}
-                <div className="flex items-center justify-between mt-1">
-                  <span className="inline-flex items-center gap-1 bg-[var(--color-primary)]/10 text-[var(--color-primary)] text-xs px-2 py-0.5 rounded-full font-semibold">
-                    × {item.quantity}
+                <div className="flex items-center justify-between gap-2 mt-1 flex-wrap">
+                  <span className="inline-flex items-center gap-1 bg-[var(--color-primary)]/10 text-[var(--color-primary)] text-[11px] sm:text-xs px-2 py-0.5 rounded-full font-semibold whitespace-nowrap">
+                    {item.quantity} عدد
                   </span>
                   <div className="flex items-baseline gap-0.5">
                     <span className="text-sm font-bold text-[#1a1a1a] tracking-tight">
@@ -152,21 +152,21 @@ const OrderSummary = ({ order }) => {
 
       {/* خلاصه قیمت */}
       {(order.discountAmount > 0 || order.couponDiscount > 0) && (
-        <div className="space-y-2 mb-4 text-sm">
-          <div className="flex justify-between items-center text-gray-500">
+        <div className="space-y-1.5 sm:space-y-2 mb-3 sm:mb-4 text-[13px] sm:text-sm">
+          <div className="flex justify-between items-center gap-2 flex-wrap text-gray-500">
             <span>جمع کالاها</span>
             <span className="font-medium text-gray-800">
               {formatPrice(order.subtotalPrice ?? order.totalPrice)}
             </span>
           </div>
           {order.discountAmount > 0 && (
-            <div className="flex justify-between items-center text-emerald-600">
+            <div className="flex justify-between items-center gap-2 flex-wrap text-emerald-600">
               <span>تخفیف</span>
               <span className="font-medium">{formatPrice(order.discountAmount)}</span>
             </div>
           )}
           {order.couponDiscount > 0 && (
-            <div className="flex justify-between items-center text-emerald-600">
+            <div className="flex justify-between items-center gap-2 flex-wrap text-emerald-600">
               <span>{order.coupon?.isManual ? "تخفیف مدیریت" : `تخفیف کد «${order.coupon?.code}»`}</span>
               <span className="font-medium">− {formatPrice(order.couponDiscount)}</span>
             </div>
@@ -176,12 +176,12 @@ const OrderSummary = ({ order }) => {
 
       {/* پرداخت‌شده تاکنون — فقط برای سفارش‌های دارای پرداخت جزئی تأییدشده */}
       {paidTotal > 0 && (
-        <div className="space-y-2 mb-4 text-sm">
-          <div className="flex justify-between items-center text-gray-500">
+        <div className="space-y-1.5 sm:space-y-2 mb-3 sm:mb-4 text-[13px] sm:text-sm">
+          <div className="flex justify-between items-center gap-2 flex-wrap text-gray-500">
             <span>مبلغ کل سفارش</span>
             <span className="font-medium text-gray-800">{formatPrice(order.totalPrice)}</span>
           </div>
-          <div className="flex justify-between items-center text-emerald-600">
+          <div className="flex justify-between items-center gap-2 flex-wrap text-emerald-600">
             <span>پرداخت‌شده تاکنون</span>
             <span className="font-medium">− {formatPrice(paidTotal)}</span>
           </div>
@@ -189,12 +189,12 @@ const OrderSummary = ({ order }) => {
       )}
 
       {/* مبلغ قابل پرداخت */}
-      <div className="flex justify-between items-center bg-[var(--color-primary)]/5 p-4 rounded-[6px] border border-[var(--color-primary)]/10">
-        <span className="font-bold text-[#1a1a1a] text-sm">
+      <div className="flex justify-between items-center gap-2 flex-wrap bg-[var(--color-primary)]/5 p-3.5 sm:p-4 rounded-[6px] border border-[var(--color-primary)]/10">
+        <span className="font-bold text-[#1a1a1a] text-[13px] sm:text-sm">
           {paidTotal > 0 ? 'مانده قابل پرداخت:' : 'مبلغ قابل پرداخت:'}
         </span>
         <div className="flex items-baseline gap-1">
-          <span className="text-xl font-bold text-[var(--color-primary)] tracking-tight">
+          <span className="text-lg sm:text-xl font-bold text-[var(--color-primary)] tracking-tight">
             {new Intl.NumberFormat('fa-IR').format(remainingAmount)}
           </span>
           <span className="text-xs font-bold text-[var(--color-primary)]/70">تومان</span>
