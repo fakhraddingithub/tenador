@@ -36,3 +36,25 @@ export const getShowcaseAthletes = unstable_cache(
   ["showcase-athletes"],
   { revalidate: 10800, tags: ["athletes"] }
 );
+
+/**
+ * ورزشکار بر اساس اسلاگ برای صفحه‌ی اختصاصی.
+ */
+export const getAthleteBySlug = unstable_cache(
+  async (slug) => {
+    await connectToDB();
+
+    const athlete = await Athlete.findOne({ slug })
+      .populate("sport", "name title slug image")
+      .populate("sponsors", "name logo")
+      .lean();
+
+    if (!athlete) {
+      return { error: "ورزشکار پیدا نشد", status: 404 };
+    }
+
+    return JSON.parse(JSON.stringify(athlete));
+  },
+  ["athlete-by-slug"],
+  { revalidate: 10800, tags: ["athletes"] }
+);

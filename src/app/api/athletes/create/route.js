@@ -3,6 +3,7 @@ import Athlete from "base/models/Athlete";
 import Sport from "base/models/Sport";
 import { registerSlug } from "base/actions/registerSlug";
 import { apiError, handleApiError } from "@/lib/apiError";
+import { revalidateContent } from "@/lib/revalidate";
 
 export async function POST(req) {
   try {
@@ -93,6 +94,8 @@ export async function POST(req) {
       label: created.name,
       parentSlug: null,
     });
+
+    revalidateContent(["athletes"]);
 
     return Response.json(
       {

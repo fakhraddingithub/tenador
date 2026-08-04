@@ -2,6 +2,7 @@ import connectToDB from "base/configs/db";
 import Athlete from "base/models/Athlete";
 import Sport from "base/models/Sport";
 import { NextResponse } from "next/server";
+import { revalidateContent } from "@/lib/revalidate";
 
 // GET: دریافت جزئیات یک ورزشکار
 export async function GET(req, { params }) {
@@ -67,6 +68,8 @@ export async function PUT(req, { params }) {
     // متد save باعث اجرای Middleware (تولید اسلاگ جدید) می‌شود
     await athlete.save();
 
+    revalidateContent(["athletes"]);
+
     return NextResponse.json({
       message: "ورزشکار با موفقیت به‌روزرسانی شد",
       athlete,
@@ -89,6 +92,8 @@ export async function DELETE(req, { params }) {
     if (!athlete) {
       return NextResponse.json({ error: "ورزشکار پیدا نشد" }, { status: 404 });
     }
+
+    revalidateContent(["athletes"]);
 
     return NextResponse.json({ message: "ورزشکار با موفقیت حذف شد" });
   } catch (error) {

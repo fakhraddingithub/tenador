@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { FaMars, FaVenus, FaRunning, FaFlag } from "react-icons/fa";
 
 export default function ShowcaseAthletes({ data = { men: [], women: [] } }) {
@@ -7,7 +8,9 @@ export default function ShowcaseAthletes({ data = { men: [], women: [] } }) {
     const sponsors = athlete.sponsors || [];
 
     return (
-      <div className="group relative flex items-center gap-3 overflow-hidden rounded-[6px] border border-white/5 bg-white/[0.03] px-3 py-3 transition-all duration-300 hover:border-[var(--color-primary)]/30 hover:bg-white/[0.05]">
+      <Link
+        href={`/athletes/${athlete.slug}`}
+        className="group relative flex items-center gap-3 overflow-hidden rounded-[6px] border border-white/5 bg-white/[0.03] px-3 py-3 transition-all duration-300 hover:border-[var(--color-primary)]/30 hover:bg-white/[0.05]">
         {/* rank */}
         <div className="w-6 shrink-0 text-center">
           <span className="text-sm font-bold italic text-white/20 transition-colors duration-300 group-hover:text-[var(--color-primary)]">
@@ -73,7 +76,7 @@ export default function ShowcaseAthletes({ data = { men: [], women: [] } }) {
 
         {/* hover glow */}
         <div className="pointer-events-none absolute inset-0 bg-gradient-to-r from-[var(--color-primary)]/0 via-[var(--color-primary)]/[0.03] to-[var(--color-primary)]/0 opacity-0 transition-opacity duration-500 group-hover:opacity-100" />
-      </div>
+      </Link>
     );
   };
 
