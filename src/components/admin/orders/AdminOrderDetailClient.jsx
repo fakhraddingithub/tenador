@@ -2649,16 +2649,20 @@ export default function AdminOrderDetailClient({ orderId }) {
                         <>
                           <button
                             onClick={() => setDiscountModalOpen(true)}
-                            className="text-[10px] font-bold text-gray-400 hover:text-[var(--color-primary)]"
+                            title="ویرایش"
+                            className="w-6 h-6 flex items-center justify-center rounded-lg
+                              text-gray-400 hover:text-[var(--color-primary)] transition hover:bg-[var(--color-primary)]/10"
                           >
-                            ویرایش
+                            <Pencil size={12} />
                           </button>
                           <button
                             disabled={discountBusy}
                             onClick={handleRemoveDiscount}
-                            className="text-[10px] font-bold text-red-400 hover:text-red-600 disabled:opacity-40"
+                            title="حذف"
+                            className="w-6 h-6 flex items-center justify-center rounded-lg
+                              text-red-400 hover:text-red-600 transition hover:bg-red-50 disabled:opacity-40"
                           >
-                            حذف
+                            <Trash2 size={13} />
                           </button>
                         </>
                       )}
