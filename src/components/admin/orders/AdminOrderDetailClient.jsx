@@ -236,8 +236,8 @@ function ReceiptLightbox({ url, onClose }) {
 }
 
 /* ─── Approve Payment Modal ─────────────────────────────────────────── */
-function ApproveModal({ payment, orderTotal, onConfirm, onClose }) {
-  const [amount, setAmount] = useState(String(payment.amount || ""));
+function ApproveModal({ payment, orderTotal, dueAmount, onConfirm, onClose }) {
+  const [amount, setAmount] = useState(String(dueAmount || payment.amount || ""));
   // مبلغ یورو — اختیاری و کاملاً مستقل از تومان
   const [eurAmount, setEurAmount] = useState("");
   const [loading, setLoading] = useState(false);
@@ -291,6 +291,9 @@ function ApproveModal({ payment, orderTotal, onConfirm, onClose }) {
             </div>
             <p>مبلغ اعلامی کاربر: <strong>{formatPrice(payment.amount)} تومان</strong></p>
             <p className="mt-0.5">مبلغ کل سفارش: <strong>{formatPrice(orderTotal)} تومان</strong></p>
+            {dueAmount > 0 && dueAmount !== orderTotal && (
+              <p className="mt-0.5">مانده قابل پرداخت (پس از تخفیف/پرداخت‌های قبلی): <strong>{formatPrice(dueAmount)} تومان</strong></p>
+            )}
           </div>
           <div>
             <label className="block text-sm font-bold text-gray-700 mb-2">
@@ -2306,6 +2309,11 @@ export default function AdminOrderDetailClient({ orderId }) {
     Number(order.totalPrice || 0) +
       Number(order.discountAmount || 0) +
       Number(order.couponDiscount || 0);
+  // مبلغ باقیمانده قابل پرداخت — کل سفارش (پس از تخفیف مدیریت/کوپن) منهای پرداخت‌های تأییدشده
+  const totalPaidAmount = (order.payments || [])
+    .filter((p) => p.status === "PAID")
+    .reduce((sum, p) => sum + (p.amount || 0), 0);
+  const remainingDue = Math.max(Number(order.totalPrice || 0) - totalPaidAmount, 0);
 
   return (
     <div className="min-h-screen" style={{ background: "var(--admin-bg, #f4f5f2)" }} dir="rtl">
@@ -2696,9 +2704,7 @@ export default function AdminOrderDetailClient({ orderId }) {
 
                 {/* ─── خلاصه مالی ─── */}
                 {(() => {
-                  const totalPaid = order.payments
-                    .filter((p) => p.status === "PAID")
-                    .reduce((sum, p) => sum + (p.amount || 0), 0);
+                  const totalPaid = totalPaidAmount;
                   const remaining = order.totalPrice - totalPaid;
                   const overpaid = remaining < 0;
                   const settled = remaining === 0;
@@ -2818,6 +2824,7 @@ export default function AdminOrderDetailClient({ orderId }) {
           <ApproveModal
             payment={approveTarget}
             orderTotal={order.totalPrice}
+            dueAmount={remainingDue}
             onConfirm={handleApprovePayment}
             onClose={() => setApproveTarget(null)}
           />
