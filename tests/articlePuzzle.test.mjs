@@ -8,10 +8,13 @@ import {
   LAYOUTS,
   OPPOSITE,
   PIECE_COUNT,
+  PUZZLE_CSS,
   SIDES,
   SOCKET_SPAN,
   TAB_DEPTH,
   TAB_SPAN,
+  bandHeight,
+  bandRows,
   connectionsOf,
   edgeLine,
   edgeRange,
@@ -41,16 +44,40 @@ test("هر چیدمان هشت قطعه‌ی بدونِ هم‌پوشانی با
   }
 });
 
-test("ترکیبِ دسکتاپ ارتفاعِ ادیتوریال دارد و قطعه‌ی شاخص غالب است", () => {
+test("ارتفاعِ هر بازه صریح است و هیچ‌جا از aspect-ratio مشتق نمی‌شود", () => {
+  assert.ok(!PUZZLE_CSS.includes(".fa-grid{direction:ltr;display:grid;gap:16px;aspect-ratio"));
+  for (const [name, layout] of layouts) {
+    for (const band of layout.bands) {
+      const rows = bandRows(layout, band);
+      assert.ok(rows.every((r) => r > 0), `${name}@${band.min}: ردیفِ صفر`);
+      assert.ok(
+        PUZZLE_CSS.includes(`@media (min-width:${band.min}px){.fa-grid{grid-template-rows:`),
+        `${name}@${band.min}: ارتفاعِ پیکسلی تولید نشده`,
+      );
+    }
+  }
+  // ارتفاعِ اسمیِ هر بازه در محدوده‌ی خواسته‌شده
+  const desktop = bandHeight(bandRows(LAYOUTS.desktop, LAYOUTS.desktop.bands[0]));
+  assert.ok(desktop >= 700 && desktop <= 850, `ارتفاعِ دسکتاپ ${desktop}`);
+  const tablet = bandHeight(bandRows(LAYOUTS.tablet, LAYOUTS.tablet.bands[0]));
+  assert.ok(tablet >= 750 && tablet <= 1000, `ارتفاعِ تبلت ${tablet}`);
+});
+
+test("ترکیبِ دسکتاپ مجله‌ای است: قطعه‌ی شاخص غالب و هیچ نوارِ باریکی نیست", () => {
   const rects = rectsOf(LAYOUTS.desktop);
-  const { h } = layoutSize(LAYOUTS.desktop);
-  assert.ok(h >= 650 && h <= 850, `ارتفاعِ ترکیب ${h}`);
-  for (const r of rects) assert.ok(r.h >= 180, `قطعه‌ی کوتاه: ${r.h}`);
+  const { w, h } = layoutSize(LAYOUTS.desktop);
+  assert.ok(w / h >= 1.4 && w / h <= 1.8, `نسبتِ ترکیب ${(w / h).toFixed(2)}`);
+  for (const r of rects) {
+    assert.ok(r.h >= 190, `قطعه‌ی کوتاه: ${r.w}×${r.h}`);
+    assert.ok(r.w / r.h <= 4, `قطعه‌ی نواری: ${r.w}×${r.h}`);
+  }
   const areas = rects.map((r) => r.w * r.h);
   const biggest = Math.max(...areas);
   assert.equal(biggest, rects[3].w * rects[3].h, "قطعه‌ی شاخص باید بزرگ‌ترین باشد");
-  assert.ok(rects[3].h >= 320 && rects[3].h <= 500, `ارتفاعِ قطعه‌ی شاخص ${rects[3].h}`);
-  assert.ok(biggest > areas.toSorted((a, b) => b - a)[1] * 1.2, "قطعه‌ی شاخص به‌قدرِ کافی غالب نیست");
+  assert.ok(rects[3].h >= 400 && rects[3].h <= 550, `ارتفاعِ قطعه‌ی شاخص ${rects[3].h}`);
+  assert.ok(rects[0].h >= 400, `ستونِ بلند ${rects[0].h}`);
+  for (const i of [1, 2]) assert.ok(rects[i].h >= 240 && rects[i].h <= 360, `میانی ${rects[i].h}`);
+  for (const i of [4, 5, 6, 7]) assert.ok(rects[i].h >= 190 && rects[i].h <= 300, `پشتیبان ${rects[i].h}`);
 });
 
 test("هر تب یک سوکتِ روبه‌روی دقیقاً مکمل دارد", () => {

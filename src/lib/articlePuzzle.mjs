@@ -130,66 +130,76 @@ export function piecePath(piece, connections = {}) {
 // links: هر اتصال یک بار تعریف می‌شود و tab و socket روی مختصاتِ مطلقِ `at`
 // می‌نشینند، پس هم‌ترازی ذاتیِ ساختار است و قابلِ خطا نیست.
 
+// bands: عرضِ واقعیِ container در هر بازه‌ی بریک‌پوینت. چون max-width کلاسِ
+// container تیلویند پله‌ای است، این عرض داخلِ هر بازه ثابت می‌ماند؛ ارتفاعِ
+// ردیف‌ها مستقیماً از همین اعداد به پیکسل تولید می‌شود، نه از aspect-ratio.
 export const LAYOUTS = {
-  // تبلت — همان زبانِ بصری، ستون‌های باریک‌تر و چیدمانِ بلندتر.
-  // مجموعِ ستون‌ها = عرضِ واقعیِ container در این بازه (۷۶۸ ⇒ ۶۷۲).
+  // تبلت — ۷۶۸ تا ۱۲۷۹. سه ستون، سه سطحِ ارتفاعی.
   tablet: {
     min: 768,
     viewportShare: 88,
+    bands: [
+      { min: 768, width: 672 }, // md: 768 − px-12×2
+      { min: 1024, width: 896 }, // lg: 1024 − px-16×2
+    ],
     cols: [213, 213, 214],
-    rows: [300, 210, 210, 250],
+    rows: [300, 220, 240],
     pieces: [
-      [1, 1, 2, 1], // بزرگِ بالا-راست
-      [3, 1, 1, 1],
+      [1, 1, 2, 1], // شاخصِ بالا ‎۴۴۲×۳۰۰
+      [3, 1, 1, 1], // ‎۲۱۴×۳۰۰
       [1, 2, 1, 1],
       [2, 2, 1, 1],
       [3, 2, 1, 1],
       [1, 3, 1, 1],
-      [2, 3, 2, 1],
-      [1, 4, 3, 1], // نوارِ پایانی، تمام‌عرض
+      [2, 3, 1, 1],
+      [3, 3, 1, 1],
     ],
     links: [
       { tab: [0, "right"], socket: [1, "left"], at: 150 },
       { tab: [0, "bottom"], socket: [2, "top"], at: 106 },
       { tab: [1, "bottom"], socket: [4, "top"], at: 565 },
-      { tab: [2, "right"], socket: [3, "left"], at: 421 },
-      { tab: [4, "left"], socket: [3, "right"], at: 421 },
+      { tab: [2, "right"], socket: [3, "left"], at: 426 },
+      { tab: [4, "left"], socket: [3, "right"], at: 426 },
+      { tab: [2, "bottom"], socket: [5, "top"], at: 106 },
       { tab: [3, "bottom"], socket: [6, "top"], at: 335 },
-      { tab: [6, "left"], socket: [5, "right"], at: 647 },
-      { tab: [5, "bottom"], socket: [7, "top"], at: 106 },
-      { tab: [6, "bottom"], socket: [7, "top"], at: 450 },
+      { tab: [4, "bottom"], socket: [7, "top"], at: 565 },
+      { tab: [5, "right"], socket: [6, "left"], at: 672 },
+      { tab: [6, "right"], socket: [7, "left"], at: 672 },
     ],
   },
 
-  // دسکتاپ — ستونِ بلندِ عمودی (۱)، دو قطعه‌ی افقیِ میانی (۲و۳)، قطعه‌ی شاخصِ
-  // بزرگ (۴) و چهار قطعه‌ی پایینی. مجموعِ ستون‌ها = عرضِ واقعیِ container در
-  // بازه‌ی xl (۱۲۸۰ ⇒ ۱۱۲۰)، پس مقیاس آن‌جا دقیقاً ۱ است.
+  // دسکتاپ — ۱۲۸۰ به بالا. ستونِ بلندِ عمودی (۱)، دو قطعه‌ی افقیِ میانی (۲و۳)،
+  // قطعه‌ی شاخصِ بزرگ (۴) و چهار قطعه‌ی پشتیبانِ پایینی.
   desktop: {
-    min: 1024,
+    min: 1280,
     viewportShare: 78,
-    cols: [252, 190, 190, 440],
-    rows: [222, 222, 304],
+    bands: [
+      { min: 1280, width: 1120 }, // xl: 1280 − px-20×2
+      { min: 1536, width: 1376 }, // 2xl: 1536 − px-20×2
+    ],
+    cols: [256, 176, 176, 464],
+    rows: [240, 240, 250],
     pieces: [
-      [1, 1, 1, 2], // ستونِ بلندِ چپ ‎۲۵۲×۴۶۰
-      [2, 1, 2, 1], // افقیِ میانیِ بالا ‎۳۹۶×۲۲۲
-      [2, 2, 2, 1], // افقیِ میانیِ پایین ‎۳۹۶×۲۲۲
-      [4, 1, 1, 2], // قطعه‌ی شاخص ‎۴۴۰×۴۶۰
-      [1, 3, 1, 1],
-      [2, 3, 1, 1],
-      [3, 3, 1, 1],
-      [4, 3, 1, 1],
+      [1, 1, 1, 2], // ستونِ بلندِ چپ ‎۲۵۶×۴۹۶
+      [2, 1, 2, 1], // افقیِ میانیِ بالا ‎۳۶۸×۲۴۰
+      [2, 2, 2, 1], // افقیِ میانیِ پایین ‎۳۶۸×۲۴۰
+      [4, 1, 1, 2], // قطعه‌ی شاخص ‎۴۶۴×۴۹۶
+      [1, 3, 1, 1], // ‎۲۵۶×۲۵۰
+      [2, 3, 1, 1], // ‎۱۷۶×۲۵۰
+      [3, 3, 1, 1], // ‎۱۷۶×۲۵۰
+      [4, 3, 1, 1], // ‎۴۶۴×۲۵۰
     ],
     links: [
-      { tab: [0, "right"], socket: [1, "left"], at: 111 },
-      { tab: [2, "left"], socket: [0, "right"], at: 349 },
-      { tab: [1, "right"], socket: [3, "left"], at: 111 },
-      { tab: [3, "left"], socket: [2, "right"], at: 349 },
-      { tab: [0, "bottom"], socket: [4, "top"], at: 126 },
-      { tab: [2, "bottom"], socket: [5, "top"], at: 363 },
-      { tab: [2, "bottom"], socket: [6, "top"], at: 569 },
-      { tab: [3, "bottom"], socket: [7, "top"], at: 900 },
-      { tab: [4, "right"], socket: [5, "left"], at: 628 },
-      { tab: [6, "right"], socket: [7, "left"], at: 628 },
+      { tab: [0, "right"], socket: [1, "left"], at: 120 },
+      { tab: [2, "left"], socket: [0, "right"], at: 376 },
+      { tab: [1, "right"], socket: [3, "left"], at: 120 },
+      { tab: [3, "left"], socket: [2, "right"], at: 376 },
+      { tab: [0, "bottom"], socket: [4, "top"], at: 128 },
+      { tab: [2, "bottom"], socket: [5, "top"], at: 360 },
+      { tab: [2, "bottom"], socket: [6, "top"], at: 552 },
+      { tab: [3, "bottom"], socket: [7, "top"], at: 888 },
+      { tab: [4, "right"], socket: [5, "left"], at: 637 },
+      { tab: [6, "right"], socket: [7, "left"], at: 637 },
     ],
   },
 };
@@ -255,15 +265,23 @@ const CONTENT_PAD = 16;
 // حداکثر ~۱٫۲۳ برابر) تا ~۳۲ پیکسل می‌رسد؛ ۴۰ پیکسل حاشیه‌ی امن است.
 const SOCKET_PAD = 40;
 
+/** ارتفاعِ ردیف‌ها در یک بازه، به پیکسل. */
+export function bandRows(layout, band) {
+  const scale = band.width / layoutSize(layout).w;
+  return layout.rows.map((r) => Math.round(r * scale));
+}
+
+export const bandHeight = (rows) => rows.reduce((a, b) => a + b, 0) + GAP * (rows.length - 1);
+
 function layoutCss(layout, prefix) {
   const shapes = shapesOf(layout, prefix);
-  const { w, h } = layoutSize(layout);
   // گرید باید LTR بماند: مسیرهای clip فیزیکی‌اند، پس اگر ستون‌ها در RTL آینه
   // شوند تب‌ها به بیرون از ترکیب می‌افتند. متنِ داخلِ کارت‌ها RTL می‌ماند.
+  // ستون‌ها fr هستند تا دقیقاً عرضِ container را پر کنند؛ ردیف‌ها پیکسلی‌اند
+  // (پایین‌تر) تا ارتفاع همیشه صریح باشد.
   let css =
-    `.fa-grid{direction:ltr;display:grid;gap:${GAP}px;aspect-ratio:${w}/${h};` +
-    `grid-template-columns:${layout.cols.map((c) => `${c}fr`).join(" ")};` +
-    `grid-template-rows:${layout.rows.map((r) => `${r}fr`).join(" ")}}` +
+    `.fa-grid{direction:ltr;display:grid;gap:${GAP}px;` +
+    `grid-template-columns:${layout.cols.map((c) => `${c}fr`).join(" ")}}` +
     `.fa-piece{position:relative;margin:-${BLEED}px;min-width:0;min-height:0;` +
     `aspect-ratio:auto;overflow:visible;border-radius:0}` +
     `.fa-body{inset:${BLEED}px;padding:${CONTENT_PAD}px}`;
@@ -279,7 +297,18 @@ function layoutCss(layout, prefix) {
     }
   });
 
-  return `@media (min-width:${layout.min}px){${css}}`;
+  // ارتفاعِ صریح برای هر بازه. نه aspect-ratio، نه fr، نه درصد — پس اگر هر
+  // یک از آن‌ها در محیطی اثر نکند، ترکیب باز هم جمع نمی‌شود.
+  const rows = layout.bands.map((band) => {
+    const track = bandRows(layout, band);
+    return (
+      `@media (min-width:${band.min}px){.fa-grid{` +
+      `grid-template-rows:${track.map((r) => `${r}px`).join(" ")};` +
+      `min-height:${bandHeight(track)}px}}`
+    );
+  });
+
+  return `@media (min-width:${layout.min}px){${css}}${rows.join("")}`;
 }
 
 const MOBILE_CSS =
@@ -298,7 +327,7 @@ const MOBILE_CSS =
 const FALLBACK_CSS =
   `@supports not (clip-path:url(#fa-d0)){` +
   `.fa-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));grid-template-rows:auto;` +
-  `gap:${GAP}px;aspect-ratio:auto}` +
+  `gap:${GAP}px;aspect-ratio:auto;min-height:0}` +
   `.fa-piece{grid-area:auto;margin:0;overflow:hidden;border-radius:${CORNER}px;aspect-ratio:4/5;` +
   `clip-path:none;-webkit-clip-path:none}` +
   `.fa-p0,.fa-p7{grid-column:1/-1;aspect-ratio:16/10}` +
