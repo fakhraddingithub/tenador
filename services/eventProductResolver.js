@@ -361,6 +361,22 @@ async function resolveRule(rule) {
   }
 }
 
+/**
+ * Re-orders resolved products to the manual (drag-and-drop) order the admin set
+ * in the campaign form. Ids missing from `manualOrder` — products that started
+ * matching the rules after the ordering was saved — fall to the end keeping
+ * their natural sort, because Array#sort is stable.
+ */
+function applyManualOrder(products, manualOrder) {
+  if (!Array.isArray(manualOrder) || !manualOrder.length) return products;
+  const rank = new Map(manualOrder.map((id, i) => [String(id), i]));
+  const rankOf = (p) => {
+    const r = rank.get(String(p._id));
+    return r === undefined ? Number.MAX_SAFE_INTEGER : r;
+  };
+  return [...products].sort((a, b) => rankOf(a) - rankOf(b));
+}
+
 export async function resolveEventProducts(productSelection = {}) {
   await connectToDB();
 
@@ -369,6 +385,7 @@ export async function resolveEventProducts(productSelection = {}) {
     limit = 24,
     sortBy = "createdAt",
     sortOrder = "desc",
+    manualOrder = [],
   } = productSelection;
 
   // Resolve every rule in parallel — they are independent queries, so awaiting
@@ -404,13 +421,35 @@ export async function resolveEventProducts(productSelection = {}) {
     query._id = { $nin: Array.from(excludedIds) };
   }
 
-  const safeLimit = Math.min(Math.max(parseInt(limit, 10) || 24, 1), 200);
+  // An explicit `limit: 0` means "no cap" (Mongo reads limit(0) as unlimited).
+  // Only the admin review lists send it — they must show every match — while the
+  // storefront keeps the event's configured limit.
+  // ponytail: unbounded fetch is fine for an on-demand admin preview; paginate if
+  // a colour ever matches thousands of products.
+  const parsedLimit = parseInt(limit, 10);
+  const safeLimit =
+    parsedLimit === 0 ? 0 : Math.min(Math.max(parsedLimit || 24, 1), 200);
   const sort = { [sortBy]: sortOrder === "desc" ? -1 : 1 };
 
+  // A hand-arranged product must survive the limit — if the admin drags an item
+  // up from below the cut-off it has to reach the page. So when a manual order
+  // exists we resolve ids first (cheap: no populate), order them, cut to the
+  // limit, then fetch only that page. With no manual order the original single
+  // query runs untouched.
+  let pageIds = null;
+  if (Array.isArray(manualOrder) && manualOrder.length) {
+    const idDocs = await Product.find(query).sort(sort).select("_id").lean();
+    pageIds = applyManualOrder(idDocs, manualOrder)
+      .slice(0, safeLimit || idDocs.length)
+      .map((d) => String(d._id));
+  }
+
   const [products, rate] = await Promise.all([
-    Product.find(query)
+    // `...query` keeps isActive (and any rule filter) applied — pageIds only
+    // narrows and orders, it never widens the selection.
+    Product.find(pageIds ? { ...query, _id: { $in: pageIds } } : query)
       .sort(sort)
-      .limit(safeLimit)
+      .limit(pageIds ? 0 : safeLimit)
       .populate("brand", "name title logo icon")
       // sport/category را هم populate می‌کنیم تا فیلترهای «ورزش تخصصی» و «نوع محصول»
       // در سایدبارِ صفحهٔ کمپین نامِ فارسی نشان دهند نه _id خام. (فیلتر همچنان با
@@ -427,5 +466,8 @@ export async function resolveEventProducts(productSelection = {}) {
   // Attach canonical prices (EUR → Toman + active discounts) so event cards use
   // the same price contract as the rest of the storefront.
   const priced = await attachListingPrices(products, rate);
-  return JSON.parse(JSON.stringify(priced));
+  // pageIds already encodes the final order (arranged first, then natural sort).
+  return JSON.parse(
+    JSON.stringify(pageIds ? applyManualOrder(priced, pageIds) : priced)
+  );
 }

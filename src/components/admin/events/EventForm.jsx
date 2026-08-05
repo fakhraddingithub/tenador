@@ -9,6 +9,20 @@ import {
   FaInfo, FaPalette, FaBoxOpen,
   FaSearch, FaCreditCard, FaImage,
 } from "react-icons/fa";
+import {
+  DndContext,
+  closestCenter,
+  PointerSensor,
+  useSensor,
+  useSensors,
+} from "@dnd-kit/core";
+import {
+  SortableContext,
+  rectSortingStrategy,
+  arrayMove,
+  useSortable,
+} from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
 import ImageUpload from "@/components/admin/ImageUpload";
 import EventEntityPicker from "./EventEntityPicker";
 import DiscountRulePicker from "./DiscountRulePicker";
@@ -83,6 +97,7 @@ const EMPTY_FORM = {
     limit: 24,
     sortBy: "createdAt",
     sortOrder: "desc",
+    manualOrder: [],
   },
   cardCustomization: {
     badge: { enabled: false, text: "", bgColor: "#ef4444", textColor: "#ffffff" },
@@ -374,6 +389,9 @@ function ColorRuleInput({ value, onChange }) {
   // just the hex (no excludedIds) so removed products stay visible (dimmed) and
   // can be restored. Debounced on the picked color.
   const [matches, setMatches] = useState({ loading: false, items: null });
+  // Collapsed by default — a colour can match hundreds of products and the grid
+  // would otherwise swallow the whole rules section.
+  const [open, setOpen] = useState(false);
 
   useEffect(() => {
     if (!isValidHex(hex)) return;
@@ -387,7 +405,8 @@ function ColorRuleInput({ value, onChange }) {
           body: JSON.stringify({
             productSelection: {
               rules: [{ type: "color", operator: "include", value: { hex } }],
-              limit: 200,
+              // 0 = بدون سقف — همهٔ محصولاتِ منطبق باید برای بازبینی دیده شوند
+              limit: 0,
             },
           }),
         });
@@ -403,8 +422,14 @@ function ColorRuleInput({ value, onChange }) {
     };
   }, [hex]);
 
-  const items = matches.items || [];
-  const remaining = items.filter((p) => !excludedIds.includes(String(p._id))).length;
+  // Removed products stay visible (dimmed) so the admin can restore them, but
+  // they sink to the END of the list instead of leaving a hole mid-grid.
+  // Array#sort is stable, so each group keeps its original order.
+  const isExcludedId = (id) => excludedIds.includes(String(id));
+  const items = [...(matches.items || [])].sort(
+    (a, b) => (isExcludedId(a._id) ? 1 : 0) - (isExcludedId(b._id) ? 1 : 0)
+  );
+  const remaining = items.filter((p) => !isExcludedId(p._id)).length;
 
   return (
     <div className="space-y-4 bg-white rounded-lg border border-gray-100 p-4">
@@ -436,10 +461,27 @@ function ColorRuleInput({ value, onChange }) {
         می‌توانید از نتایج زیر حذف کنید.
       </p>
 
-      {/* Matched products — review & remove before confirming */}
+      {/* Matched products — review & remove before confirming (collapsible) */}
       <div className="border-t border-gray-100 pt-3">
-        <div className="flex items-center justify-between mb-2">
-          <p className="text-xs font-black text-gray-600">محصولات منطبق با این رنگ</p>
+        <button
+          type="button"
+          onClick={() => setOpen((o) => !o)}
+          aria-expanded={open}
+          className="w-full flex items-center justify-between gap-2 mb-2 py-1 hover:opacity-80 transition-opacity"
+        >
+          <span className="flex items-center gap-1.5 text-xs font-black text-gray-600">
+            <svg
+              className={`w-3.5 h-3.5 text-gray-400 transition-transform ${open ? "rotate-180" : ""}`}
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+              strokeWidth={3}
+              aria-hidden="true"
+            >
+              <path strokeLinecap="round" d="M19 9l-7 7-7-7" />
+            </svg>
+            محصولات منطبق با این رنگ
+          </span>
           {matches.items !== null && (
             <span className="text-[11px] font-bold text-gray-400">
               {remaining.toLocaleString("fa-IR")} انتخاب‌شده
@@ -447,19 +489,19 @@ function ColorRuleInput({ value, onChange }) {
                 ` — ${excludedIds.length.toLocaleString("fa-IR")} حذف‌شده`}
             </span>
           )}
-        </div>
+        </button>
 
-        {matches.loading && (
+        {open && matches.loading && (
           <p className="text-[11px] text-gray-400 font-bold py-2">در حال بررسی…</p>
         )}
 
-        {!matches.loading && matches.items !== null && items.length === 0 && (
+        {open && !matches.loading && matches.items !== null && items.length === 0 && (
           <p className="text-[11px] text-gray-400 font-bold py-2">
             هیچ محصولی با این رنگ یافت نشد.
           </p>
         )}
 
-        {items.length > 0 && (
+        {open && items.length > 0 && (
           <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 gap-2">
             {items.map((p) => {
               const isExcluded = excludedIds.includes(String(p._id));
@@ -556,6 +598,42 @@ function AttributeRuleInput({ value, onChange }) {
   );
 }
 
+// A draggable card in the rule-preview grid. The whole card is the drag handle
+// (nothing on it is clickable), so re-ordering is a single grab.
+function SortablePreviewCard({ product }) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } =
+    useSortable({ id: String(product._id) });
+
+  return (
+    <div
+      ref={setNodeRef}
+      style={{ transform: CSS.Transform.toString(transform), transition }}
+      className={`bg-white rounded-lg border border-gray-100 p-1.5 flex flex-col items-center text-center touch-none cursor-grab active:cursor-grabbing ${
+        isDragging ? "opacity-60 scale-[0.98] z-50 shadow-lg" : ""
+      }`}
+      title={product.name}
+      {...attributes}
+      {...listeners}
+    >
+      <div className="w-full aspect-square rounded-md overflow-hidden bg-gray-50 flex items-center justify-center">
+        {product.mainImage ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            src={product.mainImage}
+            alt=""
+            className="w-full h-full object-contain pointer-events-none"
+          />
+        ) : (
+          <span className="text-gray-200 text-lg">▪</span>
+        )}
+      </div>
+      <p className="text-[9px] font-bold text-gray-500 mt-1 line-clamp-1 w-full">
+        {product.name}
+      </p>
+    </div>
+  );
+}
+
 // ─── Tab: Product Selection ───────────────────────────────────────────────────
 function ProductsTab({ form, setField }) {
   const rules = form.productSelection.rules;
@@ -601,7 +679,11 @@ function ProductsTab({ form, setField }) {
       const res = await fetch("/api/admin/events/preview-products", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ productSelection: form.productSelection }),
+        // limit: 0 → بدون سقف؛ این دکمه «نتیجهٔ قوانین» را نشان می‌دهد، پس باید
+        // همهٔ محصولاتِ منطبق دیده شوند (نه فقط سهمیهٔ نمایشِ صفحه).
+        body: JSON.stringify({
+          productSelection: { ...form.productSelection, limit: 0 },
+        }),
       });
       const data = await res.json();
       setPreview({ loading: false, items: data.products || [], total: data.total || 0 });
@@ -622,6 +704,27 @@ function ProductsTab({ form, setField }) {
     return () => clearTimeout(t);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectionKey, hasPreviewed]);
+
+  // Drag & drop ordering of the previewed products. The new order is written to
+  // productSelection.manualOrder, which the resolver replays on the storefront —
+  // so the campaign page shows products in exactly this order. The local list is
+  // re-ordered optimistically; the debounced re-preview above returns the same
+  // order from the server, so nothing jumps.
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 5 } })
+  );
+
+  const handleDragEnd = ({ active, over }) => {
+    if (!over || active.id === over.id) return;
+    const items = preview.items || [];
+    const oldIndex = items.findIndex((p) => String(p._id) === active.id);
+    const newIndex = items.findIndex((p) => String(p._id) === over.id);
+    if (oldIndex === -1 || newIndex === -1) return;
+
+    const reordered = arrayMove(items, oldIndex, newIndex);
+    setPreview((p) => ({ ...p, items: reordered }));
+    setPs("manualOrder", reordered.map((p) => String(p._id)));
+  };
 
   return (
     <div className="space-y-6">
@@ -803,29 +906,37 @@ function ProductsTab({ form, setField }) {
               {preview.total > 0
                 ? `${preview.total.toLocaleString("fa-IR")} محصول با این قوانین یافت شد`
                 : "هیچ محصولی با این قوانین یافت نشد — قوانین را بازبینی کنید"}
+              {preview.total > form.productSelection.limit && (
+                <span className="text-gray-400 font-bold">
+                  {" "}
+                  — بر اساس «حداکثر محصولات»، فقط{" "}
+                  {Number(form.productSelection.limit).toLocaleString("fa-IR")} موردِ
+                  ابتدای همین ترتیب در صفحهٔ Collection نمایش داده می‌شود.
+                </span>
+              )}
             </p>
             {preview.items.length > 0 && (
-              <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 gap-2">
-                {preview.items.map((p) => (
-                  <div
-                    key={p._id}
-                    className="bg-white rounded-lg border border-gray-100 p-1.5 flex flex-col items-center text-center"
-                    title={p.name}
+              <>
+                <p className="text-[11px] font-bold text-gray-400 mb-2">
+                  برای تغییر ترتیبِ نمایش در صفحهٔ Collection، کارت‌ها را بکشید و رها کنید.
+                </p>
+                <DndContext
+                  sensors={sensors}
+                  collisionDetection={closestCenter}
+                  onDragEnd={handleDragEnd}
+                >
+                  <SortableContext
+                    items={preview.items.map((p) => String(p._id))}
+                    strategy={rectSortingStrategy}
                   >
-                    <div className="w-full aspect-square rounded-md overflow-hidden bg-gray-50 flex items-center justify-center">
-                      {p.mainImage ? (
-                        // eslint-disable-next-line @next/next/no-img-element
-                        <img src={p.mainImage} alt="" className="w-full h-full object-contain" />
-                      ) : (
-                        <span className="text-gray-200 text-lg">▪</span>
-                      )}
+                    <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 gap-2">
+                      {preview.items.map((p) => (
+                        <SortablePreviewCard key={p._id} product={p} />
+                      ))}
                     </div>
-                    <p className="text-[9px] font-bold text-gray-500 mt-1 line-clamp-1 w-full">
-                      {p.name}
-                    </p>
-                  </div>
-                ))}
-              </div>
+                  </SortableContext>
+                </DndContext>
+              </>
             )}
           </div>
         )}

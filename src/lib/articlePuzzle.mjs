@@ -299,12 +299,21 @@ function layoutCss(layout, prefix) {
 
   // ارتفاعِ صریح برای هر بازه. نه aspect-ratio، نه fr، نه درصد — پس اگر هر
   // یک از آن‌ها در محیطی اثر نکند، ترکیب باز هم جمع نمی‌شود.
+  //
+  // علاوه بر آن هر قطعه min-height خودش را دارد (دقیقاً برابرِ ارتفاعِ واقعی‌اش،
+  // پس در حالتِ سالم هیچ اثری ندارد). این کفِ سخت تضمین می‌کند حتی اگر
+  // grid-template-rows از دست برود، ردیف‌های auto از روی همین اندازه‌ها ساخته
+  // شوند و کارت‌ها به نوارِ ۵۲ پیکسلیِ روی‌هم‌افتاده تبدیل نشوند.
   const rows = layout.bands.map((band) => {
     const track = bandRows(layout, band);
+    const floors = layout.pieces.map(([, row, , rows], i) => {
+      const height = span(track, row - 1, rows) + 2 * BLEED;
+      return `.fa-p${i}{min-height:${height}px}`;
+    });
     return (
       `@media (min-width:${band.min}px){.fa-grid{` +
       `grid-template-rows:${track.map((r) => `${r}px`).join(" ")};` +
-      `min-height:${bandHeight(track)}px}}`
+      `min-height:${bandHeight(track)}px}${floors.join("")}}`
     );
   });
 
@@ -328,8 +337,8 @@ const FALLBACK_CSS =
   `@supports not (clip-path:url(#fa-d0)){` +
   `.fa-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));grid-template-rows:auto;` +
   `gap:${GAP}px;aspect-ratio:auto;min-height:0}` +
-  `.fa-piece{grid-area:auto;margin:0;overflow:hidden;border-radius:${CORNER}px;aspect-ratio:4/5;` +
-  `clip-path:none;-webkit-clip-path:none}` +
+  `.fa-piece{grid-area:auto;margin:0;min-height:0;overflow:hidden;border-radius:${CORNER}px;` +
+  `aspect-ratio:4/5;clip-path:none;-webkit-clip-path:none}` +
   `.fa-p0,.fa-p7{grid-column:1/-1;aspect-ratio:16/10}` +
   `.fa-piece .fa-body{inset:0;padding:14px}}`;
 

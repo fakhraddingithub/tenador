@@ -54,6 +54,18 @@ test("ارتفاعِ هر بازه صریح است و هیچ‌جا از aspect-
         PUZZLE_CSS.includes(`@media (min-width:${band.min}px){.fa-grid{grid-template-rows:`),
         `${name}@${band.min}: ارتفاعِ پیکسلی تولید نشده`,
       );
+      // کفِ سختِ هر قطعه باید دقیقاً برابرِ ارتفاعِ واقعیِ همان قطعه باشد،
+      // وگرنه در حالتِ سالم از تراکِ خودش بیرون می‌زند.
+      layout.pieces.forEach(([, row, , rowSpan], i) => {
+        const height =
+          rows.slice(row - 1, row - 1 + rowSpan).reduce((a, b) => a + b, 0) +
+          GAP * (rowSpan - 1) +
+          2 * BLEED;
+        assert.ok(
+          PUZZLE_CSS.includes(`.fa-p${i}{min-height:${height}px}`),
+          `${name}@${band.min}: کفِ قطعه‌ی ${i} (${height}px) تولید نشده`,
+        );
+      });
     }
   }
   // ارتفاعِ اسمیِ هر بازه در محدوده‌ی خواسته‌شده

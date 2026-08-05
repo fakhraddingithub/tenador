@@ -14,9 +14,7 @@ export async function POST(req) {
   const body = await req.json();
   const productSelection = body?.productSelection || {};
 
+  // No display cap — the admin reviews (and re-orders) the full resolved list.
   const products = await resolveEventProducts(productSelection);
-  return NextResponse.json({
-    products: products.slice(0, 24),
-    total: products.length,
-  });
+  return NextResponse.json({ products, total: products.length });
 }

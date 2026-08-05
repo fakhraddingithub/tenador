@@ -28,6 +28,10 @@ const ProductRuleSchema = new mongoose.Schema(
         "discountRule",
         "tag",
         "color",
+        // "بر اساس مشخصات" — the UI and eventProductResolver have always
+        // supported this rule; it was missing here, so saving a collection that
+        // used it failed validation on create / edit / duplicate.
+        "attribute",
       ],
       required: true,
     },
@@ -119,6 +123,10 @@ const EventSchema = new mongoose.Schema(
         default: "createdAt",
       },
       sortOrder: { type: String, enum: ["asc", "desc"], default: "desc" },
+      // Product ids in the order the admin arranged them (drag & drop in the
+      // preview list). Products not listed here keep the sortBy/sortOrder order
+      // and render after the arranged ones.
+      manualOrder: [{ type: String }],
     },
 
     // Product Card Customization
