@@ -68,7 +68,7 @@ export default function FeaturedArticles({ articles = [] }) {
                     {article.category.name}
                   </span>
                 ) : null}
-                <span className="line-clamp-2 text-[15px] font-black leading-6 text-white drop-shadow-sm xl:text-lg xl:leading-7">
+                <span className="line-clamp-2 text-base font-black leading-7 text-white drop-shadow-sm xl:text-lg">
                   {article.title}
                 </span>
               </span>
