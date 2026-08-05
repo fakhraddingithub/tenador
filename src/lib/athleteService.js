@@ -46,7 +46,8 @@ export const getAthleteBySlug = unstable_cache(
 
     const athlete = await Athlete.findOne({ slug })
       .populate("sport", "name title slug image")
-      .populate("sponsors", "name logo")
+      // slug/title برای لینکِ کارتِ اسپانسر به صفحه‌ی برند و ساختاردادهٔ Person لازم است
+      .populate("sponsors", "name title logo slug")
       .lean();
 
     if (!athlete) {

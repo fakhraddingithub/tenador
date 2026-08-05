@@ -23,6 +23,10 @@ export default function ProductSlider({
 
   subtitle = "محبوب‌ترین انتخاب‌های مشتریان ما",
 
+  // واژه‌ای از عنوان که با رنگِ اصلیِ سایت متمایز می‌شود؛ پیش‌فرض همان رفتارِ
+  // قبلیِ صفحه‌ی اصلی است تا هیچ استفاده‌ی موجودی تغییر نکند.
+  highlight = "پرفروش‌ترین",
+
   products = [],
 
   rate,
@@ -64,7 +68,7 @@ export default function ProductSlider({
               {title.split(" ").map((word, i) => (
                 <span
                   key={i}
-                  className={word === "پرفروش‌ترین" ? "text-[#aa4725]" : ""}
+                  className={word === highlight ? "text-[#aa4725]" : ""}
                 >
                   {word}{" "}
                 </span>

@@ -1,9 +1,9 @@
-import { FaTrophy } from "react-icons/fa";
+import { FaAward, FaMedal, FaTrophy } from "react-icons/fa";
 import AthleteSection from "@/components/templates/athletes/AthleteSection";
 
 /**
  * افتخاراتِ ورزشکار — آمارِ برجسته (تعداد عناوین و مجموع قهرمانی‌ها) به‌علاوه‌ی
- * گریدِ کارتی. اگر هیچ افتخارِ معتبری نباشد، کل بخش رندر نمی‌شود.
+ * کارتِ اختصاصی برای هر افتخار. اگر افتخارِ معتبری نباشد، بخش رندر نمی‌شود.
  */
 export default function AthleteAchievements({ honors = [] }) {
   const list = honors.filter((honor) => honor?.title);
@@ -16,25 +16,30 @@ export default function AthleteAchievements({ honors = [] }) {
   );
 
   const stats = [
-    { value: totalTitles, label: "عنوان ثبت‌شده" },
+    { icon: FaAward, value: totalTitles, label: "عنوان ثبت‌شده" },
     ...(totalWins > totalTitles
-      ? [{ value: totalWins, label: "مجموع قهرمانی‌ها" }]
+      ? [{ icon: FaMedal, value: totalWins, label: "مجموع قهرمانی‌ها" }]
       : []),
   ];
 
   return (
-    <AthleteSection title="افتخارات" eyebrow="Achievements">
+    <AthleteSection title="افتخارات" eyebrow="Achievements" icon={FaTrophy}>
       <div className="grid gap-3 sm:grid-cols-2">
-        {stats.map((stat) => (
+        {stats.map(({ icon: Icon, value, label }) => (
           <div
-            key={stat.label}
+            key={label}
             className="flex items-center gap-4 rounded-[6px] border border-gray-200 bg-white px-5 py-5"
           >
-            <span className="text-4xl font-black tabular-nums leading-none text-[var(--color-primary)] sm:text-5xl">
-              {stat.value}
+            <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-[6px] bg-[var(--color-secondary)]/15 text-[var(--color-secondary)]">
+              <Icon size={20} aria-hidden="true" />
             </span>
-            <span className="text-sm font-medium text-gray-500">
-              {stat.label}
+
+            <span className="text-4xl font-black leading-none tabular-nums text-[var(--color-primary)] sm:text-5xl">
+              {value}
+            </span>
+
+            <span className="min-w-0 text-sm font-medium text-gray-500">
+              {label}
             </span>
           </div>
         ))}
@@ -46,7 +51,7 @@ export default function AthleteAchievements({ honors = [] }) {
             key={`${honor.title}-${index}`}
             className="flex gap-4 rounded-[6px] border border-gray-200 bg-white p-5 transition-colors duration-300 hover:border-[var(--color-primary)]/40"
           >
-            <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-[6px] bg-[var(--color-secondary)]/10 text-[var(--color-secondary)]">
+            <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-[6px] bg-[var(--color-secondary)]/15 text-[var(--color-secondary)]">
               <FaTrophy size={16} aria-hidden="true" />
             </span>
 

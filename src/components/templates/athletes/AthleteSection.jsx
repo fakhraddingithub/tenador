@@ -1,21 +1,33 @@
 /**
- * سرتیترِ مشترکِ بخش‌های صفحه‌ی ورزشکار — eyebrow لاتین + عنوان فارسی + خطِ محوشونده.
- * سرور-کامپوننت است (بدون state) تا صفحه‌ی ورزشکار کاملاً استاتیک بماند.
+ * سرتیترِ مشترکِ بخش‌های صفحه‌ی ورزشکار — آیکون + eyebrow لاتین + عنوان فارسی
+ * + خطِ محوشونده. سرور-کامپوننت است (بدون state) تا صفحه استاتیک بماند.
  *
  * props:
  *  - title: عنوان بخش (h2)
  *  - eyebrow: برچسبِ کوچکِ لاتین بالای عنوان (اختیاری)
+ *  - icon: کامپوننتِ آیکون از react-icons (اختیاری)
  *  - children: محتوای بخش
  */
-export default function AthleteSection({ title, eyebrow = null, children }) {
+export default function AthleteSection({
+  title,
+  eyebrow = null,
+  icon: Icon = null,
+  children,
+}) {
   return (
     <section>
       <div className="mb-6 flex items-center gap-4">
+        {Icon ? (
+          <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-[6px] bg-[var(--color-primary)]/10 text-[var(--color-primary)]">
+            <Icon size={18} aria-hidden="true" />
+          </span>
+        ) : null}
+
         <div className="min-w-0">
           {eyebrow ? (
             <span
               translate="no"
-              className="mb-1.5 block text-[10px] font-bold uppercase tracking-[0.25em] text-[var(--color-primary)]"
+              className="mb-1 block text-[10px] font-bold uppercase tracking-[0.25em] text-[var(--color-primary)]"
             >
               {eyebrow}
             </span>
