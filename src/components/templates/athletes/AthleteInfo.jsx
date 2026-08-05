@@ -1,24 +1,24 @@
 import {
   FaBirthdayCake,
   FaFlag,
-  FaMars,
   FaRulerVertical,
   FaRunning,
-  FaVenus,
   FaWeight,
 } from "react-icons/fa";
 import AthleteSection from "@/components/templates/athletes/AthleteSection";
 
 /**
- * تاریخِ تولد به تقویمِ میلادی (Gregorian). سرور-رندر است، پس اختلافِ
- * hydration پیش نمی‌آید.
+ * تاریخِ تولد به تقویمِ میلادی (Gregorian) و قالبِ DD/MM/YYYY.
+ * en-GB دقیقاً همین ترتیب را می‌دهد. سرور-رندر است، پس اختلافِ hydration
+ * پیش نمی‌آید. نمایش با dir="ltr" انجام می‌شود تا در صفحه‌ی RTL ترتیبِ
+ * روز/ماه/سال معکوس دیده نشود.
  */
 function gregorianDate(value) {
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return null;
   return new Intl.DateTimeFormat("en-GB", {
-    day: "numeric",
-    month: "long",
+    day: "2-digit",
+    month: "2-digit",
     year: "numeric",
     timeZone: "UTC",
   }).format(date);
@@ -39,11 +39,6 @@ export default function AthleteInfo({ athlete }) {
           value: athlete.sport.title || athlete.sport.name,
         }
       : null,
-    {
-      icon: athlete.gender === "female" ? FaVenus : FaMars,
-      label: "جنسیت",
-      value: athlete.gender === "female" ? "بانوان" : "آقایان",
-    },
     athlete.nationality
       ? { icon: FaFlag, label: "ملیت", value: athlete.nationality }
       : null,
@@ -66,7 +61,7 @@ export default function AthleteInfo({ athlete }) {
 
   return (
     <AthleteSection title="مشخصات ورزشکار" eyebrow="Profile" icon={FaRunning}>
-      <dl className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
+      <dl className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
         {items.map(({ icon: Icon, label, value, ltr }) => (
           <div
             key={label}

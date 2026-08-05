@@ -21,7 +21,10 @@ export default function AthleteHero({ athlete }) {
         alt={athlete.title}
       />
 
-      <div className="-mt-10 flex justify-center px-4 sm:-mt-14 lg:-mt-16">
+      {/* relative z-30: لایه‌های داخلیِ SportHero موقعیت‌دار و z-10/z-20 هستند؛
+          بدونِ این، عکسِ پروفایل (استاتیک با مارجینِ منفی) زیرِ آن‌ها رسم می‌شود
+          و نیمه‌پنهان می‌ماند. اورلپ هم کم شد تا کلِ عکس دیده شود. */}
+      <div className="relative z-30 -mt-7 flex justify-center px-4 sm:-mt-10 lg:-mt-12">
         {athlete.photo ? (
           <img
             src={athlete.photo}
