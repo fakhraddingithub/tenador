@@ -177,27 +177,29 @@ export const LAYOUTS = {
       { min: 1280, width: 1120 }, // xl: 1280 − px-20×2
       { min: 1536, width: 1376 }, // 2xl: 1536 − px-20×2
     ],
-    cols: [256, 176, 176, 464],
+    // ستون‌ها عمداً پهن‌اند: باریک‌ترین ستون ۲۱۶ است تا عنوانِ وسط‌چینِ کارت
+    // در هیچ ستونی فشرده نشود، و ستونِ شاخص (۳۶۰) همچنان غالب بماند.
+    cols: [280, 216, 216, 360],
     rows: [240, 240, 250],
     pieces: [
-      [1, 1, 1, 2], // ستونِ بلندِ چپ ‎۲۵۶×۴۹۶
-      [2, 1, 2, 1], // افقیِ میانیِ بالا ‎۳۶۸×۲۴۰
-      [2, 2, 2, 1], // افقیِ میانیِ پایین ‎۳۶۸×۲۴۰
-      [4, 1, 1, 2], // قطعه‌ی شاخص ‎۴۶۴×۴۹۶
-      [1, 3, 1, 1], // ‎۲۵۶×۲۵۰
-      [2, 3, 1, 1], // ‎۱۷۶×۲۵۰
-      [3, 3, 1, 1], // ‎۱۷۶×۲۵۰
-      [4, 3, 1, 1], // ‎۴۶۴×۲۵۰
+      [1, 1, 1, 2], // ستونِ بلندِ چپ ‎۲۸۰×۴۹۶
+      [2, 1, 2, 1], // افقیِ میانیِ بالا ‎۴۴۸×۲۴۰
+      [2, 2, 2, 1], // افقیِ میانیِ پایین ‎۴۴۸×۲۴۰
+      [4, 1, 1, 2], // قطعه‌ی شاخص ‎۳۶۰×۴۹۶
+      [1, 3, 1, 1], // ‎۲۸۰×۲۵۰
+      [2, 3, 1, 1], // ‎۲۱۶×۲۵۰
+      [3, 3, 1, 1], // ‎۲۱۶×۲۵۰
+      [4, 3, 1, 1], // ‎۳۶۰×۲۵۰
     ],
     links: [
       { tab: [0, "right"], socket: [1, "left"], at: 120 },
       { tab: [2, "left"], socket: [0, "right"], at: 376 },
       { tab: [1, "right"], socket: [3, "left"], at: 120 },
       { tab: [3, "left"], socket: [2, "right"], at: 376 },
-      { tab: [0, "bottom"], socket: [4, "top"], at: 128 },
-      { tab: [2, "bottom"], socket: [5, "top"], at: 360 },
-      { tab: [2, "bottom"], socket: [6, "top"], at: 552 },
-      { tab: [3, "bottom"], socket: [7, "top"], at: 888 },
+      { tab: [0, "bottom"], socket: [4, "top"], at: 140 },
+      { tab: [2, "bottom"], socket: [5, "top"], at: 404 },
+      { tab: [2, "bottom"], socket: [6, "top"], at: 636 },
+      { tab: [3, "bottom"], socket: [7, "top"], at: 940 },
       { tab: [4, "right"], socket: [5, "left"], at: 637 },
       { tab: [6, "right"], socket: [7, "left"], at: 637 },
     ],
@@ -326,8 +328,8 @@ const MOBILE_CSS =
   `background-color:#111827;aspect-ratio:4/5;outline:none}` +
   `.fa-p0,.fa-p7{grid-column:1/-1;aspect-ratio:16/10}` +
   `.fa-body{position:absolute;inset:0;direction:rtl;display:flex;flex-direction:column;` +
-  `align-items:flex-start;justify-content:flex-end;padding:14px;border-radius:${CORNER}px;` +
-  `transition:box-shadow .2s ease}` +
+  `align-items:center;justify-content:center;text-align:center;padding:14px;` +
+  `border-radius:${CORNER}px;transition:box-shadow .2s ease}` +
   `.fa-piece:focus-visible .fa-body{box-shadow:inset 0 0 0 3px var(--color-primary),` +
   `inset 0 0 0 6px rgba(255,255,255,.9)}`;
 

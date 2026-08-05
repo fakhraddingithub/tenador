@@ -58,17 +58,19 @@ export default function FeaturedArticles({ articles = [] }) {
                 sizes={PIECE_SIZES[index]}
                 className="object-cover object-center transition-transform duration-700 ease-out motion-safe:group-hover:scale-[1.05]"
               />
+              {/* عنوان وسطِ کارت است، پس تیرگی باید در تمامِ سطح یکنواخت‌تر باشد
+                  و فقط کمی به سمتِ پایین قوی‌تر شود. */}
               <span
                 aria-hidden="true"
-                className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/40 to-black/5 transition-opacity duration-300 group-hover:opacity-90"
+                className="absolute inset-0 bg-gradient-to-b from-black/35 via-black/55 to-black/75 transition-opacity duration-300 group-hover:opacity-90"
               />
               <span className="fa-body transition-transform duration-300 motion-safe:group-hover:-translate-y-1">
                 {article.category?.name ? (
-                  <span className="mb-2 inline-flex rounded-[6px] border border-white/20 bg-black/30 px-2.5 py-1 text-[11px] font-bold text-white backdrop-blur-sm">
+                  <span className="mb-2.5 inline-flex rounded-[6px] border border-white/25 bg-black/35 px-2.5 py-1 text-[11px] font-bold text-white backdrop-blur-sm">
                     {article.category.name}
                   </span>
                 ) : null}
-                <span className="line-clamp-2 text-base font-black leading-7 text-white drop-shadow-sm xl:text-lg">
+                <span className="line-clamp-2 text-lg font-black leading-7 text-white drop-shadow-md xl:text-xl xl:leading-8">
                   {article.title}
                 </span>
               </span>
