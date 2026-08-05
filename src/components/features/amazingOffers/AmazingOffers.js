@@ -9,6 +9,7 @@ import "swiper/css/pagination";
 import ProductCard from "@/components/modules/cart/ProductCard";
 import QuickViewModal from "@/components/modules/cart/QuickViewModal";
 import Link from "next/link";
+import HomeSectionHeading from "@/components/features/home/HomeSectionHeading";
 
 export default function ProductSlider({
   title = "پیشنهادهای شگفت انگیز",
@@ -41,21 +42,7 @@ export default function ProductSlider({
       <div className="container mx-auto px-4 md:px-12 lg:px-16 xl:px-20 relative z-10">
         {/* هدر */}
         <div className="relative flex flex-col md:flex-row md:items-end justify-between mb-10 md:mb-16">
-          <div className="relative">
-            <h2 className="text-2xl md:text-4xl font-black text-gray-900 leading-tight">
-              {title.split(" ").map((word, i) => (
-                <span
-                  key={i}
-                  className={word === "پیشنهادهای" ? "text-[#aa4725]" : ""}
-                >
-                  {word}{" "}
-                </span>
-              ))}
-            </h2>
-            <p className="text-gray-500 mt-2 md:mt-4 text-sm md:text-lg font-light max-w-md border-r-2 md:border-r-4 border-[#aa4725]/20 pr-3 md:pr-4 italic">
-              {subtitle}
-            </p>
-          </div>
+          <HomeSectionHeading title={title} highlight="پیشنهادهای" subtitle={subtitle} />
 
           <div className="hidden md:flex items-center mt-8 md:mt-0">
             <div className="flex bg-white/80 backdrop-blur-md shadow-xl shadow-black/5 rounded-[16px] p-1 border border-white/50">

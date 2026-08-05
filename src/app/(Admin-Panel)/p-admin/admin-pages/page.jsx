@@ -11,7 +11,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { motion } from "framer-motion";
 import { FaFileAlt, FaHome } from "react-icons/fa";
-import { FiChevronLeft, FiGrid, FiImage, FiLayers, FiTrendingUp, FiAward } from "react-icons/fi";
+import { FiBookOpen, FiChevronLeft, FiGrid, FiImage, FiLayers, FiTrendingUp, FiAward } from "react-icons/fi";
 
 import SectionTabs from "@/components/admin/SectionTabs";
 import PagesList from "@/components/admin/pages/PagesList";
@@ -42,6 +42,12 @@ const HOME_SECTIONS = [
     icon: FiAward,
     title: "بنر رولند گاروس",
     desc: "ویرایش متون، تصویر و لینک دکمه‌ی بنر رولند گاروس.",
+  },
+  {
+    href: "/p-admin/admin-home/featured-articles",
+    icon: FiBookOpen,
+    title: "مقالات منتخب",
+    desc: "انتخاب مقاله منتشرشده برای هر یک از ۸ جایگاه پازل صفحه اصلی.",
   },
   {
     href: "#",

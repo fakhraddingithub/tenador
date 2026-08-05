@@ -11,6 +11,7 @@ import Category from "base/models/Category";
 import Serie from "base/models/Serie";
 import Sport from "base/models/Sport";
 import UsedProduct from "base/models/UsedProduct";
+import SiteSetting from "base/models/SiteSetting";
 import { buildArticlePath, normalizeArticleSlug } from "base/utils/articleSlug";
 import { getCachedRate } from "@/lib/Exchangerate";
 import { attachListingPrices } from "base/services/priceEngine";
@@ -213,4 +214,28 @@ export const getPublicArticleHub = unstable_cache(async () => {
     articles: articles.filter((article) => article.category?.status === "active" && !occupied.has(article.category.slug)),
   });
 }, ["public-article-hub"], { revalidate: 300, tags: ["articles"] });
+
+export const getHomeFeaturedArticles = unstable_cache(async () => {
+  await connectToDB();
+  const setting = await SiteSetting.findOne({ key: "home_featured_article_ids" })
+    .select("value")
+    .lean();
+  const selectedIds = ids(setting?.value).slice(0, 8);
+  if (selectedIds.length !== 8) return [];
+
+  const articles = await Article.find({
+    _id: { $in: selectedIds },
+    "cover.url": { $nin: ["", null] },
+    ...publicArticleFilter(),
+  })
+    .select("title slug cover category")
+    .populate("category", "name slug status")
+    .lean();
+  const articleMap = new Map(articles.map((article) => [String(article._id), article]));
+  const ordered = selectedIds
+    .map((id) => articleMap.get(id))
+    .filter((article) => article?.category?.status === "active");
+
+  return ordered.length === 8 ? serialise(ordered) : [];
+}, ["home-featured-articles"], { revalidate: 300, tags: ["articles", "home-featured-articles"] });
 

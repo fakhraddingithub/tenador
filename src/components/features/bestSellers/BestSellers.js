@@ -17,6 +17,7 @@ import ProductCard from "@/components/modules/cart/ProductCard";
 import QuickViewModal from "@/components/modules/cart/QuickViewModal";
 
 import Link from "next/link";
+import HomeSectionHeading from "@/components/features/home/HomeSectionHeading";
 
 export default function ProductSlider({
   title = "پرفروش‌ترین محصولات",
@@ -63,22 +64,7 @@ export default function ProductSlider({
         {/* هدر */}
 
         <div className="relative flex flex-col md:flex-row md:items-end justify-between mb-10 md:mb-16">
-          <div className="relative">
-            <h2 className="text-2xl md:text-4xl font-black text-gray-900 leading-tight">
-              {title.split(" ").map((word, i) => (
-                <span
-                  key={i}
-                  className={word === highlight ? "text-[#aa4725]" : ""}
-                >
-                  {word}{" "}
-                </span>
-              ))}
-            </h2>
-
-            <p className="text-gray-500 mt-2 md:mt-4 text-sm md:text-lg font-light max-w-md border-r-2 md:border-r-4 border-[#aa4725]/20 pr-3 md:pr-4 italic">
-              {subtitle}
-            </p>
-          </div>
+          <HomeSectionHeading title={title} highlight={highlight} subtitle={subtitle} />
 
           {/* کنترلرهای ناوبری (مخفی در موبایل برای تمیزی بیشتر، نمایش در تبلت به بالا) */}
 

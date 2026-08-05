@@ -8,6 +8,7 @@ import RolandGarros from "@/components/features/rolandGarros/RolandGarros";
 import ComparisonBanner from "@/components/features/comparisonBanner/ComparisonBanner";
 import MatchBanner from "@/components/features/matchBanner/MatchBanner";
 import ShowcaseAthletes from "@/components/features/ShowcaseAthletes/ShowcaseAthletes";
+import FeaturedArticles from "@/components/features/articles/FeaturedArticles";
 
 // سرویس‌ها را وارد کنید (فرض بر این است که این سرویس‌ها را دارید یا باید بسازید)
 import { getHomeSliderProducts } from "base/services/product.service";
@@ -18,6 +19,7 @@ import { getCachedRate } from "@/lib/Exchangerate";
 import { getShowcaseAthletes } from "@/lib/athleteService";
 import { getTickerBrands } from "base/services/brandTicker.service";
 import { getHomeRolandGarrosBanner } from "base/services/homeRolandGarros.service";
+import { getHomeFeaturedArticles } from "base/services/publicArticle.service";
 
 // ISR: داده‌ها با تگ‌های unstable_cache (products/banners/sports/...) کش می‌شوند و
 // بعد از هر تغییرِ ادمین از طریقِ revalidateContent باطل می‌شوند؛ پس نیازی به
@@ -45,6 +47,7 @@ export default async function Home() {
     rate,
     tickerBrands,
     rolandGarrosBanner,
+    featuredArticles,
   ] =
     await Promise.all([
       getHomeSliderProducts(),
@@ -54,6 +57,7 @@ export default async function Home() {
       getCachedRate(),
       getTickerBrands(),
       getHomeRolandGarrosBanner(),
+      getHomeFeaturedArticles(),
     ]);
   const { bestSellers, offers } = homeProducts;
 
@@ -71,6 +75,7 @@ export default async function Home() {
       <AmazingOffers products={offers} rate={rate} />
       <RolandGarros content={rolandGarrosBanner} />
       <BrandsTicker brands={tickerBrands} />
+      <FeaturedArticles articles={featuredArticles} />
       <ShowcaseAthletes data={athletes} />
     </>
   );

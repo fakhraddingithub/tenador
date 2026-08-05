@@ -5,6 +5,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { FiArrowUpLeft, FiChevronDown } from "react-icons/fi";
 import Image from "next/image";
 import Link from "next/link";
+import HomeSectionHeading from "@/components/features/home/HomeSectionHeading";
 
 export default function SportsGrid({ categories = [] }) {
   const [showAll, setShowAll] = useState(false);
@@ -30,13 +31,11 @@ export default function SportsGrid({ categories = [] }) {
       <div className="container mx-auto px-4 md:px-12 lg:px-16 xl:px-20">
         {/* هدر بخش */}
         <div className="relative mb-12">
-          <h2 className="text-2xl md:text-4xl font-black text-gray-900 leading-tight">
-            <span className="text-[#aa4725]">رشته‌های </span>
-            <span>ورزشی</span>
-          </h2>
-          <p className="text-gray-500 mt-2 md:mt-4 text-sm md:text-lg font-light max-w-md border-r-2 md:border-r-4 border-[#aa4725]/20 pr-3 md:pr-4 italic">
-            تجهیزات تخصصی برای هر سبک بازی
-          </p>
+          <HomeSectionHeading
+            title="رشته‌های ورزشی"
+            highlight="رشته‌های"
+            subtitle="تجهیزات تخصصی برای هر سبک بازی"
+          />
         </div>
         {/* گرید اصلی (۴ آیتم اول) */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4 auto-rows-[220px] md:auto-rows-[260px]">
