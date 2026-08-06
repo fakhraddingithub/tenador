@@ -2,6 +2,11 @@ import { useState } from 'react';
 import { FiX, FiMapPin, FiPlus, FiCheck, FiPhone, FiUser, FiHome } from 'react-icons/fi';
 import { toast } from 'react-toastify';
 import { joinAddressName } from '@/lib/addressName.mjs';
+import {
+  firstAddressError,
+  normalizePhoneInput,
+  validateAddressForm,
+} from '@/lib/addressForm.mjs';
 
 const initialFormState = {
   title: '',
@@ -26,35 +31,30 @@ const AddressModal = ({
   const [formData, setFormData] = useState(initialFormState);
   const [saveAddress, setSaveAddress] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [errors, setErrors] = useState({});
+  const [submitError, setSubmitError] = useState('');
 
   if (!isOpen) return null;
 
   const handleInputChange = (field, value) => {
-    setFormData((prev) => ({ ...prev, [field]: value }));
+    const nextValue = field === 'phone' ? normalizePhoneInput(value) : value;
+    setFormData((prev) => ({ ...prev, [field]: nextValue }));
+    setErrors((prev) => ({ ...prev, [field]: undefined }));
+    setSubmitError('');
   };
 
   const validateForm = () => {
-    // title دیگه اجباری نیست
-    if (!formData.firstName.trim()) {
-      toast.error('نام الزامی است');
+    const nextErrors = validateAddressForm(formData);
+    setErrors(nextErrors);
+
+    const firstField = Object.keys(nextErrors)[0];
+    if (firstField) {
+      setSubmitError('لطفاً موارد مشخص‌شده را اصلاح کنید.');
+      toast.error(firstAddressError(nextErrors));
+      requestAnimationFrame(() => document.querySelector(`[name="${firstField}"]`)?.focus());
       return false;
     }
-    if (!formData.lastName.trim()) {
-      toast.error('نام خانوادگی الزامی است');
-      return false;
-    }
-    if (!formData.phone.trim() || !/^09\d{9}$/.test(formData.phone)) {
-      toast.error('شماره موبایل معتبر نیست');
-      return false;
-    }
-    if (!formData.city.trim()) {
-      toast.error('شهر الزامی است');
-      return false;
-    }
-    if (!formData.addressLine.trim()) {
-      toast.error('آدرس کامل الزامی است');
-      return false;
-    }
+
     return true;
   };
 
@@ -65,9 +65,6 @@ const AddressModal = ({
       ...formData,
       fullName: joinAddressName(formData.firstName, formData.lastName),
     };
-    delete addressData.firstName;
-    delete addressData.lastName;
-
     // ─── آدرس موقت: بدون ذخیره در دیتابیس ───
     if (!saveAddress) {
       onSelectAddress({ ...addressData, _id: null, isTemporary: true });
@@ -79,15 +76,21 @@ const AddressModal = ({
 
     // ─── آدرس دائمی: ذخیره در دیتابیس ───
     setIsSubmitting(true);
-    const newAddress = await onAddAddress({ ...addressData, saveAddress });
-    setIsSubmitting(false);
-
-    if (newAddress) {
+    try {
+      const newAddress = await onAddAddress({ ...addressData, saveAddress });
       onSelectAddress(newAddress);
       setFormData(initialFormState);
+      setErrors({});
+      setSubmitError('');
       setShowForm(false);
       toast.success('آدرس با موفقیت اضافه شد');
       onClose();
+    } catch (error) {
+      const message = error.message || 'ثبت آدرس انجام نشد. دوباره تلاش کنید.';
+      setSubmitError(message);
+      toast.error(message);
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -154,7 +157,7 @@ const AddressModal = ({
                               </span>
                             </div>
                             <p className="text-sm text-gray-600">
-                              {address.city}، {address.addressLine}
+                              {[address.city, address.addressLine].filter(Boolean).join('، ')}
                             </p>
                             <div className="flex items-center gap-4 text-xs text-gray-500">
                               <span className="flex items-center gap-1">
@@ -198,7 +201,7 @@ const AddressModal = ({
               </button>
             </>
           ) : (
-            <form onSubmit={handleSubmit} className="space-y-4">
+            <form onSubmit={handleSubmit} className="space-y-4" noValidate>
               <button
                 type="button"
                 onClick={() => setShowForm(false)}
@@ -235,70 +238,92 @@ const AddressModal = ({
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {/* نام */}
                 <div className="space-y-1">
-                  <label className="text-xs text-gray-500">نام</label>
+                  <label htmlFor="order-address-firstName" className="text-xs text-gray-500">نام <span className="text-red-600">*</span></label>
                   <div className="relative">
                     <FiUser className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 w-4 h-4" />
                     <input
                       type="text"
+                      id="order-address-firstName"
                       name="firstName"
                       autoComplete="given-name"
                       placeholder="نام تحویل گیرنده"
                       value={formData.firstName}
                       onChange={(e) => handleInputChange('firstName', e.target.value)}
                       required
-                      className="w-full border border-gray-300 rounded-[6px] py-2.5 pr-9 pl-3 text-sm focus:outline-none focus:border-[#aa4725] focus:ring-2 focus:ring-[#aa4725]/20 transition"
+                      aria-invalid={!!errors.firstName}
+                      aria-describedby={errors.firstName ? 'order-address-firstName-error' : undefined}
+                      className={`w-full border rounded-[6px] py-2.5 pr-9 pl-3 text-sm focus:outline-none focus:ring-2 transition ${errors.firstName ? 'border-red-500 focus:border-red-500 focus:ring-red-500/20' : 'border-gray-300 focus:border-[#aa4725] focus:ring-[#aa4725]/20'}`}
                     />
                   </div>
+                  {errors.firstName && <p id="order-address-firstName-error" role="alert" className="text-xs text-red-600">{errors.firstName}</p>}
                 </div>
 
                 {/* نام خانوادگی */}
                 <div className="space-y-1">
-                  <label className="text-xs text-gray-500">نام خانوادگی</label>
+                  <label htmlFor="order-address-lastName" className="text-xs text-gray-500">نام خانوادگی <span className="text-red-600">*</span></label>
                   <div className="relative">
                     <FiUser className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 w-4 h-4" />
                     <input
                       type="text"
+                      id="order-address-lastName"
                       name="lastName"
                       autoComplete="family-name"
                       placeholder="نام خانوادگی تحویل گیرنده"
                       value={formData.lastName}
                       onChange={(e) => handleInputChange('lastName', e.target.value)}
                       required
-                      className="w-full border border-gray-300 rounded-[6px] py-2.5 pr-9 pl-3 text-sm focus:outline-none focus:border-[#aa4725] focus:ring-2 focus:ring-[#aa4725]/20 transition"
+                      aria-invalid={!!errors.lastName}
+                      aria-describedby={errors.lastName ? 'order-address-lastName-error' : undefined}
+                      className={`w-full border rounded-[6px] py-2.5 pr-9 pl-3 text-sm focus:outline-none focus:ring-2 transition ${errors.lastName ? 'border-red-500 focus:border-red-500 focus:ring-red-500/20' : 'border-gray-300 focus:border-[#aa4725] focus:ring-[#aa4725]/20'}`}
                     />
                   </div>
+                  {errors.lastName && <p id="order-address-lastName-error" role="alert" className="text-xs text-red-600">{errors.lastName}</p>}
                 </div>
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {/* موبایل */}
                 <div className="space-y-1">
-                  <label className="text-xs text-gray-500">شماره موبایل</label>
+                  <label htmlFor="order-address-phone" className="text-xs text-gray-500">شماره موبایل <span className="text-red-600">*</span></label>
                   <div className="relative">
                     <FiPhone className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 w-4 h-4" />
                     <input
                       type="tel"
+                      id="order-address-phone"
+                      name="phone"
+                      inputMode="numeric"
+                      autoComplete="tel"
+                      dir="ltr"
+                      maxLength={11}
                       placeholder="09xxxxxxxxx"
                       value={formData.phone}
                       onChange={(e) => handleInputChange('phone', e.target.value)}
-                      className="w-full border border-gray-300 rounded-[6px] py-2.5 pr-9 pl-3 text-sm focus:outline-none focus:border-[#aa4725] focus:ring-2 focus:ring-[#aa4725]/20 transition"
+                      aria-invalid={!!errors.phone}
+                      aria-describedby={errors.phone ? 'order-address-phone-error' : undefined}
+                      className={`w-full border rounded-[6px] py-2.5 pr-9 pl-3 text-sm text-left focus:outline-none focus:ring-2 transition ${errors.phone ? 'border-red-500 focus:border-red-500 focus:ring-red-500/20' : 'border-gray-300 focus:border-[#aa4725] focus:ring-[#aa4725]/20'}`}
                     />
                   </div>
+                  {errors.phone && <p id="order-address-phone-error" role="alert" className="text-xs text-red-600">{errors.phone}</p>}
                 </div>
 
                 {/* شهر */}
                 <div className="space-y-1">
-                  <label className="text-xs text-gray-500">شهر</label>
+                  <label htmlFor="order-address-city" className="text-xs text-gray-500">شهر <span className="text-red-600">*</span></label>
                   <div className="relative">
                     <FiMapPin className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 w-4 h-4" />
                     <input
                       type="text"
+                      id="order-address-city"
+                      name="city"
                       placeholder="نام شهر"
                       value={formData.city}
                       onChange={(e) => handleInputChange('city', e.target.value)}
-                      className="w-full border border-gray-300 rounded-[6px] py-2.5 pr-9 pl-3 text-sm focus:outline-none focus:border-[#aa4725] focus:ring-2 focus:ring-[#aa4725]/20 transition"
+                      aria-invalid={!!errors.city}
+                      aria-describedby={errors.city ? 'order-address-city-error' : undefined}
+                      className={`w-full border rounded-[6px] py-2.5 pr-9 pl-3 text-sm focus:outline-none focus:ring-2 transition ${errors.city ? 'border-red-500 focus:border-red-500 focus:ring-red-500/20' : 'border-gray-300 focus:border-[#aa4725] focus:ring-[#aa4725]/20'}`}
                     />
                   </div>
+                  {errors.city && <p id="order-address-city-error" role="alert" className="text-xs text-red-600">{errors.city}</p>}
                 </div>
 
               </div>
@@ -320,7 +345,7 @@ const AddressModal = ({
 
               {/* آدرس کامل */}
               <div className="space-y-1">
-                <label className="text-xs text-gray-500">آدرس کامل</label>
+                <label className="text-xs text-gray-500">آدرس کامل <span className="text-gray-400 mr-1">(اختیاری)</span></label>
                 <textarea
                   rows={3}
                   placeholder="خیابان، کوچه، پلاک، واحد ..."
@@ -344,6 +369,12 @@ const AddressModal = ({
               {!saveAddress && (
                 <p className="text-xs text-amber-600 bg-amber-50 border border-amber-200 rounded-[6px] px-3 py-2">
                   این آدرس فقط برای این سفارش استفاده می‌شود و ذخیره نخواهد شد
+                </p>
+              )}
+
+              {submitError && (
+                <p role="alert" aria-live="polite" className="rounded-[6px] border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-700">
+                  {submitError}
                 </p>
               )}
 

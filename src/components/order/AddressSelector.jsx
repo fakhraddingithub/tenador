@@ -43,7 +43,7 @@ const AddressSelector = ({ selectedAddress, onOpenModal }) => {
           </div>
 
           <p className="text-sm text-gray-600 mb-2 leading-relaxed">
-            {selectedAddress.city}، {selectedAddress.addressLine}
+            {[selectedAddress.city, selectedAddress.addressLine].filter(Boolean).join('، ')}
           </p>
 
           <div className="flex flex-wrap items-center gap-4 text-xs text-gray-500">

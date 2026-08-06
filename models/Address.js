@@ -11,7 +11,7 @@ const AddressSchema = new mongoose.Schema(
 
     title: {
       type: String,
-      required: true,
+      default: "",
       trim: true
     },
 
@@ -23,22 +23,26 @@ const AddressSchema = new mongoose.Schema(
 
     phone: {
       type: String,
-      required: true
+      required: true,
+      trim: true
     },
 
     city: {
       type: String,
-      required: true
+      required: true,
+      trim: true
     },
 
     addressLine: {
       type: String,
-      required: true
+      default: "",
+      trim: true
     },
 
     postalCode: {
       type: String,
-      required: false
+      default: "",
+      trim: true
     },
 
     isDefault: {

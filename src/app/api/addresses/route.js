@@ -3,6 +3,12 @@ import connectToDB from "base/configs/db";
 import Address from "base/models/Address";
 import { cookies } from 'next/headers';
 import { verifyToken } from "base/utils/auth";
+import {
+  firstAddressError,
+  normalizePhoneInput,
+  validateAddressPayload,
+} from "@/lib/addressForm.mjs";
+import { joinAddressName } from "@/lib/addressName.mjs";
 
 export async function GET(req) {
   try {
@@ -11,6 +17,9 @@ export async function GET(req) {
     const token = cookieStore.get('accessToken')?.value;
     
     const user = verifyToken(token)
+    if (!user?.userId) {
+      return NextResponse.json({ error: "برای مشاهده آدرس‌ها وارد حساب کاربری شوید" }, { status: 401 });
+    }
     
     const addresses = await Address.find({
       user: user.userId
@@ -28,30 +37,39 @@ export async function POST(req) {
     const token = cookieStore.get('accessToken')?.value;
     
     const userAuth = verifyToken(token)
+    if (!userAuth?.userId) {
+      return NextResponse.json({ error: "برای ثبت آدرس وارد حساب کاربری شوید" }, { status: 401 });
+    }
 
     const body = await req.json();
-    const { user, title, fullName, phone, city, addressLine, postalCode, isDefault } = body;
+    const { title, firstName, lastName, fullName, phone, city, addressLine, postalCode, isDefault } = body;
+    const fieldErrors = validateAddressPayload(body);
 
-    if (!user || !title || !fullName || !phone || !city || !addressLine) {
-      return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
+    if (Object.keys(fieldErrors).length) {
+      return NextResponse.json(
+        { error: firstAddressError(fieldErrors), fieldErrors },
+        { status: 400 },
+      );
     }
 
     // 🔥 ENFORCE SINGLE DEFAULT
     if (isDefault) {
       await Address.updateMany(
-        { user },
+        { user: userAuth.userId },
         { $set: { isDefault: false } }
       );
     }
 
     const newAddress = new Address({
       user:userAuth.userId,
-      title: title.trim(),
-      fullName: fullName.trim(),
-      phone,
-      city,
-      addressLine,
-      postalCode,
+      title: title?.trim() || "",
+      fullName: firstName !== undefined || lastName !== undefined
+        ? joinAddressName(firstName || "", lastName || "")
+        : fullName.trim(),
+      phone: normalizePhoneInput(phone),
+      city: city.trim(),
+      addressLine: addressLine?.trim() || "",
+      postalCode: postalCode?.trim() || "",
       isDefault: !!isDefault,
     });
 

@@ -13,9 +13,12 @@ export const useAddresses = () => {
     try {
       const response = await fetch('/api/addresses');
       const data = await response.json();
+      if (!response.ok) {
+        throw new Error(data.error || 'خطا در دریافت آدرس‌ها');
+      }
       setAddresses(data.addresses || []);
     } catch (err) {
-      setError('خطا در دریافت آدرس‌ها');
+      setError(err.message || 'خطا در دریافت آدرس‌ها');
       console.error('Error fetching addresses:', err);
     } finally {
       setIsLoading(false);
@@ -23,8 +26,28 @@ export const useAddresses = () => {
   }, []);
   
   useEffect(() => {
-    fetchAddresses();
-  }, [fetchAddresses]);
+    let isActive = true;
+
+    fetch('/api/addresses')
+      .then(async (response) => {
+        const data = await response.json();
+        if (!response.ok) {
+          throw new Error(data.error || 'خطا در دریافت آدرس‌ها');
+        }
+        if (isActive) setAddresses(data.addresses || []);
+      })
+      .catch((err) => {
+        if (isActive) setError(err.message || 'خطا در دریافت آدرس‌ها');
+        console.error('Error fetching addresses:', err);
+      })
+      .finally(() => {
+        if (isActive) setIsLoading(false);
+      });
+
+    return () => {
+      isActive = false;
+    };
+  }, []);
   
   // Add new address
   const addAddress = useCallback(async (newAddress) => {
@@ -60,7 +83,7 @@ export const useAddresses = () => {
       return address;
     } catch (err) {
       console.error('Error adding address:', err);
-      return null;
+      throw err;
     }
   }, []);
   
