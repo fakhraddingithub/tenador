@@ -3,9 +3,13 @@ import Brand from "base/models/Brand";
 import { registerSlug } from "base/actions/registerSlug";
 import { revalidateContent } from "@/lib/revalidate";
 import { apiError, handleApiError } from "@/lib/apiError";
+import { sanitizeArticleBlocks } from "@/lib/articleValidation";
+import requireAdmin from "@/lib/requireAdmin";
 
 export async function POST(req) {
   try {
+    const admin = await requireAdmin();
+    if (!admin) return apiError("دسترسی مدیر لازم است", 401);
     await connectToDB();
 
     const body = await req.json();
@@ -21,6 +25,7 @@ export async function POST(req) {
       monochromeLogo = "",
       image = "",
       prompts = [],
+      articleBlocks = [],
     } = body;
 
     // validation
@@ -58,6 +63,14 @@ export async function POST(req) {
         }));
     }
 
+    const blockErrors = {};
+    const sanitizedArticleBlocks = sanitizeArticleBlocks(articleBlocks, blockErrors);
+    if (Object.keys(blockErrors).length > 0) {
+      return apiError("بلوک‌های مینی مقاله معتبر نیستند", 400, {
+        fieldErrors: blockErrors,
+      });
+    }
+
     // duplicate check
     const exists = await Brand.findOne({ name: normalizedName });
     if (exists) {
@@ -84,6 +97,7 @@ export async function POST(req) {
       monochromeLogo: monochromeLogo.trim(),
       image: image.trim(),
       prompts: sanitizedPrompts,
+      articleBlocks: sanitizedArticleBlocks,
     });
 
     // register slug

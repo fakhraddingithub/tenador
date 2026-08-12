@@ -54,7 +54,7 @@ function sanitizeCover(value) {
   };
 }
 
-function sanitizeBlocks(value, errors) {
+export function sanitizeArticleBlocks(value, errors) {
   if (!Array.isArray(value)) {
     errors.blocks = "blocks must be an array";
     return [];
@@ -112,7 +112,7 @@ export function validateArticleInput(input, { partial = false } = {}) {
   }
   if (!partial || "excerpt" in body) value.excerpt = text(body.excerpt, 1000);
   if (!partial || "cover" in body) value.cover = sanitizeCover(body.cover);
-  if (!partial || "blocks" in body) value.blocks = sanitizeBlocks(body.blocks ?? [], errors);
+  if (!partial || "blocks" in body) value.blocks = sanitizeArticleBlocks(body.blocks ?? [], errors);
   if (!partial || "seo" in body) value.seo = sanitizeSeo(body.seo);
   if (!partial || "status" in body) {
     value.status = body.status || "draft";

@@ -2,7 +2,9 @@ import connectToDB from "base/configs/db";
 import Brand from "base/models/Brand";
 import { NextResponse } from "next/server";
 import { revalidateContent } from "@/lib/revalidate";
-import { handleApiError } from "@/lib/apiError";
+import { apiError, handleApiError } from "@/lib/apiError";
+import { sanitizeArticleBlocks } from "@/lib/articleValidation";
+import requireAdmin from "@/lib/requireAdmin";
 
 export async function GET(req, { params }) {
   try {
@@ -23,6 +25,7 @@ export async function GET(req, { params }) {
 
     brand.series = brand.series || [];
     brand.prompts = brand.prompts || [];
+    brand.articleBlocks = brand.articleBlocks || [];
 
     return NextResponse.json({ brand });
   } catch (error) {
@@ -32,6 +35,8 @@ export async function GET(req, { params }) {
 
 export async function PUT(req, { params }) {
   try {
+    const admin = await requireAdmin();
+    if (!admin) return apiError("دسترسی مدیر لازم است", 401);
     await connectToDB();
     const { brandId } = await params;
     const body = await req.json();
@@ -45,7 +50,8 @@ export async function PUT(req, { params }) {
       icon, 
       monochromeLogo,
       image, 
-      prompts 
+      prompts,
+      articleBlocks,
     } = body;
 
     const brand = await Brand.findById(brandId);
@@ -64,6 +70,17 @@ export async function PUT(req, { params }) {
     if (icon !== undefined) brand.icon = icon.trim();
     if (monochromeLogo !== undefined) brand.monochromeLogo = monochromeLogo.trim();
     if (image !== undefined) brand.image = image.trim();
+
+    if (articleBlocks !== undefined) {
+      const blockErrors = {};
+      const sanitizedArticleBlocks = sanitizeArticleBlocks(articleBlocks, blockErrors);
+      if (Object.keys(blockErrors).length > 0) {
+        return apiError("بلوک‌های مینی مقاله معتبر نیستند", 400, {
+          fieldErrors: blockErrors,
+        });
+      }
+      brand.articleBlocks = sanitizedArticleBlocks;
+    }
 
     if (prompts !== undefined && Array.isArray(prompts)) {
       brand.prompts = prompts
@@ -89,6 +106,8 @@ export async function PUT(req, { params }) {
 
 export async function DELETE(req, { params }) {
   try {
+    const admin = await requireAdmin();
+    if (!admin) return apiError("دسترسی مدیر لازم است", 401);
     await connectToDB();
     const { brandId } = await params;
     

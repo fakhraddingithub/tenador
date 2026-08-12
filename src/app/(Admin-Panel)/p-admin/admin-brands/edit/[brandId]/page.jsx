@@ -3,10 +3,14 @@
 import { useState, useEffect } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import Link from 'next/link';
+import Image from 'next/image';
 import { FaArrowRight, FaCloudUploadAlt, FaGlobeAmericas, FaCalendarAlt, FaCheckCircle, FaRocket, FaEdit, FaParagraph, FaMagic } from 'react-icons/fa';
 import { toast } from 'react-toastify';
 import { getApiErrorMessage } from '@/lib/apiClientError';
 import { invalidateAdminCache } from '@/lib/adminCache';
+import BrandMiniArticleEditor from '@/components/admin/brands/BrandMiniArticleEditor';
+
+const DEFAULT_PROMPT_FIELDS = ['name', 'title', 'description'];
 
 export default function EditBrand() {
   const router = useRouter();
@@ -15,11 +19,10 @@ export default function EditBrand() {
   const [loading, setLoading] = useState(true); // لودینگ اولیه صفحه
   const [saving, setSaving] = useState(false); // لودینگ دکمه ثبت
   const [uploading, setUploading] = useState({ logo: false, icon: false, monochromeLogo: false, image: false });
-  const defaultPromptFields = ['name', 'title', 'description'];
 
   const [formData, setFormData] = useState({
     name: '', title: '', country: '', foundedYear: '', description: '',
-    logo: '', icon: '', monochromeLogo: '', image: '', prompts: [],
+    logo: '', icon: '', monochromeLogo: '', image: '', prompts: [], articleBlocks: [],
   });
 
   // ۱. دریافت اطلاعات برند برای ویرایش
@@ -31,7 +34,7 @@ export default function EditBrand() {
         if (!res.ok) throw new Error();
 
         const existingPrompts = data.brand.prompts || [];
-        const mergedPrompts = defaultPromptFields.map(field => {
+        const mergedPrompts = DEFAULT_PROMPT_FIELDS.map(field => {
           const found = existingPrompts.find(p => p.field === field);
           return found ? found : { field, context: '' };
         });
@@ -47,6 +50,7 @@ export default function EditBrand() {
           monochromeLogo: data.brand.monochromeLogo || '',
           image: data.brand.image || '',
           prompts: mergedPrompts,
+          articleBlocks: data.brand.articleBlocks || [],
         });
       } catch (err) {
         toast.error('خطا در بارگذاری اطلاعات برند');
@@ -198,7 +202,7 @@ export default function EditBrand() {
                   <FaMagic className="text-[var(--color-primary)]" /> ویرایش دستورالعمل‌های هوش مصنوعی
                 </h2>
                 <p className="text-[11px] text-gray-400 mb-6 font-bold leading-relaxed">
-                  این دستورالعمل‌ها به AI کمک می‌کنند تا مقادیر "سری‌های" زیرمجموعه این برند را دقیق‌تر تولید کند.
+                  این دستورالعمل‌ها به AI کمک می‌کنند تا مقادیر &quot;سری‌های&quot; زیرمجموعه این برند را دقیق‌تر تولید کند.
                 </p>
 
                 <div className="space-y-6">
@@ -234,6 +238,11 @@ export default function EditBrand() {
                 aspect="aspect-[21/9]"
               />
             </div>
+
+            <BrandMiniArticleEditor
+              value={formData.articleBlocks}
+              onChange={(articleBlocks) => setFormData((current) => ({ ...current, articleBlocks }))}
+            />
           </div>
 
           {/* --- Left Column: Assets & Action --- */}
@@ -314,7 +323,13 @@ function UploadField({ url, loading, onSelect, isSquare, small, aspect = "aspect
       `}>
         {url ? (
           <>
-            <img src={url} className="w-full h-full object-cover rounded-[2.5rem] transition-transform duration-700 group-hover:scale-110" alt="preview" />
+            <Image
+              src={url}
+              alt="پیش‌نمایش تصویر برند"
+              fill
+              sizes={isSquare ? (small ? "96px" : "176px") : "(max-width: 1024px) 100vw, 640px"}
+              className="object-cover rounded-[2.5rem] transition-transform duration-700 group-hover:scale-110"
+            />
             <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-all flex flex-col items-center justify-center gap-2 backdrop-blur-[2px]">
               <FaCloudUploadAlt className="text-white text-3xl animate-bounce" />
               <span className="text-[10px] font-bold text-white uppercase tracking-widest">تغییر تصویر</span>

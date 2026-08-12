@@ -26,3 +26,15 @@ export const MediaSchema = new mongoose.Schema(
   { _id: false },
 );
 
+// Shared by full articles and the lightweight content section attached to a
+// brand. Keeping one schema prevents the two block formats from drifting.
+export const ArticleBlockSchema = new mongoose.Schema(
+  {
+    id: { type: String, required: true, trim: true, maxlength: 120 },
+    type: { type: String, required: true, trim: true, maxlength: 80 },
+    data: { type: mongoose.Schema.Types.Mixed, default: {} },
+    version: { type: Number, min: 1, default: 1 },
+  },
+  { _id: false, minimize: false },
+);
+

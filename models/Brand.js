@@ -1,6 +1,7 @@
 import mongoose from "mongoose";
 import { createSlug } from "base/utils/slugify";
 import Serie from "base/models/Serie";
+import { ArticleBlockSchema } from "base/models/articleSchemas";
 
 const schema = new mongoose.Schema(
   {
@@ -36,6 +37,12 @@ const schema = new mongoose.Schema(
     description: {
       type: String,
       default: "",
+    },
+
+    // Optional block-based mini article rendered only on the root brand page.
+    articleBlocks: {
+      type: [ArticleBlockSchema],
+      default: [],
     },
 
     logo: {
@@ -84,7 +91,7 @@ const schema = new mongoose.Schema(
       index: true,
     },
   },
-  { timestamps: true }
+  { timestamps: true, minimize: false }
 );
 
 schema.pre("save", async function () {

@@ -1,17 +1,7 @@
 import mongoose from "mongoose";
-import { MediaSchema, SeoSchema } from "base/models/articleSchemas";
+import { ArticleBlockSchema, MediaSchema, SeoSchema } from "base/models/articleSchemas";
 import { calculateReadingTime } from "@/lib/articleContent";
 import { isValidArticleSlug, normalizeArticleSlug } from "base/utils/articleSlug";
-
-const ArticleBlockSchema = new mongoose.Schema(
-  {
-    id: { type: String, required: true, trim: true, maxlength: 120 },
-    type: { type: String, required: true, trim: true, maxlength: 80 },
-    data: { type: mongoose.Schema.Types.Mixed, default: {} },
-    version: { type: Number, min: 1, default: 1 },
-  },
-  { _id: false, minimize: false },
-);
 
 const ArticleSchema = new mongoose.Schema(
   {

@@ -90,6 +90,23 @@ export default async function DynamicSportPage({ params }) {
   const serializedProducts = JSON.parse(JSON.stringify(data.products));
   const serializedSeries = JSON.parse(JSON.stringify(series));
   const title = `تنادور – فروشگاه تخصصی تجهیزات و لوازم ${serializedSportInfo.title}`;
+  let miniArticleSection = null;
+
+  // The article renderer is a comparatively rich module. Load it only for a
+  // brand that actually has content so ordinary sport pages keep their
+  // existing server/client module footprint.
+  if (data.type === "brand" && data.miniArticle) {
+    const { default: BrandMiniArticleSection } = await import(
+      "@/components/features/brands/BrandMiniArticleSection"
+    );
+    miniArticleSection = (
+      <BrandMiniArticleSection
+        blocks={data.miniArticle.blocks}
+        entities={data.miniArticle.entities}
+        brandName={serializedSportInfo.title || serializedSportInfo.name}
+      />
+    );
+  }
 
   // نوار برندهای همین ورزش — کلیک روی هر برند به /[sportSlug]/[brandSlug] می‌رود
   const tickerBrands = await getSportTickerBrands(serializedSportInfo._id);
@@ -110,6 +127,7 @@ export default async function DynamicSportPage({ params }) {
         rate={rate}
         series={serializedSeries}
         seriesIndex={seriesIndex}
+        belowHero={miniArticleSection}
       />
       {/* نوار برندهای همین ورزش — در پایینِ صفحه */}
       {tickerBrands.length > 0 && (

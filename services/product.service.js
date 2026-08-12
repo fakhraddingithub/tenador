@@ -220,21 +220,46 @@ export const getPageDataBySlug = unstable_cache(
     const entityInfo = await EntityModel.findOne({ slug }).lean();
     if (!entityInfo) return null;
 
-    const listing = await getProductListingPage({
-      filter: { [slugData.filterField]: entityInfo._id },
-    });
+    const articleBlocks =
+      slugData.type === "brand" && Array.isArray(entityInfo.articleBlocks)
+        ? entityInfo.articleBlocks
+        : [];
+
+    // Product listing and block references are independent once the brand is
+    // known. Resolve them in parallel, then cache the combined page payload so
+    // the public render never needs a second request or a client-side fetch.
+    const [listing, articleEntities] = await Promise.all([
+      getProductListingPage({
+        filter: { [slugData.filterField]: entityInfo._id },
+      }),
+      articleBlocks.length > 0
+        ? import("base/services/publicArticle.service").then(
+            ({ resolveArticleEntities }) =>
+              resolveArticleEntities({ blocks: articleBlocks }),
+          )
+        : Promise.resolve(null),
+    ]);
+
+    const publicEntityInfo = { ...entityInfo };
+    delete publicEntityInfo.articleBlocks;
 
     return JSON.parse(
       JSON.stringify({
         type: slugData.type,
-        info: entityInfo,
+        info: publicEntityInfo,
         products: listing.products,
         totalResults: listing.totalResults,
         label: slugData.label,
         slugData,
+        miniArticle: articleBlocks.length > 0
+          ? { blocks: articleBlocks, entities: articleEntities }
+          : null,
       })
     );
   },
   ["page-data-by-slug"],
-  { revalidate: 10800, tags: ["products", "sports", "categories", "brands"] }
+  {
+    revalidate: 10800,
+    tags: ["products", "sports", "categories", "brands", "series", "articles"],
+  }
 );

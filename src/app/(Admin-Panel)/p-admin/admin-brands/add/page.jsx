@@ -3,10 +3,12 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
+import Image from 'next/image';
 import { FaArrowRight, FaCloudUploadAlt, FaGlobeAmericas, FaCalendarAlt, FaCheckCircle, FaRocket, FaMagic, FaParagraph } from 'react-icons/fa';
 import { toast } from 'react-toastify';
 import { getApiErrorMessage } from '@/lib/apiClientError';
 import { invalidateAdminCache } from '@/lib/adminCache';
+import BrandMiniArticleEditor from '@/components/admin/brands/BrandMiniArticleEditor';
 
 export default function AddBrand() {
   const router = useRouter();
@@ -32,6 +34,7 @@ export default function AddBrand() {
     name: '', title: '', country: '', foundedYear: '', description: '',
     logo: '', icon: '', monochromeLogo: '', image: '',
     prompts: initialPrompts,
+    articleBlocks: [],
   });
 
   const uploadImage = async (file, field) => {
@@ -169,7 +172,7 @@ export default function AddBrand() {
                 <FaMagic className="text-[var(--color-primary)]" /> دستورالعمل‌های هوش مصنوعی (سری‌ها)
               </h2>
               <p className="text-xs text-gray-500 mb-6 font-bold">
-                در این بخش مشخص کنید AI چگونه باید مقادیر فیلدهای مربوط به "سری‌های" این برند را تولید کند.
+                در این بخش مشخص کنید AI چگونه باید مقادیر فیلدهای مربوط به &quot;سری‌های&quot; این برند را تولید کند.
               </p>
 
               <div className="space-y-6">
@@ -190,6 +193,11 @@ export default function AddBrand() {
                 ))}
               </div>
             </div>
+
+            <BrandMiniArticleEditor
+              value={formData.articleBlocks}
+              onChange={(articleBlocks) => setFormData((current) => ({ ...current, articleBlocks }))}
+            />
           </div>
 
           {/* --- Left Column: Assets --- */}
@@ -264,7 +272,13 @@ function UploadField({ url, loading, onSelect, isSquare, small, aspect = "aspect
       `}>
         {url ? (
           <>
-            <img src={url} className="w-full h-full object-cover rounded-[2rem]" alt="preview" />
+            <Image
+              src={url}
+              alt="پیش‌نمایش تصویر برند"
+              fill
+              sizes={isSquare ? (small ? "96px" : "160px") : "(max-width: 1024px) 100vw, 640px"}
+              className="object-cover rounded-[2rem]"
+            />
             <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
               <FaCloudUploadAlt className="text-white text-2xl" />
             </div>
