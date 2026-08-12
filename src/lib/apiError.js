@@ -51,6 +51,26 @@ function labelFor(field) {
   return FIELD_LABELS[field] || field;
 }
 
+function enumValidationMessage(label, validationError) {
+  const rejectedValue = validationError?.value ?? validationError?.properties?.value;
+  const allowedValues = Array.isArray(validationError?.properties?.enumValues)
+    ? validationError.properties.enumValues.filter(
+        (value) => value !== undefined && value !== null && value !== ""
+      )
+    : [];
+
+  const rejectedPart =
+    rejectedValue !== undefined && rejectedValue !== null && rejectedValue !== ""
+      ? `مقدار «${String(rejectedValue)}» برای «${label}» معتبر نیست`
+      : `مقدار انتخاب‌شده برای «${label}» معتبر نیست`;
+
+  const recoveryPart = allowedValues.length
+    ? `یکی از گزینه‌های مجاز (${allowedValues.map(String).join("، ")}) را انتخاب کنید`
+    : "یکی از گزینه‌های مجاز را انتخاب کنید";
+
+  return `${rejectedPart}؛ ${recoveryPart}`;
+}
+
 /**
  * پاسخِ خطای ساختارمند و تمیز.
  * @param {string} message  پیام قابل‌نمایش به کاربر (فارسی)
@@ -81,6 +101,8 @@ export function handleApiError(error, fallback = "خطای غیرمنتظره‌
       fieldErrors[path] =
         e?.kind === "required"
           ? `«${label}» الزامی است`
+          : e?.kind === "enum"
+            ? enumValidationMessage(label, e)
           : e?.message && !/^Path |is required$|Cast to /.test(e.message)
             ? e.message
             : `مقدار «${label}» نامعتبر است`;

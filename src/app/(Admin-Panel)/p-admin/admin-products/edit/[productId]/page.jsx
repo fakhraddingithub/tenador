@@ -16,6 +16,7 @@ import VariantValueImageUpload from '@/components/admin/VariantValueImageUpload'
 import VariantValuesEditor from '@/components/admin/VariantValuesEditor';
 import { showToast } from '@/lib/toast';
 import { showError } from '@/lib/swal';
+import { getApiErrorMessage } from '@/lib/apiClientError';
 import { makeComboKey } from '@/lib/variantKey';
 import { renameVariantValue } from '@/lib/variantValueOps';
 import { invalidateAdminCache } from '@/lib/adminCache';
@@ -669,8 +670,10 @@ export default function ProductEditPage() {
         body: JSON.stringify(payload),
       });
 
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error);
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        throw new Error(getApiErrorMessage(data, 'خطا در ویرایش محصول'));
+      }
 
       invalidateAdminCache('/api/product');
 
