@@ -9,6 +9,7 @@ import "base/models/Variant";
 import Serie from "base/models/Serie";
 import "base/models/LimitedEdition";
 import requireAdmin from "@/lib/requireAdmin";
+import { buildTargetAudienceMatch } from "base/utils/targetAudience";
 
 const ADMIN_LIST_FIELDS = "name slug sku mainImage basePrice isActive order brand sport category serie limitedEdition targetAudience createdAt updatedAt";
 
@@ -78,7 +79,13 @@ export async function GET(req) {
       }
     }
     if (limitedEditionId) query.limitedEdition = limitedEditionId;
-    if (targetAudience) query.targetAudience = targetAudience;
+    if (targetAudience) {
+      const audienceMatch = buildTargetAudienceMatch(targetAudience);
+      if (!audienceMatch) {
+        return NextResponse.json({ error: "مخاطب هدف نامعتبر است" }, { status: 400 });
+      }
+      query.targetAudience = audienceMatch;
+    }
     if (search) query.name = { $regex: escapeRegExp(search), $options: "i" };
 
     let productsQuery = Product.find(query)

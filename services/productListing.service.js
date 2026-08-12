@@ -3,6 +3,12 @@ import connectToDB from "base/configs/db";
 import Product from "base/models/Product";
 import { getCachedRate } from "@/lib/Exchangerate";
 import { attachListingPrices } from "base/services/priceEngine";
+import {
+  TARGET_AUDIENCE_VALUES,
+  buildTargetAudienceMatch,
+} from "base/utils/targetAudience";
+
+export { TARGET_AUDIENCE_VALUES, buildTargetAudienceMatch };
 
 export const STOREFRONT_PAGE_SIZE = 20;
 export const STOREFRONT_MAX_PAGE_SIZE = 60;
@@ -13,18 +19,6 @@ const LISTING_FIELDS = [
   "gallery", "brand", "sport", "athlete", "category", "serie", "limitedEdition",
   "attributes", "variantMeta", "variants", "order", "targetAudience",
 ].join(" ");
-
-// باید با Product.js:targetAudience.enum یکسان بماند
-export const TARGET_AUDIENCE_VALUES = ["مردانه", "زنانه", "بچگانه", "همه"];
-
-// مقدارِ ورودی را به شرطِ Mongo برای targetAudience تبدیل می‌کند (یا null اگر
-// نامعتبر باشد). محصولاتِ «همه» (یونیسکس) زیرِ هر فیلترِ مخاطبِ خاص هم نمایش داده
-// می‌شوند. هر مصرف‌کننده‌ی دیگری (brandGrouped، query.service) هم از همین هلپر
-// استفاده می‌کند تا منطقِ اتحاد با «همه» یک‌جا و یکسان بماند.
-export function buildTargetAudienceMatch(value) {
-  if (!value || !TARGET_AUDIENCE_VALUES.includes(value)) return null;
-  return { $in: [...new Set([value, "همه"])] };
-}
 
 const POPULATES = [
   { path: "brand", select: "name title slug icon logo" },

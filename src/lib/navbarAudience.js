@@ -1,14 +1,27 @@
 /**
  * فیلترِ کلاینتیِ نوار توسط «مخاطبِ هدف» — روی navData ی از پیش کش‌شده اعمال می‌شود
- * (بدونِ round-trip یا کلیدِ کشِ تازه). محصولاتِ «همه» (یونیسکس) زیرِ هر مخاطبِ
- * خاصی هم مطابقت دارند، دقیقاً مثلِ فیلترِ storefront (services/productListing.service.js).
+ * (بدونِ round-trip یا کلیدِ کشِ تازه). محصولاتِ «یونی سکس» فقط زیرِ مردانه و
+ * زنانه قرار می‌گیرند و هرگز با بچگانه تطبیق داده نمی‌شوند.
  */
-export const AUDIENCE_OPTIONS = ["مردانه", "زنانه", "بچگانه"];
+import {
+  TARGET_AUDIENCE_FILTER_VALUES,
+  getEffectiveTargetAudienceFilters,
+  targetAudienceListMatches,
+} from "base/utils/targetAudience";
+
+export const AUDIENCE_OPTIONS = TARGET_AUDIENCE_FILTER_VALUES;
 
 function matchesAudience(nodeAudiences, selected) {
   if (!selected) return true;
-  const list = nodeAudiences || [];
-  return list.includes(selected) || list.includes("همه");
+  return targetAudienceListMatches(nodeAudiences, selected);
+}
+
+export function collectAvailableAudiences(navData) {
+  const storedValues = [];
+  for (const sport of navData || []) {
+    storedValues.push(...(sport.audiences || []));
+  }
+  return new Set(getEffectiveTargetAudienceFilters(storedValues));
 }
 
 export function filterNavDataByAudience(navData, selected) {

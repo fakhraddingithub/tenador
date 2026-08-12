@@ -1,5 +1,6 @@
 import mongoose from "mongoose";
 import { createSlug } from "base/utils/slugify";
+import { TARGET_AUDIENCE_VALUES } from "base/utils/targetAudience";
 
 const ProductSchema = new mongoose.Schema(
   {
@@ -25,7 +26,7 @@ const ProductSchema = new mongoose.Schema(
     // فعلاً اختیاری (Stage 1)؛ پس از Backfill کاملِ داده‌های قدیمی، required می‌شود (Stage 4).
     targetAudience: {
       type: String,
-      enum: ["مردانه", "زنانه", "بچگانه", "همه"],
+      enum: TARGET_AUDIENCE_VALUES,
       default: null,
     },
 

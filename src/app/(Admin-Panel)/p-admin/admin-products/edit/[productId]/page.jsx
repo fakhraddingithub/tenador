@@ -20,6 +20,10 @@ import { getApiErrorMessage } from '@/lib/apiClientError';
 import { makeComboKey } from '@/lib/variantKey';
 import { renameVariantValue } from '@/lib/variantValueOps';
 import { invalidateAdminCache } from '@/lib/adminCache';
+import {
+  TARGET_AUDIENCE_SELECT_OPTIONS,
+  normalizeTargetAudience,
+} from 'base/utils/targetAudience';
 
 // ---------------------------
 // Helpers
@@ -309,7 +313,7 @@ export default function ProductEditPage() {
             customTabItems: customTabItemTitles,
 
             label: p.label || 'none',
-            targetAudience: p.targetAudience || '',
+            targetAudience: normalizeTargetAudience(p.targetAudience) || '',
             isActive: p.isActive ?? true, // ✨ اضافه شد: دریافت وضعیت فعلی محصول از دیتابیس
           });
 
@@ -863,12 +867,7 @@ export default function ProductEditPage() {
             label="مخاطب هدف"
             value={formData.targetAudience}
             onChange={e => updateField('targetAudience', e.target.value)}
-            options={[
-              { value: 'مردانه', label: 'مردانه' },
-              { value: 'زنانه', label: 'زنانه' },
-              { value: 'بچگانه', label: 'بچگانه' },
-              { value: 'همه', label: 'همه' },
-            ]}
+            options={TARGET_AUDIENCE_SELECT_OPTIONS}
           />
           <Select
             label="وضعیت نمایش محصول"

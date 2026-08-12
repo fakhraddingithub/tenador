@@ -19,6 +19,7 @@ import PriceRangeFilter, {
 } from "@/components/features/filters/PriceRangeFilter";
 import useFilterScrollAnchor from "@/hooks/useFilterScrollAnchor";
 import { FiShoppingBag, FiLayers, FiLoader, FiFilter, FiRotateCcw } from "react-icons/fi";
+import { withQueryParams } from "@/lib/navbarAudience";
 
 const BATCH_SECTIONS = 2;
 
@@ -29,6 +30,7 @@ export default function SerieGroupedView({
   serieId,
   sportId = null,
   categoryId = null,
+  targetAudience = null,
   brandSlug = "",
   initialData = {},
   title = "",
@@ -79,6 +81,7 @@ export default function SerieGroupedView({
       params.set("serieId", serieId);
       if (sportId) params.set("sportId", sportId);
       if (categoryId) params.set("categoryId", categoryId);
+      if (targetAudience) params.set("targetAudience", targetAudience);
       params.set("offset", String(offset));
       params.set("limit", String(BATCH_SECTIONS));
       if (f.minPrice > 0) params.set("minPrice", String(f.minPrice));
@@ -87,7 +90,7 @@ export default function SerieGroupedView({
       if (withIndex) params.set("withIndex", "1");
       return `/api/series/grouped?${params.toString()}`;
     },
-    [serieId, sportId, categoryId]
+    [serieId, sportId, categoryId, targetAudience]
   );
 
   const loadMore = useCallback(async () => {
@@ -290,7 +293,10 @@ export default function SerieGroupedView({
                     entry.slug && sportSlug && brandSlug ? (
                       <Link
                         key={entry.key}
-                        href={`/${sportSlug}/${brandSlug}/${entry.slug}`}
+                        href={withQueryParams(
+                          `/${sportSlug}/${brandSlug}/${entry.slug}`,
+                          { targetAudience },
+                        )}
                         className="flex items-center justify-between gap-2 px-3 py-2 rounded-[6px] text-right hover:bg-gray-50 transition-colors group"
                       >
                         <span className="text-xs font-bold text-gray-600 group-hover:text-[var(--color-primary)] truncate">
@@ -385,7 +391,10 @@ export default function SerieGroupedView({
                     <div className="flex flex-col items-center gap-2">
                       {section.serie?.slug && sportSlug && brandSlug ? (
                         <Link
-                          href={`/${sportSlug}/${brandSlug}/${section.serie.slug}`}
+                          href={withQueryParams(
+                            `/${sportSlug}/${brandSlug}/${section.serie.slug}`,
+                            { targetAudience },
+                          )}
                           className="text-2xl md:text-3xl font-bold text-[#1a1a1a] tracking-tight text-center hover:text-[var(--color-primary)] transition-colors"
                         >
                           {section.serie.title}

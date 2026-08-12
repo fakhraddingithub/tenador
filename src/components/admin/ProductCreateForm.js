@@ -17,6 +17,10 @@ import { getApiErrorMessage } from '@/lib/apiClientError';
 import { makeComboKey } from '@/lib/variantKey';
 import { renameVariantValue } from '@/lib/variantValueOps';
 import { invalidateAdminCache } from '@/lib/adminCache';
+import {
+  TARGET_AUDIENCE_SELECT_OPTIONS,
+  normalizeTargetAudience,
+} from 'base/utils/targetAudience';
 
 // ---------------------------
 // Helpers
@@ -94,6 +98,7 @@ export default function ProductCreateForm({ initialData = {} }) {
     targetAudience: '',
     isActive: true,
     ...initialData,
+    targetAudience: normalizeTargetAudience(initialData.targetAudience) || '',
     customTabItems: initialData?.customTabItems || [],
     // Override athlete to guarantee array form
     athlete: initialAthletes,
@@ -658,12 +663,7 @@ export default function ProductCreateForm({ initialData = {} }) {
           label="مخاطب هدف"
           value={formData.targetAudience}
           onChange={e => updateField('targetAudience', e.target.value)}
-          options={[
-            { value: 'مردانه', label: 'مردانه' },
-            { value: 'زنانه', label: 'زنانه' },
-            { value: 'بچگانه', label: 'بچگانه' },
-            { value: 'همه', label: 'همه' },
-          ]}
+          options={TARGET_AUDIENCE_SELECT_OPTIONS}
         />
 
         <Select

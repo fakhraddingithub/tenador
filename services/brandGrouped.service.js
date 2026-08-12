@@ -343,6 +343,6 @@ async function _getBrandGroupedSections(params) {
 
 export const getBrandGroupedSections = unstable_cache(
   _getBrandGroupedSections,
-  ["brand-grouped-sections"],
+  ["brand-grouped-sections", "target-audience-unisex-v1"],
   { revalidate: 10800, tags: ["products", "series", "brands"] }
 );

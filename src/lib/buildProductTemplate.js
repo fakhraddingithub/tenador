@@ -221,10 +221,12 @@ ${fieldRules.label}
 
 targetAudience:
 ${fieldRules.targetAudience}
-- Allowed values: "مردانه" | "زنانه" | "بچگانه" | "همه"
+- Allowed values: "مردانه" | "زنانه" | "بچگانه" | "یونی سکس"
 - Choose exactly ONE based on who the product is actually made/marketed for.
-- Use "همه" only for genuinely unisex/general-purpose products (e.g. balls, courts, general accessories)
-  where the raw content gives no gender/age-specific signal — do not default to it just to avoid a choice.
+- Use "یونی سکس" only when the product is genuinely suitable for both adults: men AND women.
+- IMPORTANT: "یونی سکس" NEVER includes children. If the product is made for children, use "بچگانه".
+- For general-purpose products (e.g. balls, courts, general accessories), choose "یونی سکس" only when
+  they are intended for adult men and women and no child-specific signal exists.
 
 score:
 - DO NOT include this field at all.
@@ -400,7 +402,7 @@ Output exactly this structure with no extra fields:
   "color": "#hexcode",
   "basePrice": 0,
   "label": "",
-  "targetAudience": "مردانه | زنانه | بچگانه | همه",
+  "targetAudience": "مردانه | زنانه | بچگانه | یونی سکس",
   "brand": "ID_FROM_BRANDS_LIST",
   "serie": "ID_FROM_SERIES_LIST_OR_EMPTY_STRING",
   "limitedEdition": "ID_FROM_LIMITED_EDITIONS_LIST_OR_EMPTY_STRING",

@@ -4,6 +4,7 @@ import { useState } from "react";
 import { toast } from "react-toastify";
 import Swal from "sweetalert2";
 import ProductCreateForm from "./ProductCreateForm";
+import { normalizeTargetAudience } from "base/utils/targetAudience";
 
 const steps = [
   { id: 1, label: "متن خام" },
@@ -49,6 +50,11 @@ export default function AddProductToCategory({ categoryId }) {
   function handleValidateJSON() {
     try {
       const parsed = JSON.parse(aiResult);
+      if (parsed.targetAudience != null && parsed.targetAudience !== "") {
+        const normalizedTargetAudience = normalizeTargetAudience(parsed.targetAudience);
+        if (!normalizedTargetAudience) throw new Error("invalid targetAudience");
+        parsed.targetAudience = normalizedTargetAudience;
+      }
       setParsedProduct(parsed);
       setStep(3);
 

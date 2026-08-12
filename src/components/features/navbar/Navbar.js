@@ -2,7 +2,7 @@
 
 import { getUserFullName } from "base/utils/userName";
 
-import { useState, useEffect, useRef, useCallback, useMemo } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { usePathname } from "next/navigation";
 import {
   FiSearch,
@@ -25,6 +25,7 @@ import { getCartTotalQuantity } from "@/lib/cart";
 import MegamenuInteractiveColumns from "@/components/features/navbar/MegamenuInteractiveColumns";
 import {
   AUDIENCE_OPTIONS,
+  collectAvailableAudiences,
   filterNavDataByAudience,
   withQueryParams,
 } from "@/lib/navbarAudience";
@@ -579,13 +580,7 @@ export default function Navbar({ navData: initialNavData = [] }) {
   // از پیش‌محاسبه‌شده‌ی navbarService (بدون کوئریِ تازه)؛ برای پنهان‌کردنِ گزینه‌های
   // خالی در ستونِ دسکتاپ. عمداً از navData ی خام (نه فیلترشده) ساخته می‌شود تا با
   // انتخابِ یک مخاطب، گزینه‌های خواهر پنهان نشوند.
-  const availableAudiences = useMemo(() => {
-    const set = new Set();
-    navData.forEach((sport) => {
-      (sport.audiences || []).forEach((a) => set.add(a));
-    });
-    return set;
-  }, [navData]);
+  const availableAudiences = collectAvailableAudiences(navData);
 
   const [searchQuery, setSearchQuery] = useState("");
   const [searchResults, setSearchResults] = useState([]);

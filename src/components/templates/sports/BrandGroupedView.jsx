@@ -27,6 +27,7 @@ import PriceRangeFilter, {
 import useFilterScrollAnchor from "@/hooks/useFilterScrollAnchor";
 import ProductGridSkeleton from "@/components/templates/sports/ProductCardSkeleton";
 import { FiShoppingBag, FiFilter, FiRotateCcw } from "react-icons/fi";
+import { withQueryParams } from "@/lib/navbarAudience";
 
 const BATCH_SECTIONS = 2;
 
@@ -337,7 +338,10 @@ export default function BrandGroupedView({
                     entry.slug && sportSlug && brandSlug ? (
                       <Link
                         key={entry.key}
-                        href={"/" + sportSlug + "/" + brandSlug + "/" + entry.slug}
+                        href={withQueryParams(
+                          "/" + sportSlug + "/" + brandSlug + "/" + entry.slug,
+                          { targetAudience },
+                        )}
                         className="w-full flex items-center justify-between group cursor-pointer text-right"
                       >
                         <div className="flex min-w-0 items-center gap-3">
@@ -435,7 +439,10 @@ export default function BrandGroupedView({
                     <div className="flex flex-col items-center gap-1.5">
                       {section.serie?.slug && sportSlug && brandSlug ? (
                         <Link
-                          href={`/${sportSlug}/${brandSlug}/${section.serie.slug}`}
+                          href={withQueryParams(
+                            `/${sportSlug}/${brandSlug}/${section.serie.slug}`,
+                            { targetAudience },
+                          )}
                           className="text-2xl md:text-3xl font-bold text-[#1a1a1a] tracking-tight text-center hover:text-[var(--color-primary)] transition-colors"
                         >
                           {section.serie.title}

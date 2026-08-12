@@ -6,6 +6,7 @@
  *
  * query params:
  *   serieId (الزامی), sportId?, categoryId?
+ *   targetAudience? (مردانه | زنانه | بچگانه | یونی سکس)
  *   offset (پیش‌فرض 0), limit (پیش‌فرض 2)
  *   minPrice?, maxPrice?, search?
  *   withIndex=1  → فهرست کاملِ بخش‌ها را هم برگردان
@@ -13,6 +14,7 @@
 
 import { NextResponse } from "next/server";
 import { getSerieGroupedSections } from "base/services/serieGrouped.service";
+import { normalizeTargetAudience } from "base/utils/targetAudience";
 
 export async function GET(req) {
   try {
@@ -28,10 +30,17 @@ export async function GET(req) {
       return Number.isFinite(n) ? n : d;
     };
 
+    const rawTargetAudience = searchParams.get("targetAudience");
+    const targetAudience = normalizeTargetAudience(rawTargetAudience);
+    if (rawTargetAudience && !targetAudience) {
+      return NextResponse.json({ error: "مخاطب هدف نامعتبر است" }, { status: 400 });
+    }
+
     const data = await getSerieGroupedSections({
       serieId,
       sportId: searchParams.get("sportId") || null,
       categoryId: searchParams.get("categoryId") || null,
+      targetAudience,
       offset: toInt(searchParams.get("offset"), 0),
       limit: Math.min(Math.max(toInt(searchParams.get("limit"), 2), 1), 6),
       minPrice: toInt(searchParams.get("minPrice"), 0),

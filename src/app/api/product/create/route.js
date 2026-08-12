@@ -6,6 +6,7 @@ import { createSlug } from "base/utils/slugify";
 import { revalidateContent } from "@/lib/revalidate";
 import { makeComboKey } from "@/lib/variantKey";
 import { apiError, handleApiError } from "@/lib/apiError";
+import { normalizeTargetAudience } from "base/utils/targetAudience";
 
 /* ----------------------------------
    Generate unique SKU
@@ -110,6 +111,13 @@ export async function POST(req) {
       }
     }
 
+    const normalizedTargetAudience = normalizeTargetAudience(targetAudience);
+    if (targetAudience != null && targetAudience !== "" && !normalizedTargetAudience) {
+      return apiError("«مخاطب هدف» نامعتبر است", 400, {
+        fieldErrors: { targetAudience: "مخاطب هدف انتخاب‌شده معتبر نیست" },
+      });
+    }
+
     /* -------------------------------
         Validate Category
      ------------------------------- */
@@ -209,7 +217,7 @@ export async function POST(req) {
       customTabItems: resolvedCustomTabItemIds,
       variantMeta: variantMeta && typeof variantMeta === "object" ? variantMeta : {},
       label: label || "none",
-      targetAudience: targetAudience || null,
+      targetAudience: normalizedTargetAudience,
       isActive: isActive !== undefined ? isActive : true, // ✨ اضافه شد: اگر ارسال نشود به صورت پیش‌فرض true خواهد بود
     });
 
@@ -262,7 +270,7 @@ export async function POST(req) {
     }
 
     // باطل‌سازی کش محتوا تا محصول جدید بلافاصله در صفحات نمایش داده شود
-    revalidateContent(["products"]);
+    revalidateContent(["products", "navbar"]);
 
     return Response.json(
       { message: "Product and variants created successfully", product },

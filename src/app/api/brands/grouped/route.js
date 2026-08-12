@@ -18,6 +18,7 @@
 
 import { NextResponse } from "next/server";
 import { getBrandGroupedSections } from "base/services/brandGrouped.service";
+import { normalizeTargetAudience } from "base/utils/targetAudience";
 
 export async function GET(req) {
   try {
@@ -62,6 +63,12 @@ export async function GET(req) {
       }
     }
 
+    const rawTargetAudience = searchParams.get("targetAudience");
+    const targetAudience = normalizeTargetAudience(rawTargetAudience);
+    if (rawTargetAudience && !targetAudience) {
+      return NextResponse.json({ error: "مخاطب هدف نامعتبر است" }, { status: 400 });
+    }
+
     const data = await getBrandGroupedSections({
       brandId,
       sportId: searchParams.get("sportId") || null,
@@ -73,7 +80,7 @@ export async function GET(req) {
       maxPrice: toInt(searchParams.get("maxPrice"), 0),
       search: searchParams.get("search") || "",
       withIndex: searchParams.get("withIndex") === "1",
-      targetAudience: searchParams.get("targetAudience") || null,
+      targetAudience,
     });
 
     return NextResponse.json(data, { status: 200 });

@@ -16,6 +16,7 @@ import Product from "base/models/Product";
 import { getCachedRate } from "@/lib/Exchangerate";
 import { attachListingPrices } from "base/services/priceEngine";
 import { resolveSerieSportContent } from "@/lib/serieSportContent";
+import { buildTargetAudienceMatch } from "base/utils/targetAudience";
 
 const DIRECT_KEY = "__direct__";
 
@@ -81,7 +82,7 @@ async function buildChildTree(parentSerieId) {
   return { parent, directChildren, descendantsByChild, allDescendantIds };
 }
 
-function buildBaseMatch({ parentSerieId, allDescendantIds, sportId, categoryId, search }) {
+function buildBaseMatch({ parentSerieId, allDescendantIds, sportId, categoryId, targetAudience, search }) {
   const parentOid = toObjectId(parentSerieId);
   const serieScope = [
     parentOid,
@@ -91,6 +92,8 @@ function buildBaseMatch({ parentSerieId, allDescendantIds, sportId, categoryId, 
   const match = { isActive: true, serie: { $in: serieScope } };
   if (sportId) match.sport = toObjectId(sportId);
   if (categoryId) match.category = toObjectId(categoryId);
+  const audienceMatch = buildTargetAudienceMatch(targetAudience);
+  if (audienceMatch) match.targetAudience = audienceMatch;
   if (search && search.trim()) {
     match.name = { $regex: escapeRegex(search.trim()), $options: "i" };
   }
@@ -109,6 +112,7 @@ async function _getSerieGroupedSections(params) {
     serieId,
     sportId = null,
     categoryId = null,
+    targetAudience = null,
     offset = 0,
     limit = 2,
     minPrice = 0,
@@ -136,6 +140,7 @@ async function _getSerieGroupedSections(params) {
     allDescendantIds,
     sportId,
     categoryId,
+    targetAudience,
     search,
   });
 
@@ -279,6 +284,6 @@ async function _getSerieGroupedSections(params) {
 
 export const getSerieGroupedSections = unstable_cache(
   _getSerieGroupedSections,
-  ["serie-grouped-sections"],
+  ["serie-grouped-sections", "target-audience-unisex-v1"],
   { revalidate: 10800, tags: ["products", "series"] }
 );

@@ -3,6 +3,7 @@ import connectToDB from "base/configs/db";
 import Sport from "base/models/Sport";
 import Product from "base/models/Product";
 import Category from "base/models/Category";
+import { getEffectiveTargetAudienceFilters } from "base/utils/targetAudience";
 // Variant فقط برای ثبتِ مدل (side-effect) لازم است تا lookup روی کالکشنِ variants کار کند
 import "base/models/Variant";
 
@@ -255,7 +256,9 @@ async function buildNavbarData() {
     const sKey = sportId.toString();
     const cKey = categoryId.toString();
     const bKey = brandId.toString();
-    const values = row.values.map(String);
+    // دادهٔ قدیمی «همه» نیز اینجا به مردانه+زنانه گسترش می‌یابد؛ بچگانه فقط
+    // با محصولی که صریحاً بچگانه است در navData ثبت می‌شود.
+    const values = getEffectiveTargetAudienceFilters(row.values.map(String));
 
     const scKey = `${sKey}|${cKey}`;
     let inner = audienceByCatBrand.get(scKey);
@@ -337,6 +340,6 @@ export const getCachedNavbar = unstable_cache(
     const data = await buildNavbarData();
     return JSON.parse(JSON.stringify(data));
   },
-  ["navbar-data"],
+  ["navbar-data", "target-audience-unisex-v1"],
   { revalidate: 10800, tags: ["navbar"] },
 );

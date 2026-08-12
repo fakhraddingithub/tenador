@@ -5,7 +5,7 @@ import SerieGroupedView from "@/components/templates/sports/SerieGroupedView";
 import { getCachedRate } from "@/lib/Exchangerate";
 import { queryBySlugs, resolvePageContext } from "base/services/query.service";
 import { getBrandGroupedSections } from "base/services/brandGrouped.service";
-import { TARGET_AUDIENCE_VALUES } from "base/services/productListing.service";
+import { normalizeTargetAudience } from "base/utils/targetAudience";
 import { getSerieGroupedSections } from "base/services/serieGrouped.service";
 import { getSeriesFilterIndex } from "base/services/series.service";
 import { getPublicArticle } from "base/services/publicArticle.service";
@@ -154,9 +154,7 @@ export default async function SportDynamicSlugPage({ params, searchParams }) {
   const page = Math.max(1, Number(sp.page) || 1);
   // مخاطبِ هدف (navbar audience tabs) — مقدارِ نامعتبر/ناشناخته بی‌سروصدا نادیده
   // گرفته می‌شود (بدونِ فیلتر)، نه ۵۰۰، دقیقاً مثلِ رفتارِ سایرِ پارامترهای صفحه.
-  const targetAudience = TARGET_AUDIENCE_VALUES.includes(sp.targetAudience)
-    ? sp.targetAudience
-    : null;
+  const targetAudience = normalizeTargetAudience(sp.targetAudience);
 
   // اعتبارسنجیِ قطعیِ مسیر — اگر یکی از ۶ الگوی مجاز نباشد، ۴۰۴ سخت
   const ctx = await resolvePageContext(slugs);
@@ -236,6 +234,7 @@ export default async function SportDynamicSlugPage({ params, searchParams }) {
       serieId,
       sportId,
       categoryId,
+      targetAudience,
       offset: 0,
       limit: INITIAL_SECTIONS,
       withIndex: true,
@@ -257,6 +256,7 @@ export default async function SportDynamicSlugPage({ params, searchParams }) {
           serieId={serieId}
           sportId={sportId}
           categoryId={categoryId}
+          targetAudience={targetAudience}
           brandSlug={brandSlug}
           initialData={initialData}
           page={page}

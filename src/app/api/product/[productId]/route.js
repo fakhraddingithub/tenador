@@ -16,6 +16,7 @@ import { verifyToken } from "base/utils/auth";
 import { revalidateContent } from "@/lib/revalidate";
 import { makeComboKey } from "@/lib/variantKey";
 import { handleApiError } from "@/lib/apiError";
+import { normalizeTargetAudience } from "base/utils/targetAudience";
 
 // --------------------------------------------------
 // Helpers
@@ -142,6 +143,17 @@ export async function PUT(request, { params }) {
       selectedCombos, // آرایه‌ی کلیدِ ترکیب‌های انتخاب‌شده برای ساخت (اختیاری)
       variantMeta, // متادیتای سطحِ مقدار (تصاویرِ مشترک هر مقدار و ...)
     } = body;
+
+    const normalizedTargetAudience = normalizeTargetAudience(targetAudience);
+    if (targetAudience != null && targetAudience !== "" && !normalizedTargetAudience) {
+      return NextResponse.json(
+        {
+          error: "«مخاطب هدف» نامعتبر است",
+          fieldErrors: { targetAudience: "مخاطب هدف انتخاب‌شده معتبر نیست" },
+        },
+        { status: 400 },
+      );
+    }
 
     const product = await Product.findById(productId);
 
@@ -275,7 +287,7 @@ export async function PUT(request, { params }) {
 
     product.label = label || "none";
 
-    product.targetAudience = targetAudience || null;
+    product.targetAudience = normalizedTargetAudience;
 
     // ✨ اضافه شد: اگر isActive فرستاده شده بود مقدار را به‌روزرسانی کن، در غیر این صورت مقدار قبلی را حفظ کن
     product.isActive = typeof isActive === "boolean" ? isActive : product.isActive;
@@ -298,7 +310,7 @@ export async function PUT(request, { params }) {
       .populate("variants")
       .lean();
 
-    revalidateContent(["products"]);
+    revalidateContent(["products", "navbar"]);
 
     return NextResponse.json(
       {
@@ -357,7 +369,7 @@ export async function DELETE(request, { params }) {
     // حذف محصول
     await Product.findByIdAndDelete(productId);
 
-    revalidateContent(["products"]);
+    revalidateContent(["products", "navbar"]);
 
     return NextResponse.json(
       {
