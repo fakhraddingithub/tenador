@@ -17,9 +17,9 @@ import TaxonomyBreadcrumbs from "@/components/seo/TaxonomyBreadcrumbs";
 import { getBrandGroupedSections } from "base/services/brandGrouped.service";
 import { resolveArticleEntities } from "base/services/publicArticle.service";
 import { normalizeTargetAudience } from "base/utils/targetAudience";
+import { BRAND_SECTIONS_PER_BATCH } from "base/utils/groupedProductPagination";
 
 const SITE_URL = (process.env.NEXT_PUBLIC_SITE_URL || "https://tenador.com").replace(/\/+$/, "");
-const INITIAL_BRAND_SECTIONS = 2;
 
 // ⚠️ اسلاگ‌های فارسی با هدر x-next-cache-tags ناسازگارند (باگ Next: کاراکتر
 // غیر-ASCII در هدر → ERR_INVALID_CHAR → خطای ۵۰۰). داینامیک رندر می‌شود تا هدر
@@ -106,7 +106,7 @@ export default async function DynamicSportPage({ params, searchParams }) {
       getBrandGroupedSections({
         brandId,
         offset: 0,
-        limit: INITIAL_BRAND_SECTIONS,
+        limit: BRAND_SECTIONS_PER_BATCH,
         withIndex: true,
         targetAudience,
       }),
@@ -150,6 +150,7 @@ export default async function DynamicSportPage({ params, searchParams }) {
           filters={filters}
           rate={rate}
           brandId={brandId}
+          attrFilters={[]}
           initialData={initialData}
           targetAudience={targetAudience}
           title={`تنادور – ${pageInfo.title || pageInfo.name || ""}`}

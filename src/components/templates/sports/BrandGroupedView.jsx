@@ -38,8 +38,12 @@ import {
   readBrandGroupedViewCache,
   writeBrandGroupedViewCache,
 } from "@/lib/brandGroupedViewCache";
+import {
+  BRAND_SECTIONS_PER_BATCH,
+  mergeGroupedSections,
+} from "base/utils/groupedProductPagination";
 
-const BATCH_SECTIONS = 2;
+const EMPTY_ATTR_FILTERS = Object.freeze([]);
 
 export default function BrandGroupedView({
   pageInfo = {},
@@ -48,7 +52,7 @@ export default function BrandGroupedView({
   brandId,
   sportId = null,
   categoryId = null,
-  attrFilters = [],
+  attrFilters = EMPTY_ATTR_FILTERS,
   filterMeta = null,
   initialData = {},
   title = "",
@@ -90,6 +94,9 @@ export default function BrandGroupedView({
   const [index, setIndex] = useState(startingData.index || []);
   const hasCollaborations = index.some((entry) => entry.type === "collaboration");
   const [nextOffset, setNextOffset] = useState(startingData.nextOffset ?? 0);
+  const [nextProductOffset, setNextProductOffset] = useState(
+    startingData.nextProductOffset ?? 0,
+  );
   const [hasMore, setHasMore] = useState(Boolean(startingData.hasMore));
   const [totalCount, setTotalCount] = useState(startingData.totalCount ?? 0);
   const [loading, setLoading] = useState(false);
@@ -116,8 +123,8 @@ export default function BrandGroupedView({
   const indexRef = useRef(index);
   const hasMoreRef = useRef(hasMore);
   const nextOffsetRef = useRef(nextOffset);
+  const nextProductOffsetRef = useRef(nextProductOffset);
   const totalCountRef = useRef(totalCount);
-  const loadedKeysRef = useRef(new Set((startingData.sections || []).map((s) => s.key)));
   const filterRef = useRef(startingFilters);
   const sentinelRef = useRef(null);
   const mountedRef = useRef(false);
@@ -132,6 +139,9 @@ export default function BrandGroupedView({
     if (next.index !== undefined) indexRef.current = next.index;
     if (next.hasMore !== undefined) hasMoreRef.current = next.hasMore;
     if (next.nextOffset !== undefined) nextOffsetRef.current = next.nextOffset;
+    if (next.nextProductOffset !== undefined) {
+      nextProductOffsetRef.current = next.nextProductOffset;
+    }
     if (next.totalCount !== undefined) totalCountRef.current = next.totalCount;
   };
 
@@ -142,6 +152,8 @@ export default function BrandGroupedView({
         index: next.index ?? indexRef.current,
         hasMore: next.hasMore ?? hasMoreRef.current,
         nextOffset: next.nextOffset ?? nextOffsetRef.current,
+        nextProductOffset:
+          next.nextProductOffset ?? nextProductOffsetRef.current,
         totalCount: next.totalCount ?? totalCountRef.current,
         filters: next.filters ?? filterRef.current,
       });
@@ -164,7 +176,7 @@ export default function BrandGroupedView({
   // خالص (pure): فیلترها آرگومان‌اند و از ref خوانده نمی‌شوند، تا یک درخواستِ
   // ناموفقِ فیلتر نتواند offsetِ قدیمی را با فیلترِ جدید ترکیب کند.
   const buildUrl = useCallback(
-    (offset, { withIndex = false, filters }) => {
+    (offset, productOffset, { withIndex = false, filters }) => {
       const f = filters;
       const params = new URLSearchParams();
       params.set("brandId", brandId);
@@ -174,7 +186,8 @@ export default function BrandGroupedView({
         params.set("attrFilters", JSON.stringify(attrFilters));
       }
       params.set("offset", String(offset));
-      params.set("limit", String(BATCH_SECTIONS));
+      params.set("productOffset", String(productOffset));
+      params.set("limit", String(BRAND_SECTIONS_PER_BATCH));
       if (f.minPrice > 0) params.set("minPrice", String(f.minPrice));
       if (f.maxPrice > 0) params.set("maxPrice", String(f.maxPrice));
       if (f.search) params.set("search", f.search);
@@ -203,7 +216,7 @@ export default function BrandGroupedView({
   //  • لغو کردن با یک abort همه‌چیز (fetch و انتظارِ backoff) را با هم بردارد.
   //
   // قاعده‌ی commit: هیچ ref ای که در سازگاریِ نتایج نقش دارد (filterRef,
-  // loadedKeysRef, sectionsRef, nextOffsetRef) پیش از پاسخِ موفق تغییر نمی‌کند.
+  // sectionsRef و cursorها) پیش از پاسخِ موفق تغییر نمی‌کنند.
   const run = useCallback(
     async (op, opts = {}) => {
       // observer نباید درخواستِ موازی بسازد
@@ -238,8 +251,12 @@ export default function BrandGroupedView({
           const filters = op === "applyFilters" ? opts.filters : filterRef.current;
           const url =
             op === "applyFilters"
-              ? buildUrl(0, { withIndex: true, filters })
-              : buildUrl(nextOffsetRef.current, { filters });
+              ? buildUrl(0, 0, { withIndex: true, filters })
+              : buildUrl(
+                  nextOffsetRef.current,
+                  nextProductOffsetRef.current,
+                  { filters },
+                );
 
           const out = await attemptFetch(url, signal);
 
@@ -256,50 +273,57 @@ export default function BrandGroupedView({
               const incomingIndex = data.index || [];
               const incomingHasMore = Boolean(data.hasMore);
               const incomingOffset = data.nextOffset ?? 0;
+              const incomingProductOffset = data.nextProductOffset ?? 0;
               const incomingTotalCount = data.totalCount ?? 0;
               filterRef.current = filters;
-              loadedKeysRef.current = new Set(incoming.map((s) => s.key));
               syncRefs({
                 sections: incoming,
                 index: incomingIndex,
                 hasMore: incomingHasMore,
                 nextOffset: incomingOffset,
+                nextProductOffset: incomingProductOffset,
                 totalCount: incomingTotalCount,
               });
               setSections(incoming);
               setIndex(incomingIndex);
               setHasMore(incomingHasMore);
               setNextOffset(incomingOffset);
+              setNextProductOffset(incomingProductOffset);
               setTotalCount(incomingTotalCount);
               cacheSnapshot({
                 sections: incoming,
                 index: incomingIndex,
                 hasMore: incomingHasMore,
                 nextOffset: incomingOffset,
+                nextProductOffset: incomingProductOffset,
                 totalCount: incomingTotalCount,
                 filters,
               });
               setFilterToken((t) => t + 1); // → ارزیابیِ لنگرِ اسکرول
             } else {
-              const incoming = (data.sections || []).filter(
-                (s) => !loadedKeysRef.current.has(s.key)
+              const merged = mergeGroupedSections(
+                sectionsRef.current,
+                data.sections || [],
               );
-              incoming.forEach((s) => loadedKeysRef.current.add(s.key));
-              const merged = [...sectionsRef.current, ...incoming];
               const incomingHasMore = Boolean(data.hasMore);
               const incomingOffset = data.nextOffset ?? nextOffsetRef.current;
+              const incomingProductOffset =
+                data.nextProductOffset ?? nextProductOffsetRef.current;
               syncRefs({
                 sections: merged,
                 hasMore: incomingHasMore,
                 nextOffset: incomingOffset,
+                nextProductOffset: incomingProductOffset,
               });
               setSections(merged);
               setHasMore(incomingHasMore);
               setNextOffset(incomingOffset);
+              setNextProductOffset(incomingProductOffset);
               cacheSnapshot({
                 sections: merged,
                 hasMore: incomingHasMore,
                 nextOffset: incomingOffset,
+                nextProductOffset: incomingProductOffset,
               });
             }
             setStatus(null);
@@ -377,7 +401,7 @@ export default function BrandGroupedView({
     );
     observer.observe(el);
     return () => observer.disconnect();
-  }, [run, hasMore, sections.length]);
+  }, [run, hasMore, sections.length, nextOffset, nextProductOffset]);
 
   // ─── پرشِ سریع به یک بخش (در صورت لزوم تا رسیدن به آن batch می‌گیرد) ───
   const jumpTo = useCallback(
@@ -450,7 +474,10 @@ export default function BrandGroupedView({
     setIsModalOpen(true);
   };
 
-  const isEmpty = !loading && sections.length === 0;
+  // With a price filter, a 20-product cursor page may have no visible result
+  // while later cursor pages do. Keep the sentinel alive until the server says
+  // there is no remaining data; only then show the definitive empty state.
+  const isEmpty = !loading && sections.length === 0 && !hasMore;
 
   // ─── شمارنده‌ی صادق ───
   // totalCount کلِ محصولاتِ برند است، ولی بدنه فقط بخش‌های بارگذاری‌شده را نشان

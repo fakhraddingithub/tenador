@@ -43,6 +43,7 @@ export function writeBrandGroupedViewCache(key, snapshot) {
     sections: snapshot.sections || [],
     index: snapshot.index || [],
     nextOffset: snapshot.nextOffset ?? 0,
+    nextProductOffset: snapshot.nextProductOffset ?? 0,
     hasMore: Boolean(snapshot.hasMore),
     totalCount: snapshot.totalCount ?? 0,
     filters: cloneFilters(snapshot.filters),

@@ -12,7 +12,8 @@
  *   {
  *     index?:      [{ key, serieId, title, shortDescription, slug, productCount, image, logo }]  // فقط در offset=0
  *     sections:    [{ key, serie, productCount, products: [...priced] }]
- *     nextOffset:  number   // اندیس بعدی برای ادامه‌ی بارگذاری
+ *     nextOffset:  number   // اندیس section بعدی/فعلی برای ادامه‌ی بارگذاری
+ *     nextProductOffset: number // موقعیت ادامه داخل section فعلی
  *     hasMore:     boolean
  *     totalCount:  number   // مجموع محصولاتِ منطبق با فیلتر (برای نمایش تعداد)
  *   }
@@ -34,6 +35,11 @@ import {
   LISTING_FIELDS,
   POPULATES,
 } from "base/services/productListing.service";
+import {
+  BRAND_PRODUCTS_PER_BATCH,
+  BRAND_SECTIONS_PER_BATCH,
+  planGroupedProductPage,
+} from "base/utils/groupedProductPagination";
 
 const OTHER_KEY = "__other__";
 const COLLABORATION_KEY_PREFIX = "__limited_edition__:";
@@ -401,7 +407,9 @@ async function _getBrandGroupedSections(params) {
     categoryId = null,
     attrFilters = [],
     offset = 0,
-    limit = 2,
+    productOffset = 0,
+    limit = BRAND_SECTIONS_PER_BATCH,
+    productLimit = BRAND_PRODUCTS_PER_BATCH,
     minPrice = 0,
     maxPrice = 0, // 0 یعنی بدون سقف
     search = "",
@@ -410,7 +418,14 @@ async function _getBrandGroupedSections(params) {
   } = params || {};
 
   if (!brandId) {
-    return { index: [], sections: [], nextOffset: 0, hasMore: false, totalCount: 0 };
+    return {
+      index: [],
+      sections: [],
+      nextOffset: 0,
+      nextProductOffset: 0,
+      hasMore: false,
+      totalCount: 0,
+    };
   }
 
   await connectToDB();
@@ -458,65 +473,75 @@ async function _getBrandGroupedSections(params) {
   // پروجکشن + populateهای باریکِ همان قراردادِ productListing.service — به‌جای
   // ارسالِ سندِ کاملِ محصول (که longDescription و همه‌ی فیلدهای صفحه‌ی جزئیات را
   // در هر کارت تکرار می‌کرد).
-  const listingQuery = (filter) => {
+  const listingQuery = (filter, skip, take) => {
     let q = Product.find(filter).select(LISTING_FIELDS).sort({ order: 1, createdAt: -1 });
     for (const populate of POPULATES) q = q.populate(populate);
-    return q.lean();
+    return q.skip(skip).limit(take).lean();
   };
 
-  // ── ساختِ بخش‌های این batch ──
-  // «موج»‌به‌«موج» پیش می‌رود: کوئریِ محصولاتِ هر موج موازی اجرا و سپس یک‌بار
-  // برای کلِ موج قیمت‌گذاری می‌شود. attachListingPrices سه کوئری دارد، پس
-  // قبلاً هر بخش سه کوئریِ قیمت می‌زد؛ حالا هر موج سه‌تا. ترتیبِ محصولات و
-  // بخش‌ها دقیقاً حفظ می‌شود (attachListingPrices خروجی را map می‌کند).
+  // بودجه‌ی هر پاسخ بر اساس تعداد محصول است، نه اندازه‌ی بخش. چند بخش کوچک
+  // می‌توانند یک batch را پر کنند و یک بخش بزرگ با productOffset در چند batch
+  // ادامه پیدا می‌کند؛ بنابراین هیچ برند بزرگی payload چندده‌محصولی نمی‌سازد.
+  const cursorPlan = planGroupedProductPage(index, {
+    sectionOffset: offset,
+    productOffset,
+    sectionLimit: Math.min(
+      Math.max(Number(limit) || BRAND_SECTIONS_PER_BATCH, 1),
+      BRAND_SECTIONS_PER_BATCH,
+    ),
+    productLimit: Math.min(
+      Math.max(Number(productLimit) || BRAND_PRODUCTS_PER_BATCH, 1),
+      BRAND_PRODUCTS_PER_BATCH,
+    ),
+  });
+  const rawPerPlan = await Promise.all(
+    cursorPlan.plans.map(({ entry, skip, take }) =>
+      listingQuery(sectionFilter(entry), skip, take),
+    ),
+  );
+  const rawFlat = rawPerPlan.flat();
+  const pricedFlat = rawFlat.length
+    ? await attachListingPrices(rawFlat, rate)
+    : [];
   const sections = [];
-  let cursor = Math.max(0, offset);
+  let at = 0;
 
-  while (sections.length < limit && cursor < index.length) {
-    const wave = index.slice(cursor, cursor + (limit - sections.length));
-    cursor += wave.length;
+  for (let i = 0; i < cursorPlan.plans.length; i++) {
+    const entry = cursorPlan.plans[i].entry;
+    const priced = pricedFlat.slice(at, at + rawPerPlan[i].length);
+    at += rawPerPlan[i].length;
+    const products = priced.filter((product) =>
+      withinPrice(product, minPrice, maxPrice),
+    );
+    if (products.length === 0) continue;
 
-    const rawPerEntry = await Promise.all(wave.map((e) => listingQuery(sectionFilter(e))));
-    const pricedFlat = await attachListingPrices(rawPerEntry.flat(), rate);
-
-    let at = 0;
-    for (let i = 0; i < wave.length; i++) {
-      const entry = wave[i];
-      const priced = pricedFlat.slice(at, at + rawPerEntry[i].length);
-      at += rawPerEntry[i].length;
-
-      const products = priced.filter((p) => withinPrice(p, minPrice, maxPrice));
-      if (products.length === 0) continue; // با فیلتر قیمت خالی شد → رد
-      sections.push({
-        key: entry.key,
-        type: entry.type || "serie",
-        href: entry.href || null,
-        ownerBrand: entry.ownerBrand || null,
-        serie: {
-          _id: entry.serieId,
-          title: entry.title,
-          description: entry.description,
-          shortDescription: entry.shortDescription,
-          slug: entry.slug,
-          image: entry.image,
-          headImage: entry.headImage,
-          logo: entry.logo,
-        },
-        productCount: entry.productCount,
-        products,
-      });
-    }
+    sections.push({
+      key: entry.key,
+      type: entry.type || "serie",
+      href: entry.href || null,
+      ownerBrand: entry.ownerBrand || null,
+      serie: {
+        _id: entry.serieId,
+        title: entry.title,
+        description: entry.description,
+        shortDescription: entry.shortDescription,
+        slug: entry.slug,
+        image: entry.image,
+        headImage: entry.headImage,
+        logo: entry.logo,
+      },
+      productCount: entry.productCount,
+      products,
+    });
   }
-
-  const nextOffset = cursor;
-  const hasMore = cursor < index.length;
 
   return JSON.parse(
     JSON.stringify({
       index: withIndex ? index : undefined,
       sections,
-      nextOffset,
-      hasMore,
+      nextOffset: cursorPlan.nextOffset,
+      nextProductOffset: cursorPlan.nextProductOffset,
+      hasMore: cursorPlan.hasMore,
       totalCount,
     })
   );
@@ -528,6 +553,7 @@ export const getBrandGroupedSections = unstable_cache(
     "brand-grouped-sections",
     "target-audience-unisex-v1",
     "limited-edition-relations-v1",
+    "brand-product-cursor-v1",
   ],
   { revalidate: 10800, tags: ["products", "series", "brands", "limited-editions"] }
 );

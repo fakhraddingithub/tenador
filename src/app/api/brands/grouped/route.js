@@ -8,7 +8,8 @@
  *   brandId (الزامی), sportId?, categoryId?
  *   attrFilters? → آرایه‌ی JSON از فیلترهای ویژگی: [{ name, values, source }]
  *   attrName?, attrValue?, attrSource? → فرمتِ قدیمیِ تک‌ویژگی (برای سازگاری)
- *   offset (پیش‌فرض 0), limit (پیش‌فرض 2)
+ *   offset?, productOffset? → cursor دوبخشیِ section/product
+ *   limit? → سقف تعداد sectionهای یک پاسخ؛ تعداد محصول همیشه در سرور محدود است
  *   minPrice?, maxPrice?, search?
  *   targetAudience? → مخاطبِ هدف (navbar audience tabs)
  *   withIndex=1  → فهرست کاملِ بخش‌ها (برای نویگیشن سری‌ها) را هم برگردان
@@ -19,6 +20,10 @@
 import { NextResponse } from "next/server";
 import { getBrandGroupedSections } from "base/services/brandGrouped.service";
 import { normalizeTargetAudience } from "base/utils/targetAudience";
+import {
+  BRAND_PRODUCTS_PER_BATCH,
+  BRAND_SECTIONS_PER_BATCH,
+} from "base/utils/groupedProductPagination";
 
 export async function GET(req) {
   try {
@@ -75,7 +80,15 @@ export async function GET(req) {
       categoryId: searchParams.get("categoryId") || null,
       attrFilters,
       offset: toInt(searchParams.get("offset"), 0),
-      limit: Math.min(Math.max(toInt(searchParams.get("limit"), 2), 1), 6),
+      productOffset: toInt(searchParams.get("productOffset"), 0),
+      limit: Math.min(
+        Math.max(
+          toInt(searchParams.get("limit"), BRAND_SECTIONS_PER_BATCH),
+          1,
+        ),
+        BRAND_SECTIONS_PER_BATCH,
+      ),
+      productLimit: BRAND_PRODUCTS_PER_BATCH,
       minPrice: toInt(searchParams.get("minPrice"), 0),
       maxPrice: toInt(searchParams.get("maxPrice"), 0),
       search: searchParams.get("search") || "",

@@ -10,6 +10,7 @@
     "test": "jest",
     "test:target-audience": "node --test tests/targetAudience.test.mjs",
     "test:limited-edition-relations": "node --test tests/limitedEditionRelations.test.mjs",
+    "test:grouped-product-pagination": "node --test tests/groupedProductPagination.test.mjs",
     "test:db": "node scripts/test-db-connection.js",
     "migrate:used-products": "node scripts/migrateUsedProductsHealthScale.js",
     "migrate:coach-codes": "node scripts/migrateCoachCodeFormat.js",

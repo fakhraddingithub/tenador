@@ -14,6 +14,7 @@ import { articleMetadata } from "@/lib/articleSeo";
 import TaxonomyBreadcrumbs from "@/components/seo/TaxonomyBreadcrumbs";
 import TaxonomyStructuredData from "@/components/seo/TaxonomyStructuredData";
 import { buildTaxonomyMetadata } from "@/lib/seo/taxonomySeo";
+import { BRAND_SECTIONS_PER_BATCH } from "base/utils/groupedProductPagination";
 
 const SITE_URL = (process.env.NEXT_PUBLIC_SITE_URL || "https://tenador.com").replace(/\/+$/, "");
 
@@ -190,7 +191,7 @@ export default async function SportDynamicSlugPage({ params, searchParams }) {
       categoryId,
       attrFilters,
       offset: 0,
-      limit: INITIAL_SECTIONS,
+      limit: BRAND_SECTIONS_PER_BATCH,
       withIndex: true,
       targetAudience,
     });
