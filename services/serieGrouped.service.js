@@ -17,6 +17,7 @@ import { getCachedRate } from "@/lib/Exchangerate";
 import { attachListingPrices } from "base/services/priceEngine";
 import { resolveSerieSportContent } from "@/lib/serieSportContent";
 import { buildTargetAudienceMatch } from "base/utils/targetAudience";
+import { LISTING_FIELDS, POPULATES } from "base/services/productListing.service";
 
 const DIRECT_KEY = "__direct__";
 
@@ -107,31 +108,24 @@ function withinPrice(p, minPrice, maxPrice) {
   return true;
 }
 
-async function _getSerieGroupedSections(params) {
+/**
+ * فهرستِ بخش‌ها + شمارش + دامنه‌ی سریِ هر بخش — مستقل از offset/limit/قیمت،
+ * تا همه‌ی batchهای یک ترکیبِ فیلتر یک ورودیِ کش مشترک داشته باشند.
+ * (همان الگوی brandGrouped.service.js)
+ */
+async function _getSerieGroupedIndex(params) {
   const {
     serieId,
     sportId = null,
     categoryId = null,
     targetAudience = null,
-    offset = 0,
-    limit = 2,
-    minPrice = 0,
-    maxPrice = 0,
     search = "",
-    withIndex = false,
   } = params || {};
-
-  if (!serieId) {
-    return { index: [], sections: [], nextOffset: 0, hasMore: false, totalCount: 0 };
-  }
 
   await connectToDB();
 
-  const [tree, rate] = await Promise.all([buildChildTree(serieId), getCachedRate()]);
-
-  if (!tree) {
-    return { index: [], sections: [], nextOffset: 0, hasMore: false, totalCount: 0 };
-  }
+  const tree = await buildChildTree(serieId);
+  if (!tree) return null;
 
   const { parent, directChildren, descendantsByChild, allDescendantIds } = tree;
 
@@ -219,53 +213,120 @@ async function _getSerieGroupedSections(params) {
 
   const totalCount = index.reduce((s, e) => s + e.productCount, 0);
 
+  // دامنه‌ی سریِ هر بخش، رشته‌ای تا از unstable_cache سالم عبور کند
+  const scopes = {};
+  for (const child of directChildren) {
+    const cId = child._id.toString();
+    const ids = descendantsByChild.get(cId) || [child._id];
+    scopes[cId] = ids.map((id) => id.toString());
+  }
+
+  return JSON.parse(
+    JSON.stringify({
+      index,
+      totalCount,
+      scopes,
+      allDescendantIds: allDescendantIds.map((id) => id.toString()),
+    })
+  );
+}
+
+const getSerieGroupedIndex = unstable_cache(
+  _getSerieGroupedIndex,
+  ["serie-grouped-index", "target-audience-unisex-v1"],
+  { revalidate: 10800, tags: ["products", "series"] }
+);
+
+async function _getSerieGroupedSections(params) {
+  const {
+    serieId,
+    sportId = null,
+    categoryId = null,
+    targetAudience = null,
+    offset = 0,
+    limit = 2,
+    minPrice = 0,
+    maxPrice = 0,
+    search = "",
+    withIndex = false,
+  } = params || {};
+
+  if (!serieId) {
+    return { index: [], sections: [], nextOffset: 0, hasMore: false, totalCount: 0 };
+  }
+
+  await connectToDB();
+
+  const [indexPayload, rate] = await Promise.all([
+    getSerieGroupedIndex({ serieId, sportId, categoryId, targetAudience, search }),
+    getCachedRate(),
+  ]);
+
+  if (!indexPayload) {
+    return { index: [], sections: [], nextOffset: 0, hasMore: false, totalCount: 0 };
+  }
+
+  const { index, totalCount, scopes, allDescendantIds } = indexPayload;
+
+  const baseMatch = buildBaseMatch({
+    parentSerieId: serieId,
+    allDescendantIds,
+    sportId,
+    categoryId,
+    targetAudience,
+    search,
+  });
+
   const parentOid = toObjectId(serieId);
 
-  // ساختِ بخش‌های این batch
+  const sectionFilter = (entry) => {
+    if (entry.key === DIRECT_KEY) return { ...baseMatch, serie: parentOid };
+    const ids = (scopes[entry.key] || [entry.key]).map(toObjectId).filter(Boolean);
+    return { ...baseMatch, serie: { $in: ids } };
+  };
+
+  // پروجکشن + populateهای باریکِ قراردادِ productListing.service
+  const listingQuery = (filter) => {
+    let q = Product.find(filter).select(LISTING_FIELDS).sort({ order: 1, createdAt: -1 });
+    for (const populate of POPULATES) q = q.populate(populate);
+    return q.lean();
+  };
+
+  // ساختِ بخش‌های این batch — یک قیمت‌گذاری برای کلِ موج، نه یکی برای هر بخش
   const sections = [];
   let cursor = Math.max(0, offset);
 
-  const fetchSectionProducts = async (entry) => {
-    let productFilter;
-    if (entry.key === DIRECT_KEY) {
-      productFilter = { ...baseMatch, serie: parentOid };
-    } else {
-      const childId = entry.key;
-      const descendants = descendantsByChild.get(childId) || [toObjectId(childId)];
-      productFilter = { ...baseMatch, serie: { $in: descendants } };
-    }
-
-    const raw = await Product.find(productFilter)
-      // variants باید populate شوند تا کوییک‌ویو سلکتورها را و کارت سوآچ‌های
-      // واریانت را نشان دهد (variantMeta روی خود محصول است و خودکار همراه می‌آید)
-      .populate("brand sport athlete category serie limitedEdition variants")
-      .sort({ order: 1, createdAt: -1 })
-      .lean();
-
-    const priced = await attachListingPrices(raw, rate);
-    return priced.filter((p) => withinPrice(p, minPrice, maxPrice));
-  };
-
   while (sections.length < limit && cursor < index.length) {
-    const entry = index[cursor];
-    cursor++;
-    const products = await fetchSectionProducts(entry);
-    if (products.length === 0) continue;
-    sections.push({
-      key: entry.key,
-      serie: {
-        _id: entry.serieId,
-        title: entry.title,
-        description: entry.description,
-        shortDescription: entry.shortDescription,
-        slug: entry.slug,
-        image: entry.image,
-        headImage: entry.headImage,
-        logo: entry.logo,
-      },
-      productCount: entry.productCount,
-      products,
-    });
+    const wave = index.slice(cursor, cursor + (limit - sections.length));
+    cursor += wave.length;
+
+    const rawPerEntry = await Promise.all(wave.map((e) => listingQuery(sectionFilter(e))));
+    const pricedFlat = await attachListingPrices(rawPerEntry.flat(), rate);
+
+    let at = 0;
+    for (let i = 0; i < wave.length; i++) {
+      const entry = wave[i];
+      const priced = pricedFlat.slice(at, at + rawPerEntry[i].length);
+      at += rawPerEntry[i].length;
+
+      const products = priced.filter((p) => withinPrice(p, minPrice, maxPrice));
+      if (products.length === 0) continue;
+      sections.push({
+        key: entry.key,
+        serie: {
+          _id: entry.serieId,
+          title: entry.title,
+          description: entry.description,
+          shortDescription: entry.shortDescription,
+          slug: entry.slug,
+          image: entry.image,
+          headImage: entry.headImage,
+          logo: entry.logo,
+        },
+        productCount: entry.productCount,
+        products,
+      });
+    }
   }
 
   const nextOffset = cursor;

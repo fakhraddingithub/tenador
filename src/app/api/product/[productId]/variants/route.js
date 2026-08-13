@@ -3,11 +3,21 @@ import connectToDB from "base/configs/db";
 import Product from "base/models/Product";
 import Variant from "base/models/Variant";
 import Category from "base/models/Category";
+import requireAdmin, { unauthorized } from "@/lib/requireAdmin";
+import { revalidateContent } from "@/lib/revalidate";
+
+// ⚠️ در Next 16 مقدارِ params یک Promise است، نه تابع. `await params()` پیش از
+// هر کاری TypeError می‌داد و همین باگ، نبودِ احراز هویت را پنهان کرده بود.
+// اصلاحِ params و افزودنِ requireAdmin عمداً با هم انجام می‌شوند: اصلاحِ تنهای
+// params یک اندپوینتِ ساخت/حذفِ واریانتِ بدونِ احراز هویت باز می‌کرد.
+// این روت‌ها فقط از صفحاتِ پنلِ ادمین فراخوانی می‌شوند.
 
 export async function GET(req, { params }) {
+  if (!(await requireAdmin())) return unauthorized();
+
   try {
     await connectToDB();
-    const resolvedParams = await params();
+    const resolvedParams = await params;
     const productId = resolvedParams.productId || resolvedParams.id;
 
     const variants = await Variant.find({ productId }).lean();
@@ -24,10 +34,12 @@ export async function GET(req, { params }) {
 }
 
 export async function POST(req, { params }) {
+  if (!(await requireAdmin())) return unauthorized();
+
   await connectToDB();
 
   try {
-    const resolvedParams = await params();
+    const resolvedParams = await params;
     const productId = resolvedParams.productId || resolvedParams.id;
     const body = await req.json();
 
@@ -94,6 +106,9 @@ export async function POST(req, { params }) {
     await Product.findByIdAndUpdate(productId, {
       $push: { variants: variant._id },
     });
+
+    // صفحه‌ی محصول واریانت‌ها را از کشِ داده می‌خواند
+    revalidateContent(["products"]);
 
     return NextResponse.json(
       {

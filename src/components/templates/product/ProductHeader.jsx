@@ -22,7 +22,9 @@ const ProductHeader = ({ name, shortDescription }) => {
     <div className="mb-6 sm:mb-8 md:mb-10 relative rtl text-right" dir="rtl">
       {/* Product Name */}
       <motion.h1
-        initial={{ opacity: 0, y: 10 }}
+        // initial={false} → عنوان با opacity:1 در HTML سرور رندر می‌شود.
+        // با initial={{opacity:0}} اگر هیدریشن انجام نشود، عنوان نامرئی می‌ماند.
+        initial={false}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.1 }}
         className="
@@ -58,7 +60,8 @@ const ProductHeader = ({ name, shortDescription }) => {
       {/* Short Description Container */}
       {shortDescription && (
         <motion.div
-          initial={{ opacity: 0 }}
+          // مانند عنوان — توضیح کوتاه نباید تا زمان هیدریشن نامرئی بماند
+          initial={false}
           animate={{ opacity: 1 }}
           transition={{ delay: 0.2 }}
           className="relative"

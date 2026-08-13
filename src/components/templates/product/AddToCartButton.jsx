@@ -60,7 +60,11 @@ const AddToCartButton = ({ onAddToCart, inCart = false, disabled = false }) => {
           disabled:cursor-not-allowed
         `}
       >
-        <AnimatePresence mode="wait">
+        {/* initial={false}: حالتِ پیش‌فرض همان چیزی است که سرور رندر می‌کند؛ بدون
+            این، آیکون و متنِ «افزودن به سبد خرید» تا هیدریشن نامرئی می‌ماند و
+            دکمه‌ی اصلیِ خرید یک مستطیلِ خالی دیده می‌شود. تعویضِ حالت‌ها
+            (loading / added / inCart) همچنان انیمیشن دارد. */}
+        <AnimatePresence mode="wait" initial={false}>
           {isLoading ? (
             <motion.div key="loading"
               initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }}>

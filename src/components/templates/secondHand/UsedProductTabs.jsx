@@ -188,7 +188,8 @@ const UsedProductTabs = ({
 
       {/* محتوا */}
       <div className="relative py-10 min-h-[300px]">
-        <AnimatePresence mode="wait">
+        {/* مانند ProductTabs — تبِ اول باید در HTML سرور مرئی باشد */}
+        <AnimatePresence mode="wait" initial={false}>
           <motion.div
             key={activeTab}
             initial={{ opacity: 0, y: 15 }}

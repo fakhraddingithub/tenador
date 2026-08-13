@@ -28,6 +28,11 @@ import useFilterScrollAnchor from "@/hooks/useFilterScrollAnchor";
 import ProductGridSkeleton from "@/components/templates/sports/ProductCardSkeleton";
 import { FiShoppingBag, FiFilter, FiRotateCcw } from "react-icons/fi";
 import { withQueryParams } from "@/lib/navbarAudience";
+import {
+  attemptFetch,
+  backoffDelay,
+  waitBeforeRetry,
+} from "@/lib/groupedFetchRetry";
 
 const BATCH_SECTIONS = 2;
 
@@ -65,6 +70,9 @@ export default function BrandGroupedView({
   const [hasMore, setHasMore] = useState(Boolean(initialData.hasMore));
   const [totalCount, setTotalCount] = useState(initialData.totalCount ?? 0);
   const [loading, setLoading] = useState(false);
+  // وضعیتِ اطلاع‌رسانیِ منفعل — بدونِ هیچ دکمه‌ی اقدام.
+  // null | { op: "loadMore"|"applyFilters", phase: "retrying"|"terminal" }
+  const [status, setStatus] = useState(null);
   // توکنی که فقط با «اعمالِ فیلتر» (ریستِ نتایج) بالا می‌رود، نه با loadMore؛
   // برای لنگرانداختنِ اسکرول به ناحیه‌ی فیلتر هنگام کوتاه‌شدنِ لیست استفاده می‌شود.
   const [filterToken, setFilterToken] = useState(0);
@@ -88,6 +96,11 @@ export default function BrandGroupedView({
   const filterRef = useRef({ search: "", minPrice: 0, maxPrice: 0 });
   const sentinelRef = useRef(null);
   const mountedRef = useRef(false);
+  // کنار زدنِ درخواستِ در جریان، لغوِ انتظارِ backoff، و پاک‌سازیِ unmount
+  const abortRef = useRef(null);
+  // نسخه‌ی فیلترهای قابلِ‌مشاهده — با هر تغییرِ ورودیِ فیلتر بالا می‌رود تا
+  // تلاش‌های مجددِ مربوط به مقادیرِ قدیمی بلافاصله بی‌اعتبار شوند.
+  const filterVersionRef = useRef(0);
 
   const syncRefs = (next) => {
     if (next.sections !== undefined) sectionsRef.current = next.sections;
@@ -95,10 +108,23 @@ export default function BrandGroupedView({
     if (next.nextOffset !== undefined) nextOffsetRef.current = next.nextOffset;
   };
 
+  // مقادیرِ فیلترِ «در حالِ نمایش» را در لحظه‌ی فراخوانی می‌خواند.
+  // هم debounce و هم دکمه‌ی تلاشِ دوباره از همین یک تابع استفاده می‌کنند، پس
+  // «تلاشِ دوباره‌ی فیلتر» همیشه یعنی «همین مقادیری که کاربر الان می‌بیند».
+  // عمداً هیچ snapshot ای از درخواستِ شکست‌خورده نگه داشته نمی‌شود؛ در غیر این
+  // صورت تلاشِ دوباره مقادیری را می‌فرستاد که کاربر از آن عبور کرده است.
+  const readPendingFilters = () => ({
+    search: searchTerm.trim(),
+    minPrice: Number(minPrice) || 0,
+    maxPrice: Number(maxPrice) || 0,
+  });
+
   // ─── ساختِ URL واکشی ───
+  // خالص (pure): فیلترها آرگومان‌اند و از ref خوانده نمی‌شوند، تا یک درخواستِ
+  // ناموفقِ فیلتر نتواند offsetِ قدیمی را با فیلترِ جدید ترکیب کند.
   const buildUrl = useCallback(
-    (offset, { withIndex = false } = {}) => {
-      const f = filterRef.current;
+    (offset, { withIndex = false, filters }) => {
+      const f = filters;
       const params = new URLSearchParams();
       params.set("brandId", brandId);
       if (sportId) params.set("sportId", sportId);
@@ -118,73 +144,136 @@ export default function BrandGroupedView({
     [brandId, sportId, categoryId, attrFilters, targetAudience]
   );
 
-  // ─── بارگذاری batch بعدی (scroll) ───
-  const loadMore = useCallback(async () => {
-    if (loadingRef.current || !hasMoreRef.current) return;
-    loadingRef.current = true;
-    setLoading(true);
+  // هر تغییرِ فیلترِ قابلِ‌مشاهده: نسخه را بالا ببر و هر درخواست/انتظارِ backoffِ
+  // در جریان را همان‌جا لغو کن. این کار در خودِ هندلرها انجام می‌شود (نه فقط در
+  // افکتِ debounce) تا تلاشِ مجددِ مقدارِ قدیمی حتی در پنجره‌ی ۴۰۰ms هم زنده نماند.
+  const invalidateFilters = useCallback(() => {
+    filterVersionRef.current += 1;
+    abortRef.current?.abort();
+    setStatus(null);
+  }, []);
 
-    const reqId = ++reqIdRef.current;
-    try {
-      const res = await fetch(buildUrl(nextOffsetRef.current));
-      if (!res.ok) throw new Error("fetch failed");
-      const data = await res.json();
-      if (reqId !== reqIdRef.current) return; // پاسخ کهنه — نادیده
-
-      const incoming = (data.sections || []).filter(
-        (s) => !loadedKeysRef.current.has(s.key)
-      );
-      incoming.forEach((s) => loadedKeysRef.current.add(s.key));
-
-      const merged = [...sectionsRef.current, ...incoming];
-      syncRefs({ sections: merged, hasMore: Boolean(data.hasMore), nextOffset: data.nextOffset ?? nextOffsetRef.current });
-      setSections(merged);
-      setHasMore(Boolean(data.hasMore));
-      setNextOffset(data.nextOffset ?? nextOffsetRef.current);
-    } catch (e) {
-      if (reqId === reqIdRef.current) console.error("loadMore error", e);
-    } finally {
-      if (reqId === reqIdRef.current) {
-        loadingRef.current = false;
-        setLoading(false);
+  // ─── تنها مسیرِ واکشی: هم batch بعدی، هم اعمالِ فیلتر ───
+  // خروجی: "success" | "terminal" | "aborted" | "skipped".
+  //
+  // حلقه‌ی تلاشِ مجدد داخلِ خودِ run است (نه با setTimeoutِ بیرونی) تا:
+  //  • jumpTo بتواند با await واقعاً منتظرِ عبور از تلاش‌های مجدد بماند،
+  //  • loadingRef در تمامِ مدت true بماند و observer درخواستِ موازی نسازد،
+  //  • لغو کردن با یک abort همه‌چیز (fetch و انتظارِ backoff) را با هم بردارد.
+  //
+  // قاعده‌ی commit: هیچ ref ای که در سازگاریِ نتایج نقش دارد (filterRef,
+  // loadedKeysRef, sectionsRef, nextOffsetRef) پیش از پاسخِ موفق تغییر نمی‌کند.
+  const run = useCallback(
+    async (op, opts = {}) => {
+      // observer نباید درخواستِ موازی بسازد
+      if (op === "loadMore" && (loadingRef.current || !hasMoreRef.current)) {
+        return "skipped";
       }
-    }
-  }, [buildUrl]);
 
-  // ─── اعمال فیلتر: ریست کامل و واکشی از ابتدا ───
-  const applyFilters = useCallback(async () => {
-    const reqId = ++reqIdRef.current;
-    loadingRef.current = true;
-    setLoading(true);
+      abortRef.current?.abort(); // درخواستِ در جریان کنار زده می‌شود
+      const controller = new AbortController();
+      abortRef.current = controller;
+      const signal = controller.signal;
 
-    // ریست وضعیت بارگذاری‌شده
-    loadedKeysRef.current = new Set();
+      // بعد از abort بالا می‌رود تا درخواستِ کنارگذاشته‌شده reqId کهنه ببیند
+      const reqId = ++reqIdRef.current;
+      const version = op === "applyFilters" ? opts.version : null;
 
-    try {
-      const res = await fetch(buildUrl(0, { withIndex: true }));
-      if (!res.ok) throw new Error("fetch failed");
-      const data = await res.json();
-      if (reqId !== reqIdRef.current) return;
+      loadingRef.current = true;
+      setLoading(true);
+      setStatus(null);
 
-      const incoming = data.sections || [];
-      incoming.forEach((s) => loadedKeysRef.current.add(s.key));
+      // شمارنده‌ی تلاش local است، پس هر عملیاتِ موفق آن را طبیعتاً صفر می‌کند
+      let attempt = 0;
 
-      syncRefs({ sections: incoming, hasMore: Boolean(data.hasMore), nextOffset: data.nextOffset ?? 0 });
-      setSections(incoming);
-      setIndex(data.index || []);
-      setHasMore(Boolean(data.hasMore));
-      setNextOffset(data.nextOffset ?? 0);
-      setTotalCount(data.totalCount ?? 0);
-      setFilterToken((t) => t + 1); // نتیجه‌ی فیلتر به‌روز شد → ارزیابیِ لنگرِ اسکرول
-    } catch (e) {
-      if (reqId === reqIdRef.current) console.error("applyFilters error", e);
-    } finally {
-      if (reqId === reqIdRef.current) {
-        loadingRef.current = false;
-        setLoading(false);
+      try {
+        for (;;) {
+          const stale =
+            signal.aborted ||
+            reqId !== reqIdRef.current ||
+            (op === "applyFilters" && version !== filterVersionRef.current);
+          if (stale) return "aborted";
+
+          const filters = op === "applyFilters" ? opts.filters : filterRef.current;
+          const url =
+            op === "applyFilters"
+              ? buildUrl(0, { withIndex: true, filters })
+              : buildUrl(nextOffsetRef.current, { filters });
+
+          const out = await attemptFetch(url, signal);
+
+          // کنارگذاشته‌شده/unmount → بی‌صدا، بدونِ commit و بدونِ تلاشِ مجدد
+          if (out.kind === "aborted" || signal.aborted || reqId !== reqIdRef.current) {
+            return "aborted";
+          }
+
+          if (out.kind === "success") {
+            const data = out.data;
+            // ─── فاز commit: تنها جایی که state/ref تغییر می‌کند ───
+            if (op === "applyFilters") {
+              const incoming = data.sections || [];
+              filterRef.current = filters;
+              loadedKeysRef.current = new Set(incoming.map((s) => s.key));
+              syncRefs({
+                sections: incoming,
+                hasMore: Boolean(data.hasMore),
+                nextOffset: data.nextOffset ?? 0,
+              });
+              setSections(incoming);
+              setIndex(data.index || []);
+              setHasMore(Boolean(data.hasMore));
+              setNextOffset(data.nextOffset ?? 0);
+              setTotalCount(data.totalCount ?? 0);
+              setFilterToken((t) => t + 1); // → ارزیابیِ لنگرِ اسکرول
+            } else {
+              const incoming = (data.sections || []).filter(
+                (s) => !loadedKeysRef.current.has(s.key)
+              );
+              incoming.forEach((s) => loadedKeysRef.current.add(s.key));
+              const merged = [...sectionsRef.current, ...incoming];
+              syncRefs({
+                sections: merged,
+                hasMore: Boolean(data.hasMore),
+                nextOffset: data.nextOffset ?? nextOffsetRef.current,
+              });
+              setSections(merged);
+              setHasMore(Boolean(data.hasMore));
+              setNextOffset(data.nextOffset ?? nextOffsetRef.current);
+            }
+            setStatus(null);
+            return "success";
+          }
+
+          if (out.kind === "terminal") {
+            // ۴xxِ غیرقابلِ‌بازیابی — بی‌نهایت تکرار نمی‌شود
+            console.error(`${op} failed permanently:`, out.reason);
+            setStatus({ op, phase: "terminal" });
+            return "terminal";
+          }
+
+          // قابلِ بازیابی → backoff نمایی + jitter، با احترام به Retry-After
+          attempt += 1;
+          console.warn(`${op} attempt ${attempt} failed (${out.reason}); retrying`);
+          setStatus({ op, phase: "retrying" });
+          const ok = await waitBeforeRetry(
+            backoffDelay(attempt, out.retryAfterMs),
+            signal
+          );
+          if (!ok) return "aborted";
+        }
+      } finally {
+        if (abortRef.current === controller) abortRef.current = null;
+        // درخواستِ کهنه نباید وضعیتِ بارگذاریِ درخواستِ جدیدتر را پاک کند
+        if (reqId === reqIdRef.current) {
+          loadingRef.current = false;
+          setLoading(false);
+        }
       }
-    }
-  }, [buildUrl]);
+    },
+    [buildUrl]
+  );
+
+  useEffect(() => () => abortRef.current?.abort(), []);
 
   // ─── debounce فیلترها (جستجو + قیمت) ───
   useEffect(() => {
@@ -193,16 +282,17 @@ export default function BrandGroupedView({
       mountedRef.current = true;
       return;
     }
-    const t = setTimeout(() => {
-      filterRef.current = {
-        search: searchTerm.trim(),
-        minPrice: Number(minPrice) || 0,
-        maxPrice: Number(maxPrice) || 0,
-      };
-      applyFilters();
-    }, 400);
+    const t = setTimeout(
+      () =>
+        run("applyFilters", {
+          filters: readPendingFilters(),
+          version: filterVersionRef.current,
+        }),
+      400
+    );
     return () => clearTimeout(t);
-  }, [searchTerm, minPrice, maxPrice, applyFilters]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchTerm, minPrice, maxPrice, run]);
 
   // ─── IntersectionObserver برای infinite scroll ───
   // وابسته به sections.length و hasMore: پس از هر batch، observer دوباره ساخته
@@ -213,13 +303,13 @@ export default function BrandGroupedView({
     if (!el || !hasMore) return;
     const observer = new IntersectionObserver(
       (entries) => {
-        if (entries[0]?.isIntersecting) loadMore();
+        if (entries[0]?.isIntersecting) run("loadMore");
       },
       { rootMargin: "600px 0px" } // کمی زودتر از رسیدن به انتها بارگذاری شود
     );
     observer.observe(el);
     return () => observer.disconnect();
-  }, [loadMore, hasMore, sections.length]);
+  }, [run, hasMore, sections.length]);
 
   // ─── پرشِ سریع به یک بخش (در صورت لزوم تا رسیدن به آن batch می‌گیرد) ───
   const jumpTo = useCallback(
@@ -230,7 +320,10 @@ export default function BrandGroupedView({
         hasMoreRef.current &&
         guard < 50
       ) {
-        await loadMore();
+        // با شکست/کنارگذاشتن/رد شدن متوقف شو؛ پیش از این loadMore همیشه
+        // undefined برمی‌گرداند و یک خطای پایدار، هر ۵۰ دورِ حلقه را می‌سوزاند.
+        const result = await run("loadMore");
+        if (result !== "success") break;
         guard++;
       }
       requestAnimationFrame(() => {
@@ -238,10 +331,23 @@ export default function BrandGroupedView({
         if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
       });
     },
-    [loadMore]
+    [run]
   );
 
+  // هندلرهای فیلتر — همگی ابتدا نسخه را بی‌اعتبار می‌کنند
+  const handleSearchChange = (value) => {
+    invalidateFilters();
+    setSearchTerm(value);
+  };
+
+  const handlePriceChange = ({ min, max }) => {
+    invalidateFilters();
+    setMinPrice(min);
+    setMaxPrice(max);
+  };
+
   const resetFilters = () => {
+    invalidateFilters();
     setSearchTerm("");
     setMinPrice(0);
     setMaxPrice(0);
@@ -277,6 +383,35 @@ export default function BrandGroupedView({
   };
 
   const isEmpty = !loading && sections.length === 0;
+
+  // ─── شمارنده‌ی صادق ───
+  // totalCount کلِ محصولاتِ برند است، ولی بدنه فقط بخش‌های بارگذاری‌شده را نشان
+  // می‌دهد → عددِ خام «۵۳» کنارِ ۱۰ کارت. ضمناً فیلترِ قیمت در سرور بعد از
+  // شمارش و در JS اعمال می‌شود، پس totalCount با آن اصلاً هم‌خوان نیست؛ در آن
+  // حالت فقط تعدادِ بارگذاری‌شده نشان داده می‌شود تا عدد هرگز غلط نباشد.
+  const loadedCount = sections.reduce(
+    (n, s) => n + (s.products?.length || 0),
+    0
+  );
+  const priceFilterActive = Number(minPrice) > 0 || Number(maxPrice) > 0;
+  const countLabel = priceFilterActive
+    ? loadedCount.toLocaleString("fa-IR")
+    : loadedCount < totalCount
+      ? `${loadedCount.toLocaleString("fa-IR")} از ${totalCount.toLocaleString("fa-IR")}`
+      : totalCount.toLocaleString("fa-IR");
+
+  // اطلاع‌رسانیِ منفعل — بدونِ دکمه. تلاشِ مجدد خودکار انجام می‌شود.
+  const statusNote = (phase) => (
+    <p
+      role="status"
+      aria-live="polite"
+      className="my-4 text-center text-xs font-bold text-gray-400"
+    >
+      {phase === "retrying"
+        ? "بارگذاری ناموفق بود؛ تلاش مجدد خودکار…"
+        : "بارگذاری این بخش ممکن نشد."}
+    </p>
+  );
 
   return (
     <div className="bg-[#fcfcfc] min-h-screen" dir="rtl">
@@ -377,10 +512,7 @@ export default function BrandGroupedView({
                 className="p-5"
                 bounds={priceBounds}
                 value={{ min: minPrice, max: maxPrice }}
-                onChange={({ min, max }) => {
-                  setMinPrice(min);
-                  setMaxPrice(max);
-                }}
+                onChange={handlePriceChange}
               />
             </div>
           </div>
@@ -392,16 +524,18 @@ export default function BrandGroupedView({
           {/* Top Bar */}
           <div className="mb-8 flex flex-col md:flex-row justify-between items-center gap-6 bg-white p-5 rounded-[var(--radius)] border border-gray-100 shadow-sm">
             <div className="w-full md:w-2/3">
-              <SearchBar value={searchTerm} onChange={setSearchTerm} />
+              <SearchBar value={searchTerm} onChange={handleSearchChange} />
             </div>
             <div className="flex items-center gap-2 text-gray-500 whitespace-nowrap">
               <FiShoppingBag className="text-[var(--color-primary)]" />
               <span className="font-bold">تعداد کالا:</span>
               <span className="text-[var(--color-text)] font-bold">
-                {totalCount.toLocaleString("fa-IR")}
+                {countLabel}
               </span>
             </div>
           </div>
+
+          {status?.op === "applyFilters" && statusNote(status.phase)}
 
           {/* خالی */}
           {isEmpty ? (
@@ -481,6 +615,8 @@ export default function BrandGroupedView({
               {/* اسکلتونِ بارگذاری — دو ردیفِ کارت با ابعادِ دقیقِ کارت واقعی و
                   درخششِ روان؛ جایگزینِ متنِ «در حال بارگذاری». */}
               {loading && <ProductGridSkeleton count={8} />}
+
+              {status?.op === "loadMore" && statusNote(status.phase)}
 
               {!hasMore && !loading && sections.length > 0 && (
                 <p className="text-center text-xs text-gray-300 font-bold py-6">

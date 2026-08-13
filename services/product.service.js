@@ -152,6 +152,17 @@ export const getProductBySlug = unstable_cache(
         return { error: "محصول پیدا نشد یا غیرفعال است", status: 404 };
       }
 
+      // category در اسکیمای Product برابر required:true است؛ پس null بودنِ آن
+      // یعنی رفرنسِ شکسته (خرابیِ داده)، نه یک حالتِ پشتیبانی‌شده. با throw این
+      // حالت کش نمی‌شود و به‌جای TypeErrorِ مبهم، خطای کددارِ قابلِ پایش می‌دهد.
+      if (!product.category) {
+        const err = new Error(
+          `Product ${product.slug} has a dangling category reference`
+        );
+        err.code = "PRODUCT_CATEGORY_MISSING";
+        throw err;
+      }
+
       const mergedAttributes = product.category.attributes.map((attr) => ({
         ...attr,
         value: product.attributes?.[attr.name] ?? null,
@@ -164,7 +175,12 @@ export const getProductBySlug = unstable_cache(
         })
       );
     } catch (err) {
-      return { error: err.message, status: 500 };
+      // خطا را برنگردان — unstable_cache هر مقدارِ بازگشتی را کش می‌کند، پس یک
+      // قطعیِ لحظه‌ایِ دیتابیس تا ۳ ساعت به‌صورتِ «محصول پیدا نشد» تکرار می‌شد
+      // (page.jsx خروجیِ error را به notFound تبدیل می‌کند). با throw هیچ چیزی
+      // کش نمی‌شود و درخواستِ بعدی دوباره تلاش می‌کند.
+      // نکته: return با status:404 در بالا یک نتیجه‌ی معتبر است و کش می‌ماند.
+      throw err;
     }
   },
   ["product-by-slug"],

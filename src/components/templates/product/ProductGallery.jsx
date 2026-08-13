@@ -47,7 +47,9 @@ const ProductGallery = ({ images = [], logo, verified = false, productName = "" 
             </div>
           )}
 
-          <AnimatePresence mode="wait">
+          {/* initial={false} فقط انیمیشنِ ورودِ رندر اول را حذف می‌کند تا تصویر اصلی
+              در HTML سرور با opacity:1 بیاید؛ کراس‌فیدِ تعویض تامبنیل دست‌نخورده می‌ماند. */}
+          <AnimatePresence mode="wait" initial={false}>
             <motion.div
               key={activeIndex}
               initial={{ opacity: 0, scale: 1.02 }}

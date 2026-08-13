@@ -14,13 +14,15 @@ export const STOREFRONT_PAGE_SIZE = 20;
 export const STOREFRONT_MAX_PAGE_SIZE = 60;
 
 // Detail-only fields must not be serialized into every product card.
-const LISTING_FIELDS = [
+// صادر می‌شود تا سرویس‌های گروه‌بندیِ برند/سری هم دقیقاً همین قرارداد را
+// به‌کار ببرند و پاسخ‌های لیستی در سراسر سایت یک شکل بمانند.
+export const LISTING_FIELDS = [
   "name", "slug", "shortDescription", "basePrice", "label", "mainImage",
   "gallery", "brand", "sport", "athlete", "category", "serie", "limitedEdition",
   "attributes", "variantMeta", "variants", "order", "targetAudience",
 ].join(" ");
 
-const POPULATES = [
+export const POPULATES = [
   { path: "brand", select: "name title slug icon logo" },
   { path: "sport", select: "name title slug image headImage" },
   { path: "athlete", select: "name title slug image" },

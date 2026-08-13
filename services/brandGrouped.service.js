@@ -28,7 +28,11 @@ import { getCachedRate } from "@/lib/Exchangerate";
 import { buildLenientPersianRegexSource } from "@/lib/persianNormalize";
 import { attachListingPrices } from "base/services/priceEngine";
 import { resolveSerieSportContent } from "@/lib/serieSportContent";
-import { buildTargetAudienceMatch } from "base/services/productListing.service";
+import {
+  buildTargetAudienceMatch,
+  LISTING_FIELDS,
+  POPULATES,
+} from "base/services/productListing.service";
 
 const OTHER_KEY = "__other__";
 
@@ -183,33 +187,35 @@ function withinPrice(p, minPrice, maxPrice) {
   return true;
 }
 
-async function _getBrandGroupedSections(params) {
+/**
+ * ساختِ «فهرستِ بخش‌ها» — درختِ سری‌ها، شمارش، و دامنه‌ی سریِ هر بخش.
+ *
+ * عمداً به offset/limit/minPrice/maxPrice وابسته نیست: این‌ها فقط تعیین می‌کنند
+ * کدام بخش‌ها در این batch واکشی شوند، نه اینکه فهرست چه باشد. در نتیجه با
+ * unstable_cacheِ جداگانه، همه‌ی offsetهای یک ترکیبِ فیلتر یک ورودیِ کش مشترک
+ * دارند و درختِ سری + aggregationِ شمارش به‌جای «هر batch یک‌بار»، فقط
+ * «هر ترکیبِ فیلتر یک‌بار» اجرا می‌شود.
+ *
+ * خروجی شاملِ دو بخشِ سرور-only است که هرگز به کلاینت نمی‌رود:
+ *   scopes       — { [key]: [serieId رشته‌ای] } دامنه‌ی سریِ هر بخش
+ *   allSerieIds  — برای ساختِ شرطِ بخشِ «سایر محصولات»
+ */
+async function _getBrandGroupedIndex(params) {
   const {
     brandId,
     sportId = null,
     categoryId = null,
     attrFilters = [],
-    offset = 0,
-    limit = 2,
-    minPrice = 0,
-    maxPrice = 0, // 0 یعنی بدون سقف
     search = "",
-    withIndex = false,
     targetAudience = null,
   } = params || {};
 
-  if (!brandId) {
-    return { index: [], sections: [], nextOffset: 0, hasMore: false, totalCount: 0 };
-  }
-
   await connectToDB();
 
-  const [{ byId, roots, rootIdFor, descendantsByRoot }, rate, extra] =
-    await Promise.all([
-      buildSeriesTree(brandId),
-      getCachedRate(),
-      buildAttrMatches(attrFilters),
-    ]);
+  const [{ byId, roots, rootIdFor, descendantsByRoot }, extra] = await Promise.all([
+    buildSeriesTree(brandId),
+    buildAttrMatches(attrFilters),
+  ]);
 
   const baseMatch = buildBaseMatch({ brandId, sportId, categoryId, search, extra, targetAudience });
 
@@ -269,62 +275,127 @@ async function _getBrandGroupedSections(params) {
     });
   }
 
-  const totalCount =
-    index.reduce((s, e) => s + e.productCount, 0);
+  const totalCount = index.reduce((s, e) => s + e.productCount, 0);
 
-  const allSerieIds = Array.from(byId.values()).map((s) => s._id);
+  // دامنه‌ی سریِ هر بخش، رشته‌ای تا از unstable_cache سالم عبور کند
+  const scopes = {};
+  for (const entry of index) {
+    if (entry.key === OTHER_KEY) continue;
+    const ids = descendantsByRoot.get(entry.key) || [toObjectId(entry.key)];
+    scopes[entry.key] = ids.filter(Boolean).map((id) => id.toString());
+  }
 
-  // ── ساختِ بخش‌های این batch (با رد کردنِ بخش‌هایی که با فیلتر قیمت خالی می‌شوند) ──
-  const sections = [];
-  let cursor = Math.max(0, offset);
+  return JSON.parse(
+    JSON.stringify({
+      index,
+      totalCount,
+      scopes,
+      allSerieIds: Array.from(byId.values()).map((s) => s._id.toString()),
+    })
+  );
+}
 
-  const fetchSectionProducts = async (entry) => {
-    let productFilter;
+const getBrandGroupedIndex = unstable_cache(
+  _getBrandGroupedIndex,
+  ["brand-grouped-index", "target-audience-unisex-v1"],
+  { revalidate: 10800, tags: ["products", "series", "brands"] }
+);
+
+async function _getBrandGroupedSections(params) {
+  const {
+    brandId,
+    sportId = null,
+    categoryId = null,
+    attrFilters = [],
+    offset = 0,
+    limit = 2,
+    minPrice = 0,
+    maxPrice = 0, // 0 یعنی بدون سقف
+    search = "",
+    withIndex = false,
+    targetAudience = null,
+  } = params || {};
+
+  if (!brandId) {
+    return { index: [], sections: [], nextOffset: 0, hasMore: false, totalCount: 0 };
+  }
+
+  await connectToDB();
+
+  // فهرست/شمارش از کشِ مستقل از offset می‌آید؛ extra فقط وقتی فیلترِ ویژگی فعال
+  // است کوئری می‌زند (در مسیرِ رایج آرایه خالی است و هزینه‌ای ندارد).
+  const [{ index, totalCount, scopes, allSerieIds }, rate, extra] = await Promise.all([
+    getBrandGroupedIndex({ brandId, sportId, categoryId, attrFilters, search, targetAudience }),
+    getCachedRate(),
+    buildAttrMatches(attrFilters),
+  ]);
+
+  const baseMatch = buildBaseMatch({ brandId, sportId, categoryId, search, extra, targetAudience });
+  const allSerieOids = allSerieIds.map(toObjectId).filter(Boolean);
+
+  const sectionFilter = (entry) => {
     if (entry.key === OTHER_KEY) {
-      productFilter = {
+      return {
         ...baseMatch,
         $or: [
           { serie: null },
           { serie: { $exists: false } },
-          { serie: { $nin: allSerieIds } },
+          { serie: { $nin: allSerieOids } },
         ],
       };
-    } else {
-      const ids = descendantsByRoot.get(entry.key) || [toObjectId(entry.key)];
-      productFilter = { ...baseMatch, serie: { $in: ids } };
     }
-
-    const raw = await Product.find(productFilter)
-      // variants باید populate شوند تا کوییک‌ویو سلکتورها را و کارت سوآچ‌های
-      // واریانت را نشان دهد (variantMeta روی خود محصول است و خودکار همراه می‌آید)
-      .populate("brand sport athlete category serie limitedEdition variants")
-      .sort({ order: 1, createdAt: -1 })
-      .lean();
-
-    const priced = await attachListingPrices(raw, rate);
-    return priced.filter((p) => withinPrice(p, minPrice, maxPrice));
+    const ids = (scopes[entry.key] || [entry.key]).map(toObjectId).filter(Boolean);
+    return { ...baseMatch, serie: { $in: ids } };
   };
 
+  // پروجکشن + populateهای باریکِ همان قراردادِ productListing.service — به‌جای
+  // ارسالِ سندِ کاملِ محصول (که longDescription و همه‌ی فیلدهای صفحه‌ی جزئیات را
+  // در هر کارت تکرار می‌کرد).
+  const listingQuery = (filter) => {
+    let q = Product.find(filter).select(LISTING_FIELDS).sort({ order: 1, createdAt: -1 });
+    for (const populate of POPULATES) q = q.populate(populate);
+    return q.lean();
+  };
+
+  // ── ساختِ بخش‌های این batch ──
+  // «موج»‌به‌«موج» پیش می‌رود: کوئریِ محصولاتِ هر موج موازی اجرا و سپس یک‌بار
+  // برای کلِ موج قیمت‌گذاری می‌شود. attachListingPrices سه کوئری دارد، پس
+  // قبلاً هر بخش سه کوئریِ قیمت می‌زد؛ حالا هر موج سه‌تا. ترتیبِ محصولات و
+  // بخش‌ها دقیقاً حفظ می‌شود (attachListingPrices خروجی را map می‌کند).
+  const sections = [];
+  let cursor = Math.max(0, offset);
+
   while (sections.length < limit && cursor < index.length) {
-    const entry = index[cursor];
-    cursor++;
-    const products = await fetchSectionProducts(entry);
-    if (products.length === 0) continue; // با فیلتر قیمت خالی شد → رد
-    sections.push({
-      key: entry.key,
-      serie: {
-        _id: entry.serieId,
-        title: entry.title,
-        description: entry.description,
-        shortDescription: entry.shortDescription,
-        slug: entry.slug,
-        image: entry.image,
-        headImage: entry.headImage,
-        logo: entry.logo,
-      },
-      productCount: entry.productCount,
-      products,
-    });
+    const wave = index.slice(cursor, cursor + (limit - sections.length));
+    cursor += wave.length;
+
+    const rawPerEntry = await Promise.all(wave.map((e) => listingQuery(sectionFilter(e))));
+    const pricedFlat = await attachListingPrices(rawPerEntry.flat(), rate);
+
+    let at = 0;
+    for (let i = 0; i < wave.length; i++) {
+      const entry = wave[i];
+      const priced = pricedFlat.slice(at, at + rawPerEntry[i].length);
+      at += rawPerEntry[i].length;
+
+      const products = priced.filter((p) => withinPrice(p, minPrice, maxPrice));
+      if (products.length === 0) continue; // با فیلتر قیمت خالی شد → رد
+      sections.push({
+        key: entry.key,
+        serie: {
+          _id: entry.serieId,
+          title: entry.title,
+          description: entry.description,
+          shortDescription: entry.shortDescription,
+          slug: entry.slug,
+          image: entry.image,
+          headImage: entry.headImage,
+          logo: entry.logo,
+        },
+        productCount: entry.productCount,
+        products,
+      });
+    }
   }
 
   const nextOffset = cursor;

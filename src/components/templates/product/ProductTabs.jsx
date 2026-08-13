@@ -168,7 +168,9 @@ const ProductTabs = ({
       </div>
 
       <div className="relative min-h-[300px] py-10">
-        <AnimatePresence mode="wait">
+        {/* initial={false} فقط رندر اول را بدون انیمیشن نشان می‌دهد تا تبِ توضیحات
+            در HTML سرور مرئی باشد؛ initial خودِ فرزند برای تعویض تب فعال می‌ماند. */}
+        <AnimatePresence mode="wait" initial={false}>
           <motion.div
             key={activeTab}
             initial={{ opacity: 0, y: 15 }}
