@@ -25,7 +25,7 @@ const TYPE_CONFIG = {
   new_payment: {
     Icon: BadgeDollarSign,
     color: "#16a34a",
-    label: "پرداخت تأییدشده",
+    label: "پرداخت جدید",
   },
   coach_student_order: {
     Icon: GraduationCap,

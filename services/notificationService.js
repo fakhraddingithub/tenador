@@ -27,9 +27,17 @@ const SECTIONS = ["orders", "coachCredits", "coachApplications", "support"];
 /* ─────────────────────────  ساخت اعلان  ───────────────────────── */
 
 /** ساخت امن — خطا را می‌بلعد و جریان میزبان را متوقف نمی‌کند */
-async function safeCreate(doc) {
+async function safeCreate(doc, dedupeFilter = null) {
   try {
-    await Notification.create(doc);
+    if (dedupeFilter) {
+      await Notification.updateOne(
+        dedupeFilter,
+        { $setOnInsert: doc },
+        { upsert: true },
+      );
+    } else {
+      await Notification.create(doc);
+    }
   } catch (err) {
     console.warn("[notificationService] خطا در ساخت اعلان:", err?.message);
   }
@@ -47,16 +55,38 @@ export async function notifyNewOrder(order) {
   });
 }
 
-/** پرداخت یک سفارش تأیید شد */
-export async function notifyNewPayment(order) {
+/** پرداخت جدیدی برای یک سفارش ثبت یا تأیید شد */
+export async function notifyNewPayment(order, payment = null, { confirmed = true } = {}) {
   if (!order?._id) return;
-  await safeCreate({
+  const orderLabel = order.trackingCode
+    ? `سفارش #${order.trackingCode}`
+    : "سفارش";
+  const amount = Number(payment?.amount || 0);
+  const amountText = confirmed && amount
+    ? ` به مبلغ ${amount.toLocaleString("fa-IR")} تومان`
+    : "";
+  const message = confirmed
+    ? `پرداخت ${orderLabel}${amountText} تأیید شد`
+    : `پرداخت جدید برای ${orderLabel} ثبت شد و در انتظار بررسی است`;
+  const notificationId = payment?._id || null;
+
+  const doc = {
+    // شناسه‌ی رویداد پرداخت، شناسه‌ی اعلان هم هست؛ ایندکس یکتای داخلی Mongo
+    // بدون نیاز به migration، ساخت هم‌زمانِ اعلان تکراری را ناممکن می‌کند.
+    ...(notificationId ? { _id: notificationId } : {}),
     type: "new_payment",
-    message: `پرداخت سفارش ${order.trackingCode ? `#${order.trackingCode}` : ""} تأیید شد`.trim(),
+    message,
     order: order._id,
+    payment: notificationId,
     actor: order.user?._id || order.user || null,
     link: `/p-admin/admin-orders/${order._id}`,
-  });
+  };
+
+  // هر پرداخت فقط یک اعلان دارد؛ تأیید بعدیِ همان رسید اعلان تکراری نمی‌سازد.
+  const dedupeFilter = notificationId
+    ? { _id: notificationId }
+    : null;
+  await safeCreate(doc, dedupeFilter);
 }
 
 /**

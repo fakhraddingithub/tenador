@@ -109,11 +109,9 @@ export async function POST(req, { params }) {
         await markOrderUsedProductsSold(order);
       }
 
-      // اعلان تأیید پرداخت برای پنل مدیریت (مسیر رسید بانکی).
-      // webhook-success به‌دلیل PAID بودن سفارش زودتر return می‌کند و اعلان تکراری نمی‌سازد.
-      if (isFullyPaid) {
-        await notifyNewPayment(order);
-      }
+      // برای پرداخت‌های قدیمی که پیش از ایجاد اعلان ثبت شده‌اند fallback است؛
+      // پرداخت‌های جدید به‌کمک payment id اعلان تکراری نمی‌سازند.
+      await notifyNewPayment(order, payment, { confirmed: true });
 
       // webhook کردیت مربی (پس از commit)
       if (isFullyPaid) {

@@ -31,6 +31,7 @@ import User from "base/models/User";
 import { sendOrderConfirmationEmail } from "@/lib/emailService";
 import { getMonthlyInstallmentRate } from "@/lib/installmentRateService";
 import { buildInstallmentTerms } from "@/lib/installmentFinance";
+import { notifyNewPayment } from "base/services/notificationService";
 
 async function getUserFromToken() {
   const cookieStore = await cookies();
@@ -159,6 +160,9 @@ export async function POST(req) {
 
       order.payments.push(payment._id);
       await order.save();
+
+      // اعلان همان لحظه‌ای که رسید جدید روی سفارش ثبت می‌شود؛ نه بعد از تأیید ادمین.
+      await notifyNewPayment(order, payment, { confirmed: false });
 
       // ─── رزرو محصولات دست‌دوم ───
       await reserveUsedProducts(order);
@@ -317,6 +321,9 @@ export async function POST(req) {
       // اسنپ‌شات تاریخی شرایط اقساط روی همین سفارش قفل می‌شود
       order.installmentTerms = terms;
       await order.save();
+
+      // پیش‌پرداخت اقساط نیز یک پرداخت جدیدِ نیازمند بررسی است.
+      await notifyNewPayment(order, downPayment, { confirmed: false });
 
       // ─── رزرو محصولات دست‌دوم ───
       await reserveUsedProducts(order);

@@ -9,7 +9,7 @@ import mongoose from "mongoose";
  *
  * انواع:
  *  - new_order           → سفارش جدید ثبت شد
- *  - new_payment         → پرداخت یک سفارش تأیید شد
+ *  - new_payment         → پرداخت جدیدی برای یک سفارش ثبت یا تأیید شد
  *  - coach_student_order → شاگردِ یک مربی سفارش ثبت کرده (نیاز به ثبت کردیت دستی)
  *  - coach_application   → درخواست مربیگری جدید
  */
@@ -36,6 +36,7 @@ const NotificationSchema = new mongoose.Schema(
 
     // ارجاع به موجودیت مرتبط — فقط موارد مربوط به هر نوع پر می‌شوند
     order: { type: mongoose.Schema.Types.ObjectId, ref: "Order", default: null },
+    payment: { type: mongoose.Schema.Types.ObjectId, ref: "Payment", default: null },
     coach: { type: mongoose.Schema.Types.ObjectId, ref: "User", default: null },
     ticket: { type: mongoose.Schema.Types.ObjectId, ref: "Ticket", default: null },
     // برای coach_application و coach_student_order: کاربری که اقدام را انجام داده
