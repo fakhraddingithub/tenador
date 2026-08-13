@@ -205,6 +205,13 @@ export default async function SportDynamicSlugPage({ params, searchParams }) {
           canonical={`${SITE_URL}/${slugs.join("/")}`}
         />
         <BrandGroupedView
+          key={JSON.stringify([
+            String(brandId),
+            String(sportId || ""),
+            String(categoryId || ""),
+            attrFilters,
+            String(targetAudience || ""),
+          ])}
           pageInfo={pageInfo}
           filters={filters}
           rate={rate}

@@ -33,6 +33,11 @@ import {
   backoffDelay,
   waitBeforeRetry,
 } from "@/lib/groupedFetchRetry";
+import {
+  buildBrandGroupedViewCacheKey,
+  readBrandGroupedViewCache,
+  writeBrandGroupedViewCache,
+} from "@/lib/brandGroupedViewCache";
 
 const BATCH_SECTIONS = 2;
 
@@ -50,6 +55,23 @@ export default function BrandGroupedView({
   belowHero = null,
   targetAudience = null,
 }) {
+  const cacheKey = buildBrandGroupedViewCacheKey({
+    brandId,
+    sportId,
+    categoryId,
+    attrFilters,
+    targetAudience,
+  });
+  // در hydration اولیه cache خالی است و دقیقاً initialData سرور رندر می‌شود.
+  // در بازگشت با navigation داخلی، lazy initializer وضعیت کامل قبلی را می‌گیرد.
+  const [cachedSnapshot] = useState(() => readBrandGroupedViewCache(cacheKey));
+  const startingData = cachedSnapshot || initialData;
+  const startingFilters = cachedSnapshot?.filters || {
+    search: "",
+    minPrice: 0,
+    maxPrice: 0,
+  };
+
   // مقدارِ فعالِ کارتِ فیلترِ سایدبار = مقدارِ فیلترِ هم‌نام با ویژگیِ مگامنو
   const activeFilterValue =
     (filterMeta &&
@@ -64,11 +86,11 @@ export default function BrandGroupedView({
   const headTitle = [categoryTitle, brandTitle].filter(Boolean).join(" ") || brandTitle;
 
   // ─── State ───
-  const [sections, setSections] = useState(initialData.sections || []);
-  const [index, setIndex] = useState(initialData.index || []);
-  const [nextOffset, setNextOffset] = useState(initialData.nextOffset ?? 0);
-  const [hasMore, setHasMore] = useState(Boolean(initialData.hasMore));
-  const [totalCount, setTotalCount] = useState(initialData.totalCount ?? 0);
+  const [sections, setSections] = useState(startingData.sections || []);
+  const [index, setIndex] = useState(startingData.index || []);
+  const [nextOffset, setNextOffset] = useState(startingData.nextOffset ?? 0);
+  const [hasMore, setHasMore] = useState(Boolean(startingData.hasMore));
+  const [totalCount, setTotalCount] = useState(startingData.totalCount ?? 0);
   const [loading, setLoading] = useState(false);
   // وضعیتِ اطلاع‌رسانیِ منفعل — بدونِ هیچ دکمه‌ی اقدام.
   // null | { op: "loadMore"|"applyFilters", phase: "retrying"|"terminal" }
@@ -78,9 +100,9 @@ export default function BrandGroupedView({
   const [filterToken, setFilterToken] = useState(0);
 
   // فیلترها — قیمت‌ها عددی به تومان؛ 0 یعنی بدون کف/سقف (همان قراردادِ API)
-  const [searchTerm, setSearchTerm] = useState("");
-  const [minPrice, setMinPrice] = useState(0);
-  const [maxPrice, setMaxPrice] = useState(0);
+  const [searchTerm, setSearchTerm] = useState(startingFilters.search);
+  const [minPrice, setMinPrice] = useState(startingFilters.minPrice);
+  const [maxPrice, setMaxPrice] = useState(startingFilters.maxPrice);
 
   // Quick view
   const [selectedProduct, setSelectedProduct] = useState(null);
@@ -90,10 +112,12 @@ export default function BrandGroupedView({
   const loadingRef = useRef(false);
   const reqIdRef = useRef(0);
   const sectionsRef = useRef(sections);
+  const indexRef = useRef(index);
   const hasMoreRef = useRef(hasMore);
   const nextOffsetRef = useRef(nextOffset);
-  const loadedKeysRef = useRef(new Set((initialData.sections || []).map((s) => s.key)));
-  const filterRef = useRef({ search: "", minPrice: 0, maxPrice: 0 });
+  const totalCountRef = useRef(totalCount);
+  const loadedKeysRef = useRef(new Set((startingData.sections || []).map((s) => s.key)));
+  const filterRef = useRef(startingFilters);
   const sentinelRef = useRef(null);
   const mountedRef = useRef(false);
   // کنار زدنِ درخواستِ در جریان، لغوِ انتظارِ backoff، و پاک‌سازیِ unmount
@@ -104,9 +128,25 @@ export default function BrandGroupedView({
 
   const syncRefs = (next) => {
     if (next.sections !== undefined) sectionsRef.current = next.sections;
+    if (next.index !== undefined) indexRef.current = next.index;
     if (next.hasMore !== undefined) hasMoreRef.current = next.hasMore;
     if (next.nextOffset !== undefined) nextOffsetRef.current = next.nextOffset;
+    if (next.totalCount !== undefined) totalCountRef.current = next.totalCount;
   };
+
+  const cacheSnapshot = useCallback(
+    (next = {}) => {
+      writeBrandGroupedViewCache(cacheKey, {
+        sections: next.sections ?? sectionsRef.current,
+        index: next.index ?? indexRef.current,
+        hasMore: next.hasMore ?? hasMoreRef.current,
+        nextOffset: next.nextOffset ?? nextOffsetRef.current,
+        totalCount: next.totalCount ?? totalCountRef.current,
+        filters: next.filters ?? filterRef.current,
+      });
+    },
+    [cacheKey]
+  );
 
   // مقادیرِ فیلترِ «در حالِ نمایش» را در لحظه‌ی فراخوانی می‌خواند.
   // هم debounce و هم دکمه‌ی تلاشِ دوباره از همین یک تابع استفاده می‌کنند، پس
@@ -212,18 +252,32 @@ export default function BrandGroupedView({
             // ─── فاز commit: تنها جایی که state/ref تغییر می‌کند ───
             if (op === "applyFilters") {
               const incoming = data.sections || [];
+              const incomingIndex = data.index || [];
+              const incomingHasMore = Boolean(data.hasMore);
+              const incomingOffset = data.nextOffset ?? 0;
+              const incomingTotalCount = data.totalCount ?? 0;
               filterRef.current = filters;
               loadedKeysRef.current = new Set(incoming.map((s) => s.key));
               syncRefs({
                 sections: incoming,
-                hasMore: Boolean(data.hasMore),
-                nextOffset: data.nextOffset ?? 0,
+                index: incomingIndex,
+                hasMore: incomingHasMore,
+                nextOffset: incomingOffset,
+                totalCount: incomingTotalCount,
               });
               setSections(incoming);
-              setIndex(data.index || []);
-              setHasMore(Boolean(data.hasMore));
-              setNextOffset(data.nextOffset ?? 0);
-              setTotalCount(data.totalCount ?? 0);
+              setIndex(incomingIndex);
+              setHasMore(incomingHasMore);
+              setNextOffset(incomingOffset);
+              setTotalCount(incomingTotalCount);
+              cacheSnapshot({
+                sections: incoming,
+                index: incomingIndex,
+                hasMore: incomingHasMore,
+                nextOffset: incomingOffset,
+                totalCount: incomingTotalCount,
+                filters,
+              });
               setFilterToken((t) => t + 1); // → ارزیابیِ لنگرِ اسکرول
             } else {
               const incoming = (data.sections || []).filter(
@@ -231,14 +285,21 @@ export default function BrandGroupedView({
               );
               incoming.forEach((s) => loadedKeysRef.current.add(s.key));
               const merged = [...sectionsRef.current, ...incoming];
+              const incomingHasMore = Boolean(data.hasMore);
+              const incomingOffset = data.nextOffset ?? nextOffsetRef.current;
               syncRefs({
                 sections: merged,
-                hasMore: Boolean(data.hasMore),
-                nextOffset: data.nextOffset ?? nextOffsetRef.current,
+                hasMore: incomingHasMore,
+                nextOffset: incomingOffset,
               });
               setSections(merged);
-              setHasMore(Boolean(data.hasMore));
-              setNextOffset(data.nextOffset ?? nextOffsetRef.current);
+              setHasMore(incomingHasMore);
+              setNextOffset(incomingOffset);
+              cacheSnapshot({
+                sections: merged,
+                hasMore: incomingHasMore,
+                nextOffset: incomingOffset,
+              });
             }
             setStatus(null);
             return "success";
@@ -270,10 +331,16 @@ export default function BrandGroupedView({
         }
       }
     },
-    [buildUrl]
+    [buildUrl, cacheSnapshot]
   );
 
   useEffect(() => () => abortRef.current?.abort(), []);
+
+  // حتی اولین batchِ SSR را نیز ثبت کن تا ترک و بازگشتِ سریع صفحه، همان state را
+  // بازیابی کند. هر loadMore موفق snapshot کامل‌تر را جایگزین می‌کند.
+  useEffect(() => {
+    cacheSnapshot();
+  }, [cacheSnapshot]);
 
   // ─── debounce فیلترها (جستجو + قیمت) ───
   useEffect(() => {
