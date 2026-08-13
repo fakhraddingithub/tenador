@@ -31,6 +31,15 @@ export function useBrands() {
   return { brands: data?.brands || [], error, isLoading, mutate };
 }
 
+/** نسخه‌ی سبک برندها برای multi-selectها؛ بدون populate شدن تمام سری‌های هر برند. */
+export function useCompactBrands() {
+  const { data, error, isLoading, mutate } = useSWR(
+    "/api/brands?compact=1",
+    REF_DATA,
+  );
+  return { brands: data?.brands || [], error, isLoading, mutate };
+}
+
 export function useAthletes() {
   const { data, error, isLoading, mutate } = useSWR("/api/athletes", REF_DATA);
   return { athletes: data?.athletes || [], error, isLoading, mutate };

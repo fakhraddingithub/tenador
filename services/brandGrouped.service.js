@@ -22,6 +22,7 @@ import { unstable_cache } from "next/cache";
 import mongoose from "mongoose";
 import connectToDB from "base/configs/db";
 import Serie from "base/models/Serie";
+import LimitedEdition from "base/models/LimitedEdition";
 import Product from "base/models/Product";
 import Variant from "base/models/Variant";
 import { getCachedRate } from "@/lib/Exchangerate";
@@ -35,6 +36,7 @@ import {
 } from "base/services/productListing.service";
 
 const OTHER_KEY = "__other__";
+const COLLABORATION_KEY_PREFIX = "__limited_edition__:";
 
 function escapeRegex(str) {
   return String(str).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
@@ -111,6 +113,22 @@ function buildBaseMatch({ brandId, sportId, categoryId, search, extra, targetAud
     match.name = { $regex: escapeRegex(search.trim()), $options: "i" };
   }
   return match;
+}
+
+function collaborationKey(limitedEditionId) {
+  return `${COLLABORATION_KEY_PREFIX}${limitedEditionId}`;
+}
+
+/**
+ * Limited Editionهای یک برند مهمان را با اطلاعات حداقلی برند مالک می‌گیرد.
+ * این lookup فقط برای برندهایی نتیجه دارد که واقعاً collaboration تعریف کرده‌اند.
+ */
+async function getRelatedLimitedEditions(brandId) {
+  return LimitedEdition.find({ relatedBrands: brandId })
+    .select("_id brand title name description slug image headImage logo")
+    .populate({ path: "brand", select: "_id name title slug logo" })
+    .sort({ createdAt: -1 })
+    .lean();
 }
 
 /**
@@ -212,17 +230,50 @@ async function _getBrandGroupedIndex(params) {
 
   await connectToDB();
 
-  const [{ byId, roots, rootIdFor, descendantsByRoot }, extra] = await Promise.all([
+  const [{ byId, roots, rootIdFor, descendantsByRoot }, extra, relatedEditions] = await Promise.all([
     buildSeriesTree(brandId),
     buildAttrMatches(attrFilters),
+    getRelatedLimitedEditions(brandId),
   ]);
 
   const baseMatch = buildBaseMatch({ brandId, sportId, categoryId, search, extra, targetAudience });
 
-  // ── شمارش محصولات هر سری با یک aggregation و رول‌آپ به سری ریشه ──
-  const countAgg = await Product.aggregate([
-    { $match: baseMatch },
-    { $group: { _id: "$serie", count: { $sum: 1 } } },
+  // شمارش محصولات اصلی و همکاری‌ها مستقل اما موازی انجام می‌شود. همکاری‌ها در
+  // یک aggregation واحد group می‌شوند تا با افزایش تعداد Editionها N+1 نشود.
+  const collaborationEditionIds = relatedEditions
+    .filter((edition) => edition.brand?._id)
+    .map((edition) => toObjectId(edition._id))
+    .filter(Boolean);
+
+  const collaborationMatch = collaborationEditionIds.length
+    ? {
+        ...buildBaseMatch({
+          brandId,
+          sportId,
+          categoryId,
+          search,
+          extra,
+          targetAudience,
+        }),
+        // محصول مستقیمِ برند مقصد در بخش‌های عادی خودش می‌آید؛ این شرط هم جلوی
+        // نمایش تکراری را می‌گیرد و هم تمام محصولات مهمانِ Edition را، مستقل از
+        // برند سازنده، پوشش می‌دهد.
+        brand: { $ne: toObjectId(brandId) },
+        limitedEdition: { $in: collaborationEditionIds },
+      }
+    : null;
+
+  const [countAgg, collaborationCountAgg] = await Promise.all([
+    Product.aggregate([
+      { $match: baseMatch },
+      { $group: { _id: "$serie", count: { $sum: 1 } } },
+    ]),
+    collaborationMatch
+      ? Product.aggregate([
+          { $match: collaborationMatch },
+          { $group: { _id: "$limitedEdition", count: { $sum: 1 } } },
+        ])
+      : Promise.resolve([]),
   ]);
 
   const countByRoot = new Map();
@@ -275,12 +326,50 @@ async function _getBrandGroupedIndex(params) {
     });
   }
 
+
+  const collaborationCountByEdition = new Map(
+    collaborationCountAgg.map((row) => [String(row._id), row.count]),
+  );
+  for (const edition of relatedEditions) {
+    const editionId = String(edition._id);
+    const productCount = collaborationCountByEdition.get(editionId) || 0;
+    if (productCount === 0 || !edition.brand?._id) continue;
+
+    const ownerBrand = edition.brand;
+    index.push({
+      key: collaborationKey(editionId),
+      type: "collaboration",
+      serieId: null,
+      limitedEditionId: editionId,
+      ownerBrandId: String(ownerBrand._id),
+      ownerBrand: {
+        _id: String(ownerBrand._id),
+        name: ownerBrand.name || "",
+        title: ownerBrand.title || ownerBrand.name || "",
+        slug: ownerBrand.slug || "",
+        logo: ownerBrand.logo || "",
+      },
+      title: edition.title || edition.name || "",
+      description: edition.description || "",
+      shortDescription: "",
+      slug: edition.slug || null,
+      href:
+        ownerBrand.slug && edition.slug
+          ? `/${ownerBrand.slug}/${edition.slug}`
+          : null,
+      productCount,
+      image: edition.image || null,
+      headImage: edition.headImage || null,
+      logo: edition.logo || ownerBrand.logo || null,
+    });
+  }
+
   const totalCount = index.reduce((s, e) => s + e.productCount, 0);
 
   // دامنه‌ی سریِ هر بخش، رشته‌ای تا از unstable_cache سالم عبور کند
   const scopes = {};
   for (const entry of index) {
-    if (entry.key === OTHER_KEY) continue;
+    if (entry.key === OTHER_KEY || entry.type === "collaboration") continue;
     const ids = descendantsByRoot.get(entry.key) || [toObjectId(entry.key)];
     scopes[entry.key] = ids.filter(Boolean).map((id) => id.toString());
   }
@@ -297,8 +386,12 @@ async function _getBrandGroupedIndex(params) {
 
 const getBrandGroupedIndex = unstable_cache(
   _getBrandGroupedIndex,
-  ["brand-grouped-index", "target-audience-unisex-v1"],
-  { revalidate: 10800, tags: ["products", "series", "brands"] }
+  [
+    "brand-grouped-index",
+    "target-audience-unisex-v1",
+    "limited-edition-relations-v1",
+  ],
+  { revalidate: 10800, tags: ["products", "series", "brands", "limited-editions"] }
 );
 
 async function _getBrandGroupedSections(params) {
@@ -334,6 +427,20 @@ async function _getBrandGroupedSections(params) {
   const allSerieOids = allSerieIds.map(toObjectId).filter(Boolean);
 
   const sectionFilter = (entry) => {
+    if (entry.type === "collaboration") {
+      return {
+        ...buildBaseMatch({
+          brandId,
+          sportId,
+          categoryId,
+          search,
+          extra,
+          targetAudience,
+        }),
+        brand: { $ne: toObjectId(brandId) },
+        limitedEdition: toObjectId(entry.limitedEditionId),
+      };
+    }
     if (entry.key === OTHER_KEY) {
       return {
         ...baseMatch,
@@ -382,6 +489,9 @@ async function _getBrandGroupedSections(params) {
       if (products.length === 0) continue; // با فیلتر قیمت خالی شد → رد
       sections.push({
         key: entry.key,
+        type: entry.type || "serie",
+        href: entry.href || null,
+        ownerBrand: entry.ownerBrand || null,
         serie: {
           _id: entry.serieId,
           title: entry.title,
@@ -414,6 +524,10 @@ async function _getBrandGroupedSections(params) {
 
 export const getBrandGroupedSections = unstable_cache(
   _getBrandGroupedSections,
-  ["brand-grouped-sections", "target-audience-unisex-v1"],
-  { revalidate: 10800, tags: ["products", "series", "brands"] }
+  [
+    "brand-grouped-sections",
+    "target-audience-unisex-v1",
+    "limited-edition-relations-v1",
+  ],
+  { revalidate: 10800, tags: ["products", "series", "brands", "limited-editions"] }
 );

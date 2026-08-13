@@ -118,10 +118,12 @@ async function _validatePath(slugs) {
       // حداقل یک محصولِ فعال. لیمیتد ادیشن‌ها برند-محور هستند (مستقل از ورزش).
       const brand = await Brand.findOne({ slug: s1 }).lean();
       if (brand) {
-        const limitedEdition = await LimitedEdition.findOne({ slug: s2 }).lean();
+        const limitedEdition = await LimitedEdition.findOne({
+          brand: brand._id,
+          slug: s2,
+        }).lean();
         if (
           limitedEdition &&
-          String(limitedEdition.brand) === String(brand._id) &&
           (await Product.exists({
             brand: brand._id,
             limitedEdition: limitedEdition._id,
@@ -214,7 +216,7 @@ function _canonicalSegments(r) {
  * معتبر باشند — athlete/product در الگوهای مجاز جایی ندارند. limitedEdition فقط در
  * الگوی ۷ (/[brand]/[limitedEdition]) پر می‌شود.
  */
-async function _resolveContext(slugs) {
+async function _resolveContext(slugs, { includeBrandStats = true } = {}) {
   const resolved = await _validatePath(slugs);
   if (resolved.notFound) return NOT_FOUND;
 
@@ -230,7 +232,7 @@ async function _resolveContext(slugs) {
 
   // آمار برند (سری‌ها + تعداد محصول) — برای هدرِ صفحاتِ برند/سری
   let brandStats = null;
-  if (search.brand) {
+  if (search.brand && includeBrandStats) {
     const [totalBrandProducts, fullBrand, seriesCounts] = await Promise.all([
       Product.countDocuments({ brand: search.brand._id, isActive: true }),
       Brand.findById(search.brand._id)
@@ -307,8 +309,8 @@ export async function queryBySlugs(slugs, resolvedContext = null, extraFilter = 
  * برای صفحه‌ی برند (نمای گروه‌بندی‌شده + infinite scroll) استفاده می‌شود تا
  * بارِ اولیه سبک بماند و همه‌ی محصولات یک‌جا لود نشوند.
  */
-export async function resolvePageContext(slugs) {
-  const ctx = await _resolveContext(slugs);
+export async function resolvePageContext(slugs, options = {}) {
+  const ctx = await _resolveContext(slugs, options);
   if (ctx.notFound) return { notFound: true };
   return JSON.parse(JSON.stringify({ notFound: false, filters: ctx.filters }));
 }

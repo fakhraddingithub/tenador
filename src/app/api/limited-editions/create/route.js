@@ -5,10 +5,18 @@ import connectToDB from "base/configs/db";
 import LimitedEdition from "base/models/LimitedEdition";
 import { registerSlug } from "base/actions/registerSlug";
 import { revalidateContent } from "@/lib/revalidate";
-import { handleApiError } from "@/lib/apiError";
+import { apiError, handleApiError } from "@/lib/apiError";
+import requireAdmin from "@/lib/requireAdmin";
+import {
+  escapeRegexLiteral,
+  validateLimitedEditionBrands,
+} from "@/lib/limitedEditionRelations";
 
 export async function POST(req) {
   try {
+    const admin = await requireAdmin();
+    if (!admin) return apiError("دسترسی مدیر لازم است", 401);
+
     await connectToDB();
 
     const body = await req.json();
@@ -22,6 +30,7 @@ export async function POST(req) {
       logo,
       headImage,
       image,
+      relatedBrands,
     } = body;
 
     if (!brand) {
@@ -38,9 +47,16 @@ export async function POST(req) {
       );
     }
 
-    // نام تکراری ممنوع — هر لیمیتد ادیشن فقط یک بار ساخته می‌شود
+    const brandValidation = await validateLimitedEditionBrands(brand, relatedBrands);
+    if (brandValidation.error) {
+      return apiError(brandValidation.error, brandValidation.status);
+    }
+
+    // نام تکراری فقط زیر همان برند ممنوع است؛ برندهای مختلف می‌توانند Edition
+    // هم‌نام داشته باشند (مثل Wilson و Lacoste / Roland Garros).
     const duplicate = await LimitedEdition.findOne({
-      name: { $regex: new RegExp(`^${name}$`, "i") },
+      brand: brandValidation.owner,
+      name: { $regex: new RegExp(`^${escapeRegexLiteral(name)}$`, "i") },
     });
 
     if (duplicate) {
@@ -59,6 +75,7 @@ export async function POST(req) {
       logo,
       headImage,
       image,
+      relatedBrands: brandValidation.relatedBrands,
     });
 
     // ثبت اسلاگ لیمیتد ادیشن در رجیستری اسلاگ‌ها (مشابه سری‌ها)
@@ -72,7 +89,7 @@ export async function POST(req) {
       label: newLimitedEdition.name || newLimitedEdition.title,
     });
 
-    revalidateContent(["limited-editions", "products"]);
+    revalidateContent(["limited-editions", "products", "brands"]);
 
     return NextResponse.json(
       {

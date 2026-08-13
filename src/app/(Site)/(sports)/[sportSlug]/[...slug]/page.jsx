@@ -92,7 +92,7 @@ export async function generateMetadata({ params }) {
   const { sportSlug, slug } = await params;
   const slugs = [sportSlug, ...(slug || [])];
 
-  const ctx = await resolvePageContext(slugs);
+  const ctx = await resolvePageContext(slugs, { includeBrandStats: false });
 
   // مسیر باید دقیقاً یکی از ۶ الگوی مجاز باشد؛ در غیر این صورت متادیتای ۴۰۴
   if (ctx.notFound) {
@@ -157,7 +157,7 @@ export default async function SportDynamicSlugPage({ params, searchParams }) {
   const targetAudience = normalizeTargetAudience(sp.targetAudience);
 
   // اعتبارسنجیِ قطعیِ مسیر — اگر یکی از ۶ الگوی مجاز نباشد، ۴۰۴ سخت
-  const ctx = await resolvePageContext(slugs);
+  const ctx = await resolvePageContext(slugs, { includeBrandStats: false });
 
   if (ctx.notFound) {
     if ((slug || []).length === 1) {
@@ -195,12 +195,15 @@ export default async function SportDynamicSlugPage({ params, searchParams }) {
       targetAudience,
     });
 
-    const pageInfo = filters.brand;
+    const pageInfo = { ...filters.brand };
+    delete pageInfo.articleBlocks;
+    delete pageInfo.series;
+    const viewFilters = { ...filters, brand: pageInfo };
 
     return (
       <>
         <TaxonomyStructuredData
-          filters={filters}
+          filters={viewFilters}
           products={initialData}
           canonical={`${SITE_URL}/${slugs.join("/")}`}
         />
@@ -213,7 +216,7 @@ export default async function SportDynamicSlugPage({ params, searchParams }) {
             String(targetAudience || ""),
           ])}
           pageInfo={pageInfo}
-          filters={filters}
+          filters={viewFilters}
           rate={rate}
           brandId={brandId}
           sportId={sportId}
@@ -224,7 +227,7 @@ export default async function SportDynamicSlugPage({ params, searchParams }) {
           page={page}
           targetAudience={targetAudience}
           title={`تنادور – ${pageInfo.title || pageInfo.name || ""}`}
-          belowHero={<TaxonomyBreadcrumbs filters={filters} />}
+          belowHero={<TaxonomyBreadcrumbs filters={viewFilters} />}
         />
       </>
     );

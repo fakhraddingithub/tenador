@@ -5,6 +5,22 @@ import connectToDB from "base/configs/db";
 import LimitedEdition from "base/models/LimitedEdition";
 import Product from "base/models/Product";
 import { revalidateContent } from "@/lib/revalidate";
+import { apiError, handleApiError } from "@/lib/apiError";
+import requireAdmin from "@/lib/requireAdmin";
+import {
+  escapeRegexLiteral,
+  validateLimitedEditionBrands,
+} from "@/lib/limitedEditionRelations";
+
+const EDITABLE_FIELDS = [
+  "name",
+  "title",
+  "description",
+  "colors",
+  "logo",
+  "headImage",
+  "image",
+];
 
 export async function GET(req, { params }) {
   try {
@@ -33,6 +49,9 @@ export async function GET(req, { params }) {
 
 export async function PUT(req, { params }) {
   try {
+    const admin = await requireAdmin();
+    if (!admin) return apiError("دسترسی مدیر لازم است", 401);
+
     await connectToDB();
 
     const { id } = await params;
@@ -47,10 +66,23 @@ export async function PUT(req, { params }) {
       );
     }
 
-    // در صورت تغییر نام، یکتا بودن آن بررسی می‌شود
+    const brandValidation = await validateLimitedEditionBrands(
+      limitedEdition.brand,
+      Object.hasOwn(body, "relatedBrands")
+        ? body.relatedBrands
+        : limitedEdition.relatedBrands,
+    );
+    if (brandValidation.error) {
+      return apiError(brandValidation.error, brandValidation.status);
+    }
+
+    // در صورت تغییر نام، یکتا بودن آن در محدوده‌ی همان برند بررسی می‌شود
     if (body.name && body.name !== limitedEdition.name) {
       const duplicate = await LimitedEdition.findOne({
-        name: { $regex: new RegExp(`^${body.name}$`, "i") },
+        brand: limitedEdition.brand,
+        name: {
+          $regex: new RegExp(`^${escapeRegexLiteral(body.name)}$`, "i"),
+        },
         _id: { $ne: id },
       });
 
@@ -62,13 +94,14 @@ export async function PUT(req, { params }) {
       }
     }
 
-    Object.keys(body).forEach((key) => {
-      limitedEdition[key] = body[key];
-    });
+    for (const key of EDITABLE_FIELDS) {
+      if (Object.hasOwn(body, key)) limitedEdition[key] = body[key];
+    }
+    limitedEdition.relatedBrands = brandValidation.relatedBrands;
 
     await limitedEdition.save();
 
-    revalidateContent(["limited-editions", "products"]);
+    revalidateContent(["limited-editions", "products", "brands"]);
 
     return NextResponse.json(
       {
@@ -78,16 +111,15 @@ export async function PUT(req, { params }) {
       { status: 200 }
     );
   } catch (error) {
-    console.error("PUT LimitedEdition Error:", error);
-    return NextResponse.json(
-      { error: "خطا در ویرایش اطلاعات" },
-      { status: 500 }
-    );
+    return handleApiError(error, "خطا در ویرایش اطلاعات");
   }
 }
 
 export async function DELETE(req, { params }) {
   try {
+    const admin = await requireAdmin();
+    if (!admin) return apiError("دسترسی مدیر لازم است", 401);
+
     await connectToDB();
 
     const { id } = await params;
@@ -109,7 +141,7 @@ export async function DELETE(req, { params }) {
 
     await LimitedEdition.findByIdAndDelete(id);
 
-    revalidateContent(["limited-editions", "products"]);
+    revalidateContent(["limited-editions", "products", "brands"]);
 
     return NextResponse.json(
       { message: "لیمیتد ادیشن با موفقیت حذف شد" },

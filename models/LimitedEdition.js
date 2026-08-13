@@ -20,6 +20,19 @@ const schema = new mongoose.Schema(
       index: true,
     },
 
+    // برندهایی که محصولات این لیمیتد ادیشن باید علاوه بر صفحه‌ی برند مالک،
+    // در صفحه‌ی آن‌ها نیز به‌عنوان «همکاری» نمایش داده شوند. مالکیت محصول و
+    // Product.brand تغییر نمی‌کند؛ این رابطه صرفاً روی لیمیتد ادیشن نگه‌داری می‌شود.
+    relatedBrands: {
+      type: [
+        {
+          type: mongoose.Schema.Types.ObjectId,
+          ref: "Brand",
+        },
+      ],
+      default: [],
+    },
+
     name: {
       type: String,
       required: true,
@@ -67,13 +80,30 @@ const schema = new mongoose.Schema(
 
     slug: {
       type: String,
-      unique: true,
       trim: true,
     },
   },
 
   { timestamps: true }
 );
+
+// یک عنوان مثل roland-garros می‌تواند زیر چند برند وجود داشته باشد، اما زیر
+// یک برند مشخص فقط یک‌بار مجاز است. ایندکس دیتابیس با migration ساخته می‌شود؛
+// autoIndex در اتصال production عمداً خاموش است.
+schema.index({ brand: 1, slug: 1 }, { unique: true });
+schema.index({ relatedBrands: 1 });
+
+schema.pre("validate", function () {
+  const ownerId = this.brand?.toString();
+  const seen = new Set();
+
+  this.relatedBrands = (this.relatedBrands || []).filter((brandId) => {
+    const id = brandId?.toString();
+    if (!id || id === ownerId || seen.has(id)) return false;
+    seen.add(id);
+    return true;
+  });
+});
 
 schema.pre("save", async function () {
   if (this.isModified("name")) {
@@ -83,7 +113,13 @@ schema.pre("save", async function () {
 
     let counter = 1;
 
-    while (await mongoose.models.LimitedEdition.findOne({ slug, _id: { $ne: this._id } })) {
+    while (
+      await mongoose.models.LimitedEdition.findOne({
+        brand: this.brand,
+        slug,
+        _id: { $ne: this._id },
+      })
+    ) {
       slug = `${baseSlug}-${counter++}`;
     }
 

@@ -17,9 +17,11 @@ import {
   FaFont,
   FaQuoteRight,
   FaRocket,
+  FaLink,
 } from "react-icons/fa";
 import { useRouter } from "next/navigation";
 import ImageUpload from "./ImageUpload";
+import { useCompactBrands } from "@/hooks/useAdminRefData";
 
 const emptyForm = {
   name: "",
@@ -29,15 +31,18 @@ const emptyForm = {
   logo: "",
   headImage: "",
   image: "",
+  relatedBrands: [],
 };
 
 export default function LimitedEditionForm({ brandId, limitedEditionId = null }) {
   const router = useRouter();
   const isEdit = !!limitedEditionId;
+  const { brands, isLoading: brandsLoading } = useCompactBrands();
 
   const [loading, setLoading] = useState(false);
   const [fetching, setFetching] = useState(isEdit);
   const [formData, setFormData] = useState(emptyForm);
+  const [brandSearch, setBrandSearch] = useState("");
 
   useEffect(() => {
     if (!isEdit) return;
@@ -62,6 +67,9 @@ export default function LimitedEditionForm({ brandId, limitedEditionId = null })
           logo: c?.logo || "",
           headImage: c?.headImage || "",
           image: c?.image || "",
+          relatedBrands: Array.isArray(c?.relatedBrands)
+            ? c.relatedBrands.map((brand) => String(brand?._id || brand))
+            : [],
         });
       } catch {
         toast.error("خطا در بارگذاری اطلاعات");
@@ -129,6 +137,25 @@ export default function LimitedEditionForm({ brandId, limitedEditionId = null })
     "text-[11px] font-bold text-gray-500 uppercase tracking-widest flex items-center gap-2";
   const inputCls =
     "w-full bg-gray-50 border border-gray-100 rounded-[var(--radius)] px-4 py-3 text-sm font-bold text-gray-800 focus:outline-none focus:border-[var(--color-primary)] focus:bg-white transition-all";
+
+  const normalizedSearch = brandSearch.trim().toLocaleLowerCase("fa");
+  const availableBrands = brands.filter((brand) => {
+    if (String(brand._id) === String(brandId)) return false;
+    if (!normalizedSearch) return true;
+    return `${brand.title || ""} ${brand.name || ""}`
+      .toLocaleLowerCase("fa")
+      .includes(normalizedSearch);
+  });
+
+  const toggleRelatedBrand = (brandIdToToggle) => {
+    const id = String(brandIdToToggle);
+    setFormData((previous) => ({
+      ...previous,
+      relatedBrands: previous.relatedBrands.includes(id)
+        ? previous.relatedBrands.filter((brand) => brand !== id)
+        : [...previous.relatedBrands, id],
+    }));
+  };
 
   return (
     <form onSubmit={handleSubmit} dir="rtl" className="w-full space-y-6">
@@ -257,6 +284,75 @@ export default function LimitedEditionForm({ brandId, limitedEditionId = null })
                 placeholder="توضیحات این لیمیتد ادیشن..."
               />
             </div>
+
+            <fieldset className="p-4 border border-gray-100 rounded-[var(--radius)] space-y-3">
+              <legend className={`${labelCls} px-2`}>
+                <FaLink style={{ color: "var(--color-primary)" }} />
+                نمایش در صفحه برندهای مرتبط
+              </legend>
+              <p className="text-xs leading-6 text-gray-500">
+                محصولات این نسخه بدون تغییر برند اصلی، در بخش همکاری‌های برندهای
+                انتخاب‌شده نیز نمایش داده می‌شوند.
+              </p>
+
+              <label htmlFor="related-brand-search" className="sr-only">
+                جست‌وجوی برند مرتبط
+              </label>
+              <input
+                id="related-brand-search"
+                type="search"
+                value={brandSearch}
+                onChange={(event) => setBrandSearch(event.target.value)}
+                className={inputCls}
+                placeholder="جست‌وجوی برند..."
+                autoComplete="off"
+              />
+
+              <div className="max-h-56 overflow-y-auto rounded-[var(--radius)] border border-gray-100 p-2">
+                {brandsLoading ? (
+                  <p role="status" className="px-3 py-5 text-center text-xs text-gray-400">
+                    در حال دریافت برندها…
+                  </p>
+                ) : availableBrands.length === 0 ? (
+                  <p className="px-3 py-5 text-center text-xs text-gray-400">
+                    برندی مطابق جست‌وجو پیدا نشد.
+                  </p>
+                ) : (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                    {availableBrands.map((brand) => {
+                      const id = String(brand._id);
+                      const checked = formData.relatedBrands.includes(id);
+                      return (
+                        <label
+                          key={id}
+                          className={`min-h-11 flex cursor-pointer items-center gap-3 rounded-[var(--radius)] border px-3 py-2 text-sm transition-colors ${
+                            checked
+                              ? "border-[var(--color-primary)] bg-orange-50 text-gray-900"
+                              : "border-gray-100 bg-white text-gray-600 hover:border-gray-200"
+                          }`}
+                        >
+                          <input
+                            type="checkbox"
+                            checked={checked}
+                            onChange={() => toggleRelatedBrand(id)}
+                            className="h-4 w-4 accent-[var(--color-primary)]"
+                          />
+                          <span className="min-w-0 truncate font-bold">
+                            {brand.title || brand.name}
+                          </span>
+                        </label>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+
+              {formData.relatedBrands.length > 0 ? (
+                <p className="text-xs font-bold text-[var(--color-primary)]">
+                  {formData.relatedBrands.length.toLocaleString("fa-IR")} برند مرتبط انتخاب شده است.
+                </p>
+              ) : null}
+            </fieldset>
           </div>
 
           <button
