@@ -47,6 +47,11 @@ import { sendOrderConfirmationEmail } from "@/lib/emailService";
 import { getMonthlyInstallmentRate } from "@/lib/installmentRateService";
 import { buildInstallmentTerms } from "@/lib/installmentFinance";
 import { buildVariantSnapshot } from "@/lib/variantImages";
+import {
+  firstAddressError,
+  normalizePhoneInput,
+  validateAddressPayload,
+} from "@/lib/addressForm.mjs";
 
 // تبدیل انتخاب فرایندِ غنی‌شده (از پرایس‌انجین) به شکل ذخیره‌سازی در سفارش
 function mapFlowSelectionToOrder(sel) {
@@ -180,13 +185,18 @@ export async function POST(req) {
     } else {
       // آدرس موقت — فقط برای این سفارش، ذخیره نمی‌شود
       snap = {
-        fullName:    addressSnapshot.fullName    || "",
-        phone:       addressSnapshot.phone       || "",
-        province:    addressSnapshot.province    || "",
-        city:        addressSnapshot.city        || "",
-        postalCode:  addressSnapshot.postalCode  || "",
-        addressLine: addressSnapshot.addressLine || "",
+        fullName:    String(addressSnapshot.fullName    || "").trim(),
+        phone:       normalizePhoneInput(addressSnapshot.phone),
+        province:    String(addressSnapshot.province    || "").trim(),
+        city:        String(addressSnapshot.city        || "").trim(),
+        postalCode:  String(addressSnapshot.postalCode  || "").trim(),
+        addressLine: String(addressSnapshot.addressLine || "").trim(),
       };
+    }
+
+    const addressErrors = validateAddressPayload(snap);
+    if (Object.keys(addressErrors).length) {
+      return badRequest(firstAddressError(addressErrors));
     }
 
     // ─── موجودی محصولات دست‌دوم ───

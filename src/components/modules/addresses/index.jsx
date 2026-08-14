@@ -487,13 +487,16 @@ const AddressesModule = () => {
              </div>
            </div>
 
-           <div className="space-y-1">
-             <label className="text-xs text-gray-500">
-               کد پستی
-               <span className="text-gray-400 mr-1">(اختیاری)</span>
-             </label>
+            <div className="space-y-1">
+              <label htmlFor="dashboard-address-postalCode" className="text-xs text-gray-500">
+                کد پستی
+              </label>
              <input
                type="text"
+               id="dashboard-address-postalCode"
+               name="postalCode"
+               inputMode="numeric"
+               autoComplete="postal-code"
                placeholder="کد پستی"
                value={formData.postalCode}
                onChange={(e) => handleInputChange('postalCode', e.target.value)}
@@ -501,16 +504,25 @@ const AddressesModule = () => {
              />
            </div>
 
-           <div className="space-y-1">
-             <label className="text-xs text-gray-500">آدرس کامل <span className="text-gray-400 mr-1">(اختیاری)</span></label>
-             <textarea
-               rows={3}
-               placeholder="خیابان، کوچه، پلاک، واحد ..."
-               value={formData.addressLine}
-               onChange={(e) => handleInputChange('addressLine', e.target.value)}
-               className="w-full border border-gray-300 rounded-[6px] py-2.5 px-3 text-sm resize-none focus:outline-none focus:border-[#aa4725] focus:ring-2 focus:ring-[#aa4725]/20 transition"
-             />
-           </div>
+            <div className="space-y-1">
+              <p id="dashboard-address-addressLine-help" className="inline-flex rounded-full bg-amber-50 px-3 py-1 text-[11px] font-medium text-amber-700">
+                آدرس را به فارسی وارد کنید
+              </p>
+              <label htmlFor="dashboard-address-addressLine" className="block text-xs text-gray-500">آدرس کامل <span className="text-red-600">*</span></label>
+              <textarea
+                id="dashboard-address-addressLine"
+                name="addressLine"
+                rows={3}
+                placeholder="خیابان، کوچه، پلاک، واحد ..."
+                value={formData.addressLine}
+                onChange={(e) => handleInputChange('addressLine', e.target.value)}
+                required
+                aria-invalid={!!errors.addressLine}
+                aria-describedby={errors.addressLine ? 'dashboard-address-addressLine-help dashboard-address-addressLine-error' : 'dashboard-address-addressLine-help'}
+                className={`w-full border rounded-[6px] py-2.5 px-3 text-sm resize-none focus:outline-none focus:ring-2 transition ${errors.addressLine ? 'border-red-500 focus:border-red-500 focus:ring-red-500/20' : 'border-gray-300 focus:border-[#aa4725] focus:ring-[#aa4725]/20'}`}
+              />
+              {errors.addressLine && <p id="dashboard-address-addressLine-error" role="alert" className="text-xs text-red-600">{errors.addressLine}</p>}
+            </div>
      
            {/* Default checkbox */}
            <label className="flex items-center gap-2 text-xs cursor-pointer">

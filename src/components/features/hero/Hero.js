@@ -95,7 +95,6 @@ export default function Hero({ slides = [] }) {
                         group-hover:-translate-x-1.5"
                       />
                     </Link>
-                    );
                   </motion.div>
                 </div>
               </div>

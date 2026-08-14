@@ -68,7 +68,7 @@ export async function POST(req) {
         : fullName.trim(),
       phone: normalizePhoneInput(phone),
       city: city.trim(),
-      addressLine: addressLine?.trim() || "",
+      addressLine: addressLine.trim(),
       postalCode: postalCode?.trim() || "",
       isDefault: !!isDefault,
     });

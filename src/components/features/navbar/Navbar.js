@@ -130,9 +130,7 @@ function AudienceColumn({ selected, onSelect, availableAudiences }) {
 
   return (
     <div className="w-[150px] shrink-0 border-l border-white/[0.06] p-3 overflow-y-auto bg-white/[0.01]">
-      <p className="text-[11px] font-bold text-gray-500 mb-4 px-2 uppercase tracking-widest">
-        مخاطب هدف
-      </p>
+      <p className="text-[11px] font-bold text-gray-500 mb-8 px-2 uppercase tracking-widest"/>
       <ul className="space-y-1">
         <li>
           <button

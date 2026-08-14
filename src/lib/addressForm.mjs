@@ -8,12 +8,12 @@ export function toEnglishDigits(value = '') {
 }
 
 export function normalizePhoneInput(value = '') {
-  return toEnglishDigits(value).replace(/\D/g, '').slice(0, 11)
+  return String(value).replace(/[^0-9۰-۹٠-٩]/g, '').slice(0, 11)
 }
 
 export function validateAddressForm(data) {
   const errors = {}
-  const phone = normalizePhoneInput(data.phone)
+  const phone = toEnglishDigits(normalizePhoneInput(data.phone))
 
   if (!data.firstName?.trim()) errors.firstName = 'نام را وارد کنید'
   if (!data.lastName?.trim()) errors.lastName = 'نام خانوادگی را وارد کنید'
@@ -23,13 +23,14 @@ export function validateAddressForm(data) {
     errors.phone = 'شماره موبایل باید با ۰۹ شروع شود و ۱۱ رقم باشد'
   }
   if (!data.city?.trim()) errors.city = 'شهر را وارد کنید'
+  if (!data.addressLine?.trim()) errors.addressLine = 'آدرس کامل را وارد کنید'
 
   return errors
 }
 
 export function validateAddressPayload(data) {
   const errors = {}
-  const phone = normalizePhoneInput(data.phone)
+  const phone = toEnglishDigits(normalizePhoneInput(data.phone))
 
   const hasSeparateNameFields = data.firstName !== undefined || data.lastName !== undefined
   if (hasSeparateNameFields) {
@@ -44,6 +45,7 @@ export function validateAddressPayload(data) {
     errors.phone = 'شماره موبایل باید با ۰۹ شروع شود و ۱۱ رقم باشد'
   }
   if (!data.city?.trim()) errors.city = 'شهر را وارد کنید'
+  if (!data.addressLine?.trim()) errors.addressLine = 'آدرس کامل را وارد کنید'
 
   return errors
 }

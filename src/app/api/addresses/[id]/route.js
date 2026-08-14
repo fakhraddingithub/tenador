@@ -70,11 +70,11 @@ export async function PUT(req, { params }) {
           : fullName.trim(),
         phone: normalizePhoneInput(phone),
         city: city.trim(),
-        addressLine: addressLine?.trim() || "",
+        addressLine: addressLine.trim(),
         postalCode: postalCode?.trim() || "",
         isDefault: !!isDefault,
       },
-      { new: true }
+      { new: true, runValidators: true }
     );
 
     if (!updatedAddress) {
