@@ -10,6 +10,8 @@ import UsedProductsPageClient from "@/components/templates/secondHands/UsedProdu
 import TaxonomyBreadcrumbs from "@/components/seo/TaxonomyBreadcrumbs";
 import { getFilterableAttributes } from "base/services/product.service";
 import { getCachedRate, eurToToman } from "@/lib/Exchangerate";
+import { buildCategorySportMatch } from "base/utils/categorySportVisibility";
+import { applyProductSportVisibility } from "base/services/categorySportVisibility.service";
 
 export const revalidate = 3600;
 
@@ -21,8 +23,11 @@ async function resolveCategory(sportSlug, categorySlug) {
   const sport = await Sport.findOne({ slug: sportSlug }).select("_id slug title").lean();
   if (!sport) return null;
 
-  const category = await Category.findOne({ sport: sport._id, slug: categorySlug })
-    .select("_id title slug image icon")
+  const category = await Category.findOne({
+    slug: categorySlug,
+    ...buildCategorySportMatch(sport._id),
+  })
+    .select("_id title slug image icon sport additionalSports")
     .lean();
   if (!category) return null;
 
@@ -36,7 +41,10 @@ export async function generateMetadata({ params }) {
 
   const { category } = resolved;
 
-  const categoryProducts = await Product.find({ category: category._id }).select("_id").lean();
+  const categoryProducts = await Product.find(await applyProductSportVisibility(
+    { category: category._id },
+    { sportId: sport._id, categoryId: category._id, category },
+  )).select("_id").lean();
   const idList = categoryProducts.map((p) => p._id);
 
   const [productCount, sampleUsedProducts] = await Promise.all([
@@ -130,7 +138,10 @@ export default async function UsedProductsByCategoryPage({ params }) {
   const categoryId = category._id;
 
   // محصولاتِ اصلیِ همین دسته‌بندی، برای فیلترِ محصولاتِ دست‌دوم بر اساسِ آن‌ها
-  const categoryProductIds = await Product.find({ category: categoryId }).select("_id").lean();
+  const categoryProductIds = await Product.find(await applyProductSportVisibility(
+    { category: categoryId },
+    { sportId: sport._id, categoryId, category },
+  )).select("_id").lean();
   const idList = categoryProductIds.map((p) => p._id);
 
   const rawProducts = await UsedProduct.find({

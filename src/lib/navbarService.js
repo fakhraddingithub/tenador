@@ -11,6 +11,29 @@ import "base/models/Variant";
 const byOrder = (a, b) =>
   (a.order ?? Number.MAX_SAFE_INTEGER) - (b.order ?? Number.MAX_SAFE_INTEGER);
 
+function visibleSportsExpression(categoryPath) {
+  const ownerSport = `${categoryPath}.sport`;
+  const additionalSports = `${categoryPath}.additionalSports`;
+  return {
+    $cond: [
+      { $gt: [{ $size: { $ifNull: [additionalSports, []] } }, 0] },
+      {
+        $setUnion: [
+          [ownerSport],
+          { $ifNull: [additionalSports, []] },
+        ],
+      },
+      {
+        $cond: [
+          { $eq: ["$sport", ownerSport] },
+          ["$sport"],
+          [],
+        ],
+      },
+    ],
+  };
+}
+
 async function buildNavbarData() {
   await connectToDB();
 
@@ -19,60 +42,80 @@ async function buildNavbarData() {
   //    ساختِ درختِ والد/فرزندِ ستونِ دوم. برندهای هر دسته از روی محصول استنتاج
   //    می‌شوند (برندهایی که در آن دسته دستِ‌کم یک محصول دارند).
   // ───────────────────────────────────────────────────────────────────────
-  const sports = await Sport.aggregate([
-    {
-      $project: { _id: 1, title: 1, slug: 1, icon: 1, order: 1 },
-    },
-    {
-      $lookup: {
-        from: "products",
-        let: { sportId: "$_id" },
-        pipeline: [
-          { $match: { $expr: { $eq: ["$sport", "$$sportId"] } } },
-          {
-            $lookup: {
-              from: "categories",
-              localField: "category",
-              foreignField: "_id",
-              as: "category",
-            },
-          },
-          { $unwind: "$category" },
-          {
-            $lookup: {
-              from: "brands",
-              localField: "brand",
-              foreignField: "_id",
-              as: "brand",
-            },
-          },
-          { $unwind: "$brand" },
-          {
-            $group: {
-              _id: "$category._id",
-              title: { $first: "$category.title" },
-              slug: { $first: "$category.slug" },
-              icon: { $first: "$category.icon" },
-              order: { $first: "$category.order" },
-              parent: { $first: "$category.parent" }, // برای درختِ والد/فرزند
-              brands: {
-                $addToSet: {
-                  _id: "$brand._id",
-                  title: "$brand.title",
-                  slug: "$brand.slug",
-                  icon: "$brand.icon",
-                  order: "$brand.order",
-                },
-              },
-            },
-          },
-        ],
-        as: "categories",
+  const [sports, categoryRows] = await Promise.all([
+    Sport.find({})
+      .select("_id title slug icon order")
+      .sort({ order: 1 })
+      .lean(),
+    Product.aggregate([
+      {
+        $match: {
+          isActive: true,
+          sport: { $ne: null },
+          category: { $ne: null },
+          brand: { $ne: null },
+        },
       },
-    },
-    { $addFields: { categories: { $ifNull: ["$categories", []] } } },
-    { $sort: { order: 1 } },
+      {
+        $lookup: {
+          from: "categories",
+          localField: "category",
+          foreignField: "_id",
+          as: "category",
+        },
+      },
+      { $unwind: "$category" },
+      { $addFields: { _visibleSports: visibleSportsExpression("$category") } },
+      { $unwind: "$_visibleSports" },
+      {
+        $lookup: {
+          from: "brands",
+          localField: "brand",
+          foreignField: "_id",
+          as: "brand",
+        },
+      },
+      { $unwind: "$brand" },
+      {
+        $group: {
+          _id: { sport: "$_visibleSports", category: "$category._id" },
+          title: { $first: "$category.title" },
+          slug: { $first: "$category.slug" },
+          icon: { $first: "$category.icon" },
+          order: { $first: "$category.order" },
+          parent: { $first: "$category.parent" },
+          brands: {
+            $addToSet: {
+              _id: "$brand._id",
+              title: "$brand.title",
+              slug: "$brand.slug",
+              icon: "$brand.icon",
+              order: "$brand.order",
+            },
+          },
+        },
+      },
+    ]),
   ]);
+
+  const sportMap = new Map();
+  for (const sport of sports) {
+    sport.categories = [];
+    sportMap.set(sport._id.toString(), sport);
+  }
+  for (const row of categoryRows) {
+    const sport = sportMap.get(row._id.sport.toString());
+    if (!sport) continue;
+    sport.categories.push({
+      _id: row._id.category,
+      title: row.title,
+      slug: row.slug,
+      icon: row.icon,
+      order: row.order,
+      parent: row.parent,
+      brands: row.brands,
+    });
+  }
 
   // ───────────────────────────────────────────────────────────────────────
   // ۲) فراداده‌ی «ویژگیِ فیلترِ مگامنو» هر دسته: نام، برچسب و گزینه‌های تعریف‌شده.
@@ -124,6 +167,8 @@ async function buildNavbarData() {
         },
       },
       { $unwind: "$cat" },
+      { $addFields: { _visibleSports: visibleSportsExpression("$cat") } },
+      { $unwind: "$_visibleSports" },
       { $match: { "cat.megaMenuFilterAttribute": { $type: "string", $ne: "" } } },
       {
         $lookup: {
@@ -172,7 +217,7 @@ async function buildNavbarData() {
       { $match: { _vals: { $nin: [null, ""] } } },
       {
         $group: {
-          _id: { sport: "$sport", category: "$category", brand: "$brand" },
+          _id: { sport: "$_visibleSports", category: "$category", brand: "$brand" },
           values: { $addToSet: "$_vals" },
         },
       },
@@ -240,8 +285,19 @@ async function buildNavbarData() {
       },
     },
     {
+      $lookup: {
+        from: "categories",
+        localField: "category",
+        foreignField: "_id",
+        as: "cat",
+      },
+    },
+    { $unwind: "$cat" },
+    { $addFields: { _visibleSports: visibleSportsExpression("$cat") } },
+    { $unwind: "$_visibleSports" },
+    {
       $group: {
-        _id: { sport: "$sport", category: "$category", brand: "$brand" },
+        _id: { sport: "$_visibleSports", category: "$category", brand: "$brand" },
         values: { $addToSet: "$targetAudience" },
       },
     },

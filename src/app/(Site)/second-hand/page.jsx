@@ -6,6 +6,7 @@ import SportHero from "@/components/templates/sports/SportHero";
 import TaxonomyBreadcrumbs from "@/components/seo/TaxonomyBreadcrumbs";
 import UsedProductReviewsSection from "@/components/templates/secondHands/UsedProductReviewsSection";
 import { getApprovedUsedProductReviews } from "base/services/comment.service";
+import { isSharedCategory } from "base/utils/categorySportVisibility";
 
 // تغییراتِ ادمین از طریقِ revalidatePath("/second-hand", "layout") باطل می‌شوند؛
 // TTL زمان‌محور → ۱ساعت برای کاهشِ ISR Writes.
@@ -57,8 +58,11 @@ export default async function UsedProductsPage() {
       select: "category",
       populate: {
         path: "category",
-        select: "title slug icon image sport",
-        populate: { path: "sport", select: "slug" },
+        select: "title slug icon image sport additionalSports",
+        populate: [
+          { path: "sport", select: "slug" },
+          { path: "additionalSports", select: "slug" },
+        ],
       },
     })
     .lean();
@@ -67,18 +71,24 @@ export default async function UsedProductsPage() {
   for (const p of rawProducts) {
     const cat = p.baseProduct?.category;
     if (!cat?._id || !cat?.sport?.slug) continue;
-    const key = cat._id.toString();
-    if (!categoryMap.has(key)) {
-      categoryMap.set(key, {
-        _id: key,
-        id: key,
-        name: cat.title,
-        title: cat.title,
-        slug: cat.slug,
-        sportSlug: cat.sport.slug,
-        icon: cat.icon || null,
-        image: cat.image || null,
-      });
+    const visibleSports = isSharedCategory(cat)
+      ? [cat.sport, ...(cat.additionalSports || [])]
+      : [cat.sport];
+    for (const sport of visibleSports) {
+      if (!sport?.slug) continue;
+      const key = `${cat._id}:${sport._id}`;
+      if (!categoryMap.has(key)) {
+        categoryMap.set(key, {
+          _id: key,
+          id: key,
+          name: cat.title,
+          title: cat.title,
+          slug: cat.slug,
+          sportSlug: sport.slug,
+          icon: cat.icon || null,
+          image: cat.image || null,
+        });
+      }
     }
   }
   const categories = Array.from(categoryMap.values());

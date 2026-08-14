@@ -15,6 +15,7 @@ import mongoose from "mongoose";
 import connectToDB from "base/configs/db";
 import Brand from "base/models/Brand";
 import Product from "base/models/Product";
+import { applyProductSportVisibility } from "base/services/categorySportVisibility.service";
 
 // فقط برندهایی که واقعاً لوگو دارند: مقدارِ رشته‌ای با دستِ‌کم یک کاراکترِ غیرفاصله
 // (\S) — این null/خالی/فقط-فاصله را حذف می‌کند تا اسلاتِ خالی نمایش داده نشود.
@@ -55,11 +56,13 @@ async function _getSportTickerBrands(sportId) {
   }
 
   // برندهایی که در این ورزش دستِ‌کم یک محصولِ فعال دارند
-  const brandIds = await Product.distinct("brand", {
-    sport: sid,
-    isActive: true,
-    brand: { $ne: null },
-  });
+  const brandIds = await Product.distinct(
+    "brand",
+    await applyProductSportVisibility(
+      { isActive: true, brand: { $ne: null } },
+      { sportId: sid },
+    ),
+  );
   if (brandIds.length === 0) return [];
 
   const brands = await Brand.find({ _id: { $in: brandIds }, ...HAS_LOGO })
@@ -73,5 +76,5 @@ export const getSportTickerBrands = unstable_cache(
   async (sportId) =>
     JSON.parse(JSON.stringify(await _getSportTickerBrands(sportId))),
   ["sport-ticker-brands"],
-  { revalidate: 10800, tags: ["brands", "products"] }
+  { revalidate: 10800, tags: ["brands", "categories", "products"] }
 );

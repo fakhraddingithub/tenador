@@ -7,6 +7,7 @@ import {
   TARGET_AUDIENCE_VALUES,
   buildTargetAudienceMatch,
 } from "base/utils/targetAudience";
+import { applyProductSportVisibility } from "base/services/categorySportVisibility.service";
 
 export { TARGET_AUDIENCE_VALUES, buildTargetAudienceMatch };
 
@@ -63,8 +64,19 @@ export async function getProductListingPage({ filter = {}, offset = 0, limit = S
     Math.max(1, Number(limit) || STOREFRONT_PAGE_SIZE),
   );
   const safeFilter = sanitizeListingFilter(filter);
+  const effectiveFilter = safeFilter.sport
+    ? await applyProductSportVisibility(
+        Object.fromEntries(
+          Object.entries(safeFilter).filter(([key]) => key !== "sport"),
+        ),
+        {
+          sportId: safeFilter.sport,
+          categoryId: safeFilter.category || null,
+        },
+      )
+    : safeFilter;
 
-  let productsQuery = Product.find(safeFilter)
+  let productsQuery = Product.find(effectiveFilter)
     .select(LISTING_FIELDS)
     .sort({ order: 1, createdAt: -1 })
     .skip(safeOffset)
@@ -75,7 +87,7 @@ export async function getProductListingPage({ filter = {}, offset = 0, limit = S
 
   const [products, totalResults, rate] = await Promise.all([
     productsQuery,
-    Product.countDocuments(safeFilter),
+    Product.countDocuments(effectiveFilter),
     getCachedRate(),
   ]);
   const priced = await attachListingPrices(products, rate);

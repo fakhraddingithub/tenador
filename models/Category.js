@@ -123,6 +123,28 @@ const CategorySchema = new mongoose.Schema(
       index: true,
     },
 
+    // ورزش‌های ثانویه‌ای که همین دسته و تمام محصولات آن باید در ویترینشان
+    // نمایش داده شوند. نبودن/خالی‌بودن این فیلد دقیقاً رفتار قدیمی را حفظ می‌کند.
+    additionalSports: {
+      type: [
+        {
+          type: mongoose.Schema.Types.ObjectId,
+          ref: "Sport",
+        },
+      ],
+      default: [],
+      validate: {
+        validator(values) {
+          const ids = (values || []).map(String);
+          return (
+            ids.length === new Set(ids).size &&
+            !ids.includes(String(this.sport || ""))
+          );
+        },
+        message: "ورزش اصلی نباید در ورزش‌های نمایشی تکرار شود",
+      },
+    },
+
     prompts: [
       {
         field: String,
@@ -193,6 +215,12 @@ const CategorySchema = new mongoose.Schema(
 // اسلاگ فقط در محدوده‌ی هر ورزش یکتاست (نه سراسری). دو ورزش مختلف می‌توانند
 // دسته‌ای با اسلاگ یکسان (مثلاً "racket") داشته باشند.
 CategorySchema.index({ sport: 1, slug: 1 }, { unique: true });
+// شاخه‌ی ثانویه‌ی lookup مسیر /[sport]/[category] و دریافت شناسه‌ی دسته‌های
+// مشترک. روی Product تغییری ایجاد نمی‌شود و دو شاخه‌ی product.sport/category
+// می‌توانند از ایندکس‌های فعلی Product استفاده کنند.
+CategorySchema.index({ additionalSports: 1, slug: 1 });
+CategorySchema.index({ sport: 1, order: 1, createdAt: 1 });
+CategorySchema.index({ additionalSports: 1, order: 1, createdAt: 1 });
 
 // ایجاد اسلاگ اتوماتیک — یکتایی فقط درونِ همان ورزش بررسی می‌شود
 CategorySchema.pre("validate", async function () {

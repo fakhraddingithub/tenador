@@ -16,6 +16,8 @@
 import mongoose from "mongoose";
 import connectToDB from "base/configs/db";
 import Product from "base/models/Product";
+import { getProductsVisibleInAnySportMatch } from "base/services/categorySportVisibility.service";
+import { andMongoFilters } from "base/utils/categorySportVisibility";
 import Variant from "base/models/Variant";
 import DiscountRule from "base/models/DiscountRule";
 import { getCachedRate } from "@/lib/Exchangerate";
@@ -290,7 +292,10 @@ async function resolveRule(rule) {
     case "sport": {
       const ids = toObjectIds(value);
       if (!ids.length) return [];
-      const docs = await Product.find({ sport: { $in: ids }, isActive: true })
+      const docs = await Product.find(andMongoFilters(
+        { isActive: true },
+        await getProductsVisibleInAnySportMatch(ids),
+      ))
         .select("_id")
         .lean();
       return docs.map((d) => d._id.toString());

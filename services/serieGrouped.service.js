@@ -16,6 +16,7 @@ import Product from "base/models/Product";
 import { getCachedRate } from "@/lib/Exchangerate";
 import { attachListingPrices } from "base/services/priceEngine";
 import { resolveSerieSportContent } from "@/lib/serieSportContent";
+import { applyProductSportVisibility } from "base/services/categorySportVisibility.service";
 import { buildTargetAudienceMatch } from "base/utils/targetAudience";
 import { LISTING_FIELDS, POPULATES } from "base/services/productListing.service";
 
@@ -83,7 +84,7 @@ async function buildChildTree(parentSerieId) {
   return { parent, directChildren, descendantsByChild, allDescendantIds };
 }
 
-function buildBaseMatch({ parentSerieId, allDescendantIds, sportId, categoryId, targetAudience, search }) {
+async function buildBaseMatch({ parentSerieId, allDescendantIds, sportId, categoryId, targetAudience, search }) {
   const parentOid = toObjectId(parentSerieId);
   const serieScope = [
     parentOid,
@@ -91,14 +92,15 @@ function buildBaseMatch({ parentSerieId, allDescendantIds, sportId, categoryId, 
   ].filter(Boolean);
 
   const match = { isActive: true, serie: { $in: serieScope } };
-  if (sportId) match.sport = toObjectId(sportId);
   if (categoryId) match.category = toObjectId(categoryId);
   const audienceMatch = buildTargetAudienceMatch(targetAudience);
   if (audienceMatch) match.targetAudience = audienceMatch;
   if (search && search.trim()) {
     match.name = { $regex: escapeRegex(search.trim()), $options: "i" };
   }
-  return match;
+  return sportId
+    ? applyProductSportVisibility(match, { sportId, categoryId })
+    : match;
 }
 
 function withinPrice(p, minPrice, maxPrice) {
@@ -129,7 +131,7 @@ async function _getSerieGroupedIndex(params) {
 
   const { parent, directChildren, descendantsByChild, allDescendantIds } = tree;
 
-  const baseMatch = buildBaseMatch({
+  const baseMatch = await buildBaseMatch({
     parentSerieId: serieId,
     allDescendantIds,
     sportId,
@@ -234,7 +236,7 @@ async function _getSerieGroupedIndex(params) {
 const getSerieGroupedIndex = unstable_cache(
   _getSerieGroupedIndex,
   ["serie-grouped-index", "target-audience-unisex-v1"],
-  { revalidate: 10800, tags: ["products", "series"] }
+  { revalidate: 10800, tags: ["products", "categories", "series"] }
 );
 
 async function _getSerieGroupedSections(params) {
@@ -268,7 +270,7 @@ async function _getSerieGroupedSections(params) {
 
   const { index, totalCount, scopes, allDescendantIds } = indexPayload;
 
-  const baseMatch = buildBaseMatch({
+  const baseMatch = await buildBaseMatch({
     parentSerieId: serieId,
     allDescendantIds,
     sportId,
@@ -346,5 +348,5 @@ async function _getSerieGroupedSections(params) {
 export const getSerieGroupedSections = unstable_cache(
   _getSerieGroupedSections,
   ["serie-grouped-sections", "target-audience-unisex-v1"],
-  { revalidate: 10800, tags: ["products", "series"] }
+  { revalidate: 10800, tags: ["products", "categories", "series"] }
 );

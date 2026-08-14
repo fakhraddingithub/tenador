@@ -11,6 +11,10 @@ import connectToDB from "base/configs/db";
 import { getPublicArticleSitemap } from "base/services/publicArticle.service";
 import { isReservedArticleRoot } from "base/utils/articleRoutes";
 import { buildArticlePath } from "base/utils/articleSlug";
+import {
+  getCategorySportIds,
+  isSharedCategory,
+} from "base/utils/categorySportVisibility";
 
 const SITE_URL = (process.env.NEXT_PUBLIC_SITE_URL || "https://tenador.com").replace(/\/+$/, "");
 
@@ -58,7 +62,7 @@ export default async function sitemap() {
       .select("slug updatedAt")
       .lean(),
     Category.find({ slug: { $exists: true, $ne: "" }, sport: { $ne: null } })
-      .select("slug updatedAt sport")
+      .select("slug updatedAt sport additionalSports")
       .lean(),
     Brand.find({ slug: { $exists: true, $ne: "" } })
       .select("slug updatedAt")
@@ -88,7 +92,7 @@ export default async function sitemap() {
   );
 
   const activeSportIds = new Set();
-  const activeCategoryIds = new Set();
+  const activeCategoryKeys = new Set();
   const activeBrandIds = new Set();
   const sportBrandKeys = new Set();
   const sportCategoryBrandKeys = new Set();
@@ -96,31 +100,45 @@ export default async function sitemap() {
   const brandLimitedEditionKeys = new Set();
 
   for (const product of products) {
-    const sportId = id(product.sport);
+    const primarySportId = id(product.sport);
     const categoryId = id(product.category);
     const brandId = id(product.brand);
+    const category = categoryById.get(categoryId);
+    const sharedSportIds = isSharedCategory(category)
+      ? getCategorySportIds(category)
+      : [];
+    const visibleSportIds = new Set(
+      [primarySportId, ...sharedSportIds].filter(Boolean),
+    );
+    const categorySportIds = isSharedCategory(category)
+      ? sharedSportIds
+      : primarySportId && primarySportId === id(category?.sport)
+        ? [primarySportId]
+        : [];
 
-    if (sportId) activeSportIds.add(sportId);
-    if (categoryId) activeCategoryIds.add(categoryId);
     if (brandId) activeBrandIds.add(brandId);
 
-    if (sportId && brandId) {
-      sportBrandKeys.add(`${sportId}:${brandId}`);
-    }
-    if (sportId && categoryId && brandId) {
-      sportCategoryBrandKeys.add(`${sportId}:${categoryId}:${brandId}`);
+    for (const sportId of visibleSportIds) {
+      activeSportIds.add(sportId);
+      if (brandId) sportBrandKeys.add(`${sportId}:${brandId}`);
+
+      let serieId = id(product.serie);
+      const visited = new Set();
+      while (brandId && serieId && !visited.has(serieId)) {
+        visited.add(serieId);
+        const serie = serieById.get(serieId);
+        if (!serie || id(serie.brand) !== brandId) break;
+        sportBrandSerieKeys.add(`${sportId}:${brandId}:${serieId}`);
+        serieId = id(serie.parentSerie);
+      }
     }
 
-    // Resolver صفحه سری، وجود محصول در کل زیردرخت سری را معتبر می‌داند؛ پس
-    // علاوه بر سری مستقیم محصول، تمام والدهای همان برند نیز URL معتبر دارند.
-    let serieId = id(product.serie);
-    const visited = new Set();
-    while (sportId && brandId && serieId && !visited.has(serieId)) {
-      visited.add(serieId);
-      const serie = serieById.get(serieId);
-      if (!serie || id(serie.brand) !== brandId) break;
-      sportBrandSerieKeys.add(`${sportId}:${brandId}:${serieId}`);
-      serieId = id(serie.parentSerie);
+    for (const sportId of categorySportIds) {
+      if (!categoryId) continue;
+      activeCategoryKeys.add(`${sportId}:${categoryId}`);
+      if (brandId) {
+        sportCategoryBrandKeys.add(`${sportId}:${categoryId}:${brandId}`);
+      }
     }
 
     const limitedEditionId = id(product.limitedEdition);
@@ -157,21 +175,21 @@ export default async function sitemap() {
     .filter(hasSlug)
     .map((sport) => entry(`/${sport.slug}`, sport.updatedAt, "weekly", 0.8));
 
-  const categoryUrls = [...activeCategoryIds]
-    .map((categoryId) => categoryById.get(categoryId))
-    .filter((category) => {
-      const sport = sportById.get(id(category?.sport));
-      return hasSlug(category) && hasSlug(sport);
-    })
-    .map((category) => {
-      const sport = sportById.get(id(category.sport));
-      return entry(
-        `/${sport.slug}/${category.slug}`,
-        category.updatedAt,
-        "weekly",
-        0.8,
-      );
-    });
+  const categoryUrls = [...activeCategoryKeys].flatMap((key) => {
+    const [sportId, categoryId] = key.split(":");
+    const sport = sportById.get(sportId);
+    const category = categoryById.get(categoryId);
+    return hasSlug(category) && hasSlug(sport)
+      ? [
+          entry(
+            `/${sport.slug}/${category.slug}`,
+            category.updatedAt,
+            "weekly",
+            0.8,
+          ),
+        ]
+      : [];
+  });
 
   const brandUrls = [...activeBrandIds]
     .map((brandId) => brandById.get(brandId))
@@ -249,9 +267,15 @@ export default async function sitemap() {
 
   const usedCategoryKeys = new Map();
   for (const usedProduct of usedProducts) {
-    const sportId = id(usedProduct.baseProduct?.sport);
+    const primarySportId = id(usedProduct.baseProduct?.sport);
     const categoryId = id(usedProduct.baseProduct?.category);
-    if (sportId && categoryId) {
+    const category = categoryById.get(categoryId);
+    const sportIds = isSharedCategory(category)
+      ? getCategorySportIds(category)
+      : primarySportId && primarySportId === id(category?.sport)
+        ? [primarySportId]
+        : [];
+    for (const sportId of sportIds) {
       usedCategoryKeys.set(`${sportId}:${categoryId}`, usedProduct.updatedAt);
     }
   }

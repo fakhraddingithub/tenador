@@ -15,6 +15,8 @@ import SiteSetting from "base/models/SiteSetting";
 import { buildArticlePath, normalizeArticleSlug } from "base/utils/articleSlug";
 import { getCachedRate } from "@/lib/Exchangerate";
 import { attachListingPrices } from "base/services/priceEngine";
+import { getProductsVisibleInAnySportMatch } from "base/services/categorySportVisibility.service";
+import { andMongoFilters } from "base/utils/categorySportVisibility";
 import { isReservedArticleRoot, publicArticleFilter } from "base/utils/articleRoutes";
 
 
@@ -61,8 +63,14 @@ export async function resolveArticleEntities(article) {
     Promise.all(dynamicBlocks.map(async (block) => {
       const data = block.data || {};
       const limit = Math.min(16, Math.max(1, Number(data.limit) || 8));
-      const query = { isActive: true };
-      if (ids(data.sports).length) query.sport = { $in: ids(data.sports) };
+      let query = { isActive: true };
+      const sportIds = ids(data.sports);
+      if (sportIds.length) {
+        query = andMongoFilters(
+          query,
+          await getProductsVisibleInAnySportMatch(sportIds),
+        );
+      }
       if (ids(data.categories).length) query.category = { $in: ids(data.categories) };
       if (block.type === "bestSellers") query.label = "best_seller";
       if (block.type === "amazingOffers") query.label = "discount";

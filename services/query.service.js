@@ -15,6 +15,8 @@ import Serie from "base/models/Serie";
 import LimitedEdition from "base/models/LimitedEdition";
 import { getProductListingPage } from "base/services/productListing.service";
 import { withResolvedSerieSportContent } from "@/lib/serieSportContent";
+import { buildCategorySportMatch } from "base/utils/categorySportVisibility";
+import { applyProductSportVisibility } from "base/services/categorySportVisibility.service";
 
 // سنتینل واحد برای ۴۰۴ — صفحه‌ی کنترلر با بررسی res.notFound === true تابع
 // notFound() نکست را صدا می‌زند.
@@ -26,10 +28,10 @@ const NOT_FOUND = Object.freeze({ notFound: true });
  * فقط ۷ الگوی دقیقِ زیر مجاز است؛ هر انحراف، سگمنتِ اضافی، یا جفتِ والد-فرزندِ
  * نامعتبر → notFound (بدونِ fallbackِ خاموش):
  *   1. /[sport]
- *   2. /[sport]/[category]            — category.sport === sport._id
+ *   2. /[sport]/[category]            — ورزش اصلی یا نمایشیِ صریحِ category
  *   3. /[brand]                        — برندِ سراسری
  *   4. /[sport]/[brand]               — برند در این ورزش محصولِ فعال دارد
- *   5. /[sport]/[category]/[brand]    — دسته متعلق به ورزش + برند در این ترکیب محصول دارد
+ *   5. /[sport]/[category]/[brand]    — دسته در ورزش قابل‌نمایش است + برند محصول دارد
  *   6. /[sport]/[brand]/[serie]       — serie.brand === brand._id و در این ورزش محصول دارد
  *   7. /[brand]/[limitedEdition]      — limitedEdition.brand === brand._id و محصولِ فعال دارد
  *
@@ -100,7 +102,10 @@ async function _validatePath(slugs) {
     const sport = await Sport.findOne({ slug: s1 }).lean();
     if (sport) {
       // دسته در محدوده‌ی همین ورزش (الگوی ۲)
-      const category = await Category.findOne({ slug: s2, sport: sport._id }).lean();
+      const category = await Category.findOne({
+        slug: s2,
+        ...buildCategorySportMatch(sport._id),
+      }).lean();
       if (category) {
         resolved = { sport, category };
       } else {
@@ -108,7 +113,10 @@ async function _validatePath(slugs) {
         const brand = await Brand.findOne({ slug: s2 }).lean();
         if (
           brand &&
-          (await Product.exists({ sport: sport._id, brand: brand._id, isActive: true }))
+          (await Product.exists(await applyProductSportVisibility(
+            { brand: brand._id, isActive: true },
+            { sportId: sport._id },
+          )))
         ) {
           resolved = { sport, brand };
         }
@@ -138,18 +146,23 @@ async function _validatePath(slugs) {
     // slugs.length === 3 — s1 باید حتماً SPORT باشد
     const sport = await Sport.findOne({ slug: s1 }).lean();
     if (sport) {
-      const category = await Category.findOne({ slug: s2, sport: sport._id }).lean();
+      const category = await Category.findOne({
+        slug: s2,
+        ...buildCategorySportMatch(sport._id),
+      }).lean();
       if (category) {
         // Branch A (الگوی ۵): s3 باید BRAND باشد با محصول در ترکیبِ ورزش+دسته
         const brand = await Brand.findOne({ slug: s3 }).lean();
         if (
           brand &&
-          (await Product.exists({
-            sport: sport._id,
-            category: category._id,
-            brand: brand._id,
-            isActive: true,
-          }))
+          (await Product.exists(await applyProductSportVisibility(
+            {
+              category: category._id,
+              brand: brand._id,
+              isActive: true,
+            },
+            { sportId: sport._id, categoryId: category._id, category },
+          )))
         ) {
           resolved = { sport, category, brand };
         }
@@ -165,12 +178,14 @@ async function _validatePath(slugs) {
             // وگرنه صفحه‌ی سریِ والدِ بدونِ محصولِ مستقیم به‌اشتباه ۴۰۴ می‌شد.
             const serieIds = await _collectSerieSubtreeIds(serie._id, brand._id);
             if (
-              await Product.exists({
-                sport: sport._id,
-                brand: brand._id,
-                serie: { $in: serieIds },
-                isActive: true,
-              })
+              await Product.exists(await applyProductSportVisibility(
+                {
+                  brand: brand._id,
+                  serie: { $in: serieIds },
+                  isActive: true,
+                },
+                { sportId: sport._id },
+              ))
             ) {
               const resolvedSerie = withResolvedSerieSportContent(
                 serie,

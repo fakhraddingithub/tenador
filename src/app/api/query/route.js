@@ -9,6 +9,7 @@ import Product from "base/models/Product";
 import Category from "base/models/Category";
 import Serie from "base/models/Serie";
 import { withResolvedSerieSportContent } from "@/lib/serieSportContent";
+import { applyProductSportVisibility } from "base/services/categorySportVisibility.service";
 
 export async function POST(req) {
   try {
@@ -113,14 +114,21 @@ export async function POST(req) {
     };
     
     if (search.brand) finalFilter.brand = search.brand._id;
-    if (search.sport) finalFilter.sport = search.sport._id;
     if (search.athlete) finalFilter.athlete = search.athlete._id;
     if (search.category) finalFilter.category = search.category._id;
     if (search.serie) finalFilter.serie = search.serie._id; 
     if (search.product) finalFilter._id = search.product._id;
 
     // ----------- ۵) اجرای کوئری نهایی محصولات -----------
-    const products = await Product.find(finalFilter)
+    const effectiveFilter = search.sport
+      ? await applyProductSportVisibility(finalFilter, {
+          sportId: search.sport._id,
+          categoryId: search.category?._id || null,
+          category: search.category,
+        })
+      : finalFilter;
+
+    const products = await Product.find(effectiveFilter)
       .populate("brand sport athlete category serie")
       .sort({ order: 1, createdAt: -1 }) // ترتیب دستی ادمین، سپس جدیدترین‌ها
       .lean();

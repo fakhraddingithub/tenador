@@ -1,10 +1,17 @@
 import mongoose from "mongoose";
 import connectToDB from "base/configs/db";
 import Category from "base/models/Category";
-import Sport from "base/models/Sport";
 import { registerSlug } from "base/actions/registerSlug";
-import { revalidateContent } from "@/lib/revalidate";
+import {
+  revalidateCategoryVisibilityPaths,
+  revalidateContent,
+} from "@/lib/revalidate";
 import { handleApiError } from "@/lib/apiError";
+import {
+  CategorySportValidationError,
+  getCategoryVisibilitySportSlugs,
+  validateCategorySportConfiguration,
+} from "base/services/categorySportValidation.service";
 
 export async function POST(req) {
   try {
@@ -15,6 +22,7 @@ export async function POST(req) {
       title,
       name,
       sport,   // ورزشِ صاحبِ این دسته (الزامی)
+      additionalSports,
       parent,
       prompts,
       image,
@@ -48,20 +56,12 @@ export async function POST(req) {
       return Response.json({ error: "انتخاب ورزش برای دسته‌بندی الزامی است" }, { status: 400 });
     }
 
-    const sportDoc = await Sport.findById(sport).select("_id").lean();
-    if (!sportDoc) {
-      return Response.json({ error: "ورزش انتخاب‌شده معتبر نیست" }, { status: 400 });
-    }
-
-    // ۲. بررسی تکراری نبودن — فقط در محدوده‌ی همین ورزش
-    const exists = await Category.findOne({
+    const normalizedAdditionalSports = await validateCategorySportConfiguration({
       sport,
-      $or: [{ title: title.trim() }, { name: name.trim() }]
+      additionalSports,
+      title,
+      name,
     });
-
-    if (exists) {
-      return Response.json({ error: "کتگوری با این عنوان یا نام در این ورزش قبلاً ثبت شده است" }, { status: 409 });
-    }
 
     // ۳. تابع کمکی برای اعتبارسنجی ویژگی‌ها (Attributes & VariantAttributes)
     const validateAttrList = (list, label) => {
@@ -131,6 +131,7 @@ export async function POST(req) {
       title: title.trim(),
       name: name.trim(),
       sport,
+      additionalSports: normalizedAdditionalSports,
       parent: parent || null,
       prompts: prompts || [],
       icon: icon.trim(),
@@ -167,7 +168,12 @@ export async function POST(req) {
       parentSlug: parent || null, 
     });
 
+    const affectedSportSlugs = await getCategoryVisibilitySportSlugs(created);
     revalidateContent(["navbar", "categories", "products"]);
+    revalidateCategoryVisibilityPaths({
+      sportSlugs: affectedSportSlugs,
+      categorySlug: created.slug,
+    });
 
     return Response.json(
       { message: "کتگوری با موفقیت ایجاد شد", category: created },
@@ -175,6 +181,9 @@ export async function POST(req) {
     );
 
   } catch (err) {
+    if (err instanceof CategorySportValidationError) {
+      return Response.json({ error: err.message }, { status: err.status });
+    }
     return handleApiError(err, "خطا در ایجاد دسته‌بندی");
   }
 }

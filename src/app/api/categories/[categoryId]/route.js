@@ -1,10 +1,16 @@
-import mongoose from "mongoose";
 import connectToDB from "base/configs/db";
 import Category from "base/models/Category";
-import Sport from "base/models/Sport";
 import { NextResponse } from "next/server";
-import { revalidateContent } from "@/lib/revalidate";
+import {
+  revalidateCategoryVisibilityPaths,
+  revalidateContent,
+} from "@/lib/revalidate";
 import { handleApiError } from "@/lib/apiError";
+import {
+  CategorySportValidationError,
+  getCategoryVisibilitySportSlugs,
+  validateCategorySportConfiguration,
+} from "base/services/categorySportValidation.service";
 
 // ---------------------------------------------------------
 // GET: دریافت جزئیات یک کتگوری
@@ -16,6 +22,7 @@ export async function GET(req, { params }) {
     const category = await Category.findById(categoryId)
       .populate('parent')
       .populate('sport', 'title name slug')
+      .populate('additionalSports', 'title name slug')
       .lean();
 
     if (!category) {
@@ -40,6 +47,7 @@ export async function PUT(req, { params }) {
       title,
       name,
       sport,   // ورزشِ صاحبِ این دسته (الزامی)
+      additionalSports,
       parent,
       attributes,
       variantAttributes, // فیلد جدید
@@ -57,36 +65,30 @@ export async function PUT(req, { params }) {
       return NextResponse.json({ error: "دسته‌بندی پیدا نشد" }, { status: 404 });
     }
 
-    // ۰. ورزشِ مقصد برای بررسی یکتاییِ اسلاگ/نام (مقدار جدید یا مقدار فعلی)
-    if (sport !== undefined) {
-      if (!sport || !mongoose.isValidObjectId(sport)) {
-        return NextResponse.json({ error: "ورزش انتخاب‌شده معتبر نیست" }, { status: 400 });
-      }
-      const sportDoc = await Sport.findById(sport).select("_id").lean();
-      if (!sportDoc) {
-        return NextResponse.json({ error: "ورزش انتخاب‌شده معتبر نیست" }, { status: 400 });
-      }
-      category.sport = sport;
-    }
+    const previousVisibility = {
+      sport: category.sport,
+      additionalSports: [...(category.additionalSports || [])],
+      slug: category.slug,
+    };
 
-    if (!category.sport) {
-      return NextResponse.json({ error: "انتخاب ورزش برای دسته‌بندی الزامی است" }, { status: 400 });
-    }
+    // ۰. اعتبارسنجی یکپارچه‌ی ورزش اصلی/نمایشی و تداخل نام/اسلاگ در تمام
+    // ورزش‌هایی که دسته در آن‌ها قابل مشاهده خواهد بود.
+    const targetSport = sport !== undefined ? sport : category.sport;
+    const targetAdditionalSports = additionalSports !== undefined
+      ? additionalSports
+      : category.additionalSports;
+    const normalizedAdditionalSports = await validateCategorySportConfiguration({
+      sport: targetSport,
+      additionalSports: targetAdditionalSports,
+      title: title?.trim() || category.title,
+      name: name?.trim() || category.name,
+      slug: category.slug,
+      excludeCategoryId: category._id,
+    });
+    category.sport = targetSport;
+    category.additionalSports = normalizedAdditionalSports;
 
-    // ۱. به‌روزرسانی فیلدهای پایه — یکتایی فقط در محدوده‌ی همین ورزش بررسی می‌شود
-    if (title?.trim() || name?.trim()) {
-      const dupOr = [];
-      if (title?.trim()) dupOr.push({ title: title.trim() });
-      if (name?.trim()) dupOr.push({ name: name.trim() });
-      const duplicate = await Category.findOne({
-        _id: { $ne: category._id },
-        sport: category.sport,
-        $or: dupOr,
-      }).select("_id").lean();
-      if (duplicate) {
-        return NextResponse.json({ error: "دسته‌ای با این عنوان یا نام در این ورزش وجود دارد" }, { status: 409 });
-      }
-    }
+    // ۱. به‌روزرسانی فیلدهای پایه
 
     if (title?.trim()) category.title = title.trim();
 
@@ -198,13 +200,24 @@ export async function PUT(req, { params }) {
     // ذخیره تغییرات (Trigger pre-save hooks)
     await category.save();
 
+    const affectedSportSlugs = await getCategoryVisibilitySportSlugs(
+      previousVisibility,
+      category,
+    );
     revalidateContent(["navbar", "categories", "products"]);
+    revalidateCategoryVisibilityPaths({
+      sportSlugs: affectedSportSlugs,
+      categorySlug: category.slug,
+    });
 
     return NextResponse.json({
       message: "دسته‌بندی با موفقیت به‌روزرسانی شد",
       category,
     });
   } catch (error) {
+    if (error instanceof CategorySportValidationError) {
+      return NextResponse.json({ error: error.message }, { status: error.status });
+    }
     // خطای منطقیِ عمدی (تداخل نام ویژگی‌ها) پیام فارسیِ خودش را دارد → ۴۰۰
     if (error?.message?.includes("نمی‌توانند همزمان")) {
       return NextResponse.json({ error: error.message }, { status: 400 });
@@ -226,7 +239,12 @@ export async function DELETE(req, { params }) {
       return NextResponse.json({ error: "دسته‌بندی پیدا نشد" }, { status: 404 });
     }
 
+    const affectedSportSlugs = await getCategoryVisibilitySportSlugs(category);
     revalidateContent(["navbar", "categories", "products"]);
+    revalidateCategoryVisibilityPaths({
+      sportSlugs: affectedSportSlugs,
+      categorySlug: category.slug,
+    });
 
     return NextResponse.json({ message: "دسته‌بندی با موفقیت حذف شد" });
   } catch (error) {

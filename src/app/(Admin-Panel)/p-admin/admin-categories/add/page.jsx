@@ -42,6 +42,7 @@ import Button from '@/components/admin/Button';
 import Textarea from '@/components/admin/Textarea';
 import Input from '@/components/admin/Input';
 import Select from '@/components/admin/Select';
+import AdditionalSportsField from '@/components/admin/AdditionalSportsField';
 import { showToast } from '@/lib/toast';
 import { showError } from '@/lib/swal';
 import { invalidateAdminCache } from '@/lib/adminCache';
@@ -225,6 +226,7 @@ The color code may appear in formats like:
     title: '',
     name: '',
     sport: '',
+    additionalSports: [],
     parent: '',
     attributes: [],
     icon: '',
@@ -645,6 +647,7 @@ The color code may appear in formats like:
         title: formData.title,
         name: formData.name,
         sport: formData.sport,
+        additionalSports: formData.additionalSports,
         parent: formData.parent || null,
         icon: formData.icon,
         image: formData.image,
@@ -781,12 +784,30 @@ The color code may appear in formats like:
               label="ورزش"
               name="sport"
               value={formData.sport}
-              onChange={(e) => setFormData((prev) => ({ ...prev, sport: e.target.value }))}
+              onChange={(e) => {
+                const nextSport = e.target.value;
+                setFormData((prev) => ({
+                  ...prev,
+                  sport: nextSport,
+                  additionalSports: prev.additionalSports.filter(
+                    (id) => String(id) !== String(nextSport),
+                  ),
+                }));
+              }}
               options={sports.map((s) => ({ value: s._id, label: s.title || s.name }))}
               placeholder="ورزش را انتخاب کنید"
               required
               disabled={!!lockedSportId}
               hint={lockedSportId ? 'این دسته به ورزشِ انتخاب‌شده تعلق دارد و قابل تغییر نیست.' : 'اسلاگ دسته فقط در محدوده‌ی همین ورزش یکتاست.'}
+            />
+
+            <AdditionalSportsField
+              sports={sports}
+              ownerSportId={formData.sport}
+              value={formData.additionalSports}
+              onChange={(additionalSports) =>
+                setFormData((prev) => ({ ...prev, additionalSports }))
+              }
             />
 
             {/* Basic Info */}

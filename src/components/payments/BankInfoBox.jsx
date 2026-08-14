@@ -1,10 +1,29 @@
 "use client";
 
-import React, { useEffect, useState } from 'react';
+import React from 'react';
 import { MdContentCopy, MdAccountBalance } from 'react-icons/md';
+import useSWR from 'swr';
 import { toast } from 'react-toastify';
 
-const BANK_SETTING_KEY = 'bank_account_details';
+const BANK_DETAILS_ENDPOINT = '/api/payments/bank-details';
+
+async function fetchBankDetails(url) {
+  const response = await fetch(url, {
+    cache: 'no-store',
+    credentials: 'same-origin',
+  });
+  const data = await response.json().catch(() => ({}));
+
+  if (!response.ok) {
+    const error = new Error(
+      data.message || 'دریافت اطلاعات حساب بانکی انجام نشد. لطفاً دوباره تلاش کنید.'
+    );
+    error.status = response.status;
+    throw error;
+  }
+
+  return data.value ?? null;
+}
 
 // تعریف در سطح ماژول تا با هر رندر دوباره ساخته نشود
 const InfoRow = ({ label, value, onCopy }) => (
@@ -24,18 +43,16 @@ const InfoRow = ({ label, value, onCopy }) => (
 );
 
 const BankInfoBox = () => {
-  const [bank, setBank] = useState(null);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    fetch(`/api/admin/site-settings?key=${BANK_SETTING_KEY}`)
-      .then((r) => r.json())
-      .then((d) => {
-        if (d?.value && typeof d.value === 'object') setBank(d.value);
-      })
-      .catch(() => {})
-      .finally(() => setLoading(false));
-  }, []);
+  const {
+    data: bank,
+    error,
+    isLoading: loading,
+    mutate,
+  } = useSWR(BANK_DETAILS_ENDPOINT, fetchBankDetails, {
+    revalidateOnFocus: true,
+    shouldRetryOnError: (requestError) => requestError?.status !== 401,
+    errorRetryCount: 2,
+  });
 
   const copyToClipboard = (text, label) => {
     navigator.clipboard.writeText(text);
@@ -52,6 +69,32 @@ const BankInfoBox = () => {
         {[1, 2, 3, 4].map((i) => (
           <div key={i} className="h-14 w-full bg-gray-50 animate-pulse rounded-[6px]" />
         ))}
+      </div>
+    );
+  }
+
+  if (error) {
+    const sessionExpired = error.status === 401;
+    return (
+      <div className="bg-white rounded-[6px] border border-red-100 p-6 shadow-md mb-6">
+        <div className="flex items-center gap-2 border-b border-gray-100 pb-4 mb-4">
+          <MdAccountBalance className="text-[var(--color-primary)] text-2xl" />
+          <h2 className="text-lg font-bold">اطلاعات حساب بانکی</h2>
+        </div>
+        <p className="text-sm text-red-600 leading-relaxed">
+          {sessionExpired
+            ? 'نشست کاربری شما معتبر نیست. لطفاً دوباره وارد حساب کاربری شوید.'
+            : error.message}
+        </p>
+        {!sessionExpired && (
+          <button
+            type="button"
+            onClick={() => mutate()}
+            className="mt-4 rounded-[6px] bg-[var(--color-primary)] px-4 py-2 text-sm font-bold text-white transition-opacity hover:opacity-90"
+          >
+            تلاش دوباره
+          </button>
+        )}
       </div>
     );
   }

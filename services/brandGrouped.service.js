@@ -30,6 +30,7 @@ import { getCachedRate } from "@/lib/Exchangerate";
 import { buildLenientPersianRegexSource } from "@/lib/persianNormalize";
 import { attachListingPrices } from "base/services/priceEngine";
 import { resolveSerieSportContent } from "@/lib/serieSportContent";
+import { applyProductSportVisibility } from "base/services/categorySportVisibility.service";
 import {
   buildTargetAudienceMatch,
   LISTING_FIELDS,
@@ -107,9 +108,20 @@ async function buildSeriesTree(brandId) {
  * قیمت تومانی اعمال می‌شود. `extra` قطعه‌ی match اضافیِ از پیش‌ساخته‌ی فیلترِ ویژگی است
  * (برای ویژگیِ ثابت: attributes.<name>؛ برای متغیر: _id ∈ productIdsِ واریانت).
  */
-function buildBaseMatch({ brandId, sportId, categoryId, search, extra, targetAudience }) {
-  const match = { isActive: true, brand: toObjectId(brandId) };
-  if (sportId) match.sport = toObjectId(sportId);
+async function buildBaseMatch({
+  brandId,
+  sportId,
+  categoryId,
+  search,
+  extra,
+  targetAudience,
+  excludeBrand = false,
+}) {
+  const brandObjectId = toObjectId(brandId);
+  const match = {
+    isActive: true,
+    brand: excludeBrand ? { $ne: brandObjectId } : brandObjectId,
+  };
   if (categoryId) match.category = toObjectId(categoryId);
   if (extra && typeof extra === "object") Object.assign(match, extra);
   // مخاطبِ هدف (navbar audience tabs) — مستقلِ کاملِ فیلترهای موجودیتی/ویژگی بالا
@@ -118,7 +130,9 @@ function buildBaseMatch({ brandId, sportId, categoryId, search, extra, targetAud
   if (search && search.trim()) {
     match.name = { $regex: escapeRegex(search.trim()), $options: "i" };
   }
-  return match;
+  return sportId
+    ? applyProductSportVisibility(match, { sportId, categoryId })
+    : match;
 }
 
 function collaborationKey(limitedEditionId) {
@@ -242,8 +256,6 @@ async function _getBrandGroupedIndex(params) {
     getRelatedLimitedEditions(brandId),
   ]);
 
-  const baseMatch = buildBaseMatch({ brandId, sportId, categoryId, search, extra, targetAudience });
-
   // شمارش محصولات اصلی و همکاری‌ها مستقل اما موازی انجام می‌شود. همکاری‌ها در
   // یک aggregation واحد group می‌شوند تا با افزایش تعداد Editionها N+1 نشود.
   const collaborationEditionIds = relatedEditions
@@ -251,20 +263,27 @@ async function _getBrandGroupedIndex(params) {
     .map((edition) => toObjectId(edition._id))
     .filter(Boolean);
 
-  const collaborationMatch = collaborationEditionIds.length
-    ? {
-        ...buildBaseMatch({
+  const [baseMatch, collaborationBaseMatch] = await Promise.all([
+    buildBaseMatch({ brandId, sportId, categoryId, search, extra, targetAudience }),
+    collaborationEditionIds.length
+      ? buildBaseMatch({
           brandId,
           sportId,
           categoryId,
           search,
           extra,
           targetAudience,
-        }),
+          excludeBrand: true,
+        })
+      : Promise.resolve(null),
+  ]);
+
+  const collaborationMatch = collaborationEditionIds.length
+    ? {
+        ...collaborationBaseMatch,
         // محصول مستقیمِ برند مقصد در بخش‌های عادی خودش می‌آید؛ این شرط هم جلوی
         // نمایش تکراری را می‌گیرد و هم تمام محصولات مهمانِ Edition را، مستقل از
         // برند سازنده، پوشش می‌دهد.
-        brand: { $ne: toObjectId(brandId) },
         limitedEdition: { $in: collaborationEditionIds },
       }
     : null;
@@ -397,7 +416,7 @@ const getBrandGroupedIndex = unstable_cache(
     "target-audience-unisex-v1",
     "limited-edition-relations-v1",
   ],
-  { revalidate: 10800, tags: ["products", "series", "brands", "limited-editions"] }
+  { revalidate: 10800, tags: ["products", "categories", "series", "brands", "limited-editions"] }
 );
 
 async function _getBrandGroupedSections(params) {
@@ -438,21 +457,29 @@ async function _getBrandGroupedSections(params) {
     buildAttrMatches(attrFilters),
   ]);
 
-  const baseMatch = buildBaseMatch({ brandId, sportId, categoryId, search, extra, targetAudience });
-  const allSerieOids = allSerieIds.map(toObjectId).filter(Boolean);
-
-  const sectionFilter = (entry) => {
-    if (entry.type === "collaboration") {
-      return {
-        ...buildBaseMatch({
+  const hasCollaborationSection = index.some(
+    (entry) => entry.type === "collaboration",
+  );
+  const [baseMatch, collaborationBaseMatch] = await Promise.all([
+    buildBaseMatch({ brandId, sportId, categoryId, search, extra, targetAudience }),
+    hasCollaborationSection
+      ? buildBaseMatch({
           brandId,
           sportId,
           categoryId,
           search,
           extra,
           targetAudience,
-        }),
-        brand: { $ne: toObjectId(brandId) },
+          excludeBrand: true,
+        })
+      : Promise.resolve(null),
+  ]);
+  const allSerieOids = allSerieIds.map(toObjectId).filter(Boolean);
+
+  const sectionFilter = (entry) => {
+    if (entry.type === "collaboration") {
+      return {
+        ...collaborationBaseMatch,
         limitedEdition: toObjectId(entry.limitedEditionId),
       };
     }
@@ -555,5 +582,5 @@ export const getBrandGroupedSections = unstable_cache(
     "limited-edition-relations-v1",
     "brand-product-cursor-v1",
   ],
-  { revalidate: 10800, tags: ["products", "series", "brands", "limited-editions"] }
+  { revalidate: 10800, tags: ["products", "categories", "series", "brands", "limited-editions"] }
 );

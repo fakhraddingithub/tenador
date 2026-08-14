@@ -7,6 +7,7 @@ import {
   resolveSerieSportContent,
   resolveSerieSportFlags,
 } from "@/lib/serieSportContent";
+import { getProductSportVisibilityMatch } from "base/services/categorySportVisibility.service";
 
 /**
  * دریافت سری‌های مرتبط با یک ورزش
@@ -23,13 +24,18 @@ async function _getSeriesBySport(sportSlug) {
 
   if (!sport) return [];
 
+  const visibilityMatch = await getProductSportVisibilityMatch({
+    sportId: sport._id,
+  });
+
   const results = await Product.aggregate([
     // ─────────────────────────────────────────
     // فقط محصولات این ورزش که سری دارند
     // ─────────────────────────────────────────
     {
       $match: {
-        sport: sport._id,
+        ...visibilityMatch,
+        isActive: true,
         serie: {
           $exists: true,
           $ne: null,
@@ -282,7 +288,7 @@ async function _getSeriesBySport(sportSlug) {
 export const getSeriesBySport = unstable_cache(
   _getSeriesBySport,
   ["series-by-sport"],
-  { revalidate: 10800, tags: ["products", "series", "sports"] }
+  { revalidate: 10800, tags: ["products", "categories", "series", "sports"] }
 );
 
 /**
