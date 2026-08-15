@@ -9,7 +9,7 @@ import {
   FiTrash2,
   FiToggleLeft,
   FiToggleRight,
-  FiGitBranch,
+  FiLayers,
   FiAlertTriangle,
   FiCheck,
   FiSearch,
@@ -152,11 +152,11 @@ export default function OrderFlowsClient() {
       <div className="flex items-center justify-between mb-6">
         <div>
           <h1 className="text-xl font-bold text-gray-800 flex items-center gap-2">
-            <FiGitBranch size={20} style={{ color: COLORS.primary }} />
+            <FiLayers size={20} style={{ color: COLORS.primary }} />
             فرایندهای سفارش
           </h1>
           <p className="text-xs mt-1" style={{ color: COLORS.muted }}>
-            گراف فرایند سفارش برای دسته‌بندی‌های مختلف را اینجا مدیریت کنید
+            مراحل سفارش برای دسته‌بندی‌های مختلف را اینجا مدیریت کنید
           </p>
         </div>
         <Link
@@ -195,7 +195,7 @@ export default function OrderFlowsClient() {
           className="flex flex-col items-center justify-center py-16 rounded-2xl"
           style={{ background: "white", border: `1px dashed ${COLORS.border}` }}
         >
-          <FiGitBranch size={40} className="mb-3" style={{ color: COLORS.border }} />
+          <FiLayers size={40} className="mb-3" style={{ color: COLORS.border }} />
           <p className="font-bold text-gray-600 mb-1">
             {search ? "فرایندی یافت نشد" : "هنوز فرایندی تعریف نشده"}
           </p>
@@ -220,8 +220,7 @@ export default function OrderFlowsClient() {
 }
 
 function FlowCard({ flow, onToggle, onDelete }) {
-  const nodeCount = flow.nodes?.length || 0;
-  const edgeCount = flow.edges?.length || 0;
+  const stepCount = flow.nodes?.length || 0;
   const catNodes = flow.nodes?.filter((n) => n.type === "category").length || 0;
   const srvNodes = flow.nodes?.filter((n) => n.type === "service").length || 0;
 
@@ -272,7 +271,7 @@ function FlowCard({ flow, onToggle, onDelete }) {
         {/* آمار */}
         <div className="grid grid-cols-3 gap-2 mb-4">
           {[
-            { label: "نود", value: nodeCount, color: "#3b82f6" },
+            { label: "مرحله", value: stepCount, color: "#3b82f6" },
             { label: "دسته", value: catNodes, color: "#8b5cf6" },
             { label: "خدمت", value: srvNodes, color: "#f59e0b" },
           ].map(({ label, value, color }) => (
@@ -303,7 +302,7 @@ function FlowCard({ flow, onToggle, onDelete }) {
             }}
           >
             <FiEdit2 size={12} />
-            ویرایش گراف
+            ویرایش مراحل
           </Link>
 
           <button

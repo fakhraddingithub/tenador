@@ -26,21 +26,16 @@ export default async function EditOrderFlowPage({ params }) {
   const plainFlow = JSON.parse(JSON.stringify(flow));
 
   return (
-    <div className="flex flex-col" style={{ height: "calc(100dvh - 120px)" }}>
-      <div className="mb-4">
+    <div dir="rtl">
+      <div className="mb-5">
         <h1 className="text-lg font-bold text-gray-800">
           ویرایش: {plainFlow.name}
         </h1>
         <p className="text-xs mt-0.5" style={{ color: "#9c9189" }}>
-          گراف فرایند سفارش را ویرایش کنید
+          مراحل فرایند سفارش را ویرایش کنید و ترتیبشان را با کشیدن کارت‌ها بچینید
         </p>
       </div>
-      <div
-        className="rounded-2xl overflow-hidden flex-1 min-h-0"
-        style={{ border: "1px solid #e8e4df" }}
-      >
-        <OrderFlowForm initialFlow={plainFlow} />
-      </div>
+      <OrderFlowForm initialFlow={plainFlow} />
     </div>
   );
 }
