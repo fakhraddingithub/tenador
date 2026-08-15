@@ -39,7 +39,7 @@ export async function generateMetadata({ params }) {
   const resolved = await resolveCategory(sportSlug, categorySlug);
   if (!resolved) return { title: "صفحه پیدا نشد" };
 
-  const { category } = resolved;
+  const { sport, category } = resolved;
 
   const categoryProducts = await Product.find(await applyProductSportVisibility(
     { category: category._id },
