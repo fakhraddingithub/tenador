@@ -13,7 +13,7 @@ import {
     FaTimes,
     FaPlus,
     FaMinus,
-    FaTrash,
+    FaRegTrashAlt,
     FaShoppingCart,
     FaSpinner,
 } from 'react-icons/fa';
@@ -29,6 +29,12 @@ import FlowSelectionsList from '@/components/modules/orderFlow/FlowSelectionsLis
 import { useUser } from '@/components/features/auth/UserContext';
 import StockReminderToast from '@/components/order/StockReminderToast';
 import VariantSummary from '@/components/order/VariantSummary';
+
+const splitName = (text) => {
+    const match = text.match(/[a-zA-Z\(].*/);
+    if (match) return { farsi: text.substring(0, match.index).trim(), english: match[0].trim() };
+    return { farsi: text, english: "" };
+};
 
 export default function CartDrawer({ isOpen, onClose }) {
     const { user } = useUser();
@@ -247,13 +253,21 @@ export default function CartDrawer({ isOpen, onClose }) {
                                         <div className="flex-1 flex flex-col justify-between min-w-0">
                                             {/* نام محصول */}
                                             <div>
-                                                <Link
-                                                    href={item.product.href}
-                                                    onClick={onClose}
-                                                    className="block font-bold text-gray-800 mb-1 truncate hover:text-[#aa4725]"
-                                                >
-                                                    {item.product?.name}
-                                                </Link>
+                                            {(() => {
+                                                    const { farsi, english } = splitName(item.product?.name || '');
+                                                    return (
+                                                        <Link
+                                                            href={item.product.href}
+                                                            onClick={onClose}
+                                                            className="block font-bold text-gray-800 mb-1 hover:text-[#aa4725]"
+                                                        >
+                                                            <span className="block truncate">{farsi}</span>
+                                                            {english && (
+                                                                <span className="block truncate">{english}</span>
+                                                            )}
+                                                        </Link>
+                                                    );
+                                                })()}
 
                                                 {/* ویژگی‌های واریانت */}
                                                 {item.variant && Object.keys(item.variant.attributes || {}).length > 0 && (
@@ -303,9 +317,9 @@ export default function CartDrawer({ isOpen, onClose }) {
                                                 </div>
 
                                                 {/* کنترل تعداد + جمع + حذف */}
-                                                <div className="flex items-center justify-between">
+                                                <div className="flex flex-wrap items-center justify-between gap-2">
                                                     {/* کنترل تعداد */}
-                                                    <div className="flex items-center border-2 border-gray-200 rounded-lg overflow-hidden">
+                                                    <div className="flex items-center border-2 border-gray-200 rounded-lg overflow-hidden shrink-0">
                                                         <button
                                                             onClick={() => handleQuantityChange(item, item.quantity - 1)}
                                                             disabled={item.quantity <= 1 || isUpdating}
@@ -333,18 +347,18 @@ export default function CartDrawer({ isOpen, onClose }) {
 
                                                     {/* جمع آیتم + حذف */}
                                                     <div className="flex items-center gap-3">
-                                                        <div className="text-left">
-                                                            <div className="text-xs text-gray-500">جمع</div>
-                                                            <div className="font-bold text-[#aa4725]">
+                                                    <div className="flex items-baseline gap-1 whitespace-nowrap">
+                                                            <span className="text-s text-gray-500">جمع:</span>
+                                                            <span className="font-bold text-[#aa4725]">
                                                                 {itemTotal.toLocaleString('fa-IR')} تومان
-                                                            </div>
+                                                            </span>
                                                         </div>
 
                                                         <button
                                                             onClick={() => handleRemove(item)}
                                                             className="p-2 text-red-500 hover:bg-red-50 rounded-lg transition-colors"
                                                         >
-                                                            <FaTrash />
+                                                            <FaRegTrashAlt />
                                                         </button>
                                                     </div>
                                                 </div>
