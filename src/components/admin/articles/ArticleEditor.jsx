@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "react-toastify";
-import { FiClock, FiEye, FiFileText, FiRotateCcw, FiLink, FiSave, FiSearch, FiSettings } from "react-icons/fi";
+import { FiClock, FiExternalLink, FiEye, FiFileText, FiRotateCcw, FiLink, FiSave, FiSearch, FiSettings } from "react-icons/fi";
 import Button from "@/components/admin/Button";
 import ImageUpload from "@/components/admin/ImageUpload";
 import PageHeader from "@/components/admin/PageHeader";
@@ -12,6 +12,7 @@ import { useAdminPermissions } from "@/components/admin/AdminPermissionProvider"
 import RevisionHistory from "./RevisionHistory";
 import { countArticleWords } from "@/lib/articleContent";
 import { buildArticlePath, normalizeArticleSlug } from "base/utils/articleSlug";
+import { isArticlePubliclyVisible } from "base/utils/articleRoutes";
 
 const EMPTY = { title: "", slug: "", category: "", excerpt: "", cover: { url: "", alt: "" }, blocks: [], seo: { title: "", description: "", keywords: [], canonicalUrl: "", noIndex: false, ogTitle: "", ogDescription: "", ogImage: "" }, status: "draft", publishedAt: "", tags: [], featured: false, pinned: false };
 const fieldClass = "w-full px-3 py-2.5 border bg-gray-50 text-sm outline-none focus:bg-white focus:border-[var(--color-primary)]";
@@ -36,6 +37,10 @@ export default function ArticleEditor({ articleId = null }) {
   const { can } = useAdminPermissions();
   const canPublish = can("articles.publish");
   const [article, setArticle] = useState(EMPTY);
+  // آخرین وضعیتِ *ذخیره‌شده* در دیتابیس. لینکِ عمومی فقط بر پایه‌ی این ساخته
+  // می‌شود، نه ویرایش‌های ذخیره‌نشده — وگرنه با تغییرِ وضعیت یا نامک، لینکی به
+  // صفحه‌ای نشان داده می‌شود که هنوز وجود ندارد.
+  const [persisted, setPersisted] = useState(null);
   const [categories, setCategories] = useState([]);
   const [tags, setTags] = useState([]);
   const [loading, setLoading] = useState(Boolean(articleId));
@@ -56,6 +61,7 @@ export default function ArticleEditor({ articleId = null }) {
       if (articleData?.article) {
         const item = articleData.article;
         setArticle({ ...EMPTY, ...item, category: item.category?._id || item.category || "", author: item.author?._id || item.author, tags: (item.tags || []).map((tag) => tag._id || tag), publishedAt: isoLocal(item.publishedAt) });
+        setPersisted({ status: item.status, publishedAt: item.publishedAt, slug: item.slug, category: String(item.category?._id || item.category || "") });
       }
       hydrated.current = true; setLoading(false);
     }).catch(() => { toast.error("بارگذاری اطلاعات مقاله انجام نشد"); setLoading(false); });
@@ -65,7 +71,17 @@ export default function ArticleEditor({ articleId = null }) {
   const category = categories.find((item) => String(item._id) === String(article.category));
   const wordCount = useMemo(() => countArticleWords([article.title, article.excerpt, article.blocks]), [article.title, article.excerpt, article.blocks]);
   const readingTime = wordCount ? Math.max(1, Math.ceil(wordCount / 200)) : 0;
-  const livePath = buildArticlePath(category?.slug, article.slug) || "/articles/category/article";
+  // realPath وقتی null است که دسته یا نامک هنوز کامل نشده باشد. مقدارِ جایگزین
+  // فقط برای *نمایش* است و هرگز نباید href شود.
+  const realPath = buildArticlePath(category?.slug, article.slug);
+  const livePath = realPath || "/articles/category/article";
+  // لینک فقط وقتی نشان داده می‌شود که نشانیِ نمایش‌داده‌شده دقیقاً همانی باشد که
+  // هم‌اکنون روی سایت زنده است؛ پس متنِ لینک و مقصدش هرگز از هم جدا نمی‌شوند.
+  const liveUrl = realPath && persisted
+    && persisted.slug === article.slug
+    && String(persisted.category || "") === String(article.category || "")
+    && isArticlePubliclyVisible(persisted)
+    ? realPath : null;
 
   useEffect(() => {
     if (!articleId || !dirty || !article.title || !article.category) return;
@@ -110,7 +126,17 @@ export default function ArticleEditor({ articleId = null }) {
       if (!res.ok) throw new Error(data.details ? Object.values(data.details)[0] : data.error || "ذخیره انجام نشد");
       if (editVersion.current === version) { setDirty(false); setAutosave("saved"); } toast.success(overrides.status === "published" ? "مقاله منتشر شد" : "مقاله ذخیره شد");
       if (!articleId) router.replace(`/p-admin/admin-articles/${data.article._id}`);
-      else setArticle((current) => ({ ...current, ...overrides, currentRevision: data.article.currentRevision }));
+      else {
+        setArticle((current) => ({ ...current, ...overrides, currentRevision: data.article.currentRevision }));
+        // هرچه در payload نبود (مثلاً وضعیت، وقتی دسترسی انتشار نیست) در
+        // دیتابیس دست‌نخورده مانده، پس مقدارِ قبلی حفظ می‌شود.
+        setPersisted((prev) => ({
+          status: "status" in payload ? payload.status : prev?.status,
+          publishedAt: "publishedAt" in payload ? payload.publishedAt : prev?.publishedAt,
+          slug: payload.slug,
+          category: String(payload.category || ""),
+        }));
+      }
     } catch (error) { toast.error(error.message); } finally { setSaving(false); }
   };
 
@@ -140,7 +166,9 @@ export default function ArticleEditor({ articleId = null }) {
         </Panel>
         <Panel title="تصویر شاخص" icon={<FiFileText className="text-[var(--color-primary)]" />}><ImageUpload value={article.cover?.url || ""} onChange={(url) => update({ cover: { ...article.cover, url } })} folder="articles" className="mb-2" /><input value={article.cover?.alt || ""} onChange={(e) => update({ cover: { ...article.cover, alt: e.target.value } })} placeholder="متن جایگزین تصویر" className={fieldClass} style={{ borderColor: "var(--admin-border)", borderRadius: "var(--admin-radius)" }} /></Panel>
         <Panel title="آدرس و آمار" icon={<FiLink className="text-[var(--color-primary)]" />}>
-          <label className="block text-xs font-bold mb-1.5">نامک</label><input dir="ltr" value={article.slug} onChange={(e) => update({ slug: normalizeArticleSlug(e.target.value) })} className={fieldClass} style={{ borderColor: "var(--admin-border)", borderRadius: "var(--admin-radius)" }} /><p dir="ltr" className="mt-2 text-[10px] text-gray-400 break-all">{livePath}</p>
+          <label className="block text-xs font-bold mb-1.5">نامک</label><input dir="ltr" value={article.slug} onChange={(e) => update({ slug: normalizeArticleSlug(e.target.value) })} className={fieldClass} style={{ borderColor: "var(--admin-border)", borderRadius: "var(--admin-radius)" }} />{liveUrl
+            ? <a dir="ltr" href={liveUrl} target="_blank" rel="noopener noreferrer" className="mt-2 flex items-center gap-1 text-[10px] text-[var(--color-primary)] break-all hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-primary)]" title="مشاهده مقاله در سایت (تب جدید)"><span className="break-all">{livePath}</span><FiExternalLink aria-hidden="true" className="shrink-0" /><span className="sr-only">مشاهده مقاله منتشرشده در تب جدید</span></a>
+            : <p dir="ltr" className="mt-2 text-[10px] text-gray-400 break-all">{livePath}</p>}
           <div className="grid grid-cols-2 gap-2 mt-4"><div className="p-2 text-center bg-gray-50"><strong className="block">{wordCount.toLocaleString("fa-IR")}</strong><small className="text-gray-400">کلمه</small></div><div className="p-2 text-center bg-gray-50"><strong className="block">{readingTime.toLocaleString("fa-IR")}</strong><small className="text-gray-400">دقیقه مطالعه</small></div></div>
         </Panel>
         <Panel title="تنظیمات سئو" icon={<FiSearch className="text-[var(--color-primary)]" />}>
@@ -151,6 +179,10 @@ export default function ArticleEditor({ articleId = null }) {
         </Panel>
       </aside>
     </div>
-    <RevisionHistory articleId={articleId} open={history} onClose={() => setHistory(false)} onRestored={(item) => setArticle((current) => ({ ...current, ...item, category: item.category?._id || item.category, tags: (item.tags || []).map((tag) => tag._id || tag), publishedAt: isoLocal(item.publishedAt) }))} />
+    <RevisionHistory articleId={articleId} open={history} onClose={() => setHistory(false)} onRestored={(item) => {
+      // بازیابی روی سرور ذخیره می‌شود، پس وضعیتِ «ذخیره‌شده» هم باید تازه شود.
+      setArticle((current) => ({ ...current, ...item, category: item.category?._id || item.category, tags: (item.tags || []).map((tag) => tag._id || tag), publishedAt: isoLocal(item.publishedAt) }));
+      setPersisted({ status: item.status, publishedAt: item.publishedAt, slug: item.slug, category: String(item.category?._id || item.category || "") });
+    }} />
   </>;
 }

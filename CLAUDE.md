@@ -18,6 +18,8 @@ npm run check:mongodb # Inspect MongoDB collections/state
 npm run migrate:used-products
 npm run migrate:coach-codes
 npm run migrate:category-sport   # Drops global slug unique indexes, adds per-sport compound indexes (required in prod)
+npm run check:article-image-dimensions    # Dry-run: report article/brand image blocks missing width+height
+npm run migrate:article-image-dimensions  # Backfill those dimensions (idempotent); revalidate the `articles` tag afterwards
 
 # Background workers (must run separately from the web process)
 npm run worker:prices

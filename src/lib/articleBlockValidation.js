@@ -15,6 +15,42 @@ export function safeArticleUrl(value, { media = false } = {}) {
   }
 }
 
+// ——— استایلِ سطحِ بلوک ————————————————————————————————————————————————
+// واژگان بسته و کوچک است: فقط همین کلیدها و همین مقادیر. هر چیزِ دیگری دور
+// ریخته می‌شود تا هیچ مقدارِ دلخواهِ CSS به DOM نرسد.
+export const BLOCK_SPACINGS = ["none", "sm", "md", "lg"];
+export const BLOCK_TABLE_VARIANTS = ["default", "striped", "bordered", "plain"];
+export const BLOCK_COLOR_KEYS = ["textColor", "background", "accent"];
+
+const HEX_COLOR = /^#[0-9a-fA-F]{6}$/;
+
+function hexColor(value) {
+  if (typeof value !== "string") return undefined;
+  const raw = value.trim();
+  return HEX_COLOR.test(raw) ? raw.toLowerCase() : undefined;
+}
+
+/**
+ * مقادیرِ پیش‌فرض ("md" و "default") عمداً حذف می‌شوند و اگر هیچ کلیدی باقی
+ * نماند خروجی undefined است — یعنی «بدونِ استایل» هرگز به‌صورتِ یک شیءِ truthy
+ * ذخیره نمی‌شود و بلوک دقیقاً مثل قبل رندر می‌گردد.
+ */
+export function sanitizeArticleBlockStyle(value) {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return undefined;
+
+  const style = {};
+  if (value.spacing !== "md" && BLOCK_SPACINGS.includes(value.spacing)) style.spacing = value.spacing;
+  for (const key of BLOCK_COLOR_KEYS) {
+    const color = hexColor(value[key]);
+    if (color) style[key] = color;
+  }
+  if (value.tableVariant !== "default" && BLOCK_TABLE_VARIANTS.includes(value.tableVariant)) {
+    style.tableVariant = value.tableVariant;
+  }
+
+  return Object.keys(style).length ? style : undefined;
+}
+
 function url(value, errors, field, options) {
   const raw = string(value, 2000);
   const safe = safeArticleUrl(raw, options);

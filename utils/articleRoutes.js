@@ -37,3 +37,22 @@ export function publicArticleFilter(now = new Date()) {
   };
 }
 
+// همتای درون‌حافظه‌ایِ publicArticleFilter برای یک مقاله‌ی مشخص. این دو باید
+// همیشه یک چیز بگویند؛ وگرنه پنل ادمین لینکِ عمومی را برای مقاله‌ای نشان
+// می‌دهد که سایت رویش ۴۰۴ می‌دهد (یا برعکس، لینکِ معتبر را پنهان می‌کند).
+export function isArticlePubliclyVisible(article, now = new Date()) {
+  if (!article || typeof article !== "object") return false;
+  if (article.deletedAt) return false;
+
+  const { status } = article;
+  if (status !== "published" && status !== "scheduled") return false;
+
+  // فقط «منتشرشده» می‌تواند بدون تاریخ عمومی باشد؛ «زمان‌بندی‌شده» بدون تاریخ
+  // هرگز منتشر نمی‌شود (هم‌تراز با شرطِ publishedAt: { $lte: now }).
+  if (!article.publishedAt) return status === "published";
+
+  const publishedAt = new Date(article.publishedAt);
+  if (Number.isNaN(publishedAt.getTime())) return false;
+  return publishedAt.getTime() <= now.getTime();
+}
+

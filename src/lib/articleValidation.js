@@ -1,7 +1,8 @@
 import mongoose from "mongoose";
 import { isValidArticleSlug, normalizeArticleSlug } from "base/utils/articleSlug";
 import { ARTICLE_BLOCK_TYPE_SET } from "@/lib/articleBlockTypes";
-import { safeArticleUrl, sanitizeArticleBlockData } from "@/lib/articleBlockValidation";
+import { safeArticleUrl, sanitizeArticleBlockData, sanitizeArticleBlockStyle } from "@/lib/articleBlockValidation";
+import { sanitizeArticleBlockLayout } from "@/lib/articleBlockLayout";
 
 export const ARTICLE_STATUSES = ["draft", "review", "scheduled", "published", "archived"];
 export const ARTICLE_CATEGORY_STATUSES = ["draft", "active", "archived"];
@@ -71,7 +72,7 @@ export function sanitizeArticleBlocks(value, errors) {
     ids.add(id);
     if (!type) errors[`blocks.${index}.type`] = "block type is required";
     if (type && !ARTICLE_BLOCK_TYPE_SET.has(type)) errors[`blocks.${index}.type`] = "block type is not supported";
-    return {
+    const sanitized = {
       id,
       type,
       data: ARTICLE_BLOCK_TYPE_SET.has(type)
@@ -79,6 +80,13 @@ export function sanitizeArticleBlocks(value, errors) {
         : {},
       version: Number.isInteger(item.version) && item.version > 0 ? item.version : 1,
     };
+    // فقط وقتی کلید اضافه می‌شود که واقعاً استایلی تنظیم شده باشد؛ در غیر این
+    // صورت بلوک دقیقاً همان شکلِ قبلی را دارد.
+    const style = sanitizeArticleBlockStyle(item.style);
+    if (style) sanitized.style = style;
+    const layout = sanitizeArticleBlockLayout(item.layout);
+    if (layout) sanitized.layout = layout;
+    return sanitized;
   });
 
   try {
