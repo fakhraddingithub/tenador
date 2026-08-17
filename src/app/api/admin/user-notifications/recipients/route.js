@@ -12,10 +12,14 @@ import connectToDB from "base/configs/db";
 import "base/models/registerModels";
 import { previewRecipientCount } from "base/services/userNotificationService";
 
-import requireAdmin, { unauthorized } from "@/lib/requireAdmin";
+import requireAdminPermission from "@/lib/requireAdminPermission";
 
 export async function GET(req) {
-  if (!(await requireAdmin())) return unauthorized();
+  // این preview بخشی از جریانِ «نوشتن و ارسال» است (تعدادِ گیرندگانِ یک
+  // پیامِ در حال تنظیم)، نه مشاهده‌ی پیام‌های ارسال‌شده — پس send درست‌تر از
+  // view است.
+  const { denied } = await requireAdminPermission("userNotifications.send");
+  if (denied) return denied;
 
   try {
     await connectToDB();

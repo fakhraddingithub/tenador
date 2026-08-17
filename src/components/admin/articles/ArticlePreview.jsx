@@ -2,14 +2,19 @@ import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { FiArrowRight, FiEdit3 } from "react-icons/fi";
-import requireAdmin from "@/lib/requireAdmin";
+import { getAdminContext } from "@/lib/adminContext";
+import { canAccessAdminRoute } from "@/lib/permissions";
 import { getArticleForAdmin } from "base/services/article.service";
 import { resolveArticleEntities } from "base/services/publicArticle.service";
 import ArticleBlockRenderer from "@/components/features/articles/ArticleBlockRenderer";
 
 export default async function ArticlePreview({ articleId }) {
-  const admin = await requireAdmin();
-  if (!admin) notFound();
+  // فاز ۷: گیتِ legacy (requireAdmin → User.role==="admin") برداشته شد.
+  // تنها منبعِ مجوز، عضویتِ فعال است؛ و همین زمینه هم برای گیتِ لینکِ ویرایش
+  // استفاده می‌شود. این کامپوننت سروری است، پس useAdminPermissions ندارد.
+  const ctx = await getAdminContext();
+  if (!ctx?.can("articles.view")) notFound();
+  const canRoute = (route) => canAccessAdminRoute(ctx?.permissions || [], route);
   const article = await getArticleForAdmin(articleId);
   if (!article) notFound();
   const entities = await resolveArticleEntities(article);
@@ -17,7 +22,7 @@ export default async function ArticlePreview({ articleId }) {
     <div className="mx-auto max-w-5xl">
       <div className="a-card sticky top-[132px] z-20 mb-4 flex items-center gap-3 p-3">
         <div><strong className="block text-sm">پیش‌نمایش مقاله</strong><small className="text-gray-400">این صفحه برای مشتریان منتشر نشده است.</small></div>
-        <Link href={`/p-admin/admin-articles/${articleId}`} className="mr-auto inline-flex items-center gap-2 rounded-[var(--admin-radius)] bg-[var(--color-primary)] px-4 py-2 text-sm font-bold text-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-primary)]"><FiEdit3 aria-hidden="true" /> ویرایش</Link>
+        {canRoute(`/p-admin/admin-articles/${articleId}`) ? <Link href={`/p-admin/admin-articles/${articleId}`} className="mr-auto inline-flex items-center gap-2 rounded-[var(--admin-radius)] bg-[var(--color-primary)] px-4 py-2 text-sm font-bold text-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-primary)]"><FiEdit3 aria-hidden="true" /> ویرایش</Link> : null}
       </div>
       <article className="a-card p-6 sm:p-12">
         <header className="mb-10">

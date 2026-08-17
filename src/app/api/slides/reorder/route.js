@@ -1,8 +1,12 @@
 import { NextResponse } from "next/server";
 import connectToDB from "base/configs/db";
 import Slide from "base/models/Slide";
+import requireAdminPermission from "@/lib/requireAdminPermission";
 
 export async function POST(req) {
+  const { denied } = await requireAdminPermission("homeSlider.edit");
+  if (denied) return denied;
+
   try {
     await connectToDB();
 

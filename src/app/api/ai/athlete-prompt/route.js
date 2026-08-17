@@ -3,8 +3,12 @@ import connectToDB from "base/configs/db";
 import Sport from "base/models/Sport";
 import Brand from "base/models/Brand"; // مدل اسپانسر را وارد کنید
 import { buildAthleteAiTemplate } from "@/lib/aiAthleteTemplate";
+import requireAdminPermission from "@/lib/requireAdminPermission";
 
 export async function POST(req) {
+  const { denied } = await requireAdminPermission("ai.athletePrompt");
+  if (denied) return denied;
+
   try {
     await connectToDB();
     const { rawContent } = await req.json();

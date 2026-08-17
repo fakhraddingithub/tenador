@@ -8,6 +8,7 @@ import AdminLoader from '@/components/admin/AdminLoader';
 import { showToast } from '@/lib/toast';
 import { confirmDelete, showError } from '@/lib/swal';
 import { FiPlus, FiBox, FiSearch, FiFilter, FiX } from 'react-icons/fi';
+import { useAdminPermissions } from '@/components/admin/AdminPermissionProvider';
 import useSWR from 'swr';
 
 // 🟢 داده‌ی مرجع (ورزش/برند/دسته/سری) — به‌ندرت تغییر می‌کند، پنجره‌ی ۵ دقیقه‌ای.
@@ -15,6 +16,7 @@ const REF_DATA = { dedupingInterval: 300_000 };
 
 export default function AdminProducts() {
   const router = useRouter();
+  const { can } = useAdminPermissions();
   const [search, setSearch] = useState('');
   // کلیدِ SWR از عبارتِ debounce‌شده ساخته می‌شود تا هر کلیدِ کیبورد یک کلیدِ
   // کشِ تازه (و یک درخواست) نسازد — همان ۳۰۰ms قبلی.
@@ -134,6 +136,7 @@ export default function AdminProducts() {
               className="pr-9 pl-4 py-2.5 text-sm font-bold bg-white border-2 border-gray-200 rounded-[var(--radius)] w-56 focus:outline-none focus:border-[var(--color-primary)] transition-all"
             />
           </div>
+          {can('products.create') && (
           <button
             onClick={() => router.push('/p-admin/admin-products/add')}
             className="flex items-center gap-2 px-4 py-2.5 rounded-[var(--radius)] text-sm font-bold text-white hover:shadow-lg hover:shadow-[var(--color-primary)]/25 hover:-translate-y-0.5 active:scale-95 transition-all"
@@ -141,6 +144,7 @@ export default function AdminProducts() {
           >
             <FiPlus size={16} /> افزودن محصول
           </button>
+          )}
         </div>
       </div>
 
@@ -227,7 +231,7 @@ export default function AdminProducts() {
           <p className="text-sm text-gray-400 font-bold mb-5">
             {search ? 'عبارت جستجو را تغییر دهید' : 'هنوز هیچ محصولی اضافه نشده'}
           </p>
-          {!search && (
+          {!search && can('products.create') && (
             <button
               onClick={() => router.push('/p-admin/admin-products/add')}
               className="text-sm font-bold px-5 py-2.5 rounded-[var(--radius)] text-white transition-all"

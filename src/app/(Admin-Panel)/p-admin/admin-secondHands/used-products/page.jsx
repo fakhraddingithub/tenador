@@ -7,6 +7,7 @@ import { FiPlus, FiEdit3, FiTrash2, FiPackage } from 'react-icons/fi';
 import { showToast } from '@/lib/toast';
 import { confirmDelete } from '@/lib/swal';
 import AdminLoader from '@/components/admin/AdminLoader';
+import { useAdminPermissions } from '@/components/admin/AdminPermissionProvider';
 
 // 🟢 محتوا/داده‌ی مرجع — پنجره‌ی ۵ دقیقه‌ای
 const CONTENT_TTL = { dedupingInterval: 300_000 };
@@ -15,6 +16,7 @@ const STATUS_LABEL = { available: 'موجود', sold: 'فروخته شده' };
 const STATUS_COLOR = { available: 'bg-green-50 text-green-600', sold: 'bg-red-50 text-red-500' };
 
 export default function UsedProductsPage() {
+  const { can } = useAdminPermissions();
   const [page, setPage] = useState(1);
   const [status, setStatus] = useState('');
 
@@ -74,12 +76,14 @@ export default function UsedProductsPage() {
             <option value="available">موجود</option>
             <option value="sold">فروخته شده</option>
           </select>
+          {can('secondHand.create') && (
           <Link
             href="/p-admin/admin-secondHands/used-products/create"
             className="flex items-center gap-2 bg-[var(--color-primary)] text-white px-5 py-2.5 rounded-[var(--radius)] text-sm font-bold hover:opacity-90 transition-all"
           >
             <FiPlus /> افزودن
           </Link>
+          )}
         </div>
       </div>
 
@@ -152,7 +156,9 @@ export default function UsedProductsPage() {
                   </p>
                 </div>
 
+                {(can('secondHand.edit') || can('secondHand.delete')) && (
                 <div className="flex gap-1">
+                  {can('secondHand.edit') && (
                   <Link
                     href={`/p-admin/admin-secondHands/used-products/${item._id}/edit`}
                     className="p-2.5 text-neutral-500 hover:text-[var(--color-primary)] hover:bg-blue-50 rounded-[var(--radius)] transition-all"
@@ -160,6 +166,8 @@ export default function UsedProductsPage() {
                   >
                     <FiEdit3 size={18} />
                   </Link>
+                  )}
+                  {can('secondHand.delete') && (
                   <button
                     onClick={() => handleDelete(item)}
                     className="p-2.5 text-neutral-500 hover:text-red-600 hover:bg-red-50 rounded-[var(--radius)] transition-all"
@@ -167,7 +175,9 @@ export default function UsedProductsPage() {
                   >
                     <FiTrash2 size={18} />
                   </button>
+                  )}
                 </div>
+                )}
               </div>
             </div>
           ))}

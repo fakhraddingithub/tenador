@@ -7,7 +7,7 @@ import SiteSetting from "base/models/SiteSetting";
 import { HOME_SLIDER_KEYS } from "base/services/product.service";
 import { revalidateContent } from "@/lib/revalidate";
 
-import requireAdmin, { unauthorized } from "@/lib/requireAdmin";
+import requireAdminPermission from "@/lib/requireAdminPermission";
 
 /**
  * مدیریت اسلایدرهای محصولِ صفحه‌ی اصلی (پرفروش‌ها و پیشنهادهای شگفت‌انگیز).
@@ -42,7 +42,8 @@ async function readIds(key) {
 }
 
 export async function GET() {
-  if (!(await requireAdmin())) return unauthorized();
+  const { denied } = await requireAdminPermission("homeProductSliders.view");
+  if (denied) return denied;
 
   try {
     await connectToDB();
@@ -65,7 +66,8 @@ export async function GET() {
 }
 
 export async function PUT(req) {
-  if (!(await requireAdmin())) return unauthorized();
+  const { denied } = await requireAdminPermission("homeProductSliders.edit");
+  if (denied) return denied;
 
   try {
     const { slider, productIds } = await req.json();

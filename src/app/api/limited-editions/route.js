@@ -1,10 +1,14 @@
 import { NextResponse } from "next/server";
 import connectToDB from "base/configs/db";
 import LimitedEdition from "base/models/LimitedEdition";
+import requireAdminPermission from "@/lib/requireAdminPermission";
 
 // لیست لیمیتد ادیشن‌ها — برای پنل ادمین و انتخابگر محصولات.
 // با ?brand=<brandId> فقط لیمیتد ادیشن‌های همان برند برگردانده می‌شوند.
 export async function GET(req) {
+  const { denied } = await requireAdminPermission("limitedEditions.view");
+  if (denied) return denied;
+
   try {
     await connectToDB();
 

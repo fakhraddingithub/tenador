@@ -3,6 +3,7 @@
 import { useState, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { toast } from "react-toastify";
+import { useAdminPermissions } from "@/components/admin/AdminPermissionProvider";
 import {
   CheckCircle, XCircle, Clock, AlertTriangle, Upload, StickyNote,
   Loader2, X, BadgeCheck, Image as ImageIcon, ExternalLink, ShieldCheck,
@@ -145,6 +146,12 @@ function Cell({ label, value }) {
 
 /* ─── Main panel ─── */
 export default function InstallmentChecksPanel({ installment, orderFulfillmentStatus, onChanged, onViewImage }) {
+  // دو کلیدِ متفاوت، دقیقاً مثل API:
+  //   PATCH /api/installments/checks/[checkId]/status  → installments.edit
+  //   POST  /api/admin/installments/[id]/confirm-order → installments.approveCheck
+  const { can } = useAdminPermissions();
+  const canEditChecks = can("installments.edit");
+  const canApproveOrder = can("installments.approveCheck");
   const [modal, setModal] = useState(null); // {type, check}
   const [busyCheck, setBusyCheck] = useState(null);
   const [confirming, setConfirming] = useState(false);
@@ -236,7 +243,7 @@ export default function InstallmentChecksPanel({ installment, orderFulfillmentSt
             </p>
           </div>
         </div>
-        {!alreadyConfirmed && (
+        {!alreadyConfirmed && canApproveOrder && (
           <button
             onClick={confirmOrder}
             disabled={!canConfirm || confirming}
@@ -291,7 +298,7 @@ export default function InstallmentChecksPanel({ installment, orderFulfillmentSt
                   </button>
                 )}
 
-                {!locked && (
+                {!locked && canEditChecks && (
                   <>
                     <button
                       disabled={busy}
@@ -308,6 +315,8 @@ export default function InstallmentChecksPanel({ installment, orderFulfillmentSt
                   </>
                 )}
 
+                {canEditChecks && (
+                <>
                 <button
                   disabled={busy}
                   onClick={() => fileRefs.current[c._id]?.click()}
@@ -320,13 +329,17 @@ export default function InstallmentChecksPanel({ installment, orderFulfillmentSt
                   type="file" accept="image/*" className="hidden"
                   onChange={(e) => { const f = e.target.files?.[0]; e.target.value = ""; uploadReceipt(c, f); }}
                 />
+                </>
+                )}
 
+                {canEditChecks && (
                 <button
                   disabled={busy}
                   onClick={() => setModal({ type: "notes", check: c })}
                   className="flex items-center gap-1 text-[11px] font-bold text-gray-600 bg-gray-50 border border-gray-200 rounded-lg px-2.5 py-1.5 hover:bg-gray-100 transition disabled:opacity-50">
                   <StickyNote size={12} /> یادداشت
                 </button>
+                )}
               </div>
             </div>
           );

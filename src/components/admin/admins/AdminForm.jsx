@@ -3,34 +3,36 @@
 /**
  * src/components/admin/admins/AdminForm.jsx
  *
- * فرم ساخت/ویرایش ادمین — اطلاعات حساب + نقش + انتخاب دقیق دسترسی‌ها.
+ * فرم ساخت/ویرایش عضویتِ ادمین — کاربر + نقش + انتخاب دقیق دسترسی‌ها.
+ *
+ * ── فاز ۳ ──────────────────────────────────────────────────────────────────
+ * «ادمین» یک هویتِ جداگانه نیست؛ عضویتِ یک User در پنل است. بنابراین
+ * نام/نام‌کاربری/ایمیل دیگر دستی وارد نمی‌شوند و از روی کاربرِ انتخاب‌شده
+ * مشتق می‌شوند. تنها متنِ آزادِ باقی‌مانده «عنوان/سمت» است.
  *
  * نکته معماری: انتخاب نقش، دسترسی‌های آن نقش را به‌صورت قالب روی چک‌باکس‌ها
  * اعمال می‌کند؛ ولی آنچه در دیتابیس ذخیره می‌شود همیشه آرایه permissions خودِ
- * ادمین است تا enforcement آینده فقط یک منبع داشته باشد.
+ * ادمین است تا enforcement فقط یک منبع داشته باشد.
  *
- * اگر adminId داده شود فرم در حالت ویرایش است.
+ * اگر adminId داده شود فرم در حالت ویرایش است (کاربر دیگر تغییر نمی‌کند).
  */
 
-import { useState, useEffect } from 'react';
+import { useRef, useState, useEffect } from 'react';
 import useSWR from 'swr';
 import { useRouter } from 'next/navigation';
-import Link from 'next/link';
 import { toast } from 'react-toastify';
 import {
-  UserCog, ArrowRight, Save, BadgeCheck, AtSign, Mail,
-  Briefcase, Shield, Power, Wand2,
+  UserCog, Save, BadgeCheck, Briefcase, Shield, Power, Wand2, Mail, AtSign,
 } from 'lucide-react';
 
 import PermissionPicker from './PermissionPicker';
+import { useAdminPermissions } from '@/components/admin/AdminPermissionProvider';
+import UserPicker from './UserPicker';
 
 // 🟡 پیکربندیِ دسترسی — پنجره‌ی کوتاه
 const ACL_TTL = { dedupingInterval: 10_000 };
 
 const emptyForm = {
-  name: '',
-  username: '',
-  email: '',
   title: '',
   role: '',
   isActive: true,
@@ -40,11 +42,19 @@ const emptyForm = {
 export default function AdminForm({ adminId = null }) {
   const router = useRouter();
   const isEdit = !!adminId;
+  const { can } = useAdminPermissions();
+
+  // وضعیتِ فعال/غیرفعالِ بارگذاری‌شده — برای تشخیصِ جهتِ تغییر (activate/revoke)
+  const initial = useRef({ isActive: true });
 
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
 
   const [formData, setFormData] = useState(emptyForm);
+  // کاربرِ لینک‌شده — در حالت ساخت انتخاب می‌شود، در حالت ویرایش فقط نمایش.
+  const [linkedUser, setLinkedUser] = useState(null);
+  // هویتِ مشتق‌شده‌ی سرور (فقط خواندنی) — تا کاربر ببیند چه چیزی ذخیره شده.
+  const [derived, setDerived] = useState({ username: '', email: '' });
 
   // 🟡 رجیستریِ مجوزها و نقش‌ها — مشترک بین صفحات ادمین، پنجره‌ی کوتاه
   const { data: permissionsData } = useSWR('/api/admin/permissions', ACL_TTL);
@@ -68,14 +78,14 @@ export default function AdminForm({ adminId = null }) {
           }
           const a = adminData.admin;
           setFormData({
-            name: a.name || '',
-            username: a.username || '',
-            email: a.email || '',
             title: a.title || '',
             role: a.role?._id || '',
             isActive: a.isActive ?? true,
             permissions: a.permissions || [],
           });
+          setLinkedUser(a.user || null);
+          setDerived({ username: a.username || '', email: a.email || '' });
+          initial.current = { isActive: a.isActive ?? true };
         }
       } catch {
         toast.error('خطا در بارگذاری اطلاعات');
@@ -89,6 +99,18 @@ export default function AdminForm({ adminId = null }) {
 
   const updateField = (key, value) =>
     setFormData((prev) => ({ ...prev, [key]: value }));
+
+  /**
+   * در حالتِ ساخت، کلِ payload زیرِ یک کلید (admins.create) می‌رود.
+   * در حالتِ ویرایش، resolveAdminPatchPermissions هر فیلد را جدا می‌سنجد:
+   *   title/role → admins.edit ، permissions → admins.managePermissions ،
+   *   isActive   → admins.activate یا admins.revoke (بسته به جهت).
+   * پس فرستادنِ همیشگیِ هر چهار فیلد یعنی ادمینی با فقط admins.edit هم
+   * برای تغییرِ عنوان ۴۰۳ می‌گرفت.
+   */
+  const canManagePermissions = can('admins.managePermissions');
+  const canEditFields = can('admins.edit');
+  const canToggleActive = (next) => can(next ? 'admins.activate' : 'admins.revoke');
 
   // انتخاب نقش — دسترسی‌های نقش به‌عنوان قالب روی چک‌باکس‌ها اعمال می‌شود
   const handleRoleChange = (roleId) => {
@@ -110,10 +132,40 @@ export default function AdminForm({ adminId = null }) {
   const handleSubmit = async (e) => {
     e.preventDefault();
 
-    if (!formData.name.trim()) return toast.error('نام ادمین الزامی است');
-    if (!formData.username.trim()) return toast.error('نام کاربری الزامی است');
+    if (!isEdit && !linkedUser) {
+      return toast.error('ابتدا کاربرِ این عضویت را انتخاب کنید');
+    }
 
     setSubmitting(true);
+
+    // ⚠️ فقط فیلدهایی فرستاده می‌شوند که سرور می‌پذیرد. هر کلیدِ ناشناخته
+    // (از جمله name/username/email که دیگر دستی نیستند) در گیت ۴۰۳ می‌گیرد.
+    let payload;
+    if (!isEdit) {
+      payload = {
+        userId: linkedUser._id,
+        title: formData.title,
+        role: formData.role || null,
+        isActive: formData.isActive,
+        permissions: formData.permissions,
+      };
+    } else {
+      payload = {};
+      if (canEditFields) {
+        payload.title = formData.title;
+        payload.role = formData.role || null;
+      }
+      if (canManagePermissions) payload.permissions = formData.permissions;
+      if (formData.isActive !== initial.current.isActive && canToggleActive(formData.isActive)) {
+        payload.isActive = formData.isActive;
+      }
+
+      if (!Object.keys(payload).length) {
+        setSubmitting(false);
+        toast.info('تغییری برای ذخیره وجود ندارد');
+        return;
+      }
+    }
 
     try {
       const res = await fetch(
@@ -121,14 +173,19 @@ export default function AdminForm({ adminId = null }) {
         {
           method: isEdit ? 'PUT' : 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            ...formData,
-            role: formData.role || null,
-          }),
+          body: JSON.stringify(payload),
         }
       );
 
       const data = await res.json();
+
+      // تعارضِ عضویتِ موجود — مسیرِ درست را نشان بده، نه فقط خطا
+      if (res.status === 409 && data.adminId) {
+        toast.info(data.message);
+        router.push(`/p-admin/users/admins/edit/${data.adminId}`);
+        return;
+      }
+
       if (!res.ok) throw new Error(data.message || 'خطا در ذخیره ادمین');
 
       toast.success(data.message);
@@ -178,49 +235,74 @@ export default function AdminForm({ adminId = null }) {
         </button>
       </div>
 
-      {/* Account info */}
+      {/* کاربرِ عضویت */}
       <div
         className="bg-white rounded-2xl border p-5 space-y-4"
         style={{ borderColor: '#e8e4df' }}
       >
         <h2 className="text-sm font-bold text-gray-800 flex items-center gap-2 border-b pb-3" style={{ borderColor: '#f0ede9' }}>
           <BadgeCheck size={16} className="text-[var(--color-primary)]" />
-          اطلاعات حساب
+          کاربرِ این عضویت
+        </h2>
+
+        {isEdit ? (
+          <div
+            className="rounded-xl border p-4 bg-gray-50"
+            style={{ borderColor: '#e8e4df' }}
+          >
+            {linkedUser ? (
+              <>
+                <p className="text-xs font-bold text-gray-800">
+                  {[linkedUser.name, linkedUser.lastName].filter(Boolean).join(' ') ||
+                    'بدون نام'}
+                </p>
+                <p className="text-[11px] text-gray-500 mt-0.5" dir="ltr">
+                  {linkedUser.phone || linkedUser.email || linkedUser._id}
+                </p>
+              </>
+            ) : (
+              <p className="text-[11px] font-bold text-amber-700">
+                این عضویت به هیچ کاربری متصل نیست (سندِ قدیمی) — تا زمان اتصال،
+                هیچ‌کس نمی‌تواند با آن وارد پنل شود.
+              </p>
+            )}
+            <p className="text-[10px] text-gray-400 mt-2">
+              کاربرِ یک عضویت پس از ساخت تغییر نمی‌کند؛ برای شخصِ دیگر یک عضویت
+              جدید بسازید.
+            </p>
+          </div>
+        ) : (
+          <UserPicker value={linkedUser} onSelect={setLinkedUser} />
+        )}
+
+        {/* هویتِ مشتق‌شده — فقط خواندنی */}
+        {(derived.username || derived.email) && (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <Field label="نام کاربری (خودکار)" icon={AtSign}>
+              <p className="field-input text-left bg-gray-50 text-gray-500" dir="ltr">
+                {derived.username || '—'}
+              </p>
+            </Field>
+            <Field label="ایمیل (از پروفایل کاربر)" icon={Mail}>
+              <p className="field-input text-left bg-gray-50 text-gray-500" dir="ltr">
+                {derived.email || '—'}
+              </p>
+            </Field>
+          </div>
+        )}
+      </div>
+
+      {/* تنظیماتِ عضویت */}
+      <div
+        className="bg-white rounded-2xl border p-5 space-y-4"
+        style={{ borderColor: '#e8e4df' }}
+      >
+        <h2 className="text-sm font-bold text-gray-800 flex items-center gap-2 border-b pb-3" style={{ borderColor: '#f0ede9' }}>
+          <Shield size={16} className="text-[var(--color-primary)]" />
+          نقش و وضعیت
         </h2>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <Field label="نام و نام خانوادگی" icon={UserCog} required>
-            <input
-              type="text"
-              value={formData.name}
-              onChange={(e) => updateField('name', e.target.value)}
-              placeholder="مثلاً علی محمدی"
-              className="field-input"
-            />
-          </Field>
-
-          <Field label="نام کاربری (انگلیسی)" icon={AtSign} required>
-            <input
-              type="text"
-              dir="ltr"
-              value={formData.username}
-              onChange={(e) => updateField('username', e.target.value)}
-              placeholder="e.g. ali.mohammadi"
-              className="field-input text-left"
-            />
-          </Field>
-
-          <Field label="ایمیل" icon={Mail}>
-            <input
-              type="email"
-              dir="ltr"
-              value={formData.email}
-              onChange={(e) => updateField('email', e.target.value)}
-              placeholder="admin@example.com"
-              className="field-input text-left"
-            />
-          </Field>
-
           <Field label="عنوان/سمت" icon={Briefcase}>
             <input
               type="text"
@@ -231,6 +313,7 @@ export default function AdminForm({ adminId = null }) {
             />
           </Field>
 
+          {(!isEdit || canEditFields) && (
           <Field label="نقش (قالب دسترسی)" icon={Shield}>
             <div className="flex items-center gap-2">
               <select
@@ -253,7 +336,9 @@ export default function AdminForm({ adminId = null }) {
               </span>
             </div>
           </Field>
+          )}
 
+          {(!isEdit || canToggleActive(!formData.isActive)) && (
           <Field label="وضعیت حساب" icon={Power}>
             <button
               type="button"
@@ -282,15 +367,18 @@ export default function AdminForm({ adminId = null }) {
               </span>
             </button>
           </Field>
+          )}
         </div>
       </div>
 
       {/* Permissions */}
+      {(!isEdit || canManagePermissions) && (
       <PermissionPicker
         modules={modules}
         selected={formData.permissions}
         onChange={(permissions) => updateField('permissions', permissions)}
       />
+      )}
 
       {/* Bottom submit (برای فرم‌های بلند) */}
       <button

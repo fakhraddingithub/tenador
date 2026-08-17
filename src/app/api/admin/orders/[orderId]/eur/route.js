@@ -31,12 +31,7 @@ import mongoose from "mongoose";
 import connectToDB from "base/configs/db";
 import Order from "base/models/Order";
 
-import requireAdmin, { unauthorized } from "@/lib/requireAdmin";
-
-// نقش ادمین از دیتابیس بررسی می‌شود (توکن به‌تنهایی قابل‌اعتماد نیست).
-async function getAdminUser() {
-  return await requireAdmin();
-}
+import requireAdminPermission from "@/lib/requireAdminPermission";
 
 // خروجی استاندارد بخش یورو برای کلاینت — با خواندن lean (مستقل از اسکیمای کش‌شده)
 async function eurPayload(orderId) {
@@ -50,18 +45,11 @@ async function eurPayload(orderId) {
 
 /* ─── PATCH: تنظیم قیمت یورویی سفارش ─────────────────────────────────── */
 export async function PATCH(req, { params }) {
-  if (!(await requireAdmin())) return unauthorized();
+  const { actor: admin, denied } = await requireAdminPermission("orders.setCurrency");
+  if (denied) return denied;
 
   try {
     await connectToDB();
-
-    const admin = await getAdminUser();
-    if (!admin?.userId) {
-      return NextResponse.json(
-        { message: "احراز هویت ادمین لازم است" },
-        { status: 401 }
-      );
-    }
 
     const { orderId } = await params;
     if (!mongoose.Types.ObjectId.isValid(orderId)) {
@@ -109,18 +97,11 @@ export async function PATCH(req, { params }) {
 
 /* ─── POST: افزودن یک پرداخت یورویی ──────────────────────────────────── */
 export async function POST(req, { params }) {
-  if (!(await requireAdmin())) return unauthorized();
+  const { actor: admin, denied } = await requireAdminPermission("orders.setCurrency");
+  if (denied) return denied;
 
   try {
     await connectToDB();
-
-    const admin = await getAdminUser();
-    if (!admin?.userId) {
-      return NextResponse.json(
-        { message: "احراز هویت ادمین لازم است" },
-        { status: 401 }
-      );
-    }
 
     const { orderId } = await params;
     if (!mongoose.Types.ObjectId.isValid(orderId)) {
@@ -176,18 +157,11 @@ export async function POST(req, { params }) {
 
 /* ─── PUT: ویرایش مبلغِ یک پرداخت یورویی موجود ───────────────────────── */
 export async function PUT(req, { params }) {
-  if (!(await requireAdmin())) return unauthorized();
+  const { actor: admin, denied } = await requireAdminPermission("orders.setCurrency");
+  if (denied) return denied;
 
   try {
     await connectToDB();
-
-    const admin = await getAdminUser();
-    if (!admin?.userId) {
-      return NextResponse.json(
-        { message: "احراز هویت ادمین لازم است" },
-        { status: 401 }
-      );
-    }
 
     const { orderId } = await params;
     if (!mongoose.Types.ObjectId.isValid(orderId)) {
@@ -265,18 +239,11 @@ export async function PUT(req, { params }) {
 
 /* ─── DELETE: حذف یک پرداخت یورویی ───────────────────────────────────── */
 export async function DELETE(req, { params }) {
-  if (!(await requireAdmin())) return unauthorized();
+  const { actor: admin, denied } = await requireAdminPermission("orders.setCurrency");
+  if (denied) return denied;
 
   try {
     await connectToDB();
-
-    const admin = await getAdminUser();
-    if (!admin?.userId) {
-      return NextResponse.json(
-        { message: "احراز هویت ادمین لازم است" },
-        { status: 401 }
-      );
-    }
 
     const { orderId } = await params;
     if (!mongoose.Types.ObjectId.isValid(orderId)) {

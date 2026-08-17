@@ -15,8 +15,11 @@ import { FiBookOpen, FiChevronLeft, FiGrid, FiImage, FiLayers, FiTrendingUp, FiA
 
 import SectionTabs from "@/components/admin/SectionTabs";
 import PagesList from "@/components/admin/pages/PagesList";
+import { useAdminPermissions } from "@/components/admin/AdminPermissionProvider";
+import { ADMIN_TAB_PERMISSIONS } from "@/lib/permissions";
 
-const VALID = new Set(["home", "content"]);
+const ORDER = ["home", "content"];
+const VALID = new Set(ORDER);
 
 const HOME_SECTIONS = [
   {
@@ -59,9 +62,14 @@ const HOME_SECTIONS = [
 ];
 
 function HomeSectionsPanel() {
+  const { canRoute } = useAdminPermissions();
+  // کارتِ «سایر بخش‌ها» عمداً placeholder است (href="#")، پس از فیلترِ روت
+  // مستثناست؛ بقیه اگر مجاز نباشند اصلاً رندر نمی‌شوند.
+  const sections = HOME_SECTIONS.filter((sec) => sec.disabled || canRoute(sec.href));
+
   return (
     <div className="grid sm:grid-cols-2 gap-4 max-w-4xl">
-      {HOME_SECTIONS.map((sec, i) => (
+      {sections.map((sec, i) => (
         <motion.div
           key={sec.href + i}
           initial={{ opacity: 0, y: 10 }}
@@ -139,14 +147,26 @@ function AdminPagesContent() {
   const router = useRouter();
   const search = useSearchParams();
   const initial = search.get("tab");
-  const [tab, setTab] = useState(VALID.has(initial) ? initial : "home");
+
+  // همان نگاشتی که middleware با آن `?tab=` را می‌سنجد — نه یک کپیِ موازی.
+  const { can } = useAdminPermissions();
+  const allows = (value) => {
+    const keys = ADMIN_TAB_PERMISSIONS[`/p-admin/admin-pages?tab=${value}`];
+    return Array.isArray(keys) && keys.length > 0 && can(keys);
+  };
+
+  const [tab, setTab] = useState(
+    () => (VALID.has(initial) && allows(initial) ? initial : ORDER.find(allows) || null)
+  );
 
   const tabs = useMemo(
-    () => [
-      { value: "home", label: "صفحه اصلی سایت", icon: FaHome },
-      { value: "content", label: "صفحات محتوایی", icon: FaFileAlt },
-    ],
-    []
+    () =>
+      [
+        { value: "home", label: "صفحه اصلی سایت", icon: FaHome },
+        { value: "content", label: "صفحات محتوایی", icon: FaFileAlt },
+      ].filter((t) => allows(t.value)),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [can]
   );
 
   const handleChange = (v) => {
@@ -183,7 +203,9 @@ function AdminPagesContent() {
       </div>
 
       <div className="min-w-0">
-        {tab === "home" ? <HomeSectionsPanel /> : <PagesList />}
+        {/* برابریِ صریح: با `else` ی قبلی، تبِ null هم فهرستِ صفحات را نشان می‌داد */}
+        {tab === "home" && <HomeSectionsPanel />}
+        {tab === "content" && <PagesList />}
       </div>
     </div>
   );

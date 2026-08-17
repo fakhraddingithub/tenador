@@ -6,6 +6,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { FiSearch, FiTrash2, FiLoader, FiCheckCircle, FiPackage } from "react-icons/fi";
 import { MdOutlineDragIndicator } from "react-icons/md";
 import { showToast } from "@/lib/toast";
+import { useAdminPermissions } from "@/components/admin/AdminPermissionProvider";
 
 /**
  * مدیریتِ یک اسلایدرِ محصولِ صفحه‌ی اصلی:
@@ -29,6 +30,11 @@ export default function ProductSliderManager({
   items = [],
   onPersist,
 }) {
+  // /api/admin/home-sliders — GET با view، PUT با edit. جستجو، افزودن، حذف و
+  // جابه‌جایی همگی به همان PUT ختم می‌شوند، پس یک کلید دارند.
+  const { can } = useAdminPermissions();
+  const canEdit = can("homeProductSliders.edit");
+
   const [query, setQuery] = useState("");
   const [results, setResults] = useState([]);
   const [searching, setSearching] = useState(false);
@@ -169,7 +175,8 @@ export default function ProductSliderManager({
       </div>
 
       <div className="p-5 space-y-4">
-        {/* Search */}
+        {/* Search — تنها مسیرِ افزودن، پس با همان کلیدِ ویرایش گیت است */}
+        {canEdit && (
         <div className="relative" ref={wrapRef}>
           <FiSearch
             size={15}
@@ -189,6 +196,7 @@ export default function ProductSliderManager({
               جستجو...
             </span>
           )}
+
 
           {open && (
             <ul className="absolute z-50 left-0 right-0 mt-1 max-h-60 overflow-y-auto bg-white border border-gray-200 rounded-xl shadow-2xl">
@@ -245,6 +253,7 @@ export default function ProductSliderManager({
             </ul>
           )}
         </div>
+        )}
 
         {/* Selected products — sortable */}
         {items.length === 0 ? (
@@ -253,11 +262,11 @@ export default function ProductSliderManager({
               <FiPackage size={22} />
             </div>
             <p className="text-gray-400 font-bold text-xs">
-              هنوز محصولی اضافه نشده — با جستجوی بالا محصول اضافه کنید
+              {canEdit ? "هنوز محصولی اضافه نشده — با جستجوی بالا محصول اضافه کنید" : "هنوز محصولی اضافه نشده"}
             </p>
           </div>
         ) : (
-          <DragDropContext onDragEnd={onDragEnd}>
+          <DragDropContext onDragEnd={canEdit ? onDragEnd : () => {}}>
             <Droppable droppableId={`slider-${sliderKey}`}>
               {(provided) => (
                 <div
@@ -311,6 +320,7 @@ export default function ProductSliderManager({
                             )}
                           </div>
 
+                          {canEdit && (
                           <button
                             type="button"
                             onClick={() => removeProduct(p._id)}
@@ -319,6 +329,7 @@ export default function ProductSliderManager({
                           >
                             <FiTrash2 size={13} />
                           </button>
+                          )}
                         </div>
                       )}
                     </Draggable>

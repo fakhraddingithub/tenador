@@ -6,8 +6,12 @@ import Athlete from "base/models/Athlete";
 import LimitedEdition from "base/models/LimitedEdition";
 
 import { buildProductTemplate } from "@/lib/buildProductTemplate";
+import requireAdminPermission from "@/lib/requireAdminPermission";
 
 export async function POST(req) {
+  const { denied } = await requireAdminPermission("ai.productDraft");
+  if (denied) return denied;
+
   try {
     await connectToDB();
 

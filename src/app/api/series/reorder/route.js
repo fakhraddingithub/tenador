@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import connectToDB from "base/configs/db";
 import Serie from "base/models/Serie";
 import { revalidateContent } from "@/lib/revalidate";
+import requireAdminPermission from "@/lib/requireAdminPermission";
 
 /**
  * PUT /api/series/reorder
@@ -11,6 +12,10 @@ import { revalidateContent } from "@/lib/revalidate";
  * همان ترتیب در همه جای سایت (صفحه برند، صفحات ورزشی و ...) اعمال می‌شود.
  */
 export async function PUT(req) {
+  // رجیستری کلیدِ مستقلِ «ترتیب» برای سری ندارد؛ همان ویرایش است (manifest).
+  const { denied } = await requireAdminPermission("series.edit");
+  if (denied) return denied;
+
   try {
     await connectToDB();
 

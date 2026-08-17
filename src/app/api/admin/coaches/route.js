@@ -2,11 +2,12 @@ import { NextResponse } from "next/server";
 import connectToDB from "base/configs/db";
 import Order from "base/models/Order";
 
-import requireAdmin, { unauthorized } from "@/lib/requireAdmin";
+import requireAdminPermission from "@/lib/requireAdminPermission";
 
 import User from "base/models/User";
 export async function GET(req) {
-  if (!(await requireAdmin())) return unauthorized();
+  const { denied } = await requireAdminPermission("coaches.view");
+  if (denied) return denied;
 
   try {
     await connectToDB();

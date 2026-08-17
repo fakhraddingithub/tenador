@@ -3,13 +3,14 @@ import connectToDB from "base/configs/db";
 import Event from "base/models/Event";
 import { revalidateContent } from "@/lib/revalidate";
 
-import requireAdmin, { unauthorized } from "@/lib/requireAdmin";
+import requireAdminPermission from "@/lib/requireAdminPermission";
 
 const VALID_STATUSES = ["draft", "scheduled", "active", "paused", "ended", "archived"];
 
 // PUT /api/admin/events/:id/status
 export async function PUT(req, { params }) {
-  if (!(await requireAdmin())) return unauthorized();
+  const { denied } = await requireAdminPermission("collections.publish");
+  if (denied) return denied;
 
   await connectToDB();
   const { id } = await params;

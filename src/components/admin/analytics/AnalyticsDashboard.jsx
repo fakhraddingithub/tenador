@@ -17,8 +17,10 @@ import OrderAnalytics from "./OrderAnalytics";
 import InsightCards from "./InsightCards";
 import { FadeIn, SectionTitle } from "./primitives";
 import { faDate } from "./format";
+import { useAdminPermissions } from "@/components/admin/AdminPermissionProvider";
 
 export default function AnalyticsDashboard() {
+  const { can } = useAdminPermissions();
   const [preset, setPreset] = useState("last30");
   const [range, setRange] = useState(() => presetRange("last30"));
   const [data, setData] = useState(null);
@@ -77,7 +79,9 @@ export default function AnalyticsDashboard() {
             <p className="text-xs font-bold text-gray-400">بینش‌های عملیاتی برای رشد فروش و بهبود جریان نقدی</p>
           </div>
         </div>
-        <ExportMenu data={data} rangeLabel={rangeLabel} disabled={loading || !data} />
+        {can("analytics.export") && (
+          <ExportMenu data={data} rangeLabel={rangeLabel} disabled={loading || !data} />
+        )}
       </div>
 
       {/* Global filter */}

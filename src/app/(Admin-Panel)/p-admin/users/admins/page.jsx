@@ -3,8 +3,11 @@
 /**
  * مدیریت ادمین‌ها — زیربخش «مدیریت اعضا و کاربران»
  *
- * ⚠️ فاز فعلی فقط زیرساخت مدیریت ادمین/نقش/دسترسی است؛ هیچ محدودیتی هنوز
- * در صفحات پنل اعمال نمی‌شود.
+ * «ادمین» یعنی عضویتِ یک User در پنل (فاز ۳): ساختِ عضویت با انتخابِ کاربر
+ * انجام می‌شود و هویتِ نمایشی از همان کاربر مشتق می‌شود.
+ *
+ * ⚠️ محدودیتِ صفحات پنل (مخفی‌کردنِ منو/دکمه) هنوز اعمال نشده — آن فاز ۴ است.
+ * enforcement واقعی سمتِ API انجام می‌شود و کامل است.
  */
 
 import { useState, useEffect } from 'react'
@@ -22,11 +25,13 @@ import {
 
 import RolesManager from '@/components/admin/admins/RolesManager'
 import AdminLoader from '@/components/admin/AdminLoader'
+import { useAdminPermissions } from '@/components/admin/AdminPermissionProvider'
 
 // 🟡 پیکربندیِ دسترسی (ادمین‌ها/نقش‌ها/مجوزها) — پنجره‌ی کوتاه
 const ACL_TTL = { dedupingInterval: 10_000 }
 
 export default function AdminAdminsManagement() {
+  const { can, canRoute } = useAdminPermissions()
   const router = useRouter()
 
   const [searchQuery, setSearchQuery] = useState('')
@@ -145,11 +150,12 @@ export default function AdminAdminsManagement() {
             مدیریت ادمین‌ها
           </h1>
           <p className="text-xs font-bold text-gray-400">
-            ساخت ادمین با نقش، عنوان و سطح دسترسی سفارشی — دسترسی‌ها در فاز بعدی اعمال می‌شوند
+            ساخت ادمین با نقش، عنوان و سطح دسترسی سفارشی
           </p>
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
+          {can('roles.view') && (
           <button
             onClick={() => setRolesOpen(true)}
             className="inline-flex items-center gap-2 text-xs font-bold px-4 py-2.5 rounded-[var(--radius)] transition-all hover:shadow-lg hover:-translate-y-0.5 active:scale-95 text-white"
@@ -158,6 +164,8 @@ export default function AdminAdminsManagement() {
             <Shield size={14} style={{ color: 'var(--color-secondary)' }} />
             مدیریت نقش‌ها
           </button>
+          )}
+          {can('admins.create') && (
           <button
             onClick={() => router.push('/p-admin/users/admins/add')}
             className="inline-flex items-center gap-2 text-white text-xs font-bold px-4 py-2.5 rounded-[var(--radius)] transition-all hover:shadow-lg hover:-translate-y-0.5 active:scale-95"
@@ -166,6 +174,7 @@ export default function AdminAdminsManagement() {
             <Plus size={14} />
             افزودن ادمین
           </button>
+          )}
         </div>
       </div>
 
@@ -257,7 +266,16 @@ export default function AdminAdminsManagement() {
                   </div>
                   <div className="min-w-0">
                     <div className="flex items-center gap-2 flex-wrap">
-                      <h3 className="text-[13px] font-bold text-gray-800 truncate">{admin.name}</h3>
+                      {canRoute(`/p-admin/users/admins/${admin._id}`) ? (
+                        <Link
+                          href={`/p-admin/users/admins/${admin._id}`}
+                          className="text-[13px] font-bold text-gray-800 truncate hover:text-[var(--color-primary)] hover:underline underline-offset-4"
+                        >
+                          {admin.name}
+                        </Link>
+                      ) : (
+                        <h3 className="text-[13px] font-bold text-gray-800 truncate">{admin.name}</h3>
+                      )}
                       {admin.title && (
                         <span className="text-[9px] font-bold bg-amber-50 text-amber-700 border border-amber-100 px-2 py-0.5 rounded-full">
                           {admin.title}
@@ -275,7 +293,17 @@ export default function AdminAdminsManagement() {
                         <AtSign size={10} />
                         {admin.username}
                       </span>
-                      {admin.email && <span dir="ltr" className="truncate">{admin.email}</span>}
+                      {/* عضویتِ بدون کاربر به هیچ نشستی map نمی‌شود؛ ظاهرش
+                          «ادمینِ فعال» است ولی هیچ‌کس نمی‌تواند با آن وارد شود. */}
+                      {admin.user ? (
+                        <span className="truncate" dir="ltr">
+                          {admin.user.phone || admin.user.email || ''}
+                        </span>
+                      ) : (
+                        <span className="text-amber-700 bg-amber-50 border border-amber-100 px-2 py-0.5 rounded-full">
+                          بدون کاربرِ متصل — غیرقابل استفاده
+                        </span>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -288,6 +316,7 @@ export default function AdminAdminsManagement() {
                   </span>
 
                   {/* Status toggle */}
+                  {(admin.isActive ? can('admins.revoke') : can('admins.activate')) && (
                   <button
                     onClick={() => handleToggleActive(admin)}
                     title={admin.isActive ? 'غیرفعال‌سازی' : 'فعال‌سازی'}
@@ -301,6 +330,7 @@ export default function AdminAdminsManagement() {
                       }`}
                     />
                   </button>
+                  )}
                   <span
                     className={`text-[10px] font-bold w-14 ${
                       admin.isActive ? 'text-emerald-600' : 'text-gray-400'
@@ -309,6 +339,7 @@ export default function AdminAdminsManagement() {
                     {admin.isActive ? 'فعال' : 'غیرفعال'}
                   </span>
 
+                  {canRoute(`/p-admin/users/admins/edit/${admin._id}`) && (
                   <button
                     onClick={() => router.push(`/p-admin/users/admins/edit/${admin._id}`)}
                     className="w-8 h-8 rounded-xl bg-gray-50 text-gray-500 hover:bg-gray-900 hover:text-white transition-all flex items-center justify-center"
@@ -316,6 +347,8 @@ export default function AdminAdminsManagement() {
                   >
                     <Pencil size={13} />
                   </button>
+                  )}
+                  {can('admins.revoke') && (
                   <button
                     onClick={() => handleDelete(admin)}
                     className="w-8 h-8 rounded-xl bg-red-50 text-red-400 hover:bg-red-500 hover:text-white transition-all flex items-center justify-center"
@@ -323,6 +356,7 @@ export default function AdminAdminsManagement() {
                   >
                     <Trash2 size={13} />
                   </button>
+                  )}
                 </div>
               </motion.div>
             ))}

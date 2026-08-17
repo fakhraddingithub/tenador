@@ -3,10 +3,11 @@ import { revalidatePath } from "next/cache";
 import connectToDB from "base/configs/db";
 import HealthCard from "base/models/HealthCard";
 
-import requireAdmin, { unauthorized } from "@/lib/requireAdmin";
+import requireAdminPermission from "@/lib/requireAdminPermission";
 
 export async function GET(_, { params }) {
-  if (!(await requireAdmin())) return unauthorized();
+  const { denied } = await requireAdminPermission("healthCards.view");
+  if (denied) return denied;
 
   try {
     await connectToDB();
@@ -23,7 +24,8 @@ export async function GET(_, { params }) {
 }
 
 export async function PUT(req, { params }) {
-  if (!(await requireAdmin())) return unauthorized();
+  const { denied } = await requireAdminPermission("healthCards.edit");
+  if (denied) return denied;
 
   try {
     await connectToDB();
@@ -55,7 +57,8 @@ export async function PUT(req, { params }) {
 }
 
 export async function DELETE(_, { params }) {
-  if (!(await requireAdmin())) return unauthorized();
+  const { denied } = await requireAdminPermission("healthCards.delete");
+  if (denied) return denied;
 
   try {
     await connectToDB();

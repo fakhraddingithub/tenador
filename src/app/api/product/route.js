@@ -8,7 +8,7 @@ import "base/models/Category";
 import "base/models/Variant";
 import Serie from "base/models/Serie";
 import "base/models/LimitedEdition";
-import requireAdmin from "@/lib/requireAdmin";
+import requireAdminPermission from "@/lib/requireAdminPermission";
 import { buildTargetAudienceMatch } from "base/utils/targetAudience";
 
 const ADMIN_LIST_FIELDS = "name slug sku mainImage basePrice isActive order brand sport category serie limitedEdition targetAudience createdAt updatedAt";
@@ -39,8 +39,11 @@ export async function GET(req) {
     const requestedPage = Math.max(1, Number(searchParams.get("page")) || 1);
     const requestedLimit = Math.min(100, Math.max(1, Number(searchParams.get("limit")) || 25));
 
-    if (isAdmin && !(await requireAdmin())) {
-      return NextResponse.json({ error: "دسترسی غیرمجاز" }, { status: 401 });
+    // GET عمومی است، ولی `?isAdmin=true` فیلترِ isActive را برمی‌دارد و
+    // محصولات منتشرنشده را هم برمی‌گرداند — آن حالت کلیدِ دسترسی می‌خواهد.
+    if (isAdmin) {
+      const { denied } = await requireAdminPermission("products.view");
+      if (denied) return denied;
     }
 
     // ۲. شرط داینامیک دیتابیس:

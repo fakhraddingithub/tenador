@@ -3,11 +3,12 @@ import connectToDB from "base/configs/db";
 import Event from "base/models/Event";
 import { revalidateContent } from "@/lib/revalidate";
 
-import requireAdmin, { unauthorized } from "@/lib/requireAdmin";
+import requireAdminPermission from "@/lib/requireAdminPermission";
 
 // GET /api/admin/events/:id
 export async function GET(req, { params }) {
-  if (!(await requireAdmin())) return unauthorized();
+  const { denied } = await requireAdminPermission("collections.view");
+  if (denied) return denied;
 
   await connectToDB();
   const { id } = await params;
@@ -18,7 +19,8 @@ export async function GET(req, { params }) {
 
 // PUT /api/admin/events/:id
 export async function PUT(req, { params }) {
-  if (!(await requireAdmin())) return unauthorized();
+  const { denied } = await requireAdminPermission("collections.edit");
+  if (denied) return denied;
 
   await connectToDB();
   const { id } = await params;
@@ -53,7 +55,8 @@ export async function PUT(req, { params }) {
 
 // DELETE /api/admin/events/:id
 export async function DELETE(req, { params }) {
-  if (!(await requireAdmin())) return unauthorized();
+  const { denied } = await requireAdminPermission("collections.delete");
+  if (denied) return denied;
 
   await connectToDB();
   const { id } = await params;

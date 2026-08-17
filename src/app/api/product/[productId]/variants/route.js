@@ -3,7 +3,7 @@ import connectToDB from "base/configs/db";
 import Product from "base/models/Product";
 import Variant from "base/models/Variant";
 import Category from "base/models/Category";
-import requireAdmin, { unauthorized } from "@/lib/requireAdmin";
+import requireAdminPermission from "@/lib/requireAdminPermission";
 import { revalidateContent } from "@/lib/revalidate";
 
 // ⚠️ در Next 16 مقدارِ params یک Promise است، نه تابع. `await params()` پیش از
@@ -13,7 +13,8 @@ import { revalidateContent } from "@/lib/revalidate";
 // این روت‌ها فقط از صفحاتِ پنلِ ادمین فراخوانی می‌شوند.
 
 export async function GET(req, { params }) {
-  if (!(await requireAdmin())) return unauthorized();
+  const { denied } = await requireAdminPermission("variants.view");
+  if (denied) return denied;
 
   try {
     await connectToDB();
@@ -34,7 +35,8 @@ export async function GET(req, { params }) {
 }
 
 export async function POST(req, { params }) {
-  if (!(await requireAdmin())) return unauthorized();
+  const { denied } = await requireAdminPermission("variants.edit");
+  if (denied) return denied;
 
   await connectToDB();
 

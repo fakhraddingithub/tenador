@@ -7,6 +7,7 @@ import Brand from "base/models/Brand";
 import { revalidateContent } from "@/lib/revalidate";
 import { sanitizeSerieSportEntries } from "@/lib/serieSportContent";
 import { handleApiError } from "@/lib/apiError";
+import requireAdminPermission from "@/lib/requireAdminPermission";
 
 export async function GET(req, { params }) {
   try {
@@ -37,6 +38,9 @@ export async function GET(req, { params }) {
 }
 
 export async function PUT(req, { params }) {
+  const { denied } = await requireAdminPermission("series.edit");
+  if (denied) return denied;
+
   try {
     await connectToDB();
 
@@ -197,6 +201,9 @@ export async function PUT(req, { params }) {
 }
 
 export async function DELETE(req, { params }) {
+  const { denied } = await requireAdminPermission("series.delete");
+  if (denied) return denied;
+
   try {
     await connectToDB();
 

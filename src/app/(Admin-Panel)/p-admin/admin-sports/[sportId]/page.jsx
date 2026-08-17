@@ -21,10 +21,12 @@ import SortableCategoryCard from "@/components/admin/SortableCategoryCard";
 import AdminLoader from "@/components/admin/AdminLoader";
 import { useCategories, ADMIN_REF_TTL } from "@/hooks/useAdminRefData";
 import { optimisticReorder } from "@/lib/adminCache";
+import { useAdminPermissions } from "@/components/admin/AdminPermissionProvider";
 
 export default function SportCategoriesDetail() {
   const router = useRouter();
   const { sportId } = useParams();
+  const { can } = useAdminPermissions();
 
   const [searchTerm, setSearchTerm] = useState('');
 
@@ -101,12 +103,15 @@ export default function SportCategoriesDetail() {
               onChange={(e) => setSearchTerm(e.target.value)}
             />
           </div>
+          {can('sports.edit') && (
           <Link
             href={`/p-admin/admin-sports/edit/${sportId}`}
             className="flex items-center gap-2 px-4 py-2.5 rounded-[var(--radius)] text-sm font-bold text-gray-700 bg-gray-100 hover:bg-gray-200 transition-all"
           >
             <FiEdit3 size={14} /> ویرایش ورزش
           </Link>
+          )}
+          {can('categories.create') && (
           <button
             onClick={() => router.push(`/p-admin/admin-categories/add?sportId=${sportId}`)}
             className="flex items-center gap-2 px-4 py-2.5 rounded-[var(--radius)] text-sm font-bold text-white hover:shadow-lg hover:shadow-[var(--color-primary)]/25 hover:-translate-y-0.5 active:scale-95 transition-all"
@@ -114,6 +119,7 @@ export default function SportCategoriesDetail() {
           >
             <FaPlus size={14} /> افزودن دسته
           </button>
+          )}
         </div>
       </div>
 
@@ -128,7 +134,11 @@ export default function SportCategoriesDetail() {
           <p className="text-gray-400 font-bold">هنوز دسته‌بندی‌ای برای این ورزش ثبت نشده است</p>
         </div>
       ) : (
-        <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+        <DndContext
+          sensors={sensors}
+          collisionDetection={closestCenter}
+          onDragEnd={can('categories.reorder') ? handleDragEnd : undefined}
+        >
           <SortableContext items={filtered.map((c) => c._id)} strategy={rectSortingStrategy}>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
               {filtered.map((category, i) => (

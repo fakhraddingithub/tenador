@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { FiDollarSign, FiClock, FiSave, FiTrendingUp, FiTrendingDown, FiMinus } from "react-icons/fi";
 import { showToast } from "@/lib/toast";
+import { useAdminPermissions } from "@/components/admin/AdminPermissionProvider";
 
 function formatDate(iso) {
   if (!iso) return "—";
@@ -25,6 +26,8 @@ function TrendIcon({ current, prev }) {
  * منطق و رابط کاربری از صفحه‌ی قبلی exchange-rate منتقل شده است.
  */
 export default function ExchangeRateManager() {
+  const { can } = useAdminPermissions();
+  const canEdit = can("exchangeRate.edit");
   const [current, setCurrent] = useState(null);
   const [history, setHistory] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -171,6 +174,7 @@ export default function ExchangeRateManager() {
             />
           </div>
 
+          {canEdit ? (
           <button
             type="submit"
             disabled={saving || !rateNum}
@@ -180,6 +184,11 @@ export default function ExchangeRateManager() {
             <FiSave size={15} />
             {saving ? "در حال ذخیره..." : "ذخیره نرخ"}
           </button>
+          ) : (
+            <p className="text-xs font-bold text-gray-400">
+              دسترسی ویرایش این بخش را ندارید — مقادیر فقط برای مشاهده‌اند.
+            </p>
+          )}
         </div>
       </motion.form>
 

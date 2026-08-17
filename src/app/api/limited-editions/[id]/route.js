@@ -6,7 +6,7 @@ import LimitedEdition from "base/models/LimitedEdition";
 import Product from "base/models/Product";
 import { revalidateContent } from "@/lib/revalidate";
 import { apiError, handleApiError } from "@/lib/apiError";
-import requireAdmin from "@/lib/requireAdmin";
+import requireAdminPermission from "@/lib/requireAdminPermission";
 import {
   escapeRegexLiteral,
   validateLimitedEditionBrands,
@@ -23,6 +23,9 @@ const EDITABLE_FIELDS = [
 ];
 
 export async function GET(req, { params }) {
+  const { denied } = await requireAdminPermission("limitedEditions.view");
+  if (denied) return denied;
+
   try {
     await connectToDB();
 
@@ -48,10 +51,10 @@ export async function GET(req, { params }) {
 }
 
 export async function PUT(req, { params }) {
-  try {
-    const admin = await requireAdmin();
-    if (!admin) return apiError("دسترسی مدیر لازم است", 401);
+  const { denied } = await requireAdminPermission("limitedEditions.edit");
+  if (denied) return denied;
 
+  try {
     await connectToDB();
 
     const { id } = await params;
@@ -116,10 +119,10 @@ export async function PUT(req, { params }) {
 }
 
 export async function DELETE(req, { params }) {
-  try {
-    const admin = await requireAdmin();
-    if (!admin) return apiError("دسترسی مدیر لازم است", 401);
+  const { denied } = await requireAdminPermission("limitedEditions.delete");
+  if (denied) return denied;
 
+  try {
     await connectToDB();
 
     const { id } = await params;

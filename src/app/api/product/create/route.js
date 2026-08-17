@@ -7,6 +7,7 @@ import { revalidateContent } from "@/lib/revalidate";
 import { makeComboKey } from "@/lib/variantKey";
 import { apiError, handleApiError } from "@/lib/apiError";
 import { normalizeTargetAudience } from "base/utils/targetAudience";
+import requireAdminPermission from "@/lib/requireAdminPermission";
 
 /* ----------------------------------
    Generate unique SKU
@@ -59,6 +60,9 @@ function generateCombinations(options) {
    POST: Create Product
 ---------------------------------- */
 export async function POST(req) {
+  const { denied } = await requireAdminPermission("products.create");
+  if (denied) return denied;
+
   try {
     await connectToDB();
     const body = await req.json();

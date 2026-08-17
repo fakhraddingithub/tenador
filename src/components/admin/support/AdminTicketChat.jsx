@@ -38,6 +38,7 @@ import {
   STATUS_LABELS,
 } from "base/utils/ticketMeta";
 import useVisiblePoll from "@/hooks/useVisiblePoll";
+import { useAdminPermissions } from "@/components/admin/AdminPermissionProvider";
 
 const POLL_INTERVAL = 15000;
 const MAX_FILES = 6;
@@ -281,6 +282,11 @@ function MessageBubble({ message }) {
 
 /* ─── کامپوننت اصلی ──────────────────────────────────────────────────── */
 export default function AdminTicketChat({ ticketId }) {
+  // پاسخ = POST /tickets/[id]/messages → tickets.reply
+  // بستن/بازکردن = PATCH /tickets/[id]  → tickets.close
+  const { can } = useAdminPermissions();
+  const canReply = can("tickets.reply");
+  const canClose = can("tickets.close");
   const [ticket, setTicket] = useState(null);
   const [messages, setMessages] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -464,7 +470,7 @@ export default function AdminTicketChat({ ticketId }) {
         </div>
 
         <div className="flex items-center gap-2">
-          {isClosed ? (
+          {!canClose ? null : isClosed ? (
             <button
               onClick={handleReopen}
               disabled={statusBusy}
@@ -563,7 +569,12 @@ export default function AdminTicketChat({ ticketId }) {
       </div>
 
       {/* کامپوزر */}
-      {isClosed ? (
+      {!canReply ? (
+        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4 flex items-center gap-2 text-sm font-bold text-gray-500">
+          <FaLock size={13} className="text-gray-300" />
+          دسترسی پاسخ به تیکت را ندارید — این گفتگو فقط برای مشاهده است.
+        </div>
+      ) : isClosed ? (
         <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4 flex items-center gap-2 text-sm font-bold text-gray-500">
           <FaLock size={13} className="text-gray-300" />
           این تیکت بسته شده است. برای ادامه‌ی گفتگو ابتدا آن را باز کنید.

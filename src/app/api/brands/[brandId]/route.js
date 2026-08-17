@@ -4,7 +4,7 @@ import { NextResponse } from "next/server";
 import { revalidateContent } from "@/lib/revalidate";
 import { apiError, handleApiError } from "@/lib/apiError";
 import { sanitizeArticleBlocks } from "@/lib/articleValidation";
-import requireAdmin from "@/lib/requireAdmin";
+import requireAdminPermission from "@/lib/requireAdminPermission";
 
 export async function GET(req, { params }) {
   try {
@@ -34,9 +34,10 @@ export async function GET(req, { params }) {
 }
 
 export async function PUT(req, { params }) {
+  const { denied } = await requireAdminPermission("brands.edit");
+  if (denied) return denied;
+
   try {
-    const admin = await requireAdmin();
-    if (!admin) return apiError("دسترسی مدیر لازم است", 401);
     await connectToDB();
     const { brandId } = await params;
     const body = await req.json();
@@ -105,9 +106,10 @@ export async function PUT(req, { params }) {
 }
 
 export async function DELETE(req, { params }) {
+  const { denied } = await requireAdminPermission("brands.delete");
+  if (denied) return denied;
+
   try {
-    const admin = await requireAdmin();
-    if (!admin) return apiError("دسترسی مدیر لازم است", 401);
     await connectToDB();
     const { brandId } = await params;
     

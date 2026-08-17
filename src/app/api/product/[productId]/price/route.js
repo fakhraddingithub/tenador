@@ -17,6 +17,7 @@ import {
   loadQuantityDiscountMap,
 } from "base/services/priceEngine";
 import { eurToToman } from "@/lib/Exchangerate";
+import requireAdminPermission from "@/lib/requireAdminPermission";
 
 async function getUserFromToken() {
   const cookieStore = await cookies();
@@ -109,7 +110,17 @@ export async function GET(request, { params }) {
   }
 }
 
+/**
+ * ⚠️ این هندلر با وجود مسیرِ «/price»، خودِ محصول و همه‌ی واریانت‌هایش را حذف
+ * می‌کند (کپیِ DELETE /api/product/[productId]). هیچ فراخوانی‌ای در کدبیس
+ * ندارد و پیش‌تر فقط «کاربرِ واردشده» را می‌خواست — یعنی هر مشتریِ عادی
+ * می‌توانست هر محصولی را حذف کند. کلید بر اساس کاری که *واقعاً* می‌کند
+ * انتخاب شده است، نه بر اساس نامِ مسیر.
+ */
 export async function DELETE(request, { params }) {
+  const { denied } = await requireAdminPermission("products.delete");
+  if (denied) return denied;
+
   try {
     const param = await params
     const { productId } = param;
@@ -117,15 +128,6 @@ export async function DELETE(request, { params }) {
     if (!productId) {
       return NextResponse.json({ error: "شناسه محصول الزامی است" }, { status: 400 });
     }
-
-    // ۱. بررسی احراز هویت کاربر برای سطح دسترسی حذف
-    const user = await getUserFromToken();
-    if (!user) {
-      return NextResponse.json({ error: "لطفاً ابتدا وارد حساب کاربری خود شوید" }, { status: 401 });
-    }
-
-    // نکته اختیاری: اگر فیلد role دارید، می‌توانید دسترسی ادمین را اینجا چک کنید:
-    // if (user.role !== "ADMIN") return NextResponse.json({ error: "شما دسترسی لازم را ندارید" }, { status: 403 });
 
     await connectToDB();
 

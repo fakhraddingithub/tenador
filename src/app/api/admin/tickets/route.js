@@ -5,14 +5,14 @@
  * فیلترها: status, department, priority, assignedAdmin (id | "none"), q (جستجوی موضوع)
  * مرتب‌سازی: sort=lastMessageAt (پیش‌فرض) | createdAt | priority
  *
- * محافظت: requireAdmin — نقش از دیتابیس بررسی می‌شود، نه صرفاً توکن.
+ * محافظت: کلید tickets.view — دسترسی مؤثر از دیتابیس محاسبه می‌شود، نه از توکن.
  */
 
 import { NextResponse } from "next/server";
 import connectToDB from "base/configs/db";
 import "base/models/registerModels";
 import Ticket from "base/models/Ticket";
-import requireAdmin from "@/lib/requireAdmin";
+import requireAdminPermission from "@/lib/requireAdminPermission";
 import {
   TICKET_DEPARTMENTS,
   TICKET_PRIORITIES,
@@ -25,12 +25,10 @@ export const runtime = "nodejs";
 const PRIORITY_ORDER = { urgent: 0, high: 1, medium: 2, low: 3 };
 
 export async function GET(req) {
-  try {
-    const admin = await requireAdmin();
-    if (!admin) {
-      return NextResponse.json({ message: "دسترسی غیرمجاز" }, { status: 403 });
-    }
+  const { denied } = await requireAdminPermission("tickets.view");
+  if (denied) return denied;
 
+  try {
     await connectToDB();
 
     const { searchParams } = new URL(req.url);

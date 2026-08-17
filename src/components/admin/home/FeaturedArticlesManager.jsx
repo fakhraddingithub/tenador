@@ -5,11 +5,14 @@ import Link from "next/link";
 import { FiArrowRight, FiBookOpen, FiSave } from "react-icons/fi";
 import { toast } from "react-toastify";
 import PageHeader from "@/components/admin/PageHeader";
+import { useAdminPermissions } from "@/components/admin/AdminPermissionProvider";
 
 const SETTING_KEY = "home_featured_article_ids";
 const EMPTY_POSITIONS = Array(8).fill("");
 
 export default function FeaturedArticlesManager() {
+  const { can } = useAdminPermissions();
+  const canEdit = can("homeFeaturedArticles.edit");
   const [articles, setArticles] = useState([]);
   const [positions, setPositions] = useState(EMPTY_POSITIONS);
   const [loading, setLoading] = useState(true);
@@ -72,9 +75,13 @@ export default function FeaturedArticlesManager() {
             <Link href="/p-admin/admin-pages?tab=home" className="inline-flex items-center gap-2 border px-4 py-2 text-xs font-bold" style={{ borderColor: "var(--admin-border)", borderRadius: "var(--admin-radius)" }}>
               <FiArrowRight /> بازگشت
             </Link>
+            {canEdit ? (
             <button type="button" onClick={save} disabled={saving || loading} className="inline-flex items-center gap-2 px-4 py-2 text-xs font-bold text-white disabled:opacity-50" style={{ background: "var(--color-primary)", borderRadius: "var(--admin-radius)" }}>
               <FiSave /> {saving ? "در حال ذخیره…" : "ذخیره چیدمان"}
             </button>
+            ) : (
+              <p className="text-xs font-bold text-gray-400">دسترسی ویرایش این بخش را ندارید — مقادیر فقط برای مشاهده‌اند.</p>
+            )}
           </div>
         )}
       />

@@ -2,12 +2,22 @@ import { NextResponse } from "next/server";
 import connectToDB from "base/configs/db";
 import Banner from "base/models/Banner";
 import { revalidateContent } from "@/lib/revalidate";
+import requireAdminPermission from "@/lib/requireAdminPermission";
 
 export async function GET(req) {
+  const { searchParams } = new URL(req.url);
+  const adminMode = searchParams.get("admin") === "true";
+
+  // GET عمومی است (ویترین بنرهای فعال را می‌خواند) ولی `?admin=true` فیلترِ
+  // isActive را برمی‌دارد و بنرهای منتشرنشده را هم برمی‌گرداند — آن حالت
+  // دیگر عمومی نیست.
+  if (adminMode) {
+    const { denied } = await requireAdminPermission("homeBanners.edit");
+    if (denied) return denied;
+  }
+
   try {
     await connectToDB();
-    const { searchParams } = new URL(req.url);
-    const adminMode = searchParams.get("admin") === "true";
     const filter = adminMode ? {} : { isActive: true };
     const banners = await Banner.find(filter).sort({ order: 1, createdAt: -1 });
     return NextResponse.json({ success: true, banners });
@@ -17,6 +27,9 @@ export async function GET(req) {
 }
 
 export async function POST(req) {
+  const { denied } = await requireAdminPermission("homeBanners.edit");
+  if (denied) return denied;
+
   try {
     await connectToDB();
     const body = await req.json();

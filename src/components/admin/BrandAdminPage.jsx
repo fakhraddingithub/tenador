@@ -32,6 +32,7 @@ import {
 } from "@dnd-kit/sortable";
 import { useLimitedEditions, ADMIN_REF_TTL } from "@/hooks/useAdminRefData";
 import { optimisticReorder } from "@/lib/adminCache";
+import { useAdminPermissions } from "@/components/admin/AdminPermissionProvider";
 
 const swalTheme = {
   confirmButtonColor: "var(--color-primary)",
@@ -46,6 +47,7 @@ const swalTheme = {
 
 export default function BrandAdminPage({ brandId }) {
   const router = useRouter();
+  const { can } = useAdminPermissions();
 
   // 🟢 برند + سری‌هایش — پاسخِ کامل در کش می‌ماند و ترتیبِ سری‌ها هم روی همین
   // کش (`data.brand.series`) جابه‌جا می‌شود؛ هیچ نسخه‌ی محلیِ موازی‌ای نیست.
@@ -200,18 +202,22 @@ export default function BrandAdminPage({ brandId }) {
         </div>
 
         <div className="flex items-center gap-2">
+          {can("brands.edit") && (
           <button
             onClick={() => router.push(`/p-admin/admin-brands/edit/${brandId}`)}
             className="flex items-center gap-2 px-4 py-2.5 rounded-[var(--radius)] text-sm font-bold bg-white border-2 border-gray-200 text-gray-700 hover:border-gray-300 transition-all"
           >
             <FaEdit size={12} /> ویرایش برند
           </button>
+          )}
+          {can("brands.delete") && (
           <button
             onClick={handleDeleteBrand}
             className="flex items-center gap-2 px-4 py-2.5 rounded-[var(--radius)] text-sm font-bold bg-white border-2 border-red-100 text-red-500 hover:bg-red-50 transition-all"
           >
             <FaTrash size={12} /> حذف برند
           </button>
+          )}
         </div>
       </div>
 
@@ -252,13 +258,15 @@ export default function BrandAdminPage({ brandId }) {
           <h2 className="text-base font-bold text-gray-900">
             سری‌های برند
           </h2>
+          {can("series.create") && (
           <Link
-            href={`${brandId}/add-serie`}
+            href={`/p-admin/admin-brands/${brandId}/add-serie`}
             className="flex items-center gap-2 px-4 py-2.5 rounded-[var(--radius)] text-sm font-bold text-white hover:shadow-lg hover:shadow-[var(--color-primary)]/25 hover:-translate-y-0.5 active:scale-95 transition-all"
             style={{ background: "var(--color-primary)" }}
           >
             <FaPlus size={12} /> ایجاد سری جدید
           </Link>
+          )}
         </div>
 
         {rootSeries.length === 0 ? (
@@ -269,7 +277,11 @@ export default function BrandAdminPage({ brandId }) {
             <p className="text-gray-400 font-bold">هنوز سری‌ای برای این برند ثبت نشده</p>
           </div>
         ) : (
-          <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+          <DndContext
+            sensors={sensors}
+            collisionDetection={closestCenter}
+            onDragEnd={can("series.edit") ? handleDragEnd : undefined}
+          >
             <SortableContext
               items={rootSeries.map((s) => s._id)}
               strategy={rectSortingStrategy}
@@ -310,6 +322,7 @@ export default function BrandAdminPage({ brandId }) {
               {limitedEditions.length} لیمیتد ادیشن ثبت شده
             </p>
           </div>
+          {can("limitedEditions.create") && (
           <Link
             href={`/p-admin/admin-brands/${brandId}/limited-editions/add`}
             className="flex items-center gap-2 px-4 py-2.5 rounded-[var(--radius)] text-sm font-bold text-white hover:shadow-lg hover:shadow-[var(--color-primary)]/25 hover:-translate-y-0.5 active:scale-95 transition-all"
@@ -317,6 +330,7 @@ export default function BrandAdminPage({ brandId }) {
           >
             <FaPlus size={12} /> افزودن لیمیتد ادیشن
           </Link>
+          )}
         </div>
 
         {limitedEditions.length === 0 ? (
@@ -360,11 +374,17 @@ function StatMini({ icon: Icon, label, value }) {
 }
 
 function SerieCard({ serie, brandId, onOpen, onProducts, onEdit, onDelete }) {
+  const { can, canRoute } = useAdminPermissions();
+  const canOpen = canRoute(`/p-admin/admin-brands/${brandId}/${serie._id}`);
+  const canProducts = canRoute(`/p-admin/admin-brands/${brandId}/${serie._id}/products`);
+  const canEdit = canRoute(`/p-admin/admin-brands/${brandId}/${serie._id}/edit`);
+  const canDelete = can("series.delete");
+
   return (
     <div className="group relative bg-white rounded-2xl border border-gray-100 overflow-hidden hover:shadow-xl hover:-translate-y-1 transition-all duration-300">
       <div className="h-1 w-full" style={{ background: "var(--color-primary)" }} />
 
-      <button onClick={onOpen} className="block w-full text-right">
+      <button onClick={canOpen ? onOpen : undefined} disabled={!canOpen} className="block w-full text-right">
         <div className="relative h-36 bg-gray-50 overflow-hidden">
           {serie.image ? (
             <img
@@ -401,7 +421,9 @@ function SerieCard({ serie, brandId, onOpen, onProducts, onEdit, onDelete }) {
           )}
         </div>
 
+        {(canProducts || canEdit || canDelete) && (
         <div className="flex gap-2">
+          {canProducts && (
           <button
             onClick={(e) => {
               e.stopPropagation();
@@ -411,6 +433,8 @@ function SerieCard({ serie, brandId, onOpen, onProducts, onEdit, onDelete }) {
           >
             <FaBox size={12} /> محصولات
           </button>
+          )}
+          {canEdit && (
           <button
             onClick={(e) => {
               e.stopPropagation();
@@ -420,6 +444,8 @@ function SerieCard({ serie, brandId, onOpen, onProducts, onEdit, onDelete }) {
           >
             <FaEdit size={12} /> ویرایش
           </button>
+          )}
+          {canDelete && (
           <button
             onClick={(e) => {
               e.stopPropagation();
@@ -429,13 +455,19 @@ function SerieCard({ serie, brandId, onOpen, onProducts, onEdit, onDelete }) {
           >
             <FaTrash size={13} />
           </button>
+          )}
         </div>
+        )}
       </div>
     </div>
   );
 }
 
 function LimitedEditionCard({ item, brandId, onDelete }) {
+  const { can } = useAdminPermissions();
+  const canEdit = can("limitedEditions.edit");
+  const canDelete = can("limitedEditions.delete");
+
   return (
     <div className="group relative bg-white rounded-2xl border border-gray-100 overflow-hidden hover:shadow-xl hover:-translate-y-1 transition-all duration-300">
       <div
@@ -469,20 +501,26 @@ function LimitedEditionCard({ item, brandId, onDelete }) {
           {item.name}
         </p>
 
+        {(canEdit || canDelete) && (
         <div className="flex gap-2">
+          {canEdit && (
           <Link
             href={`/p-admin/admin-brands/${brandId}/limited-editions/${item._id}/edit`}
             className="flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-[var(--radius)] text-xs font-bold bg-gray-50 text-gray-700 hover:bg-gray-900 hover:text-white transition-all"
           >
             <FaEdit size={12} /> ویرایش
           </Link>
+          )}
+          {canDelete && (
           <button
             onClick={onDelete}
             className="w-10 h-10 flex items-center justify-center rounded-[var(--radius)] bg-red-50 text-red-400 hover:bg-red-500 hover:text-white transition-all border border-red-100"
           >
             <FaTrash size={13} />
           </button>
+          )}
         </div>
+        )}
       </div>
     </div>
   );

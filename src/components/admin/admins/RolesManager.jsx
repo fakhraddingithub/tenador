@@ -16,6 +16,7 @@ import {
 } from 'lucide-react';
 
 import PermissionPicker from './PermissionPicker';
+import { useAdminPermissions } from '@/components/admin/AdminPermissionProvider';
 
 const emptyRole = { name: '', description: '', permissions: [] };
 
@@ -23,6 +24,12 @@ const emptyRole = { name: '', description: '', permissions: [] };
 const ACL_TTL = { dedupingInterval: 10_000 };
 
 export default function RolesManager({ open, onClose, modules, onRolesChanged }) {
+  // نقش‌ها ماژولِ خودشان را دارند: /api/admin/roles با roles.* گیت شده است،
+  // نه با admins.*.
+  const { can } = useAdminPermissions();
+  const canCreateRole = can('roles.create');
+  const canEditRole = can('roles.edit');
+  const canDeleteRole = can('roles.delete');
   const [submitting, setSubmitting] = useState(false);
 
   // null = حالت لیست | { _id? , name, description, permissions } = فرم ساخت/ویرایش
@@ -188,6 +195,7 @@ export default function RolesManager({ open, onClose, modules, onRolesChanged })
                 }
               />
 
+              {(editingRole._id ? canEditRole : canCreateRole) && (
               <button
                 onClick={handleSaveRole}
                 disabled={submitting}
@@ -201,10 +209,12 @@ export default function RolesManager({ open, onClose, modules, onRolesChanged })
                 )}
                 {editingRole._id ? 'ذخیره تغییرات نقش' : 'ایجاد نقش'}
               </button>
+              )}
             </>
           ) : (
             /* ─── لیست نقش‌ها ─── */
             <>
+              {canCreateRole && (
               <button
                 onClick={() => setEditingRole({ ...emptyRole })}
                 className="w-full flex items-center justify-center gap-2 border-2 border-dashed border-gray-300 rounded-2xl py-4 text-xs font-bold text-gray-500 hover:border-[var(--color-primary)] hover:text-[var(--color-primary)] transition-all bg-white"
@@ -212,6 +222,7 @@ export default function RolesManager({ open, onClose, modules, onRolesChanged })
                 <Plus size={15} />
                 ساخت نقش جدید (مجموعه دسترسی نام‌دار)
               </button>
+              )}
 
               {loading ? (
                 <div className="flex items-center justify-center h-32">
@@ -256,6 +267,7 @@ export default function RolesManager({ open, onClose, modules, onRolesChanged })
                           <Users size={11} />
                           {role.adminCount || 0} ادمین
                         </span>
+                        {canEditRole && (
                         <button
                           onClick={() =>
                             setEditingRole({
@@ -270,6 +282,8 @@ export default function RolesManager({ open, onClose, modules, onRolesChanged })
                         >
                           <Pencil size={13} />
                         </button>
+                        )}
+                        {canDeleteRole && (
                         <button
                           onClick={() => handleDeleteRole(role)}
                           className="w-8 h-8 rounded-xl bg-red-50 text-red-400 hover:bg-red-500 hover:text-white transition-all flex items-center justify-center"
@@ -277,6 +291,7 @@ export default function RolesManager({ open, onClose, modules, onRolesChanged })
                         >
                           <Trash2 size={13} />
                         </button>
+                        )}
                       </div>
                     </div>
                   ))}

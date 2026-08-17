@@ -32,7 +32,12 @@ function isLive(coupon) {
   return coupon.active && !isExpired(coupon.endAt) && new Date(coupon.startAt) <= new Date();
 }
 
+import { useAdminPermissions } from "@/components/admin/AdminPermissionProvider";
+
 export default function CouponCard({ coupon, onEdit, onDelete, onToggle }) {
+  const { can } = useAdminPermissions();
+  const canEdit = can("discounts.edit");
+  const canDelete = can("discounts.delete");
   const live = isLive(coupon);
   const expired = isExpired(coupon.endAt);
   const capacityFull =
@@ -133,13 +138,17 @@ export default function CouponCard({ coupon, onEdit, onDelete, onToggle }) {
         </div>
 
         {/* Actions */}
+        {(canEdit || canDelete) && (
         <div className="flex flex-col gap-1.5 shrink-0">
+          {canEdit && (
           <button
             onClick={() => onEdit(coupon)}
             className="text-xs px-3 py-1.5 rounded-lg bg-gray-100 text-gray-700 hover:bg-gray-200 transition-colors"
           >
             ویرایش
           </button>
+          )}
+          {canEdit && (
           <button
             onClick={() => onToggle(coupon._id, coupon.active)}
             className={`text-xs px-3 py-1.5 rounded-lg transition-colors ${
@@ -150,13 +159,17 @@ export default function CouponCard({ coupon, onEdit, onDelete, onToggle }) {
           >
             {coupon.active ? "غیرفعال" : "فعال"}
           </button>
+          )}
+          {canDelete && (
           <button
             onClick={() => onDelete(coupon._id)}
             className="text-xs px-3 py-1.5 rounded-lg bg-red-50 text-red-600 hover:bg-red-100 transition-colors"
           >
             حذف
           </button>
+          )}
         </div>
+        )}
       </div>
     </div>
   );

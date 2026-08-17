@@ -10,6 +10,7 @@ import {
 import { FaBoxOpen } from 'react-icons/fa';
 import SecondHandHeaderUploader from '@/components/admin/SecondHandHeaderUploader';
 import AdminLoader from '@/components/admin/AdminLoader';
+import { useAdminPermissions } from '@/components/admin/AdminPermissionProvider';
 
 /* ─── کارت آمار ─── */
 function StatCard({ label, value, color = 'text-neutral-800' }) {
@@ -24,6 +25,9 @@ function StatCard({ label, value, color = 'text-neutral-800' }) {
 /* ─── کارت دسترسی سریع ─── */
 function SectionCard({ icon: Icon, title, desc, href, createHref, accent, stats }) {
   const router = useRouter();
+  // مجوز از روی خودِ روتِ مقصد خوانده می‌شود، پس این کارت برای هر دو بخش
+  // (محصولات دست‌دوم و کارت‌های سلامت) بدون کلیدِ سخت کار می‌کند.
+  const { canRoute } = useAdminPermissions();
   const isOrange = accent === 'orange';
 
   const base = isOrange ? 'text-[var(--color-primary)]' : 'text-blue-500';
@@ -45,12 +49,14 @@ function SectionCard({ icon: Icon, title, desc, href, createHref, accent, stats 
           <div className={`p-3 ${light} rounded-[var(--radius)]`}>
             <Icon size={22} className={base} />
           </div>
+          {canRoute(createHref) && (
           <button
             onClick={() => router.push(createHref)}
             className={`flex items-center gap-1.5 text-xs font-bold px-3 py-1.5 rounded-lg border transition-all ${addBtn}`}
           >
             <FiPlus size={12} /> افزودن
           </button>
+          )}
         </div>
 
         <h2 className="text-lg font-bold text-neutral-800 mb-1">{title}</h2>
@@ -84,10 +90,14 @@ function SectionCard({ icon: Icon, title, desc, href, createHref, accent, stats 
 
 /* ─── ردیف محصول اخیر ─── */
 function RecentRow({ item }) {
+  const { canRoute } = useAdminPermissions();
   const isAvailable = item.status === 'available';
+  const editHref = `/p-admin/admin-secondHands/used-products/${item._id}/edit`;
+  const Row = canRoute(editHref) ? Link : 'div';
+
   return (
-    <Link
-      href={`/p-admin/admin-secondHands/used-products/${item._id}/edit`}
+    <Row
+      href={canRoute(editHref) ? editHref : undefined}
       className="flex items-center gap-4 px-6 py-4 hover:bg-neutral-50 transition-all group"
     >
       <div className="w-11 h-11 rounded-[var(--radius)] overflow-hidden bg-neutral-100 flex-shrink-0">
@@ -123,12 +133,13 @@ function RecentRow({ item }) {
       </div>
 
       <FiChevronLeft size={13} className="text-neutral-300 group-hover:text-[var(--color-primary)] transition-colors flex-shrink-0" />
-    </Link>
+    </Row>
   );
 }
 
 /* ─── صفحه اصلی Hub ─── */
 export default function UsedProductsHubPage() {
+  const { can } = useAdminPermissions();
   const [stats, setStats] = useState(null);
   const [recentItems, setRecent] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -177,12 +188,14 @@ export default function UsedProductsHubPage() {
               </div>
             </div>
 
+            {can('secondHand.create') && (
             <Link
               href="/p-admin/admin-secondHands/used-products/create"
               className="flex items-center gap-2 bg-[var(--color-primary)] text-white px-5 py-2.5 rounded-[var(--radius)] text-sm font-bold hover:shadow-lg hover:shadow-[var(--color-primary)]/20 transition-all"
             >
               <FiPlus size={16} /> محصول جدید
             </Link>
+            )}
           </div>
         </div>
       </div>
@@ -255,12 +268,14 @@ export default function UsedProductsHubPage() {
             <div className="text-center py-16 text-neutral-400">
               <FiPackage size={32} className="mx-auto mb-3 opacity-20" />
               <p className="text-sm">هنوز محصولی ثبت نشده</p>
+              {can('secondHand.create') && (
               <Link
                 href="/p-admin/admin-secondHands/used-products/create"
                 className="inline-flex items-center gap-1 mt-3 text-xs text-[var(--color-primary)] font-bold hover:underline"
               >
                 <FiPlus size={12} /> ثبت اولین محصول
               </Link>
+              )}
             </div>
           ) : (
             <div className="divide-y divide-neutral-50">

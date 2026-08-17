@@ -15,6 +15,7 @@ import SortableSportCard from "@/components/templates/sports/SortableSportCard";
 import AdminLoader from "@/components/admin/AdminLoader";
 import { useSports } from "@/hooks/useAdminRefData";
 import { optimisticReorder } from "@/lib/adminCache";
+import { useAdminPermissions } from "@/components/admin/AdminPermissionProvider";
 
 const swalErrorTheme = {
   confirmButtonColor: 'var(--color-primary)',
@@ -40,6 +41,7 @@ function PageHeader({ title, subtitle, backHref = '/p-admin', actions }) {
 
 export default function AdminSports() {
   const [searchTerm, setSearchTerm] = useState('');
+  const { can } = useAdminPermissions();
 
   // 🟢 همان کلیدِ /api/sports که دراپ‌داون‌های فرم‌ها استفاده می‌کنند — کشِ مشترک،
   // پس بازگشت به این صفحه در پنجره‌ی ۵ دقیقه‌ای هیچ درخواستی نمی‌زند.
@@ -133,13 +135,15 @@ export default function AdminSports() {
                 className="pr-9 pl-4 py-2.5 text-sm font-bold bg-white border-2 border-gray-200 rounded-[var(--radius)] w-56 focus:outline-none focus:border-[var(--color-primary)] transition-all"
               />
             </div>
-            <Link
-              href="/p-admin/admin-sports/add"
-              className="flex items-center gap-2 px-4 py-2.5 rounded-[var(--radius)] text-sm font-bold text-white transition-all hover:shadow-lg hover:shadow-[var(--color-primary)]/25 hover:-translate-y-0.5 active:scale-95"
-              style={{ background: 'var(--color-primary)' }}
-            >
-              <FiPlus size={16} /> افزودن ورزش
-            </Link>
+            {can('sports.create') && (
+              <Link
+                href="/p-admin/admin-sports/add"
+                className="flex items-center gap-2 px-4 py-2.5 rounded-[var(--radius)] text-sm font-bold text-white transition-all hover:shadow-lg hover:shadow-[var(--color-primary)]/25 hover:-translate-y-0.5 active:scale-95"
+                style={{ background: 'var(--color-primary)' }}
+              >
+                <FiPlus size={16} /> افزودن ورزش
+              </Link>
+            )}
           </>
         }
       />
@@ -154,7 +158,13 @@ export default function AdminSports() {
           <p className="text-gray-400 font-bold">هیچ ورزشی یافت نشد</p>
         </div>
       ) : (
-        <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+        // بدونِ sports.reorder دستگیره‌ی درگ اصلاً رندر نمی‌شود، پس DndContext
+        // بی‌اثر است؛ onDragEnd هم برای همان حالت خنثی می‌شود (دفاع در عمق).
+        <DndContext
+          sensors={sensors}
+          collisionDetection={closestCenter}
+          onDragEnd={can('sports.reorder') ? handleDragEnd : undefined}
+        >
           <SortableContext items={filteredSports.map((s) => s._id)} strategy={rectSortingStrategy}>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
               {filteredSports.map((sport, i) => (

@@ -11,8 +11,22 @@ import { FiMenu } from "react-icons/fi";
 
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
+import { useAdminPermissions } from "@/components/admin/AdminPermissionProvider";
+
+/** وقتی مجوزِ باز کردنِ برند نیست، همان قاب بدون لینک رندر می‌شود. */
+function LogoShell({ href, className, children }) {
+  return href ? (
+    <Link href={href} className={className}>{children}</Link>
+  ) : (
+    <div className={className}>{children}</div>
+  );
+}
 
 export default function SortableBrandCard({ brand, handleDelete }) {
+  const { can, canRoute } = useAdminPermissions();
+  const detailHref = `/p-admin/admin-brands/${brand._id}`;
+  const canOpen = canRoute(detailHref);
+
   const {
     attributes,
     listeners,
@@ -43,7 +57,8 @@ export default function SortableBrandCard({ brand, handleDelete }) {
       {/* Top accent */}
       <div className="h-1 w-full" style={{ background: "var(--color-primary)" }} />
 
-      {/* Drag Handle */}
+      {/* Drag Handle — بدونِ brands.reorder رندر نمی‌شود */}
+      {can("brands.reorder") && (
       <button
         {...attributes}
         {...listeners}
@@ -65,9 +80,12 @@ export default function SortableBrandCard({ brand, handleDelete }) {
       >
         <FiMenu size={18} />
       </button>
+      )}
 
       {/* Logo */}
-      <Link href={`admin-brands/${brand._id}`} className="block px-6 pt-7 pb-4">
+      {/* لینکِ نسبیِ قبلی (`admin-brands/${id}`) از صفحه‌های تودرتو مقصد اشتباه
+          می‌ساخت؛ حالا مطلق است و با همان href مجوز سنجیده می‌شود. */}
+      <LogoShell href={canOpen ? detailHref : null} className="block px-6 pt-7 pb-4">
         <div className="flex justify-center">
           <div className="w-20 h-20 bg-gray-50 rounded-2xl border border-gray-100 flex items-center justify-center overflow-hidden p-3 group-hover:scale-105 transition-transform">
             {brand.logo ? (
@@ -83,7 +101,7 @@ export default function SortableBrandCard({ brand, handleDelete }) {
             )}
           </div>
         </div>
-      </Link>
+      </LogoShell>
 
       {/* Info */}
       <div className="px-6 pb-5">
@@ -103,20 +121,26 @@ export default function SortableBrandCard({ brand, handleDelete }) {
         </div>
 
         {/* Actions */}
+        {(can("brands.edit") || can("brands.delete")) && (
         <div className="flex gap-2">
+          {can("brands.edit") && (
           <Link
             href={`/p-admin/admin-brands/edit/${brand._id}`}
             className="flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-[var(--radius)] text-xs font-bold bg-gray-50 text-gray-700 hover:bg-gray-900 hover:text-white transition-all"
           >
             <FaEdit size={12} /> ویرایش
           </Link>
+          )}
+          {can("brands.delete") && (
           <button
             onClick={() => handleDelete(brand)}
             className="w-10 h-10 flex items-center justify-center rounded-[var(--radius)] bg-red-50 text-red-400 hover:bg-red-500 hover:text-white transition-all border border-red-100"
           >
             <FaTrash size={13} />
           </button>
+          )}
         </div>
+        )}
       </div>
     </div>
   );

@@ -7,10 +7,11 @@ import { toast } from 'react-toastify'
 import AdminLoader from '@/components/admin/AdminLoader'
 import { getUserFullName } from 'base/utils/userName'
 import { useNotifications } from '@/components/admin/NotificationProvider'
+import { useAdminPermissions } from '@/components/admin/AdminPermissionProvider'
 import {
   Users, UserCheck, UserX, ShieldAlert, Search, Filter,
   MoreVertical, Shield, Ban, CheckCircle, ArrowLeftRight,
-  GraduationCap, Award, Key, Eye, Megaphone
+  GraduationCap, Award, Eye, Megaphone
 } from 'lucide-react'
 
 const roleLabels = {
@@ -23,6 +24,8 @@ const roleLabels = {
 }
 
 export default function AdminUsersManagement() {
+  const { can, canRoute } = useAdminPermissions()
+  const canBan = can('users.ban')
   const router = useRouter()
   const { sections } = useNotifications()
   const coachBadge = (sections?.coachApplications || 0) + (sections?.coachCredits || 0)
@@ -82,18 +85,9 @@ export default function AdminUsersManagement() {
     }
   }
 
-  const handleChangeRole = async (user) => {
-    setActiveMenu(null)
-    const nextRole = user.role === 'admin' ? 'user' : 'admin'
-    try {
-      await patchUser(user._id, { role: nextRole })
-      const updated = users.map(u => u._id === user._id ? { ...u, role: nextRole } : u)
-      setUsers(updated)
-      toast.success(nextRole === 'admin' ? 'کاربر به مدیر ارتقا یافت' : 'کاربر به حالت عادی تغییر یافت')
-    } catch (err) {
-      toast.error(err.message)
-    }
-  }
+  // «ارتقا به مدیر» عمداً حذف شد (فاز ۳): ادمین‌شدن فقط از مسیر عضویتِ Admin
+  // انجام می‌شود و سرور `role: "admin"` را از این روت همیشه رد می‌کند.
+  // تغییرِ نقش‌های عادی همچنان در صفحه‌ی جزئیاتِ کاربر در دسترس است.
 
   const openDetails = (userId) => router.push(`/p-admin/users/${userId}`)
 
@@ -138,6 +132,7 @@ export default function AdminUsersManagement() {
           <p className="text-xs font-bold text-gray-400">دسترسی کامل به نقش‌ها، سطوح دسترسی و وضعیت حساب‌ها</p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
+          {canRoute('/p-admin/users/notifications') && (
           <button
             onClick={() => router.push('/p-admin/users/notifications')}
             className="inline-flex items-center gap-2 text-white text-xs font-bold px-4 py-2.5 rounded-[var(--radius)] transition-all hover:shadow-lg hover:-translate-y-0.5 active:scale-95"
@@ -146,6 +141,8 @@ export default function AdminUsersManagement() {
             <Megaphone size={15} />
             ارسال اعلان
           </button>
+          )}
+          {canRoute('/p-admin/users/admins') && (
           <button
             onClick={() => router.push('/p-admin/users/admins')}
             className="inline-flex items-center gap-2 text-white text-xs font-bold px-4 py-2.5 rounded-[var(--radius)] transition-all hover:shadow-lg hover:-translate-y-0.5 active:scale-95"
@@ -155,6 +152,8 @@ export default function AdminUsersManagement() {
             مدیریت ادمین‌ها
             <ArrowLeftRight size={13} className="opacity-50" />
           </button>
+          )}
+          {canRoute('/p-admin/users/coaches') && (
           <button
             onClick={() => router.push('/p-admin/users/coaches')}
             className="relative inline-flex items-center gap-2 text-white text-xs font-bold px-4 py-2.5 rounded-[var(--radius)] transition-all hover:shadow-lg hover:-translate-y-0.5 active:scale-95"
@@ -170,6 +169,7 @@ export default function AdminUsersManagement() {
               </span>
             )}
           </button>
+          )}
         </div>
       </div>
 
@@ -335,6 +335,7 @@ export default function AdminUsersManagement() {
                               <Eye size={13} className="text-gray-400" />
                               مشاهده جزئیات
                             </button>
+                            {canBan && (
                             <button
                               onClick={() => handleToggleBlock(user)}
                               className={`w-full flex items-center gap-2 px-3 py-2 text-xs font-bold rounded-[var(--radius)] transition-colors ${!user.isBanned ? 'text-red-600 hover:bg-red-50' : 'text-emerald-600 hover:bg-emerald-50'}`}
@@ -342,13 +343,7 @@ export default function AdminUsersManagement() {
                               {!user.isBanned ? <Ban size={13} /> : <CheckCircle size={13} />}
                               {!user.isBanned ? 'مسدودسازی' : 'رفع مسدودیت'}
                             </button>
-                            <button
-                              onClick={() => handleChangeRole(user)}
-                              className="w-full flex items-center gap-2 px-3 py-2 text-xs font-bold text-gray-700 hover:bg-gray-50 rounded-[var(--radius)] transition-colors"
-                            >
-                              <Key size={13} className="text-gray-400" />
-                              {user.role === 'admin' ? 'تغییر به کاربر' : 'ارتقا به مدیر'}
-                            </button>
+                            )}
                           </motion.div>
                         </>
                       )}
@@ -422,6 +417,7 @@ export default function AdminUsersManagement() {
                 >
                   <Eye size={13} className="text-gray-400" /> جزئیات
                 </button>
+                {canBan && (
                 <button
                   onClick={() => handleToggleBlock(user)}
                   className={`flex-1 inline-flex items-center justify-center gap-1.5 px-3 py-2 text-[11px] font-bold rounded-[var(--radius)] border ${!user.isBanned ? 'text-red-600 bg-red-50 border-red-100' : 'text-emerald-600 bg-emerald-50 border-emerald-100'}`}
@@ -429,13 +425,7 @@ export default function AdminUsersManagement() {
                   {!user.isBanned ? <Ban size={13} /> : <CheckCircle size={13} />}
                   {!user.isBanned ? 'مسدود' : 'رفع مسدودیت'}
                 </button>
-                <button
-                  onClick={() => handleChangeRole(user)}
-                  className="inline-flex items-center justify-center px-3 py-2 text-[11px] font-bold text-gray-700 bg-gray-50 border border-gray-100 rounded-[var(--radius)]"
-                  title={user.role === 'admin' ? 'تغییر به کاربر' : 'ارتقا به مدیر'}
-                >
-                  <Key size={13} className="text-gray-400" />
-                </button>
+                )}
               </div>
             </div>
           )) : (

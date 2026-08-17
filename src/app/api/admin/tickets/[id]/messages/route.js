@@ -14,19 +14,17 @@ import "base/models/registerModels";
 import Ticket from "base/models/Ticket";
 import TicketMessage from "base/models/TicketMessage";
 import User from "base/models/User";
-import requireAdmin from "@/lib/requireAdmin";
+import requireAdminPermission from "@/lib/requireAdminPermission";
 import { sanitizeAttachments } from "@/lib/ticketUtils";
 import { sendTicketReplyEmail } from "@/lib/emailService";
 
 export const runtime = "nodejs";
 
 export async function POST(req, { params }) {
-  try {
-    const admin = await requireAdmin();
-    if (!admin) {
-      return NextResponse.json({ message: "دسترسی غیرمجاز" }, { status: 403 });
-    }
+  const { actor: admin, denied } = await requireAdminPermission("tickets.reply");
+  if (denied) return denied;
 
+  try {
     await connectToDB();
     const { id } = await params;
     const payload = await req.json();

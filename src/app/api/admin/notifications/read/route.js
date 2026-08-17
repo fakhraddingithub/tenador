@@ -17,27 +17,31 @@ import { NextResponse } from "next/server";
 import connectToDB from "base/configs/db";
 import "base/models/registerModels";
 import ContactMessage from "base/models/ContactMessage";
-import { markNotificationsRead } from "base/services/notificationService";
+import {
+  SECTION_BY_TYPE,
+  markNotificationsRead,
+} from "base/services/notificationService";
+import {
+  constrainReadFilterToPermissions,
+  filterNotificationPayload,
+} from "@/lib/apiPermissions";
 
-import requireAdmin, { unauthorized } from "@/lib/requireAdmin";
+import requireAdminPermission from "@/lib/requireAdminPermission";
 
 export const runtime = "nodejs";
 
-// نقش ادمین از دیتابیس بررسی می‌شود (توکن به‌تنهایی قابل‌اعتماد نیست).
-async function getAdminUser() {
-  return await requireAdmin();
-}
-
 export async function POST(req) {
-  if (!(await requireAdmin())) return unauthorized();
+  // بدون کلیدِ اختصاصی: علامت‌زدنِ اعلان‌ها به‌عنوان خوانده‌شده، وضعیتِ خودِ
+  // ادمین است نه داده‌ی یک ماژول.
+  //
+  // پیش‌تر این هندلر requireAdmin() را دو بار صدا می‌زد (یک بار مستقیم و یک
+  // بار از طریق getAdminUser)؛ آن wrapper حذف شد چون خروجی‌اش پس از بررسی
+  // هیچ‌جا استفاده نمی‌شد و فقط یک رفت‌وبرگشتِ اضافی به دیتابیس بود.
+  const { ctx, denied } = await requireAdminPermission();
+  if (denied) return denied;
 
   try {
     await connectToDB();
-
-    const admin = await getAdminUser();
-    if (!admin?.userId) {
-      return NextResponse.json({ message: "احراز هویت لازم است" }, { status: 401 });
-    }
 
     let body = {};
     try {
@@ -46,12 +50,25 @@ export async function POST(req) {
       /* بدون body */
     }
 
+    // ادمین نباید بتواند اعلانِ ماژولی را که نمی‌بیند «خوانده‌شده» کند —
+    // حتی با فرستادنِ ids یا all:true.
+    const scopedFilter = constrainReadFilterToPermissions(body, ctx.permissions);
+
     const [counts, contactNew] = await Promise.all([
-      markNotificationsRead(body || {}),
+      markNotificationsRead(scopedFilter),
       ContactMessage.countDocuments({ status: "new" }),
     ]);
 
-    return NextResponse.json({ counts, contactNew }, { status: 200 });
+    const visible = filterNotificationPayload(
+      { items: [], counts, contactNew },
+      ctx.permissions,
+      SECTION_BY_TYPE
+    );
+
+    return NextResponse.json(
+      { counts: visible.counts, contactNew: visible.contactNew },
+      { status: 200 }
+    );
   } catch (error) {
     console.error("[admin/notifications/read POST]", error);
     return NextResponse.json({ message: "خطای داخلی سرور" }, { status: 500 });

@@ -6,17 +6,17 @@ import LimitedEdition from "base/models/LimitedEdition";
 import { registerSlug } from "base/actions/registerSlug";
 import { revalidateContent } from "@/lib/revalidate";
 import { apiError, handleApiError } from "@/lib/apiError";
-import requireAdmin from "@/lib/requireAdmin";
+import requireAdminPermission from "@/lib/requireAdminPermission";
 import {
   escapeRegexLiteral,
   validateLimitedEditionBrands,
 } from "@/lib/limitedEditionRelations";
 
 export async function POST(req) {
-  try {
-    const admin = await requireAdmin();
-    if (!admin) return apiError("دسترسی مدیر لازم است", 401);
+  const { denied } = await requireAdminPermission("limitedEditions.create");
+  if (denied) return denied;
 
+  try {
     await connectToDB();
 
     const body = await req.json();

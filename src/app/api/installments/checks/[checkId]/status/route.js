@@ -18,8 +18,6 @@
  */
 
 import { NextResponse } from "next/server";
-import { cookies } from "next/headers";
-import { verifyToken } from "base/utils/auth.js";
 import connectToDB from "base/configs/db";
 import "base/models/registerModels";
 import Installment from "base/models/Installment.js";
@@ -31,25 +29,18 @@ import {
   sendInstallmentCheckClearedEmail,
   sendInstallmentCompletedEmail,
 } from "@/lib/emailService";
-
-async function getAuthUser() {
-  const cookieStore = await cookies();
-  const token = cookieStore.get("accessToken")?.value;
-  if (!token) return null;
-  const decoded = verifyToken(token);
-  if (!decoded?.userId) return null;
-  return decoded;
-}
+import requireAdminPermission from "@/lib/requireAdminPermission";
 
 export async function PATCH(req, { params }) {
+  /* ── احراز هویت + دسترسیِ زنده ──
+     پیش‌تر فقط ادعای `role` داخلِ JWT چک می‌شد؛ یعنی ادمینی که عضویتش لغو
+     شده یا کاربرش مسدود شده بود، تا انقضای ۱۵روزه‌ی توکن همچنان می‌توانست
+     چک را «پاس» کند و سفارش را تسویه‌شده نشان دهد. */
+  const { ctx, denied } = await requireAdminPermission("installments.edit");
+  if (denied) return denied;
+
   try {
     await connectToDB();
-
-    /* ── احراز هویت ادمین ── */
-    const auth = await getAuthUser();
-    if (!auth || auth.role !== "admin") {
-      return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
-    }
 
     const { checkId } = await params;
     const body = await req.json();
@@ -108,7 +99,7 @@ export async function PATCH(req, { params }) {
     /* ── آپدیت وضعیت ── */
     if (hasStatus) {
       check.status = status;
-      check.reviewedBy = auth.userId;
+      check.reviewedBy = ctx.userId;
       check.reviewedAt = new Date();
       if (status === "CLEARED") {
         check.paidAt = check.paidAt || new Date();

@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { FiSave, FiPercent, FiInfo } from "react-icons/fi";
 import { showToast } from "@/lib/toast";
+import { useAdminPermissions } from "@/components/admin/AdminPermissionProvider";
 import {
   INSTALLMENT_RATE_KEY,
   DEFAULT_MONTHLY_RATE,
@@ -16,6 +17,8 @@ import {
  * مقدار پیش‌فرض ماشین‌حساب اقساط و مبنای محاسبه‌ی مانده‌ی بک‌اند استفاده می‌شود.
  */
 export default function FinancingSettingsManager() {
+  const { can } = useAdminPermissions();
+  const canEdit = can("financingSettings.edit");
   const [rate, setRate] = useState("");
   const [savedRate, setSavedRate] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -201,6 +204,7 @@ export default function FinancingSettingsManager() {
             </span>
           </div>
 
+          {canEdit ? (
           <button
             type="submit"
             disabled={saving || loading}
@@ -210,6 +214,11 @@ export default function FinancingSettingsManager() {
             <FiSave size={15} />
             {saving ? "در حال ذخیره..." : "ذخیره نرخ سود"}
           </button>
+          ) : (
+            <p className="text-xs font-bold text-gray-400">
+              دسترسی ویرایش این بخش را ندارید — مقادیر فقط برای مشاهده‌اند.
+            </p>
+          )}
         </div>
       </motion.form>
     </div>

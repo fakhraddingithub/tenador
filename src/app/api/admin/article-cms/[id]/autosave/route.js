@@ -3,8 +3,8 @@ import mongoose from "mongoose";
 import connectToDB from "base/configs/db";
 import "base/models/registerModels";
 import Article from "base/models/Article";
-import requireAdmin from "@/lib/requireAdmin";
-import { articleApiError, unauthorizedResponse, validationResponse } from "@/lib/articleApi";
+import requireAdminPermission from "@/lib/requireAdminPermission";
+import { articleApiError, validationResponse } from "@/lib/articleApi";
 import { validateArticleInput } from "@/lib/articleValidation";
 import { revalidateContent } from "@/lib/revalidate";
 
@@ -12,9 +12,10 @@ export const runtime = "nodejs";
 const AUTOSAVE_FIELDS = ["title", "excerpt", "cover", "blocks", "seo", "tags", "featured", "pinned"];
 
 export async function PATCH(req, { params }) {
+  const { actor: admin, denied } = await requireAdminPermission("articles.edit");
+  if (denied) return denied;
+
   try {
-    const admin = await requireAdmin();
-    if (!admin) return unauthorizedResponse();
     const { id } = await params;
     if (!mongoose.isValidObjectId(id)) return NextResponse.json({ error: "Invalid article id" }, { status: 400 });
     const body = await req.json();

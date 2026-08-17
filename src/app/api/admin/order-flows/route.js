@@ -2,10 +2,11 @@ import { NextResponse } from "next/server";
 import connectToDB from "base/configs/db";
 import OrderFlow from "base/models/OrderFlow";
 
-import requireAdmin, { unauthorized } from "@/lib/requireAdmin";
+import requireAdminPermission from "@/lib/requireAdminPermission";
 
 export async function GET(req) {
-  if (!(await requireAdmin())) return unauthorized();
+  const { denied } = await requireAdminPermission("orderFlows.view");
+  if (denied) return denied;
 
   try {
     await connectToDB();
@@ -20,7 +21,8 @@ export async function GET(req) {
 }
 
 export async function POST(req) {
-  if (!(await requireAdmin())) return unauthorized();
+  const { denied } = await requireAdminPermission("orderFlows.create");
+  if (denied) return denied;
 
   try {
     await connectToDB();

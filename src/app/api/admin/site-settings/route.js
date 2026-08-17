@@ -5,7 +5,8 @@ import SiteSetting from "base/models/SiteSetting";
 import Article from "base/models/Article";
 import "base/models/registerModels";
 
-import requireAdmin, { unauthorized } from "@/lib/requireAdmin";
+import requireAdminPermission, { forbidden } from "@/lib/requireAdminPermission";
+import { resolveSiteSettingPermission } from "@/lib/apiPermissions";
 import { revalidateContent } from "@/lib/revalidate";
 import { publicArticleFilter } from "base/utils/articleRoutes";
 
@@ -17,15 +18,25 @@ const REVALIDATE_PATHS = {
 
 // GET /api/admin/site-settings?key=secondhand_header_image  →  { value }
 export async function GET(req) {
-  if (!(await requireAdmin())) return unauthorized();
+  // ۱) هویت اول — تا درخواستِ ناشناس ۴۰۱ بگیرد، نه ۴۰۳ ناشی از شکلِ کوئری.
+  const identity = await requireAdminPermission();
+  if (identity.denied) return identity.denied;
+
+  // ۲) یک endpoint، چند مالک: هر کلیدِ تنظیمات دسترسیِ خودش را دارد و کلیدِ
+  //    ناشناخته/غایب fail-closed است (بدون این، «پاداش نظر» به «حساب بانکی»
+  //    هم دسترسی می‌داد).
+  const { searchParams } = new URL(req.url);
+  const key = searchParams.get("key");
+  const resolved = resolveSiteSettingPermission(key, "view");
+  if (!resolved.allowed) return forbidden();
+
+  const { denied } = await requireAdminPermission(resolved.permissions, {
+    mode: resolved.mode,
+  });
+  if (denied) return denied;
 
   try {
     await connectToDB();
-    const { searchParams } = new URL(req.url);
-    const key = searchParams.get("key");
-    if (!key) {
-      return NextResponse.json({ error: "کلید الزامی است" }, { status: 400 });
-    }
     const setting = await SiteSetting.findOne({ key }).lean();
     return NextResponse.json({ value: setting?.value ?? null });
   } catch (err) {
@@ -36,14 +47,27 @@ export async function GET(req) {
 
 // PUT /api/admin/site-settings  { key, value }  →  upsert + revalidate
 export async function PUT(req) {
-  if (!(await requireAdmin())) return unauthorized();
+  const identity = await requireAdminPermission();
+  if (identity.denied) return identity.denied;
+
+  let body;
+  try {
+    body = await req.json();
+  } catch {
+    return NextResponse.json({ error: "بدنه‌ی درخواست نامعتبر است" }, { status: 400 });
+  }
+  const { key, value } = body || {};
+
+  const resolved = resolveSiteSettingPermission(key, "edit");
+  if (!resolved.allowed) return forbidden();
+
+  const { denied } = await requireAdminPermission(resolved.permissions, {
+    mode: resolved.mode,
+  });
+  if (denied) return denied;
 
   try {
     await connectToDB();
-    const { key, value } = await req.json();
-    if (!key) {
-      return NextResponse.json({ error: "کلید الزامی است" }, { status: 400 });
-    }
 
     if (key === "home_featured_article_ids") {
       const articleIds = Array.isArray(value) ? value.map(String) : [];

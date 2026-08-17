@@ -14,15 +14,11 @@ import Product from "base/models/Product";
 import Variant from "base/models/Variant"; 
 import Order from "base/models/Order";
 import { validateHealthScores, calcOverallScore } from "@/lib/healthcard";
-import requireAdmin, { unauthorized } from "@/lib/requireAdmin";
-
-// نقش ادمین از دیتابیس بررسی می‌شود (توکن به‌تنهایی قابل‌اعتماد نیست).
-async function getAdminUser() {
-  return await requireAdmin();
-}
+import requireAdminPermission from "@/lib/requireAdminPermission";
 
 export async function GET(_, { params }) {
-  if (!(await requireAdmin())) return unauthorized();
+  const { denied } = await requireAdminPermission("secondHand.view");
+  if (denied) return denied;
 
   try {
     await connectToDB();
@@ -51,11 +47,11 @@ export async function GET(_, { params }) {
 }
 
 export async function PUT(req, { params }) {
-  if (!(await requireAdmin())) return unauthorized();
+  const { actor: admin, denied } = await requireAdminPermission("secondHand.edit");
+  if (denied) return denied;
 
   try {
     await connectToDB();
-    const admin = await getAdminUser();
 
     const { id } = await params;
     const body = await req.json();
@@ -136,12 +132,11 @@ export async function PUT(req, { params }) {
 }
 
 export async function DELETE(req, { params }) {
-  if (!(await requireAdmin())) return unauthorized();
+  const { denied } = await requireAdminPermission("secondHand.delete");
+  if (denied) return denied;
 
   try {
     await connectToDB();
-    const admin = await getAdminUser();
-    if (!admin) return NextResponse.json({ error: "دسترسی غیرمجاز" }, { status: 401 });
 
     const { id } = await params;
     const item = await UsedProduct.findById(id);

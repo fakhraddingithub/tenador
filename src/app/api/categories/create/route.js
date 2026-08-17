@@ -12,8 +12,12 @@ import {
   getCategoryVisibilitySportSlugs,
   validateCategorySportConfiguration,
 } from "base/services/categorySportValidation.service";
+import requireAdminPermission from "@/lib/requireAdminPermission";
 
 export async function POST(req) {
+  const { denied } = await requireAdminPermission("categories.create");
+  if (denied) return denied;
+
   try {
     await connectToDB();
 

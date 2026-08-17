@@ -4,8 +4,12 @@ import Sport from "base/models/Sport";
 import { registerSlug } from "base/actions/registerSlug";
 import { apiError, handleApiError } from "@/lib/apiError";
 import { revalidateContent } from "@/lib/revalidate";
+import requireAdminPermission from "@/lib/requireAdminPermission";
 
 export async function POST(req) {
+  const { denied } = await requireAdminPermission("athletes.create");
+  if (denied) return denied;
+
   try {
     await connectToDB();
 

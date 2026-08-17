@@ -7,7 +7,7 @@ import Variant from "base/models/Variant";
 import { validateHealthScores, calcOverallScore } from "@/lib/healthcard";
 import { broadcastPush } from "@/lib/push";
 
-import requireAdmin, { unauthorized } from "@/lib/requireAdmin";
+import requireAdminPermission from "@/lib/requireAdminPermission";
 
 // trailing slash را حذف می‌کنیم تا URLها به //path تبدیل نشوند
 const SITE_URL = (process.env.NEXT_PUBLIC_SITE_URL || "https://tenador.com").replace(/\/+$/, "");
@@ -15,7 +15,8 @@ const SITE_URL = (process.env.NEXT_PUBLIC_SITE_URL || "https://tenador.com").rep
 const NOTIF_ICON_URL = `${SITE_URL}/android-chrome-192x192.png`;
 
 export async function GET(req) {
-  if (!(await requireAdmin())) return unauthorized();
+  const { denied } = await requireAdminPermission("secondHand.view");
+  if (denied) return denied;
 
   try {
     await connectToDB();
@@ -58,7 +59,8 @@ export async function GET(req) {
 }
 
 export async function POST(req) {
-  if (!(await requireAdmin())) return unauthorized();
+  const { denied } = await requireAdminPermission("secondHand.create");
+  if (denied) return denied;
 
   try {
     await connectToDB();

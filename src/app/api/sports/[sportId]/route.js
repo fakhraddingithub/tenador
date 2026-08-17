@@ -3,6 +3,7 @@ import Sport from "base/models/Sport";
 import { NextResponse } from "next/server";
 import { revalidateContent } from "@/lib/revalidate";
 import { handleApiError } from "@/lib/apiError";
+import requireAdminPermission from "@/lib/requireAdminPermission";
 
 export async function GET(req, { params }) {
   try {
@@ -24,6 +25,9 @@ export async function GET(req, { params }) {
 }
 
 export async function PUT(req, { params }) {
+  const { denied } = await requireAdminPermission("sports.edit");
+  if (denied) return denied;
+
   try {
     await connectToDB();
     const { sportId } = await params;
@@ -65,6 +69,9 @@ export async function PUT(req, { params }) {
 }
 
 export async function DELETE(req, { params }) {
+  const { denied } = await requireAdminPermission("sports.delete");
+  if (denied) return denied;
+
   try {
     await connectToDB();
     const { sportId } = await params;

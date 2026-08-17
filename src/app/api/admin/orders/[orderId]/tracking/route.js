@@ -23,12 +23,7 @@ import {
 import Order from "base/models/Order";
 import { syncOrderFulfillmentFromTracking } from "@/lib/orderFulfillmentSync";
 
-import requireAdmin, { unauthorized } from "@/lib/requireAdmin";
-
-// نقش ادمین از دیتابیس بررسی می‌شود (توکن به‌تنهایی قابل‌اعتماد نیست).
-async function getAdminUser() {
-  return await requireAdmin();
-}
+import requireAdminPermission from "@/lib/requireAdminPermission";
 
 /**
  * تنظیم وضعیت تأمین یک خطِ سفارش (محصول اصلی یا یک انتخابِ فرایند) روی خود سند سفارش
@@ -63,11 +58,10 @@ function orderHasPendingPurchase(order) {
 
 /* ─── GET: لیست tracking items مرتبط با سفارش ──────────────────── */
 export async function GET(req, { params }) {
-  if (!(await requireAdmin())) return unauthorized();
+  const { denied } = await requireAdminPermission("orderTracking.view");
+  if (denied) return denied;
 
   try {
-    const admin = await getAdminUser();
-    
     await connectToDB();
     const { orderId } = await params;
 
@@ -268,13 +262,10 @@ export async function GET(req, { params }) {
 
 /* ─── POST: ثبت بارکد برای آیتم سفارش ──────────────────────────── */
 export async function POST(req, { params }) {
-  if (!(await requireAdmin())) return unauthorized();
+  const { actor: admin, denied } = await requireAdminPermission("orderTracking.assign");
+  if (denied) return denied;
 
   try {
-    const admin = await getAdminUser();
-    if (!admin)
-      return NextResponse.json({ message: "دسترسی غیرمجاز" }, { status: 401 });
-
     await connectToDB();
     const { orderId } = await params;
     const body = await req.json();
@@ -550,13 +541,10 @@ export async function POST(req, { params }) {
 
 /* ─── DELETE: حذف tracking item از سفارش ───────────────────────── */
 export async function DELETE(req, { params }) {
-  if (!(await requireAdmin())) return unauthorized();
+  const { actor: admin, denied } = await requireAdminPermission("orderTracking.assign");
+  if (denied) return denied;
 
   try {
-    const admin = await getAdminUser();
-    if (!admin)
-      return NextResponse.json({ message: "دسترسی غیرمجاز" }, { status: 401 });
-
     await connectToDB();
     const { orderId } = await params;
     const body = await req.json();

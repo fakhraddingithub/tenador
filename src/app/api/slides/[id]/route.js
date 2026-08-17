@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import connectToDB from "base/configs/db";
 import Slide from "base/models/Slide";
+import requireAdminPermission from "@/lib/requireAdminPermission";
 
 
 export async function GET(req, { params }) {
@@ -29,6 +30,9 @@ export async function GET(req, { params }) {
 }
 
 export async function DELETE(req, { params }) {
+  const { denied } = await requireAdminPermission("homeSlider.edit");
+  if (denied) return denied;
+
   try {
     await connectToDB();
 
@@ -58,6 +62,9 @@ export async function DELETE(req, { params }) {
 }
 
 export async function PUT(req, { params }) {
+  const { denied } = await requireAdminPermission("homeSlider.edit");
+  if (denied) return denied;
+
   try {
     await connectToDB();
 

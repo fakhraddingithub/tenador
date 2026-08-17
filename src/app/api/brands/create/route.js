@@ -4,12 +4,13 @@ import { registerSlug } from "base/actions/registerSlug";
 import { revalidateContent } from "@/lib/revalidate";
 import { apiError, handleApiError } from "@/lib/apiError";
 import { sanitizeArticleBlocks } from "@/lib/articleValidation";
-import requireAdmin from "@/lib/requireAdmin";
+import requireAdminPermission from "@/lib/requireAdminPermission";
 
 export async function POST(req) {
+  const { denied } = await requireAdminPermission("brands.create");
+  if (denied) return denied;
+
   try {
-    const admin = await requireAdmin();
-    if (!admin) return apiError("دسترسی مدیر لازم است", 401);
     await connectToDB();
 
     const body = await req.json();

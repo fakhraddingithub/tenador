@@ -6,7 +6,8 @@ import { revalidateContent } from "@/lib/revalidate";
 import { PAGE_SLUGS, getPageDefault } from "@/lib/pageDefaults";
 import { getPageForAdmin } from "base/services/pageContent.service";
 
-import requireAdmin, { unauthorized } from "@/lib/requireAdmin";
+import requireAdminPermission, { forbidden } from "@/lib/requireAdminPermission";
+import { resolvePagePutPermissions } from "@/lib/apiPermissions";
 
 export const runtime = "nodejs";
 
@@ -15,7 +16,8 @@ export const runtime = "nodejs";
  * GET /api/admin/pages?slug=about → محتوای کاملِ یک صفحه برای ویرایش
  */
 export async function GET(req) {
-  if (!(await requireAdmin())) return unauthorized();
+  const { denied } = await requireAdminPermission("pages.view");
+  if (denied) return denied;
 
   const { searchParams } = new URL(req.url);
   const slug = searchParams.get("slug");
@@ -53,10 +55,29 @@ export async function GET(req) {
  * body: { slug, title, sections, seo, published }
  */
 export async function PUT(req) {
-  if (!(await requireAdmin())) return unauthorized();
+  // ۱) هویت اول — ناشناس باید ۴۰۱ بگیرد.
+  const identity = await requireAdminPermission();
+  if (identity.denied) return identity.denied;
+
+  let body;
+  try {
+    body = await req.json();
+  } catch {
+    return NextResponse.json({ error: "بدنه‌ی درخواست نامعتبر است" }, { status: 400 });
+  }
+
+  // ۲) فقط *تغییر دادنِ* وضعیتِ انتشار کلیدِ جدا می‌خواهد. اگر فیلد در بدنه
+  //    نباشد، پایین‌تر هم نوشته نمی‌شود و وضعیتِ فعلی دست‌نخورده می‌ماند —
+  //    پس ویراستارِ بدونِ pages.publish می‌تواند صفحه‌ی منتشرشده را ذخیره کند.
+  const resolved = resolvePagePutPermissions(body);
+  if (!resolved.allowed) return forbidden();
+
+  const { denied } = await requireAdminPermission(resolved.permissions, {
+    mode: resolved.mode,
+  });
+  if (denied) return denied;
 
   try {
-    const body = await req.json();
     const slug = String(body.slug || "").trim();
 
     if (!PAGE_SLUGS.includes(slug))
@@ -69,14 +90,19 @@ export async function PUT(req) {
       );
 
     await connectToDB();
+
+    // `published` فقط وقتی نوشته می‌شود که صریح آمده باشد؛ در غیر این صورت
+    // مقدارِ فعلی دست‌نخورده می‌ماند (و برای سندِ تازه، پیش‌فرضِ اسکیما).
+    const update = {
+      pageSlug: slug,
+      title: String(body.title || "").trim(),
+      sections: body.sections,
+    };
+    if (typeof body.published === "boolean") update.published = body.published;
+
     await PageContent.findOneAndUpdate(
       { pageSlug: slug },
-      {
-        pageSlug: slug,
-        title: String(body.title || "").trim(),
-        sections: body.sections,
-        published: body.published !== false,
-      },
+      update,
       { upsert: true, new: true, setDefaultsOnInsert: true }
     );
 

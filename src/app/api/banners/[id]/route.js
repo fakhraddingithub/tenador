@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import connectToDB from "base/configs/db";
 import Banner from "base/models/Banner";
 import { revalidateContent } from "@/lib/revalidate";
+import requireAdminPermission from "@/lib/requireAdminPermission";
 
 // GET یک بنر
 export async function GET(req, { params }) {
@@ -26,6 +27,9 @@ export async function GET(req, { params }) {
 
 // PUT - ویرایش بنر
 export async function PUT(req, { params }) {
+  const { denied } = await requireAdminPermission("homeBanners.edit");
+  if (denied) return denied;
+
   try {
     await connectToDB();
     const body = await req.json();
@@ -57,6 +61,9 @@ export async function PUT(req, { params }) {
 
 // DELETE - حذف بنر
 export async function DELETE(req, { params }) {
+  const { denied } = await requireAdminPermission("homeBanners.edit");
+  if (denied) return denied;
+
   try {
     await connectToDB();
     const param = await params

@@ -13,6 +13,7 @@ import {
 import { MdOutlineDragIndicator } from 'react-icons/md';
 import Swal from 'sweetalert2';
 import AdminLoader from '@/components/admin/AdminLoader';
+import { useAdminPermissions } from '@/components/admin/AdminPermissionProvider';
 import { ADMIN_REF_TTL } from '@/hooks/useAdminRefData';
 import { optimisticReorder } from '@/lib/adminCache';
 
@@ -28,6 +29,9 @@ const swalTheme = {
 };
 
 export default function SliderManagement() {
+  // /api/slides و /api/slides/reorder همگی با homeSlider.edit گیت شده‌اند.
+  const { can } = useAdminPermissions();
+  const canEdit = can('homeSlider.edit');
   const [isSaving, setIsSaving] = useState(false);
 
   // 🟢 اسلایدهای صفحه‌ی اصلی — پاسخِ این endpoint خودش یک آرایه است، پس شکلِ
@@ -101,6 +105,7 @@ export default function SliderManagement() {
             ترتیب نمایش را با کشیدن و رها کردن تغییر دهید
           </p>
         </div>
+        {canEdit && (
         <Link
           href="/p-admin/admin-home/slider/create"
           className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-bold text-white hover:shadow-lg hover:shadow-[var(--color-primary)]/25 hover:-translate-y-0.5 active:scale-95 transition-all"
@@ -108,6 +113,7 @@ export default function SliderManagement() {
         >
           <FiPlus size={16} /> افزودن اسلاید
         </Link>
+        )}
       </div>
 
       {/* Slides list */}
@@ -119,6 +125,7 @@ export default function SliderManagement() {
             <FiImage size={28} />
           </div>
           <p className="text-gray-400 font-bold text-sm">هنوز اسلایدی اضافه نشده</p>
+          {canEdit && (
           <Link
             href="/p-admin/admin-home/slider/create"
             className="inline-flex items-center gap-1.5 mt-3 text-xs font-bold hover:underline"
@@ -126,9 +133,10 @@ export default function SliderManagement() {
           >
             <FiPlus size={12} /> افزودن اولین اسلاید
           </Link>
+          )}
         </div>
       ) : (
-        <DragDropContext onDragEnd={onDragEnd}>
+        <DragDropContext onDragEnd={canEdit ? onDragEnd : () => {}}>
           <Droppable droppableId="slides">
             {(provided) => (
               <div
@@ -197,6 +205,7 @@ export default function SliderManagement() {
                         </div>
 
                         {/* actions */}
+                        {canEdit && (
                         <div className="flex items-center gap-1 flex-shrink-0 opacity-100 lg:opacity-0 lg:group-hover:opacity-100 transition-opacity">
                           <Link
                             href={`/p-admin/admin-home/slider/edit/${slide._id}`}
@@ -211,6 +220,7 @@ export default function SliderManagement() {
                             <FiTrash2 size={13} />
                           </button>
                         </div>
+                        )}
                       </div>
                     )}
                   </Draggable>

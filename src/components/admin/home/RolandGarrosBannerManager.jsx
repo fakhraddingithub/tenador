@@ -14,6 +14,7 @@ import {
   FiUploadCloud,
 } from "react-icons/fi";
 import AdminLoader from "@/components/admin/AdminLoader";
+import { useAdminPermissions } from "@/components/admin/AdminPermissionProvider";
 import { showToast } from "@/lib/toast";
 import { showError } from "@/lib/swal";
 import { DEFAULT_ROLAND_GARROS_BANNER } from "@/lib/rolandGarrosBanner";
@@ -155,6 +156,8 @@ function FormField({ field, value, onChange }) {
 }
 
 export default function RolandGarrosBannerManager() {
+  const { can } = useAdminPermissions();
+  const canEdit = can("homeRolandGarros.edit");
   const [form, setForm] = useState(cloneDefaultBanner);
   const [initial, setInitial] = useState(cloneDefaultBanner);
   const [loading, setLoading] = useState(true);
@@ -368,6 +371,8 @@ export default function RolandGarrosBannerManager() {
             </div>
 
             <div className="flex flex-wrap items-center gap-3 border-t border-gray-100 pt-5">
+              {canEdit ? (
+              <>
               <button
                 type="submit"
                 disabled={saving || uploading || !dirty}
@@ -386,6 +391,10 @@ export default function RolandGarrosBannerManager() {
                 <FiRefreshCcw />
                 بازگردانی پیش‌فرض
               </button>
+              </>
+              ) : (
+                <p className="text-xs font-bold text-gray-400">دسترسی ویرایش این بخش را ندارید — مقادیر فقط برای مشاهده‌اند.</p>
+              )}
             </div>
           </div>
         </form>

@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import { motion, AnimatePresence } from 'framer-motion'
 import { toast } from 'react-toastify'
 import { getUserFullName } from 'base/utils/userName'
+import { useAdminPermissions } from '@/components/admin/AdminPermissionProvider'
 import {
   Megaphone, Send, Users, Shield, UserCheck, User as UserIcon,
   Search, X, Check, ArrowRight, AlertTriangle, History, Loader2,
@@ -49,6 +50,10 @@ function targetSummary(n) {
 }
 
 export default function SendUserNotificationPage() {
+  // صفحه با userNotifications.view باز می‌شود؛ خودِ ارسال کلیدِ جداست
+  // (POST /api/admin/user-notifications → userNotifications.send).
+  const { can } = useAdminPermissions()
+  const canSend = can('userNotifications.send')
   const router = useRouter()
 
   // ── compose ──
@@ -385,6 +390,7 @@ export default function SendUserNotificationPage() {
                 <>گیرنده: <span className="text-[var(--color-primary)] tabular-nums">{Number(recipientEstimate).toLocaleString('fa-IR')}</span> کاربر</>
               )}
             </p>
+            {canSend ? (
             <button
               onClick={openConfirm}
               className="inline-flex items-center gap-2 text-white text-xs font-bold px-5 py-2.5 rounded-[var(--radius)] transition-all hover:shadow-lg hover:-translate-y-0.5 active:scale-95"
@@ -393,6 +399,9 @@ export default function SendUserNotificationPage() {
               <Send size={14} />
               ارسال اعلان
             </button>
+            ) : (
+              <p className="text-xs font-bold text-gray-400">دسترسی ارسال اعلان را ندارید — این صفحه فقط برای مشاهده است.</p>
+            )}
           </div>
         </div>
 

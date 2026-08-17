@@ -2,8 +2,13 @@ import { NextResponse } from "next/server";
 import connectToDB from "base/configs/db";
 import Product from "base/models/Product";
 import { revalidateContent } from "@/lib/revalidate";
+import requireAdminPermission from "@/lib/requireAdminPermission";
 
 export async function PUT(req) {
+  // رجیستری کلیدِ مستقلِ «ترتیب محصولات» ندارد؛ همان ویرایش است (manifest).
+  const { denied } = await requireAdminPermission("products.edit");
+  if (denied) return denied;
+
   try {
     await connectToDB();
 

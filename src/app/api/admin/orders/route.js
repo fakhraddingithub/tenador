@@ -16,15 +16,11 @@ import connectToDB from "base/configs/db";
 import Order from "base/models/Order";
 import Payment from "base/models/Payment";
 import Product from "base/models/Product";
-import requireAdmin, { unauthorized } from "@/lib/requireAdmin";
-
-// نقش ادمین از دیتابیس بررسی می‌شود (توکن به‌تنهایی قابل‌اعتماد نیست).
-async function getAdminUser() {
-  return await requireAdmin();
-}
+import requireAdminPermission from "@/lib/requireAdminPermission";
 
 export async function GET(req) {
-  if (!(await requireAdmin())) return unauthorized();
+  const { denied } = await requireAdminPermission("orders.view");
+  if (denied) return denied;
 
   try {
     await connectToDB();

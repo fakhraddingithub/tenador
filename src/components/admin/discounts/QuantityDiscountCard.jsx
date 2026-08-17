@@ -35,7 +35,12 @@ function statusOf(item) {
   return { text: "فعال", cls: "bg-green-50 text-green-600" };
 }
 
+import { useAdminPermissions } from "@/components/admin/AdminPermissionProvider";
+
 export default function QuantityDiscountCard({ item, onEdit, onDelete, onToggle }) {
+  const { can } = useAdminPermissions();
+  const canEdit = can("discounts.edit");
+  const canDelete = can("discounts.delete");
   const status = statusOf(item);
   const targetsCount = (item.targets || []).length;
 
@@ -81,24 +86,30 @@ export default function QuantityDiscountCard({ item, onEdit, onDelete, onToggle 
         <span className={`text-xs font-bold px-2.5 py-1 rounded-full ${status.cls}`}>
           {status.text}
         </span>
+        {canEdit && (
         <button
           onClick={() => onToggle(item._id, item.active)}
           className="text-xs font-medium text-gray-500 hover:text-gray-800 px-2 py-1 rounded hover:bg-gray-100 transition-colors"
         >
           {item.active ? "غیرفعال کن" : "فعال کن"}
         </button>
+        )}
+        {canEdit && (
         <button
           onClick={() => onEdit(item)}
           className="text-xs font-medium text-[#aa4725] px-2 py-1 rounded hover:bg-[#aa4725]/10 transition-colors"
         >
           ویرایش
         </button>
+        )}
+        {canDelete && (
         <button
           onClick={() => onDelete(item._id)}
           className="text-xs font-medium text-red-500 px-2 py-1 rounded hover:bg-red-50 transition-colors"
         >
           حذف
         </button>
+        )}
       </div>
     </div>
   );

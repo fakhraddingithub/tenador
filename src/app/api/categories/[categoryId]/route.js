@@ -11,6 +11,7 @@ import {
   getCategoryVisibilitySportSlugs,
   validateCategorySportConfiguration,
 } from "base/services/categorySportValidation.service";
+import requireAdminPermission from "@/lib/requireAdminPermission";
 
 // ---------------------------------------------------------
 // GET: دریافت جزئیات یک کتگوری
@@ -39,6 +40,9 @@ export async function GET(req, { params }) {
 // PUT: ویرایش کامل کتگوری (با پشتیبانی از مدل جدید)
 // ---------------------------------------------------------
 export async function PUT(req, { params }) {
+  const { denied } = await requireAdminPermission("categories.edit");
+  if (denied) return denied;
+
   try {
     await connectToDB();
     const { categoryId } = await params;
@@ -230,10 +234,13 @@ export async function PUT(req, { params }) {
 // DELETE: حذف کتگوری
 // ---------------------------------------------------------
 export async function DELETE(req, { params }) {
+  const { denied } = await requireAdminPermission("categories.delete");
+  if (denied) return denied;
+
   try {
     await connectToDB();
     const { categoryId } = await params;
-    
+
     const category = await Category.findByIdAndDelete(categoryId);
     if (!category) {
       return NextResponse.json({ error: "دسته‌بندی پیدا نشد" }, { status: 404 });

@@ -20,10 +20,11 @@ import Brand from "base/models/Brand";
 import Athlete from "base/models/Athlete";
 import Product from "base/models/Product";
 import Category from "base/models/Category";
-import requireAdmin, { unauthorized } from "@/lib/requireAdmin";
+import requireAdminPermission from "@/lib/requireAdminPermission";
 
 export async function GET() {
-  if (!(await requireAdmin())) return unauthorized();
+  const { denied } = await requireAdminPermission("dashboard.view");
+  if (denied) return denied;
 
   try {
     await connectToDB();

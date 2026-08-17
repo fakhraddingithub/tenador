@@ -4,25 +4,39 @@
  * GET  → لیست ادمین‌ها (با نقش populate شده) + آمار
  * POST → ساخت ادمین جدید
  *
- * ⚠️ فاز فعلی فقط زیرساخت مدیریت است؛ هیچ enforcement دسترسی انجام نمی‌شود.
+ * GET با admins.view و POST با admins.create محافظت می‌شوند؛ اعطای نقش و
+ * دسترسی هم در برابر ارتقای دسترسی بررسی می‌شود.
  */
 
 import { NextResponse } from "next/server";
 import connectToDB from "base/configs/db";
 import Admin from "base/models/Admin";
 import AdminRole from "base/models/AdminRole";
-import { sanitizePermissions } from "@/lib/permissions";
+import { validatePermissionKeys } from "@/lib/permissions";
 
-import requireAdmin, { unauthorized } from "@/lib/requireAdmin";
+import User from "base/models/User";
+import { isValidObjectId } from "mongoose";
+import requireAdminPermission from "@/lib/requireAdminPermission";
+import {
+  assertNoPrivilegeEscalation,
+  assertRoleAssignable,
+  deriveDisplayName,
+  deriveUsername,
+  validateOptionalText,
+} from "@/lib/adminGuards";
 
 export async function GET() {
-  if (!(await requireAdmin())) return unauthorized();
+  const { denied } = await requireAdminPermission("admins.view");
+  if (denied) return denied;
 
   try {
     await connectToDB();
 
     const admins = await Admin.find({})
       .populate("role", "name description permissions isSystem")
+      // کاربرِ لینک‌شده هم برمی‌گردد تا فهرست بتواند «این عضویت مالِ کیست»
+      // را نشان دهد و اسناد legacyِ بدون کاربر قابل تشخیص باشند.
+      .populate("user", "name lastName phone email avatar isBanned")
       .sort({ createdAt: -1 })
       .lean();
 
@@ -43,44 +57,90 @@ export async function GET() {
 }
 
 export async function POST(req) {
-  if (!(await requireAdmin())) return unauthorized();
+  const { actor, ctx, denied } = await requireAdminPermission("admins.create");
+  if (denied) return denied;
 
   try {
     await connectToDB();
 
     const body = await req.json();
-    const { name, username, email, role, title, permissions, isActive } = body;
+    const { userId, role, permissions, isActive } = body;
 
-    if (!name?.trim() || !username?.trim()) {
+    // ─── هویت: از روی کاربرِ سایت، نه از روی متنِ دستی ───────────────────
+    // فاز ۳: عضویت فقط به یک User واقعی داده می‌شود. ساختِ «هویتِ ادمینِ
+    // آزاد» حذف شد چون سندی می‌ساخت که به هیچ نشستی map نمی‌شد — یعنی یک
+    // ردیفِ بی‌اثر در UI که ظاهرش «ادمینِ فعال» بود.
+    if (!isValidObjectId(userId)) {
       return NextResponse.json(
-        { message: "نام و نام کاربری الزامی هستند" },
+        { message: "برای ساختِ ادمین باید یک کاربر انتخاب شود" },
         { status: 422 }
       );
     }
 
-    const normalizedUsername = username.trim().toLowerCase();
+    const user = await User.findById(userId)
+      .select("name lastName phone email isBanned")
+      .lean();
+    if (!user) {
+      return NextResponse.json({ message: "کاربر یافت نشد" }, { status: 404 });
+    }
 
-    if (!/^[a-z0-9_.-]{3,30}$/.test(normalizedUsername)) {
+    // عضویت برای کاربرِ مسدود از همان ابتدا مرده است (resolveAdminContext او
+    // را رد می‌کند)؛ ساختنش فقط یک ردیفِ گمراه‌کننده می‌سازد.
+    if (user.isBanned) {
+      return NextResponse.json(
+        { message: "این کاربر مسدود است؛ ابتدا مسدودیت را بردارید" },
+        { status: 422 }
+      );
+    }
+
+    const existing = await Admin.findOne({ user: user._id })
+      .select("_id isActive")
+      .lean();
+    if (existing) {
       return NextResponse.json(
         {
-          message:
-            "نام کاربری باید ۳ تا ۳۰ کاراکتر و فقط شامل حروف انگلیسی کوچک، عدد، نقطه، خط تیره و زیرخط باشد",
+          message: existing.isActive
+            ? "این کاربر از قبل ادمین است"
+            : "این کاربر عضویتِ لغو‌شده دارد؛ به‌جای ساختِ دوباره آن را فعال کنید",
+          adminId: existing._id,
+          isActive: existing.isActive,
         },
-        { status: 422 }
+        { status: 409 }
       );
     }
 
-    const duplicate = await Admin.findOne({ username: normalizedUsername });
-    if (duplicate) {
+    // فقط «عنوان/سمت» متنِ آزاد می‌ماند — یک برچسبِ نمایشی، نه هویت.
+    const text = validateOptionalText(body, ["title"]);
+    if (!text.ok) {
+      return NextResponse.json({ message: text.message }, { status: 422 });
+    }
+    const { title = "" } = text.values;
+
+    const name = deriveDisplayName(user);
+    const takenUsernames = new Set(
+      (await Admin.find({}).select("username").lean()).map((a) => a.username)
+    );
+    const normalizedUsername = deriveUsername(user, takenUsernames);
+    const email = user.email || "";
+
+    // isActive فقط boolean واقعی — `!!` باعث می‌شد "false" یعنی فعال.
+    if (isActive !== undefined && typeof isActive !== "boolean") {
       return NextResponse.json(
-        { message: "این نام کاربری قبلاً ثبت شده است" },
-        { status: 409 }
+        { message: "مقدار isActive باید دقیقاً true یا false باشد" },
+        { status: 422 }
       );
     }
 
     // اعتبارسنجی نقش (در صورت انتخاب)
     let roleId = null;
     if (role) {
+      // شناسه‌ی بدشکل → ۴۲۲ کنترل‌شده، نه CastError و ۵۰۰
+      if (!isValidObjectId(role)) {
+        return NextResponse.json(
+          { message: "شناسه‌ی نقش نامعتبر است" },
+          { status: 422 }
+        );
+      }
       const roleDoc = await AdminRole.findById(role).lean();
       if (!roleDoc) {
         return NextResponse.json(
@@ -88,18 +148,72 @@ export async function POST(req) {
           { status: 404 }
         );
       }
+
+      // actorِ غیر full-access نه نقشِ full-access می‌دهد و نه نقشی که
+      // کلیدهایش فراتر از دسترسی مؤثرِ خودش است.
+      const assignable = assertRoleAssignable({
+        actorPermissions: ctx.permissions,
+        actorIsFullAccess: ctx.isFullAccess,
+        role: roleDoc,
+      });
+      if (!assignable.ok) {
+        return NextResponse.json(
+          {
+            message:
+              assignable.reason === "cannot-grant-full-access"
+                ? "برای اعطای نقش دسترسی کامل، خودتان باید دسترسی کامل داشته باشید"
+                : "این نقش دسترسی‌هایی فراتر از دسترسی شما دارد",
+          },
+          { status: 403 }
+        );
+      }
+
       roleId = roleDoc._id;
     }
 
+    // مرز اعتبارسنجی سخت: کلید نامعتبر/بازنشسته/مبهم بی‌صدا حذف نمی‌شود.
+    const check = validatePermissionKeys(permissions);
+    if (!check.ok) {
+      return NextResponse.json(
+        { message: `دسترسی نامعتبر — ${check.message}`, invalid: check.invalid },
+        { status: 422 }
+      );
+    }
+
+    // و نه کلیدی که خودش ندارد (grantهای اختصاصیِ همین ادمین)
+    const escalation = assertNoPrivilegeEscalation({
+      actorPermissions: ctx.permissions,
+      actorIsFullAccess: ctx.isFullAccess,
+      requestedPermissions: check.permissions,
+    });
+    if (!escalation.ok) {
+      return NextResponse.json(
+        { message: "نمی‌توانید دسترسی‌ای بدهید که خودتان ندارید" },
+        { status: 403 }
+      );
+    }
+
+    const active = isActive === undefined ? true : isActive;
+
     const admin = await Admin.create({
-      name: name.trim(),
+      // ⚠️ نقشِ کسب‌وکاریِ کاربر (coach/seller/...) عمداً دست نمی‌خورد:
+      // «عضویت در پنل» یک چیز است و «نقش کاربر در سایت» چیز دیگری.
+      user: user._id,
+      name,
       username: normalizedUsername,
-      email: email?.trim() || "",
+      email,
       role: roleId,
-      title: title?.trim() || "",
-      // فقط کلیدهای معتبرِ رجیستری ذخیره می‌شوند
-      permissions: sanitizePermissions(permissions),
-      isActive: isActive !== undefined ? !!isActive : true,
+      title,
+      // `permissions` فیلد legacy است و UI فعلی از همان می‌خواند؛
+      // `permissionGrants` منبعِ محاسبه‌ی دسترسی مؤثر است. تا زمانی که فرم
+      // به فیلد جدید منتقل شود، هر دو هم‌زمان نوشته می‌شوند.
+      permissions: check.permissions,
+      permissionGrants: check.permissions,
+      isActive: active,
+      activatedAt: active ? new Date() : null,
+      activatedBy: active ? actor.userId : null,
+      createdBy: actor.userId,
+      updatedBy: actor.userId,
     });
 
     const populated = await Admin.findById(admin._id)
@@ -113,9 +227,17 @@ export async function POST(req) {
   } catch (error) {
     console.error("[POST admins]", error);
 
+    // مسابقه‌ی دو درخواستِ هم‌زمان روی یک کاربر: بررسیِ بالا هر دو را رد
+    // نمی‌کند، ولی ایندکسِ یکتای partial (`admin_user_unique`) قطعاً یکی را
+    // رد می‌کند. پیام باید همان پیامِ «از قبل ادمین است» باشد، نه ۵۰۰.
     if (error.code === 11000) {
+      const onUser = error.keyPattern?.user || /admin_user_unique/.test(error.message || "");
       return NextResponse.json(
-        { message: "این نام کاربری قبلاً ثبت شده است" },
+        {
+          message: onUser
+            ? "این کاربر هم‌زمان توسط درخواست دیگری ادمین شد"
+            : "این نام کاربری قبلاً ثبت شده است",
+        },
         { status: 409 }
       );
     }

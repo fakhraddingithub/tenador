@@ -3,7 +3,7 @@ import connectToDB from "base/configs/db";
 import "base/models/registerModels";
 import ContactMessage from "base/models/ContactMessage";
 
-import requireAdmin, { unauthorized } from "@/lib/requireAdmin";
+import requireAdminPermission from "@/lib/requireAdminPermission";
 
 export const runtime = "nodejs";
 
@@ -11,7 +11,8 @@ export const runtime = "nodejs";
  * PATCH /api/admin/contact-messages/[id] → تغییر وضعیت (new|read|archived)
  */
 export async function PATCH(req, { params }) {
-  if (!(await requireAdmin())) return unauthorized();
+  const { denied } = await requireAdminPermission("contactMessages.manage");
+  if (denied) return denied;
 
   const { id } = await params;
   const body = await req.json();
@@ -36,7 +37,8 @@ export async function PATCH(req, { params }) {
  * DELETE /api/admin/contact-messages/[id]
  */
 export async function DELETE(_req, { params }) {
-  if (!(await requireAdmin())) return unauthorized();
+  const { denied } = await requireAdminPermission("contactMessages.manage");
+  if (denied) return denied;
 
   const { id } = await params;
   await connectToDB();

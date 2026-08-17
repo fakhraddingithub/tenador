@@ -7,11 +7,16 @@ import DataTable from '@/components/admin/DataTable';
 import Button from '@/components/admin/Button';
 import { showToast } from '@/lib/toast';
 import { confirmDelete, showError } from '@/lib/swal';
+import { useAdminPermissions } from '@/components/admin/AdminPermissionProvider';
 
 export default function ProductVariants() {
   const router = useRouter();
   const params = useParams();
   const productId = params.productId;
+  // ماژولِ واریانت فقط view/edit دارد؛ ساخت و حذفِ واریانت هر دو ویرایشِ
+  // همان محصول‌اند، پس با variants.edit سنجیده می‌شوند.
+  const { can } = useAdminPermissions();
+  const canEditVariants = can('variants.edit');
   const [variants, setVariants] = useState([]);
   const [product, setProduct] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -98,15 +103,19 @@ export default function ProductVariants() {
               واریانت‌های محصول: {product?.name || ''}
             </h2>
           </div>
-          <Button onClick={() => router.push(`/p-admin/admin-products/${productId}/variants/add`)}>
-            + افزودن واریانت جدید
-          </Button>
+          {canEditVariants && (
+            <Button onClick={() => router.push(`/p-admin/admin-products/${productId}/variants/add`)}>
+              + افزودن واریانت جدید
+            </Button>
+          )}
         </div>
 
+        {/* DataTable ستونِ اکشن را وقتی onDelete/onEdit نباشد اصلاً نمی‌سازد،
+            پس ستونِ خالی هم جا نمی‌ماند. */}
         <DataTable
           columns={columns}
           data={variants}
-          onDelete={handleDelete}
+          onDelete={canEditVariants ? handleDelete : undefined}
           loading={loading}
           emptyMessage="هیچ واریانتی ثبت نشده است"
         />

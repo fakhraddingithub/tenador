@@ -15,14 +15,29 @@ import CommentsModeration from "@/components/admin/comments/CommentsModeration";
 import ContactMessagesInbox from "@/components/admin/support/ContactMessagesInbox";
 import TicketsBoard from "@/components/admin/support/TicketsBoard";
 import { useNotifications } from "@/components/admin/NotificationProvider";
+import { useAdminPermissions } from "@/components/admin/AdminPermissionProvider";
+import { ADMIN_TAB_PERMISSIONS } from "@/lib/permissions";
 
-const VALID = new Set(["tickets", "comments", "messages"]);
+const ORDER = ["tickets", "comments", "messages"];
+const VALID = new Set(ORDER);
 
 function SupportPageContent() {
   const router = useRouter();
   const search = useSearchParams();
   const initial = search.get("tab");
-  const [tab, setTab] = useState(VALID.has(initial) ? initial : "tickets");
+
+  // همان نگاشتی که middleware با آن `?tab=` را می‌سنجد — نه یک کپیِ موازی.
+  const { can } = useAdminPermissions();
+  const allows = (value) => {
+    const keys = ADMIN_TAB_PERMISSIONS[`/p-admin/support?tab=${value}`];
+    return Array.isArray(keys) && keys.length > 0 && can(keys);
+  };
+
+  // تبِ پیش‌فرض هم باید مجاز باشد: وگرنه ادمینی که فقط «نظرات» را دارد،
+  // با باز کردنِ /p-admin/support مستقیم داخل تبِ تیکت‌ها می‌افتاد.
+  const [tab, setTab] = useState(
+    () => (VALID.has(initial) && allows(initial) ? initial : ORDER.find(allows) || null)
+  );
 
   // بَج‌ها از لایه‌ی متمرکز (همان اعداد سایدبار و زنگوله — بدون polling جداگانه)
   const { byType, contactNew } = useNotifications();
@@ -36,12 +51,14 @@ function SupportPageContent() {
   };
 
   const tabs = useMemo(
-    () => [
-      { value: "tickets", label: "تیکت‌ها", icon: FaTicketAlt, badge: ticketsUnread },
-      { value: "comments", label: "نظرات", icon: FaCommentDots },
-      { value: "messages", label: "پیام‌های تماس", icon: FaEnvelopeOpenText, badge: contactNew },
-    ],
-    [contactNew, ticketsUnread]
+    () =>
+      [
+        { value: "tickets", label: "تیکت‌ها", icon: FaTicketAlt, badge: ticketsUnread },
+        { value: "comments", label: "نظرات", icon: FaCommentDots },
+        { value: "messages", label: "پیام‌های تماس", icon: FaEnvelopeOpenText, badge: contactNew },
+      ].filter((t) => allows(t.value)),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [contactNew, ticketsUnread, can]
   );
 
   return (

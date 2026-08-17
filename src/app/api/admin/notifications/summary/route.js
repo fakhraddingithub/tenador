@@ -13,27 +13,28 @@ import { NextResponse } from "next/server";
 import connectToDB from "base/configs/db";
 import "base/models/registerModels";
 import ContactMessage from "base/models/ContactMessage";
-import { getRecentNotifications } from "base/services/notificationService";
+import {
+  SECTION_BY_TYPE,
+  getRecentNotifications,
+} from "base/services/notificationService";
+import { filterNotificationPayload } from "@/lib/apiPermissions";
 
-import requireAdmin, { unauthorized } from "@/lib/requireAdmin";
+import requireAdminPermission from "@/lib/requireAdminPermission";
 
 export const runtime = "nodejs";
 
-// نقش ادمین از دیتابیس بررسی می‌شود (توکن به‌تنهایی قابل‌اعتماد نیست).
-async function getAdminUser() {
-  return await requireAdmin();
-}
-
 export async function GET(req) {
-  if (!(await requireAdmin())) return unauthorized();
+  // بدون کلیدِ ورودیِ خاص (زنگوله برای همه‌ی ادمین‌هاست) ولی *خروجی* به
+  // ماژول‌های مجازِ همین ادمین فیلتر می‌شود. بی‌فیلتر گذاشتنش یعنی ادمینِ
+  // مقالات، عنوان و لینک و تعدادِ سفارش‌ها و تیکت‌ها را می‌دید.
+  //
+  // wrapper دوم (getAdminUser) حذف شد — خروجی‌اش استفاده نمی‌شد و فقط یک
+  // رفت‌وبرگشتِ اضافیِ دیتابیس بود.
+  const { ctx, denied } = await requireAdminPermission();
+  if (denied) return denied;
 
   try {
     await connectToDB();
-
-    const admin = await getAdminUser();
-    if (!admin?.userId) {
-      return NextResponse.json({ message: "احراز هویت لازم است" }, { status: 401 });
-    }
 
     const { searchParams } = new URL(req.url);
     const limit = searchParams.get("limit");
@@ -43,8 +44,18 @@ export async function GET(req) {
       ContactMessage.countDocuments({ status: "new" }),
     ]);
 
+    const visible = filterNotificationPayload(
+      { items, counts, contactNew },
+      ctx.permissions,
+      SECTION_BY_TYPE
+    );
+
     return NextResponse.json(
-      { notifications: items, counts, contactNew },
+      {
+        notifications: visible.items,
+        counts: visible.counts,
+        contactNew: visible.contactNew,
+      },
       { status: 200 }
     );
   } catch (error) {

@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { toast } from "react-toastify";
 import Swal from "sweetalert2";
+import { useAdminPermissions } from "@/components/admin/AdminPermissionProvider";
 
 /**
  * Step 1: Generate AI prompt
@@ -10,6 +11,8 @@ import Swal from "sweetalert2";
  * Step 3: Validate and pass to parent
  */
 export default function AIProductDraftStep({ categoryId, onConfirm }) {
+  const { can } = useAdminPermissions();
+  const canUseAi = can("ai.productDraft");
   const [step, setStep] = useState("RAW"); // RAW | PROMPT | RESULT
   const [rawContent, setRawContent] = useState("");
   const [aiPrompt, setAiPrompt] = useState("");
@@ -100,6 +103,7 @@ export default function AIProductDraftStep({ categoryId, onConfirm }) {
             </div>
           )}
 
+          {canUseAi ? (
           <button
             onClick={handleGeneratePrompt}
             disabled={loading}
@@ -107,6 +111,11 @@ export default function AIProductDraftStep({ categoryId, onConfirm }) {
           >
             {loading ? "در حال ساخت پرامپت..." : "ساخت پرامپت"}
           </button>
+          ) : (
+            <p className="text-xs font-bold text-gray-400 text-center">
+              دسترسی «دستیار هوش مصنوعی» را ندارید — می‌توانید JSON را دستی وارد کنید.
+            </p>
+          )}
         </>
       )}
 

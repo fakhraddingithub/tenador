@@ -17,20 +17,14 @@ import Payment from "base/models/Payment";
 import Order from "base/models/Order";
 import mongoose from "mongoose";
 
-import requireAdmin, { unauthorized } from "@/lib/requireAdmin";
-
-// نقش ادمین از دیتابیس بررسی می‌شود (توکن به‌تنهایی قابل‌اعتماد نیست).
-async function getAdminUser() {
-  return await requireAdmin();
-}
+import requireAdminPermission from "@/lib/requireAdminPermission";
 
 export async function POST(req, { params }) {
-  if (!(await requireAdmin())) return unauthorized();
+  const { actor: admin, denied } = await requireAdminPermission("payments.reject");
+  if (denied) return denied;
 
   try {
     await connectToDB();
-
-    const admin = await getAdminUser();
 
     const { id: paymentId } = await params;
     const body = await req.json().catch(() => ({}));

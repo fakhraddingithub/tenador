@@ -4,7 +4,8 @@
  * GET  → تاریخچه‌ی اعلان‌های ارسال‌شده به کاربران (برای پنل ادمین)
  * POST → ساخت و ارسال یک اعلان جدید به کاربران
  *
- * هر دو متد با requireAdmin محافظت می‌شوند (نقش از دیتابیس بررسی می‌شود).
+ * GET با userNotifications.view و POST با userNotifications.send محافظت
+ * می‌شوند (دسترسی مؤثر از دیتابیس محاسبه می‌شود، نه از توکن).
  * پیش‌تر این بررسی برداشته شده بود؛ یعنی هر کاربرِ ناشناسی می‌توانست برای همه‌ی
  * کاربران اعلان بفرستد.
  *
@@ -14,14 +15,15 @@
 import { NextResponse } from "next/server";
 import connectToDB from "base/configs/db";
 import "base/models/registerModels";
-import requireAdmin, { unauthorized } from "@/lib/requireAdmin";
+import requireAdminPermission from "@/lib/requireAdminPermission";
 import {
   createUserNotification,
   getSentNotifications,
 } from "base/services/userNotificationService";
 
 export async function GET(req) {
-  if (!(await requireAdmin())) return unauthorized();
+  const { denied } = await requireAdminPermission("userNotifications.view");
+  if (denied) return denied;
 
   try {
     await connectToDB();
@@ -38,8 +40,10 @@ export async function GET(req) {
 }
 
 export async function POST(req) {
-  const admin = await requireAdmin();
-  if (!admin) return unauthorized();
+  const { actor: admin, denied } = await requireAdminPermission(
+    "userNotifications.send"
+  );
+  if (denied) return denied;
 
   try {
     await connectToDB();

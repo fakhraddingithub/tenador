@@ -3,7 +3,7 @@ import { revalidatePath } from "next/cache";
 import connectToDB from "base/configs/db";
 import SiteSetting from "base/models/SiteSetting";
 import { revalidateContent } from "@/lib/revalidate";
-import requireAdmin, { unauthorized } from "@/lib/requireAdmin";
+import requireAdminPermission from "@/lib/requireAdminPermission";
 
 import {
   normalizeRolandGarrosBanner,
@@ -13,7 +13,8 @@ import {
 } from "@/lib/rolandGarrosBanner";
 
 export async function GET() {
-  if (!(await requireAdmin())) return unauthorized();
+  const { denied } = await requireAdminPermission("homeRolandGarros.view");
+  if (denied) return denied;
 
   try {
     await connectToDB();
@@ -32,7 +33,8 @@ export async function GET() {
 }
 
 export async function PUT(req) {
-  if (!(await requireAdmin())) return unauthorized();
+  const { denied } = await requireAdminPermission("homeRolandGarros.edit");
+  if (denied) return denied;
 
   try {
     const body = await req.json();

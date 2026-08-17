@@ -26,7 +26,13 @@ function isActive(rule) {
   return rule.active && !isExpired(rule.endAt) && new Date(rule.startAt) <= new Date();
 }
 
+import { useAdminPermissions } from "@/components/admin/AdminPermissionProvider";
+
 export default function DiscountRuleCard({ rule, typeLabels, onEdit, onDelete, onToggle }) {
+  // فعال/غیرفعال کردن یک PATCH است، پس زیرِ discounts.edit می‌رود.
+  const { can } = useAdminPermissions();
+  const canEdit = can("discounts.edit");
+  const canDelete = can("discounts.delete");
   const active = isActive(rule);
   const expired = isExpired(rule.endAt);
 
@@ -112,13 +118,17 @@ export default function DiscountRuleCard({ rule, typeLabels, onEdit, onDelete, o
         </div>
 
         {/* Actions */}
+        {(canEdit || canDelete) && (
         <div className="flex flex-col gap-1.5 shrink-0">
+          {canEdit && (
           <button
             onClick={() => onEdit(rule)}
             className="text-xs px-3 py-1.5 rounded-lg bg-gray-100 text-gray-700 hover:bg-gray-200 transition-colors"
           >
             ویرایش
           </button>
+          )}
+          {canEdit && (
           <button
             onClick={() => onToggle(rule._id, rule.active)}
             className={`text-xs px-3 py-1.5 rounded-lg transition-colors ${
@@ -129,13 +139,17 @@ export default function DiscountRuleCard({ rule, typeLabels, onEdit, onDelete, o
           >
             {rule.active ? "غیرفعال" : "فعال"}
           </button>
+          )}
+          {canDelete && (
           <button
             onClick={() => onDelete(rule._id)}
             className="text-xs px-3 py-1.5 rounded-lg bg-red-50 text-red-600 hover:bg-red-100 transition-colors"
           >
             حذف
           </button>
+          )}
         </div>
+        )}
       </div>
     </div>
   );

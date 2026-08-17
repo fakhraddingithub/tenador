@@ -15,7 +15,13 @@ const TARGET_LABELS = {
   serie: "سری",
 };
 
+import { useAdminPermissions } from "@/components/admin/AdminPermissionProvider";
+
 export default function CoachCreditCard({ rule, onEdit, onDelete, onToggle }) {
+  // این تب زیرِ ماژول «مربیان» است، نه «تخفیف‌ها» — همان تفکیکی که
+  // /api/admin/coach-credits دارد.
+  const { can } = useAdminPermissions();
+  const canManage = can("coaches.manageCredits");
   return (
     <div
       className={`bg-white border rounded-2xl p-4 shadow-sm hover:shadow-md transition-shadow ${
@@ -83,6 +89,7 @@ export default function CoachCreditCard({ rule, onEdit, onDelete, onToggle }) {
         </div>
 
         {/* Actions */}
+        {canManage && (
         <div className="flex flex-col gap-1.5 shrink-0">
           <button
             onClick={() => onEdit(rule)}
@@ -107,6 +114,7 @@ export default function CoachCreditCard({ rule, onEdit, onDelete, onToggle }) {
             حذف
           </button>
         </div>
+        )}
       </div>
     </div>
   );

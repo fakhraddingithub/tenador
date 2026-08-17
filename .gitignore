@@ -38,3 +38,6 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# RBAC cutover rollback snapshots (contain user ids — keep local)
+rbac-cutover-rollback-*.json

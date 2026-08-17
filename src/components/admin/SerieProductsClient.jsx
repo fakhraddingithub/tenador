@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { ProductCard } from "@/components/admin";
 import SortableGridItem from "@/components/admin/SortableGridItem";
+import { useAdminPermissions } from "@/components/admin/AdminPermissionProvider";
 import {
   DndContext,
   closestCenter,
@@ -40,6 +41,7 @@ const productsKey = (serieId) =>
 
 export default function SerieProductsClient({ serieId, brandId }) {
   const router = useRouter();
+  const { can } = useAdminPermissions();
 
   const { data: serieRes } = useSWR(
     serieId ? `/api/series/${serieId}` : null,
@@ -144,7 +146,7 @@ export default function SerieProductsClient({ serieId, brandId }) {
       </div>
 
       {/* راهنمای درگ‌اند‌دراپ */}
-      {!loading && products.length > 1 && (
+      {!loading && products.length > 1 && can("products.edit") && (
         <div className="flex items-center gap-2 text-xs font-bold px-4 py-2.5 rounded-[var(--radius)] bg-gray-50 text-gray-500 border border-gray-100">
           <FaArrowsAlt size={12} />
           برای تغییر ترتیب نمایش محصولات در سایت، کارت‌ها را بکشید و جابه‌جا کنید.
@@ -171,7 +173,11 @@ export default function SerieProductsClient({ serieId, brandId }) {
           </p>
         </div>
       ) : (
-        <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+        <DndContext
+          sensors={sensors}
+          collisionDetection={closestCenter}
+          onDragEnd={can("products.edit") ? handleDragEnd : undefined}
+        >
           <SortableContext
             items={products.map((p) => p._id)}
             strategy={rectSortingStrategy}

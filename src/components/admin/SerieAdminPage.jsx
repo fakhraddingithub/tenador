@@ -33,9 +33,11 @@ import {
 } from "@dnd-kit/sortable";
 import { ADMIN_REF_TTL } from "@/hooks/useAdminRefData";
 import { optimisticReorder } from "@/lib/adminCache";
+import { useAdminPermissions } from "@/components/admin/AdminPermissionProvider";
 
 export default function SerieChildrenAdminPage({ serieId, brandId }) {
   const router = useRouter();
+  const { can } = useAdminPermissions();
 
   // 🟢 خودِ سری و زیرسری‌هایش — دو کلید مستقل، هر دو با پنجره‌ی ۵ دقیقه‌ای
   const { data: serieRes, isLoading: loadingSerie } = useSWR(
@@ -121,6 +123,7 @@ export default function SerieChildrenAdminPage({ serieId, brandId }) {
   return (
     <div dir="rtl" className="w-full space-y-6">
       {/* Header */}
+      {can("series.create") && (
       <div className="flex items-center justify-end">
         <Link
           href={`/p-admin/admin-brands/${brandId}/add-serie`}
@@ -131,6 +134,7 @@ export default function SerieChildrenAdminPage({ serieId, brandId }) {
           ایجاد زیرسری جدید
         </Link>
       </div>
+      )}
 
       {/* Serie summary card */}
       <div className="bg-white rounded-2xl border border-gray-100 p-5 shadow-sm flex flex-col md:flex-row items-center gap-5">
@@ -194,6 +198,7 @@ export default function SerieChildrenAdminPage({ serieId, brandId }) {
             <p className="text-gray-400 text-xs mt-1">
               هنوز هیچ نسخه یا نسل جدیدی برای این سری ثبت نشده است
             </p>
+            {can("series.create") && (
             <Link
               href={`/p-admin/admin-brands/${brandId}/add-serie`}
               className="inline-flex items-center gap-2 mt-5 px-5 py-2.5 rounded-[var(--radius)] text-sm font-bold text-white hover:-translate-y-0.5 transition-all"
@@ -201,12 +206,13 @@ export default function SerieChildrenAdminPage({ serieId, brandId }) {
             >
               <FaPlus size={12} /> ایجاد اولین زیرسری
             </Link>
+            )}
           </div>
         ) : (
           <DndContext
             sensors={sensors}
             collisionDetection={closestCenter}
-            onDragEnd={handleDragEnd}
+            onDragEnd={can("series.edit") ? handleDragEnd : undefined}
           >
             <SortableContext
               items={children.map((c) => c._id)}
@@ -243,6 +249,11 @@ export default function SerieChildrenAdminPage({ serieId, brandId }) {
 }
 
 function ChildCard({ child, onOpen, onProducts, onEdit, onDelete }) {
+  const { can } = useAdminPermissions();
+  const canProducts = can(["series.view", "products.view"]);
+  const canEdit = can("series.edit");
+  const canDelete = can("series.delete");
+
   return (
     <div className="group relative bg-white rounded-2xl border border-gray-100 overflow-hidden hover:shadow-xl hover:-translate-y-1 transition-all duration-300">
       <div className="h-1 w-full" style={{ background: "var(--color-primary)" }} />
@@ -299,7 +310,9 @@ function ChildCard({ child, onOpen, onProducts, onEdit, onDelete }) {
           />
         </div>
 
+        {(canProducts || canEdit || canDelete) && (
         <div className="flex gap-2">
+          {canProducts && (
           <button
             onClick={(e) => {
               e.stopPropagation();
@@ -309,6 +322,8 @@ function ChildCard({ child, onOpen, onProducts, onEdit, onDelete }) {
           >
             <FaBox size={12} /> محصولات
           </button>
+          )}
+          {canEdit && (
           <button
             onClick={(e) => {
               e.stopPropagation();
@@ -318,6 +333,8 @@ function ChildCard({ child, onOpen, onProducts, onEdit, onDelete }) {
           >
             <FaEdit size={12} /> ویرایش
           </button>
+          )}
+          {canDelete && (
           <button
             onClick={(e) => {
               e.stopPropagation();
@@ -327,7 +344,9 @@ function ChildCard({ child, onOpen, onProducts, onEdit, onDelete }) {
           >
             <FaTrash size={13} />
           </button>
+          )}
         </div>
+        )}
       </div>
     </div>
   );

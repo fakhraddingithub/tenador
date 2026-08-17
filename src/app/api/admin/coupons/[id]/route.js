@@ -10,12 +10,13 @@ import connectToDB from "base/configs/db";
 import Coupon from "base/models/Coupon";
 import { parseIranDateTimeLocal } from "@/lib/iranDateTime";
 
-import requireAdmin, { unauthorized } from "@/lib/requireAdmin";
+import requireAdminPermission from "@/lib/requireAdminPermission";
 
 const CODE_REGEX = /^[A-Z0-9_-]{3,30}$/;
 
 export async function PATCH(req, { params }) {
-  if (!(await requireAdmin())) return unauthorized();
+  const { denied } = await requireAdminPermission("discounts.edit");
+  if (denied) return denied;
 
   try {
     await connectToDB();
@@ -182,7 +183,8 @@ export async function PATCH(req, { params }) {
 }
 
 export async function DELETE(req, { params }) {
-  if (!(await requireAdmin())) return unauthorized();
+  const { denied } = await requireAdminPermission("discounts.delete");
+  if (denied) return denied;
 
   try {
     await connectToDB();

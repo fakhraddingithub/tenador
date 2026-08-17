@@ -5,6 +5,7 @@ import { motion } from "framer-motion";
 import { FiSave, FiUser, FiCreditCard, FiHash } from "react-icons/fi";
 import { MdAccountBalance } from "react-icons/md";
 import { showToast } from "@/lib/toast";
+import { useAdminPermissions } from "@/components/admin/AdminPermissionProvider";
 
 export const BANK_SETTING_KEY = "bank_account_details";
 
@@ -41,6 +42,8 @@ function Field({ label, hint, icon: Icon, value, onChange, placeholder, ltr = tr
  * صفحه‌ی پرداخت (BankInfoBox) به کاربر نمایش داده می‌شوند.
  */
 export default function BankAccountManager() {
+  const { can } = useAdminPermissions();
+  const canEdit = can("bankAccount.edit");
   const [form, setForm] = useState(EMPTY);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -155,6 +158,7 @@ export default function BankAccountManager() {
               maxLength={26}
             />
 
+            {canEdit ? (
             <button
               type="submit"
               disabled={saving}
@@ -164,6 +168,11 @@ export default function BankAccountManager() {
               <FiSave size={15} />
               {saving ? "در حال ذخیره..." : "ذخیره اطلاعات حساب"}
             </button>
+            ) : (
+              <p className="text-xs font-bold text-gray-400">
+                دسترسی ویرایش این بخش را ندارید — مقادیر فقط برای مشاهده‌اند.
+              </p>
+            )}
           </>
         )}
       </div>

@@ -6,15 +6,13 @@ import { notifyNewPayment } from "base/services/notificationService";
 import mongoose from "mongoose";
 import { markOrderUsedProductsSold } from "@/lib/usedProductOrderStatus";
 
-import requireAdmin, { unauthorized } from "@/lib/requireAdmin";
-
-// نقش ادمین از دیتابیس بررسی می‌شود (توکن به‌تنهایی قابل‌اعتماد نیست).
-async function getAdminUser() {
-  return await requireAdmin();
-}
+import requireAdminPermission from "@/lib/requireAdminPermission";
 
 export async function POST(req, { params }) {
-  if (!(await requireAdmin())) return unauthorized();
+  // `actor` همان شکلِ خروجیِ گیتِ قدیمی را دارد، پس ردپای ممیزی دست‌نخورده
+  // می‌ماند و یک کوئریِ اضافیِ هر-درخواست هم حذف می‌شود.
+  const { actor: admin, denied } = await requireAdminPermission("payments.approve");
+  if (denied) return denied;
 
   try {
     await connectToDB();
@@ -81,8 +79,6 @@ export async function POST(req, { params }) {
 
     const session = await mongoose.startSession();
     session.startTransaction();
-
-    const admin = await getAdminUser();
 
     try {
       // بروزرسانی پرداخت با مبلغ تأیید‌شده

@@ -4,8 +4,8 @@ import connectToDB from "base/configs/db";
 import "base/models/registerModels";
 import Article from "base/models/Article";
 import ArticleCategory from "base/models/ArticleCategory";
-import requireAdmin from "@/lib/requireAdmin";
-import { articleApiError, unauthorizedResponse, validationResponse } from "@/lib/articleApi";
+import requireAdminPermission from "@/lib/requireAdminPermission";
+import { articleApiError, validationResponse } from "@/lib/articleApi";
 import { validateArticleCategoryInput } from "@/lib/articleValidation";
 import { updateArticleCategory } from "base/services/article.service";
 import { revalidateContent } from "@/lib/revalidate";
@@ -13,9 +13,10 @@ import { revalidateContent } from "@/lib/revalidate";
 export const runtime = "nodejs";
 
 export async function PATCH(req, { params }) {
+  const { actor: admin, denied } = await requireAdminPermission("articleTaxonomy.manage");
+  if (denied) return denied;
+
   try {
-    const admin = await requireAdmin();
-    if (!admin) return unauthorizedResponse();
     const { id } = await params;
     if (!mongoose.isValidObjectId(id)) return NextResponse.json({ error: "Invalid category id" }, { status: 400 });
     const result = validateArticleCategoryInput(await req.json(), { partial: true });
@@ -35,9 +36,10 @@ export async function PATCH(req, { params }) {
 }
 
 export async function DELETE(_req, { params }) {
+  const { actor: admin, denied } = await requireAdminPermission("articleTaxonomy.manage");
+  if (denied) return denied;
+
   try {
-    const admin = await requireAdmin();
-    if (!admin) return unauthorizedResponse();
     const { id } = await params;
     if (!mongoose.isValidObjectId(id)) return NextResponse.json({ error: "Invalid category id" }, { status: 400 });
     await connectToDB();

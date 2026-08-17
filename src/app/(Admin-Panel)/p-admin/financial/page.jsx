@@ -20,12 +20,18 @@ import FinancingSettingsManager from "@/components/admin/financial/FinancingSett
 import ReviewCreditSettingsManager from "@/components/admin/financial/ReviewCreditSettingsManager";
 import PageHeader from "@/components/admin/PageHeader";
 import SectionTabs from "@/components/admin/SectionTabs";
+import { useAdminPermissions } from "@/components/admin/AdminPermissionProvider";
 
+/**
+ * تب‌های این صفحه فقط useState محلی‌اند (هیچ `?tab=` ای در URL نیست)، پس در
+ * ADMIN_TAB_PERMISSIONS جایی ندارند و کلیدِ ماژولی‌شان همین‌جا نوشته می‌شود —
+ * همان کلیدهایی که API های متناظر با آن‌ها گیت شده‌اند.
+ */
 const TABS = [
-  { value: "bank", label: "حساب بانکی", icon: MdAccountBalance },
-  { value: "exchange", label: "نرخ تبدیل ارز", icon: MdOutlineCurrencyExchange },
-  { value: "financing", label: "تنظیمات اقساط", icon: MdPercent },
-  { value: "review-credit", label: "پاداش نظر", icon: FiGift },
+  { value: "bank", label: "حساب بانکی", icon: MdAccountBalance, permission: "bankAccount.view" },
+  { value: "exchange", label: "نرخ تبدیل ارز", icon: MdOutlineCurrencyExchange, permission: "exchangeRate.view" },
+  { value: "financing", label: "تنظیمات اقساط", icon: MdPercent, permission: "financingSettings.view" },
+  { value: "review-credit", label: "پاداش نظر", icon: FiGift, permission: "reviewCredit.view" },
 ];
 
 const EXTERNAL_LINKS = [
@@ -35,7 +41,14 @@ const EXTERNAL_LINKS = [
 ];
 
 export default function FinancialManagementPage() {
-  const [active, setActive] = useState("bank");
+  const { can, canRoute } = useAdminPermissions();
+
+  // آرایه‌ها قبل از رندر کوتاه می‌شوند و تبِ پیش‌فرض هم از همان فهرست می‌آید،
+  // وگرنه ادمینی که فقط «پاداش نظر» را دارد داخل تبِ حساب بانکی می‌افتاد.
+  const tabs = TABS.filter((t) => can(t.permission));
+  const links = EXTERNAL_LINKS.filter((l) => canRoute(l.href));
+
+  const [active, setActive] = useState(() => tabs[0]?.value || null);
 
   return (
     <div dir="rtl" className="space-y-5">
@@ -47,11 +60,11 @@ export default function FinancialManagementPage() {
 
       {/* Segmented Control — بخش‌های اصلی مالی */}
       <div className="flex flex-wrap items-center gap-3">
-        <SectionTabs tabs={TABS} value={active} onChange={setActive} />
+        <SectionTabs tabs={tabs} value={active} onChange={setActive} />
 
         {/* لینک‌های بیرونی هماهنگ با تم — چیپ ثانویه */}
         <div className="flex flex-wrap items-center gap-2">
-          {EXTERNAL_LINKS.map((l) => {
+          {links.map((l) => {
             const Icon = l.icon;
             return (
               <Link

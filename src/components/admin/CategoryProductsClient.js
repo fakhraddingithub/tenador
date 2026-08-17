@@ -20,9 +20,11 @@ import {
   FaTimes,
 } from "react-icons/fa";
 import { useSeries, ADMIN_REF_TTL } from "@/hooks/useAdminRefData";
+import { useAdminPermissions } from "@/components/admin/AdminPermissionProvider";
 
 export default function CategoryProductsClient({ categoryId }) {
   const router = useRouter();
+  const { can } = useAdminPermissions();
 
   // فیلترها
   const [brandFilter, setBrandFilter] = useState("all");
@@ -240,6 +242,7 @@ export default function CategoryProductsClient({ categoryId }) {
         </div>
 
         <div className="flex flex-wrap gap-2">
+          {can("products.create") && (
           <button
             onClick={() =>
               router.push(
@@ -251,20 +254,25 @@ export default function CategoryProductsClient({ categoryId }) {
           >
             <FaPlus size={12} /> افزودن محصول
           </button>
+          )}
 
+          {can("categories.edit") && (
           <button
             onClick={() => router.push(`/p-admin/admin-categories/edit/${categoryId}`)}
             className="flex items-center gap-2 px-4 py-2.5 rounded-[var(--radius)] text-sm font-bold bg-white border-2 border-gray-200 text-gray-700 hover:border-gray-300 transition-all"
           >
             <FaEdit size={12} /> ویرایش دسته
           </button>
+          )}
 
+          {can("categories.delete") && (
           <button
             onClick={handleDelete}
             className="flex items-center gap-2 px-4 py-2.5 rounded-[var(--radius)] text-sm font-bold bg-white border-2 border-red-100 text-red-500 hover:bg-red-50 transition-all"
           >
             <FaTrash size={12} /> حذف دسته
           </button>
+          )}
         </div>
       </div>
 
@@ -351,7 +359,7 @@ export default function CategoryProductsClient({ categoryId }) {
               ? "فیلترها را تغییر داده یا پاک کنید."
               : `هنوز هیچ محصولی برای دسته‌بندی ${category?.title} ثبت نکرده‌اید.`}
           </p>
-          {!hasActiveFilter && (
+          {!hasActiveFilter && can("products.create") && (
             <button
               onClick={() =>
                 router.push(

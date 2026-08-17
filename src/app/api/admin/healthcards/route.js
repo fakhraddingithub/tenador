@@ -3,10 +3,11 @@ import connectToDB from "base/configs/db";
 import HealthCard from "base/models/HealthCard";
 import Category from "base/models/Category";
 
-import requireAdmin, { unauthorized } from "@/lib/requireAdmin";
+import requireAdminPermission from "@/lib/requireAdminPermission";
 
 export async function GET() {
-  if (!(await requireAdmin())) return unauthorized();
+  const { denied } = await requireAdminPermission("healthCards.view");
+  if (denied) return denied;
 
   try {
     await connectToDB();
@@ -22,7 +23,8 @@ export async function GET() {
 }
 
 export async function POST(req) {
-  if (!(await requireAdmin())) return unauthorized();
+  const { denied } = await requireAdminPermission("healthCards.create");
+  if (denied) return denied;
 
   try {
     await connectToDB();

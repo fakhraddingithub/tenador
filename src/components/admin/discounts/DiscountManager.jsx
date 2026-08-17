@@ -11,6 +11,7 @@ import CouponCard from "./CouponCard";
 import QuantityDiscountForm from "./QuantityDiscountForm";
 import QuantityDiscountCard from "./QuantityDiscountCard";
 import AdminLoader from "@/components/admin/AdminLoader";
+import { useAdminPermissions } from "@/components/admin/AdminPermissionProvider";
 import useSWR from "swr";
 
 // 🟡 تخفیف‌ها، تخفیفِ تعدادی و کدهای تخفیف: کشِ کوتاه. عمداً پایین نگه داشته
@@ -22,11 +23,16 @@ const DISCOUNT_TTL = { dedupingInterval: 10_000 };
 // 🔴 «کردیت مربیان» (کیف‌پول/پول) عمداً با SWR کش نمی‌شود و همان fetch مستقیم
 // را نگه می‌دارد.
 
+/**
+ * تب‌ها به دو ماژولِ متفاوت تعلق دارند و همان تفکیکی را دارند که روت‌های
+ * API دارند: سه تبِ اول زیرِ «تخفیف‌ها» و «کردیت مربیان» زیرِ ماژولِ «مربیان»
+ * (/api/admin/coach-credits با coaches.* گیت شده است، نه discounts.*).
+ */
 const TABS = [
-  { id: "discounts", label: "قوانین تخفیف" },
-  { id: "quantity", label: "تخفیف تعدادی" },
-  { id: "coupons", label: "کدهای تخفیف" },
-  { id: "coachCredits", label: "کردیت مربیان" },
+  { id: "discounts", label: "قوانین تخفیف", view: "discounts.view", create: "discounts.create" },
+  { id: "quantity", label: "تخفیف تعدادی", view: "discounts.view", create: "discounts.create" },
+  { id: "coupons", label: "کدهای تخفیف", view: "discounts.view", create: "discounts.create" },
+  { id: "coachCredits", label: "کردیت مربیان", view: "coaches.view", create: "coaches.manageCredits" },
 ];
 
 const TYPE_LABELS = {
@@ -42,7 +48,13 @@ const TYPE_LABELS = {
 };
 
 export default function DiscountManager() {
-  const [activeTab, setActiveTab] = useState("discounts");
+  const { can } = useAdminPermissions();
+
+  // آرایه قبل از رندر کوتاه می‌شود و تبِ پیش‌فرض از همان فهرست می‌آید، وگرنه
+  // ادمینی که فقط «کردیت مربیان» را دارد داخل تبِ قوانین تخفیف می‌افتاد.
+  const visibleTabs = TABS.filter((tab) => can(tab.view));
+  const [activeTab, setActiveTab] = useState(() => visibleTabs[0]?.id || null);
+  const activeTabMeta = TABS.find((tab) => tab.id === activeTab);
 
   const [coachCredits, setCoachCredits] = useState([]);
   const [manualLoading, setManualLoading] = useState(false);
@@ -179,7 +191,7 @@ export default function DiscountManager() {
 
       {/* Tabs */}
       <div className="flex gap-1 bg-white rounded-xl border border-gray-200 p-1 w-fit mb-6 shadow-sm">
-        {TABS.map((tab) => (
+        {visibleTabs.map((tab) => (
           <button
             key={tab.id}
             onClick={() => {
@@ -225,6 +237,7 @@ export default function DiscountManager() {
             </>
           )}
         </div>
+        {activeTabMeta && can(activeTabMeta.create) && (
         <button
           onClick={() => { setShowForm(true); setEditItem(null); }}
           className="flex items-center gap-2 bg-[#aa4725] text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-[#8f3a1e] transition-colors shadow-sm"
@@ -238,6 +251,7 @@ export default function DiscountManager() {
                 ? "کد تخفیف جدید"
                 : "کردیت جدید"}
         </button>
+        )}
       </div>
 
       {/* Form Modal */}

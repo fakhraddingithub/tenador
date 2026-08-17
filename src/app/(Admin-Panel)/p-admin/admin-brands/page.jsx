@@ -17,6 +17,7 @@ import SortableBrandCard from "@/components/admin/SortableBrandCard";
 import AdminLoader from "@/components/admin/AdminLoader";
 import { useBrands } from "@/hooks/useAdminRefData";
 import { optimisticReorder } from "@/lib/adminCache";
+import { useAdminPermissions } from "@/components/admin/AdminPermissionProvider";
 
 const swalTheme = {
   confirmButtonColor: 'var(--color-primary)',
@@ -31,6 +32,7 @@ const swalTheme = {
 
 export default function AdminBrands() {
   const [searchTerm, setSearchTerm] = useState('');
+  const { can } = useAdminPermissions();
 
   // 🟢 همان کلیدِ /api/brands که دراپ‌داون‌های فرم‌ها استفاده می‌کنند — کشِ مشترک.
   const { brands, isLoading: loading, mutate: fetchBrands } = useBrands();
@@ -103,13 +105,15 @@ export default function AdminBrands() {
               onChange={(e) => setSearchTerm(e.target.value)}
             />
           </div>
-          <Link
-            href="/p-admin/admin-brands/add"
-            className="flex items-center gap-2 px-4 py-2.5 rounded-[var(--radius)] text-sm font-bold text-white hover:shadow-lg hover:shadow-[var(--color-primary)]/25 hover:-translate-y-0.5 active:scale-95 transition-all"
-            style={{ background: 'var(--color-primary)' }}
-          >
-            <FaPlus size={14} /> افزودن برند
-          </Link>
+          {can('brands.create') && (
+            <Link
+              href="/p-admin/admin-brands/add"
+              className="flex items-center gap-2 px-4 py-2.5 rounded-[var(--radius)] text-sm font-bold text-white hover:shadow-lg hover:shadow-[var(--color-primary)]/25 hover:-translate-y-0.5 active:scale-95 transition-all"
+              style={{ background: 'var(--color-primary)' }}
+            >
+              <FaPlus size={14} /> افزودن برند
+            </Link>
+          )}
         </div>
       </div>
 
@@ -124,7 +128,11 @@ export default function AdminBrands() {
           <p className="text-gray-400 font-bold">هیچ برندی ثبت نشده</p>
         </div>
       ) : (
-        <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+        <DndContext
+          sensors={sensors}
+          collisionDetection={closestCenter}
+          onDragEnd={can('brands.reorder') ? handleDragEnd : undefined}
+        >
           <SortableContext items={filteredBrands.map((b) => b._id)} strategy={rectSortingStrategy}>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
               {filteredBrands.map((brand, i) => (

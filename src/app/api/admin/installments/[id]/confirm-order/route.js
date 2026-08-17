@@ -19,10 +19,11 @@ import Payment from "base/models/Payment";
 import Order from "base/models/Order";
 import { markOrderUsedProductsSold } from "@/lib/usedProductOrderStatus";
 
-import requireAdmin, { unauthorized } from "@/lib/requireAdmin";
+import requireAdminPermission from "@/lib/requireAdminPermission";
 
 export async function POST(req, { params }) {
-  if (!(await requireAdmin())) return unauthorized();
+  const { denied } = await requireAdminPermission("installments.approveCheck");
+  if (denied) return denied;
 
   try {
     await connectToDB();

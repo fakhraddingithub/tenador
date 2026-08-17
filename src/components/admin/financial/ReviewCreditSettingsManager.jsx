@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { FiSave, FiPercent, FiInfo, FiCheck } from "react-icons/fi";
 import { showToast } from "@/lib/toast";
+import { useAdminPermissions } from "@/components/admin/AdminPermissionProvider";
 import {
   REVIEW_CREDIT_CONFIG_KEY,
   REVIEW_CREDIT_ROLE_OPTIONS,
@@ -25,6 +26,8 @@ const GRANULARITY_OPTIONS = [
  * ذخیره می‌شود (همان الگوی FinancingSettingsManager برای نرخ سود اقساط).
  */
 export default function ReviewCreditSettingsManager() {
+  const { can } = useAdminPermissions();
+  const canEdit = can("reviewCredit.edit");
   const [config, setConfig] = useState(DEFAULT_REVIEW_CREDIT_CONFIG);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -248,6 +251,7 @@ export default function ReviewCreditSettingsManager() {
                 </span>
               </div>
 
+              {canEdit ? (
               <button
                 type="submit"
                 disabled={saving || loading}
@@ -257,6 +261,11 @@ export default function ReviewCreditSettingsManager() {
                 <FiSave size={15} />
                 {saving ? "در حال ذخیره..." : "ذخیره تنظیمات"}
               </button>
+              ) : (
+                <p className="text-xs font-bold text-gray-400">
+                  دسترسی ویرایش این بخش را ندارید — مقادیر فقط برای مشاهده‌اند.
+                </p>
+              )}
             </>
           )}
         </div>

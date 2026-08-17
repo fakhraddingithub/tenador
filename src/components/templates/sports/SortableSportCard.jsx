@@ -19,9 +19,14 @@ import {
 
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
+import { useAdminPermissions } from "@/components/admin/AdminPermissionProvider";
 
 export default function SortableSportCard({ sport, handleDelete }) {
   const router = useRouter();
+  const { can, canRoute } = useAdminPermissions();
+
+  const canOpen = canRoute(`/p-admin/admin-sports/${sport._id}`);
+  const canSeeAthletes = canRoute(`/p-admin/admin-sports/${sport._id}/athletes`);
 
   const {
     attributes,
@@ -40,11 +45,12 @@ export default function SortableSportCard({ sport, handleDelete }) {
     <div
       ref={setNodeRef}
       style={style}
-      onClick={() => router.push(`/p-admin/admin-sports/${sport._id}`)}
+      onClick={canOpen ? () => router.push(`/p-admin/admin-sports/${sport._id}`) : undefined}
       className={`
-        group cursor-pointer bg-white border border-gray-100
+        group bg-white border border-gray-100
         shadow-sm overflow-hidden transition-all duration-300
         hover:shadow-xl hover:-translate-y-1
+        ${canOpen ? "cursor-pointer" : ""}
         ${isDragging ? "opacity-50 scale-[0.98] rotate-1 z-50" : ""}
       `}
     >
@@ -65,7 +71,8 @@ export default function SortableSportCard({ sport, handleDelete }) {
           </div>
         )}
 
-        {/* Drag Handle */}
+        {/* Drag Handle — بدونِ sports.reorder اصلاً رندر نمی‌شود، پس هیچ درگی شروع نمی‌شود */}
+        {can("sports.reorder") && (
         <button
           {...attributes}
           {...listeners}
@@ -85,6 +92,7 @@ export default function SortableSportCard({ sport, handleDelete }) {
         >
           <FiMenu size={18} />
         </button>
+        )}
       </div>
 
       {/* محتوا */}
@@ -102,8 +110,11 @@ export default function SortableSportCard({ sport, handleDelete }) {
           </h3>
         </div>
 
-        {/* اکشن‌ها — ردیف ۱: ویرایش + حذف */}
+        {/* اکشن‌ها — ردیف ۱: ویرایش + حذف. ردیف اگر هیچ اکشنی نماند حذف می‌شود
+            تا حاشیه/خطِ جداکننده‌ی خالی جا نماند. */}
+        {(can("sports.edit") || can("sports.delete")) && (
         <div className="flex items-center gap-2 border-t border-gray-50 pt-4">
+          {can("sports.edit") && (
           <Link
             href={`/p-admin/admin-sports/edit/${sport._id}`}
             onClick={stop}
@@ -118,7 +129,9 @@ export default function SortableSportCard({ sport, handleDelete }) {
             <FiEdit3 size={16} />
             ویرایش
           </Link>
+          )}
 
+          {can("sports.delete") && (
           <button
             onClick={(e) => { stop(e); handleDelete(sport._id); }}
             className="
@@ -131,9 +144,12 @@ export default function SortableSportCard({ sport, handleDelete }) {
           >
             <FiTrash2 size={18} />
           </button>
+          )}
         </div>
+        )}
 
         {/* اکشن‌ها — ردیف ۲ (فاز ۲): قهرمانان همین ورزش */}
+        {canSeeAthletes && (
         <Link
           href={`/p-admin/admin-sports/${sport._id}/athletes`}
           onClick={stop}
@@ -151,6 +167,7 @@ export default function SortableSportCard({ sport, handleDelete }) {
           <FiUsers size={15} />
           قهرمانان این ورزش
         </Link>
+        )}
       </div>
     </div>
   );

@@ -18,6 +18,7 @@ import {
 } from "react-icons/fa";
 
 import AdminLoader from "@/components/admin/AdminLoader";
+import { useAdminPermissions } from "@/components/admin/AdminPermissionProvider";
 
 const swalTheme = {
   confirmButtonColor: "var(--color-primary)",
@@ -32,6 +33,7 @@ const swalTheme = {
 
 export default function SportAthletesPage() {
   const { sportId } = useParams();
+  const { can } = useAdminPermissions();
 
   const [athletes, setAthletes] = useState([]);
   const [sport, setSport] = useState(null);
@@ -120,13 +122,15 @@ export default function SportAthletesPage() {
               onChange={(e) => setSearchTerm(e.target.value)}
             />
           </div>
-          <Link
-            href={`/p-admin/admin-athletes/add?sportId=${sportId}`}
-            className="flex items-center gap-2 px-4 py-2.5 text-sm font-bold text-white hover:shadow-lg hover:shadow-[var(--color-primary)]/25 hover:-translate-y-0.5 active:scale-95 transition-all"
-            style={{ background: "var(--color-primary)", borderRadius: "var(--admin-radius)" }}
-          >
-            <FaPlus size={14} /> افزودن قهرمان
-          </Link>
+          {can("athletes.create") && (
+            <Link
+              href={`/p-admin/admin-athletes/add?sportId=${sportId}`}
+              className="flex items-center gap-2 px-4 py-2.5 text-sm font-bold text-white hover:shadow-lg hover:shadow-[var(--color-primary)]/25 hover:-translate-y-0.5 active:scale-95 transition-all"
+              style={{ background: "var(--color-primary)", borderRadius: "var(--admin-radius)" }}
+            >
+              <FaPlus size={14} /> افزودن قهرمان
+            </Link>
+          )}
         </div>
       </div>
 
@@ -174,7 +178,9 @@ export default function SportAthletesPage() {
                 </div>
               </div>
 
+              {(can("athletes.edit") || can("athletes.delete")) && (
               <div className="px-4 py-4 flex gap-2">
+                {can("athletes.edit") && (
                 <Link
                   href={`/p-admin/admin-athletes/edit/${athlete._id}`}
                   className="flex-1 flex items-center justify-center gap-1.5 py-2.5 text-xs font-bold bg-gray-50 text-gray-700 hover:bg-gray-900 hover:text-white transition-all border border-gray-100"
@@ -182,6 +188,8 @@ export default function SportAthletesPage() {
                 >
                   <FaEdit size={12} /> ویرایش پروفایل
                 </Link>
+                )}
+                {can("athletes.delete") && (
                 <button
                   onClick={() => handleDelete(athlete._id)}
                   className="w-10 h-10 flex items-center justify-center bg-red-50 text-red-400 hover:bg-red-500 hover:text-white transition-all border border-red-100"
@@ -189,7 +197,9 @@ export default function SportAthletesPage() {
                 >
                   <FaTrash size={12} />
                 </button>
+                )}
               </div>
+              )}
             </motion.div>
           ))}
         </div>

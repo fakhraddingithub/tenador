@@ -10,27 +10,16 @@ import connectToDB from "base/configs/db";
 import Order from "base/models/Order";
 import CoachWalletTransaction from "base/models/CoachWalletTransaction";
 
-import requireAdmin, { unauthorized } from "@/lib/requireAdmin";
+import requireAdminPermission from "@/lib/requireAdminPermission";
 
 import User from "base/models/User";
-// نقش ادمین از دیتابیس بررسی می‌شود (توکن به‌تنهایی قابل‌اعتماد نیست).
-async function getAdminUser() {
-  return await requireAdmin();
-}
 
 export async function POST(req, { params }) {
-  if (!(await requireAdmin())) return unauthorized();
+  const { actor: admin, denied } = await requireAdminPermission("coaches.manageCredits");
+  if (denied) return denied;
 
   try {
     await connectToDB();
-
-    const admin = await getAdminUser();
-    if (!admin?.userId) {
-      return NextResponse.json(
-        { message: "احراز هویت ادمین لازم است" },
-        { status: 401 }
-      );
-    }
 
     const { coachId } = await params;
 

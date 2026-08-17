@@ -8,10 +8,11 @@ import Sport from "base/models/Sport";
 import Variant from "base/models/Variant";
 import { NextResponse } from "next/server";
 
-import requireAdmin, { unauthorized } from "@/lib/requireAdmin";
+import requireAdminPermission from "@/lib/requireAdminPermission";
 
 export async function GET(req) {
-  if (!(await requireAdmin())) return unauthorized();
+  const { denied } = await requireAdminPermission("discounts.view");
+  if (denied) return denied;
 
   await connectToDB();
 

@@ -8,8 +8,8 @@ import Product from "base/models/Product";
 import Serie from "base/models/Serie";
 import Sport from "base/models/Sport";
 import UsedProduct from "base/models/UsedProduct";
-import requireAdmin from "@/lib/requireAdmin";
-import { articleApiError, unauthorizedResponse } from "@/lib/articleApi";
+import requireAdminPermission from "@/lib/requireAdminPermission";
+import { articleApiError } from "@/lib/articleApi";
 
 export const runtime = "nodejs";
 
@@ -18,9 +18,10 @@ function regex(value) {
 }
 
 export async function GET(req) {
+  const { denied } = await requireAdminPermission("articles.view");
+  if (denied) return denied;
+
   try {
-    const admin = await requireAdmin();
-    if (!admin) return unauthorizedResponse();
     await connectToDB();
     const params = new URL(req.url).searchParams;
     const type = params.get("type");

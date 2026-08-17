@@ -13,7 +13,7 @@
 import { NextResponse } from "next/server";
 import { computeAnalytics } from "base/services/analyticsService";
 
-import requireAdmin, { unauthorized } from "@/lib/requireAdmin";
+import requireAdminPermission from "@/lib/requireAdminPermission";
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
@@ -24,7 +24,8 @@ function parseDate(value, fallback) {
 }
 
 export async function GET(req) {
-  if (!(await requireAdmin())) return unauthorized();
+  const { denied } = await requireAdminPermission("analytics.view");
+  if (denied) return denied;
 
   try {
     const { searchParams } = new URL(req.url);

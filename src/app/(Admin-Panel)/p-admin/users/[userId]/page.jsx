@@ -6,6 +6,7 @@ import { useParams, useRouter } from 'next/navigation'
 import { motion } from 'framer-motion'
 import { toast } from 'react-toastify'
 import AdminLoader from '@/components/admin/AdminLoader'
+import { useAdminPermissions } from '@/components/admin/AdminPermissionProvider'
 import { getUserFullName } from 'base/utils/userName'
 import {
   ArrowRight, User, Mail, Phone, Calendar, Save, Edit3, X,
@@ -14,13 +15,31 @@ import {
   Loader2, Hash
 } from 'lucide-react'
 
+// ⚠️ «مدیر کل» عمداً اینجا نیست (فاز ۳): نقشِ کسب‌وکاریِ کاربر و عضویتِ پنل
+// دو چیز جدا هستند. ادمین‌کردن فقط از «مدیریت ادمین‌ها» انجام می‌شود و
+// PATCH /api/admin/users/[userId] هم مقدار "admin" را رد می‌کند.
+/**
+ * نگاشتِ فیلد → کلید، عیناً همان چیزی که resolveUserPatchPermissions روی
+ * PATCH /api/admin/users/[userId] اعمال می‌کند. کلاینت نباید فیلدی بفرستد که
+ * اجازه‌اش را ندارد، وگرنه کلِ درخواست ۴۰۳ می‌شود — حتی اگر فقط نام عوض شده باشد.
+ */
+const FIELD_PERMISSION = {
+  name: 'users.edit',
+  lastName: 'users.edit',
+  email: 'users.edit',
+  phone: 'users.edit',
+  level: 'users.edit',
+  role: 'users.changeRole',
+  walletBalance: 'users.adjustWallet',
+  isBanned: 'users.ban',
+}
+
 const roleOptions = [
   { value: 'user', label: 'کاربر عادی' },
   { value: 'coach', label: 'مربی' },
   { value: 'seller', label: 'فروشنده' },
   { value: 'national_player', label: 'ورزشکار ملی' },
   { value: 'store', label: 'فروشگاه' },
-  { value: 'admin', label: 'مدیر کل' },
 ]
 
 const levelLabels = { 0: 'عادی', 1: 'نقره‌ای', 2: 'طلایی', 3: 'پلاتینیوم' }
@@ -77,6 +96,13 @@ export default function AdminUserDetailsPage() {
   const [saving, setSaving] = useState(false)
   const [form, setForm] = useState({})
 
+  const { can } = useAdminPermissions()
+  const canEditProfile = can('users.edit')
+  const canChangeRole = can('users.changeRole')
+  const canAdjustWallet = can('users.adjustWallet')
+  const canBan = can('users.ban')
+  const canEditAnything = canEditProfile || canChangeRole || canAdjustWallet || canBan
+
   const fetchData = async () => {
     try {
       const res = await fetch(`/api/admin/users/${userId}`)
@@ -106,13 +132,41 @@ export default function AdminUserDetailsPage() {
 
   useEffect(() => { if (userId) fetchData() }, [userId])
 
+  /**
+   * فقط فیلدهایی که هم *تغییر کرده‌اند* و هم اجازه‌شان را داریم.
+   * پیش‌تر کلِ فرم فرستاده می‌شد، پس تغییرِ ساده‌ی نام هم چهار کلید
+   * (users.edit + changeRole + adjustWallet + ban) لازم داشت و برای بیشترِ
+   * ادمین‌ها ۴۰۳ می‌گرفت.
+   */
+  const buildPayload = () => {
+    const current = data.user || {}
+    const payload = {}
+    for (const [field, permission] of Object.entries(FIELD_PERMISSION)) {
+      if (!can(permission)) continue
+      const previous =
+        field === 'isBanned' ? !!current.isBanned
+          : field === 'walletBalance' ? (current.walletBalance ?? 0)
+            : field === 'level' ? (current.level ?? 0)
+              : (current[field] || '')
+      if (String(form[field]) !== String(previous)) payload[field] = form[field]
+    }
+    return payload
+  }
+
   const handleSave = async () => {
+    const payload = buildPayload()
+    if (!Object.keys(payload).length) {
+      setEditing(false)
+      toast.info('تغییری برای ذخیره وجود ندارد')
+      return
+    }
+
     setSaving(true)
     try {
       const res = await fetch(`/api/admin/users/${userId}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(form),
+        body: JSON.stringify(payload),
       })
       const json = await res.json()
       if (res.ok) {
@@ -212,6 +266,7 @@ export default function AdminUserDetailsPage() {
               </button>
             </>
           ) : (
+            canEditAnything && (
             <button
               onClick={() => setEditing(true)}
               className="inline-flex items-center gap-1.5 text-white text-xs font-bold px-4 py-2.5 rounded-[var(--radius)]"
@@ -219,6 +274,7 @@ export default function AdminUserDetailsPage() {
             >
               <Edit3 size={14} /> ویرایش اطلاعات
             </button>
+            )
           )}
         </div>
       </div>
@@ -239,7 +295,7 @@ export default function AdminUserDetailsPage() {
               ].map((f) => (
                 <div key={f.key} className="space-y-1">
                   <label className="text-[11px] font-bold text-gray-400 block">{f.label}</label>
-                  {editing ? (
+                  {editing && canEditProfile ? (
                     <div className="relative">
                       <input
                         type={f.type}
@@ -261,7 +317,7 @@ export default function AdminUserDetailsPage() {
               {/* Role */}
               <div className="space-y-1">
                 <label className="text-[11px] font-bold text-gray-400 block">نقش کاربر</label>
-                {editing ? (
+                {editing && canChangeRole ? (
                   <select
                     value={form.role}
                     onChange={(e) => setForm({ ...form, role: e.target.value })}
@@ -280,7 +336,7 @@ export default function AdminUserDetailsPage() {
               {/* Level */}
               <div className="space-y-1">
                 <label className="text-[11px] font-bold text-gray-400 block">سطح کاربری (VIP)</label>
-                {editing ? (
+                {editing && canEditProfile ? (
                   <select
                     value={form.level}
                     onChange={(e) => setForm({ ...form, level: Number(e.target.value) })}
@@ -299,7 +355,7 @@ export default function AdminUserDetailsPage() {
               {/* Wallet */}
               <div className="space-y-1">
                 <label className="text-[11px] font-bold text-gray-400 block">موجودی کیف پول</label>
-                {editing ? (
+                {editing && canAdjustWallet ? (
                   <div className="relative">
                     <AdminInput
                       type="number"
@@ -320,7 +376,7 @@ export default function AdminUserDetailsPage() {
               {/* Ban toggle */}
               <div className="space-y-1">
                 <label className="text-[11px] font-bold text-gray-400 block">وضعیت حساب</label>
-                {editing ? (
+                {editing && canBan ? (
                   <button
                     type="button"
                     onClick={() => setForm({ ...form, isBanned: !form.isBanned })}

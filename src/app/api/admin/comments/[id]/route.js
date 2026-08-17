@@ -10,11 +10,12 @@ import connectToDB from "base/configs/db";
 import "base/models/registerModels";
 import Comment from "base/models/Comment";
 import { revalidateContent } from "@/lib/revalidate";
-import requireAdmin, { unauthorized } from "@/lib/requireAdmin";
+import requireAdminPermission from "@/lib/requireAdminPermission";
 import { grantReviewCreditIfEligible } from "@/lib/reviewCreditGranting";
 
 export async function PATCH(req, { params }) {
-  if (!(await requireAdmin())) return unauthorized();
+  const { denied } = await requireAdminPermission("comments.moderate");
+  if (denied) return denied;
 
   try {
     await connectToDB();
@@ -51,7 +52,8 @@ export async function PATCH(req, { params }) {
 }
 
 export async function DELETE(req, { params }) {
-  if (!(await requireAdmin())) return unauthorized();
+  const { denied } = await requireAdminPermission("comments.delete");
+  if (denied) return denied;
 
   try {
     await connectToDB();

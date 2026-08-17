@@ -11,6 +11,7 @@ import {
   FaCalendarAlt, FaPlay, FaPause, FaEye,
 } from "react-icons/fa";
 import AdminLoader from "@/components/admin/AdminLoader";
+import { useAdminPermissions } from "@/components/admin/AdminPermissionProvider";
 
 const statusConfig = {
   active:    { label: "فعال",           color: "bg-green-100 text-green-700" },
@@ -34,6 +35,12 @@ const tabs = [
 const EVENT_TTL = { dedupingInterval: 60_000 };
 
 export default function EventList() {
+  // توقف/فعال‌سازی/بایگانی همگی PUT روی /events/[id]/status اند → collections.publish
+  // (کلیدی جدا از collections.edit، همان‌طور که manifest تعریف کرده است).
+  const { can, canRoute } = useAdminPermissions();
+  const canCreate = can("collections.create");
+  const canPublish = can("collections.publish");
+  const canDelete = can("collections.delete");
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("");
 
@@ -145,6 +152,7 @@ export default function EventList() {
               onChange={(e) => setSearch(e.target.value)}
             />
           </div>
+          {canCreate && (
           <Link
             href="/p-admin/admin-events/campaigns/new"
             className="flex items-center gap-2 px-4 py-2.5 rounded-[var(--radius)] text-sm font-bold text-white hover:shadow-lg hover:-translate-y-0.5 active:scale-95 transition-all"
@@ -152,6 +160,7 @@ export default function EventList() {
           >
             <FaPlus size={13} /> Collection جدید
           </Link>
+          )}
         </div>
       </div>
 
@@ -178,6 +187,7 @@ export default function EventList() {
         <div className="bg-white rounded-2xl border-2 border-dashed border-gray-200 py-20 text-center">
           <FaCalendarAlt size={28} className="text-gray-200 mx-auto mb-3" />
           <p className="text-gray-400 font-bold">Collection یافت نشد</p>
+          {canCreate && (
           <Link
             href="/p-admin/admin-events/campaigns/new"
             className="mt-4 inline-flex items-center gap-1.5 text-sm font-bold"
@@ -185,6 +195,7 @@ export default function EventList() {
           >
             <FaPlus size={12} /> ساخت اولین Collection
           </Link>
+          )}
         </div>
       ) : (
         <div className="space-y-3">
@@ -252,7 +263,7 @@ export default function EventList() {
 
                   {/* Actions */}
                   <div className="flex items-center gap-1.5 shrink-0">
-                    {event.status === "active" ? (
+                    {!canPublish ? null : event.status === "active" ? (
                       <button
                         onClick={() => changeStatus(event, "paused")}
                         title="توقف"
@@ -279,6 +290,7 @@ export default function EventList() {
                       <FaEye size={12} />
                     </Link>
 
+                    {canCreate && (
                     <button
                       onClick={() => duplicate(event)}
                       title="کپی"
@@ -286,7 +298,9 @@ export default function EventList() {
                     >
                       <FaCopy size={11} />
                     </button>
+                    )}
 
+                    {canRoute(`/p-admin/admin-events/campaigns/${event._id}`) && (
                     <Link
                       href={`/p-admin/admin-events/campaigns/${event._id}`}
                       title="ویرایش"
@@ -294,8 +308,9 @@ export default function EventList() {
                     >
                       <FaEdit size={12} />
                     </Link>
+                    )}
 
-                    {event.status !== "archived" && (
+                    {event.status !== "archived" && canPublish && (
                       <button
                         onClick={() => changeStatus(event, "archived")}
                         title="بایگانی"
@@ -305,6 +320,7 @@ export default function EventList() {
                       </button>
                     )}
 
+                    {canDelete && (
                     <button
                       onClick={() => remove(event)}
                       title="حذف"
@@ -312,6 +328,7 @@ export default function EventList() {
                     >
                       <FaTrash size={11} />
                     </button>
+                    )}
                   </div>
                 </div>
               </motion.div>

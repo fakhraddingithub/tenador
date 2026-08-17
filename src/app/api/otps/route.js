@@ -1,8 +1,23 @@
 import { NextResponse } from "next/server";
 import connectToDB from "base/configs/db";
 import Otp from "base/models/Otp";
+import requireAdminPermission from "@/lib/requireAdminPermission";
+
+/**
+ * ⚠️ توصیه‌ی صریح: این روت باید *حذف* شود، نه فقط محافظت.
+ *
+ *   GET  همه‌ی کدهای یک‌بارمصرفِ دیتابیس را برمی‌گرداند → ورود به هر حساب
+ *   POST برای هر شماره‌ای کدِ دلخواه می‌سازد            → ورود به هر حساب
+ *
+ * هیچ فراخوانی‌ای در کلِ کدبیس ندارد و هیچ «قابلیتِ مدیریتیِ مشروعی» متناظرش
+ * نیست، پس کلیدِ اختصاصی هم برایش ساخته نشده. تا زمان حذف، پشتِ بالاترین
+ * کلیدِ اعتماد بسته می‌شود تا عملاً از دسترس خارج باشد.
+ */
 
 export async function GET(req) {
+  const { denied } = await requireAdminPermission("admins.managePermissions");
+  if (denied) return denied;
+
   try {
     await connectToDB();
     const otps = await Otp.find({});
@@ -13,6 +28,9 @@ export async function GET(req) {
 }
 
 export async function POST(req) {
+  const { denied } = await requireAdminPermission("admins.managePermissions");
+  if (denied) return denied;
+
   try {
     await connectToDB();
     const body = await req.json();

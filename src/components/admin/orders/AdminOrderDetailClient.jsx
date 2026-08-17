@@ -22,6 +22,7 @@ import {
 import OrderFlowSelectionsView from "@/components/order/OrderFlowSelectionsView";
 import VariantSummary from "@/components/order/VariantSummary";
 import InstallmentChecksPanel from "@/components/admin/financial/InstallmentChecksPanel";
+import { useAdminPermissions } from "@/components/admin/AdminPermissionProvider";
 
 /* ─── Constants ─────────────────────────────────────────────────────── */
 
@@ -1175,6 +1176,10 @@ function ScanModal({ target, orderId, mode = "choose", onSuccess, onClose }) {
 
 /* ─── Payment Card ──────────────────────────────────────────────────── */
 function PaymentCard({ payment, orderTotal, onViewReceipt, onApprove, onReject, onEdit }) {
+  // همان کلیدهایی که /api/admin/payments/[id]/{approve,reject,edit} با آن‌ها گیت شده‌اند
+  const { can } = useAdminPermissions();
+  const canApprove = can("payments.approve");
+  const canReject = can("payments.reject");
   const isPending = payment.status === "PENDING";
   const isPaid = payment.status === "PAID";
   const isBankReceipt = payment.method === "BANK_RECEIPT";
@@ -1285,18 +1290,22 @@ function PaymentCard({ payment, orderTotal, onViewReceipt, onApprove, onReject, 
           )}
 
           {/* دکمه‌های تأیید/رد */}
-          {isPending && (
+          {isPending && (canApprove || canReject) && (
             <div className="flex gap-2 pt-1">
+              {canApprove && (
               <button onClick={onApprove}
                 className="flex-1 flex items-center justify-center gap-1.5 bg-green-500 hover:bg-green-600
                   text-white text-xs font-bold py-2 rounded-xl transition">
                 <BadgeCheck size={13} /> تأیید با ورود مبلغ
               </button>
+              )}
+              {canReject && (
               <button onClick={onReject}
                 className="flex-1 flex items-center justify-center gap-1.5 bg-red-50 hover:bg-red-100
                   text-red-600 text-xs font-bold py-2 rounded-xl border border-red-200 transition">
                 <XCircle size={13} /> رد رسید
               </button>
+              )}
             </div>
           )}
 
@@ -1346,17 +1355,22 @@ function TrackingItemBadge({ trackingItem, onRemove }) {
           </span>
         </div>
       </div>
+      {/* onRemove فقط وقتی پاس داده می‌شود که orderTracking.assign را داشته باشد */}
+      {onRemove && (
       <button onClick={() => onRemove(trackingItem._id)}
         className="opacity-0 group-hover:opacity-100 w-6 h-6 flex items-center justify-center
           text-red-400 hover:text-red-600 transition rounded-lg hover:bg-red-50">
         <Trash2 size={12} />
       </button>
+      )}
     </div>
   );
 }
 
 /* ─── Order Items Tracking Panel ─────────────────────────────────────── */
 function TrackingPanel({ orderId, orderItems, orderFulfillmentStatus, onStatusChange }) {
+  const { can } = useAdminPermissions();
+  const canAssign = can("orderTracking.assign");
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [scanModal, setScanModal] = useState(null); // {item, itemIndex}
@@ -1427,7 +1441,7 @@ function TrackingPanel({ orderId, orderItems, orderFulfillmentStatus, onStatusCh
               <TrackingItemBadge
                 key={t._id}
                 trackingItem={t}
-                onRemove={handleRemoveTracking}
+                onRemove={canAssign ? handleRemoveTracking : undefined}
               />
             ))}
           </div>
@@ -1441,6 +1455,7 @@ function TrackingPanel({ orderId, orderItems, orderFulfillmentStatus, onStatusCh
               <ShoppingBag size={13} className="shrink-0" />
               باید خریداری شود — پس از خرید، بارکد را وارد/اسکن کنید
             </div>
+            {canAssign && (
             <button
               onClick={() => setScanModal({ ...target, mode: "scan_purchased" })}
               className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl text-sm font-bold
@@ -1449,10 +1464,11 @@ function TrackingPanel({ orderId, orderItems, orderFulfillmentStatus, onStatusCh
               <Scan size={16} />
               خریداری شد — ثبت بارکد ({remainText} عدد باقی‌مانده)
             </button>
+            )}
           </div>
         )}
 
-        {!complete && !isToPurchase && (
+        {!complete && !isToPurchase && canAssign && (
           <button
             onClick={() => setScanModal({ ...target, mode: "choose" })}
             className="w-full flex items-center justify-center gap-2 py-2.5 border-2 border-dashed
@@ -1609,7 +1625,7 @@ function TrackingPanel({ orderId, orderItems, orderFulfillmentStatus, onStatusCh
                               <TrackingItemBadge
                                 key={t._id}
                                 trackingItem={t}
-                                onRemove={handleRemoveTracking}
+                                onRemove={canAssign ? handleRemoveTracking : undefined}
                               />
                             ))}
                             <p className="flex items-center gap-1.5 text-[11px] text-green-600 font-medium">
@@ -1715,6 +1731,9 @@ function TrackingPanel({ orderId, orderItems, orderFulfillmentStatus, onStatusCh
 // مبلغ، پرداخت‌ها یا مانده‌ی تومانی ندارد. مانده‌ی یورو دقیقاً مثل مانده‌ی
 // تومان، سمت کلاینت از روی priceEUR و paymentsEUR محاسبه می‌شود.
 function EurPanel({ orderId, priceEUR, paymentsEUR = [], onChange, onEditPayment }) {
+  // /api/admin/orders/[orderId]/eur — همه‌ی متدها با همین یک کلید گیت شده‌اند
+  const { can } = useAdminPermissions();
+  const canSetCurrency = can("orders.setCurrency");
   const [editPrice, setEditPrice] = useState(false);
   const [priceInput, setPriceInput] = useState(
     priceEUR === null || priceEUR === undefined ? "" : String(priceEUR)
@@ -1804,6 +1823,7 @@ function EurPanel({ orderId, priceEUR, paymentsEUR = [], onChange, onEditPayment
       <div className="bg-gray-50 border border-gray-100 rounded-xl p-3.5 space-y-3">
         <div className="flex items-center justify-between">
           <span className="text-xs font-bold text-gray-600">قیمت سفارش (یورو)</span>
+          {canSetCurrency && (
           <button
             onClick={toggleEditPrice}
             className={`flex items-center gap-1 text-[11px] font-bold px-2.5 py-1 rounded-lg transition
@@ -1814,6 +1834,7 @@ function EurPanel({ orderId, priceEUR, paymentsEUR = [], onChange, onEditPayment
             <Edit3 size={10} />
             {editPrice ? "انصراف" : hasPrice ? "ویرایش" : "تعیین قیمت"}
           </button>
+          )}
         </div>
 
         {editPrice ? (
@@ -1876,6 +1897,7 @@ function EurPanel({ orderId, priceEUR, paymentsEUR = [], onChange, onEditPayment
                 </p>
               </div>
               <div className="flex items-center gap-1 flex-shrink-0">
+                {canSetCurrency && (
                 <button
                   onClick={() => onEditPayment?.(p)}
                   title="ویرایش مبلغ"
@@ -1884,6 +1906,8 @@ function EurPanel({ orderId, priceEUR, paymentsEUR = [], onChange, onEditPayment
                 >
                   <Pencil size={12} />
                 </button>
+                )}
+                {canSetCurrency && (
                 <button
                   onClick={() => handleDeletePayment(p._id)}
                   className="opacity-0 group-hover:opacity-100 w-7 h-7 flex items-center justify-center
@@ -1891,6 +1915,7 @@ function EurPanel({ orderId, priceEUR, paymentsEUR = [], onChange, onEditPayment
                 >
                   <Trash2 size={13} />
                 </button>
+                )}
               </div>
             </div>
           ))}
@@ -2037,6 +2062,14 @@ function ManagementDiscountModal({ order, orderId, onSuccess, onClose }) {
 
 export default function AdminOrderDetailClient({ orderId }) {
   const router = useRouter();
+
+  // کلیدها دقیقاً همان‌هایی‌اند که روت‌های /api/admin/orders/[orderId]/* با
+  // آن‌ها گیت شده‌اند (src/lib/apiPermissions.js) — نه یک نگاشتِ موازی.
+  const { can } = useAdminPermissions();
+  const canChangeStatus = can("orders.changeStatus");
+  const canEditItems = can("orders.editItems");
+  const canAdjustDiscount = can("orders.adjustDiscount");
+  const canEditPayment = can("payments.edit");
   const [order, setOrder] = useState(null);
   const [installment, setInstallment] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -2400,6 +2433,7 @@ export default function AdminOrderDetailClient({ orderId }) {
             <div className="bg-white rounded-2xl border border-gray-100 p-5 space-y-3">
               <div className="flex items-center justify-between">
                 <h3 className="text-sm font-bold text-gray-700">وضعیت سفارش</h3>
+                {canChangeStatus && (
                 <button
                   onClick={() => setEditStatus(!editStatus)}
                   className={`flex items-center gap-1.5 text-xs font-bold px-3 py-1.5 rounded-lg transition
@@ -2410,9 +2444,10 @@ export default function AdminOrderDetailClient({ orderId }) {
                   <Edit3 size={11} />
                   {editStatus ? "انصراف" : "ویرایش وضعیت"}
                 </button>
+                )}
               </div>
 
-              {editStatus ? (
+              {editStatus && canChangeStatus ? (
                 <div className="space-y-3">
                   <div className="grid grid-cols-2 gap-3">
                     <div>
@@ -2526,6 +2561,7 @@ export default function AdminOrderDetailClient({ orderId }) {
                   <Package size={14} className="text-[var(--color-primary)]" />
                   اقلام سفارش
                 </h3>
+                {canEditItems && (
                 <button
                   onClick={() => setAddItemOpen(true)}
                   className="flex items-center gap-1.5 text-xs font-bold px-3 py-1.5 rounded-lg
@@ -2533,6 +2569,7 @@ export default function AdminOrderDetailClient({ orderId }) {
                 >
                   <Plus size={12} /> افزودن آیتم
                 </button>
+                )}
               </div>
               {order.paymentStatus === "PAID" && (
                 <div className="flex items-center gap-1.5 text-[11px] text-amber-700 bg-amber-50
@@ -2575,7 +2612,8 @@ export default function AdminOrderDetailClient({ orderId }) {
                         <OrderFlowSelectionsView flowSelections={item.flowSelections} />
                       )}
 
-                      {/* کنترل‌های ویرایش آیتم */}
+                      {/* کنترل‌های ویرایش آیتم — بدونِ orders.editItems کلِ ردیف حذف می‌شود */}
+                      {canEditItems && (
                       <div className="flex items-center gap-2 mt-2">
                         {isUsed ? (
                           <span className="text-[11px] text-gray-400 font-medium">تعداد: ۱ (دست‌دوم)</span>
@@ -2613,6 +2651,7 @@ export default function AdminOrderDetailClient({ orderId }) {
                           <Trash2 size={11} /> حذف
                         </button>
                       </div>
+                      )}
                     </div>
                     <div className="text-left flex-shrink-0 text-xs text-gray-500 space-y-0.5">
                       <p>×{new Intl.NumberFormat("fa-IR").format(item.quantity)}</p>
@@ -2645,7 +2684,7 @@ export default function AdminOrderDetailClient({ orderId }) {
                     </span>
                     <span className="flex items-center gap-2">
                       <span className="text-green-600">- {formatPrice(order.couponDiscount)} تومان</span>
-                      {order.coupon?.isManual && (
+                      {order.coupon?.isManual && canAdjustDiscount && (
                         <>
                           <button
                             onClick={() => setDiscountModalOpen(true)}
@@ -2669,7 +2708,7 @@ export default function AdminOrderDetailClient({ orderId }) {
                     </span>
                   </div>
                 )}
-                {!order.coupon?.code && (
+                {!order.coupon?.code && canAdjustDiscount && (
                   <button
                     onClick={() => setDiscountModalOpen(true)}
                     className="flex items-center gap-1.5 text-[11px] font-bold text-[var(--color-primary)] hover:underline"
@@ -2701,7 +2740,7 @@ export default function AdminOrderDetailClient({ orderId }) {
                       onViewReceipt={setLightboxUrl}
                       onApprove={() => setApproveTarget(payment)}
                       onReject={() => handleRejectPayment(payment._id)}
-                      onEdit={() => setEditPaymentTarget({ payment, currency: "toman" })}
+                      onEdit={canEditPayment ? () => setEditPaymentTarget({ payment, currency: "toman" }) : undefined}
                     />
                   ))}
                 </div>

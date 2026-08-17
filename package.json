@@ -22,13 +22,18 @@
     "migrate:limited-edition-brand-scope": "node scripts/migrateLimitedEditionBrandScope.js",
     "migrate:product-audience-unisex": "node scripts/migrateProductTargetAudienceUnisex.js",
     "report:product-audience": "node scripts/reportProductTargetAudience.js",
+    "audit:admin-rbac": "node scripts/auditAdminRbac.mjs",
+    "migrate:admin-rbac": "node scripts/auditAdminRbac.mjs --apply",
+    "test:admin-rbac": "node --test tests/adminRbac.test.mjs",
+    "test:admin-rbac-tx": "node --test --test-timeout=120000 tests/adminRbacTransactions.test.mjs",
     "check:mongodb": "node scripts/check-mongodb.js",
     "worker:prices": "node workers/priceWorker.js",
     "worker:discounts": "node workers/discountWorker.js",
     "worker:installment-reminders": "node workers/installmentReminderWorker.js",
     "worker:review-followup": "node workers/reviewFollowUpWorker.js",
     "ensure:indexes": "node scripts/ensureIndexes.js",
-    "verify:admin-auth": "node scripts/verify-admin-auth.mjs"
+    "verify:admin-auth": "node scripts/verify-admin-auth.mjs",
+    "rbac:coverage": "node scripts/rbacCoverage.mjs"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",

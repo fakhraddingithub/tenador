@@ -2,8 +2,12 @@ import { NextResponse } from "next/server";
 import connectToDB from "base/configs/db";
 import Sport from "base/models/Sport";
 import { revalidateContent } from "@/lib/revalidate";
+import requireAdminPermission from "@/lib/requireAdminPermission";
 
 export async function PUT(req) {
+  const { denied } = await requireAdminPermission("sports.reorder");
+  if (denied) return denied;
+
   try {
     await connectToDB();
 

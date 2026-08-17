@@ -2,21 +2,12 @@
 import connectToDB from "base/configs/db";
 import CoachCredit from "base/models/CoachCredit";
 import { NextResponse } from "next/server";
-import jwt from "jsonwebtoken";
-
-import requireAdmin, { unauthorized } from "@/lib/requireAdmin";
-
-// نقش ادمین از دیتابیس بررسی می‌شود (توکن به‌تنهایی قابل‌اعتماد نیست).
-async function getAdminFromRequest() {
-  return await requireAdmin();
-}
+import requireAdminPermission from "@/lib/requireAdminPermission";
 
 // GET /api/admin/coach-credits
 export async function GET(req) {
-  if (!(await requireAdmin())) return unauthorized();
-
-  const admin = getAdminFromRequest(req);
-  // if (!admin) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const { denied } = await requireAdminPermission("coaches.view");
+  if (denied) return denied;
 
   await connectToDB();
   const { searchParams } = new URL(req.url);
@@ -42,10 +33,8 @@ export async function GET(req) {
 
 // POST /api/admin/coach-credits
 export async function POST(req) {
-  if (!(await requireAdmin())) return unauthorized();
-
-  const admin = getAdminFromRequest(req);
-  // if (!admin) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const { denied } = await requireAdminPermission("coaches.manageCredits");
+  if (denied) return denied;
 
   await connectToDB();
   const body = await req.json();

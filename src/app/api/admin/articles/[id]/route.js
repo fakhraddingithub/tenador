@@ -2,8 +2,9 @@ import { NextResponse } from "next/server";
 import mongoose from "mongoose";
 import connectToDB from "base/configs/db";
 import "base/models/registerModels";
-import requireAdmin from "@/lib/requireAdmin";
-import { articleApiError, unauthorizedResponse, validationResponse } from "@/lib/articleApi";
+import requireAdminPermission, { forbidden } from "@/lib/requireAdminPermission";
+import { resolveArticlePatchPermissions } from "@/lib/apiPermissions";
+import { articleApiError, validationResponse } from "@/lib/articleApi";
 import { validateArticleInput } from "@/lib/articleValidation";
 import { getArticleForAdmin, trashArticle, updateArticle } from "base/services/article.service";
 import { revalidateContent } from "@/lib/revalidate";
@@ -15,9 +16,10 @@ function invalidId(id) {
 }
 
 export async function GET(_req, { params }) {
+  const { denied } = await requireAdminPermission("articles.view");
+  if (denied) return denied;
+
   try {
-    const admin = await requireAdmin();
-    if (!admin) return unauthorizedResponse();
     const { id } = await params;
     if (invalidId(id)) return NextResponse.json({ error: "Invalid article id" }, { status: 400 });
     await connectToDB();
@@ -30,12 +32,30 @@ export async function GET(_req, { params }) {
 }
 
 export async function PATCH(req, { params }) {
+  // ۱) هویت اول — درخواستِ ناشناس باید ۴۰۱ بگیرد، نه ۴۰۳ ناشی از شکلِ بدنه.
+  const identity = await requireAdminPermission();
+  if (identity.denied) return identity.denied;
+
+  let body;
   try {
-    const admin = await requireAdmin();
-    if (!admin) return unauthorizedResponse();
+    body = await req.json();
+  } catch {
+    return NextResponse.json({ error: "بدنه‌ی درخواست نامعتبر است" }, { status: 400 });
+  }
+
+  // ۲) انتشار کلیدِ جداست: تغییرِ status به published/scheduled علاوه بر
+  //    articles.edit به articles.publish هم نیاز دارد.
+  const resolved = resolveArticlePatchPermissions(body);
+  if (!resolved.allowed) return forbidden();
+
+  const { actor: admin, denied } = await requireAdminPermission(resolved.permissions, {
+    mode: resolved.mode,
+  });
+  if (denied) return denied;
+
+  try {
     const { id } = await params;
     if (invalidId(id)) return NextResponse.json({ error: "Invalid article id" }, { status: 400 });
-    const body = await req.json();
     const result = validateArticleInput(body, { partial: true });
     if (!result.ok) return validationResponse(result);
     await connectToDB();
@@ -49,9 +69,10 @@ export async function PATCH(req, { params }) {
 }
 
 export async function DELETE(_req, { params }) {
+  const { actor: admin, denied } = await requireAdminPermission("articles.delete");
+  if (denied) return denied;
+
   try {
-    const admin = await requireAdmin();
-    if (!admin) return unauthorizedResponse();
     const { id } = await params;
     if (invalidId(id)) return NextResponse.json({ error: "Invalid article id" }, { status: 400 });
     await connectToDB();

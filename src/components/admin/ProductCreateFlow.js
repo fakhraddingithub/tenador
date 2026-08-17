@@ -4,6 +4,7 @@ import { useState } from "react";
 import { toast } from "react-toastify";
 import Swal from "sweetalert2";
 import ProductCreateForm from "./ProductCreateForm";
+import { useAdminPermissions } from "@/components/admin/AdminPermissionProvider";
 import { normalizeTargetAudience } from "base/utils/targetAudience";
 
 const steps = [
@@ -13,6 +14,11 @@ const steps = [
 ];
 
 export default function AddProductToCategory({ categoryId }) {
+  // POST /api/ai/product-draft کلیدِ خودش را دارد؛ داشتنِ products.create
+  // به‌تنهایی اجازه‌ی استفاده از دستیار را نمی‌دهد.
+  const { can } = useAdminPermissions();
+  const canUseAi = can("ai.productDraft");
+
   const [step, setStep] = useState(1);
 
   const [rawContent, setRawContent] = useState("");
@@ -113,6 +119,7 @@ export default function AddProductToCategory({ categoryId }) {
 
           {error && <p className="text-red-600 text-sm">{error}</p>}
 
+          {canUseAi ? (
           <button
             onClick={handleGeneratePrompt}
             disabled={loading}
@@ -120,6 +127,11 @@ export default function AddProductToCategory({ categoryId }) {
           >
             ساخت پرامپت
           </button>
+          ) : (
+            <p className="text-xs font-bold text-gray-400 text-center">
+              دسترسی «دستیار هوش مصنوعی» را ندارید — می‌توانید JSON را دستی وارد کنید.
+            </p>
+          )}
         </div>
       )}
 

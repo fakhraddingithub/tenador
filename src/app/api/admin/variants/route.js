@@ -4,10 +4,11 @@ import { NextResponse } from "next/server";
 import connectToDB from "base/configs/db";
 import Variant from "base/models/Variant";
 
-import requireAdmin, { unauthorized } from "@/lib/requireAdmin";
+import requireAdminPermission from "@/lib/requireAdminPermission";
 
 export async function GET(req) {
-  if (!(await requireAdmin())) return unauthorized();
+  const { denied } = await requireAdminPermission("variants.view");
+  if (denied) return denied;
 
   try {
     await connectToDB();

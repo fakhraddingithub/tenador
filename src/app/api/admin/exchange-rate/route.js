@@ -2,11 +2,12 @@ import { NextResponse } from "next/server";
 import { revalidateTag } from "next/cache";
 import connectToDB from "base/configs/db";
 import { ExchangeRate, RateHistory } from "base/models/ExchangeRate";
-import requireAdmin, { unauthorized } from "@/lib/requireAdmin";
+import requireAdminPermission from "@/lib/requireAdminPermission";
 
 // GET /api/admin/exchange-rate
 export async function GET() {
-  if (!(await requireAdmin())) return unauthorized();
+  const { denied } = await requireAdminPermission("exchangeRate.view");
+  if (denied) return denied;
 
   try {
     await connectToDB();
@@ -31,7 +32,8 @@ export async function GET() {
 
 // POST /api/admin/exchange-rate
 export async function POST(req) {
-  if (!(await requireAdmin())) return unauthorized();
+  const { denied } = await requireAdminPermission("exchangeRate.edit");
+  if (denied) return denied;
 
   try {
     await connectToDB();

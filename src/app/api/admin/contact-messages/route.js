@@ -3,7 +3,7 @@ import connectToDB from "base/configs/db";
 import "base/models/registerModels";
 import ContactMessage from "base/models/ContactMessage";
 
-import requireAdmin, { unauthorized } from "@/lib/requireAdmin";
+import requireAdminPermission from "@/lib/requireAdminPermission";
 
 export const runtime = "nodejs";
 
@@ -12,7 +12,8 @@ export const runtime = "nodejs";
  * فهرستِ پیام‌های فرم تماس + شمارشِ هر وضعیت.
  */
 export async function GET(req) {
-  if (!(await requireAdmin())) return unauthorized();
+  const { denied } = await requireAdminPermission("contactMessages.view");
+  if (denied) return denied;
 
   await connectToDB();
 

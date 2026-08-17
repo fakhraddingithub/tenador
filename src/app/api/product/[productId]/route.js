@@ -17,6 +17,7 @@ import { revalidateContent } from "@/lib/revalidate";
 import { makeComboKey } from "@/lib/variantKey";
 import { handleApiError } from "@/lib/apiError";
 import { normalizeTargetAudience } from "base/utils/targetAudience";
+import requireAdminPermission from "@/lib/requireAdminPermission";
 
 // --------------------------------------------------
 // Helpers
@@ -93,6 +94,11 @@ export async function GET(request, { params }) {
 // --------------------------------------------------
 
 export async function PUT(request, { params }) {
+  // پیش‌تر فقط «کاربرِ واردشده» بررسی می‌شد — یعنی هر مشتریِ عادی می‌توانست
+  // هر محصولی را ویرایش کند.
+  const { denied } = await requireAdminPermission("products.edit");
+  if (denied) return denied;
+
   try {
     const { productId } = await params;
 
@@ -100,16 +106,6 @@ export async function PUT(request, { params }) {
       return NextResponse.json(
         { error: "شناسه محصول الزامی است" },
         { status: 400 }
-      );
-    }
-
-    // احراز هویت
-    const user = await getUserFromToken();
-
-    if (!user) {
-      return NextResponse.json(
-        { error: "ابتدا وارد حساب کاربری شوید" },
-        { status: 401 }
       );
     }
 
@@ -329,6 +325,9 @@ export async function PUT(request, { params }) {
 // --------------------------------------------------
 
 export async function DELETE(request, { params }) {
+  const { denied } = await requireAdminPermission("products.delete");
+  if (denied) return denied;
+
   try {
     const { productId } = await params;
 
@@ -336,15 +335,6 @@ export async function DELETE(request, { params }) {
       return NextResponse.json(
         { error: "شناسه محصول الزامی است" },
         { status: 400 }
-      );
-    }
-
-    const user = await getUserFromToken();
-
-    if (!user) {
-      return NextResponse.json(
-        { error: "ابتدا وارد حساب کاربری شوید" },
-        { status: 401 }
       );
     }
 

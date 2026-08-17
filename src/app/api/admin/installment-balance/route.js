@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import connectToDB from "base/configs/db";
 import "base/models/registerModels";
-import requireAdmin from "@/lib/requireAdmin";
+import requireAdminPermission from "@/lib/requireAdminPermission";
 import Installment from "base/models/Installment";
 import SiteSetting from "base/models/SiteSetting";
 import {
@@ -17,12 +17,10 @@ import {
  * نرخ سود ماهانه‌ی ذخیره‌شده در تنظیمات سایت محاسبه می‌کند.
  */
 export async function GET(req) {
-  try {
-    const admin = await requireAdmin();
-    if (!admin) {
-      return NextResponse.json({ error: "دسترسی غیرمجاز" }, { status: 403 });
-    }
+  const { denied } = await requireAdminPermission("installments.view");
+  if (denied) return denied;
 
+  try {
     const { searchParams } = new URL(req.url);
     const id = searchParams.get("id");
     if (!id) {

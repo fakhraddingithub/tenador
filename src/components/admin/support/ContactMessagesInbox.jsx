@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
+import { useAdminPermissions } from "@/components/admin/AdminPermissionProvider";
 import { toast } from "react-toastify";
 import Swal from "sweetalert2";
 import {
@@ -41,6 +42,9 @@ function formatDate(value) {
 const STATUS_LABEL = { new: "جدید", read: "خوانده‌شده", archived: "بایگانی" };
 
 export default function ContactMessagesInbox() {
+  // PATCH و DELETE هر دو زیرِ contactMessages.manage اند.
+  const { can } = useAdminPermissions();
+  const canManage = can("contactMessages.manage");
   const [status, setStatus] = useState("new");
   const [messages, setMessages] = useState([]);
   const [counts, setCounts] = useState({ new: 0, read: 0, archived: 0 });
@@ -246,6 +250,7 @@ export default function ContactMessagesInbox() {
                 ) : null}
 
                 {/* اکشن‌ها */}
+                {canManage && (
                 <div className="flex items-center gap-2 mt-4 pt-4 border-t border-gray-100">
                   {m.status !== "read" ? (
                     <ActionBtn
@@ -271,6 +276,7 @@ export default function ContactMessagesInbox() {
                     danger
                   />
                 </div>
+                )}
               </motion.div>
             ))}
           </AnimatePresence>

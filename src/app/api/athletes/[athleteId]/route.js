@@ -3,6 +3,7 @@ import Athlete from "base/models/Athlete";
 import Sport from "base/models/Sport";
 import { NextResponse } from "next/server";
 import { revalidateContent } from "@/lib/revalidate";
+import requireAdminPermission from "@/lib/requireAdminPermission";
 
 // GET: دریافت جزئیات یک ورزشکار
 export async function GET(req, { params }) {
@@ -24,6 +25,9 @@ export async function GET(req, { params }) {
 
 // PUT: به‌روزرسانی اطلاعات ورزشکار
 export async function PUT(req, { params }) {
+  const { denied } = await requireAdminPermission("athletes.edit");
+  if (denied) return denied;
+
   try {
     await connectToDB();
     const { athleteId } = await params;
@@ -81,6 +85,9 @@ export async function PUT(req, { params }) {
 
 // DELETE: حذف ورزشکار
 export async function DELETE(req, { params }) {
+  const { denied } = await requireAdminPermission("athletes.delete");
+  if (denied) return denied;
+
   try {
     await connectToDB();
     const { athleteId } = await params;

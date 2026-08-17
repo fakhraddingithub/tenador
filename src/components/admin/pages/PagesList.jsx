@@ -6,6 +6,7 @@ import Link from "next/link";
 import { motion } from "framer-motion";
 import { toast } from "react-toastify";
 import { FaFileAlt, FaExternalLinkAlt, FaPen } from "react-icons/fa";
+import { useAdminPermissions } from "@/components/admin/AdminPermissionProvider";
 
 // 🟢 محتوا/داده‌ی مرجع — پنجره‌ی ۵ دقیقه‌ای
 const CONTENT_TTL = { dedupingInterval: 300_000 };
@@ -24,6 +25,8 @@ function formatDate(value) {
 }
 
 export default function PagesList() {
+  // مقصدِ لینک همان روتی است که middleware می‌سنجد، پس canRoute تنها منبع است.
+  const { canRoute } = useAdminPermissions();
   // 🟢 فهرستِ صفحات CMS — محتوا، به‌ندرت تغییر می‌کند
   const { data, isLoading: loading, error } = useSWR("/api/admin/pages", CONTENT_TTL);
   const pages = data?.pages || [];
@@ -80,6 +83,7 @@ export default function PagesList() {
               </p>
 
               <div className="flex items-center gap-2">
+                {canRoute(`/p-admin/admin-pages/${p.slug}`) && (
                 <Link
                   href={`/p-admin/admin-pages/${p.slug}`}
                   className="flex-1 inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg text-white text-xs font-black transition-all hover:brightness-110"
@@ -87,6 +91,7 @@ export default function PagesList() {
                 >
                   <FaPen size={11} /> ویرایش
                 </Link>
+                )}
                 <a
                   href={`/${p.slug}`}
                   target="_blank"

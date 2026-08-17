@@ -27,6 +27,8 @@ import { FiGitBranch, FiArrowRight } from "react-icons/fi";
 import { ShoppingCart } from "lucide-react";
 import NotificationBell from "./NotificationBell";
 import { useNotifications } from "./NotificationProvider";
+import { useAdminPermissions } from "./AdminPermissionProvider";
+import ForbiddenNotice from "./ForbiddenNotice";
 
 /* ─── منوی ساید‌بار (بازساخته‌شده — فاز ۱)
    حذف: صفحه اصلی، ورزشکاران، دسته‌بندی‌ها، نظرات، پیام‌های تماس، پشتیبانی اینستاگرام
@@ -60,6 +62,19 @@ export default function AdminLayout({ children }) {
 
   // حالت اعلان‌ها از لایه‌ی متمرکز (تنها منبعِ حقیقت — بدون polling محلی)
   const { badgeFor } = useNotifications();
+
+  // دسترسیِ مؤثر — از سرور آمده، پس همان رندرِ اول هم درست است.
+  const { canRoute, admin } = useAdminPermissions();
+
+  // آرایه *قبل از* رندر کوتاه می‌شود: بخشِ غیرمجاز نه placeholder غیرفعال
+  // می‌گذارد نه جای خالی؛ grid/flex در RTL خودش جمع می‌شود.
+  const visibleMenu = menuItems.filter((item) => canRoute(item.href));
+
+  // نگهبانِ کلاینت — فقط برای ناوبریِ نرم و سازگاریِ UI. اجرای واقعی در
+  // middleware است (که rewrite می‌کند)؛ اینجا فقط تضمین می‌کنیم اگر به هر
+  // دلیلی صفحه‌ی غیرمجاز رندر شد، محتوایش دیده نشود. صفحه‌ی ۴۰۳ خودش
+  // استثناست (عمداً در manifest نیست).
+  const routeAllowed = pathname === "/p-admin/403" || canRoute(pathname);
 
   useEffect(() => {
     setMobileOpen(false);
@@ -169,7 +184,7 @@ export default function AdminLayout({ children }) {
 
         {/* Nav */}
         <nav className="relative z-10 flex-1 overflow-y-auto admin-scrollbar py-4 px-2 space-y-0.5">
-          {menuItems.map((item) => {
+          {visibleMenu.map((item) => {
             const Icon = item.icon;
             const isDashboard = item.href === "/p-admin";
             const isActive = isDashboard ? pathname === "/p-admin" : pathname.startsWith(item.href);
@@ -248,7 +263,7 @@ export default function AdminLayout({ children }) {
             <span className="hidden sm:inline text-xs font-bold" style={{ color: "var(--admin-text-muted)" }}>پنل مدیریت</span>
             <span className="hidden sm:inline" style={{ color: "var(--admin-border)" }}>/</span>
             <span className="text-xs font-bold truncate" style={{ color: "var(--color-primary)" }}>
-              {menuItems.find(m => m.href === "/p-admin" ? pathname === "/p-admin" : pathname.startsWith(m.href))?.title || "داشبورد"}
+              {visibleMenu.find(m => m.href === "/p-admin" ? pathname === "/p-admin" : pathname.startsWith(m.href))?.title || ""}
             </span>
           </div>
 
@@ -291,12 +306,12 @@ export default function AdminLayout({ children }) {
               <div className="w-7 h-7 overflow-hidden flex items-center justify-center text-white text-xs font-bold"
                 style={{ background: "var(--color-primary)", borderRadius: "var(--admin-radius)" }}>
                 <img
-                  src="https://ui-avatars.com/api/?name=Admin&background=004225&color=fff&size=56"
-                  alt="Admin" className="w-full h-full object-cover" />
+                  src={`https://ui-avatars.com/api/?name=${encodeURIComponent(admin?.name || "Admin")}&background=004225&color=fff&size=56`}
+                  alt="" className="w-full h-full object-cover" />
               </div>
               <div className="hidden md:block">
-                <p className="text-xs font-bold leading-none" style={{ color: "var(--admin-text)" }}>مدیریت</p>
-                <p className="text-[10px] font-bold mt-0.5" style={{ color: "var(--admin-text-muted)" }}>خوش آمدید</p>
+                <p className="text-xs font-bold leading-none" style={{ color: "var(--admin-text)" }}>{admin?.name || "مدیریت"}</p>
+                <p className="text-[10px] font-bold mt-0.5" style={{ color: "var(--admin-text-muted)" }}>{admin?.title || "خوش آمدید"}</p>
               </div>
             </div>
           </div>
@@ -304,7 +319,7 @@ export default function AdminLayout({ children }) {
 
         <main className="flex-1 p-4 sm:p-6 min-w-0">
           <motion.div key={pathname} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3, ease: "easeOut" }}>
-            {children}
+            {routeAllowed ? children : <ForbiddenNotice reason="forbidden" />}
           </motion.div>
         </main>
       </motion.div>

@@ -2,8 +2,8 @@ import { NextResponse } from "next/server";
 import connectToDB from "base/configs/db";
 import "base/models/registerModels";
 import Article from "base/models/Article";
-import requireAdmin from "@/lib/requireAdmin";
-import { articleApiError, unauthorizedResponse } from "@/lib/articleApi";
+import requireAdminPermission from "@/lib/requireAdminPermission";
+import { articleApiError } from "@/lib/articleApi";
 
 export const runtime = "nodejs";
 
@@ -14,9 +14,10 @@ function safeRegex(value) {
 }
 
 export async function GET(req) {
+  const { denied } = await requireAdminPermission("articles.view");
+  if (denied) return denied;
+
   try {
-    const admin = await requireAdmin();
-    if (!admin) return unauthorizedResponse();
     await connectToDB();
 
     const searchParams = new URL(req.url).searchParams;

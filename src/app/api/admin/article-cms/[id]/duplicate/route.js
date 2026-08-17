@@ -3,17 +3,18 @@ import mongoose from "mongoose";
 import connectToDB from "base/configs/db";
 import "base/models/registerModels";
 import Article from "base/models/Article";
-import requireAdmin from "@/lib/requireAdmin";
-import { articleApiError, unauthorizedResponse } from "@/lib/articleApi";
+import requireAdminPermission from "@/lib/requireAdminPermission";
+import { articleApiError } from "@/lib/articleApi";
 import { createArticle } from "base/services/article.service";
 import { normalizeArticleSlug } from "base/utils/articleSlug";
 
 export const runtime = "nodejs";
 
 export async function POST(_req, { params }) {
+  const { actor: admin, denied } = await requireAdminPermission("articles.create");
+  if (denied) return denied;
+
   try {
-    const admin = await requireAdmin();
-    if (!admin) return unauthorizedResponse();
     const { id } = await params;
     if (!mongoose.isValidObjectId(id)) return NextResponse.json({ error: "Invalid article id" }, { status: 400 });
     await connectToDB();

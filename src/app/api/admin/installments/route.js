@@ -18,10 +18,11 @@ import "base/models/registerModels";
 import Installment from "base/models/Installment";
 import { summarizeInstallment } from "base/services/installmentService";
 
-import requireAdmin, { unauthorized } from "@/lib/requireAdmin";
+import requireAdminPermission from "@/lib/requireAdminPermission";
 
 export async function GET(req) {
-  if (!(await requireAdmin())) return unauthorized();
+  const { denied } = await requireAdminPermission("installments.view");
+  if (denied) return denied;
 
   try {
     await connectToDB();

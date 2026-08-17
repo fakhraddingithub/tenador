@@ -3,6 +3,7 @@
 import Image from 'next/image';
 import Link from 'next/link';
 import { FaEdit, FaTrash, FaImage } from 'react-icons/fa';
+import { useAdminPermissions } from '@/components/admin/AdminPermissionProvider';
 
 /**
  * کارت محصول (پنل ادمین) — نسخهٔ فاز ۱
@@ -15,6 +16,12 @@ import { FaEdit, FaTrash, FaImage } from 'react-icons/fa';
  */
 export default function ProductCard({ product, onEdit, onDelete }) {
   const { mainImage, name, slug, category, sport, brand, basePrice } = product;
+
+  // گیتِ اکشن‌ها یک‌جا در همین کارتِ مشترک — سه فهرستِ مصرف‌کننده خودشان
+  // چیزی اضافه نمی‌کنند و نمی‌توانند از قلم بیندازند.
+  const { can } = useAdminPermissions();
+  const canEdit = can('products.edit');
+  const canDelete = can('products.delete');
 
   const splitName = (text = '') => {
     const match = text.match(/[a-zA-Z(].*/);
@@ -119,7 +126,9 @@ export default function ProductCard({ product, onEdit, onDelete }) {
         </div>
 
         {/* اکشن‌ها — ویرایش (پُر) + حذف (آیکون) */}
+        {(canEdit || canDelete) && (
         <div className="relative z-20 flex gap-2 w-full">
+          {canEdit && (
           <button
             onClick={() => onEdit?.(product)}
             className="flex-1 inline-flex items-center justify-center gap-1.5 py-2 text-xs font-bold transition-all active:scale-95"
@@ -132,6 +141,8 @@ export default function ProductCard({ product, onEdit, onDelete }) {
           >
             <FaEdit size={12} /> ویرایش
           </button>
+          )}
+          {canDelete && (
           <button
             onClick={() => onDelete?.(product)}
             className="w-10 h-10 inline-flex items-center justify-center transition-all active:scale-95"
@@ -145,7 +156,9 @@ export default function ProductCard({ product, onEdit, onDelete }) {
           >
             <FaTrash size={12} />
           </button>
+          )}
         </div>
+        )}
       </div>
     </div>
   );

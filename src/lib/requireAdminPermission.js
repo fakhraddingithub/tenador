@@ -1,0 +1,174 @@
+/**
+ * src/lib/requireAdminPermission.js
+ *
+ * گیتِ واحدِ روت‌های ادمین — فاز ۲ (enforcement).
+ *
+ * جایگزین `requireAdmin()` در هندلرها: علاوه بر «ادمین هست؟»، «این کلید را
+ * دارد؟» را هم بررسی می‌کند و ۴۰۱ را از ۴۰۳ جدا می‌کند.
+ *
+ * قرارداد ۴۰۱/۴۰۳ در `decideGateOutcome` (src/lib/adminGuards.js) تعریف و تست
+ * شده است؛ این فایل فقط پوسته‌ی HTTP آن است:
+ *   ۴۰۱ → هیچ هویتی نداریم (توکن نیست/نامعتبر، یا کاربر در دیتابیس نیست)
+ *   ۴۰۳ → هویت هست ولی مجاز نیست (بدون عضویت، لغو‌شده، تکراری، مسدود، یا
+ *          نداشتنِ همان کلید)
+ *
+ * ⚠️ مسیر legacy: تا وقتی مهاجرت اجرا نشده، کاربرانِ `User.role === "admin"`
+ * که هیچ سند Admin ندارند از مسیر legacy وارد می‌شوند و همه‌ی کلیدها را
+ * دارند — یعنی enforcement عملاً روی آن‌ها محدودیتی نمی‌گذارد. این عمدی است:
+ * در غیر این صورت با روشن‌شدنِ enforcement هر ۸ ادمینِ فعلی قفلِ بیرون
+ * می‌شدند. با اجرای مهاجرت این مسیر بسته می‌شود و enforcement واقعی می‌شود.
+ */
+
+import { resolveAdminContext } from "@/lib/adminContext";
+import { decideGateOutcome } from "@/lib/adminGuards";
+import {
+  recordAdminActivity,
+  recordAuthorizationDenial,
+} from "@/lib/adminActivity";
+
+/** ۴۰۱ — هیچ هویتِ معتبری وجود ندارد. */
+export function unauthorized() {
+  return Response.json({ message: "دسترسی غیرمجاز" }, { status: 401 });
+}
+
+/**
+ * ۴۰۳ — هویت هست، ولی مجاز نیست.
+ *
+ * عمداً هیچ جزئیاتی برنمی‌گرداند: نه کلیدِ لازم، نه دلیلِ رد. اینها ساختار
+ * داخلیِ مجوزدهی را لو می‌دهند و به مهاجم نقشه‌ی کلیدها می‌دهند. دلیل فقط در
+ * لاگِ سرور می‌ماند.
+ */
+export function forbidden() {
+  return Response.json(
+    { message: "شما دسترسی لازم برای این عملیات را ندارید" },
+    { status: 403 }
+  );
+}
+
+/**
+ * گیتِ هندلر.
+ *
+ * @param {string|string[]|null} required کلید(های) لازم. `null` یعنی «هر ادمینِ
+ *        معتبر» (مثل رجیستری دسترسی‌ها یا وضعیت اعلان‌های خودِ ادمین).
+ * @param {{mode?: "all"|"any", audit?: boolean}} [options]
+ *        `audit: false` فقط ثبتِ *خودکارِ* «مجاز شد» را خاموش می‌کند و برای
+ *        روت‌هایی است که خودشان رکوردِ دقیق‌تری می‌نویسند. ثبتِ ردها هرگز
+ *        خاموش نمی‌شود.
+ * @returns {Promise<{actor: object|null, ctx: object|null, denied: Response|null}>}
+ *
+ * الگوی مصرف در هندلر:
+ *   const { denied } = await requireAdminPermission("products.create");
+ *   if (denied) return denied;
+ *
+ * `actor` عمداً هم‌شکلِ خروجیِ قدیمیِ `requireAdmin()` است (`_id`, `role`,
+ * `userId`) تا هندلرهایی که برای ردپای ممیزی به `admin.userId` تکیه دارند
+ * بدون تغییر کار کنند.
+ */
+export default async function requireAdminPermission(required = null, options) {
+  // ⚠️ ctx حتی وقتی isAdmin=false است هم برگردانده می‌شود؛ همین تفاوتِ
+  // «هویت نداریم» با «مجاز نیست» را ممکن می‌کند.
+  const ctx = await resolveAdminContext();
+  const decision = decideGateOutcome({
+    ctx,
+    required,
+    mode: options?.mode || "all",
+  });
+
+  // ── ممیزیِ خودکارِ ردها (فاز ۶) ────────────────────────────────────────
+  // اینجا تنها نقطه‌ای است که *همه‌ی* ردهای مجوز از آن رد می‌شوند، پس ثبتِ
+  // آن‌ها هیچ تغییری در ۱۹۰ هندلر لازم ندارد.
+  //
+  // ⚠️ این یکی عمداً await می‌شود. نسخه‌ی اولش نمی‌شد و در اجرای واقعی
+  // مشخص شد ردها اصلاً نوشته نمی‌شوند: هندلر بلافاصله پاسخ می‌دهد و
+  // promiseِ معلق قبل از رسیدن به دیتابیس قطع می‌شود. رکوردِ رد
+  // امنیتی‌ترین چیزی است که این دفتر دارد و «بهترین تلاش» برایش کافی نیست.
+  // درخواستی که رد شده هیچ عملیاتِ کاربری‌ای ندارد که چند میلی‌ثانیه
+  // تأخیرش مهم باشد. شکستِ نوشتن همچنان بی‌صدا است و رد را عوض نمی‌کند.
+  if (decision.status !== 200) {
+    await recordAuthorizationDenial({
+      ctx,
+      required,
+      mode: options?.mode,
+      statusCode: decision.status,
+      reason: decision.outcome,
+    });
+  }
+
+  if (decision.status === 401) {
+    return { actor: null, ctx: null, denied: unauthorized() };
+  }
+
+  if (decision.status === 403) {
+    console.warn(
+      `[authz] 403 user=${ctx?.userId || "?"} reason=${decision.outcome} required=${
+        Array.isArray(required) ? required.join(",") : required || "-"
+      }`
+    );
+    return { actor: null, ctx, denied: forbidden() };
+  }
+
+  // ── ممیزیِ خودکارِ اقدامِ مجاز (فاز ۶) ──────────────────────────────────
+  // روت‌هایی که خودشان رکوردِ کاملِ success/failure + diff می‌نویسند با
+  // `{ audit: false }` این ثبتِ عمومی را خاموش می‌کنند تا خطِ زمانی دوتایی نشود.
+  if (options?.audit !== false) {
+    const keys = asKeys(required);
+    const writes = keys.filter((key) => !isReadKey(key));
+    const auditedReads = keys.filter((key) => AUDITED_READ_KEYS.has(key));
+
+    // ثبت‌های مسیرِ موفق عمداً await نمی‌شوند: اینجا یک عملیاتِ واقعیِ کاربر
+    // در جریان است و نباید منتظرِ دفتر بماند. از دست رفتنِ گاه‌به‌گاهِ یک
+    // رکوردِ «مجاز شد» پذیرفته شده است — برخلافِ رکوردِ رد که await می‌شود.
+    if (writes.length) {
+      recordAdminActivity({
+        ctx,
+        action: "authz.granted",
+        permissions: writes,
+        result: "attempted",
+        statusCode: 200,
+      });
+    }
+    if (auditedReads.length) {
+      recordAdminActivity({
+        ctx,
+        action: "authz.read",
+        permissions: auditedReads,
+        result: "attempted",
+        statusCode: 200,
+      });
+    }
+  }
+
+  return {
+    actor: { _id: ctx.user._id, role: ctx.user.role, userId: ctx.userId },
+    ctx,
+    denied: null,
+  };
+}
+
+function asKeys(required) {
+  if (Array.isArray(required)) return required.filter((key) => typeof key === "string");
+  return typeof required === "string" ? [required] : [];
+}
+
+/**
+ * کلیدهایی که خواندنی‌اند ولی پسوندِ `.view` ندارند.
+ *
+ * بدونِ این فهرست، `admins.viewActivity` «نوشتنی» تشخیص داده می‌شد و هر بار
+ * باز کردنِ خودِ دفتر یک رکوردِ «اقدامِ نوشتنی» می‌ساخت — دفتری که خودش را
+ * پر می‌کند.
+ */
+const NON_SUFFIX_READ_KEYS = new Set(["admins.viewActivity", "analytics.export"]);
+
+const isReadKey = (key) => key.endsWith(".view") || NON_SUFFIX_READ_KEYS.has(key);
+
+/**
+ * خواندن‌هایی که *باید* ثبت شوند.
+ *
+ * تصمیمِ صریح فاز ۶: خواندن‌های عادی ثبت نمی‌شوند (حجمِ بی‌فایده و پرنویز)،
+ * ولی دو مورد استثناست چون خودشان حساس‌اند:
+ *   • admins.viewActivity — «چه کسی دفترِ ممیزی را خوانده» بخشی از ممیزی است.
+ *   • analytics.export    — خروجیِ گزارشِ مالی. توجه: این کلید هیچ روتی ندارد
+ *     (فاز ۵ ثبتش کرده)، پس عملاً هرگز از این گیت عبور نمی‌کند؛ اینجا هست تا
+ *     اگر روزی روتِ خروجی ساخته شد، خودبه‌خود ممیزی شود.
+ */
+export const AUDITED_READ_KEYS = new Set(["admins.viewActivity", "analytics.export"]);

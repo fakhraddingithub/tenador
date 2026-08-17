@@ -10,6 +10,7 @@ import BannerRenderer from '@/components/banners/BannerRenderer';
 import StripBannerRenderer from '@/components/banners/StripBannerRenderer';
 import Swal from 'sweetalert2';
 import { ADMIN_REF_TTL } from '@/hooks/useAdminRefData';
+import { useAdminPermissions } from '@/components/admin/AdminPermissionProvider';
 
 const swalTheme = {
   confirmButtonColor: 'var(--color-primary)',
@@ -30,6 +31,10 @@ const POSITIONS = [
 ];
 
 export default function AdminBannersPage() {
+  // ماژولِ بنرها فقط view/edit دارد؛ ساخت، فعال/غیرفعال و حذف همگی edit اند
+  // (همان چیزی که /api/banners و /api/banners/[id] اعمال می‌کنند).
+  const { can } = useAdminPermissions();
+  const canEdit = can('homeBanners.edit');
   const [editingBanner, setEditingBanner] = useState(null);
   const [creatingPosition, setCreatingPosition] = useState(null);
 
@@ -156,6 +161,7 @@ export default function AdminBannersPage() {
                   <p className="text-sm font-bold text-gray-800">{pos.label}</p>
                   <p className="text-xs font-bold text-gray-400">{pos.desc}</p>
                 </div>
+                {canEdit && (
                 <button
                   onClick={() => setCreatingPosition(pos.key)}
                   className="flex items-center gap-1.5 text-xs font-bold px-3 py-1.5 rounded-xl border transition-all hover:-translate-y-0.5 active:scale-95"
@@ -163,6 +169,7 @@ export default function AdminBannersPage() {
                 >
                   <FiPlus size={12} /> بنر جدید
                 </button>
+                )}
               </div>
 
               {/* Items */}
@@ -197,6 +204,7 @@ export default function AdminBannersPage() {
                         </span>
                       </div>
 
+                      {canEdit && (
                       <div className="flex items-center gap-1 flex-shrink-0">
                         <button
                           onClick={() => handleToggleActive(b)}
@@ -218,6 +226,7 @@ export default function AdminBannersPage() {
                           <FiTrash2 size={13} />
                         </button>
                       </div>
+                      )}
                     </div>
                   ))}
                 </div>

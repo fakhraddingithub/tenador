@@ -8,6 +8,7 @@ import Button from "@/components/admin/Button";
 import ImageUpload from "@/components/admin/ImageUpload";
 import PageHeader from "@/components/admin/PageHeader";
 import BlockEditor from "./BlockEditor";
+import { useAdminPermissions } from "@/components/admin/AdminPermissionProvider";
 import RevisionHistory from "./RevisionHistory";
 import { countArticleWords } from "@/lib/articleContent";
 import { buildArticlePath, normalizeArticleSlug } from "base/utils/articleSlug";
@@ -23,8 +24,17 @@ function isoLocal(value) {
 function Counter({ value, max }) { const length = String(value || "").length; return <span className={`text-[10px] tabular-nums ${length > max ? "text-red-600" : "text-gray-400"}`}>{length.toLocaleString("fa-IR")} / {max.toLocaleString("fa-IR")}</span>; }
 function Panel({ title, icon, children }) { return <section className="a-card"><header className="flex items-center gap-2 px-4 py-3 border-b text-sm font-black" style={{ borderColor: "var(--admin-border)" }}>{icon}{title}</header><div className="p-4">{children}</div></section>; }
 
+/** وضعیت‌هایی که محتوا را منتشر نمی‌کنند (هم‌تراز با resolveArticlePatchPermissions). */
+const NON_PUBLISHING_STATUSES = ["draft", "review", "archived"];
+
 export default function ArticleEditor({ articleId = null }) {
   const router = useRouter();
+
+  // صفحه با articles.edit/create باز می‌شود؛ *انتشار* کلیدِ جدا دارد
+  // (resolveArticlePatchPermissions روی PATCH). بدونِ آن، وضعیت‌های منتشرکننده
+  // نه در فهرست می‌آیند و نه دکمه‌ی انتشار.
+  const { can } = useAdminPermissions();
+  const canPublish = can("articles.publish");
   const [article, setArticle] = useState(EMPTY);
   const [categories, setCategories] = useState([]);
   const [tags, setTags] = useState([]);
@@ -82,6 +92,13 @@ export default function ArticleEditor({ articleId = null }) {
 
   const save = async (overrides = {}) => {
     const payload = { ...article, ...overrides, publishedAt: (overrides.publishedAt ?? article.publishedAt) || null, revisionReason: overrides.revisionReason || "ذخیره دستی مقاله" };
+    // بدونِ articles.publish نباید وضعیتِ منتشرکننده فرستاده شود — وگرنه
+    // ویرایشِ ساده‌ی یک مقاله‌ی *از قبل منتشرشده* هم ۴۰۳ می‌گرفت، چون بدنه
+    // `status: "published"` را با خودش می‌برد. حذفِ فیلد یعنی «دست نزن».
+    if (!canPublish && !NON_PUBLISHING_STATUSES.includes(payload.status)) {
+      delete payload.status;
+      delete payload.publishedAt;
+    }
     if (!payload.title.trim() || !payload.category) return toast.error("عنوان و دسته‌بندی مقاله الزامی است");
     if (!payload.slug) payload.slug = normalizeArticleSlug(payload.title);
     autosaveController.current?.abort();
@@ -111,10 +128,10 @@ export default function ArticleEditor({ articleId = null }) {
       </main>
       <aside className="space-y-4 xl:sticky xl:top-36">
         <Panel title="وضعیت انتشار" icon={<FiSettings className="text-[var(--color-primary)]" />}>
-          <label className="block text-xs font-bold mb-1.5">وضعیت</label><select value={article.status} onChange={(e) => update({ status: e.target.value })} className={fieldClass} style={{ borderColor: "var(--admin-border)", borderRadius: "var(--admin-radius)" }}><option value="draft">پیش‌نویس</option><option value="review">در انتظار بازبینی</option><option value="scheduled">زمان‌بندی‌شده</option><option value="published">منتشرشده</option><option value="archived">آرشیو</option></select>
+          <label className="block text-xs font-bold mb-1.5">وضعیت</label><select value={article.status} onChange={(e) => update({ status: e.target.value })} className={fieldClass} style={{ borderColor: "var(--admin-border)", borderRadius: "var(--admin-radius)" }}><option value="draft">پیش‌نویس</option><option value="review">در انتظار بازبینی</option>{canPublish ? <><option value="scheduled">زمان‌بندی‌شده</option><option value="published">منتشرشده</option></> : null}<option value="archived">آرشیو</option></select>
           {(article.status === "scheduled" || article.publishedAt) ? <label className="block mt-4"><span className="block text-xs font-bold mb-1.5">زمان انتشار</span><input type="datetime-local" value={article.publishedAt} onChange={(e) => update({ publishedAt: e.target.value })} className={fieldClass} style={{ borderColor: "var(--admin-border)", borderRadius: "var(--admin-radius)" }} /></label> : null}
           <div className="grid grid-cols-2 gap-2 mt-4"><label className="flex items-center gap-2 text-xs font-bold"><input type="checkbox" checked={article.featured} onChange={(e) => update({ featured: e.target.checked })} /> ویژه</label><label className="flex items-center gap-2 text-xs font-bold"><input type="checkbox" checked={article.pinned} onChange={(e) => update({ pinned: e.target.checked })} /> سنجاق‌شده</label></div>
-          <div className="flex gap-2 mt-5"><Button size="sm" className="flex-1" loading={saving} onClick={() => save(article.status === "scheduled" ? { status: "scheduled" } : { status: "published", publishedAt: article.publishedAt || new Date().toISOString() })}>{article.status === "scheduled" ? "زمان‌بندی" : "انتشار"}</Button></div>
+          {canPublish ? <div className="flex gap-2 mt-5"><Button size="sm" className="flex-1" loading={saving} onClick={() => save(article.status === "scheduled" ? { status: "scheduled" } : { status: "published", publishedAt: article.publishedAt || new Date().toISOString() })}>{article.status === "scheduled" ? "زمان‌بندی" : "انتشار"}</Button></div> : <p className="mt-5 text-[11px] font-bold text-gray-400">دسترسی انتشار مقاله را ندارید — می‌توانید پیش‌نویس را ذخیره کنید.</p>}
           <div className="mt-4 pt-3 border-t flex items-center justify-between text-[11px]" style={{ borderColor: "var(--admin-border)" }}><span className="flex items-center gap-1"><FiClock />{autosave === "saving" ? "در حال ذخیره..." : autosave === "error" ? "خطا در ذخیره خودکار" : autosave === "saved" ? "ذخیره شد" : dirty ? "تغییرات ذخیره‌نشده" : "بدون تغییر"}</span><span>{article.currentRevision ? `نسخه ${article.currentRevision}` : "جدید"}</span></div>
         </Panel>
         <Panel title="دسته‌بندی و برچسب" icon={<FiSearch className="text-[var(--color-primary)]" />}>

@@ -23,12 +23,7 @@ import "base/models/Variant";
 import "base/models/UsedProduct";
 import "base/models/User";
 
-import requireAdmin, { unauthorized } from "@/lib/requireAdmin";
-
-// نقش ادمین از دیتابیس بررسی می‌شود (توکن به‌تنهایی قابل‌اعتماد نیست).
-async function getAdminUser() {
-  return await requireAdmin();
-}
+import requireAdminPermission from "@/lib/requireAdminPermission";
 
 // تبدیل attributes واریانت (Map) به آبجکت ساده تا در JSON درست سریالایز شود
 function normalizeVariant(variant) {
@@ -116,18 +111,11 @@ function normalizeOrderItems(items = []) {
 
 /* ─── GET: جزئیات سفارش ─────────────────────────────────────────────── */
 export async function GET(req, { params }) {
-  if (!(await requireAdmin())) return unauthorized();
+  const { actor: admin, denied } = await requireAdminPermission("orders.view");
+  if (denied) return denied;
 
   try {
     await connectToDB();
-
-    const admin = await getAdminUser();
-    if (!admin?.userId) {
-      return NextResponse.json(
-        { message: "احراز هویت ادمین لازم است" },
-        { status: 401 }
-      );
-    }
 
     const { orderId } =await params;
 
@@ -214,18 +202,11 @@ export async function GET(req, { params }) {
 
 /* ─── PATCH: بروزرسانی وضعیت ────────────────────────────────────────── */
 export async function PATCH(req, { params }) {
-  if (!(await requireAdmin())) return unauthorized();
+  const { actor: admin, denied } = await requireAdminPermission("orders.changeStatus");
+  if (denied) return denied;
 
   try {
     await connectToDB();
-
-    const admin = await getAdminUser();
-    if (!admin?.userId) {
-      return NextResponse.json(
-        { message: "احراز هویت ادمین لازم است" },
-        { status: 401 }
-      );
-    }
 
     const { orderId } =await params;
 

@@ -10,7 +10,7 @@ import mongoose from "mongoose";
 import connectToDB from "base/configs/db";
 import QuantityDiscount from "base/models/QuantityDiscount";
 import { revalidateContent } from "@/lib/revalidate";
-import requireAdmin, { unauthorized } from "@/lib/requireAdmin";
+import requireAdminPermission from "@/lib/requireAdminPermission";
 
 import {
   validateQuantityDiscountPayload,
@@ -18,7 +18,8 @@ import {
 } from "@/lib/quantityDiscountValidation";
 
 export async function PATCH(req, { params }) {
-  if (!(await requireAdmin())) return unauthorized();
+  const { denied } = await requireAdminPermission("discounts.edit");
+  if (denied) return denied;
 
   try {
     await connectToDB();
@@ -69,7 +70,8 @@ export async function PATCH(req, { params }) {
 }
 
 export async function DELETE(req, { params }) {
-  if (!(await requireAdmin())) return unauthorized();
+  const { denied } = await requireAdminPermission("discounts.delete");
+  if (denied) return denied;
 
   try {
     await connectToDB();

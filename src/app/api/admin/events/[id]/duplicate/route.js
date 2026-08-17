@@ -3,11 +3,12 @@ import connectToDB from "base/configs/db";
 import Event from "base/models/Event";
 import { revalidateContent } from "@/lib/revalidate";
 
-import requireAdmin, { unauthorized } from "@/lib/requireAdmin";
+import requireAdminPermission from "@/lib/requireAdminPermission";
 
 // POST /api/admin/events/:id/duplicate
 export async function POST(req, { params }) {
-  if (!(await requireAdmin())) return unauthorized();
+  const { denied } = await requireAdminPermission("collections.create");
+  if (denied) return denied;
 
   await connectToDB();
 

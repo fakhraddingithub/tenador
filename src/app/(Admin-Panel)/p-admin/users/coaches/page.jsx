@@ -9,6 +9,7 @@ import { toast } from "react-toastify";
 import AdminLoader from "@/components/admin/AdminLoader";
 import MarkNotificationsRead from "@/components/admin/MarkNotificationsRead";
 import { useNotifications } from "@/components/admin/NotificationProvider";
+import { useAdminPermissions } from "@/components/admin/AdminPermissionProvider";
 import {
   GraduationCap,
   Users,
@@ -30,6 +31,9 @@ const isPdfUrl = (url) => typeof url === "string" && /\.pdf(\?|$)/i.test(url);
 const pdfViewerUrl = (url) => `/api/files/pdf?url=${encodeURIComponent(url)}`;
 
 export default function AdminCoachesManagement() {
+  // PUT /api/admin/coach-applications/[id]/review → coaches.manage
+  const { can } = useAdminPermissions();
+  const canReview = can("coaches.manage");
   const router = useRouter();
   const { byType } = useNotifications();
   const pendingApplications = byType?.coach_application || 0;
@@ -268,6 +272,7 @@ export default function AdminCoachesManagement() {
                     </p>
                   </div>
 
+                  {canReview && (
                   <div className="flex items-center gap-2 self-end sm:self-center">
                     <button
                       type="button"
@@ -284,6 +289,7 @@ export default function AdminCoachesManagement() {
                       <X size={14} /> رد درخواست
                     </button>
                   </div>
+                  )}
                 </div>
 
                 {/* Application images */}

@@ -20,22 +20,18 @@ import "base/models/registerModels";
 import Order from "base/models/Order";
 import { recalcAndApply } from "base/services/orderRecalc";
 
-import requireAdmin, { unauthorized } from "@/lib/requireAdmin";
+import requireAdminPermission from "@/lib/requireAdminPermission";
 
 const isId = (v) => v && mongoose.Types.ObjectId.isValid(v);
 const MANAGEMENT_DISCOUNT_LABEL = "تخفیف مدیریت";
 
 /* ─── POST: اعمال/به‌روزرسانیِ تخفیف مدیریت ──────────────────────────── */
 export async function POST(req, { params }) {
-  if (!(await requireAdmin())) return unauthorized();
+  const { actor: admin, denied } = await requireAdminPermission("orders.adjustDiscount");
+  if (denied) return denied;
 
   try {
     await connectToDB();
-
-    const admin = await requireAdmin();
-    if (!admin?.userId) {
-      return NextResponse.json({ message: "احراز هویت ادمین لازم است" }, { status: 401 });
-    }
 
     const { orderId } = await params;
     if (!isId(orderId)) {
@@ -102,15 +98,11 @@ export async function POST(req, { params }) {
 
 /* ─── DELETE: حذف تخفیف مدیریت ───────────────────────────────────────── */
 export async function DELETE(req, { params }) {
-  if (!(await requireAdmin())) return unauthorized();
+  const { actor: admin, denied } = await requireAdminPermission("orders.adjustDiscount");
+  if (denied) return denied;
 
   try {
     await connectToDB();
-
-    const admin = await requireAdmin();
-    if (!admin?.userId) {
-      return NextResponse.json({ message: "احراز هویت ادمین لازم است" }, { status: 401 });
-    }
 
     const { orderId } = await params;
     if (!isId(orderId)) {

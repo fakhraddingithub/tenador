@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import useSWR from "swr";
 import Link from "next/link";
+import { useAdminPermissions } from "@/components/admin/AdminPermissionProvider";
 import {
   FiPlus,
   FiEdit2,
@@ -28,6 +29,7 @@ const COLORS = {
 };
 
 export default function OrderFlowsClient() {
+  const { can } = useAdminPermissions();
   const [search, setSearch] = useState("");
   const [toast, setToast] = useState(null);
   const [deleteConfirm, setDeleteConfirm] = useState(null); // flowId
@@ -159,6 +161,7 @@ export default function OrderFlowsClient() {
             مراحل سفارش برای دسته‌بندی‌های مختلف را اینجا مدیریت کنید
           </p>
         </div>
+        {can("orderFlows.create") && (
         <Link
           href="/p-admin/admin-order-flows/create"
           className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-bold text-white shadow-sm transition-all hover:opacity-90 hover:shadow-md"
@@ -167,6 +170,7 @@ export default function OrderFlowsClient() {
           <FiPlus size={15} />
           فرایند جدید
         </Link>
+        )}
       </div>
 
       {/* سرچ */}
@@ -220,6 +224,10 @@ export default function OrderFlowsClient() {
 }
 
 function FlowCard({ flow, onToggle, onDelete }) {
+  // فعال/غیرفعال کردن هم PUT روی همان روت است، پس با orderFlows.edit سنجیده می‌شود.
+  const { can } = useAdminPermissions();
+  const canEdit = can("orderFlows.edit");
+  const canDelete = can("orderFlows.delete");
   const stepCount = flow.nodes?.length || 0;
   const catNodes = flow.nodes?.filter((n) => n.type === "category").length || 0;
   const srvNodes = flow.nodes?.filter((n) => n.type === "service").length || 0;
@@ -291,7 +299,9 @@ function FlowCard({ flow, onToggle, onDelete }) {
         </div>
 
         {/* دکمه‌ها */}
+        {(canEdit || canDelete) && (
         <div className="flex gap-2">
+          {canEdit && (
           <Link
             href={`/p-admin/admin-order-flows/edit/${flow._id}`}
             className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-xl text-xs font-bold transition-all hover:opacity-90"
@@ -304,7 +314,9 @@ function FlowCard({ flow, onToggle, onDelete }) {
             <FiEdit2 size={12} />
             ویرایش مراحل
           </Link>
+          )}
 
+          {canEdit && (
           <button
             onClick={() => onToggle(flow)}
             className="w-9 h-9 flex items-center justify-center rounded-xl transition-all hover:opacity-80"
@@ -317,7 +329,9 @@ function FlowCard({ flow, onToggle, onDelete }) {
           >
             {flow.isActive ? <FiToggleRight size={15} /> : <FiToggleLeft size={15} />}
           </button>
+          )}
 
+          {canDelete && (
           <button
             onClick={onDelete}
             className="w-9 h-9 flex items-center justify-center rounded-xl transition-all hover:opacity-80"
@@ -326,7 +340,9 @@ function FlowCard({ flow, onToggle, onDelete }) {
           >
             <FiTrash2 size={13} />
           </button>
+          )}
         </div>
+        )}
       </div>
     </div>
   );

@@ -23,12 +23,7 @@ import UsedProduct from "base/models/UsedProduct";
 import Order from "base/models/Order";
 import { syncOrderFulfillmentFromTracking } from "@/lib/orderFulfillmentSync";
 
-import requireAdmin, { unauthorized } from "@/lib/requireAdmin";
-
-// نقش ادمین از دیتابیس بررسی می‌شود (توکن به‌تنهایی قابل‌اعتماد نیست).
-async function getAdminUser() {
-  return await requireAdmin();
-}
+import requireAdminPermission from "@/lib/requireAdminPermission";
 
 function generateBarcode() {
   const ts   = Date.now().toString().slice(-9);
@@ -49,13 +44,10 @@ function generateTrackingId(label = "used", date = new Date()) {
 }
 
 export async function POST(req) {
-  if (!(await requireAdmin())) return unauthorized();
+  const { actor: admin, denied } = await requireAdminPermission("orderTracking.assign");
+  if (denied) return denied;
 
   try {
-    const admin = await getAdminUser();
-    if (!admin)
-      return NextResponse.json({ message: "دسترسی غیرمجاز" }, { status: 401 });
-
     await connectToDB();
     const body = await req.json();
     const { usedProductId, orderId, action, barcode, warehouseId } = body;
@@ -213,13 +205,10 @@ export async function POST(req) {
 
 /* ─── GET: وضعیت tracking محصول دست‌دوم ─────────────────────────── */
 export async function GET(req) {
-  if (!(await requireAdmin())) return unauthorized();
+  const { denied } = await requireAdminPermission("orderTracking.view");
+  if (denied) return denied;
 
   try {
-    const admin = await getAdminUser();
-    if (!admin)
-      return NextResponse.json({ message: "دسترسی غیرمجاز" }, { status: 401 });
-
     const { searchParams } = new URL(req.url);
     const usedProductId = searchParams.get("usedProductId");
 

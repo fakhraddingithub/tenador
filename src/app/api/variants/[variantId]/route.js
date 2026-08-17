@@ -2,7 +2,7 @@ import connectToDB from "base/configs/db";
 import Variant from "base/models/Variant";
 import Product from "base/models/Product";
 import { NextResponse } from "next/server";
-import requireAdmin, { unauthorized } from "@/lib/requireAdmin";
+import requireAdminPermission from "@/lib/requireAdminPermission";
 import { revalidateContent } from "@/lib/revalidate";
 
 // ⚠️ همان مورد روتِ api/product/[productId]/variants: در Next 16، params یک
@@ -10,7 +10,8 @@ import { revalidateContent } from "@/lib/revalidate";
 // باگِ params تنها چیزی است که فعلاً جلوی حذفِ واریانت بدونِ احراز هویت را گرفته.
 
 export async function DELETE(req, { params }) {
-  if (!(await requireAdmin())) return unauthorized();
+  const { denied } = await requireAdminPermission("variants.edit");
+  if (denied) return denied;
 
   try {
     await connectToDB();

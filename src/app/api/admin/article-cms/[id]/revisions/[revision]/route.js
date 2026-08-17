@@ -3,17 +3,18 @@ import mongoose from "mongoose";
 import connectToDB from "base/configs/db";
 import "base/models/registerModels";
 import ArticleRevision from "base/models/ArticleRevision";
-import requireAdmin from "@/lib/requireAdmin";
-import { articleApiError, unauthorizedResponse } from "@/lib/articleApi";
+import requireAdminPermission from "@/lib/requireAdminPermission";
+import { articleApiError } from "@/lib/articleApi";
 import { updateArticle } from "base/services/article.service";
 import { revalidateContent } from "@/lib/revalidate";
 
 export const runtime = "nodejs";
 
 export async function GET(_req, { params }) {
+  const { denied } = await requireAdminPermission("articles.view");
+  if (denied) return denied;
+
   try {
-    const admin = await requireAdmin();
-    if (!admin) return unauthorizedResponse();
     const { id, revision } = await params;
     if (!mongoose.isValidObjectId(id)) return NextResponse.json({ error: "Invalid article id" }, { status: 400 });
     await connectToDB();
@@ -26,9 +27,10 @@ export async function GET(_req, { params }) {
 }
 
 export async function POST(_req, { params }) {
+  const { actor: admin, denied } = await requireAdminPermission("articles.edit");
+  if (denied) return denied;
+
   try {
-    const admin = await requireAdmin();
-    if (!admin) return unauthorizedResponse();
     const { id, revision } = await params;
     if (!mongoose.isValidObjectId(id)) return NextResponse.json({ error: "Invalid article id" }, { status: 400 });
     await connectToDB();

@@ -24,23 +24,14 @@ import Order from "base/models/Order";
 import { derivePaymentStatus } from "base/services/orderRecalc";
 import { markOrderUsedProductsSold } from "@/lib/usedProductOrderStatus";
 
-import requireAdmin, { unauthorized } from "@/lib/requireAdmin";
-
-// نقش ادمین از دیتابیس بررسی می‌شود (توکن به‌تنهایی قابل‌اعتماد نیست).
-async function getAdminUser() {
-  return await requireAdmin();
-}
+import requireAdminPermission from "@/lib/requireAdminPermission";
 
 export async function PATCH(req, { params }) {
-  if (!(await requireAdmin())) return unauthorized();
+  const { actor: admin, denied } = await requireAdminPermission("payments.edit");
+  if (denied) return denied;
 
   try {
     await connectToDB();
-
-    const admin = await getAdminUser();
-    if (!admin?.userId) {
-      return NextResponse.json({ message: "احراز هویت ادمین لازم است" }, { status: 401 });
-    }
 
     const { id: paymentId } = await params;
     if (!mongoose.Types.ObjectId.isValid(paymentId)) {

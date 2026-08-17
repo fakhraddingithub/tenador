@@ -9,8 +9,12 @@ import { registerSlug } from "base/actions/registerSlug";
 import { revalidateContent } from "@/lib/revalidate";
 import { sanitizeSerieSportEntries } from "@/lib/serieSportContent";
 import { handleApiError } from "@/lib/apiError";
+import requireAdminPermission from "@/lib/requireAdminPermission";
 
 export async function POST(req) {
+  const { denied } = await requireAdminPermission("series.create");
+  if (denied) return denied;
+
   try {
     await connectToDB();
 

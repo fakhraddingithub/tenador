@@ -13,19 +13,13 @@ import {
   getItemTrackingModel,
   getWarehouseModel,
 } from "@/lib/warehouseDb";
-import requireAdmin, { unauthorized } from "@/lib/requireAdmin";
-
-// نقش ادمین از دیتابیس بررسی می‌شود (توکن به‌تنهایی قابل‌اعتماد نیست).
-async function getAdminUser() {
-  return await requireAdmin();
-}
+import requireAdminPermission from "@/lib/requireAdminPermission";
 
 export async function GET(req) {
-  if (!(await requireAdmin())) return unauthorized();
+  const { denied } = await requireAdminPermission("orderTracking.view");
+  if (denied) return denied;
 
   try {
-    const admin = await getAdminUser();
-   
     const { searchParams } = new URL(req.url);
     const code = searchParams.get("code")?.trim();
 

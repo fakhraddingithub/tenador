@@ -11,6 +11,7 @@ import {
   Phone, Mail, Hash, Calendar, Eye,
 } from "lucide-react";
 import AdminLoader from "@/components/admin/AdminLoader";
+import { useAdminPermissions } from "@/components/admin/AdminPermissionProvider";
 
 /* ─── Status helpers ────────────────────────────────────────────────── */
 
@@ -50,13 +51,19 @@ function formatDate(dateStr) {
 /* ─── Order Row ─────────────────────────────────────────────────────── */
 
 function OrderRow({ order, coachId }) {
+  // مقصدِ این ردیف صفحه‌ی افزودن کردیت است (coaches.manageCredits). بدونِ آن
+  // دسترسی، ردیف نمایش داده می‌شود ولی لینک نمی‌شود.
+  const { canRoute } = useAdminPermissions();
+  const creditHref = `/p-admin/users/coaches/${coachId}/credit/${order._id}`;
+  const Row = canRoute(creditHref) ? Link : "div";
+
   const isUnreviewed = !order.reviewedAt;
   const previewItem = order.items?.[0];
   const extraCount = (order.items?.length || 0) - 1;
 
   return (
-    <Link
-      href={`/p-admin/users/coaches/${coachId}/credit/${order._id}`}
+    <Row
+      href={Row === Link ? creditHref : undefined}
       className={`flex items-center gap-3 p-3 rounded-xl transition-colors group hover:bg-gray-50 ${
         isUnreviewed
           ? "border border-amber-200 bg-amber-50/40 hover:bg-amber-50"
@@ -106,7 +113,7 @@ function OrderRow({ order, coachId }) {
       </div>
 
       <Eye size={14} className="text-gray-300 group-hover:text-[#aa4725] transition-colors flex-shrink-0" />
-    </Link>
+    </Row>
   );
 }
 

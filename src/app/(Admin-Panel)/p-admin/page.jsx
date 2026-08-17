@@ -10,6 +10,7 @@ import {
   FaChartLine, FaBolt
 } from 'react-icons/fa';
 import { FiTrendingUp, FiBell, FiArrowUpRight } from 'react-icons/fi';
+import { useAdminPermissions } from '@/components/admin/AdminPermissionProvider';
 
 const fadeUp = (delay = 0) => ({
   initial: { opacity: 0, y: 16 },
@@ -18,6 +19,7 @@ const fadeUp = (delay = 0) => ({
 });
 
 export default function AdminDashboard() {
+  const { canRoute, admin } = useAdminPermissions();
   const [stats, setStats] = useState({
     sports: 0, brands: 0, athletes: 0, products: 0, categories: 0,
   });
@@ -54,13 +56,21 @@ export default function AdminDashboard() {
 
   const chartBars = [40, 70, 45, 90, 65, 80, 55];
 
+  // میان‌برها *قبل از* رندر فیلتر می‌شوند تا کارتِ غیرمجاز نه placeholder
+  // بگذارد نه جای خالی؛ col-span ها ثابت‌اند و grid خودش جمع می‌شود.
+  const smallCards = [
+    { href: '/p-admin/admin-sports', icon: FaRunning, count: stats.sports, label: 'رشته ورزشی', bg: 'rgba(59,130,246,0.07)', color: '#3b82f6' },
+    { href: '/p-admin/admin-categories', icon: FaFolderOpen, count: stats.categories, label: 'دسته‌بندی', bg: 'rgba(168,85,247,0.07)', color: '#a855f7' },
+    { href: '/p-admin/admin-brands', icon: FaBold, count: stats.brands, label: 'برند همکار', bg: 'rgba(236,72,153,0.07)', color: '#ec4899' },
+  ].filter((item) => canRoute(item.href));
+
   return (
     <div className="space-y-6">
       {/* ─── Welcome ─── */}
       <motion.div {...fadeUp(0)} className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div>
           <h1 className="text-2xl font-bold text-gray-900 mb-1">
-            سلام، <span style={{ color: 'var(--color-primary)' }}>مدیر عزیز</span>
+            سلام، <span style={{ color: 'var(--color-primary)' }}>{admin?.name || 'مدیر عزیز'}</span>
           </h1>
           <p className="text-sm font-bold text-gray-400 flex items-center gap-2">
             <FiTrendingUp size={14} style={{ color: 'var(--color-secondary)' }} />
@@ -81,6 +91,7 @@ export default function AdminDashboard() {
       <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
 
         {/* Hero card: Products */}
+        {canRoute('/p-admin/admin-products') && (
         <motion.div {...fadeUp(0.05)} className="col-span-2 lg:col-span-3">
           <Link
             href="/p-admin/admin-products"
@@ -108,8 +119,10 @@ export default function AdminDashboard() {
             </div>
           </Link>
         </motion.div>
+        )}
 
         {/* Athletes card */}
+        {canRoute('/p-admin/admin-athletes') && (
         <motion.div {...fadeUp(0.1)} className="col-span-2 lg:col-span-3">
           <Link
             href="/p-admin/admin-athletes"
@@ -141,13 +154,10 @@ export default function AdminDashboard() {
             </div>
           </Link>
         </motion.div>
+        )}
 
         {/* Small stat cards */}
-        {[
-          { href: '/p-admin/admin-sports', icon: FaRunning, count: stats.sports, label: 'رشته ورزشی', bg: 'rgba(59,130,246,0.07)', color: '#3b82f6' },
-          { href: '/p-admin/admin-categories', icon: FaFolderOpen, count: stats.categories, label: 'دسته‌بندی', bg: 'rgba(168,85,247,0.07)', color: '#a855f7' },
-          { href: '/p-admin/admin-brands', icon: FaBold, count: stats.brands, label: 'برند همکار', bg: 'rgba(236,72,153,0.07)', color: '#ec4899' },
-        ].map((item, i) => (
+        {smallCards.map((item, i) => (
           <motion.div key={item.href} {...fadeUp(0.15 + i * 0.05)} className="col-span-2">
             <Link
               href={item.href}

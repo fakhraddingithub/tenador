@@ -5,7 +5,9 @@ import { toast } from "react-toastify";
 import Swal from "sweetalert2";
 import { FaRobot, FaCopy, FaCheckCircle, FaDatabase, FaArrowLeft, FaArrowRight } from "react-icons/fa";
 import { HiOutlineDocumentText } from "react-icons/hi";
-import AthleteCreateForm from "./AthleteCreateForm"; 
+import AthleteCreateForm from "./AthleteCreateForm";
+import { useAdminPermissions } from "@/components/admin/AdminPermissionProvider";
+
 
 const steps = [
   { id: 1, label: "متن بیوگرافی", icon: <HiOutlineDocumentText /> },
@@ -14,6 +16,9 @@ const steps = [
 ];
 
 export default function AddAthleteAi({ sports }) {
+  // POST /api/ai/athlete-prompt → ai.athletePrompt (جدا از athletes.create)
+  const { can } = useAdminPermissions();
+  const canUseAi = can("ai.athletePrompt");
   const [step, setStep] = useState(1);
   const [rawContent, setRawContent] = useState("");
   const [aiPrompt, setAiPrompt] = useState("");
@@ -102,6 +107,7 @@ export default function AddAthleteAi({ sports }) {
               className="w-full p-4 border border-gray-200 rounded-[var(--radius)] focus:ring-2 focus:ring-[var(--color-secondary)] outline-none transition-all text-sm leading-relaxed"
               placeholder="مثال: کریستیانو رونالدو متولد ۵ فوریه ۱۹۸۵ در پرتغال است. قد او ۱۸۷ سانتی‌متر است..."
             />
+            {canUseAi ? (
             <button
               onClick={generatePrompt}
               disabled={loading}
@@ -109,6 +115,11 @@ export default function AddAthleteAi({ sports }) {
             >
               {loading ? "در حال پردازش..." : <><FaRobot /> ساخت پرامپت هوشمند</>}
             </button>
+            ) : (
+              <p className="text-xs font-bold text-gray-400 text-center">
+                دسترسی «دستیار هوش مصنوعی» را ندارید — می‌توانید JSON را دستی وارد کنید.
+              </p>
+            )}
           </div>
         )}
 

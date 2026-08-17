@@ -19,6 +19,7 @@ import {
   FaExpand,
 } from "react-icons/fa";
 import RatingStars from "@/components/reviews/RatingStars";
+import { useAdminPermissions } from "@/components/admin/AdminPermissionProvider";
 
 const STATUS_TABS = [
   { key: "pending", label: "در انتظار" },
@@ -53,6 +54,10 @@ const STATUS_LABEL = { pending: "در انتظار", approved: "تأییدشده
 const COMMENT_TTL = { dedupingInterval: 60_000 };
 
 export default function CommentsModeration() {
+  // تأیید/رد = PATCH → comments.moderate ، حذف = DELETE → comments.delete
+  const { can } = useAdminPermissions();
+  const canModerate = can("comments.moderate");
+  const canDelete = can("comments.delete");
   const [status, setStatus] = useState("pending");
   const [page, setPage] = useState(1);
   const [busyId, setBusyId] = useState(null);
@@ -354,8 +359,9 @@ export default function CommentsModeration() {
                   </div>
 
                   {/* Left: actions */}
+                  {(canModerate || canDelete) && (
                   <div className="flex flex-shrink-0 items-center gap-2 sm:flex-col sm:items-stretch">
-                    {c.status !== "approved" && (
+                    {c.status !== "approved" && canModerate && (
                       <button
                         disabled={busyId === c._id}
                         onClick={() => changeStatus(c._id, "approved")}
@@ -365,7 +371,7 @@ export default function CommentsModeration() {
                         تأیید
                       </button>
                     )}
-                    {c.status !== "rejected" && (
+                    {c.status !== "rejected" && canModerate && (
                       <button
                         disabled={busyId === c._id}
                         onClick={() => changeStatus(c._id, "rejected")}
@@ -375,6 +381,7 @@ export default function CommentsModeration() {
                         رد
                       </button>
                     )}
+                    {canDelete && (
                     <button
                       disabled={busyId === c._id}
                       onClick={() => deleteComment(c._id)}
@@ -383,7 +390,9 @@ export default function CommentsModeration() {
                       <FaTrash className="text-[10px]" />
                       حذف
                     </button>
+                    )}
                   </div>
+                  )}
                 </div>
               </motion.article>
             ))}

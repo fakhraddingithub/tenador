@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import connectToDB from 'base/configs/db';
 import { splitFullName } from 'base/utils/userName';
-import requireAdmin, { unauthorized } from '@/lib/requireAdmin';
+import requireAdminPermission from '@/lib/requireAdminPermission';
 
 import User from 'base/models/User';
 // تابع کمکی برای ساخت کد منحصربه‌فرد مربیگری (مانند: TR4921)
@@ -20,7 +20,8 @@ async function generateUniqueCoachCode() {
 export async function PUT(req, { params }) {
   // تأیید درخواست، نقش کاربر را به «مربی» ارتقا می‌دهد؛ بنابراین نقشِ درخواست‌کننده
   // حتماً باید از دیتابیس بررسی شود (نه صرفاً از روی توکن).
-  if (!(await requireAdmin())) return unauthorized();
+  const { denied } = await requireAdminPermission("coaches.manage");
+  if (denied) return denied;
 
   try {
     await connectToDB();

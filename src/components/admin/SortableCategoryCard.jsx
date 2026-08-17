@@ -6,6 +6,7 @@ import { FiEdit3, FiTrash2, FiMenu } from "react-icons/fi";
 
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
+import { useAdminPermissions } from "@/components/admin/AdminPermissionProvider";
 
 export default function SortableCategoryCard({
   category,
@@ -13,6 +14,10 @@ export default function SortableCategoryCard({
   handleDelete,
 }) {
   const router = useRouter();
+  const { can, canRoute } = useAdminPermissions();
+
+  const productsHref = `/p-admin/admin-categories/category-products/${category._id}`;
+  const canOpen = canRoute(productsHref);
 
   const {
     attributes,
@@ -35,13 +40,10 @@ export default function SortableCategoryCard({
     <div
       ref={setNodeRef}
       style={style}
-      onClick={() =>
-        router.push(
-          `/p-admin/admin-categories/category-products/${category._id}`,
-        )
-      }
+      onClick={canOpen ? () => router.push(productsHref) : undefined}
       className={`
-        group cursor-pointer bg-white rounded-2xl border overflow-hidden
+        group bg-white rounded-2xl border overflow-hidden
+        ${canOpen ? "cursor-pointer" : ""}
         hover:shadow-xl hover:-translate-y-1 transition-all duration-300
         ${isDragging ? "opacity-50 scale-[0.98] rotate-1 z-50" : ""}
       `}
@@ -75,7 +77,8 @@ export default function SortableCategoryCard({
           </span>
         </div>
 
-        {/* Drag Handle */}
+        {/* Drag Handle — بدونِ categories.reorder رندر نمی‌شود */}
+        {can("categories.reorder") && (
         <button
           {...attributes}
           {...listeners}
@@ -98,6 +101,7 @@ export default function SortableCategoryCard({
         >
           <FiMenu size={18} />
         </button>
+        )}
       </div>
 
       {/* Content */}
@@ -122,8 +126,10 @@ export default function SortableCategoryCard({
           </h3>
         </div>
 
-        {/* Actions */}
+        {/* Actions — ردیف کامل حذف می‌شود اگر هیچ اکشنی مجاز نباشد */}
+        {(can("categories.edit") || can("categories.delete")) && (
         <div className="flex items-center gap-2 pt-3 border-t border-gray-50">
+          {can("categories.edit") && (
           <button
             onClick={(e) => {
               e.stopPropagation();
@@ -133,6 +139,8 @@ export default function SortableCategoryCard({
           >
             <FiEdit3 size={13} /> ویرایش
           </button>
+          )}
+          {can("categories.delete") && (
           <button
             onClick={(e) => {
               e.stopPropagation();
@@ -142,7 +150,9 @@ export default function SortableCategoryCard({
           >
             <FiTrash2 size={14} />
           </button>
+          )}
         </div>
+        )}
       </div>
     </div>
   );

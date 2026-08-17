@@ -15,9 +15,13 @@ import {
   FaSave,
 } from "react-icons/fa";
 import FieldEditor from "./FieldEditor";
+import { useAdminPermissions } from "@/components/admin/AdminPermissionProvider";
 import { BLOCK_TYPES, BLOCK_TYPE_LIST, createEmptyBlock } from "./blockSchema";
 
 export default function PageEditor({ slug }) {
+  // صفحه با pages.edit باز می‌شود؛ *تغییرِ* وضعیتِ انتشار کلیدِ جدا دارد.
+  const { can } = useAdminPermissions();
+  const canPublish = can("pages.publish");
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [title, setTitle] = useState("");
@@ -87,7 +91,9 @@ export default function PageEditor({ slug }) {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
-        body: JSON.stringify({ slug, title, sections, published }),
+        // بدونِ pages.publish فیلد اصلاً فرستاده نمی‌شود تا سرور وضعیتِ
+        // فعلی را دست‌نخورده نگه دارد.
+        body: JSON.stringify({ slug, title, sections, ...(canPublish ? { published } : {}) }),
       });
       const json = await res.json();
       if (!res.ok) throw new Error(json.error || "خطا در ذخیره");
@@ -157,15 +163,21 @@ export default function PageEditor({ slug }) {
               onChange={(e) => setTitle(e.target.value)}
             />
           </div>
-          <label className="flex items-center gap-2 cursor-pointer select-none pb-2">
-            <input
-              type="checkbox"
-              checked={published}
-              onChange={(e) => setPublished(e.target.checked)}
-              className="w-4 h-4 accent-[var(--color-primary)]"
-            />
-            <span className="text-sm font-bold text-gray-700">منتشرشده</span>
-          </label>
+          {canPublish ? (
+            <label className="flex items-center gap-2 cursor-pointer select-none pb-2">
+              <input
+                type="checkbox"
+                checked={published}
+                onChange={(e) => setPublished(e.target.checked)}
+                className="w-4 h-4 accent-[var(--color-primary)]"
+              />
+              <span className="text-sm font-bold text-gray-700">منتشرشده</span>
+            </label>
+          ) : (
+            <p className="pb-2 text-xs font-bold text-gray-400">
+              {published ? "منتشرشده" : "پیش‌نویس"} — دسترسی تغییر وضعیت انتشار را ندارید
+            </p>
+          )}
         </div>
       </div>
 

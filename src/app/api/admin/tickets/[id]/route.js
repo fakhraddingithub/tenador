@@ -10,17 +10,15 @@ import connectToDB from "base/configs/db";
 import "base/models/registerModels";
 import Ticket from "base/models/Ticket";
 import TicketMessage from "base/models/TicketMessage";
-import requireAdmin from "@/lib/requireAdmin";
+import requireAdminPermission from "@/lib/requireAdminPermission";
 
 export const runtime = "nodejs";
 
 export async function GET(req, { params }) {
-  try {
-    const admin = await requireAdmin();
-    if (!admin) {
-      return NextResponse.json({ message: "دسترسی غیرمجاز" }, { status: 403 });
-    }
+  const { denied } = await requireAdminPermission("tickets.view");
+  if (denied) return denied;
 
+  try {
     await connectToDB();
     const { id } = await params;
 
@@ -54,12 +52,10 @@ export async function GET(req, { params }) {
 }
 
 export async function PATCH(req, { params }) {
-  try {
-    const admin = await requireAdmin();
-    if (!admin) {
-      return NextResponse.json({ message: "دسترسی غیرمجاز" }, { status: 403 });
-    }
+  const { denied } = await requireAdminPermission("tickets.close");
+  if (denied) return denied;
 
+  try {
     await connectToDB();
     const { id } = await params;
     const { action } = await req.json();
