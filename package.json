@@ -20,6 +20,8 @@
     "migrate:used-products": "node scripts/migrateUsedProductsHealthScale.js",
     "migrate:coach-codes": "node scripts/migrateCoachCodeFormat.js",
     "migrate:category-sport": "node scripts/migrateCategorySportScope.js",
+    "check:article-image-dimensions": "node --env-file=.env scripts/backfillArticleImageDimensions.mjs",
+    "migrate:article-image-dimensions": "node --env-file=.env scripts/backfillArticleImageDimensions.mjs --apply",
     "check:category-shared-sports": "node scripts/migrateCategorySharedSports.mjs",
     "migrate:category-shared-sports": "node scripts/migrateCategorySharedSports.mjs --apply",
     "migrate:limited-edition-brand-scope": "node scripts/migrateLimitedEditionBrandScope.js",
