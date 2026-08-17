@@ -5,6 +5,7 @@ import ArticleCard from "@/components/features/articles/ArticleCard";
 import ArticleNewsletterForm from "@/components/features/articles/ArticleNewsletterForm";
 import { PublicProductGrid, PublicUsedProductGrid } from "@/components/features/articles/PublicProductGrid";
 import { sanitizeArticleHtml } from "@/lib/sanitizeArticleHtml";
+import { BLOCK_WIDTH_CLASS, blockWidth, groupBlockRows } from "@/lib/articleBlockLayout";
 
 const ordered = (values, map) => (Array.isArray(values) ? values : values ? [values] : []).map((id) => map?.[String(id)]).filter(Boolean);
 const blockSection = "my-9 scroll-mt-28";
@@ -109,7 +110,7 @@ function videoEmbed(url) {
 export default function ArticleBlockRenderer({ blocks = [], entities, preview = false }) {
   const maps = entities?.maps || {};
   const rate = entities?.rate || 1;
-  return normalizeHeadingLevels(blocks).map((block) => {
+  const renderBlock = (block) => {
     const data = block.data || {};
     const v = blockVisuals(block);
     if (block.type === "heading") {
@@ -167,6 +168,26 @@ export default function ArticleBlockRenderer({ blocks = [], entities, preview = 
     if (block.type === "newsletterCta") return <section key={block.id} className={`${blockSection} rounded-[var(--radius)] bg-[#20232a] p-6 text-white md:p-8`} style={merge(v.spacing, v.background && { backgroundColor: v.background }, v.text && { color: v.text })}><h2 className="text-2xl font-black">{data.title || "عضویت در خبرنامه تنادور"}</h2><p className="mt-2 leading-8 text-gray-300" style={v.text ? { color: v.text } : undefined}>{data.description || "جدیدترین راهنماها و پیشنهادهای تنادور را دریافت کنید."}</p>{preview ? <div className="mt-4 inline-flex rounded-[var(--radius)] bg-[var(--color-secondary)] px-5 py-2.5 text-sm font-bold text-gray-900" style={v.accent ? { backgroundColor: v.accent, color: readableOn(v.accent) } : undefined}>{data.buttonLabel || "\u0639\u0636\u0648\u06cc\u062a"}</div> : <ArticleNewsletterForm buttonLabel={data.buttonLabel} />}</section>;
     if (block.type === "customHtml" && data.html) return <div key={block.id} className={`${blockSection} leading-8 text-gray-700`} style={merge(v.spacing, padded(v), v.text && { color: v.text })} dangerouslySetInnerHTML={{ __html: sanitizeArticleHtml(data.html) }} />;
     return null;
+  };
+
+  // بلوک‌هایی که چیزی رندر نمی‌کنند پیش از گروه‌بندی کنار می‌روند تا نه جایی در
+  // سطر بگیرند و نه دنباله‌ی کنارِ‌هم را بی‌دلیل بشکنند.
+  const rendered = [];
+  for (const block of normalizeHeadingLevels(blocks)) {
+    const node = renderBlock(block);
+    if (node) rendered.push({ block, node });
+  }
+
+  return groupBlockRows(rendered, (item) => blockWidth(item.block)).map((row) => {
+    // سطرِ تمام‌عرض بدونِ هیچ wrapper اضافه‌ای برمی‌گردد؛ مقاله‌های قدیمی دقیقاً
+    // همان خروجیِ قبلی را می‌دهند.
+    if (!row.sized) return row.blocks[0].node;
+    // زیرِ md اصلاً grid نیست، پس فرزندها بلوکی می‌مانند و طبیعی روی هم می‌چینند.
+    return (
+      <div key={`row-${row.blocks[0].block.id}`} className="md:grid md:grid-cols-6 md:items-start md:gap-x-6">
+        {row.blocks.map((item) => <div key={item.block.id} className={`min-w-0 ${BLOCK_WIDTH_CLASS[blockWidth(item.block)]}`}>{item.node}</div>)}
+      </div>
+    );
   });
 }
 

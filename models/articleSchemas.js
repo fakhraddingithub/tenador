@@ -39,6 +39,12 @@ export const ArticleBlockStyleSchema = new mongoose.Schema(
   { _id: false, minimize: false },
 );
 
+// چیدمانِ اختیاری. "full" ذخیره نمی‌شود؛ نبودِ این کلید یعنی تمام‌عرض.
+export const ArticleBlockLayoutSchema = new mongoose.Schema(
+  { width: { type: String, enum: ["1/2", "1/3", "2/3"] } },
+  { _id: false, minimize: false },
+);
+
 // Shared by full articles and the lightweight content section attached to a
 // brand. Keeping one schema prevents the two block formats from drifting.
 export const ArticleBlockSchema = new mongoose.Schema(
@@ -49,6 +55,7 @@ export const ArticleBlockSchema = new mongoose.Schema(
     version: { type: Number, min: 1, default: 1 },
     // بدونِ default: بلوک‌های موجود این کلید را نمی‌گیرند و رفتارشان عوض نمی‌شود.
     style: { type: ArticleBlockStyleSchema, default: undefined },
+    layout: { type: ArticleBlockLayoutSchema, default: undefined },
   },
   { _id: false, minimize: false },
 );

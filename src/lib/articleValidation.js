@@ -2,6 +2,7 @@ import mongoose from "mongoose";
 import { isValidArticleSlug, normalizeArticleSlug } from "base/utils/articleSlug";
 import { ARTICLE_BLOCK_TYPE_SET } from "@/lib/articleBlockTypes";
 import { safeArticleUrl, sanitizeArticleBlockData, sanitizeArticleBlockStyle } from "@/lib/articleBlockValidation";
+import { sanitizeArticleBlockLayout } from "@/lib/articleBlockLayout";
 
 export const ARTICLE_STATUSES = ["draft", "review", "scheduled", "published", "archived"];
 export const ARTICLE_CATEGORY_STATUSES = ["draft", "active", "archived"];
@@ -83,6 +84,8 @@ export function sanitizeArticleBlocks(value, errors) {
     // صورت بلوک دقیقاً همان شکلِ قبلی را دارد.
     const style = sanitizeArticleBlockStyle(item.style);
     if (style) sanitized.style = style;
+    const layout = sanitizeArticleBlockLayout(item.layout);
+    if (layout) sanitized.layout = layout;
     return sanitized;
   });
 
