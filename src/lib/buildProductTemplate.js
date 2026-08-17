@@ -149,11 +149,19 @@ export function buildProductTemplate({
     }))
   );
 
-  // Limited editions belong to a specific brand (e.g. Roland Garros).
-  const limitedEditionList = limitedEditions.map((c) => ({
-    id: c._id.toString(),
-    name: c.name || c.title,
-  }));
+  // Limited editions belong to a specific brand (e.g. Wilson's Roland Garros).
+  // parentBrandId is included for the same reason series carry it: the AI must
+  // be able to enforce the brand↔limitedEdition constraint the server now
+  // rejects (src/lib/limitedEditionRelations.js).
+  const limitedEditionList = limitedEditions.map((c) => {
+    const owner = c.brand?._id ?? c.brand;
+    return {
+      id: c._id.toString(),
+      name: c.name || c.title,
+      parentBrandId: owner == null ? "" : owner.toString(),
+      parentBrandName: c.brand?.name || "",
+    };
+  });
 
   // ─── Per-field Prompt Contexts ────────────────────────────────────────────
   const fieldRules = {
@@ -242,8 +250,10 @@ serie:
 - A product can only have a serie from its own brand.
 
 limitedEdition:
-- Limited editions are brand-specific special releases (e.g. Roland Garros).
+- Limited editions are brand-specific special releases (e.g. Wilson's Roland Garros).
 - Choose exactly ONE id from AVAILABLE LIMITED EDITIONS — OR an empty string "" if none applies.
+- CRITICAL: The chosen limited edition's "parentBrandId" MUST match your selected brand's id.
+- If a limited edition is mentioned in the text but belongs to a different brand, ignore it and return "".
 - Only pick a limited edition if the raw content clearly and explicitly mentions it.
 - A product can have BOTH a serie and a limited edition at the same time.
 

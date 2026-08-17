@@ -17,6 +17,7 @@ import { revalidateContent } from "@/lib/revalidate";
 import { makeComboKey } from "@/lib/variantKey";
 import { handleApiError } from "@/lib/apiError";
 import { normalizeTargetAudience } from "base/utils/targetAudience";
+import { resolveProductLimitedEdition } from "@/lib/limitedEditionRelations";
 import requireAdminPermission from "@/lib/requireAdminPermission";
 
 // --------------------------------------------------
@@ -151,6 +152,20 @@ export async function PUT(request, { params }) {
       );
     }
 
+    const resolvedLimitedEdition = await resolveProductLimitedEdition(
+      limitedEdition,
+      brand,
+    );
+    if (resolvedLimitedEdition.error) {
+      return NextResponse.json(
+        {
+          error: resolvedLimitedEdition.error,
+          fieldErrors: { limitedEdition: resolvedLimitedEdition.error },
+        },
+        { status: resolvedLimitedEdition.status },
+      );
+    }
+
     const product = await Product.findById(productId);
 
     if (!product) {
@@ -266,7 +281,7 @@ export async function PUT(request, { params }) {
     product.gallery = Array.isArray(gallery) ? gallery : [];
     product.brand = brand || null;
     product.serie = serie || null;
-    product.limitedEdition = limitedEdition || null;
+    product.limitedEdition = resolvedLimitedEdition.value;
     product.sport = sport || null;
     product.athlete = Array.isArray(athlete) ? athlete : [];
     

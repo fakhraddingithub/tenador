@@ -7,6 +7,7 @@ import { revalidateContent } from "@/lib/revalidate";
 import { makeComboKey } from "@/lib/variantKey";
 import { apiError, handleApiError } from "@/lib/apiError";
 import { normalizeTargetAudience } from "base/utils/targetAudience";
+import { resolveProductLimitedEdition } from "@/lib/limitedEditionRelations";
 import requireAdminPermission from "@/lib/requireAdminPermission";
 
 /* ----------------------------------
@@ -123,6 +124,19 @@ export async function POST(req) {
     }
 
     /* -------------------------------
+        Validate Limited Edition ↔ Brand
+     ------------------------------- */
+    const resolvedLimitedEdition = await resolveProductLimitedEdition(
+      limitedEdition,
+      brand,
+    );
+    if (resolvedLimitedEdition.error) {
+      return apiError(resolvedLimitedEdition.error, resolvedLimitedEdition.status, {
+        fieldErrors: { limitedEdition: resolvedLimitedEdition.error },
+      });
+    }
+
+    /* -------------------------------
         Validate Category
      ------------------------------- */
     const foundCategory = await Category.findById(category);
@@ -213,7 +227,7 @@ export async function POST(req) {
       gallery: normalizedGallery,
       brand: brand || undefined,
       serie: (serie && serie !== "") ? serie : undefined,
-      limitedEdition: (limitedEdition && limitedEdition !== "") ? limitedEdition : undefined,
+      limitedEdition: resolvedLimitedEdition.value || undefined,
       athlete: formattedAthletes.length > 0 ? formattedAthletes : [],
       sport: sport || undefined,
       attributes: attributes || {},

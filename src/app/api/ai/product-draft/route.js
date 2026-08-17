@@ -35,7 +35,11 @@ export async function POST(req) {
     const brands = await Brand.find({}, { name: 1 }).populate("series").lean();
     const sports = await Sport.find({}, { name: 1 }).lean();
     const athletes = await Athlete.find({}, { name: 1 }).lean();
-    const limitedEditions = await LimitedEdition.find({}, { name: 1, title: 1 }).lean();
+    // brand لازم است تا قیدِ «ادیشن ← برند مالک» به مدل داده شود؛ بدونِ آن مدل
+    // می‌توانست ادیشنِ یک برند را به محصولِ برندِ دیگری بچسباند.
+    const limitedEditions = await LimitedEdition.find({}, { name: 1, title: 1, brand: 1 })
+      .populate({ path: "brand", select: "name" })
+      .lean();
 
     if (!brands.length || !sports.length) {
       return Response.json(

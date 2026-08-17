@@ -143,6 +143,17 @@ export default function ProductCreateForm({ initialData = {} }) {
   // 🟢 نسخه‌های محدود — همان ردهٔ داده‌ی مرجع
   const { limitedEditions } = useLimitedEditions();
 
+  // یک لیمیتد ادیشن فقط زیرِ برندِ مالکِ خودش انتخاب‌شدنی است (سرور هم همین را
+  // اعتبارسنجی می‌کند). هر مقدارِ خارج از این فهرست به "" می‌افتد.
+  const limitedEditionOptions = limitedEditions
+    .filter(c => (c.brand?._id || c.brand) === formData.brand)
+    .map(c => ({ value: c._id, label: c.title || c.name }));
+  const selectedLimitedEdition = limitedEditionOptions.some(
+    o => o.value === formData.limitedEdition
+  )
+    ? formData.limitedEdition
+    : '';
+
   // ---------------------------
   // Derived category data
   // ---------------------------
@@ -431,6 +442,9 @@ export default function ProductCreateForm({ initialData = {} }) {
 
       const payload = {
         ...formData,
+        // پیش‌نویسِ AI می‌تواند ادیشنی از برندِ دیگر پیشنهاد دهد؛ سرور آن را رد
+        // می‌کند، پس همان مقداری فرستاده می‌شود که در select دیده شده است.
+        limitedEdition: selectedLimitedEdition,
         attributes: normalizedAttributes,
         technicalStats: normalizedStats,
         customTabItems: formData.customTabItems || [],
@@ -556,16 +570,11 @@ export default function ProductCreateForm({ initialData = {} }) {
         {formData.brand && (
           <Select
             label="لیمیتد ادیشن (Limited Edition)"
-            value={formData.limitedEdition}
+            value={selectedLimitedEdition}
             onChange={e => updateField('limitedEdition', e.target.value)}
             options={[
               { value: '', label: 'بدون لیمیتد ادیشن' },
-              ...limitedEditions
-                .filter(c => (c.brand?._id || c.brand) === formData.brand)
-                .map(c => ({
-                  value: c._id,
-                  label: c.title || c.name,
-                })),
+              ...limitedEditionOptions,
             ]}
           />
         )}

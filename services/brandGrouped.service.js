@@ -5,6 +5,10 @@
  * بخش‌به‌بخش (infinite scroll). محصولاتِ زیرسری‌ها زیر همان سری ریشه‌ی والدشان
  * نمایش داده می‌شوند (مثلاً Blade V10 و Blade V5 زیر بخش Blade).
  *
+ * «همکاری‌ها» (لیمیتد ادیشن‌های برندهای دیگر که این برند را در relatedBrands
+ * دارند) بخشِ مستقل ندارند؛ محصولاتشان زیرِ همان «سایر محصولات» می‌آیند و فقط
+ * به برندِ مالکِ همان ادیشن محدودند (utils/brandCollaboration.js).
+ *
  * این سرویس فقط سمت سرور اجرا می‌شود و با unstable_cache کش می‌شود تا
  * درخواست‌های پیمایش (scroll) سبک و بدون بار اضافه باشند.
  *
@@ -31,11 +35,16 @@ import { buildLenientPersianRegexSource } from "@/lib/persianNormalize";
 import { attachListingPrices } from "base/services/priceEngine";
 import { resolveSerieSportContent } from "@/lib/serieSportContent";
 import { applyProductSportVisibility } from "base/services/categorySportVisibility.service";
+import { andMongoFilters } from "base/utils/categorySportVisibility";
 import {
   buildTargetAudienceMatch,
   LISTING_FIELDS,
   POPULATES,
 } from "base/services/productListing.service";
+import {
+  buildCollaborationScopes,
+  collaborationMatchBranches,
+} from "base/utils/brandCollaboration";
 import {
   BRAND_PRODUCTS_PER_BATCH,
   BRAND_SECTIONS_PER_BATCH,
@@ -43,7 +52,6 @@ import {
 } from "base/utils/groupedProductPagination";
 
 const OTHER_KEY = "__other__";
-const COLLABORATION_KEY_PREFIX = "__limited_edition__:";
 
 function escapeRegex(str) {
   return String(str).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
@@ -107,6 +115,9 @@ async function buildSeriesTree(brandId) {
  * فیلتر پایه‌ی محصول (برند + ورزش + دسته + جستجو + فیلترِ ویژگی). قیمت جداگانه روی
  * قیمت تومانی اعمال می‌شود. `extra` قطعه‌ی match اضافیِ از پیش‌ساخته‌ی فیلترِ ویژگی است
  * (برای ویژگیِ ثابت: attributes.<name>؛ برای متغیر: _id ∈ productIdsِ واریانت).
+ *
+ * brandId = null یعنی «بدونِ قیدِ برند» — برای شاخه‌های همکاری که برندشان
+ * جداگانه و به‌ازای هر ادیشن (برندِ مالک) تعیین می‌شود.
  */
 async function buildBaseMatch({
   brandId,
@@ -115,13 +126,10 @@ async function buildBaseMatch({
   search,
   extra,
   targetAudience,
-  excludeBrand = false,
 }) {
   const brandObjectId = toObjectId(brandId);
-  const match = {
-    isActive: true,
-    brand: excludeBrand ? { $ne: brandObjectId } : brandObjectId,
-  };
+  const match = { isActive: true };
+  if (brandObjectId) match.brand = brandObjectId;
   if (categoryId) match.category = toObjectId(categoryId);
   if (extra && typeof extra === "object") Object.assign(match, extra);
   // مخاطبِ هدف (navbar audience tabs) — مستقلِ کاملِ فیلترهای موجودیتی/ویژگی بالا
@@ -135,20 +143,26 @@ async function buildBaseMatch({
     : match;
 }
 
-function collaborationKey(limitedEditionId) {
-  return `${COLLABORATION_KEY_PREFIX}${limitedEditionId}`;
-}
-
 /**
- * Limited Editionهای یک برند مهمان را با اطلاعات حداقلی برند مالک می‌گیرد.
+ * Limited Editionهای یک برند مهمان را با برند مالکشان می‌گیرد.
  * این lookup فقط برای برندهایی نتیجه دارد که واقعاً collaboration تعریف کرده‌اند.
  */
 async function getRelatedLimitedEditions(brandId) {
   return LimitedEdition.find({ relatedBrands: brandId })
-    .select("_id brand title name description slug image headImage logo")
-    .populate({ path: "brand", select: "_id name title slug logo" })
+    .select("_id brand")
     .sort({ createdAt: -1 })
     .lean();
+}
+
+/**
+ * محصولاتِ همکاری = اجتماعِ شاخه‌های «برندِ مالک + ادیشن»، روی همان فیلترِ پایه‌ی
+ * صفحه (ورزش/دسته/جستجو/ویژگی/مخاطب) اما بدونِ قیدِ برندِ صفحه.
+ * برمی‌گرداند null اگر هیچ همکاریِ معتبری نباشد.
+ */
+function buildCollaborationMatch(brandlessBaseMatch, collaborationScopes) {
+  const branches = collaborationMatchBranches(collaborationScopes, toObjectId);
+  if (branches.length === 0) return null;
+  return andMongoFilters(brandlessBaseMatch, { $or: branches });
 }
 
 /**
@@ -256,49 +270,36 @@ async function _getBrandGroupedIndex(params) {
     getRelatedLimitedEditions(brandId),
   ]);
 
-  // شمارش محصولات اصلی و همکاری‌ها مستقل اما موازی انجام می‌شود. همکاری‌ها در
-  // یک aggregation واحد group می‌شوند تا با افزایش تعداد Editionها N+1 نشود.
-  const collaborationEditionIds = relatedEditions
-    .filter((edition) => edition.brand?._id)
-    .map((edition) => toObjectId(edition._id))
-    .filter(Boolean);
+  // هر همکاری به «برندِ مالکِ همان ادیشن» محدود می‌شود — همان قاعده‌ای که مسیرِ
+  // /[brand]/[limitedEdition] اعمال می‌کند. جزئیات در utils/brandCollaboration.js.
+  const collaborationScopes = buildCollaborationScopes(relatedEditions, brandId);
 
-  const [baseMatch, collaborationBaseMatch] = await Promise.all([
+  const [baseMatch, brandlessBaseMatch] = await Promise.all([
     buildBaseMatch({ brandId, sportId, categoryId, search, extra, targetAudience }),
-    collaborationEditionIds.length
+    collaborationScopes.length
       ? buildBaseMatch({
-          brandId,
+          brandId: null,
           sportId,
           categoryId,
           search,
           extra,
           targetAudience,
-          excludeBrand: true,
         })
       : Promise.resolve(null),
   ]);
 
-  const collaborationMatch = collaborationEditionIds.length
-    ? {
-        ...collaborationBaseMatch,
-        // محصول مستقیمِ برند مقصد در بخش‌های عادی خودش می‌آید؛ این شرط هم جلوی
-        // نمایش تکراری را می‌گیرد و هم تمام محصولات مهمانِ Edition را، مستقل از
-        // برند سازنده، پوشش می‌دهد.
-        limitedEdition: { $in: collaborationEditionIds },
-      }
+  const collaborationMatch = brandlessBaseMatch
+    ? buildCollaborationMatch(brandlessBaseMatch, collaborationScopes)
     : null;
 
-  const [countAgg, collaborationCountAgg] = await Promise.all([
+  const [countAgg, collaborationCount] = await Promise.all([
     Product.aggregate([
       { $match: baseMatch },
       { $group: { _id: "$serie", count: { $sum: 1 } } },
     ]),
     collaborationMatch
-      ? Product.aggregate([
-          { $match: collaborationMatch },
-          { $group: { _id: "$limitedEdition", count: { $sum: 1 } } },
-        ])
-      : Promise.resolve([]),
+      ? Product.countDocuments(collaborationMatch)
+      : Promise.resolve(0),
   ]);
 
   const countByRoot = new Map();
@@ -313,6 +314,9 @@ async function _getBrandGroupedIndex(params) {
       otherCount += row.count;
     }
   }
+
+  // محصولاتِ همکاری بخشِ جداگانه‌ای ندارند؛ زیرِ همان «سایر محصولات» می‌آیند.
+  otherCount += collaborationCount;
 
   // ── فهرستِ مرتب‌شده‌ی بخش‌های غیرخالی (ریشه‌ها به ترتیب order، سپس «سایر») ──
   const index = [];
@@ -351,50 +355,12 @@ async function _getBrandGroupedIndex(params) {
     });
   }
 
-
-  const collaborationCountByEdition = new Map(
-    collaborationCountAgg.map((row) => [String(row._id), row.count]),
-  );
-  for (const edition of relatedEditions) {
-    const editionId = String(edition._id);
-    const productCount = collaborationCountByEdition.get(editionId) || 0;
-    if (productCount === 0 || !edition.brand?._id) continue;
-
-    const ownerBrand = edition.brand;
-    index.push({
-      key: collaborationKey(editionId),
-      type: "collaboration",
-      serieId: null,
-      limitedEditionId: editionId,
-      ownerBrandId: String(ownerBrand._id),
-      ownerBrand: {
-        _id: String(ownerBrand._id),
-        name: ownerBrand.name || "",
-        title: ownerBrand.title || ownerBrand.name || "",
-        slug: ownerBrand.slug || "",
-        logo: ownerBrand.logo || "",
-      },
-      title: edition.title || edition.name || "",
-      description: edition.description || "",
-      shortDescription: "",
-      slug: edition.slug || null,
-      href:
-        ownerBrand.slug && edition.slug
-          ? `/${ownerBrand.slug}/${edition.slug}`
-          : null,
-      productCount,
-      image: edition.image || null,
-      headImage: edition.headImage || null,
-      logo: edition.logo || ownerBrand.logo || null,
-    });
-  }
-
   const totalCount = index.reduce((s, e) => s + e.productCount, 0);
 
   // دامنه‌ی سریِ هر بخش، رشته‌ای تا از unstable_cache سالم عبور کند
   const scopes = {};
   for (const entry of index) {
-    if (entry.key === OTHER_KEY || entry.type === "collaboration") continue;
+    if (entry.key === OTHER_KEY) continue;
     const ids = descendantsByRoot.get(entry.key) || [toObjectId(entry.key)];
     scopes[entry.key] = ids.filter(Boolean).map((id) => id.toString());
   }
@@ -405,6 +371,8 @@ async function _getBrandGroupedIndex(params) {
       totalCount,
       scopes,
       allSerieIds: Array.from(byId.values()).map((s) => s._id.toString()),
+      // سرور-only — بخشِ «سایر» با همین دامنه‌ها محصولاتِ همکاری را هم واکشی می‌کند
+      collaborationScopes,
     })
   );
 }
@@ -414,7 +382,8 @@ const getBrandGroupedIndex = unstable_cache(
   [
     "brand-grouped-index",
     "target-audience-unisex-v1",
-    "limited-edition-relations-v1",
+    // v2: همکاری‌ها بخشِ مستقل ندارند و به برندِ مالکِ ادیشن محدودند
+    "limited-edition-relations-v2",
   ],
   { revalidate: 10800, tags: ["products", "categories", "series", "brands", "limited-editions"] }
 );
@@ -451,47 +420,48 @@ async function _getBrandGroupedSections(params) {
 
   // فهرست/شمارش از کشِ مستقل از offset می‌آید؛ extra فقط وقتی فیلترِ ویژگی فعال
   // است کوئری می‌زند (در مسیرِ رایج آرایه خالی است و هزینه‌ای ندارد).
-  const [{ index, totalCount, scopes, allSerieIds }, rate, extra] = await Promise.all([
+  const [
+    { index, totalCount, scopes, allSerieIds, collaborationScopes = [] },
+    rate,
+    extra,
+  ] = await Promise.all([
     getBrandGroupedIndex({ brandId, sportId, categoryId, attrFilters, search, targetAudience }),
     getCachedRate(),
     buildAttrMatches(attrFilters),
   ]);
 
-  const hasCollaborationSection = index.some(
-    (entry) => entry.type === "collaboration",
-  );
-  const [baseMatch, collaborationBaseMatch] = await Promise.all([
+  const [baseMatch, brandlessBaseMatch] = await Promise.all([
     buildBaseMatch({ brandId, sportId, categoryId, search, extra, targetAudience }),
-    hasCollaborationSection
+    collaborationScopes.length
       ? buildBaseMatch({
-          brandId,
+          brandId: null,
           sportId,
           categoryId,
           search,
           extra,
           targetAudience,
-          excludeBrand: true,
         })
       : Promise.resolve(null),
   ]);
   const allSerieOids = allSerieIds.map(toObjectId).filter(Boolean);
+  const collaborationMatch = brandlessBaseMatch
+    ? buildCollaborationMatch(brandlessBaseMatch, collaborationScopes)
+    : null;
 
   const sectionFilter = (entry) => {
-    if (entry.type === "collaboration") {
-      return {
-        ...collaborationBaseMatch,
-        limitedEdition: toObjectId(entry.limitedEditionId),
-      };
-    }
     if (entry.key === OTHER_KEY) {
-      return {
-        ...baseMatch,
+      // محصولاتِ بدونِ سری (یا با سریِ یتیم) از خودِ این برند، به‌علاوه‌ی
+      // محصولاتِ همکاری — یک کوئریِ واحد تا مرتب‌سازی و صفحه‌بندیِ بخش نشکند.
+      const ownProducts = andMongoFilters(baseMatch, {
         $or: [
           { serie: null },
           { serie: { $exists: false } },
           { serie: { $nin: allSerieOids } },
         ],
-      };
+      });
+      return collaborationMatch
+        ? { $or: [ownProducts, collaborationMatch] }
+        : ownProducts;
     }
     const ids = (scopes[entry.key] || [entry.key]).map(toObjectId).filter(Boolean);
     return { ...baseMatch, serie: { $in: ids } };
@@ -544,9 +514,6 @@ async function _getBrandGroupedSections(params) {
 
     sections.push({
       key: entry.key,
-      type: entry.type || "serie",
-      href: entry.href || null,
-      ownerBrand: entry.ownerBrand || null,
       serie: {
         _id: entry.serieId,
         title: entry.title,
@@ -579,7 +546,8 @@ export const getBrandGroupedSections = unstable_cache(
   [
     "brand-grouped-sections",
     "target-audience-unisex-v1",
-    "limited-edition-relations-v1",
+    // v2: همکاری‌ها بخشِ مستقل ندارند و به برندِ مالکِ ادیشن محدودند
+    "limited-edition-relations-v2",
     "brand-product-cursor-v1",
   ],
   { revalidate: 10800, tags: ["products", "categories", "series", "brands", "limited-editions"] }

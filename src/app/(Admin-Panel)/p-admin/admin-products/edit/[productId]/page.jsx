@@ -586,6 +586,17 @@ export default function ProductEditPage() {
     });
   };
 
+  // یک لیمیتد ادیشن فقط زیرِ برندِ مالکِ خودش انتخاب‌شدنی است (سرور هم همین را
+  // اعتبارسنجی می‌کند). هر مقدارِ خارج از این فهرست کهنه است و به "" می‌افتد.
+  const limitedEditionOptions = limitedEditions
+    .filter(c => (c.brand?._id || c.brand) === formData.brand)
+    .map(c => ({ value: c._id, label: c.title || c.name }));
+  const selectedLimitedEdition = limitedEditionOptions.some(
+    o => o.value === formData.limitedEdition
+  )
+    ? formData.limitedEdition
+    : '';
+
   // ---------------------------
   // Submit (PUT)
   // ---------------------------
@@ -648,7 +659,7 @@ export default function ProductEditPage() {
         gallery: formData.gallery,
         brand: formData.brand,
         serie: formData.serie,
-        limitedEdition: formData.limitedEdition,
+        limitedEdition: selectedLimitedEdition,
         sport: formData.sport,
         athlete: Array.isArray(formData.athlete) ? formData.athlete : [],
         attributes: normalizedAttributes,
@@ -820,16 +831,17 @@ export default function ProductEditPage() {
           {formData.brand && (
             <Select
               label="لیمیتد ادیشن (Limited Edition)"
-              value={formData.limitedEdition}
+              // محصولاتِ قدیمیِ مدلِ سراسریِ Collaboration می‌توانند ادیشنی از
+              // برندِ دیگری داشته باشند. آن مقدار در گزینه‌های این برند نیست، پس
+              // اگر عیناً نمایش/ارسال شود، select «بدون لیمیتد ادیشن» نشان می‌دهد
+              // ولی مقدارِ کهنه submit می‌شود و سرور ۴۲۲ می‌دهد. با fallback به ""
+              // آنچه دیده می‌شود همان چیزی است که ذخیره می‌شود و ذخیره‌ی محصول
+              // خودش تگِ ناسازگار را پاک می‌کند.
+              value={selectedLimitedEdition}
               onChange={e => updateField('limitedEdition', e.target.value)}
               options={[
                 { value: '', label: 'بدون لیمیتد ادیشن' },
-                ...limitedEditions
-                  .filter(c => (c.brand?._id || c.brand) === formData.brand)
-                  .map(c => ({
-                    value: c._id,
-                    label: c.title || c.name,
-                  })),
+                ...limitedEditionOptions,
               ]}
             />
           )}

@@ -92,7 +92,6 @@ export default function BrandGroupedView({
   // ─── State ───
   const [sections, setSections] = useState(startingData.sections || []);
   const [index, setIndex] = useState(startingData.index || []);
-  const hasCollaborations = index.some((entry) => entry.type === "collaboration");
   const [nextOffset, setNextOffset] = useState(startingData.nextOffset ?? 0);
   const [nextProductOffset, setNextProductOffset] = useState(
     startingData.nextProductOffset ?? 0,
@@ -560,25 +559,10 @@ export default function BrandGroupedView({
             {/* نویگیشن سری‌ها (پرش به بخش) */}
             {index.length > 0 && (
               <div className="bg-white rounded-[6px] border border-gray-100 shadow-sm overflow-hidden">
-                <h4 className="p-5 text-sm font-bold text-[#1a1a1a]">
-                  {hasCollaborations ? "سری‌ها و همکاری‌ها" : "سری‌ها"}
-                </h4>
+                <h4 className="p-5 text-sm font-bold text-[#1a1a1a]">سری‌ها</h4>
                 <div className="px-5 pb-5 flex flex-col gap-3 max-h-52 overflow-y-auto custom-scrollbar">
                   {index.map((entry) =>
-                    entry.type === "collaboration" && entry.href ? (
-                      <Link
-                        key={entry.key}
-                        href={withQueryParams(entry.href, { targetAudience })}
-                        className="w-full flex items-center justify-between group cursor-pointer text-right"
-                      >
-                        <div className="flex min-w-0 items-center gap-3">
-                          <div className="w-5 h-5 shrink-0 rounded-[4px] border-2 border-[var(--color-primary)]/40 bg-orange-50 flex items-center justify-center transition-all group-hover:border-[var(--color-primary)]" />
-                          <span className="min-w-0 truncate text-xs font-bold text-gray-500 transition-colors group-hover:text-gray-800">
-                            {entry.ownerBrand?.title} × {entry.title}
-                          </span>
-                        </div>
-                      </Link>
-                    ) : entry.slug && sportSlug && brandSlug ? (
+                    entry.slug && sportSlug && brandSlug ? (
                       <Link
                         key={entry.key}
                         href={withQueryParams(
@@ -671,32 +655,15 @@ export default function BrandGroupedView({
                 >
                   {/* هدر بخشِ سری — لوگوی برند سمت چپ، نام سری مرکز‌چین با خط زیرین رنگ اصلی */}
                   <div className="relative mb-7 flex h-[112px] md:h-[118px] items-center justify-center rounded-[var(--radius)] bg-white border border-gray-100 shadow-sm px-16 md:px-20 py-3">
-                    {(section.type === "collaboration"
-                      ? section.ownerBrand?.logo
-                      : pageInfo?.logo) && (
+                    {pageInfo?.logo && (
                       <img
-                        src={
-                          section.type === "collaboration"
-                            ? section.ownerBrand.logo
-                            : pageInfo.logo
-                        }
-                        alt={
-                          section.type === "collaboration"
-                            ? section.ownerBrand?.title || section.ownerBrand?.name
-                            : brandTitle
-                        }
+                        src={pageInfo.logo}
+                        alt={brandTitle}
                         className="absolute left-4 md:left-6 top-1/2 -translate-y-1/2 h-12 md:h-16 max-h-[64px] w-auto object-contain opacity-90"
                       />
                     )}
                     <div className="flex flex-col items-center gap-1.5">
-                      {section.type === "collaboration" && section.href ? (
-                        <Link
-                          href={withQueryParams(section.href, { targetAudience })}
-                          className="text-xl md:text-3xl font-bold text-[#1a1a1a] tracking-tight text-center hover:text-[var(--color-primary)] transition-colors"
-                        >
-                          {section.ownerBrand?.title} × {section.serie?.title}
-                        </Link>
-                      ) : section.serie?.slug && sportSlug && brandSlug ? (
+                      {section.serie?.slug && sportSlug && brandSlug ? (
                         <Link
                           href={withQueryParams(
                             `/${sportSlug}/${brandSlug}/${section.serie.slug}`,
@@ -713,9 +680,7 @@ export default function BrandGroupedView({
                       )}
                       <span className="block w-12 h-1 rounded-full bg-[var(--color-primary)]" />
                       <p className="h-5 md:h-6 max-w-2xl overflow-hidden text-center text-xs md:text-sm leading-5 md:leading-6 text-gray-500">
-                        {section.type === "collaboration"
-                          ? `همکاری ${section.ownerBrand?.title || section.ownerBrand?.name} با ${brandTitle}`
-                          : section.serie?.shortDescription || "\u00a0"}
+                        {section.serie?.shortDescription || "\u00a0"}
                       </p>
                     </div>
                   </div>

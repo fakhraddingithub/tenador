@@ -10,6 +10,8 @@
     "test": "jest",
     "test:target-audience": "node --test tests/targetAudience.test.mjs",
     "test:limited-edition-relations": "node --test tests/limitedEditionRelations.test.mjs",
+    "test:brand-collaboration": "node --test tests/brandCollaboration.test.mjs",
+    "report:limited-edition-brand-mismatch": "node scripts/reportLimitedEditionBrandMismatch.js",
     "test:grouped-product-pagination": "node --test tests/groupedProductPagination.test.mjs",
     "test:category-sports": "node --test tests/categorySportVisibility.test.mjs",
     "test:order-flow-steps": "node --test tests/orderFlowStepOrder.test.mjs",
