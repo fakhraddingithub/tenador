@@ -4,10 +4,10 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { DndContext, KeyboardSensor, PointerSensor, closestCenter, useSensor, useSensors } from "@dnd-kit/core";
 import { SortableContext, arrayMove, sortableKeyboardCoordinates, useSortable, verticalListSortingStrategy } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { FiChevronDown, FiChevronUp, FiCopy, FiMenu, FiPlus, FiSearch, FiTrash2, FiX } from "react-icons/fi";
+import { FiChevronDown, FiChevronUp, FiCopy, FiDroplet, FiMenu, FiPlus, FiSearch, FiTrash2, FiX } from "react-icons/fi";
 import ImageUpload from "@/components/admin/ImageUpload";
 import ArticleEntityPicker from "./ArticleEntityPicker";
-import { ARTICLE_BLOCKS, BLOCK_GROUPS, createArticleBlock } from "./blockRegistry";
+import { ARTICLE_BLOCKS, BLOCK_ACCENT_HINTS, BLOCK_GROUPS, BLOCK_SPACING_LABELS, BLOCK_STYLE_LABELS, BLOCK_TABLE_VARIANT_LABELS, createArticleBlock } from "./blockRegistry";
 
 const inputClass = "w-full px-3 py-2.5 border bg-gray-50 text-sm outline-none focus:bg-white focus:border-[var(--color-primary)] focus-visible:ring-2 focus-visible:ring-[var(--color-primary)]/20";
 
@@ -37,6 +37,43 @@ function ImageFieldWithSize({ value, onChange }) {
   return <ImageUpload value={value || ""} onChange={emit} folder="articles" className="mb-0" />;
 }
 
+/** رنگ سه‌حالته: تنظیم‌نشده (پیش‌فرضِ قالب) یا یک هگزِ مشخص. */
+function ColorControl({ label, hint, value, onChange }) {
+  return <div className="flex items-center gap-2">
+    <input type="color" aria-label={label} value={value || "#aa4725"} onChange={(e) => onChange(e.target.value)} className="h-8 w-10 shrink-0 cursor-pointer border p-0.5" style={{ borderColor: "var(--admin-border)", borderRadius: "var(--admin-radius)" }} />
+    <span className="text-[11px] text-gray-600">{label}{hint ? <em className="not-italic text-gray-400"> ({hint})</em> : null}</span>
+    {value
+      ? <button type="button" onClick={() => onChange(undefined)} className="mr-auto text-[11px] font-bold text-red-600">حذف رنگ</button>
+      : <span className="mr-auto text-[11px] text-gray-400">پیش‌فرض</span>}
+  </div>;
+}
+
+/**
+ * کنترل‌های ظاهرِ بلوک. حذفِ آخرین مقدار، کلِ style را undefined می‌کند تا بلوک
+ * دقیقاً به حالتِ «بدونِ استایل» برگردد و مثل قبل رندر شود.
+ */
+function BlockStylePanel({ type, style, onChange }) {
+  const keys = ARTICLE_BLOCKS[type]?.styleKeys || [];
+  if (!keys.length) return null;
+  const current = style || {};
+  const set = (key, value) => {
+    const next = { ...current };
+    if (value === undefined) delete next[key];
+    else next[key] = value;
+    onChange(Object.keys(next).length ? next : undefined);
+  };
+  const customised = Object.keys(current).length;
+  return <details className="border-t pt-3" style={{ borderColor: "var(--admin-border)" }}>
+    <summary className="flex cursor-pointer items-center gap-2 text-xs font-bold text-gray-600"><FiDroplet className="text-[var(--color-primary)]" />ظاهر بلوک{customised ? <span className="rounded-full bg-[var(--color-primary-soft)] px-2 py-0.5 text-[10px] text-[var(--color-primary)]">{customised.toLocaleString("fa-IR")} تنظیم</span> : null}</summary>
+    <div className="mt-3 space-y-3">
+      {keys.includes("spacing") ? <label className="block"><span className="mb-1 block text-[11px] font-bold text-gray-600">{BLOCK_STYLE_LABELS.spacing}</span><select value={current.spacing || "md"} onChange={(e) => set("spacing", e.target.value === "md" ? undefined : e.target.value)} className={inputClass}>{Object.entries(BLOCK_SPACING_LABELS).map(([value, text]) => <option key={value} value={value}>{text}</option>)}</select></label> : null}
+      {keys.includes("tableVariant") ? <label className="block"><span className="mb-1 block text-[11px] font-bold text-gray-600">{BLOCK_STYLE_LABELS.tableVariant}</span><select value={current.tableVariant || "default"} onChange={(e) => set("tableVariant", e.target.value === "default" ? undefined : e.target.value)} className={inputClass}>{Object.entries(BLOCK_TABLE_VARIANT_LABELS).map(([value, text]) => <option key={value} value={value}>{text}</option>)}</select></label> : null}
+      {["textColor", "background", "accent"].filter((key) => keys.includes(key)).map((key) => <ColorControl key={key} label={BLOCK_STYLE_LABELS[key]} hint={key === "accent" ? BLOCK_ACCENT_HINTS[type] : null} value={current[key]} onChange={(value) => set(key, value)} />)}
+      {customised ? <button type="button" onClick={() => onChange(undefined)} className="text-[11px] font-bold text-gray-500 hover:text-red-600">بازگشت به ظاهر پیش‌فرض</button> : null}
+    </div>
+  </details>;
+}
+
 function BlockField({ field, value, onChange }) {
   if (field.kind === "textarea" || field.kind === "html") return <textarea dir={field.kind === "html" ? "ltr" : "rtl"} rows={field.kind === "html" ? 9 : 4} value={value || ""} onChange={(e) => onChange(e.target.value)} className={`${inputClass} ${field.kind === "html" ? "font-mono" : "font-sans"}`} />;
   if (field.kind === "select") return <select value={value || ""} onChange={(e) => onChange(e.target.value)} className={inputClass}>{field.options.map((option) => <option key={option} value={option}>{option}</option>)}</select>;
@@ -48,7 +85,7 @@ function BlockField({ field, value, onChange }) {
   return <input type={field.kind === "number" ? "number" : field.kind === "url" ? "url" : "text"} value={value ?? ""} onChange={(e) => onChange(field.kind === "number" ? Number(e.target.value) : e.target.value)} className={inputClass} />;
 }
 
-function SortableBlock({ block, index, total, onUpdate, onRemove, onDuplicate, onMove }) {
+function SortableBlock({ block, index, total, onUpdate, onStyle, onRemove, onDuplicate, onMove }) {
   const [open, setOpen] = useState(true);
   const definition = ARTICLE_BLOCKS[block.type];
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: block.id });
@@ -65,7 +102,7 @@ function SortableBlock({ block, index, total, onUpdate, onRemove, onDuplicate, o
         <button type="button" onClick={() => setOpen((value) => !value)} aria-expanded={open} className="p-1.5 text-gray-400 focus-visible:outline-2 focus-visible:outline-[var(--color-primary)]" aria-label="باز و بسته کردن">{open ? <FiChevronUp /> : <FiChevronDown />}</button>
       </div>
     </header>
-    {open ? <div className="p-4 space-y-4">{definition?.fields.length ? definition.fields.map((field) => <label key={field.key} className="block"><span className="block text-xs font-bold mb-1.5 text-gray-600">{field.label}</span><BlockField field={field} value={field.kind === "table" ? block.data : block.data?.[field.key]} onChange={(next) => onUpdate(field.kind === "table" || field.kind === "image" ? next : { [field.key]: next })} /></label>) : <p className="text-xs text-gray-400 text-center py-3">این بلوک تنظیمات دیگری ندارد.</p>}</div> : null}
+    {open ? <div className="p-4 space-y-4">{definition?.fields.length ? definition.fields.map((field) => <label key={field.key} className="block"><span className="block text-xs font-bold mb-1.5 text-gray-600">{field.label}</span><BlockField field={field} value={field.kind === "table" ? block.data : block.data?.[field.key]} onChange={(next) => onUpdate(field.kind === "table" || field.kind === "image" ? next : { [field.key]: next })} /></label>) : <p className="text-xs text-gray-400 text-center py-3">این بلوک تنظیمات دیگری ندارد.</p>}<BlockStylePanel type={block.type} style={block.style} onChange={onStyle} /></div> : null}
   </section>;
 }
 
@@ -95,7 +132,13 @@ export default function BlockEditor({ value = [], onChange }) {
   const add = (type) => { onChange([...value, createArticleBlock(type)]); setLibraryOpen(false); };
   return <div className="space-y-3">
     <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={({ active, over }) => { if (!over || active.id === over.id) return; move(value.findIndex((item) => item.id === active.id), value.findIndex((item) => item.id === over.id)); }}>
-      <SortableContext items={value.map((item) => item.id)} strategy={verticalListSortingStrategy}>{value.map((block, index) => <SortableBlock key={block.id} block={block} index={index} total={value.length} onUpdate={(patch) => onChange(latest.current.map((item) => item.id === block.id ? { ...item, data: { ...item.data, ...patch } } : item))} onRemove={() => onChange(value.filter((item) => item.id !== block.id))} onDuplicate={() => onChange([...value.slice(0, index + 1), { ...structuredClone(block), id: crypto.randomUUID() }, ...value.slice(index + 1)])} onMove={move} />)}</SortableContext>
+      <SortableContext items={value.map((item) => item.id)} strategy={verticalListSortingStrategy}>{value.map((block, index) => <SortableBlock key={block.id} block={block} index={index} total={value.length} onUpdate={(patch) => onChange(latest.current.map((item) => item.id === block.id ? { ...item, data: { ...item.data, ...patch } } : item))} onStyle={(style) => onChange(latest.current.map((item) => {
+        if (item.id !== block.id) return item;
+        // حذفِ کاملِ کلید (نه گذاشتنِ شیءِ خالی) تا بلوک واقعاً «بدونِ استایل» شود.
+        const next = { ...item };
+        if (style) next.style = style; else delete next.style;
+        return next;
+      }))} onRemove={() => onChange(value.filter((item) => item.id !== block.id))} onDuplicate={() => onChange([...value.slice(0, index + 1), { ...structuredClone(block), id: crypto.randomUUID() }, ...value.slice(index + 1)])} onMove={move} />)}</SortableContext>
     </DndContext>
     <button type="button" onClick={() => setLibraryOpen(true)} className="w-full flex items-center justify-center gap-2 py-3 border border-dashed text-sm font-bold text-[var(--color-primary)] hover:bg-[var(--color-primary-soft)]" style={{ borderColor: "var(--color-primary)", borderRadius: "var(--admin-radius)" }}><FiPlus /> افزودن بلوک</button>
     {value.length === 0 ? <p className="text-center text-xs text-gray-400">برای شروع اولین بلوک را اضافه کنید.</p> : null}
