@@ -4,6 +4,11 @@ import Sport from "base/models/Sport";
 import Product from "base/models/Product";
 import Category from "base/models/Category";
 import { getEffectiveTargetAudienceFilters } from "base/utils/targetAudience";
+import {
+  fillStructuralAudiences,
+  insertStructuralParents,
+  missingParentIds,
+} from "base/utils/navbarCategoryTree";
 // Variant فقط برای ثبتِ مدل (side-effect) لازم است تا lookup روی کالکشنِ variants کار کند
 import "base/models/Variant";
 
@@ -32,6 +37,27 @@ function visibleSportsExpression(categoryPath) {
       },
     ],
   };
+}
+
+/**
+ * والدهای «ساختاری» (بدونِ محصولِ مستقیم) را به لیستِ دسته‌های هر ورزش برمی‌گرداند.
+ * اجداد سطح‌به‌سطح واکشی می‌شوند چون والدِ والد هم ممکن است محصولِ مستقیم نداشته باشد.
+ */
+async function attachStructuralParents(sports) {
+  const docsById = new Map();
+  let frontier = missingParentIds(sports);
+  while (frontier.length > 0) {
+    const rows = await Category.find({ _id: { $in: frontier } })
+      .select("_id title slug icon order parent")
+      .lean();
+    const next = [];
+    for (const row of rows) {
+      docsById.set(String(row._id), row);
+      if (row.parent && !docsById.has(String(row.parent))) next.push(row.parent);
+    }
+    frontier = next;
+  }
+  if (docsById.size > 0) insertStructuralParents(sports, docsById);
 }
 
 async function buildNavbarData() {
@@ -116,6 +142,8 @@ async function buildNavbarData() {
       brands: row.brands,
     });
   }
+
+  await attachStructuralParents(sports);
 
   // ───────────────────────────────────────────────────────────────────────
   // ۲) فراداده‌ی «ویژگیِ فیلترِ مگامنو» هر دسته: نام، برچسب و گزینه‌های تعریف‌شده.
@@ -386,6 +414,8 @@ async function buildNavbarData() {
         );
       }
     }
+
+    fillStructuralAudiences(sport.categories);
   }
 
   return sports;
@@ -396,6 +426,7 @@ export const getCachedNavbar = unstable_cache(
     const data = await buildNavbarData();
     return JSON.parse(JSON.stringify(data));
   },
-  ["navbar-data", "target-audience-unisex-v1"],
+  // کلید با اضافه‌شدنِ دسته‌های ساختاری (hasProducts) بامپ شد تا کشِ قدیمی سرو نشود
+  ["navbar-data", "target-audience-unisex-v1", "structural-parents-v1"],
   { revalidate: 10800, tags: ["navbar"] },
 );

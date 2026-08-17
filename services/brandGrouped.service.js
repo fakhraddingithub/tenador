@@ -6,7 +6,7 @@
  * نمایش داده می‌شوند (مثلاً Blade V10 و Blade V5 زیر بخش Blade).
  *
  * «همکاری‌ها» (لیمیتد ادیشن‌های برندهای دیگر که این برند را در relatedBrands
- * دارند) بخشِ مستقل ندارند؛ محصولاتشان زیرِ همان «سایر محصولات» می‌آیند و فقط
+ * دارند) بخشِ مستقل ندارند؛ محصولاتشان زیرِ همان بخشِ «محصولات <برند>» می‌آیند و
  * به برندِ مالکِ همان ادیشن محدودند (utils/brandCollaboration.js).
  *
  * این سرویس فقط سمت سرور اجرا می‌شود و با unstable_cache کش می‌شود تا
@@ -27,6 +27,7 @@ import { unstable_cache } from "next/cache";
 import mongoose from "mongoose";
 import connectToDB from "base/configs/db";
 import Serie from "base/models/Serie";
+import Brand from "base/models/Brand";
 import LimitedEdition from "base/models/LimitedEdition";
 import Product from "base/models/Product";
 import Variant from "base/models/Variant";
@@ -155,6 +156,16 @@ async function getRelatedLimitedEditions(brandId) {
 }
 
 /**
+ * عنوانِ بخشی که محصولاتِ بدونِ سریِ خودِ برند (به‌علاوه‌ی محصولاتِ همکاری) را
+ * نگه می‌دارد: «محصولات ویلسون» به‌جای «سایر محصولات». عنوانِ فارسیِ برند مقدم
+ * است و اگر برند پیدا نشد، «محصولات» تنها می‌ماند (نه یک دنباله‌ی خالی).
+ */
+function otherSectionTitle(brand) {
+  const brandTitle = (brand?.title || brand?.name || "").trim();
+  return brandTitle ? `محصولات ${brandTitle}` : "محصولات";
+}
+
+/**
  * محصولاتِ همکاری = اجتماعِ شاخه‌های «برندِ مالک + ادیشن»، روی همان فیلترِ پایه‌ی
  * صفحه (ورزش/دسته/جستجو/ویژگی/مخاطب) اما بدونِ قیدِ برندِ صفحه.
  * برمی‌گرداند null اگر هیچ همکاریِ معتبری نباشد.
@@ -227,7 +238,7 @@ async function buildAttrMatches(attrFilters) {
   }
 
   if (conditions.length === 0) return {};
-  // همیشه داخلِ $and بسته‌بندی می‌شود تا با کلیدِ $orِ بخشِ «سایر محصولات» در
+  // همیشه داخلِ $and بسته‌بندی می‌شود تا با کلیدِ $orِ بخشِ «محصولات <برند>» در
   // fetchSectionProducts تداخل نکند (در غیرِ این صورت اسپردِ baseMatch آن را بازنویسی می‌کرد).
   return { $and: conditions };
 }
@@ -250,7 +261,7 @@ function withinPrice(p, minPrice, maxPrice) {
  *
  * خروجی شاملِ دو بخشِ سرور-only است که هرگز به کلاینت نمی‌رود:
  *   scopes       — { [key]: [serieId رشته‌ای] } دامنه‌ی سریِ هر بخش
- *   allSerieIds  — برای ساختِ شرطِ بخشِ «سایر محصولات»
+ *   allSerieIds  — برای ساختِ شرطِ بخشِ «محصولات <برند>» (کلیدِ OTHER_KEY)
  */
 async function _getBrandGroupedIndex(params) {
   const {
@@ -264,10 +275,16 @@ async function _getBrandGroupedIndex(params) {
 
   await connectToDB();
 
-  const [{ byId, roots, rootIdFor, descendantsByRoot }, extra, relatedEditions] = await Promise.all([
+  const [
+    { byId, roots, rootIdFor, descendantsByRoot },
+    extra,
+    relatedEditions,
+    brand,
+  ] = await Promise.all([
     buildSeriesTree(brandId),
     buildAttrMatches(attrFilters),
     getRelatedLimitedEditions(brandId),
+    Brand.findById(toObjectId(brandId)).select("title name").lean(),
   ]);
 
   // هر همکاری به «برندِ مالکِ همان ادیشن» محدود می‌شود — همان قاعده‌ای که مسیرِ
@@ -315,7 +332,7 @@ async function _getBrandGroupedIndex(params) {
     }
   }
 
-  // محصولاتِ همکاری بخشِ جداگانه‌ای ندارند؛ زیرِ همان «سایر محصولات» می‌آیند.
+  // محصولاتِ همکاری بخشِ جداگانه‌ای ندارند؛ زیرِ همان بخشِ «محصولات <برند>» می‌آیند.
   otherCount += collaborationCount;
 
   // ── فهرستِ مرتب‌شده‌ی بخش‌های غیرخالی (ریشه‌ها به ترتیب order، سپس «سایر») ──
@@ -344,7 +361,7 @@ async function _getBrandGroupedIndex(params) {
     index.push({
       key: OTHER_KEY,
       serieId: null,
-      title: "سایر محصولات",
+      title: otherSectionTitle(brand),
       description: "",
       shortDescription: "",
       slug: null,
@@ -383,7 +400,7 @@ const getBrandGroupedIndex = unstable_cache(
     "brand-grouped-index",
     "target-audience-unisex-v1",
     // v2: همکاری‌ها بخشِ مستقل ندارند و به برندِ مالکِ ادیشن محدودند
-    "limited-edition-relations-v2",
+    "limited-edition-relations-v3",
   ],
   { revalidate: 10800, tags: ["products", "categories", "series", "brands", "limited-editions"] }
 );
@@ -547,7 +564,7 @@ export const getBrandGroupedSections = unstable_cache(
     "brand-grouped-sections",
     "target-audience-unisex-v1",
     // v2: همکاری‌ها بخشِ مستقل ندارند و به برندِ مالکِ ادیشن محدودند
-    "limited-edition-relations-v2",
+    "limited-edition-relations-v3",
     "brand-product-cursor-v1",
   ],
   { revalidate: 10800, tags: ["products", "categories", "series", "brands", "limited-editions"] }

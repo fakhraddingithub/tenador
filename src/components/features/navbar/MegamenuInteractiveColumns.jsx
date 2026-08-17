@@ -94,9 +94,13 @@ export default function MegamenuInteractiveColumns({ sport, onClose, selectedAud
 
   // ── دسته‌ی فعال (هاور): اگر هاورشده معتبر نباشد، اولین دسته تا ستون B خالی نماند ──
   // (با تعویضِ ورزش، hoveredCatId قدیمی نامعتبر می‌شود و این fallback اولین دسته را می‌گیرد)
+  // دسته‌ی ساختاری (بدونِ محصولِ مستقیم) هرگز fallback نمی‌شود چون برندی ندارد.
+  const firstWithProducts =
+    rootCategories.find((c) => c.hasProducts !== false) ||
+    categories.find((c) => c.hasProducts !== false);
   const effectiveCatId = categories.some((c) => c._id === hoveredCatId)
     ? hoveredCatId
-    : rootCategories[0]?._id || null;
+    : firstWithProducts?._id || null;
   const activeCategory =
     categories.find((c) => c._id === effectiveCatId) || null;
 
@@ -138,50 +142,81 @@ export default function MegamenuInteractiveColumns({ sport, onClose, selectedAud
           <ul className="space-y-1">
             {rootCategories.map((cat) => {
               const kids = childrenOf(cat._id);
+              // دسته‌ی ساختاری: محصولِ مستقیم ندارد ⇒ صفحه‌اش خالی است، پس لینک نمی‌شود
+              // و فقط سرگروهِ زیردسته‌ها می‌ماند (زیردسته‌ها با هاور باز می‌شوند).
+              const isStructural = cat.hasProducts === false;
+              // ساختاری بدونِ فرزندِ قابل‌نمایش (مثلاً بعد از فیلترِ جنسیت) = آیتمِ مرده
+              if (isStructural && kids.length === 0) return null;
+              const inner = (
+                <>
+                  {cat.icon && (
+                    <div
+                      style={iconMaskStyle(cat.icon)}
+                      className="w-5 h-5 shrink-0"
+                    />
+                  )}
+                  <span className="flex-grow text-right font-bold">
+                    {cat.title}
+                  </span>
+                  <FiChevronLeft size={16} className="opacity-20" />
+                </>
+              );
               return (
                 <li key={cat._id} className="group/cat">
                   {/* والد — هاور دسته را فعال می‌کند (برندها)، کلیک به صفحه‌ی دسته می‌رود */}
-                  <Link
-                    href={withFilter(`/${sportSlug}/${cat.slug}`)}
-                    prefetch
-                    onMouseEnter={() => setHoveredCatId(cat._id)}
-                    onClick={onClose}
-                    className={categoryButtonStyle(effectiveCatId === cat._id)}
-                  >
-                    {cat.icon && (
-                      <div
-                        style={iconMaskStyle(cat.icon)}
-                        className="w-5 h-5 shrink-0"
-                      />
-                    )}
-                    <span className="flex-grow text-right font-bold">
-                      {cat.title}
-                    </span>
-                    <FiChevronLeft size={16} className="opacity-20" />
-                  </Link>
+                  {isStructural ? (
+                    <div
+                      className={`${categoryButtonStyle(false)} cursor-default`}
+                    >
+                      {inner}
+                    </div>
+                  ) : (
+                    <Link
+                      href={withFilter(`/${sportSlug}/${cat.slug}`)}
+                      prefetch
+                      onMouseEnter={() => setHoveredCatId(cat._id)}
+                      onClick={onClose}
+                      className={categoryButtonStyle(effectiveCatId === cat._id)}
+                    >
+                      {inner}
+                    </Link>
+                  )}
 
                   {/* زیردسته‌ها — به‌صورت پیش‌فرض پنهان؛ با هاورِ والد به‌نرمی باز می‌شوند */}
                   {kids.length > 0 && (
                     <div className="grid grid-rows-[0fr] group-hover/cat:grid-rows-[1fr] transition-[grid-template-rows] duration-300 ease-out">
                       <div className="overflow-hidden">
                         <ul className="mt-0.5 space-y-0.5">
-                          {kids.map((child) => (
-                            <li key={child._id}>
-                              <Link
-                                href={withFilter(`/${sportSlug}/${child.slug}`)}
-                                prefetch
-                                onMouseEnter={() => setHoveredCatId(child._id)}
-                                onClick={onClose}
-                                className={childButtonStyle(
-                                  effectiveCatId === child._id,
-                                )}
-                              >
-                                <span className="flex-grow text-right">
-                                  {child.title}
-                                </span>
-                              </Link>
-                            </li>
-                          ))}
+                          {kids.map((child) =>
+                            child.hasProducts === false ? (
+                              // زیردسته‌ی ساختاری هم صفحه‌ی خالی دارد ⇒ لینک نمی‌شود
+                              <li key={child._id}>
+                                <div
+                                  className={`${childButtonStyle(false)} cursor-default`}
+                                >
+                                  <span className="flex-grow text-right">
+                                    {child.title}
+                                  </span>
+                                </div>
+                              </li>
+                            ) : (
+                              <li key={child._id}>
+                                <Link
+                                  href={withFilter(`/${sportSlug}/${child.slug}`)}
+                                  prefetch
+                                  onMouseEnter={() => setHoveredCatId(child._id)}
+                                  onClick={onClose}
+                                  className={childButtonStyle(
+                                    effectiveCatId === child._id,
+                                  )}
+                                >
+                                  <span className="flex-grow text-right">
+                                    {child.title}
+                                  </span>
+                                </Link>
+                              </li>
+                            ),
+                          )}
                         </ul>
                       </div>
                     </div>
