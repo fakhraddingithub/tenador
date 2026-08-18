@@ -15,6 +15,12 @@ const BLOCK_WIDTH_LABELS = { full: "تمام عرض", "1/2": "نصف عرض", "1
 
 const inputClass = "w-full px-3 py-2.5 border bg-gray-50 text-sm outline-none focus:bg-white focus:border-[var(--color-primary)] focus-visible:ring-2 focus-visible:ring-[var(--color-primary)]/20";
 
+// <button> عنصری «برچسب‌پذیر» است، پس <label> بدونِ for اولین دکمه‌ی داخلش را
+// برچسب می‌زند و مرورگر هاور و کلیکِ کلِ ناحیه را به همان دکمه می‌فرستد. فیلدِ
+// متنِ غنی یک نوارِ دکمه دارد (اولینش «پررنگ») و ناحیه‌ی ویرایشش contentEditable
+// است که اصلاً برچسب‌پذیر نیست — پس باید در یک wrapper ساده بنشیند.
+const fieldWrapper = (kind) => (kind === "rich" ? "div" : "label");
+
 function FaqEditor({ value = [], onChange }) {
   const items = value.length ? value : [{ question: "", answer: "" }];
   const update = (index, key, next) => onChange(items.map((item, i) => i === index ? { ...item, [key]: next } : item));
@@ -116,7 +122,7 @@ function SortableBlock({ block, index, total, onUpdate, onStyle, onLayout, onRem
         <button type="button" onClick={() => setOpen((value) => !value)} aria-expanded={open} className="p-1.5 text-gray-400 focus-visible:outline-2 focus-visible:outline-[var(--color-primary)]" aria-label="باز و بسته کردن">{open ? <FiChevronUp /> : <FiChevronDown />}</button>
       </div>
     </header>
-    {open ? <div className="p-4 space-y-4"><BlockStylePanel type={block.type} style={block.style} layout={block.layout} onChange={onStyle} onLayout={onLayout} />{definition?.fields.length ? definition.fields.map((field) => <label key={field.key} className="block"><span className="block text-xs font-bold mb-1.5 text-gray-600">{field.label}</span><BlockField field={field} value={field.kind === "table" || field.kind === "rich" ? block.data : block.data?.[field.key]} onChange={(next) => onUpdate(field.kind === "table" || field.kind === "image" || field.kind === "rich" ? next : { [field.key]: next })} align={block.style?.align} onAlign={setAlign} /></label>) : <p className="text-xs text-gray-400 text-center py-3">این بلوک تنظیمات دیگری ندارد.</p>}</div> : null}
+    {open ? <div className="p-4 space-y-4"><BlockStylePanel type={block.type} style={block.style} layout={block.layout} onChange={onStyle} onLayout={onLayout} />{definition?.fields.length ? definition.fields.map((field) => { const Wrapper = fieldWrapper(field.kind); return <Wrapper key={field.key} className="block"><span className="block text-xs font-bold mb-1.5 text-gray-600">{field.label}</span><BlockField field={field} value={field.kind === "table" || field.kind === "rich" ? block.data : block.data?.[field.key]} onChange={(next) => onUpdate(field.kind === "table" || field.kind === "image" || field.kind === "rich" ? next : { [field.key]: next })} align={block.style?.align} onAlign={setAlign} /></Wrapper>; }) : <p className="text-xs text-gray-400 text-center py-3">این بلوک تنظیمات دیگری ندارد.</p>}</div> : null}
   </section>;
 }
 
