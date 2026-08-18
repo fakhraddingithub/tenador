@@ -1,6 +1,15 @@
 import mongoose from "mongoose";
+// نسبی، نه با نامک @: این فایل مستقیم زیر node هم تست می‌شود.
+import { richTextValue } from "./sanitizeRichText.js";
 
 const string = (value, max) => typeof value === "string" ? value.trim().slice(0, max) : "";
+
+// کلیدِ html فقط وقتی ساخته می‌شود که قالب‌بندیِ واقعی وجود داشته باشد؛ در غیر
+// این صورت شیءِ خالی برمی‌گردد و دادهٔ بلوک دقیقاً همان شکلِ قبلی را دارد.
+const rich = (value) => {
+  const html = richTextValue(value);
+  return html ? { html } : {};
+};
 
 export function safeArticleUrl(value, { media = false } = {}) {
   const raw = string(value, 2000);
@@ -21,6 +30,7 @@ export function safeArticleUrl(value, { media = false } = {}) {
 export const BLOCK_SPACINGS = ["none", "sm", "md", "lg"];
 export const BLOCK_TABLE_VARIANTS = ["default", "striped", "bordered", "plain"];
 export const BLOCK_COLOR_KEYS = ["textColor", "background", "accent"];
+export const BLOCK_ALIGNS = ["left", "center", "right"];
 
 const HEX_COLOR = /^#[0-9a-fA-F]{6}$/;
 
@@ -47,6 +57,7 @@ export function sanitizeArticleBlockStyle(value) {
   if (value.tableVariant !== "default" && BLOCK_TABLE_VARIANTS.includes(value.tableVariant)) {
     style.tableVariant = value.tableVariant;
   }
+  if (BLOCK_ALIGNS.includes(value.align)) style.align = value.align;
 
   return Object.keys(style).length ? style : undefined;
 }
@@ -98,12 +109,12 @@ const entitySlider = (key) => (data, errors, field) => ({
 });
 
 const validators = {
-  heading: (data) => ({ text: string(data.text, 500), level: ["h2", "h3", "h4"].includes(data.level) ? data.level : "h2" }),
-  paragraph: (data) => ({ text: string(data.text, 50000) }),
+  heading: (data) => ({ text: string(data.text, 500), ...rich(data.html), level: ["h2", "h3", "h4"].includes(data.level) ? data.level : "h2" }),
+  paragraph: (data) => ({ text: string(data.text, 50000), ...rich(data.html) }),
   image: (data, errors, field) => ({ url: url(data.url, errors, `${field}.url`, { media: true }), alt: string(data.alt, 300), caption: string(data.caption, 500), width: Number.isInteger(data.width) && data.width > 0 ? data.width : undefined, height: Number.isInteger(data.height) && data.height > 0 ? data.height : undefined }),
   gallery: (data, errors, field) => ({ images: gallery(data.images, errors, `${field}.images`) }),
   video: (data, errors, field) => ({ url: url(data.url, errors, `${field}.url`, { media: true }), title: string(data.title, 300) }),
-  quote: (data) => ({ text: string(data.text, 5000), author: string(data.author, 300) }),
+  quote: (data) => ({ text: string(data.text, 5000), ...rich(data.html), author: string(data.author, 300) }),
   divider: () => ({}),
   button: (data, errors, field) => ({ label: string(data.label, 160), href: url(data.href, errors, `${field}.href`), style: ["primary", "outline", "secondary"].includes(data.style) ? data.style : "primary" }),
   callout: (data) => ({ title: string(data.title, 300), text: string(data.text, 10000), tone: ["info", "success", "warning", "danger"].includes(data.tone) ? data.tone : "info" }),

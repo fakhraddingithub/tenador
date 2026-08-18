@@ -5,6 +5,7 @@ import ArticleCard from "@/components/features/articles/ArticleCard";
 import ArticleNewsletterForm from "@/components/features/articles/ArticleNewsletterForm";
 import { PublicProductGrid, PublicUsedProductGrid } from "@/components/features/articles/PublicProductGrid";
 import { sanitizeArticleHtml } from "@/lib/sanitizeArticleHtml";
+import { sanitizeRichText } from "@/lib/sanitizeRichText";
 import { BLOCK_WIDTH_CLASS, blockWidth, groupBlockRows } from "@/lib/articleBlockLayout";
 
 const ordered = (values, map) => (Array.isArray(values) ? values : values ? [values] : []).map((id) => map?.[String(id)]).filter(Boolean);
@@ -35,7 +36,20 @@ function blockVisuals(block) {
     background: style.background || null,
     accent: style.accent || null,
     tableVariant: style.tableVariant || "default",
+    align: style.align || null,
   };
+}
+
+/**
+ * محتوای یک بلوکِ متنی: یا HTMLِ قالب‌بندی‌شده یا متنِ سادهٔ قبلی.
+ *
+ * بلوکی که data.html ندارد (یعنی هر بلوکِ موجود) دقیقاً همان `children` قبلی را
+ * می‌گیرد، پس خروجی‌اش بایت‌به‌بایت بدون تغییر می‌ماند. پاک‌سازی اینجا هم تکرار
+ * می‌شود چون ذخیره‌سازی تنها خطِ دفاع نیست — همان الگوی بلوکِ HTML سفارشی.
+ */
+function richContent(data) {
+  const html = data.html ? sanitizeRichText(data.html) : "";
+  return html ? { dangerouslySetInnerHTML: { __html: html } } : { children: data.text };
 }
 
 /** پس‌زمینه بدونِ فاصله‌ی داخلی بد به نظر می‌رسد؛ پس با هم می‌آیند. */
@@ -117,9 +131,14 @@ export default function ArticleBlockRenderer({ blocks = [], entities, preview = 
       const level = ["h2", "h3", "h4"].includes(data.level) ? data.level : "h2";
       const Tag = level;
       const sizes = { h2: "text-2xl md:text-3xl", h3: "text-xl md:text-2xl", h4: "text-lg md:text-xl" };
-      return <Tag key={block.id} id={safeHeadingId(block)} className={`${blockSection} ${sizes[level]} font-black leading-relaxed text-gray-900`} style={merge(v.spacing, padded(v), v.text && { color: v.text })}>{data.text}</Tag>;
+      return <Tag key={block.id} id={safeHeadingId(block)} className={`${blockSection} ${sizes[level]} font-black leading-relaxed text-gray-900`} style={merge(v.spacing, padded(v), v.text && { color: v.text }, v.align && { textAlign: v.align })} {...richContent(data)} />;
     }
-    if (block.type === "paragraph") return <p key={block.id} className="my-5 whitespace-pre-line text-[16px] leading-9 text-gray-700 md:text-[17px]" style={merge(v.spacing, padded(v), v.text && { color: v.text })}>{data.text}</p>;
+    if (block.type === "paragraph") {
+      const content = richContent(data);
+      // شکستِ خط در حالتِ HTML با <br> می‌آید، پس whitespace-pre-line آنجا فقط
+      // فاصله‌های اضافیِ خودِ نشانه‌گذاری را دوباره نمایش می‌داد.
+      return <p key={block.id} className={`my-5 ${content.children === undefined ? "" : "whitespace-pre-line "}text-[16px] leading-9 text-gray-700 md:text-[17px]`} style={merge(v.spacing, padded(v), v.text && { color: v.text }, v.align && { textAlign: v.align })} {...content} />;
+    }
     // تصویرِ محتوا با نسبتِ واقعیِ خودش رندر می‌شود: عرض/ارتفاعِ ذخیره‌شده فقط
     // جا را پیش از بارگذاری رزرو می‌کند (aspect-ratio: auto w/h) و پس از بارگذاری
     // نسبتِ ذاتیِ تصویر جای آن را می‌گیرد — پس هیچ بُرشی رخ نمی‌دهد.
@@ -132,7 +151,7 @@ export default function ArticleBlockRenderer({ blocks = [], entities, preview = 
       const embed = videoEmbed(data.url);
       return <figure key={block.id} className={blockSection} style={v.spacing || undefined}><div className="aspect-video overflow-hidden rounded-[var(--radius)] bg-black">{embed ? <iframe src={embed} title={data.title || "ویدئوی مقاله"} loading="lazy" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowFullScreen className="h-full w-full" /> : <video src={data.url} controls preload="metadata" className="h-full w-full" />}</div>{data.title ? <figcaption className="mt-3 text-center text-xs text-gray-500">{data.title}</figcaption> : null}</figure>;
     }
-    if (block.type === "quote") return <blockquote key={block.id} className={`${blockSection} border-r-4 border-[var(--color-primary)] bg-[color-mix(in_srgb,var(--color-primary)_6%,white)] px-6 py-5 text-lg font-bold leading-9 text-gray-800`} style={merge(v.spacing, v.accent && { borderRightColor: v.accent }, v.background && { backgroundColor: v.background }, v.text && { color: v.text })}><p>{data.text}</p>{data.author ? <footer className="mt-3 text-sm font-normal text-gray-500">— {data.author}</footer> : null}</blockquote>;
+    if (block.type === "quote") return <blockquote key={block.id} className={`${blockSection} border-r-4 border-[var(--color-primary)] bg-[color-mix(in_srgb,var(--color-primary)_6%,white)] px-6 py-5 text-lg font-bold leading-9 text-gray-800`} style={merge(v.spacing, v.accent && { borderRightColor: v.accent }, v.background && { backgroundColor: v.background }, v.text && { color: v.text }, v.align && { textAlign: v.align })}><p {...richContent(data)} />{data.author ? <footer className="mt-3 text-sm font-normal text-gray-500">— {data.author}</footer> : null}</blockquote>;
     if (block.type === "divider") return <hr key={block.id} className="my-10 border-gray-200" style={merge(v.spacing, v.accent && { borderColor: v.accent })} />;
     if (block.type === "button" && data.href) {
       // رنگِ دلخواه، حالتِ hover کلاس‌ها را کنار می‌گذارد (inline همیشه برنده است)

@@ -90,3 +90,25 @@ test("پاک‌سازی idempotent است", () => {
   assert.deepEqual(once, { spacing: "sm", accent: "#aa4725" });
   assert.deepEqual(sanitizeArticleBlockStyle(once), once);
 });
+
+// ——— چینشِ متن ————————————————————————————————————————————————————
+// چینش خاصیتی سطحِ خط است، پس در همین واژگانِ style می‌نشیند و نه داخلِ HTML.
+
+test("چینشِ معتبر پذیرفته می‌شود", () => {
+  for (const align of ["left", "center", "right"]) {
+    assert.deepEqual(sanitizeArticleBlockStyle({ align }), { align });
+  }
+});
+
+test("چینشِ نامعتبر دور ریخته می‌شود", () => {
+  for (const align of ["justify", "start", "end", "LEFT", "center;color:red", 1, null, {}]) {
+    assert.equal(sanitizeArticleBlockStyle({ align }), undefined, String(align));
+  }
+});
+
+test("چینش کنارِ بقیه‌ی کلیدها می‌نشیند", () => {
+  assert.deepEqual(
+    sanitizeArticleBlockStyle({ align: "center", spacing: "lg", textColor: "#112233" }),
+    { spacing: "lg", textColor: "#112233", align: "center" },
+  );
+});

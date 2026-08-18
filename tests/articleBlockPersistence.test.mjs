@@ -106,3 +106,35 @@ test("کلیدِ ناشناخته داخلِ style بی‌صدا دور ریخت
   assert.equal(block.style.spacing, "sm");
   assert.equal(block.style.boxShadow, undefined);
 });
+
+// ——— متنِ غنی ————————————————————————————————————————————————————————
+// data از نوع Mixed است، پس کلیدِ html اسکیما لازم ندارد؛ ولی همین یعنی هیچ
+// خطِ دفاعِ دومی هم ندارد و باید ثابت شود واقعاً ذخیره و بازخوانی می‌شود.
+
+test("data.html پس از ذخیره و بارگذاری دوباره سالم برمی‌گردد", async () => {
+  const html = 'این یک <b>جمله‌ی <span style="color:#aa4725">مهم</span></b> است';
+  const [block] = await reload([{ id: "a", type: "paragraph", data: { text: "این یک جمله‌ی مهم است", html } }]);
+  assert.equal(block.data.html, html);
+  assert.equal(block.data.text, "این یک جمله‌ی مهم است");
+});
+
+test("style.align پس از ذخیره و بارگذاری دوباره سالم برمی‌گردد", async () => {
+  for (const align of ["left", "center", "right"]) {
+    const [block] = await reload([{ id: "a", type: "heading", data: { text: "ت" }, style: { align } }]);
+    assert.equal(block.style?.align, align, align);
+  }
+});
+
+test("چینشِ خارج از enum توسط اسکیما رد می‌شود", async () => {
+  await assert.rejects(
+    () => Doc.create({ blocks: [{ id: "a", type: "paragraph", data: {}, style: { align: "justify" } }] }),
+    /not a valid enum value/i,
+  );
+});
+
+test("بلوکِ متنیِ بدونِ قالب‌بندی نه html می‌گیرد نه align", async () => {
+  const [block] = await reload([{ id: "a", type: "paragraph", data: { text: "متنِ ساده" } }]);
+  assert.equal(block.data.html, undefined, "html نباید ساخته شود");
+  assert.equal(block.style, undefined, "style نباید ساخته شود");
+  assert.deepEqual(Object.keys(block.data), ["text"]);
+});

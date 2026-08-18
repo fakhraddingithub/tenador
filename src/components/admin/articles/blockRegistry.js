@@ -38,12 +38,12 @@ export const BLOCK_SPACING_LABELS = { none: "بدون فاصله", sm: "کم", m
 export const BLOCK_TABLE_VARIANT_LABELS = { default: "پیش‌فرض", striped: "راه‌راه", bordered: "خط‌دار", plain: "ساده" };
 
 export const ARTICLE_BLOCKS = {
-  heading: { label: "تیتر", group: "محتوا", icon: FiType, defaults: { text: "", level: "h2" }, fields: [text("text", "متن تیتر"), text("level", "سطح تیتر", "select", { options: ["h2", "h3", "h4"] })], styleKeys: TEXTY },
-  paragraph: { label: "پاراگراف", group: "محتوا", icon: FiAlignRight, defaults: { text: "" }, fields: [text("text", "متن پاراگراف", "textarea")], styleKeys: TEXTY },
+  heading: { label: "تیتر", group: "محتوا", icon: FiType, defaults: { text: "", level: "h2" }, fields: [text("text", "متن تیتر", "rich", { singleLine: true }), text("level", "سطح تیتر", "select", { options: ["h2", "h3", "h4"] })], styleKeys: TEXTY },
+  paragraph: { label: "پاراگراف", group: "محتوا", icon: FiAlignRight, defaults: { text: "" }, fields: [text("text", "متن پاراگراف", "rich")], styleKeys: TEXTY },
   image: { label: "تصویر", group: "رسانه", icon: FiImage, defaults: { url: "", alt: "", caption: "" }, fields: [text("url", "تصویر", "image"), text("alt", "متن جایگزین"), text("caption", "زیرنویس")], styleKeys: SPACING_ONLY },
   gallery: { label: "گالری", group: "رسانه", icon: FiGrid, defaults: { images: [] }, fields: [text("images", "تصاویر", "gallery")], styleKeys: SPACING_ONLY },
   video: { label: "ویدئو", group: "رسانه", icon: FiPlay, defaults: { url: "", title: "" }, fields: [text("url", "آدرس ویدئو", "url"), text("title", "عنوان ویدئو")], styleKeys: SPACING_ONLY },
-  quote: { label: "نقل‌قول", group: "محتوا", icon: FiMessageSquare, defaults: { text: "", author: "" }, fields: [text("text", "متن نقل‌قول", "textarea"), text("author", "نام گوینده")], styleKeys: ["spacing", "textColor", "background", "accent"] },
+  quote: { label: "نقل‌قول", group: "محتوا", icon: FiMessageSquare, defaults: { text: "", author: "" }, fields: [text("text", "متن نقل‌قول", "rich"), text("author", "نام گوینده")], styleKeys: ["spacing", "textColor", "background", "accent"] },
   divider: { label: "جداکننده", group: "چیدمان", icon: FiMinus, defaults: {}, fields: [], styleKeys: ["spacing", "accent"] },
   button: { label: "دکمه", group: "محتوا", icon: FiLink, defaults: { label: "مشاهده", href: "", style: "primary" }, fields: [text("label", "متن دکمه"), text("href", "پیوند", "url"), text("style", "نوع", "select", { options: ["primary", "outline", "secondary"] })], styleKeys: ["spacing", "textColor", "accent"] },
   callout: { label: "نکته برجسته", group: "محتوا", icon: FiZap, defaults: { title: "", text: "", tone: "info" }, fields: [text("title", "عنوان"), text("text", "متن", "textarea"), text("tone", "نوع", "select", { options: ["info", "success", "warning", "danger"] })], styleKeys: ["spacing", "textColor", "background", "accent"] },
