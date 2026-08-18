@@ -93,9 +93,9 @@ export async function GET(req, { params }) {
       .populate({ path: "currentWarehouse", model: Warehouse })
       .lean();
 
-    // ─── tracking محصولات دست‌دوم (کالکشن جداگانه UsedItemTracking) ───
-    // محصولات دست‌دوم در پروژه انبار در کالکشن دیگری با کلید usedProductRef
-    // نگهداری می‌شوند؛ این‌جا بر اساس سفارش و/یا شناسه‌ی محصولات دست‌دومِ سفارش واکشی می‌شوند.
+    // ─── tracking محصولات دست دوم (کالکشن جداگانه UsedItemTracking) ───
+    // محصولات دست دوم در پروژه انبار در کالکشن دیگری با کلید usedProductRef
+    // نگهداری می‌شوند؛ این‌جا بر اساس سفارش و/یا شناسه‌ی محصولات دست دومِ سفارش واکشی می‌شوند.
     const usedProductIds = (order.items || [])
       .filter((it) => it.itemType === "used_product" && it.usedProduct?._id)
       .map((it) => it.usedProduct._id.toString());
@@ -115,7 +115,7 @@ export async function GET(req, { params }) {
       usedTrackingItems = raw.map((t) => ({ ...t, isUsedItemTracking: true }));
     }
 
-    // نگاشت usedProductRef → tracking های دست‌دومِ آن محصول
+    // نگاشت usedProductRef → tracking های دست دومِ آن محصول
     const usedTrackingByProduct = new Map();
     for (const t of usedTrackingItems) {
       const key = t.usedProductRef?.toString();
@@ -125,10 +125,10 @@ export async function GET(req, { params }) {
     }
 
     // tracking مربوط به خطِ اصلی هر آیتم:
-    //  - ترجیحاً با orderItemIndex صریح تطبیق داده می‌شود (محصول معمولی و دست‌دوم)
-    //  - محصول دست‌دوم بدون orderItemIndex (داده‌های قدیمی): با شناسه/بارکد/کدِ
-    //    رهگیریِ ذخیره‌شده روی خودِ محصول دست‌دوم تطبیق می‌خورد — دقیق و بدون ابهام
-    //    حتی اگر چند محصول دست‌دومِ هم‌پایه در یک سفارش باشند
+    //  - ترجیحاً با orderItemIndex صریح تطبیق داده می‌شود (محصول معمولی و دست دوم)
+    //  - محصول دست دوم بدون orderItemIndex (داده‌های قدیمی): با شناسه/بارکد/کدِ
+    //    رهگیریِ ذخیره‌شده روی خودِ محصول دست دوم تطبیق می‌خورد — دقیق و بدون ابهام
+    //    حتی اگر چند محصول دست دومِ هم‌پایه در یک سفارش باشند
     //  - محصول معمولی بدون orderItemIndex (داده‌های قدیمی): با productRef + variantRef
     //  - آیتم‌های متعلق به انتخاب‌های فرایند (flowNodeId غیرنال) هرگز اینجا شمرده نمی‌شوند
     const matchMainTracking = (item, index) =>
@@ -140,7 +140,7 @@ export async function GET(req, { params }) {
           return t.orderItemIndex === index;
         }
 
-        // ۲) محصول دست‌دوم: تطبیق دقیق با tracking ثبت‌شده روی خود محصول دست‌دوم
+        // ۲) محصول دست دوم: تطبیق دقیق با tracking ثبت‌شده روی خود محصول دست دوم
         if (item.itemType === "used_product") {
           const up = item.usedProduct;
           if (!up) return false;
@@ -164,7 +164,7 @@ export async function GET(req, { params }) {
     // ساختار خروجی: برای هر آیتم سفارش، tracking خطِ اصلی + خطوط انتخاب‌های فرایند
     const itemsWithTracking = order.items.map((item, index) => {
       const isUsed = item.itemType === "used_product";
-      // برای محصول دست‌دوم: tracking از کالکشن UsedItemTracking (بر اساس usedProductRef)
+      // برای محصول دست دوم: tracking از کالکشن UsedItemTracking (بر اساس usedProductRef)
       // به‌علاوه‌ی هر tracking قدیمیِ احتمالی در ItemTracking
       const usedRelated = isUsed
         ? usedTrackingByProduct.get(item.usedProduct?._id?.toString()) || []
@@ -203,7 +203,7 @@ export async function GET(req, { params }) {
       const product = isUsed
         ? {
             _id: item.usedProduct?._id ?? item.product?._id ?? null,
-            name: item.usedProduct?.name || item.product?.name || "محصول دست‌دوم",
+            name: item.usedProduct?.name || item.product?.name || "محصول دست دوم",
             mainImage:
               item.usedProduct?.images?.[0] || item.product?.mainImage || null,
             sku: item.usedProduct?.sku || "USED-ITEM",
@@ -227,14 +227,14 @@ export async function GET(req, { params }) {
       };
     });
 
-    // مجموع موردنیاز = خطوط اصلی (دست‌دوم=۱) + خطوط فرایند (به‌ازای هر واحدِ آیتم)
+    // مجموع موردنیاز = خطوط اصلی (دست دوم=۱) + خطوط فرایند (به‌ازای هر واحدِ آیتم)
     const totalRequired = itemsWithTracking.reduce((s, it) => {
       const main = it.isUsed ? 1 : it.quantity;
       const flow = (it.flowTracking || []).reduce((fs, f) => fs + f.quantity, 0);
       return s + main + flow;
     }, 0);
 
-    // مجموع اسکن‌شده — شامل خطوط اصلی (محصول معمولی + دست‌دوم) و خطوط فرایند
+    // مجموع اسکن‌شده — شامل خطوط اصلی (محصول معمولی + دست دوم) و خطوط فرایند
     const totalScanned = itemsWithTracking.reduce((s, it) => {
       const flow = (it.flowTracking || []).reduce((fs, f) => fs + f.scannedCount, 0);
       return s + it.scannedCount + flow;
@@ -559,7 +559,7 @@ export async function DELETE(req, { params }) {
     const warehouseConn = await connectWarehouseDB();
     const ItemTracking = getItemTrackingModel(warehouseConn);
 
-    // ابتدا در ItemTracking (محصولات معمولی)، سپس در UsedItemTracking (دست‌دوم)
+    // ابتدا در ItemTracking (محصولات معمولی)، سپس در UsedItemTracking (دست دوم)
     let item = await ItemTracking.findById(trackingItemId);
     let isUsedItem = false;
     if (!item) {

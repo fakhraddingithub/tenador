@@ -20,7 +20,7 @@ export default function UsedProductsPage() {
   const [page, setPage] = useState(1);
   const [status, setStatus] = useState('');
 
-  // 🟢 محصولات دست‌دوم — محتوای کاتالوگ
+  // 🟢 محصولات دست دوم — محتوای کاتالوگ
   const usedParams = new URLSearchParams({ page });
   if (status) usedParams.set('status', status);
 
@@ -36,7 +36,7 @@ export default function UsedProductsPage() {
   }, [error]);
 
   const handleDelete = async (item) => {
-    const ok = await confirmDelete('حذف محصول دست‌دوم', `"${item.baseProduct?.name}" حذف می‌شود`);
+    const ok = await confirmDelete('حذف محصول دست دوم', `"${item.baseProduct?.name}" حذف می‌شود`);
     if (!ok) return;
     try {
       const res = await fetch(`/api/admin/used-products/${item._id}`, { method: 'DELETE' });
@@ -62,7 +62,7 @@ export default function UsedProductsPage() {
         <div className="flex items-center gap-3">
           <FiPackage size={24} className="text-[var(--color-primary)]" />
           <div>
-            <h1 className="text-2xl font-bold">محصولات دست‌دوم</h1>
+            <h1 className="text-2xl font-bold">محصولات دست دوم</h1>
             <p className="text-sm text-neutral-400">{total} آیتم</p>
           </div>
         </div>

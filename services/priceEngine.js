@@ -700,13 +700,13 @@ export async function computeCartPrice(cartItems, user = null, couponCode = null
   // import داینامیک برای جلوگیری از circular dependency
   const { default: Product } = await import("base/models/Product");
   const { default: Variant  } = await import("base/models/Variant");
-  const { default: UsedProduct } = await import("base/models/UsedProduct"); // 💡 اضافه شدن مدل دست‌دوم
+  const { default: UsedProduct } = await import("base/models/UsedProduct"); // 💡 اضافه شدن مدل دست دوم
 
-  // تفکیک و بارگذاری شناسه محصولات، واریانت‌ها و محصولات دست‌دوم
+  // تفکیک و بارگذاری شناسه محصولات، واریانت‌ها و محصولات دست دوم
   const productIds = [...new Set(cartItems.map((i) => i.productId))];
   const variantIds = cartItems.filter((i) => i.variantId).map((i) => i.variantId);
   
-  // استخراج شناسه‌های محصولات دست‌دوم
+  // استخراج شناسه‌های محصولات دست دوم
   const usedProductIds = cartItems
     .filter((i) => i.itemType === "used_product" || i.usedProductId)
     .map((i) => i.usedProductId || i.productId);
@@ -718,12 +718,12 @@ export async function computeCartPrice(cartItems, user = null, couponCode = null
       .populate("serie", "_id")
       .lean(),
     variantIds.length ? Variant.find({ _id: { $in: variantIds } }).lean() : Promise.resolve([]),
-    usedProductIds.length ? UsedProduct.find({ _id: { $in: usedProductIds } }).lean() : Promise.resolve([]), // 💡 واکشی موازی دست‌دوم‌ها
+    usedProductIds.length ? UsedProduct.find({ _id: { $in: usedProductIds } }).lean() : Promise.resolve([]), // 💡 واکشی موازی دست دوم‌ها
   ]);
 
   const productMap = new Map(products.map((p) => [p._id.toString(), p]));
   const variantMap = new Map(variants.map((v) => [v._id.toString(), v]));
-  const usedProductMap = new Map(usedProducts.map((up) => [up._id.toString(), up])); // 💡 مپ کردن دست‌دوم‌ها
+  const usedProductMap = new Map(usedProducts.map((up) => [up._id.toString(), up])); // 💡 مپ کردن دست دوم‌ها
 
   // تخفیف‌های تعدادی فعال (یک‌بار batch — با اشیاء کامل محصول برای تطبیق نوع هدف)
   const quantityDiscountMap = await loadQuantityDiscountMap(Array.from(productMap.values()));
@@ -741,7 +741,7 @@ export async function computeCartPrice(cartItems, user = null, couponCode = null
       const up = usedProductMap.get(usedId);
       if (!up) continue;
       const eurPrice = up.price ?? 0;
-      subtotalToman += eurToToman(eurPrice, rate) * 1; // تعداد دست‌دوم همیشه ۱ است
+      subtotalToman += eurToToman(eurPrice, rate) * 1; // تعداد دست دوم همیشه ۱ است
     } else {
       const p = productMap.get(ci.productId);
       if (!p) continue;
@@ -761,7 +761,7 @@ export async function computeCartPrice(cartItems, user = null, couponCode = null
     const isUsed = ci.itemType === "used_product" || !!ci.usedProductId;
 
     if (isUsed) {
-      // ─── حالت الف: پردازش محصول دست‌دوم ───
+      // ─── حالت الف: پردازش محصول دست دوم ───
       const usedId = ci.usedProductId || ci.productId;
       const up = usedProductMap.get(usedId);
       if (!up) continue;

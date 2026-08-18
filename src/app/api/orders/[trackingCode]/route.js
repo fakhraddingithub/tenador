@@ -45,7 +45,7 @@ export async function GET(req, { params }) {
     const order = await Order.findOne({ trackingCode })
       .populate("items.product", "name mainImage sku")
       .populate("items.variant", "sku attributes images")
-      .populate("items.usedProduct", "name images status") // پاپولیت فیلدهای مورد نیاز محصول دست‌دوم
+      .populate("items.usedProduct", "name images status") // پاپولیت فیلدهای مورد نیاز محصول دست دوم
       .populate("items.flowSelections.selectedProduct", "name mainImage") // تصویر محصولات انتخابی فرایند
       .populate("payments", "method amount status createdAt")
       .lean();
@@ -72,11 +72,11 @@ export async function GET(req, { params }) {
         if (item.itemType === "used_product" && item.usedProduct) {
           return {
             ...item,
-            // ساخت یک آبجکت کپی شده مجازی از product برای فرانت‌اندر تا نام دست‌دوم اعمال شود
+            // ساخت یک آبجکت کپی شده مجازی از product برای فرانت‌اندر تا نام دست دوم اعمال شود
             product: {
               _id: item.usedProduct._id,
-              name: item.usedProduct.name, // قرار دادن نام اختصاصی محصول دست‌دوم
-              mainImage: item.usedProduct.images?.[0] || null, // استفاده از اولین تصویر گالری دست‌دوم
+              name: item.usedProduct.name, // قرار دادن نام اختصاصی محصول دست دوم
+              mainImage: item.usedProduct.images?.[0] || null, // استفاده از اولین تصویر گالری دست دوم
               sku: item.usedProduct.assignedBarcode || "USED-ITEM",
               isUsed: true,
             },
@@ -134,18 +134,18 @@ export async function DELETE(req, { params }) {
       return NextResponse.json({ message: "دسترسی غیرمجاز" }, { status: 403 });
     }
 
-    // ─── بازگرداندن کالاهای دست‌دوم به چرخه فروش ───
+    // ─── بازگرداندن کالاهای دست دوم به چرخه فروش ───
     for (const item of order.items ?? []) {
       try {
         if (item.itemType === "used_product" && item.usedProduct) {
-          // اگر آیتم دست‌دوم بود، وضعیت آن را دوباره به چرخه فروش باز می‌گردانیم
+          // اگر آیتم دست دوم بود، وضعیت آن را دوباره به چرخه فروش باز می‌گردانیم
           await UsedProduct.findByIdAndUpdate(item.usedProduct, {
             status: "available",
-            $unset: { order: "" }, // حذف رفرنس این سفارش از روی کالای دست‌دوم
+            $unset: { order: "" }, // حذف رفرنس این سفارش از روی کالای دست دوم
           });
         }
       } catch (restoreErr) {
-        console.warn("خطا در بازگرداندن کالای دست‌دوم:", restoreErr);
+        console.warn("خطا در بازگرداندن کالای دست دوم:", restoreErr);
       }
     }
 

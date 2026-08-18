@@ -46,7 +46,7 @@ export async function PUT(req, { params }) {
 
     if (!card) return NextResponse.json({ error: "یافت نشد" }, { status: 404 });
 
-    // ترتیب جدید فیلدها روی صفحه‌ی لیست دست‌دوم (ISR) بازتاب پیدا کند
+    // ترتیب جدید فیلدها روی صفحه‌ی لیست دست دوم (ISR) بازتاب پیدا کند
     try { revalidatePath("/second-hand", "layout"); } catch {}
 
     return NextResponse.json({ card });

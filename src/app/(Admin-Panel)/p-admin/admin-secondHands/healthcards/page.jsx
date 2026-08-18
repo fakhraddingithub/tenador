@@ -14,7 +14,7 @@ const CONTENT_TTL = { dedupingInterval: 300_000 };
 
 export default function HealthCardsPage() {
   const { can } = useAdminPermissions();
-  // 🟢 HealthCard ها — داده‌ی مرجعِ بازارِ دست‌دوم
+  // 🟢 HealthCard ها — داده‌ی مرجعِ بازارِ دست دوم
   const { data, isLoading: loading, error, mutate: fetchCards } =
     useSWR('/api/admin/healthcards', CONTENT_TTL);
   const cards = data?.cards || [];

@@ -64,10 +64,10 @@ const OrderSummary = ({ order }) => {
         <span className="text-gray-500 text-xs block mb-2.5 sm:mb-3">اقلام سفارش:</span>
 
         {order.items.map((item, idx) => {
-          // ۱. تشخیص هوشمند کالا دست‌دوم
+          // ۱. تشخیص هوشمند کالا دست دوم
           const isUsed = item.itemType === 'used_product' || !!item.usedProduct;
 
-          // ۲. اولویت‌دهی به نام و عکس محصول دست‌دوم در صورت وجود
+          // ۲. اولویت‌دهی به نام و عکس محصول دست دوم در صورت وجود
           const productName  = isUsed ? (item.usedProduct?.name || item.product?.name) : item.product?.name;
           const productImage = isUsed ? (item.usedProduct?.mainImage || item.usedProduct?.images?.[0] || item.product?.mainImage) : item.product?.mainImage;
           

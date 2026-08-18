@@ -4,7 +4,7 @@ import mongoose from "mongoose";
  * models/SiteSetting.js
  *
  * تنظیمات کلیدی-مقداری سطح سایت (key/value).
- * مثال: تصویر هدر صفحه‌ی دست‌دوم → { key: "secondhand_header_image", value: "https://..." }
+ * مثال: تصویر هدر صفحه‌ی دست دوم → { key: "secondhand_header_image", value: "https://..." }
  */
 const SiteSettingSchema = new mongoose.Schema(
   {

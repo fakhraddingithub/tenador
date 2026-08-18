@@ -14,7 +14,7 @@ const CommentSchema = new mongoose.Schema(
       default: null,
     },
 
-    // نظرِ محصول دست‌دوم مستقل از Product نگه داشته می‌شود تا هر کالای
+    // نظرِ محصول دست دوم مستقل از Product نگه داشته می‌شود تا هر کالای
     // یکتای خریداری‌شده فقط یک‌بار قابل بررسی باشد.
     usedProduct: {
       type: mongoose.Schema.Types.ObjectId,
@@ -47,7 +47,7 @@ const CommentSchema = new mongoose.Schema(
       trim: true,
     },
 
-    // تصاویر واقعی کالای دست‌دوم پس از دریافت توسط خریدار
+    // تصاویر واقعی کالای دست دوم پس از دریافت توسط خریدار
     images: {
       type: [String],
       default: [],

@@ -8,7 +8,7 @@ import mongoose from "mongoose";
  * item در حالت per-order همیشه null است؛ ایندکس یکتای {order, item} چون
  * Mongo مقادیر null تکراری را در یک فیلد ایندکس‌شده یکتا، تکراری در نظر
  * می‌گیرد، به‌طور اتمی مانع از ثبت بیش از یک پاداش برای همان سفارش می‌شود.
- * در حالت per-item، item شناسه‌ی محصول/کالای دست‌دوم است، پس هر آیتم
+ * در حالت per-item، item شناسه‌ی محصول/کالای دست دوم است، پس هر آیتم
  * متفاوتِ همان سفارش پاداش جداگانه‌ی خودش را می‌گیرد.
  */
 const ReviewCreditTransactionSchema = new mongoose.Schema(

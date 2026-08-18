@@ -58,7 +58,7 @@ export const getApprovedReviews = unstable_cache(
 );
 
 /**
- * تازه‌ترین تجربه‌های تأییدشده‌ی خریداران محصولات دست‌دوم برای صفحه‌ی بازار.
+ * تازه‌ترین تجربه‌های تأییدشده‌ی خریداران محصولات دست دوم برای صفحه‌ی بازار.
  */
 export const getApprovedUsedProductReviews = unstable_cache(
   async (limit = 12) => {

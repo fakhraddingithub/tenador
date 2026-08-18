@@ -91,7 +91,7 @@ export default function CartDrawer({ isOpen, onClose }) {
     // ─── تغییر تعداد ───
     const handleQuantityChange = async (item, newQty) => {
         if (newQty < 1) return;
-        // تعداد کالای دست‌دوم همیشه ۱ است
+        // تعداد کالای دست دوم همیشه ۱ است
         if ((item.itemType || 'product') === 'used_product') return;
         const sig = flowSignature(item.flowSelections);
         const key = `${item.productId}-${item.variantId ?? 'null'}-${sig}`;
@@ -141,7 +141,7 @@ export default function CartDrawer({ isOpen, onClose }) {
         const isUsed = (item.itemType || 'product') === 'used_product';
         const sig = flowSignature(item.flowSelections);
 
-        // کالای دست‌دوم با removeFromCart حذف نمی‌شود (آن تابع خطوط used را رد می‌کند)
+        // کالای دست دوم با removeFromCart حذف نمی‌شود (آن تابع خطوط used را رد می‌کند)
         if (isUsed) {
             removeUsedFromCart(item.usedProductId);
         } else {

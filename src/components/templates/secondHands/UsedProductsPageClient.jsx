@@ -27,7 +27,7 @@ export default function UsedProductsPageClient({
   headerImage,
   filterableAttributes = [],
   heroEyebrow = 'بازار',
-  heroTitle = 'دست‌دوم',
+  heroTitle = 'دست دوم',
   heroSubtitle = 'تجهیزات ورزشی کارکرده با کارت سلامت معتبر — با اطمینان بخر',
   belowHero = null,
 }) {
@@ -129,7 +129,7 @@ export default function UsedProductsPageClient({
       <div className="relative h-[120px] md:h-[220px] w-full overflow-hidden">
         <img
           src={headerImage || "/images/used-products-hero.jpg"}
-          alt="بازار دست‌دوم"
+          alt="بازار دست دوم"
           className="w-full h-full object-cover scale-105"
           onError={e => { e.target.style.display = 'none'; }}
         />
@@ -180,7 +180,7 @@ export default function UsedProductsPageClient({
               <FiSearch className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
               <input
                 type="text"
-                placeholder="جستجو در محصولات دست‌دوم..."
+                placeholder="جستجو در محصولات دست دوم..."
                 value={searchTerm}
                 onChange={e => setSearchTerm(e.target.value)}
                 className="w-full bg-gray-50 border border-gray-100 rounded-[var(--radius)] pr-11 pl-4 py-3 text-sm outline-none focus:ring-2 ring-[var(--color-primary)]/20 transition-all"

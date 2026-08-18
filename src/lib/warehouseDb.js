@@ -122,9 +122,9 @@ export function getItemTrackingModel(conn) {
 /**
  * مدل UsedItemTracking از warehouse connection
  *
- * محصولات دست‌دوم در پروژه انبارداری در یک کالکشن جداگانه (UsedItemTracking)
+ * محصولات دست دوم در پروژه انبارداری در یک کالکشن جداگانه (UsedItemTracking)
  * نگهداری می‌شوند — نه در ItemTracking. کلید ربط، usedProductRef است (شناسه‌ی
- * محصول دست‌دومِ تنادور به‌صورت رشته). این مدل باید دقیقاً با اسکیمای پروژه‌ی
+ * محصول دست دومِ تنادور به‌صورت رشته). این مدل باید دقیقاً با اسکیمای پروژه‌ی
  * انبار هم‌خوان باشد تا روی همان کالکشن (useditemtrackings) بخواند.
  */
 export function getUsedItemTrackingModel(conn) {
@@ -132,7 +132,7 @@ export function getUsedItemTrackingModel(conn) {
 
   const UsedItemTrackingSchema = new mongoose.Schema(
     {
-      // شناسه‌ی محصول دست‌دوم در دیتابیس تنادور (به‌صورت رشته چون از DB دیگری می‌آید)
+      // شناسه‌ی محصول دست دوم در دیتابیس تنادور (به‌صورت رشته چون از DB دیگری می‌آید)
       usedProductRef: {
         type: String,
         required: true,

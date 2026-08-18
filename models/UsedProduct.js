@@ -1,7 +1,7 @@
 /**
  * models/UsedProduct.js
  *
- * مدل محصول دست‌دوم — با پشتیبانی کامل از سفارش و سیستم ترکینگ
+ * مدل محصول دست دوم — با پشتیبانی کامل از سفارش و سیستم ترکینگ
  */
 
 import mongoose from "mongoose";
@@ -32,7 +32,7 @@ const UsedProductSchema = new mongoose.Schema(
       required: true,
     },
 
-    // اسلاگ یکتا برای آدرس‌دهی صفحه محصول دست‌دوم (مثل محصولات معمولی)
+    // اسلاگ یکتا برای آدرس‌دهی صفحه محصول دست دوم (مثل محصولات معمولی)
     slug: {
       type: String,
       unique: true,
@@ -143,7 +143,7 @@ UsedProductSchema.pre("save", async function () {
     const base = createSlug(this.name) || "used";
     let slug = base;
     let i = 2;
-    // تضمین یکتایی اسلاگ (محصولات دست‌دوم می‌توانند نام تکراری داشته باشند)
+    // تضمین یکتایی اسلاگ (محصولات دست دوم می‌توانند نام تکراری داشته باشند)
     while (await this.constructor.exists({ slug, _id: { $ne: this._id } })) {
       slug = `${base}-${i++}`;
     }

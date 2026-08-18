@@ -32,7 +32,7 @@ export default function SecondHandCategoryGrid({ categories = [] }) {
         <div className="relative mb-12">
           <h2 className="text-2xl md:text-4xl font-black text-gray-900 leading-tight">
             <span className="text-[#aa4725]">دسته‌بندی‌های </span>
-            <span>دست‌دوم</span>
+            <span>دست دوم</span>
           </h2>
           <p className="text-gray-500 mt-2 md:mt-4 text-sm md:text-lg font-light max-w-md border-r-2 md:border-r-4 border-[#aa4725]/20 pr-3 md:pr-4 italic">
             محصولات کارکرده را بر اساس دسته‌بندی پیدا کنید

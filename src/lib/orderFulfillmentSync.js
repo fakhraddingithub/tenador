@@ -67,7 +67,7 @@ export async function syncOrderFulfillmentFromTracking(orderId) {
     const UsedItemTracking = getUsedItemTrackingModel(conn);
 
     // همان منطق تطبیقِ صفحه‌ی tracking سفارش: بارکدهای معمولی با tenadorOrderId؛
-    // دست‌دوم‌ها با tenadorOrderId یا usedProductRef (سازگار با داده‌های قدیمی)
+    // دست دوم‌ها با tenadorOrderId یا usedProductRef (سازگار با داده‌های قدیمی)
     const usedProductIds = (order.items || [])
       .filter((it) => it.itemType === "used_product" && it.usedProduct)
       .map((it) => it.usedProduct.toString());

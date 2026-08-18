@@ -13,8 +13,8 @@ import { isSharedCategory } from "base/utils/categorySportVisibility";
 export const revalidate = 3600;
 
 const SITE_URL = (process.env.NEXT_PUBLIC_SITE_URL || "https://tenador.com").replace(/\/+$/, "");
-const PAGE_TITLE = "بازار دست‌دوم | فروش تجهیزات ورزشی کارکرده";
-const PAGE_DESC = "خرید و فروش تجهیزات ورزشی دست‌دوم با کارت سلامت معتبر";
+const PAGE_TITLE = "بازار دست دوم | فروش تجهیزات ورزشی کارکرده";
+const PAGE_DESC = "خرید و فروش تجهیزات ورزشی دست دوم با کارت سلامت معتبر";
 
 export async function generateMetadata() {
   await connectToDB();
@@ -104,7 +104,7 @@ export default async function UsedProductsPage() {
     position: i + 1,
     item: {
       "@type": "CollectionPage",
-      name: `${c.title} دست‌دوم`,
+      name: `${c.title} دست دوم`,
       url: `${SITE_URL}/second-hand/${c.sportSlug}/${c.slug}`,
     },
   }));
@@ -132,7 +132,7 @@ export default async function UsedProductsPage() {
       {
         "@type": "ListItem",
         position: 2,
-        name: "بازار دست‌دوم",
+        name: "بازار دست دوم",
         item: `${SITE_URL}/second-hand`,
       },
     ],
@@ -148,13 +148,13 @@ export default async function UsedProductsPage() {
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbSchema) }}
       />
-      <SportHero image={headerImage} title="بازار دست‌دوم" alt="بازار دست‌دوم" />
+      <SportHero image={headerImage} title="بازار دست دوم" alt="بازار دست دوم" />
       <TaxonomyBreadcrumbs
         includeStructuredData={false}
         items={[
           { name: "خانه", href: "/", url: SITE_URL },
           {
-            name: "بازار دست‌دوم",
+            name: "بازار دست دوم",
             href: "/second-hand",
             url: `${SITE_URL}/second-hand`,
           },

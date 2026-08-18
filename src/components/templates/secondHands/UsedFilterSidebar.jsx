@@ -50,7 +50,7 @@ export default function UsedFilterSidebar({
 }) {
   const brands     = useMemo(() => [...new Map(products.map(p => p.baseProduct?.brand).filter(Boolean).map(b => [b._id, b])).values()], [products]);
   const categories = useMemo(() => [...new Map(products.map(p => p.baseProduct?.category).filter(Boolean).map(c => [c._id, c])).values()], [products]);
-  // دامنه‌ی اسلایدرِ قیمت از روی قیمتِ (تومانِ) محصولاتِ دست‌دومِ همین صفحه
+  // دامنه‌ی اسلایدرِ قیمت از روی قیمتِ (تومانِ) محصولاتِ دست دومِ همین صفحه
   const priceBounds = useMemo(
     () => ({ min: 0, max: Math.max(...products.map(p => p.price || 0), 0) }),
     [products],

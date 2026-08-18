@@ -1,7 +1,7 @@
 /**
  * scripts/migrateUsedProductsHealthScale.js
  *
- * مهاجرت محصولات دست‌دوم موجود به تغییرات جدید:
+ * مهاجرت محصولات دست دوم موجود به تغییرات جدید:
  *   1) تولید اسلاگ یکتا برای رکوردهایی که اسلاگ ندارند.
  *   2) تبدیل امتیاز فیلدهای کارت سلامت از مقیاس ۱ تا ۵ به مقیاس ۱ تا ۱۰.
  *   3) بازمحاسبه‌ی overallScore بر اساس مقادیر جدید.
@@ -84,7 +84,7 @@ async function run() {
   const col = mongoose.connection.db.collection(COLLECTION);
 
   const total = await col.countDocuments();
-  console.log(`📦 تعداد کل محصولات دست‌دوم: ${total}\n`);
+  console.log(`📦 تعداد کل محصولات دست دوم: ${total}\n`);
 
   const docs = await col.find({}).toArray();
 

@@ -1,7 +1,7 @@
 /**
  * src/app/api/admin/used-products/[id]/route.js
  *
- * GET  → جزئیات یک محصول دست‌دوم
+ * GET  → جزئیات یک محصول دست دوم
  * PUT  → ویرایش
  * DELETE → حذف (فقط اگه فروخته نشده)
  */

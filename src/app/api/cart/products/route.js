@@ -207,7 +207,7 @@ export async function POST(request) {
         let inStock = false;
 
         if (ci.itemType === "used_product" && up) {
-          // کالای دست‌دوم تک‌نسخه است و فقط در صورت available بودن قابل سفارش است
+          // کالای دست دوم تک‌نسخه است و فقط در صورت available بودن قابل سفارش است
           inStock = up.status === "available";
         } else if (p) {
           // محصولات نو همیشه قابل سفارش هستند (مفهوم موجودی حذف شده)
@@ -221,14 +221,14 @@ export async function POST(request) {
           itemType: ci.itemType,
           quantity: qty,
 
-          // اصلاح نام و تصویر محصول بر اساس دست‌دوم یا نو بودن کالا
+          // اصلاح نام و تصویر محصول بر اساس دست دوم یا نو بودن کالا
           product: p ? {
             _id: p._id.toString(),
             href: up
               ? `/second-hand/${up.slug || up._id}`
               : `/products/${p.slug}`,
-            name: up ? up.name : p.name, // اگر دست‌دوم بود نام خود دست‌دوم، در غیر این صورت نام اصلی
-            // برای دست‌دوم اولین تصویر گالری خودش نمایش داده می‌شود نه تصویر محصول پایه
+            name: up ? up.name : p.name, // اگر دست دوم بود نام خود دست دوم، در غیر این صورت نام اصلی
+            // برای دست دوم اولین تصویر گالری خودش نمایش داده می‌شود نه تصویر محصول پایه
             mainImage: up ? (up.images?.[0] || p.mainImage) : p.mainImage,
             sku: p.sku,
             brand: p.brand?.name ?? null,

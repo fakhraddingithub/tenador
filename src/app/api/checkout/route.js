@@ -93,7 +93,7 @@ function normalizeReceiptUrls(urls) {
   return Array.isArray(urls) ? urls.filter(Boolean) : urls ? [urls] : [];
 }
 
-/** آیتم‌های دست‌دوم یک سفارش را رزرو می‌کند */
+/** آیتم‌های دست دوم یک سفارش را رزرو می‌کند */
 async function reserveUsedProducts(order) {
   const usedItems = order.items.filter(
     (i) => i.itemType === "used_product" && i.usedProduct,
@@ -199,7 +199,7 @@ export async function POST(req) {
       return badRequest(firstAddressError(addressErrors));
     }
 
-    // ─── موجودی محصولات دست‌دوم ───
+    // ─── موجودی محصولات دست دوم ───
     const usedItems = items.filter(
       (i) => i.itemType === "used_product" || i.usedProductId,
     );
@@ -211,10 +211,10 @@ export async function POST(req) {
         .select("status name price priceToman product")
         .lean();
       if (!up) {
-        return badRequest("محصول دست‌دوم یافت نشد", 404);
+        return badRequest("محصول دست دوم یافت نشد", 404);
       }
       if (up.status !== "available") {
-        return badRequest(`محصول دست‌دوم "${up.name}" دیگر موجود نیست`, 409);
+        return badRequest(`محصول دست دوم "${up.name}" دیگر موجود نیست`, 409);
       }
       usedProductsMap[targetId] = up;
     }
@@ -511,18 +511,18 @@ export async function POST(req) {
 
     // ═══ ۴. اقدامات پس از ثبت (خطاها روند را متوقف نمی‌کنند) ═══
 
-    // رزرو محصولات دست‌دوم
+    // رزرو محصولات دست دوم
     try {
       await reserveUsedProducts(order);
     } catch (err) {
-      console.warn("خطا در رزرو محصولات دست‌دوم:", err?.message);
+      console.warn("خطا در رزرو محصولات دست دوم:", err?.message);
     }
 
-    // اختصاص خودکار tracking انبار به محصولات دست‌دوم
+    // اختصاص خودکار tracking انبار به محصولات دست دوم
     try {
       await autoAssignUsedProductTracking(order);
     } catch (err) {
-      console.warn("خطا در اختصاص خودکار tracking محصول دست‌دوم:", err?.message);
+      console.warn("خطا در اختصاص خودکار tracking محصول دست دوم:", err?.message);
     }
 
     // ایمیل فاکتور — برای سفارش اقساطی، زمان‌بندی اقساط هم ضمیمه می‌شود

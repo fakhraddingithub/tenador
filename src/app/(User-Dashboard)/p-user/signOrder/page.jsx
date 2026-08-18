@@ -3,7 +3,7 @@
 /**
  * src/app/(User-Dashboard)/p-user/signOrder/page.jsx
  *
- * صفحه ثبت سفارش — اصلاح فیلدهای ارسالی سبد خرید برای پشتیبانی از محصولات دست‌دوم
+ * صفحه ثبت سفارش — اصلاح فیلدهای ارسالی سبد خرید برای پشتیبانی از محصولات دست دوم
  */
 
 import { useState } from "react";
@@ -162,10 +162,10 @@ const OrderPage = () => {
               {/* اعلان بررسی موجودی — همان toast سبد خرید، زیر خلاصه سفارش */}
               <StockReminderToast active={totalItems > 0} />
 
-              {/* 🛡️ اصلاح شد: انتقال کامل و امن کلیدهای محصولات نو و دست‌دوم */}
+              {/* 🛡️ اصلاح شد: انتقال کامل و امن کلیدهای محصولات نو و دست دوم */}
               <OrderActions
                 cartItems={cartItems.map((i) => ({
-                  // 🛡️ اگر محصول اصلی وجود داشت آن را بگذارد، در غیر این صورت آیدی دست‌دوم را به عنوان پشتیبان قرار دهد
+                  // 🛡️ اگر محصول اصلی وجود داشت آن را بگذارد، در غیر این صورت آیدی دست دوم را به عنوان پشتیبان قرار دهد
                   productId: i.productId || i.usedProductId || null,
                   variantId: i.variantId ?? null,
                   usedProductId: i.usedProductId || null,

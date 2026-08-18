@@ -2,7 +2,7 @@
  * src/app/api/payments/bank-receipt/route.js
  *
  * ثبت پرداخت با رسید بانکی یا تعریف اقساط
- * + رزرو محصولات دست‌دوم پس از ثبت پرداخت
+ * + رزرو محصولات دست دوم پس از ثبت پرداخت
  * + پشتیبانی از چند تصویر رسید
  *
  * POST body:
@@ -40,7 +40,7 @@ async function getUserFromToken() {
   return verifyToken(token) || null;
 }
 
-/** آیتم‌های دست‌دوم یک سفارش را رزرو می‌کند */
+/** آیتم‌های دست دوم یک سفارش را رزرو می‌کند */
 async function reserveUsedProducts(order) {
   const usedItems = order.items.filter(
     (i) => i.itemType === "used_product" && i.usedProduct,
@@ -164,7 +164,7 @@ export async function POST(req) {
       // اعلان همان لحظه‌ای که رسید جدید روی سفارش ثبت می‌شود؛ نه بعد از تأیید ادمین.
       await notifyNewPayment(order, payment, { confirmed: false });
 
-      // ─── رزرو محصولات دست‌دوم ───
+      // ─── رزرو محصولات دست دوم ───
       await reserveUsedProducts(order);
 
       // ─── ارسال ایمیل فاکتور ───
@@ -325,7 +325,7 @@ export async function POST(req) {
       // پیش‌پرداخت اقساط نیز یک پرداخت جدیدِ نیازمند بررسی است.
       await notifyNewPayment(order, downPayment, { confirmed: false });
 
-      // ─── رزرو محصولات دست‌دوم ───
+      // ─── رزرو محصولات دست دوم ───
       await reserveUsedProducts(order);
 
       // ─── ارسال ایمیل فاکتور ───

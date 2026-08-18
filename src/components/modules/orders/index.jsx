@@ -317,7 +317,7 @@ function OrderCard({ order, onDelete, onViewDetail, reviewedIds, onReview }) {
   const previewItems = order.items?.slice(0, 3) ?? []
   const extraCount   = (order.items?.length ?? 0) - 3
 
-  // محصولاتِ یکتا (نو و دست‌دوم) که در سفارشِ ارسال/تحویل‌شده هستند
+  // محصولاتِ یکتا (نو و دست دوم) که در سفارشِ ارسال/تحویل‌شده هستند
   // و کاربر هنوز برایشان نظر ثبت نکرده — هر کدام یک دکمه‌ی «ثبت نظر» می‌گیرند
   const isReviewable = REVIEWABLE_FULFILLMENT.includes(order.fulfillmentStatus)
   const reviewableProducts = isReviewable

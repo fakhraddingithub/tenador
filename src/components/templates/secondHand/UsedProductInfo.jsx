@@ -39,7 +39,7 @@ const UsedProductInfo = ({ product }) => {
     const cartIcon   = document.getElementById("cart-nav-icon");
     const buttonElem = addToCartWrapperRef.current;
 
-    // عکس محصول دست‌دوم از آرایه images یا فیلد image
+    // عکس محصول دست دوم از آرایه images یا فیلد image
     const productImgSrc =
       (product.images && product.images[0]) ||
       product.image ||
@@ -186,7 +186,7 @@ const UsedProductInfo = ({ product }) => {
         </div>
       )}
 
-      {/* وضعیت + برچسب دست‌دوم */}
+      {/* وضعیت + برچسب دست دوم */}
       <div className="flex items-center gap-2 flex-wrap">
         <span className={`flex items-center gap-1.5 text-xs font-bold px-3 py-1.5 rounded-full ${
           isSold     ? "bg-red-50 text-red-500" :
@@ -196,7 +196,7 @@ const UsedProductInfo = ({ product }) => {
           {isSold ? "فروخته شده" : isReserved ? "رزرو شده" : "موجود"}
         </span>
         <span className="flex items-center gap-1 text-xs font-bold text-[var(--color-primary)]">
-          <FiTag size={11} /> دست‌دوم
+          <FiTag size={11} /> دست دوم
         </span>
       </div>
 

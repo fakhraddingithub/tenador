@@ -218,12 +218,12 @@ export async function PATCH(req, { params }) {
         return NextResponse.json({ message: "آیتم در سفارش یافت نشد" }, { status: 404 });
       }
 
-      // محصولات دست‌دوم همیشه تک‌عدد هستند
+      // محصولات دست دوم همیشه تک‌عدد هستند
       if (item.itemType === "used_product" && qty !== 1) {
         await session.abortTransaction();
         session.endSession();
         return NextResponse.json(
-          { message: "تعداد محصول دست‌دوم قابل تغییر نیست (همیشه ۱ عدد)" },
+          { message: "تعداد محصول دست دوم قابل تغییر نیست (همیشه ۱ عدد)" },
           { status: 400 }
         );
       }
@@ -298,7 +298,7 @@ export async function DELETE(req, { params }) {
         );
       }
 
-      // اگر آیتمِ حذف‌شده محصولِ دست‌دوم است، رزرو آن آزاد می‌شود تا در انبار قابل
+      // اگر آیتمِ حذف‌شده محصولِ دست دوم است، رزرو آن آزاد می‌شود تا در انبار قابل
       // فروش مجدد شود (وضعیت → available و قطع ارجاع به این سفارش).
       const releasedUsedId =
         item.itemType === "used_product" && item.usedProduct ? item.usedProduct : null;

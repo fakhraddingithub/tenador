@@ -1,10 +1,10 @@
 /**
  * src/app/api/admin/orders/used-product-tracking/route.js
  *
- * POST → ساخت یا اختصاص tracking item برای یک محصول دست‌دوم
+ * POST → ساخت یا اختصاص tracking item برای یک محصول دست دوم
  *
  * body: {
- *   usedProductId: string,     -- شناسه محصول دست‌دوم
+ *   usedProductId: string,     -- شناسه محصول دست دوم
  *   orderId: string,           -- شناسه سفارش
  *   action: "create" | "scan", -- create: ساخت بارکد جدید | scan: اسکن بارکد موجود
  *   barcode?: string,          -- برای action = scan
@@ -59,14 +59,14 @@ export async function POST(req) {
       .populate("baseProduct", "name sku")
       .lean();
     if (!usedProduct)
-      return NextResponse.json({ message: "محصول دست‌دوم یافت نشد" }, { status: 404 });
+      return NextResponse.json({ message: "محصول دست دوم یافت نشد" }, { status: 404 });
 
     const order = await Order.findById(orderId).lean();
     if (!order)
       return NextResponse.json({ message: "سفارش یافت نشد" }, { status: 404 });
 
-    // ربط دقیق به خطِ سفارش: ایندکس آیتمِ این محصول دست‌دوم در order.items
-    // بدون این ایندکس، بخش سفارش‌ها نمی‌تواند بارکد دست‌دوم را به خطِ درست نسبت دهد
+    // ربط دقیق به خطِ سفارش: ایندکس آیتمِ این محصول دست دوم در order.items
+    // بدون این ایندکس، بخش سفارش‌ها نمی‌تواند بارکد دست دوم را به خطِ درست نسبت دهد
     const usedOrderItemIndex = (order.items || []).findIndex(
       (it) =>
         it.itemType === "used_product" &&
@@ -111,7 +111,7 @@ export async function POST(req) {
       item.history.push({
         status:       item.status,
         locationName: "سیستم تنادور",
-        note:         `اختصاص به سفارش ${order.trackingCode} | محصول دست‌دوم: ${usedProduct.name}`,
+        note:         `اختصاص به سفارش ${order.trackingCode} | محصول دست دوم: ${usedProduct.name}`,
         addedByName:  "ادمین تنادور",
         addedById:    admin.userId,
       });
@@ -158,7 +158,7 @@ export async function POST(req) {
         variantRef:        null,
         trackingId,
         barcode:           newBarcode,
-        status:            "IR_WAREHOUSE", // محصولات دست‌دوم در ایران هستند
+        status:            "IR_WAREHOUSE", // محصولات دست دوم در ایران هستند
         currentWarehouse:  warehouseId,
         relatedOrder:      order._id,
         tenadorOrderId:    orderId.toString(),
@@ -169,7 +169,7 @@ export async function POST(req) {
         history: [{
           status:       "IR_WAREHOUSE",
           locationName: warehouse.name,
-          note:         `ثبت محصول دست‌دوم: ${usedProduct.name} | سفارش: ${order.trackingCode}`,
+          note:         `ثبت محصول دست دوم: ${usedProduct.name} | سفارش: ${order.trackingCode}`,
           addedByName:  "ادمین تنادور",
           addedById:    admin.userId,
           createdAt:    new Date(),
@@ -203,7 +203,7 @@ export async function POST(req) {
   }
 }
 
-/* ─── GET: وضعیت tracking محصول دست‌دوم ─────────────────────────── */
+/* ─── GET: وضعیت tracking محصول دست دوم ─────────────────────────── */
 export async function GET(req) {
   const { denied } = await requireAdminPermission("orderTracking.view");
   if (denied) return denied;

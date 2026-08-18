@@ -1570,7 +1570,7 @@ function TrackingPanel({ orderId, orderItems, orderFulfillmentStatus, onStatusCh
                   {item.product?.name}
                   {item.isUsed && (
                     <span className="text-[10px] font-bold text-amber-600 bg-amber-50 border border-amber-200 px-1.5 py-0.5 rounded-full shrink-0">
-                      دست‌دوم
+                      دست دوم
                     </span>
                   )}
                 </p>
@@ -1618,7 +1618,7 @@ function TrackingPanel({ orderId, orderItems, orderFulfillmentStatus, onStatusCh
                       </p>
 
                       {item.isUsed ? (
-                        // محصول دست‌دوم — اختصاص خودکار، فقط نمایش
+                        // محصول دست دوم — اختصاص خودکار، فقط نمایش
                         item.trackingItems.length > 0 ? (
                           <div className="space-y-2">
                             {item.trackingItems.map((t) => (
@@ -1636,7 +1636,7 @@ function TrackingPanel({ orderId, orderItems, orderFulfillmentStatus, onStatusCh
                         ) : (
                           <div className="flex items-center gap-2 text-xs text-amber-600 bg-amber-50 border border-amber-200 rounded-xl px-3 py-2.5">
                             <AlertTriangle size={13} className="shrink-0" />
-                            کد رهگیری انبار برای این محصول دست‌دوم هنوز ثبت/اختصاص نشده است
+                            کد رهگیری انبار برای این محصول دست دوم هنوز ثبت/اختصاص نشده است
                           </div>
                         )
                       ) : (
@@ -2594,7 +2594,7 @@ export default function AdminOrderDetailClient({ orderId }) {
                         {item.product?.name || "محصول"}
                         {isUsed && (
                           <span className="text-[10px] font-bold text-amber-600 bg-amber-50 border border-amber-200 px-1.5 py-0.5 rounded-full shrink-0">
-                            دست‌دوم
+                            دست دوم
                           </span>
                         )}
                       </p>
@@ -2616,7 +2616,7 @@ export default function AdminOrderDetailClient({ orderId }) {
                       {canEditItems && (
                       <div className="flex items-center gap-2 mt-2">
                         {isUsed ? (
-                          <span className="text-[11px] text-gray-400 font-medium">تعداد: ۱ (دست‌دوم)</span>
+                          <span className="text-[11px] text-gray-400 font-medium">تعداد: ۱ (دست دوم)</span>
                         ) : (
                           <div className="flex items-center gap-1">
                             <button

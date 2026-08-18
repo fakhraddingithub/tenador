@@ -26,7 +26,7 @@ function StatCard({ label, value, color = 'text-neutral-800' }) {
 function SectionCard({ icon: Icon, title, desc, href, createHref, accent, stats }) {
   const router = useRouter();
   // مجوز از روی خودِ روتِ مقصد خوانده می‌شود، پس این کارت برای هر دو بخش
-  // (محصولات دست‌دوم و کارت‌های سلامت) بدون کلیدِ سخت کار می‌کند.
+  // (محصولات دست دوم و کارت‌های سلامت) بدون کلیدِ سخت کار می‌کند.
   const { canRoute } = useAdminPermissions();
   const isOrange = accent === 'orange';
 
@@ -182,7 +182,7 @@ export default function UsedProductsHubPage() {
                   <FaBoxOpen size={20} className="text-[var(--color-primary)]" />
                 </div>
                 <div>
-                  <h1 className="text-xl font-bold text-neutral-800">بازار دست‌دوم</h1>
+                  <h1 className="text-xl font-bold text-neutral-800">بازار دست دوم</h1>
                   <p className="text-xs text-neutral-400 mt-0.5">مدیریت محصولات کارکرده و کارت‌های سلامت</p>
                 </div>
               </div>
@@ -218,7 +218,7 @@ export default function UsedProductsHubPage() {
         <div className="grid md:grid-cols-2 gap-6">
           <SectionCard
             icon={FiPackage}
-            title="محصولات دست‌دوم"
+            title="محصولات دست دوم"
             desc="ثبت، ویرایش و قیمت‌گذاری محصولات کارکرده به همراه ارزیابی وضعیت با امتیاز از ۱۰"
             href="/p-admin/admin-secondHands/used-products"
             createHref="/p-admin/admin-secondHands/used-products/create"
@@ -244,7 +244,7 @@ export default function UsedProductsHubPage() {
           />
         </div>
 
-        {/* ─── تصویر هدر صفحه دست‌دوم ─── */}
+        {/* ─── تصویر هدر صفحه دست دوم ─── */}
         <SecondHandHeaderUploader />
 
         {/* ─── آخرین محصولات ─── */}

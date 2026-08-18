@@ -140,7 +140,7 @@ export async function POST(req) {
     if (item.status === "available") {
       const briefDesc =
         (item.description && item.description.trim()) ||
-        "همین حالا در بازار دست‌دوم تنادور ببینید";
+        "همین حالا در بازار دست دوم تنادور ببینید";
       const productUrl = item.slug
         ? `${SITE_URL}/second-hand/${encodeURIComponent(item.slug)}`
         : `${SITE_URL}/second-hand`;

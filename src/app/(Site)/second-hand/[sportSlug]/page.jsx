@@ -36,7 +36,7 @@ const SITE_URL = (process.env.NEXT_PUBLIC_SITE_URL || "https://tenador.com").rep
 
 // نام پارامتر [sportSlug] است چون Next.js اجازه‌ی دو نامِ متفاوت برای یک سطحِ
 // داینامیک را نمی‌دهد (این مسیر با second-hand/[sportSlug]/[categorySlug] هم‌سطح
-// است)؛ مقدارِ واقعیِ آن اسلاگِ محصولِ دست‌دوم است.
+// است)؛ مقدارِ واقعیِ آن اسلاگِ محصولِ دست دوم است.
 export async function generateMetadata({ params }) {
   const { sportSlug: slug } = await params;
   await connectToDB();
@@ -45,8 +45,8 @@ export async function generateMetadata({ params }) {
     .populate({ path: "baseProduct", select: "mainImage" })
     .lean();
 
-  const name = item?.name || "محصول دست‌دوم";
-  const description = `خرید ${name} دست‌دوم با ضمانت اصالت و ارسال سریع از تنادور`;
+  const name = item?.name || "محصول دست دوم";
+  const description = `خرید ${name} دست دوم با ضمانت اصالت و ارسال سریع از تنادور`;
   const canonicalSlug = item?.slug || decodeSlug(slug);
   const canonical = `${SITE_URL}/second-hand/${encodeURIComponent(canonicalSlug)}`;
   const rawImage = item?.images?.[0] || item?.baseProduct?.mainImage || null;
@@ -209,7 +209,7 @@ export default async function UsedProductPage({ params }) {
         items={[
           { name: "خانه", href: "/", url: SITE_URL },
           {
-            name: "بازار دست‌دوم",
+            name: "بازار دست دوم",
             href: "/second-hand",
             url: `${SITE_URL}/second-hand`,
           },

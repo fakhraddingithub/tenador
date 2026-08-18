@@ -50,7 +50,7 @@ export default function UsedProductReviewsSection({ reviews = [] }) {
             <span>واقعی</span>
           </h2>
           <p className="mt-2 max-w-md border-r-2 border-[#aa4725]/20 pr-3 text-sm font-light italic text-gray-500 md:mt-4 md:border-r-4 md:pr-4 md:text-lg">
-            نظر خریداران محصولات دست‌دوم
+            نظر خریداران محصولات دست دوم
           </p>
         </div>
 

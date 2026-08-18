@@ -1,7 +1,7 @@
 /**
  * models/Order.js
  *
- * مدل سفارش — با پشتیبانی از محصولات معمولی و دست‌دوم
+ * مدل سفارش — با پشتیبانی از محصولات معمولی و دست دوم
  */
 
 import mongoose from "mongoose";
@@ -115,7 +115,7 @@ const OrderSchema = new mongoose.Schema(
           default: null,
         },
 
-        // محصول دست‌دوم (UsedProduct)
+        // محصول دست دوم (UsedProduct)
         usedProduct: {
           type: mongoose.Schema.Types.ObjectId,
           ref: "UsedProduct",

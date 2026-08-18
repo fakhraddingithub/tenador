@@ -1,13 +1,13 @@
 /**
  * src/lib/usedTrackingAuto.js
  *
- * اختصاص خودکارِ tracking item انبار به آیتم‌های محصول دست‌دوم یک سفارش.
+ * اختصاص خودکارِ tracking item انبار به آیتم‌های محصول دست دوم یک سفارش.
  *
- * چون هر محصول دست‌دوم منحصربه‌فرد است (فقط یک کالای فیزیکی مشخص)، tracking item
+ * چون هر محصول دست دوم منحصربه‌فرد است (فقط یک کالای فیزیکی مشخص)، tracking item
  * از پیش‌تولیدشده‌ی آن در انبار به‌صورت خودکار به سفارش وصل می‌شود. tracking مربوطه
- * از روی فیلدهای ذخیره‌شده روی خود محصول دست‌دوم شناسایی می‌شود
+ * از روی فیلدهای ذخیره‌شده روی خود محصول دست دوم شناسایی می‌شود
  * (warehouseTrackingId یا assignedBarcode / assignedTrackingCode) تا هیچ ابهام یا
- * تداخلی با محصولات دست‌دومِ دیگرِ همان محصولِ پایه پیش نیاید.
+ * تداخلی با محصولات دست دومِ دیگرِ همان محصولِ پایه پیش نیاید.
  *
  * ⚠️ این تابع هرگز نباید روند ثبت سفارش را متوقف کند؛ همه‌ی خطاها بلعیده می‌شوند.
  */
@@ -20,7 +20,7 @@ export async function autoAssignUsedProductTracking(order) {
     return;
   }
 
-  // استخراج آیتم‌های دست‌دوم به‌همراه ایندکس‌شان در سفارش
+  // استخراج آیتم‌های دست دوم به‌همراه ایندکس‌شان در سفارش
   const usedEntries = [];
   order.items.forEach((item, index) => {
     if (item?.itemType === "used_product" && item?.usedProduct) {
@@ -46,7 +46,7 @@ export async function autoAssignUsedProductTracking(order) {
       const up = await UsedProduct.findById(usedProductId).lean();
       if (!up) continue;
 
-      // ─── شناسایی tracking item منحصربه‌فردِ این محصول دست‌دوم ───
+      // ─── شناسایی tracking item منحصربه‌فردِ این محصول دست دوم ───
       let tracking = null;
 
       if (up.warehouseTrackingId) {
@@ -66,7 +66,7 @@ export async function autoAssignUsedProductTracking(order) {
 
       if (!tracking) {
         console.warn(
-          `[autoAssignUsedTracking] tracking انبار برای محصول دست‌دوم ${usedProductId} یافت نشد`,
+          `[autoAssignUsedTracking] tracking انبار برای محصول دست دوم ${usedProductId} یافت نشد`,
         );
         continue;
       }
@@ -90,7 +90,7 @@ export async function autoAssignUsedProductTracking(order) {
       tracking.history.push({
         status: tracking.status,
         locationName: "سیستم تنادور",
-        note: `اختصاص خودکار محصول دست‌دوم به سفارش ${order.trackingCode}`,
+        note: `اختصاص خودکار محصول دست دوم به سفارش ${order.trackingCode}`,
         addedByName: "سیستم",
       });
       await tracking.save();

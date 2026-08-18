@@ -65,19 +65,19 @@ export async function generateMetadata({ params }) {
   ];
 
   const pageUrl = `${SITE_URL}/second-hand/${sportSlug}/${categorySlug}`;
-  const title = `${category.title} دست‌دوم | خرید و فروش ${category.title} کارکرده`;
+  const title = `${category.title} دست دوم | خرید و فروش ${category.title} کارکرده`;
   const description =
     productCount > 0
-      ? `خرید ${category.title} دست‌دوم با کارت سلامت معتبر — ${productCount} کالای موجود${
+      ? `خرید ${category.title} دست دوم با کارت سلامت معتبر — ${productCount} کالای موجود${
           brandNames.length ? ` از برندهایی مثل ${brandNames.slice(0, 3).join("، ")}` : ""
         }. تجهیزات ورزشی کارکرده با ضمانت کیفیت از تنادور.`
-      : `خرید ${category.title} دست‌دوم با کارت سلامت معتبر — تجهیزات ورزشی کارکرده با ضمانت کیفیت از تنادور.`;
+      : `خرید ${category.title} دست دوم با کارت سلامت معتبر — تجهیزات ورزشی کارکرده با ضمانت کیفیت از تنادور.`;
   const keywords = [
-    `${category.title} دست‌دوم`,
+    `${category.title} دست دوم`,
     `${category.title} کارکرده`,
-    "تجهیزات ورزشی دست‌دوم",
-    "بازار دست‌دوم تنادور",
-    ...brandNames.map((b) => `${category.title} ${b} دست‌دوم`),
+    "تجهیزات ورزشی دست دوم",
+    "بازار دست دوم تنادور",
+    ...brandNames.map((b) => `${category.title} ${b} دست دوم`),
   ].join(", ");
 
   const rawImage =
@@ -137,7 +137,7 @@ export default async function UsedProductsByCategoryPage({ params }) {
   const { sport, category } = resolved;
   const categoryId = category._id;
 
-  // محصولاتِ اصلیِ همین دسته‌بندی، برای فیلترِ محصولاتِ دست‌دوم بر اساسِ آن‌ها
+  // محصولاتِ اصلیِ همین دسته‌بندی، برای فیلترِ محصولاتِ دست دوم بر اساسِ آن‌ها
   const categoryProductIds = await Product.find(await applyProductSportVisibility(
     { category: categoryId },
     { sportId: sport._id, categoryId, category },
@@ -238,7 +238,7 @@ export default async function UsedProductsByCategoryPage({ params }) {
   const absUrl = (u) =>
     u ? (u.startsWith("http") ? u : `${SITE_URL}${u}`) : null;
   const pageUrl = `${SITE_URL}/second-hand/${sportSlug}/${categorySlug}`;
-  const pageTitle = `${category.title} دست‌دوم`;
+  const pageTitle = `${category.title} دست دوم`;
 
   const itemListElement = products.slice(0, 30).map((p, i) => {
     const img = absUrl(p.images?.[0] || p.baseProduct?.mainImage);
@@ -275,7 +275,7 @@ export default async function UsedProductsByCategoryPage({ params }) {
     "@context": "https://schema.org",
     "@type": "CollectionPage",
     name: pageTitle,
-    description: `محصولات دست‌دوم دسته‌بندی ${category.title}`,
+    description: `محصولات دست دوم دسته‌بندی ${category.title}`,
     url: pageUrl,
     inLanguage: "fa-IR",
     isPartOf: { "@type": "WebSite", name: "تنادور", url: SITE_URL },
@@ -294,7 +294,7 @@ export default async function UsedProductsByCategoryPage({ params }) {
       {
         "@type": "ListItem",
         position: 2,
-        name: "بازار دست‌دوم",
+        name: "بازار دست دوم",
         item: `${SITE_URL}/second-hand`,
       },
       { "@type": "ListItem", position: 3, name: pageTitle, item: pageUrl },
@@ -317,14 +317,14 @@ export default async function UsedProductsByCategoryPage({ params }) {
         filterableAttributes={filterableAttributes}
         heroEyebrow="بازار"
         heroTitle={pageTitle}
-        heroSubtitle={`محصولات دست‌دوم ${category.title} با کارت سلامت معتبر — با اطمینان بخر`}
+        heroSubtitle={`محصولات دست دوم ${category.title} با کارت سلامت معتبر — با اطمینان بخر`}
         belowHero={
           <TaxonomyBreadcrumbs
             includeStructuredData={false}
             items={[
               { name: "خانه", href: "/", url: SITE_URL },
               {
-                name: "بازار دست‌دوم",
+                name: "بازار دست دوم",
                 href: "/second-hand",
                 url: `${SITE_URL}/second-hand`,
               },

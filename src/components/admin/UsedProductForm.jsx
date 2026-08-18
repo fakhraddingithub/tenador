@@ -215,7 +215,7 @@ export default function UsedProductForm({ initialData }) {
 
   return (
     <form onSubmit={handleSubmit} className="max-w-3xl mx-auto px-4 py-10 space-y-10">
-      <h1 className="text-2xl font-bold">{isEdit ? 'ویرایش محصول دست‌دوم' : 'ثبت محصول دست‌دوم'}</h1>
+      <h1 className="text-2xl font-bold">{isEdit ? 'ویرایش محصول دست دوم' : 'ثبت محصول دست دوم'}</h1>
 
       {/* ─── Product Selector ─── */}
       <section className="space-y-3">

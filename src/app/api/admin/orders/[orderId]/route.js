@@ -98,7 +98,7 @@ function normalizeOrderItems(items = []) {
         usedProduct,
         product: {
           _id: usedProduct?._id || item.product?._id || null,
-          name: usedProduct?.name || item.product?.name || "محصول دست‌دوم",
+          name: usedProduct?.name || item.product?.name || "محصول دست دوم",
           mainImage: usedProduct?.images?.[0] || item.product?.mainImage || null,
           sku: usedProduct?.sku || "USED-ITEM",
         },

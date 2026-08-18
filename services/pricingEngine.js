@@ -1,11 +1,11 @@
 /**
  * services/priceEngine.js
  *
- * موتور مرکزی قیمت‌گذاری — با پشتیبانی از محصولات معمولی و دست‌دوم
+ * موتور مرکزی قیمت‌گذاری — با پشتیبانی از محصولات معمولی و دست دوم
  *
  * آیتم‌های ورودی می‌توانند دو نوع باشند:
  *   { productId, variantId?, quantity }               → محصول معمولی
- *   { usedProductId, quantity, itemType: "used" }     → محصول دست‌دوم
+ *   { usedProductId, quantity, itemType: "used" }     → محصول دست دوم
  */
 
 import mongoose from "mongoose";
@@ -245,7 +245,7 @@ export async function computeCartPrice(cartItems, user = null, couponCode = null
   const { default: Variant      } = await import("base/models/Variant");
   const { default: UsedProduct  } = await import("base/models/UsedProduct");
 
-  // تفکیک محصولات معمولی از دست‌دوم
+  // تفکیک محصولات معمولی از دست دوم
   const regularItems = cartItems.filter((i) => i.itemType !== "used" && !i.usedProductId);
   const usedItems    = cartItems.filter((i) => i.itemType === "used" || i.usedProductId);
 
@@ -267,7 +267,7 @@ export async function computeCartPrice(cartItems, user = null, couponCode = null
   const productMap = new Map(products.map((p) => [p._id.toString(), p]));
   const variantMap = new Map(variants.map((v) => [v._id.toString(), v]));
 
-  // ─── بارگذاری محصولات دست‌دوم ───
+  // ─── بارگذاری محصولات دست دوم ───
   const usedProductIds = usedItems.map((i) => i.usedProductId).filter(Boolean);
   const usedProducts = usedProductIds.length
     ? await UsedProduct.find({ _id: { $in: usedProductIds } })
@@ -338,17 +338,17 @@ export async function computeCartPrice(cartItems, user = null, couponCode = null
     });
   }
 
-  // ─── آیتم‌های دست‌دوم (بدون تخفیف rule-based — قیمت ثابت) ───
+  // ─── آیتم‌های دست دوم (بدون تخفیف rule-based — قیمت ثابت) ───
   for (const ci of usedItems) {
     const up = usedProductMap.get(ci.usedProductId);
     if (!up) continue;
 
-    // بررسی موجودی — محصول دست‌دوم باید available باشد
+    // بررسی موجودی — محصول دست دوم باید available باشد
     if (up.status !== "available") {
-      throw new Error(`محصول دست‌دوم "${up.name}" دیگر موجود نیست`);
+      throw new Error(`محصول دست دوم "${up.name}" دیگر موجود نیست`);
     }
 
-    const qty           = 1; // محصول دست‌دوم همیشه تعداد ۱ دارد
+    const qty           = 1; // محصول دست دوم همیشه تعداد ۱ دارد
     const priceToman    = eurToToman(up.price, rate);
 
     enrichedItems.push({

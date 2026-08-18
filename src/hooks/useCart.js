@@ -2,7 +2,7 @@
  * src/hooks/useCart.js
  *
  * قیمت‌ها کاملاً از سرور دریافت می‌شوند — هیچ محاسبه‌ای سمت کلاینت نیست
- * اصلاح‌شده: پشتیبانی کامل از فیلدهای محصولات دست‌دوم (usedProductId و itemType)
+ * اصلاح‌شده: پشتیبانی کامل از فیلدهای محصولات دست دوم (usedProductId و itemType)
  */
 
 import { useState, useEffect, useCallback, useRef } from 'react';
@@ -144,7 +144,7 @@ export const useCart = () => {
           // واریانت (برای نمایش ویژگی‌ها در صفحه پرداخت)
           variant: item.variant ?? null,
 
-          // موجودی (فقط برای کالای دست‌دوم معنا دارد)
+          // موجودی (فقط برای کالای دست دوم معنا دارد)
           inStock: item.inStock,
 
           // قیمت‌گذاری (همه به تومان)
@@ -194,11 +194,11 @@ export const useCart = () => {
     return () => window.removeEventListener('cartchange', handleCartChange);
   }, []); // eslint-disable-line
 
-  // ─── تغییر تعداد — ورودی: کل آیتم سبد (پشتیبانی از فرایند سفارش و دست‌دوم) ───
+  // ─── تغییر تعداد — ورودی: کل آیتم سبد (پشتیبانی از فرایند سفارش و دست دوم) ───
   const updateQuantity = useCallback((item, delta) => {
     if (!item) return;
     const itemType = item.itemType || 'product';
-    if (itemType === 'used_product') return; // تعداد دست‌دوم همیشه ۱ است
+    if (itemType === 'used_product') return; // تعداد دست دوم همیشه ۱ است
 
     const productId = item.productId;
     const variantId = item.variantId ?? null;

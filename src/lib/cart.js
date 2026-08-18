@@ -5,7 +5,7 @@
  *
  * ساختار آیتم‌های سبد:
  *  محصول معمولی:  { productId, variantId, quantity, itemType: "product" }
- *  محصول دست‌دوم: { usedProductId, quantity: 1, itemType: "used_product" }
+ *  محصول دست دوم: { usedProductId, quantity: 1, itemType: "used_product" }
  *  محصول با فرایند سفارش: محصول معمولی + flowSelections[]
  *
  * هر عضو flowSelections یکی از دو شکل زیر است:
@@ -230,7 +230,7 @@ export function addToCartWithFlow(
   saveCart(cart);
 }
 
-// ─── افزودن محصول دست‌دوم ───
+// ─── افزودن محصول دست دوم ───
 
 export function addUsedToCart(usedProductId) {
   const cart = getCart();

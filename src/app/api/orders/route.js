@@ -88,7 +88,7 @@ export async function GET() {
             ...item,
             product: {
               _id:       item.usedProduct?._id  || item._id,
-              name:      item.usedProduct?.name || "محصول دست‌دوم",
+              name:      item.usedProduct?.name || "محصول دست دوم",
               mainImage: item.usedProduct?.images?.[0] || null,
               sku:       "USED-ITEM",
             },

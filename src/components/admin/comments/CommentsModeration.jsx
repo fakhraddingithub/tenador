@@ -310,7 +310,7 @@ export default function CommentsModeration() {
                           />
                         )}
                         <span className="max-w-[220px] truncate text-xs font-semibold text-[#aa4725]">
-                          دست‌دوم: {c.usedProduct.name}
+                          دست دوم: {c.usedProduct.name}
                         </span>
                       </a>
                     )}

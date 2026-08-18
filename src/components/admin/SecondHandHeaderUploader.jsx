@@ -81,7 +81,7 @@ export default function SecondHandHeaderUploader() {
             <FiImage size={22} className="text-[var(--color-primary)]" />
           </div>
           <div>
-            <h2 className="text-lg font-bold text-neutral-800">تصویر هدر صفحه دست‌دوم</h2>
+            <h2 className="text-lg font-bold text-neutral-800">تصویر هدر صفحه دست دوم</h2>
             <p className="text-sm text-neutral-400 leading-relaxed mt-0.5">
               این تصویر به‌عنوان هدر بالای صفحه‌ی <span className="font-mono text-xs">/second-hand</span> نمایش داده می‌شود
             </p>
@@ -94,7 +94,7 @@ export default function SecondHandHeaderUploader() {
             <div className="w-full h-full animate-pulse bg-neutral-100" />
           ) : image ? (
             <>
-              <img src={image} alt="هدر دست‌دوم" className="w-full h-full object-cover" />
+              <img src={image} alt="هدر دست دوم" className="w-full h-full object-cover" />
               <button
                 type="button"
                 onClick={removeImage}

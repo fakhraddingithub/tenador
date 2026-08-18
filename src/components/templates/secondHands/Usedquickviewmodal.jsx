@@ -35,7 +35,7 @@ export default function UsedQuickViewModal({
 }) {
   const [selectedImage, setSelectedImage] = useState(null);
 
-  // همه تصاویر: ابتدا images محصول دست‌دوم، سپس mainImage از baseProduct
+  // همه تصاویر: ابتدا images محصول دست دوم، سپس mainImage از baseProduct
   const allImages = useMemo(() => {
     if (!product) return [];
     const own  = (product.images || []).filter(Boolean);
@@ -145,11 +145,11 @@ export default function UsedQuickViewModal({
               </div>
             )}
 
-            {/* badge دست‌دوم + نشان تست‌شده */}
+            {/* badge دست دوم + نشان تست‌شده */}
             <div className="absolute top-3 right-3 z-30 flex items-center gap-1.5">
               {tested && <VerifiedBadge size={22} />}
               <span className="bg-[#aa4725] text-white text-[10px] font-black px-2.5 py-1 rounded-full flex items-center gap-1">
-                <FiTag size={9} /> دست‌دوم
+                <FiTag size={9} /> دست دوم
               </span>
             </div>
 
