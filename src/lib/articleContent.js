@@ -21,7 +21,13 @@ function collectText(value, output, seen) {
       collectText(plain, output, seen);
       return;
     }
-    for (const item of Object.values(plain)) collectText(item, output, seen);
+    for (const [key, item] of Object.entries(plain)) {
+      // بلوک‌های متنی کنارِ متنِ ساده یک نسخه‌ی قالب‌بندی‌شده‌ی *همان* متن دارند؛
+      // شمردنِ هر دو، تعدادِ کلمات و زمانِ مطالعه را دو برابر می‌کرد. بلوکِ
+      // «HTML سفارشی» که فقط html دارد از این شرط رد نمی‌شود و شمرده می‌ماند.
+      if (key === "html" && typeof plain.text === "string") continue;
+      collectText(item, output, seen);
+    }
   }
 }
 
