@@ -28,7 +28,7 @@ const nextConfig = {
     return [
       { source: `/:sport(${sports})`, headers },
       { source: `/:sport(${sports})/:path*`, headers },
-      { source: "/articles/:path*", headers },
+      { source: "/content/:path*", headers },
     ];
   },
 
@@ -44,6 +44,18 @@ const nextConfig = {
       {
         source: "/events/:slug*",
         destination: "/collection/:slug*",
+        permanent: true,
+      },
+      // ریدایرکت دائمی مسیر قدیمیِ «مقاله‌ها» به مسیر جدید «content».
+      // اسلاگ‌ها بدون تغییر باقی مانده‌اند؛ فقط بخش مسیر تغییر کرده است.
+      {
+        source: "/articles",
+        destination: "/content",
+        permanent: true,
+      },
+      {
+        source: "/articles/:path*",
+        destination: "/content/:path*",
         permanent: true,
       },
       // مسیرهای /brand/... و /sport/... هرگز در اپ وجود نداشته‌اند، اما sitemap

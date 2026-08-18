@@ -74,7 +74,7 @@ export default function ArticleEditor({ articleId = null }) {
   // realPath وقتی null است که دسته یا نامک هنوز کامل نشده باشد. مقدارِ جایگزین
   // فقط برای *نمایش* است و هرگز نباید href شود.
   const realPath = buildArticlePath(category?.slug, article.slug);
-  const livePath = realPath || "/articles/category/article";
+  const livePath = realPath || "/content/category/article";
   // لینک فقط وقتی نشان داده می‌شود که نشانیِ نمایش‌داده‌شده دقیقاً همانی باشد که
   // هم‌اکنون روی سایت زنده است؛ پس متنِ لینک و مقصدش هرگز از هم جدا نمی‌شوند.
   const liveUrl = realPath && persisted

@@ -10,7 +10,7 @@ export function formatArticleDate(value) {
 
 export default function ArticleCard({ article, priority = false }) {
   const category = article.category;
-  const href = buildArticlePath(category?.slug, article.slug) || "/articles";
+  const href = buildArticlePath(category?.slug, article.slug) || "/content";
   return (
     <article className="group h-full overflow-hidden rounded-[var(--radius)] border border-black/10 bg-white transition-[transform,box-shadow] duration-300 motion-safe:hover:-translate-y-1 hover:shadow-xl motion-reduce:transition-none">
       <Link href={href} className="block rounded-[var(--radius)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-primary)]">

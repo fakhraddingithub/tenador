@@ -48,7 +48,7 @@ export default function FeaturedArticles({ articles = [] }) {
           {articles.map((article, index) => (
             <Link
               key={article._id}
-              href={buildArticlePath(article.category?.slug, article.slug) || "/articles"}
+              href={buildArticlePath(article.category?.slug, article.slug) || "/content"}
               aria-label={`مطالعه مقاله: ${article.title}`}
               className={`group relative block overflow-hidden rounded-[6px] bg-gray-900 shadow-sm outline-none transition-shadow duration-300 hover:shadow-xl focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-primary)] ${LAYOUT[index]}`}
             >
