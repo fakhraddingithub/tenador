@@ -143,7 +143,8 @@ export default function ArticleEditor({ articleId = null }) {
   if (loading) return <div className="a-card p-12 text-center text-sm text-gray-400">در حال بارگذاری ویرایشگر...</div>;
   return <>
     <PageHeader title={articleId ? "ویرایش مقاله" : "مقاله جدید"} subtitle="محتوا را با بلوک‌های مستقل بسازید؛ تغییرات به‌صورت خودکار ذخیره می‌شوند." icon={<FiFileText />} actions={<div className="flex gap-2 flex-wrap"><Button variant="secondary" disabled={!articleId} onClick={() => setHistory(true)} icon={<FiRotateCcw />}>نسخه‌ها</Button><Button variant="secondary" disabled={!articleId} onClick={() => window.open(`/p-admin/admin-articles/${articleId}/preview`, "_blank")} icon={<FiEye />}>پیش‌نمایش</Button><Button loading={saving} onClick={() => save()} icon={<FiSave />}>ذخیره</Button></div>} />
-    <div className="grid grid-cols-1 xl:grid-cols-[minmax(0,1fr)_330px] gap-5 items-start">
+    {/* فضای امن تا نوارِ شناورِ پایین هرگز روی محتوای انتهای صفحه ننشیند. */}
+    <div className="grid grid-cols-1 xl:grid-cols-[minmax(0,1fr)_330px] gap-5 items-start pb-24">
       <main className="space-y-4 min-w-0">
         <section className="a-card p-5 sm:p-8">
           <textarea rows={2} value={article.title} onChange={(e) => update({ title: e.target.value, ...(!articleId && !article.slug ? { slug: normalizeArticleSlug(e.target.value) } : {}) })} placeholder="عنوان مقاله" className="w-full resize-none text-2xl sm:text-3xl font-black leading-relaxed outline-none bg-transparent" />
@@ -178,6 +179,12 @@ export default function ArticleEditor({ articleId = null }) {
           <label className="flex items-center gap-2 text-xs font-bold mt-4"><input type="checkbox" checked={article.seo.noIndex} onChange={(e) => update({ seo: { ...article.seo, noIndex: e.target.checked } })} />عدم ایندکس توسط موتور جستجو</label>
         </Panel>
       </aside>
+    </div>
+    {/* همان دو کنترلِ بالای صفحه، ثابت در گوشه‌ی پایین‌چپ. z پایین‌تر از
+        کتابخانه‌ی بلوک (۱۰۰) و تاریخچه‌ی نسخه‌ها (۱۱۰) است تا هرگز روی آن‌ها نیفتد. */}
+    <div className="a-card fixed bottom-4 left-4 z-40 flex gap-2 p-2 shadow-lg" style={{ paddingBottom: "calc(0.5rem + env(safe-area-inset-bottom))" }}>
+      <Button size="sm" variant="secondary" disabled={!articleId} onClick={() => window.open(`/p-admin/admin-articles/${articleId}/preview`, "_blank")} icon={<FiEye />}>پیش‌نمایش</Button>
+      <Button size="sm" loading={saving} onClick={() => save()} icon={<FiSave />}>ذخیره</Button>
     </div>
     <RevisionHistory articleId={articleId} open={history} onClose={() => setHistory(false)} onRestored={(item) => {
       // بازیابی روی سرور ذخیره می‌شود، پس وضعیتِ «ذخیره‌شده» هم باید تازه شود.
