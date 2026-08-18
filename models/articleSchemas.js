@@ -35,6 +35,7 @@ export const ArticleBlockStyleSchema = new mongoose.Schema(
     background: { type: String, trim: true, maxlength: 7 },
     accent: { type: String, trim: true, maxlength: 7 },
     tableVariant: { type: String, enum: ["default", "striped", "bordered", "plain"] },
+    align: { type: String, enum: ["left", "center", "right"] },
   },
   { _id: false, minimize: false },
 );

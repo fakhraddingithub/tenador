@@ -7,6 +7,7 @@ import { CSS } from "@dnd-kit/utilities";
 import { FiChevronDown, FiChevronUp, FiCopy, FiDroplet, FiMenu, FiPlus, FiSearch, FiTrash2, FiX } from "react-icons/fi";
 import ImageUpload from "@/components/admin/ImageUpload";
 import ArticleEntityPicker from "./ArticleEntityPicker";
+import RichTextField from "./RichTextField";
 import { ARTICLE_BLOCKS, BLOCK_ACCENT_HINTS, BLOCK_GROUPS, BLOCK_SPACING_LABELS, BLOCK_STYLE_LABELS, BLOCK_TABLE_VARIANT_LABELS, createArticleBlock } from "./blockRegistry";
 import { BLOCK_WIDTHS, blockWidth } from "@/lib/articleBlockLayout";
 
@@ -78,7 +79,8 @@ function BlockStylePanel({ type, style, layout, onChange, onLayout }) {
   </details>;
 }
 
-function BlockField({ field, value, onChange }) {
+function BlockField({ field, value, onChange, align, onAlign }) {
+  if (field.kind === "rich") return <RichTextField value={value} onChange={onChange} align={align} onAlign={onAlign} singleLine={field.singleLine} />;
   if (field.kind === "textarea" || field.kind === "html") return <textarea dir={field.kind === "html" ? "ltr" : "rtl"} rows={field.kind === "html" ? 9 : 4} value={value || ""} onChange={(e) => onChange(e.target.value)} className={`${inputClass} ${field.kind === "html" ? "font-mono" : "font-sans"}`} />;
   if (field.kind === "select") return <select value={value || ""} onChange={(e) => onChange(e.target.value)} className={inputClass}>{field.options.map((option) => <option key={option} value={option}>{option}</option>)}</select>;
   if (field.kind === "image") return <ImageFieldWithSize value={value} onChange={onChange} />;
@@ -94,6 +96,13 @@ function SortableBlock({ block, index, total, onUpdate, onStyle, onLayout, onRem
   const definition = ARTICLE_BLOCKS[block.type];
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: block.id });
   const Icon = definition?.icon || FiMenu;
+  // چینش از نوارِ ابزارِ متن تنظیم می‌شود ولی جایش همان style بلوک است (خاصیتی
+  // سطحِ خط است، نه سطحِ کاراکتر)؛ حذفِ آخرین کلید، کلِ style را برمی‌دارد.
+  const setAlign = (align) => {
+    const next = { ...(block.style || {}) };
+    if (align) next.align = align; else delete next.align;
+    onStyle(Object.keys(next).length ? next : undefined);
+  };
   return <section ref={setNodeRef} style={{ transform: CSS.Transform.toString(transform), transition, opacity: isDragging ? .55 : 1 }} className="a-card group">
     <header className="flex items-center gap-2 px-3 py-2.5 border-b" style={{ borderColor: "var(--admin-border)" }}>
       <button type="button" {...attributes} {...listeners} className="p-1.5 cursor-grab text-gray-400 hover:text-[var(--color-primary)]" aria-label="جابجایی بلوک"><FiMenu /></button>
@@ -106,7 +115,7 @@ function SortableBlock({ block, index, total, onUpdate, onStyle, onLayout, onRem
         <button type="button" onClick={() => setOpen((value) => !value)} aria-expanded={open} className="p-1.5 text-gray-400 focus-visible:outline-2 focus-visible:outline-[var(--color-primary)]" aria-label="باز و بسته کردن">{open ? <FiChevronUp /> : <FiChevronDown />}</button>
       </div>
     </header>
-    {open ? <div className="p-4 space-y-4">{definition?.fields.length ? definition.fields.map((field) => <label key={field.key} className="block"><span className="block text-xs font-bold mb-1.5 text-gray-600">{field.label}</span><BlockField field={field} value={field.kind === "table" ? block.data : block.data?.[field.key]} onChange={(next) => onUpdate(field.kind === "table" || field.kind === "image" ? next : { [field.key]: next })} /></label>) : <p className="text-xs text-gray-400 text-center py-3">این بلوک تنظیمات دیگری ندارد.</p>}<BlockStylePanel type={block.type} style={block.style} layout={block.layout} onChange={onStyle} onLayout={onLayout} /></div> : null}
+    {open ? <div className="p-4 space-y-4">{definition?.fields.length ? definition.fields.map((field) => <label key={field.key} className="block"><span className="block text-xs font-bold mb-1.5 text-gray-600">{field.label}</span><BlockField field={field} value={field.kind === "table" || field.kind === "rich" ? block.data : block.data?.[field.key]} onChange={(next) => onUpdate(field.kind === "table" || field.kind === "image" || field.kind === "rich" ? next : { [field.key]: next })} align={block.style?.align} onAlign={setAlign} /></label>) : <p className="text-xs text-gray-400 text-center py-3">این بلوک تنظیمات دیگری ندارد.</p>}<BlockStylePanel type={block.type} style={block.style} layout={block.layout} onChange={onStyle} onLayout={onLayout} /></div> : null}
   </section>;
 }
 
