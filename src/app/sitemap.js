@@ -163,7 +163,7 @@ export default async function sitemap() {
     entry("/returns", undefined, "monthly", 0.5),
     entry("/payment", undefined, "monthly", 0.5),
     entry("/terms", undefined, "yearly", 0.3),
-    entry("/articles", undefined, "daily", 0.8),
+    entry("/content", undefined, "daily", 0.8),
     entry("/collection", latestDate(events), "daily", 0.7),
     entry("/second-hand", latestDate(usedProducts), "daily", 0.8),
     entry("/match", undefined, "monthly", 0.7),

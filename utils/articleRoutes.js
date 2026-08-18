@@ -9,6 +9,9 @@ const RESERVED_ARTICLE_ROOTS = new Set([
   "compare",
   "contact",
   "contact-us",
+  // مسیرِ عمومیِ مقاله‌ها؛ "articles" هم می‌ماند چون ریدایرکتِ دائمیِ آدرس‌های
+  // قدیمی روی همان مسیر نشسته است.
+  "content",
   "faq",
   "how-to-order",
   "login-register",

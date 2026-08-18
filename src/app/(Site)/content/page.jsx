@@ -6,7 +6,7 @@ import { getPublicArticleHub } from "base/services/publicArticle.service";
 export const metadata = {
   title: "مجله تنادور",
   description: "راهنماها، بررسی‌ها و تازه‌ترین مطالب تخصصی تنادور",
-  alternates: { canonical: "/articles" },
+  alternates: { canonical: "/content" },
 };
 
 export default async function ArticlesPage() {
