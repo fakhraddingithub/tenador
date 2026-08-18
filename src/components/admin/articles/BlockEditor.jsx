@@ -67,7 +67,8 @@ function BlockStylePanel({ type, style, layout, onChange, onLayout }) {
     onChange(Object.keys(next).length ? next : undefined);
   };
   const customised = Object.keys(current).length + (width === "full" ? 0 : 1);
-  return <details className="border-t pt-3" style={{ borderColor: "var(--admin-border)" }}>
+  // بالای بلوک می‌نشیند، پس خطِ جداکننده زیرِ آن است نه بالایش.
+  return <details className="border-b pb-3" style={{ borderColor: "var(--admin-border)" }}>
     <summary className="flex cursor-pointer items-center gap-2 text-xs font-bold text-gray-600"><FiDroplet className="text-[var(--color-primary)]" />ظاهر و چیدمان بلوک{customised ? <span className="rounded-full bg-[var(--color-primary-soft)] px-2 py-0.5 text-[10px] text-[var(--color-primary)]">{customised.toLocaleString("fa-IR")} تنظیم</span> : null}</summary>
     <div className="mt-3 space-y-3">
       <label className="block"><span className="mb-1 block text-[11px] font-bold text-gray-600">عرض بلوک</span><select value={width} onChange={(e) => onLayout(e.target.value === "full" ? undefined : { width: e.target.value })} className={inputClass}>{BLOCK_WIDTHS.map((value) => <option key={value} value={value}>{BLOCK_WIDTH_LABELS[value]}</option>)}</select><span className="mt-1 block text-[10px] text-gray-400">بلوک‌های کنارِ هم در دسکتاپ یک ردیف می‌شوند و در موبایل زیر هم قرار می‌گیرند.</span></label>
@@ -115,7 +116,7 @@ function SortableBlock({ block, index, total, onUpdate, onStyle, onLayout, onRem
         <button type="button" onClick={() => setOpen((value) => !value)} aria-expanded={open} className="p-1.5 text-gray-400 focus-visible:outline-2 focus-visible:outline-[var(--color-primary)]" aria-label="باز و بسته کردن">{open ? <FiChevronUp /> : <FiChevronDown />}</button>
       </div>
     </header>
-    {open ? <div className="p-4 space-y-4">{definition?.fields.length ? definition.fields.map((field) => <label key={field.key} className="block"><span className="block text-xs font-bold mb-1.5 text-gray-600">{field.label}</span><BlockField field={field} value={field.kind === "table" || field.kind === "rich" ? block.data : block.data?.[field.key]} onChange={(next) => onUpdate(field.kind === "table" || field.kind === "image" || field.kind === "rich" ? next : { [field.key]: next })} align={block.style?.align} onAlign={setAlign} /></label>) : <p className="text-xs text-gray-400 text-center py-3">این بلوک تنظیمات دیگری ندارد.</p>}<BlockStylePanel type={block.type} style={block.style} layout={block.layout} onChange={onStyle} onLayout={onLayout} /></div> : null}
+    {open ? <div className="p-4 space-y-4"><BlockStylePanel type={block.type} style={block.style} layout={block.layout} onChange={onStyle} onLayout={onLayout} />{definition?.fields.length ? definition.fields.map((field) => <label key={field.key} className="block"><span className="block text-xs font-bold mb-1.5 text-gray-600">{field.label}</span><BlockField field={field} value={field.kind === "table" || field.kind === "rich" ? block.data : block.data?.[field.key]} onChange={(next) => onUpdate(field.kind === "table" || field.kind === "image" || field.kind === "rich" ? next : { [field.key]: next })} align={block.style?.align} onAlign={setAlign} /></label>) : <p className="text-xs text-gray-400 text-center py-3">این بلوک تنظیمات دیگری ندارد.</p>}</div> : null}
   </section>;
 }
 
