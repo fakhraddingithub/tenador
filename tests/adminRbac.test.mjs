@@ -3539,7 +3539,12 @@ test("article row actions map to the article APIs one-for-one", () => {
 
   // بازیابی = POST restore → articles.edit
   assert.equal(ADMIN_API_PERMISSIONS["/admin/article-cms/[id]/restore"].POST, "articles.edit");
-  assert.match(source, /view === "trash" \? \(canEdit \?/);
+  assert.match(source, /view === "trash" \? <>\{canEdit \?/);
+
+  // حذفِ دائمی از زباله‌دان = همان DELETE مقاله با ?permanent=true → articles.delete
+  // (کلیدِ جدیدی جعل نشده؛ همان کلیدی است که انتقال به زباله‌دان با آن گیت شده.)
+  assert.match(source, /\{canDelete \? <button onClick=\{\(\) => destroy\(article\._id, article\.title\)\}/);
+  assert.match(source, /\/api\/admin\/articles\/\$\{id\}\?permanent=true/);
 
   // آرشیو = PATCH مقاله → articles.edit ؛ زباله‌دان = DELETE → articles.delete
   // فاز ۵: PATCH شاخه‌ای شد — ویرایش articles.edit، ولی انتشار articles.publish
@@ -3550,7 +3555,7 @@ test("article row actions map to the article APIs one-for-one", () => {
   assert.deepEqual(resolveArticlePatchPermissions({ title: "x" }).permissions, ["articles.edit"]);
   assert.equal(ADMIN_API_PERMISSIONS["/admin/articles/[id]"].DELETE, "articles.delete");
   assert.match(source, /\{article\.status !== "archived" && canEdit \?/);
-  assert.match(source, /\{canDelete \? <button onClick=\{\(\) => trash\(article\._id\)\}/);
+  assert.match(source, /\{canDelete \? <button onClick=\{\(\) => trash\(article\._id, article\.title\)\}/);
 });
 
 test("article taxonomy has one key for both create and archive", () => {
@@ -3567,6 +3572,9 @@ test("article taxonomy has one key for both create and archive", () => {
   assert.match(source, /const canManage = can\("articleTaxonomy\.manage"\)/);
   assert.match(source, /\{canManage \? <div className="p-4 border-b space-y-3"/);
   assert.match(source, /\{item\.status !== "archived" && canManage \?/);
+  // حذفِ دائمی هم زیرِ همان manage است و فقط برای دسته‌بندیِ آرشیوشده دیده می‌شود.
+  assert.match(source, /\{isCategory && item\.status === "archived" && canManage \?/);
+  assert.equal(ADMIN_API_PERMISSIONS["/admin/article-categories/[id]"].DELETE, "articleTaxonomy.manage");
 });
 
 test("home section managers gate on the site-setting owner key", () => {

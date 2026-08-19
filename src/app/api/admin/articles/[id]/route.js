@@ -6,7 +6,7 @@ import requireAdminPermission, { forbidden } from "@/lib/requireAdminPermission"
 import { resolveArticlePatchPermissions } from "@/lib/apiPermissions";
 import { articleApiError, validationResponse } from "@/lib/articleApi";
 import { validateArticleInput } from "@/lib/articleValidation";
-import { getArticleForAdmin, trashArticle, updateArticle } from "base/services/article.service";
+import { getArticleForAdmin, permanentlyDeleteArticle, trashArticle, updateArticle } from "base/services/article.service";
 import { revalidateContent } from "@/lib/revalidate";
 
 export const runtime = "nodejs";
@@ -68,7 +68,7 @@ export async function PATCH(req, { params }) {
   }
 }
 
-export async function DELETE(_req, { params }) {
+export async function DELETE(req, { params }) {
   const { actor: admin, denied } = await requireAdminPermission("articles.delete");
   if (denied) return denied;
 
@@ -76,6 +76,16 @@ export async function DELETE(_req, { params }) {
     const { id } = await params;
     if (invalidId(id)) return NextResponse.json({ error: "Invalid article id" }, { status: 400 });
     await connectToDB();
+
+    // ?permanent=true → حذفِ دائمی، فقط برای مقاله‌ای که *همین حالا* در
+    // زباله‌دان است. شرطِ deletedAt سمتِ سرور و داخلِ خودِ حذف چک می‌شود.
+    if (new URL(req.url).searchParams.get("permanent") === "true") {
+      const removed = await permanentlyDeleteArticle(id);
+      if (!removed) return NextResponse.json({ error: "مقاله‌ای در زباله‌دان با این شناسه نیست" }, { status: 404 });
+      revalidateContent(["articles"]);
+      return NextResponse.json({ ok: true, permanent: true });
+    }
+
     const article = await trashArticle(id, admin._id);
     if (!article) return NextResponse.json({ error: "Article not found" }, { status: 404 });
     revalidateContent(["articles"]);

@@ -7,7 +7,7 @@ import ArticleCategory from "base/models/ArticleCategory";
 import requireAdminPermission from "@/lib/requireAdminPermission";
 import { articleApiError, validationResponse } from "@/lib/articleApi";
 import { validateArticleCategoryInput } from "@/lib/articleValidation";
-import { updateArticleCategory } from "base/services/article.service";
+import { permanentlyDeleteArticleCategory, updateArticleCategory } from "base/services/article.service";
 import { revalidateContent } from "@/lib/revalidate";
 
 export const runtime = "nodejs";
@@ -35,7 +35,7 @@ export async function PATCH(req, { params }) {
   }
 }
 
-export async function DELETE(_req, { params }) {
+export async function DELETE(req, { params }) {
   const { actor: admin, denied } = await requireAdminPermission("articleTaxonomy.manage");
   if (denied) return denied;
 
@@ -43,6 +43,19 @@ export async function DELETE(_req, { params }) {
     const { id } = await params;
     if (!mongoose.isValidObjectId(id)) return NextResponse.json({ error: "Invalid category id" }, { status: 400 });
     await connectToDB();
+
+    // ?permanent=true → حذف از دیتابیس. همه‌ی شرط‌ها سمتِ سرور و درست پیش از
+    // حذف دوباره چک می‌شوند؛ به هیچ چیزی از کلاینت اعتماد نمی‌شود.
+    if (new URL(req.url).searchParams.get("permanent") === "true") {
+      const result = await permanentlyDeleteArticleCategory(id);
+      if (!result.ok) {
+        const { status, ...body } = result;
+        return NextResponse.json(body, { status });
+      }
+      revalidateContent(["articles"]);
+      return NextResponse.json({ ok: true, permanent: true });
+    }
+
     if (await Article.exists({ category: id, deletedAt: null })) {
       return NextResponse.json({ error: "Category is used by articles", code: "CATEGORY_IN_USE" }, { status: 409 });
     }

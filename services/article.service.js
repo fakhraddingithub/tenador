@@ -5,8 +5,6 @@ import ArticleRedirect from "base/models/ArticleRedirect";
 import ArticleRevision from "base/models/ArticleRevision";
 import ArticleTag from "base/models/ArticleTag";
 import User from "base/models/User";
-import Brand from "base/models/Brand";
-import Sport from "base/models/Sport";
 import { buildArticlePath, normalizeArticleSlug } from "base/utils/articleSlug";
 import { isReservedArticleRoot, publicArticleFilter } from "base/utils/articleRoutes";
 
@@ -30,17 +28,18 @@ function validationError(field, message) {
   return error;
 }
 
-export async function assertArticleCategoryRouteAvailable(slug, session = null) {
+export async function assertArticleCategoryRouteAvailable(slug, session = null, excludeId = null) {
   const normalized = normalizeArticleSlug(slug);
   if (isReservedArticleRoot(normalized)) {
     throw validationError("slug", "This category slug is reserved by an existing Tenador route");
   }
-  const [sport, brand] = await Promise.all([
-    withSession(Sport.exists({ slug: normalized }), session),
-    withSession(Brand.exists({ slug: normalized }), session),
-  ]);
-  if (sport || brand) {
-    throw validationError("slug", "This category slug is already used by a sport or brand");
+  // نامکِ دسته‌ی مقاله فقط داخلِ خودِ همین کالکشن یکتاست: صفحه‌ی عمومی‌اش زیر
+  // /content/<slug> می‌نشیند، پس با نامکِ ورزش/برند (که ریشه‌ی آدرس‌اند) برخورد
+  // نمی‌کند. ایندکسِ unique روی slug همچنان پشتِ رقابتِ همزمان را می‌گیرد.
+  const duplicate = { slug: normalized };
+  if (excludeId) duplicate._id = { $ne: excludeId };
+  if (await withSession(ArticleCategory.exists(duplicate), session)) {
+    throw validationError("slug", "This slug is already used by another article category");
   }
 }
 
@@ -150,6 +149,24 @@ export async function trashArticle(id, actorId) {
   });
 }
 
+// حذفِ دائمیِ مقاله — فقط از زباله‌دان. شرطِ deletedAt داخلِ خودِ findOneAndDelete
+// است تا بین چک و حذف کسی نتواند مقاله را بازیابی کند و ما مقاله‌ی زنده را
+// پاک کنیم. نسخه‌ها و ریدایرکت‌ها فقط به همین مقاله تعلق دارند، پس با آن می‌روند.
+export async function permanentlyDeleteArticle(id) {
+  return inTransaction(async (session) => {
+    const article = await withSession(
+      Article.findOneAndDelete({ _id: id, deletedAt: { $ne: null } }),
+      session,
+    );
+    if (!article) return null;
+    await Promise.all([
+      withSession(ArticleRevision.deleteMany({ article: article._id }), session),
+      withSession(ArticleRedirect.deleteMany({ article: article._id }), session),
+    ]);
+    return article;
+  });
+}
+
 export async function listArticles({ filter, page, limit }) {
   const [articles, total] = await Promise.all([
     Article.find(filter).populate("category", "name slug status").populate("author", "name lastName avatar").populate("tags", "name slug").sort({ pinned: -1, updatedAt: -1 }).skip((page - 1) * limit).limit(limit).lean(),
@@ -166,7 +183,7 @@ export async function updateArticleCategory(category, value, actorId) {
   return inTransaction(async (session) => {
     const oldSlug = category.slug;
     const nextSlug = value.slug || oldSlug;
-    await assertArticleCategoryRouteAvailable(nextSlug, session);
+    await assertArticleCategoryRouteAvailable(nextSlug, session, category._id);
     await assertCategoryParent(category._id, value.parent === undefined ? category.parent : value.parent, session);
     if (value.status === "archived" && await withSession(Article.exists({ category: category._id, deletedAt: null }), session)) {
       throw validationError("status", "Category is used by articles and cannot be archived");
@@ -193,6 +210,53 @@ export async function updateArticleCategory(category, value, actorId) {
     }
     return category;
   });
+}
+
+// حذفِ دائمیِ دسته‌ی مقاله. هرگز آبشاری نیست: اگر حتی یک مقاله (حتی در
+// زباله‌دان، چون قابلِ بازیابی است) یا یک زیرشاخه به این دسته وصل باشد، حذف رد
+// می‌شود. شمارش از خودِ رابطه‌ی Article.category خوانده می‌شود، نه از کلاینت.
+// رقابتِ همزمان: createArticle/updateArticle دسته‌ی archived را رد می‌کنند، و
+// خودِ حذف مشروط به archived بودن است؛ پس بینِ شمارش و حذف مقاله‌ی تازه‌ای
+// نمی‌تواند به این دسته بچسبد.
+export async function permanentlyDeleteArticleCategory(id) {
+  const category = await ArticleCategory.findById(id).select("status").lean();
+  if (!category) return { ok: false, status: 404, error: "دسته‌بندی پیدا نشد" };
+  if (category.status !== "archived") {
+    return {
+      ok: false,
+      status: 409,
+      code: "CATEGORY_NOT_ARCHIVED",
+      error: "برای حذف دائمی، ابتدا باید دسته‌بندی آرشیو شود",
+    };
+  }
+  const articleCount = await Article.countDocuments({ category: id });
+  if (articleCount > 0) {
+    return {
+      ok: false,
+      status: 409,
+      code: "CATEGORY_IN_USE",
+      articleCount,
+      error: `این دسته‌بندی ${articleCount} مقاله دارد و تا وقتی مقاله‌ای در آن باشد حذف دائمی نمی‌شود.`,
+    };
+  }
+  if (await ArticleCategory.exists({ parent: id })) {
+    return {
+      ok: false,
+      status: 409,
+      code: "CATEGORY_HAS_CHILDREN",
+      error: "این دسته‌بندی زیرشاخه دارد و حذف دائمی نمی‌شود.",
+    };
+  }
+  const deleted = await ArticleCategory.findOneAndDelete({ _id: id, status: "archived" });
+  if (!deleted) {
+    return {
+      ok: false,
+      status: 409,
+      code: "CATEGORY_NOT_ARCHIVED",
+      error: "وضعیت دسته‌بندی هم‌زمان تغییر کرد؛ دوباره تلاش کنید",
+    };
+  }
+  return { ok: true };
 }
 
 export async function resolvePublishedArticle(categorySlug, articleSlug) {

@@ -29,6 +29,7 @@
     "report:product-audience": "node scripts/reportProductTargetAudience.js",
     "audit:admin-rbac": "node scripts/auditAdminRbac.mjs",
     "migrate:admin-rbac": "node scripts/auditAdminRbac.mjs --apply",
+    "test:article-deletion": "node --test --test-timeout=180000 tests/articleDeletionSafety.test.mjs",
     "test:admin-rbac": "node --test tests/adminRbac.test.mjs",
     "test:admin-rbac-tx": "node --test --test-timeout=120000 tests/adminRbacTransactions.test.mjs",
     "check:mongodb": "node scripts/check-mongodb.js",
