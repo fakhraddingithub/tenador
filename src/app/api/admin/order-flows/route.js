@@ -3,7 +3,7 @@ import connectToDB from "base/configs/db";
 import OrderFlow from "base/models/OrderFlow";
 
 import requireAdminPermission from "@/lib/requireAdminPermission";
-import { validateFlowNodes } from "@/lib/serviceConfig";
+import { normalizeFlowNodes, validateFlowNodes } from "@/lib/serviceConfig";
 
 export async function GET(req) {
   const { denied } = await requireAdminPermission("orderFlows.view");
@@ -29,7 +29,8 @@ export async function POST(req) {
     await connectToDB();
     const body = await req.json();
 
-    const { name, description, rootCategory, nodes, edges, isActive } = body;
+    const { name, description, rootCategory, edges, isActive } = body;
+    const nodes = normalizeFlowNodes(body.nodes);
 
     if (!name || !rootCategory) {
       return NextResponse.json(

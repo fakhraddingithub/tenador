@@ -3,7 +3,7 @@ import connectToDB from "base/configs/db";
 import OrderFlow from "base/models/OrderFlow";
 
 import requireAdminPermission from "@/lib/requireAdminPermission";
-import { validateFlowNodes } from "@/lib/serviceConfig";
+import { normalizeFlowNodes, validateFlowNodes } from "@/lib/serviceConfig";
 
 export async function GET(req, { params }) {
   const { denied } = await requireAdminPermission("orderFlows.view");
@@ -33,7 +33,8 @@ export async function PUT(req, { params }) {
     const {flowId}= await params
 
     const body = await req.json();
-    const { name, description, rootCategory, nodes, edges, isActive } = body;
+    const { name, description, rootCategory, edges, isActive } = body;
+    const nodes = normalizeFlowNodes(body.nodes);
 
     const optionErrors = validateFlowNodes(nodes);
     if (optionErrors.length > 0) {
@@ -52,6 +53,8 @@ export async function PUT(req, { params }) {
 
     return NextResponse.json({ flow });
   } catch (error) {
+    // بدون این لاگ، هر ۵۰۰ در پروداکشن بدون stack trace بود و ریشه‌یابی ناممکن.
+    console.error("PUT /api/admin/order-flows/[flowId] error:", error);
     return NextResponse.json({ message: "خطا در ویرایش فرایند" }, { status: 500 });
   }
 }

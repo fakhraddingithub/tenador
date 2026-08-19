@@ -6,6 +6,8 @@ import {
   isOnStep,
   resolveServiceSelection,
   serviceConfigSignature,
+  normalizeFlowNodes,
+  validateFlowNodes,
   validateServiceOptions,
 } from "../src/lib/serviceConfig.js";
 
@@ -185,4 +187,47 @@ test("اعتبارسنجیِ تعریفِ ادمین ایرادها را می‌
   assert.ok(bad.some((e) => /بیشینه/.test(e)));
   assert.ok(bad.some((e) => /گام/.test(e)));
   assert.ok(bad.some((e) => /نوعِ ورودی/.test(e)));
+});
+
+test("آپشنِ range، choiceِ بازمانده را حمل نمی‌کند (رگرسیونِ ۵۰۰ پروداکشن)", () => {
+  // ویرایشگر هر آپشن را با یک choiceِ خالی می‌سازد؛ با سوییچِ نوع به range آن
+  // باقی می‌ماند. اگر ذخیره شود، required بودنِ label در اسکیما ⇒ ValidationError ⇒ 500.
+  const nodes = [
+    {
+      id: "n1",
+      type: "service",
+      label: "زه‌کشی",
+      options: [
+        {
+          key: "tension",
+          title: "تنش",
+          inputType: "range",
+          choices: [{ key: "c-1", label: "", priceModifier: 0, image: null }],
+          range: { min: 18, max: 30, step: 0.5, unit: "kg" },
+        },
+        {
+          key: "gauge",
+          title: "قطر",
+          inputType: "choice",
+          choices: [{ key: "125", label: "1.25", priceModifier: 0 }],
+        },
+      ],
+    },
+  ];
+
+  const out = normalizeFlowNodes(nodes);
+  assert.deepEqual(out[0].options[0].choices, [], "range نباید choice داشته باشد");
+  assert.equal(out[0].options[0].range.step, 0.5, "تنظیماتِ range دست‌نخورده می‌ماند");
+  assert.equal(out[0].options[1].choices.length, 1, "آپشنِ choice نباید دست بخورد");
+  assert.deepEqual(validateFlowNodes(out), [], "پس از پاک‌سازی باید معتبر باشد");
+  assert.equal(nodes[0].options[0].choices.length, 1, "ورودی نباید mutate شود");
+});
+
+test("نودهای غیرخدمت و دادهٔ ناقص، normalizeFlowNodes را نمی‌شکنند", () => {
+  assert.equal(normalizeFlowNodes(undefined), undefined);
+  assert.deepEqual(normalizeFlowNodes([]), []);
+  const cat = [{ id: "c", type: "category", categoryId: "abc" }];
+  assert.deepEqual(normalizeFlowNodes(cat), cat);
+  const legacy = [{ id: "s", type: "service", serviceOptions: [{ label: "a", value: "1" }] }];
+  assert.deepEqual(normalizeFlowNodes(legacy), legacy, "نودِ قدیمی دست‌نخورده می‌ماند");
 });

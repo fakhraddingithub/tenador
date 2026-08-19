@@ -298,6 +298,30 @@ export function validateServiceOptions(options) {
 }
 
 /**
+ * حذفِ داده‌ی بی‌ربط به نوعِ ورودی، پیش از اعتبارسنجی و ذخیره.
+ *
+ * ویرایشگر هر آپشنِ تازه را با یک choiceِ خالی می‌سازد (نوعِ پیش‌فرض choice است).
+ * اگر ادمین نوع را به range عوض کند آن choiceِ خالی در state باقی می‌ماند —
+ * عمداً، تا با برگشتن به choice کارِ ادمین از دست نرود. ولی choice برای یک
+ * آپشنِ range معنایی ندارد و `label` در اسکیما required است، پس اگر ذخیره شود
+ * Mongoose خطای اعتبارسنجی می‌دهد. اینجا پیش از ذخیره حذفش می‌کنیم.
+ *
+ * @returns {Array} کپیِ نودها با آپشن‌های پاک‌سازی‌شده
+ */
+export function normalizeFlowNodes(nodes) {
+  if (!Array.isArray(nodes)) return nodes;
+  return nodes.map((node) => {
+    if (node?.type !== "service" || !Array.isArray(node.options)) return node;
+    return {
+      ...node,
+      options: node.options.map((o) =>
+        o?.inputType === "range" ? { ...o, choices: [] } : o
+      ),
+    };
+  });
+}
+
+/**
  * اعتبارسنجیِ نودهای یک فرایند پیش از ذخیره (مرزِ اعتماد در API ادمین).
  * نودهای قدیمی (فقط serviceOptions) نادیده گرفته می‌شوند تا ذخیره‌ی دوباره‌ی
  * فرایندهای موجود بلوکه نشود.
