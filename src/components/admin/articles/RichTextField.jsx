@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { FiAlignCenter, FiAlignLeft, FiAlignRight, FiBold, FiItalic, FiLink, FiType, FiUnderline, FiX } from "react-icons/fi";
+import { FiAlignCenter, FiAlignLeft, FiAlignRight, FiBold, FiCheck, FiItalic, FiLink, FiSlash, FiType, FiUnderline, FiX } from "react-icons/fi";
 import { RICH_TEXT_FONT_SIZES } from "@/lib/sanitizeRichText";
 
 /**
@@ -15,6 +15,23 @@ import { RICH_TEXT_FONT_SIZES } from "@/lib/sanitizeRichText";
 
 const FONT_SIZE_LABELS = ["خیلی کوچک", "کوچک", "عادی", "بزرگ", "خیلی بزرگ"];
 const ALIGNS = [["right", FiAlignRight, "راست‌چین"], ["center", FiAlignCenter, "وسط‌چین"], ["left", FiAlignLeft, "چپ‌چین"]];
+
+// نشانیِ نامعتبر یا با پروتکلِ خطرناک (javascript:, data:) هرگز اعمال نمی‌شود.
+// هم‌تراز با safeArticleUrl سمتِ سرور: مسیرِ نسبی مجاز است، «//» نه. پاک‌سازیِ
+// سرور همین را دوباره چک می‌کند؛ این یکی فقط بازخوردِ فوری به کاربر می‌دهد.
+const LINK_SCHEMES = ["http:", "https:", "mailto:", "tel:"];
+
+function safeLink(raw) {
+  const value = String(raw ?? "").trim();
+  if (!value) return "";
+  if (value.startsWith("/")) return value.startsWith("//") ? "" : value;
+  try {
+    const url = new URL(/^[a-z][a-z0-9+.-]*:/i.test(value) ? value : `https://${value}`);
+    return LINK_SCHEMES.includes(url.protocol) ? url.href : "";
+  } catch {
+    return "";
+  }
+}
 
 const escapeHtml = (value) => String(value ?? "")
   .replace(/[&<>]/g, (char) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;" })[char])
@@ -41,6 +58,7 @@ export default function RichTextField({ value, onChange, align, onAlign, singleL
   const [marks, setMarks] = useState({});
   const [linkOpen, setLinkOpen] = useState(false);
   const [linkUrl, setLinkUrl] = useState("");
+  const [linkInvalid, setLinkInvalid] = useState(false);
 
   // همگام‌سازی فقط وقتی ویرایشگر فوکوس ندارد: حینِ تایپ، React نباید به محتوای
   // contentEditable دست بزند (مکان‌نما می‌پرد)، ولی بازیابیِ یک نسخه‌ی قدیمی یا
@@ -57,22 +75,41 @@ export default function RichTextField({ value, onChange, align, onAlign, singleL
     if (element) onChange({ text: element.innerText, html: element.innerHTML });
   };
 
-  const refreshMarks = () => setMarks({
-    bold: document.queryCommandState("bold"),
-    italic: document.queryCommandState("italic"),
-    underline: document.queryCommandState("underline"),
-  });
-
   const insideEditor = () => {
     const selection = window.getSelection();
     return selection?.rangeCount ? ref.current?.contains(selection.getRangeAt(0).commonAncestorContainer) : false;
   };
 
+  // پیوندی که انتخاب داخلِ آن است (اگر باشد) — پایه‌ی ویرایش و حذفِ پیوند.
+  const currentLink = () => {
+    const selection = window.getSelection();
+    if (!selection?.rangeCount || !insideEditor()) return null;
+    let node = selection.getRangeAt(0).commonAncestorContainer;
+    while (node && node !== ref.current) {
+      if (node.nodeName === "A") return node;
+      node = node.parentNode;
+    }
+    return null;
+  };
+
+  const refreshMarks = () => setMarks({
+    bold: document.queryCommandState("bold"),
+    italic: document.queryCommandState("italic"),
+    underline: document.queryCommandState("underline"),
+    link: Boolean(currentLink()),
+  });
+
   const exec = (command, argument) => {
     if (!insideEditor()) ref.current?.focus();
-    // styleWithCSS باعث می‌شود رنگ به‌جای <font> قدیمی، span با style بدهد —
-    // همان چیزی که واژگانِ پاک‌سازی می‌پذیرد.
-    document.execCommand("styleWithCSS", false, true);
+    // فقط برای رنگ: styleWithCSS باعث می‌شود به‌جای <font> قدیمی، span با style
+    // بدهد — همان چیزی که واژگانِ پاک‌سازی می‌پذیرد.
+    //
+    // برای پررنگ/کج/زیرخط باید خاموش باشد، وگرنه مرورگر
+    // <span style="font-weight:bold"> می‌سازد و چون font-weight در واژگانِ مجاز
+    // نیست، پاک‌سازی استایل را می‌اندازد، span بی‌اثر می‌ماند و richTextValue آن
+    // را «بدونِ قالب‌بندی» می‌شمارد — یعنی data.html اصلاً ذخیره نمی‌شد.
+    // با خاموش بودن، خروجی <b>/<i>/<u> است که هم مجاز است هم معنایی.
+    document.execCommand("styleWithCSS", false, command === "foreColor");
     document.execCommand(command, false, argument);
     emit();
     refreshMarks();
@@ -97,22 +134,44 @@ export default function RichTextField({ value, onChange, align, onAlign, singleL
     emit();
   };
 
-  const openLink = () => {
+  // فوکوس پیش از بازگرداندن محدوده: execCommand روی عنصرِ فوکوس‌دار اثر می‌کند و
+  // در این لحظه فوکوس روی کادرِ نشانی است، نه ویرایشگر.
+  const restoreRange = () => {
+    if (!savedRange.current) return false;
+    ref.current?.focus();
     const selection = window.getSelection();
-    if (!selection?.rangeCount || selection.isCollapsed || !insideEditor()) return;
+    selection.removeAllRanges();
+    selection.addRange(savedRange.current);
+    return true;
+  };
+
+  const openLink = () => {
+    const anchor = currentLink();
+    const selection = window.getSelection();
+    if (anchor) {
+      // روی پیوندِ موجود، انتخاب به کلِ آن گسترش می‌یابد تا تغییرِ نشانی یا حذف
+      // نیمه‌کاره روی بخشی از متنِ پیوند انجام نشود.
+      const range = document.createRange();
+      range.selectNodeContents(anchor);
+      selection.removeAllRanges();
+      selection.addRange(range);
+    } else if (!selection?.rangeCount || selection.isCollapsed || !insideEditor()) return;
     savedRange.current = selection.getRangeAt(0).cloneRange();
-    setLinkUrl("");
+    setLinkUrl(anchor?.getAttribute("href") || "");
+    setLinkInvalid(false);
     setLinkOpen(true);
   };
 
   const applyLink = () => {
-    const url = linkUrl.trim();
+    const url = safeLink(linkUrl);
+    if (!url) return setLinkInvalid(true);
     setLinkOpen(false);
-    if (!url || !savedRange.current) return;
-    const selection = window.getSelection();
-    selection.removeAllRanges();
-    selection.addRange(savedRange.current);
-    exec(url === "-" ? "unlink" : "createLink", url === "-" ? undefined : url);
+    if (restoreRange()) exec("createLink", url);
+  };
+
+  const removeLink = () => {
+    setLinkOpen(false);
+    if (restoreRange()) exec("unlink");
   };
 
   return <div className="border" style={{ borderColor: "var(--admin-border)", borderRadius: "var(--admin-radius)" }}>
@@ -159,19 +218,23 @@ export default function RichTextField({ value, onChange, align, onAlign, singleL
         />
       </label>
 
-      <ToolButton title="پیوند روی متن انتخاب‌شده" onClick={openLink}><FiLink /></ToolButton>
+      <ToolButton title={marks.link ? "ویرایش پیوند" : "پیوند روی متن انتخاب‌شده"} active={marks.link} onClick={openLink}><FiLink /></ToolButton>
       {linkOpen ? <span className="flex items-center gap-1">
         <input
           autoFocus
           dir="ltr"
           value={linkUrl}
-          onChange={(event) => setLinkUrl(event.target.value)}
+          onChange={(event) => { setLinkUrl(event.target.value); setLinkInvalid(false); }}
           onKeyDown={(event) => { if (event.key === "Enter") { event.preventDefault(); applyLink(); } if (event.key === "Escape") setLinkOpen(false); }}
           placeholder="https://…"
+          aria-label="نشانی پیوند"
+          aria-invalid={linkInvalid || undefined}
           className="w-44 border bg-white px-2 py-1 text-[11px] outline-none"
-          style={{ borderColor: "var(--admin-border)", borderRadius: "var(--admin-radius)" }}
+          style={{ borderColor: linkInvalid ? "var(--admin-danger)" : "var(--admin-border)", borderRadius: "var(--admin-radius)" }}
         />
-        <ToolButton title="ثبت پیوند" onClick={applyLink}><FiLink /></ToolButton>
+        <ToolButton title="ثبت پیوند" onClick={applyLink}><FiCheck /></ToolButton>
+        {/* حذفِ پیوند فقط وقتی معنا دارد که انتخاب واقعاً داخلِ یک پیوند باشد. */}
+        {marks.link ? <ToolButton title="حذف پیوند" onClick={removeLink}><FiSlash /></ToolButton> : null}
         <ToolButton title="انصراف" onClick={() => setLinkOpen(false)}><FiX /></ToolButton>
       </span> : null}
     </div>
@@ -196,6 +259,10 @@ export default function RichTextField({ value, onChange, align, onAlign, singleL
         const plain = event.clipboardData.getData("text/plain");
         document.execCommand("insertText", false, singleLine ? plain.replace(/\s*\r?\n\s*/g, " ") : plain);
       }}
+      // چینش سطحِ بلوک است و در style بلوک ذخیره می‌شود، ولی باید همین‌جا هم
+      // دیده شود؛ وگرنه دکمه‌های چینش هیچ اثری در ویرایشگر نشان نمی‌دهند و
+      // کاربر فکر می‌کند کار نمی‌کنند (خروجیِ عمومی از قبل درست بود).
+      style={align ? { textAlign: align } : undefined}
       className={`w-full px-3 py-2.5 text-sm leading-8 outline-none focus:bg-white ${singleLine ? "" : "min-h-24"}`}
     />
   </div>;

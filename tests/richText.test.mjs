@@ -184,3 +184,22 @@ test("htmlِ آلوده پیش از ذخیره پاک می‌شود", () => {
     { text: "نقل", html: "<b>نقل</b>", author: "" },
   );
 });
+
+// رگرسیونِ «قالب‌بندی در ویرایشگر بود ولی در صفحه‌ی عمومی نبود»: ویرایشگر با
+// styleWithCSS=true فرمانِ bold/italic/underline را اجرا می‌کرد و مرورگر
+// <span style="font-weight:bold"> می‌ساخت. این شکل عمداً مجاز نیست (استایلِ
+// دلخواه به DOM نمی‌رسد)، پس پاک‌سازی استایل را می‌انداخت و richTextValue
+// خروجی را «بدونِ قالب‌بندی» می‌دید — یعنی data.html اصلاً ذخیره نمی‌شد.
+// RichTextField حالا این فرمان‌ها را با styleWithCSS=false اجرا می‌کند.
+test("قالب‌بندیِ CSSای ذخیره نمی‌شود ولی شکلِ تگی می‌ماند", () => {
+  for (const css of [
+    '<span style="font-weight: bold;">م</span>',
+    '<span style="font-style: italic;">م</span>',
+    '<span style="text-decoration: underline;">م</span>',
+  ]) {
+    assert.equal(richTextValue(css), "", `باید خالی بماند: ${css}`);
+  }
+  assert.equal(richTextValue("<b>پ</b><i>ک</i><u>ز</u>"), "<b>پ</b><i>ک</i><u>ز</u>");
+  // رنگ تنها حالتی است که span با style در آن معتبر می‌ماند.
+  assert.equal(richTextValue('<span style="color: rgb(170, 71, 37)">ر</span>'), '<span style="color:rgb(170, 71, 37)">ر</span>');
+});
