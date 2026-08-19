@@ -43,7 +43,8 @@ export async function PUT(req, { params }) {
     const flow = await OrderFlow.findByIdAndUpdate(
       flowId,
       { name, description, rootCategory, nodes, edges, isActive },
-      { new: true, runValidators: true }
+      // returnDocument: "after" جایگزینِ new: true است (رفتار یکسان، بدون هشدارِ deprecation)
+      { returnDocument: "after", runValidators: true }
     ).populate("rootCategory", "title name");
 
     if (!flow)
