@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import {
   FiChevronDown,
   FiChevronUp,
@@ -96,6 +96,77 @@ function NumField({ value, onChange, placeholder, label, className = "", allowFl
   );
 }
 
+/** «18000» → «18,000». ارقامِ لاتین (نه fa-IR) چون داخلِ فیلدِ تایپ است. */
+function formatGrouped(input) {
+  const s = String(input ?? "");
+  const negative = s.trim().startsWith("-");
+  const digits = s.replace(/[^\d]/g, "");
+  if (digits === "") return negative ? "-" : "";
+  return (negative ? "-" : "") + Number(digits).toLocaleString("en-US");
+}
+
+const unformat = (s) => {
+  const n = Number(String(s).replace(/[^\d-]/g, ""));
+  return Number.isFinite(n) ? n : 0;
+};
+
+/**
+ * ورودیِ قیمت (تومان) با جداکننده‌ی سه‌رقمی.
+ * type="text" است چون input[type=number] کاما را نمی‌پذیرد. پس از قالب‌بندیِ
+ * دوباره، مکان‌نما بعد از همان تعداد رقمِ قبلی برمی‌گردد تا ویرایشِ وسطِ عدد نپرد.
+ */
+function PriceField({ value, onChange, label, placeholder, className = "", ariaLabel }) {
+  const ref = useRef(null);
+  const [draft, setDraft] = useState(() => (value ? formatGrouped(value) : ""));
+
+  const handle = (e) => {
+    const raw = e.target.value;
+    const caret = e.target.selectionStart ?? raw.length;
+    const digitsBefore = raw.slice(0, caret).replace(/[^\d]/g, "").length;
+
+    const next = formatGrouped(raw);
+    setDraft(next);
+    onChange(unformat(next));
+
+    requestAnimationFrame(() => {
+      const el = ref.current;
+      if (!el) return;
+      let seen = 0;
+      let pos = 0;
+      while (pos < next.length && seen < digitsBefore) {
+        if (/\d/.test(next[pos])) seen += 1;
+        pos += 1;
+      }
+      el.setSelectionRange(pos, pos);
+    });
+  };
+
+  const field = (
+    <input
+      ref={ref}
+      type="text"
+      inputMode="numeric"
+      dir="ltr"
+      value={draft}
+      onChange={handle}
+      placeholder={placeholder}
+      aria-label={ariaLabel || label}
+      className={`rounded-lg px-2.5 py-1.5 text-xs focus:outline-none ${className}`}
+      style={{ ...inputStyle, textAlign: "right" }}
+    />
+  );
+
+  if (!label) return field;
+  return (
+    <label className="block">
+      <span className="mb-1 block text-[10px] font-bold" style={{ color: MUTED }}>
+        {label}
+      </span>
+      {field}
+    </label>
+  );
+}
+
 function ChoiceRow({ choice, index, onChange, onRemove, canRemove }) {
   return (
     <div
@@ -118,18 +189,12 @@ function ChoiceRow({ choice, index, onChange, onRemove, canRemove }) {
           className="min-w-0 flex-1 rounded-lg px-2.5 py-1.5 text-xs focus:outline-none"
           style={inputStyle}
         />
-        <input
-          type="number"
-          step="any"
-          value={choice.priceModifier === 0 ? "" : choice.priceModifier}
-          onChange={(e) => {
-            const n = Number(e.target.value);
-            onChange({ priceModifier: e.target.value === "" || !Number.isFinite(n) ? 0 : n });
-          }}
+        <PriceField
+          value={choice.priceModifier}
+          onChange={(n) => onChange({ priceModifier: n })}
           placeholder="+ تومان"
-          aria-label={`تغییر قیمت گزینه ${index + 1}`}
-          className="w-24 shrink-0 rounded-lg px-2.5 py-1.5 text-xs focus:outline-none"
-          style={inputStyle}
+          ariaLabel={`تغییر قیمت گزینه ${index + 1}`}
+          className="w-24 shrink-0"
         />
       </div>
 
@@ -366,15 +431,17 @@ function OptionCard({
               </label>
 
               <div className="grid grid-cols-2 gap-1.5">
-                <NumField
+                <PriceField
                   label="افزوده‌ی ثابت (تومان)"
                   value={option.range?.basePrice}
                   onChange={(v) => patchRange({ basePrice: v })}
+                  className="w-full"
                 />
-                <NumField
+                <PriceField
                   label="افزوده به‌ازای هر گام"
                   value={option.range?.pricePerStep}
                   onChange={(v) => patchRange({ pricePerStep: v })}
+                  className="w-full"
                 />
               </div>
 

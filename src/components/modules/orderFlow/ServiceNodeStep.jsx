@@ -123,7 +123,8 @@ export default function ServiceNodeStep({
         </p>
       )}
 
-      <div className="space-y-5">
+      {/* دسکتاپ: دو آپشن در هر ردیف — موبایل: تک‌ستونی */}
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         {options.map((option) =>
           option.inputType === "range" ? (
             <RangeOption
@@ -208,13 +209,8 @@ function ChoiceOption({ option, raw, highlightMissing, onPick }) {
     >
       <OptionHeader option={option} />
 
-      <div
-        role="radiogroup"
-        aria-label={option.title}
-        className={`grid gap-2.5 ${
-          hasImages ? "grid-cols-2 sm:grid-cols-3" : "grid-cols-1 sm:grid-cols-2"
-        }`}
-      >
+      {/* گزینه‌ها همیشه زیرِ هم — یکی در هر ردیف */}
+      <div role="radiogroup" aria-label={option.title} className="flex flex-col gap-2">
         {option.choices.map((choice) => {
           const selected = selectedKey === choice.key;
           return (
@@ -224,14 +220,14 @@ function ChoiceOption({ option, raw, highlightMissing, onPick }) {
               role="radio"
               aria-checked={selected}
               onClick={() => onPick({ choiceKey: choice.key })}
-              className={`relative flex flex-col rounded-[8px] border p-2.5 text-right transition ${
+              className={`relative flex w-full items-center gap-2.5 rounded-[8px] border p-2.5 text-right transition ${
                 selected
                   ? "border-[#aa4725] bg-[#ffbf00]/10"
                   : "border-gray-200 hover:border-[#aa4725]/60 hover:bg-gray-50"
               }`}
             >
               {hasImages && (
-                <span className="mb-2 flex h-16 w-full items-center justify-center overflow-hidden rounded-[6px] border border-gray-100 bg-gray-50">
+                <span className="flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-[6px] border border-gray-100 bg-gray-50">
                   {choice.image ? (
                     <img
                       src={choice.image}
@@ -240,34 +236,33 @@ function ChoiceOption({ option, raw, highlightMissing, onPick }) {
                       className="h-full w-full object-contain"
                     />
                   ) : (
-                    <FiImage className="h-5 w-5 text-gray-300" />
+                    <FiImage className="h-4 w-4 text-gray-300" />
                   )}
                 </span>
               )}
 
-              <span className="flex items-start justify-between gap-2">
-                <span className="min-w-0">
-                  <span className="block text-sm font-medium text-[#0d0d0d]">
-                    {choice.label}
-                  </span>
-                  <span
-                    className={`mt-0.5 block text-[11px] ${
-                      choice.priceModifier > 0
-                        ? "text-[#aa4725]"
-                        : choice.priceModifier < 0
-                          ? "text-green-600"
-                          : "text-gray-400"
-                    }`}
-                  >
-                    {priceLabel(choice.priceModifier)}
-                  </span>
+              <span className="min-w-0 flex-1">
+                <span className="block truncate text-sm font-medium text-[#0d0d0d]">
+                  {choice.label}
                 </span>
-                {selected && (
-                  <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-[#aa4725]">
-                    <FiCheck className="h-3 w-3 text-white" />
-                  </span>
-                )}
+                <span
+                  className={`mt-0.5 block text-[11px] ${
+                    choice.priceModifier > 0
+                      ? "text-[#aa4725]"
+                      : choice.priceModifier < 0
+                        ? "text-green-600"
+                        : "text-gray-400"
+                  }`}
+                >
+                  {priceLabel(choice.priceModifier)}
+                </span>
               </span>
+
+              {selected && (
+                <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-[#aa4725]">
+                  <FiCheck className="h-3 w-3 text-white" />
+                </span>
+              )}
             </button>
           );
         })}
@@ -305,13 +300,19 @@ function RangeOption({ option, raw, onPick }) {
         onChange={(e) => onPick({ value: Number(e.target.value) })}
         aria-label={option.title}
         aria-valuetext={rangeLabel(value, unit)}
+        dir="ltr"
         className="h-1.5 w-full cursor-pointer appearance-none rounded-full bg-gray-200 accent-[#aa4725]"
-        style={{ direction: "ltr" }}
       />
 
-      <div className="mt-1.5 flex items-center justify-between text-[11px] text-gray-400">
+      {/* dir="ltr" لازم است: در چیدمانِ RTLِ سایت، justify-between ترتیب را برعکس
+          می‌کند و کمینه سمتِ راست می‌افتد. اسلایدر هم ltr است، پس هر دو هم‌جهت‌اند:
+          کمینه چپ، بیشینه راست. */}
+      <div
+        dir="ltr"
+        className="mt-1.5 flex items-center justify-between text-[11px] text-gray-400"
+      >
         <span>{rangeLabel(min, unit)}</span>
-        <span>گام: {formatNum(step)}</span>
+        <span dir="rtl">گام: {formatNum(step)}</span>
         <span>{rangeLabel(max, unit)}</span>
       </div>
 
