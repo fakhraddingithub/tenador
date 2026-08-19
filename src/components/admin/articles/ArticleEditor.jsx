@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "react-toastify";
-import { FiClock, FiExternalLink, FiEye, FiFileText, FiRotateCcw, FiLink, FiSave, FiSearch, FiSettings } from "react-icons/fi";
+import { FiChevronDown, FiClock, FiExternalLink, FiEye, FiFileText, FiRotateCcw, FiLink, FiSave, FiSearch, FiSettings } from "react-icons/fi";
 import Button from "@/components/admin/Button";
 import ImageUpload from "@/components/admin/ImageUpload";
 import PageHeader from "@/components/admin/PageHeader";
@@ -23,7 +23,32 @@ function isoLocal(value) {
   return new Date(date.getTime() - offset * 60000).toISOString().slice(0, 16);
 }
 function Counter({ value, max }) { const length = String(value || "").length; return <span className={`text-[10px] tabular-nums ${length > max ? "text-red-600" : "text-gray-400"}`}>{length.toLocaleString("fa-IR")} / {max.toLocaleString("fa-IR")}</span>; }
-function Panel({ title, icon, children }) { return <section className="a-card"><header className="flex items-center gap-2 px-4 py-3 border-b text-sm font-black" style={{ borderColor: "var(--admin-border)" }}>{icon}{title}</header><div className="p-4">{children}</div></section>; }
+/**
+ * پنلِ کناری. در موبایل جمع‌شونده است و بسته شروع می‌شود؛ در دسکتاپ (xl به بالا)
+ * همیشه باز است و دکمه‌ی سرصفحه بی‌اثر می‌شود — یعنی رفتارِ دسکتاپ دست‌نخورده.
+ *
+ * باز/بستهٔ دسکتاپ عمداً با CSS کنترل می‌شود نه با matchMedia: با JS، اولین رندرِ
+ * سرور و کلاینت یکی نمی‌شد و پنل‌ها یک لحظه باز و بعد بسته می‌شدند.
+ * ponytail: در موبایلِ بسته، محتوا هنوز با Tab قابلِ رسیدن است (inert بدونِ
+ * دانستنِ نقطه‌ی شکست ممکن نیست)؛ اگر مهم شد، با matchMedia + inert حل می‌شود.
+ */
+function Panel({ title, icon, children }) {
+  const [open, setOpen] = useState(false);
+  return <section className="a-card">
+    <header className="border-b" style={{ borderColor: "var(--admin-border)" }}>
+      <button type="button" onClick={() => setOpen((value) => !value)} aria-expanded={open} className="flex w-full items-center gap-2 px-4 py-3 text-right text-sm font-black focus-visible:outline-2 focus-visible:outline-[var(--color-primary)] xl:pointer-events-none">
+        {icon}{title}
+        <FiChevronDown aria-hidden="true" className={`mr-auto text-gray-400 transition-transform duration-300 xl:hidden ${open ? "rotate-180" : ""}`} />
+      </button>
+    </header>
+    {/* ۰fr→۱fr تنها راهِ انیمیشنِ ارتفاعِ «به‌اندازه‌ی محتوا» بدونِ اندازه‌گیری با
+        JS است. overflow-hidden هم بریدنِ محتوا را انجام می‌دهد هم جلوی سرریزِ
+        افقی را می‌گیرد. */}
+    <div className={`grid transition-[grid-template-rows] duration-300 ease-out xl:grid-rows-[1fr] ${open ? "grid-rows-[1fr]" : "grid-rows-[0fr]"}`}>
+      <div className="overflow-hidden"><div className="p-4">{children}</div></div>
+    </div>
+  </section>;
+}
 
 /** وضعیت‌هایی که محتوا را منتشر نمی‌کنند (هم‌تراز با resolveArticlePatchPermissions). */
 const NON_PUBLISHING_STATUSES = ["draft", "review", "archived"];
@@ -142,10 +167,10 @@ export default function ArticleEditor({ articleId = null }) {
 
   if (loading) return <div className="a-card p-12 text-center text-sm text-gray-400">در حال بارگذاری ویرایشگر...</div>;
   return <>
-    <PageHeader title={articleId ? "ویرایش مقاله" : "مقاله جدید"} subtitle="محتوا را با بلوک‌های مستقل بسازید؛ تغییرات به‌صورت خودکار ذخیره می‌شوند." icon={<FiFileText />} actions={<div className="flex gap-2 flex-wrap"><Button variant="secondary" disabled={!articleId} onClick={() => setHistory(true)} icon={<FiRotateCcw />}>نسخه‌ها</Button><Button variant="secondary" disabled={!articleId} onClick={() => window.open(`/p-admin/admin-articles/${articleId}/preview`, "_blank")} icon={<FiEye />}>پیش‌نمایش</Button><Button loading={saving} onClick={() => save()} icon={<FiSave />}>ذخیره</Button></div>} />
+    <PageHeader title={articleId ? "ویرایش مقاله" : "مقاله جدید"} subtitle="محتوا را با بلوک‌های مستقل بسازید؛ تغییرات به‌صورت خودکار ذخیره می‌شوند." icon={<FiFileText />} actions={<div className="flex gap-2 flex-wrap"><Button variant="secondary" disabled={!articleId} onClick={() => setHistory(true)} icon={<FiRotateCcw />}>نسخه‌ها</Button><Button variant="secondary" disabled={!articleId} onClick={() => window.open(`/p-admin/admin-articles/${articleId}/preview`, "_blank")} icon={<FiEye />}>پیش‌نمایش</Button>{liveUrl ? <Button variant="secondary" onClick={() => window.open(liveUrl, "_blank", "noopener,noreferrer")} icon={<FiExternalLink />}>مشاهده در سایت</Button> : null}<Button loading={saving} onClick={() => save()} icon={<FiSave />}>ذخیره</Button></div>} />
     {/* فضای امن تا نوارِ شناورِ پایین هرگز روی محتوای انتهای صفحه ننشیند. */}
     <div className="grid grid-cols-1 xl:grid-cols-[minmax(0,1fr)_330px] gap-5 items-start pb-24">
-      <main className="space-y-4 min-w-0">
+      <main className="order-2 space-y-4 min-w-0 xl:order-1">
         <section className="a-card p-5 sm:p-8">
           <textarea rows={2} value={article.title} onChange={(e) => update({ title: e.target.value, ...(!articleId && !article.slug ? { slug: normalizeArticleSlug(e.target.value) } : {}) })} placeholder="عنوان مقاله" className="w-full resize-none text-2xl sm:text-3xl font-black leading-relaxed outline-none bg-transparent" />
           <div className="flex items-center gap-2 mt-2 text-xs text-gray-400"><FiLink /><span dir="ltr" className="truncate">{livePath}</span><span className="mr-auto"><Counter value={article.title} max={300} /></span></div>
@@ -153,7 +178,7 @@ export default function ArticleEditor({ articleId = null }) {
         </section>
         <BlockEditor value={article.blocks} onChange={(blocks) => update({ blocks })} />
       </main>
-      <aside className="space-y-4 xl:sticky xl:top-36">
+      <aside className="order-1 space-y-4 xl:order-2 xl:sticky xl:top-36">
         <Panel title="وضعیت انتشار" icon={<FiSettings className="text-[var(--color-primary)]" />}>
           <label className="block text-xs font-bold mb-1.5">وضعیت</label><select value={article.status} onChange={(e) => update({ status: e.target.value })} className={fieldClass} style={{ borderColor: "var(--admin-border)", borderRadius: "var(--admin-radius)" }}><option value="draft">پیش‌نویس</option><option value="review">در انتظار بازبینی</option>{canPublish ? <><option value="scheduled">زمان‌بندی‌شده</option><option value="published">منتشرشده</option></> : null}<option value="archived">آرشیو</option></select>
           {(article.status === "scheduled" || article.publishedAt) ? <label className="block mt-4"><span className="block text-xs font-bold mb-1.5">زمان انتشار</span><input type="datetime-local" value={article.publishedAt} onChange={(e) => update({ publishedAt: e.target.value })} className={fieldClass} style={{ borderColor: "var(--admin-border)", borderRadius: "var(--admin-radius)" }} /></label> : null}
@@ -184,6 +209,8 @@ export default function ArticleEditor({ articleId = null }) {
         کتابخانه‌ی بلوک (۱۰۰) و تاریخچه‌ی نسخه‌ها (۱۱۰) است تا هرگز روی آن‌ها نیفتد. */}
     <div className="a-card fixed bottom-4 left-4 z-40 flex gap-2 p-2 shadow-lg" style={{ paddingBottom: "calc(0.5rem + env(safe-area-inset-bottom))" }}>
       <Button size="sm" variant="secondary" disabled={!articleId} onClick={() => window.open(`/p-admin/admin-articles/${articleId}/preview`, "_blank")} icon={<FiEye />}>پیش‌نمایش</Button>
+      {/* فقط وقتی مقاله واقعاً روی سایت زنده است؛ همان شرطِ لینکِ پنلِ «آدرس و آمار». */}
+      {liveUrl ? <Button size="sm" variant="secondary" onClick={() => window.open(liveUrl, "_blank", "noopener,noreferrer")} icon={<FiExternalLink />}>مشاهده در سایت</Button> : null}
       <Button size="sm" loading={saving} onClick={() => save()} icon={<FiSave />}>ذخیره</Button>
     </div>
     <RevisionHistory articleId={articleId} open={history} onClose={() => setHistory(false)} onRestored={(item) => {

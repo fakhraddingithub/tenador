@@ -98,8 +98,35 @@ function BlockField({ field, value, onChange, align, onAlign }) {
   return <input type={field.kind === "number" ? "number" : field.kind === "url" ? "url" : "text"} value={value ?? ""} onChange={(e) => onChange(field.kind === "number" ? Number(e.target.value) : e.target.value)} className={inputClass} />;
 }
 
+// شماره‌ی بلوک هم موقعیتِ فعلی را نشان می‌دهد هم میان‌بُرِ جابه‌جایی است؛ در
+// مقاله‌ی بلند، کشیدنِ بلوک از موقعیتِ ۱۰۰ به ۳ عملاً شدنی نیست.
+function MoveDialog({ index, total, onMove, onClose }) {
+  const [target, setTarget] = useState(String(index + 1));
+  const submit = (event) => {
+    event.preventDefault();
+    const position = Number(target);
+    if (!Number.isInteger(position) || position < 1 || position > total) return;
+    // onMove همان arrayMove است: شناسه‌ها دست‌نخورده می‌مانند و فقط ترتیب عوض می‌شود.
+    onMove(index, position - 1);
+    onClose();
+  };
+  return <div className="fixed inset-0 z-[100] bg-black/30 flex items-center justify-center p-4" onMouseDown={onClose}>
+    <form role="dialog" aria-modal="true" aria-label="جابجایی بلوک" onSubmit={submit} onKeyDown={(e) => { if (e.key === "Escape") onClose(); }} onMouseDown={(e) => e.stopPropagation()} className="a-card w-full max-w-xs p-4 space-y-3 shadow-xl">
+      <p className="text-sm">موقعیت فعلی: <strong>{index + 1}</strong> از {total}</p>
+      <label className="block text-xs font-bold text-gray-600">انتقال به موقعیت
+        <input autoFocus type="number" min={1} max={total} value={target} onChange={(e) => setTarget(e.target.value)} className={`${inputClass} mt-1.5`} />
+      </label>
+      <div className="flex gap-2">
+        <button type="submit" className="flex-1 py-2 text-xs font-bold text-white bg-[var(--color-primary)]" style={{ borderRadius: "var(--admin-radius)" }}>انتقال</button>
+        <button type="button" onClick={onClose} className="flex-1 py-2 text-xs font-bold border" style={{ borderColor: "var(--admin-border)", borderRadius: "var(--admin-radius)" }}>انصراف</button>
+      </div>
+    </form>
+  </div>;
+}
+
 function SortableBlock({ block, index, total, onUpdate, onStyle, onLayout, onRemove, onDuplicate, onMove }) {
   const [open, setOpen] = useState(true);
+  const [moveOpen, setMoveOpen] = useState(false);
   const definition = ARTICLE_BLOCKS[block.type];
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: block.id });
   const Icon = definition?.icon || FiMenu;
@@ -112,7 +139,11 @@ function SortableBlock({ block, index, total, onUpdate, onStyle, onLayout, onRem
   };
   return <section ref={setNodeRef} style={{ transform: CSS.Transform.toString(transform), transition, opacity: isDragging ? .55 : 1 }} className="a-card group">
     <header className="flex items-center gap-2 px-3 py-2.5 border-b" style={{ borderColor: "var(--admin-border)" }}>
-      <button type="button" {...attributes} {...listeners} className="p-1.5 cursor-grab text-gray-400 hover:text-[var(--color-primary)]" aria-label="جابجایی بلوک"><FiMenu /></button>
+      <button type="button" onClick={() => setMoveOpen(true)} className="min-w-6 h-6 px-1.5 border text-[11px] font-black text-gray-500 hover:border-[var(--color-primary)] hover:text-[var(--color-primary)]" style={{ borderColor: "var(--admin-border)", borderRadius: "var(--admin-radius)" }} aria-label={`بلوک ${index + 1} از ${total} — تغییر موقعیت`}>{index + 1}</button>
+      {/* touch-none لازم است: بدونِ آن مرورگر لمسِ روی دستگیره را برای اسکرول
+          برمی‌دارد و pointercancel می‌دهد؛ dnd-kit خودش این را ست نمی‌کند و
+          همین علتِ نامطمئن بودنِ کشیدن در موبایل بود. */}
+      <button type="button" {...attributes} {...listeners} className="touch-none p-2 cursor-grab text-gray-400 hover:text-[var(--color-primary)]" aria-label="جابجایی بلوک"><FiMenu /></button>
       <Icon className="text-[var(--color-primary)]" /><strong className="text-sm">{definition?.label || block.type}</strong>
       <div className="mr-auto flex items-center gap-1">
         <button type="button" onClick={() => onMove(index, index - 1)} disabled={index === 0} className="p-1.5 text-gray-400 disabled:opacity-20" aria-label="انتقال به بالا"><FiChevronUp /></button>
@@ -123,6 +154,7 @@ function SortableBlock({ block, index, total, onUpdate, onStyle, onLayout, onRem
       </div>
     </header>
     {open ? <div className="p-4 space-y-4"><BlockStylePanel type={block.type} style={block.style} layout={block.layout} onChange={onStyle} onLayout={onLayout} />{definition?.fields.length ? definition.fields.map((field) => { const Wrapper = fieldWrapper(field.kind); return <Wrapper key={field.key} className="block"><span className="block text-xs font-bold mb-1.5 text-gray-600">{field.label}</span><BlockField field={field} value={field.kind === "table" || field.kind === "rich" ? block.data : block.data?.[field.key]} onChange={(next) => onUpdate(field.kind === "table" || field.kind === "image" || field.kind === "rich" ? next : { [field.key]: next })} align={block.style?.align} onAlign={setAlign} /></Wrapper>; }) : <p className="text-xs text-gray-400 text-center py-3">این بلوک تنظیمات دیگری ندارد.</p>}</div> : null}
+    {moveOpen ? <MoveDialog index={index} total={total} onMove={onMove} onClose={() => setMoveOpen(false)} /> : null}
   </section>;
 }
 
