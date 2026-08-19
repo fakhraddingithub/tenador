@@ -413,6 +413,8 @@ export default function OrderFlowBuilder({
           key={editingStep.id}
           node={editingStep}
           categories={categories}
+          // فقط مراحلِ قبلی می‌توانند مرجعِ شرط باشند (جلوگیری از وابستگیِ حلقوی)
+          previousSteps={steps.slice(0, steps.findIndex((s) => s.id === editingStep.id))}
           onUpdate={(updates) => updateStep(editingStep.id, updates)}
           onClose={() => setEditingId(null)}
         />

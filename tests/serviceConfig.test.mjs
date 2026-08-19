@@ -231,3 +231,23 @@ test("نودهای غیرخدمت و دادهٔ ناقص، normalizeFlowNodes ر
   const legacy = [{ id: "s", type: "service", serviceOptions: [{ label: "a", value: "1" }] }];
   assert.deepEqual(normalizeFlowNodes(legacy), legacy, "نودِ قدیمی دست‌نخورده می‌ماند");
 });
+
+test("آپشنِ range فقط وقتی قیمت می‌دهد که کاربر انتخابش کرده باشد", () => {
+  // کاربر فقط قطر را انتخاب کرده و به تنش دست نزده → افزوده‌ی ثابتِ تنش نباید بیاید
+  const onlyGauge = resolveServiceSelection(node, sel([{ optionKey: "gauge", choiceKey: "125" }]));
+  assert.deepEqual(onlyGauge.errors, []);
+  assert.equal(onlyGauge.addonToman, 0, "تنشِ انتخاب‌نشده نباید basePrice اضافه کند");
+  assert.equal(onlyGauge.config.length, 1);
+
+  // حالا انتخابش می‌کند
+  const withTension = resolveServiceSelection(
+    node,
+    sel([{ optionKey: "gauge", choiceKey: "125" }, { optionKey: "tension", value: 18 }])
+  );
+  assert.equal(withTension.addonToman, 5000, "با انتخاب، افزوده‌ی ثابت اعمال می‌شود");
+
+  // و دوباره حذفش می‌کند → قیمت به حالت قبل برمی‌گردد
+  const removed = resolveServiceSelection(node, sel([{ optionKey: "gauge", choiceKey: "125" }]));
+  assert.equal(removed.addonToman, 0);
+  assert.equal(removed.config.some((c) => c.optionKey === "tension"), false);
+});

@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { FiX, FiChevronLeft, FiChevronRight, FiCheck, FiSettings, FiTag } from "react-icons/fi";
 import { toast } from "react-toastify";
 import { buildStepSequence } from "@/lib/flowTraversal";
+import { resolveVisibleSteps } from "@/lib/flowConditions";
 import ServiceNodeStep from "./ServiceNodeStep";
 import CategoryNodeStep from "./CategoryNodeStep";
 
@@ -45,9 +46,19 @@ export default function OrderFlowModal({
   }, [product]);
 
   // دنباله‌ی مرتب مراحل
-  const steps = useMemo(() => (flow ? buildStepSequence(flow) : []), [flow]);
-  const currentNode = steps[currentIndex] || null;
-  const isLastStep = steps.length > 0 && currentIndex === steps.length - 1;
+  // مراحلِ مرئی بر اساس انتخاب‌های فعلی. مرحله‌ای که شرطش برقرار نیست اصلاً
+  // نمایش داده نمی‌شود و انتخابش هم به سبد نمی‌رود (سرور دوباره همین را اعمال می‌کند).
+  const allSteps = useMemo(() => (flow ? buildStepSequence(flow) : []), [flow]);
+  const steps = useMemo(
+    () => resolveVisibleSteps(allSteps, selections).visibleNodes,
+    [allSteps, selections]
+  );
+
+  // با ظاهر/ناپدید شدنِ مراحل، طولِ لیست عوض می‌شود. ایندکس در همان رندر مهار
+  // می‌شود تا نه از انتها بزند بیرون و نه لازم باشد در افکت state ست کنیم.
+  const safeIndex = steps.length === 0 ? 0 : Math.min(currentIndex, steps.length - 1);
+  const currentNode = steps[safeIndex] || null;
+  const isLastStep = steps.length > 0 && safeIndex === steps.length - 1;
 
   // ─── تکمیل نهایی: صدا زدن onConfirm و بستن مودال ───
   const handleComplete = useCallback(
@@ -115,7 +126,7 @@ export default function OrderFlowModal({
   useEffect(() => {
     setCurrentIncomplete(false);
     setShowStepError(false);
-  }, [currentIndex]);
+  }, [safeIndex]);
 
   if (!isOpen) return null;
 
@@ -138,7 +149,7 @@ export default function OrderFlowModal({
     if (isLastStep) {
       finalize();
     } else {
-      setCurrentIndex((i) => Math.min(i + 1, steps.length - 1));
+      setCurrentIndex(Math.min(safeIndex + 1, steps.length - 1));
     }
   };
 
@@ -151,7 +162,7 @@ export default function OrderFlowModal({
     advance();
   };
 
-  const goBack = () => setCurrentIndex((i) => Math.max(i - 1, 0));
+  const goBack = () => setCurrentIndex(Math.max(safeIndex - 1, 0));
 
   const skipStep = () => {
     if (currentNode) {
@@ -173,7 +184,7 @@ export default function OrderFlowModal({
   };
 
   const progress =
-    steps.length > 0 ? ((currentIndex + 1) / steps.length) * 100 : 0;
+    steps.length > 0 ? ((safeIndex + 1) / steps.length) * 100 : 0;
 
   return (
     <div
@@ -208,7 +219,7 @@ export default function OrderFlowModal({
           <div className="px-5 pt-4 shrink-0">
             <div className="flex items-center justify-between text-xs text-gray-500 mb-2">
               <span>
-                مرحله {currentIndex + 1} از {steps.length}
+                مرحله {safeIndex + 1} از {steps.length}
               </span>
               {currentNode && (
                 <span className="flex items-center gap-1">
@@ -259,7 +270,7 @@ export default function OrderFlowModal({
           <div className="flex items-center justify-between gap-3 px-5 py-4 border-t border-gray-200 shrink-0">
             <button
               onClick={goBack}
-              disabled={currentIndex === 0}
+              disabled={safeIndex === 0}
               className="flex items-center gap-1 px-4 py-2.5 rounded-[6px] text-sm text-gray-600 hover:bg-gray-100 transition disabled:opacity-40 disabled:cursor-not-allowed"
             >
               <FiChevronRight className="w-4 h-4" />

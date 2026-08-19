@@ -49,6 +49,19 @@ const ServiceOptionSchema = new mongoose.Schema(
   { _id: false }
 );
 
+// یک شرطِ نمایشِ مرحله — منطقِ ارزیابی در src/lib/flowConditions.js است.
+// نوعِ شرط عمداً enum نیست تا افزودنِ نوعِ جدید نیازی به تغییرِ اسکیما نداشته باشد؛
+// اعتبارسنجیِ نوع در validateNodeConditions انجام می‌شود.
+const FlowConditionSchema = new mongoose.Schema(
+  {
+    type: { type: String, required: true, trim: true }, // answered | notAnswered | choiceEquals | ...
+    nodeId: { type: String, required: true, trim: true }, // مرحله‌ی مرجع (همیشه یکی از مراحلِ قبلی)
+    optionKey: { type: String, default: null }, // برای choiceEquals
+    choiceKey: { type: String, default: null }, // برای choiceEquals
+  },
+  { _id: false }
+);
+
 // یک نود در گراف فرایند سفارش
 const FlowNodeSchema = new mongoose.Schema(
   {
@@ -76,6 +89,12 @@ const FlowNodeSchema = new mongoose.Schema(
     // ⚠️ قدیمی — فقط برای فرایندهای ذخیره‌شده‌ی قبلی. با ذخیره‌ی دوباره‌ی نود
     // در پنل ادمین به options تبدیل می‌شود. رجوع به src/lib/serviceConfig.js
     serviceOptions: { type: [OptionSchema], default: [] },
+
+    // نمایشِ شرطی — خالی یعنی «همیشه دیده شود» (رفتارِ همه‌ی فرایندهای موجود)
+    visibleWhen: {
+      mode: { type: String, enum: ["all", "any"], default: "all" },
+      conditions: { type: [FlowConditionSchema], default: [] },
+    },
 
     // موقعیت در گراف
     position: {

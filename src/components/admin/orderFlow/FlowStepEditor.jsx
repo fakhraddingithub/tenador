@@ -16,6 +16,7 @@ import { FiGrid, FiTool, FiX } from "react-icons/fi";
 import { getServiceOptions } from "@/lib/serviceConfig";
 import { getNodeCategoryId } from "./FlowStepCard";
 import ServiceOptionsEditor from "./ServiceOptionsEditor";
+import StepConditionsEditor from "./StepConditionsEditor";
 
 const BORDER = "#e8e4df";
 const MUTED = "#9c9189";
@@ -52,7 +53,13 @@ function Toggle({ checked, onChange, color, label, id }) {
   );
 }
 
-export default function FlowStepEditor({ node, categories = [], onUpdate, onClose }) {
+export default function FlowStepEditor({
+  node,
+  categories = [],
+  previousSteps = [],
+  onUpdate,
+  onClose,
+}) {
   const isCategory = node.type === "category";
   const color = isCategory ? CATEGORY_COLOR : SERVICE_COLOR;
   const TypeIcon = isCategory ? FiGrid : FiTool;
@@ -186,6 +193,14 @@ export default function FlowStepEditor({ node, categories = [], onUpdate, onClos
             color="var(--color-primary, #004225)"
             label="انتخاب اجباری"
           />
+
+          <div className="rounded-xl p-3" style={{ border: `1px solid ${BORDER}` }}>
+            <StepConditionsEditor
+              visibleWhen={node.visibleWhen}
+              previousSteps={previousSteps}
+              onChange={(visibleWhen) => onUpdate({ visibleWhen })}
+            />
+          </div>
 
           {isCategory && (
             <>

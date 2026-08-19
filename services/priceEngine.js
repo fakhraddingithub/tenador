@@ -24,6 +24,8 @@ import Order from "base/models/Order";
 import QuantityDiscount from "base/models/QuantityDiscount";
 import { ruleBrandFilterPasses } from "base/utils/discountMatch";
 import { resolveServiceSelection } from "@/lib/serviceConfig";
+import { filterVisibleSelections } from "@/lib/flowConditions";
+import { buildStepSequence } from "@/lib/flowTraversal";
 
 // ---------------------------------------------------------------------------
 // 1. نرخ ارز
@@ -620,7 +622,13 @@ export async function buildFlowAddonResolver(cartItems, productMap, rate) {
     const enriched = [];
     const errors = [];
 
-    for (const sel of ci.flowSelections) {
+    // مرحله‌ی نامرئی (شرطش برقرار نیست) هیچ انتخاب و هیچ قیمتی به سفارش نمی‌دهد.
+    // این تصمیم اینجا هم گرفته می‌شود، نه فقط در UI — کلاینت قابلِ اعتماد نیست.
+    const { kept } = flow
+      ? filterVisibleSelections(buildStepSequence(flow), ci.flowSelections)
+      : { kept: ci.flowSelections };
+
+    for (const sel of kept) {
       if (sel?.nodeType === "service") {
         const node = flow?.nodes?.find((n) => n.id === sel.nodeId && n.type === "service");
         // تنها مرجعِ قیمت و اعتبارسنجیِ خدمت — قیمتِ کلاینت هرگز خوانده نمی‌شود

@@ -4,6 +4,7 @@ import OrderFlow from "base/models/OrderFlow";
 
 import requireAdminPermission from "@/lib/requireAdminPermission";
 import { normalizeFlowNodes, validateFlowNodes } from "@/lib/serviceConfig";
+import { validateNodeConditions } from "@/lib/flowConditions";
 
 export async function GET(req) {
   const { denied } = await requireAdminPermission("orderFlows.view");
@@ -39,7 +40,7 @@ export async function POST(req) {
       );
     }
 
-    const optionErrors = validateFlowNodes(nodes);
+    const optionErrors = [...validateFlowNodes(nodes), ...validateNodeConditions(nodes)];
     if (optionErrors.length > 0) {
       return NextResponse.json({ message: optionErrors.join(" • ") }, { status: 400 });
     }

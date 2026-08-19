@@ -44,9 +44,10 @@ export default function ServiceNodeStep({
       initial[c.optionKey] =
         c.choiceKey != null ? { choiceKey: String(c.choiceKey) } : { value: Number(c.value) };
     }
-    // range بدون مقدار → کمینه به‌عنوان پیش‌فرض
+    // آپشنِ range به‌صورت پیش‌فرض وارد سفارش نمی‌شود؛ کاربر باید خودش فعالش کند.
+    // استثنا: آپشنِ اجباری که به‌هرحال باید مقدار داشته باشد.
     for (const o of options) {
-      if (o.inputType === "range" && initial[o.key] === undefined) {
+      if (o.inputType === "range" && o.required && initial[o.key] === undefined) {
         initial[o.key] = { value: o.range.min };
       }
     }
@@ -78,6 +79,14 @@ export default function ServiceNodeStep({
 
   const apply = (optionKey, raw) => {
     const next = { ...picks, [optionKey]: raw };
+    setPicks(next);
+    onChange(buildSelection(next));
+  };
+
+  // حذفِ کاملِ یک آپشن از انتخاب — مقدار و قیمتش از سفارش خارج می‌شود
+  const clear = (optionKey) => {
+    const next = { ...picks };
+    delete next[optionKey];
     setPicks(next);
     onChange(buildSelection(next));
   };
@@ -132,6 +141,7 @@ export default function ServiceNodeStep({
               option={option}
               raw={picks[option.key]}
               onPick={(raw) => apply(option.key, raw)}
+              onClear={() => clear(option.key)}
             />
           ) : (
             <ChoiceOption
@@ -272,15 +282,52 @@ function ChoiceOption({ option, raw, highlightMissing, onPick }) {
 }
 
 /* ─── نوعِ Range ─── */
-function RangeOption({ option, raw, onPick }) {
+function RangeOption({ option, raw, onPick, onClear }) {
   const { min, max, step, unit } = option.range;
+  // raw === undefined یعنی کاربر این آپشن را انتخاب نکرده → در سفارش نیست
+  const enabled = raw !== undefined;
   const value = Number.isFinite(Number(raw?.value)) ? Number(raw.value) : min;
   const { entry } = resolveOption(option, { value });
-  const addon = entry?.priceModifier ?? 0;
+  const addon = enabled ? (entry?.priceModifier ?? 0) : 0;
+
+  // آپشنِ اجباری همیشه فعال است و نمی‌توان حذفش کرد
+  const toggle = () => {
+    if (option.required) return;
+    if (enabled) onClear();
+    else onPick({ value: min });
+  };
 
   return (
-    <div className="rounded-[8px] border border-gray-200 p-3.5">
-      <OptionHeader option={option} valueText={rangeLabel(value, unit)} />
+    <div
+      className={`rounded-[8px] border p-3.5 transition ${
+        enabled ? "border-[#aa4725]/40 bg-[#ffbf00]/[0.04]" : "border-gray-200"
+      }`}
+    >
+      {!option.required && (
+        <label className="mb-2 flex cursor-pointer items-center gap-2">
+          <input
+            type="checkbox"
+            checked={enabled}
+            onChange={toggle}
+            className="h-4 w-4 shrink-0 accent-[#aa4725]"
+          />
+          <span className="text-xs font-medium text-gray-600">
+            {enabled ? "انتخاب شده" : "می‌خواهم این مورد را اضافه کنم"}
+          </span>
+        </label>
+      )}
+
+      <OptionHeader
+        option={option}
+        valueText={enabled ? rangeLabel(value, unit) : null}
+      />
+
+      {!enabled ? (
+        <p className="text-[11px] text-gray-400">
+          تا زمانی که این گزینه را انتخاب نکنید، به سفارش و مبلغ اضافه نمی‌شود.
+        </p>
+      ) : (
+      <>
 
       {option.image && (
         <img
@@ -323,6 +370,8 @@ function RangeOption({ option, raw, onPick }) {
       >
         {priceLabel(addon)}
       </p>
+      </>
+      )}
     </div>
   );
 }
