@@ -39,6 +39,68 @@ export default function OrderFlowSelectionsView({ flowSelections }) {
           const productName =
             sel.selectedProductName || sel.selectedProduct?.name || "";
 
+          // اسنپ‌شاتِ پیکربندیِ خدمت — همیشه از خودِ سفارش خوانده می‌شود،
+          // نه از تعریفِ فعلیِ فرایند. تغییرِ بعدیِ خدمت این سفارش را عوض نمی‌کند.
+          const config = Array.isArray(sel.serviceConfig) ? sel.serviceConfig : [];
+
+          if (isService && config.length > 0) {
+            return (
+              <div key={`${sel.nodeId || idx}-${idx}`} className="space-y-2">
+                <div className="flex items-center justify-between gap-2">
+                  <span className="flex items-center gap-1.5 text-xs font-bold text-gray-800">
+                    <FiSettings className="w-3.5 h-3.5 text-[#aa4725]" />
+                    {sel.nodeLabel}
+                    {sel.serviceName && (
+                      <span className="font-normal text-gray-400">
+                        · {sel.serviceName}
+                      </span>
+                    )}
+                  </span>
+                  {addonText && (
+                    <span className="shrink-0 text-[11px] font-bold text-[#aa4725] bg-[#aa4725]/10 px-2 py-1 rounded-lg">
+                      {addonText}
+                    </span>
+                  )}
+                </div>
+
+                <div className="space-y-1.5 border-r-2 border-[#aa4725]/20 pr-2.5">
+                  {config.map((c, i) => (
+                    <div
+                      key={`${c.optionKey}-${i}`}
+                      className="flex items-center gap-2"
+                    >
+                      {c.image ? (
+                        <img
+                          src={c.image}
+                          alt={c.label || ""}
+                          loading="lazy"
+                          className="w-8 h-8 rounded-lg object-cover border border-gray-200 bg-white shrink-0"
+                        />
+                      ) : (
+                        <span className="w-8 h-8 rounded-lg bg-white border border-gray-200 flex items-center justify-center shrink-0">
+                          <FiSettings className="w-3 h-3 text-[#aa4725]/60" />
+                        </span>
+                      )}
+                      <div className="flex-1 min-w-0">
+                        <span className="block text-[10px] text-gray-400 leading-tight">
+                          {c.title}
+                        </span>
+                        <span className="block text-xs font-semibold text-gray-800 truncate leading-snug">
+                          {c.label || "—"}
+                        </span>
+                      </div>
+                      {Number(c.priceModifier) > 0 && (
+                        <span className="shrink-0 text-[10px] font-medium text-gray-500">
+                          + {formatToman(c.priceModifier)} تومان
+                        </span>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            );
+          }
+
           const valueText = isService
             ? sel.serviceLabel
             : `${productName}${

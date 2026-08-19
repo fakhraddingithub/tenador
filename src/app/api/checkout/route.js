@@ -56,12 +56,28 @@ import {
 // تبدیل انتخاب فرایندِ غنی‌شده (از پرایس‌انجین) به شکل ذخیره‌سازی در سفارش
 function mapFlowSelectionToOrder(sel) {
   if (sel?.nodeType === "service") {
+    // اسنپ‌شاتِ کامل و denormalized: پس از ثبت، تغییرِ تعریفِ خدمت نباید
+    // این سفارش را عوض کند (نه برچسب، نه واحد، نه تصویر، نه قیمت).
+    const config = Array.isArray(sel.serviceConfig) ? sel.serviceConfig : [];
     return {
       nodeId: sel.nodeId,
       nodeLabel: sel.nodeLabel ?? "",
       nodeType: "service",
-      serviceLabel: sel.serviceOption?.label ?? "",
-      serviceValue: String(sel.serviceOption?.value ?? ""),
+      serviceName: sel.serviceName ?? "",
+      serviceConfig: config.map((c) => ({
+        optionKey: String(c.optionKey ?? ""),
+        title: c.title ?? "",
+        inputType: c.inputType ?? "choice",
+        ...(c.choiceKey != null ? { choiceKey: String(c.choiceKey) } : {}),
+        ...(c.value != null ? { value: Number(c.value) } : {}),
+        ...(c.unit ? { unit: c.unit } : {}),
+        label: c.label ?? "",
+        image: c.image ?? null,
+        priceModifier: Number(c.priceModifier) || 0,
+      })),
+      // برای خوانا ماندنِ سفارش در جاهایی که فقط یک خط متن می‌خواهند
+      serviceLabel: config.map((c) => `${c.title}: ${c.label}`).join("، "),
+      serviceValue: "",
       addonToman: Number(sel.addonToman) || 0,
     };
   }
@@ -256,6 +272,14 @@ export async function POST(req) {
 
     if (!priceResult.items?.length) {
       return badRequest("هیچ محصول معتبری در سبد خرید یافت نشد");
+    }
+
+    // پیکربندیِ خدمت باید در لحظه‌ی ثبت هم با تعریفِ فعلی بخواند؛ در غیر این صورت
+    // سفارش ثبت نمی‌شود (قیمت/گزینه‌ی نامعتبر هرگز وارد سفارش نمی‌شود).
+    if (priceResult.flowConfigErrors?.length) {
+      return badRequest(
+        `پیکربندی خدمات معتبر نیست: ${priceResult.flowConfigErrors.join(" ")}`,
+      );
     }
 
     if (priceResult.finalTotalToman <= 0) {

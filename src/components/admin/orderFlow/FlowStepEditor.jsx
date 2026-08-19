@@ -11,15 +11,11 @@
  * ذخیره‌ی نهایی همچنان با دکمه‌ی «ذخیره فرایند» انجام می‌شود.
  */
 
-import { useEffect, useRef, useState } from "react";
-import AdminInput from "@/components/admin/AdminInput";
-import {
-  FiGrid,
-  FiPlus,
-  FiTool,
-  FiX,
-} from "react-icons/fi";
+import { useEffect, useRef } from "react";
+import { FiGrid, FiTool, FiX } from "react-icons/fi";
+import { getServiceOptions } from "@/lib/serviceConfig";
 import { getNodeCategoryId } from "./FlowStepCard";
+import ServiceOptionsEditor from "./ServiceOptionsEditor";
 
 const BORDER = "#e8e4df";
 const MUTED = "#9c9189";
@@ -56,99 +52,30 @@ function Toggle({ checked, onChange, color, label, id }) {
   );
 }
 
-/**
- * ردیفِ یک گزینه‌ی خدمت.
- * مقدارِ «تغییر قیمت» یک draft محلیِ رشته‌ای دارد تا بتوان علامتِ منفی را تایپ
- * کرد؛ چیزی که به state می‌رود همیشه یک عددِ معتبر است.
- */
-function OptionRow({ option, index, onChange, onRemove }) {
-  const [priceDraft, setPriceDraft] = useState(
-    option.priceModifier ? String(option.priceModifier) : ""
-  );
-
-  const handlePrice = (e) => {
-    const raw = e.target.value;
-    setPriceDraft(raw);
-    const parsed = Number(raw);
-    onChange("priceModifier", raw === "" || !Number.isFinite(parsed) ? 0 : parsed);
-  };
-
-  return (
-    <div className="rounded-xl p-2.5" style={{ background: "#f8f9fb", border: `1px solid ${BORDER}` }}>
-      <div className="mb-2 flex items-center gap-1.5">
-        <input
-          type="text"
-          value={option.label || ""}
-          onChange={(e) => onChange("label", e.target.value)}
-          className="flex-1 rounded-lg px-2.5 py-1.5 text-xs focus:outline-none"
-          style={{ ...inputStyle, background: "#fff" }}
-          placeholder="عنوان آپشن (مثلا: تنش ۲۵)"
-          aria-label={`عنوان آپشن ${index + 1}`}
-        />
-        <button
-          type="button"
-          onClick={onRemove}
-          className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg text-red-400 transition-colors hover:bg-red-50"
-          aria-label={`حذف آپشن ${index + 1}`}
-        >
-          <FiX size={13} />
-        </button>
-      </div>
-
-      <div className="flex gap-1.5">
-        <input
-          type="text"
-          value={option.value || ""}
-          onChange={(e) => onChange("value", e.target.value)}
-          className="min-w-0 flex-1 rounded-lg px-2.5 py-1.5 text-xs focus:outline-none"
-          style={{ ...inputStyle, background: "#fff" }}
-          placeholder="مقدار (مثلا: 25)"
-          aria-label={`مقدار آپشن ${index + 1}`}
-        />
-        <AdminInput
-          type="number"
-          value={priceDraft}
-          onChange={handlePrice}
-          className="w-28 rounded-lg px-2.5 py-1.5 text-xs focus:outline-none"
-          style={{ ...inputStyle, background: "#fff" }}
-          placeholder="تغییر قیمت"
-          aria-label={`تغییر قیمت آپشن ${index + 1}`}
-        />
-      </div>
-
-      <p className="mt-1.5 text-[10px]" style={{ color: MUTED }}>
-        تغییر قیمت (تومان): مثبت = افزایش، منفی = کاهش
-      </p>
-    </div>
-  );
-}
-
 export default function FlowStepEditor({ node, categories = [], onUpdate, onClose }) {
   const isCategory = node.type === "category";
   const color = isCategory ? CATEGORY_COLOR : SERVICE_COLOR;
   const TypeIcon = isCategory ? FiGrid : FiTool;
 
-  // با افزودن/حذفِ آپشن، ردیف‌ها دوباره mount می‌شوند تا draftهای محلی
-  // (تغییر قیمت) با ایندکسِ جابه‌جاشده قاطی نشوند.
-  const [optionsRevision, setOptionsRevision] = useState(0);
+  const options = node.options || [];
 
-  const options = node.serviceOptions || [];
-
-  const setOptions = (next) => onUpdate({ serviceOptions: next });
-
-  const addOption = () => {
-    setOptions([...options, { label: "", value: "", priceModifier: 0 }]);
-    setOptionsRevision((r) => r + 1);
-  };
-
-  const removeOption = (index) => {
-    setOptions(options.filter((_, i) => i !== index));
-    setOptionsRevision((r) => r + 1);
-  };
-
-  const updateOption = (index, field, value) => {
-    setOptions(options.map((opt, i) => (i === index ? { ...opt, [field]: value } : opt)));
-  };
+  // مهاجرتِ نرمِ نودهای قدیمی: serviceOptions (برچسب/مقدار/قیمت) به یک آپشنِ
+  // انتخابی تبدیل می‌شود. تا وقتی ادمین فرایند را ذخیره نکند چیزی در دیتابیس
+  // عوض نمی‌شود، و سبد/سفارش‌های قبلی هم دست‌نخورده می‌مانند.
+  const migrated = useRef(false);
+  useEffect(() => {
+    if (migrated.current || isCategory) return;
+    migrated.current = true;
+    if (options.length > 0 || !(node.serviceOptions?.length > 0)) return;
+    onUpdate({
+      options: getServiceOptions(node).map((o) => ({
+        ...o,
+        choices: o.choices.map((c) => ({ ...c })),
+      })),
+      serviceOptions: [],
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // Escape برای بستن
   useEffect(() => {
@@ -323,47 +250,10 @@ export default function FlowStepEditor({ node, categories = [], onUpdate, onClos
                 />
               </div>
 
-              <div>
-                <div className="mb-2 flex items-center justify-between">
-                  <span className="text-xs font-bold" style={{ color: MUTED }}>
-                    آپشن‌ها ({options.length})
-                  </span>
-                  <button
-                    type="button"
-                    onClick={addOption}
-                    className="flex items-center gap-1 rounded-lg px-2.5 py-1.5 text-xs font-bold transition-opacity hover:opacity-85"
-                    style={{
-                      background: `${SERVICE_COLOR}15`,
-                      color: SERVICE_COLOR,
-                      border: `1px solid ${SERVICE_COLOR}30`,
-                    }}
-                  >
-                    <FiPlus size={12} />
-                    افزودن آپشن
-                  </button>
-                </div>
-
-                {options.length === 0 ? (
-                  <div
-                    className="rounded-xl py-5 text-center text-xs"
-                    style={{ background: "#f8f9fb", color: MUTED, border: `1px dashed ${BORDER}` }}
-                  >
-                    هنوز آپشنی تعریف نشده
-                  </div>
-                ) : (
-                  <div className="space-y-2">
-                    {options.map((opt, i) => (
-                      <OptionRow
-                        key={`opt-${optionsRevision}-${i}`}
-                        option={opt}
-                        index={i}
-                        onChange={(field, value) => updateOption(i, field, value)}
-                        onRemove={() => removeOption(i)}
-                      />
-                    ))}
-                  </div>
-                )}
-              </div>
+              <ServiceOptionsEditor
+                options={options}
+                onChange={(next) => onUpdate({ options: next, serviceOptions: [] })}
+              />
             </>
           )}
         </div>

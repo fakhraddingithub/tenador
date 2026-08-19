@@ -305,7 +305,15 @@ export default function OrderFlowModal({
  */
 function StepBody({ node, value, onChange, showError, onIncompleteChange }) {
   if (node.type === "service") {
-    return <ServiceNodeStep node={node} value={value} onChange={onChange} />;
+    return (
+      <ServiceNodeStep
+        node={node}
+        value={value}
+        onChange={onChange}
+        showError={showError}
+        onIncompleteChange={onIncompleteChange}
+      />
+    );
   }
   if (node.type === "category") {
     return (

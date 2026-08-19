@@ -23,6 +23,7 @@ import CoachCredit from "base/models/CoachCredit";
 import Order from "base/models/Order";
 import QuantityDiscount from "base/models/QuantityDiscount";
 import { ruleBrandFilterPasses } from "base/utils/discountMatch";
+import { resolveServiceSelection } from "@/lib/serviceConfig";
 
 // ---------------------------------------------------------------------------
 // 1. نرخ ارز
@@ -584,7 +585,7 @@ export async function buildFlowAddonResolver(cartItems, productMap, rate) {
 
   // هیچ آیتمی فرایند ندارد → resolver خنثی
   if (!addonProductIds.size && !addonVariantIds.size && !flowCategoryIds.size) {
-    return () => ({ addonToman: 0, enriched: [] });
+    return () => ({ addonToman: 0, enriched: [], errors: [] });
   }
 
   const [addonProducts, addonVariants, orderFlows] = await Promise.all([
@@ -609,7 +610,7 @@ export async function buildFlowAddonResolver(cartItems, productMap, rate) {
 
   return (ci) => {
     if (!Array.isArray(ci.flowSelections) || ci.flowSelections.length === 0) {
-      return { addonToman: 0, enriched: [] };
+      return { addonToman: 0, enriched: [], errors: [] };
     }
     const p = productMap.get(ci.productId);
     const catId = p ? String(p.category?._id ?? p.category) : null;
@@ -617,26 +618,23 @@ export async function buildFlowAddonResolver(cartItems, productMap, rate) {
 
     let addonToman = 0;
     const enriched = [];
+    const errors = [];
 
     for (const sel of ci.flowSelections) {
       if (sel?.nodeType === "service") {
         const node = flow?.nodes?.find((n) => n.id === sel.nodeId && n.type === "service");
-        const option = node?.serviceOptions?.find(
-          (o) => String(o.value) === String(sel.serviceOption?.value)
-        );
-        const priceModifier = option ? Number(option.priceModifier) || 0 : 0;
-        addonToman += priceModifier;
+        // تنها مرجعِ قیمت و اعتبارسنجیِ خدمت — قیمتِ کلاینت هرگز خوانده نمی‌شود
+        const resolved = resolveServiceSelection(node, sel);
+        addonToman += resolved.addonToman;
+        errors.push(...resolved.errors);
         enriched.push({
           nodeId: sel.nodeId,
           nodeType: "service",
           nodeLabel: node?.label ?? sel.nodeLabel ?? "",
+          serviceName: node?.serviceName ?? sel.serviceName ?? "",
           required: Boolean(node?.required),
-          serviceOption: {
-            label: option?.label ?? sel.serviceOption?.label ?? "",
-            value: String(sel.serviceOption?.value ?? ""),
-            priceModifier,
-          },
-          addonToman: priceModifier,
+          serviceConfig: resolved.config,
+          addonToman: resolved.addonToman,
         });
       } else if (sel?.nodeType === "category") {
         const node = flow?.nodes?.find(
@@ -667,7 +665,7 @@ export async function buildFlowAddonResolver(cartItems, productMap, rate) {
       }
     }
 
-    return { addonToman, enriched };
+    return { addonToman, enriched, errors };
   };
 }
 
@@ -755,6 +753,8 @@ export async function computeCartPrice(cartItems, user = null, couponCode = null
 
   // محاسبه قیمت هر آیتم
   const enrichedItems = [];
+  // خطاهای اعتبارسنجیِ پیکربندیِ خدمت — نمایش در سبد، ردِ قطعی در چک‌اوت
+  const flowConfigErrors = [];
   let totalDiscount = 0;
 
   for (const ci of cartItems) {
@@ -831,9 +831,13 @@ export async function computeCartPrice(cartItems, user = null, couponCode = null
       }
 
       // افزوده‌ی فرایند سفارش روی قیمت واحد (بدون تخفیف)
-      const { addonToman: flowAddonToman, enriched: flowSelectionsEnriched } =
-        resolveFlowAddon(ci);
+      const {
+        addonToman: flowAddonToman,
+        enriched: flowSelectionsEnriched,
+        errors: flowErrors,
+      } = resolveFlowAddon(ci);
       unitFinalPrice += flowAddonToman;
+      if (flowErrors?.length) flowConfigErrors.push(...flowErrors);
 
       const lineTotal  = unitFinalPrice * qty;
       const lineDiscount = unitDiscount * qty;
@@ -895,6 +899,7 @@ export async function computeCartPrice(cartItems, user = null, couponCode = null
     finalTotalToman,
     coupon:               appliedCoupon,
     couponError,
+    flowConfigErrors:     [...new Set(flowConfigErrors)],
     rate,
   };
 }

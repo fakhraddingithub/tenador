@@ -14,8 +14,15 @@ const OrderFlowSelectionSchema = new mongoose.Schema(
     nodeType:  { type: String, enum: ["service", "category"] },
 
     // نود نوع service
+    serviceName: { type: String, default: "" }, // نامِ خدمت در لحظه‌ی ثبت
+    // ⚠️ قدیمی — انتخابِ تک‌گزینه‌ای. برای سفارش‌های قبلی خوانده می‌شود.
     serviceLabel: { type: String, default: "" },
     serviceValue: { type: String, default: "" },
+
+    // اسنپ‌شاتِ کاملِ پیکربندیِ خدمت در لحظه‌ی ثبتِ سفارش.
+    // عمداً denormalized است: تغییرِ بعدیِ تعریفِ خدمت نباید سفارشِ ثبت‌شده را عوض کند.
+    // هر عضو: { optionKey, title, inputType, choiceKey?, value?, unit?, label, image?, priceModifier }
+    serviceConfig: { type: [mongoose.Schema.Types.Mixed], default: [] },
 
     // نود نوع category
     selectedProduct: {

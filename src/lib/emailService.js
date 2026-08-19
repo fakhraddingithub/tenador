@@ -90,10 +90,34 @@ function escapeHtml(str) {
 function renderFlowSelections(flowSelections) {
   if (!Array.isArray(flowSelections) || flowSelections.length === 0) return '';
 
-  const rows = flowSelections.map((sel) => {
+  const rows = flowSelections.flatMap((sel) => {
     const isService = sel.nodeType === 'service';
     const productImage = sel.selectedProduct?.mainImage || sel.selectedProductImage || '';
     const productName  = sel.selectedProductName || sel.selectedProduct?.name || '';
+
+    // پیکربندیِ کاملِ خدمت — هر آپشن یک ردیف (از اسنپ‌شاتِ سفارش)
+    const config = Array.isArray(sel.serviceConfig) ? sel.serviceConfig : [];
+    if (isService && config.length > 0) {
+      return config.map((c) => {
+        const addon = Number(c.priceModifier) || 0;
+        const thumb = c.image
+          ? `<td width="40" style="vertical-align:middle;padding-left:8px;"><img src="${c.image}" alt="" width="36" height="36" style="border-radius:6px;object-fit:cover;border:1px solid #eee;display:block;background:#fff;"></td>`
+          : `<td width="40" style="vertical-align:middle;padding-left:8px;"><div style="width:36px;height:36px;border-radius:6px;border:1px solid #eee;background:#fff;text-align:center;line-height:36px;color:#aa4725;font-size:16px;">⚙</div></td>`;
+        return `
+      <tr>
+        ${thumb}
+        <td style="vertical-align:middle;font-size:12px;color:#444;">
+          <span style="color:#999;">${escapeHtml(sel.nodeLabel || '')} — ${escapeHtml(c.title || '')}:</span>
+          <strong style="color:#333;">${escapeHtml(c.label || '')}</strong>
+        </td>
+        ${addon > 0
+          ? `<td style="text-align:left;white-space:nowrap;vertical-align:middle;"><span style="display:inline-block;color:#aa4725;font-weight:700;font-size:11px;background:rgba(170,71,37,0.1);border-radius:6px;padding:3px 8px;">+ ${formatPrice(addon)}</span></td>`
+          : '<td></td>'}
+      </tr>
+    `;
+      });
+    }
+
     const valueText = isService
       ? sel.serviceLabel
       : `${productName}${sel.selectedVariantLabel ? ` (${sel.selectedVariantLabel})` : ''}`;

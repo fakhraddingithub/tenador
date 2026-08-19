@@ -23,6 +23,7 @@
 
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
+import { getServiceOptions, validateServiceOptions } from "@/lib/serviceConfig";
 import {
   FiAlertCircle,
   FiChevronLeft,
@@ -78,11 +79,10 @@ export function getStepWarning(node, categories) {
   }
   if (node.type === "service") {
     if (!node.serviceName?.trim()) return "نام خدمت وارد نشده";
-    if (!node.serviceOptions?.length) return "هیچ گزینه‌ای تعریف نشده";
-    const broken = node.serviceOptions.some(
-      (o) => !o?.label?.trim() || !o?.value?.trim()
-    );
-    if (broken) return "بعضی گزینه‌ها عنوان یا مقدار ندارند";
+    const options = getServiceOptions(node); // دادهٔ قدیمی هم پوشش داده می‌شود
+    if (options.length === 0) return "هیچ آپشنی تعریف نشده";
+    const problems = validateServiceOptions(options);
+    if (problems.length > 0) return problems[0];
     return null;
   }
   return null;
@@ -106,7 +106,7 @@ function StepCardShell({
   const { Icon, color } = meta;
   const category = findCategory(node, categories);
   const warning = getStepWarning(node, categories);
-  const optionCount = node.serviceOptions?.length || 0;
+  const optionCount = getServiceOptions(node).length;
 
   const subtitle =
     node.type === "category"
@@ -207,7 +207,7 @@ function StepCardShell({
               className="rounded-lg px-2 py-0.5 text-[10px] font-bold"
               style={{ background: "#f5f3ff", color: "#7c3aed" }}
             >
-              {optionCount} گزینه
+              {optionCount} آپشن
             </span>
           )}
         </div>

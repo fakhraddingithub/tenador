@@ -3,6 +3,7 @@ import connectToDB from "base/configs/db";
 import OrderFlow from "base/models/OrderFlow";
 
 import requireAdminPermission from "@/lib/requireAdminPermission";
+import { validateFlowNodes } from "@/lib/serviceConfig";
 
 export async function GET(req) {
   const { denied } = await requireAdminPermission("orderFlows.view");
@@ -35,6 +36,11 @@ export async function POST(req) {
         { message: "نام و دسته‌بندی ریشه الزامی است" },
         { status: 400 }
       );
+    }
+
+    const optionErrors = validateFlowNodes(nodes);
+    if (optionErrors.length > 0) {
+      return NextResponse.json({ message: optionErrors.join(" • ") }, { status: 400 });
     }
 
     const flow = await OrderFlow.create({

@@ -9,7 +9,8 @@
  *  محصول با فرایند سفارش: محصول معمولی + flowSelections[]
  *
  * هر عضو flowSelections یکی از دو شکل زیر است:
- *  نود خدمت:     { nodeId, nodeType:'service', nodeLabel, serviceOption:{ label, value, priceModifier } }
+ *  نود خدمت:     { nodeId, nodeType:'service', nodeLabel, serviceName,
+ *                  serviceConfig:[{ optionKey, choiceKey?|value?, title, label, image, priceModifier }] }
  *  نود دسته‌بندی: { nodeId, nodeType:'category', nodeLabel,
  *                  selectedProductId, selectedVariantId,
  *                  selectedProductName, selectedProductImage, selectedVariantLabel }
@@ -17,6 +18,11 @@
  * نکته: قیمت‌ها (priceModifier و قیمت محصول انتخاب‌شده) صرفاً برای نمایش‌اند؛
  * قیمت نهایی در سرور (api/cart/products) به‌صورت معتبر بازمحاسبه می‌شود.
  */
+
+import {
+  normalizeRawSelection,
+  serviceConfigSignature,
+} from "@/lib/serviceConfig";
 
 const CART_KEY = "cart";
 const COUPON_KEY = "cartCouponCode";
@@ -57,15 +63,32 @@ function normalizeFlowSelections(flowSelections) {
     .filter((s) => s && s.nodeId)
     .map((s) => {
       if (s.nodeType === "service") {
+        // شکلِ قدیمی (serviceOption) هم به همین شکلِ یکدست تبدیل می‌شود،
+        // پس سبدهای ذخیره‌شده‌ی قبلی بدون مهاجرت کار می‌کنند.
+        const raw = normalizeRawSelection(s);
+        const meta = new Map(
+          (Array.isArray(s.serviceConfig) ? s.serviceConfig : []).map((c) => [
+            String(c?.optionKey),
+            c,
+          ])
+        );
         return {
           nodeId: String(s.nodeId),
           nodeType: "service",
           nodeLabel: s.nodeLabel ?? "",
-          serviceOption: {
-            label: s.serviceOption?.label ?? "",
-            value: String(s.serviceOption?.value ?? ""),
-            priceModifier: Number(s.serviceOption?.priceModifier) || 0,
-          },
+          serviceName: s.serviceName ?? "",
+          serviceConfig: raw.map((c) => {
+            const m = meta.get(c.optionKey) || {};
+            return {
+              ...c,
+              title: m.title ?? "",
+              label: m.label ?? s.serviceOption?.label ?? "",
+              unit: m.unit ?? "",
+              image: m.image ?? null,
+              // فقط برای نمایشِ خوش‌بینانه؛ سرور همیشه بازمحاسبه می‌کند
+              priceModifier: Number(m.priceModifier) || 0,
+            };
+          }),
         };
       }
       // category
@@ -90,7 +113,7 @@ export function flowSignature(flowSelections) {
   return norm
     .map((s) =>
       s.nodeType === "service"
-        ? `s:${s.nodeId}:${s.serviceOption.value}`
+        ? `s:${s.nodeId}:${serviceConfigSignature(s.serviceConfig)}`
         : `c:${s.nodeId}:${s.selectedProductId || ""}:${s.selectedVariantId || ""}`
     )
     .sort()

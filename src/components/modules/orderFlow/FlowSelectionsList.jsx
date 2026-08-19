@@ -34,26 +34,51 @@ export default function FlowSelectionsList({ flowSelections, compact = false, on
         ) : null;
 
         if (sel.nodeType === "service") {
+          // پیکربندیِ کاملِ خدمت — هر آپشن یک خط، تا مشتری دقیقاً بداند چه سفارش داده
+          const config = Array.isArray(sel.serviceConfig) ? sel.serviceConfig : [];
           return (
-            <div
-              key={`${sel.nodeId}-${idx}`}
-              className="flex items-center justify-between gap-2"
-            >
-              <span className="flex items-center gap-1.5 min-w-0 text-[11px] text-gray-600">
-                <FiSettings className="w-3 h-3 text-[#aa4725] shrink-0" />
-                <span className="text-gray-400 shrink-0">{sel.nodeLabel}:</span>
-                <span className="font-medium text-gray-700 truncate">
-                  {sel.serviceOption?.label}
-                </span>
-              </span>
-              <span className="flex items-center gap-1 shrink-0">
-                {addonText && (
-                  <span className="text-[10px] font-medium text-[#aa4725]">
-                    {addonText}
+            <div key={`${sel.nodeId}-${idx}`} className="space-y-1">
+              <div className="flex items-center justify-between gap-2">
+                <span className="flex items-center gap-1.5 min-w-0 text-[11px] text-gray-600">
+                  <FiSettings className="w-3 h-3 text-[#aa4725] shrink-0" />
+                  <span className="font-medium text-gray-700 truncate">
+                    {sel.nodeLabel}
                   </span>
-                )}
-                {removeBtn}
-              </span>
+                </span>
+                <span className="flex items-center gap-1 shrink-0">
+                  {addonText && (
+                    <span className="text-[10px] font-medium text-[#aa4725]">
+                      {addonText}
+                    </span>
+                  )}
+                  {removeBtn}
+                </span>
+              </div>
+
+              {config.map((c, i) => (
+                <div
+                  key={`${c.optionKey}-${i}`}
+                  className="flex items-center justify-between gap-2 pr-4"
+                >
+                  <span className="flex items-center gap-1.5 min-w-0 text-[11px] text-gray-600">
+                    {c.image && !compact && (
+                      <img
+                        src={c.image}
+                        alt=""
+                        loading="lazy"
+                        className="w-4 h-4 rounded object-cover border border-gray-100 shrink-0"
+                      />
+                    )}
+                    <span className="text-gray-400 shrink-0">{c.title}:</span>
+                    <span className="font-medium text-gray-700 truncate">{c.label}</span>
+                  </span>
+                  {c.priceModifier > 0 && (
+                    <span className="shrink-0 text-[10px] text-gray-400">
+                      + {formatToman(c.priceModifier)}
+                    </span>
+                  )}
+                </div>
+              ))}
             </div>
           );
         }
