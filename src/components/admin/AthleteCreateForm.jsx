@@ -1,5 +1,6 @@
 "use client";
 
+import { matchesSearch } from "@/lib/search";
 import { useState, useEffect } from "react";
 import { toast } from "react-toastify";
 import { useBrands } from "@/hooks/useAdminRefData";
@@ -343,7 +344,7 @@ export default function AthleteCreateForm({ initialData, sports, isEdit = false 
 
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4 max-h-64 overflow-y-auto p-2 custom-scrollbar">
               {allSponsors
-                .filter(s => s.name.toLowerCase().includes(sponsorSearch.toLowerCase()))
+                .filter((s) => matchesSearch(sponsorSearch, s.name, s.title))
                 .map((sponsor) => {
                   const isSelected = formData.sponsors?.includes(sponsor._id);
                   return (

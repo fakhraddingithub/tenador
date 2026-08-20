@@ -1,5 +1,6 @@
 'use client';
 
+import { matchesSearch } from "@/lib/search";
 import { useState } from 'react';
 import Link from 'next/link';
 import { motion } from 'framer-motion';
@@ -58,9 +59,7 @@ export default function AdminBrands() {
     }
   };
 
-  const filteredBrands = brands.filter(b =>
-    b.name?.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const filteredBrands = brands.filter((b) => matchesSearch(searchTerm, b.name, b.title, b.slug));
 
   const sensors = useSensors(useSensor(PointerSensor));
 

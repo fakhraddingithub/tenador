@@ -1,5 +1,6 @@
 "use client";
 
+import { matchesSearch } from "@/lib/search";
 import { useState, useEffect } from "react";
 import useSWR from "swr";
 import Link from "next/link";
@@ -94,11 +95,7 @@ export default function OrderFlowsClient() {
     }
   };
 
-  const filtered = flows.filter(
-    (f) =>
-      f.name.toLowerCase().includes(search.toLowerCase()) ||
-      f.rootCategory?.title?.toLowerCase().includes(search.toLowerCase())
-  );
+  const filtered = flows.filter((f) => matchesSearch(search, f.name, f.rootCategory?.title));
 
   return (
     <div style={{ fontFamily: "Vazirmatn, sans-serif", direction: "rtl" }}>

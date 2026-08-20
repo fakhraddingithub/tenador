@@ -1,5 +1,6 @@
 "use client";
 
+import { matchesSearch } from "@/lib/search";
 import { useState, useEffect } from "react";
 import useSWR from "swr";
 import Link from "next/link";
@@ -121,11 +122,7 @@ export default function EventList() {
     }
   };
 
-  const filtered = events.filter(
-    (e) =>
-      e.name?.toLowerCase().includes(search.toLowerCase()) ||
-      e.slug?.toLowerCase().includes(search.toLowerCase())
-  );
+  const filtered = events.filter((e) => matchesSearch(search, e.name, e.title, e.slug));
 
   return (
     <div dir="rtl">

@@ -11,6 +11,7 @@
  *   هایلایت بصری در کلاینت مشخص می‌شوند، نه با جابه‌جایی در ترتیب
  */
 
+import { buildSearchFilter } from "@/lib/search";
 import { NextResponse } from "next/server";
 import connectToDB from "base/configs/db";
 import Order from "base/models/Order";
@@ -40,23 +41,15 @@ export async function GET(req) {
     if (fulfillmentStatus !== "all") filter.fulfillmentStatus = fulfillmentStatus;
     if (paymentMethod !== "all") filter.paymentMethod = paymentMethod;
 
-    if (search) {
-      filter.$or = [
-        { trackingCode: { $regex: search, $options: "i" } },
-      ];
-      // جستجوی نام کاربر از طریق User model می‌آید
-      // چون populate بعد از query انجام می‌شود، فقط روی trackingCode جستجو می‌کنیم
-      // برای جستجوی نام، aggregation pipeline استفاده می‌کنیم
-    }
-
     const skip = (page - 1) * limit;
 
-    // اگه search داریم و ممکنه نام کاربر باشه، از aggregate استفاده می‌کنیم
     let orders;
     let total;
 
-    if (search && !/^\d/.test(search) && !search.startsWith("20")) {
-      // ممکنه نام کاربر باشه — aggregate با lookup
+    // هر جستجویی از مسیرِ aggregate می‌رود. قبلاً اگر عبارت با رقم شروع می‌شد
+    // فقط روی trackingCode جستجو می‌شد، یعنی «۱۲۳۴ رضا» هیچ‌وقت جواب نمی‌داد و
+    // دو مسیر خروجیِ متفاوت می‌ساختند (نامِ محصول در یکی نبود).
+    if (search) {
       const matchStage = {};
       if (paymentStatus !== "all") matchStage.paymentStatus = paymentStatus;
       if (fulfillmentStatus !== "all") matchStage.fulfillmentStatus = fulfillmentStatus;
@@ -73,26 +66,16 @@ export async function GET(req) {
           },
         },
         { $unwind: { path: "$userObj", preserveNullAndEmpty: true } },
+        // هر توکنِ عبارت باید در یکی از این فیلدها بیاید — پس «رضا ۱۲۳۴» هم
+        // کار می‌کند و ترتیبِ «نام خانوادگی نام» هم فرقی ندارد.
         {
-          $match: {
-            $or: [
-              { trackingCode: { $regex: search, $options: "i" } },
-              { "userObj.name": { $regex: search, $options: "i" } },
-              { "userObj.lastName": { $regex: search, $options: "i" } },
-              {
-                $expr: {
-                  $regexMatch: {
-                    input: {
-                      $trim: { input: { $concat: [{ $ifNull: ["$userObj.name", ""] }, " ", { $ifNull: ["$userObj.lastName", ""] }] } },
-                    },
-                    regex: search,
-                    options: "i",
-                  },
-                },
-              },
-              { "userObj.phone": { $regex: search, $options: "i" } },
-            ],
-          },
+          $match: buildSearchFilter(search, [
+            "trackingCode",
+            "userObj.name",
+            "userObj.lastName",
+            "userObj.phone",
+            "userObj.email",
+          ]) || {},
         },
         // جدیدترین اول؛ _id به‌عنوان tiebreaker تا صفحه‌بندی پایدار بماند
         { $sort: { createdAt: -1, _id: -1 } },
@@ -120,16 +103,27 @@ export async function GET(req) {
             localField: "items.product",
             foreignField: "_id",
             as: "_products",
+            pipeline: [{ $project: { name: 1, mainImage: 1, sku: 1 } }],
           },
         },
       ];
 
       const rawOrders = await Order.aggregate(dataPipeline);
-      // اضافه کردن user و populate کردن دستی
-      orders = rawOrders.map((o) => ({
-        ...o,
-        user: o.userObj || null,
-      }));
+      // populate دستی: `_products` بالا lookup می‌شد ولی هیچ‌وقت به items وصل
+      // نمی‌شد، برای همین در نتایجِ جستجو نامِ محصول خالی بود.
+      orders = rawOrders.map(({ userObj, _products, ...o }) => {
+        const byId = new Map((_products || []).map((p) => [String(p._id), p]));
+        return {
+          ...o,
+          user: userObj || null,
+          items: (o.items || []).map((item) => {
+            const product = byId.get(String(item.product));
+            return product
+              ? { ...item, product: { _id: product._id, name: product.name, mainImage: product.mainImage, sku: product.sku } }
+              : item;
+          }),
+        };
+      });
     } else {
       // جستجوی معمولی با trackingCode
       total = await Order.countDocuments(filter);

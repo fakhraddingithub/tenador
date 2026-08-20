@@ -1,5 +1,6 @@
 "use client";
 
+import { matchesSearch } from "@/lib/search";
 import { useState, useMemo, useEffect, useRef } from "react";
 import ProductList from "@/components/templates/products/ProductList";
 import useFilterScrollAnchor from "@/hooks/useFilterScrollAnchor";
@@ -284,9 +285,14 @@ export default function SportPageClient({
   // ─────────────────────────────────────────────
   const filteredProducts = useMemo(() => {
     return products.filter((product) => {
-      const matchesSearch = product.name
-        ?.toLowerCase()
-        .includes(searchTerm.toLowerCase());
+      const matchesQuery = matchesSearch(
+        searchTerm,
+        product.name,
+        product.sku,
+        product.brand?.title || product.brand?.name,
+        product.serie?.title || product.serie?.name,
+        product.tag
+      );
 
       const matchesBrand =
         localFilters.brands.length === 0 ||
@@ -326,7 +332,7 @@ export default function SportPageClient({
       );
 
       return (
-        matchesSearch &&
+        matchesQuery &&
         matchesBrand &&
         matchesCategory &&
         matchesSerie &&

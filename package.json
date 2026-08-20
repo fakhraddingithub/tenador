@@ -8,6 +8,7 @@
     "start": "next start",
     "lint": "eslint",
     "test": "jest",
+    "test:search": "node --test tests/search.test.mjs",
     "test:target-audience": "node --test tests/targetAudience.test.mjs",
     "test:limited-edition-relations": "node --test tests/limitedEditionRelations.test.mjs",
     "test:brand-collaboration": "node --test tests/brandCollaboration.test.mjs",

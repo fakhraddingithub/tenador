@@ -15,6 +15,7 @@
  * پیامِ گمراه‌کننده‌ی «پیدا نشد» نگیرد و مسیرِ درست به او نشان داده شود.
  */
 
+import { withSearch } from "@/lib/search";
 import { NextResponse } from "next/server";
 import connectToDB from "base/configs/db";
 import "base/models/registerModels";
@@ -43,20 +44,9 @@ export async function GET(req) {
       Math.max(1, Number.parseInt(searchParams.get("limit") || "20", 10) || 20)
     );
 
-    const filter = {};
-    if (search) {
-      // ⚠️ عمداً بدون RegExpِ ساخته‌شده از ورودی: `(a+)+$` سرور را قفل می‌کند
-      // و متاکاراکترها منطق را می‌شکنند. `$search` هم نیاز به text index دارد
-      // که این کالکشن ندارد؛ پس ورودی escape می‌شود و همان contains می‌ماند.
-      const safe = search.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-      const rx = new RegExp(safe, "i");
-      filter.$or = [
-        { name: rx },
-        { lastName: rx },
-        { phone: rx },
-        { email: rx },
-      ];
-    }
+    // ⚠️ ورودی هرگز مستقیم وارد RegExp نمی‌شود: توکن‌ساز هر چیزی جز حرف و رقم
+    // را دور می‌ریزد، پس `(a+)+$` هم به یک توکنِ تحت‌اللفظی تبدیل می‌شود.
+    const filter = withSearch({}, search, ["name", "lastName", "phone", "email"]);
 
     const [users, total] = await Promise.all([
       User.find(filter)

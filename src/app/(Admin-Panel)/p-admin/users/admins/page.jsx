@@ -10,6 +10,7 @@
  * enforcement واقعی سمتِ API انجام می‌شود و کامل است.
  */
 
+import { matchesSearch } from "@/lib/search";
 import { useState, useEffect } from 'react'
 import useSWR from 'swr'
 import { useRouter } from 'next/navigation'
@@ -114,16 +115,18 @@ export default function AdminAdminsManagement() {
   }
 
   const filteredAdmins = admins.filter((admin) => {
-    const q = searchQuery.toLowerCase()
-    const matchesSearch =
-      (admin.name || '').toLowerCase().includes(q) ||
-      (admin.username || '').toLowerCase().includes(q) ||
-      (admin.email || '').toLowerCase().includes(q) ||
-      (admin.title || '').toLowerCase().includes(q) ||
-      (admin.role?.name || '').toLowerCase().includes(q)
+    const matchesQuery = matchesSearch(
+      searchQuery,
+      admin.name,
+      admin.lastName,
+      admin.username,
+      admin.email,
+      admin.title,
+      admin.role?.name
+    )
     const status = admin.isActive ? 'active' : 'inactive'
     const matchesStatus = statusFilter === 'all' || status === statusFilter
-    return matchesSearch && matchesStatus
+    return matchesQuery && matchesStatus
   })
 
   const kpiCards = [

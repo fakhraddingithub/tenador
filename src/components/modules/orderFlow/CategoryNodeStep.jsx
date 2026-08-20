@@ -1,5 +1,6 @@
 "use client";
 
+import { matchesSearch, searchHaystack } from "@/lib/search";
 import { useDeferredValue, useEffect, useMemo, useState } from "react";
 import Image from "next/image";
 import { motion, AnimatePresence } from "framer-motion";
@@ -11,7 +12,6 @@ import {
   productMatchesAttrFilters,
   productMatchesVariantAttrFilters,
 } from "@/lib/attributeFilters";
-import { normalizeForCompare } from "@/lib/persianNormalize";
 import ProductPickerToolbar from "./ProductPickerToolbar";
 
 /* ─── helpers (هم‌راستا با QuickViewModal) ─── */
@@ -230,17 +230,14 @@ export default function CategoryNodeStep({
         p?.serie?.title,
         p?.serie?.name,
       ];
-      map.set(
-        String(p._id),
-        normalizeForCompare(parts.filter(Boolean).join(" ")).toLowerCase()
-      );
+      map.set(String(p._id), searchHaystack(parts));
     }
     return map;
   }, [products]);
 
   // ─── اعمال جستجو + همه‌ی فیلترها (memoized؛ AND بین گروه‌ها، OR درون هر گروه) ───
   const filteredProducts = useMemo(() => {
-    const query = normalizeForCompare(deferredSearch).toLowerCase();
+    const query = deferredSearch;
     const brandSel = pickerFilters.brand || [];
     const serieSel = pickerFilters.serie || [];
     const fixedFilters = {};
@@ -252,7 +249,7 @@ export default function CategoryNodeStep({
     }
 
     return products.filter((p) => {
-      if (query && !searchIndex.get(String(p._id))?.includes(query)) return false;
+      if (!matchesSearch(query, searchIndex.get(String(p._id)) || "")) return false;
       if (
         brandSel.length &&
         !brandSel.includes(String(p?.brand?._id ?? p?.brand ?? ""))

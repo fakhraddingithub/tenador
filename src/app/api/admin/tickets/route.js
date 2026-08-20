@@ -8,6 +8,7 @@
  * محافظت: کلید tickets.view — دسترسی مؤثر از دیتابیس محاسبه می‌شود، نه از توکن.
  */
 
+import { withSearch } from "@/lib/search";
 import { NextResponse } from "next/server";
 import connectToDB from "base/configs/db";
 import "base/models/registerModels";
@@ -45,7 +46,7 @@ export async function GET(req) {
     if (TICKET_PRIORITIES.includes(priority)) filter.priority = priority;
     if (assignedAdmin === "none") filter.assignedAdmin = null;
     else if (assignedAdmin) filter.assignedAdmin = assignedAdmin;
-    if (q) filter.subject = { $regex: q.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), $options: "i" };
+    Object.assign(filter, withSearch(filter, q, ["subject"]));
 
     const [tickets, counts] = await Promise.all([
       Ticket.find(filter)

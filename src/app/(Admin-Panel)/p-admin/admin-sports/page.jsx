@@ -1,5 +1,6 @@
 'use client';
 
+import { matchesSearch } from "@/lib/search";
 import { useState } from 'react';
 import Link from 'next/link';
 import { motion } from 'framer-motion';
@@ -89,7 +90,7 @@ export default function AdminSports() {
     }
   };
 
-  const filteredSports = sports.filter(s => s.name.includes(searchTerm));
+  const filteredSports = sports.filter((s) => matchesSearch(searchTerm, s.name, s.title, s.slug));
 
   const sensors = useSensors(useSensor(PointerSensor));
 

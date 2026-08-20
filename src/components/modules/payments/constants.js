@@ -6,6 +6,7 @@
  * (بج‌های وضعیت، رنگ اصلی #aa4725).
  */
 
+import { normalizeDigits } from '@/lib/search'
 import {
   Clock,
   CheckCircle2,
@@ -16,6 +17,7 @@ import {
 } from 'lucide-react'
 
 /* ─── وضعیتِ پرداخت (Payment.status) ─────────────────────────────────── */
+
 export const PAYMENT_STATUS = {
   PENDING: {
     label: 'در انتظار بررسی',
@@ -116,19 +118,8 @@ export function formatDateTime(value) {
   })
 }
 
-/** ارقام فارسی/عربی را به لاتین تبدیل می‌کند تا جستجو با هر دو صفحه‌کلید کار کند */
-export function normalizeDigits(input) {
-  if (input == null) return ''
-  const fa = '۰۱۲۳۴۵۶۷۸۹'
-  const ar = '٠١٢٣٤٥٦٧٨٩'
-  return String(input).replace(/[۰-۹٠-٩]/g, (d) => {
-    const i = fa.indexOf(d)
-    if (i > -1) return String(i)
-    const j = ar.indexOf(d)
-    if (j > -1) return String(j)
-    return d
-  })
-}
+/** ارقام فارسی/عربی → لاتین. پیاده‌سازیِ مشترک در `@/lib/search` است. */
+export { normalizeDigits }
 
 /** تصاویرِ رسید را (چه آرایه‌ی جدید imageUrls چه تکیِ قدیمی imageUrl) نرمال می‌کند */
 export function getReceiptImages(payment) {

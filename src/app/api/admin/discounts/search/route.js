@@ -1,4 +1,5 @@
 // src/app/api/admin/discounts/search/route.js
+import { rankBySearch, withSearch } from "@/lib/search";
 import connectToDB from "base/configs/db";
 import Product from "base/models/Product";
 import Brand from "base/models/Brand";
@@ -9,6 +10,16 @@ import Variant from "base/models/Variant";
 import { NextResponse } from "next/server";
 
 import requireAdminPermission from "@/lib/requireAdminPermission";
+import { rankProducts, withProductSearch } from "@/lib/productSearch";
+
+// چند برابرِ سقفِ نمایش واکشی می‌شود تا رتبه‌بندی روی استخرِ معنادار انجام شود
+const RESULT_LIMIT = 10;
+const CANDIDATE_LIMIT = 80;
+
+/** جستجوی «عنوان یا نام» — الگوی مشترکِ برند/سری/دسته/ورزش */
+const byTitle = (q) => withSearch({}, q, ["title", "name"]);
+const rankByTitle = (q, docs) =>
+  rankBySearch(q, docs, (d) => [[d.title, 2], [d.name, 1]]).slice(0, RESULT_LIMIT);
 
 export async function GET(req) {
   const { denied } = await requireAdminPermission("discounts.view");
@@ -67,44 +78,43 @@ export async function GET(req) {
     // ── محصول ────────────────────────────────────────────────────────────────
     if (type === "product") {
       if (!q) return NextResponse.json({ items: [] });
-      const items = await Product.find({ name: { $regex: q, $options: "i" } })
-        .select("_id name mainImage brand").populate("brand", "title").limit(10).lean();
+      const found = await Product.find(await withProductSearch({}, q))
+        .select("_id name sku tag color serie mainImage brand").populate("brand", "title name").limit(CANDIDATE_LIMIT).lean();
+      const items = rankProducts(q, found).slice(0, RESULT_LIMIT);
       return NextResponse.json({ items: items.map((p) => ({ _id: p._id, label: p.name, sub: p.brand?.title || "", image: p.mainImage || null })) });
     }
 
     // ── برند ──────────────────────────────────────────────────────────────────
     if (type === "brand") {
       if (!q) return NextResponse.json({ items: [] });
-      const items = await Brand.find({ $or: [{ title: { $regex: q, $options: "i" } }, { name: { $regex: q, $options: "i" } }] })
-        .select("_id name title logo").limit(10).lean();
+      const items = rankByTitle(q, await Brand.find(byTitle(q))
+        .select("_id name title logo").limit(CANDIDATE_LIMIT).lean());
       return NextResponse.json({ items: items.map((b) => ({ _id: b._id, label: b.title || b.name, sub: b.name || "", image: b.logo || null })) });
     }
 
     // ── سری ───────────────────────────────────────────────────────────────────
     if (type === "serie") {
       if (!q) return NextResponse.json({ items: [] });
-      const items = await Serie.find({ $or: [{ title: { $regex: q, $options: "i" } }, { name: { $regex: q, $options: "i" } }] })
-        .select("_id name title logo brand").populate("brand", "title").limit(10).lean();
+      const items = rankByTitle(q, await Serie.find(byTitle(q))
+        .select("_id name title logo brand").populate("brand", "title").limit(CANDIDATE_LIMIT).lean());
       return NextResponse.json({ items: items.map((s) => ({ _id: s._id, label: s.title || s.name, sub: s.brand?.title || "", image: s.logo || null })) });
     }
 
     // ── دسته‌بندی ─────────────────────────────────────────────────────────────
     if (type === "category") {
       if (!q) return NextResponse.json({ items: [] });
-      const items = await Category.find({
-        $or: [{ title: { $regex: q, $options: "i" } }, { name: { $regex: q, $options: "i" } }],
-      })
+      const items = rankByTitle(q, await Category.find(byTitle(q))
         .select("_id name title icon image")
-        .limit(10)
-        .lean();
+        .limit(CANDIDATE_LIMIT)
+        .lean());
       return NextResponse.json({ items: items.map((c) => ({ _id: c._id, label: c.title || c.name, image: c.icon || c.image || null })) });
     }
 
     // ── ورزش ──────────────────────────────────────────────────────────────────
     if (type === "sport") {
       if (!q) return NextResponse.json({ items: [] });
-      const items = await Sport.find({ $or: [{ title: { $regex: q, $options: "i" } }, { name: { $regex: q, $options: "i" } }] })
-        .select("_id name title icon image").limit(10).lean();
+      const items = rankByTitle(q, await Sport.find(byTitle(q))
+        .select("_id name title icon image").limit(CANDIDATE_LIMIT).lean());
       return NextResponse.json({ items: items.map((s) => ({ _id: s._id, label: s.title || s.name, sub: s.name || "", image: s.icon || s.image || null })) });
     }
 
@@ -120,7 +130,7 @@ export async function GET(req) {
         });
       }
       if (!q) return NextResponse.json({ items: [] });
-      const products = await Product.find({ name: { $regex: q, $options: "i" } }).select("_id name mainImage").limit(10).lean();
+      const products = rankProducts(q, await Product.find(await withProductSearch({}, q)).select("_id name sku tag color serie mainImage brand").populate("brand", "title name").limit(CANDIDATE_LIMIT).lean()).slice(0, RESULT_LIMIT);
       return NextResponse.json({ items: products.map((p) => ({ _id: p._id, label: p.name, sub: "انتخاب برای مشاهده واریانت‌ها", image: p.mainImage || null, isProduct: true })) });
     }
 

@@ -8,6 +8,7 @@
  * دکمه‌ی «تیکت جدید» → فرم ثبت تیکت (/p-user/tickets/new)
  */
 
+import { matchesSearch } from "@/lib/search";
 import { motion, AnimatePresence } from 'framer-motion'
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
@@ -30,7 +31,6 @@ import {
   TICKET_PRIORITY_FALLBACK,
   FILTER_OPTIONS,
   formatDateTime,
-  normalizeDigits,
   buildSearchHaystack,
 } from './constants'
 
@@ -187,11 +187,9 @@ const TicketsModule = () => {
   const counts = { ALL: tickets.length }
   for (const t of tickets) counts[t.status] = (counts[t.status] || 0) + 1
 
-  const q = normalizeDigits(query.trim()).toLowerCase()
   const filtered = tickets.filter((t) => {
     if (activeFilter !== 'ALL' && t.status !== activeFilter) return false
-    if (q && !buildSearchHaystack(t).includes(q)) return false
-    return true
+    return matchesSearch(query, buildSearchHaystack(t))
   })
 
   const hasAny = tickets.length > 0

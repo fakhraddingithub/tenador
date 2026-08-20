@@ -4,6 +4,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { spawnSync } from "node:child_process";
 
+import { buildSearchFilter } from "../src/lib/search.js";
 import { ACCEPTED, buildCoverage } from "../scripts/rbacCoverage.mjs";
 import { ACTIVITY_RESULTS } from "../models/AdminActivity.js";
 import {
@@ -2859,12 +2860,18 @@ test("the user picker is gated on creating admins, not on browsing users", () =>
     /\$regex:\s*search/,
     "ورودیِ خام نباید به $regex برود"
   );
-  assert.match(source, /const safe = search\.replace\(/, "ورودی escape نمی‌شود");
-  assert.match(
-    source,
-    /new RegExp\(safe, "i"\)/,
-    "الگو باید از مقدارِ escape شده ساخته شود، نه از ورودیِ خام"
-  );
+  // این روت دیگر خودش regex نمی‌سازد؛ از جست‌وجوی مشترک استفاده می‌کند که
+  // ورودی را توکن می‌کند و هر چیزی جز حرف و رقم را دور می‌ریزد. پس به‌جای
+  // بررسیِ خطِ escapeِ قدیمی، خودِ خاصیت آزموده می‌شود.
+  assert.doesNotMatch(source, /new RegExp\(/, "روت نباید مستقیم RegExp بسازد");
+  assert.match(source, /withSearch\(\{\}, search, \[/, "باید از جست‌وجوی مشترک استفاده کند");
+  for (const clause of buildSearchFilter("(a+)+$ .* [[[ ^x", ["name"]).$and) {
+    assert.match(
+      clause.name.$regex,
+      /^[\p{L}\p{N}[\]]+$/u,
+      `متاکاراکتر به الگو نشت کرده: ${clause.name.$regex}`
+    );
+  }
 
   // صفحه‌بندیِ واقعی با سقفِ سخت
   assert.match(source, /Math\.min\(\s*MAX_LIMIT/);

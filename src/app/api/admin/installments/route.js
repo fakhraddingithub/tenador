@@ -11,6 +11,7 @@
  *   sort     = dueDate | amount | status | newest                  (پیش‌فرض newest)
  */
 
+import { matchesSearch } from "@/lib/search";
 import { NextResponse } from "next/server";
 import connectToDB from "base/configs/db";
 import { getUserFullName } from "base/utils/userName";
@@ -31,7 +32,7 @@ export async function GET(req) {
     const statusFilter = searchParams.get("status") || "";
     const from = searchParams.get("from");
     const to = searchParams.get("to");
-    const q = (searchParams.get("q") || "").trim().toLowerCase();
+    const q = (searchParams.get("q") || "").trim();
     const sort = searchParams.get("sort") || "newest";
 
     // بازه‌ی تاریخ ثبت طرح
@@ -116,15 +117,11 @@ export async function GET(req) {
       rows = rows.filter((r) => r.derivedStatus === statusFilter);
     }
 
-    // جستجو
+    // جستجو — همان قواعدِ کلِ پروژه: ترتیبِ کلمات و نقطه‌گذاری بی‌اهمیت
     if (q) {
-      rows = rows.filter((r) => {
-        return (
-          r.customer.name.toLowerCase().includes(q) ||
-          r.customer.phone.includes(q) ||
-          (r.order.trackingCode || "").toLowerCase().includes(q)
-        );
-      });
+      rows = rows.filter((r) =>
+        matchesSearch(q, r.customer.name, r.customer.phone, r.order.trackingCode)
+      );
     }
 
     // مرتب‌سازی

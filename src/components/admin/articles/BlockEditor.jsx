@@ -1,5 +1,6 @@
 "use client";
 
+import { matchesSearch } from "@/lib/search";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { DndContext, KeyboardSensor, PointerSensor, closestCenter, useSensor, useSensors } from "@dnd-kit/core";
 import { SortableContext, arrayMove, sortableKeyboardCoordinates, useSortable, verticalListSortingStrategy } from "@dnd-kit/sortable";
@@ -160,7 +161,7 @@ function SortableBlock({ block, index, total, onUpdate, onStyle, onLayout, onRem
 
 function BlockLibrary({ onAdd, onClose }) {
   const [query, setQuery] = useState("");
-  const groups = useMemo(() => BLOCK_GROUPS.map((group) => ({ group, blocks: Object.entries(ARTICLE_BLOCKS).filter(([, item]) => item.group === group && item.label.includes(query.trim())) })).filter((item) => item.blocks.length), [query]);
+  const groups = useMemo(() => BLOCK_GROUPS.map((group) => ({ group, blocks: Object.entries(ARTICLE_BLOCKS).filter(([, item]) => item.group === group && matchesSearch(query, item.label)) })).filter((item) => item.blocks.length), [query]);
   useEffect(() => {
     const onKey = (event) => { if (event.key === "Escape") onClose(); };
     window.addEventListener("keydown", onKey);

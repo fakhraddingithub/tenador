@@ -5,6 +5,7 @@
  *        query params: search, role (all|admin|coach|user|seller|national_player), status (all|active|banned)
  */
 
+import { withSearch } from "@/lib/search";
 import { NextResponse } from "next/server";
 import connectToDB from "base/configs/db";
 import requireAdminPermission from "@/lib/requireAdminPermission";
@@ -22,29 +23,10 @@ export async function GET(req) {
     const role = searchParams.get("role") || "all";
     const status = searchParams.get("status") || "all";
 
-    const filter = {};
-
-    if (search) {
-      const rx = { $regex: search, $options: "i" };
-      filter.$or = [
-        { name: rx },
-        { lastName: rx },
-        {
-          $expr: {
-            $regexMatch: {
-              input: {
-                $trim: { input: { $concat: [{ $ifNull: ["$name", ""] }, " ", { $ifNull: ["$lastName", ""] }] } },
-              },
-              regex: search,
-              options: "i",
-            },
-          },
-        },
-        { email: rx },
-        { phone: rx },
-        { coachCode: rx },
-      ];
-    }
+    // هر توکن باید در یکی از این فیلدها بیاید. `$expr`ِ قبلی برای «نام +
+    // نام‌خانوادگی» دیگر لازم نیست: توکن‌ها جدا تطبیق می‌خورند، پس «رضایی رضا»
+    // هم پیدا می‌شود.
+    const filter = withSearch({}, search, ["name", "lastName", "email", "phone", "coachCode"]);
 
     if (role === "coach") {
       filter.role = "coach";

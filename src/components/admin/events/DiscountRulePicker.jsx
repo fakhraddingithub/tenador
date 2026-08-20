@@ -1,5 +1,6 @@
 "use client";
 
+import { matchesSearch } from "@/lib/search";
 import { useState, useEffect, useRef } from "react";
 
 /**
@@ -123,9 +124,7 @@ export default function DiscountRulePicker({ value = [], onChange }) {
     onChange(next);
   };
 
-  const filtered = rules.filter((r) =>
-    r.title?.toLowerCase().includes(search.toLowerCase())
-  );
+  const filtered = rules.filter((r) => matchesSearch(search, r.title, r.name));
 
   return (
     <div className="space-y-2" ref={wrapRef}>

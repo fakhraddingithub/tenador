@@ -7,6 +7,7 @@
  * دکمه‌های افزودن/ویرایش کماکان روت‌های موجودِ /admin-athletes/add و /edit/[id]
  * را فراخوانی می‌کنند تا هیچ منطق CRUD خراب نشود.
  */
+import { matchesSearch } from "@/lib/search";
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
@@ -69,11 +70,7 @@ export default function SportAthletesPage() {
     [athletes, sportId]
   );
 
-  const filtered = scoped.filter(
-    (a) =>
-      a.title?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      a.name?.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const filtered = scoped.filter((a) => matchesSearch(searchTerm, a.title, a.name));
 
   const handleDelete = async (id) => {
     const result = await Swal.fire({

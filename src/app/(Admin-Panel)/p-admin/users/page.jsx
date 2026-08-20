@@ -1,5 +1,6 @@
 'use client'
 
+import { matchesSearch } from '@/lib/search'
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { motion, AnimatePresence } from 'framer-motion'
@@ -92,12 +93,13 @@ export default function AdminUsersManagement() {
   const openDetails = (userId) => router.push(`/p-admin/users/${userId}`)
 
   const filteredUsers = users.filter(user => {
-    const q = searchQuery.toLowerCase()
-    const matchesSearch =
-      getUserFullName(user).toLowerCase().includes(q) ||
-      (user.email || '').toLowerCase().includes(q) ||
-      (user.phone || '').includes(searchQuery) ||
-      (user.coachCode && user.coachCode.toLowerCase().includes(q))
+    const matchesQuery = matchesSearch(
+      searchQuery,
+      getUserFullName(user),
+      user.email,
+      user.phone,
+      user.coachCode
+    )
     const matchesRole =
       roleFilter === 'all' ||
       (roleFilter === 'admin' && user.role === 'admin') ||
@@ -105,7 +107,7 @@ export default function AdminUsersManagement() {
       (roleFilter === 'user' && user.role === 'user')
     const status = user.isBanned ? 'banned' : 'active'
     const matchesStatus = statusFilter === 'all' || status === statusFilter
-    return matchesSearch && matchesRole && matchesStatus
+    return matchesQuery && matchesRole && matchesStatus
   })
 
   const kpiCards = [

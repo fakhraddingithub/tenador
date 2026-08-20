@@ -1,5 +1,6 @@
 'use client';
 
+import { matchesSearch } from "@/lib/search";
 import { useState, useMemo, useEffect, useRef } from "react";
 import ProductList from "./ProductList";
 import FilterSidebar from "./FilterSidebar"; // این کامپوننت را در ادامه می‌سازیم
@@ -77,8 +78,15 @@ export default function ProductListClient({ products: initialProducts, totalResu
   // منطق فیلترینگ فوق حرفه‌ای
   const filteredProducts = useMemo(() => {
     return products.filter((product) => {
-      // سرچ متنی
-      const matchesSearch = product.name.toLowerCase().includes(searchTerm.toLowerCase());
+      // سرچ متنی — توکنی: ترتیبِ کلمات و نقطه‌گذاری بی‌اهمیت است
+      const matchesQuery = matchesSearch(
+        searchTerm,
+        product.name,
+        product.sku,
+        product.brand?.title || product.brand?.name,
+        product.serie?.title || product.serie?.name,
+        product.tag
+      );
 
       // فیلتر برند
       const matchesBrand = filters.brands.length === 0 ||
@@ -104,7 +112,7 @@ export default function ProductListClient({ products: initialProducts, totalResu
       // فیلتر ویژگی‌ها (همان منطق مشترکِ صفحه‌ی دسته: substring + AND)
       const matchesAttributes = productMatchesAttrFilters(product, attrFilters, attrMeta);
 
-      return matchesSearch && matchesBrand && matchesSport && matchesCategory && matchesSerie && matchesPrice && matchesAttributes;
+      return matchesQuery && matchesBrand && matchesSport && matchesCategory && matchesSerie && matchesPrice && matchesAttributes;
     });
   }, [searchTerm, filters, products, attrFilters, attrMeta]);
 

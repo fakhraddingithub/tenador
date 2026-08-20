@@ -1,5 +1,6 @@
 'use client';
 
+import { matchesSearch } from "@/lib/search";
 import { useState, useMemo, useEffect, useRef } from 'react';
 import { FiSearch, FiShoppingBag, FiTag } from 'react-icons/fi';
 import useFilterScrollAnchor from '@/hooks/useFilterScrollAnchor';
@@ -71,7 +72,13 @@ export default function UsedProductsPageClient({
       const brand = product.baseProduct?.brand;
       const cat   = product.baseProduct?.category;
 
-      const matchesSearch = name.toLowerCase().includes(searchTerm.toLowerCase());
+      const matchesQuery = matchesSearch(
+        searchTerm,
+        name,
+        product.baseProduct?.name,
+        brand?.title || brand?.name,
+        cat?.title || cat?.name
+      );
 
       const matchesBrand =
         filters.brands.length === 0 ||
@@ -93,7 +100,7 @@ export default function UsedProductsPageClient({
 
       const matchesAttributes = productMatchesAttrFilters(product.baseProduct || {}, attrFilters, attrMeta);
 
-      return matchesSearch && matchesBrand && matchesCategory && matchesPrice && matchesScore && matchesAttributes;
+      return matchesQuery && matchesBrand && matchesCategory && matchesPrice && matchesScore && matchesAttributes;
     });
   }, [searchTerm, filters, initialProducts, attrFilters, attrMeta]);
 

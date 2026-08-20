@@ -1,3 +1,4 @@
+import { withSearch } from "@/lib/search";
 import { NextResponse } from "next/server";
 import connectToDB from "base/configs/db";
 import "base/models/registerModels";
@@ -8,10 +9,6 @@ import { articleApiError } from "@/lib/articleApi";
 export const runtime = "nodejs";
 
 const STATUSES = ["draft", "review", "scheduled", "published", "archived"];
-
-function safeRegex(value) {
-  return String(value || "").replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-}
 
 export async function GET(req) {
   const { denied } = await requireAdminPermission("articles.view");
@@ -27,7 +24,7 @@ export async function GET(req) {
     const limit = Math.min(100, Math.max(1, Number.parseInt(searchParams.get("limit") || "20", 10) || 20));
     const filter = view === "trash" ? { deletedAt: { $ne: null } } : { deletedAt: null };
     if (STATUSES.includes(view)) filter.status = view;
-    if (q) filter.$or = [{ title: { $regex: safeRegex(q), $options: "i" } }, { slug: { $regex: safeRegex(q), $options: "i" } }];
+    Object.assign(filter, withSearch(filter, q, ["title", "slug", "excerpt"]));
 
     const [articles, total, statusCounts, trash] = await Promise.all([
       Article.find(filter)

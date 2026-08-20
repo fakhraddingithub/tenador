@@ -37,6 +37,7 @@ import { attachListingPrices } from "base/services/priceEngine";
 import { resolveSerieSportContent } from "@/lib/serieSportContent";
 import { applyProductSportVisibility } from "base/services/categorySportVisibility.service";
 import { andMongoFilters } from "base/utils/categorySportVisibility";
+import { withProductSearch } from "@/lib/productSearch";
 import {
   buildTargetAudienceMatch,
   LISTING_FIELDS,
@@ -136,9 +137,8 @@ async function buildBaseMatch({
   // مخاطبِ هدف (navbar audience tabs) — مستقلِ کاملِ فیلترهای موجودیتی/ویژگی بالا
   const audienceMatch = buildTargetAudienceMatch(targetAudience);
   if (audienceMatch) match.targetAudience = audienceMatch;
-  if (search && search.trim()) {
-    match.name = { $regex: escapeRegex(search.trim()), $options: "i" };
-  }
+  // جستجوی توکنی؛ توکنی که در نامِ محصول نیست می‌تواند با برند/سری تطبیق بخورد
+  Object.assign(match, await withProductSearch(match, search));
   return sportId
     ? applyProductSportVisibility(match, { sportId, categoryId })
     : match;

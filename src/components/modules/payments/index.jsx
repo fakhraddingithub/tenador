@@ -8,6 +8,7 @@
  * طراحیِ روشنِ پروژه.
  */
 
+import { matchesSearch } from "@/lib/search";
 import { motion, AnimatePresence } from 'framer-motion'
 import { useState, useEffect } from 'react'
 import { toast } from 'react-toastify'
@@ -30,7 +31,6 @@ import {
   getReceiptImages,
   getPaymentReference,
   buildSearchHaystack,
-  normalizeDigits,
 } from './constants'
 import PaymentDetailModal from './PaymentDetailModal'
 import ReceiptLightbox from './ReceiptLightbox'
@@ -212,11 +212,9 @@ const PaymentsModule = () => {
   const counts = { ALL: payments.length }
   for (const p of payments) counts[p.status] = (counts[p.status] || 0) + 1
 
-  const q = normalizeDigits(query.trim()).toLowerCase()
   const filtered = payments.filter((p) => {
     if (activeFilter !== 'ALL' && p.status !== activeFilter) return false
-    if (q && !buildSearchHaystack(p).includes(q)) return false
-    return true
+    return matchesSearch(query, buildSearchHaystack(p))
   })
 
   const hasAny = payments.length > 0

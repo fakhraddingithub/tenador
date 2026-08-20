@@ -10,12 +10,16 @@ import Serie from "base/models/Serie";
 import "base/models/LimitedEdition";
 import requireAdminPermission from "@/lib/requireAdminPermission";
 import { buildTargetAudienceMatch } from "base/utils/targetAudience";
+import { rankProducts, withProductSearch } from "@/lib/productSearch";
 
-const ADMIN_LIST_FIELDS = "name slug sku mainImage basePrice isActive order brand sport category serie limitedEdition targetAudience createdAt updatedAt";
+const ADMIN_LIST_FIELDS = "name slug sku mainImage basePrice isActive order brand sport category serie limitedEdition targetAudience tag color createdAt updatedAt";
 
-function escapeRegExp(value) {
-  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-}
+// وقتی کوئریِ جستجو هست، صفحه‌بندی روی نتایجِ *رتبه‌بندی‌شده* انجام می‌شود، پس
+// باید کلِ استخرِ تطابق‌ها یک‌جا خوانده شود. سقف می‌گذاریم تا کوئریِ خیلی عام
+// (مثل «a») حافظه را نبلعد.
+// ponytail: سقفِ ۵۰۰؛ اگر کاتالوگ خیلی بزرگ شد، رتبه‌بندی باید به aggregation
+// pipeline یا Atlas Search منتقل شود — امضای همین دو تابع تغییری نمی‌کند.
+const SEARCH_CANDIDATE_LIMIT = 500;
 
 export async function GET(req) {
   try {
@@ -89,9 +93,10 @@ export async function GET(req) {
       }
       query.targetAudience = audienceMatch;
     }
-    if (search) query.name = { $regex: escapeRegExp(search), $options: "i" };
+    // جستجوی توکنی و مستقل از ترتیبِ کلمات (فیلترهای بالا دست‌نخورده می‌مانند)
+    const finalQuery = search ? await withProductSearch(query, search) : query;
 
-    let productsQuery = Product.find(query)
+    let productsQuery = Product.find(finalQuery)
       .select(isAdmin ? ADMIN_LIST_FIELDS : undefined)
       .populate('brand', 'name title slug icon')
       .populate('sport', 'name title slug')
@@ -106,19 +111,30 @@ export async function GET(req) {
     if (withVariants) productsQuery = productsQuery.populate('variants');
 
     const isPaginated = isAdmin && !returnAll;
-    if (isPaginated) {
+    // با جستجو، skip/limit به دیتابیس داده نمی‌شود: اول رتبه‌بندی، بعد برش.
+    // بدون جستجو دقیقاً همان مسیرِ قبلی (skip/limit در دیتابیس) اجرا می‌شود.
+    if (isPaginated && !search) {
       productsQuery = productsQuery
         .skip((requestedPage - 1) * requestedLimit)
         .limit(requestedLimit);
+    } else if (search) {
+      productsQuery = productsQuery.limit(SEARCH_CANDIDATE_LIMIT);
     }
 
-    const [products, total] = await Promise.all([
+    const [matched, countedTotal] = await Promise.all([
       productsQuery.lean(),
-      isPaginated ? Product.countDocuments(query) : Promise.resolve(null),
+      isPaginated && !search ? Product.countDocuments(finalQuery) : Promise.resolve(null),
     ]);
 
+    const ranked = search ? rankProducts(search, matched || []) : matched || [];
+    const total = search ? ranked.length : countedTotal;
+    const products =
+      isPaginated && search
+        ? ranked.slice((requestedPage - 1) * requestedLimit, requestedPage * requestedLimit)
+        : ranked;
+
     return NextResponse.json({
-      products: products || [],
+      products,
       ...(isPaginated && {
         pagination: {
           page: requestedPage,

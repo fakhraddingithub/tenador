@@ -8,6 +8,7 @@
  * سمتِ سرور به کاربرِ جاری محدودند). بعد از ثبت → صفحه‌ی گفتگوی تیکت.
  */
 
+import { matchesSearch } from "@/lib/search";
 import { motion } from 'framer-motion'
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
@@ -27,7 +28,6 @@ import {
   TICKET_PRIORITY,
   formatPrice,
   formatDate,
-  normalizeDigits,
 } from './constants'
 import AttachmentUploader from './AttachmentUploader'
 
@@ -49,10 +49,7 @@ function LinkPicker({
   const [open, setOpen] = useState(false)
   const [query, setQuery] = useState('')
 
-  const q = normalizeDigits(query.trim()).toLowerCase()
-  const filtered = q
-    ? items.filter((it) => normalizeDigits(searchOf(it)).toLowerCase().includes(q))
-    : items
+  const filtered = items.filter((it) => matchesSearch(query, searchOf(it)))
 
   if (selected) {
     return (

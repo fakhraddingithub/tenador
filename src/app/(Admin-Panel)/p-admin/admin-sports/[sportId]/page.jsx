@@ -1,5 +1,6 @@
 'use client';
 
+import { matchesSearch } from "@/lib/search";
 import { useState } from 'react';
 import useSWR from 'swr';
 import { useRouter, useParams } from 'next/navigation';
@@ -55,7 +56,7 @@ export default function SportCategoriesDetail() {
     } catch { showError('خطا', 'خطا در ارتباط با سرور'); }
   };
 
-  const filtered = categories.filter(c => c.title?.toLowerCase().includes(searchTerm.toLowerCase()));
+  const filtered = categories.filter((c) => matchesSearch(searchTerm, c.title, c.name, c.slug));
 
   const sensors = useSensors(useSensor(PointerSensor));
 

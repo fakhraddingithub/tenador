@@ -1,5 +1,6 @@
 "use client";
 
+import { matchesSearch } from "@/lib/search";
 import { useMemo, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { ChevronDown, Search } from "lucide-react";
@@ -21,14 +22,9 @@ export default function FaqSection({ block, accent }) {
   const [openId, setOpenId] = useState(null);
 
   const filtered = useMemo(() => {
-    const q = query.trim().toLowerCase();
     return items.filter((it) => {
       const matchCat = active === "all" || it.category === active;
-      const matchQ =
-        !q ||
-        String(it.question || "").toLowerCase().includes(q) ||
-        String(it.answer || "").toLowerCase().includes(q);
-      return matchCat && matchQ;
+      return matchCat && matchesSearch(query, it.question, it.answer);
     });
   }, [items, active, query]);
 
