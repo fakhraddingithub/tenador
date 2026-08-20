@@ -31,6 +31,7 @@
     "migrate:admin-rbac": "node scripts/auditAdminRbac.mjs --apply",
     "test:article-deletion": "node --test --test-timeout=180000 tests/articleDeletionSafety.test.mjs",
     "test:admin-rbac": "node --test tests/adminRbac.test.mjs",
+    "test:admin-audit": "node --test --test-timeout=180000 tests/adminAudit.test.mjs",
     "test:admin-rbac-tx": "node --test --test-timeout=120000 tests/adminRbacTransactions.test.mjs",
     "check:mongodb": "node scripts/check-mongodb.js",
     "worker:prices": "node workers/priceWorker.js",
@@ -38,6 +39,7 @@
     "worker:installment-reminders": "node workers/installmentReminderWorker.js",
     "worker:review-followup": "node workers/reviewFollowUpWorker.js",
     "ensure:indexes": "node scripts/ensureIndexes.js",
+    "verify:audit-trail": "node scripts/verifyAuditTrail.mjs",
     "verify:admin-auth": "node scripts/verify-admin-auth.mjs",
     "rbac:coverage": "node scripts/rbacCoverage.mjs"
   },

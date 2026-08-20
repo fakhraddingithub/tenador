@@ -4096,10 +4096,33 @@ test("authorization denials are recorded by the gate itself, not per route", () 
   // رسیدن به دیتابیس قطع می‌شود — در اجرای واقعی هیچ ردی نوشته نمی‌شد.
   assert.match(gate, /if \(decision\.status !== 200\) \{\s*await recordAuthorizationDenial\(/s);
 
-  // و اقدامِ نوشتنیِ مجاز هم خودکار ثبت می‌شود
+  // و اقدامِ نوشتنی هم خودکار ممیزی می‌شود — ولی از فاز ۹ رکوردش در *پایانِ*
+  // درخواست ساخته می‌شود، چون فقط آنجا معلوم است چه چیزی واقعاً عوض شد.
   assert.match(gate, /const writes = keys\.filter\(\(key\) => !isReadKey\(key\)\)/);
-  assert.match(gate, /action: "authz\.granted"/);
-  assert.match(gate, /result: "attempted"/);
+  assert.match(gate, /activateAuditScope\(scope, \{ ctx, permissions: writes \}\)/);
+  assert.match(gate, /scheduleAuditFlush\(scope\)/);
+
+  // ⚠️ دامنه باید *پیش از اولین await* باز شود، وگرنه enterWith روی فریمِ
+  // خودِ گیت می‌نشیند و هندلر هیچ‌وقت آن را نمی‌بیند (روی Node 24 تجربی
+  // بررسی شد). این تست همان ترتیب را قفل می‌کند.
+  // کامنت‌ها حذف می‌شوند: خودِ توضیحِ بالای تابع کلمه‌ی «await» را دارد و
+  // بدونِ این کار، تست به متنِ خودش گیر می‌کرد نه به کد.
+  const gateCode = gate.replace(/\/\*[\s\S]*?\*\//g, "").replace(/\/\/[^\n]*/g, "");
+  const openIndex = gateCode.indexOf("const scope = openAuditScope();");
+  const firstAwait = gateCode.indexOf("await ", gateCode.indexOf("export default async function"));
+  assert.ok(openIndex > -1, "گیت دیگر دامنه‌ی ممیزی باز نمی‌کند");
+  assert.ok(
+    openIndex < firstAwait,
+    "openAuditScope باید پیش از اولین await باشد وگرنه دامنه به هندلر نمی‌رسد"
+  );
+
+  // رکوردِ «مجاز شد» همچنان وجود دارد — فقط جایش عوض شده — پس معنیِ
+  // رکوردهای قدیمی دست‌نخورده می‌ماند.
+  const flush = readNormalized("src/lib/adminAuditFlush.js");
+  assert.match(flush, /action: "authz\.granted"/);
+  assert.match(flush, /result: "attempted"/);
+  // و رکوردِ تفصیلی فقط وقتی نوشته می‌شود که نوشتنی واقعاً رخ داده باشد
+  assert.match(flush, /if \(scope\.handled\) return false;/);
 
   // `admins.viewActivity` پسوندِ .view ندارد ولی خواندنی است — بدونِ این
   // استثنا، هر بار باز کردنِ خودِ دفتر یک رکوردِ «اقدامِ نوشتنی» می‌ساخت.
@@ -4219,7 +4242,10 @@ test("the activity API validates ids, enums and sort instead of ignoring them", 
   // رکوردها برگردند.
   assert.match(source, /if \(!isValidObjectId\(value\)\) \{/);
   assert.match(source, /status: 422/);
-  assert.match(source, /if \(!ACTIVITY_ACTIONS\[action\]\)/);
+  // شناسه‌ی اقدام یا در رجیستری است یا دست‌کم شکلِ یک شناسه را دارد؛ رشته‌ی
+  // دلخواه همچنان ۴۲۲ می‌گیرد و به کوئری نمی‌رسد.
+  assert.match(source, /if \(!ACTIVITY_ACTIONS\[action\] && !ACTION_ID_PATTERN\.test\(action\)\)/);
+  assert.match(source, /const ACTION_ID_PATTERN = /);
   assert.match(source, /if \(!ACTIVITY_RESULTS\.includes\(result\)\)/);
   // ترتیب از فهرستِ سفید می‌آید، نه از ورودی
   assert.match(source, /const SORTS = \{/);

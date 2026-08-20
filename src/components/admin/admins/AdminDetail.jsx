@@ -226,6 +226,7 @@ export default function AdminDetail({ adminId }) {
         <ActivityTimeline
           actorUser={user?._id ? String(user._id) : null}
           title={`تاریخچه فعالیت ${admin.name || ""}`.trim()}
+          lastLoginAt={admin.lastLoginAt || null}
         />
       ) : (
         <div

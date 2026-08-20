@@ -16,6 +16,10 @@
  * هنگام افزودن مدل جدید، یک خط import برای آن به این فایل اضافه کنید.
  */
 
+// ⚠️ باید *اولین* import باشد: پلاگینِ ممیزی فقط روی اسکیماهایی اثر دارد که
+// بعد از ثبتش کامپایل شوند، و ESM همه‌ی importها را به ترتیب ارزیابی می‌کند.
+import "./auditPlugin.js";
+
 import "base/models/Address";
 import "base/models/Admin";
 import "base/models/AdminRole";

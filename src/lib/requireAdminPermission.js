@@ -19,12 +19,16 @@
  * می‌شدند. با اجرای مهاجرت این مسیر بسته می‌شود و enforcement واقعی می‌شود.
  */
 
+import { after } from "next/server";
+
 import { resolveAdminContext } from "@/lib/adminContext";
 import { decideGateOutcome } from "@/lib/adminGuards";
 import {
   recordAdminActivity,
   recordAuthorizationDenial,
 } from "@/lib/adminActivity";
+import { activateAuditScope, openAuditScope } from "@/lib/adminAuditScope";
+import { flushAuditScope } from "@/lib/adminAuditFlush";
 
 /** ۴۰۱ — هیچ هویتِ معتبری وجود ندارد. */
 export function unauthorized() {
@@ -65,6 +69,13 @@ export function forbidden() {
  * بدون تغییر کار کنند.
  */
 export default async function requireAdminPermission(required = null, options) {
+  // ⚠️ همگام و پیش از اولین await — و این ترتیب اتفاقی نیست.
+  // `enterWith` دامنه را روی فریمِ async فعلی می‌نشاند؛ تا اینجا آن فریم هنوز
+  // مالِ *هندلر* است، پس دامنه در ادامه‌ی درخواست دیده می‌شود. اگر یک await
+  // جلوتر بیفتد، دامنه در همین تابع دفن می‌شود و پلاگین هیچ‌وقت پیدایش
+  // نمی‌کند. جزئیات در src/lib/adminAuditScope.js.
+  const scope = openAuditScope();
+
   // ⚠️ ctx حتی وقتی isAdmin=false است هم برگردانده می‌شود؛ همین تفاوتِ
   // «هویت نداریم» با «مجاز نیست» را ممکن می‌کند.
   const ctx = await resolveAdminContext();
@@ -107,26 +118,25 @@ export default async function requireAdminPermission(required = null, options) {
     return { actor: null, ctx, denied: forbidden() };
   }
 
-  // ── ممیزیِ خودکارِ اقدامِ مجاز (فاز ۶) ──────────────────────────────────
+  // ── ممیزی (فاز ۹) ──────────────────────────────────────────────────────
   // روت‌هایی که خودشان رکوردِ کاملِ success/failure + diff می‌نویسند با
-  // `{ audit: false }` این ثبتِ عمومی را خاموش می‌کنند تا خطِ زمانی دوتایی نشود.
+  // `{ audit: false }` این ثبتِ خودکار را خاموش می‌کنند.
   if (options?.audit !== false) {
     const keys = asKeys(required);
     const writes = keys.filter((key) => !isReadKey(key));
     const auditedReads = keys.filter((key) => AUDITED_READ_KEYS.has(key));
 
-    // ثبت‌های مسیرِ موفق عمداً await نمی‌شوند: اینجا یک عملیاتِ واقعیِ کاربر
-    // در جریان است و نباید منتظرِ دفتر بماند. از دست رفتنِ گاه‌به‌گاهِ یک
-    // رکوردِ «مجاز شد» پذیرفته شده است — برخلافِ رکوردِ رد که await می‌شود.
+    // برای یک درخواستِ نوشتنی، دامنه فعال می‌شود و رکورد در *پایانِ* درخواست
+    // ساخته می‌شود — آن‌وقت دیگر معلوم است کدام سفارش، کدام محصول، و چه
+    // چیزی از چه به چه تغییر کرد. اگر هیچ نوشتنی رخ ندهد، همان رکوردِ
+    // `authz.granted / attempted`ِ قبلی ثبت می‌شود، پس معنیِ رکوردهای قدیمی
+    // دست‌نخورده می‌ماند.
     if (writes.length) {
-      recordAdminActivity({
-        ctx,
-        action: "authz.granted",
-        permissions: writes,
-        result: "attempted",
-        statusCode: 200,
-      });
+      activateAuditScope(scope, { ctx, permissions: writes });
+      scheduleAuditFlush(scope);
     }
+
+    // خواندن‌های حساس همان‌جا ثبت می‌شوند؛ نوشتنی در کار نیست که منتظرش بمانیم.
     if (auditedReads.length) {
       recordAdminActivity({
         ctx,
@@ -143,6 +153,24 @@ export default async function requireAdminPermission(required = null, options) {
     ctx,
     denied: null,
   };
+}
+
+/**
+ * ثبتِ رکوردِ پایانِ درخواست.
+ *
+ * `after()` بعد از ارسالِ پاسخ اجرا می‌شود، پس ساختِ رکورد هیچ تأخیری به
+ * عملیاتِ ادمین اضافه نمی‌کند و هندلر هم لازم نیست چیزی صدا بزند. در محیطی
+ * که درخواستی در جریان نیست (تست، اسکریپت) `after` خطا می‌دهد و ثبت به
+ * فراخوانِ دستیِ flush واگذار می‌شود.
+ */
+function scheduleAuditFlush(scope) {
+  if (scope.flushScheduled) return;
+  scope.flushScheduled = true;
+  try {
+    after(() => flushAuditScope(scope));
+  } catch {
+    scope.flushScheduled = false;
+  }
 }
 
 function asKeys(required) {

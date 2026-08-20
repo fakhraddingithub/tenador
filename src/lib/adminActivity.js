@@ -27,6 +27,8 @@
 // همان قاعده‌ای که superAdminInvariant.js دارد.
 import mongoose from "mongoose";
 import AdminActivity from "../../models/AdminActivity.js";
+import { REDACTED, isSecretField, redact } from "./auditRedaction.js";
+import { markAuditHandled } from "./adminAuditScope.js";
 
 /**
  * اتصال، فقط اگر لازم باشد.
@@ -44,108 +46,20 @@ async function ensureConnection() {
 
 /* ────────────────────────────────────────────────────────────────────────────
  * حذفِ اسرار
+ *
+ * پیاده‌سازی به src/lib/auditRedaction.js منتقل شده تا پلاگینِ Mongoose هم
+ * بتواند از همان فهرست استفاده کند (لایه‌ی مدل نمی‌تواند این فایل را بار کند).
+ * نام‌ها اینجا دوباره export می‌شوند، پس هیچ فراخوانی‌ای عوض نشده است.
  * ──────────────────────────────────────────────────────────────────────────── */
 
-/**
- * نامِ فیلدهایی که هرگز نباید ثبت شوند. مقایسه روی نامِ *نرمال‌شده* انجام
- * می‌شود (بدونِ _ و -، حروف کوچک) تا `access_token` و `accessToken` هر دو
- * بگیرند.
- */
-const SECRET_FIELDS = new Set([
-  "password",
-  "newpassword",
-  "currentpassword",
-  "passwordhash",
-  "hash",
-  "salt",
-  "token",
-  "accesstoken",
-  "refreshtoken",
-  "apikey",
-  "secret",
-  "clientsecret",
-  "privatekey",
-  "otp",
-  "otpcode",
-  "code",
-  "verificationcode",
-  "authorization",
-  "cookie",
-  "session",
-  "cvv",
-  "cardnumber",
-  "pan",
-  "iban",
-  "shebanumber",
-  "accountnumber",
-]);
-
-/** فیلدهایی که خودشان راز نیستند ولی URLِ سندِ خصوصی‌اند. */
-const PRIVATE_URL_FIELDS = new Set([
-  "certificateimage",
-  "personalimage",
-  "nationalcardimage",
-  "documenturl",
-  "receiptimageurl",
-]);
-
-export const REDACTED = "[حذف‌شده]";
-
-const normalizeFieldName = (name) => String(name).toLowerCase().replace(/[_-]/g, "");
-
-export function isSecretField(name) {
-  return SECRET_FIELDS.has(normalizeFieldName(name));
-}
-
-export function isPrivateUrlField(name) {
-  return PRIVATE_URL_FIELDS.has(normalizeFieldName(name));
-}
-
-const MAX_STRING = 500;
-const MAX_ARRAY = 50;
-const MAX_DEPTH = 4;
-
-/**
- * پاک‌سازیِ بازگشتیِ یک مقدار برای ثبت.
- *
- * علاوه بر حذفِ اسرار، اندازه را هم مهار می‌کند: بدنه‌ی خامِ یک درخواستِ
- * بزرگ نباید دفتر را پر کند (و رشته‌ی طولانی خودش می‌تواند حاملِ داده‌ی
- * حساس باشد).
- */
-export function redact(value, depth = 0) {
-  if (value === null || value === undefined) return value ?? null;
-
-  const type = typeof value;
-  if (type === "string") {
-    return value.length > MAX_STRING ? `${value.slice(0, MAX_STRING)}…` : value;
-  }
-  if (type === "number" || type === "boolean") return value;
-  if (type === "bigint" || type === "function" || type === "symbol") return String(type);
-
-  if (value instanceof Date) return value.toISOString();
-  // ObjectId و هر چیزی که toHexString دارد
-  if (typeof value.toHexString === "function") return value.toHexString();
-
-  if (depth >= MAX_DEPTH) return "[عمق زیاد]";
-
-  if (Array.isArray(value)) {
-    const items = value.slice(0, MAX_ARRAY).map((item) => redact(item, depth + 1));
-    if (value.length > MAX_ARRAY) items.push(`… ${value.length - MAX_ARRAY} مورد دیگر`);
-    return items;
-  }
-
-  if (type === "object") {
-    const out = {};
-    for (const [key, item] of Object.entries(value)) {
-      if (isSecretField(key)) out[key] = REDACTED;
-      else if (isPrivateUrlField(key)) out[key] = item ? "[سندِ خصوصی]" : null;
-      else out[key] = redact(item, depth + 1);
-    }
-    return out;
-  }
-
-  return null;
-}
+export {
+  REDACTED,
+  isSecretField,
+  isPrivateUrlField,
+  isSecretPath,
+  isPrivateUrlPath,
+  redact,
+} from "./auditRedaction.js";
 
 /* ────────────────────────────────────────────────────────────────────────────
  * تفاوتِ قبل/بعد
@@ -274,6 +188,8 @@ export async function recordAdminActivity({
   reason = "",
   metadata = null,
   changes = null,
+  description = "",
+  related = null,
 } = {}) {
   try {
     if (!action || !result) return false;
@@ -292,6 +208,8 @@ export async function recordAdminActivity({
       resourceType: resource?.type || "",
       resourceId: resource?.id ? String(resource.id) : "",
       resourceLabel: resource?.label ? String(resource.label).slice(0, 200) : "",
+      description: description ? String(description).slice(0, 300) : "",
+      related: Array.isArray(related) ? related : [],
       result,
       statusCode,
       reason,
@@ -323,14 +241,18 @@ export async function recordAdminActivity({
  * (پول، دسترسی) بهتر است await شود تا رکورد قبل از پاسخ قطعی شود.
  */
 export function auditor(ctx, base = {}) {
-  const emit = (result, extra = {}, fallbackStatus) =>
-    recordAdminActivity({
+  const emit = (result, extra = {}, fallbackStatus) => {
+    // این روت رکوردِ خودش را می‌نویسد؛ رکوردِ خودکارِ پایانِ درخواست
+    // (adminAuditFlush) باید ساکت بماند تا خطِ زمانی دوتایی نشود.
+    markAuditHandled();
+    return recordAdminActivity({
       ctx,
       ...base,
       ...extra,
       result,
       statusCode: extra.statusCode ?? fallbackStatus,
     });
+  };
 
   return {
     success: (extra) => emit("success", extra, 200),

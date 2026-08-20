@@ -99,6 +99,7 @@ Beyond the storefront, several self-contained subsystems each span a model + ser
 | Events / campaigns | `services/event.service.js`, `services/eventProductResolver.js`, `models/Event.js` | Campaign platform with theme/effect system and resolver-driven product selection; public pages live at `/collection/[slug]` (old `/events` paths 301-redirect in `next.config.mjs`) |
 | Articles / blog | `services/article.service.js` (admin CRUD), `services/publicArticle.service.js` (public), `models/Article*.js` | Block-based articles (same block idea as CMS pages) with categories, tags, revision snapshots, and slug-change redirects; article-category slugs live at the URL root, so they are collision-checked against sport/brand slugs and the reserved-route list in `utils/articleRoutes.js`; supports scheduled publishing (`publicArticleFilter`) |
 | Admin notifications | `services/notificationService.js`, `models/Notification.js` | Bell/sidebar UI; beware the payment dual-path/webhook early-return gotcha |
+| Admin audit log | `models/auditPlugin.js`, `src/lib/adminAuditScope.js`, `src/lib/auditEntities.js`, `models/AdminActivity.js` | Append-only ledger of what each admin actually changed — see **Admin audit log** below |
 | User broadcasts | `services/userNotificationService.js`, `models/UserNotification*.js` | Admin→user broadcasts with watermark read-tracking |
 | Reviews / comments | `services/comment.service.js`, `models/Comment.js` | Moderated, one-per-product, "verified purchase" badge |
 | Support tickets | `models/Ticket.js`, `models/TicketMessage.js`, `api/tickets`, `api/admin/tickets` | Department/priority ticket system with per-ticket chat (user dashboard + admin panel), attachments via `/api/upload`, email notice on admin reply |
@@ -109,6 +110,54 @@ Beyond the storefront, several self-contained subsystems each span a model + ser
 | Order flows | `src/lib/flowTraversal.js`, `p-admin/admin-order-flows`, `models/OrderFlow*` | Admin-defined DAG of order stages; traversal turns the graph into a customer-facing step sequence |
 | Financial analytics | `services/analyticsService.js`, `p-admin/financial` | Revenue/collected/outstanding/collect-rate via aggregation pipelines (no N+1); overdue from installment-check due dates |
 | Web push | `src/lib/push.js`, `models/PushSubscription.js` | Server-side Web Push via VAPID; Node-only (needs native crypto); auto-prunes expired subscriptions (404/410) |
+
+### Admin audit log
+
+Records are built from the **Mongoose layer**, not from route handlers. The
+permission gate runs before a handler and only knows the permission key, so its
+record can only ever say "an authorized write happened"; instrumenting all 121
+admin routes by hand would go stale the first time someone adds a route. The
+only layer every mutation passes through — and the only one that sees before and
+after values — is Mongoose.
+
+Flow of one admin write request:
+
+1. `requireAdminPermission()` calls `openAuditScope()` **synchronously, before
+   its first `await`**. This ordering is load-bearing: `AsyncLocalStorage.enterWith`
+   attaches to the current async frame, and until the first `await` that frame
+   still belongs to the *handler*. Move it after an `await` and the scope is
+   invisible to everything downstream. A test in `tests/adminRbac.test.mjs` locks
+   the order in.
+2. The gate activates the scope only for a **write** key. Public traffic, workers
+   and read-only admin requests never open one, so they cost nothing.
+3. `models/auditPlugin.js` (a global Mongoose plugin) snapshots documents on
+   `init` and emits an event from each `post` hook — so an event exists only when
+   the write really happened. Events written inside a transaction that later
+   aborted are dropped by checking `session.transaction.state`.
+4. `after()` fires `flushAuditScope()` once the response is sent. It collapses all
+   the request's mutations into **one** record: the highest-`priority` entity is
+   the subject, the rest go in `related`. With no mutations it writes the old
+   `authz.granted` / `attempted` record, so pre-existing records keep their meaning.
+
+Gotchas:
+
+- **`mongoose.plugin()` only affects schemas compiled after it runs.** Adding hooks
+  to an already-compiled model silently does nothing. Hence `src/instrumentation.js`
+  (runs before everything) plus `models/auditPlugin.js` being the first import in
+  `models/registerModels.js`.
+- **The ALS store lives on `globalThis`.** Next bundles the module into more than one
+  layer; a per-module `new AsyncLocalStorage()` gave instrumentation and the routes
+  separate stores, and the plugin silently collected nothing.
+- Routes that write their own record via `auditor()` call `markAuditHandled()`
+  automatically, which suppresses the generic one.
+- Add an entity to `AUDIT_ENTITIES` for a better label/diff; coverage does **not**
+  depend on it — unknown models fall back to a generic descriptor. Add noisy or
+  side-effect models to `AUDIT_IGNORED_MODELS` instead.
+
+```bash
+npm run test:admin-audit     # plugin + flush against a real replica set
+npm run verify:audit-trail   # real HTTP against a built app on a throwaway DB
+```
 
 ### State Management
 

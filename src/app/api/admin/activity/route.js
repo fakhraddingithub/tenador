@@ -26,6 +26,9 @@ export const runtime = "nodejs";
 const MAX_LIMIT = 50;
 const DEFAULT_LIMIT = 20;
 
+/** شکلِ مجازِ شناسه‌ی اقدام: `a.b` تا `a.b.c.d` — بدون regexِ ورودی‌ساخته. */
+const ACTION_ID_PATTERN = /^[a-zA-Z][a-zA-Z0-9]{0,29}(\.[a-zA-Z0-9]{1,30}){1,3}$/;
+
 /** فقط این دو ترتیب مجازند — ورودیِ آزاد به sort یعنی تزریق. */
 const SORTS = {
   "-createdAt": { createdAt: -1 },
@@ -60,9 +63,13 @@ export async function GET(req) {
       filter[field] = value;
     }
 
+    // شناسه‌ی اقدام یا در رجیستری است، یا دست‌کم *شکلِ* یک شناسه را دارد.
+    // شکل هم پذیرفته می‌شود چون دفتر رکوردهای قدیمی و رکوردهای موجودیت‌های
+    // تازه‌ثبت‌شده را هم دارد؛ رد کردنشان یعنی ممیز نتواند فیلتر کند. الگو
+    // به‌قدر کافی بسته است که چیزی جز یک شناسه‌ی نقطه‌دار از آن رد نشود.
     const action = searchParams.get("action");
     if (action) {
-      if (!ACTIVITY_ACTIONS[action]) {
+      if (!ACTIVITY_ACTIONS[action] && !ACTION_ID_PATTERN.test(action)) {
         return NextResponse.json({ message: "اقدامِ ناشناخته" }, { status: 422 });
       }
       filter.action = action;

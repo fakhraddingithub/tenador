@@ -4,6 +4,7 @@ import connectToDB from 'base/configs/db';
 import User from 'base/models/User';
 import { tokenGenrator, generateRefreshToken } from 'base/utils/auth';
 import { splitFullName } from 'base/utils/userName';
+import recordAdminLogin from '@/lib/recordAdminLogin';
 
 const client = new OAuth2Client(
   process.env.GOOGLE_CLIENT_ID,
@@ -93,6 +94,9 @@ export async function GET(request) {
         await user.save();
       }
     }
+    // اگر این کاربر عضویتِ ادمین دارد، زمانِ ورودش ثبت می‌شود. برای بقیه بی‌اثر است.
+    await recordAdminLogin(user._id);
+
     const accessToken = tokenGenrator({ userId: user._id, email: user.email, role: user.role });
     const refreshToken = generateRefreshToken({ userId: user._id, email: user.email });
 

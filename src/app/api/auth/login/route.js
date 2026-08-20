@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import connectToDB from 'base/configs/db';
 import User from 'base/models/User';
+import recordAdminLogin from '@/lib/recordAdminLogin';
 import { passwordValidator, tokenGenrator, generateRefreshToken, validatePhone } from 'base/utils/auth';
 
 export async function POST(request) {
@@ -28,6 +29,9 @@ export async function POST(request) {
     if (!isValid) {
       return NextResponse.json({ message: 'Invalid password' }, { status: 401 });
     }
+
+    // اگر این کاربر عضویتِ ادمین دارد، زمانِ ورودش ثبت می‌شود. برای بقیه بی‌اثر است.
+    await recordAdminLogin(user._id);
 
     const accessToken = tokenGenrator({ userId: user._id, phone: user.phone, role: user.role });
     const refreshToken = generateRefreshToken({ userId: user._id, phone: user.phone });
