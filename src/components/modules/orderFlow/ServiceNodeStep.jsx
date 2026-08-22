@@ -4,10 +4,9 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { FiCheck, FiAlertCircle, FiImage } from "react-icons/fi";
 import { formatToman } from "@/lib/currency";
 import {
-  formatNum,
   getServiceOptions,
-  isRangeAutoIncluded,
   isServiceFeeEntry,
+  rangeDefaultValue,
   rangeLabel,
   resolveOption,
   resolveServiceSelection,
@@ -47,11 +46,11 @@ export default function ServiceNodeStep({
       initial[c.optionKey] =
         c.choiceKey != null ? { choiceKey: String(c.choiceKey) } : { value: Number(c.value) };
     }
-    // آپشنِ بازه‌ایِ دارای قیمتِ پیش‌فرض (یا اجباری) خودکار وارد سفارش می‌شود؛
-    // بقیه تا وقتی کاربر انتخابشان نکند اضافه نمی‌شوند.
+    // آپشنِ بازه‌ای همیشه انتخاب‌شده است و با مقدارِ پیش‌فرضِ ادمین شروع می‌شود؛
+    // مشتری تاییدِ جداگانه‌ای نمی‌دهد، فقط در صورت تمایل مقدار را جابه‌جا می‌کند.
     for (const o of options) {
-      if (isRangeAutoIncluded(o) && initial[o.key] === undefined) {
-        initial[o.key] = { value: o.range.min };
+      if (o.inputType === "range" && initial[o.key] === undefined) {
+        initial[o.key] = { value: rangeDefaultValue(o) };
       }
     }
     return initial;
@@ -82,14 +81,6 @@ export default function ServiceNodeStep({
 
   const apply = (optionKey, raw) => {
     const next = { ...picks, [optionKey]: raw };
-    setPicks(next);
-    onChange(buildSelection(next));
-  };
-
-  // حذفِ کاملِ یک آپشن از انتخاب — مقدار و قیمتش از سفارش خارج می‌شود
-  const clear = (optionKey) => {
-    const next = { ...picks };
-    delete next[optionKey];
     setPicks(next);
     onChange(buildSelection(next));
   };
@@ -154,7 +145,6 @@ export default function ServiceNodeStep({
               option={option}
               raw={picks[option.key]}
               onPick={(raw) => apply(option.key, raw)}
-              onClear={() => clear(option.key)}
             />
           ) : (
             <ChoiceOption
@@ -185,13 +175,15 @@ export default function ServiceNodeStep({
   );
 }
 
-/* جمعِ افزوده‌ی این خدمت (شاملِ هزینه‌ی خودِ خدمت) */
+/* جمعِ افزوده‌ی این خدمت (شاملِ هزینه‌ی خودِ خدمت).
+   خدمتِ بی‌هزینه هیچ ردیفی نشان نمی‌دهد — نه «رایگان»، نه «۰». */
 function ServiceTotal({ total }) {
+  if (!total) return null;
   return (
     <div className="flex items-center justify-between rounded-[8px] border border-[#aa4725]/20 bg-[#aa4725]/[0.04] px-3.5 py-2.5">
       <span className="text-xs text-gray-600">افزوده‌ی این خدمت</span>
       <span className="text-sm font-bold text-[#aa4725]">
-        {total === 0 ? "رایگان" : `+ ${formatToman(total)} تومان`}
+        + {formatToman(total)} تومان
       </span>
     </div>
   );
@@ -231,8 +223,9 @@ function OptionHeader({ option, valueText }) {
   );
 }
 
+/** بدونِ قیمت ⇒ هیچ متنی نشان داده نمی‌شود (نه «رایگان»، نه «۰»). */
 function priceLabel(m) {
-  if (!m) return "بدون تغییر قیمت";
+  if (!m) return null;
   const sign = m > 0 ? "+" : "−";
   return `${sign} ${formatToman(Math.abs(m))} تومان`;
 }
@@ -286,17 +279,15 @@ function ChoiceOption({ option, raw, highlightMissing, onPick }) {
                 <span className="block truncate text-sm font-medium text-[#0d0d0d]">
                   {choice.label}
                 </span>
-                <span
-                  className={`mt-0.5 block text-[11px] ${
-                    choice.priceModifier > 0
-                      ? "text-[#aa4725]"
-                      : choice.priceModifier < 0
-                        ? "text-green-600"
-                        : "text-gray-400"
-                  }`}
-                >
-                  {priceLabel(choice.priceModifier)}
-                </span>
+                {choice.priceModifier !== 0 && (
+                  <span
+                    className={`mt-0.5 block text-[11px] ${
+                      choice.priceModifier > 0 ? "text-[#aa4725]" : "text-green-600"
+                    }`}
+                  >
+                    {priceLabel(choice.priceModifier)}
+                  </span>
+                )}
               </span>
 
               {selected && (
@@ -313,53 +304,19 @@ function ChoiceOption({ option, raw, highlightMissing, onPick }) {
 }
 
 /* ─── نوعِ Range ─── */
-function RangeOption({ option, raw, onPick, onClear }) {
+function RangeOption({ option, raw, onPick }) {
   const { min, max, step, unit } = option.range;
-  // آپشنِ دارای قیمتِ پیش‌فرض (یا اجباری) خودکار در سفارش است و تاییدِ جداگانه
-  // نمی‌خواهد؛ فقط بازه‌ی بی‌قیمت و غیراجباری چک‌باکسِ انتخاب دارد.
-  const autoIncluded = isRangeAutoIncluded(option);
-  const enabled = autoIncluded || raw !== undefined;
-  const value = Number.isFinite(Number(raw?.value)) ? Number(raw.value) : min;
+  // آپشنِ بازه‌ای همیشه بخشی از خدمت است — بدونِ چک‌باکس و بدونِ تاییدِ جداگانه.
+  // مقدارِ اولیه همان چیزی است که ادمین به‌عنوان پیش‌فرض تعیین کرده.
+  const value = Number.isFinite(Number(raw?.value))
+    ? Number(raw.value)
+    : rangeDefaultValue(option);
   const { entry } = resolveOption(option, { value });
-  const addon = enabled ? (entry?.priceModifier ?? 0) : 0;
-
-  const toggle = () => {
-    if (autoIncluded) return;
-    if (enabled) onClear();
-    else onPick({ value: min });
-  };
+  const addon = entry?.priceModifier ?? 0;
 
   return (
-    <div
-      className={`rounded-[8px] border p-3.5 transition ${
-        enabled ? "border-[#aa4725]/40 bg-[#ffbf00]/[0.04]" : "border-gray-200"
-      }`}
-    >
-      {!autoIncluded && (
-        <label className="mb-2 flex cursor-pointer items-center gap-2">
-          <input
-            type="checkbox"
-            checked={enabled}
-            onChange={toggle}
-            className="h-4 w-4 shrink-0 accent-[#aa4725]"
-          />
-          <span className="text-xs font-medium text-gray-600">
-            {enabled ? "انتخاب شده" : "می‌خواهم این مورد را اضافه کنم"}
-          </span>
-        </label>
-      )}
-
-      <OptionHeader
-        option={option}
-        valueText={enabled ? rangeLabel(value, unit) : null}
-      />
-
-      {!enabled ? (
-        <p className="text-[11px] text-gray-400">
-          تا زمانی که این گزینه را انتخاب نکنید، به سفارش و مبلغ اضافه نمی‌شود.
-        </p>
-      ) : (
-      <>
+    <div className="rounded-[8px] border border-[#aa4725]/40 bg-[#ffbf00]/[0.04] p-3.5">
+      <OptionHeader option={option} valueText={rangeLabel(value, unit)} />
 
       {option.image && (
         <img
@@ -385,24 +342,23 @@ function RangeOption({ option, raw, onPick, onClear }) {
 
       {/* dir="ltr" لازم است: در چیدمانِ RTLِ سایت، justify-between ترتیب را برعکس
           می‌کند و کمینه سمتِ راست می‌افتد. اسلایدر هم ltr است، پس هر دو هم‌جهت‌اند:
-          کمینه چپ، بیشینه راست. */}
+          کمینه چپ، بیشینه راست. گام مقداری فنی است و به مشتری نشان داده نمی‌شود. */}
       <div
         dir="ltr"
         className="mt-1.5 flex items-center justify-between text-[11px] text-gray-400"
       >
         <span>{rangeLabel(min, unit)}</span>
-        <span dir="rtl">گام: {formatNum(step)}</span>
         <span>{rangeLabel(max, unit)}</span>
       </div>
 
-      <p
-        className={`mt-2 text-[11px] ${
-          addon > 0 ? "text-[#aa4725]" : addon < 0 ? "text-green-600" : "text-gray-400"
-        }`}
-      >
-        {priceLabel(addon)}
-      </p>
-      </>
+      {addon !== 0 && (
+        <p
+          className={`mt-2 text-[11px] ${
+            addon > 0 ? "text-[#aa4725]" : "text-green-600"
+          }`}
+        >
+          {priceLabel(addon)}
+        </p>
       )}
     </div>
   );

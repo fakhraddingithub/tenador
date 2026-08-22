@@ -42,6 +42,9 @@ const ServiceOptionSchema = new mongoose.Schema(
       max: { type: Number, default: 0 },
       step: { type: Number, default: 1 },
       unit: { type: String, default: "", trim: true }, // مثلا: "kg"
+      // مقداری که مشتری بدونِ دست‌زدن به اسلایدر سفارش می‌دهد.
+      // null = تعیین‌نشده (آپشن‌های قبل از این قابلیت) → به min برمی‌گردد.
+      defaultValue: { type: Number, default: null },
       basePrice: { type: Number, default: 0 }, // افزوده‌ی ثابت هنگام انتخاب
       pricePerStep: { type: Number, default: 0 }, // افزوده به‌ازای هر گام بالاتر از min
     },

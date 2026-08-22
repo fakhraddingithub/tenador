@@ -14,7 +14,7 @@ import {
 import OptionImageInput from "./OptionImageInput";
 import {
   formatNum,
-  isRangeAutoIncluded,
+  rangeDefaultValue,
   validateServiceOptions,
 } from "@/lib/serviceConfig";
 
@@ -62,14 +62,33 @@ const newOption = () => ({
   required: false,
   image: null,
   choices: [newChoice()],
-  range: { min: 0, max: 10, step: 1, unit: "", basePrice: 0, pricePerStep: 0 },
+  // defaultValue: null یعنی «تعیین‌نشده» و به کمینه برمی‌گردد
+  range: {
+    min: 0,
+    max: 10,
+    step: 1,
+    unit: "",
+    defaultValue: null,
+    basePrice: 0,
+    pricePerStep: 0,
+  },
 });
 
 /**
  * ورودیِ عددی با draftِ رشته‌ایِ محلی — تا بتوان «-» و «0.» و «۰٫۵» را
  * حین تایپ نگه داشت. چیزی که به state می‌رود همیشه عدد است.
  */
-function NumField({ value, onChange, placeholder, label, className = "", allowFloat = true }) {
+function NumField({
+  value,
+  onChange,
+  placeholder,
+  label,
+  className = "",
+  allowFloat = true,
+  // خالی گذاشتن = «تعیین‌نشده» (null) به‌جای صفر — برای مقدارِ پیش‌فرضِ بازه،
+  // که صفرِ ناخواسته می‌تواند خارج از بازه و غیرقابلِ ذخیره باشد.
+  allowEmpty = false,
+}) {
   const [draft, setDraft] = useState(() =>
     value === 0 || value == null ? (value === 0 ? "0" : "") : formatNum(value)
   );
@@ -78,7 +97,8 @@ function NumField({ value, onChange, placeholder, label, className = "", allowFl
     const raw = e.target.value;
     setDraft(raw);
     const parsed = Number(raw);
-    onChange(raw === "" || !Number.isFinite(parsed) ? 0 : parsed);
+    if (raw === "" || !Number.isFinite(parsed)) onChange(allowEmpty ? null : 0);
+    else onChange(parsed);
   };
 
   return (
@@ -241,7 +261,7 @@ function OptionCard({
     option.inputType === "range"
       ? `${formatNum(option.range?.min)}–${formatNum(option.range?.max)}${
           option.range?.unit ? ` ${option.range.unit}` : ""
-        } · گام ${formatNum(option.range?.step)}`
+        } · پیش‌فرض ${formatNum(rangeDefaultValue(option))}`
       : `${option.choices?.length || 0} گزینه`;
 
   return (
@@ -420,19 +440,28 @@ function OptionCard({
                 />
               </div>
 
-              <label className="block">
-                <span className="mb-1 block text-[10px] font-bold" style={{ color: MUTED }}>
-                  واحد
-                </span>
-                <input
-                  type="text"
-                  value={option.range?.unit || ""}
-                  onChange={(e) => patchRange({ unit: e.target.value })}
-                  placeholder="مثلا: kg"
-                  className="w-full rounded-lg px-2.5 py-1.5 text-xs focus:outline-none"
-                  style={inputStyle}
+              <div className="grid grid-cols-2 gap-1.5">
+                <NumField
+                  label="مقدار پیش‌فرض"
+                  value={option.range?.defaultValue}
+                  onChange={(v) => patchRange({ defaultValue: v })}
+                  placeholder={`خالی = ${formatNum(option.range?.min)}`}
+                  allowEmpty
                 />
-              </label>
+                <label className="block">
+                  <span className="mb-1 block text-[10px] font-bold" style={{ color: MUTED }}>
+                    واحد
+                  </span>
+                  <input
+                    type="text"
+                    value={option.range?.unit || ""}
+                    onChange={(e) => patchRange({ unit: e.target.value })}
+                    placeholder="مثلا: kg"
+                    className="w-full rounded-lg px-2.5 py-1.5 text-xs focus:outline-none"
+                    style={inputStyle}
+                  />
+                </label>
+              </div>
 
               <div className="grid grid-cols-2 gap-1.5">
                 <PriceField
@@ -454,9 +483,10 @@ function OptionCard({
                 (تعداد گام‌های بالاتر از کمینه × افزوده‌ی هر گام).
               </p>
               <p className="text-[9px]" style={{ color: MUTED }}>
-                {isRangeAutoIncluded(option)
-                  ? "این آپشن خودکار (با مقدارِ کمینه) به سفارش اضافه می‌شود و مشتری تیکِ انتخاب نمی‌بیند؛ فقط مقدار را جابه‌جا می‌کند."
-                  : "بدونِ قیمتِ پیش‌فرض و بدونِ «اجباری»، مشتری باید خودش این آپشن را انتخاب کند تا به سفارش اضافه شود."}
+                این آپشن همیشه با مقدارِ پیش‌فرض ({formatNum(rangeDefaultValue(option))}
+                {option.range?.unit ? ` ${option.range.unit}` : ""}) به سفارش اضافه
+                می‌شود؛ مشتری تیکِ انتخاب نمی‌بیند و فقط در صورت تمایل مقدار را
+                جابه‌جا می‌کند.
               </p>
             </div>
           )}

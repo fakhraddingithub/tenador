@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import {
   LEGACY_OPTION_KEY,
   SERVICE_FEE_KEY,
-  isRangeAutoIncluded,
+  rangeDefaultValue,
   isServiceFeeEntry,
   getServiceOptions,
   isOnStep,
@@ -256,7 +256,7 @@ test("آپشنِ range با قیمتِ پیش‌فرض خودکار اضافه �
   assert.equal(moved.addonToman, 17000); // 5000 + 12*1000
 });
 
-test("آپشنِ range بدونِ قیمتِ پیش‌فرض همچنان انتخابی (opt-in) می‌ماند", () => {
+test("آپشنِ range حتی بدونِ قیمت هم خودکار انتخاب می‌شود", () => {
   const freeRange = {
     id: "n2",
     type: "service",
@@ -266,7 +266,7 @@ test("آپشنِ range بدونِ قیمتِ پیش‌فرض همچنان انت
         key: "len",
         title: "طول",
         inputType: "range",
-        range: { min: 1, max: 10, step: 1, basePrice: 0, pricePerStep: 0 },
+        range: { min: 1, max: 10, step: 1, defaultValue: 4, basePrice: 0, pricePerStep: 0 },
       },
       {
         key: "logo",
@@ -276,14 +276,93 @@ test("آپشنِ range بدونِ قیمتِ پیش‌فرض همچنان انت
       },
     ],
   };
-  assert.equal(isRangeAutoIncluded(getServiceOptions(freeRange)[0]), false);
 
   const untouched = resolveServiceSelection(
     freeRange,
     { nodeId: "n2", nodeType: "service", serviceConfig: [{ optionKey: "logo", choiceKey: "yes" }] }
   );
-  assert.equal(untouched.config.some((c) => c.optionKey === "len"), false);
-  assert.equal(untouched.addonToman, 1000);
+  const len = untouched.config.find((c) => c.optionKey === "len");
+  assert.ok(len, "بازه باید بدونِ انتخابِ مشتری هم در پیکربندی باشد");
+  assert.equal(len.value, 4, "با مقدارِ پیش‌فرضِ ادمین");
+  assert.equal(untouched.addonToman, 1000, "بازه‌ی بی‌قیمت چیزی به مبلغ اضافه نمی‌کند");
+});
+
+test("مقدارِ پیش‌فرضِ بازه: تعیین‌شده، تعیین‌نشده و نامعتبر", () => {
+  const opt = (range) => getServiceOptions({
+    id: "x",
+    type: "service",
+    label: "l",
+    options: [{ key: "r", title: "t", inputType: "range", range }],
+  })[0];
+
+  const base = { min: 40, max: 60, step: 1 };
+  assert.equal(rangeDefaultValue(opt({ ...base, defaultValue: 50 })), 50);
+  // تعیین‌نشده → کمینه (سازگاری با آپشن‌های پیش از این قابلیت)
+  assert.equal(rangeDefaultValue(opt(base)), 40);
+  assert.equal(rangeDefaultValue(opt({ ...base, defaultValue: null })), 40);
+  // دادهٔ ذخیره‌شده‌ی نامعتبر نباید یک مقدارِ غیرمجاز به سفارش بدهد
+  assert.equal(rangeDefaultValue(opt({ ...base, defaultValue: 99 })), 40);
+  assert.equal(rangeDefaultValue(opt({ ...base, defaultValue: 50.5 })), 40);
+  // گامِ اعشاری
+  assert.equal(rangeDefaultValue(opt({ min: 20, max: 30, step: 0.5, defaultValue: 24.5 })), 24.5);
+});
+
+test("مقدارِ پیش‌فرضِ نامعتبر در پنل ادمین ذخیره نمی‌شود", () => {
+  const withDefault = (defaultValue) => [
+    {
+      key: "r",
+      title: "تنش",
+      inputType: "range",
+      range: { min: 40, max: 60, step: 1, defaultValue },
+    },
+  ];
+
+  assert.deepEqual(validateServiceOptions(withDefault(50)), []);
+  assert.deepEqual(validateServiceOptions(withDefault(null)), [], "تعیین‌نشده مجاز است");
+  assert.ok(validateServiceOptions(withDefault(70)).some((e) => /بین 40 و 60/.test(e)));
+  assert.ok(validateServiceOptions(withDefault(39)).some((e) => /بین 40 و 60/.test(e)));
+  assert.ok(validateServiceOptions(withDefault(50.5)).some((e) => /گام/.test(e)));
+});
+
+test("چند آپشنِ بازه‌ای در یک خدمت، هرکدام پیش‌فرضِ خودش", () => {
+  const multi = {
+    id: "m",
+    type: "service",
+    label: "زه‌کشی",
+    required: true,
+    options: [
+      {
+        key: "tension",
+        title: "تنش",
+        inputType: "range",
+        range: { min: 40, max: 60, step: 1, defaultValue: 50, basePrice: 1000, pricePerStep: 100 },
+      },
+      {
+        key: "len",
+        title: "طول",
+        inputType: "range",
+        range: { min: 0, max: 10, step: 2, defaultValue: 6, basePrice: 500, pricePerStep: 50 },
+      },
+    ],
+  };
+
+  const r = resolveServiceSelection(multi, { nodeId: "m", nodeType: "service", serviceConfig: [] });
+  assert.deepEqual(r.errors, []);
+  assert.equal(r.config.find((c) => c.optionKey === "tension").value, 50);
+  assert.equal(r.config.find((c) => c.optionKey === "len").value, 6);
+  // (1000 + 10*100) + (500 + 3*50) = 2000 + 650
+  assert.equal(r.addonToman, 2650);
+
+  // مشتری فقط یکی را جابه‌جا می‌کند؛ دیگری روی پیش‌فرضش می‌ماند و دوبار نمی‌آید
+  const moved = resolveServiceSelection(multi, {
+    nodeId: "m",
+    nodeType: "service",
+    serviceConfig: [{ optionKey: "tension", value: 40 }],
+  });
+  assert.equal(moved.config.filter((c) => c.optionKey === "tension").length, 1);
+  assert.equal(moved.config.find((c) => c.optionKey === "tension").value, 40);
+  assert.equal(moved.config.find((c) => c.optionKey === "len").value, 6);
+  assert.equal(moved.addonToman, 1000 + 650);
 });
 
 test("هزینه‌ی خدمتِ اجباری بدونِ ساختنِ آپشنِ ساختگی اعمال می‌شود", () => {

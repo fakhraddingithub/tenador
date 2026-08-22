@@ -71,6 +71,7 @@ function stepCount(value, min, step) {
 
 function normRange(range) {
   const r = range || {};
+  const defaultValue = Number(r.defaultValue);
   return {
     min: Number(r.min) || 0,
     max: Number(r.max) || 0,
@@ -78,24 +79,27 @@ function normRange(range) {
     unit: typeof r.unit === "string" ? r.unit : "",
     basePrice: Number(r.basePrice) || 0,
     pricePerStep: Number(r.pricePerStep) || 0,
+    // null یعنی ادمین مقدارِ پیش‌فرض تعیین نکرده (آپشن‌های قبل از این قابلیت)
+    defaultValue:
+      r.defaultValue == null || r.defaultValue === "" || !Number.isFinite(defaultValue)
+        ? null
+        : defaultValue,
   };
 }
 
 /**
- * آیا این آپشنِ بازه‌ای بدونِ تاییدِ جداگانه‌ی مشتری وارد سفارش می‌شود؟
+ * مقدارِ اولیه‌ی یک آپشنِ بازه‌ای — چیزی که مشتری بدونِ دست‌زدن به اسلایدر دارد.
  *
- * «قیمتِ پیش‌فرض» یعنی range.basePrice (و/یا pricePerStep) تنظیم شده باشد؛
- * در آن صورت آپشن با مقدارِ کمینه خودکار اضافه می‌شود و چک‌باکسِ انتخاب لازم
- * نیست — مشتری فقط مقدار را جابه‌جا می‌کند. آپشنِ اجباری هم همیشه همین‌طور است.
- *
- * آپشنِ بازه‌ایِ بی‌قیمت و غیراجباری همچنان انتخابی (opt-in) می‌ماند، وگرنه
- * یک بازه‌ی صرفاً توضیحی به همه‌ی سفارش‌ها سنجاق می‌شد.
+ * آپشنِ بازه‌ای همیشه (و بدونِ تاییدِ جداگانه‌ی مشتری) بخشی از خدمت است، پس
+ * همیشه یک مقدار دارد. اگر ادمین مقدارِ پیش‌فرض تعیین نکرده باشد — یا دادهٔ
+ * ذخیره‌شده‌ی قدیمی نامعتبر باشد — به کمینه برمی‌گردیم که همیشه معتبر است.
  */
-export function isRangeAutoIncluded(option) {
-  if (option?.inputType !== "range") return false;
-  if (option.required) return true;
-  const r = normRange(option.range);
-  return r.basePrice !== 0 || r.pricePerStep !== 0;
+export function rangeDefaultValue(option) {
+  const r = normRange(option?.range);
+  const d = r.defaultValue;
+  if (d === null) return r.min;
+  if (d < r.min - EPS || d > r.max + EPS || !isOnStep(d, r.min, r.step)) return r.min;
+  return d;
 }
 
 /**
@@ -277,12 +281,12 @@ export function resolveServiceSelection(node, sel) {
   const active = Boolean(node.required) || config.length > 0;
 
   if (active) {
-    // آپشن‌های بازه‌ایِ دارای قیمتِ پیش‌فرض حتی اگر کلاینت نفرستدشان اعمال می‌شوند
-    // (کمینه = مقدارِ پیش‌فرض). پس نه با کلاینتِ دستکاری‌شده قابلِ دور زدن‌اند و
-    // نه دوبار حساب می‌شوند، چون seen جلوی تکرار را می‌گیرد.
+    // آپشنِ بازه‌ای همیشه با مقدارِ پیش‌فرضش اعمال می‌شود، حتی اگر کلاینت
+    // نفرستدش. پس نه با کلاینتِ دستکاری‌شده قابلِ دور زدن است و نه دوبار حساب
+    // می‌شود، چون seen جلوی تکرار را می‌گیرد.
     for (const option of options) {
-      if (seen.has(option.key) || !isRangeAutoIncluded(option)) continue;
-      const { entry } = resolveOption(option, { value: option.range.min });
+      if (seen.has(option.key) || option.inputType !== "range") continue;
+      const { entry } = resolveOption(option, { value: rangeDefaultValue(option) });
       if (!entry) continue;
       seen.add(option.key);
       config.push(entry);
@@ -358,6 +362,19 @@ export function validateServiceOptions(options) {
       const r = normRange(o.range);
       if (!(r.max > r.min)) errors.push(`${name}: بیشینه باید بزرگ‌تر از کمینه باشد`);
       if (!(Number(o?.range?.step) > 0)) errors.push(`${name}: گام باید بزرگ‌تر از صفر باشد`);
+
+      // مقدارِ پیش‌فرض همان چیزی است که مشتری بدونِ دست‌زدن به اسلایدر سفارش
+      // می‌دهد، پس نباید بتواند نامعتبر ذخیره شود. تعیین‌نشده (null) مجاز است و
+      // به کمینه برمی‌گردد — تا آپشن‌های ساخته‌شده پیش از این قابلیت نشکنند.
+      if (r.defaultValue !== null) {
+        if (r.defaultValue < r.min - EPS || r.defaultValue > r.max + EPS) {
+          errors.push(
+            `${name}: مقدار پیش‌فرض باید بین ${formatNum(r.min)} و ${formatNum(r.max)} باشد`
+          );
+        } else if (!isOnStep(r.defaultValue, r.min, r.step)) {
+          errors.push(`${name}: مقدار پیش‌فرض باید روی گام‌های ${formatNum(r.step)} بنشیند`);
+        }
+      }
     }
   });
 
