@@ -88,6 +88,8 @@ function BlockStylePanel({ type, style, layout, onChange, onLayout }) {
   </details>;
 }
 
+const blockDomId = (id) => `article-block-${id}`;
+
 function BlockField({ field, value, onChange, align, onAlign }) {
   if (field.kind === "rich") return <RichTextField value={value} onChange={onChange} align={align} onAlign={onAlign} singleLine={field.singleLine} />;
   if (field.kind === "textarea" || field.kind === "html") return <textarea dir={field.kind === "html" ? "ltr" : "rtl"} rows={field.kind === "html" ? 9 : 4} value={value || ""} onChange={(e) => onChange(e.target.value)} className={`${inputClass} ${field.kind === "html" ? "font-mono" : "font-sans"}`} />;
@@ -139,7 +141,10 @@ function SortableBlock({ block, index, total, onUpdate, onStyle, onLayout, onRem
     if (align) next.align = align; else delete next.align;
     onStyle(Object.keys(next).length ? next : undefined);
   };
-  return <section ref={setNodeRef} style={{ transform: CSS.Transform.toString(transform), transition, opacity: isDragging ? .55 : 1 }} className="a-card group">
+  // شناسه‌ی DOM از id پایدارِ بلوک ساخته می‌شود نه از اندیس — اندیس با هر درج و
+  // جابه‌جایی عوض می‌شود. tabIndex هم هست تا بشود بعد از ساخت، فوکوس را واقعاً
+  // داخلِ بلوکِ تازه برد (نه فقط اسکرول).
+  return <section ref={setNodeRef} id={blockDomId(block.id)} tabIndex={-1} style={{ transform: CSS.Transform.toString(transform), transition, opacity: isDragging ? .55 : 1 }} className="a-card group outline-none">
     <header className="flex items-center gap-2 px-3 py-2.5 border-b" style={{ borderColor: "var(--admin-border)" }}>
       <button type="button" onClick={() => setMoveOpen(true)} className="min-w-6 h-6 px-1.5 border text-[11px] font-black text-gray-500 hover:border-[var(--color-primary)] hover:text-[var(--color-primary)]" style={{ borderColor: "var(--admin-border)", borderRadius: "var(--admin-radius)" }} aria-label={`بلوک ${index + 1} از ${total} — تغییر موقعیت`}>{index + 1}</button>
       {/* touch-none لازم است: بدونِ آن مرورگر لمسِ روی دستگیره را برای اسکرول
@@ -204,7 +209,29 @@ export default function BlockEditor({ value = [], onChange, libraryOpen: openPro
     return next;
   }));
   const move = (from, to) => { if (to < 0 || to >= value.length) return; onChange(arrayMove(value, from, to)); };
-  const add = (type, position) => { onChange(insertBlockAt(value, createArticleBlock(type), position)); setLibraryOpen(false); };
+  // بلوکِ تازه ممکن است وسطِ مقاله درج شود، پس باید به خودِ عنصرِ رندرشده رفت.
+  // شناسه در ref می‌ماند (نه state) تا رندرِ اضافه‌ای تحمیل نشود.
+  const pendingScroll = useRef(null);
+  const add = (type, position) => {
+    const block = createArticleBlock(type);
+    pendingScroll.current = block.id;
+    onChange(insertBlockAt(value, block, position));
+    setLibraryOpen(false);
+  };
+  // پس از کامیتِ رندری که بلوکِ تازه در آن آمده اجرا می‌شود. اگر والد به‌روزرسانی
+  // را عقب انداخته باشد و عنصر هنوز نباشد، شناسه نگه داشته می‌شود تا رندرِ بعدی
+  // دوباره تلاش کند — بدونِ تایمر و بدونِ حدسِ زمان.
+  useEffect(() => {
+    const id = pendingScroll.current;
+    if (!id) return;
+    const node = document.getElementById(blockDomId(id));
+    if (!node) return;
+    pendingScroll.current = null;
+    // preventScroll لازم است وگرنه پرشِ آنیِ فوکوس با اسکرولِ نرم می‌جنگد.
+    node.focus({ preventScroll: true });
+    // center یعنی بلوک وسطِ صفحه می‌نشیند، پس نوارِ شناورِ پایین رویش نمی‌افتد.
+    node.scrollIntoView({ behavior: "smooth", block: "center" });
+  }, [value]);
   // بینِ کلیک و تأیید یک await هست، پس مبنای حذف آرایه‌ی تازه است نه closure کهنه.
   const remove = async (block) => {
     const label = ARTICLE_BLOCKS[block.type]?.label || block.type;
