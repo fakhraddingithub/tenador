@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import {
   blockWidth,
   groupBlockRows,
+  insertBlockAt,
   sanitizeArticleBlockLayout,
 } from "../src/lib/articleBlockLayout.js";
 
@@ -109,4 +110,45 @@ test("accessor سفارشی برای آیتم‌های بسته‌بندی‌ش�
   const rows = groupBlockRows(items, (item) => blockWidth(item.block));
   assert.deepEqual(rows.map((r) => r.sized), [true, false]);
   assert.equal(rows[0].blocks.length, 2);
+});
+
+// ——— درجِ بلوک در موقعیتِ دلخواه ————————————————————————————————————
+
+test("درجِ بلوک، بلوک‌های بعدی را دقیقاً یک شماره جلو می‌برد", () => {
+  const list = [b(), b(), b(), b(), b()];
+  const fresh = b();
+  const out = insertBlockAt(list, fresh, 5);
+  assert.deepEqual(out.map((x) => x.id), [list[0].id, list[1].id, list[2].id, list[3].id, fresh.id, list[4].id]);
+  assert.equal(list.length, 5, "آرایه‌ی ورودی دست‌نخورده می‌ماند");
+});
+
+test("درج هیچ بلوکی را گم یا تکراری نمی‌کند", () => {
+  const list = [b(), b(), b()];
+  for (const position of [1, 2, 3, 4]) {
+    const out = insertBlockAt(list, b(), position);
+    assert.equal(out.length, list.length + 1);
+    assert.equal(new Set(out.map((x) => x.id)).size, out.length);
+    assert.ok(list.every((item) => out.includes(item)), "بلوک‌های قبلی همان شیء می‌مانند");
+  }
+});
+
+test("موقعیتِ بیرونِ بازه یا نامعتبر بریده می‌شود", () => {
+  const list = [b(), b()];
+  const fresh = b();
+  assert.equal(insertBlockAt(list, fresh, 1)[0].id, fresh.id);
+  assert.equal(insertBlockAt(list, fresh, 0)[0].id, fresh.id, "کمتر از ۱ یعنی ابتدا");
+  assert.equal(insertBlockAt(list, fresh, -7)[0].id, fresh.id);
+  assert.equal(insertBlockAt(list, fresh, 99).at(-1).id, fresh.id, "بیش از طول یعنی انتها");
+  for (const invalid of ["", "  ", "abc", null, undefined, NaN]) {
+    assert.equal(insertBlockAt(list, fresh, invalid).at(-1).id, fresh.id, JSON.stringify(invalid));
+  }
+});
+
+test("درج در فهرستِ خالی و تک‌بلوکی درست کار می‌کند", () => {
+  const fresh = b();
+  assert.deepEqual(insertBlockAt([], fresh, 1).map((x) => x.id), [fresh.id]);
+  assert.deepEqual(insertBlockAt(undefined, fresh, 1).map((x) => x.id), [fresh.id]);
+  const one = b();
+  assert.deepEqual(insertBlockAt([one], fresh, 1).map((x) => x.id), [fresh.id, one.id]);
+  assert.deepEqual(insertBlockAt([one], fresh, 2).map((x) => x.id), [one.id, fresh.id]);
 });

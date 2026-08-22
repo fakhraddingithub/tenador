@@ -21,6 +21,19 @@ export const BLOCK_WIDTH_CLASS = {
   "2/3": "md:col-span-4",
 };
 
+/**
+ * درجِ یک بلوک در موقعیتِ ۱-پایه‌ی دلخواه.
+ *
+ * ترتیبِ بلوک‌ها همان اندیسِ آرایه است و هیچ شماره‌ای جداگانه ذخیره نمی‌شود، پس
+ * درج خودبه‌خود بلوک‌های بعدی را یک شماره جلو می‌برد و شماره‌ی تکراری یا جاافتاده
+ * ممکن نیست. موقعیتِ نامعتبر یا بیرونِ بازه به انتهای فهرست بریده می‌شود.
+ */
+export function insertBlockAt(items = [], block, position) {
+  const requested = Number.parseInt(position, 10);
+  const index = Number.isNaN(requested) ? items.length : Math.min(Math.max(requested - 1, 0), items.length);
+  return [...items.slice(0, index), block, ...items.slice(index)];
+}
+
 export function sanitizeArticleBlockLayout(value) {
   if (!value || typeof value !== "object" || Array.isArray(value)) return undefined;
   // "full" پیش‌فرض است و ذخیره نمی‌شود تا بلوکِ بدونِ چیدمان واقعاً بدونِ کلید بماند.

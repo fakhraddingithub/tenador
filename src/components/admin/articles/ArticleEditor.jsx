@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "react-toastify";
-import { FiChevronDown, FiClock, FiExternalLink, FiEye, FiFileText, FiRotateCcw, FiLink, FiSave, FiSearch, FiSettings } from "react-icons/fi";
+import { FiChevronDown, FiClock, FiExternalLink, FiEye, FiFileText, FiPlus, FiRotateCcw, FiLink, FiSave, FiSearch, FiSettings } from "react-icons/fi";
 import Button from "@/components/admin/Button";
 import ImageUpload from "@/components/admin/ImageUpload";
 import PageHeader from "@/components/admin/PageHeader";
@@ -73,6 +73,9 @@ export default function ArticleEditor({ articleId = null }) {
   const [dirty, setDirty] = useState(false);
   const [autosave, setAutosave] = useState("idle");
   const [history, setHistory] = useState(false);
+  // کتابخانه‌ی بلوک اینجا نگه داشته می‌شود تا نوارِ شناورِ پایین هم بتواند بازش
+  // کند و ادمین برای افزودنِ بلوک مجبور به اسکرول تا انتهای مقاله نباشد.
+  const [addBlockOpen, setAddBlockOpen] = useState(false);
   const hydrated = useRef(false);
   const editVersion = useRef(0);
   const autosaveController = useRef(null);
@@ -176,7 +179,7 @@ export default function ArticleEditor({ articleId = null }) {
           <div className="flex items-center gap-2 mt-2 text-xs text-gray-400"><FiLink /><span dir="ltr" className="truncate">{livePath}</span><span className="mr-auto"><Counter value={article.title} max={300} /></span></div>
           <textarea rows={3} value={article.excerpt} onChange={(e) => update({ excerpt: e.target.value })} placeholder="خلاصه کوتاه مقاله..." className={`${fieldClass} mt-6 resize-y`} style={{ borderColor: "var(--admin-border)", borderRadius: "var(--admin-radius)" }} /><div className="text-left mt-1"><Counter value={article.excerpt} max={1000} /></div>
         </section>
-        <BlockEditor value={article.blocks} onChange={(blocks) => update({ blocks })} />
+        <BlockEditor value={article.blocks} onChange={(blocks) => update({ blocks })} libraryOpen={addBlockOpen} onLibraryOpen={setAddBlockOpen} />
       </main>
       <aside className="order-1 space-y-4 xl:order-2 xl:sticky xl:top-36">
         <Panel title="وضعیت انتشار" icon={<FiSettings className="text-[var(--color-primary)]" />}>
@@ -208,6 +211,7 @@ export default function ArticleEditor({ articleId = null }) {
     {/* همان دو کنترلِ بالای صفحه، ثابت در گوشه‌ی پایین‌چپ. z پایین‌تر از
         کتابخانه‌ی بلوک (۱۰۰) و تاریخچه‌ی نسخه‌ها (۱۱۰) است تا هرگز روی آن‌ها نیفتد. */}
     <div className="a-card fixed bottom-4 left-4 z-40 flex gap-2 p-2 shadow-lg" style={{ paddingBottom: "calc(0.5rem + env(safe-area-inset-bottom))" }}>
+      <Button size="sm" variant="secondary" onClick={() => setAddBlockOpen(true)} icon={<FiPlus />}>افزودن بلوک</Button>
       <Button size="sm" variant="secondary" disabled={!articleId} onClick={() => window.open(`/p-admin/admin-articles/${articleId}/preview`, "_blank")} icon={<FiEye />}>پیش‌نمایش</Button>
       {/* فقط وقتی مقاله واقعاً روی سایت زنده است؛ همان شرطِ لینکِ پنلِ «آدرس و آمار». */}
       {liveUrl ? <Button size="sm" variant="secondary" onClick={() => window.open(liveUrl, "_blank", "noopener,noreferrer")} icon={<FiExternalLink />}>مشاهده در سایت</Button> : null}

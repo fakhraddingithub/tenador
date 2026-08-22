@@ -10,7 +10,8 @@ import ImageUpload from "@/components/admin/ImageUpload";
 import ArticleEntityPicker from "./ArticleEntityPicker";
 import RichTextField from "./RichTextField";
 import { ARTICLE_BLOCKS, BLOCK_ACCENT_HINTS, BLOCK_GROUPS, BLOCK_SPACING_LABELS, BLOCK_STYLE_LABELS, BLOCK_TABLE_VARIANT_LABELS, createArticleBlock } from "./blockRegistry";
-import { BLOCK_WIDTHS, blockWidth } from "@/lib/articleBlockLayout";
+import { BLOCK_WIDTHS, blockWidth, insertBlockAt } from "@/lib/articleBlockLayout";
+import { confirmDelete } from "@/lib/swal";
 
 const BLOCK_WIDTH_LABELS = { full: "تمام عرض", "1/2": "نصف عرض", "1/3": "یک‌سوم عرض", "2/3": "دو‌سوم عرض" };
 
@@ -159,8 +160,12 @@ function SortableBlock({ block, index, total, onUpdate, onStyle, onLayout, onRem
   </section>;
 }
 
-function BlockLibrary({ onAdd, onClose }) {
+function BlockLibrary({ total, onAdd, onClose }) {
   const [query, setQuery] = useState("");
+  // موقعیتِ بلوکِ تازه، ۱-پایه. پیش‌فرض انتهای مقاله است ولی قابلِ ویرایش، تا
+  // بتوان مثلاً مستقیم بینِ بلوکِ ۴ و ۵ بلوک ساخت — نه اینکه اول در انتها
+  // ساخته و بعد دستی جابه‌جا شود.
+  const [position, setPosition] = useState(String(total + 1));
   const groups = useMemo(() => BLOCK_GROUPS.map((group) => ({ group, blocks: Object.entries(ARTICLE_BLOCKS).filter(([, item]) => item.group === group && matchesSearch(query, item.label)) })).filter((item) => item.blocks.length), [query]);
   useEffect(() => {
     const onKey = (event) => { if (event.key === "Escape") onClose(); };
@@ -169,12 +174,21 @@ function BlockLibrary({ onAdd, onClose }) {
   }, [onClose]);
   return <div className="fixed inset-0 z-[100] bg-black/30 flex items-start justify-center p-4 pt-[10vh]" onMouseDown={onClose}><div role="dialog" aria-modal="true" aria-labelledby="block-library-title" className="w-full max-w-2xl max-h-[76vh] overflow-hidden a-card shadow-xl" onMouseDown={(e) => e.stopPropagation()}>
     <div className="flex items-center gap-3 p-4 border-b" style={{ borderColor: "var(--admin-border)" }}><FiSearch aria-hidden="true" className="text-gray-400" /><h2 id="block-library-title" className="sr-only">Block library</h2><input aria-label="Search blocks" autoFocus value={query} onChange={(e) => setQuery(e.target.value)} placeholder="جستجوی نوع بلوک..." className="flex-1 outline-none text-sm" /><button type="button" onClick={onClose} aria-label="Close block library" className="rounded p-1 focus-visible:outline-2 focus-visible:outline-[var(--color-primary)]"><FiX aria-hidden="true" /></button></div>
-    <div className="p-4 overflow-y-auto max-h-[65vh] space-y-5">{groups.map(({ group, blocks }) => <section key={group}><h3 className="text-[11px] font-black text-gray-400 mb-2">{group}</h3><div className="grid grid-cols-2 sm:grid-cols-3 gap-2">{blocks.map(([type, item]) => { const Icon = item.icon; return <button key={type} type="button" onClick={() => onAdd(type)} className="flex items-center gap-2.5 p-3 border text-right hover:bg-[var(--color-primary-soft)] hover:border-[var(--color-primary)] transition-colors" style={{ borderColor: "var(--admin-border)", borderRadius: "var(--admin-radius)" }}><Icon className="text-[var(--color-primary)]" /><span className="text-xs font-bold">{item.label}</span></button>; })}</div></section>)}</div>
+    <label className="flex flex-wrap items-center gap-2 px-4 py-2.5 border-b text-xs font-bold text-gray-600" style={{ borderColor: "var(--admin-border)" }}>
+      <span>موقعیت بلوک جدید</span>
+      <input type="number" min={1} max={total + 1} value={position} onChange={(e) => setPosition(e.target.value)} className={`${inputClass} w-20`} />
+      <span className="text-[11px] font-normal text-gray-400">از {total + 1} — بلوک‌های بعدی یک شماره جلو می‌روند.</span>
+    </label>
+    <div className="p-4 overflow-y-auto max-h-[65vh] space-y-5">{groups.map(({ group, blocks }) => <section key={group}><h3 className="text-[11px] font-black text-gray-400 mb-2">{group}</h3><div className="grid grid-cols-2 sm:grid-cols-3 gap-2">{blocks.map(([type, item]) => { const Icon = item.icon; return <button key={type} type="button" onClick={() => onAdd(type, position)} className="flex items-center gap-2.5 p-3 border text-right hover:bg-[var(--color-primary-soft)] hover:border-[var(--color-primary)] transition-colors" style={{ borderColor: "var(--admin-border)", borderRadius: "var(--admin-radius)" }}><Icon className="text-[var(--color-primary)]" /><span className="text-xs font-bold">{item.label}</span></button>; })}</div></section>)}</div>
   </div></div>;
 }
 
-export default function BlockEditor({ value = [], onChange }) {
-  const [libraryOpen, setLibraryOpen] = useState(false);
+export default function BlockEditor({ value = [], onChange, libraryOpen: openProp, onLibraryOpen }) {
+  // کتابخانه‌ی بلوک از نوارِ شناورِ پایینِ ویرایشگرِ مقاله هم باز می‌شود؛ اگر
+  // والد آن را کنترل نکند (مثلِ مینی‌مقاله‌ی برند) همان حالتِ داخلی کار می‌کند.
+  const [ownOpen, setOwnOpen] = useState(false);
+  const libraryOpen = onLibraryOpen ? openProp : ownOpen;
+  const setLibraryOpen = onLibraryOpen || setOwnOpen;
   // به‌روزرسانیِ دادهٔ بلوک می‌تواند نامتقارن باشد (مثلاً پس از خواندنِ ابعادِ
   // تصویر)؛ در آن لحظه `value`ی بسته‌شده در closure کهنه است. مرجعِ زیر همیشه
   // آخرین آرایه را دارد تا ویرایشِ هم‌زمانِ فیلدهای دیگر بازنویسی نشود.
@@ -190,13 +204,19 @@ export default function BlockEditor({ value = [], onChange }) {
     return next;
   }));
   const move = (from, to) => { if (to < 0 || to >= value.length) return; onChange(arrayMove(value, from, to)); };
-  const add = (type) => { onChange([...value, createArticleBlock(type)]); setLibraryOpen(false); };
+  const add = (type, position) => { onChange(insertBlockAt(value, createArticleBlock(type), position)); setLibraryOpen(false); };
+  // بینِ کلیک و تأیید یک await هست، پس مبنای حذف آرایه‌ی تازه است نه closure کهنه.
+  const remove = async (block) => {
+    const label = ARTICLE_BLOCKS[block.type]?.label || block.type;
+    if (!(await confirmDelete(`حذف بلوک «${label}»؟`, "محتوای این بلوک از ویرایشگر برداشته می‌شود."))) return;
+    onChange(latest.current.filter((item) => item.id !== block.id));
+  };
   return <div className="space-y-3">
     <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={({ active, over }) => { if (!over || active.id === over.id) return; move(value.findIndex((item) => item.id === active.id), value.findIndex((item) => item.id === over.id)); }}>
-      <SortableContext items={value.map((item) => item.id)} strategy={verticalListSortingStrategy}>{value.map((block, index) => <SortableBlock key={block.id} block={block} index={index} total={value.length} onUpdate={(patch) => onChange(latest.current.map((item) => item.id === block.id ? { ...item, data: { ...item.data, ...patch } } : item))} onStyle={(style) => setBlockKey(block.id, "style", style)} onLayout={(layout) => setBlockKey(block.id, "layout", layout)} onRemove={() => onChange(value.filter((item) => item.id !== block.id))} onDuplicate={() => onChange([...value.slice(0, index + 1), { ...structuredClone(block), id: crypto.randomUUID() }, ...value.slice(index + 1)])} onMove={move} />)}</SortableContext>
+      <SortableContext items={value.map((item) => item.id)} strategy={verticalListSortingStrategy}>{value.map((block, index) => <SortableBlock key={block.id} block={block} index={index} total={value.length} onUpdate={(patch) => onChange(latest.current.map((item) => item.id === block.id ? { ...item, data: { ...item.data, ...patch } } : item))} onStyle={(style) => setBlockKey(block.id, "style", style)} onLayout={(layout) => setBlockKey(block.id, "layout", layout)} onRemove={() => remove(block)} onDuplicate={() => onChange([...value.slice(0, index + 1), { ...structuredClone(block), id: crypto.randomUUID() }, ...value.slice(index + 1)])} onMove={move} />)}</SortableContext>
     </DndContext>
     <button type="button" onClick={() => setLibraryOpen(true)} className="w-full flex items-center justify-center gap-2 py-3 border border-dashed text-sm font-bold text-[var(--color-primary)] hover:bg-[var(--color-primary-soft)]" style={{ borderColor: "var(--color-primary)", borderRadius: "var(--admin-radius)" }}><FiPlus /> افزودن بلوک</button>
     {value.length === 0 ? <p className="text-center text-xs text-gray-400">برای شروع اولین بلوک را اضافه کنید.</p> : null}
-    {libraryOpen ? <BlockLibrary onAdd={add} onClose={() => setLibraryOpen(false)} /> : null}
+    {libraryOpen ? <BlockLibrary total={value.length} onAdd={add} onClose={() => setLibraryOpen(false)} /> : null}
   </div>;
 }
