@@ -6,8 +6,11 @@ import { formatToman } from "@/lib/currency";
 import {
   formatNum,
   getServiceOptions,
+  isRangeAutoIncluded,
+  isServiceFeeEntry,
   rangeLabel,
   resolveOption,
+  resolveServiceSelection,
 } from "@/lib/serviceConfig";
 
 /**
@@ -44,30 +47,30 @@ export default function ServiceNodeStep({
       initial[c.optionKey] =
         c.choiceKey != null ? { choiceKey: String(c.choiceKey) } : { value: Number(c.value) };
     }
-    // آپشنِ range به‌صورت پیش‌فرض وارد سفارش نمی‌شود؛ کاربر باید خودش فعالش کند.
-    // استثنا: آپشنِ اجباری که به‌هرحال باید مقدار داشته باشد.
+    // آپشنِ بازه‌ایِ دارای قیمتِ پیش‌فرض (یا اجباری) خودکار وارد سفارش می‌شود؛
+    // بقیه تا وقتی کاربر انتخابشان نکند اضافه نمی‌شوند.
     for (const o of options) {
-      if (o.inputType === "range" && o.required && initial[o.key] === undefined) {
+      if (isRangeAutoIncluded(o) && initial[o.key] === undefined) {
         initial[o.key] = { value: o.range.min };
       }
     }
     return initial;
   });
 
+  // پیش‌نمایش دقیقاً از همان تابعی می‌آید که سرور استفاده می‌کند، پس قیمتِ داخلِ
+  // مودال، سبد و سفارش نمی‌توانند از هم جدا بیفتند.
   const buildSelection = (nextPicks) => {
-    const serviceConfig = [];
-    for (const option of options) {
-      const raw = nextPicks[option.key];
-      if (raw === undefined) continue;
-      const { entry } = resolveOption(option, raw);
-      if (entry) serviceConfig.push(entry);
-    }
+    const raws = Object.entries(nextPicks).map(([optionKey, raw]) => ({
+      optionKey,
+      ...raw,
+    }));
+    const { config } = resolveServiceSelection(node, { serviceConfig: raws });
     return {
       nodeId: node.id,
       nodeType: "service",
       nodeLabel: node.label ?? "",
       serviceName: node.serviceName ?? "",
-      serviceConfig,
+      serviceConfig: config,
     };
   };
 
@@ -91,12 +94,16 @@ export default function ServiceNodeStep({
     onChange(buildSelection(next));
   };
 
-  // مقادیرِ پیش‌فرضِ range باید بدونِ دست‌زدنِ کاربر هم ثبت شوند
+  // مقادیرِ پیش‌فرضِ range و خدمتِ اجباری باید بدونِ دست‌زدنِ کاربر هم ثبت شوند.
+  // برای مرحله‌ی اجباری حتی با پیکربندیِ خالی هم ثبت می‌شود، وگرنه دکمه‌ی «بعدی»
+  // در یک خدمتِ اجباریِ بی‌آپشن (فقط هزینه‌ی خدمت) هیچ‌وقت فعال نمی‌شد.
   const emitted = useRef(false);
   useEffect(() => {
     if (emitted.current) return;
     emitted.current = true;
-    if (!value && selection.serviceConfig.length > 0) onChange(selection);
+    if (!value && (selection.serviceConfig.length > 0 || node.required)) {
+      onChange(selection);
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -109,14 +116,20 @@ export default function ServiceNodeStep({
     (s, c) => s + (Number(c.priceModifier) || 0),
     0
   );
+  const serviceFee =
+    Number(selection.serviceConfig.find(isServiceFeeEntry)?.priceModifier) || 0;
 
   if (options.length === 0) {
     return (
       <div className="space-y-4">
         <StepHeader node={node} />
-        <p className="py-8 text-center text-sm text-gray-400">
-          گزینه‌ای برای این خدمت تعریف نشده است
-        </p>
+        {totalAddon !== 0 ? (
+          <ServiceTotal total={totalAddon} />
+        ) : (
+          <p className="py-8 text-center text-sm text-gray-400">
+            گزینه‌ای برای این خدمت تعریف نشده است
+          </p>
+        )}
       </div>
     );
   }
@@ -155,13 +168,31 @@ export default function ServiceNodeStep({
         )}
       </div>
 
-      {/* جمعِ افزوده‌ی این خدمت */}
-      <div className="flex items-center justify-between rounded-[8px] border border-[#aa4725]/20 bg-[#aa4725]/[0.04] px-3.5 py-2.5">
-        <span className="text-xs text-gray-600">افزوده‌ی این خدمت</span>
-        <span className="text-sm font-bold text-[#aa4725]">
-          {totalAddon === 0 ? "رایگان" : `+ ${formatToman(totalAddon)} تومان`}
-        </span>
-      </div>
+      {/* هزینه‌ی خودِ خدمت — جدا از آپشن‌ها تا مشتری بداند بابتِ چه چیزی است */}
+      {serviceFee !== 0 && (
+        <div className="flex items-center justify-between rounded-[8px] border border-gray-200 px-3.5 py-2.5">
+          <span className="text-xs text-gray-600">
+            هزینه‌ی {node.serviceName || node.label}
+          </span>
+          <span className="text-xs font-bold text-[#aa4725]">
+            + {formatToman(serviceFee)} تومان
+          </span>
+        </div>
+      )}
+
+      <ServiceTotal total={totalAddon} />
+    </div>
+  );
+}
+
+/* جمعِ افزوده‌ی این خدمت (شاملِ هزینه‌ی خودِ خدمت) */
+function ServiceTotal({ total }) {
+  return (
+    <div className="flex items-center justify-between rounded-[8px] border border-[#aa4725]/20 bg-[#aa4725]/[0.04] px-3.5 py-2.5">
+      <span className="text-xs text-gray-600">افزوده‌ی این خدمت</span>
+      <span className="text-sm font-bold text-[#aa4725]">
+        {total === 0 ? "رایگان" : `+ ${formatToman(total)} تومان`}
+      </span>
     </div>
   );
 }
@@ -284,15 +315,16 @@ function ChoiceOption({ option, raw, highlightMissing, onPick }) {
 /* ─── نوعِ Range ─── */
 function RangeOption({ option, raw, onPick, onClear }) {
   const { min, max, step, unit } = option.range;
-  // raw === undefined یعنی کاربر این آپشن را انتخاب نکرده → در سفارش نیست
-  const enabled = raw !== undefined;
+  // آپشنِ دارای قیمتِ پیش‌فرض (یا اجباری) خودکار در سفارش است و تاییدِ جداگانه
+  // نمی‌خواهد؛ فقط بازه‌ی بی‌قیمت و غیراجباری چک‌باکسِ انتخاب دارد.
+  const autoIncluded = isRangeAutoIncluded(option);
+  const enabled = autoIncluded || raw !== undefined;
   const value = Number.isFinite(Number(raw?.value)) ? Number(raw.value) : min;
   const { entry } = resolveOption(option, { value });
   const addon = enabled ? (entry?.priceModifier ?? 0) : 0;
 
-  // آپشنِ اجباری همیشه فعال است و نمی‌توان حذفش کرد
   const toggle = () => {
-    if (option.required) return;
+    if (autoIncluded) return;
     if (enabled) onClear();
     else onPick({ value: min });
   };
@@ -303,7 +335,7 @@ function RangeOption({ option, raw, onPick, onClear }) {
         enabled ? "border-[#aa4725]/40 bg-[#ffbf00]/[0.04]" : "border-gray-200"
       }`}
     >
-      {!option.required && (
+      {!autoIncluded && (
         <label className="mb-2 flex cursor-pointer items-center gap-2">
           <input
             type="checkbox"

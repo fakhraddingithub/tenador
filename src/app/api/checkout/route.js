@@ -75,8 +75,13 @@ function mapFlowSelectionToOrder(sel) {
         image: c.image ?? null,
         priceModifier: Number(c.priceModifier) || 0,
       })),
-      // برای خوانا ماندنِ سفارش در جاهایی که فقط یک خط متن می‌خواهند
-      serviceLabel: config.map((c) => `${c.title}: ${c.label}`).join("، "),
+      // برای خوانا ماندنِ سفارش در جاهایی که فقط یک خط متن می‌خواهند.
+      // خدمتِ اجباریِ بدونِ آپشن هم باید نامی داشته باشد، نه خطِ خالی.
+      serviceLabel:
+        config.map((c) => `${c.title}: ${c.label}`).join("، ") ||
+        sel.serviceName ||
+        sel.nodeLabel ||
+        "",
       serviceValue: "",
       addonToman: Number(sel.addonToman) || 0,
     };

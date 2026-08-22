@@ -126,7 +126,7 @@ export default function OrderFlowBuilder({
       required: false,
       ...(type === "category"
         ? { categoryId: null, allowVariantSelection: true }
-        : { serviceName: "", options: [], serviceOptions: [] }),
+        : { serviceName: "", servicePrice: 0, options: [], serviceOptions: [] }),
     };
     commit((prev) => [...prev, step]);
     setEditingId(id); // بلافاصله باز شود تا مرحله‌ی خالی رها نماند

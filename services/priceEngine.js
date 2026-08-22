@@ -24,7 +24,7 @@ import Order from "base/models/Order";
 import QuantityDiscount from "base/models/QuantityDiscount";
 import { ruleBrandFilterPasses } from "base/utils/discountMatch";
 import { resolveServiceSelection } from "@/lib/serviceConfig";
-import { filterVisibleSelections } from "@/lib/flowConditions";
+import { resolveOrderedSelections } from "@/lib/flowConditions";
 import { buildStepSequence } from "@/lib/flowTraversal";
 
 // ---------------------------------------------------------------------------
@@ -624,9 +624,13 @@ export async function buildFlowAddonResolver(cartItems, productMap, rate) {
 
     // مرحله‌ی نامرئی (شرطش برقرار نیست) هیچ انتخاب و هیچ قیمتی به سفارش نمی‌دهد.
     // این تصمیم اینجا هم گرفته می‌شود، نه فقط در UI — کلاینت قابلِ اعتماد نیست.
-    const { kept } = flow
-      ? filterVisibleSelections(buildStepSequence(flow), ci.flowSelections)
-      : { kept: ci.flowSelections };
+    //
+    // و برعکس: مرحله‌ی خدمتِ اجباری که *مرئی* است، حتی اگر کلاینت آن را نفرستد
+    // ساخته می‌شود تا هزینه‌ی خدمتِ اجباری با حذفِ یک ردیف از سبد دور زده نشود.
+    // «اجباری» فقط برای مراحلِ مرئی معنا دارد، پس روی visibleNodes حلقه می‌زنیم.
+    const kept = flow
+      ? resolveOrderedSelections(buildStepSequence(flow), ci.flowSelections)
+      : ci.flowSelections;
 
     for (const sel of kept) {
       if (sel?.nodeType === "service") {

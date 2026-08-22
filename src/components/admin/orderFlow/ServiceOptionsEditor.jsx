@@ -12,7 +12,11 @@ import {
   FiArrowDown,
 } from "react-icons/fi";
 import OptionImageInput from "./OptionImageInput";
-import { formatNum, validateServiceOptions } from "@/lib/serviceConfig";
+import {
+  formatNum,
+  isRangeAutoIncluded,
+  validateServiceOptions,
+} from "@/lib/serviceConfig";
 
 /**
  * ویرایشگرِ آپشن‌های قابلِ پیکربندیِ یک خدمت.
@@ -115,7 +119,7 @@ const unformat = (s) => {
  * type="text" است چون input[type=number] کاما را نمی‌پذیرد. پس از قالب‌بندیِ
  * دوباره، مکان‌نما بعد از همان تعداد رقمِ قبلی برمی‌گردد تا ویرایشِ وسطِ عدد نپرد.
  */
-function PriceField({ value, onChange, label, placeholder, className = "", ariaLabel }) {
+export function PriceField({ value, onChange, label, placeholder, className = "", ariaLabel }) {
   const ref = useRef(null);
   const [draft, setDraft] = useState(() => (value ? formatGrouped(value) : ""));
 
@@ -432,7 +436,7 @@ function OptionCard({
 
               <div className="grid grid-cols-2 gap-1.5">
                 <PriceField
-                  label="افزوده‌ی ثابت (تومان)"
+                  label="قیمت پیش‌فرض (تومان)"
                   value={option.range?.basePrice}
                   onChange={(v) => patchRange({ basePrice: v })}
                   className="w-full"
@@ -446,8 +450,13 @@ function OptionCard({
               </div>
 
               <p className="text-[9px]" style={{ color: MUTED }}>
-                گام می‌تواند اعشاری باشد (۰.۵ ، ۲.۵ ، ...). قیمت = افزوده‌ی ثابت +
+                گام می‌تواند اعشاری باشد (۰.۵ ، ۲.۵ ، ...). قیمت = قیمت پیش‌فرض +
                 (تعداد گام‌های بالاتر از کمینه × افزوده‌ی هر گام).
+              </p>
+              <p className="text-[9px]" style={{ color: MUTED }}>
+                {isRangeAutoIncluded(option)
+                  ? "این آپشن خودکار (با مقدارِ کمینه) به سفارش اضافه می‌شود و مشتری تیکِ انتخاب نمی‌بیند؛ فقط مقدار را جابه‌جا می‌کند."
+                  : "بدونِ قیمتِ پیش‌فرض و بدونِ «اجباری»، مشتری باید خودش این آپشن را انتخاب کند تا به سفارش اضافه شود."}
               </p>
             </div>
           )}

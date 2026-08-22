@@ -19,11 +19,17 @@
  *  فقط یک ورودی به CONDITION_EVALUATORS اضافه کنید. هیچ جای دیگری تغییر نمی‌کند.
  */
 
+import { isServiceFeeEntry } from "@/lib/serviceConfig";
+
 /** آیا این انتخاب واقعاً پاسخی دارد؟ (نودِ دسته‌بندی یا خدمت) */
 function hasAnswer(sel) {
   if (!sel) return false;
   if (sel.nodeType === "service") {
-    return Array.isArray(sel.serviceConfig) && sel.serviceConfig.length > 0;
+    // هزینه‌ی خودِ خدمت پاسخِ مشتری نیست؛ نباید یک مرحله را «انتخاب‌شده» جا بزند
+    return (
+      Array.isArray(sel.serviceConfig) &&
+      sel.serviceConfig.some((c) => !isServiceFeeEntry(c))
+    );
   }
   return Boolean(sel.selectedProductId || sel.selectedProduct);
 }
@@ -138,6 +144,35 @@ export function filterVisibleSelections(orderedNodes, flowSelections) {
     (visibleIds.has(String(sel?.nodeId)) ? kept : dropped).push(sel);
   }
   return { kept, dropped };
+}
+
+/**
+ * انتخاب‌هایی که واقعاً باید قیمت بخورند و در سفارش ثبت شوند — به ترتیبِ مراحل.
+ *
+ * دو قانون در یک پیمایش:
+ *   • مرحله‌ی نامرئی انتخابش دور ریخته می‌شود (شرط برقرار نیست).
+ *   • مرحله‌ی خدمتِ *مرئیِ* اجباری حتی اگر کلاینت نفرستدش ساخته می‌شود، تا
+ *     هزینه‌ی خدمتِ اجباری با حذفِ یک ردیف از سبد دور زده نشود.
+ *
+ * پس «اجباری» فقط تا وقتی معنا دارد که مرحله مرئی باشد؛ خدمتِ اجباریِ پنهان
+ * هرگز به سفارش اضافه نمی‌شود.
+ *
+ * @param {Object[]} orderedNodes خروجیِ buildStepSequence
+ * @param {Object[]} flowSelections انتخاب‌های خامِ کلاینت
+ */
+export function resolveOrderedSelections(orderedNodes, flowSelections) {
+  const selMap = selectionsToMap(flowSelections);
+  const { visibleNodes } = resolveVisibleSteps(orderedNodes, selMap);
+
+  return visibleNodes
+    .map(
+      (node) =>
+        selMap[node.id] ||
+        (node.type === "service" && node.required
+          ? { nodeId: node.id, nodeType: "service", serviceConfig: [] }
+          : null)
+    )
+    .filter(Boolean);
 }
 
 /**

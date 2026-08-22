@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import {
   filterVisibleSelections,
   isNodeVisible,
+  resolveOrderedSelections,
   resolveVisibleSteps,
   selectionsToMap,
   validateNodeConditions,
@@ -152,4 +153,85 @@ test("ارجاع به مرحله‌ی بعدی رد می‌شود (جلوگیر�
   ]);
   assert.equal(errs.length, 1);
   assert.match(errs[0], /مراحلِ قبلی/);
+});
+
+/* ─── «اجباری» تابعِ شرطِ نمایش است ─── */
+
+const racketStep = { id: "racket", type: "category", label: "انتخاب راکت" };
+const mandatoryStringing = {
+  id: "stringing",
+  type: "service",
+  label: "زه‌کشی",
+  required: true,
+  servicePrice: 150000,
+  visibleWhen: { conditions: [{ type: "answered", nodeId: "racket" }] },
+};
+const mandatorySteps = [racketStep, mandatoryStringing];
+
+test("خدمتِ اجباریِ بی‌شرط همیشه ساخته می‌شود، حتی اگر کلاینت نفرستدش", () => {
+  const out = resolveOrderedSelections([{ ...mandatoryStringing, visibleWhen: undefined }], []);
+  assert.equal(out.length, 1);
+  assert.equal(out[0].nodeId, "stringing");
+  assert.deepEqual(out[0].serviceConfig, []);
+});
+
+test("خدمتِ اجباری با شرطِ برقرار ساخته می‌شود", () => {
+  const out = resolveOrderedSelections(mandatorySteps, [
+    { nodeId: "racket", nodeType: "category", selectedProductId: "p1" },
+  ]);
+  assert.deepEqual(out.map((s) => s.nodeId), ["racket", "stringing"]);
+});
+
+test("خدمتِ اجباری با شرطِ برقرارنشده نه ساخته می‌شود نه نگه داشته می‌شود", () => {
+  // مشتری راکت انتخاب نکرده → زه‌کشی نباید اجباری شود
+  assert.deepEqual(resolveOrderedSelections(mandatorySteps, []), []);
+
+  // و حتی اگر کلاینت انتخابِ کهنه‌ی زه‌کشی را بفرستد، دور ریخته می‌شود
+  const stale = resolveOrderedSelections(mandatorySteps, [
+    { nodeId: "stringing", nodeType: "service", serviceConfig: [{ optionKey: "x", choiceKey: "y" }] },
+  ]);
+  assert.deepEqual(stale, []);
+});
+
+test("با عوض شدنِ انتخابِ قبلی، وضعیتِ اجباری هم عوض می‌شود", () => {
+  const withRacket = [{ nodeId: "racket", nodeType: "category", selectedProductId: "p1" }];
+  assert.equal(resolveOrderedSelections(mandatorySteps, withRacket).length, 2);
+
+  // مشتری راکت را برمی‌دارد → زه‌کشی دیگر اجباری نیست و ساخته هم نمی‌شود
+  const cleared = [{ nodeId: "racket", nodeType: "category", selectedProductId: null }];
+  assert.deepEqual(
+    resolveOrderedSelections(mandatorySteps, cleared).map((s) => s.nodeId),
+    ["racket"]
+  );
+});
+
+test("چند خدمتِ اجباری هرکدام یک بار و به ترتیبِ مراحل می‌آیند", () => {
+  const many = [
+    racketStep,
+    { id: "s1", type: "service", label: "الف", required: true },
+    { id: "s2", type: "service", label: "ب", required: true },
+    { id: "s3", type: "service", label: "ج" }, // اختیاری → ساخته نمی‌شود
+  ];
+  const out = resolveOrderedSelections(many, [
+    { nodeId: "racket", nodeType: "category", selectedProductId: "p1" },
+  ]);
+  assert.deepEqual(out.map((s) => s.nodeId), ["racket", "s1", "s2"]);
+});
+
+test("هزینه‌ی خدمت پاسخِ مشتری حساب نمی‌شود (شرطِ answered را فعال نمی‌کند)", () => {
+  const feeOnly = {
+    nodeId: "stringing",
+    nodeType: "service",
+    serviceConfig: [{ optionKey: "__serviceFee", label: "هزینه‌ی خدمت", priceModifier: 150000 }],
+  };
+  const dependent = {
+    id: "later",
+    type: "service",
+    label: "بعدی",
+    visibleWhen: { conditions: [{ type: "answered", nodeId: "stringing" }] },
+  };
+  const { visibleIds } = resolveVisibleSteps([mandatoryStringing, dependent], {
+    stringing: feeOnly,
+  });
+  assert.equal(visibleIds.has("later"), false);
 });

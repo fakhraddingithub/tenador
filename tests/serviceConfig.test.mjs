@@ -2,6 +2,9 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import {
   LEGACY_OPTION_KEY,
+  SERVICE_FEE_KEY,
+  isRangeAutoIncluded,
+  isServiceFeeEntry,
   getServiceOptions,
   isOnStep,
   resolveServiceSelection,
@@ -62,7 +65,8 @@ test("قیمت از تعریفِ سرور خوانده می‌شود، نه از
     ])
   );
   assert.deepEqual(r.errors, []);
-  assert.equal(r.addonToman, 50000); // 20000 + 30000
+  // 20000 + 30000 + تنش که به‌خاطر قیمتِ پیش‌فرض خودکار روی کمینه اضافه می‌شود
+  assert.equal(r.addonToman, 55000);
 });
 
 test("چند آپشن با هم جمع می‌شوند و range پلکانی درست حساب می‌شود", () => {
@@ -106,11 +110,13 @@ test("مقدارِ خارج از بازه رد می‌شود", () => {
 });
 
 test("آپشن یا گزینه‌ی جعلی رد می‌شود و قیمتی اضافه نمی‌کند", () => {
+  const baseline = resolveServiceSelection(node, sel([{ optionKey: "gauge", choiceKey: "125" }]));
   const fakeOption = resolveServiceSelection(
     node,
     sel([{ optionKey: "gauge", choiceKey: "125" }, { optionKey: "hacked", choiceKey: "x" }])
   );
-  assert.equal(fakeOption.addonToman, 0);
+  assert.equal(fakeOption.addonToman, baseline.addonToman, "آپشنِ جعلی نباید قیمت اضافه کند");
+  assert.equal(fakeOption.config.some((c) => c.optionKey === "hacked"), false);
   assert.ok(fakeOption.errors.length > 0);
 
   const fakeChoice = resolveServiceSelection(node, sel([{ optionKey: "gauge", choiceKey: "999" }]));
@@ -232,22 +238,127 @@ test("نودهای غیرخدمت و دادهٔ ناقص، normalizeFlowNodes ر
   assert.deepEqual(normalizeFlowNodes(legacy), legacy, "نودِ قدیمی دست‌نخورده می‌ماند");
 });
 
-test("آپشنِ range فقط وقتی قیمت می‌دهد که کاربر انتخابش کرده باشد", () => {
-  // کاربر فقط قطر را انتخاب کرده و به تنش دست نزده → افزوده‌ی ثابتِ تنش نباید بیاید
-  const onlyGauge = resolveServiceSelection(node, sel([{ optionKey: "gauge", choiceKey: "125" }]));
-  assert.deepEqual(onlyGauge.errors, []);
-  assert.equal(onlyGauge.addonToman, 0, "تنشِ انتخاب‌نشده نباید basePrice اضافه کند");
-  assert.equal(onlyGauge.config.length, 1);
+test("آپشنِ range با قیمتِ پیش‌فرض خودکار اضافه می‌شود و دوبار حساب نمی‌شود", () => {
+  // کاربر فقط قطر را انتخاب کرده؛ تنش قیمتِ پیش‌فرض دارد پس روی کمینه می‌آید
+  const auto = resolveServiceSelection(node, sel([{ optionKey: "gauge", choiceKey: "125" }]));
+  assert.deepEqual(auto.errors, []);
+  assert.equal(auto.addonToman, 5000);
+  const tensionRows = auto.config.filter((c) => c.optionKey === "tension");
+  assert.equal(tensionRows.length, 1, "تنش باید دقیقاً یک بار بیاید");
+  assert.equal(tensionRows[0].value, 18);
 
-  // حالا انتخابش می‌کند
-  const withTension = resolveServiceSelection(
+  // مقدارِ فرستاده‌شده‌ی کاربر جای پیش‌فرض را می‌گیرد، نه اینکه رویش جمع شود
+  const moved = resolveServiceSelection(
     node,
-    sel([{ optionKey: "gauge", choiceKey: "125" }, { optionKey: "tension", value: 18 }])
+    sel([{ optionKey: "gauge", choiceKey: "125" }, { optionKey: "tension", value: 24 }])
   );
-  assert.equal(withTension.addonToman, 5000, "با انتخاب، افزوده‌ی ثابت اعمال می‌شود");
+  assert.equal(moved.config.filter((c) => c.optionKey === "tension").length, 1);
+  assert.equal(moved.addonToman, 17000); // 5000 + 12*1000
+});
 
-  // و دوباره حذفش می‌کند → قیمت به حالت قبل برمی‌گردد
-  const removed = resolveServiceSelection(node, sel([{ optionKey: "gauge", choiceKey: "125" }]));
-  assert.equal(removed.addonToman, 0);
-  assert.equal(removed.config.some((c) => c.optionKey === "tension"), false);
+test("آپشنِ range بدونِ قیمتِ پیش‌فرض همچنان انتخابی (opt-in) می‌ماند", () => {
+  const freeRange = {
+    id: "n2",
+    type: "service",
+    label: "حکاکی",
+    options: [
+      {
+        key: "len",
+        title: "طول",
+        inputType: "range",
+        range: { min: 1, max: 10, step: 1, basePrice: 0, pricePerStep: 0 },
+      },
+      {
+        key: "logo",
+        title: "لوگو",
+        inputType: "choice",
+        choices: [{ key: "yes", label: "بله", priceModifier: 1000 }],
+      },
+    ],
+  };
+  assert.equal(isRangeAutoIncluded(getServiceOptions(freeRange)[0]), false);
+
+  const untouched = resolveServiceSelection(
+    freeRange,
+    { nodeId: "n2", nodeType: "service", serviceConfig: [{ optionKey: "logo", choiceKey: "yes" }] }
+  );
+  assert.equal(untouched.config.some((c) => c.optionKey === "len"), false);
+  assert.equal(untouched.addonToman, 1000);
+});
+
+test("هزینه‌ی خدمتِ اجباری بدونِ ساختنِ آپشنِ ساختگی اعمال می‌شود", () => {
+  const mandatory = {
+    id: "n3",
+    type: "service",
+    label: "زه‌کشی راکت",
+    serviceName: "زه‌کشی",
+    required: true,
+    servicePrice: 150000,
+    options: [],
+  };
+
+  // حتی وقتی کلاینت هیچ پیکربندی‌ای نفرستد
+  const r = resolveServiceSelection(mandatory, { nodeId: "n3", nodeType: "service", serviceConfig: [] });
+  assert.deepEqual(r.errors, []);
+  assert.equal(r.addonToman, 150000);
+  const fee = r.config.filter(isServiceFeeEntry);
+  assert.equal(fee.length, 1, "هزینه‌ی خدمت دقیقاً یک ردیف است");
+  assert.equal(fee[0].priceModifier, 150000);
+
+  // کلاینتِ دستکاری‌شده نمی‌تواند مبلغ را عوض کند یا ردیفِ جعلی جا بزند
+  const tampered = resolveServiceSelection(mandatory, {
+    nodeId: "n3",
+    nodeType: "service",
+    serviceConfig: [{ optionKey: SERVICE_FEE_KEY, priceModifier: -150000 }],
+  });
+  assert.deepEqual(tampered.errors, []);
+  assert.equal(tampered.addonToman, 150000);
+  assert.equal(tampered.config.filter(isServiceFeeEntry).length, 1);
+});
+
+test("خدمتِ اختیاری تا وقتی مشتری انتخابش نکند هزینه‌ی خدمت نمی‌گیرد", () => {
+  const optional = {
+    id: "n4",
+    type: "service",
+    label: "حکاکی",
+    servicePrice: 40000,
+    options: [
+      {
+        key: "logo",
+        title: "لوگو",
+        inputType: "choice",
+        choices: [{ key: "yes", label: "بله", priceModifier: 1000 }],
+      },
+    ],
+  };
+
+  const empty = resolveServiceSelection(optional, { nodeId: "n4", nodeType: "service", serviceConfig: [] });
+  assert.equal(empty.addonToman, 0);
+  assert.equal(empty.active, false);
+
+  const chosen = resolveServiceSelection(optional, {
+    nodeId: "n4",
+    nodeType: "service",
+    serviceConfig: [{ optionKey: "logo", choiceKey: "yes" }],
+  });
+  assert.equal(chosen.addonToman, 41000);
+  assert.equal(chosen.active, true);
+});
+
+test("عنوانِ خالیِ آپشن به نامِ خدمت برمی‌گردد، نه به نوعِ فنی", () => {
+  const [o] = getServiceOptions({
+    id: "n5",
+    type: "service",
+    label: "مرحله",
+    serviceName: "زه‌کشی",
+    options: [{ key: "k", title: "", inputType: "range", range: { min: 0, max: 1, step: 1 } }],
+  });
+  assert.equal(o.title, "زه‌کشی");
+});
+
+test("servicePriceِ نامعتبر در normalizeFlowNodes به عدد تبدیل می‌شود", () => {
+  const [n] = normalizeFlowNodes([{ id: "x", type: "service", servicePrice: "12,000" }]);
+  assert.equal(n.servicePrice, 0);
+  const [m] = normalizeFlowNodes([{ id: "x", type: "service", servicePrice: "15000" }]);
+  assert.equal(m.servicePrice, 15000);
 });

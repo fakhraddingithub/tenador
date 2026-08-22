@@ -14,8 +14,9 @@
 import { useEffect, useRef } from "react";
 import { FiGrid, FiTool, FiX } from "react-icons/fi";
 import { getServiceOptions } from "@/lib/serviceConfig";
+import { hasConditions } from "@/lib/flowConditions";
 import { getNodeCategoryId } from "./FlowStepCard";
-import ServiceOptionsEditor from "./ServiceOptionsEditor";
+import ServiceOptionsEditor, { PriceField } from "./ServiceOptionsEditor";
 import StepConditionsEditor from "./StepConditionsEditor";
 
 const BORDER = "#e8e4df";
@@ -263,6 +264,25 @@ export default function FlowStepEditor({
                   style={inputStyle}
                   placeholder="مثلا: زه‌کشی"
                 />
+              </div>
+
+              {/* هزینه‌ی خودِ خدمت — بدونِ نیاز به ساختنِ آپشنِ ساختگی برای قیمت */}
+              <div>
+                <PriceField
+                  label="هزینه‌ی خدمت (تومان)"
+                  value={node.servicePrice || 0}
+                  onChange={(v) => onUpdate({ servicePrice: v })}
+                  placeholder="مثلا: 150,000"
+                  className="w-full"
+                />
+                <p className="mt-1 text-[10px]" style={{ color: MUTED }}>
+                  {node.required
+                    ? "چون این مرحله اجباری است، این مبلغ خودکار به سفارش اضافه می‌شود"
+                    : "این مبلغ وقتی اضافه می‌شود که مشتری این خدمت را انتخاب کند"}
+                  {hasConditions(node)
+                    ? " — و فقط زمانی که شرطِ نمایشِ بالا برقرار باشد."
+                    : "."}
+                </p>
               </div>
 
               <ServiceOptionsEditor
