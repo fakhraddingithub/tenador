@@ -83,11 +83,16 @@ export default function BrandGroupedView({
     null;
   // ─── عنوان صفحه ───
   const categoryTitle = filters?.category?.title || filters?.category?.name || "";
+  const sportTitle = filters?.sport?.title || filters?.sport?.name || "";
   const brandTitle =
     filters?.brand?.title || filters?.brand?.name || pageInfo?.title || pageInfo?.name || "";
   const sportSlug = filters?.sport?.slug || "";
   const brandSlug = pageInfo?.slug || filters?.brand?.slug || "";
-  const headTitle = [categoryTitle, brandTitle].filter(Boolean).join(" ") || brandTitle;
+  // نام ورزش فقط در مسیرِ دسته‌بندی + برند به عنوان فعلی اضافه می‌شود؛
+  // صفحهٔ برندِ مستقل همان عنوان قبلی را حفظ می‌کند.
+  const headTitle = categoryTitle
+    ? [categoryTitle, sportTitle, brandTitle].filter(Boolean).join(" ")
+    : brandTitle;
 
   // ─── State ───
   const [sections, setSections] = useState(startingData.sections || []);

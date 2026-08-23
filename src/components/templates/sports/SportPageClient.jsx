@@ -140,7 +140,7 @@ export default function SportPageClient({
     // کتگوری + اسپورت
     // راکت تنیس
     if (categoryTitle && !brandTitle) {
-      return `${categoryTitle}`;
+      return [categoryTitle, sportTitle].filter(Boolean).join(" ");
     }
 
     // کتگوری + اسپورت + برند
