@@ -10,11 +10,14 @@
  *   attributes       { name: value }                            ← فالبک (سبد/قدیمی)
  *   attributeImages  { name: imageUrl }                         ← تکمیلیِ شکلِ سبد
  *   attributeUnits   { name: { unit: value } }                  ← تکمیلیِ شکلِ سبد
+ *   attributeLabels  { name: label }                            ← برچسب فارسی سبد
  */
-function unitsText(units) {
-  return Object.entries(units)
-    .map(([u, v]) => `${v} ${u}`)
-    .join(" / ");
+function visibleUnits(units) {
+  if (!units || typeof units !== "object") return [];
+
+  return Object.entries(units).filter(
+    ([unit, value]) => unit && value !== null && value !== undefined && value !== "",
+  );
 }
 
 export default function VariantSummary({
@@ -22,13 +25,14 @@ export default function VariantSummary({
   attributes,
   attributeImages,
   attributeUnits,
+  attributeLabels,
 }) {
   const entries =
     Array.isArray(snapshot) && snapshot.length
       ? snapshot
       : Object.entries(attributes || {}).map(([name, value]) => ({
           name,
-          label: name,
+          label: attributeLabels?.[name] || name,
           value,
           image: attributeImages?.[name] || undefined,
           units: attributeUnits?.[name] || undefined,
@@ -37,27 +41,54 @@ export default function VariantSummary({
   if (!entries.length) return null;
 
   return (
-    <div className="flex flex-wrap gap-1.5">
+    <div className="flex flex-wrap gap-1.5" dir="rtl" role="list">
       {entries.map((e, i) => {
-        const text =
-          e.units && Object.keys(e.units).length ? unitsText(e.units) : e.value;
+        const units = visibleUnits(e.units);
+        const label = e.label || attributeLabels?.[e.name] || e.name;
+
         return (
-          <span
+          <div
             key={e.name || i}
-            className="inline-flex items-center gap-1 text-xs bg-[#aa4725]/8 text-[#aa4725]
-              border border-[#aa4725]/20 px-2 py-0.5 rounded-full font-medium"
+            role="listitem"
+            aria-label={
+              units.length
+                ? `${label}: ${units.map(([unit, value]) => `${unit}: ${value}`).join("، ")}`
+                : `${label}: ${e.value}`
+            }
+            className="inline-flex max-w-full flex-wrap items-center gap-x-1.5 gap-y-1 rounded-lg
+              border border-[#aa4725]/20 bg-[#aa4725]/8 px-2 py-1 text-xs text-[#aa4725]"
           >
-            {e.image ? (
+            {e.image && (
               <img
                 src={e.image}
                 alt={e.value}
-                className="w-4 h-4 rounded-full object-cover border border-[#aa4725]/20"
+                className="h-4 w-4 shrink-0 rounded-full border border-[#aa4725]/20 object-cover"
               />
-            ) : (
-              <span className="text-slate-500 text-[10px]">{e.label || e.name}:</span>
             )}
-            {text}
-          </span>
+
+            <span className="shrink-0 font-semibold text-slate-600">
+              {label}<span aria-hidden="true">:</span>
+            </span>
+
+            {units.length ? (
+              <span className="inline-flex flex-wrap items-center gap-1" aria-hidden="true">
+                {units.map(([unit, value]) => (
+                  <span
+                    key={unit}
+                    dir="ltr"
+                    style={{ direction: "ltr" }}
+                    className="inline-flex whitespace-nowrap rounded-md bg-white/80 px-1.5 py-0.5 font-medium shadow-sm ring-1 ring-[#aa4725]/10"
+                  >
+                    <bdi dir="auto">{unit}</bdi>
+                    <span className="mx-0.5 text-slate-400">:</span>
+                    <bdi dir="ltr" className="font-semibold text-[#aa4725]">{value}</bdi>
+                  </span>
+                ))}
+              </span>
+            ) : (
+              <bdi dir="auto" className="font-semibold">{e.value}</bdi>
+            )}
+          </div>
         );
       })}
     </div>

@@ -15,7 +15,11 @@ import {
 } from "base/services/priceEngine";
 import { eurToToman } from "@/lib/Exchangerate";
 import { calculateDiscount } from "base/utils/discountCalculator";
-import { variantAttributeImages, variantAttributeUnits } from "@/lib/variantImages";
+import {
+  buildLabelMap,
+  variantAttributeImages,
+  variantAttributeUnits,
+} from "@/lib/variantImages";
 
 async function getUserFromToken() {
   const cookieStore = await cookies();
@@ -58,7 +62,7 @@ export async function POST(request) {
       productIds.length
         ? Product.find({ _id: { $in: productIds } })
             .populate("brand", "_id name")
-            .populate("category", "_id name")
+            .populate("category", "_id name variantAttributes")
             .populate("serie", "_id name")
             .lean()
         : Promise.resolve([]),
@@ -71,7 +75,7 @@ export async function POST(request) {
               path: "baseProduct",
               populate: [
                 { path: "brand", select: "_id name" },
-                { path: "category", select: "_id name" },
+                { path: "category", select: "_id name variantAttributes" },
                 { path: "serie", select: "_id name" }
               ]
             })
@@ -243,6 +247,8 @@ export async function POST(request) {
             attributeImages: variantAttributeImages(v, p),
             // مقادیرِ واحدهای هر ویژگیِ چندواحدی (برای نمایش در سبد/سفارش) — Change 3
             attributeUnits: variantAttributeUnits(v, p),
+            // نام داخلی ویژگی (مثلاً size) نباید در رابط فارسی نمایش داده شود.
+            attributeLabels: buildLabelMap(p?.category?.variantAttributes),
           } : null,
 
           usedProduct: up ? {

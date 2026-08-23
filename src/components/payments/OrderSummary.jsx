@@ -128,6 +128,7 @@ const OrderSummary = ({ order }) => {
                       attributes={variantAttrs}
                       attributeImages={item.variant?.attributeImages}
                       attributeUnits={item.variant?.attributeUnits}
+                      attributeLabels={item.variant?.attributeLabels}
                     />
                   </div>
                 )}

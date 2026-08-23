@@ -25,6 +25,7 @@ import {
   reconcileCartWithServer,
 } from '@/lib/cart'
 import FlowSelectionsList from '@/components/modules/orderFlow/FlowSelectionsList'
+import VariantSummary from '@/components/order/VariantSummary'
 
 const CartModule = () => {
   const [cart, setCart] = useState([])
@@ -199,13 +200,12 @@ const CartModule = () => {
                 </p>
 
                 {item.variant && (
-                  <div className="flex flex-wrap gap-1">
-                    {Object.entries(item.variant.attributes || {}).map(([k, v]) => (
-                      <span key={k} className="text-xs bg-gray-100 px-1.5 py-0.5 rounded">
-                        {v}
-                      </span>
-                    ))}
-                  </div>
+                  <VariantSummary
+                    attributes={item.variant.attributes}
+                    attributeImages={item.variant.attributeImages}
+                    attributeUnits={item.variant.attributeUnits}
+                    attributeLabels={item.variant.attributeLabels}
+                  />
                 )}
 
                 {/* قیمت واحد از سرور */}

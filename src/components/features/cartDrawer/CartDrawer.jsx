@@ -276,6 +276,7 @@ export default function CartDrawer({ isOpen, onClose }) {
                                                             attributes={item.variant.attributes}
                                                             attributeImages={item.variant.attributeImages}
                                                             attributeUnits={item.variant.attributeUnits}
+                                                            attributeLabels={item.variant.attributeLabels}
                                                         />
                                                     </div>
                                                 )}

@@ -9,6 +9,7 @@ import Link from 'next/link';
 import { formatPriceWithCurrency } from 'base/utils/formatters';
 import { flowSignature } from '@/lib/cart';
 import FlowSelectionsList from '@/components/modules/orderFlow/FlowSelectionsList';
+import VariantSummary from '@/components/order/VariantSummary';
 
 const CartItems = ({ items, onUpdateQuantity, onRemoveItem, onRemoveFlowSelection, isLoading }) => {
 
@@ -69,6 +70,12 @@ const CartItems = ({ items, onUpdateQuantity, onRemoveItem, onRemoveFlowSelectio
           item.variant?.attributeUnits ||
           item.variantAttributeUnits ||
           item.product?.variant?.attributeUnits ||
+          null;
+
+        const variantAttrLabels =
+          item.variant?.attributeLabels ||
+          item.variantAttributeLabels ||
+          item.product?.variant?.attributeLabels ||
           null;
 
         // جداسازی بخش فارسی و انگلیسی نام (مثل صفحه محصول)
@@ -134,34 +141,13 @@ const CartItems = ({ items, onUpdateQuantity, onRemoveItem, onRemoveFlowSelectio
 
                 {/* واریانت — زیر نام محصول */}
                 {variantAttrs && Object.keys(variantAttrs).length > 0 && (
-                  <div className="flex flex-wrap gap-1.5 mb-2">
-                    {Object.entries(variantAttrs).map(([key, val]) => {
-                      const img = variantAttrImages?.[key];
-                      const units = variantAttrUnits?.[key];
-                      // چندواحدی: همه‌ی واحدها نمایش داده می‌شوند (مثلاً «۴۲ EU / ۲۶.۵ سانتی‌متر»)
-                      const text = units
-                        ? Object.entries(units)
-                            .map(([u, v]) => `${v} ${u}`)
-                            .join(' / ')
-                        : val;
-                      return (
-                        <span
-                          key={key}
-                          className="inline-flex items-center gap-1 text-xs bg-[#aa4725]/8 text-[#aa4725] border border-[#aa4725]/20 px-2.5 py-0.5 rounded-full font-medium"
-                        >
-                          {img ? (
-                            <img
-                              src={img}
-                              alt={val}
-                              className="w-4 h-4 rounded-full object-cover border border-[#aa4725]/20"
-                            />
-                          ) : (
-                            <span className="text-slate-500 text-[10px]">{key}:</span>
-                          )}
-                          {text}
-                        </span>
-                      );
-                    })}
+                  <div className="mb-2">
+                    <VariantSummary
+                      attributes={variantAttrs}
+                      attributeImages={variantAttrImages}
+                      attributeUnits={variantAttrUnits}
+                      attributeLabels={variantAttrLabels}
+                    />
                   </div>
                 )}
 
