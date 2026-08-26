@@ -41,3 +41,8 @@ next-env.d.ts
 
 # RBAC cutover rollback snapshots (contain user ids — keep local)
 rbac-cutover-rollback-*.json
+# scripts/repairTrackingVariantRefs.mjs rollback snapshots (keep local)
+tracking-variantref-rollback-*.json
+
+# scripts/backfillOrderVariantSnapshots.mjs rollback snapshots (keep local)
+order-variant-snapshot-rollback-*.json

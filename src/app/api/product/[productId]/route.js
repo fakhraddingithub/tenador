@@ -15,6 +15,12 @@ import "base/models/LimitedEdition";
 import { verifyToken } from "base/utils/auth";
 import { revalidateContent } from "@/lib/revalidate";
 import { makeComboKey } from "@/lib/variantKey";
+import {
+  planVariantReconciliation,
+  applyVariantWrites,
+  removePlannedVariants,
+  orderedVariantIds,
+} from "@/lib/variantReconcile";
 import { handleApiError } from "@/lib/apiError";
 import { normalizeTargetAudience } from "base/utils/targetAudience";
 import { resolveProductLimitedEdition } from "@/lib/limitedEditionRelations";
@@ -176,50 +182,57 @@ export async function PUT(request, { params }) {
     }
 
     // --------------------------------------------------
-    // ساخت واریانت‌ها
+    // تطبیق واریانت‌ها
     // --------------------------------------------------
+    // پیش‌تر اینجا همهٔ واریانت‌ها deleteMany می‌شدند و از نو ساخته می‌شدند —
+    // یعنی هر ذخیرهٔ محصول (حتی عوض‌کردنِ توضیحات) به واریانت‌ها _id تازه می‌داد
+    // و هر ارجاعِ بیرونی به آن‌ها می‌شکست: واریانتِ آیتم‌های سفارش «نامشخص»
+    // می‌شد و اسکنِ بارکد روی سفارش با «این بارکد متعلق به واریانت دیگری از این
+    // محصول است» رد می‌شد. حالا ترکیبِ ویژگی‌ها هویتِ واریانت است و فقط
+    // تفاوت‌های واقعی نوشته می‌شوند. جزئیات در src/lib/variantReconcile.js.
 
-    const generatedVariants = [];
+    function generateCombinations(options) {
+      const keys = Object.keys(options).filter(
+        (k) => Array.isArray(options[k]) && options[k].length > 0
+      );
 
-    if (
-      variantOptions &&
-      typeof variantOptions === "object" &&
-      Object.keys(variantOptions).length > 0
-    ) {
-      const optionKeys = Object.keys(variantOptions);
+      if (!keys.length) return [];
 
-      function generateCombinations(options) {
-        const keys = Object.keys(options).filter(
-          (k) =>
-            Array.isArray(options[k]) &&
-            options[k].length > 0
-        );
+      const result = [];
 
-        if (!keys.length) return [];
-
-        const result = [];
-
-        function helper(index, current) {
-          if (index === keys.length) {
-            result.push({ ...current });
-            return;
-          }
-
-          const key = keys[index];
-
-          for (const val of options[key]) {
-            helper(index + 1, {
-              ...current,
-              [key]: val,
-            });
-          }
+      function helper(index, current) {
+        if (index === keys.length) {
+          result.push({ ...current });
+          return;
         }
 
-        helper(0, {});
+        const key = keys[index];
 
-        return result;
+        for (const val of options[key]) {
+          helper(index + 1, {
+            ...current,
+            [key]: val,
+          });
+        }
       }
 
+      helper(0, {});
+
+      return result;
+    }
+
+    // variantOptions ارسال‌نشده یعنی این درخواست کاری به واریانت‌ها ندارد و
+    // آرایهٔ واریانت‌های محصول باید دست‌نخورده بماند. پیش‌تر در این حالت آرایه
+    // خالی می‌شد ولی سندهای Variant حذف نمی‌شدند — یعنی واریانت‌ها بی‌صاحب
+    // رها می‌شدند. شیءِ خالی («{}») همچنان یعنی «هیچ واریانتی نمی‌خواهم».
+    const touchesVariants =
+      variantOptions !== undefined &&
+      variantOptions !== null &&
+      typeof variantOptions === "object";
+
+    let variantPlan = null;
+
+    if (touchesVariants) {
       const allCombinations = generateCombinations(variantOptions);
       // اگر لیست انتخاب‌شده ارسال شده باشد فقط همان ترکیب‌ها ساخته می‌شوند؛
       // در غیر این صورت همه‌ی ترکیب‌ها (سازگاری با کلاینت‌های قدیمی)
@@ -228,34 +241,30 @@ export async function PUT(request, { params }) {
         ? allCombinations.filter((c) => selectedSet.has(makeComboKey(c)))
         : allCombinations;
 
-      // حذف واریانت‌های قبلی
-      if (product.variants?.length > 0) {
-        await Variant.deleteMany({
-          _id: { $in: product.variants },
-        });
-      }
+      // مرجعِ «واریانت‌های فعلی» خودِ سندهای Variant است، نه آرایهٔ
+      // product.variants — این‌طور واریانتِ جامانده از باگ‌های قبلی هم دوباره
+      // وصل می‌شود به‌جای این‌که برای همیشه بی‌صاحب بماند.
+      const existingVariants = await Variant.find({ productId: product._id });
 
-      let variantIndex = 0;
-
-      for (const combo of combinations) {
-        const comboKey = makeComboKey(combo);
-
-        const detail = variantDetails?.[comboKey] || {};
-
-        const variant = await Variant.create({
-          productId: product._id,
-          categoryId: category,
-          attributes: combo,
-          // قیمت ۰ یا خالی → قیمت پایه محصول ذخیره می‌شود
-          price: Number(detail.price) || Number(basePrice) || 0,
-          images: Array.isArray(detail.images) ? detail.images : [],
-          // SKU یکتا و پایدار بر اساس ایندکس (مقادیر ممکن است فارسی/تکراری باشند)
-          sku: `${product._id}-V${++variantIndex}`.toUpperCase(),
-        });
-
-        generatedVariants.push(variant._id);
-      }
+      variantPlan = planVariantReconciliation({
+        existing: existingVariants,
+        combinations,
+        variantDetails,
+        basePrice,
+        categoryId: category,
+        productId: String(product._id),
+      });
     }
+
+    // ─── اجرای نقشه ───────────────────────────────────────────────
+    // ترتیب عمدی است: به‌روزرسانی و ساخت پیش از ذخیرهٔ محصول، و حذف پس از آن.
+    // تا وقتی وضعیت جدید ذخیره نشده هیچ واریانتی حذف نمی‌شود، پس یک خطای
+    // میانی هرگز محصول را بدونِ واریانت رها نمی‌کند.
+    const variantIdByComboKey = await applyVariantWrites({
+      Variant,
+      productId: product._id,
+      plan: variantPlan,
+    });
 
     let resolvedCustomTabItemIds = [];
     if (Array.isArray(customTabItems) && customTabItems.length > 0 && category) {
@@ -303,9 +312,16 @@ export async function PUT(request, { params }) {
     // ✨ اضافه شد: اگر isActive فرستاده شده بود مقدار را به‌روزرسانی کن، در غیر این صورت مقدار قبلی را حفظ کن
     product.isActive = typeof isActive === "boolean" ? isActive : product.isActive;
 
-    product.variants = generatedVariants;
+    // ترتیبِ آرایه از ترتیبِ ترکیب‌های فرم می‌آید تا نمایشِ واریانت‌ها پایدار بماند
+    if (variantPlan) {
+      product.variants = orderedVariantIds(variantPlan, variantIdByComboKey);
+    }
 
     await product.save();
+
+    // حذف در آخر — فقط ترکیب‌هایی که ادمین واقعاً برداشته، و فقط پس از این‌که
+    // وضعیت جدیدِ محصول با موفقیت ذخیره شده است.
+    await removePlannedVariants({ Variant, plan: variantPlan });
 
     // --------------------------------------------------
     // محصول نهایی populated

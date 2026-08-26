@@ -18,6 +18,10 @@ npm run check:mongodb # Inspect MongoDB collections/state
 npm run migrate:used-products
 npm run migrate:coach-codes
 npm run migrate:category-sport   # Drops global slug unique indexes, adds per-sport compound indexes (required in prod)
+npm run check:tracking-variant-refs        # Dry-run: warehouse barcodes whose variantRef points at a deleted variant
+npm run repair:tracking-variant-refs       # Repoint them at the current variant (matched via the warehouse's variantKey snapshot)
+npm run check:order-variant-snapshots      # Dry-run: order lines showing a blank variant (deleted variant, no snapshot)
+npm run backfill:order-variant-snapshots   # Fill variantSnapshot where another order line proves the attributes
 npm run check:article-image-dimensions    # Dry-run: report article/brand image blocks missing width+height
 npm run migrate:article-image-dimensions  # Backfill those dimensions (idempotent); revalidate the `articles` tag afterwards
 
@@ -83,6 +87,49 @@ After any admin mutation, call `revalidateContent(tags)` from `src/lib/revalidat
 ### Pricing
 
 `services/priceEngine.js` computes prices server-side (base price in Toman, discount rules, exchange rate conversion from USD). Results are precomputed and stored in `PriceCache` model. BullMQ workers (`workers/priceWorker.js`, `workers/discountWorker.js`) handle async recalculation when products or discount rules change.
+
+### Variant identity
+
+**A variant's `_id` is a stable, externally-referenced identity — never regenerate it.** It is referenced from
+`order.items[].variant`, from `itemtrackings.variantRef` in the separate warehouse DB, and from
+`flowSelections[].selectedVariant`.
+
+The product PUT route (`src/app/api/product/[productId]/route.js`) used to `deleteMany` every variant and recreate
+them on each save. Because the admin edit form always sends `variantOptions` ("so backend can sync"), *any* product
+edit — even changing only the description — minted fresh `_id`s for identical attribute combinations and silently
+broke every external reference: order lines rendered their variant as "unspecified", and scanning a barcode onto an
+order failed with «این بارکد متعلق به واریانت دیگری از این محصول است» even though barcode and order line were the
+same variant.
+
+`src/lib/variantReconcile.js` now reconciles instead. The **attribute combination is the identity**, keyed with the
+shared `makeComboKey` from `src/lib/variantKey.js` (order-independent, collision-free, used by the client too):
+
+| state | action |
+|---|---|
+| combination exists and is still wanted | update in place — `_id` **and** `sku` preserved |
+| wanted but missing | create |
+| exists but no longer wanted | delete (an explicit admin action) |
+
+Gotchas baked into the implementation:
+
+- **Writes happen before `product.save()`, deletes strictly after.** A mid-request failure can then never leave the
+  product without variants.
+- **Changed variants are written via `doc.save()`, not `updateOne`.** `updateOne` skips the `pre("validate")` hook on
+  `models/Variant.js` that checks attributes against the category's `variantAttributes`; the old create-everything
+  path always ran it, so bypassing it would silently persist invalid data.
+- **Existing variants are read with `Variant.find({ productId })`, not from `product.variants`.** This re-adopts any
+  variant orphaned by earlier bugs instead of leaking it forever.
+- **`variantOptions` absent ≠ `{}`.** Absent means "this request isn't about variants" and leaves them untouched;
+  `{}` means "no variants". Previously both blanked `product.variants` while leaving the documents orphaned.
+- A payload with no `category` never nulls a kept variant's required `categoryId`.
+
+Tests: `npm run test:variant-reconcile` (pure planner) and `npm run test:variant-identity` (real mongoose + schema
+constraints, asserts `_id`s survive an edit). Both must stay green — they are the regression guard for this bug.
+
+Note that a *deliberate* combination removal still deletes the variant and so still dangles old references; that is
+why `order.items[].variantSnapshot` exists (written at checkout since 2026-06-25, read by `VariantSummary` with a
+fallback to `variant.attributes`). Orders placed before that date have no snapshot and display blank if their variant
+was deleted — see the two `*variant*` scripts above.
 
 ### Slug System
 
