@@ -26,9 +26,23 @@ function buildTarget(baseProduct, categoryStats) {
   return target;
 }
 
-export default function MatchCategoryClient({ category }) {
-  const [baseProduct, setBaseProduct] = useState(null);
-  const [target, setTarget] = useState(null);
+/**
+ * @param {Object}  props.category
+ * @param {Object}  [props.initialBaseProduct] محصول پایه‌ی از پیش انتخاب‌شده
+ * @param {boolean} [props.embedded] داخلِ پوستهٔ دیگری رندر می‌شود (بدون تیتر و بخش‌های پایینی)
+ *
+ * دو پارامتر آخر افزایشی‌اند و مقدارِ پیش‌فرضشان دقیقاً رفتارِ قبلی است؛ فقط
+ * پوستهٔ MatchToolClient — که خودش تیتر و بخش‌های پایینی را دارد — آن‌ها را می‌فرستد.
+ */
+export default function MatchCategoryClient({
+  category,
+  initialBaseProduct = null,
+  embedded = false,
+}) {
+  const [baseProduct, setBaseProduct] = useState(initialBaseProduct);
+  const [target, setTarget] = useState(() =>
+    initialBaseProduct ? buildTarget(initialBaseProduct, category.technicalStats) : null,
+  );
   const [products, setProducts] = useState(null); // null = هنوز واکشی نشده
   const productsLoading = Boolean(baseProduct) && products === null;
 
@@ -76,19 +90,25 @@ export default function MatchCategoryClient({ category }) {
     });
   }, [target, products, baseProduct, category]);
 
+  // در حالتِ جاسازی‌شده، پوسته و تیتر را والد (MatchToolClient) رندر می‌کند تا
+  // صفحه دو h1 و دو کانتینر تودرتو نداشته باشد.
+  const Shell = embedded ? EmbeddedShell : PageShell;
+  const headingTitle = [category.title, category.sportTitle].filter(Boolean).join(" ");
+
   return (
-    <div className="min-h-screen bg-[var(--color-background)] font-sans text-[var(--color-text)]">
-      <div className="max-w-7xl mx-auto px-4 py-10 pb-20">
-        <div className="text-center mb-8 space-y-2">
-          <h1 className="text-3xl md:text-4xl font-bold text-[var(--color-primary)]">
-          {category.title} خود را ارتقا دهید: ارتقایی را پیدا کنید که مناسب بازی شما باشد
-          </h1>
-          {!baseProduct && (
-            <p className="text-neutral-500">
-              محصول فعلی خود را جستجو کنید تا نزدیک‌ترین گزینه‌ها را بر اساس شاخص‌های فنی پیدا کنیم.
-            </p>
-          )}
-        </div>
+    <Shell>
+        {!embedded && (
+          <div className="text-center mb-8 space-y-2">
+            <h1 className="text-3xl md:text-4xl font-bold text-[var(--color-primary)]">
+            {headingTitle} خود را ارتقا دهید: ارتقایی را پیدا کنید که مناسب بازی شما باشد
+            </h1>
+            {!baseProduct && (
+              <p className="text-neutral-500">
+                محصول فعلی خود را جستجو کنید تا نزدیک‌ترین گزینه‌ها را بر اساس شاخص‌های فنی پیدا کنیم.
+              </p>
+            )}
+          </div>
+        )}
 
         {!baseProduct ? (
           <div className="max-w-3xl mx-auto">
@@ -215,9 +235,26 @@ export default function MatchCategoryClient({ category }) {
         )}
 
         {/* بخش‌های پایینی — مستقل از انتخاب محصول پایه، مثل صفحه مقایسه */}
-        <BestInCategorySection categoryId={category._id} onSelectProduct={handleSelectBase} />
-        <AttributeGuideSection category={category} />
-      </div>
+        {!embedded && (
+          <>
+            <BestInCategorySection categoryId={category._id} onSelectProduct={handleSelectBase} />
+            <AttributeGuideSection category={category} />
+          </>
+        )}
+    </Shell>
+  );
+}
+
+/** پوستهٔ صفحهٔ مستقل — همان مارک‌آپِ همیشگی */
+function PageShell({ children }) {
+  return (
+    <div className="min-h-screen bg-[var(--color-background)] font-sans text-[var(--color-text)]">
+      <div className="max-w-7xl mx-auto px-4 py-10 pb-20">{children}</div>
     </div>
   );
+}
+
+/** پوستهٔ جاسازی‌شده — بدون کانتینر، چون والد قبلاً آن را دارد */
+function EmbeddedShell({ children }) {
+  return <>{children}</>;
 }

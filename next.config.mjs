@@ -1,3 +1,5 @@
+import { LEGACY_MATCH_REDIRECTS } from "./src/lib/matchTools.js";
+
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   /* config options here */
@@ -36,6 +38,16 @@ const nextConfig = {
   // اسلاگ‌ها بدون تغییر باقی مانده‌اند؛ فقط بخش مسیر تغییر کرده است.
   async redirects() {
     return [
+      // مسیرهای تک‌بخشیِ قدیمیِ ابزار مچ. اسلاگِ دسته فقط درونِ یک ورزش یکتاست،
+      // پس /match/racket بینِ راکتِ تنیس و راکتِ پدل مبهم بود و همیشه یکی از
+      // آن دو را نشان می‌داد. آدرس‌ها حالا ورزش را هم دارند. فقط برای همان سه
+      // آدرسی ریدایرکت گذاشته شده که واقعاً منتشر شده بودند و هر سه به تنیس
+      // تعلق داشتند؛ آدرسِ حدسی اضافه نشده است.
+      ...LEGACY_MATCH_REDIRECTS.map(({ from, to }) => ({
+        source: from,
+        destination: to,
+        permanent: true,
+      })),
       {
         source: "/events",
         destination: "/collection",
