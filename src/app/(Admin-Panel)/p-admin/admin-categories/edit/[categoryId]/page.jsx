@@ -281,6 +281,9 @@ export default function EditCategory() {
         setVariantAttributes((cat.variantAttributes || []).map(v => ({
           ...v,
           id: v.id || v._id || `vattr-${Math.random().toString(36).substr(2, 9)}`,
+          // نامِ واقعی در لحظهٔ بارگذاری؛ API از آن برای تشخیص rename و
+          // انتقال کلیدهای واریانت‌های موجود استفاده می‌کند.
+          originalName: v.name,
           options: Array.isArray(v.options) ? v.options : []
         })));
 
@@ -554,7 +557,11 @@ export default function EditCategory() {
     };
 
     if (editingVariantId) {
-      setVariantAttributes(prev => prev.map(v => v.id === editingVariantId ? { ...variantData, id: editingVariantId } : v));
+      setVariantAttributes(prev => prev.map(v =>
+        v.id === editingVariantId
+          ? { ...v, ...variantData, id: editingVariantId }
+          : v
+      ));
       setEditingVariantId(null);
       showToast.success('ویژگی واریانت بروزرسانی شد');
     } else {
@@ -646,7 +653,12 @@ export default function EditCategory() {
 
       if (res.ok) {
         invalidateAdminCache('/api/categories');
-        showToast.success('تغییرات با موفقیت ذخیره شد');
+        const renamedVariants = Number(data.variantRenameSummary?.variants || 0);
+        showToast.success(
+          renamedVariants > 0
+            ? `تغییرات ذخیره شد و ${renamedVariants.toLocaleString('fa-IR')} واریانت بروزرسانی شد`
+            : 'تغییرات با موفقیت ذخیره شد'
+        );
         router.push('/p-admin/admin-categories');
       } else {
         showError('خطا', data.error || 'خطا در ویرایش دسته‌بندی');

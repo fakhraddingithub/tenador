@@ -1,5 +1,10 @@
 import connectToDB from "base/configs/db";
+import mongoose from "mongoose";
+import "base/models/registerModels";
 import Category from "base/models/Category";
+import Order from "base/models/Order";
+import Product from "base/models/Product";
+import Variant from "base/models/Variant";
 import { NextResponse } from "next/server";
 import {
   revalidateCategoryVisibilityPaths,
@@ -12,6 +17,11 @@ import {
   validateCategorySportConfiguration,
 } from "base/services/categorySportValidation.service";
 import requireAdminPermission from "@/lib/requireAdminPermission";
+import {
+  VariantAttributeRenameError,
+  migrateVariantAttributeData,
+  planVariantAttributeRenames,
+} from "@/lib/categoryVariantAttributeRename";
 
 // ---------------------------------------------------------
 // GET: دریافت جزئیات یک کتگوری
@@ -125,23 +135,36 @@ export async function PUT(req, { params }) {
       category.attributes = attributes;
     }
 
+    let variantRenames = [];
     if (variantAttributes !== undefined) {
       if (!validateAttrs(variantAttributes)) {
         return NextResponse.json({ error: "ویژگی‌های واریانت نامعتبر هستند" }, { status: 400 });
       }
-      category.variantAttributes = variantAttributes;
+      const renamePlan = planVariantAttributeRenames(
+        category.variantAttributes || [],
+        variantAttributes,
+      );
+      category.variantAttributes = renamePlan.definitions;
+      variantRenames = renamePlan.renames;
     }
 
     // ویژگیِ فیلترِ مگامنو — فقط نامِ معتبر (موجود در attributes/variantAttributes فعلی) پذیرفته می‌شود
-    if (megaMenuFilterAttribute !== undefined) {
+    if (megaMenuFilterAttribute !== undefined || variantRenames.length > 0) {
       const allAttrNames = [
         ...(category.attributes || []),
         ...(category.variantAttributes || []),
       ].map((a) => a?.name);
+      const renameMap = new Map(variantRenames.map(({ from, to }) => [from, to]));
+      const requestedMegaMenuAttribute =
+        megaMenuFilterAttribute !== undefined
+          ? megaMenuFilterAttribute
+          : category.megaMenuFilterAttribute;
+      const migratedMegaMenuAttribute =
+        renameMap.get(requestedMegaMenuAttribute) || requestedMegaMenuAttribute;
       category.megaMenuFilterAttribute = allAttrNames.includes(
-        megaMenuFilterAttribute,
+        migratedMegaMenuAttribute,
       )
-        ? megaMenuFilterAttribute
+        ? migratedMegaMenuAttribute
         : null;
     }
 
@@ -201,8 +224,29 @@ export async function PUT(req, { params }) {
       category.image = image;
     }
 
-    // ذخیره تغییرات (Trigger pre-save hooks)
-    await category.save();
+    // ذخیرهٔ تعریف دسته و انتقال کلیدهای وابسته یک عملیات اتمیک است. در نتیجه
+    // یا Variant.attributes، Product.variantMeta و snapshot سفارش‌ها همراه دسته
+    // تغییر می‌کنند، یا در صورت هر خطا هیچ‌کدام تغییر نمی‌کنند.
+    const session = await mongoose.startSession();
+    let variantRenameSummary = { variants: 0, products: 0, orders: 0, orderItems: 0 };
+    try {
+      session.startTransaction();
+      await category.save({ session });
+      variantRenameSummary = await migrateVariantAttributeData({
+        categoryId: category._id,
+        renames: variantRenames,
+        session,
+        Variant,
+        Product,
+        Order,
+      });
+      await session.commitTransaction();
+    } catch (error) {
+      await session.abortTransaction();
+      throw error;
+    } finally {
+      await session.endSession();
+    }
 
     const affectedSportSlugs = await getCategoryVisibilitySportSlugs(
       previousVisibility,
@@ -217,8 +261,12 @@ export async function PUT(req, { params }) {
     return NextResponse.json({
       message: "دسته‌بندی با موفقیت به‌روزرسانی شد",
       category,
+      variantRenameSummary,
     });
   } catch (error) {
+    if (error instanceof VariantAttributeRenameError) {
+      return NextResponse.json({ error: error.message }, { status: error.status });
+    }
     if (error instanceof CategorySportValidationError) {
       return NextResponse.json({ error: error.message }, { status: error.status });
     }
