@@ -44,6 +44,16 @@ function formatPrice(v) {
   return new Intl.NumberFormat("fa-IR").format(Number(v ?? 0));
 }
 
+function splitProductName(text = "") {
+  const englishPart = text.match(/[a-zA-Z(].*/);
+  if (!englishPart) return { farsi: text, english: "" };
+
+  return {
+    farsi: text.slice(0, englishPart.index).trim(),
+    english: englishPart[0].trim(),
+  };
+}
+
 // برچسبِ واریانتِ یک آیتم — از اسنپ‌شات لحظه‌ی ثبت، وگرنه از خودِ واریانت
 function variantLabelOf(item) {
   const snap = Array.isArray(item?.variantSnapshot) ? item.variantSnapshot : [];
@@ -437,17 +447,53 @@ function OrderDetailModal({ orderId, onClose, onOpenFull }) {
                 <div className="space-y-2">
                   {(order.items || []).map((item, idx) => {
                     const vLabel = variantLabelOf(item);
+                    const productName = item.product?.name || "محصول";
+                    const { farsi, english } = splitProductName(productName);
+                    const productHref = item.product?.slug
+                      ? item.itemType === "used_product"
+                        ? `/second-hand/${item.product.slug}`
+                        : `/products/${item.product.slug}`
+                      : null;
+                    const productNameContent = (
+                      <>
+                        {farsi && (
+                          <span className="block text-sm font-bold leading-snug text-gray-800 transition-colors duration-200 group-hover/name:text-[var(--color-primary)] group-focus-visible/name:text-[var(--color-primary)] [overflow-wrap:anywhere]">
+                            {farsi}
+                          </span>
+                        )}
+                        {english && (
+                          <span
+                            className="mt-0.5 block text-xs font-semibold leading-snug text-gray-500 transition-colors duration-200 group-hover/name:text-[var(--color-primary)] group-focus-visible/name:text-[var(--color-primary)] [overflow-wrap:anywhere]"
+                            dir="ltr"
+                          >
+                            {english}
+                          </span>
+                        )}
+                      </>
+                    );
                     return (
-                      <div key={idx} className="flex items-center gap-3 py-2 border-b border-gray-50 last:border-0">
+                      <div key={idx} className="flex items-start gap-3 py-2 border-b border-gray-50 last:border-0">
                         <div className="w-11 h-11 rounded-lg bg-gray-50 border border-gray-100 flex items-center justify-center overflow-hidden flex-shrink-0">
                           {item.product?.mainImage ? (
-                            <img src={item.product.mainImage} alt="" className="w-full h-full object-cover" />
+                            <img src={item.product.mainImage} alt={productName} className="w-full h-full object-cover" />
                           ) : (
                             <Package size={16} className="text-gray-300" />
                           )}
                         </div>
                         <div className="min-w-0 flex-1">
-                          <p className="text-xs font-bold text-gray-800 truncate">{item.product?.name || "محصول"}</p>
+                          {productHref ? (
+                            <a
+                              href={productHref}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="group/name block min-w-0 max-w-full rounded-sm outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-primary)] focus-visible:ring-offset-2"
+                              aria-label={`مشاهده محصول ${productName} در تب جدید`}
+                            >
+                              {productNameContent}
+                            </a>
+                          ) : (
+                            <div className="min-w-0 max-w-full">{productNameContent}</div>
+                          )}
                           {vLabel ? <p className="text-[10px] text-gray-400 truncate">{vLabel}</p> : null}
                           {(item.flowSelections || []).filter((s) => s.nodeType === "category" || s.selectedProductName || s.nodeLabel).length > 0 && (
                             <p className="text-[10px] text-[var(--color-primary)]/80 truncate">
