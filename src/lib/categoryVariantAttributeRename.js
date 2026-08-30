@@ -31,8 +31,9 @@ export function planVariantAttributeRenames(currentDefinitions = [], incomingDef
   const claimedOriginalNames = new Set();
   const finalNames = new Set();
   const renames = [];
+  const unmatchedIncoming = [];
 
-  const definitions = incomingDefinitions.map((item) => {
+  const definitions = incomingDefinitions.map((item, index) => {
     const name = cleanName(item?.name);
     const label = cleanName(item?.label);
     const originalName = cleanName(item?.originalName);
@@ -60,6 +61,14 @@ export function planVariantAttributeRenames(currentDefinitions = [], incomingDef
       if (originalName !== name || currentLabel !== label) {
         renames.push({ from: originalName, to: name, label });
       }
+    } else if (currentNames.has(name)) {
+      // کلاینت‌های قدیمی originalName نمی‌فرستند. نامی که هنوز وجود دارد بدون
+      // ابهام همان ویژگی قبلی است؛ تغییر label آن نیز باید به snapshotها برسد.
+      claimedOriginalNames.add(name);
+      const currentLabel = cleanName(currentByName.get(name)?.label);
+      if (currentLabel !== label) renames.push({ from: name, to: name, label });
+    } else {
+      unmatchedIncoming.push({ index, name, label });
     }
 
     // فیلدهای صرفاً کلاینتی نباید وارد سند Category شوند.
@@ -68,6 +77,36 @@ export function planVariantAttributeRenames(currentDefinitions = [], incomingDef
     delete definition.originalName;
     return { ...definition, name, label };
   });
+
+  const unmatchedCurrent = [...currentNames].filter(
+    (name) => !claimedOriginalNames.has(name),
+  );
+
+  // fallback برای صفحه‌ای که پیش از deploy باز مانده است: اگر تعداد ویژگی‌ها
+  // ثابت مانده و دقیقاً یک نام قدیمی با یک نام تازه جایگزین شده، rename قطعی است.
+  if (
+    unmatchedCurrent.length === 1
+    && unmatchedIncoming.length === 1
+    && currentDefinitions.length === incomingDefinitions.length
+  ) {
+    renames.push({
+      from: unmatchedCurrent[0],
+      to: unmatchedIncoming[0].name,
+      label: unmatchedIncoming[0].label,
+    });
+    claimedOriginalNames.add(unmatchedCurrent[0]);
+  } else if (
+    unmatchedCurrent.length > 0
+    && unmatchedIncoming.length > 0
+    && currentDefinitions.length === incomingDefinitions.length
+  ) {
+    // چند rename بدون هویت قبلی قابل جفت‌کردن امن نیست. ذخیره را متوقف می‌کنیم
+    // تا تعریف دسته بدون داده‌های وابسته جلو نیفتد؛ refresh کلاینت جدید را می‌آورد.
+    throw new VariantAttributeRenameError(
+      "هویت چند ویژگی واریانت مشخص نیست؛ صفحه را تازه کنید و تغییرات را دوباره انجام دهید",
+      409,
+    );
+  }
 
   return { definitions, renames };
 }

@@ -149,3 +149,22 @@ test("ویرایش فقط label نیز snapshot سفارش را بدون تغی�
 
   assert.deepEqual(result.renames, [{ from: "Gauge", to: "Gauge", label: "قطر" }]);
 });
+
+test("rename تک‌ویژگی را برای کلاینت قدیمیِ بدون originalName تشخیص می‌دهد", () => {
+  const result = planVariantAttributeRenames(
+    [{ name: "size", label: "سایز" }],
+    [{ name: "color", label: "رنگ" }],
+  );
+
+  assert.deepEqual(result.renames, [{ from: "size", to: "color", label: "رنگ" }]);
+});
+
+test("کلاینت قدیمی نمی‌تواند چند rename مبهم را بی‌صدا ذخیره کند", () => {
+  assert.throws(
+    () => planVariantAttributeRenames(
+      [{ name: "A", label: "الف" }, { name: "B", label: "ب" }],
+      [{ name: "C", label: "ج" }, { name: "D", label: "د" }],
+    ),
+    /صفحه را تازه کنید/,
+  );
+});
