@@ -176,6 +176,16 @@ function formatEUR(v) {
   }).format(Number(v ?? 0));
 }
 
+function splitProductName(text = "") {
+  const englishPart = text.match(/[a-zA-Z(].*/);
+  if (!englishPart) return { farsi: text, english: "" };
+
+  return {
+    farsi: text.slice(0, englishPart.index).trim(),
+    english: englishPart[0].trim(),
+  };
+}
+
 function toFarsiDate(dateStr) {
   if (!dateStr) return "—";
   return new Intl.DateTimeFormat("fa-IR", {
@@ -2583,21 +2593,57 @@ export default function AdminOrderDetailClient({ orderId }) {
                   const itemId = item._id;
                   const isUsed = item.itemType === "used_product";
                   const busy = itemBusy === itemId;
+                  const productName = item.product?.name || "محصول";
+                  const { farsi, english } = splitProductName(productName);
+                  const productHref = item.product?.slug
+                    ? isUsed
+                      ? `/second-hand/${item.product.slug}`
+                      : `/products/${item.product.slug}`
+                    : null;
+                  const productNameContent = (
+                    <>
+                      {farsi && (
+                        <span className="block text-sm font-bold leading-snug text-gray-800 transition-colors duration-200 group-hover/name:text-[var(--color-primary)] group-focus-visible/name:text-[var(--color-primary)] [overflow-wrap:anywhere]">
+                          {farsi}
+                        </span>
+                      )}
+                      {english && (
+                        <span
+                          className="mt-0.5 block text-xs font-semibold leading-snug text-gray-500 transition-colors duration-200 group-hover/name:text-[var(--color-primary)] group-focus-visible/name:text-[var(--color-primary)] [overflow-wrap:anywhere]"
+                          dir="ltr"
+                        >
+                          {english}
+                        </span>
+                      )}
+                    </>
+                  );
                   return (
                   <div key={itemId || i} className="flex items-start gap-3 p-3 bg-gray-50 rounded-xl">
                     {item.product?.mainImage && (
-                      <img src={item.product.mainImage} alt={item.product.name}
+                      <img src={item.product.mainImage} alt={productName}
                         className="w-12 h-12 rounded-xl object-cover border border-gray-200 flex-shrink-0" />
                     )}
                     <div className="flex-1 min-w-0">
-                      <p className="text-sm font-bold text-gray-800 truncate flex items-center gap-1.5">
-                        {item.product?.name || "محصول"}
+                      <div className="flex items-start gap-1.5">
+                        {productHref ? (
+                          <a
+                            href={productHref}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="group/name min-w-0 max-w-full rounded-sm outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-primary)] focus-visible:ring-offset-2"
+                            aria-label={`مشاهده محصول ${productName} در تب جدید`}
+                          >
+                            {productNameContent}
+                          </a>
+                        ) : (
+                          <div className="min-w-0 max-w-full">{productNameContent}</div>
+                        )}
                         {isUsed && (
                           <span className="text-[10px] font-bold text-amber-600 bg-amber-50 border border-amber-200 px-1.5 py-0.5 rounded-full shrink-0">
                             دست دوم
                           </span>
                         )}
-                      </p>
+                      </div>
                       {(item.variantSnapshot?.length ||
                         (item.variant?.attributes &&
                           Object.keys(item.variant.attributes).length > 0)) && (

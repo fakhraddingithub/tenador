@@ -99,6 +99,7 @@ function normalizeOrderItems(items = []) {
         product: {
           _id: usedProduct?._id || item.product?._id || null,
           name: usedProduct?.name || item.product?.name || "محصول دست دوم",
+          slug: usedProduct?.slug || null,
           mainImage: usedProduct?.images?.[0] || item.product?.mainImage || null,
           sku: usedProduct?.sku || "USED-ITEM",
         },
@@ -157,7 +158,7 @@ export async function GET(req, { params }) {
       .populate({
         path: "items.product",
         model: "Product",
-        select: "name mainImage sku",
+        select: "name slug mainImage sku",
       })
       .populate({
         path: "items.usedProduct",
@@ -272,7 +273,7 @@ export async function PATCH(req, { params }) {
       .populate({
         path: "items.product",
         model: "Product",
-        select: "name mainImage sku",
+        select: "name slug mainImage sku",
       })
       .populate({
         path: "items.usedProduct",
