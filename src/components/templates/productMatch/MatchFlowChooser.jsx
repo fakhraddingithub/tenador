@@ -43,9 +43,9 @@ export default function MatchFlowChooser({ onChoose }) {
             initial={{ opacity: 0, y: 12 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.25, delay: index * 0.06 }}
-            className="group flex h-full flex-col rounded-[var(--radius)] border-2 border-neutral-200 bg-white p-6 text-right shadow-sm transition-all duration-300 hover:-translate-y-1 hover:border-[var(--color-primary)] hover:shadow-xl"
+            className="group flex h-full flex-col rounded-[var(--radius)] border-2 border-neutral-200 bg-white p-6 text-center shadow-sm transition-all duration-300 hover:-translate-y-1 hover:border-[var(--color-primary)] hover:shadow-xl"
           >
-            <span className="mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-[var(--color-primary)]/10 text-[var(--color-primary)] transition-colors group-hover:bg-[var(--color-primary)] group-hover:text-white">
+            <span className="mb-4 flex h-12 w-12 self-center items-center justify-center rounded-full bg-[var(--color-primary)]/10 text-[var(--color-primary)] transition-colors group-hover:bg-[var(--color-primary)] group-hover:text-white">
               <Icon size={22} />
             </span>
 
