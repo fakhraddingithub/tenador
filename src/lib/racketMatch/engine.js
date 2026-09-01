@@ -231,7 +231,6 @@ export function buildTargetProfile(answers = {}, currentRacket = null) {
     character,
     comfortPriority,
     maxStiffnessRA: comfortPriority === "high" ? 65 : null,
-    grip: answers.grip && answers.grip !== "unknown" ? answers.grip : null,
     priceRange: answers.priceRange || null,
     currentRacket: currentRacket || null,
     feedback: [...feedback],
@@ -394,7 +393,7 @@ const JUNIOR_LENGTH_CUTOFF = 26.5;
  * @returns {{products: Array, rejected: Object}}
  */
 export function applyHardConstraints(products, targetProfile, priceRange = null) {
-  const rejected = { grip: 0, price: 0, size: 0 };
+  const rejected = { price: 0, size: 0 };
   const kept = products.filter((product) => {
     const specs = product.specs || product;
 
@@ -403,15 +402,6 @@ export function applyHardConstraints(products, targetProfile, priceRange = null)
       const juniorSized = specs.length < JUNIOR_LENGTH_CUTOFF;
       if (targetProfile.isJunior !== juniorSized) {
         rejected.size += 1;
-        return false;
-      }
-    }
-
-    // گریپ — هرگز نرم نمی‌شود. اگر سایزهای گریپِ محصول ثبت نشده باشد نمی‌توان
-    // ناسازگاری را اثبات کرد، پس محصول می‌ماند و در توضیح یادآوری می‌شود.
-    if (targetProfile.grip && specs.gripSizes?.length) {
-      if (!specs.gripSizes.includes(targetProfile.grip)) {
-        rejected.grip += 1;
         return false;
       }
     }
@@ -597,9 +587,9 @@ export function explainRecommendation(product, targetProfile) {
   }
 
   // یادداشت‌های کاربردی (نه فنی)
-  if (targetProfile.grip && specs.gripSizes && !specs.gripSizes.includes(targetProfile.grip)) {
-    notes.push("سایز دستهٔ موردنظر شما را در صفحهٔ محصول بررسی کنید.");
-  } else if (!targetProfile.grip && specs.gripSizes?.length) {
+  // پرسشنامه دیگر شمارهٔ گریپ را نمی‌پرسد، پس به‌جای فیلترکردن، سایزهای موجود
+  // را نشان می‌دهیم تا کاربر خودش روی صفحهٔ محصول انتخاب کند.
+  if (specs.gripSizes?.length) {
     notes.push("سایز دسته: " + specs.gripSizes.join("، "));
   }
 
@@ -631,7 +621,7 @@ function pickAlternative(pool, best, usedAxes) {
 export function rankProducts({ products, targetProfile, answers = {}, weights = DEFAULT_WEIGHTS }) {
   const relaxations = [];
 
-  // شرط‌های قطعی؛ در صورت کمبودِ نتیجه فقط بودجه نرم می‌شود، هرگز گریپ (§5 صورت مسئله)
+  // شرط‌های قطعی؛ در صورت کمبودِ نتیجه فقط بودجه نرم می‌شود، هرگز اندازهٔ جونیور/بزرگسال
   let { products: eligible } = applyHardConstraints(products, targetProfile, targetProfile.priceRange);
 
   if (eligible.length < 3 && targetProfile.priceRange) {

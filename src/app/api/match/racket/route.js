@@ -20,7 +20,6 @@ const ALLOWED = {
   strength: ["below", "average", "athletic", "strong", "verystrong"],
   swingSpeed: ["slow", "moderate", "fast", "veryfast"],
   style: ["power", "spin", "control", "all-court"],
-  grip: ["L0", "L1", "L2", "L3", "L4", "L5", "unknown"],
 };
 
 /** ورودیِ عمومی است — فقط مقادیرِ شناخته‌شده پذیرفته می‌شوند */

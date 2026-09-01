@@ -203,7 +203,6 @@ const TARGET = buildTargetProfile({
   strength: "athletic",
   swingSpeed: "fast",
   priorities: ["control", "spin"],
-  grip: "L2",
 });
 
 test("عاملِ بدون داده کنار گذاشته می‌شود، نه جریمه (§32)", () => {
@@ -252,37 +251,46 @@ test("وقتی وزنِ سویینگ موجود است، سهمِ بیشتری �
 
 /* ───────────────────────── شرط‌های قطعی (§22) ───────────────────────── */
 
-test("گریپِ ناسازگار حذف می‌شود و هرگز نرم نمی‌شود", () => {
+test("سایزِ دسته دیگر چیزی را حذف نمی‌کند — آن پرسش از پرسشنامه برداشته شده", () => {
   const pool = [
     racket({ _id: "a".repeat(24), specs: { gripSizes: ["L4", "L5"] } }),
     racket({ _id: "b".repeat(24), specs: { gripSizes: ["L2"] } }),
+    racket({ _id: "c".repeat(24), specs: { gripSizes: null } }),
   ];
   const { products } = applyHardConstraints(pool, TARGET, null);
-  assert.deepEqual(
-    products.map((p) => p._id),
-    ["b".repeat(24)],
-  );
+  assert.equal(products.length, 3, "هیچ راکتی به‌خاطر سایزِ دسته کنار نمی‌رود");
 });
 
-test("گریپِ ثبت‌نشده «نقض» نیست — نبودِ داده حذف نمی‌آورد", () => {
-  const pool = [racket({ specs: { gripSizes: null } })];
-  assert.equal(applyHardConstraints(pool, TARGET, null).products.length, 1);
+test("به‌جای فیلترکردن، سایزهای دستهٔ موجود در توضیح گفته می‌شود", () => {
+  const { notes } = explainRecommendation(racket({ specs: { gripSizes: ["L2", "L3"] } }), TARGET);
+  assert.ok(notes.some((note) => note.includes("L2") && note.includes("L3")));
+
+  const { notes: none } = explainRecommendation(racket({ specs: { gripSizes: null } }), TARGET);
+  assert.ok(!none.some((note) => note.includes("سایز دسته")));
 });
 
-test("بودجه شرطِ قطعی است اما در کمبودِ نتیجه، همان نرم می‌شود — نه گریپ", () => {
+test("بودجه شرطِ قطعی است اما در کمبودِ نتیجه نرم می‌شود و به کاربر گفته می‌شود", () => {
   const pool = [
     racket({ _id: "c".repeat(24), finalPriceToman: 30_000_000 }),
     racket({ _id: "d".repeat(24), finalPriceToman: 32_000_000 }),
     racket({ _id: "e".repeat(24), finalPriceToman: 34_000_000 }),
-    racket({ _id: "f".repeat(24), finalPriceToman: 5_000_000, specs: { gripSizes: ["L5"] } }),
+    racket({ _id: "f".repeat(24), finalPriceToman: 5_000_000 }),
   ];
-  const target = { ...TARGET, priceRange: { min: null, max: 6_000_000 } };
-  const result = rankProducts({ products: pool, targetProfile: target, answers: {} });
+  const inBudget = { ...TARGET, priceRange: { min: null, max: 6_000_000 } };
 
-  assert.ok(result.relaxations.length > 0, "به کاربر گفته می‌شود بودجه بازتر شده");
-  const ids = [result.best, ...result.alternatives].map((item) => item._id);
-  assert.ok(!ids.includes("f".repeat(24)), "گریپِ ناسازگار حتی در کمبودِ نتیجه هم برنمی‌گردد");
-  assert.equal(ids.length, 3);
+  // در بازهٔ انتخابی فقط یک راکت هست، پس بازه باز می‌شود — اما با اعلامِ صریح
+  const relaxed = rankProducts({ products: pool, targetProfile: inBudget, answers: {} });
+  assert.ok(relaxed.relaxations.length > 0, "به کاربر گفته می‌شود بودجه بازتر شده");
+  assert.equal([relaxed.best, ...relaxed.alternatives].length, 3);
+
+  // وقتی خودِ بازه به‌تنهایی سه گزینه دارد، هیچ چیزی نرم نمی‌شود
+  const wide = { ...TARGET, priceRange: { min: 20_000_000, max: 40_000_000 } };
+  const strict = rankProducts({ products: pool, targetProfile: wide, answers: {} });
+  assert.deepEqual(strict.relaxations, []);
+  assert.ok(
+    ![strict.best, ...strict.alternatives].some((item) => item._id === "f".repeat(24)),
+    "راکتِ بیرون از بازه وارد نتایج نمی‌شود",
+  );
 });
 
 test("جونیور و بزرگسال با هم قاطی نمی‌شوند", () => {
@@ -342,15 +350,7 @@ test("با اطلاعاتِ کم، اطمینان پایین است و یک پر
     style: "spin",
     swingSpeed: "fast",
     strength: "athletic",
-    grip: "L2",
   });
   assert.equal(full.level, "high");
   assert.equal(full.prompt, null);
-});
-
-test("«نمی‌دانم» برای گریپ به‌عنوان پاسخ حساب نمی‌شود", () => {
-  const known = assessConfidence({ level: "consistent", swingSpeed: "fast", style: "spin", grip: "L2" });
-  const unknown = assessConfidence({ level: "consistent", swingSpeed: "fast", style: "spin", grip: "unknown" });
-  assert.equal(known.level, "high");
-  assert.equal(unknown.level, "medium");
 });

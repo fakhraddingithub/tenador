@@ -9,6 +9,7 @@ import {
   nextUnansweredId,
   progressPercent,
   resolveActive,
+  shouldAutoAdvance,
   siblingId,
   slideDirection,
   stepSummary,
@@ -21,7 +22,6 @@ test("هر گامِ پاسخ‌داده‌شده خلاصهٔ خوانا نشا�
     level: "consistent",
     style: "spin",
     priorities: ["spin", "control"],
-    grip: "L2",
     priceRange: { min: 5000000, max: 20000000 },
     currentRacket: { _id: "x", name: "راکت تنیس ویلسون Blade 100" },
   };
@@ -34,7 +34,6 @@ test("هر گامِ پاسخ‌داده‌شده خلاصهٔ خوانا نشا�
   );
   assert.equal(stepSummary(byId("style"), answers), "اسپین‌محور — با چرخش زیاد بازی می‌کنم");
   assert.equal(stepSummary(byId("priorities"), answers), "اسپین، کنترل");
-  assert.equal(stepSummary(byId("grip"), answers), "L2");
   assert.equal(stepSummary(byId("currentRacket"), answers), "راکت تنیس ویلسون Blade 100");
   assert.ok(stepSummary(byId("priceRange"), answers).includes("تا"));
 
@@ -49,14 +48,14 @@ test("پرش به گامِ دلخواه، شماره و جهتِ انیمیشن 
   const answers = { level: "consistent" };
   const steps = visibleSteps(answers);
 
-  const gripIndex = activeStepIndex(steps, "grip");
+  const priceIndex = activeStepIndex(steps, "priceRange");
   const levelIndex = activeStepIndex(steps, "level");
-  assert.ok(gripIndex > levelIndex);
+  assert.ok(priceIndex > levelIndex);
 
-  assert.equal(slideDirection(levelIndex, gripIndex), 1, "پرش به جلو");
-  assert.equal(slideDirection(gripIndex, levelIndex), -1, "پرش به عقب");
+  assert.equal(slideDirection(levelIndex, priceIndex), 1, "پرش به جلو");
+  assert.equal(slideDirection(priceIndex, levelIndex), -1, "پرش به عقب");
   // پرش به خودِ همان گام نباید جهتِ نامعتبر بدهد
-  assert.equal(slideDirection(gripIndex, gripIndex), 1);
+  assert.equal(slideDirection(priceIndex, priceIndex), 1);
 });
 
 test("اگر گامِ فعال از فهرست حذف شود، کاربر بیرون نمی‌افتد", () => {
@@ -141,4 +140,108 @@ test("سه کارتِ نتیجه در یک ردیف می‌نشینند، نه �
   assert.ok(source.includes("RESULTS_GRID +"));
   // عرضِ کل پنل مهار شده تا کارت‌ها هم‌اندازهٔ کارت‌های محصولِ بقیهٔ سایت بمانند
   assert.ok(source.includes("max-w-5xl"));
+});
+
+/* ─────────────── پرسشِ گریپ برداشته شده است ─────────────── */
+
+test("گامِ شمارهٔ گریپ در هیچ ترکیبی از پاسخ‌ها دیگر ظاهر نمی‌شود", () => {
+  const combos = [
+    {},
+    { age: "adult" },
+    { age: "under10", height: "120to135" },
+    { level: "expert", style: "spin", currentRacket: { _id: "x", name: "راکت" } },
+  ];
+  for (const answers of combos) {
+    assert.ok(
+      !visibleSteps(answers).some((step) => step.id === "grip"),
+      "گریپ نباید در " + JSON.stringify(answers) + " برگردد",
+    );
+  }
+  // بقیهٔ گام‌ها سر جایشان مانده‌اند
+  const ids = visibleSteps({ age: "adult" }).map((step) => step.id);
+  assert.deepEqual(ids, [
+    "age",
+    "level",
+    "strength",
+    "swingSpeed",
+    "style",
+    "priorities",
+    "currentRacket",
+    "priceRange",
+  ]);
+});
+
+/* ─────────────── پیش‌رفتنِ خودکار پس از سه اولویت ─────────────── */
+
+test("گامِ اولویت‌ها با پرشدنِ هر سه انتخاب خودکار جلو می‌رود", () => {
+  const priorities = visibleSteps({}).find((step) => step.id === "priorities");
+  assert.equal(priorities.max, 3);
+
+  assert.equal(shouldAutoAdvance(priorities, ["power"]), false);
+  assert.equal(shouldAutoAdvance(priorities, ["power", "spin"]), false);
+  assert.equal(shouldAutoAdvance(priorities, ["power", "spin", "control"]), true);
+});
+
+test("برداشتنِ یک اولویت هرگز کاربر را جلو نمی‌برد", () => {
+  const priorities = visibleSteps({}).find((step) => step.id === "priorities");
+  // انتخابِ چهارم قدیمی‌ترین را کنار می‌زند؛ باز هم سه‌تاست و باید جلو برود
+  assert.equal(shouldAutoAdvance(priorities, ["spin", "control", "comfort"], false), true);
+  // اما همان سه‌تا با «برداشتن» به دست آمده باشد، یعنی کاربر در حالِ ویرایش است
+  assert.equal(shouldAutoAdvance(priorities, ["spin", "control", "comfort"], true), false);
+});
+
+test("گامِ چندانتخابیِ بی‌سقف هیچ‌وقت خودکار جلو نمی‌رود", () => {
+  const feedback = visibleSteps({ currentRacket: { _id: "x", name: "راکت" } }).find(
+    (step) => step.id === "currentFeedback",
+  );
+  assert.ok(feedback.multi && !feedback.max);
+  assert.equal(shouldAutoAdvance(feedback, ["too-heavy", "unstable", "uncomfortable"]), false);
+  // گامِ تک‌انتخابی هم از این مسیر رد نمی‌شود
+  assert.equal(shouldAutoAdvance({ id: "level" }, ["x"]), false);
+  assert.equal(shouldAutoAdvance(null, []), false);
+});
+
+/* ─────────────── اسلایدرِ دوسَرهٔ بودجه ─────────────── */
+
+const quizSource = await readFile(
+  new URL("../src/components/templates/productMatch/racket/RacketQuiz.jsx", import.meta.url),
+  "utf8",
+);
+
+test("بودجه با یک اسلایدرِ دوسَره گرفته می‌شود، نه دو اینپوتِ جدا", () => {
+  assert.ok(!quizSource.includes("PriceRangeInputs"), "کامپوننتِ دو اینپوتی باید رفته باشد");
+  assert.ok(quizSource.includes("function PriceRangeSlider"));
+  assert.ok(!/placeholder="مثلاً/.test(quizSource), "اینپوت‌های متنیِ حداقل/حداکثر نباید بمانند");
+
+  // دو سرِ اسلایدر، نه یکی
+  assert.equal(quizSource.match(/type="range"/g)?.length, 2);
+  assert.ok(quizSource.includes('aria-label="حداقل قیمت (تومان)"'));
+  assert.ok(quizSource.includes('aria-label="حداکثر قیمت (تومان)"'));
+});
+
+test("دامنهٔ اسلایدر دقیقاً کف و سقفِ قیمتِ راکت‌های موجود است", () => {
+  // هر دو سر به همان دامنه بسته‌اند ⇒ انتخابِ بیرون از قیمت‌های واقعی ممکن نیست
+  assert.equal(quizSource.match(/\n\s+min=\{lo\}/g)?.length, 2);
+  assert.equal(quizSource.match(/\n\s+max=\{hi\}/g)?.length, 2);
+  assert.ok(
+    quizSource.includes("const clamp = (n) => Math.min(Math.max(n, lo), hi);"),
+    "مقدارِ ورودی هم باید داخلِ دامنه مهار شود",
+  );
+  // سنتینلِ «۰ یعنی بدون سقف» فیلترِ لیستِ محصولات این‌جا معنایی ندارد
+  assert.ok(!/valMax > 0|=== 0 \? 0/.test(quizSource));
+  // دامنهٔ تباه (یک راکت یا همه هم‌قیمت) قبل از تقسیم‌بر‌صفر گرفته می‌شود
+  assert.ok(quizSource.includes("!(bounds.max > bounds.min)"));
+});
+
+test("سرهای اسلایدر همان سرهای فیلترِ قیمتِ سایت‌اند، نه استایلِ تازه", async () => {
+  assert.ok(quizSource.includes("import { THUMB_INPUT_CLASS }"));
+  assert.equal(quizSource.match(/className=\{THUMB_INPUT_CLASS\}/g)?.length, 2);
+
+  const filterSource = await readFile(
+    new URL("../src/components/features/filters/PriceRangeFilter.jsx", import.meta.url),
+    "utf8",
+  );
+  assert.ok(filterSource.includes("export const THUMB_INPUT_CLASS"));
+  // چیدمانِ راست‌به‌چپ مثل خودِ فیلتر: نوارِ پرشده از سمتِ راست جا می‌گیرد
+  assert.ok(quizSource.includes("right: `${pct(selMin)}%`"));
 });

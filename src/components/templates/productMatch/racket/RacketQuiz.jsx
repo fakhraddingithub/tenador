@@ -2,14 +2,9 @@
 
 import { useEffect, useRef, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
-import {
-  FiCheck,
-  FiChevronLeft,
-  FiChevronRight,
-  FiHelpCircle,
-  FiX,
-} from "react-icons/fi";
+import { FiCheck, FiChevronLeft, FiChevronRight } from "react-icons/fi";
 import ProductSearchBox from "@/components/templates/productMatch/ProductSearchBox";
+import { THUMB_INPUT_CLASS } from "@/components/features/filters/PriceRangeFilter";
 import useDragClickGuard from "@/hooks/useDragClickGuard";
 import { visibleSteps, PRIORITY_LABELS } from "@/lib/racketMatch/questions";
 import { dragScrollLeft, scrollStepIntoView } from "@/lib/racketMatch/stepNavScroll";
@@ -19,6 +14,7 @@ import {
   nextUnansweredId,
   progressPercent,
   resolveActive,
+  shouldAutoAdvance,
   siblingId,
   slideDirection,
   stepSummary,
@@ -64,58 +60,87 @@ function OptionButton({ selected, order, children, onClick }) {
   );
 }
 
-/** راهنمای اندازه‌گیری دست — §7: در تردید بین دو سایز، سایز کوچک‌تر */
-function GripGuide({ onClose }) {
+/**
+ * اسلایدرِ دوسَرهٔ بودجه — همان الگو و همان سرهای فیلترِ قیمتِ صفحهٔ ورزش
+ * (THUMB_INPUT_CLASS مشترک است)، با یک تفاوتِ عمدی: این‌جا دامنه دقیقاً کف و
+ * سقفِ قیمتِ راکت‌های موجود است و سنتینلِ «۰ یعنی بدون سقف» وجود ندارد، چون
+ * کاربر نباید بتواند بازه‌ای بیرون از قیمت‌های واقعیِ فروشگاه انتخاب کند.
+ *
+ * تا وقتی هیچ سری جابه‌جا نشده، پاسخی ثبت نمی‌شود و گام «اختیاری» می‌ماند.
+ */
+function PriceRangeSlider({ bounds, value, onChange }) {
+  // یک راکت یا همه هم‌قیمت ⇒ اسلایدر معنایی ندارد و ‎pct هم تقسیم‌بر‌صفر می‌شود
+  if (!bounds || !(bounds.max > bounds.min)) {
+    return (
+      <p className="rounded-[var(--radius)] bg-neutral-50 px-3 py-4 text-center text-xs font-bold text-neutral-400">
+        بازهٔ قیمتی برای فیلتر کردن در دسترس نیست.
+      </p>
+    );
+  }
+
+  const { min: lo, max: hi } = bounds;
+  const clamp = (n) => Math.min(Math.max(n, lo), hi);
+  const selMin = clamp(Number(value?.min) || lo);
+  const selMax = clamp(Number(value?.max) || hi);
+
+  // پلهٔ اعشاری تا دامنه دقیقاً به ۱۰۰ پله بخش شود و هر دو سر بتوانند به انتهای
+  // واقعیِ دامنه برسند (همان قراردادِ فیلترِ قیمتِ سایت)
+  const step = Math.max(1, (hi - lo) / 100);
+  const pct = (n) => ((n - lo) / (hi - lo)) * 100;
+  const money = (n) => Math.round(n).toLocaleString("fa-IR");
+
   return (
-    <div className="mt-3 rounded-[var(--radius)] border border-[var(--color-secondary)]/50 bg-[var(--color-secondary)]/10 p-4 text-[13px] leading-7 text-neutral-700">
-      <button
-        type="button"
-        onClick={onClose}
-        className="float-left text-neutral-400 hover:text-neutral-600"
-        aria-label="بستن راهنما"
+    <div>
+      <div
+        dir="rtl"
+        className="mb-4 flex items-center justify-between gap-2 text-sm font-extrabold text-[var(--color-primary)]"
       >
-        <FiX size={16} />
-      </button>
-      دست را باز کنید و کف دست را رو به بالا بگیرید. فاصلهٔ خطِ افقیِ میانی کف دست تا نوکِ
-      انگشت حلقه را با خط‌کش اندازه بگیرید؛ همان عدد، اندازهٔ دور دستهٔ شماست.
-      <br />
-      اگر بین دو سایز ماندید، سایز کوچک‌تر را انتخاب کنید: با یک اورگریپ می‌شود دسته را
-      کمی بزرگ‌تر کرد، اما دستهٔ بزرگ را نمی‌شود کوچک کرد.
-    </div>
-  );
-}
+        <span>{money(selMin)}</span>
+        <span className="text-xs font-bold text-neutral-400">تا</span>
+        <span>{money(selMax)}</span>
+      </div>
 
-function PriceRangeInputs({ value, onChange }) {
-  const set = (key) => (event) => {
-    const raw = event.target.value.replace(/[^\d]/g, "");
-    onChange({ ...(value || {}), [key]: raw ? Number(raw) : null });
-  };
-  const show = (n) => (n ? Number(n).toLocaleString("fa-IR") : "");
+      <div className="relative h-4" dir="rtl">
+        <div className="absolute top-1/2 h-1 w-full -translate-y-1/2 rounded-full bg-neutral-100" />
+        <div
+          className="absolute top-1/2 h-1 -translate-y-1/2 rounded-full bg-[var(--color-primary)]"
+          style={{ right: `${pct(selMin)}%`, width: `${Math.max(0, pct(selMax) - pct(selMin))}%` }}
+        />
+        <input
+          type="range"
+          dir="rtl"
+          min={lo}
+          max={hi}
+          step={step}
+          value={selMin}
+          aria-label="حداقل قیمت (تومان)"
+          onChange={(event) =>
+            onChange({ min: Math.round(Math.min(Number(event.target.value), selMax)), max: Math.round(selMax) })
+          }
+          className={THUMB_INPUT_CLASS}
+          // با چسبیدنِ هر دو سر به یک انتها، سرِ کف باید بالاتر بماند تا گرفتنی باشد
+          style={{ zIndex: selMin > lo + (hi - lo) / 2 ? 5 : 3 }}
+        />
+        <input
+          type="range"
+          dir="rtl"
+          min={lo}
+          max={hi}
+          step={step}
+          value={selMax}
+          aria-label="حداکثر قیمت (تومان)"
+          onChange={(event) =>
+            onChange({ min: Math.round(selMin), max: Math.round(Math.max(Number(event.target.value), selMin)) })
+          }
+          className={THUMB_INPUT_CLASS}
+          style={{ zIndex: 4 }}
+        />
+      </div>
 
-  return (
-    <div className="grid grid-cols-2 gap-3">
-      <label className="block">
-        <span className="mb-1.5 block text-xs font-bold text-neutral-500">حداقل (تومان)</span>
-        <input
-          type="text"
-          inputMode="numeric"
-          value={show(value?.min)}
-          onChange={set("min")}
-          placeholder="مثلاً ۵٬۰۰۰٬۰۰۰"
-          className="w-full rounded-[var(--radius)] border-2 border-neutral-200 px-3 py-2.5 text-sm font-bold outline-none transition-colors focus:border-[var(--color-primary)]"
-        />
-      </label>
-      <label className="block">
-        <span className="mb-1.5 block text-xs font-bold text-neutral-500">حداکثر (تومان)</span>
-        <input
-          type="text"
-          inputMode="numeric"
-          value={show(value?.max)}
-          onChange={set("max")}
-          placeholder="مثلاً ۲۰٬۰۰۰٬۰۰۰"
-          className="w-full rounded-[var(--radius)] border-2 border-neutral-200 px-3 py-2.5 text-sm font-bold outline-none transition-colors focus:border-[var(--color-primary)]"
-        />
-      </label>
+      <div dir="rtl" className="mt-2 flex justify-between text-[10px] font-bold text-neutral-400">
+        <span>{money(lo)}</span>
+        <span>{money(hi)}</span>
+      </div>
     </div>
   );
 }
@@ -233,7 +258,7 @@ function StepNav({ steps, answers, activeId, onJump }) {
  * گام‌ها بالای آن. هر گام همیشه با یک کلیک قابل بازگشت و ویرایش است و نتایج
  * پس از هر پاسخ بی‌درنگ به‌روز می‌شود.
  */
-export default function RacketQuiz({ answers, onAnswer, categoryId, categoryTitle }) {
+export default function RacketQuiz({ answers, onAnswer, categoryId, categoryTitle, priceBounds }) {
   const steps = visibleSteps(answers);
 
   // شناسه *و* شمارهٔ گامِ فعال با هم نگه داشته می‌شوند: شناسه مرجعِ اصلی است و
@@ -256,17 +281,21 @@ export default function RacketQuiz({ answers, onAnswer, categoryId, categoryTitl
     jump(nextId);
   };
 
-  const handleSingle = (step, value) => {
-    const next = { ...answers, [step.id]: value };
-    onAnswer(next);
-    // فهرستِ گام‌ها ممکن است با همین پاسخ عوض شود، پس روی فهرستِ تازه حساب می‌کنیم
+  // فهرستِ گام‌ها ممکن است با همین پاسخ عوض شود، پس روی فهرستِ تازه حساب می‌کنیم
+  const advanceFrom = (next, fromId) => {
     const nextSteps = visibleSteps(next);
-    const target = nextUnansweredId(nextSteps, next, step.id);
+    const target = nextUnansweredId(nextSteps, next, fromId);
     const index = activeStepIndex(nextSteps, target);
     if (target && index !== -1) {
       setDirection(1);
       setActive({ id: target, index });
     }
+  };
+
+  const handleSingle = (step, value) => {
+    const next = { ...answers, [step.id]: value };
+    onAnswer(next);
+    advanceFrom(next, step.id);
   };
 
   const handleMulti = (step, value) => {
@@ -281,7 +310,10 @@ export default function RacketQuiz({ answers, onAnswer, categoryId, categoryTitl
     } else {
       updated = [...current, value];
     }
-    onAnswer({ ...answers, [step.id]: updated });
+    const next = { ...answers, [step.id]: updated };
+    onAnswer(next);
+    // با پرشدنِ ظرفیتِ انتخاب (مثلاً هر سه اولویت) مثل بقیهٔ گام‌ها خودکار جلو می‌رویم
+    if (shouldAutoAdvance(step, updated, exists)) advanceFrom(next, step.id);
   };
 
   if (!activeStep) return null;
@@ -332,6 +364,7 @@ export default function RacketQuiz({ answers, onAnswer, categoryId, categoryTitl
               onAdvance={() => jump(nextUnansweredId(steps, answers, activeStep.id), 1)}
               categoryId={categoryId}
               categoryTitle={categoryTitle}
+              priceBounds={priceBounds}
             />
           </div>
         </motion.div>
@@ -383,8 +416,8 @@ function StepBody({
   onAdvance,
   categoryId,
   categoryTitle,
+  priceBounds,
 }) {
-  const [gripGuideOpen, setGripGuideOpen] = useState(false);
 
   if (step.type === "product-search") {
     return answers.currentRacket ? (
@@ -426,7 +459,8 @@ function StepBody({
 
   if (step.type === "price-range") {
     return (
-      <PriceRangeInputs
+      <PriceRangeSlider
+        bounds={priceBounds}
         value={answers.priceRange}
         onChange={(priceRange) => onAnswer({ ...answers, priceRange })}
       />
@@ -464,20 +498,6 @@ function StepBody({
             {selectedList.map((key) => PRIORITY_LABELS[key]).join(" ← ")}
           </span>
         </p>
-      )}
-
-      {step.id === "grip" && (
-        <>
-          <button
-            type="button"
-            onClick={() => setGripGuideOpen((open) => !open)}
-            className="mt-3 flex items-center gap-1.5 text-xs font-bold text-[var(--color-primary)]"
-          >
-            <FiHelpCircle size={14} />
-            چطور اندازهٔ دستم را پیدا کنم؟
-          </button>
-          {gripGuideOpen && <GripGuide onClose={() => setGripGuideOpen(false)} />}
-        </>
       )}
     </>
   );

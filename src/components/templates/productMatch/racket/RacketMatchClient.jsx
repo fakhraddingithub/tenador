@@ -19,7 +19,7 @@ const DEBOUNCE_MS = 350;
  * تیتر، «برترین‌های دسته» و «راهنمای شاخص‌ها» را والد (MatchToolClient) رندر
  * می‌کند تا در هر دو مسیرِ صفحه یک‌بار و همیشه دیده شوند.
  */
-export default function RacketMatchClient({ category }) {
+export default function RacketMatchClient({ category, priceBounds }) {
   const [answers, setAnswers] = useState({});
   const [result, setResult] = useState(null);
   const [loading, setLoading] = useState(false);
@@ -78,6 +78,7 @@ export default function RacketMatchClient({ category }) {
           onAnswer={setAnswers}
           categoryId={category._id}
           categoryTitle={category.title}
+          priceBounds={priceBounds}
         />
       </div>
 

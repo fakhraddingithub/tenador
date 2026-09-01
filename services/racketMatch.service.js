@@ -111,3 +111,24 @@ export async function loadDisplayProducts(ids = []) {
   // ترتیبِ بازگشتیِ $in تضمین‌شده نیست، پس با نگاشت به فراخوان برمی‌گردانیم
   return new Map(priced.map((product) => [String(product._id), product]));
 }
+
+/**
+ * کف و سقفِ قیمتِ راکت‌های موجود — دامنهٔ اسلایدرِ بودجه در پرسشنامه.
+ *
+ * از همان کاتالوگِ کش‌شده خوانده می‌شود (کوئریِ تازه‌ای نمی‌زند) و دقیقاً همان
+ * فیلدِ قیمتی را می‌بیند که فیلترِ قطعیِ بودجه در موتور می‌بیند، وگرنه ممکن بود
+ * کاربر سرِ اسلایدر را تا انتها ببرد و باز محصولی بیرون از بازه بماند.
+ *
+ * @returns {Promise<{min: number, max: number}|null>} null یعنی قیمتی ثبت نشده
+ */
+export async function getRacketPriceBounds() {
+  const catalog = await getRacketCatalog();
+  if (!catalog) return null;
+
+  const prices = catalog.products
+    .map((product) => product.finalPriceToman ?? product.basePriceToman)
+    .filter((price) => Number.isFinite(price) && price > 0);
+  if (!prices.length) return null;
+
+  return { min: Math.min(...prices), max: Math.max(...prices) };
+}

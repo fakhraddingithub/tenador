@@ -80,6 +80,20 @@ export function nextUnansweredId(steps = [], answers = {}, fromId = null) {
   return rest[0]?.id ?? null;
 }
 
+/**
+ * آیا یک گامِ چندانتخابی با این انتخاب «تمام» شده و باید خودکار جلو رفت؟
+ *
+ * تنها وقتی درست است که ظرفیتِ گام (step.max) تعریف شده، انتخاب پر شده باشد و
+ * حرکتِ کاربر یک **افزودن** بوده باشد. برداشتنِ یک گزینه هرگز جلو نمی‌برد،
+ * وگرنه کاربر نمی‌توانست انتخاب‌هایش را ویرایش کند. گام‌های چندانتخابیِ بدون
+ * سقف (مثل «ایرادِ راکت فعلی») هم هیچ‌وقت خودکار جلو نمی‌روند چون «تمام‌شدن»
+ * برایشان تعریفی ندارد.
+ */
+export function shouldAutoAdvance(step, selected = [], removed = false) {
+  if (removed || !step?.multi || !step.max) return false;
+  return selected.length >= step.max;
+}
+
 /** شناسهٔ گامِ بعدی/قبلی در فهرست؛ null یعنی لبهٔ فهرست */
 export function siblingId(steps = [], activeId, offset) {
   const index = activeStepIndex(steps, activeId);

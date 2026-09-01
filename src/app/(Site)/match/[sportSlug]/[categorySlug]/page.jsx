@@ -1,5 +1,6 @@
 import { notFound } from "next/navigation";
 import { getCompareCategories } from "base/services/compareCategory.service";
+import { getRacketPriceBounds } from "base/services/racketMatch.service";
 import MatchCategoryClient from "@/components/templates/productMatch/MatchCategoryClient";
 import MatchToolClient from "@/components/templates/productMatch/MatchToolClient";
 import ToolSeoContent from "@/components/seo/ToolSeoContent";
@@ -38,6 +39,10 @@ export default async function MatchCategoryPage({ params }) {
 
   if (!category) notFound();
 
+  // دامنهٔ اسلایدرِ بودجه سمتِ سرور و از کاتالوگِ کش‌شده می‌آید تا پرسشنامه بدون
+  // درخواستِ اضافه و بدون پرشِ مقدارِ اولیه رندر شود.
+  const priceBounds = hasGuidedQuiz(category) ? await getRacketPriceBounds() : null;
+
   const canonicalPath = matchCategoryPath(category);
   const fullTitle = [category.title, category.sportTitle].filter(Boolean).join(" ");
 
@@ -46,7 +51,7 @@ export default async function MatchCategoryPage({ params }) {
       {hasGuidedQuiz(category) ? (
         // دسته‌ای که هم پرسشنامهٔ «راکت ایده‌آل» دارد و هم مسیرِ «ارتقای راکت فعلی»
         // ابتدا انتخابِ مسیر را به کاربر می‌دهد.
-        <MatchToolClient category={category} />
+        <MatchToolClient category={category} priceBounds={priceBounds} />
       ) : (
         <MatchCategoryClient category={category} />
       )}

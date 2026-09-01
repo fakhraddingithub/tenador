@@ -15,7 +15,7 @@ import AttributeGuideSection from "./AttributeGuideSection";
  * شاخص‌ها — همیشه رندر می‌شود، چه کاربر هنوز مسیری انتخاب نکرده باشد و چه در
  * میانهٔ یکی از دو مسیر باشد. انتخابِ مسیر فقط بخشِ میانی را عوض می‌کند.
  */
-export default function MatchToolClient({ category }) {
+export default function MatchToolClient({ category, priceBounds }) {
   const [flow, setFlow] = useState(null);
   // محصولی که کاربر از «برترین‌های دسته» انتخاب کرده تا مسیرِ ارتقا با آن شروع شود
   const [seedProduct, setSeedProduct] = useState(null);
@@ -56,7 +56,7 @@ export default function MatchToolClient({ category }) {
 
         {flow === null && <MatchFlowChooser onChoose={setFlow} />}
 
-        {flow === "quiz" && <RacketMatchClient category={category} />}
+        {flow === "quiz" && <RacketMatchClient category={category} priceBounds={priceBounds} />}
 
         {flow === "optimize" && (
           // key تضمین می‌کند با انتخابِ یک محصولِ پایهٔ تازه، ابزار از نو با همان

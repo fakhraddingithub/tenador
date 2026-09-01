@@ -47,8 +47,9 @@ const fmt = (n) =>
 const clamp = (v, lo, hi) => Math.min(Math.max(v, lo), hi);
 
 // استایلِ سرهای اسلایدر: خودِ اینپوت pointer-events ندارد تا دو اینپوتِ
+// (export شده تا اسلایدرِ بودجه در پرسشنامهٔ مچ هم دقیقاً همین سرها را داشته باشد)
 // روی‌هم فقط از طریق سرهایشان قابل‌گرفتن باشند (الگوی استانداردِ dual-range).
-const THUMB_INPUT_CLASS =
+export const THUMB_INPUT_CLASS =
   "absolute inset-0 w-full appearance-none bg-transparent pointer-events-none outline-none " +
   "[&::-webkit-slider-runnable-track]:bg-transparent [&::-moz-range-track]:bg-transparent " +
   "[&::-webkit-slider-thumb]:pointer-events-auto [&::-webkit-slider-thumb]:appearance-none " +

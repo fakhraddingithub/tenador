@@ -156,23 +156,9 @@ export const STEPS = [
     ],
   },
   {
-    id: "grip",
-    title: "شمارهٔ گریپ (دسته) شما",
-    hint: "اگر نمی‌دانید، گزینهٔ آخر را بزنید تا راهنمای اندازه‌گیری دست را ببینید.",
-    options: [
-      { value: "L0", label: "L0" },
-      { value: "L1", label: "L1" },
-      { value: "L2", label: "L2" },
-      { value: "L3", label: "L3" },
-      { value: "L4", label: "L4" },
-      { value: "L5", label: "L5" },
-      { value: "unknown", label: "نمی‌دانم" },
-    ],
-  },
-  {
     id: "priceRange",
     title: "بودجهٔ شما",
-    hint: "بازهٔ قیمتی به‌عنوان یک شرطِ قطعی روی نتایج اعمال می‌شود.",
+    hint: "دو سرِ اسلایدر را جابه‌جا کنید. دامنه، کف و سقفِ قیمتِ راکت‌های موجود است.",
     optional: true,
     type: "price-range",
   },
@@ -192,14 +178,13 @@ export function visibleSteps(answers = {}) {
  */
 
 /** پرسش‌های پرتأثیر، به ترتیبِ اهمیت برای بالا بردن اطمینان */
-const HIGH_IMPACT = ["level", "swingSpeed", "style", "strength", "grip"];
+const HIGH_IMPACT = ["level", "swingSpeed", "style", "strength"];
 
 const MISSING_PROMPT = {
   level: "برای دقیق‌تر شدن پیشنهاد، بگویید بازی امروزتان را چطور توصیف می‌کنید.",
   swingSpeed: "برای دقیق‌تر شدن پیشنهاد، سرعت ضربه‌تان را مشخص کنید.",
   style: "برای دقیق‌تر شدن پیشنهاد، سبک بازی‌تان را انتخاب کنید.",
   strength: "برای دقیق‌تر شدن پیشنهاد، توان بدنی‌تان را مشخص کنید.",
-  grip: "برای دقیق‌تر شدن پیشنهاد، شمارهٔ گریپتان را انتخاب کنید.",
 };
 
 /**
@@ -214,7 +199,7 @@ export function assessConfidence(answers = {}) {
   const missing = HIGH_IMPACT.filter((key) => !answered.includes(key));
 
   let level = "low";
-  if (answered.length >= 4) level = "high";
+  if (answered.length >= HIGH_IMPACT.length) level = "high";
   else if (answered.includes("level") && answered.length >= 2) level = "medium";
 
   return {
