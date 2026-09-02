@@ -100,3 +100,37 @@ test("خلاصه‌ی یک‌خطی بخش‌های خالی را جا نمی‌
   );
   assert.equal(senderAddressSummary(null), "");
 });
+
+/* ────────────────────────────────────────────────────────────────────────────
+ * مقیاسِ A4/A5 برگه‌ی چاپ
+ *
+ * کلِ ترکیب‌بندی با یک پیچ مقیاس می‌گیرد: `font-size` روی .sheet. اگر کسی
+ * ابعادِ کاغذ را عوض کند و این عدد را نه (یا برعکس)، برگه‌ی A5 بی‌صدا بدقواره
+ * می‌شود — چیزی که فقط سرِ پرینتر معلوم می‌شد. این تست همان یک نسبت را قفل
+ * می‌کند.
+ * ──────────────────────────────────────────────────────────────────────────── */
+
+import { PAPER } from "../src/lib/printPaper.mjs";
+
+const mm = (value) => Number(String(value).replace("mm", ""));
+
+test("اندازه‌ی پایه‌ی A5 با نسبتِ ابعادِ کاغذ هم‌خوان است", () => {
+  const widthRatio = mm(PAPER.A5.width) / mm(PAPER.A4.width);
+  const heightRatio = mm(PAPER.A5.height) / mm(PAPER.A4.height);
+  const baseRatio = mm(PAPER.A5.base) / mm(PAPER.A4.base);
+
+  // ISO 216: هر گام دقیقاً ۱/√۲ است
+  const iso = 1 / Math.SQRT2;
+  for (const [name, ratio] of [["عرض", widthRatio], ["ارتفاع", heightRatio], ["پایه", baseRatio]]) {
+    assert.ok(Math.abs(ratio - iso) < 0.01, `${name}: ${ratio} از ${iso} دور است`);
+  }
+});
+
+test("هر دو کاغذ افقی‌اند و ابعادشان مثبت است", () => {
+  for (const key of ["A4", "A5"]) {
+    const p = PAPER[key];
+    assert.match(p.css, /landscape$/);
+    assert.ok(mm(p.width) > mm(p.height), `${key} باید افقی باشد`);
+    assert.ok(mm(p.base) > 0);
+  }
+});

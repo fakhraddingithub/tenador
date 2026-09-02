@@ -1,166 +1,228 @@
 /**
  * src/components/print/AddressSheetStyles.jsx
  *
- * تمامِ CSS برگه‌ی چاپ، در یک <style> درون‌خطی.
+ * تمامِ CSS برگه‌ی چاپ، در یک <style> که همراهِ خودِ حالتِ چاپ mount/unmount
+ * می‌شود. وقتی حالتِ چاپ بسته شود، این استایل هم با آن می‌رود — پس هیچ قاعده‌ی
+ * سرگردانی روی پنل باقی نمی‌ماند و «برگرداندنِ دستی» لازم نیست.
  *
- * چرا درون‌خطی و نه تیلویند/globals.css: این سند باید از سیستمِ استایلِ سایت
- * کاملاً مستقل باشد. چاپ به میلی‌متر کار می‌کند نه به rem، و هر تغییری در تمِ
- * پنل نباید بتواند اندازه‌ی برگه‌ی A4 را جابه‌جا کند.
+ * ─── دو نکته‌ی معماری ───────────────────────────────────────────────────
+ *
+ * ۱) جداسازیِ چاپ بدونِ دست‌کاریِ DOM.
+ *    در رسانه‌ی چاپ، همسایه‌های مستقیمِ برگه در `body` با یک قاعده‌ی CSS از
+ *    layout خارج می‌شوند. هیچ گره‌ای حذف، جابه‌جا یا بازسازی نمی‌شود — پس
+ *    state، فوکوس و اسکرولِ صفحه‌ی سفارش دست‌نخورده می‌ماند — و چون قاعده
+ *    داخلِ `@media print` است، روی نمایشگر اصلاً اعمال نمی‌شود.
+ *
+ * ۲) مقیاسِ A4/A5 با یک پیچ.
+ *    A5 دقیقاً ۱/√۲ ≈ ۰٫۷۰۷ برابرِ A4 است (در هر دو بُعد). همه‌ی اندازه‌های
+ *    داخلِ برگه بر حسبِ `em` و همه‌ی جانمایی‌ها بر حسبِ درصد نوشته شده‌اند، پس
+ *    تغییرِ تنها یک مقدار — `font-size` روی `.sheet` — کلِ ترکیب‌بندی را
+ *    متناسب کوچک می‌کند: متن، فاصله‌ها، لوگو، ضخامتِ کادر و جای فرستنده/گیرنده
+ *    همه با هم. هیچ عنصری جداگانه مقیاس نمی‌شود.
+ *
+ *    استثنای عمدی: فاصله‌ی کادر از لبه (`--edge`) و شعاعِ گوشه ثابت‌اند.
+ *    ناحیه‌ی غیرقابل‌چاپِ پرینتر یک عددِ *فیزیکی* (حدود ۴ تا ۵ میلی‌متر) است و
+ *    به اندازه‌ی کاغذ ربطی ندارد؛ اگر این حاشیه هم کوچک می‌شد، کادر روی A5
+ *    بریده می‌شد.
  */
-export default function AddressSheetStyles() {
+
+import { PAPER } from "@/lib/printPaper.mjs";
+
+export default function AddressSheetStyles({ paperSize = "A4" }) {
+  const paper = PAPER[paperSize] || PAPER.A4;
+
   return (
     <style>{`
-      /* A4 افقی — حاشیه صفر چون خودِ برگه padding دارد */
-      @page { size: A4 landscape; margin: 0; }
+      @page { size: ${paper.css}; margin: 0; }
 
-      * { box-sizing: border-box; }
+      .print-area {
+        --edge: 6mm;      /* فاصله‌ی ثابت از لبه — بزرگ‌تر از ناحیه‌ی کور پرینتر */
+        --gap: 1.4mm;     /* فاصله‌ی دو خطِ کادر */
+        --ink: #1f2937;
+        --muted: #9ca3af;
+        --brand: #aa4725;
 
-      html, body {
-        margin: 0;
-        padding: 0;
+        position: fixed;
+        inset: 0;
+        z-index: 2147483000;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 10px;
+        overflow: auto;
+        padding: 14px 8px;
         background: #eef0f2;
-        color: #1f2937;
+        color: var(--ink);
         font-family: Vazirmatn, Tahoma, sans-serif;
-        -webkit-print-color-adjust: exact;
-        print-color-adjust: exact;
+        direction: rtl;
       }
 
-      .toolbar {
+      .print-area *, .print-area *::before, .print-area *::after { box-sizing: border-box; }
+
+      /* ─── نوارِ ابزار: فقط روی نمایشگر ───────────────────────────────── */
+      .print-bar {
         display: flex;
         align-items: center;
         justify-content: center;
-        gap: 12px;
         flex-wrap: wrap;
-        padding: 14px 16px;
+        gap: 10px;
+        width: 100%;
       }
-      .toolbar__hint { font-size: 12px; color: #6b7280; }
-      .toolbar__btn {
+      .print-bar__btn {
         display: inline-flex;
         align-items: center;
         gap: 6px;
-        padding: 8px 18px;
-        border: 1px solid #aa4725;
+        padding: 8px 16px;
+        border: 1px solid var(--brand);
         border-radius: 6px;
-        background: #aa4725;
+        background: var(--brand);
         color: #fff;
-        font-family: inherit;
+        font: inherit;
         font-size: 13px;
         font-weight: 700;
         cursor: pointer;
       }
+      .print-bar__btn--ghost { background: #fff; color: var(--brand); }
+      .print-bar__sizes { display: inline-flex; border: 1px solid #d1d5db; border-radius: 6px; overflow: hidden; }
+      .print-bar__size {
+        padding: 8px 14px;
+        border: 0;
+        background: #fff;
+        color: #6b7280;
+        font: inherit;
+        font-size: 12px;
+        font-weight: 700;
+        cursor: pointer;
+      }
+      .print-bar__size[aria-pressed="true"] { background: var(--brand); color: #fff; }
+      .print-bar__hint { font-size: 11px; color: #6b7280; }
 
       /* ─── خودِ برگه ─────────────────────────────────────────────────── */
+      .sheet-wrap { max-width: 100%; overflow-x: auto; }
+
       .sheet {
         position: relative;
-        width: 297mm;
-        height: 210mm;
-        margin: 0 auto 24px;
-        padding: 12mm;
+        flex: none;
+        width: ${paper.width};
+        height: ${paper.height};
+        /* ↓ تنها پیچِ مقیاس. همه‌چیزِ داخل بر حسبِ em است. */
+        font-size: ${paper.base};
         background: #fff;
         box-shadow: 0 6px 24px rgba(0, 0, 0, 0.12);
         overflow: hidden;
       }
 
-      /* جای‌گذاریِ فیزیکی — عمداً absolute و نه grid: در سندِ RTL ترتیبِ ستون‌ها
-         برعکس می‌شود و «چپِ بالا» به «راستِ بالا» می‌پرد. left/top و
-         right/bottom هیچ ابهامی ندارند. */
+      /* دو خطِ کادر — دو قابِ تودرتو (نه border-style: double) تا ضخامت و
+         فاصله‌ی خطوط دقیق و مقیاس‌پذیر بماند. */
+      .frame {
+        position: absolute;
+        border-style: solid;
+        border-color: var(--ink);
+        border-radius: 8px;
+        pointer-events: none;
+      }
+      .frame--outer { inset: var(--edge); border-width: 0.22em; }
+      .frame--inner { inset: calc(var(--edge) + var(--gap) + 0.22em); border-width: 0.1em; }
+
+      /* ناحیه‌ی محتوا: داخلِ قابِ درونی */
+      .content { position: absolute; inset: calc(var(--edge) + 2.4em); }
+
+      /* لوگو — برچسبِ گوشه‌ی بالا-راست */
+      .logo {
+        position: absolute;
+        top: 0;
+        right: 0;
+        display: flex;
+        align-items: center;
+        gap: 0.5em;
+        padding: 0.45em 0.9em;
+        border: 0.08em solid #e5e7eb;
+        border-radius: 8px;
+        background: #fff;
+      }
+      .logo__img { display: block; height: 2.1em; width: auto; }
+      .logo__text { color: var(--muted); font-size: 0.72em; font-weight: 600; letter-spacing: 0.02em; }
+
+      /* جانمایی فیزیکی — absolute و نه grid: در سندِ RTL ترتیبِ ستون‌های grid
+         برعکس می‌شود و «چپِ بالا» به «راستِ بالا» می‌پرد. */
       .party { position: absolute; width: 46%; }
-      .party--sender { top: 12mm; left: 12mm; }
-      .party--recipient { bottom: 12mm; right: 12mm; }
+      .party--sender { top: 0; left: 0; }
+      .party--recipient { bottom: 2.6em; right: 0; }
 
       .party__title {
-        margin: 0 0 6px;
-        padding-bottom: 6px;
-        border-bottom: 2px solid #aa4725;
-        color: #aa4725;
-        font-size: 13pt;
+        margin: 0 0 0.5em;
+        padding-bottom: 0.4em;
+        border-bottom: 0.14em solid var(--brand);
+        color: var(--brand);
+        font-size: 1.35em;
         font-weight: 700;
       }
       .party__badge {
         display: inline-block;
-        margin-right: 8px;
-        padding: 1px 8px;
+        margin-right: 0.6em;
+        padding: 0.05em 0.6em;
         border-radius: 999px;
         background: #f3f4f6;
-        color: #6b7280;
-        font-size: 8pt;
+        color: var(--muted);
+        font-size: 0.62em;
         font-weight: 500;
         vertical-align: middle;
       }
 
-      .row {
-        display: flex;
-        gap: 8px;
-        align-items: baseline;
-        margin-top: 5px;
-        line-height: 1.75;
-      }
-      .row__key {
-        flex: none;
-        width: 22mm;
-        color: #9ca3af;
-        font-size: 8.5pt;
-      }
+      .row { display: flex; gap: 0.6em; align-items: baseline; margin-top: 0.35em; line-height: 1.7; }
+      .row__key { flex: none; width: 6.4em; color: var(--muted); font-size: 0.85em; }
       .row__value {
         flex: 1;
         min-width: 0;
-        color: #111827;
-        font-size: 11pt;
+        font-size: 1.1em;
         font-weight: 600;
         /* آدرس‌های بلندِ فارسی نباید برگه را بشکنند */
         overflow-wrap: anywhere;
         word-break: break-word;
       }
-      .row__value--ltr { direction: ltr; text-align: right; font-family: Tahoma, monospace; }
+      .row__value--ltr { direction: ltr; text-align: right; font-family: Tahoma, sans-serif; }
       .row__value--soft { font-weight: 400; }
 
-      /* نوارِ میانی: کدِ رهگیری و تاریخ */
-      .meta {
+      /* کدِ سفارش — پایینِ برگه، عمداً بسیار کوچک و کم‌رنگ */
+      .code {
         position: absolute;
-        top: 50%;
-        left: 12mm;
-        right: 12mm;
-        transform: translateY(-50%);
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        gap: 12px;
-        padding: 4mm 6mm;
-        border-top: 1px dashed #d1d5db;
-        border-bottom: 1px dashed #d1d5db;
-        color: #6b7280;
-        font-size: 9pt;
-      }
-      .meta__code { color: #111827; font-size: 12pt; font-weight: 700; letter-spacing: 0.5px; }
-
-      .empty {
-        margin: 0 auto;
-        max-width: 520px;
-        padding: 24px;
-        border: 1px solid #fca5a5;
-        border-radius: 8px;
-        background: #fef2f2;
-        color: #b91c1c;
-        font-size: 13px;
-        line-height: 2;
+        bottom: 0;
+        left: 0;
+        right: 0;
         text-align: center;
+        color: var(--muted);
+        font-size: 0.62em;
+        letter-spacing: 0.04em;
       }
 
-      /* روی نمایشگرِ باریک‌تر از A4 افقی، برگه خودش اسکرول می‌خورد و صفحه
-         بدشکل نمی‌شود. در چاپ این پوشش کاملاً بی‌اثر می‌شود. */
-      .sheet-wrap { overflow-x: auto; padding: 0 8px 8px; }
-
+      /* ─── چاپ ───────────────────────────────────────────────────────── */
       @media print {
-        html, body { background: #fff; }
-        .toolbar, .no-print { display: none !important; }
-        .sheet-wrap { overflow: visible; padding: 0; }
+        html, body { margin: 0 !important; padding: 0 !important; background: #fff !important; }
+
+        /* ⚠️ display:none روی *همسایه‌های مستقیمِ* برگه، و نه visibility.
+           با visibility صفحه‌ی ادمین همچنان جای خودش را در layout می‌گرفت و
+           چاپ چند صفحه‌ی سفیدِ اضافه می‌داد. این قاعده فقط داخلِ media queryِ
+           print است، پس روی نمایشگر هیچ‌چیز پنهان یا reflow نمی‌شود؛ و چون
+           صرفاً CSS است، هیچ گرهی از DOM حذف نمی‌شود. */
+        body > *:not(.print-area) { display: none !important; }
+        .no-print { display: none !important; }
+
+        .print-area {
+          position: absolute !important;
+          inset: auto !important;
+          top: 0 !important;
+          left: 0 !important;
+          display: block !important;
+          overflow: visible !important;
+          padding: 0 !important;
+          background: #fff !important;
+        }
+        .sheet-wrap { overflow: visible !important; }
         .sheet {
-          width: auto;
-          height: auto;
-          min-height: 210mm;
-          margin: 0;
-          box-shadow: none;
+          margin: 0 !important;
+          box-shadow: none !important;
           page-break-after: avoid;
+          break-after: avoid;
         }
       }
     `}</style>

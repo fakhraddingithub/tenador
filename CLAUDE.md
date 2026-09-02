@@ -165,46 +165,64 @@ Tests: `npm run test:order-item-eur`.
 
 ### Order address printing (sender addresses)
 
-The "چاپ برگه آدرس" button on the admin order screen opens
-`SenderAddressModal` → the admin picks/adds a **sender address** → an
-`<a target="_blank" rel="noopener noreferrer">` opens `/order-print/[orderId]?sender=<id>`.
+"چاپ برگه آدرس" on the admin order screen → `SenderAddressModal` (pick/add/edit/delete a
+**sender address**, choose A4 or A5) → `OrderPrintOverlay` puts the **same page** into
+print mode and opens the browser dialog. No new tab, no new window, no separate route.
 
-**Why a separate route and not the old popup.** The previous implementation was
-`window.open("", "_blank")` + `document.write`. That popup was same-origin *with an
-opener*, so it shared the admin page's browsing-context group: `print()` inside it
-blocked the whole group, and closing the dialog left the admin panel half-dead
-(animations frozen, handlers unresponsive). The fix is architectural, not a patch —
-never reintroduce a print popup, an app-wide `@media print` hide/restore, or any
-DOM swapping on the admin page:
+**The bug this replaced.** The original was `window.open("", "_blank")` +
+`document.write`. That popup was same-origin *with an opener*, so it shared the admin
+page's browsing-context group: `print()` inside it blocked the whole group and closing
+the dialog left the panel half-dead — frozen animations, unresponsive handlers.
+
+**How print mode stays safe.** The dangerous same-page pattern is swapping
+`document.body.innerHTML` and restoring it afterwards; that pulls the DOM out from
+under React and leaves handlers bound to nodes that no longer exist. Never do that
+here. Instead:
 
 | piece | why it matters |
 |---|---|
-| `src/app/(Print)/layout.jsx` | its **own root layout** — no globals.css, no Tailwind, no admin theme, no providers. A print sheet measured in mm must not move when the panel's theme changes. |
-| `rel="noopener"` on the link | puts the print tab in its own context group; it holds no reference to the panel and the panel holds none to it. Closing/canceling/refreshing it cannot touch panel DOM, state, routing or styles. |
-| an `<a>`, not `window.open` | popup blockers never block a user's link navigation, and `window.open(..., "noopener")` returns `null` so a blocked popup would be undetectable anyway. |
-| `AddressSheetStyles.jsx` | all CSS inline in one `<style>`; `@page { size: A4 landscape }`. Sender is placed `top/left`, recipient `bottom/right` with `position: absolute` — a CSS grid would flip the columns in this RTL document. |
+| `createPortal(…, document.body)` | the sheet is a body child, so it has no framer-motion ancestor — a transformed ancestor breaks `position: fixed`. |
+| hiding the app is **pure CSS inside `@media print`** | `body > *:not(.print-area) { display: none }`. Nothing is removed, moved or rebuilt, so React state, focus and scroll survive; and on screen the rule never applies. `display`, not `visibility` — with `visibility` the panel keeps its layout box and prints several blank pages after the sheet. |
+| the `<style>` lives inside the overlay | "return to normal" is just `setPrintJob(null)`. There is no manual cleanup that can be forgotten, and no global stylesheet left behind. |
+| three ways out | `afterprint` (fires on print *and* on cancel), Escape, and a visible close button — so a browser that never fires `afterprint` cannot trap the admin. |
+| `onClose` held in a ref | the parent passes an inline arrow; had it been an effect dependency, every render would re-run the effect and reopen the print dialog. |
+
+**A4 / A5 scale.** A5 is exactly 1/√2 of A4 in both dimensions, so the whole
+composition scales from **one knob**: `font-size` on `.sheet` (`base` in
+`src/lib/printPaper.mjs`). Every internal size is in `em` and every placement in `%`,
+so nothing is scaled independently — text, gaps, logo, border thickness and the
+sender/recipient positions move together. Deliberate exception: the frame's distance
+from the paper edge (`--edge: 6mm`) and the 8px corner radius are fixed, because a
+printer's non-printable margin is a *physical* constant — scaling it down would let the
+border be clipped on A5. `tests/senderAddressForm.test.mjs` locks the base/size ratio so
+changing one without the other fails loudly instead of at the printer.
+
+**Sheet layout** (`AddressSheet.jsx`): logo badge top-right, sender top-left, recipient
+bottom-right, order code very small and muted along the bottom, double-line frame
+around the page. **No date anywhere.** Sender and recipient both print all six fields
+(name, phone, province, city, postal code, address) with `—` for blanks, so nothing is
+silently dropped. Placement is `position: absolute` rather than a grid — a grid flips
+its columns in this RTL document and "top-left" lands on the right.
 
 **Sender addresses are not customer addresses.** `models/SenderAddress.js` is its own
-collection: no `user` ref, shop-wide, and it is **never written onto an order** — the
-selection is only a URL parameter, so printing changes no order data (Toman, EUR,
-items, status, `address.snapshot` all untouched). `Address` (customer) is unrelated and
-was not modified. Sender phones deliberately accept landlines, so validation lives in
-`src/lib/senderAddressForm.mjs`, not the customer `addressForm.mjs` (which demands an
-`09…` mobile).
+collection: no `user` ref, shop-wide, reusable. It is **never written onto an order** —
+the chosen address only lives in component state while printing, so printing changes no
+order data (Toman, EUR, items, status and `address.snapshot` are all untouched). The
+customer `Address` model is unrelated. Sender phones deliberately accept landlines, so
+validation lives in `src/lib/senderAddressForm.mjs`, not the customer `addressForm.mjs`
+(which demands an `09…` mobile).
 
 Permissions — note the deliberate asymmetry:
 
 | operation | key |
 |---|---|
-| `GET /api/admin/sender-addresses`, the print page itself | `orders.view` |
+| `GET /api/admin/sender-addresses` | `orders.view` |
 | `POST` / `PATCH` / `DELETE` on sender addresses | `orders.manageSenders` (new) |
 
 Reading is on `orders.view` on purpose: gating it behind the new key would have taken
 the *existing* ability to print away from every current admin role the moment the key
-was added. `/order-print/*` is not under `/p-admin`, so `src/middleware.js` never sees
-it — the page enforces `orders.view` itself via `getAdminContext()` + `hasPermission`,
-and answers `notFound()` (not 403) so the route's existence isn't leaked. It is also
-in `RESERVED_ARTICLE_ROOTS`.
+was added. The sheet itself renders from data the page already fetched under
+`orders.view`, so print mode exposes nothing new.
 
 Tests: `npm run test:sender-address`.
 

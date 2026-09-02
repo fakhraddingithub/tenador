@@ -1,10 +1,19 @@
 /**
  * src/components/print/AddressSheet.jsx
  *
- * برگه‌ی آدرسِ ارسال — A4 افقی. فرستنده بالا-چپ، گیرنده پایین-راست.
+ * برگه‌ی آدرسِ ارسال. سلسله‌مراتبِ بصری:
  *
- * سرور-کامپوننت و کاملاً بدونِ state: چیزی برای «خراب شدن» ندارد.
- * هیچ فیلدی حذف نمی‌شود؛ مقدارِ خالی «—» چاپ می‌شود تا جای دست‌نویس بماند.
+ *   بالا-راست  → لوگو (برچسبِ گوشه)
+ *   بالا-چپ    → فرستنده
+ *   پایین-راست → گیرنده
+ *   پایینِ برگه → کدِ سفارش، خیلی ریز و کم‌رنگ
+ *   دورِ برگه   → کادرِ دوخطی با گوشه‌ی ۸ پیکسل
+ *
+ * تاریخ عمداً هیچ‌جا چاپ نمی‌شود.
+ *
+ * بدونِ state و بدونِ افکت: چیزی برای «خراب شدن» ندارد. اندازه‌ها همه `em`
+ * هستند تا با یک font-size (در AddressSheetStyles) بینِ A4 و A5 متناسب
+ * مقیاس بگیرند.
  */
 
 const DASH = "—";
@@ -52,25 +61,35 @@ function Party({ variant, title, badge, party }) {
   );
 }
 
-export default function AddressSheet({ sender, recipient, trackingCode, orderDate }) {
+export default function AddressSheet({ sender, recipient, trackingCode }) {
   return (
     <div className="sheet-wrap">
       <div className="sheet">
-        <Party
-          variant="sender"
-          title="فرستنده"
-          badge={sender?.title || null}
-          party={sender}
-        />
+        {/* کادرِ دوخطی */}
+        <div className="frame frame--outer" />
+        <div className="frame frame--inner" />
 
-        <div className="meta">
-          <span>
-            کد سفارش: <span className="meta__code" dir="ltr">{trackingCode || DASH}</span>
-          </span>
-          <span>{orderDate || ""}</span>
+        <div className="content">
+          <div className="logo">
+            {/* عمداً <img> ساده و نه next/image: لودرِ ImageKit و lazy-loading
+                در مسیرِ چاپ فقط ریسک است — تصویر باید پیش از باز شدنِ دیالوگ
+                آماده باشد. */}
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img className="logo__img" src="/logo/logo.svg" alt="تنادور" loading="eager" />
+            <span className="logo__text">tenador.com</span>
+          </div>
+
+          <Party
+            variant="sender"
+            title="فرستنده"
+            badge={sender?.title || null}
+            party={sender}
+          />
+
+          <Party variant="recipient" title="گیرنده" party={recipient} />
+
+          <div className="code">کد سفارش: {trackingCode || DASH}</div>
         </div>
-
-        <Party variant="recipient" title="گیرنده" party={recipient} />
       </div>
     </div>
   );

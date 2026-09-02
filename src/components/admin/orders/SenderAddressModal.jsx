@@ -8,13 +8,9 @@
  * ⚠️ این آدرس‌ها کاملاً از آدرس‌های مشتری جدا هستند (کالکشنِ SenderAddress،
  * روتِ /api/admin/sender-addresses) و هیچ‌وقت روی سفارش نوشته نمی‌شوند.
  *
- * ⚠️ اقدامِ «چاپ» عمداً یک <a target="_blank" rel="noopener noreferrer"> است، نه
- * window.open. دو دلیل:
- *   ۱) پاپ‌آپ‌بلاکر هرگز جلوی ناوبریِ لینکِ کاربر را نمی‌گیرد.
- *   ۲) `noopener` تبِ چاپ را از browsing-context گروهِ پنل جدا می‌کند؛ همان
- *      چیزی که نبودش در پیاده‌سازیِ قبلی (window.open + document.write) باعث
- *      می‌شد دیالوگِ چاپ صفحه‌ی ادمین را قفل کند و بعد از بستنش پنل مرده بماند.
- * پس این کامپوننت هیچ‌وقت به هیچ پنجره‌ی دیگری ارجاع نگه نمی‌دارد.
+ * ⚠️ این کامپوننت خودش چاپ نمی‌کند و هیچ پنجره/تبی باز نمی‌کند. فقط آدرسِ
+ * انتخاب‌شده و اندازه‌ی کاغذ را با `onPrint` بالا می‌دهد؛ چاپ روی *همان*
+ * صفحه‌ی سفارش و توسط OrderPrintOverlay انجام می‌شود.
  */
 
 import { useEffect, useState } from "react";
@@ -22,6 +18,7 @@ import { toast } from "react-toastify";
 import { MapPin, Plus, Pencil, Trash2, X, Printer, Loader2, Check } from "lucide-react";
 
 import { useAdminPermissions } from "@/components/admin/AdminPermissionProvider";
+import { PAPER_SIZES } from "@/lib/printPaper.mjs";
 import {
   firstSenderAddressError,
   normalizeDigits,
@@ -63,13 +60,14 @@ function writeLastUsed(id) {
  * می‌شود و هیچ state ای از دفعه‌ی قبل باقی نمی‌ماند (به‌جای پاک‌کردنِ دستی در
  * یک useEffect).
  */
-export default function SenderAddressModal({ onClose, orderId }) {
+export default function SenderAddressModal({ onClose, onPrint }) {
   const { can } = useAdminPermissions();
   const canManage = can("orders.manageSenders");
 
   const [addresses, setAddresses] = useState([]);
   const [loading, setLoading] = useState(true);
   const [selectedId, setSelectedId] = useState(null);
+  const [paperSize, setPaperSize] = useState("A4");
 
   // null = فرم بسته | "new" = افزودن | "<id>" = ویرایشِ همان آدرس
   const [editing, setEditing] = useState(null);
@@ -187,9 +185,14 @@ export default function SenderAddressModal({ onClose, orderId }) {
     }
   };
 
-  const printHref = selectedId
-    ? `/order-print/${orderId}?sender=${selectedId}`
-    : `/order-print/${orderId}`;
+  // چاپ روی *همین* صفحه انجام می‌شود: مودال بسته و حالتِ چاپ باز می‌شود.
+  // آدرسِ انتخاب‌شده به‌صورت شیء بالا می‌رود تا حالتِ چاپ لازم نباشد دوباره
+  // چیزی از سرور بگیرد.
+  const handlePrint = () => {
+    const selected = addresses.find((a) => a._id === selectedId) || null;
+    if (selected) writeLastUsed(selected._id);
+    onPrint({ sender: selected, paperSize });
+  };
 
   return (
     <div
@@ -449,23 +452,38 @@ export default function SenderAddressModal({ onClose, orderId }) {
 
         {!editing && (
           <div className="flex items-center justify-between gap-3 border-t border-gray-100 px-5 py-3">
-            <p className="text-[11px] text-gray-400">
-              برگه در تبِ جدید و به‌صورت A4 افقی باز می‌شود.
-            </p>
-            <a
-              href={printHref}
-              target="_blank"
-              rel="noopener noreferrer"
-              onClick={() => {
-                if (selectedId) writeLastUsed(selectedId);
-                onClose();
-              }}
+            <div className="flex items-center gap-2">
+              <span className="text-[11px] font-bold text-gray-400">اندازه کاغذ</span>
+              <div className="inline-flex overflow-hidden rounded-lg border border-gray-200">
+                {PAPER_SIZES.map((size) => (
+                  <button
+                    key={size}
+                    type="button"
+                    aria-pressed={paperSize === size}
+                    onClick={() => setPaperSize(size)}
+                    className={`px-3 py-1.5 text-[11px] font-bold transition ${
+                      paperSize === size
+                        ? "bg-[var(--color-primary)] text-white"
+                        : "bg-white text-gray-500 hover:bg-gray-50"
+                    }`}
+                  >
+                    {size}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <button
+              type="button"
+              disabled={loading}
+              onClick={handlePrint}
               className="inline-flex items-center gap-1.5 rounded-lg bg-[var(--color-primary)]
-                px-4 py-2 text-xs font-bold text-white transition hover:opacity-90"
+                px-4 py-2 text-xs font-bold text-white transition hover:opacity-90
+                disabled:opacity-60"
             >
               {loading ? <Loader2 size={13} className="animate-spin" /> : <Printer size={13} />}
               چاپ برگه آدرس
-            </a>
+            </button>
           </div>
         )}
       </div>

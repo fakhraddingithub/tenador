@@ -15,8 +15,6 @@ const RESERVED_ARTICLE_ROOTS = new Set([
   "faq",
   "how-to-order",
   "login-register",
-  // برگه‌ی چاپِ آدرسِ سفارش — ریشه‌ی مستقلِ خودش را دارد (src/app/(Print))
-  "order-print",
   "p-admin",
   "p-user",
   "payment",

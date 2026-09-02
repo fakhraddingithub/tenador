@@ -20,6 +20,7 @@ import {
   Search, Minus, Pencil, Printer,
 } from "lucide-react";
 import SenderAddressModal from "@/components/admin/orders/SenderAddressModal";
+import OrderPrintOverlay from "@/components/print/OrderPrintOverlay";
 import OrderFlowSelectionsView from "@/components/order/OrderFlowSelectionsView";
 import VariantSummary from "@/components/order/VariantSummary";
 import InstallmentChecksPanel from "@/components/admin/financial/InstallmentChecksPanel";
@@ -72,12 +73,17 @@ const TRACKING_STATUS_LABELS = {
  * را قفل می‌کرد و بعد از بستنِ دیالوگ، صفحه‌ی ادمین نیمه‌مرده می‌ماند
  * (انیمیشن‌ها متوقف، رویدادها بی‌پاسخ).
  *
- * جایگزینش وصله نیست، معماری است: برگه‌ی چاپ حالا یک روتِ واقعی است
- * (src/app/(Print)/order-print/[orderId]) با root layout مستقلِ خودش، که با
- * `<a target="_blank" rel="noopener noreferrer">` باز می‌شود. آن تب هیچ ارجاعی
- * به پنجره‌ی پنل ندارد و پنل هم به آن؛ پس چاپ/لغو/بستن/رفرشِ آن هیچ اثری روی
- * DOM، state، روتینگ یا استایلِ پنل ندارد. انتخابِ فرستنده در
- * SenderAddressModal انجام می‌شود.
+ * جایگزینش وصله نیست، معماری است — و چاپ روی *همین* صفحه انجام می‌شود، بدونِ
+ * هیچ تب یا پنجره‌ی جدید:
+ *
+ *   دکمه → SenderAddressModal (انتخابِ فرستنده + A4/A5) → OrderPrintOverlay
+ *
+ * حالتِ چاپ یک کامپوننتِ معمولیِ React است که با `createPortal` به body می‌رود
+ * و بقیه‌ی سند را *فقط با CSS* (visibility، نه display و نه دست‌کاریِ DOM)
+ * پنهان می‌کند. آن CSS داخلِ همان کامپوننت است، پس «برگشت به حالتِ عادی» یعنی
+ * `setPrintJob(null)` و بس: هیچ گرهی حذف/بازسازی نشده، هیچ استایلِ سراسری‌ای
+ * جا نمانده و هیچ شنونده‌ای بی‌صاحب نیست. جزئیات در
+ * src/components/print/OrderPrintOverlay.jsx.
  */
 
 function readAdminThemeColor(token, fallback) {
@@ -2083,8 +2089,11 @@ export default function AdminOrderDetailClient({ orderId }) {
   // ادمین بازشان کرده در این شیء هستند، پس بقیه‌ی اقلام دست‌نخورده می‌مانند.
   const [itemEurDraft, setItemEurDraft] = useState({});
   const [itemEurBusy, setItemEurBusy] = useState(null); // item._id در حال ذخیره
-  // انتخابِ آدرسِ فرستنده پیش از چاپ — تنها حالتی که این قابلیت نگه می‌دارد.
+  // چاپِ برگه‌ی آدرس، در دو گام: انتخابِ فرستنده → حالتِ چاپ روی همین صفحه.
+  // `printJob` تنها حالتی است که این قابلیت نگه می‌دارد؛ null یعنی حالتِ چاپ
+  // اصلاً mount نیست، پس نه استایلی و نه شنونده‌ای در کار است.
   const [senderModalOpen, setSenderModalOpen] = useState(false);
+  const [printJob, setPrintJob] = useState(null); // { sender, paperSize } | null
 
   const fetchOrder = useCallback(async () => {
     setLoading(true);
@@ -3095,12 +3104,27 @@ export default function AdminOrderDetailClient({ orderId }) {
         )}
       </AnimatePresence>
 
-      {/* انتخاب/مدیریتِ آدرسِ فرستنده → سپس چاپ در تبِ جدا.
+      {/* گام ۱ — انتخاب/مدیریتِ آدرسِ فرستنده و اندازه‌ی کاغذ.
           شرطی رندر می‌شود تا هر بار باز شدن، حالتِ تمیز داشته باشد. */}
       {senderModalOpen && (
         <SenderAddressModal
           onClose={() => setSenderModalOpen(false)}
-          orderId={orderId}
+          onPrint={(job) => {
+            setSenderModalOpen(false);
+            setPrintJob(job);
+          }}
+        />
+      )}
+
+      {/* گام ۲ — حالتِ چاپ، روی همین صفحه. بستنش فقط یک setState است؛ هیچ
+          DOMی دست‌کاری نشده که لازم باشد برگردانده شود. */}
+      {printJob && (
+        <OrderPrintOverlay
+          sender={printJob.sender}
+          recipient={order.address?.snapshot || null}
+          trackingCode={order.trackingCode || order._id}
+          paperSize={printJob.paperSize}
+          onClose={() => setPrintJob(null)}
         />
       )}
     </div>
