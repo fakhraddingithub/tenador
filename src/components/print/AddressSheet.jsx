@@ -3,9 +3,9 @@
  *
  * برگه‌ی آدرسِ ارسال. سلسله‌مراتبِ بصری:
  *
- *   بالا-راست  → لوگو (برچسبِ گوشه)
- *   بالا-چپ    → فرستنده
- *   پایین-راست → گیرنده
+ *   بالا-راست  → لوگو (فقط خودِ لوگو: بدونِ کادر، پس‌زمینه یا نوشته)
+ *   بالا-چپ    → فرستنده — حدودِ یک‌چهارمِ برگه
+ *   پایین-راست → گیرنده — حدودِ یک‌چهارمِ برگه
  *   پایینِ برگه → کدِ سفارش، خیلی ریز و کم‌رنگ
  *   دورِ برگه   → کادرِ دوخطی با گوشه‌ی ۸ پیکسل
  *
@@ -76,7 +76,6 @@ export default function AddressSheet({ sender, recipient, trackingCode }) {
                 آماده باشد. */}
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img className="logo__img" src="/logo/logo.svg" alt="تنادور" loading="eager" />
-            <span className="logo__text">tenador.com</span>
           </div>
 
           <Party

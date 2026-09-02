@@ -127,25 +127,19 @@ export default function AddressSheetStyles({ paperSize = "A4" }) {
       /* ناحیه‌ی محتوا: داخلِ قابِ درونی */
       .content { position: absolute; inset: calc(var(--edge) + 2.4em); }
 
-      /* لوگو — برچسبِ گوشه‌ی بالا-راست */
-      .logo {
-        position: absolute;
-        top: 0;
-        right: 0;
-        display: flex;
-        align-items: center;
-        gap: 0.5em;
-        padding: 0.45em 0.9em;
-        border: 0.08em solid #e5e7eb;
-        border-radius: 8px;
-        background: #fff;
-      }
-      .logo__img { display: block; height: 2.1em; width: auto; }
-      .logo__text { color: var(--muted); font-size: 0.72em; font-weight: 600; letter-spacing: 0.02em; }
+      /* لوگو — گوشه‌ی بالا-راست. فقط خودِ لوگو: بدونِ کادر، پس‌زمینه، بَج یا
+         نوشته‌ی کنارش. ارتفاع بر حسبِ em است تا با بقیه‌ی برگه مقیاس بگیرد. */
+      /* max-width بیمه است، نه طراحی: اگر روزی فایلِ لوگو با نسبتِ خیلی
+         کشیده‌تری جایگزین شود، نباید تا روی بخشِ فرستنده بیاید. درصد روی
+         .logo نوشته شده چون بلوکِ دربرگیرنده‌اش .content است (نه خودِ تصویر،
+         که عرضش auto است). */
+      .logo { position: absolute; top: 0; right: 0; max-width: 40%; }
+      .logo__img { display: block; height: 4.6em; width: auto; max-width: 100%; object-fit: contain; }
 
       /* جانمایی فیزیکی — absolute و نه grid: در سندِ RTL ترتیبِ ستون‌های grid
-         برعکس می‌شود و «چپِ بالا» به «راستِ بالا» می‌پرد. */
-      .party { position: absolute; width: 46%; }
+         برعکس می‌شود و «چپِ بالا» به «راستِ بالا» می‌پرد.
+         عرضِ ۴۸٪ + ارتفاعِ طبیعیِ شش سطر ≈ یک‌چهارمِ برگه برای هر طرف. */
+      .party { position: absolute; width: 48%; }
       .party--sender { top: 0; left: 0; }
       .party--recipient { bottom: 2.6em; right: 0; }
 
@@ -191,7 +185,7 @@ export default function AddressSheetStyles({ paperSize = "A4" }) {
         right: 0;
         text-align: center;
         color: var(--muted);
-        font-size: 0.62em;
+        font-size: 0.55em;
         letter-spacing: 0.04em;
       }
 
