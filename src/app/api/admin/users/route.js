@@ -2,7 +2,7 @@
  * src/app/api/admin/users/route.js
  *
  * GET → لیست کاربران برای پنل ادمین به همراه آمار کلی
- *        query params: search, role (all|admin|coach|user|seller|national_player), status (all|active|banned)
+ *        query params: search, role (all|admin|coach|user|store|national_player), status (all|active|banned)
  */
 
 import { withSearch } from "@/lib/search";
@@ -34,8 +34,8 @@ export async function GET(req) {
       filter.role = "admin";
     } else if (role === "user") {
       filter.role = "user";
-    } else if (role === "seller") {
-      filter.role = "seller";
+    } else if (role === "store") {
+      filter.role = "store";
     } else if (role === "national_player") {
       filter.role = "national_player";
     }

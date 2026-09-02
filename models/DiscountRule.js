@@ -45,9 +45,11 @@ const DiscountRuleSchema = new mongoose.Schema(
     ],
 
     // برای userRole: مثلاً ["coach", "national_player"]
+    // نقشِ "seller" حذف شده است (با "store" ادغام شد) — قوانینِ قدیمی که آن را
+    // هدف گرفته بودند با `npm run migrate:remove-seller-role` پاک‌سازی می‌شوند.
     targetRoles: {
       type: [String],
-      enum: ["user", "coach", "seller", "national_player"],
+      enum: ["user", "coach", "national_player", "store"],
       default: [],
     },
 

@@ -24,6 +24,8 @@ npm run check:order-variant-snapshots      # Dry-run: order lines showing a blan
 npm run backfill:order-variant-snapshots   # Fill variantSnapshot where another order line proves the attributes
 npm run check:article-image-dimensions    # Dry-run: report article/brand image blocks missing width+height
 npm run migrate:article-image-dimensions  # Backfill those dimensions (idempotent); revalidate the `articles` tag afterwards
+npm run check:remove-seller-role          # Dry-run: data still referencing the removed `seller` role
+npm run migrate:remove-seller-role        # Move those references to `store` (users, discount rules, broadcasts, review-credit config)
 
 # Background workers (must run separately from the web process)
 npm run worker:prices
@@ -130,6 +132,35 @@ Note that a *deliberate* combination removal still deletes the variant and so st
 why `order.items[].variantSnapshot` exists (written at checkout since 2026-06-25, read by `VariantSummary` with a
 fallback to `variant.attributes`). Orders placed before that date have no snapshot and display blank if their variant
 was deleted — see the two `*variant*` scripts above.
+
+### Order EUR pricing (independent of Toman)
+
+An order carries a **manual** EUR amount (`order.priceEUR`) plus an EUR payment history
+(`order.paymentsEUR`) — see `src/app/api/admin/orders/[orderId]/eur/route.js`. Nothing here converts
+from Toman; the two currencies never derive from each other.
+
+Each order line also carries `order.items[].priceEUR` — a **unit** EUR price the admin types by hand
+in the order screen. It is deliberately *not* the product's base/catalog price and is never derived
+from the product; it is an order-line snapshot, set only via
+`PATCH /api/admin/orders/[orderId]/eur/item` (gated by `orders.setCurrency`).
+
+`services/orderEurRecalc.js` holds the one rule that matters:
+
+| items with a EUR price | what happens to `order.priceEUR` |
+|---|---|
+| at least one | overwritten with `Σ(priceEUR × quantity)` |
+| none | **left untouched** — never zeroed, never nulled |
+
+That second row is the backward-compatibility guarantee: legacy orders (which have only a manual
+total and no item prices) can never be silently corrupted. The total therefore stays manually
+editable, but any later item-level EUR change recomputes it. The items route
+(`.../[orderId]/items`) calls `applyOrderEurTotal` too, since a quantity change or line deletion
+changes the sum — under the same "no item prices → touch nothing" rule.
+
+Store-role users (`role === "store"`) see each item's EUR price alongside the Toman price in
+`src/components/modules/orders/index.jsx`, but only for lines the admin actually priced.
+
+Tests: `npm run test:order-item-eur`.
 
 ### Slug System
 

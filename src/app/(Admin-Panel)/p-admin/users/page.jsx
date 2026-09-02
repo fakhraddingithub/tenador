@@ -15,13 +15,16 @@ import {
   GraduationCap, Award, Eye, Megaphone
 } from 'lucide-react'
 
+// نقشِ «فروشنده» (seller) حذف شده — با «فروشگاه» (store) اضافی بود. کاربرانِ
+// مهاجرت‌نکرده‌ی احتمالی به فالبکِ «کاربر عادی» نمی‌افتند چون نگاشتِ زیر هم
+// seller را می‌شناسد؛ فقط دیگر جایی به‌عنوان گزینه پیشنهاد نمی‌شود.
 const roleLabels = {
   admin: 'مدیر کل',
   coach: 'مربی',
-  seller: 'فروشنده',
   national_player: 'ورزشکار ملی',
   store: 'فروشگاه',
   user: 'کاربر عادی',
+  seller: 'فروشگاه', // legacy — فقط برای نمایشِ رکوردهای مهاجرت‌نکرده
 }
 
 export default function AdminUsersManagement() {

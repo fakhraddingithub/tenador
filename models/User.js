@@ -56,9 +56,12 @@ const UserSchema = new mongoose.Schema(
     // ------------------
     // Roles
     // ------------------
+    // نقش "seller" (فروشنده) حذف شده است — با "store" (فروشگاه) هم‌پوشان و اضافی
+    // بود. رکوردهای قدیمی توسط normalizeLegacyRole (پایین) و اسکریپت
+    // `npm run migrate:remove-seller-role` به "store" منتقل می‌شوند.
     role: {
       type: String,
-      enum: ["user", "coach", "admin", "seller", "national_player", "store"],
+      enum: ["user", "coach", "admin", "national_player", "store"],
       default: "user",
     },
 
@@ -169,6 +172,20 @@ UserSchema.virtual("addresses", {
   localField: "_id",
   foreignField: "user",
 });
+
+/* ─── سازگاری با نقشِ حذف‌شده‌ی "seller" ───────────────────────────────
+   نقش "seller" از enum برداشته شده است. اگر سندی که هنوز مهاجرت نکرده
+   (`npm run migrate:remove-seller-role`) از دیتابیس خوانده و بعد ذخیره شود —
+   مثلاً کاربر پروفایلش را ویرایش کند — اعتبارسنجیِ enum شکست می‌خورد و آن
+   عملیاتِ بی‌ربط با خطا برمی‌گشت. این هوک قبل از اعتبارسنجی مقدار را بی‌صدا به
+   "store" (همان نقشی که seller قرار بود باشد) نگاشت می‌کند تا هیچ کاربر قدیمی
+   قفل نشود. عمداً روی save/validate است و نه روی خواندن: خواندن هرگز شکست
+   نمی‌خورد و داده‌ی تاریخی را دست‌کاری نمی‌کنیم مگر همان سند در حال نوشتن باشد. */
+function normalizeLegacyRole(next) {
+  if (this.role === "seller") this.role = "store";
+  next();
+}
+UserSchema.pre("validate", normalizeLegacyRole);
 
 UserSchema.set("toObject", { virtuals: true });
 UserSchema.set("toJSON", { virtuals: true });

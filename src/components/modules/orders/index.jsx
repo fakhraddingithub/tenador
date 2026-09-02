@@ -161,6 +161,15 @@ function OrderDetailModal({ order, onClose, isStore = false }) {
                   const variantAttrs = item.variant?.attributes ?? null
                   const total = (item.unitPrice ?? 0) * (item.quantity ?? 1)
 
+                  // قیمت یوروییِ این قلم — فقط برای کاربران «فروشگاه» و فقط اگر
+                  // ادمین صراحتاً برای همین قلم قیمت یورویی ثبت کرده باشد.
+                  // مقدار ذخیره‌شده «قیمت واحد» است، پس کلِ ردیف = مقدار × تعداد.
+                  const hasItemEur =
+                    isStore && item.priceEUR !== null && item.priceEUR !== undefined
+                  const itemEurTotal = hasItemEur
+                    ? item.priceEUR * (item.quantity ?? 1)
+                    : null
+
                   return (
                     <div key={item.product?._id ?? idx} className="flex gap-3 px-4 py-3">
                       {image && (
@@ -191,6 +200,17 @@ function OrderDetailModal({ order, onClose, isStore = false }) {
                             {formatPrice(total)} <span className="text-[10px] font-medium text-gray-400">تومان</span>
                           </span>
                         </div>
+                        {/* قیمت یورویی این قلم — در کنار قیمت تومان، بدون جایگزینی آن */}
+                        {hasItemEur && (
+                          <div className="mt-1 flex items-center justify-between border-t border-dashed border-[#aa4725]/20 pt-1">
+                            <span className="text-[11px] text-[#aa4725]/70" dir="ltr">
+                              {item.quantity} × € {formatEUR(item.priceEUR)}
+                            </span>
+                            <span className="text-sm font-bold tracking-tight text-[#aa4725]" dir="ltr">
+                              € {formatEUR(itemEurTotal)}
+                            </span>
+                          </div>
+                        )}
                       </div>
                     </div>
                   )
@@ -308,7 +328,7 @@ function OrderDetailModal({ order, onClose, isStore = false }) {
 
 /* ─── OrderCard ────────────────────────────────────────────────────── */
 
-function OrderCard({ order, onDelete, onViewDetail, reviewedIds, onReview }) {
+function OrderCard({ order, onDelete, onViewDetail, reviewedIds, onReview, isStore = false }) {
   const [expanded, setExpanded] = useState(false)
   const payStatus = PAYMENT_STATUS[order.paymentStatus] ?? PAYMENT_STATUS.UNPAID
   const fulStatus = FULFILLMENT_STATUS[order.fulfillmentStatus] ?? FULFILLMENT_STATUS.PENDING
@@ -406,6 +426,12 @@ function OrderCard({ order, onDelete, onViewDetail, reviewedIds, onReview }) {
                     </p>
                   )}
                   <p className="text-[10px] text-gray-400 mt-0.5">× {item.quantity}</p>
+                  {/* قیمت یوروییِ قلم — فقط «فروشگاه» و فقط اگر ادمین ثبتش کرده باشد */}
+                  {isStore && item.priceEUR !== null && item.priceEUR !== undefined && (
+                    <p className="mt-0.5 text-[10px] font-bold text-[#aa4725]" dir="ltr">
+                      € {formatEUR(item.priceEUR * (item.quantity ?? 1))}
+                    </p>
+                  )}
                 </div>
               </div>
             )
@@ -693,6 +719,7 @@ const OrdersModule = () => {
                 onViewDetail={setDetailOrder}
                 reviewedIds={reviewedIds}
                 onReview={(o, p) => setReviewTarget({ order: o, product: p })}
+                isStore={role === 'store'}
               />
             ))}
           </motion.div>

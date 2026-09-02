@@ -1740,7 +1740,7 @@ function TrackingPanel({ orderId, orderItems, orderFulfillmentStatus, onStatusCh
 // این پنل فقط فیلدهای یورویی سفارش را می‌خواند/می‌نویسد و هیچ تأثیری روی
 // مبلغ، پرداخت‌ها یا مانده‌ی تومانی ندارد. مانده‌ی یورو دقیقاً مثل مانده‌ی
 // تومان، سمت کلاینت از روی priceEUR و paymentsEUR محاسبه می‌شود.
-function EurPanel({ orderId, priceEUR, paymentsEUR = [], onChange, onEditPayment }) {
+function EurPanel({ orderId, priceEUR, items = [], paymentsEUR = [], onChange, onEditPayment }) {
   // /api/admin/orders/[orderId]/eur — همه‌ی متدها با همین یک کلید گیت شده‌اند
   const { can } = useAdminPermissions();
   const canSetCurrency = can("orders.setCurrency");
@@ -1766,6 +1766,23 @@ function EurPanel({ orderId, priceEUR, paymentsEUR = [], onChange, onEditPayment
   const hasPrice = priceEUR !== null && priceEUR !== undefined;
   const totalPaidEUR = paymentsEUR.reduce((s, p) => s + (p.amount || 0), 0);
   const remainingEUR = hasPrice ? priceEUR - totalPaidEUR : null;
+
+  // جمعِ قیمت‌های یوروییِ اقلام — هم‌ارزِ services/orderEurRecalc.js سمت سرور.
+  // فقط برای نمایش است؛ منبعِ حقیقت همان چیزی است که سرور ذخیره کرده.
+  const eurItems = items.filter(
+    (it) => it?.priceEUR !== null && it?.priceEUR !== undefined
+  );
+  const itemsEurTotal =
+    Math.round(
+      eurItems.reduce(
+        (s, it) => s + Number(it.priceEUR) * Math.max(1, Number(it.quantity) || 1),
+        0
+      ) * 100
+    ) / 100;
+  const hasItemEurPrices = eurItems.length > 0;
+  // اگر ادمین بعد از قیمت‌گذاریِ اقلام، مبلغ کل را دستی عوض کرده باشد این دو
+  // با هم فرق می‌کنند — یک هشدارِ نرم نشان می‌دهیم (بدون بازنویسیِ خودکار).
+  const overriddenTotal = hasItemEurPrices && hasPrice && priceEUR !== itemsEurTotal;
 
   const handleSavePrice = async () => {
     setSavingPrice(true);
@@ -1882,6 +1899,34 @@ function EurPanel({ orderId, priceEUR, paymentsEUR = [], onChange, onEditPayment
               <span className="text-sm text-gray-400 font-bold">قیمت یورویی تعیین نشده</span>
             )}
           </p>
+        )}
+
+        {/* رابطه‌ی مبلغ کل با قیمت یوروییِ اقلام — این فیلد همچنان دستی قابل
+            ویرایش است، ولی با هر تغییرِ قیمت یوروییِ یک قلم دوباره از روی
+            مجموعِ اقلام محاسبه و بازنویسی می‌شود. */}
+        {hasItemEurPrices && (
+          <div className="space-y-1 border-t border-gray-200 pt-2">
+            <div className="flex items-center justify-between text-[11px]">
+              <span className="font-bold text-gray-500">
+                مجموع قیمت یورویی اقلام ({new Intl.NumberFormat("fa-IR").format(eurItems.length)} قلم)
+              </span>
+              <span className="font-black text-gray-700" dir="ltr">
+                € {formatEUR(itemsEurTotal)}
+              </span>
+            </div>
+            {overriddenTotal ? (
+              <p className="flex items-start gap-1 text-[10px] leading-relaxed text-amber-700">
+                <AlertTriangle size={11} className="mt-px shrink-0" />
+                مبلغ کل به‌صورت دستی بازنویسی شده و با مجموع اقلام یکی نیست. با
+                اولین تغییر در قیمت یوروییِ هر قلم، دوباره برابرِ مجموع اقلام می‌شود.
+              </p>
+            ) : (
+              <p className="text-[10px] leading-relaxed text-gray-400">
+                مبلغ کل از مجموع قیمت یوروییِ اقلام محاسبه شده است. ویرایش دستی آزاد
+                است، ولی با تغییر قیمت یوروییِ هر قلم دوباره بازمحاسبه می‌شود.
+              </p>
+            )}
+          </div>
         )}
       </div>
 
@@ -2080,6 +2125,8 @@ export default function AdminOrderDetailClient({ orderId }) {
   const canEditItems = can("orders.editItems");
   const canAdjustDiscount = can("orders.adjustDiscount");
   const canEditPayment = can("payments.edit");
+  // همان کلیدی که کلِ سیستم یورو (شامل قیمت یوروییِ اقلام) با آن گیت شده است
+  const canSetCurrency = can("orders.setCurrency");
   const [order, setOrder] = useState(null);
   const [installment, setInstallment] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -2095,6 +2142,10 @@ export default function AdminOrderDetailClient({ orderId }) {
   const [itemBusy, setItemBusy] = useState(null); // item._id در حال تغییر
   const [discountModalOpen, setDiscountModalOpen] = useState(false);
   const [discountBusy, setDiscountBusy] = useState(false);
+  // ویرایشِ قیمت یوروییِ اقلام: { [itemId]: "متنِ ورودی" } — فقط قلم‌هایی که
+  // ادمین بازشان کرده در این شیء هستند، پس بقیه‌ی اقلام دست‌نخورده می‌مانند.
+  const [itemEurDraft, setItemEurDraft] = useState({});
+  const [itemEurBusy, setItemEurBusy] = useState(null); // item._id در حال ذخیره
 
   const fetchOrder = useCallback(async () => {
     setLoading(true);
@@ -2254,6 +2305,58 @@ export default function AdminOrderDetailClient({ orderId }) {
       toast.error(err.message || "خطا در حذف آیتم");
     } finally {
       setItemBusy(null);
+    }
+  };
+
+  // ─── قیمت یوروییِ یک قلم (مستقل از تومان) ───
+  // مقدارِ ورودی «قیمت واحد به یورو» است؛ سهم این قلم در مبلغ کل = مقدار × تعداد.
+  // پس از ذخیره، سرور مبلغ کلِ یوروییِ سفارش را از روی مجموعِ اقلام بازمحاسبه
+  // می‌کند — به همین دلیل fetchOrder() صدا زده می‌شود تا پنل یورو هم به‌روز شود.
+  const openItemEurEditor = (item) => {
+    setItemEurDraft((prev) => ({
+      ...prev,
+      [item._id]:
+        item.priceEUR === null || item.priceEUR === undefined ? "" : String(item.priceEUR),
+    }));
+  };
+
+  const closeItemEurEditor = (itemId) => {
+    setItemEurDraft((prev) => {
+      const next = { ...prev };
+      delete next[itemId];
+      return next;
+    });
+  };
+
+  const handleSaveItemEur = async (item) => {
+    if (!item._id) return;
+    const raw = (itemEurDraft[item._id] ?? "").trim();
+
+    // رشته‌ی خالی = پاک کردنِ قیمت یوروییِ این قلم (نه صفر)
+    if (raw !== "") {
+      const parsed = Number(raw);
+      if (!Number.isFinite(parsed) || parsed < 0) {
+        toast.error("قیمت یورو باید عددی نامنفی باشد");
+        return;
+      }
+    }
+
+    setItemEurBusy(item._id);
+    try {
+      const res = await fetch(`/api/admin/orders/${orderId}/eur/item`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ itemId: item._id, priceEUR: raw === "" ? null : Number(raw) }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.message || "خطا");
+      toast.success(data.message || "قیمت یورویی آیتم ذخیره شد");
+      closeItemEurEditor(item._id);
+      await fetchOrder();
+    } catch (err) {
+      toast.error(err.message || "خطا در ذخیره قیمت یورویی آیتم");
+    } finally {
+      setItemEurBusy(null);
     }
   };
 
@@ -2593,6 +2696,11 @@ export default function AdminOrderDetailClient({ orderId }) {
                   const itemId = item._id;
                   const isUsed = item.itemType === "used_product";
                   const busy = itemBusy === itemId;
+                  // ─── وضعیت یوروییِ همین قلم (مستقل از تومان) ───
+                  const hasItemEur =
+                    item.priceEUR !== null && item.priceEUR !== undefined;
+                  const isEurEditing = Boolean(itemId) && itemEurDraft[itemId] !== undefined;
+                  const eurBusy = itemEurBusy === itemId;
                   const productName = item.product?.name || "محصول";
                   const { farsi, english } = splitProductName(productName);
                   const productHref = item.product?.slug
@@ -2698,11 +2806,103 @@ export default function AdminOrderDetailClient({ orderId }) {
                         </button>
                       </div>
                       )}
+
+                      {/* ─── قیمت یوروییِ این قلم (EUR) ─────────────────────────
+                          کاملاً مستقل از تومان و از قیمت پایه/کاتالوگِ محصول؛ یک
+                          مبلغِ دستیِ مخصوصِ همین قلم در همین سفارش است.
+                          مقدارِ ورودی «قیمت واحد» است و سهم این قلم در مبلغ کلِ
+                          یوروییِ سفارش = مقدار × تعداد.
+                          ردیف فقط وقتی نمایش داده می‌شود که ادمین اجازه‌ی
+                          orders.setCurrency داشته باشد یا قیمتی ثبت شده باشد. */}
+                      {(canSetCurrency || hasItemEur) && (
+                        <div className="mt-2 border-t border-dashed border-gray-200 pt-2">
+                          {isEurEditing ? (
+                            <div className="flex items-center gap-1.5">
+                              <div className="relative min-w-0 flex-1">
+                                <AdminInput
+                                  type="number"
+                                  step="any"
+                                  min="0"
+                                  value={itemEurDraft[itemId] ?? ""}
+                                  onChange={(e) =>
+                                    setItemEurDraft((prev) => ({ ...prev, [itemId]: e.target.value }))
+                                  }
+                                  onKeyDown={(e) => {
+                                    if (e.key === "Enter") handleSaveItemEur(item);
+                                    if (e.key === "Escape") closeItemEurEditor(itemId);
+                                  }}
+                                  placeholder="قیمت واحد به یورو — خالی یعنی بدون قیمت"
+                                  dir="ltr"
+                                  className="w-full rounded-lg border border-gray-300 py-1.5 pl-6 pr-2 text-left text-xs font-bold
+                                    text-gray-800 transition focus:border-[var(--color-primary)] focus:outline-none
+                                    focus:ring-2 focus:ring-[var(--color-primary)]/30"
+                                />
+                                <span className="pointer-events-none absolute left-2 top-1/2 -translate-y-1/2 text-[11px] text-gray-400">
+                                  €
+                                </span>
+                              </div>
+                              <button
+                                onClick={() => handleSaveItemEur(item)}
+                                disabled={eurBusy}
+                                className="flex items-center gap-1 rounded-lg bg-[var(--color-primary)] px-2.5 py-1.5 text-[11px]
+                                  font-bold text-white transition hover:bg-[var(--color-primary-hover)] disabled:opacity-60"
+                              >
+                                {eurBusy ? <Loader2 size={11} className="animate-spin" /> : <Save size={11} />}
+                                ذخیره
+                              </button>
+                              <button
+                                onClick={() => closeItemEurEditor(itemId)}
+                                disabled={eurBusy}
+                                className="rounded-lg bg-gray-200 px-2 py-1.5 text-[11px] font-bold text-gray-600
+                                  transition hover:bg-gray-300 disabled:opacity-60"
+                              >
+                                انصراف
+                              </button>
+                            </div>
+                          ) : (
+                            <div className="flex flex-wrap items-center gap-2">
+                              <Euro size={11} className="shrink-0 text-[var(--color-primary)]" />
+                              {hasItemEur ? (
+                                <span className="text-[11px] font-bold text-gray-700" dir="ltr">
+                                  € {formatEUR(item.priceEUR)}
+                                  {item.quantity > 1 && (
+                                    <span className="font-medium text-gray-400">
+                                      {" "}
+                                      × {item.quantity} = € {formatEUR(item.priceEUR * item.quantity)}
+                                    </span>
+                                  )}
+                                </span>
+                              ) : (
+                                <span className="text-[11px] font-medium text-gray-400">
+                                  قیمت یورویی تعیین نشده
+                                </span>
+                              )}
+                              {canSetCurrency && (
+                                <button
+                                  onClick={() => openItemEurEditor(item)}
+                                  disabled={!itemId || eurBusy}
+                                  className="flex items-center gap-1 rounded-lg bg-[var(--color-primary)]/10 px-2 py-0.5
+                                    text-[10px] font-bold text-[var(--color-primary)] transition
+                                    hover:bg-[var(--color-primary)]/20 disabled:opacity-40"
+                                >
+                                  <Edit3 size={9} />
+                                  {hasItemEur ? "ویرایش یورو" : "تعیین یورو"}
+                                </button>
+                              )}
+                            </div>
+                          )}
+                        </div>
+                      )}
                     </div>
                     <div className="text-left flex-shrink-0 text-xs text-gray-500 space-y-0.5">
                       <p>×{new Intl.NumberFormat("fa-IR").format(item.quantity)}</p>
                       <p className="font-bold text-gray-700">{formatPrice(item.unitPrice)}</p>
                       <p className="text-[10px] text-gray-400">{formatPrice(item.unitPrice * item.quantity)}</p>
+                      {hasItemEur && (
+                        <p className="text-[10px] font-bold text-[var(--color-primary)]" dir="ltr">
+                          € {formatEUR(item.priceEUR * item.quantity)}
+                        </p>
+                      )}
                     </div>
                   </div>
                   );
@@ -2823,6 +3023,7 @@ export default function AdminOrderDetailClient({ orderId }) {
             <EurPanel
               orderId={orderId}
               priceEUR={order.priceEUR ?? null}
+              items={order.items || []}
               paymentsEUR={order.paymentsEUR || []}
               onChange={fetchOrder}
               onEditPayment={(p) => setEditPaymentTarget({ payment: p, currency: "eur" })}

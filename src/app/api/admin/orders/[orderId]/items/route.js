@@ -8,8 +8,14 @@
  *   DELETE → حذف یک آیتم
  *
  * اصول ایمنی:
- *  - فقط روی سیستم تومان اثر دارد. هیچ‌یک از فیلدهای یورویی (priceEUR / paymentsEUR)
- *    لمس نمی‌شوند → استقلال کامل دو ارز حفظ می‌شود.
+ *  - محاسبات دو ارز مستقل‌اند: هیچ قیمتِ تومانی از روی یورو (یا برعکس) مشتق
+ *    نمی‌شود و paymentsEUR هرگز لمس نمی‌شود.
+ *  - تنها اثرِ این مسیر روی سیستم یورو، بازجمعِ مبلغ کلِ یورو است: چون سهمِ هر
+ *    قلم در مبلغ کلِ یورو برابرِ priceEUR × quantity است، تغییرِ تعداد یا حذفِ
+ *    قلمی که قیمت یورویی دارد باید مبلغ کل را به‌روز کند وگرنه ناسازگار می‌ماند.
+ *    این کار با applyOrderEurTotal انجام می‌شود که طبق قرارداد، اگر **هیچ** قلمی
+ *    قیمت یورویی نداشته باشد (یعنی همه‌ی سفارش‌های قدیمی) order.priceEUR را اصلاً
+ *    لمس نمی‌کند.
  *  - قیمتِ آیتمِ جدید دقیقاً از همان مسیرِ ثبت سفارش (computeCartPrice در priceEngine)
  *    گرفته می‌شود؛ هیچ مسیر قیمت‌گذاری موازی‌ای ساخته نمی‌شود.
  *  - قیمتِ آیتم‌های موجود هرگز دوباره محاسبه نمی‌شود (اسنپ‌شات ثابت می‌ماند)؛ فقط
@@ -29,6 +35,7 @@ import Variant from "base/models/Variant";
 import UsedProduct from "base/models/UsedProduct";
 import { computeCartPrice } from "base/services/priceEngine";
 import { recalcAndApply } from "base/services/orderRecalc";
+import { applyOrderEurTotal } from "base/services/orderEurRecalc";
 import { buildVariantSnapshot } from "@/lib/variantImages";
 
 import requireAdminPermission from "@/lib/requireAdminPermission";
@@ -158,6 +165,9 @@ export async function POST(req, { params }) {
       order.reviewedBy = new mongoose.Types.ObjectId(admin.userId);
       order.reviewedAt = new Date();
       await recalcAndApply(order, session);
+      // مبلغ کلِ یورو فقط وقتی بازجمع می‌شود که دست‌کم یک قلم قیمت یورویی داشته
+      // باشد؛ در غیر این صورت (سفارش‌های قدیمی) هیچ فیلد یورویی لمس نمی‌شود.
+      applyOrderEurTotal(order);
       await order.save({ session });
 
       await session.commitTransaction();
@@ -232,6 +242,9 @@ export async function PATCH(req, { params }) {
       order.reviewedBy = new mongoose.Types.ObjectId(admin.userId);
       order.reviewedAt = new Date();
       await recalcAndApply(order, session);
+      // مبلغ کلِ یورو فقط وقتی بازجمع می‌شود که دست‌کم یک قلم قیمت یورویی داشته
+      // باشد؛ در غیر این صورت (سفارش‌های قدیمی) هیچ فیلد یورویی لمس نمی‌شود.
+      applyOrderEurTotal(order);
       await order.save({ session });
 
       await session.commitTransaction();
@@ -316,6 +329,9 @@ export async function DELETE(req, { params }) {
       order.reviewedBy = new mongoose.Types.ObjectId(admin.userId);
       order.reviewedAt = new Date();
       await recalcAndApply(order, session);
+      // مبلغ کلِ یورو فقط وقتی بازجمع می‌شود که دست‌کم یک قلم قیمت یورویی داشته
+      // باشد؛ در غیر این صورت (سفارش‌های قدیمی) هیچ فیلد یورویی لمس نمی‌شود.
+      applyOrderEurTotal(order);
       await order.save({ session });
 
       await session.commitTransaction();

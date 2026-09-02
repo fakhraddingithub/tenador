@@ -196,7 +196,7 @@ export async function POST(req) {
     const active = isActive === undefined ? true : isActive;
 
     const admin = await Admin.create({
-      // ⚠️ نقشِ کسب‌وکاریِ کاربر (coach/seller/...) عمداً دست نمی‌خورد:
+      // ⚠️ نقشِ کسب‌وکاریِ کاربر (coach/store/...) عمداً دست نمی‌خورد:
       // «عضویت در پنل» یک چیز است و «نقش کاربر در سایت» چیز دیگری.
       user: user._id,
       name,

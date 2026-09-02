@@ -8,10 +8,10 @@
 
 export const REVIEW_CREDIT_CONFIG_KEY = "review_credit_config";
 
+// نقشِ «فروشنده» (seller) حذف شده — با «فروشگاه» (store) اضافی بود.
 export const REVIEW_CREDIT_ROLE_OPTIONS = [
   { value: "user", label: "کاربر عادی" },
   { value: "coach", label: "مربی" },
-  { value: "seller", label: "فروشنده" },
   { value: "national_player", label: "ورزشکار ملی" },
   { value: "store", label: "فروشگاه" },
 ];

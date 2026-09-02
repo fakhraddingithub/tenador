@@ -34,10 +34,10 @@ const FIELD_PERMISSION = {
   isBanned: 'users.ban',
 }
 
+// نقشِ «فروشنده» (seller) حذف شده — با «فروشگاه» (store) اضافی بود.
 const roleOptions = [
   { value: 'user', label: 'کاربر عادی' },
   { value: 'coach', label: 'مربی' },
-  { value: 'seller', label: 'فروشنده' },
   { value: 'national_player', label: 'ورزشکار ملی' },
   { value: 'store', label: 'فروشگاه' },
 ]

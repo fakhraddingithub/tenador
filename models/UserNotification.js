@@ -27,7 +27,6 @@ export const TARGETABLE_ROLES = [
   "user",
   "coach",
   "admin",
-  "seller",
   "national_player",
   "store",
 ];

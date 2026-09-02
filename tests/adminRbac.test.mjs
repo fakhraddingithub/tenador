@@ -896,7 +896,7 @@ test("user PATCH resolver maps each field family and fails closed", () => {
   const combined = resolveUserPatchPermissions({
     name: "x",
     isBanned: true,
-    role: "seller",
+    role: "store",
   });
   assert.deepEqual(combined.permissions.sort(), [
     "users.ban",

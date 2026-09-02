@@ -214,7 +214,9 @@ export async function PATCH(req, { params }) {
       // "admin" عمداً در این فهرست نیست: عضویتِ پنل فقط از مسیر Admin
       // Management داده می‌شود. resolveUserPatchPermissions هم آن را رد
       // می‌کند؛ این لایه‌ی دومِ همان قاعده است.
-      const validRoles = ["user", "coach", "seller", "national_player", "store"];
+      // "seller" عمداً حذف شده است (با "store" ادغام شد) — تلاش برای ست‌کردنش
+      // اکنون ۴۰۰ می‌گیرد، دقیقاً مثل هر نقشِ ناشناخته‌ی دیگر.
+      const validRoles = ["user", "coach", "national_player", "store"];
       if (!validRoles.includes(body.role)) {
         return NextResponse.json({ message: "نقش نامعتبر است" }, { status: 400 });
       }

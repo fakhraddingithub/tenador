@@ -11,10 +11,11 @@ import {
   Search, X, Check, ArrowRight, AlertTriangle, History, Loader2,
 } from 'lucide-react'
 
+// باید با TARGETABLE_ROLES در models/UserNotification.js هم‌خوان بماند.
+// نقشِ «فروشنده» (seller) حذف شده — با «فروشگاه» (store) اضافی بود.
 const ROLE_OPTIONS = [
   { value: 'user', label: 'کاربر عادی' },
   { value: 'coach', label: 'مربی' },
-  { value: 'seller', label: 'فروشنده' },
   { value: 'national_player', label: 'ورزشکار ملی' },
   { value: 'store', label: 'فروشگاه' },
   { value: 'admin', label: 'مدیر کل' },

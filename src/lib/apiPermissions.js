@@ -186,6 +186,9 @@ export const ADMIN_API_PERMISSIONS = {
     PUT: "orders.setCurrency",
     DELETE: "orders.setCurrency",
   },
+  // قیمت یوروییِ یک قلمِ سفارش — همان کلیدِ سیستم یورو، بدون کلیدِ جدید، تا
+  // دسترسی‌های تعریف‌شده‌ی فعلیِ ادمین‌ها بدون تغییر کار کند.
+  "/admin/orders/[orderId]/eur/item": { PATCH: "orders.setCurrency" },
   "/admin/orders/[orderId]/tracking": {
     GET: "orderTracking.view",
     POST: "orderTracking.assign",
