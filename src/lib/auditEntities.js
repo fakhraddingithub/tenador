@@ -663,6 +663,21 @@ export const AUDIT_ENTITIES = {
   Newsletter: { key: "newsletter", label: "خبرنامه", priority: 45 },
   Ban: { key: "ban", label: "مسدودسازی", priority: 74 },
   Address: { key: "address", label: "آدرس", priority: 40 },
+  SenderAddress: {
+    key: "senderAddress",
+    label: "آدرس فرستنده",
+    priority: 40,
+    name: (doc) => doc?.title || doc?.fullName || null,
+    fields: {
+      title: { label: "عنوان" },
+      fullName: { label: "نام فرستنده" },
+      phone: { label: "شماره تماس" },
+      province: { label: "استان" },
+      city: { label: "شهر" },
+      addressLine: { label: "آدرس" },
+      postalCode: { label: "کد پستی" },
+    },
+  },
 };
 
 /* ────────────────────────────────────────────────────────────────────────────

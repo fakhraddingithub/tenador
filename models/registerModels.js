@@ -58,6 +58,7 @@ import "base/models/PushSubscription";
 import "base/models/QuantityDiscount";
 import "base/models/RateLimitHit";
 import "base/models/ReviewCreditTransaction";
+import "base/models/SenderAddress";
 import "base/models/Serie";
 import "base/models/SiteSetting";
 import "base/models/Slide";

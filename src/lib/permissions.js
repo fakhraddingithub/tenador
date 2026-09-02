@@ -266,7 +266,7 @@ const SECTION_DEFINITIONS = [
         title: "سفارشات",
         description: "سفارش‌های مشتریان و وضعیت آن‌ها",
         path: "/p-admin/admin-orders",
-        api: ["/api/admin/orders", "/api/orders"],
+        api: ["/api/admin/orders", "/api/orders", "/api/admin/sender-addresses"],
         permissions: [
           { key: "view", title: "مشاهده سفارشات" },
           // `orders.edit` در فاز ۵ برداشته شد: هیچ روتی اعمالش نمی‌کرد و چهار
@@ -277,6 +277,11 @@ const SECTION_DEFINITIONS = [
           { key: "editItems", title: "ویرایش اقلام سفارش" },
           { key: "adjustDiscount", title: "اعمال تخفیف دستی روی سفارش" },
           { key: "setCurrency", title: "تعیین نرخ ارز سفارش" },
+          // آدرس‌های فرستنده‌ی برگه‌ی چاپِ ارسال. عمداً کلیدِ مستقلِ *نوشتنی*
+          // است و خواندنِ فهرست با orders.view باز می‌ماند: در غیر این صورت
+          // با افزوده‌شدنِ این کلید، هیچ‌کدام از نقش‌های فعلی نمی‌توانستند
+          // برگه‌ی آدرس چاپ کنند (قابلیتی که پیش‌تر داشتند).
+          { key: "manageSenders", title: "مدیریت آدرس‌های فرستنده (چاپ)" },
         ],
       },
       {

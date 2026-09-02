@@ -11,6 +11,7 @@ npm run lint         # ESLint (next/core-web-vitals)
 npm test             # Jest test suite (node env; tests/setup.js spins up mongodb-memory-server)
 npm test -- tests/paymentWorkflow.test.js   # Run a single test file
 npm test -- -t "name of test"                # Run tests matching a name
+npm run test:sender-address                  # Sender-address validation (print flow)
 npm run test:db      # Test MongoDB connection
 npm run check:mongodb # Inspect MongoDB collections/state
 
@@ -161,6 +162,51 @@ Store-role users (`role === "store"`) see each item's EUR price alongside the To
 `src/components/modules/orders/index.jsx`, but only for lines the admin actually priced.
 
 Tests: `npm run test:order-item-eur`.
+
+### Order address printing (sender addresses)
+
+The "چاپ برگه آدرس" button on the admin order screen opens
+`SenderAddressModal` → the admin picks/adds a **sender address** → an
+`<a target="_blank" rel="noopener noreferrer">` opens `/order-print/[orderId]?sender=<id>`.
+
+**Why a separate route and not the old popup.** The previous implementation was
+`window.open("", "_blank")` + `document.write`. That popup was same-origin *with an
+opener*, so it shared the admin page's browsing-context group: `print()` inside it
+blocked the whole group, and closing the dialog left the admin panel half-dead
+(animations frozen, handlers unresponsive). The fix is architectural, not a patch —
+never reintroduce a print popup, an app-wide `@media print` hide/restore, or any
+DOM swapping on the admin page:
+
+| piece | why it matters |
+|---|---|
+| `src/app/(Print)/layout.jsx` | its **own root layout** — no globals.css, no Tailwind, no admin theme, no providers. A print sheet measured in mm must not move when the panel's theme changes. |
+| `rel="noopener"` on the link | puts the print tab in its own context group; it holds no reference to the panel and the panel holds none to it. Closing/canceling/refreshing it cannot touch panel DOM, state, routing or styles. |
+| an `<a>`, not `window.open` | popup blockers never block a user's link navigation, and `window.open(..., "noopener")` returns `null` so a blocked popup would be undetectable anyway. |
+| `AddressSheetStyles.jsx` | all CSS inline in one `<style>`; `@page { size: A4 landscape }`. Sender is placed `top/left`, recipient `bottom/right` with `position: absolute` — a CSS grid would flip the columns in this RTL document. |
+
+**Sender addresses are not customer addresses.** `models/SenderAddress.js` is its own
+collection: no `user` ref, shop-wide, and it is **never written onto an order** — the
+selection is only a URL parameter, so printing changes no order data (Toman, EUR,
+items, status, `address.snapshot` all untouched). `Address` (customer) is unrelated and
+was not modified. Sender phones deliberately accept landlines, so validation lives in
+`src/lib/senderAddressForm.mjs`, not the customer `addressForm.mjs` (which demands an
+`09…` mobile).
+
+Permissions — note the deliberate asymmetry:
+
+| operation | key |
+|---|---|
+| `GET /api/admin/sender-addresses`, the print page itself | `orders.view` |
+| `POST` / `PATCH` / `DELETE` on sender addresses | `orders.manageSenders` (new) |
+
+Reading is on `orders.view` on purpose: gating it behind the new key would have taken
+the *existing* ability to print away from every current admin role the moment the key
+was added. `/order-print/*` is not under `/p-admin`, so `src/middleware.js` never sees
+it — the page enforces `orders.view` itself via `getAdminContext()` + `hasPermission`,
+and answers `notFound()` (not 403) so the route's existence isn't leaked. It is also
+in `RESERVED_ARTICLE_ROOTS`.
+
+Tests: `npm run test:sender-address`.
 
 ### Slug System
 

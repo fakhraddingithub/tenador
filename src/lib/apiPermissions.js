@@ -194,6 +194,13 @@ export const ADMIN_API_PERMISSIONS = {
     POST: "orderTracking.assign",
     DELETE: "orderTracking.assign",
   },
+  // آدرس‌های فرستنده‌ی برگه‌ی چاپ. خواندن با orders.view باز است (هر ادمینی که
+  // سفارش می‌بیند باید بتواند چاپ کند)؛ نوشتن کلیدِ مستقلِ خودش را دارد.
+  "/admin/sender-addresses": { GET: "orders.view", POST: "orders.manageSenders" },
+  "/admin/sender-addresses/[addressId]": {
+    PATCH: "orders.manageSenders",
+    DELETE: "orders.manageSenders",
+  },
   "/admin/orders/tracking-items/lookup": { GET: "orderTracking.view" },
   "/admin/orders/used-product-tracking": {
     GET: "orderTracking.view",

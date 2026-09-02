@@ -20,6 +20,7 @@
     "test:variant-reconcile": "node --test tests/variantReconcile.test.mjs",
     "test:variant-identity": "node --test --test-timeout=180000 tests/variantIdentity.test.mjs",
     "test:order-item-eur": "node --test tests/orderItemEur.test.mjs",
+    "test:sender-address": "node --test tests/senderAddressForm.test.mjs",
     "test:category-variant-rename": "node --test tests/categoryVariantAttributeRename.test.mjs",
     "test:racket-match": "node --test tests/racketMatch.test.mjs",
     "test:racket-quiz-ui": "node --test tests/racketQuizUi.test.mjs",
