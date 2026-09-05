@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 
 import {
+  GUIDED_QUIZ_TOOLS,
   LEGACY_MATCH_REDIRECTS,
   findMatchCategory,
   hasGuidedQuiz,
@@ -72,10 +73,34 @@ test("راکت تنیس و راکت پدل دو صفحهٔ جدا با آدرس�
   assert.notDeepEqual(tennis.technicalStats, padel.technicalStats);
 });
 
-test("پرسشنامهٔ گام‌به‌گام فقط برای راکت تنیس فعال است", () => {
+test("پرسشنامهٔ گام‌به‌گام برای راکتِ تنیس و راکتِ پدل فعال است — و نه بقیه", () => {
   assert.equal(hasGuidedQuiz(findMatchCategory(CATEGORIES, "tennis", "racket")), true);
-  assert.equal(hasGuidedQuiz(findMatchCategory(CATEGORIES, "padel", "racket")), false);
+  assert.equal(hasGuidedQuiz(findMatchCategory(CATEGORIES, "padel", "racket")), true);
   assert.equal(hasGuidedQuiz(findMatchCategory(CATEGORIES, "tennis", "string")), false);
+});
+
+test("هر دستهٔ دارای پرسشنامه، در quizRegistry هم تعریف دارد", async () => {
+  // quizRegistry با alias «@/» ساخته شده و مستقیم import نمی‌شود؛ اما همین
+  // هم‌خوانی همان چیزی است که اگر بشکند، صفحه با پرسشنامهٔ خالی رندر می‌شود.
+  const source = await readFile(
+    new URL("../src/lib/racketMatch/quizRegistry.js", import.meta.url),
+    "utf8",
+  );
+  for (const key of GUIDED_QUIZ_TOOLS) {
+    assert.ok(
+      source.includes('"' + key + '": {'),
+      key + " در GUIDED_QUIZ_TOOLS هست ولی در MATCH_QUIZZES نیست",
+    );
+  }
+  // و برعکس: هر پرسشنامهٔ ثبت‌شده باید در فهرستِ فعال هم باشد، وگرنه کدِ مرده است
+  const registered = source
+    .split("\n")
+    .map((line) => line.match(/^ {2}"([^"]+)": \{$/)?.[1])
+    .filter(Boolean);
+  assert.ok(registered.length >= GUIDED_QUIZ_TOOLS.size, "هیچ پرسشنامه‌ای پیدا نشد");
+  for (const key of registered) {
+    assert.ok(GUIDED_QUIZ_TOOLS.has(key), key + " در MATCH_QUIZZES هست ولی فعال نیست");
+  }
 });
 
 test("ترکیبِ ورزش و دستهٔ نامعتبر هیچ صفحه‌ای برنمی‌گرداند", () => {

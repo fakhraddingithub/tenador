@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { FiArrowRight } from "react-icons/fi";
+import { quizForCategory } from "@/lib/racketMatch/quizRegistry";
 import MatchFlowChooser from "./MatchFlowChooser";
 import MatchCategoryClient from "./MatchCategoryClient";
 import RacketMatchClient from "./racket/RacketMatchClient";
@@ -9,13 +10,15 @@ import BestInCategorySection from "./BestInCategorySection";
 import AttributeGuideSection from "./AttributeGuideSection";
 
 /**
- * پوستهٔ صفحهٔ مچ برای دسته‌ای که هر دو مسیر را دارد (فعلاً فقط راکت تنیس).
+ * پوستهٔ صفحهٔ مچ برای دسته‌ای که هر دو مسیر را دارد (راکتِ تنیس و راکتِ پدل).
  *
  * ساختار عمداً این‌طور است که محتوای سئویی — تیتر، برترین‌های دسته و راهنمای
  * شاخص‌ها — همیشه رندر می‌شود، چه کاربر هنوز مسیری انتخاب نکرده باشد و چه در
  * میانهٔ یکی از دو مسیر باشد. انتخابِ مسیر فقط بخشِ میانی را عوض می‌کند.
  */
 export default function MatchToolClient({ category, priceBounds }) {
+  // کدام پرسشنامه؟ تنها جایی که این کامپوننت دربارهٔ ورزش چیزی می‌داند
+  const quiz = quizForCategory(category);
   const [flow, setFlow] = useState(null);
   // محصولی که کاربر از «برترین‌های دسته» انتخاب کرده تا مسیرِ ارتقا با آن شروع شود
   const [seedProduct, setSeedProduct] = useState(null);
@@ -56,7 +59,9 @@ export default function MatchToolClient({ category, priceBounds }) {
 
         {flow === null && <MatchFlowChooser onChoose={setFlow} />}
 
-        {flow === "quiz" && <RacketMatchClient category={category} priceBounds={priceBounds} />}
+        {flow === "quiz" && quiz && (
+          <RacketMatchClient category={category} quiz={quiz} priceBounds={priceBounds} />
+        )}
 
         {flow === "optimize" && (
           // key تضمین می‌کند با انتخابِ یک محصولِ پایهٔ تازه، ابزار از نو با همان

@@ -179,9 +179,9 @@ test("سرویسِ تطبیق projectionِ اختصاصی نمی‌سازد و �
   assert.ok(source.includes("export async function loadDisplayProducts"));
 });
 
-test("مسیرِ API خروجی را روی محصولِ کامل می‌سازد، نه روی شیءِ سبک", async () => {
+test("بدنهٔ مشترکِ API خروجی را روی محصولِ کامل می‌سازد، نه روی شیءِ سبک", async () => {
   const source = await readFile(
-    new URL("../src/app/api/match/racket/route.js", import.meta.url),
+    new URL("../src/lib/racketMatch/matchApi.js", import.meta.url),
     "utf8",
   );
   assert.ok(source.includes("loadDisplayProducts"));
@@ -190,4 +190,21 @@ test("مسیرِ API خروجی را روی محصولِ کامل می‌ساز�
     !source.includes("category: { variantAttributes: catalog.variantAttributes }"),
     "ادغامِ دستیِ قبلی باید برداشته شده باشد",
   );
+});
+
+test("هر دو مسیرِ تطبیق از همان بدنهٔ مشترک استفاده می‌کنند", async () => {
+  // اگر یکی از مسیرها روزی خروجی را خودش بسازد، دوباره همان باگِ «نمایش سریعِ
+  // ناقص» برمی‌گردد — این‌بار فقط در یکی از دو ورزش، که دیرتر دیده می‌شود.
+  for (const route of ["racket", "padel"]) {
+    const source = await readFile(
+      new URL(`../src/app/api/match/${route}/route.js`, import.meta.url),
+      "utf8",
+    );
+    assert.ok(source.includes("runMatch"), route + ": باید از runMatch استفاده کند");
+    assert.ok(source.includes("sanitizeAnswers"), route + ": باید ورودی را پاک‌سازی کند");
+    assert.ok(
+      !source.includes("loadDisplayProducts"),
+      route + ": نباید خودش دادهٔ نمایشی را بخواند",
+    );
+  }
 });

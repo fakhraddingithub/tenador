@@ -15,9 +15,13 @@ export const MIN_TECHNICAL_STATS = 2;
 /**
  * دسته‌هایی که «پرسشنامهٔ راکتِ ایده‌آل» برایشان فعال است.
  * کلید: `<sportSlug>/<categorySlug>`.
- * فعلاً فقط راکتِ تنیس؛ افزودنِ دستهٔ بعدی یعنی یک سطر این‌جا، نه شرطِ if در UI.
+ *
+ * هر کلید باید در MATCH_QUIZZES در quizRegistry.js هم تعریفی داشته باشد؛
+ * تستِ matchRouting.test.mjs همین هم‌خوانی را نگه می‌دارد. این فایل عمداً
+ * هیچ چیزی import نمی‌کند تا صفحهٔ سرور با خواندنش تعریفِ همهٔ پرسشنامه‌ها را
+ * به باندل نکشد.
  */
-export const GUIDED_QUIZ_TOOLS = new Set(["tennis/racket"]);
+export const GUIDED_QUIZ_TOOLS = new Set(["tennis/racket", "padel/racket"]);
 
 /** کلیدِ یکتای یک دسته در ابزارِ مچ */
 export function matchToolKey(sportSlug, categorySlug) {

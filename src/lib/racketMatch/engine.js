@@ -15,27 +15,23 @@
  */
 
 import { PRIORITY_LABELS, LEVEL_LABELS, assessConfidence } from "./questions.js";
+import {
+  clamp,
+  filterByPrice,
+  makeTradeoffDescriber,
+  mid,
+  proximity,
+  rangeScore,
+  rankCatalog,
+  weightedScore,
+} from "./scoringKernel.js";
 
 // §29 در questions.js زندگی می‌کند تا رابط کاربری بتواند بدونِ کشیدنِ کلِ موتور به
 // باندلِ کلاینت، سطح اطمینان را بسنجد. این‌جا فقط دوباره export می‌شود.
 export { assessConfidence, hasEnoughForPreview } from "./questions.js";
 
-/* ═══════════════════════ ابزارهای عددی ═══════════════════════ */
-
-const clamp = (value, min, max) => Math.min(max, Math.max(min, value));
-
-/** امتیازِ عضویت در یک بازه: داخلِ بازه ۱، بیرون از آن افتِ خطی تا صفر */
-function rangeScore(value, [low, high], falloff) {
-  if (!Number.isFinite(value)) return null;
-  if (value >= low && value <= high) return 1;
-  const distance = value < low ? low - value : value - high;
-  return clamp(1 - distance / falloff, 0, 1);
-}
-
-/** فاصلهٔ دو مقدارِ ۰..۱۰۰ به‌صورت امتیازِ ۰..۱ */
-const proximity = (a, b) => clamp(1 - Math.abs(a - b) / 100, 0, 1);
-
-const mid = ([low, high]) => (low + high) / 2;
+// ابزارهای عددی، جمعِ وزن‌دار، فیلترِ قیمت و روالِ رتبه‌بندی در scoringKernel.js
+// زندگی می‌کنند؛ موتور پدل هم دقیقاً همان‌ها را استفاده می‌کند.
 
 /* ═══════════════════════ §27 ساخت پروفایل هدف ═══════════════════════ */
 
@@ -360,26 +356,7 @@ export function scoreProduct(product, targetProfile, weights = DEFAULT_WEIGHTS) 
     comfortStiffness: scoreComfortStiffness(specs, targetProfile),
   };
 
-  let weighted = 0;
-  let usedWeight = 0;
-  const factors = {};
-  for (const [key, weight] of Object.entries(weights)) {
-    const value = raw[key];
-    if (value === null || value === undefined) {
-      factors[key] = { score: null, weight, used: false };
-      continue;
-    }
-    weighted += value * weight;
-    usedWeight += weight;
-    factors[key] = { score: Math.round(value * 100) / 100, weight, used: true };
-  }
-
-  const totalWeight = Object.values(weights).reduce((a, b) => a + b, 0) || 1;
-  return {
-    score: usedWeight > 0 ? Math.round((weighted / usedWeight) * 1000) / 10 : 0,
-    factors,
-    coverage: Math.round((usedWeight / totalWeight) * 100) / 100,
-  };
+  return weightedScore(raw, weights);
 }
 
 /* ═══════════════════════ §22 شرط‌های قطعی ═══════════════════════ */
@@ -393,38 +370,24 @@ const JUNIOR_LENGTH_CUTOFF = 26.5;
  * @returns {{products: Array, rejected: Object}}
  */
 export function applyHardConstraints(products, targetProfile, priceRange = null) {
-  const rejected = { price: 0, size: 0 };
-  const kept = products.filter((product) => {
+  let sizeRejected = 0;
+
+  // اندازهٔ جونیور/بزرگسال — شرطِ قطعیِ مخصوصِ تنیس
+  const sized = products.filter((product) => {
     const specs = product.specs || product;
-
-    // اندازهٔ جونیور/بزرگسال
-    if (Number.isFinite(specs.length)) {
-      const juniorSized = specs.length < JUNIOR_LENGTH_CUTOFF;
-      if (targetProfile.isJunior !== juniorSized) {
-        rejected.size += 1;
-        return false;
-      }
+    if (!Number.isFinite(specs.length)) return true;
+    const juniorSized = specs.length < JUNIOR_LENGTH_CUTOFF;
+    if (targetProfile.isJunior !== juniorSized) {
+      sizeRejected += 1;
+      return false;
     }
-
-    // بودجه
-    if (priceRange) {
-      const price = product.finalPriceToman ?? product.basePriceToman;
-      if (Number.isFinite(price) && price > 0) {
-        if (Number.isFinite(priceRange.min) && price < priceRange.min) {
-          rejected.price += 1;
-          return false;
-        }
-        if (Number.isFinite(priceRange.max) && price > priceRange.max) {
-          rejected.price += 1;
-          return false;
-        }
-      }
-    }
-
     return true;
   });
 
-  return { products: kept, rejected };
+  // بودجه — همان فیلترِ مشترکِ هستهٔ امتیازدهی
+  const { products: kept, rejected: priceRejected } = filterByPrice(sized, priceRange);
+
+  return { products: kept, rejected: { price: priceRejected, size: sizeRejected } };
 }
 
 /* ═══════════════════════ §23 و §28 بده‌بستان و خروجی ═══════════════════════ */
@@ -496,28 +459,10 @@ const TRADEOFF_AXES = [
  * تفاوتِ اصلیِ یک گزینه نسبت به بهترین گزینه — همان چیزی که §28 می‌خواهد.
  * @param {Set<string>} usedAxes محورهایی که قبلاً برای گزینهٔ دیگری استفاده شده‌اند
  */
-export function describeTradeoff(candidate, best, usedAxes = new Set()) {
-  const candidateSpecs = candidate.specs || candidate;
-  const bestSpecs = best.specs || best;
-
-  let chosen = null;
-  let chosenDelta = 0;
-  for (const axis of TRADEOFF_AXES) {
-    if (usedAxes.has(axis.key)) continue;
-    const a = axis.get(candidateSpecs);
-    const b = axis.get(bestSpecs);
-    if (!Number.isFinite(a) || !Number.isFinite(b)) continue;
-    const delta = a - b;
-    if (Math.abs(delta) < axis.threshold) continue;
-    if (Math.abs(delta) > Math.abs(chosenDelta)) {
-      chosen = axis;
-      chosenDelta = delta;
-    }
-  }
-
-  if (!chosen) return { axis: null, text: "بسیار نزدیک به گزینهٔ اول است، با حس ضربهٔ کمی متفاوت." };
-  return { axis: chosen.key, text: chosenDelta > 0 ? chosen.more : chosen.less };
-}
+export const describeTradeoff = makeTradeoffDescriber(
+  TRADEOFF_AXES,
+  "بسیار نزدیک به گزینهٔ اول است، با حس ضربهٔ کمی متفاوت.",
+);
 
 /* ═══════════════════════ §30 توضیح به زبان ساده ═══════════════════════ */
 
@@ -598,19 +543,21 @@ export function explainRecommendation(product, targetProfile) {
 
 /* ═══════════════════════ §20 گام ۹: رتبه‌بندی ═══════════════════════ */
 
-/** انتخابِ گزینهٔ بعدی با محورِ بده‌بستانِ متفاوت (§28) */
-function pickAlternative(pool, best, usedAxes) {
-  let fallback = null;
-  for (const candidate of pool) {
-    const tradeoff = describeTradeoff(candidate, best, usedAxes);
-    if (tradeoff.axis) return { candidate, tradeoff };
-    if (!fallback) fallback = { candidate, tradeoff };
-  }
-  return fallback;
+/**
+ * جونیور شرطِ قطعیِ اندازه است و هرگز نرم نمی‌شود؛ اگر فروشگاه راکتِ رده‌سنی
+ * نداشته باشد باید همین را صریح گفت، نه اینکه راکتِ بزرگسال جایش گذاشته شود.
+ */
+function juniorEmptyNotice(targetProfile) {
+  if (!targetProfile.isJunior) return null;
+  return "در حال حاضر راکتِ مخصوصِ این رده سنی در فروشگاه موجود نیست. راکتِ بزرگسال برای این قد و سن مناسب نیست، پس چیزی جایگزینش نکردیم.";
 }
 
 /**
  * خروجی نهایی طبق §28: بهترین گزینه + دو جایگزین با بده‌بستان‌های متفاوت.
+ *
+ * کلِ روال (نرم‌کردنِ پله‌ایِ بودجه، مرتب‌سازی، انتخابِ جایگزینِ با محورِ متفاوت)
+ * در scoringKernel.js است و بین تنیس و پدل مشترک؛ این‌جا فقط دانشِ تنیس تزریق
+ * می‌شود.
  *
  * @param {Object} input
  * @param {Array}  input.products محصولات با فیلد specs و قیمتِ تومانی
@@ -619,80 +566,18 @@ function pickAlternative(pool, best, usedAxes) {
  * @param {Object} [input.weights]
  */
 export function rankProducts({ products, targetProfile, answers = {}, weights = DEFAULT_WEIGHTS }) {
-  const relaxations = [];
-
-  // شرط‌های قطعی؛ در صورت کمبودِ نتیجه فقط بودجه نرم می‌شود، هرگز اندازهٔ جونیور/بزرگسال
-  let { products: eligible } = applyHardConstraints(products, targetProfile, targetProfile.priceRange);
-
-  if (eligible.length < 3 && targetProfile.priceRange) {
-    const widened = {
-      min: Number.isFinite(targetProfile.priceRange.min)
-        ? Math.round(targetProfile.priceRange.min * 0.7)
-        : null,
-      max: Number.isFinite(targetProfile.priceRange.max)
-        ? Math.round(targetProfile.priceRange.max * 1.3)
-        : null,
-    };
-    const retry = applyHardConstraints(products, targetProfile, widened);
-    if (retry.products.length > eligible.length) {
-      eligible = retry.products;
-      relaxations.push("برای اینکه دستتان خالی نماند، بازهٔ قیمتی را کمی بازتر گرفتیم.");
-    }
-  }
-  if (eligible.length < 3) {
-    const retry = applyHardConstraints(products, targetProfile, null);
-    if (retry.products.length > eligible.length) {
-      eligible = retry.products;
-      relaxations.length = 0;
-      relaxations.push("در بازهٔ قیمتی انتخابی، گزینهٔ کافی نبود؛ نزدیک‌ترین‌ها را بیرون از آن بازه آورده‌ایم.");
-    }
-  }
-
-  // جونیور شرطِ قطعیِ اندازه است و نرم نمی‌شود؛ اگر فروشگاه راکتِ رده‌سنی نداشته
-  // باشد باید همین را صریح گفت، نه اینکه راکتِ بزرگسال جایش گذاشته شود.
-  if (!eligible.length && targetProfile.isJunior) {
-    relaxations.push(
-      "در حال حاضر راکتِ مخصوصِ این رده سنی در فروشگاه موجود نیست. راکتِ بزرگسال برای این قد و سن مناسب نیست، پس چیزی جایگزینش نکردیم.",
-    );
-  }
-
-  const scored = eligible
-    .map((product) => ({ ...product, match: scoreProduct(product, targetProfile, weights) }))
-    .sort((a, b) => b.match.score - a.match.score || b.match.coverage - a.match.coverage);
-
-  const confidence = assessConfidence(answers);
-
-  if (!scored.length) {
-    return { best: null, alternatives: [], confidence, relaxations, totalCandidates: 0 };
-  }
-
-  const best = scored[0];
-  // فقط از میان گزینه‌های واقعاً رقابتی جایگزین انتخاب می‌شود، نه از کلِ فهرست
-  const pool = scored.slice(1, 15);
-  const usedAxes = new Set();
-  const alternatives = [];
-
-  for (let i = 0; i < 2 && pool.length; i += 1) {
-    const picked = pickAlternative(pool, best, usedAxes);
-    if (!picked) break;
-    if (picked.tradeoff.axis) usedAxes.add(picked.tradeoff.axis);
-    alternatives.push({ ...picked.candidate, tradeoff: picked.tradeoff });
-    pool.splice(pool.indexOf(picked.candidate), 1);
-  }
-
-  const decorate = (item, rank) => ({
-    ...item,
-    rank,
-    explanation: explainRecommendation(item, targetProfile),
+  return rankCatalog({
+    products,
+    targetProfile,
+    answers,
+    weights,
+    hardFilter: applyHardConstraints,
+    scoreOne: scoreProduct,
+    explain: explainRecommendation,
+    describeTradeoff,
+    assess: assessConfidence,
+    emptyNotice: juniorEmptyNotice,
   });
-
-  return {
-    best: decorate(best, 0),
-    alternatives: alternatives.map((item, index) => decorate(item, index + 1)),
-    confidence,
-    relaxations,
-    totalCandidates: scored.length,
-  };
 }
 
 /** برچسبِ فارسیِ سطح — برای نمایش خلاصهٔ پروفایل */

@@ -1,12 +1,22 @@
 import { notFound } from "next/navigation";
 import { getCompareCategories } from "base/services/compareCategory.service";
-import { getRacketPriceBounds } from "base/services/racketMatch.service";
+import { getPadelPriceBounds, getRacketPriceBounds } from "base/services/racketMatch.service";
 import MatchCategoryClient from "@/components/templates/productMatch/MatchCategoryClient";
 import MatchToolClient from "@/components/templates/productMatch/MatchToolClient";
 import ToolSeoContent from "@/components/seo/ToolSeoContent";
-import { findMatchCategory, hasGuidedQuiz, matchCategoryPath } from "@/lib/matchTools";
+import { findMatchCategory, hasGuidedQuiz, matchCategoryPath, matchToolKey } from "@/lib/matchTools";
 
 export const revalidate = 3600;
+
+/**
+ * دامنهٔ اسلایدرِ بودجه برای هر پرسشنامه. کاتالوگِ هر ورزش کشِ خودش را دارد،
+ * پس این‌جا نباید کاتالوگِ اشتباه خوانده شود — راکتِ پدل و راکتِ تنیس دو
+ * بازهٔ قیمتیِ کاملاً متفاوت دارند.
+ */
+const PRICE_BOUNDS_BY_TOOL = {
+  "tennis/racket": getRacketPriceBounds,
+  "padel/racket": getPadelPriceBounds,
+};
 
 async function resolveMatchCategory(sportSlug, categorySlug) {
   const categories = await getCompareCategories();
@@ -41,7 +51,8 @@ export default async function MatchCategoryPage({ params }) {
 
   // دامنهٔ اسلایدرِ بودجه سمتِ سرور و از کاتالوگِ کش‌شده می‌آید تا پرسشنامه بدون
   // درخواستِ اضافه و بدون پرشِ مقدارِ اولیه رندر شود.
-  const priceBounds = hasGuidedQuiz(category) ? await getRacketPriceBounds() : null;
+  const loadBounds = PRICE_BOUNDS_BY_TOOL[matchToolKey(category.sportSlug, category.slug)];
+  const priceBounds = loadBounds ? await loadBounds() : null;
 
   const canonicalPath = matchCategoryPath(category);
   const fullTitle = [category.title, category.sportTitle].filter(Boolean).join(" ");

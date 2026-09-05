@@ -4,12 +4,15 @@ import { useEffect, useRef, useState } from "react";
 import { FiZap } from "react-icons/fi";
 import RacketQuiz from "./RacketQuiz";
 import RacketResults from "./RacketResults";
-import { hasEnoughForPreview } from "@/lib/racketMatch/questions";
 
 const DEBOUNCE_MS = 350;
 
 /**
- * ابزارِ تطبیقِ راکت تنیس.
+ * ابزارِ تطبیقِ راکت — تنیس یا پدل.
+ *
+ * هیچ دانشی از ورزش ندارد: پرسشنامه، آدرسِ API و سنجهٔ «اطلاعات کافی است؟»
+ * همه از prop ورودیِ `quiz` می‌آیند (خروجی quizRegistry.js). افزودنِ ورزشِ
+ * بعدی هیچ تغییری در این فایل لازم ندارد.
  *
  * چیدمان: پرسشنامه بالا (هر بار یک پرسش) و سه کارتِ پیشنهاد در یک ردیف زیرِ آن.
  * هیچ دکمهٔ «جستجو»یی وجود ندارد: به‌محض اینکه اطلاعات برای یک پیشنهادِ حداقل
@@ -19,13 +22,13 @@ const DEBOUNCE_MS = 350;
  * تیتر، «برترین‌های دسته» و «راهنمای شاخص‌ها» را والد (MatchToolClient) رندر
  * می‌کند تا در هر دو مسیرِ صفحه یک‌بار و همیشه دیده شوند.
  */
-export default function RacketMatchClient({ category, priceBounds }) {
+export default function RacketMatchClient({ category, quiz, priceBounds }) {
   const [answers, setAnswers] = useState({});
   const [result, setResult] = useState(null);
   const [loading, setLoading] = useState(false);
   const resultsRef = useRef(null);
 
-  const ready = hasEnoughForPreview(answers);
+  const ready = quiz.hasEnoughForPreview(answers);
 
   useEffect(() => {
     // تا وقتی اطلاعات برای یک پیشنهادِ حداقل «متوسط» کافی نشده، اصلاً درخواستی
@@ -38,7 +41,7 @@ export default function RacketMatchClient({ category, priceBounds }) {
     const timer = setTimeout(async () => {
       setLoading(true);
       try {
-        const response = await fetch("/api/match/racket", {
+        const response = await fetch(quiz.endpoint, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           signal: controller.signal,
@@ -61,7 +64,7 @@ export default function RacketMatchClient({ category, priceBounds }) {
       clearTimeout(timer);
       controller.abort();
     };
-  }, [answers, ready]);
+  }, [answers, ready, quiz]);
 
   // اگر کاربر پاسخی را پس بگیرد و اطلاعات دیگر کافی نباشد، نتیجهٔ کهنه نمایش داده نمی‌شود
   const visibleResult = ready ? result : null;
@@ -74,6 +77,7 @@ export default function RacketMatchClient({ category, priceBounds }) {
       {/* پرسشنامه بالای بخش می‌ماند تا پرسشِ فعال همیشه در دید باشد */}
       <div className="mx-auto max-w-3xl">
         <RacketQuiz
+          quiz={quiz}
           answers={answers}
           onAnswer={setAnswers}
           categoryId={category._id}

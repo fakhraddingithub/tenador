@@ -6,7 +6,8 @@ import { FiCheck, FiChevronLeft, FiChevronRight } from "react-icons/fi";
 import ProductSearchBox from "@/components/templates/productMatch/ProductSearchBox";
 import { THUMB_INPUT_CLASS } from "@/components/features/filters/PriceRangeFilter";
 import useDragClickGuard from "@/hooks/useDragClickGuard";
-import { visibleSteps, PRIORITY_LABELS } from "@/lib/racketMatch/questions";
+// گام‌ها و برچسبِ اولویت‌ها از prop ورودیِ quiz می‌آیند، نه از پرسشنامهٔ یک
+// ورزشِ خاص — همین باعث می‌شود این کامپوننت برای تنیس و پدل یکی باشد.
 import { dragScrollLeft, scrollStepIntoView } from "@/lib/racketMatch/stepNavScroll";
 import {
   activeStepIndex,
@@ -258,7 +259,15 @@ function StepNav({ steps, answers, activeId, onJump }) {
  * گام‌ها بالای آن. هر گام همیشه با یک کلیک قابل بازگشت و ویرایش است و نتایج
  * پس از هر پاسخ بی‌درنگ به‌روز می‌شود.
  */
-export default function RacketQuiz({ answers, onAnswer, categoryId, categoryTitle, priceBounds }) {
+export default function RacketQuiz({
+  quiz,
+  answers,
+  onAnswer,
+  categoryId,
+  categoryTitle,
+  priceBounds,
+}) {
+  const { visibleSteps, priorityLabels } = quiz;
   const steps = visibleSteps(answers);
 
   // شناسه *و* شمارهٔ گامِ فعال با هم نگه داشته می‌شوند: شناسه مرجعِ اصلی است و
@@ -365,6 +374,7 @@ export default function RacketQuiz({ answers, onAnswer, categoryId, categoryTitl
               categoryId={categoryId}
               categoryTitle={categoryTitle}
               priceBounds={priceBounds}
+              priorityLabels={priorityLabels}
             />
           </div>
         </motion.div>
@@ -417,6 +427,7 @@ function StepBody({
   categoryId,
   categoryTitle,
   priceBounds,
+  priorityLabels,
 }) {
 
   if (step.type === "product-search") {
@@ -495,7 +506,7 @@ function StepBody({
         <p className="mt-3 text-xs text-neutral-500">
           ترتیب فعلی:{" "}
           <span className="font-bold text-[var(--color-primary)]">
-            {selectedList.map((key) => PRIORITY_LABELS[key]).join(" ← ")}
+            {selectedList.map((key) => priorityLabels[key] || key).join(" ← ")}
           </span>
         </p>
       )}

@@ -226,6 +226,80 @@ was added. The sheet itself renders from data the page already fetched under
 
 Tests: `npm run test:sender-address`.
 
+### Racket match engine (tennis + padel)
+
+The guided "find my ideal racket" questionnaire at `/match/<sport>/racket`. **One
+architecture, two sport domains** — padel is not a second engine, it is a second domain
+plugged into the same pipeline.
+
+```
+                 scoringKernel.js          ← shared, knows no sport
+   weightedScore · filterByPrice · makeTradeoffDescriber · rankCatalog
+                        ▲                    ▲
+        racketMatch/engine.js        racketMatch/padel/engine.js
+        (tennis domain)              (padel domain)
+```
+
+`scoringKernel.js` owns the rules that must not diverge between sports: an absent factor is
+dropped and the remaining weights are **renormalized** (never penalised, never guessed);
+budget is a hard constraint that relaxes in two explicit steps (×0.7/×1.3, then dropped)
+and always tells the user; and the two alternatives must use **different** trade-off axes,
+otherwise you ship three near-identical cards.
+
+| layer | tennis | padel |
+|---|---|---|
+| questions | `racketMatch/questions.js` | `racketMatch/padel/questions.js` |
+| normalize | `racketMatch/normalize.js` | `racketMatch/padel/normalize.js` |
+| engine | `racketMatch/engine.js` | `racketMatch/padel/engine.js` |
+| catalog | `getRacketCatalog()` | `getPadelCatalog()` (same `loadCatalog`, own cache key) |
+| route | `POST /api/match/racket` | `POST /api/match/padel` (both thin, over `matchApi.js`) |
+
+Everything else is shared as-is: `quizNavigation.js`, `stepNavScroll.js`,
+`resultPayload.js`, `matchApi.js`, and the whole UI (`RacketQuiz`/`RacketResults` take a
+`quiz` prop and know nothing about sport).
+
+**Adding a sport is two registrations, not a fork:** a key in `GUIDED_QUIZ_TOOLS`
+(`matchTools.js`) and a matching entry in `MATCH_QUIZZES` (`quizRegistry.js`). A test
+asserts those two stay in sync — drift there renders an empty questionnaire.
+`matchTools.js` deliberately imports nothing, so the server page doesn't pull every
+sport's question set into its bundle.
+
+**Padel domain, and what the data does and does not support.** Padel rackets have no string
+bed, so head size / string pattern / swingweight are replaced by shape, balance, surface,
+core and sweet spot. Two data realities shape the implementation:
+
+- **There is no weight field.** The only trace of weight is `Suitable for`, which the
+  product-ingestion prompt *derives* from grams (<350g → خانم ها, 350–370 → both, >370 →
+  آقایان). `parseWeightClass` inverts exactly that mapping and flags the result
+  `weightFromProxy: true`. It is a coarse 3-bucket **class**, not a number — and if a real
+  numeric `Weight` attribute is ever added it wins automatically.
+- **`Power Foam` / `High Memory EVA` stay uninterpreted.** Core firmness is only read when
+  the composition states an actual qualifier (نرم/متوسط/سخت, Soft/Medium/Hard). A foam's
+  trade name is marketing, not a spec, so guessing its firmness would be exactly the
+  hallucination the engine forbids. That is why core coverage is ~84% and not 100%; the
+  renormalization above makes the gap harmless.
+
+Balance carries both a category word and a point in cm, and the two **contradict each other
+in the real data** ("بالا، ۲۷ سانتی‌متر" — the word says head-heavy, the number is dead
+centre). The number wins. Shape lives on a continuous گرد↔الماسی axis so the catalog's
+fourth shape, هیبرید, gets a real score instead of falling out of a three-way table; a
+level-dependent **ceiling** on that axis is what stops "beginner who wants power" from
+being handed a diamond.
+
+Scoring weights (level 20, style 15, weight 15, balance 15, shape 10, power/control 10,
+maneuver 5, core 5, surface 3, sweet spot 2) sum to exactly 1 — a test enforces it. Level
+scoring is deliberately **asymmetric**: a racket above the player's level is punished
+harder than one below it. There is no `stability` stat in the catalog, so a stability
+priority moves the *target* weight and balance instead of inventing a product number, and
+`sweetSpot` is an honest relabelling of the measured `forgiveness` stat.
+
+```bash
+npm run test:racket-match       # tennis engine (must stay green — it guards the refactor)
+npm run test:padel-match        # padel engine + normalizer + shared-kernel wiring
+npm run check:padel-match-data  # read-only coverage report against the live catalog
+npm run check:racket-match-data # same, for tennis
+```
+
 ### Slug System
 
 `SlugRegistery` model maps dynamic URL segments (sport/category/brand slugs) to their entity types. `actions/registerSlug.js` is a server action that creates entries on entity creation. This powers ISR revalidation — when a slug is revalidated, the correct entity page is rebuilt.

@@ -1,7 +1,7 @@
 /**
  * services/racketMatch.service.js
  *
- * کاتالوگِ آمادهٔ راکت‌های تنیس برای موتور تطبیق.
+ * کاتالوگِ آمادهٔ راکت‌ها برای موتور تطبیق — تنیس و پدل، از یک مسیرِ مشترک.
  *
  * دو لایهٔ جدا، عمداً:
  *
@@ -30,18 +30,22 @@ import { attachListingPrices } from "base/services/priceEngine";
 import { LISTING_FIELDS, POPULATES } from "base/services/productListing.service";
 import { getCachedRate } from "@/lib/Exchangerate";
 import { normalizeRacketSpecs } from "@/lib/racketMatch/normalize";
+import { normalizePadelSpecs } from "@/lib/racketMatch/padel/normalize";
 
-/** دستهٔ راکتِ ورزشِ تنیس — اسلاگِ دسته فقط درون ورزش یکتاست، پس هر دو لازم است */
-const SPORT_SLUG = "tennis";
-const CATEGORY_SLUG = "racket";
-
-async function loadRacketCatalog() {
+/**
+ * کاتالوگِ یک دسته، آمادهٔ امتیازدهی.
+ *
+ * اسلاگِ دسته فقط درون ورزش یکتاست («racket» هم در تنیس هست هم در پدل)، پس هر
+ * دو لازم است. تابعِ نرمال‌سازی هم ورودی است تا هر ورزش شناسنامهٔ فنیِ خودش را
+ * بسازد بدونِ اینکه این لایه چیزی دربارهٔ تنیس یا پدل بداند.
+ */
+async function loadCatalog(sportSlug, categorySlug, normalizeSpecs) {
   await connectToDB();
 
-  const sport = await Sport.findOne({ slug: SPORT_SLUG }).select("_id").lean();
+  const sport = await Sport.findOne({ slug: sportSlug }).select("_id").lean();
   if (!sport) return null;
 
-  const category = await Category.findOne({ sport: sport._id, slug: CATEGORY_SLUG })
+  const category = await Category.findOne({ sport: sport._id, slug: categorySlug })
     .select("_id title slug variantAttributes technicalStats")
     .lean();
   if (!category) return null;
@@ -79,15 +83,24 @@ async function loadRacketCatalog() {
       finalPriceToman: product.finalPriceToman ?? null,
       discountPercent: product.discountPercent ?? 0,
       hasQuantityDiscount: product.hasQuantityDiscount ?? false,
-      specs: normalizeRacketSpecs(product),
+      specs: normalizeSpecs(product),
     })),
   };
 }
 
-export const getRacketCatalog = unstable_cache(loadRacketCatalog, ["racket-match-catalog"], {
-  revalidate: 300,
-  tags: ["products", "categories", "exchange-rate"],
-});
+const CATALOG_CACHE = { revalidate: 300, tags: ["products", "categories", "exchange-rate"] };
+
+export const getRacketCatalog = unstable_cache(
+  () => loadCatalog("tennis", "racket", normalizeRacketSpecs),
+  ["racket-match-catalog"],
+  CATALOG_CACHE,
+);
+
+export const getPadelCatalog = unstable_cache(
+  () => loadCatalog("padel", "racket", normalizePadelSpecs),
+  ["padel-match-catalog"],
+  CATALOG_CACHE,
+);
 
 /**
  * دادهٔ نمایشیِ کاملِ چند محصول — همان مسیری که صفحهٔ دسته‌بندی و ویترین برند از
@@ -119,10 +132,10 @@ export async function loadDisplayProducts(ids = []) {
  * فیلدِ قیمتی را می‌بیند که فیلترِ قطعیِ بودجه در موتور می‌بیند، وگرنه ممکن بود
  * کاربر سرِ اسلایدر را تا انتها ببرد و باز محصولی بیرون از بازه بماند.
  *
- * @returns {Promise<{min: number, max: number}|null>} null یعنی قیمتی ثبت نشده
+ * @param {Object|null} catalog خروجی یکی از کاتالوگ‌های بالا
+ * @returns {{min: number, max: number}|null} null یعنی قیمتی ثبت نشده
  */
-export async function getRacketPriceBounds() {
-  const catalog = await getRacketCatalog();
+export function priceBoundsOf(catalog) {
   if (!catalog) return null;
 
   const prices = catalog.products
@@ -131,4 +144,12 @@ export async function getRacketPriceBounds() {
   if (!prices.length) return null;
 
   return { min: Math.min(...prices), max: Math.max(...prices) };
+}
+
+export async function getRacketPriceBounds() {
+  return priceBoundsOf(await getRacketCatalog());
+}
+
+export async function getPadelPriceBounds() {
+  return priceBoundsOf(await getPadelCatalog());
 }
