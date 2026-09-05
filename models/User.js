@@ -181,9 +181,9 @@ UserSchema.virtual("addresses", {
    "store" (همان نقشی که seller قرار بود باشد) نگاشت می‌کند تا هیچ کاربر قدیمی
    قفل نشود. عمداً روی save/validate است و نه روی خواندن: خواندن هرگز شکست
    نمی‌خورد و داده‌ی تاریخی را دست‌کاری نمی‌کنیم مگر همان سند در حال نوشتن باشد. */
-function normalizeLegacyRole(next) {
+// Mongoose 9 pre hooks complete synchronously or via a returned promise.
+function normalizeLegacyRole() {
   if (this.role === "seller") this.role = "store";
-  next();
 }
 UserSchema.pre("validate", normalizeLegacyRole);
 
