@@ -4,6 +4,7 @@ import Product from "base/models/Product";
 import { NextResponse } from "next/server";
 import requireAdminPermission from "@/lib/requireAdminPermission";
 import { revalidateContent } from "@/lib/revalidate";
+import { handleApiError } from "@/lib/apiError";
 
 // ⚠️ همان مورد روتِ api/product/[productId]/variants: در Next 16، params یک
 // Promise است. اصلاحِ `await params()` و افزودنِ requireAdmin تفکیک‌ناپذیرند —
@@ -40,10 +41,8 @@ export async function DELETE(req, { params }) {
       message: "واریانت با موفقیت حذف شد",
     });
   } catch (error) {
-    return NextResponse.json(
-      { error: error.message },
-      { status: 500 }
-    );
+    // پیامِ خامِ خطا (mongo/mongoose) به کلاینت درز نمی‌کند
+    return handleApiError(error, "خطا در حذف واریانت");
   }
 }
 

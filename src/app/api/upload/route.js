@@ -1,7 +1,24 @@
 import { NextResponse } from "next/server";
+import { cookies } from "next/headers";
 import ImageKit from "imagekit";
 
+import { verifyToken } from "base/utils/auth";
+
 export const runtime = "nodejs";
+
+/**
+ * این روت تا پیش از این هیچ احراز هویتی نداشت: هر کسی روی اینترنت می‌توانست
+ * فایل در حسابِ ImageKit آپلود کند (و چون SVG مجاز است، عملاً HTML دلخواه روی
+ * دامنهٔ ImageKit میزبانی کند). گیت عمداً «کاربرِ واردشده» است و نه «ادمین»:
+ * آپلودِ مدرکِ مربیگری، رسیدِ پرداخت، پیوستِ تیکت و تصویرِ نظر همگی از همین
+ * روت و توسط کاربرِ عادی انجام می‌شوند.
+ */
+async function getUserFromToken() {
+  const cookieStore = await cookies();
+  const token = cookieStore.get("accessToken")?.value;
+  if (!token) return null;
+  return verifyToken(token) || null;
+}
 
 const imagekit = new ImageKit({
   publicKey: process.env.IMAGEKIT_PUBLIC_KEY,
@@ -21,6 +38,11 @@ const ALLOWED_MIME = [
 const MAX_SIZE = 5 * 1024 * 1024; // ۵ مگابایت
 
 export async function POST(req) {
+  const user = await getUserFromToken();
+  if (!user) {
+    return NextResponse.json({ error: "برای بارگذاری فایل باید وارد حساب خود شوید" }, { status: 401 });
+  }
+
   try {
     const formData = await req.formData();
     const file = formData.get("file");
@@ -95,11 +117,11 @@ export async function POST(req) {
       folder,
     });
   } catch (error) {
+    // جزئیاتِ خام (پیامِ SDK، کلید، مسیر) فقط در لاگِ سرور می‌ماند و به کلاینت
+    // درز نمی‌کند — همان قراردادی که src/lib/apiError.js در بقیهٔ روت‌ها دارد.
     console.error("UPLOAD ERROR:", error);
-
-    const msg = error?.message;
     return NextResponse.json(
-      { error: msg ? `خطا در آپلود فایل: ${msg}` : "خطا در آپلود فایل" },
+      { error: "خطا در آپلود فایل؛ لطفاً دوباره تلاش کنید" },
       { status: 500 }
     );
   }

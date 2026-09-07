@@ -1,3 +1,4 @@
+import "base/models/registerModels";
 import connectToDB from "base/configs/db";
 import Product from "base/models/Product";
 import Category from "base/models/Category";
@@ -5,6 +6,11 @@ import Variant from "base/models/Variant";
 import { createSlug } from "base/utils/slugify";
 import { revalidateContent } from "@/lib/revalidate";
 import { makeComboKey } from "@/lib/variantKey";
+import {
+  validateProductVariants,
+  validateProductFields,
+} from "@/lib/productVariantValidation";
+import { createProductWithVariants } from "@/lib/createProductWithVariants";
 import { apiError, handleApiError } from "@/lib/apiError";
 import { normalizeTargetAudience } from "base/utils/targetAudience";
 import { resolveProductLimitedEdition } from "@/lib/limitedEditionRelations";
@@ -25,36 +31,6 @@ async function generateUniqueSKU(name) {
   }
 
   return sku;
-}
-
-/* ----------------------------------
-   Helper: Generate Variant Combinations (Cartesian Product)
----------------------------------- */
-function generateCombinations(options) {
-  const keys = Object.keys(options);
-  if (keys.length === 0) return [];
-  
-  const result = [];
-  function helper(index, currentCombo) {
-    if (index === keys.length) {
-      result.push({ ...currentCombo });
-      return;
-    }
-    const key = keys[index];
-    const values = options[key];
-    
-    if (Array.isArray(values) && values.length > 0) {
-      for (const val of values) {
-        currentCombo[key] = val;
-        helper(index + 1, currentCombo);
-      }
-    } else {
-      helper(index + 1, currentCombo);
-    }
-  }
-  
-  helper(0, {});
-  return result;
 }
 
 /* ----------------------------------
@@ -146,6 +122,13 @@ export async function POST(req) {
       });
     }
 
+    const variantValidation = validateProductVariants(
+      foundCategory.variantAttributes, variantOptions, selectedCombos,
+    );
+    if (variantValidation.error) {
+      return apiError(variantValidation.error, 400, { fieldErrors: variantValidation.fieldErrors });
+    }
+
     // تبدیل تایتل‌های انتخاب‌شده (از AI یا انتخاب دستی ادمین) به شناسه‌ی واقعیِ آیتم در دسته‌بندی
     let resolvedCustomTabItemIds = [];
     if (Array.isArray(customTabItems) && customTabItems.length > 0) {
@@ -160,33 +143,22 @@ export async function POST(req) {
     }
 
     /* -------------------------------
-        Validate Attributes & Tech Stats
+        Validate Base Price, Attributes & Tech Stats
      ------------------------------- */
-    const allowedAttrs = foundCategory.attributes.map(a => a.name);
-    if (attributes) {
-      for (const key of Object.keys(attributes)) {
-        if (!allowedAttrs.includes(key)) {
-          return apiError(`ویژگی «${key}» در این دسته‌بندی مجاز نیست`, 400);
-        }
-      }
-      for (const attr of foundCategory.attributes) {
-        if (attr.required && (attributes[attr.name] === undefined || attributes[attr.name] === null)) {
-          return Response.json({ error: `ویژگی "${attr.label}" را وارد کنید` }, { status: 400 });
-        }
-      }
-    }
-
-    const allowedStats = foundCategory.technicalStats ? foundCategory.technicalStats.map(s => s.name) : [];
-    if (technicalStats) {
-      for (const key of Object.keys(technicalStats)) {
-        if (!allowedStats.includes(key)) {
-          return apiError(`شاخص فنی «${key}» در این دسته تعریف نشده است`, 400);
-        }
-        const val = technicalStats[key];
-        if (isNaN(val) || val < 0 || val > 100) {
-           console.warn(`Value for ${key} is not a standard score (0-100): ${val}`);
-        }
-      }
+    // مشترک با روتِ ویرایش (src/lib/productVariantValidation.js). پیش‌تر این
+    // بررسی‌ها فقط اینجا و به‌صورت درون‌خطی بودند، پس ویرایش هیچ‌کدامشان را
+    // نداشت. سه نشتیِ قبلی هم بسته شد: نیامدنِ کلِ `attributes` بررسیِ ویژگیِ
+    // الزامی را دور می‌زد، رشتهٔ خالی به‌جای مقدار قبول می‌شد، و شاخصِ فنیِ
+    // خارج از بازه فقط console.warn می‌گرفت و ذخیره می‌شد.
+    const fieldValidation = validateProductFields(foundCategory, {
+      attributes: attributes || {},
+      technicalStats: technicalStats || {},
+      basePrice,
+    });
+    if (fieldValidation.error) {
+      return apiError(fieldValidation.error, 400, {
+        fieldErrors: fieldValidation.fieldErrors,
+      });
     }
 
     /* -------------------------------
@@ -214,7 +186,7 @@ export async function POST(req) {
     /* -------------------------------
         Create Product
      ------------------------------- */
-    const product = await Product.create({
+    const productData = {
       name,
       shortDescription,
       longDescription,
@@ -237,55 +209,18 @@ export async function POST(req) {
       label: label || "none",
       targetAudience: normalizedTargetAudience,
       isActive: isActive !== undefined ? isActive : true, // ✨ اضافه شد: اگر ارسال نشود به صورت پیش‌فرض true خواهد بود
+    };
+
+    const variants = variantValidation.combinations.map((combo) => {
+      const detail = variantDetails?.[makeComboKey(combo)];
+      return {
+        categoryId: category,
+        attributes: combo,
+        price: detail?.price ? Number(detail.price) : Number(basePrice) || 0,
+        images: Array.isArray(detail?.images) ? detail.images : [],
+      };
     });
-
-    /* -------------------------------
-        Generate & Create Variants
-     ------------------------------- */
-    if (variantOptions && Object.keys(variantOptions).length > 0) {
-      const allCombinations = generateCombinations(variantOptions);
-      // اگر لیست انتخاب‌شده ارسال شده باشد فقط همان ترکیب‌ها ساخته می‌شوند؛
-      // در غیر این صورت همه‌ی ترکیب‌ها (سازگاری با کلاینت‌های قدیمی)
-      const selectedSet = Array.isArray(selectedCombos) ? new Set(selectedCombos) : null;
-      const combinations = selectedSet
-        ? allCombinations.filter((c) => selectedSet.has(makeComboKey(c)))
-        : allCombinations;
-
-      if (combinations.length > 0) {
-        const variantPromises = combinations.map(async (combo, index) => {
-          const variantSku = `${product.sku}-V${index + 1}`;
-
-          let specificImages = [];
-          let specificPrice = Number(basePrice) || 0;
-
-          if (variantDetails) {
-            const matchedDetail = variantDetails[makeComboKey(combo)] || null;
-
-            if (matchedDetail) {
-              if (matchedDetail.price) specificPrice = Number(matchedDetail.price);
-              if (Array.isArray(matchedDetail.images) && matchedDetail.images.length > 0) {
-                // بدون rename — آدرس‌های آپلودشده مستقیماً استفاده می‌شوند
-                specificImages = matchedDetail.images;
-              }
-            }
-          }
-          return await Variant.create({
-            productId: product._id,
-            categoryId: category,
-            sku: variantSku,
-            attributes: combo,
-            price: specificPrice,
-            images: specificImages,
-          });
-        });
-
-        const createdVariants = await Promise.all(variantPromises);
-        
-        const variantIds = createdVariants.map(v => v._id);
-        product.variants = variantIds;
-        await product.save();
-      }
-    }
+    const product = await createProductWithVariants({ Product, Variant, productData, variants });
 
     // باطل‌سازی کش محتوا تا محصول جدید بلافاصله در صفحات نمایش داده شود
     revalidateContent(["products", "navbar"]);

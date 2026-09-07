@@ -15,6 +15,7 @@ import { NextResponse } from "next/server";
 
 // نامِ فیلدِ مدل → برچسبِ فارسی برای پیام‌های خطا
 const FIELD_LABELS = {
+  _id: "شناسه",
   name: "نام",
   title: "عنوان",
   slug: "اسلاگ (نشانی)",
@@ -44,11 +45,19 @@ const FIELD_LABELS = {
   attributes: "ویژگی‌ها",
   variantAttributes: "ویژگی‌های متغیر",
   technicalStats: "شاخص‌های فنی",
+  customTabItems: "گزینه‌های تب اختصاصی",
+  variants: "واریانت‌ها",
+  images: "تصاویر",
   targetAudience: "مخاطب هدف",
 };
 
 function labelFor(field) {
-  return FIELD_LABELS[field] || field;
+  const parts = String(field || '').split('.');
+  const meaningful = parts.filter((part) => !/^\d+$/.test(part));
+  const name = meaningful.at(-1) || 'فیلد';
+  const label = FIELD_LABELS[name] || FIELD_LABELS[meaningful[0]] || name;
+  const index = parts.at(-1);
+  return /^\d+$/.test(index) ? `${label} (گزینهٔ ${Number(index) + 1})` : label;
 }
 
 function enumValidationMessage(label, validationError) {
@@ -96,7 +105,7 @@ export function handleApiError(error, fallback = "خطای غیرمنتظره‌
   if (error?.name === "ValidationError" && error.errors) {
     const fieldErrors = {};
     for (const [path, e] of Object.entries(error.errors)) {
-      const label = labelFor(path.split(".").pop());
+      const label = labelFor(path);
       // پیامِ اختصاصیِ اسکیمای Mongoose (اگر تعریف شده) وگرنه پیامِ عمومی
       fieldErrors[path] =
         e?.kind === "required"
@@ -134,6 +143,20 @@ export function handleApiError(error, fallback = "خطای غیرمنتظره‌
   // ۴) بدنه‌ی JSON خراب
   if (error instanceof SyntaxError) {
     return apiError("داده‌های ارسالی نامعتبر است", 400);
+  }
+
+  // ۴٫۵) دیتابیسِ بدونِ replica set — ساخت/ویرایشِ محصول تراکنشی است، پس روی
+  // یک mongodِ تک‌نودی همیشه شکست می‌خورد. پیامِ عمومیِ ۵۰۰ اینجا گمراه‌کننده
+  // است چون به‌نظر باگ می‌آید، در حالی که مشکل پیکربندیِ اتصال است.
+  if (
+    error?.code === 20 ||
+    /Transaction numbers are only allowed on a replica set/i.test(error?.message || "")
+  ) {
+    console.error("[apiError:no-transactions]", error);
+    return apiError(
+      "این عملیات نیازمندِ دیتابیسِ replica set است؛ رشته‌ی اتصالِ MongoDB باید به یک replica set (یا Atlas) اشاره کند",
+      500,
+    );
   }
 
   // ۵) خطای پیش‌بینی‌نشده — فقط سمت سرور لاگ می‌شود، جزئیات درز نمی‌کند

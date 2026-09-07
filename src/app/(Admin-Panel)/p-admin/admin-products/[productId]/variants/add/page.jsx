@@ -42,9 +42,11 @@ export default function AddVariant() {
           const catData = await catRes.json();
           if (catRes.ok) {
             setCategory(catData.category);
-            // Initialize attributes based on category
+            // ویژگی‌های واریانت در variantAttributes تعریف می‌شوند؛ attributes
+            // مشخصاتِ ثابتِ خودِ محصول است. این فرم قبلاً فهرستِ اشتباه را
+            // می‌ساخت، پس هر ذخیره با خطای اعتبارسنجیِ مدلِ Variant رد می‌شد.
             const initialAttributes = {};
-            catData.category.attributes?.forEach(attr => {
+            catData.category.variantAttributes?.forEach(attr => {
               if (attr.required) {
                 initialAttributes[attr.name] = '';
               }
@@ -105,7 +107,7 @@ export default function AddVariant() {
     );
   }
 
-  const categoryAttributes = category?.attributes || [];
+  const categoryAttributes = category?.variantAttributes || [];
 
   return (
     <AdminLayout title={`افزودن واریانت - ${product?.name || ''}`}>
@@ -149,7 +151,9 @@ export default function AddVariant() {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   {categoryAttributes.map((attr) => (
                     <div key={attr.name}>
-                      {attr.type === 'select' && attr.options ? (
+                      {/* اسکیمای دسته uiType دارد نه type؛ با `attr.type` هیچ‌وقت
+                          دراپ‌داون ساخته نمی‌شد و همه‌چیز ورودیِ متنی می‌شد. */}
+                      {attr.uiType === 'dropdown' && attr.options?.length ? (
                         <select
                           className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors bg-white text-gray-900"
                           value={formData.attributes[attr.name] || ''}
@@ -175,7 +179,7 @@ export default function AddVariant() {
                         <Input
                           label={attr.label}
                           name={attr.name}
-                          type={attr.type === 'number' ? 'number' : 'text'}
+                          type={attr.uiType === 'number-input' ? 'number' : 'text'}
                           value={formData.attributes[attr.name] || ''}
                           onChange={(e) =>
                             setFormData((prev) => ({

@@ -5,6 +5,7 @@ import { toast } from "react-toastify";
 import Swal from "sweetalert2";
 import ProductCreateForm from "./ProductCreateForm";
 import { useAdminPermissions } from "@/components/admin/AdminPermissionProvider";
+import { getApiErrorMessage } from "@/lib/apiClientError";
 import { normalizeTargetAudience } from "base/utils/targetAudience";
 
 const steps = [
@@ -40,8 +41,8 @@ export default function AddProductToCategory({ categoryId }) {
         body: JSON.stringify({ categoryId, rawContent }),
       });
 
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error);
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(getApiErrorMessage(data, "خطا در ساخت پرامپت"));
 
       setAiPrompt(data.draft);
       setStep(2);
@@ -183,7 +184,7 @@ export default function AddProductToCategory({ categoryId }) {
 
       {/* FINAL FORM */}
       {parsedProduct && (
-        <ProductCreateForm initialData={parsedProduct} />
+        <ProductCreateForm categoryId={categoryId} initialData={parsedProduct} />
       )}
     </div>
   );

@@ -86,7 +86,7 @@ VariantSchema.pre("save", function () {
 // -----------------------------------------------
 VariantSchema.pre("validate", async function () {
   const Category = mongoose.model("Category");
-  const category = await Category.findById(this.categoryId);
+  const category = await Category.findById(this.categoryId).session(this.$session());
 
   if (!category) {
     throwVariantValidationError(this, "دسته‌بندی واریانت یافت نشد؛ دسته‌بندی محصول را دوباره انتخاب کنید");
@@ -94,12 +94,12 @@ VariantSchema.pre("validate", async function () {
 
   // فقط ویژگی‌هایی که در بخش variantAttributes تعریف شده‌اند مجاز هستند
   const allowedVariantKeys = category.variantAttributes.map(a => a.name);
-  const currentVariantKeys = Array.from(this.attributes.keys());
+  const currentVariantKeys = Array.from(this.attributes?.keys() || []);
 
   // بررسی فیلدهای اجباری
   const missingRequired = category.variantAttributes
     .filter(a => a.required)
-    .filter(a => !currentVariantKeys.includes(a.name));
+    .filter(a => !currentVariantKeys.includes(a.name) || !String(this.attributes.get(a.name) ?? '').trim());
 
   if (missingRequired.length > 0) {
     throwVariantValidationError(

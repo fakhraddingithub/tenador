@@ -5,6 +5,9 @@ import Variant from "base/models/Variant";
 import Category from "base/models/Category";
 import requireAdminPermission from "@/lib/requireAdminPermission";
 import { revalidateContent } from "@/lib/revalidate";
+import { apiError, handleApiError } from "@/lib/apiError";
+import { validateProductVariants } from "@/lib/productVariantValidation";
+import { makeComboKey } from "@/lib/variantKey";
 
 // ⚠️ در Next 16 مقدارِ params یک Promise است، نه تابع. `await params()` پیش از
 // هر کاری TypeError می‌داد و همین باگ، نبودِ احراز هویت را پنهان کرده بود.
@@ -27,10 +30,7 @@ export async function GET(req, { params }) {
       variants,
     });
   } catch (error) {
-    return NextResponse.json(
-      { error: error.message },
-      { status: 500 }
-    );
+    return handleApiError(error, "خطا در دریافت واریانت‌ها");
   }
 }
 
@@ -38,75 +38,78 @@ export async function POST(req, { params }) {
   const { denied } = await requireAdminPermission("variants.edit");
   if (denied) return denied;
 
-  await connectToDB();
-
   try {
+    await connectToDB();
+
     const resolvedParams = await params;
     const productId = resolvedParams.productId || resolvedParams.id;
     const body = await req.json();
 
-    const { sku, price, images = [], attributes } = body;
+    const { sku, price, images, attributes } = body;
 
-    if (!sku || !attributes) {
-      return NextResponse.json(
-        { error: "sku و attributes الزامی هستند" },
-        { status: 400 }
-      );
+    if (!sku || !attributes || typeof attributes !== "object" || Array.isArray(attributes)) {
+      return apiError("«کد کالا (SKU)» و ویژگی‌های واریانت الزامی هستند", 400);
     }
 
     // پیدا کردن محصول
     const product = await Product.findById(productId).lean();
     if (!product) {
-      return NextResponse.json(
-        { error: "محصول پیدا نشد" },
-        { status: 404 }
-      );
+      return apiError("محصول پیدا نشد", 404);
+    }
+
+    // پیدا کردن کتگوری محصول
+    const category = await Category.findById(product.category).lean();
+    if (!category) {
+      return apiError("دسته‌بندی محصول یافت نشد", 404);
+    }
+
+    // ویژگی‌های واریانت با category.variantAttributes سنجیده می‌شوند، نه با
+    // category.attributes. بررسیِ قبلی به فهرستِ اشتباه (ویژگی‌های ثابتِ محصول)
+    // نگاه می‌کرد و صفحهٔ افزودنِ واریانت هم فیلدهای همان فهرست را می‌ساخت — پس
+    // هوکِ pre("validate") مدلِ Variant هر ذخیره را رد می‌کرد و این روت خطا را
+    // به ۵۰۰ «مشکل سمت سرور» تبدیل می‌کرد. حالا همان اعتبارسنجیِ مشترکِ روت‌های
+    // ساخت/ویرایشِ محصول اجرا می‌شود (هر ویژگی یک مقدار دارد).
+    const variantValidation = validateProductVariants(
+      category.variantAttributes,
+      Object.fromEntries(Object.entries(attributes).map(([key, value]) => [key, [value]])),
+    );
+    if (variantValidation.error) {
+      return apiError(variantValidation.error, 400, {
+        fieldErrors: variantValidation.fieldErrors,
+      });
+    }
+
+    // ترکیبِ ویژگی‌ها هویتِ واریانت است (src/lib/variantReconcile.js). دو واریانت
+    // با یک ترکیب یعنی دادهٔ خراب: اولین ذخیرهٔ بعدیِ محصول دومی را حذف می‌کند.
+    const comboKey = makeComboKey(attributes);
+    const siblings = await Variant.find({ productId }).select("attributes").lean();
+    if (siblings.some((variant) => makeComboKey(variant.attributes || {}) === comboKey)) {
+      return apiError("واریانتی با همین ترکیبِ ویژگی‌ها از قبل برای این محصول وجود دارد", 409);
     }
 
     // قیمت ۰ یا خالی → قیمت پایه محصول
     const finalPrice = Number(price) || Number(product.basePrice) || 0;
 
-    // پیدا کردن کتگوری محصول
-    const category = await Category.findById(product.category).lean();
-    if (!category) {
-      return NextResponse.json(
-        { error: "کتگوری محصول یافت نشد" },
-        { status: 404 }
+    // ساختِ واریانت و وصل‌کردنش به محصول در یک تراکنش — وگرنه شکستِ مرحلهٔ دوم
+    // یک واریانتِ بی‌صاحب جا می‌گذارد.
+    let variant;
+    await Product.db.transaction(async (session) => {
+      variant = new Variant({
+        productId,
+        categoryId: category._id,
+        sku,
+        price: finalPrice,
+        images: Array.isArray(images) ? images : [],
+        attributes,
+      });
+      variant.$session(session);
+      await variant.save();
+
+      await Product.updateOne(
+        { _id: productId },
+        { $push: { variants: variant._id } },
+        { session },
       );
-    }
-
-    // ولیدیشن داینامیک attributes طبق Category.attributes
-    const requiredAttrs = category.attributes
-      .filter((a) => a.required)
-      .map((a) => a.name);
-
-    const providedAttrs = Object.keys(attributes);
-
-    const missing = requiredAttrs.filter((key) => !providedAttrs.includes(key));
-
-    if (missing.length > 0) {
-      return NextResponse.json(
-        {
-          error: "attributes ناقص است",
-          missing,
-        },
-        { status: 400 }
-      );
-    }
-
-    // ساخت واریانت
-    const variant = await Variant.create({
-      productId,
-      categoryId: category._id,
-      sku,
-      price: finalPrice,
-      images,
-      attributes,
-    });
-
-    // اضافه کردن واریانت به محصول
-    await Product.findByIdAndUpdate(productId, {
-      $push: { variants: variant._id },
     });
 
     // صفحه‌ی محصول واریانت‌ها را از کشِ داده می‌خواند
@@ -120,10 +123,6 @@ export async function POST(req, { params }) {
       { status: 201 }
     );
   } catch (err) {
-    console.log(err)
-    return NextResponse.json(
-      { error: "مشکل سمت سرور", detail: err.message },
-      { status: 500 }
-    );
+    return handleApiError(err, "خطا در ایجاد واریانت");
   }
 }

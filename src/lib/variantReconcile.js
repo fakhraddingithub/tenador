@@ -198,9 +198,13 @@ export function planVariantReconciliation({
  * حذف عمداً اینجا نیست — باید پس از ذخیرهٔ موفقِ خودِ محصول انجام شود تا یک
  * خطای میانی هرگز محصول را بی‌واریانت رها نکند.
  *
+ * `session` اختیاری است ولی روتِ ویرایش همیشه می‌فرستدش: بدونِ تراکنش، شکستِ
+ * `product.save()` پس از ساختِ واریانت‌های تازه، آن‌ها را بی‌صاحب در دیتابیس
+ * جا می‌گذاشت (نه در product.variants بودند، نه حذف می‌شدند).
+ *
  * @returns {Map<string, any>} نگاشتِ comboKey → _id برای چیدنِ product.variants
  */
-export async function applyVariantWrites({ Variant, productId, plan }) {
+export async function applyVariantWrites({ Variant, productId, plan, session = null }) {
   const idByComboKey = new Map();
   if (!plan) return idByComboKey;
 
@@ -217,6 +221,9 @@ export async function applyVariantWrites({ Variant, productId, plan }) {
       keep.doc.price = keep.price;
       keep.doc.images = keep.images;
       if (keep.categoryId) keep.doc.categoryId = keep.categoryId;
+      // پیش از save ست می‌شود چون هوکِ pre("validate") دسته را با
+      // `this.$session()` می‌خواند — بیرونِ تراکنش، سندِ تازه را نمی‌بیند.
+      if (session) keep.doc.$session(session);
       await keep.doc.save();
       continue;
     }
@@ -225,11 +232,11 @@ export async function applyVariantWrites({ Variant, productId, plan }) {
     // دستهٔ الزامی هرگز با payloadِ بدونِ دسته خالی نمی‌شود
     if (keep.categoryId) changes.categoryId = keep.categoryId;
 
-    await Variant.updateOne({ _id: keep.id }, { $set: changes });
+    await Variant.updateOne({ _id: keep.id }, { $set: changes }, session ? { session } : {});
   }
 
   for (const create of plan.creates) {
-    const variant = await Variant.create({
+    const variant = new Variant({
       productId,
       categoryId: create.categoryId,
       attributes: create.attributes,
@@ -237,6 +244,8 @@ export async function applyVariantWrites({ Variant, productId, plan }) {
       images: create.images,
       sku: create.sku,
     });
+    if (session) variant.$session(session);
+    await variant.save();
     idByComboKey.set(create.comboKey, variant._id);
   }
 
@@ -244,11 +253,12 @@ export async function applyVariantWrites({ Variant, productId, plan }) {
 }
 
 /** حذفِ ترکیب‌هایی که ادمین واقعاً برداشته — فقط پس از ذخیرهٔ محصول */
-export async function removePlannedVariants({ Variant, plan }) {
+export async function removePlannedVariants({ Variant, plan, session = null }) {
   if (!plan?.removes.length) return 0;
-  const result = await Variant.deleteMany({
-    _id: { $in: plan.removes.map((r) => r.id) },
-  });
+  const result = await Variant.deleteMany(
+    { _id: { $in: plan.removes.map((r) => r.id) } },
+    session ? { session } : {},
+  );
   return result?.deletedCount ?? 0;
 }
 

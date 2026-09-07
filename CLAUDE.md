@@ -9,6 +9,7 @@ npm run dev          # Start Next.js dev server
 npm run build        # Production build
 npm run lint         # ESLint (next/core-web-vitals)
 npm test             # Jest test suite (node env; tests/setup.js spins up mongodb-memory-server)
+npm run test:product-creation                # Product create + edit end to end (needs a replica set)
 npm test -- tests/paymentWorkflow.test.js   # Run a single test file
 npm test -- -t "name of test"                # Run tests matching a name
 npm run test:sender-address                  # Sender-address validation (print flow)
@@ -133,6 +134,58 @@ Note that a *deliberate* combination removal still deletes the variant and so st
 why `order.items[].variantSnapshot` exists (written at checkout since 2026-06-25, read by `VariantSummary` with a
 fallback to `variant.attributes`). Orders placed before that date have no snapshot and display blank if their variant
 was deleted — see the two `*variant*` scripts above.
+
+### Product create/edit: one validator, one transaction
+
+`POST /api/product/create` and `PUT /api/product/[productId]` must agree. They did not: **the edit route
+validated nothing**, so every guard on create could be walked past by saving an existing product instead —
+an edit could store a category id that does not exist, an attribute the category never defined, a negative
+price, a 5000-out-of-100 radar stat, and (the bad one) it would delete **every** variant of a product whose
+category requires them and answer `200`, dangling exactly the order and warehouse references
+`variantReconcile.js` exists to protect.
+
+Both routes now go through the same two functions in **`src/lib/productVariantValidation.js`**:
+
+| function | checks |
+|---|---|
+| `validateProductVariants` | variant keys exist on the category, values are non-empty strings/numbers, no leading/trailing spaces, required dimensions have a value, at least one combination is selected |
+| `validateProductFields` | `basePrice` ≥ 0 and numeric, `attributes` ⊆ `category.attributes` with required ones non-blank, `technicalStats` ⊆ `category.technicalStats` and inside each stat's `min`/`max` |
+
+Rules baked in, each of them a bug that actually shipped:
+
+- **`undefined` ≠ `{}` for every field, not just `variantOptions`.** PUT used to be an unconditional full
+  replace: any key missing from the payload (`tag`, `gallery`, `color`, `attributes`, `customTabItems`,
+  `variantMeta`) was silently blanked. `const sent = (key) => body[key] !== undefined` now gates each
+  assignment. `validateProductFields` follows the same contract — an `undefined` value is skipped, `{}` is
+  validated.
+- **The whole write is one transaction.** Variant writes intentionally happen *before* `product.save()` and
+  deletes *after*, so the product is never momentarily variant-less. But without a transaction a failing
+  `save()` left the newly created variants in the database — not in `product.variants`, not deleted, and
+  visible on the product's variants page. `applyVariantWrites`/`removePlannedVariants` take a `session`;
+  `keep.doc.$session(session)` is set **before** `save()` because the `pre("validate")` hook reads the
+  category through `this.$session()`.
+- **`allowEmpty` is the difference between "delete the last variant" and "never had one".** Enforcing the
+  required-variant rule on every save would lock the admin out of legacy products created before that
+  validation existed. PUT passes `allowEmpty: (await Variant.countDocuments({productId})) === 0` — counted
+  from the Variant documents, not `product.variants`, which can lag.
+- **Padded variant values are rejected, never trimmed.** Trimming would change the combination key, and the
+  key *is* the variant's identity — the existing variant would be deleted and rebuilt with a fresh `_id`.
+- The effective **category** and **basePrice** come from the product when the payload omits them; passing the
+  raw payload value used to zero every variant price on a request without `basePrice`.
+
+Both admin forms run the same `validateProductVariants` client-side and now render the server's `fieldErrors`
+on the fields themselves (the edit page opens every collapsed section when one arrives, otherwise the message
+points at a field nobody can see). Submitting is blocked while an `ImageUpload` is still uploading.
+
+`POST /api/product/[productId]/variants` (the standalone "add variant" screen) validated against
+`category.attributes` — the *fixed product* attributes — while `models/Variant.js` validates against
+`variantAttributes`, so every save was rejected by the model and returned as a generic `500`. Both the route
+and the page read `variantAttributes` now, duplicate combinations are refused with a `409`, and the route
+reports through `handleApiError` like everything else.
+
+```bash
+npm run test:product-creation   # create + edit, real replica set, real schemas and hooks
+```
 
 ### Order EUR pricing (independent of Toman)
 

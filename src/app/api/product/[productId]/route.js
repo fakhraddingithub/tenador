@@ -3,7 +3,6 @@
  */
 
 import { NextResponse } from "next/server";
-import { cookies } from "next/headers";
 
 import connectToDB from "base/configs/db";
 
@@ -12,16 +11,19 @@ import Category from "base/models/Category";
 import Variant from "base/models/Variant";
 import "base/models/LimitedEdition";
 
-import { verifyToken } from "base/utils/auth";
+import { resolveAdminContext } from "@/lib/adminContext";
 import { revalidateContent } from "@/lib/revalidate";
-import { makeComboKey } from "@/lib/variantKey";
 import {
   planVariantReconciliation,
   applyVariantWrites,
   removePlannedVariants,
   orderedVariantIds,
 } from "@/lib/variantReconcile";
-import { handleApiError } from "@/lib/apiError";
+import {
+  validateProductVariants,
+  validateProductFields,
+} from "@/lib/productVariantValidation";
+import { apiError, handleApiError } from "@/lib/apiError";
 import { normalizeTargetAudience } from "base/utils/targetAudience";
 import { resolveProductLimitedEdition } from "@/lib/limitedEditionRelations";
 import requireAdminPermission from "@/lib/requireAdminPermission";
@@ -30,13 +32,21 @@ import requireAdminPermission from "@/lib/requireAdminPermission";
 // Helpers
 // --------------------------------------------------
 
-async function getUserFromToken() {
-  const cookieStore = await cookies();
-  const token = cookieStore.get("accessToken")?.value;
-
-  if (!token) return null;
-
-  return verifyToken(token) || null;
+/**
+ * محصولِ غیرفعال فقط برای ادمین قابل مشاهده است.
+ *
+ * پیش‌تر اینجا فقط «توکنِ معتبر داری؟» بررسی می‌شد، یعنی هر مشتریِ ثبت‌نام‌کرده
+ * می‌توانست محصولِ منتشرنشده را با تمامِ جزئیاتش بخواند. از `resolveAdminContext`
+ * استفاده می‌شود و نه `requireAdminPermission`، چون این یک روتِ عمومی است و
+ * نباید برای هر بازدیدِ عادی از یک محصولِ غیرفعال، رکوردِ «ردِ دسترسی» بنویسد.
+ */
+async function isAdminViewer() {
+  try {
+    const ctx = await resolveAdminContext();
+    return Boolean(ctx?.isAdmin);
+  } catch {
+    return false;
+  }
 }
 
 // --------------------------------------------------
@@ -76,15 +86,12 @@ export async function GET(request, { params }) {
       );
     }
 
-    // ✨ اضافه شد: اگر محصول غیرفعال بود، فقط به ادمین (کاربر لاگین شده) اجازه مشاهده بده
-    if (product.isActive === false) {
-      const user = await getUserFromToken();
-      if (!user) {
-        return NextResponse.json(
-          { error: "این محصول غیرفعال شده است و امکان مشاهده آن وجود ندارد" },
-          { status: 404 }
-        );
-      }
+    // محصول غیرفعال فقط برای ادمین قابل مشاهده است
+    if (product.isActive === false && !(await isAdminViewer())) {
+      return NextResponse.json(
+        { error: "این محصول غیرفعال شده است و امکان مشاهده آن وجود ندارد" },
+        { status: 404 }
+      );
     }
 
     return NextResponse.json(
@@ -110,10 +117,7 @@ export async function PUT(request, { params }) {
     const { productId } = await params;
 
     if (!productId) {
-      return NextResponse.json(
-        { error: "شناسه محصول الزامی است" },
-        { status: 400 }
-      );
+      return apiError("شناسه محصول الزامی است", 400);
     }
 
     await connectToDB();
@@ -147,38 +151,79 @@ export async function PUT(request, { params }) {
       variantMeta, // متادیتای سطحِ مقدار (تصاویرِ مشترک هر مقدار و ...)
     } = body;
 
-    const normalizedTargetAudience = normalizeTargetAudience(targetAudience);
-    if (targetAudience != null && targetAudience !== "" && !normalizedTargetAudience) {
-      return NextResponse.json(
-        {
-          error: "«مخاطب هدف» نامعتبر است",
-          fieldErrors: { targetAudience: "مخاطب هدف انتخاب‌شده معتبر نیست" },
-        },
-        { status: 400 },
-      );
-    }
-
-    const resolvedLimitedEdition = await resolveProductLimitedEdition(
-      limitedEdition,
-      brand,
-    );
-    if (resolvedLimitedEdition.error) {
-      return NextResponse.json(
-        {
-          error: resolvedLimitedEdition.error,
-          fieldErrors: { limitedEdition: resolvedLimitedEdition.error },
-        },
-        { status: resolvedLimitedEdition.status },
-      );
-    }
+    // فیلدی که در payload نیامده یعنی «دست نخورد»، نه «خالی کن». پیش‌تر PUT یک
+    // جایگزینیِ کاملِ بی‌قیدوشرط بود: هر فیلدِ نیامده (tag، gallery، color،
+    // attributes، customTabItems، variantMeta ...) بی‌صدا پاک می‌شد. همان
+    // قراردادِ «نیامده ≠ خالی» که variantOptions از قبل داشت، حالا برای همه.
+    const sent = (key) => body[key] !== undefined;
 
     const product = await Product.findById(productId);
 
     if (!product) {
-      return NextResponse.json(
-        { error: "محصول یافت نشد" },
-        { status: 404 }
+      return apiError("محصول یافت نشد", 404);
+    }
+
+    // --------------------------------------------------
+    // دسته‌بندی — مرجعِ همهٔ اعتبارسنجی‌های بعدی
+    // --------------------------------------------------
+    // پیش‌تر وجودِ دسته هیچ‌جا بررسی نمی‌شد: یک ObjectIdِ معتبر ولی ناموجود با
+    // وضعیت ۲۰۰ ذخیره می‌شد و محصول از همهٔ فهرست‌های دسته و صفحهٔ
+    // /[sport]/[category] ناپدید می‌شد. تنها وقتی خطا می‌داد که اتفاقاً یک
+    // واریانت هم نوشته می‌شد و هوکِ Variant سرِ راه بود — با پیامی که از
+    // «واریانت» حرف می‌زد، نه از دسته‌بندیِ محصول.
+    const categoryId = sent("category") ? category : product.category;
+    if (!categoryId) {
+      return apiError("«دسته‌بندی» الزامی است", 400, {
+        fieldErrors: { category: "«دسته‌بندی» الزامی است" },
+      });
+    }
+
+    const foundCategory = await Category.findById(categoryId);
+    if (!foundCategory) {
+      return apiError("دسته‌بندی انتخاب‌شده یافت نشد", 404, {
+        fieldErrors: { category: "دسته‌بندی انتخاب‌شده یافت نشد" },
+      });
+    }
+
+    const normalizedTargetAudience = normalizeTargetAudience(targetAudience);
+    if (
+      sent("targetAudience") &&
+      targetAudience != null &&
+      targetAudience !== "" &&
+      !normalizedTargetAudience
+    ) {
+      return apiError("«مخاطب هدف» نامعتبر است", 400, {
+        fieldErrors: { targetAudience: "مخاطب هدف انتخاب‌شده معتبر نیست" },
+      });
+    }
+
+    // برندِ مؤثر: اگر payload برند نداده، برندِ فعلیِ محصول ملاکِ بررسیِ
+    // «این لیمیتد ادیشن مالِ همین برند است؟» است.
+    let resolvedLimitedEdition = null;
+    if (sent("limitedEdition")) {
+      resolvedLimitedEdition = await resolveProductLimitedEdition(
+        limitedEdition,
+        sent("brand") ? brand : product.brand,
       );
+      if (resolvedLimitedEdition.error) {
+        return apiError(resolvedLimitedEdition.error, resolvedLimitedEdition.status, {
+          fieldErrors: { limitedEdition: resolvedLimitedEdition.error },
+        });
+      }
+    }
+
+    // قیمت پایه / ویژگی‌های ثابت / شاخص‌های فنی — همان اعتبارسنجی‌ای که روتِ
+    // ساخت اجرا می‌کرد و ویرایش اصلاً نداشت: ویژگیِ تعریف‌نشده در دسته و شاخصِ
+    // خارج از بازه (که نمودار رادار را می‌شکند) بی‌صدا ذخیره می‌شدند.
+    const fieldValidation = validateProductFields(foundCategory, {
+      attributes,
+      technicalStats,
+      basePrice,
+    });
+    if (fieldValidation.error) {
+      return apiError(fieldValidation.error, 400, {
+        fieldErrors: fieldValidation.fieldErrors,
+      });
     }
 
     // --------------------------------------------------
@@ -190,144 +235,166 @@ export async function PUT(request, { params }) {
     // می‌شد و اسکنِ بارکد روی سفارش با «این بارکد متعلق به واریانت دیگری از این
     // محصول است» رد می‌شد. حالا ترکیبِ ویژگی‌ها هویتِ واریانت است و فقط
     // تفاوت‌های واقعی نوشته می‌شوند. جزئیات در src/lib/variantReconcile.js.
-
-    function generateCombinations(options) {
-      const keys = Object.keys(options).filter(
-        (k) => Array.isArray(options[k]) && options[k].length > 0
-      );
-
-      if (!keys.length) return [];
-
-      const result = [];
-
-      function helper(index, current) {
-        if (index === keys.length) {
-          result.push({ ...current });
-          return;
-        }
-
-        const key = keys[index];
-
-        for (const val of options[key]) {
-          helper(index + 1, {
-            ...current,
-            [key]: val,
-          });
-        }
-      }
-
-      helper(0, {});
-
-      return result;
-    }
-
+    //
     // variantOptions ارسال‌نشده یعنی این درخواست کاری به واریانت‌ها ندارد و
-    // آرایهٔ واریانت‌های محصول باید دست‌نخورده بماند. پیش‌تر در این حالت آرایه
-    // خالی می‌شد ولی سندهای Variant حذف نمی‌شدند — یعنی واریانت‌ها بی‌صاحب
-    // رها می‌شدند. شیءِ خالی («{}») همچنان یعنی «هیچ واریانتی نمی‌خواهم».
+    // آرایهٔ واریانت‌های محصول باید دست‌نخورده بماند. شیءِ خالی («{}») همچنان
+    // یعنی «هیچ واریانتی نمی‌خواهم» — ولی حالا اگر دسته ویژگیِ واریانتِ الزامی
+    // داشته باشد رد می‌شود. تا پیش از این، ویرایش هیچ اعتبارسنجی‌ای روی
+    // واریانت‌ها نداشت: یک ذخیره با variantOptions خالی همهٔ واریانت‌های یک
+    // محصولِ الزاماً واریانت‌دار را با وضعیت ۲۰۰ حذف می‌کرد و ارجاع‌های سفارش و
+    // انبار را می‌شکست — در حالی که همان payload در روتِ ساخت ۴۰۰ می‌گرفت.
     const touchesVariants =
       variantOptions !== undefined &&
       variantOptions !== null &&
       typeof variantOptions === "object";
 
-    let variantPlan = null;
-
+    let combinations = [];
     if (touchesVariants) {
-      const allCombinations = generateCombinations(variantOptions);
-      // اگر لیست انتخاب‌شده ارسال شده باشد فقط همان ترکیب‌ها ساخته می‌شوند؛
-      // در غیر این صورت همه‌ی ترکیب‌ها (سازگاری با کلاینت‌های قدیمی)
-      const selectedSet = Array.isArray(selectedCombos) ? new Set(selectedCombos) : null;
-      const combinations = selectedSet
-        ? allCombinations.filter((c) => selectedSet.has(makeComboKey(c)))
-        : allCombinations;
-
-      // مرجعِ «واریانت‌های فعلی» خودِ سندهای Variant است، نه آرایهٔ
-      // product.variants — این‌طور واریانتِ جامانده از باگ‌های قبلی هم دوباره
-      // وصل می‌شود به‌جای این‌که برای همیشه بی‌صاحب بماند.
-      const existingVariants = await Variant.find({ productId: product._id });
-
-      variantPlan = planVariantReconciliation({
-        existing: existingVariants,
-        combinations,
-        variantDetails,
-        basePrice,
-        categoryId: category,
-        productId: String(product._id),
-      });
+      // «هیچ واریانتی» فقط وقتی پذیرفته می‌شود که محصول از قبل هم واریانتی
+      // نداشته باشد؛ آن‌وقت چیزی برای ازدست‌رفتن نیست. اگر واریانت دارد، خالی
+      // کردنِ فهرست یعنی حذفِ همان‌ها — همان چیزی که ارجاع‌های سفارش و انبار را
+      // می‌شکست. شمارش از روی سندهای Variant است نه product.variants، چون آن
+      // آرایه می‌تواند از باگ‌های قبلی عقب مانده باشد.
+      const existingVariantCount = await Variant.countDocuments({ productId: product._id });
+      const variantValidation = validateProductVariants(
+        foundCategory.variantAttributes,
+        variantOptions,
+        selectedCombos,
+        { allowEmpty: existingVariantCount === 0 },
+      );
+      if (variantValidation.error) {
+        return apiError(variantValidation.error, 400, {
+          fieldErrors: variantValidation.fieldErrors,
+        });
+      }
+      combinations = variantValidation.combinations;
     }
 
-    // ─── اجرای نقشه ───────────────────────────────────────────────
-    // ترتیب عمدی است: به‌روزرسانی و ساخت پیش از ذخیرهٔ محصول، و حذف پس از آن.
-    // تا وقتی وضعیت جدید ذخیره نشده هیچ واریانتی حذف نمی‌شود، پس یک خطای
-    // میانی هرگز محصول را بدونِ واریانت رها نمی‌کند.
-    const variantIdByComboKey = await applyVariantWrites({
-      Variant,
-      productId: product._id,
-      plan: variantPlan,
-    });
-
-    let resolvedCustomTabItemIds = [];
-    if (Array.isArray(customTabItems) && customTabItems.length > 0 && category) {
-      const targetCategory = await Category.findById(category).select("customTab").lean();
-      const categoryItems = targetCategory?.customTab?.items || [];
-      resolvedCustomTabItemIds = customTabItems
+    // تبدیل تایتل‌های انتخاب‌شده به شناسه‌ی واقعیِ آیتم در دسته‌بندی
+    let resolvedCustomTabItemIds = null;
+    if (sent("customTabItems")) {
+      const titles = Array.isArray(customTabItems) ? customTabItems : [];
+      const categoryItems = foundCategory.customTab?.items || [];
+      resolvedCustomTabItemIds = titles
         .map((title) => categoryItems.find((it) => it.title === title)?._id)
         .filter(Boolean);
+      const unmatchedCount = titles.length - resolvedCustomTabItemIds.length;
+      if (unmatchedCount > 0) {
+        console.warn(
+          `${unmatchedCount} customTabItems title(s) did not match any item in category "${foundCategory.title}" and were skipped.`,
+        );
+      }
     }
 
+    // قیمتِ پایهٔ مؤثر — fallbackِ قیمتِ واریانت‌ها. پیش‌تر مقدارِ خامِ payload
+    // پاس می‌شد، پس یک درخواستِ بدونِ basePrice قیمتِ همهٔ واریانت‌ها را صفر می‌کرد.
+    const effectiveBasePrice = sent("basePrice")
+      ? Number(basePrice) || 0
+      : product.basePrice;
+
     // --------------------------------------------------
-    // آپدیت محصول
+    // نوشتن — همه در یک تراکنش
     // --------------------------------------------------
+    // ترتیبِ داخلی همان قبلی است (به‌روزرسانی و ساخت پیش از ذخیرهٔ محصول، حذف
+    // پس از آن) تا محصول هیچ لحظه‌ای بدونِ واریانت نماند. تفاوت این است که حالا
+    // کلِ دنباله اتمیک است: پیش‌تر شکستِ product.save() واریانت‌های تازه‌ساخته را
+    // بی‌صاحب در دیتابیس جا می‌گذاشت — نه در product.variants بودند، نه حذف
+    // می‌شدند — و در صفحهٔ واریانت‌های محصول به‌عنوان واریانتِ واقعی دیده می‌شدند.
+    let missing = false;
 
-    product.name = name || "";
-    product.shortDescription = shortDescription || "";
-    product.longDescription = longDescription || "";
-    product.color = color || "";
-    product.basePrice = Number(basePrice) || 0;
-    product.category = category || null;
-    product.tag = Array.isArray(tag) ? tag : [];
-    product.mainImage = mainImage || "";
-    product.gallery = Array.isArray(gallery) ? gallery : [];
-    product.brand = brand || null;
-    product.serie = serie || null;
-    product.limitedEdition = resolvedLimitedEdition.value;
-    product.sport = sport || null;
-    product.athlete = Array.isArray(athlete) ? athlete : [];
-    
-    product.attributes =
-      attributes && typeof attributes === "object" ? attributes : {};
+    await Product.db.transaction(async (session) => {
+      const doc = await Product.findById(productId).session(session);
+      // در تلاشِ دوبارهٔ تراکنش هم درست می‌ماند چون هر بار از نو مقدار می‌گیرد
+      missing = !doc;
+      if (missing) return;
 
-    product.technicalStats =
-      technicalStats && typeof technicalStats === "object" ? technicalStats : {};
+      let variantPlan = null;
+      let variantIdByComboKey = new Map();
 
-    product.customTabItems = resolvedCustomTabItemIds;
+      if (touchesVariants) {
+        // مرجعِ «واریانت‌های فعلی» خودِ سندهای Variant است، نه آرایهٔ
+        // product.variants — این‌طور واریانتِ جامانده از باگ‌های قبلی هم دوباره
+        // وصل می‌شود به‌جای این‌که برای همیشه بی‌صاحب بماند.
+        const existingVariants = await Variant.find({ productId: doc._id }).session(session);
 
-    product.variantMeta =
-      variantMeta && typeof variantMeta === "object" ? variantMeta : {};
+        variantPlan = planVariantReconciliation({
+          existing: existingVariants,
+          combinations,
+          variantDetails,
+          basePrice: effectiveBasePrice,
+          categoryId,
+          productId: String(doc._id),
+        });
 
-    product.label = label || "none";
+        variantIdByComboKey = await applyVariantWrites({
+          Variant,
+          productId: doc._id,
+          plan: variantPlan,
+          session,
+        });
+      }
 
-    product.targetAudience = normalizedTargetAudience;
+      if (sent("name")) doc.name = name || "";
+      if (sent("shortDescription")) doc.shortDescription = shortDescription || "";
+      if (sent("longDescription")) doc.longDescription = longDescription || "";
+      if (sent("color")) doc.color = color || "";
+      if (sent("basePrice")) doc.basePrice = effectiveBasePrice;
+      if (sent("category")) doc.category = categoryId;
+      if (sent("tag")) doc.tag = Array.isArray(tag) ? tag : [];
+      if (sent("mainImage")) doc.mainImage = mainImage || "";
+      if (sent("gallery")) doc.gallery = Array.isArray(gallery) ? gallery : [];
+      if (sent("brand")) doc.brand = brand || null;
+      if (sent("serie")) doc.serie = serie || null;
+      if (sent("limitedEdition")) doc.limitedEdition = resolvedLimitedEdition.value;
+      if (sent("sport")) doc.sport = sport || null;
+      if (sent("athlete")) doc.athlete = Array.isArray(athlete) ? athlete : [];
 
-    // ✨ اضافه شد: اگر isActive فرستاده شده بود مقدار را به‌روزرسانی کن، در غیر این صورت مقدار قبلی را حفظ کن
-    product.isActive = typeof isActive === "boolean" ? isActive : product.isActive;
+      if (sent("attributes")) {
+        doc.attributes =
+          attributes && typeof attributes === "object" ? attributes : {};
+      }
 
-    // ترتیبِ آرایه از ترتیبِ ترکیب‌های فرم می‌آید تا نمایشِ واریانت‌ها پایدار بماند
-    if (variantPlan) {
-      product.variants = orderedVariantIds(variantPlan, variantIdByComboKey);
+      if (sent("technicalStats")) {
+        doc.technicalStats =
+          technicalStats && typeof technicalStats === "object" ? technicalStats : {};
+      }
+
+      if (resolvedCustomTabItemIds) doc.customTabItems = resolvedCustomTabItemIds;
+
+      if (sent("variantMeta")) {
+        doc.variantMeta =
+          variantMeta && typeof variantMeta === "object" ? variantMeta : {};
+      }
+
+      if (sent("label")) doc.label = label || "none";
+
+      if (sent("targetAudience")) doc.targetAudience = normalizedTargetAudience;
+
+      // ✨ اگر isActive فرستاده شده بود مقدار را به‌روزرسانی کن، در غیر این صورت مقدار قبلی حفظ می‌شود
+      if (typeof isActive === "boolean") doc.isActive = isActive;
+
+      // ترتیبِ آرایه از ترتیبِ ترکیب‌های فرم می‌آید تا نمایشِ واریانت‌ها پایدار بماند
+      if (variantPlan) {
+        doc.variants = orderedVariantIds(variantPlan, variantIdByComboKey);
+      }
+
+      doc.$session(session);
+      await doc.save();
+
+      // حذف در آخر — فقط ترکیب‌هایی که ادمین واقعاً برداشته، و فقط پس از این‌که
+      // وضعیت جدیدِ محصول با موفقیت ذخیره شده است.
+      await removePlannedVariants({ Variant, plan: variantPlan, session });
+    });
+
+    if (missing) {
+      return apiError("محصول یافت نشد", 404);
     }
-
-    await product.save();
-
-    // حذف در آخر — فقط ترکیب‌هایی که ادمین واقعاً برداشته، و فقط پس از این‌که
-    // وضعیت جدیدِ محصول با موفقیت ذخیره شده است.
-    await removePlannedVariants({ Variant, plan: variantPlan });
 
     // --------------------------------------------------
     // محصول نهایی populated
     // --------------------------------------------------
 
-    const updatedProduct = await Product.findById(product._id)
+    const updatedProduct = await Product.findById(productId)
       .populate("brand")
       .populate("category")
       .populate("serie")

@@ -15,6 +15,7 @@ import { showToast } from '@/lib/toast';
 import { showError } from '@/lib/swal';
 import { getApiErrorMessage } from '@/lib/apiClientError';
 import { makeComboKey } from '@/lib/variantKey';
+import { validateProductVariants } from '@/lib/productVariantValidation';
 import { renameVariantValue } from '@/lib/variantValueOps';
 import { invalidateAdminCache } from '@/lib/adminCache';
 import {
@@ -65,9 +66,18 @@ function generateCombinations(options) {
 // ---------------------------
 // Main Component
 // ---------------------------
-export default function ProductCreateForm({ initialData = {} }) {
+export default function ProductCreateForm({ initialData = {}, categoryId = '' }) {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
+
+  // خطاهای فیلدیِ سرور ({ fieldErrors }) — تا پیش از این فقط داخلِ یک مودالِ
+  // خلاصه نمایش داده می‌شدند و ادمین نمی‌دانست کدام فیلد را باید درست کند.
+  const [fieldErrors, setFieldErrors] = useState({});
+
+  // شمارنده‌ی آپلودهای در جریان — ثبتِ فرم وسطِ آپلود، تصویر را جا می‌انداخت
+  const [uploadsInFlight, setUploadsInFlight] = useState(0);
+  const trackUpload = (busy) =>
+    setUploadsInFlight((count) => Math.max(0, count + (busy ? 1 : -1)));
 
 
   // Normalize athlete from initialData to always be an array
@@ -99,6 +109,8 @@ export default function ProductCreateForm({ initialData = {} }) {
     isActive: true,
     ...initialData,
     targetAudience: normalizeTargetAudience(initialData.targetAudience) || '',
+    // از مسیرِ «افزودن محصول به این دسته» دسته از پیش انتخاب می‌شود
+    category: initialData?.category || categoryId || '',
     customTabItems: initialData?.customTabItems || [],
     // Override athlete to guarantee array form
     athlete: initialAthletes,
@@ -392,8 +404,20 @@ export default function ProductCreateForm({ initialData = {} }) {
   async function handleSubmit(e) {
     e.preventDefault();
     setLoading(true);
+    setFieldErrors({});
 
     try {
+      if (!selectedCategory) throw new Error('لطفاً تا بارگذاری دسته‌بندی صبر کنید و دسته‌بندی را انتخاب کنید');
+      const validation = validateProductVariants(
+        categoryVariantAttributes,
+        variantOptions,
+        combinations.map(makeComboKey).filter((key) => !deselectedCombos.has(key)),
+      );
+      if (validation.error) {
+        setFieldErrors(validation.fieldErrors || {});
+        throw new Error(validation.error);
+      }
+
       // Normalize category attributes
       const normalizedAttributes = {};
       for (const attr of categoryAttributes) {
@@ -472,7 +496,10 @@ export default function ProductCreateForm({ initialData = {} }) {
       });
 
       const data = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error(getApiErrorMessage(data, 'خطا در ایجاد محصول'));
+      if (!res.ok) {
+        setFieldErrors(data?.fieldErrors || {});
+        throw new Error(getApiErrorMessage(data, 'خطا در ایجاد محصول'));
+      }
 
       invalidateAdminCache('/api/product');
 
@@ -500,6 +527,7 @@ export default function ProductCreateForm({ initialData = {} }) {
         <Input
           label="نام محصول"
           value={formData.name}
+          error={fieldErrors.name}
           onChange={e => updateField('name', e.target.value)}
         />
       </div>
@@ -508,12 +536,14 @@ export default function ProductCreateForm({ initialData = {} }) {
       <Textarea
         label="توضیح کوتاه"
         rows={3}
+        error={fieldErrors.shortDescription}
         value={formData.shortDescription}
         onChange={e => updateField('shortDescription', e.target.value)}
       />
       <Textarea
         label="توضیح کامل"
         rows={6}
+        error={fieldErrors.longDescription}
         value={formData.longDescription}
         onChange={e => updateField('longDescription', e.target.value)}
       />
@@ -522,6 +552,7 @@ export default function ProductCreateForm({ initialData = {} }) {
       <div className="grid md:grid-cols-3 gap-6">
         <Select
           label="برند"
+          error={fieldErrors.brand}
           value={formData.brand}
           onChange={e => {
             setFormData(prev => ({
@@ -561,6 +592,7 @@ export default function ProductCreateForm({ initialData = {} }) {
 
         <Select
           label="ورزش"
+          error={fieldErrors.sport}
           value={formData.sport}
           onChange={e => updateField('sport', e.target.value)}
           options={sports.map(s => ({ value: s._id, label: s.name }))}
@@ -570,6 +602,7 @@ export default function ProductCreateForm({ initialData = {} }) {
         {formData.brand && (
           <Select
             label="لیمیتد ادیشن (Limited Edition)"
+            error={fieldErrors.limitedEdition}
             value={selectedLimitedEdition}
             onChange={e => updateField('limitedEdition', e.target.value)}
             options={[
@@ -624,6 +657,7 @@ export default function ProductCreateForm({ initialData = {} }) {
       <div className="grid md:grid-cols-2 gap-6">
         <Select
           label="دسته‌بندی"
+          error={fieldErrors.category}
           value={formData.category}
           onChange={e => updateField('category', e.target.value)}
           options={categories.map(c => ({ value: c._id, label: c.title }))}
@@ -633,6 +667,7 @@ export default function ProductCreateForm({ initialData = {} }) {
           label="قیمت پایه"
           type="number"
           formatNumber
+          error={fieldErrors.basePrice}
           value={formData.basePrice}
           onChange={e => updateField('basePrice', e.target.value)}
         />
@@ -664,12 +699,14 @@ export default function ProductCreateForm({ initialData = {} }) {
             { value: 'none', label: 'بدون برچسب' },
             { value: 'new', label: 'جدید' },
             { value: 'hot', label: 'پرطرفدار' },
+            { value: 'discount', label: 'تخفیف‌دار' },
             { value: 'limited', label: 'تعداد محدود' },
           ]}
         />
 
         <Select
           label="مخاطب هدف"
+          error={fieldErrors.targetAudience}
           value={formData.targetAudience}
           onChange={e => updateField('targetAudience', e.target.value)}
           options={TARGET_AUDIENCE_SELECT_OPTIONS}
@@ -703,6 +740,7 @@ export default function ProductCreateForm({ initialData = {} }) {
                   <td className="p-3">
                     <Input
                       type={attr.type === 'number' ? 'number' : 'text'}
+                      error={fieldErrors[attr.name]}
                       value={formData.attributes?.[attr.name] || ''}
                       onChange={e =>
                         updateAttribute(attr.name, e.target.value)
@@ -817,6 +855,10 @@ export default function ProductCreateForm({ initialData = {} }) {
                 )}
 
                 {/* Value tags — قابلِ ویرایش و جابه‌جایی (drag & drop) */}
+                {fieldErrors[attr.name] && (
+                  <p className="mb-2 text-xs text-red-500 font-bold">! {fieldErrors[attr.name]}</p>
+                )}
+
                 <VariantValuesEditor
                   attr={attr}
                   values={variantOptions[attr.name] || []}
@@ -853,6 +895,7 @@ export default function ProductCreateForm({ initialData = {} }) {
                             <VariantValueImageUpload
                               value={variantMeta[attr.name]?.[val]?.images || []}
                               onChange={(imgs) => setValueImages(attr.name, val, imgs)}
+                              onUploadingChange={trackUpload}
                               folder="product/variant-values"
                             />
                           </div>
@@ -1012,6 +1055,7 @@ export default function ProductCreateForm({ initialData = {} }) {
                     min="0"
                     max="100"
                     placeholder="0-100"
+                    error={fieldErrors[stat.name]}
                     value={formData.technicalStats?.[stat.name] || ''}
                     onChange={e =>
                       updateTechnicalStat(stat.name, e.target.value)
@@ -1065,20 +1109,31 @@ export default function ProductCreateForm({ initialData = {} }) {
       {/* ── Images ── */}
       <ImageUpload
         label="تصویر اصلی"
+        required
         value={formData.mainImage}
         onChange={v => updateField('mainImage', v)}
+        onUploadingChange={trackUpload}
         folder="product"
       />
+      {fieldErrors.mainImage && (
+        <p className="-mt-4 mb-4 text-xs text-red-500 font-bold">! {fieldErrors.mainImage}</p>
+      )}
 
       <ImageUpload
         label="گالری"
         multiple
         value={formData.gallery}
         onChange={v => updateField('gallery', v)}
+        onUploadingChange={trackUpload}
         folder="product"
       />
 
-      <Button type="submit" loading={loading}>
+      {uploadsInFlight > 0 && (
+        <p className="text-xs font-bold text-amber-600">
+          تا پایانِ بارگذاری تصاویر، امکان ثبت وجود ندارد.
+        </p>
+      )}
+      <Button type="submit" loading={loading} disabled={uploadsInFlight > 0}>
         ایجاد محصول
       </Button>
     </form>

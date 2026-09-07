@@ -10,6 +10,7 @@ export default function VariantValueImageUpload({
   value,
   onChange,
   folder = 'product/variant-values',
+  onUploadingChange,
 }) {
   const images = cleanImages(value);
   const mainImage = images[0] || '';
@@ -28,6 +29,7 @@ export default function VariantValueImageUpload({
         value={mainImage}
         onChange={(url) => updateImages(url, galleryImages)}
         folder={folder}
+        onUploadingChange={onUploadingChange}
         className="mb-0"
       />
       <ImageUpload
@@ -37,6 +39,7 @@ export default function VariantValueImageUpload({
         value={galleryImages}
         onChange={(imgs) => updateImages(mainImage, imgs)}
         folder={folder}
+        onUploadingChange={onUploadingChange}
         className="mb-0"
       />
     </div>

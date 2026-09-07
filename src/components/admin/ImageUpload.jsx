@@ -1,6 +1,7 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
+import { showError } from '@/lib/swal';
 
 export default function ImageUpload({
   label,
@@ -11,15 +12,34 @@ export default function ImageUpload({
   multiple = false,
   accept = 'image/*',
   className = '',
+  // اختیاری — فرم‌ها با این پرچم دکمه‌ی ذخیره را تا پایانِ آپلود غیرفعال می‌کنند.
+  // بدونش ادمین می‌توانست وسطِ آپلود ثبت کند و فرم بدونِ تصویر ارسال شود.
+  onUploadingChange,
 }) {
   const [uploading, setUploading] = useState(false);
   const [preview, setPreview] = useState(value || (multiple ? [] : null));
+  const uploadingRef = useRef(false);
+  // والدها این را به‌صورت arrow inline پاس می‌دهند؛ نگه‌داشتنش در ref باعث
+  // می‌شود cleanup به نسخه‌ی کهنه‌ی closure وابسته نباشد.
+  const notifyRef = useRef(onUploadingChange);
+  notifyRef.current = onUploadingChange;
+
+  const markUploading = (busy) => {
+    if (uploadingRef.current === busy) return;
+    uploadingRef.current = busy;
+    setUploading(busy);
+    notifyRef.current?.(busy);
+  };
+
+  // اگر کامپوننت وسطِ آپلود unmount شود (مثلاً تغییرِ key در والد)، شمارنده‌ی
+  // والد باید آزاد شود وگرنه دکمه‌ی ذخیره برای همیشه غیرفعال می‌ماند.
+  useEffect(() => () => { if (uploadingRef.current) notifyRef.current?.(false); }, []);
 
   const handleFileChange = async (e) => {
     const files = Array.from(e.target.files);
     if (files.length === 0) return;
 
-    setUploading(true);
+    markUploading(true);
 
     try {
       const uploadedUrls = [];
@@ -66,9 +86,11 @@ export default function ImageUpload({
       }
     } catch (error) {
       console.error('Upload error:', error);
-      alert(error.message || 'خطا در آپلود فایل');
+      showError('خطا در آپلود', error.message || 'خطا در آپلود فایل');
     } finally {
-      setUploading(false);
+      markUploading(false);
+      // بدون این، انتخابِ دوبارهٔ همان فایل پس از خطا هیچ رویدادی نمی‌داد
+      e.target.value = '';
     }
   };
 

@@ -18,6 +18,7 @@ import { showToast } from '@/lib/toast';
 import { showError } from '@/lib/swal';
 import { getApiErrorMessage } from '@/lib/apiClientError';
 import { makeComboKey } from '@/lib/variantKey';
+import { validateProductVariants } from '@/lib/productVariantValidation';
 import { renameVariantValue } from '@/lib/variantValueOps';
 import { invalidateAdminCache } from '@/lib/adminCache';
 import {
@@ -130,6 +131,13 @@ function CollapsibleSection({
 }
 // کلید ترکیب از util مشترک ساخته می‌شود (makeComboKey) — هم‌خوان با سرور و فرمِ ساخت.
 
+// وقتی سرور خطای فیلدی برمی‌گرداند همهٔ بخش‌ها باز می‌شوند؛ وگرنه پیام به فیلدی
+// اشاره می‌کند که داخلِ یک بخشِ جمع‌شده پنهان است.
+const ALL_SECTIONS_OPEN = Object.fromEntries(
+  ['basicInfo', 'color', 'relations', 'athletes', 'fixedAttributes', 'variants',
+    'technicalStats', 'customTab', 'media'].map((key) => [key, true]),
+);
+
 /**
  * Reconstruct variantOptions & variantDetails from an existing variants array.
  * variants[] come from GET /api/product/[id] populated.
@@ -181,6 +189,19 @@ export default function ProductEditPage() {
 
   const [loading, setLoading] = useState(true);
   const [submitLoading, setSubmitLoading] = useState(false);
+
+  // خطاهای فیلدیِ سرور — پیش‌تر فقط در یک مودالِ خلاصه دیده می‌شدند و در فرمی
+  // با بخش‌های جمع‌شونده، ادمین نمی‌دانست کدام بخش را باید باز کند.
+  const [fieldErrors, setFieldErrors] = useState({});
+
+  // تعدادِ واریانتِ محصول هنگام بارگذاری — «هیچ واریانتی» فقط برای محصولی
+  // مجاز است که از قبل هم واریانت نداشته (سرور همین قاعده را دارد).
+  const [loadedVariantCount, setLoadedVariantCount] = useState(0);
+
+  // شمارنده‌ی آپلودهای در جریان — ثبت وسطِ آپلود، تصویر را جا می‌انداخت
+  const [uploadsInFlight, setUploadsInFlight] = useState(0);
+  const trackUpload = (busy) =>
+    setUploadsInFlight((count) => Math.max(0, count + (busy ? 1 : -1)));
 
   const [sports, setSports] = useState([]);
   const [brands, setBrands] = useState([]);
@@ -321,6 +342,7 @@ export default function ProductEditPage() {
           // پایه به‌عنوان «بدون قیمت ویژه» بارگذاری می‌شود)
           const { variantOptions: vOpts, variantDetails: vDetails } =
             rebuildVariantState(p.variants || [], p.basePrice);
+          setLoadedVariantCount((p.variants || []).length);
           setVariantOptions(vOpts);
           setVariantDetails(vDetails);
 
@@ -603,8 +625,31 @@ export default function ProductEditPage() {
   async function handleSubmit(e) {
     e.preventDefault();
     setSubmitLoading(true);
+    setFieldErrors({});
 
     try {
+      // بدونِ دسته‌بندیِ حل‌شده، categoryAttributes خالی است و normalizedAttributes
+      // خالی ساخته می‌شود — یعنی ذخیره‌کردن، همهٔ ویژگی‌های محصول و آیتم‌های تبِ
+      // اختصاصی را بی‌صدا پاک می‌کرد. این حالت واقعی است: دستهٔ حذف‌شده، یا
+      // شکستِ واکشیِ /api/categories.
+      if (!selectedCategory) {
+        throw new Error(
+          'دسته‌بندی این محصول پیدا نشد؛ تا وقتی دسته‌بندیِ معتبر انتخاب نشود امکان ذخیره نیست',
+        );
+      }
+
+      // همان اعتبارسنجی‌ای که سرور اجرا می‌کند — تا خطا پیش از رفت‌وبرگشت دیده شود
+      const variantValidation = validateProductVariants(
+        categoryVariantAttributes,
+        variantOptions,
+        combinations.map(makeComboKey).filter((key) => !deselectedCombos.has(key)),
+        { allowEmpty: loadedVariantCount === 0 },
+      );
+      if (variantValidation.error) {
+        setFieldErrors(variantValidation.fieldErrors || {});
+        throw new Error(variantValidation.error);
+      }
+
       // Normalize category attributes
       const normalizedAttributes = {};
       for (const attr of categoryAttributes) {
@@ -687,6 +732,9 @@ export default function ProductEditPage() {
 
       const data = await res.json().catch(() => ({}));
       if (!res.ok) {
+        setFieldErrors(data?.fieldErrors || {});
+        // بخش‌های جمع‌شده باز می‌شوند تا فیلدِ خطادار واقعاً دیده شود
+        if (data?.fieldErrors) setOpenSections((prev) => ({ ...prev, ...ALL_SECTIONS_OPEN }));
         throw new Error(getApiErrorMessage(data, 'خطا در ویرایش محصول'));
       }
 
@@ -728,8 +776,13 @@ export default function ProductEditPage() {
             <p className="text-gray-400 text-xs mt-1">شناسه: {id}</p>
           </div>
         </div>
-        <Button type="submit" loading={submitLoading} className="px-10 rounded-2xl">
-          ذخیره تغییرات
+        <Button
+          type="submit"
+          loading={submitLoading}
+          disabled={uploadsInFlight > 0}
+          className="px-10 rounded-2xl"
+        >
+          {uploadsInFlight > 0 ? 'در حال بارگذاری تصویر…' : 'ذخیره تغییرات'}
         </Button>
       </div>
 
@@ -744,18 +797,21 @@ export default function ProductEditPage() {
       >
         <Input
           label="نام محصول"
+          error={fieldErrors.name}
           value={formData.name}
           onChange={e => updateField('name', e.target.value)}
         />
         <Textarea
           label="توضیح کوتاه"
           rows={3}
+          error={fieldErrors.shortDescription}
           value={formData.shortDescription}
           onChange={e => updateField('shortDescription', e.target.value)}
         />
         <Textarea
           label="توضیح کامل"
           rows={5}
+          error={fieldErrors.longDescription}
           value={formData.longDescription}
           onChange={e => updateField('longDescription', e.target.value)}
         />
@@ -808,6 +864,7 @@ export default function ProductEditPage() {
         <div className="grid md:grid-cols-3 gap-6">
           <Select
             label="برند"
+            error={fieldErrors.brand}
             value={formData.brand}
             onChange={e => {
               updateField('brand', e.target.value);
@@ -838,6 +895,7 @@ export default function ProductEditPage() {
               // آنچه دیده می‌شود همان چیزی است که ذخیره می‌شود و ذخیره‌ی محصول
               // خودش تگِ ناسازگار را پاک می‌کند.
               value={selectedLimitedEdition}
+              error={fieldErrors.limitedEdition}
               onChange={e => updateField('limitedEdition', e.target.value)}
               options={[
                 { value: '', label: 'بدون لیمیتد ادیشن' },
@@ -847,6 +905,7 @@ export default function ProductEditPage() {
           )}
           <Select
             label="دسته‌بندی"
+            error={fieldErrors.category}
             value={formData.category}
             onChange={e => updateField('category', e.target.value)}
             options={categories.map(c => ({ value: c._id, label: c.title }))}
@@ -855,11 +914,13 @@ export default function ProductEditPage() {
             label="قیمت پایه"
             type="number"
             formatNumber
+            error={fieldErrors.basePrice}
             value={formData.basePrice}
             onChange={e => updateField('basePrice', e.target.value)}
           />
           <Select
             label="ورزش"
+            error={fieldErrors.sport}
             value={formData.sport}
             onChange={e => updateField('sport', e.target.value)}
             options={sports.map(s => ({ value: s._id, label: s.name }))}
@@ -872,11 +933,13 @@ export default function ProductEditPage() {
               { value: 'none', label: 'بدون برچسب' },
               { value: 'new', label: 'جدید' },
               { value: 'hot', label: 'پرطرفدار' },
+              { value: 'discount', label: 'تخفیف‌دار' },
               { value: 'limited', label: 'تعداد محدود' },
             ]}
           />
           <Select
             label="مخاطب هدف"
+            error={fieldErrors.targetAudience}
             value={formData.targetAudience}
             onChange={e => updateField('targetAudience', e.target.value)}
             options={TARGET_AUDIENCE_SELECT_OPTIONS}
@@ -954,6 +1017,7 @@ export default function ProductEditPage() {
                     <td className="p-2">
                       <Input
                         type={attr.type === 'number' ? 'number' : 'text'}
+                        error={fieldErrors[attr.name]}
                         value={formData.attributes?.[attr.name] || ''}
                         onChange={e => updateAttribute(attr.name, e.target.value)}
                         placeholder={attr.type === 'select' ? 'مقادیر با کاما جدا شوند' : ''}
@@ -1052,6 +1116,10 @@ export default function ProductEditPage() {
                     </button>
                   </div>
                 )}
+                {fieldErrors[attr.name] && (
+                  <p className="mb-2 text-xs text-red-500 font-bold">! {fieldErrors[attr.name]}</p>
+                )}
+
                 {/* Value tags — قابلِ ویرایش و جابه‌جایی (drag & drop) */}
                 <VariantValuesEditor
                   attr={attr}
@@ -1109,6 +1177,7 @@ export default function ProductEditPage() {
                                 <VariantValueImageUpload
                                   value={valueImages}
                                   onChange={(imgs) => setValueImages(attr.name, val, imgs)}
+                                  onUploadingChange={trackUpload}
                                   folder="product/variant-values"
                                 />
                               </AnimatedCollapse>
@@ -1266,6 +1335,7 @@ export default function ProductEditPage() {
                   min="0"
                   max="100"
                   className="bg-white"
+                  error={fieldErrors[stat.name]}
                   value={formData.technicalStats?.[stat.name] || ''}
                   onChange={e => updateTechnicalStat(stat.name, e.target.value)}
                   placeholder="نمره از ۱۰۰"
@@ -1328,17 +1398,25 @@ export default function ProductEditPage() {
         onToggle={() => toggleSection('media')}
       >
         <div className="grid md:grid-cols-2 gap-8">
-          <ImageUpload
-            label="تصویر اصلی محصول"
-            value={formData.mainImage}
-            onChange={v => updateField('mainImage', v)}
-            folder="product"
-          />
+          <div>
+            <ImageUpload
+              label="تصویر اصلی محصول"
+              required
+              value={formData.mainImage}
+              onChange={v => updateField('mainImage', v)}
+              onUploadingChange={trackUpload}
+              folder="product"
+            />
+            {fieldErrors.mainImage && (
+              <p className="-mt-4 mb-4 text-xs text-red-500 font-bold">! {fieldErrors.mainImage}</p>
+            )}
+          </div>
           <ImageUpload
             label="گالری تصاویر"
             multiple
             value={formData.gallery}
             onChange={v => updateField('gallery', v)}
+            onUploadingChange={trackUpload}
             folder="product"
           />
         </div>
