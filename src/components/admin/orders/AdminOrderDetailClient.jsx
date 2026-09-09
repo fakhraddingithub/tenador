@@ -2672,7 +2672,7 @@ export default function AdminOrderDetailClient({ orderId }) {
                     </>
                   );
                   return (
-                  <div key={itemId || i} className="flex items-start gap-3 p-3 bg-gray-50 rounded-xl">
+                  <div key={itemId || i} className="flex flex-wrap sm:flex-nowrap items-start gap-3 p-3 bg-gray-50 rounded-xl">
                     {item.product?.mainImage && (
                       <img src={item.product.mainImage} alt={productName}
                         className="w-12 h-12 rounded-xl object-cover border border-gray-200 flex-shrink-0" />
@@ -2709,7 +2709,9 @@ export default function AdminOrderDetailClient({ orderId }) {
                         </div>
                       )}
                       {item.flowSelections?.length > 0 && (
-                        <OrderFlowSelectionsView flowSelections={item.flowSelections} />
+                        <div className="hidden sm:block">
+                          <OrderFlowSelectionsView flowSelections={item.flowSelections} />
+                        </div>
                       )}
 
                       {/* کنترل‌های ویرایش آیتم — بدونِ orders.editItems کلِ ردیف حذف می‌شود */}
@@ -2850,6 +2852,11 @@ export default function AdminOrderDetailClient({ orderId }) {
                         </p>
                       )}
                     </div>
+                    {item.flowSelections?.length > 0 && (
+                      <div className="w-full min-w-0 basis-full sm:hidden">
+                        <OrderFlowSelectionsView flowSelections={item.flowSelections} />
+                      </div>
+                    )}
                   </div>
                   );
                 })}
