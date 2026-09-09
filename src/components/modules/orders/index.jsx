@@ -178,9 +178,9 @@ function OrderDetailModal({ order, onClose, isStore = false }) {
                       )}
                       <div className="flex-1 min-w-0">
                         <div>
-                          {farsi && <p className="text-sm font-bold text-[#1a1a1a] leading-snug tracking-tight line-clamp-1">{farsi}</p>}
+                          {farsi && <p className="text-sm font-bold text-[#1a1a1a] leading-snug tracking-tight whitespace-normal [overflow-wrap:anywhere]">{farsi}</p>}
                           {english && <span className="text-xs font-semibold text-gray-500 tracking-tight" dir="ltr">{english}</span>}
-                          {!farsi && !english && name && <p className="text-sm font-bold text-[#1a1a1a] line-clamp-1">{name}</p>}
+                          {!farsi && !english && name && <p className="text-sm font-bold text-[#1a1a1a] whitespace-normal [overflow-wrap:anywhere]">{name}</p>}
                         </div>
                         {(item.variantSnapshot?.length ||
                           (variantAttrs && Object.keys(variantAttrs).length > 0)) && (
@@ -411,20 +411,21 @@ function OrderCard({ order, onDelete, onViewDetail, reviewedIds, onReview, isSto
             const variantAttrs = item.variant?.attributes ?? null
 
             return (
-              <div key={item.product?._id ?? idx} className="flex items-center gap-2 bg-gray-50 rounded-[6px] px-2.5 py-1.5 min-w-0 max-w-full sm:max-w-[calc(50%-4px)]">
+              <div key={item.product?._id ?? idx} className="flex items-start gap-2 bg-gray-50 rounded-[6px] px-2.5 py-1.5 min-w-0 w-full sm:w-[calc(50%-4px)]">
                 {image && (
                   <img src={image} alt={name}
                     className="w-9 h-9 rounded-lg object-cover border border-gray-100 flex-shrink-0" />
                 )}
                 <div className="min-w-0 flex-1">
-                  <p className="text-xs font-bold text-[#1a1a1a] leading-tight truncate tracking-tight">
-                    {farsi || english || name}
+                  <p className="text-xs font-bold text-[#1a1a1a] leading-relaxed whitespace-normal [overflow-wrap:anywhere] tracking-tight">
+                    {name}
                   </p>
                   {variantSummaryText(item) && (
-                    <p className="text-[10px] text-[#aa4725] truncate mt-0.5">
+                    <p className="text-[10px] text-[#aa4725] whitespace-normal [overflow-wrap:anywhere] mt-0.5">
                       {variantSummaryText(item)}
                     </p>
                   )}
+                  <OrderFlowSelectionsView flowSelections={item.flowSelections} />
                   <p className="text-[10px] text-gray-400 mt-0.5">× {item.quantity}</p>
                   {/* قیمت یوروییِ قلم — فقط «فروشگاه» و فقط اگر ادمین ثبتش کرده باشد */}
                   {isStore && item.priceEUR !== null && item.priceEUR !== undefined && (

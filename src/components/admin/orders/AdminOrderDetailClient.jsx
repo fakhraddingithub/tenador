@@ -21,6 +21,7 @@ import {
 } from "lucide-react";
 import SenderAddressModal from "@/components/admin/orders/SenderAddressModal";
 import OrderPrintOverlay from "@/components/print/OrderPrintOverlay";
+import FlowProductIdentity from "@/components/order/FlowProductIdentity";
 import OrderFlowSelectionsView from "@/components/order/OrderFlowSelectionsView";
 import VariantSummary from "@/components/order/VariantSummary";
 import InstallmentChecksPanel from "@/components/admin/financial/InstallmentChecksPanel";
@@ -994,7 +995,7 @@ function ScanModal({ target, orderId, mode = "choose", onSuccess, onClose }) {
               <p className="text-white font-bold text-sm">
                 {step === "procurement" ? "وضعیت تأمین" : "اسکن بارکد"}
               </p>
-              <p className="text-white/50 text-xs truncate max-w-[200px]">
+              <p className="text-white/70 text-xs whitespace-normal [overflow-wrap:anywhere] max-w-[200px]">
                 {target.productName}
               </p>
             </div>
@@ -1011,7 +1012,7 @@ function ScanModal({ target, orderId, mode = "choose", onSuccess, onClose }) {
               <img src={target.productImage} alt="" className="w-12 h-12 rounded-xl object-cover border border-gray-200" />
             )}
             <div className="flex-1 min-w-0">
-              <p className="text-sm font-bold text-gray-800 truncate">{target.productName}</p>
+              <p className="text-sm font-bold text-gray-800 whitespace-normal [overflow-wrap:anywhere]">{target.productName}</p>
               {target.productSku && (
                 <p className="text-xs text-gray-400 font-mono">{target.productSku}</p>
               )}
@@ -1519,7 +1520,7 @@ function TrackingPanel({ orderId, orderItems, orderFulfillmentStatus, onStatusCh
                   className="w-10 h-10 rounded-xl object-cover border border-gray-200 flex-shrink-0" />
               )}
               <div className="flex-1 min-w-0">
-                <p className="text-sm font-bold text-gray-800 truncate flex items-center gap-1.5">
+                <p className="text-sm font-bold text-gray-800 whitespace-normal [overflow-wrap:anywhere] flex flex-wrap items-center gap-1.5">
                   {item.product?.name}
                   {item.isUsed && (
                     <span className="text-[10px] font-bold text-amber-600 bg-amber-50 border border-amber-200 px-1.5 py-0.5 rounded-full shrink-0">
@@ -1629,10 +1630,7 @@ function TrackingPanel({ orderId, orderItems, orderFulfillmentStatus, onStatusCh
                             <p className="text-[11px] text-gray-400 leading-tight">
                               {f.nodeLabel} <span className="text-[var(--color-primary)]">(انتخاب فرایند)</span>
                             </p>
-                            <p className="text-xs font-bold text-gray-700 truncate leading-snug">
-                              {f.product?.name}
-                              {f.variantLabel ? ` (${f.variantLabel})` : ""}
-                            </p>
+                            <FlowProductIdentity name={f.product?.name} variantLabel={f.variantLabel} />
                           </div>
                         </div>
 

@@ -1,5 +1,6 @@
 "use client";
 
+import FlowProductIdentity from "./FlowProductIdentity";
 import { FiSettings, FiTag, FiLayers } from "react-icons/fi";
 
 /**
@@ -22,7 +23,7 @@ export default function OrderFlowSelectionsView({ flowSelections }) {
   if (!Array.isArray(flowSelections) || flowSelections.length === 0) return null;
 
   return (
-    <div className="mt-2.5 rounded-xl border border-[#aa4725]/20 bg-[#aa4725]/[0.04] p-3">
+    <div className="min-w-0 mt-2.5 rounded-xl border border-[#aa4725]/20 bg-[#aa4725]/[0.04] p-3">
       <p className="flex items-center gap-1.5 text-[11px] font-bold text-[#aa4725] mb-2.5">
         <FiLayers className="w-3.5 h-3.5" />
         موارد انتخاب‌شده برای این محصول
@@ -46,7 +47,7 @@ export default function OrderFlowSelectionsView({ flowSelections }) {
           if (isService && config.length > 0) {
             return (
               <div key={`${sel.nodeId || idx}-${idx}`} className="space-y-2">
-                <div className="flex items-center justify-between gap-2">
+                <div className="flex flex-wrap items-start justify-between gap-2">
                   <span className="flex items-center gap-1.5 text-xs font-bold text-gray-800">
                     <FiSettings className="w-3.5 h-3.5 text-[#aa4725]" />
                     {sel.nodeLabel}
@@ -57,7 +58,7 @@ export default function OrderFlowSelectionsView({ flowSelections }) {
                     )}
                   </span>
                   {addonText && (
-                    <span className="shrink-0 text-[11px] font-bold text-[#aa4725] bg-[#aa4725]/10 px-2 py-1 rounded-lg">
+                    <span className="col-span-2 justify-self-end max-w-full text-xs font-bold text-[#aa4725] bg-[#aa4725]/10 px-2 py-1 rounded-lg">
                       {addonText}
                     </span>
                   )}
@@ -67,7 +68,7 @@ export default function OrderFlowSelectionsView({ flowSelections }) {
                   {config.map((c, i) => (
                     <div
                       key={`${c.optionKey}-${i}`}
-                      className="flex items-center gap-2"
+                      className="flex flex-wrap items-start gap-2"
                     >
                       {c.image ? (
                         <img
@@ -85,7 +86,7 @@ export default function OrderFlowSelectionsView({ flowSelections }) {
                         <span className="block text-[10px] text-gray-400 leading-tight">
                           {c.title}
                         </span>
-                        <span className="block text-xs font-semibold text-gray-800 truncate leading-snug">
+                        <span className="block text-xs font-semibold text-gray-800 whitespace-normal [overflow-wrap:anywhere] leading-relaxed">
                           {c.label || "—"}
                         </span>
                       </div>
@@ -101,16 +102,10 @@ export default function OrderFlowSelectionsView({ flowSelections }) {
             );
           }
 
-          const valueText = isService
-            ? sel.serviceLabel
-            : `${productName}${
-                sel.selectedVariantLabel ? ` (${sel.selectedVariantLabel})` : ""
-              }`;
-
           return (
             <div
               key={`${sel.nodeId || idx}-${idx}`}
-              className="flex items-center gap-2.5"
+              className="grid min-w-0 grid-cols-[auto_minmax(0,1fr)] items-start gap-2.5"
             >
               {/* آیکن یا تصویر */}
               {!isService && productImage ? (
@@ -134,14 +129,18 @@ export default function OrderFlowSelectionsView({ flowSelections }) {
                 <span className="block text-[10px] text-gray-400 leading-tight">
                   {sel.nodeLabel}
                 </span>
-                <span className="block text-xs font-semibold text-gray-800 truncate leading-snug">
-                  {valueText || "—"}
-                </span>
+                {isService ? (
+                  <bdi dir="auto" className="block text-xs font-semibold text-gray-800 whitespace-normal [overflow-wrap:anywhere] leading-relaxed">
+                    {sel.serviceLabel || "—"}
+                  </bdi>
+                ) : (
+                  <FlowProductIdentity name={productName} variantLabel={sel.selectedVariantLabel} />
+                )}
               </div>
 
               {/* افزوده‌ی قیمت */}
               {addonText && (
-                <span className="shrink-0 text-[11px] font-bold text-[#aa4725] bg-[#aa4725]/10 px-2 py-1 rounded-lg">
+                <span className="col-span-2 justify-self-end max-w-full text-xs font-bold text-[#aa4725] bg-[#aa4725]/10 px-2 py-1 rounded-lg">
                   {addonText}
                 </span>
               )}

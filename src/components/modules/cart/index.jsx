@@ -180,7 +180,7 @@ const CartModule = () => {
               initial={{ opacity: 0, scale: 0.96 }}
               animate={{ opacity: 1, scale: 1 }}
               className="
-                flex items-center gap-4
+                flex flex-wrap items-start gap-4
                 rounded-[var(--radius)]
                 border border-[hsl(var(--border))]
                 bg-white p-4
@@ -194,8 +194,8 @@ const CartModule = () => {
               />
 
               {/* اطلاعات */}
-              <div className="flex-1 space-y-1">
-                <p className="text-sm font-medium">
+              <div className="min-w-0 flex-1 basis-[calc(100%-5rem)] sm:basis-0 space-y-1">
+                <p className="text-sm font-medium whitespace-normal [overflow-wrap:anywhere]">
                   {item.product?.name || 'محصول'}
                 </p>
 

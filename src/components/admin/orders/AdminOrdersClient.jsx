@@ -1,5 +1,6 @@
 "use client";
 
+import OrderFlowSelectionsView from "@/components/order/OrderFlowSelectionsView";
 import { getUserFullName } from "base/utils/userName";
 
 import { useState, useEffect, useCallback } from "react";
@@ -472,7 +473,7 @@ function OrderDetailModal({ orderId, onClose, onOpenFull }) {
                       </>
                     );
                     return (
-                      <div key={idx} className="flex items-start gap-3 py-2 border-b border-gray-50 last:border-0">
+                      <div key={idx} className="grid grid-cols-[2.75rem_minmax(0,1fr)] items-start gap-3 py-2 border-b border-gray-50 last:border-0">
                         <div className="w-11 h-11 rounded-lg bg-gray-50 border border-gray-100 flex items-center justify-center overflow-hidden flex-shrink-0">
                           {item.product?.mainImage ? (
                             <img src={item.product.mainImage} alt={productName} className="w-full h-full object-cover" />
@@ -494,14 +495,10 @@ function OrderDetailModal({ orderId, onClose, onOpenFull }) {
                           ) : (
                             <div className="min-w-0 max-w-full">{productNameContent}</div>
                           )}
-                          {vLabel ? <p className="text-[10px] text-gray-400 truncate">{vLabel}</p> : null}
-                          {(item.flowSelections || []).filter((s) => s.nodeType === "category" || s.selectedProductName || s.nodeLabel).length > 0 && (
-                            <p className="text-[10px] text-[var(--color-primary)]/80 truncate">
-                              {item.flowSelections.map((s) => s.nodeLabel || s.selectedProductName).filter(Boolean).join("، ")}
-                            </p>
-                          )}
+                          {vLabel ? <p className="text-xs text-gray-600 whitespace-normal [overflow-wrap:anywhere]">{vLabel}</p> : null}
+                          <OrderFlowSelectionsView flowSelections={item.flowSelections} />
                         </div>
-                        <div className="text-left flex-shrink-0">
+                        <div className="col-start-2 text-left">
                           <p className="text-[11px] font-black text-gray-800">{formatPrice(item.unitPrice)} <span className="text-[9px] text-gray-400">ت</span></p>
                           <p className="text-[10px] text-gray-400">تعداد: {formatPrice(item.quantity)}</p>
                         </div>

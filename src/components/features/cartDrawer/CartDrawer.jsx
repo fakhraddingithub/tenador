@@ -246,7 +246,7 @@ export default function CartDrawer({ isOpen, onClose }) {
                                             <img
                                                 src={productImage}
                                                 alt={item.product?.name}
-                                                className="w-24 h-24 object-cover rounded-lg flex-shrink-0"
+                                                className="w-16 h-16 sm:w-24 sm:h-24 object-cover rounded-lg flex-shrink-0"
                                             />
                                         )}
 
@@ -261,9 +261,9 @@ export default function CartDrawer({ isOpen, onClose }) {
                                                             onClick={onClose}
                                                             className="block font-bold text-gray-800 mb-1 hover:text-[#aa4725]"
                                                         >
-                                                            <span className="block truncate">{farsi}</span>
+                                                            <span className="block whitespace-normal [overflow-wrap:anywhere]">{farsi}</span>
                                                             {english && (
-                                                                <span className="block truncate">{english}</span>
+                                                                <span className="block whitespace-normal [overflow-wrap:anywhere]">{english}</span>
                                                             )}
                                                         </Link>
                                                     );

@@ -99,9 +99,9 @@ const CartItems = ({ items, onUpdateQuantity, onRemoveItem, onRemoveFlowSelectio
             style={{ animationDelay: `${index * 60}ms` }}
             className="rounded-2xl border border-slate-200 bg-white p-4 transition-all duration-200 hover:shadow-lg hover:shadow-slate-200/40 animate-slide-up"
           >
-            <div className="flex gap-4">
+            <div className="grid grid-cols-[4rem_minmax(0,1fr)] gap-3 sm:grid-cols-[6rem_minmax(0,1fr)] md:grid-cols-[7rem_minmax(0,1fr)_auto] md:gap-4">
               {/* تصویر */}
-              <div className="relative w-24 h-24 md:w-28 md:h-28 flex-shrink-0">
+              <div className="relative w-16 h-16 sm:w-24 sm:h-24 md:w-28 md:h-28 flex-shrink-0">
                 <img
                   src={productImage}
                   alt={productName}
@@ -117,7 +117,7 @@ const CartItems = ({ items, onUpdateQuantity, onRemoveItem, onRemoveFlowSelectio
               {/* اطلاعات */}
               <div className="flex-1 min-w-0 flex flex-col">
                 {/* نام محصول — هماهنگ با ProductHeader */}
-                <Link href={productHref} className="mb-1.5 block hover:text-[#aa4725]">
+                <Link href={productHref} className="mb-1.5 block whitespace-normal [overflow-wrap:anywhere] hover:text-[#aa4725]">
                   {farsi && (
                     <h3 className="text-sm md:text-base font-bold text-[#1a1a1a] leading-snug tracking-tight">
                       {farsi}
@@ -198,7 +198,7 @@ const CartItems = ({ items, onUpdateQuantity, onRemoveItem, onRemoveFlowSelectio
               </div>
 
               {/* ناحیه قیمت — هماهنگ با ProductPrice */}
-              <div className="flex flex-col items-end justify-between min-w-[110px]">
+              <div className="col-span-2 flex flex-row items-center justify-between gap-3 md:col-span-1 md:flex-col md:items-end md:min-w-[110px]">
                 <button
                   onClick={() => onRemoveItem(item)}
                   className="md:hidden p-1 text-slate-400 hover:text-red-500 transition"

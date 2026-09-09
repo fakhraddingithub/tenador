@@ -158,7 +158,7 @@ export default function PaymentSuccessPage({ trackingCode }) {
                                                     {/* نام */}
                                                     <div>
                                                         {farsi && (
-                                                            <p className="text-sm font-bold text-[#1a1a1a] leading-snug tracking-tight line-clamp-1">
+                                                            <p className="text-sm font-bold text-[#1a1a1a] leading-snug tracking-tight whitespace-normal [overflow-wrap:anywhere]">
                                                                 {farsi}
                                                             </p>
                                                         )}

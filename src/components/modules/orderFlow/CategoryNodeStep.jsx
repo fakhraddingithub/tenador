@@ -505,12 +505,12 @@ export default function CategoryNodeStep({
                     )}
                   </div>
                   {/* نام در ۲ خط: خط ۱ فارسی، خط ۲ انگلیسی — مثل کارت صفحه‌ی محصولات */}
-                  <p className="text-[11px] font-semibold text-[#0d0d0d] line-clamp-1 leading-4">
+                  <p className="text-[11px] font-semibold text-[#0d0d0d] whitespace-normal [overflow-wrap:anywhere] leading-4">
                     {farsi}
                   </p>
                   <p
                     dir="ltr"
-                    className="text-[10px] text-gray-500 font-medium line-clamp-1 leading-4 text-right"
+                    className="text-[10px] text-gray-500 font-medium whitespace-normal [overflow-wrap:anywhere] leading-4 text-right"
                   >
                     {english || " "}
                   </p>
@@ -568,12 +568,12 @@ export default function CategoryNodeStep({
                     </span>
                   </div>
                   {/* نام در ۲ خط: خط ۱ فارسی، خط ۲ انگلیسی */}
-                  <p className="text-[11px] font-semibold text-[#0d0d0d] line-clamp-1 leading-4">
+                  <p className="text-[11px] font-semibold text-[#0d0d0d] whitespace-normal [overflow-wrap:anywhere] leading-4">
                     {focusedNames.farsi}
                   </p>
                   <p
                     dir="ltr"
-                    className="text-[10px] text-gray-500 font-medium line-clamp-1 leading-4 text-right"
+                    className="text-[10px] text-gray-500 font-medium whitespace-normal [overflow-wrap:anywhere] leading-4 text-right"
                   >
                     {focusedNames.english || " "}
                   </p>
