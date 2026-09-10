@@ -1,4 +1,5 @@
 // services/priceCalculator.js
+import { discountWindowFilter } from "base/utils/discountWindow";
 import { computeBaseDiscountForProduct } from "./discountEngine.js";
 import Coupon from "base/models/Coupon";
 
@@ -23,8 +24,7 @@ export async function calculateFinalPrice(product, opts = {}) {
     const coupon = await Coupon.findOne({
       code: couponCode,
       active: true,
-      startAt: { $lte: now },
-      endAt: { $gte: now }
+      ...discountWindowFilter(now),
     }).lean();
 
     if (coupon) {

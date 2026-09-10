@@ -19,11 +19,11 @@ function formatDate(d) {
 }
 
 function isExpired(endAt) {
-  return new Date(endAt) < new Date();
+  return !!endAt && new Date(endAt) < new Date();
 }
 
 function isActive(rule) {
-  return rule.active && !isExpired(rule.endAt) && new Date(rule.startAt) <= new Date();
+  return rule.active && !isExpired(rule.endAt) && (!rule.startAt || new Date(rule.startAt) <= new Date());
 }
 
 import { useAdminPermissions } from "@/components/admin/AdminPermissionProvider";
@@ -74,8 +74,8 @@ export default function DiscountRuleCard({ rule, typeLabels, onEdit, onDelete, o
                 ? `${rule.discount.value}٪ تخفیف`
                 : `${rule.discount?.value?.toLocaleString("fa-IR")} تومان`}
             </span>
-            <span>شروع: {formatDate(rule.startAt)}</span>
-            <span>پایان: {formatDate(rule.endAt)}</span>
+            <span>شروع: {rule.startAt ? formatDate(rule.startAt) : "بدون محدودیت"}</span>
+            <span>پایان: {rule.endAt ? formatDate(rule.endAt) : "بدون انقضا"}</span>
             <span>اولویت: {rule.priority}</span>
             {rule.usageLimit && (
               <span>

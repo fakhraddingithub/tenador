@@ -7,8 +7,8 @@ const CouponSchema = new mongoose.Schema({
     kind: { type: String, enum: ["percent","amount"], required: true },
     value: { type: Number, required: true }
   },
-  startAt: { type: Date, required: true },
-  endAt: { type: Date, required: true },
+  startAt: { type: Date, default: null },
+  endAt: { type: Date, default: null },
   usageLimit: { type: Number, default: null },
   perUserLimit: { type: Number, default: 1 },
   minCartValue: { type: Number, default: 0 },

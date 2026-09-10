@@ -1,7 +1,8 @@
 // app/api/admin/discounts/route.js
 import connectToDB from "base/configs/db";
 import DiscountRule from "base/models/DiscountRule";
-import { parseIranDateTimeLocal } from "@/lib/iranDateTime";
+import { validateDiscountDates } from "@/lib/discountDateValidation";
+import { revalidateContent } from "@/lib/revalidate";
 import { NextResponse } from "next/server";
 
 import requireAdminPermission from "@/lib/requireAdminPermission";
@@ -43,23 +44,15 @@ export async function POST(req) {
   const body = await req.json();
 
   // اعتبارسنجی پایه
-  const required = ["title", "type", "discount", "startAt", "endAt"];
+  const required = ["title", "type", "discount"];
   for (const field of required) {
     if (!body[field]) {
       return NextResponse.json({ error: `فیلد ${field} الزامی است` }, { status: 400 });
     }
   }
 
-  const startAt = parseIranDateTimeLocal(body.startAt);
-  const endAt = parseIranDateTimeLocal(body.endAt);
-
-  if (!startAt || !endAt) {
-    return NextResponse.json({ error: "تاریخ شروع یا پایان نامعتبر است" }, { status: 400 });
-  }
-
-  if (startAt >= endAt) {
-    return NextResponse.json({ error: "تاریخ شروع باید قبل از تاریخ پایان باشد" }, { status: 400 });
-  }
+  const { startAt, endAt, error } = validateDiscountDates(body);
+  if (error) return NextResponse.json({ error }, { status: 400 });
 
   if (body.discount.value <= 0) {
     return NextResponse.json({ error: "مقدار تخفیف باید بیشتر از صفر باشد" }, { status: 400 });
@@ -70,5 +63,6 @@ export async function POST(req) {
   }
 
   const rule = await DiscountRule.create({ ...body, startAt, endAt });
+  revalidateContent(["products", "events"]);
   return NextResponse.json(rule, { status: 201 });
 }

@@ -9,6 +9,7 @@
 //   const enriched = await enrichProductsWithDiscounts(products, rate);
 //   // حالا enriched[i].discountPrice و enriched[i].discountPercent دارد (یا null اگر تخفیف ندارد)
 
+import { discountWindowFilter } from "base/utils/discountWindow";
 import connectToDB from "base/configs/db";
 import DiscountRule from "base/models/DiscountRule";
 
@@ -30,8 +31,7 @@ export async function enrichProductsWithDiscounts(products, rate, user = null) {
   // دریافت تمام قوانین تخفیف فعال (یک بار برای همه محصولات)
   const rules = await DiscountRule.find({
     active: true,
-    startAt: { $lte: now },
-    endAt: { $gte: now },
+    ...discountWindowFilter(now),
   })
     .sort({ priority: 1 })
     .lean();

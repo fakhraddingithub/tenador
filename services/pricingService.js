@@ -11,6 +11,7 @@
  * NEVER trust prices sent from the client — always recalculate here.
  */
 
+import { discountWindowFilter } from "base/utils/discountWindow";
 import connectToDB from "base/configs/db";
 import { ExchangeRate } from "base/models/ExchangeRate";
 import DiscountRule from "base/models/DiscountRule";
@@ -81,8 +82,7 @@ export async function applyDiscountRules(product, user, cartTotalToman = 0, isFi
 
   const rules = await DiscountRule.find({
     active: true,
-    startAt: { $lte: now },
-    endAt: { $gte: now },
+    ...discountWindowFilter(now),
     $or: orConditions,
   })
     .sort({ priority: 1 })
@@ -157,8 +157,7 @@ export async function applyCoupon({
   const coupon = await Coupon.findOne({
     code: couponCode.toUpperCase().trim(),
     active: true,
-    startAt: { $lte: now },
-    endAt: { $gte: now },
+    ...discountWindowFilter(now),
   }).lean();
 
   if (!coupon) {

@@ -336,12 +336,13 @@ export default function CouponForm({ initial, onSuccess, onCancel }) {
       </div>
 
       {/* بازه زمانی */}
+      <p className="text-xs text-gray-500">شروع خالی یعنی بدون محدودیت شروع؛ پایان خالی یعنی بدون انقضا. برای تخفیف بدون محدودیت زمانی، هر دو را خالی بگذارید.</p>
       <div className="grid grid-cols-2 gap-3">
-        <Field label="تاریخ شروع *">
-          <input type="datetime-local" value={form.startAt} onChange={(e) => set("startAt", e.target.value)} required className={inputCls} />
+        <Field label="تاریخ شروع (اختیاری)">
+          <input type="datetime-local" value={form.startAt} onChange={(e) => set("startAt", e.target.value)} className={inputCls} />
         </Field>
-        <Field label="تاریخ پایان *">
-          <input type="datetime-local" value={form.endAt} onChange={(e) => set("endAt", e.target.value)} required className={inputCls} />
+        <Field label="تاریخ پایان (اختیاری)">
+          <input type="datetime-local" value={form.endAt} onChange={(e) => set("endAt", e.target.value)} className={inputCls} />
         </Field>
       </div>
 

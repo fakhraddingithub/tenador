@@ -70,8 +70,8 @@ const DiscountRuleSchema = new mongoose.Schema(
       maxUsagePerUser: { type: Number, default: null },
     },
 
-    startAt: { type: Date, required: true, index: true },
-    endAt: { type: Date, required: true, index: true },
+    startAt: { type: Date, default: null, index: true },
+    endAt: { type: Date, default: null, index: true },
 
     priority: { type: Number, default: 1000, index: true }, // عدد کمتر = اولویت بالاتر
     combinable: { type: Boolean, default: false }, // آیا با سایر تخفیف‌ها قابل ترکیب است

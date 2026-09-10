@@ -25,11 +25,11 @@ function formatDate(d) {
 }
 
 function isExpired(endAt) {
-  return new Date(endAt) < new Date();
+  return !!endAt && new Date(endAt) < new Date();
 }
 
 function isLive(coupon) {
-  return coupon.active && !isExpired(coupon.endAt) && new Date(coupon.startAt) <= new Date();
+  return coupon.active && !isExpired(coupon.endAt) && (!coupon.startAt || new Date(coupon.startAt) <= new Date());
 }
 
 import { useAdminPermissions } from "@/components/admin/AdminPermissionProvider";
@@ -108,8 +108,8 @@ export default function CouponCard({ coupon, onEdit, onDelete, onToggle }) {
                 ? `${coupon.discount.value}٪ تخفیف`
                 : `${coupon.discount?.value?.toLocaleString("fa-IR")} تومان تخفیف`}
             </span>
-            <span>شروع: {formatDate(coupon.startAt)}</span>
-            <span>پایان: {formatDate(coupon.endAt)}</span>
+            <span>شروع: {coupon.startAt ? formatDate(coupon.startAt) : "بدون محدودیت"}</span>
+            <span>پایان: {coupon.endAt ? formatDate(coupon.endAt) : "بدون انقضا"}</span>
             <span>
               استفاده‌شده: {(coupon.usedCount || 0).toLocaleString("fa-IR")}
               {coupon.usageLimit != null

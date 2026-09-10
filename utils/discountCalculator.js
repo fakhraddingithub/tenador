@@ -1,4 +1,5 @@
 // base/utils/discountCalculator.js
+import { discountWindowFilter } from "base/utils/discountWindow";
 import DiscountRule from "base/models/DiscountRule";
 import { ruleBrandFilterPasses } from "base/utils/discountMatch";
 
@@ -39,8 +40,7 @@ export async function calculateDiscount({ product, user, cartTotal = 0, isFirstO
 
   const rules = await DiscountRule.find({
     active: true,
-    startAt: { $lte: now },
-    endAt: { $gte: now },
+    ...discountWindowFilter(now),
     $or: orConditions,
   })
     .sort({ priority: 1 })

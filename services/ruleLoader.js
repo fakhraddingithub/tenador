@@ -1,4 +1,5 @@
 // services/ruleLoader.js
+import { discountWindowFilter } from "base/utils/discountWindow";
 import mongoose from "mongoose";
 import DiscountRule from "base/models/DiscountRule";
 import { ruleBrandFilterPasses } from "base/utils/discountMatch";
@@ -34,8 +35,7 @@ export async function loadRulesForProduct(product) {
   const rules = await DiscountRule.find({
     $and: [
       { active: true },
-      { startAt: { $lte: now } },
-      { endAt: { $gte: now } },
+      discountWindowFilter(now),
       { $or: queries }
     ]
   }).sort({ priority: 1 }).lean();

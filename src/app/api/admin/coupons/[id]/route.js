@@ -8,7 +8,8 @@
 import { NextResponse } from "next/server";
 import connectToDB from "base/configs/db";
 import Coupon from "base/models/Coupon";
-import { parseIranDateTimeLocal } from "@/lib/iranDateTime";
+import { validateDiscountDates } from "@/lib/discountDateValidation";
+import { revalidateContent } from "@/lib/revalidate";
 
 import requireAdminPermission from "@/lib/requireAdminPermission";
 
@@ -85,33 +86,11 @@ export async function PATCH(req, { params }) {
     }
 
     // ─── بازه زمانی ───
-    if (body.startAt !== undefined) {
-      const startAt = parseIranDateTimeLocal(body.startAt);
-      if (!startAt) {
-        return NextResponse.json(
-          { error: "تاریخ شروع معتبر نیست" },
-          { status: 422 }
-        );
-      }
-      coupon.startAt = startAt;
-    }
-
-    if (body.endAt !== undefined) {
-      const endAt = parseIranDateTimeLocal(body.endAt);
-      if (!endAt) {
-        return NextResponse.json(
-          { error: "تاریخ پایان معتبر نیست" },
-          { status: 422 }
-        );
-      }
-      coupon.endAt = endAt;
-    }
-
-    if (coupon.endAt <= coupon.startAt) {
-      return NextResponse.json(
-        { error: "تاریخ پایان باید بعد از تاریخ شروع باشد" },
-        { status: 422 }
-      );
+    if (body.startAt !== undefined || body.endAt !== undefined) {
+      const { startAt, endAt, error } = validateDiscountDates(body, coupon);
+      if (error) return NextResponse.json({ error }, { status: 422 });
+      if (body.startAt !== undefined) coupon.startAt = startAt;
+      if (body.endAt !== undefined) coupon.endAt = endAt;
     }
 
     // ─── محدودیت‌ها ───
@@ -160,6 +139,7 @@ export async function PATCH(req, { params }) {
     }
 
     await coupon.save();
+    revalidateContent(["products", "events"]);
 
     return NextResponse.json(
       { message: "کد تخفیف به‌روزرسانی شد", coupon },
@@ -200,6 +180,7 @@ export async function DELETE(req, { params }) {
     }
 
     await Coupon.findByIdAndDelete(id);
+    revalidateContent(["products", "events"]);
 
     return NextResponse.json(
       { message: "کد تخفیف حذف شد" },

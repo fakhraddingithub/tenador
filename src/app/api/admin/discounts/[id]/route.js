@@ -1,7 +1,8 @@
 // src/app/api/admin/discounts/[id]/route.js
 import connectToDB from "base/configs/db";
 import DiscountRule from "base/models/DiscountRule";
-import { parseIranDateTimeLocal } from "@/lib/iranDateTime";
+import { validateDiscountDates } from "@/lib/discountDateValidation";
+import { revalidateContent } from "@/lib/revalidate";
 import { NextResponse } from "next/server";
 
 import requireAdminPermission from "@/lib/requireAdminPermission";
@@ -29,21 +30,13 @@ export async function PATCH(req, { params }) {
 
   const patch = { ...body };
 
-  if (patch.startAt !== undefined) {
-    const parsed = parseIranDateTimeLocal(patch.startAt);
-    if (!parsed) return NextResponse.json({ error: "تاریخ شروع نامعتبر است" }, { status: 400 });
-    patch.startAt = parsed;
-  }
-  if (patch.endAt !== undefined) {
-    const parsed = parseIranDateTimeLocal(patch.endAt);
-    if (!parsed) return NextResponse.json({ error: "تاریخ پایان نامعتبر است" }, { status: 400 });
-    patch.endAt = parsed;
-  }
-  if (patch.startAt && patch.endAt && patch.startAt >= patch.endAt) {
-    return NextResponse.json(
-      { error: "تاریخ شروع باید قبل از تاریخ پایان باشد" },
-      { status: 400 }
-    );
+  if (body.startAt !== undefined || body.endAt !== undefined) {
+    const current = await DiscountRule.findById(id).lean();
+    if (!current) return NextResponse.json({ error: "پیدا نشد" }, { status: 404 });
+    const { startAt, endAt, error } = validateDiscountDates(body, current);
+    if (error) return NextResponse.json({ error }, { status: 400 });
+    if (body.startAt !== undefined) patch.startAt = startAt;
+    if (body.endAt !== undefined) patch.endAt = endAt;
   }
 
   const rule = await DiscountRule.findByIdAndUpdate(
@@ -52,6 +45,7 @@ export async function PATCH(req, { params }) {
     { new: true, runValidators: true }
   );
   if (!rule) return NextResponse.json({ error: "پیدا نشد" }, { status: 404 });
+  revalidateContent(["products", "events"]);
   return NextResponse.json(rule);
 }
 
@@ -64,5 +58,6 @@ export async function DELETE(req, { params }) {
   const { id } = await params;
   const rule = await DiscountRule.findByIdAndDelete(id);
   if (!rule) return NextResponse.json({ error: "پیدا نشد" }, { status: 404 });
+  revalidateContent(["products", "events"]);
   return NextResponse.json({ success: true });
 }

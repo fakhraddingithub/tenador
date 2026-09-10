@@ -12,7 +12,8 @@ import { NextResponse } from "next/server";
 import connectToDB from "base/configs/db";
 import Coupon from "base/models/Coupon";
 import Order from "base/models/Order";
-import { parseIranDateTimeLocal } from "@/lib/iranDateTime";
+import { validateDiscountDates } from "@/lib/discountDateValidation";
+import { revalidateContent } from "@/lib/revalidate";
 
 import requireAdminPermission from "@/lib/requireAdminPermission";
 
@@ -46,13 +47,10 @@ function validateCouponPayload(body, { partial = false } = {}) {
   }
 
   if (!partial || body.startAt !== undefined || body.endAt !== undefined) {
-    parsedStartAt = parseIranDateTimeLocal(body.startAt);
-    parsedEndAt = parseIranDateTimeLocal(body.endAt);
-    if (!parsedStartAt || !parsedEndAt) {
-      errors.push("تاریخ شروع و پایان الزامی و معتبر هستند");
-    } else if (parsedEndAt <= parsedStartAt) {
-      errors.push("تاریخ پایان باید بعد از تاریخ شروع باشد");
-    }
+    const dates = validateDiscountDates(body);
+    parsedStartAt = dates.startAt;
+    parsedEndAt = dates.endAt;
+    if (dates.error) errors.push(dates.error);
   }
 
   if (body.applicableTo !== undefined) {
@@ -146,6 +144,7 @@ export async function POST(req) {
           : [],
     });
 
+    revalidateContent(["products", "events"]);
     return NextResponse.json(
       { message: "کد تخفیف با موفقیت ایجاد شد", coupon },
       { status: 201 }

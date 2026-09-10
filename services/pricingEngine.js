@@ -8,6 +8,7 @@
  *   { usedProductId, quantity, itemType: "used" }     → محصول دست دوم
  */
 
+import { discountWindowFilter } from "base/utils/discountWindow";
 import mongoose from "mongoose";
 import connectToDB from "base/configs/db";
 import { getCachedRate, eurToToman } from "@/lib/Exchangerate";
@@ -51,8 +52,7 @@ export async function loadActiveRules(product, user = null, cartValueToman = 0) 
 
   const rules = await DiscountRule.find({
     active: true,
-    startAt: { $lte: now },
-    endAt:   { $gte: now },
+    ...discountWindowFilter(now),
     $or: typeQueries,
   })
     .sort({ priority: 1 })
@@ -133,8 +133,7 @@ export async function validateCoupon(couponCode, userId, cartTotalToman, cartIte
   const coupon = await Coupon.findOne({
     code: couponCode.trim().toUpperCase(),
     active: true,
-    startAt: { $lte: now },
-    endAt:   { $gte: now },
+    ...discountWindowFilter(now),
   }).lean();
 
   if (!coupon) return { valid: false, discount: 0, coupon: null, reason: "کد تخفیف معتبر نیست" };
