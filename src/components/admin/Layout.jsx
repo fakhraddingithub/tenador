@@ -58,7 +58,6 @@ export default function AdminLayout({ children }) {
   const [mobileOpen, setMobileOpen] = useState(false);
   const [prices, setPrices] = useState({ usd: null, eur: null });
   const [pricesError, setPricesError] = useState(false);
-  const [rateInfo, setRateInfo] = useState(null);
   const [time, setTime] = useState("");
   const [mounted, setMounted] = useState(false);
 
@@ -112,7 +111,6 @@ export default function AdminLayout({ children }) {
         }
         if (!controller.signal.aborted) {
           setPrices({ usd, eur });
-          setRateInfo({ updatedAt: data.updatedAt, stale: data.stale });
           setPricesError(false);
         }
       } catch (error) {
@@ -133,9 +131,6 @@ export default function AdminLayout({ children }) {
   const formatRate = (value) => Number.isFinite(value) && value > 0
     ? farsiNumber.format(value)
     : pricesError ? "ناموجود" : "---";
-  const rateUpdatedLabel = rateInfo ? new Intl.DateTimeFormat("fa-IR", {
-    month: "short", day: "numeric", hour: "2-digit", minute: "2-digit", timeZone: "Asia/Tehran",
-  }).format(new Date(rateInfo.updatedAt)) : "";
   const sidebarWidth = sidebarOpen ? 260 : 76;
 
   // صفحه‌های داخلی = عمقِ بیشتر از /p-admin/<section>. صفحه‌های سطح‌بالا
@@ -269,9 +264,9 @@ export default function AdminLayout({ children }) {
       <motion.div animate={{ marginRight: sidebarWidth }} transition={{ duration: 0.35, ease: [0.4, 0, 0.2, 1] }}
         className="admin-main-mobile flex-1 flex flex-col min-h-screen min-w-0">
         {/* Header */}
-        <header className="sticky top-[75px] z-40 flex items-center justify-between gap-2 px-4 sm:px-6 py-3 border-b"
+        <header className="sticky top-[75px] z-40 flex flex-wrap lg:flex-nowrap items-center justify-between gap-2 px-3 sm:px-6 py-3 border-b"
           style={{ background: "rgba(244,245,242,0.9)", backdropFilter: "blur(16px)", borderColor: "var(--admin-border)" }}>
-          <div className="flex items-center gap-2 min-w-0">
+          <div className="flex items-center gap-2 min-w-0 w-full lg:w-auto">
             {/* همبرگر — فقط موبایل: باز کردن ساید‌بار */}
             <button type="button" aria-label="باز کردن منو" onClick={() => setMobileOpen(true)}
               className="lg:hidden flex-shrink-0 w-9 h-9 flex items-center justify-center transition-all hover:shadow-sm"
@@ -293,20 +288,20 @@ export default function AdminLayout({ children }) {
             </span>
           </div>
 
-          <div className="flex items-center gap-2 sm:gap-3 flex-shrink-0">
+          <div className="flex flex-wrap items-center justify-between lg:justify-end gap-2 sm:gap-3 w-full lg:w-auto lg:flex-shrink-0">
             <NotificationBell />
 
-            <div className="flex items-center gap-2 px-3 py-1.5 text-xs font-bold tabular-nums"
+            <div className="flex items-center gap-1 sm:gap-2 px-2 sm:px-3 py-1.5 text-xs font-bold tabular-nums whitespace-nowrap"
               style={{ background: "var(--color-primary-soft)", color: "var(--color-primary)", borderRadius: "var(--admin-radius)" }}>
               <FaClock size={11} className="animate-pulse" />
               {mounted ? time : "--:--:--"}
             </div>
 
-            <div className="hidden md:flex items-center gap-4 px-4 py-1.5 border text-xs"
-              title={pricesError ? "دریافت نرخ ارز ناموفق بود؛ نرخ‌های موجود مربوط به آخرین دریافت موفق هستند." : `آخرین اعلام TGJU: ${rateUpdatedLabel || "در حال دریافت"}`}
+            <div className="flex items-center gap-2 sm:gap-4 px-2 sm:px-4 py-1.5 border text-xs tabular-nums whitespace-nowrap"
+              title={pricesError ? "دریافت نرخ ارز ناموفق بود؛ نرخ‌های موجود مربوط به آخرین دریافت موفق هستند." : undefined}
               style={{ background: "var(--admin-card)", borderColor: "var(--admin-border)", borderRadius: "var(--admin-radius)" }}>
               <div className="flex items-center gap-1.5">
-                <div className="w-5 h-5 rounded-full flex items-center justify-center"
+                <div className="w-5 h-5 rounded-full hidden sm:flex items-center justify-center"
                   style={{ background: "var(--color-primary-soft)", color: "var(--color-primary)" }}>
                   <FaDollarSign size={9} />
                 </div>
@@ -317,7 +312,7 @@ export default function AdminLayout({ children }) {
               </div>
               <div className="w-px h-6" style={{ background: "var(--admin-border)" }} />
               <div className="flex items-center gap-1.5">
-                <div className="w-5 h-5 rounded-full flex items-center justify-center"
+                <div className="w-5 h-5 rounded-full hidden sm:flex items-center justify-center"
                   style={{ background: "var(--color-secondary-soft)", color: "var(--admin-warning)" }}>
                   <FaEuroSign size={9} />
                 </div>
@@ -326,14 +321,9 @@ export default function AdminLayout({ children }) {
                   <p className="font-bold" style={{ color: "var(--admin-text)" }}>{formatRate(prices.eur)}</p>
                 </div>
               </div>
-              <div className="text-[10px]" style={{ color: "var(--admin-text-muted)" }}>
-                <a href="https://www.tgju.org/currency" target="_blank" rel="noopener noreferrer" className="hover:underline">TGJU</a>
-                <p>{pricesError ? "بروزرسانی ناموفق" : rateInfo?.stale ? "نرخ قبلی بازار" : "آخرین اعلام"}</p>
-                {rateInfo && <time dateTime={rateInfo.updatedAt}>{rateUpdatedLabel}</time>}
-              </div>
             </div>
 
-            <div className="flex items-center gap-2 px-3 py-1.5 border cursor-pointer hover:shadow-sm transition-all"
+            <div className="hidden md:flex items-center gap-2 px-3 py-1.5 border cursor-pointer hover:shadow-sm transition-all"
               style={{ background: "var(--admin-card)", borderColor: "var(--admin-border)", borderRadius: "var(--admin-radius)" }}>
               <div className="w-7 h-7 overflow-hidden flex items-center justify-center text-white text-xs font-bold"
                 style={{ background: "var(--color-primary)", borderRadius: "var(--admin-radius)" }}>
