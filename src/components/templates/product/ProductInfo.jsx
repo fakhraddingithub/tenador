@@ -223,25 +223,29 @@ const ProductInfo = ({ product, selectedVariant, onVariantChange, onSelectionCha
 
   return (
     <div className="flex flex-col h-full justify-between gap-6 relative">
-      {/* Brand logo */}
-      {product.brand?.logo && (
-        <Link
-          href={`/${product.brand.slug || product.brand._id}`}
-          className="self-end absolute top-0 left-0"
-        >
-          <img
-            src={product.brand.logo}
-            alt={product.brand.title || product.brand.name}
-            className="h-24 w-auto object-contain cursor-pointer"
+      {/* Name + short description + brand logo — یک ردیف تا هرگز روی هم نیفتند */}
+      <div className="flex items-start gap-3 sm:gap-4">
+        <div className="min-w-0 flex-1">
+          <ProductHeader
+            name={product.name}
+            shortDescription={product.shortDescription}
           />
-        </Link>
-      )}
+        </div>
 
-      {/* Name + short description */}
-      <ProductHeader
-        name={product.name}
-        shortDescription={product.shortDescription}
-      />
+        {/* Brand logo */}
+        {product.brand?.logo && (
+          <Link
+            href={`/${product.brand.slug || product.brand._id}`}
+            className="shrink-0"
+          >
+            <img
+              src={product.brand.logo}
+              alt={product.brand.title || product.brand.name}
+              className="h-12 w-auto max-w-[72px] cursor-pointer object-contain object-left sm:h-16 sm:max-w-[104px] md:h-20 md:max-w-[132px] lg:h-24 lg:max-w-[160px]"
+            />
+          </Link>
+        )}
+      </div>
 
       {/* Price Section */}
       <div className="space-y-3">

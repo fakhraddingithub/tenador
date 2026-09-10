@@ -108,25 +108,29 @@ const UsedProductInfo = ({ product }) => {
   return (
     <div className="flex flex-col h-full justify-between gap-6 relative">
 
-      {/* لوگو برند */}
-      {baseProduct.brand?.logo && (
-        <Link
-          href={`/${baseProduct.brand.slug || baseProduct.brand._id}`}
-          className="self-end absolute top-0 left-0"
-        >
-          <img
-            src={baseProduct.brand.logo}
-            alt={baseProduct.brand.title}
-            className="h-24 w-auto object-contain"
+      {/* نام محصول + لوگو برند — یک ردیف تا هرگز روی هم نیفتند */}
+      <div className="flex items-start gap-3 sm:gap-4">
+        <div className="min-w-0 flex-1">
+          <ProductHeader
+            name={name}
+            shortDescription={baseProduct.shortDescription}
           />
-        </Link>
-      )}
+        </div>
 
-      {/* نام محصول */}
-      <ProductHeader
-        name={name}
-        shortDescription={baseProduct.shortDescription}
-      />
+        {/* لوگو برند */}
+        {baseProduct.brand?.logo && (
+          <Link
+            href={`/${baseProduct.brand.slug || baseProduct.brand._id}`}
+            className="shrink-0"
+          >
+            <img
+              src={baseProduct.brand.logo}
+              alt={baseProduct.brand.title}
+              className="h-12 w-auto max-w-[72px] object-contain object-left sm:h-16 sm:max-w-[104px] md:h-20 md:max-w-[132px] lg:h-24 lg:max-w-[160px]"
+            />
+          </Link>
+        )}
+      </div>
 
       {/* واریانت تعیین‌شده */}
       {baseVariant && (

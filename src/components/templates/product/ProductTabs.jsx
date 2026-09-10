@@ -122,7 +122,7 @@ const ProductTabs = ({
 
   return (
     <div className="mt-24 w-full rtl text-right" dir="rtl">
-      <div className="relative flex items-center gap-8 overflow-x-auto border-b border-gray-100 pb-px no-scrollbar">
+      <div className="relative flex flex-wrap items-center gap-x-3 gap-y-0 border-b border-gray-100 pb-px sm:gap-x-8">
         {tabs.map((tab) => {
           const isActive = activeTab === tab.id;
 
@@ -131,11 +131,11 @@ const ProductTabs = ({
               key={tab.id}
               onClick={() => setActiveTab(tab.id)}
               className={`
-                relative shrink-0 px-2 py-4 text-sm outline-none transition-all duration-300
+                relative max-w-full px-1 py-3 text-[13px] outline-none transition-all duration-300 sm:px-2 sm:py-4 sm:text-sm
                 ${isActive ? "font-bold text-[#1a1a1a]" : "font-bold text-gray-400 hover:text-gray-600"}
               `}
             >
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-1.5 sm:gap-2">
                 <span className={`${isActive ? "opacity-100" : "opacity-40"}`}>
                   {tab.isCustom ? (
                     tab.iconUrl ? (

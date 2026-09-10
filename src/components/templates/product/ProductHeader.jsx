@@ -29,8 +29,7 @@ const ProductHeader = ({ name, shortDescription }) => {
         transition={{ delay: 0.1 }}
         className="
           w-full
-          sm:w-[90%]
-          md:w-[85%]
+          break-words
           text-[#1a1a1a]
           text-2xl
           sm:text-3xl
