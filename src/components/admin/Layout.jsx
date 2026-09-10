@@ -264,9 +264,9 @@ export default function AdminLayout({ children }) {
       <motion.div animate={{ marginRight: sidebarWidth }} transition={{ duration: 0.35, ease: [0.4, 0, 0.2, 1] }}
         className="admin-main-mobile flex-1 flex flex-col min-h-screen min-w-0">
         {/* Header */}
-        <header className="sticky top-[75px] z-40 flex flex-wrap lg:flex-nowrap items-center justify-between gap-2 px-3 sm:px-6 py-3 border-b"
+        <header className="sticky top-[75px] z-40 flex flex-nowrap items-center justify-between gap-2 px-2 sm:px-6 py-3 border-b"
           style={{ background: "rgba(244,245,242,0.9)", backdropFilter: "blur(16px)", borderColor: "var(--admin-border)" }}>
-          <div className="flex items-center gap-2 min-w-0 w-full lg:w-auto">
+          <div className="flex flex-1 items-center gap-1 sm:gap-2 min-w-0">
             {/* همبرگر — فقط موبایل: باز کردن ساید‌بار */}
             <button type="button" aria-label="باز کردن منو" onClick={() => setMobileOpen(true)}
               className="lg:hidden flex-shrink-0 w-9 h-9 flex items-center justify-center transition-all hover:shadow-sm"
@@ -276,22 +276,22 @@ export default function AdminLayout({ children }) {
             {/* دکمه‌ی بازگشتِ یکپارچه — فقط صفحه‌های داخلی؛ به صفحه‌ی قبلی برمی‌گردد */}
             {isNested && (
               <button type="button" onClick={goBack} aria-label="بازگشت"
-                className="flex-shrink-0 flex items-center gap-1.5 px-3 h-9 text-xs font-bold transition-all hover:shadow-sm"
+                className="flex-shrink-0 flex items-center justify-center gap-1.5 w-9 sm:w-auto sm:px-3 h-9 text-xs font-bold transition-all hover:shadow-sm"
                 style={{ background: "var(--admin-card)", border: "1px solid var(--admin-border)", color: "var(--color-primary)", borderRadius: "var(--admin-radius)" }}>
-                <FiArrowRight size={14} /> بازگشت
+                <FiArrowRight size={14} /><span className="hidden sm:inline">بازگشت</span>
               </button>
             )}
             <span className="hidden sm:inline text-xs font-bold" style={{ color: "var(--admin-text-muted)" }}>پنل مدیریت</span>
             <span className="hidden sm:inline" style={{ color: "var(--admin-border)" }}>/</span>
-            <span className="text-xs font-bold truncate" style={{ color: "var(--color-primary)" }}>
+            <span className="hidden sm:block text-xs font-bold truncate" style={{ color: "var(--color-primary)" }}>
               {visibleMenu.find(m => m.href === "/p-admin" ? pathname === "/p-admin" : pathname.startsWith(m.href))?.title || ""}
             </span>
           </div>
 
-          <div className="flex flex-wrap items-center justify-between lg:justify-end gap-2 sm:gap-3 w-full lg:w-auto lg:flex-shrink-0">
+          <div className="flex flex-nowrap items-center gap-1 sm:gap-3 flex-shrink-0">
             <NotificationBell />
 
-            <div className="flex items-center gap-1 sm:gap-2 px-2 sm:px-3 py-1.5 text-xs font-bold tabular-nums whitespace-nowrap"
+            <div className="hidden sm:flex items-center gap-2 px-3 py-1.5 text-xs font-bold tabular-nums whitespace-nowrap"
               style={{ background: "var(--color-primary-soft)", color: "var(--color-primary)", borderRadius: "var(--admin-radius)" }}>
               <FaClock size={11} className="animate-pulse" />
               {mounted ? time : "--:--:--"}
