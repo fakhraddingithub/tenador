@@ -10,6 +10,7 @@ import {
   GraduationCap,
   UserPlus,
   LifeBuoy,
+  MessageSquare,
   CheckCheck,
   Inbox,
 } from "lucide-react";
@@ -41,6 +42,11 @@ const TYPE_CONFIG = {
     Icon: LifeBuoy,
     color: "#0ea5e9",
     label: "پشتیبانی",
+  },
+  new_comment: {
+    Icon: MessageSquare,
+    color: "#8b5cf6",
+    label: "نظر جدید",
   },
 };
 

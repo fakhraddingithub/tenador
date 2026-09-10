@@ -9,6 +9,7 @@ import { NextResponse } from "next/server";
 import connectToDB from "base/configs/db";
 import "base/models/registerModels";
 import Comment from "base/models/Comment";
+import Notification from "base/models/Notification";
 import { revalidateContent } from "@/lib/revalidate";
 import requireAdminPermission from "@/lib/requireAdminPermission";
 import { grantReviewCreditIfEligible } from "@/lib/reviewCreditGranting";
@@ -63,6 +64,10 @@ export async function DELETE(req, { params }) {
     if (!deleted) {
       return NextResponse.json({ message: "نظر یافت نشد" }, { status: 404 });
     }
+
+    // اعلانِ این نظر همان _id را دارد؛ بدون حذفش یک شمارنده‌ی خوانده‌نشده‌ی
+    // بدونِ مقصد باقی می‌ماند. خطای اعلان نباید حذفِ انجام‌شده را بشکند.
+    await Notification.deleteOne({ _id: deleted._id }).catch(() => {});
 
     // اگر نظرِ حذف‌شده تأییدشده بود، از نمایش عمومی هم باید برود
     revalidateContent(["comments"]);

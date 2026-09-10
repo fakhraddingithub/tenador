@@ -446,6 +446,7 @@ export const NOTIFICATION_TYPE_PERMISSIONS = {
   coach_student_order: "coaches.view",
   coach_application: "coaches.view",
   new_ticket: "tickets.view",
+  new_comment: "comments.view",
 };
 
 /** شمارنده‌ی «پیام تماسِ جدید» جدا از Notification است. */

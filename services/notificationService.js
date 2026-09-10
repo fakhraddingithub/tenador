@@ -20,6 +20,7 @@ export const SECTION_BY_TYPE = {
   coach_student_order: "coachCredits",
   coach_application: "coachApplications",
   new_ticket: "support",
+  new_comment: "support",
 };
 
 const SECTIONS = ["orders", "coachCredits", "coachApplications", "support"];
@@ -133,6 +134,32 @@ export async function notifyNewTicket(ticket, { reply = false } = {}) {
     actor: ticket.user?._id || ticket.user || null,
     link: `/p-admin/support/tickets/${ticket._id}`,
   });
+}
+
+/**
+ * نظر یا پاسخِ جدیدِ کاربر — در صف بازبینی ادمین.
+ *
+ * صفحه‌ی اختصاصیِ «یک نظر» وجود ندارد، پس لینک به تبِ نظراتِ مرکز پشتیبانی
+ * می‌رود؛ همان تبی که با mount شدنش اعلان‌های این نوع خوانده‌شده می‌شوند.
+ */
+export async function notifyNewComment(comment, { productName = "", reply = false } = {}) {
+  if (!comment?._id) return;
+  const target = String(productName || "").trim().slice(0, 60);
+  const on = target ? ` برای «${target}»` : "";
+  await safeCreate(
+    {
+      // شناسه‌ی نظر، شناسه‌ی اعلان هم هست — همان الگوی notifyNewPayment:
+      // ایندکس یکتای _id بدون migration، دو اعلان برای یک نظر را ناممکن می‌کند.
+      _id: comment._id,
+      type: "new_comment",
+      message: reply
+        ? `پاسخ جدید روی یک نظر${on} ثبت شد و در انتظار بازبینی است`
+        : `نظر جدید${on} ثبت شد و در انتظار بازبینی است`,
+      actor: comment.user || null,
+      link: "/p-admin/support?tab=comments",
+    },
+    { _id: comment._id },
+  );
 }
 
 /* ─────────────────────────  علامت‌گذاری خوانده‌شده  ───────────────────────── */

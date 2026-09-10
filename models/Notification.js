@@ -12,6 +12,8 @@ import mongoose from "mongoose";
  *  - new_payment         → پرداخت جدیدی برای یک سفارش ثبت یا تأیید شد
  *  - coach_student_order → شاگردِ یک مربی سفارش ثبت کرده (نیاز به ثبت کردیت دستی)
  *  - coach_application   → درخواست مربیگری جدید
+ *  - new_ticket          → تیکت پشتیبانی جدید یا پاسخ کاربر روی تیکت
+ *  - new_comment         → نظر/دیدگاه جدید کاربر (در صف بازبینی)
  */
 
 export const NOTIFICATION_TYPES = [
@@ -20,6 +22,7 @@ export const NOTIFICATION_TYPES = [
   "coach_student_order",
   "coach_application",
   "new_ticket",
+  "new_comment",
 ];
 
 const NotificationSchema = new mongoose.Schema(

@@ -25,6 +25,7 @@ import Product from "base/models/Product";
 import UsedProduct from "base/models/UsedProduct";
 import Order from "base/models/Order";
 import { revalidateContent } from "@/lib/revalidate";
+import { notifyNewComment } from "base/services/notificationService";
 
 // وضعیت‌های سفارش که اجازه‌ی ثبت نظرِ «خرید تأییدشده» را می‌دهند
 const REVIEWABLE_FULFILLMENT = ["SENT", "DELIVERED"];
@@ -114,9 +115,10 @@ export async function POST(req) {
     const targetField = usedProduct ? "usedProduct" : "product";
 
     // محصول باید وجود داشته باشد
+    // name فقط برای متنِ اعلانِ ادمین خوانده می‌شود
     const productDoc = usedProduct
-      ? await UsedProduct.findById(usedProduct).select("_id").lean()
-      : await Product.findById(product).select("_id").lean();
+      ? await UsedProduct.findById(usedProduct).select("_id name").lean()
+      : await Product.findById(product).select("_id name").lean();
     if (!productDoc) {
       return NextResponse.json({ message: "محصول یافت نشد" }, { status: 404 });
     }
@@ -142,6 +144,8 @@ export async function POST(req) {
         text: trimmed,
         status: "pending",
       });
+
+      await notifyNewComment(reply, { productName: productDoc.name, reply: true });
 
       return NextResponse.json(
         { message: "پاسخ شما ثبت شد و پس از تأیید نمایش داده می‌شود", comment: { id: reply._id } },
@@ -238,6 +242,8 @@ export async function POST(req) {
       isVerifiedPurchase: verified,
       status: "pending",
     });
+
+    await notifyNewComment(comment, { productName: productDoc.name });
 
     // نظر در صف بازبینی است؛ تگ نظرها را تازه می‌کنیم تا پس از تأیید سریع نمایش یابد
     revalidateContent(["comments"]);

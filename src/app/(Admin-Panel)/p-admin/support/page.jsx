@@ -42,6 +42,7 @@ function SupportPageContent() {
   // بَج‌ها از لایه‌ی متمرکز (همان اعداد سایدبار و زنگوله — بدون polling جداگانه)
   const { byType, contactNew } = useNotifications();
   const ticketsUnread = byType?.new_ticket || 0;
+  const commentsUnread = byType?.new_comment || 0;
 
   const handleChange = (v) => {
     setTab(v);
@@ -54,11 +55,11 @@ function SupportPageContent() {
     () =>
       [
         { value: "tickets", label: "تیکت‌ها", icon: FaTicketAlt, badge: ticketsUnread },
-        { value: "comments", label: "نظرات", icon: FaCommentDots },
+        { value: "comments", label: "نظرات", icon: FaCommentDots, badge: commentsUnread },
         { value: "messages", label: "پیام‌های تماس", icon: FaEnvelopeOpenText, badge: contactNew },
       ].filter((t) => allows(t.value)),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [contactNew, ticketsUnread, can]
+    [contactNew, ticketsUnread, commentsUnread, can]
   );
 
   return (

@@ -66,7 +66,8 @@
     "ensure:indexes": "node scripts/ensureIndexes.js",
     "verify:audit-trail": "node scripts/verifyAuditTrail.mjs",
     "verify:admin-auth": "node scripts/verify-admin-auth.mjs",
-    "rbac:coverage": "node scripts/rbacCoverage.mjs"
+    "rbac:coverage": "node scripts/rbacCoverage.mjs",
+    "test:comment-notification": "node --test --test-timeout=180000 tests/commentNotification.test.mjs"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",

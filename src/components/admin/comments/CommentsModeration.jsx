@@ -20,6 +20,7 @@ import {
 } from "react-icons/fa";
 import RatingStars from "@/components/reviews/RatingStars";
 import { useAdminPermissions } from "@/components/admin/AdminPermissionProvider";
+import MarkNotificationsRead from "@/components/admin/MarkNotificationsRead";
 
 const STATUS_TABS = [
   { key: "pending", label: "در انتظار" },
@@ -52,6 +53,9 @@ const STATUS_LABEL = { pending: "در انتظار", approved: "تأییدشده
 
 // 🟡 نظارتِ نظرات — فوریتِ زمانی ندارد
 const COMMENT_TTL = { dedupingInterval: 60_000 };
+
+// خارج از کامپوننت تا ارجاعش پایدار بماند (MarkNotificationsRead با JSON کلید می‌زند)
+const MARK_READ_FILTER = { type: "new_comment" };
 
 export default function CommentsModeration() {
   // تأیید/رد = PATCH → comments.moderate ، حذف = DELETE → comments.delete
@@ -179,6 +183,9 @@ export default function CommentsModeration() {
 
   return (
     <div dir="rtl" className="space-y-5">
+      {/* دیدنِ صفِ نظرات = خوانده‌شدنِ اعلان‌هایش (همان رفتارِ باز کردنِ یک تیکت) */}
+      <MarkNotificationsRead filter={MARK_READ_FILTER} />
+
       {/* Header */}
       <div className="flex items-center gap-2">
         <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-[#aa4725]/10">
