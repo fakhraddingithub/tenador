@@ -56,6 +56,7 @@ export const ADMIN_API_PERMISSIONS = {
   // ── داشبورد و اعلان‌های خودِ ادمین ──────────────────────────────────
   "/admin/stats": { GET: "dashboard.view" },
   "/admin/notifications/summary": { GET: ANY_ADMIN },
+  "/admin/market-rates": { GET: ANY_ADMIN },
   "/admin/notifications/read": { POST: ANY_ADMIN },
 
   // ── مقالات ─────────────────────────────────────────────────────────

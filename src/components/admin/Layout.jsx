@@ -56,7 +56,9 @@ export default function AdminLayout({ children }) {
   const router = useRouter();
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [mobileOpen, setMobileOpen] = useState(false);
-  const [prices, setPrices] = useState({ usd: "---", eur: "---" });
+  const [prices, setPrices] = useState({ usd: null, eur: null });
+  const [pricesError, setPricesError] = useState(false);
+  const [rateInfo, setRateInfo] = useState(null);
   const [time, setTime] = useState("");
   const [mounted, setMounted] = useState(false);
 
@@ -94,22 +96,46 @@ export default function AdminLayout({ children }) {
   }, []);
 
   useEffect(() => {
+    const controller = new AbortController();
     const fetchPrices = async () => {
       try {
-        const res = await fetch("https://brsapi.ir/Api/Market/Gold_Currency.php?key=BUjlELnh5HDWl6BDTEEXp5DLf9g9qY7C");
-        const data = await res.json();
-        setPrices({
-          usd: Number(data?.currency?.[1]?.price || 0),
-          eur: Number(data?.currency?.[2]?.price || 0),
+        const res = await fetch("/api/admin/market-rates", {
+          signal: AbortSignal.any([controller.signal, AbortSignal.timeout(15000)]),
+          cache: "no-store",
         });
-      } catch (error) { console.error("Error fetching prices:", error); }
+        if (!res.ok) throw new Error(`Currency request failed: ${res.status}`);
+        const data = await res.json();
+        const { usd, eur } = data;
+        if (data.unit !== "toman" || !Number.isFinite(Date.parse(data.updatedAt)) ||
+          ![usd, eur].every((price) => Number.isFinite(price) && price > 0)) {
+          throw new Error("Invalid currency prices");
+        }
+        if (!controller.signal.aborted) {
+          setPrices({ usd, eur });
+          setRateInfo({ updatedAt: data.updatedAt, stale: data.stale });
+          setPricesError(false);
+        }
+      } catch (error) {
+        if (controller.signal.aborted) return;
+        setPricesError(true);
+        console.error("Error fetching prices:", error);
+      }
     };
     fetchPrices();
-    const priceInterval = setInterval(fetchPrices, 600000);
-    return () => clearInterval(priceInterval);
+    const priceInterval = setInterval(fetchPrices, 300000);
+    return () => {
+      clearInterval(priceInterval);
+      controller.abort();
+    };
   }, []);
 
   const farsiNumber = new Intl.NumberFormat("fa-IR");
+  const formatRate = (value) => Number.isFinite(value) && value > 0
+    ? farsiNumber.format(value)
+    : pricesError ? "ناموجود" : "---";
+  const rateUpdatedLabel = rateInfo ? new Intl.DateTimeFormat("fa-IR", {
+    month: "short", day: "numeric", hour: "2-digit", minute: "2-digit", timeZone: "Asia/Tehran",
+  }).format(new Date(rateInfo.updatedAt)) : "";
   const sidebarWidth = sidebarOpen ? 260 : 76;
 
   // صفحه‌های داخلی = عمقِ بیشتر از /p-admin/<section>. صفحه‌های سطح‌بالا
@@ -277,6 +303,7 @@ export default function AdminLayout({ children }) {
             </div>
 
             <div className="hidden md:flex items-center gap-4 px-4 py-1.5 border text-xs"
+              title={pricesError ? "دریافت نرخ ارز ناموفق بود؛ نرخ‌های موجود مربوط به آخرین دریافت موفق هستند." : `آخرین اعلام TGJU: ${rateUpdatedLabel || "در حال دریافت"}`}
               style={{ background: "var(--admin-card)", borderColor: "var(--admin-border)", borderRadius: "var(--admin-radius)" }}>
               <div className="flex items-center gap-1.5">
                 <div className="w-5 h-5 rounded-full flex items-center justify-center"
@@ -284,8 +311,8 @@ export default function AdminLayout({ children }) {
                   <FaDollarSign size={9} />
                 </div>
                 <div>
-                  <p style={{ color: "var(--admin-text-muted)" }} className="text-[10px] font-bold">دلار</p>
-                  <p className="font-bold" style={{ color: "var(--admin-text)" }}>{farsiNumber.format(prices.usd)}</p>
+                  <p style={{ color: "var(--admin-text-muted)" }} className="text-[10px] font-bold">دلار (تومان)</p>
+                  <p className="font-bold" style={{ color: "var(--admin-text)" }}>{formatRate(prices.usd)}</p>
                 </div>
               </div>
               <div className="w-px h-6" style={{ background: "var(--admin-border)" }} />
@@ -295,9 +322,14 @@ export default function AdminLayout({ children }) {
                   <FaEuroSign size={9} />
                 </div>
                 <div>
-                  <p style={{ color: "var(--admin-text-muted)" }} className="text-[10px] font-bold">یورو</p>
-                  <p className="font-bold" style={{ color: "var(--admin-text)" }}>{farsiNumber.format(prices.eur)}</p>
+                  <p style={{ color: "var(--admin-text-muted)" }} className="text-[10px] font-bold">یورو (تومان)</p>
+                  <p className="font-bold" style={{ color: "var(--admin-text)" }}>{formatRate(prices.eur)}</p>
                 </div>
+              </div>
+              <div className="text-[10px]" style={{ color: "var(--admin-text-muted)" }}>
+                <a href="https://www.tgju.org/currency" target="_blank" rel="noopener noreferrer" className="hover:underline">TGJU</a>
+                <p>{pricesError ? "بروزرسانی ناموفق" : rateInfo?.stale ? "نرخ قبلی بازار" : "آخرین اعلام"}</p>
+                {rateInfo && <time dateTime={rateInfo.updatedAt}>{rateUpdatedLabel}</time>}
               </div>
             </div>
 
