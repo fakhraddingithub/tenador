@@ -47,6 +47,10 @@ import AdditionalSportsField from '@/components/admin/AdditionalSportsField';
 import { showToast } from '@/lib/toast';
 import { showError } from '@/lib/swal';
 import { invalidateAdminCache } from '@/lib/adminCache';
+import {
+  loadFromCategoryOptions,
+  parentCategoryChoices,
+} from '@/lib/categoryFormCopy.mjs';
 
 // --- Sortable Item Component ---
 function SortableAttribute({ attr, onRemove, onEdit }) {
@@ -407,11 +411,19 @@ export default function EditCategory() {
     }
   };
 
+  // خودِ این دسته نمی‌تواند والدِ خودش باشد و نه مبدأی برای کپی روی خودش
+  const otherCategories = categories.filter(
+    (cat) => String(cat._id) !== String(categoryId),
+  );
+  // «دسته والد» فقط از ورزشِ جاری؛ «بارگذاری از دسته دیگر» از همه‌ی ورزش‌ها
+  // (با نام ورزش، چون چند دسته بین ورزش‌ها هم‌نام‌اند: «راکت» تنیس و پدل).
+  const parentCategories = parentCategoryChoices(otherCategories, formData.sport);
+  const loadFromOptions = loadFromCategoryOptions(otherCategories);
+
+  // عمداً «افزودن» است نه «جایگزینی» — برخلاف فرمِ ساخت، اینجا دسته‌ی موجود
+  // داده‌ی خودش را دارد و کپیِ کامل آن را پاک می‌کرد.
   const copyParentFileds = (parentId) => {
-    if (!parentId) {
-      setFormData(prev => ({ ...prev, parent: '' }));
-      return;
-    }
+    if (!parentId) return;
 
     const selectedParent = categories.find(cat => cat._id === parentId);
 
@@ -773,6 +785,8 @@ export default function EditCategory() {
                 setFormData((prev) => ({
                   ...prev,
                   sport: nextSport,
+                  // والدِ ورزشِ قبلی دیگر انتخاب‌شدنی نیست و نباید بی‌صدا ذخیره شود
+                  parent: prev.sport === nextSport ? prev.parent : '',
                   additionalSports: prev.additionalSports.filter(
                     (id) => String(id) !== String(nextSport),
                   ),
@@ -812,15 +826,22 @@ export default function EditCategory() {
               label="دسته والد"
               value={formData.parent}
               onChange={(e) => setFormData((prev) => ({ ...prev, parent: e.target.value }))}
-              options={categories.filter(c => c._id !== categoryId).map((cat) => ({ value: cat._id, label: cat.title }))}
+              options={parentCategories.map((cat) => ({ value: cat._id, label: cat.title }))}
               placeholder="والد را انتخاب کنید"
+              disabled={!formData.sport}
+              hint={
+                !formData.sport
+                  ? 'ابتدا ورزش را انتخاب کنید.'
+                  : 'فقط دسته‌های همین ورزش می‌توانند والد باشند.'
+              }
             />
 
             <Select
               label="بارگذاری از دسته دیگر"
               onChange={(e) => copyParentFileds(e.target.value)}
-              options={categories.filter(c => c._id !== categoryId).map((cat) => ({ value: cat._id, label: cat.title }))}
-              placeholder="دسته اصلی"
+              options={loadFromOptions}
+              placeholder="یک دسته را انتخاب کنید"
+              hint="از همه‌ی ورزش‌ها؛ نام ورزش پس از نام دسته می‌آید. ویژگی‌ها و پرامپت‌های آن دسته به لیستِ فعلی «افزوده» می‌شوند."
             />
 
             {/* AI Prompts Section */}

@@ -46,6 +46,12 @@ import AdditionalSportsField from '@/components/admin/AdditionalSportsField';
 import { showToast } from '@/lib/toast';
 import { showError } from '@/lib/swal';
 import { invalidateAdminCache } from '@/lib/adminCache';
+import {
+  buildCategoryCopy,
+  categorySportTitle,
+  loadFromCategoryOptions,
+  parentCategoryChoices,
+} from '@/lib/categoryFormCopy.mjs';
 
 // --- Sortable Item Component ---
 function SortableAttribute({ attr, onRemove, onEdit }) {
@@ -135,13 +141,22 @@ function SortableAttribute({ attr, onRemove, onEdit }) {
   );
 }
 
+// شناسه‌ی محلیِ ردیف‌های فرم (فقط برای key و dnd؛ ذخیره نمی‌شود)
+const newId = (prefix) =>
+  `${prefix}-${Math.random().toString(36).substr(2, 9)}-${Date.now()}`;
+
 // --- Main Page Component ---
 export default function AddCategory() {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [uploadingField, setUploadingField] = useState(null);
-  const [categories, setCategories] = useState([]);
+  // همه‌ی دسته‌ها (همه‌ی ورزش‌ها) یک‌بار خوانده می‌شوند؛ لیستِ «دسته والد» از روی
+  // همین آرایه و بر اساس ورزشِ جاری فیلتر می‌شود. قبلاً دو fetch موازی (یکی بدون
+  // sportId در اولین رندر) با هم مسابقه می‌دادند و گاهی نتیجه‌ی فیلترنشده آخر
+  // می‌رسید و والدِ همه‌ی ورزش‌ها را نشان می‌داد.
+  const [allCategories, setAllCategories] = useState([]);
   const [sports, setSports] = useState([]);
+  const [loadFromId, setLoadFromId] = useState('');
   // اگر دسته از صفحه‌ی یک ورزش خاص ساخته شود (?sportId=...)، ورزش قفل می‌شود
   const [lockedSportId, setLockedSportId] = useState(null);
   const [showPromptSection, setShowPromptSection] = useState(false);
@@ -282,6 +297,7 @@ The color code may appear in formats like:
 
   useEffect(() => {
     fetchSports();
+    fetchCategories();
 
     // ورزشِ از پیش‌انتخاب‌شده از طریق query param (مثلاً از صفحه‌ی مدیریت ورزش).
     // از window استفاده می‌شود تا نیازی به Suspense boundaryِ useSearchParams نباشد.
@@ -292,19 +308,11 @@ The color code may appear in formats like:
     }
   }, []);
 
-  // دسته‌های والد فقط از همان ورزشِ انتخاب‌شده انتخاب می‌شوند
-  useEffect(() => {
-    fetchCategories(formData.sport);
-  }, [formData.sport]);
-
-  const fetchCategories = async (sportId) => {
+  const fetchCategories = async () => {
     try {
-      const url = sportId
-        ? `/api/categories?sportId=${sportId}`
-        : '/api/categories';
-      const res = await fetch(url);
+      const res = await fetch('/api/categories');
       const data = await res.json();
-      setCategories(data.categories || []);
+      setAllCategories(data.categories || []);
     } catch (error) {
       console.error('Error fetching categories:', error);
     }
@@ -425,36 +433,47 @@ The color code may appear in formats like:
     }
   };
 
-  // ---------- Parent handling ----------
-  const copyParentFileds = (parentId) => {
-    if (!parentId) {
-      setFormData(prev => ({ ...prev, parent: '' }));
-      return;
-    }
+  // ---------- Category lists ----------
+  // «دسته والد» فقط از ورزشِ جاری؛ «بارگذاری از دسته دیگر» از همه‌ی ورزش‌ها
+  const parentCategories = parentCategoryChoices(allCategories, formData.sport);
+  const loadFromOptions = loadFromCategoryOptions(allCategories);
 
-    const selectedParent = categories.find(cat => cat._id === parentId);
+  // ---------- Load everything from another category ----------
+  const loadFromCategory = (sourceId) => {
+    setLoadFromId(sourceId);
+    if (!sourceId) return;
 
-    if (selectedParent) {
-      const inheritedAttributes = (selectedParent.attributes || []).map(attr => ({
-        ...attr,
-        id: `attr-${Math.random().toString(36).substr(2, 9)}-${Date.now()}`,
-      }));
+    const source = allCategories.find((cat) => String(cat._id) === sourceId);
+    if (!source) return;
 
-      if (selectedParent.prompts && selectedParent.prompts.length > 0) {
-        const newPrompts = productPrompts.map(p => {
-          const parentContext = selectedParent.prompts.find(pp => pp.field === p.field);
-          return parentContext ? { ...p, context: parentContext.context } : p;
-        });
-        setProductPrompts(newPrompts);
-      }
+    const copy = buildCategoryCopy(source, {
+      currentSportId: formData.sport,
+      selectableParentIds: parentCategories.map((cat) => cat._id),
+      promptFields: productFields.map((item) => item.field),
+      newId,
+    });
 
-      setFormData(prev => ({
-        ...prev,
-        attributes: inheritedAttributes
-      }));
+    setFormData((prev) => ({ ...prev, ...copy.formData }));
+    setVariantAttributes(copy.variantAttributes);
+    setTechnicalStats(copy.technicalStats);
+    setTechnicalStatsPrompt(copy.technicalStatsPrompt);
+    setCustomTabEnabled(copy.customTab.enabled);
+    setCustomTabName(copy.customTab.name);
+    setCustomTabIcon(copy.customTab.icon);
+    setCustomTabItems(copy.customTab.items);
+    setProductPrompts(copy.prompts);
 
-      showToast.success(`اطلاعات از دسته "${selectedParent.title}" کپی شد`);
-    }
+    // فرم‌های نیمه‌پرِ ویرایش نباید روی داده‌ی تازه باقی بمانند
+    resetAttributeForm();
+    resetVariantForm();
+    setEditingStatId(null);
+    setCurrentStat({ name: '', label: '', description: '' });
+    setEditingTabItemIndex(null);
+    setCurrentTabItem({ title: '', description: '', link: '', image: '' });
+
+    showToast.success(
+      `همه‌ی اطلاعات از دسته «${source.title} — ${categorySportTitle(source)}» کپی شد`,
+    );
   };
 
   const normalizeOrders = (attrs) => {
@@ -789,6 +808,8 @@ The color code may appear in formats like:
                 setFormData((prev) => ({
                   ...prev,
                   sport: nextSport,
+                  // والدِ ورزشِ قبلی دیگر انتخاب‌شدنی نیست و نباید بی‌صدا ذخیره شود
+                  parent: '',
                   additionalSports: prev.additionalSports.filter(
                     (id) => String(id) !== String(nextSport),
                   ),
@@ -837,15 +858,24 @@ The color code may appear in formats like:
               name="parent"
               value={formData.parent}
               onChange={(e) => setFormData((prev) => ({ ...prev, parent: e.target.value }))}
-              options={categories.map((cat) => ({ value: cat._id, label: cat.title }))}
+              options={parentCategories.map((cat) => ({ value: cat._id, label: cat.title }))}
               placeholder="والد را انتخاب کنید"
+              disabled={!formData.sport}
+              hint={
+                !formData.sport
+                  ? 'ابتدا ورزش را انتخاب کنید.'
+                  : 'فقط دسته‌های همین ورزش می‌توانند والد باشند.'
+              }
             />
 
             <Select
               label="بارگذاری از دسته دیگر"
-              onChange={(e) => copyParentFileds(e.target.value)}
-              options={categories.map((cat) => ({ value: cat._id, label: cat.title }))}
-              placeholder="دسته اصلی"
+              name="loadFrom"
+              value={loadFromId}
+              onChange={(e) => loadFromCategory(e.target.value)}
+              options={loadFromOptions}
+              placeholder="یک دسته را انتخاب کنید"
+              hint="از همه‌ی ورزش‌ها؛ نام ورزش پس از نام دسته می‌آید. تمام فیلدهای آن دسته (به‌جز ورزش) در فرم کپی می‌شود."
             />
 
             {/* AI Prompts Section */}

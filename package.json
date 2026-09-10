@@ -23,6 +23,7 @@
     "test:order-item-eur": "node --test tests/orderItemEur.test.mjs",
     "test:sender-address": "node --test tests/senderAddressForm.test.mjs",
     "test:category-variant-rename": "node --test tests/categoryVariantAttributeRename.test.mjs",
+    "test:category-form-copy": "node --test tests/categoryFormCopy.test.mjs",
     "test:racket-match": "node --test tests/racketMatch.test.mjs",
     "test:padel-match": "node --test tests/padelMatch.test.mjs",
     "test:racket-quiz-ui": "node --test tests/racketQuizUi.test.mjs",
