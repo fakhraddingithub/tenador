@@ -101,14 +101,15 @@ export default function CommentsModeration() {
         body: JSON.stringify({ status: newStatus }),
       });
       if (res.ok) {
-        toast.success(newStatus === "approved" ? "نظر تأیید شد" : "نظر رد شد");
+        const result = await res.json();
+        toast.success(result.message || "وضعیت نظر به‌روزرسانی شد");
         // از فهرستِ فیلترِ فعلی حذف می‌شود (مگر در حالت «همه») — روی کشِ SWR
         fetchComments(
           (cur) =>
             cur && {
               ...cur,
               comments:
-                status === "all"
+                status === "all" || status === newStatus
                   ? (cur.comments ?? []).map((c) =>
                       c._id === id ? { ...c, status: newStatus } : c,
                     )
@@ -368,14 +369,14 @@ export default function CommentsModeration() {
                   {/* Left: actions */}
                   {(canModerate || canDelete) && (
                   <div className="flex flex-shrink-0 items-center gap-2 sm:flex-col sm:items-stretch">
-                    {c.status !== "approved" && canModerate && (
+                    {canModerate && (c.status !== "approved" || (c.order && c.isVerifiedPurchase && !c.parent)) && (
                       <button
                         disabled={busyId === c._id}
                         onClick={() => changeStatus(c._id, "approved")}
                         className="inline-flex items-center justify-center gap-1.5 rounded-lg bg-emerald-600 px-3 py-2 text-xs font-bold text-white transition-colors hover:bg-emerald-700 disabled:opacity-50"
                       >
                         <FaCheck className="text-[10px]" />
-                        تأیید
+                        {c.status === "approved" ? "بررسی و واریز پاداش" : "تأیید"}
                       </button>
                     )}
                     {c.status !== "rejected" && canModerate && (
@@ -474,7 +475,7 @@ export default function CommentsModeration() {
 // شمارش‌ها را پس از تغییر وضعیتِ یک نظر به‌روزرسانی می‌کند (برای بَج تب‌ها)
 function recountAfterChange(counts, list, id, newStatus) {
   const current = list.find((c) => c._id === id);
-  if (!current) return counts;
+  if (!current || current.status === newStatus) return counts;
   const next = { ...counts };
   if (current.status in next) next[current.status] = Math.max(0, next[current.status] - 1);
   if (newStatus in next) next[newStatus] = (next[newStatus] || 0) + 1;

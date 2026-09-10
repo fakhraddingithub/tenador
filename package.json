@@ -8,6 +8,7 @@
     "start": "next start",
     "lint": "eslint",
     "test": "jest",
+    "test:review-credit": "node --experimental-vm-modules --test --test-timeout=180000 tests/reviewCredit.test.mjs tests/reviewCreditApi.test.mjs",
     "test:search": "node --test tests/search.test.mjs",
     "test:target-audience": "node --test tests/targetAudience.test.mjs",
     "test:limited-edition-relations": "node --test tests/limitedEditionRelations.test.mjs",

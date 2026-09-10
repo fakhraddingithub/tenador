@@ -2,32 +2,33 @@
 
 import { motion } from 'framer-motion'
 import { FaWallet, FaPlus, FaMinus } from 'react-icons/fa'
-import { useState, useEffect } from 'react'
-import { toast } from 'react-toastify'
+import { useEffect, useState } from 'react'
+
+async function fetchWallet(signal) {
+  const res = await fetch('/api/wallet', { cache: 'no-store', signal })
+  const data = await res.json().catch(() => ({}))
+  if (!res.ok || !data.wallet) {
+    throw new Error(data.message || 'خطا در بارگذاری کیف پول')
+  }
+  return data
+}
 
 const WalletModule = () => {
-  const [wallet, setWallet] = useState(null)
-  const [transactions, setTransactions] = useState([])
-  const [loading, setLoading] = useState(true)
+  const [data, setData] = useState(null)
+  const [error, setError] = useState(null)
+  const [isLoading, setIsLoading] = useState(true)
+  const [attempt, setAttempt] = useState(0)
 
   useEffect(() => {
-    fetchWalletData()
-  }, [])
-
-  const fetchWalletData = async () => {
-    try {
-      const res = await fetch('/api/wallet')
-      if (res.ok) {
-        const data = await res.json()
-        setWallet(data.wallet)
-        setTransactions(data.transactions || [])
-      } else toast.error('خطا در بارگذاری کیف پول')
-    } catch {
-      toast.error('خطا در اتصال')
-    } finally {
-      setLoading(false)
-    }
-  }
+    const controller = new AbortController()
+    fetchWallet(controller.signal)
+      .then((result) => { if (!controller.signal.aborted) setData(result) })
+      .catch((err) => { if (!controller.signal.aborted) setError(err) })
+      .finally(() => { if (!controller.signal.aborted) setIsLoading(false) })
+    return () => controller.abort()
+  }, [attempt])
+  const wallet = data?.wallet
+  const transactions = data?.transactions || []
 
   const getTransactionIcon = (type) =>
     type === 'credit'
@@ -37,10 +38,21 @@ const WalletModule = () => {
   const getTransactionText = (type) =>
     type === 'credit' ? 'واریز' : 'برداشت'
 
-  if (loading) {
+  if (isLoading) {
     return (
       <div className="flex h-56 items-center justify-center">
         <div className="h-7 w-7 animate-spin rounded-full border-2 border-[hsl(var(--primary))] border-t-transparent" />
+      </div>
+    )
+  }
+
+  if (error) {
+    return (
+      <div role="alert" className="rounded-xl border bg-white p-6 text-center space-y-4">
+        <p>{error.message || 'خطا در اتصال'}</p>
+        <button type="button" onClick={() => { setError(null); setIsLoading(true); setAttempt((value) => value + 1) }} className="min-h-11 rounded-lg bg-[var(--color-primary)] px-5 text-white">
+          تلاش مجدد
+        </button>
       </div>
     )
   }

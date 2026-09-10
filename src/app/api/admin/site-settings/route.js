@@ -9,6 +9,7 @@ import requireAdminPermission, { forbidden } from "@/lib/requireAdminPermission"
 import { resolveSiteSettingPermission } from "@/lib/apiPermissions";
 import { revalidateContent } from "@/lib/revalidate";
 import { publicArticleFilter } from "base/utils/articleRoutes";
+import { REVIEW_CREDIT_CONFIG_KEY, validateReviewCreditConfig } from "@/lib/reviewCreditFinance";
 
 // مسیرهایی که با تغییر یک کلید تنظیم باید دوباره ساخته شوند
 const REVALIDATE_PATHS = {
@@ -68,6 +69,11 @@ export async function PUT(req) {
 
   try {
     await connectToDB();
+
+    if (key === REVIEW_CREDIT_CONFIG_KEY) {
+      const error = validateReviewCreditConfig(value);
+      if (error) return NextResponse.json({ error }, { status: 400 });
+    }
 
     if (key === "home_featured_article_ids") {
       const articleIds = Array.isArray(value) ? value.map(String) : [];

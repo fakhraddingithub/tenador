@@ -23,3 +23,21 @@ export const DEFAULT_REVIEW_CREDIT_CONFIG = {
   eligibleRoles: [],
   granularity: "per-item", // "per-item" | "per-order"
 };
+
+// SiteSetting.value is Mixed, so validate on the server as well as in the form.
+export function validateReviewCreditConfig(value) {
+  const roles = REVIEW_CREDIT_ROLE_OPTIONS.map((role) => role.value);
+  if (!value || typeof value !== "object" || Array.isArray(value) ||
+      typeof value.enabled !== "boolean" ||
+      !["amount", "percent"].includes(value.kind) ||
+      !["per-item", "per-order"].includes(value.granularity) ||
+      typeof value.value !== "number" || !Number.isFinite(value.value) ||
+      value.value < 0 || value.value > Number.MAX_SAFE_INTEGER ||
+      (value.kind === "percent" && value.value > 100) ||
+      !Array.isArray(value.eligibleRoles) ||
+      value.eligibleRoles.some((role) => !roles.includes(role)) ||
+      (value.enabled && value.eligibleRoles.length === 0)) {
+    return "تنظیمات پاداش نظر نامعتبر است؛ مبلغ، درصد و نقش‌های مجاز را بررسی کنید";
+  }
+  return null;
+}
