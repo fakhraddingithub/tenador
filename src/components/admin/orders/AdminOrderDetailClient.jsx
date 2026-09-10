@@ -2068,6 +2068,9 @@ export default function AdminOrderDetailClient({ orderId }) {
   const canEditPayment = can("payments.edit");
   // همان کلیدی که کلِ سیستم یورو (شامل قیمت یوروییِ اقلام) با آن گیت شده است
   const canSetCurrency = can("orders.setCurrency");
+  // بدونِ این کلید کلِ «منطقه‌ی خطر» رندر نمی‌شود — نه غیرفعال، نه پنهانِ CSSی.
+  // (این فقط رابط است؛ اجرای واقعی در DELETE /api/admin/orders/[orderId] است.)
+  const canDeleteOrder = can("orders.delete");
   const [order, setOrder] = useState(null);
   const [installment, setInstallment] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -2092,6 +2095,7 @@ export default function AdminOrderDetailClient({ orderId }) {
   // اصلاً mount نیست، پس نه استایلی و نه شنونده‌ای در کار است.
   const [senderModalOpen, setSenderModalOpen] = useState(false);
   const [printJob, setPrintJob] = useState(null); // { sender, paperSize } | null
+  const [deleting, setDeleting] = useState(false);
 
   const fetchOrder = useCallback(async () => {
     setLoading(true);
@@ -2358,6 +2362,72 @@ export default function AdminOrderDetailClient({ orderId }) {
       await fetchOrder();
     } catch (err) {
       toast.error(err.message || "خطا در ویرایش پرداخت");
+    }
+  };
+
+  /**
+   * حذفِ دائمیِ سفارش — دیالوگِ تأیید با تایپِ کدِ سفارش.
+   *
+   * `preConfirm` تنها وقتی اجازه‌ی ادامه می‌دهد که ورودی *دقیقاً* برابرِ
+   * `trackingCode` باشد؛ پس صرفِ کلیک روی دکمه‌ی تأیید چیزی را حذف نمی‌کند.
+   * همین مقدار دوباره در بدنه‌ی درخواست می‌رود و سرور مستقل بررسی‌اش می‌کند —
+   * این‌جا راحتیِ کاربر است، آن‌جا گارد.
+   */
+  const handleDeleteOrder = async () => {
+    const code = String(order?.trackingCode || "");
+    if (!code) {
+      toast.error("این سفارش کد رهگیری ندارد و از این مسیر قابل حذف نیست");
+      return;
+    }
+    const safeCode = code.replace(/[<>&"]/g, "");
+
+    const result = await Swal.fire({
+      ...getSwalTheme(),
+      icon: "warning",
+      title: "حذف دائمی سفارش",
+      html: `<div dir="rtl" class="text-right space-y-2">
+        <p class="text-sm text-gray-600 leading-relaxed">
+          این عملیات <b class="text-red-600">برگشت‌ناپذیر</b> است: سفارش، همه‌ی پرداخت‌های آن
+          و طرح اقساط مرتبط برای همیشه حذف می‌شوند.
+        </p>
+        <p class="text-sm text-gray-600">
+          برای تأیید حذف سفارش، کد سفارش را وارد کنید:
+          <b dir="ltr" class="inline-block font-mono text-gray-900">${safeCode}</b>
+        </p>
+      </div>`,
+      input: "text",
+      inputPlaceholder: safeCode,
+      inputAttributes: { autocapitalize: "off", autocorrect: "off", spellcheck: "false" },
+      showCancelButton: true,
+      confirmButtonText: "حذف دائمی سفارش",
+      cancelButtonText: "انصراف",
+      confirmButtonColor: "#dc2626",
+      preConfirm: (value) => {
+        if (String(value || "").trim() !== code) {
+          Swal.showValidationMessage("کد سفارش وارد‌شده صحیح نیست");
+          return false;
+        }
+        return code;
+      },
+    });
+    if (!result.isConfirmed) return;
+
+    setDeleting(true);
+    try {
+      const res = await fetch(`/api/admin/orders/${orderId}`, {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ confirm: result.value }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.message || "خطا");
+      toast.success(data.message || "سفارش حذف شد");
+      // replace، نه push: صفحه‌ی سفارشِ حذف‌شده نباید در تاریخچه‌ی مرورگر بماند
+      // (دکمه‌ی «بازگشت» روی یک ۴۰۴ می‌نشست).
+      router.replace("/p-admin/admin-orders");
+    } catch (err) {
+      toast.error(err.message || "خطا در حذف سفارش");
+      setDeleting(false);
     }
   };
 
@@ -3050,6 +3120,40 @@ export default function AdminOrderDetailClient({ orderId }) {
               onChanged={fetchOrder}
               onViewImage={setLightboxUrl}
             />
+          </div>
+        )}
+
+        {/* ─── منطقه خطر ───
+            خارج از تب‌ها و در انتهای صفحه، تا در هیچ تبی به‌طور تصادفی کنارِ
+            دکمه‌های روزمره نیفتد. بدونِ کلیدِ orders.delete اصلاً رندر نمی‌شود. */}
+        {canDeleteOrder && (
+          <div className="bg-white rounded-2xl border-2 border-red-200 p-5 space-y-4">
+            <h3 className="text-sm font-bold text-red-600 flex items-center gap-2">
+              <AlertTriangle size={14} />
+              منطقه خطر
+            </h3>
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4
+              bg-red-50 border border-red-100 rounded-xl p-4">
+              <div className="space-y-1">
+                <p className="text-sm font-bold text-gray-800">حذف دائمی این سفارش</p>
+                <p className="text-xs text-gray-500 leading-relaxed">
+                  سفارش و همه‌ی پرداخت‌های ثبت‌شده‌ی آن (به‌همراه طرح اقساط مرتبط) برای همیشه
+                  حذف می‌شوند و قابل بازیابی نیستند. بارکدهای انبار و محصولات دست دومِ این
+                  سفارش آزاد می‌شوند تا دوباره قابل استفاده باشند.
+                </p>
+              </div>
+              <button
+                onClick={handleDeleteOrder}
+                disabled={deleting}
+                className="shrink-0 bg-red-600 hover:bg-red-700 text-white font-bold px-4 py-2.5 rounded-xl
+                  text-sm transition flex items-center justify-center gap-2 disabled:opacity-60"
+              >
+                {deleting
+                  ? <Loader2 size={14} className="animate-spin" />
+                  : <Trash2 size={14} />}
+                حذف سفارش
+              </button>
+            </div>
           </div>
         )}
       </div>

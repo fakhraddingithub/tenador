@@ -21,6 +21,7 @@
     "test:variant-reconcile": "node --test tests/variantReconcile.test.mjs",
     "test:variant-identity": "node --test --test-timeout=180000 tests/variantIdentity.test.mjs",
     "test:order-item-eur": "node --test tests/orderItemEur.test.mjs",
+    "test:order-deletion": "node --test --test-timeout=180000 tests/orderDeletion.test.mjs",
     "test:sender-address": "node --test tests/senderAddressForm.test.mjs",
     "test:category-variant-rename": "node --test tests/categoryVariantAttributeRename.test.mjs",
     "test:category-form-copy": "node --test tests/categoryFormCopy.test.mjs",

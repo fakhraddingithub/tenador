@@ -105,6 +105,11 @@ const API_CASES = [
   // درخواست جایی زودتر مرده باشد.
   ["POST", "/api/admin/roles", { full: 422, readOnly: 403, articlesOnly: 403, none: 403 }],
   ["DELETE", "/api/product/000000000000000000000000/price", { full: 404, readOnly: 403, articlesOnly: 403, none: 403 }],
+  // حذفِ دائمیِ سفارش. `readOnly` عمداً اینجاست: orders.view دارد و سفارش را
+  // می‌بیند، ولی orders.delete ندارد — یعنی ۴۰۳ می‌گیرد حتی وقتی UI را دور
+  // بزند. `full` به ۴۰۴ می‌رسد (سفارش وجود ندارد)، که نشان می‌دهد گیت باز
+  // شده و درخواست واقعاً به هندلر رسیده است.
+  ["DELETE", "/api/admin/orders/000000000000000000000000", { full: 404, readOnly: 403, articlesOnly: 403, none: 403 }],
 ];
 
 /** آیتم‌های سایدبار که نباید در HTMLِ پرسونای بی‌اجازه باشند. */

@@ -4,6 +4,7 @@
  * GET   → جزئیات کامل یک سفارش (ادمین)
  *         وقتی ادمین صفحه سفارش را باز می‌کند، reviewedAt ست می‌شود
  * PATCH → بروزرسانی وضعیت سفارش (paymentStatus / fulfillmentStatus)
+ * DELETE → حذف دائمی سفارش + همه‌ی پرداخت‌هایش (کلید orders.delete + تأیید کد سفارش)
  */
 
 import { NextResponse } from "next/server";
@@ -15,6 +16,7 @@ import Installment from "base/models/Installment";
 import { deriveCheckStatus, summarizeInstallment } from "base/services/installmentService";
 import { syncOrderFulfillmentFromTracking } from "@/lib/orderFulfillmentSync";
 import { markOrderUsedProductsSold } from "@/lib/usedProductOrderStatus";
+import { deleteOrderPermanently } from "base/services/orderDeletion";
 
 // فقط برای ثبت شدن مدل‌ها در Mongoose / جلوگیری از MissingSchemaError
 import "base/models/Payment";
@@ -319,5 +321,66 @@ export async function PATCH(req, { params }) {
       { message: "خطای داخلی سرور" },
       { status: 500 }
     );
+  }
+}
+
+/* ─── DELETE: حذف دائمی سفارش ───────────────────────────────────────── */
+/**
+ * حذفِ برگشت‌ناپذیرِ سفارش به‌همراهِ همه‌ی پرداخت‌هایش.
+ *
+ * دو گاردِ *مستقل* دارد و هیچ‌کدام به رابط کاربری تکیه نمی‌کند:
+ *   ۱) کلیدِ `orders.delete` — پنهان‌بودنِ «منطقه‌ی خطر» در UI امنیت نیست؛
+ *      اجرای واقعی همین‌جاست.
+ *   ۲) تأییدِ کدِ سفارش در بدنه‌ی درخواست. اگر این بررسی فقط داخلِ دیالوگِ
+ *      SweetAlert2 بود، یک `fetch` ساده از کنسول از رویش رد می‌شد.
+ * تطبیق عمداً *دقیق* است (فقط فضای دو سرِ رشته گرفته می‌شود): نه
+ * case-insensitive و نه جزئی — کدِ رهگیری حروفِ بزرگ دارد و «تقریباً درست»
+ * برای یک حذفِ برگشت‌ناپذیر کافی نیست.
+ */
+export async function DELETE(req, { params }) {
+  const { denied } = await requireAdminPermission("orders.delete");
+  if (denied) return denied;
+
+  try {
+    await connectToDB();
+
+    const { orderId } = await params;
+
+    if (!mongoose.Types.ObjectId.isValid(orderId)) {
+      return NextResponse.json({ message: "شناسه سفارش نامعتبر است" }, { status: 400 });
+    }
+
+    // بدنه‌ی خالی/نامعتبر = تأییدِ غایب، نه ۵۰۰.
+    const body = await req.json().catch(() => ({}));
+    const confirm = typeof body?.confirm === "string" ? body.confirm.trim() : "";
+
+    const order = await Order.findById(orderId).select("trackingCode").lean();
+    if (!order) {
+      return NextResponse.json({ message: "سفارش یافت نشد" }, { status: 404 });
+    }
+
+    const expected = String(order.trackingCode || "");
+    if (!confirm || confirm !== expected) {
+      return NextResponse.json(
+        { message: "کد سفارش وارد‌شده با کد این سفارش مطابقت ندارد" },
+        { status: 400 }
+      );
+    }
+
+    const summary = await deleteOrderPermanently(orderId);
+    if (!summary) {
+      // بین بررسی و تراکنش حذف شده — همان ۴۰۴، نه خطای سرور.
+      return NextResponse.json({ message: "سفارش یافت نشد" }, { status: 404 });
+    }
+
+    console.info("[admin/orders/:id DELETE]", orderId, summary);
+
+    return NextResponse.json(
+      { message: "سفارش و همه‌ی پرداخت‌های آن برای همیشه حذف شد", summary },
+      { status: 200 }
+    );
+  } catch (error) {
+    console.error("[admin/orders/:id DELETE]", error);
+    return NextResponse.json({ message: "خطای داخلی سرور" }, { status: 500 });
   }
 }

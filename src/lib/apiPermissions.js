@@ -171,7 +171,13 @@ export const ADMIN_API_PERMISSIONS = {
   "/admin/orders": { GET: "orders.view" },
   // بررسیِ خودِ هندلر: PATCH فقط paymentStatus/fulfillmentStatus را می‌نویسد
   // (هیچ فیلد دیگری set نمی‌شود)، پس شاخه‌ای نیست — یک کلیدِ ثابت است.
-  "/admin/orders/[orderId]": { GET: "orders.view", PATCH: "orders.changeStatus" },
+  // DELETE = حذفِ دائمیِ سفارش + پرداخت‌هایش. کلیدِ مستقل، نه changeStatus:
+  // لغوِ سفارش برگشت‌پذیر است، این نیست.
+  "/admin/orders/[orderId]": {
+    GET: "orders.view",
+    PATCH: "orders.changeStatus",
+    DELETE: "orders.delete",
+  },
   "/admin/orders/[orderId]/items": {
     POST: "orders.editItems",
     PATCH: "orders.editItems",
