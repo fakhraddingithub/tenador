@@ -7,6 +7,7 @@ import ProductDescription from "./ProductDescription";
 import ProductAttributesTable from "./ProductAttributesTable";
 import ProductReviews from "./ProductReviews";
 import ReviewForm from "@/components/reviews/ReviewForm";
+import MobileProductTabs, { useMobileProductLayout } from "./MobileProductTabs";
 
 const normalizeId = (id) => id?.toString?.() || String(id);
 
@@ -85,6 +86,7 @@ const ProductTabs = ({
   reviews = [],
   reviewStats = { count: 0, average: 0 },
 }) => {
+  const isMobile = useMobileProductLayout();
   const [activeTab, setActiveTab] = useState("description");
 
   const matchingCustomItems = useMemo(() => {
@@ -120,9 +122,45 @@ const ProductTabs = ({
     },
   ];
 
+  const renderContent = (sectionId) => (
+    <>
+      {sectionId === "description" && (
+        <div className="prose prose-gray max-w-none leading-8">
+          <ProductDescription description={description} />
+        </div>
+      )}
+      {sectionId === "attributes" && (
+        <div className="rounded-[6px] border border-gray-100 bg-gray-50/50 p-1">
+          <ProductAttributesTable attributes={attributes} technicalStats={technicalStats} />
+        </div>
+      )}
+      {sectionId === "customTab" && (
+        <div className="grid grid-cols-1 gap-4 px-2 md:grid-cols-2">
+          {matchingCustomItems.map((item) => (
+            <CustomTabItemCard key={item._id || item.title} item={item} />
+          ))}
+        </div>
+      )}
+      {sectionId === "reviews" && (
+        <div className="space-y-6 px-2">
+          <ReviewForm productId={productId} />
+          <ProductReviews reviews={reviews} stats={reviewStats} />
+        </div>
+      )}
+    </>
+  );
+
+  if (isMobile) {
+    return (
+      <div className="mt-24 w-full rtl text-right" dir="rtl">
+        <MobileProductTabs tabs={tabs} renderContent={renderContent} />
+      </div>
+    );
+  }
+
   return (
     <div className="mt-24 w-full rtl text-right" dir="rtl">
-      <div className="relative flex items-stretch gap-x-1 border-b border-gray-100 pb-px sm:gap-x-2 lg:gap-x-8">
+      <div className="relative hidden items-stretch gap-x-1 border-b border-gray-100 pb-px sm:flex sm:gap-x-2 lg:gap-x-8">
         {tabs.map((tab) => {
           const isActive = activeTab === tab.id;
 
@@ -180,29 +218,7 @@ const ProductTabs = ({
             exit={{ opacity: 0, y: -15 }}
             transition={{ duration: 0.4, ease: "easeOut" }}
           >
-            {activeTab === "description" && (
-              <div className="prose prose-gray max-w-none leading-8">
-                <ProductDescription description={description} />
-              </div>
-            )}
-            {activeTab === "attributes" && (
-              <div className="rounded-[6px] border border-gray-100 bg-gray-50/50 p-1">
-                <ProductAttributesTable attributes={attributes} technicalStats={technicalStats} />
-              </div>
-            )}
-            {activeTab === "customTab" && (
-              <div className="grid grid-cols-1 gap-4 px-2 md:grid-cols-2">
-                {matchingCustomItems.map((item) => (
-                  <CustomTabItemCard key={item._id || item.title} item={item} />
-                ))}
-              </div>
-            )}
-            {activeTab === "reviews" && (
-              <div className="space-y-6 px-2">
-                <ReviewForm productId={productId} />
-                <ProductReviews reviews={reviews} stats={reviewStats} />
-              </div>
-            )}
+            {renderContent(activeTab)}
           </motion.div>
         </AnimatePresence>
       </div>

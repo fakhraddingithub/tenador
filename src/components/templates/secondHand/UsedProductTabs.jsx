@@ -5,6 +5,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import ProductDescription from "@/components/templates/product/ProductDescription";
 import ProductAttributesTable from "@/components/templates/product/ProductAttributesTable";
 import ProductReviews from "@/components/templates/product/ProductReviews";
+import MobileProductTabs, { useMobileProductLayout } from "@/components/templates/product/MobileProductTabs";
 import { FiCheckCircle, FiInfo, FiStar } from 'react-icons/fi';
 
 /* ── تب کارت سلامت ── */
@@ -153,12 +154,48 @@ const UsedProductTabs = ({
   attributes=[],
   technicalStats=[],
 }) => {
+  const isMobile = useMobileProductLayout();
   const [activeTab, setActiveTab] = useState("health");
+
+  const renderContent = (sectionId) => (
+    <>
+      {sectionId === "health" && (
+        <HealthCardTab
+          healthScores={healthScores}
+          customFields={customFields}
+          overallScore={overallScore}
+        />
+      )}
+      {sectionId === "description" && (
+        <div className="prose prose-gray max-w-none leading-8">
+          <ProductDescription description={description} />
+        </div>
+      )}
+      {sectionId === "attributes" && (
+        <div className="bg-gray-50/50 rounded-[6px] p-1 border border-gray-100">
+          <ProductAttributesTable attributes={attributes} technicalStats={technicalStats} />
+        </div>
+      )}
+      {sectionId === "reviews" && (
+        <div className="px-2">
+          <ProductReviews reviews={[]} />
+        </div>
+      )}
+    </>
+  );
+
+  if (isMobile) {
+    return (
+      <div className="mt-24 w-full rtl text-right" dir="rtl">
+        <MobileProductTabs tabs={tabs} renderContent={renderContent} />
+      </div>
+    );
+  }
 
   return (
     <div className="mt-24 w-full rtl text-right" dir="rtl">
       {/* هدر تب‌ها */}
-      <div className="relative flex items-stretch gap-x-1 border-b border-gray-100 pb-px sm:gap-x-2 lg:gap-x-8">
+      <div className="relative hidden items-stretch gap-x-1 border-b border-gray-100 pb-px sm:flex sm:gap-x-2 lg:gap-x-8">
         {tabs.map((tab) => {
           const isActive = activeTab === tab.id;
           return (
@@ -197,28 +234,7 @@ const UsedProductTabs = ({
             exit={{ opacity: 0, y: -15 }}
             transition={{ duration: 0.4, ease: "easeOut" }}
           >
-            {activeTab === "health" && (
-              <HealthCardTab
-                healthScores={healthScores}
-                customFields={customFields}
-                overallScore={overallScore}
-              />
-            )}
-            {activeTab === "description" && (
-              <div className="prose prose-gray max-w-none leading-8">
-                <ProductDescription description={description} />
-              </div>
-            )}
-            {activeTab === "attributes" && (
-              <div className="bg-gray-50/50 rounded-[6px] p-1 border border-gray-100">
-                <ProductAttributesTable attributes={attributes} technicalStats={technicalStats} />
-              </div>
-            )}
-            {activeTab === "reviews" && (
-              <div className="px-2">
-                <ProductReviews reviews={[]} />
-              </div>
-            )}
+            {renderContent(activeTab)}
           </motion.div>
         </AnimatePresence>
       </div>
