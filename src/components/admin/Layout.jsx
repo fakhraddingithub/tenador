@@ -291,7 +291,7 @@ export default function AdminLayout({ children }) {
           <div className="flex flex-nowrap items-center gap-1 sm:gap-3 flex-shrink-0">
             <NotificationBell />
 
-            <div className="hidden sm:flex items-center gap-2 px-3 py-1.5 text-xs font-bold tabular-nums whitespace-nowrap"
+            <div className="flex items-center gap-1 sm:gap-2 px-1 sm:px-3 py-1.5 text-xs font-bold tabular-nums whitespace-nowrap"
               style={{ background: "var(--color-primary-soft)", color: "var(--color-primary)", borderRadius: "var(--admin-radius)" }}>
               <FaClock size={11} className="animate-pulse" />
               {mounted ? time : "--:--:--"}

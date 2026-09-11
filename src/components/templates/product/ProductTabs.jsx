@@ -122,7 +122,7 @@ const ProductTabs = ({
 
   return (
     <div className="mt-24 w-full rtl text-right" dir="rtl">
-      <div className="relative flex flex-wrap items-center gap-x-3 gap-y-0 border-b border-gray-100 pb-px sm:gap-x-8">
+      <div className="relative flex items-stretch gap-x-1 border-b border-gray-100 pb-px sm:gap-x-2 lg:gap-x-8">
         {tabs.map((tab) => {
           const isActive = activeTab === tab.id;
 
@@ -131,12 +131,12 @@ const ProductTabs = ({
               key={tab.id}
               onClick={() => setActiveTab(tab.id)}
               className={`
-                relative max-w-full px-1 py-3 text-[13px] outline-none transition-all duration-300 sm:px-2 sm:py-4 sm:text-sm
+                relative min-w-0 flex-1 basis-0 px-0.5 py-2.5 text-[11px] leading-tight outline-none transition-all duration-300 sm:px-1.5 sm:py-3.5 sm:text-[13px] lg:shrink lg:grow-0 lg:basis-auto lg:px-2 lg:py-4 lg:text-sm
                 ${isActive ? "font-bold text-[#1a1a1a]" : "font-bold text-gray-400 hover:text-gray-600"}
               `}
             >
-              <div className="flex items-center gap-1.5 sm:gap-2">
-                <span className={`${isActive ? "opacity-100" : "opacity-40"}`}>
+              <div className="flex flex-col items-center justify-center gap-1 sm:flex-row sm:gap-1.5 lg:gap-2">
+                <span className={`shrink-0 ${isActive ? "opacity-100" : "opacity-40"}`}>
                   {tab.isCustom ? (
                     tab.iconUrl ? (
                       <img src={tab.iconUrl} alt="" className="inline-block h-4 w-4 object-contain" />
@@ -147,12 +147,14 @@ const ProductTabs = ({
                     <tab.icon className="text-sm" />
                   )}
                 </span>
-                <span>{tab.label}</span>
-                {tab.count > 0 && (
-                  <span className="rounded-full bg-gray-100 px-1.5 py-0.5 text-[10px] font-bold tabular-nums text-gray-500">
-                    {tab.count.toLocaleString("fa-IR")}
-                  </span>
-                )}
+                <span className="flex min-w-0 items-center justify-center gap-1 sm:gap-1.5 lg:justify-start lg:gap-2">
+                  <span className="break-words">{tab.label}</span>
+                  {tab.count > 0 && (
+                    <span className="shrink-0 rounded-full bg-gray-100 px-1.5 py-0.5 text-[10px] font-bold tabular-nums text-gray-500">
+                      {tab.count.toLocaleString("fa-IR")}
+                    </span>
+                  )}
+                </span>
               </div>
 
               {isActive && (

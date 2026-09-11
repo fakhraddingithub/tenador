@@ -12,12 +12,12 @@ const tabs = [
   { id: 'orders',    label: 'سفارش‌ها',    icon: ShoppingBag, href: '/p-user/orders' },
   { id: 'wallet',    label: 'کیف پول',    icon: Wallet,      href: '/p-user/wallet' },
   { id: 'payments',  label: 'پرداخت‌ها',   icon: CreditCard,  href: '/p-user/payments' },
+  { id: 'tickets',   label: 'پشتیبانی',   icon: Ticket,      href: '/p-user/tickets' },
 ]
 
 const moreTabs = [
   { id: 'wishlist',  label: 'علاقه‌مندی',  icon: Heart,       href: '/p-user/wishlist' },
   { id: 'addresses', label: 'آدرس‌ها',     icon: MapPin,      href: '/p-user/addresses' },
-  { id: 'tickets',   label: 'پشتیبانی',   icon: Ticket,      href: '/p-user/tickets' },
 ]
 
 export default function BottomTabBar() {
@@ -45,7 +45,7 @@ export default function BottomTabBar() {
           </div>
         </>
       )}
-      <div className="grid grid-cols-5 bg-white">
+      <div className="grid grid-cols-6 bg-white">
         {tabs.map((tab) => {
           const isActive =
             pathname === tab.href || pathname.startsWith(`${tab.href}/`)

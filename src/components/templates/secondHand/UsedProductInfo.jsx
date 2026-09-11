@@ -108,29 +108,25 @@ const UsedProductInfo = ({ product }) => {
   return (
     <div className="flex flex-col h-full justify-between gap-6 relative">
 
-      {/* نام محصول + لوگو برند — یک ردیف تا هرگز روی هم نیفتند */}
-      <div className="flex items-start gap-3 sm:gap-4">
-        <div className="min-w-0 flex-1">
-          <ProductHeader
-            name={name}
-            shortDescription={baseProduct.shortDescription}
-          />
-        </div>
-
-        {/* لوگو برند */}
-        {baseProduct.brand?.logo && (
-          <Link
-            href={`/${baseProduct.brand.slug || baseProduct.brand._id}`}
-            className="shrink-0"
-          >
-            <img
-              src={baseProduct.brand.logo}
-              alt={baseProduct.brand.title}
-              className="h-12 w-auto max-w-[72px] object-contain object-left sm:h-16 sm:max-w-[104px] md:h-20 md:max-w-[132px] lg:h-24 lg:max-w-[160px]"
-            />
-          </Link>
-        )}
-      </div>
+      {/* نام محصول + لوگو برند (یک ردیف) و توضیح کوتاه در تمام عرض، زیر هر دو */}
+      <ProductHeader
+        name={name}
+        shortDescription={baseProduct.shortDescription}
+        logo={
+          baseProduct.brand?.logo ? (
+            <Link
+              href={`/${baseProduct.brand.slug || baseProduct.brand._id}`}
+              className="shrink-0"
+            >
+              <img
+                src={baseProduct.brand.logo}
+                alt={baseProduct.brand.title}
+                className="h-10 w-auto max-w-[64px] object-contain object-left sm:h-14 sm:max-w-[96px] md:h-16 md:max-w-[120px] lg:h-20 lg:max-w-[150px]"
+              />
+            </Link>
+          ) : null
+        }
+      />
 
       {/* واریانت تعیین‌شده */}
       {baseVariant && (

@@ -1,7 +1,7 @@
 "use client";
 import { motion } from "framer-motion";
 
-const ProductHeader = ({ name, shortDescription }) => {
+const ProductHeader = ({ name, shortDescription, logo = null }) => {
   // تابع هوشمند برای جدا کردن فارسی از انگلیسی و پرانتزها
   const splitName = (text) => {
     if (!text) return { farsi: "", english: "" };
@@ -20,7 +20,8 @@ const ProductHeader = ({ name, shortDescription }) => {
 
   return (
     <div className="mb-6 sm:mb-8 md:mb-10 relative rtl text-right" dir="rtl">
-      {/* Product Name */}
+      {/* Product Name + Brand logo — یک ردیف */}
+      <div className="mb-4 flex items-start justify-between gap-3 sm:gap-4 md:mb-6">
       <motion.h1
         // initial={false} → عنوان با opacity:1 در HTML سرور رندر می‌شود.
         // با initial={{opacity:0}} اگر هیدریشن انجام نشود، عنوان نامرئی می‌ماند.
@@ -28,7 +29,8 @@ const ProductHeader = ({ name, shortDescription }) => {
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.1 }}
         className="
-          w-full
+          min-w-0
+          flex-1
           break-words
           text-[#1a1a1a]
           text-2xl
@@ -39,8 +41,6 @@ const ProductHeader = ({ name, shortDescription }) => {
           leading-[1.3]
           md:leading-[1.1]
           tracking-tight
-          mb-4
-          md:mb-6
         "
       >
         <span className="block">{farsi}</span>
@@ -56,7 +56,10 @@ const ProductHeader = ({ name, shortDescription }) => {
         )}
       </motion.h1>
 
-      {/* Short Description Container */}
+        {logo}
+      </div>
+
+      {/* Short Description Container — تمام‌عرضِ نام و لوگو */}
       {shortDescription && (
         <motion.div
           // مانند عنوان — توضیح کوتاه نباید تا زمان هیدریشن نامرئی بماند

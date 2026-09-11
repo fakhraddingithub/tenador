@@ -969,7 +969,7 @@ useEffect(() => {
               >
                 <FiShoppingCart size={21} className="text-white" />
                 {cartCount > 0 && (
-                  <span className="absolute -top-2 -right-2 bg-[#aa4725] text-white text-[9px] w-4 h-4 rounded-full flex items-center justify-center">
+                  <span className="absolute -top-0.5 -left-0.5 bg-[#aa4725] text-white text-[9px] w-4 h-4 rounded-full flex items-center justify-center">
                     {cartCount}
                   </span>
                 )}

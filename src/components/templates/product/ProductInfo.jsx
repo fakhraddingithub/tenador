@@ -223,29 +223,25 @@ const ProductInfo = ({ product, selectedVariant, onVariantChange, onSelectionCha
 
   return (
     <div className="flex flex-col h-full justify-between gap-6 relative">
-      {/* Name + short description + brand logo — یک ردیف تا هرگز روی هم نیفتند */}
-      <div className="flex items-start gap-3 sm:gap-4">
-        <div className="min-w-0 flex-1">
-          <ProductHeader
-            name={product.name}
-            shortDescription={product.shortDescription}
-          />
-        </div>
-
-        {/* Brand logo */}
-        {product.brand?.logo && (
-          <Link
-            href={`/${product.brand.slug || product.brand._id}`}
-            className="shrink-0"
-          >
-            <img
-              src={product.brand.logo}
-              alt={product.brand.title || product.brand.name}
-              className="h-12 w-auto max-w-[72px] cursor-pointer object-contain object-left sm:h-16 sm:max-w-[104px] md:h-20 md:max-w-[132px] lg:h-24 lg:max-w-[160px]"
-            />
-          </Link>
-        )}
-      </div>
+      {/* Name + brand logo (یک ردیف) و توضیح کوتاه در تمام عرض، زیر هر دو */}
+      <ProductHeader
+        name={product.name}
+        shortDescription={product.shortDescription}
+        logo={
+          product.brand?.logo ? (
+            <Link
+              href={`/${product.brand.slug || product.brand._id}`}
+              className="shrink-0"
+            >
+              <img
+                src={product.brand.logo}
+                alt={product.brand.title || product.brand.name}
+                className="h-10 w-auto max-w-[64px] cursor-pointer object-contain object-left sm:h-14 sm:max-w-[96px] md:h-16 md:max-w-[120px] lg:h-20 lg:max-w-[150px]"
+              />
+            </Link>
+          ) : null
+        }
+      />
 
       {/* Price Section */}
       <div className="space-y-3">
