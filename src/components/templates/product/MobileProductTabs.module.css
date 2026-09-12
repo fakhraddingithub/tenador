@@ -1,32 +1,65 @@
-.accordion { display: flex; flex-direction: column; gap: 10px; min-width: 0; }
-.section { min-width: 0; border: 1px solid #e7e5e4; border-radius: 6px; background: #fff; }
+.accordion { display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+.section { min-width: 0; border: 0; border-top: 1px solid #d6d3d1; transition: border-color 240ms ease; }
 .heading { margin: 0; }
 .trigger {
+  position: relative;
+  isolation: isolate;
   display: flex;
   align-items: center;
   gap: 12px;
   width: 100%;
   min-height: 64px;
-  padding: 12px 14px;
+  /* The mobile navbar is 64px tall; leave another 12px above the heading. */
+  scroll-margin-top: 76px;
+  padding: 12px 4px;
+  padding-left: 12px;
+  direction: rtl;
   border: 0;
-  border-radius: 13px;
-  background: #fafaf9;
+  border-radius: 0;
+  background: transparent;
   color: #44403c;
   text-align: start;
   cursor: pointer;
-  transition: background-color 180ms ease;
+  transition: color 240ms ease;
 }
-.iconBox { display: grid; place-items: center; flex-shrink: 0; width: 32px; height: 32px; border-radius: 9px; color: #78716c; }
+.trigger::before {
+  content: "";
+  position: absolute;
+  z-index: -1;
+  inset: 0;
+  background: linear-gradient(to bottom, color-mix(in srgb, var(--color-primary) 9%, transparent), transparent);
+  opacity: 0;
+  transition: opacity 240ms ease;
+  pointer-events: none;
+}
+.iconBox { display: grid; place-items: center; flex-shrink: 0; width: 32px; height: 32px; color: #78716c; transition: color 240ms ease; }
 .icon { width: 19px; height: 19px; object-fit: contain; }
-.title { flex: 1; min-width: 0; font-size: 14px; font-weight: 700; line-height: 1.8; overflow-wrap: anywhere; }
-.chevron { flex-shrink: 0; width: 18px; height: 18px; color: #78716c; transition: transform 180ms ease; }
-.count { padding: 1px 6px; border-radius: 6px; background: #eeebe8; color: #57534e; font-size: 11px; font-variant-numeric: tabular-nums; }
-.section[data-open="true"] { border-color: #d8b4a2; }
-.section[data-open="true"] .trigger { border-radius: 13px 13px 0 0; background: #fcf3ed; color: var(--color-primary); }
-.section[data-open="true"] .iconBox { background: #f3e2d7; color: var(--color-primary); }
-.section[data-open="true"] .chevron { transform: rotate(180deg); color: var(--color-primary); }
-.content { min-width: 0; padding: 20px 12px; border-top: 1px solid #f0e6e0; }
-.content[hidden] { display: none; }
-.trigger:active { background: #f2e8e1; }
+.trigger .titleGroup { display: flex; flex: 1; min-width: 0; align-items: center; gap: 10px; }
+.title { min-width: 0; font-size: 14px; font-weight: 700; line-height: 1.8; overflow-wrap: anywhere; }
+.chevron { flex-shrink: 0; margin-right: auto; width: 20px; height: 20px; stroke-width: 1.8; color: #78716c; transition: transform 280ms cubic-bezier(0.22, 1, 0.36, 1), color 240ms ease; }
+.count {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  min-width: 28px;
+  min-height: 24px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--color-primary) 12%, white);
+  color: var(--color-primary);
+  font-size: 12px;
+  font-weight: 800;
+  line-height: 1.5;
+  font-variant-numeric: tabular-nums;
+  transition: background-color 240ms ease, color 240ms ease;
+}
+.section[data-open="true"] { border-top-color: var(--color-primary); }
+.section[data-open="true"] .trigger { color: var(--color-primary); }
+.section[data-open="true"] .trigger::before { opacity: 1; }
+.section[data-open="true"] .iconBox { color: var(--color-primary); }
+.section[data-open="true"] .chevron { transform: rotate(-90deg); color: var(--color-primary); }
+.section[data-open="true"] .count { background: var(--color-primary); color: #fff; }
+.content { min-width: 0; padding: 12px 0 24px; border: 0; }
 .trigger:focus-visible { outline: 2px solid var(--color-primary); outline-offset: 3px; }
-@media (prefers-reduced-motion: reduce) { .trigger, .chevron { transition: none; } }
+@media (prefers-reduced-motion: reduce) { .section, .trigger, .trigger::before, .iconBox, .chevron, .count { transition: none; } }
