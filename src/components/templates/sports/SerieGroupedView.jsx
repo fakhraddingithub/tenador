@@ -390,6 +390,7 @@ export default function SerieGroupedView({
       {/* ───────────────── Main ───────────────── */}
       <div
         ref={anchorRef}
+        data-filter-scroll-anchor
         className="max-w-[1440px] mx-auto px-4 lg:px-8 py-12 flex flex-col lg:flex-row gap-8"
       >
         {/* Sidebar */}

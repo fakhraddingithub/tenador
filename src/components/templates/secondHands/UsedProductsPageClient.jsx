@@ -105,9 +105,9 @@ export default function UsedProductsPageClient({
   }, [searchTerm, filters, initialProducts, attrFilters, attrMeta]);
 
   // با تغییرِ فیلتر و کوتاه‌شدنِ لیست، نمای صفحه را به ناحیه‌ی فیلتر لنگر می‌اندازد
-  // (جلوگیری از افتادن روی فوتر). signal = تعدادِ نتایج.
+  // (جلوگیری از افتادن روی فوتر). signal = خودِ فیلترها؛ بارگذاریِ محصولات بیشتر اسکرول را تغییر نمی‌دهد.
   const anchorRef = useRef(null);
-  useFilterScrollAnchor(anchorRef, filteredProducts.length);
+  useFilterScrollAnchor(anchorRef, JSON.stringify([searchTerm, filters, attrFilters]));
 
   const resetFilters = () => setFilters(DEFAULT_FILTERS);
 
@@ -161,6 +161,7 @@ export default function UsedProductsPageClient({
       {/* ─── بدنه اصلی ─── */}
       <div
         ref={anchorRef}
+        data-filter-scroll-anchor
         className="max-w-[1440px] mx-auto px-4 lg:px-8 py-12 flex flex-col lg:flex-row gap-8"
       >
 

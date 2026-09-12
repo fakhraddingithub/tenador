@@ -1,79 +1,91 @@
 "use client";
 
 import { useEffect, useLayoutEffect, useRef } from "react";
+import { getFilterScrollTarget } from "@/lib/filterScrollPosition";
 
-// روی سرور useLayoutEffect اجرا نمی‌شود و هشدار می‌دهد؛ پس روی سرور useEffect (بی‌اثر)
-// و روی کلاینت useLayoutEffect (پیش از paint → بدون فلش/پرش) استفاده می‌شود.
-const useIsoLayoutEffect =
-  typeof window !== "undefined" ? useLayoutEffect : useEffect;
-
-// ارتفاعِ نوبارِ fixed سایت (h-[64px] موبایل / lg:h-[75px] دسکتاپ) + کمی فاصله،
-// تا وقتی نما به ابتدای ناحیه‌ی فیلتر برمی‌گردد، زیرِ نوبار پنهان نشود.
+const useIsoLayoutEffect = typeof window !== "undefined" ? useLayoutEffect : useEffect;
 const FIXED_NAV_OFFSET = 90;
+let pendingNavigation = null;
 
-/**
- * src/hooks/useFilterScrollAnchor.js
- *
- * با هر «به‌روزرسانیِ نتیجه‌ی فیلتر» نمای کاربر را روی ناحیه‌ی «فیلتر + نتایج»
- * نگه می‌دارد:
- *
- *  - اگر سند هنوز برای اسکرولِ فعلی جا دارد → هیچ جابه‌جایی‌ای رخ نمی‌دهد
- *    (سایدبارِ فیلتر دقیقاً همان‌جا که بود می‌ماند؛ فقط لیست عوض می‌شود).
- *  - اگر نتیجه‌ی فیلتر آن‌قدر کوتاه شد که سند دیگر جای اسکرولِ فعلی را ندارد
- *    (مرورگر اسکرول را clamp می‌کند و نما روی فوتر می‌افتد) → به‌جای ماندن روی
- *    فوتر، نما به ابتدای ناحیه‌ی فیلتر+نتایج برمی‌گردد (زیرِ نوبارِ fixed).
- *
- * پیش از paint (useLayoutEffect) اجرا می‌شود تا هیچ فریمِ پرش‌داری دیده نشود،
- * و هرگز نما را به پایین نمی‌بَرد (فقط در صورتِ نیاز به بالا برمی‌گردد).
- * با pagination/infinite-scroll تداخلی ندارد: بلندشدنِ لیست کسری ایجاد نمی‌کند.
- *
- * @param {React.RefObject<HTMLElement>} anchorRef ref به کانتینرِ ردیفِ فیلتر+نتایج
- * @param {*} signal مقداری که با هر «به‌روزرسانیِ نتیجه‌ی فیلتر» تغییر می‌کند
- *   (تعدادِ نتایج برای صفحاتِ کلاینت‌ساید، یا یک توکن برای صفحاتِ infinite-scroll
- *    که فقط هنگامِ اعمالِ فیلتر — نه loadMore — تغییر می‌کند).
- */
+function snapshot(element) {
+  const y = window.scrollY;
+  const rect = element.getBoundingClientRect();
+  return { y, top: rect.top + y, bottom: rect.bottom + y };
+}
+
+// Attribute filters navigate to a new keyed listing. Carry only this explicit
+// filter navigation across the remount; normal navigation/back keeps its scroll.
+export function prepareFilterScrollNavigation(href) {
+  const element = document.querySelector("[data-filter-scroll-anchor]");
+  if (!element) return;
+  pendingNavigation = {
+    href: new URL(href, window.location.href).href,
+    expires: Date.now() + 30000,
+    position: snapshot(element),
+  };
+}
+
+/** Preserve the viewport on filter commits, independently of result count. */
 export default function useFilterScrollAnchor(anchorRef, signal) {
-  const mounted = useRef(false);
+  const previous = useRef(null);
+  const lastSignal = useRef(signal);
+  const initialized = useRef(false);
 
   useIsoLayoutEffect(() => {
-    if (typeof window === "undefined") return;
-    // اولین اجرا (بارگذاریِ صفحه / بازگشت با اسکرولِ بازیابی‌شده) را دست نمی‌زنیم؛
-    // فقط به تغییرِ واقعیِ فیلتر واکنش نشان می‌دهیم.
-    if (!mounted.current) {
-      mounted.current = true;
-      return;
-    }
-    const el = anchorRef.current;
-    if (!el) return;
+    const element = anchorRef.current;
+    if (!element) return;
+    const remember = () => { previous.current = snapshot(element); };
+    // Record while the OLD layout still exists, rather than reading scrollY
+    // after the browser has already clamped it to a shorter document.
+    remember();
+    window.addEventListener("scroll", remember, { passive: true });
+    return () => window.removeEventListener("scroll", remember);
+  }, [anchorRef]);
 
-    // پیش از هر خواندنِ layout (که reflow و clampِ اسکرول را فعال می‌کند)
-    // موقعیتِ فعلی را ثبت می‌کنیم.
-    const scrollY = window.scrollY;
-    const viewportHeight = window.innerHeight;
-    const docHeight = document.documentElement.scrollHeight;
+  useIsoLayoutEffect(() => {
+    const element = anchorRef.current;
+    if (!element) return;
+    let before = previous.current;
+    const first = !initialized.current;
+    initialized.current = true;
+    const changed = !Object.is(lastSignal.current, signal);
+    lastSignal.current = signal;
 
-    // کسری = چقدر از اسکرولِ فعلی دیگر در سندِ کوتاه‌شده جا نمی‌شود.
-    const deficit = scrollY + viewportHeight - docHeight;
-
-    if (deficit <= 0) {
-      // سند هنوز جا دارد؛ اگر مرورگر حین reflow اسکرول را جابه‌جا کرده بود،
-      // همان مقدارِ قبلی را برگردان (بدون هیچ پرشی).
-      if (window.scrollY !== scrollY) {
-        window.scrollTo({ top: scrollY, behavior: "auto" });
+    if (first && pendingNavigation) {
+      const pending = pendingNavigation;
+      pendingNavigation = null;
+      if (pending.href === window.location.href && pending.expires > Date.now()) {
+        before = pending.position;
+      } else {
+        return;
       }
+    } else if (!changed) {
       return;
     }
 
-    // سند کوتاه‌تر از اسکرولِ فعلی شده → نما را به ابتدای ناحیه‌ی فیلتر+نتایج
-    // برگردان (موقعیتِ مطلق در سند، مستقل از این‌که clamp رخ داده یا نه).
-    const anchorTop = Math.max(
-      0,
-      el.getBoundingClientRect().top + window.scrollY - FIXED_NAV_OFFSET,
-    );
-    // هرگز به پایین اسکرول نکن؛ فقط اگر کاربر پایین‌تر از ناحیه است، بالا بیا.
-    const target = Math.min(scrollY, anchorTop);
-    if (window.scrollY !== target) {
-      window.scrollTo({ top: target, behavior: "auto" });
+    const y = window.scrollY;
+    const container = element.getBoundingClientRect();
+    // All listing variants have a main column. Its bottom, not a taller
+    // sidebar or footer, tells us whether results remain in the viewport.
+    const main = element.querySelector("main") || element;
+    const results = main.getBoundingClientRect();
+    // Flex stretch can make <main> as tall as the sidebar even with no results.
+    const visibleChildren = Array.from(main.children)
+      .map((child) => child.getBoundingClientRect())
+      .filter((rect) => rect.height > 0);
+    const resultsBottom = visibleChildren.length
+      ? Math.max(...visibleChildren.map((rect) => rect.bottom))
+      : results.bottom;
+    const target = getFilterScrollTarget(before, {
+      top: container.top + y,
+      resultsTop: results.top + y,
+      resultsBottom: resultsBottom + y,
+      documentHeight: document.documentElement.scrollHeight,
+      viewportHeight: window.innerHeight,
+    }, FIXED_NAV_OFFSET);
+    if (target !== null && Math.abs(window.scrollY - target) > 1) {
+      window.scrollTo({ top: target, behavior: "instant" });
     }
-  }, [signal]);
+    previous.current = snapshot(element);
+  }, [anchorRef, signal]);
 }

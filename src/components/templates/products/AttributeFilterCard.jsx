@@ -15,6 +15,7 @@
 import { useRouter } from "next/navigation";
 import { FaChevronDown } from "react-icons/fa";
 import { useState } from "react";
+import { prepareFilterScrollNavigation } from "@/hooks/useFilterScrollAnchor";
 
 export default function AttributeFilterCard({ meta = null, activeValue = null }) {
   const router = useRouter();
@@ -39,10 +40,9 @@ export default function AttributeFilterCard({ meta = null, activeValue = null })
     if (next) params.set(meta.name, next);
     else params.delete(meta.name);
     const qs = params.toString();
-    router.push(
-      qs ? `${window.location.pathname}?${qs}` : window.location.pathname,
-      { scroll: false },
-    );
+    const href = qs ? `${window.location.pathname}?${qs}` : window.location.pathname;
+    prepareFilterScrollNavigation(href);
+    router.push(href, { scroll: false });
   };
 
   return (
