@@ -15,6 +15,7 @@ import Link from "next/link";
 
 import CartItems from "@/components/order/CartItems";
 import CartSummary from "@/components/order/CartSummary";
+import WalletCheckoutPanel from "@/components/order/WalletCheckoutPanel";
 import AddressSelector from "@/components/order/AddressSelector";
 import AddressModal from "@/components/order/AddressModal";
 import PaymentMethods from "@/components/order/PaymentMethods";
@@ -50,6 +51,12 @@ const OrderPage = () => {
   const [selectedAddress, setSelectedAddress] = useState(null);
   const [isAddressModalOpen, setIsAddressModalOpen] = useState(false);
   const [selectedPaymentMethod, setSelectedPaymentMethod] = useState(null);
+  const [walletEnabled, setWalletEnabled] = useState(false);
+  const [walletInput, setWalletInput] = useState('');
+  const [walletBalance, setWalletBalance] = useState(0);
+  const walletInvalid = walletEnabled && (!Number.isSafeInteger(Number(walletInput)) || Number(walletInput) > Math.min(walletBalance, totalPrice));
+  const walletAmount = walletEnabled && !walletInvalid ? Number(walletInput) || 0 : 0;
+  const payable = Math.max(0, totalPrice - walletAmount);
 
   // سفارش در این مرحله ساخته نمی‌شود؛ کاربر به صفحه پرداخت می‌رود و
   // سفارش فقط پس از ثبت موفق پرداخت/اقساط ایجاد خواهد شد.
@@ -147,7 +154,9 @@ const OrderPage = () => {
               <div className="bg-white border border-gray-200 rounded-[6px] p-4 md:p-6">
                 <CartSummary
                   totalItems={totalItems}
-                  totalPrice={totalPrice}
+                  totalPrice={payable}
+                  walletAmount={walletAmount}
+                  walletSection={<WalletCheckoutPanel enabled={walletEnabled} onToggle={setWalletEnabled} amount={walletInput} onAmountChange={setWalletInput} total={totalPrice} balance={walletBalance} onBalanceChange={setWalletBalance} />}
                   totalRawPrice={totalRawPrice}
                   totalDiscount={totalDiscount}
                   couponDiscount={couponDiscount}
@@ -173,9 +182,11 @@ const OrderPage = () => {
                   quantity: i.quantity,
                   flowSelections: i.flowSelections ?? [],
                 }))}
-                finalTotalToman={totalPrice}
+                finalTotalToman={payable}
+                walletAmount={walletAmount}
+                walletInvalid={walletInvalid || isCartLoading}
                 selectedAddress={selectedAddress}
-                selectedPaymentMethod={selectedPaymentMethod}
+                selectedPaymentMethod={payable === 0 && walletAmount > 0 ? 'BANK_RECEIPT' : selectedPaymentMethod}
                 onProceed={handleProceedToPayment}
               />
 

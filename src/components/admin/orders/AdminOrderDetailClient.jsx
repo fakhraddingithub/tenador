@@ -47,6 +47,7 @@ const FULFILLMENT_STATUS = {
 const PAYMENT_METHOD = {
   ONLINE: { label: "پرداخت آنلاین", icon: CreditCard },
   BANK_RECEIPT: { label: "رسید بانکی", icon: Receipt },
+  WALLET: { label: "کیف پول", icon: Wallet },
   INSTALLMENT: { label: "اقساطی", icon: Calendar },
 };
 
@@ -1174,7 +1175,7 @@ function PaymentCard({ payment, orderTotal, onViewReceipt, onApprove, onReject, 
 
         <div className="text-left space-y-0.5">
           <div className="flex items-center gap-1.5">
-            {onEdit && (
+            {onEdit && payment.method !== "WALLET" && (
               <button onClick={onEdit} title="ویرایش مبلغ"
                 className="w-6 h-6 flex items-center justify-center rounded-lg text-gray-400
                   hover:text-[var(--color-primary)] hover:bg-[var(--color-primary)]/10 transition">
@@ -2977,6 +2978,7 @@ export default function AdminOrderDetailClient({ orderId }) {
                     </span>
                   </div>
                 )}
+                {order.walletPaid > 0 && <div className="flex justify-between gap-2 text-emerald-700"><span>پرداخت با کیف پول</span><span>− {formatPrice(order.walletPaid)} تومان</span></div>}
                 {!order.coupon?.code && canAdjustDiscount && (
                   <button
                     onClick={() => setDiscountModalOpen(true)}
@@ -2986,8 +2988,8 @@ export default function AdminOrderDetailClient({ orderId }) {
                   </button>
                 )}
                 <div className="flex justify-between font-black text-sm text-gray-900 border-t border-gray-100 pt-2">
-                  <span>مبلغ نهایی</span>
-                  <span>{formatPrice(order.totalPrice)} تومان</span>
+                  <span>{order.walletPaid > 0 ? 'مبلغ پس از پرداخت کیف پول' : 'مبلغ نهایی'}</span>
+                  <span>{formatPrice(Math.max(0, order.totalPrice - (order.walletPaid || 0)))} تومان</span>
                 </div>
               </div>
             </div>

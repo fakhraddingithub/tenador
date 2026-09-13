@@ -152,6 +152,7 @@ function renderFlowSelections(flowSelections) {
 
 const PAYMENT_LABEL = {
   BANK_RECEIPT: 'فیش بانکی',
+  WALLET: 'کیف پول',
   INSTALLMENT:  'اقساطی',
   ONLINE:       'پرداخت آنلاین',
 };
@@ -168,7 +169,7 @@ function renderInstallmentSchedule(order, installment) {
 
   const checksTotal = checks.reduce((s, c) => s + (Number(c.amount) || 0), 0);
   const downPaymentAmount = Number(installment.downPaymentAmount ?? installment.downPayment?.amount ?? 0);
-  const orderTotal = Number(order.totalPrice ?? 0);
+  const orderTotal = Math.max(0, Number(order.totalPrice ?? 0) - Number(order.walletPaid || 0));
   const interest = Math.max(0, checksTotal - (orderTotal - downPaymentAmount));
 
   const rows = checks.map((c, idx) => `
@@ -341,10 +342,11 @@ function buildEmailHtml(order, isAdmin = false, installment = null) {
           <tfoot>
             ${discountRow}
             ${couponRow}
+            ${order.walletPaid > 0 ? `<tr><td colspan="4" style="padding:8px 16px;color:#16a34a;">پرداخت با کیف پول</td><td style="padding:8px 16px;color:#16a34a;">− ${formatPrice(order.walletPaid)}</td></tr>` : ''}
             <tr style="background:#faf7f5; border-top:2px solid #f0ece8;">
               <td colspan="4" style="padding:14px 16px; text-align:right; font-weight:700; color:#1a1a1a; font-size:14px;">مبلغ قابل پرداخت:</td>
               <td style="padding:14px 16px; text-align:left; font-size:18px; font-weight:700; color:#aa4725; direction:rtl;">
-                ${formatPrice(order.totalPrice)}
+                ${formatPrice(Math.max(0, order.totalPrice - (order.walletPaid || 0)))}
               </td>
             </tr>
           </tfoot>

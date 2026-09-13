@@ -72,6 +72,7 @@ const uploadCheckImage = async (dataUrl, index) => {
 };
 
 const InstallmentPage = ({ order, user, onFinalSubmit }) => {
+  const installmentBase = Math.max(0, order.totalPrice - (order.walletPaid || 0));
   const [downPayment, setDownPayment] = useState(0);
   const [downPaymentReceipts, setDownPaymentReceipts] = useState([]);
   const [installmentCount, setInstallmentCount] = useState(1);
@@ -96,7 +97,7 @@ const InstallmentPage = ({ order, user, onFinalSubmit }) => {
 
   // Dynamic Calculations — منبع واحد محاسبه (installmentFinance). همه مبالغ تومان.
   const calculations = useMemo(() => {
-    const remaining = Math.max(0, order.totalPrice - downPayment);
+    const remaining = Math.max(0, installmentBase - downPayment);
     const plan = computeInstallmentPlan({
       principal: remaining,
       monthlyRatePct,
@@ -108,7 +109,7 @@ const InstallmentPage = ({ order, user, onFinalSubmit }) => {
       totalWithInterest: plan.grandTotal,
       monthlyInstallment: plan.monthlyInstallment,
     };
-  }, [order.totalPrice, downPayment, installmentCount, monthlyRatePct]);
+  }, [installmentBase, downPayment, installmentCount, monthlyRatePct]);
 
   // Sync check fields with installment count
   useEffect(() => {
@@ -160,7 +161,7 @@ const InstallmentPage = ({ order, user, onFinalSubmit }) => {
     if (!downPayment || downPayment <= 0) {
       return toast.error('مبلغ پیش‌پرداخت الزامی است');
     }
-    if (downPayment >= order.totalPrice) {
+    if (downPayment >= installmentBase) {
       return toast.error('پیش‌پرداخت باید کمتر از مبلغ کل سفارش باشد');
     }
     if (downPaymentReceipts.length === 0) {
@@ -257,7 +258,7 @@ const InstallmentPage = ({ order, user, onFinalSubmit }) => {
                   <DownPaymentSection
                     value={downPayment}
                     onChange={setDownPayment}
-                    max={order.totalPrice}
+                    max={installmentBase}
                   />
                   <InstallmentCalculator
                     count={installmentCount}

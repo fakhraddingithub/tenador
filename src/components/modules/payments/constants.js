@@ -81,6 +81,7 @@ export const FULFILLMENT_STATUS = {
 export const PAYMENT_METHOD = {
   ONLINE: { label: 'پرداخت آنلاین', icon: CreditCard },
   BANK_RECEIPT: { label: 'فیش بانکی', icon: Receipt },
+  WALLET: { label: 'کیف پول', icon: CreditCard },
 }
 
 /* ─── گزینه‌های فیلترِ وضعیت ─────────────────────────────────────────── */

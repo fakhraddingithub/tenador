@@ -76,6 +76,7 @@ async function handleCallback(req) {
       return NextResponse.json({ message: "سفارش یافت نشد" }, { status: 404 });
     }
 
+    if (order.walletPaidOriginal > 0) return NextResponse.json({ message: "پرداخت آنلاین این سفارش پشتیبانی نمی‌شود" }, { status: 409 });
     // جلوگیری از پردازش مجدد
     if (order.paymentStatus === "PAID") {
       return NextResponse.redirect(

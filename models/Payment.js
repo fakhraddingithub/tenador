@@ -11,7 +11,7 @@ const PaymentSchema = new mongoose.Schema(
 
     method: {
       type: String,
-      enum: ["ONLINE", "BANK_RECEIPT"],
+      enum: ["ONLINE", "BANK_RECEIPT", "WALLET"],
       required: true,
     },
 

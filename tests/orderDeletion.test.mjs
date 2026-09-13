@@ -23,6 +23,7 @@ import mongoose from "mongoose";
 import { MongoMemoryReplSet } from "mongodb-memory-server";
 
 register("./aliasHooks.mjs", import.meta.url);
+register("./walletOrderHooks.mjs", import.meta.url);
 
 const { default: Order } = await import("../models/Order.js");
 const { default: Payment } = await import("../models/Payment.js");
@@ -393,4 +394,27 @@ test("منطقه‌ی خطر فقط با کلیدِ حذف رندر می‌شو�
   // و دیالوگ باید ورودیِ تأیید داشته باشد، نه صرفِ دکمه‌ی تأیید
   assert.match(ui, /input: "text"/);
   assert.match(ui, /showValidationMessage/);
+});
+
+
+test("wallet checkout deletion refunds exactly once and retains the retry receipt", async () => {
+  const User = mongoose.model('User');
+  const Ledger = mongoose.model('WalletTransaction');
+  const Attempt = mongoose.model('WalletCheckout');
+  await Promise.all([User, Ledger, Attempt].map(m => m.createCollection()));
+  const { createWalletOrder, walletCheckoutIdentity } = await import('../services/walletOrder.service.js');
+  const user = await User.create({ provider: 'local', password: 'unused', walletBalance: 700 });
+  const args = { identity: walletCheckoutIdentity(user._id, 'deletion-checkout-key-001', { amount: 200 }), amount: 200, bankImages: ['receipt'],
+    draft: { user: user._id, items: [{ product: oid(), quantity: 1, unitPrice: 1000 }], subtotalPrice: 1000, totalPrice: 1000, paymentMethod: 'BANK_RECEIPT' } };
+  const { order } = await createWalletOrder(args);
+  await assert.rejects(() => deleteOrderPermanently(order._id, async () => { throw new Error('warehouse down'); }), /warehouse down/);
+  assert.equal((await User.findById(user._id)).walletBalance, 500);
+  assert.equal(await Ledger.countDocuments({ type: 'credit' }), 0);
+  await deleteOrderPermanently(order._id, stubTracking([]));
+  assert.equal((await User.findById(user._id)).walletBalance, 700);
+  assert.equal(await Payment.countDocuments({ order: order._id }), 0);
+  assert.equal(await Ledger.countDocuments({ user: user._id }), 2);
+  assert.equal((await createWalletOrder(args)).replayed, true);
+  assert.equal(await Order.countDocuments({ _id: order._id }), 0);
+  assert.equal((await User.findById(user._id)).walletBalance, 700);
 });

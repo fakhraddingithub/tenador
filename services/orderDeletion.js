@@ -39,6 +39,7 @@
  */
 
 import mongoose from "mongoose";
+import { refundOrderWallet } from "base/services/walletOrder.service";
 
 import Order from "base/models/Order";
 import Payment from "base/models/Payment";
@@ -105,6 +106,7 @@ export async function deleteOrderCascade(
   if (!order) return null;
 
   const _id = order._id;
+  await refundOrderWallet(order, 0, session);
 
   // پرداخت‌ها از *دو* طرف پیدا می‌شوند: هم Payment.order و هم order.payments.
   // این دو در داده‌ی واقعی می‌توانند واگرا باشند (روت‌های قدیمی فقط یکی را

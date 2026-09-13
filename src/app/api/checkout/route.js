@@ -28,6 +28,8 @@
 import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
 import connectToDB from "base/configs/db";
+import "base/models/registerModels";
+import { createWalletOrder, findWalletCheckout, validateWalletAmount, walletCheckoutIdentity } from "base/services/walletOrder.service";
 import { verifyToken } from "base/utils/auth";
 import Order from "base/models/Order";
 import Address from "base/models/Address";
@@ -120,10 +122,10 @@ async function reserveUsedProducts(order) {
     (i) => i.itemType === "used_product" && i.usedProduct,
   );
   for (const item of usedItems) {
-    await UsedProduct.findByIdAndUpdate(item.usedProduct, {
-      status: "reserved",
-      order: order._id,
+    const reserved = await UsedProduct.updateOne({ _id: item.usedProduct, status: "available" }, {
+      $set: { status: "reserved", order: order._id },
     });
+    if (reserved.modifiedCount !== 1) throw Object.assign(new Error("محصول دست دوم دیگر موجود نیست"), { status: 409, code: "WALLET_CHECKOUT_ERROR" });
   }
 }
 
@@ -156,6 +158,7 @@ export async function POST(req) {
       return badRequest("احراز هویت لازم است", 401);
     }
 
+    const body = await req.json();
     const {
       items,
       addressId,
@@ -165,7 +168,16 @@ export async function POST(req) {
       description,
       receiptImageUrls,
       installment,
-    } = await req.json();
+      walletAmount = 0,
+      checkoutKey,
+      expectedTotal,
+    } = body;
+    validateWalletAmount(walletAmount);
+    const walletIdentity = walletAmount > 0 ? walletCheckoutIdentity(user.userId, checkoutKey, body) : null;
+    if (walletIdentity) {
+      const existing = await findWalletCheckout(walletIdentity);
+      if (existing) return NextResponse.json({ ...existing, replayed: true }, { status: 200 });
+    }
 
     // ═══ ۱. اعتبارسنجی کامل — قبل از هرگونه نوشتن در دیتابیس ═══
 
@@ -301,13 +313,19 @@ export async function POST(req) {
       );
     }
 
-    const totalPrice = priceResult.finalTotalToman;
+    const orderTotal = priceResult.finalTotalToman;
+    if (expectedTotal !== undefined && (!Number.isSafeInteger(expectedTotal) || expectedTotal !== orderTotal)) {
+      return badRequest("قیمت سبد خرید تغییر کرده است؛ به ثبت سفارش برگردید و مبلغ جدید را بررسی کنید", 409);
+    }
+    if (walletAmount > orderTotal) return badRequest("مبلغ کیف پول بیشتر از مبلغ سفارش است؛ آن را اصلاح کنید");
+    const totalPrice = orderTotal - walletAmount; // external amount after wallet
+    const fullyWalletPaid = walletAmount > 0 && totalPrice === 0;
 
     // ─── اعتبارسنجی داده‌های پرداخت (قبل از ساخت سفارش) ───
     let bankImageUrls = [];
     let installmentData = null;
 
-    if (paymentMethod === "BANK_RECEIPT") {
+    if (paymentMethod === "BANK_RECEIPT" && !fullyWalletPaid) {
       bankImageUrls = normalizeReceiptUrls(receiptImageUrls);
 
       if (bankImageUrls.length === 0) {
@@ -318,7 +336,7 @@ export async function POST(req) {
       }
     }
 
-    if (paymentMethod === "INSTALLMENT") {
+    if (paymentMethod === "INSTALLMENT" && !fullyWalletPaid) {
       if (!installment) {
         return badRequest("اطلاعات اقساط ناقص است");
       }
@@ -452,13 +470,13 @@ export async function POST(req) {
     });
 
     // ═══ ۳. ساخت سفارش + پرداخت — سفارش بدون پرداخت باقی نمی‌ماند ═══
-    const order = await Order.create({
+    const orderDraft = {
       user:           user.userId,
       items:          orderItems,
       subtotalPrice:  priceResult.subtotalToman,
       discountAmount: priceResult.discountToman,
       couponDiscount: priceResult.couponDiscountToman,
-      totalPrice,
+      totalPrice: orderTotal,
       coupon: priceResult.coupon
         ? { code: priceResult.coupon.code, _id: priceResult.coupon._id }
         : { code: null, _id: null },
@@ -472,80 +490,85 @@ export async function POST(req) {
       description: description || "",
       // اسنپ‌شات تاریخی شرایط اقساط — فقط برای سفارش‌های اقساطی
       ...(installmentData?.terms ? { installmentTerms: installmentData.terms } : {}),
-    });
+    };
 
+    let order;
     let payment;
     let installmentDoc = null;
 
-    try {
-      if (paymentMethod === "BANK_RECEIPT") {
-        payment = await Payment.create({
-          order:  order._id,
-          method: "BANK_RECEIPT",
-          amount: totalPrice,
-          status: "PENDING",
-          bankReceipt: {
-            imageUrls:    bankImageUrls,
-            uploadedAt:   new Date(),
-            reviewStatus: "PENDING",
-          },
-        });
-
-        order.payments.push(payment._id);
-        await order.save();
-      } else {
-        // INSTALLMENT — پیش‌پرداخت + سند اقساط
-        payment = await Payment.create({
-          order:  order._id,
-          method: "BANK_RECEIPT",
-          amount: installmentData.downPaymentAmount,
-          status: "PENDING",
-          bankReceipt: {
-            imageUrls:    installmentData.downPaymentImages,
-            uploadedAt:   new Date(),
-            reviewStatus: "PENDING",
-          },
-        });
-
-        installmentDoc = await Installment.create({
-          order:          order._id,
-          downPayment:    payment._id,
-          totalAmount:    totalPrice,
-          numberOfChecks: installmentData.numberOfChecks,
-          status:         "PENDING",
-          checks: installmentData.checks.map((c) => ({
-            checkNumber:     c.checkNumber ?? null,
-            amount:          Number(c.amount),
-            dueDate:         new Date(c.dueDate),
-            status:          "PENDING",
-            receiptImageUrl: c.receiptImageUrl ?? null,
-          })),
-        });
-
-        order.payments.push(payment._id);
-        order.paymentStatus = "PARTIALLY_PAID";
-        await order.save();
-      }
-    } catch (err) {
-      // جبران: سفارش بدون پرداخت نباید باقی بماند
+    if (walletAmount > 0) {
+      const result = await createWalletOrder({ identity: walletIdentity, draft: orderDraft, amount: walletAmount, bankImages: bankImageUrls, installmentData });
+      if (result.replayed) return NextResponse.json({ ...result.receipt, replayed: true }, { status: 200 });
+      order = result.order;
+      payment = result.payment;
+      installmentDoc = result.installment;
+    } else {
+      order = await Order.create(orderDraft);
       try {
-        if (payment?._id) await Payment.findByIdAndDelete(payment._id);
-        if (installmentDoc?._id) await Installment.findByIdAndDelete(installmentDoc._id);
-        await Order.findByIdAndDelete(order._id);
-      } catch (cleanupErr) {
-        console.error("خطا در پاک‌سازی سفارش ناقص:", cleanupErr);
+        if (paymentMethod === "BANK_RECEIPT") {
+          payment = await Payment.create({
+            order:  order._id,
+            method: "BANK_RECEIPT",
+            amount: totalPrice,
+            status: "PENDING",
+            bankReceipt: {
+              imageUrls:    bankImageUrls,
+              uploadedAt:   new Date(),
+              reviewStatus: "PENDING",
+            },
+          });
+
+          order.payments.push(payment._id);
+          await order.save();
+        } else {
+          // INSTALLMENT — پیش‌پرداخت + سند اقساط
+          payment = await Payment.create({
+            order:  order._id,
+            method: "BANK_RECEIPT",
+            amount: installmentData.downPaymentAmount,
+            status: "PENDING",
+            bankReceipt: {
+              imageUrls:    installmentData.downPaymentImages,
+              uploadedAt:   new Date(),
+              reviewStatus: "PENDING",
+            },
+          });
+
+          installmentDoc = await Installment.create({
+            order:          order._id,
+            downPayment:    payment._id,
+            totalAmount:    totalPrice,
+            numberOfChecks: installmentData.numberOfChecks,
+            status:         "PENDING",
+            checks: installmentData.checks.map((c) => ({
+              checkNumber:     c.checkNumber ?? null,
+              amount:          Number(c.amount),
+              dueDate:         new Date(c.dueDate),
+              status:          "PENDING",
+              receiptImageUrl: c.receiptImageUrl ?? null,
+            })),
+          });
+
+          order.payments.push(payment._id);
+          order.paymentStatus = "PARTIALLY_PAID";
+          await order.save();
+        }
+        await reserveUsedProducts(order);
+      } catch (err) {
+        // جبران: سفارش بدون پرداخت نباید باقی بماند
+        try {
+          if (payment?._id) await Payment.findByIdAndDelete(payment._id);
+          if (installmentDoc?._id) await Installment.findByIdAndDelete(installmentDoc._id);
+          await Order.findByIdAndDelete(order._id);
+          await UsedProduct.updateMany({ order: order._id, status: "reserved" }, { $set: { status: "available", order: null } });
+        } catch (cleanupErr) {
+          console.error("خطا در پاک‌سازی سفارش ناقص:", cleanupErr);
+        }
+        throw err;
       }
-      throw err;
     }
 
     // ═══ ۴. اقدامات پس از ثبت (خطاها روند را متوقف نمی‌کنند) ═══
-
-    // رزرو محصولات دست دوم
-    try {
-      await reserveUsedProducts(order);
-    } catch (err) {
-      console.warn("خطا در رزرو محصولات دست دوم:", err?.message);
-    }
 
     // اختصاص خودکار tracking انبار به محصولات دست دوم
     try {
@@ -567,7 +590,7 @@ export async function POST(req) {
 
     // ─── اعلان‌های پنل مدیریت (شکست در ساخت اعلان روند را متوقف نمی‌کند) ───
     // اعلان سفارش جدید
-    await notifyNewOrder(order);
+    try { await notifyNewOrder(order); } catch (error) { console.warn("خطا در اعلان سفارش:", error?.message); }
 
     // اگر خریدار شاگردِ یک مربی باشد → اعلان ثبت کردیت برای مربی
     try {
@@ -583,12 +606,13 @@ export async function POST(req) {
     return NextResponse.json(
       {
         message:
-          paymentMethod === "INSTALLMENT"
+          fullyWalletPaid ? "سفارش با پرداخت کامل از کیف پول ثبت شد" : paymentMethod === "INSTALLMENT"
             ? "سفارش و درخواست اقساط با موفقیت ثبت شد و در انتظار تأیید است"
             : "سفارش و رسید بانکی با موفقیت ثبت شد و در انتظار تأیید است",
         orderId:      order._id,
         trackingCode: order.trackingCode,
-        totalPrice,
+        totalPrice: order.totalPrice,
+        walletPaid: order.walletPaid || 0,
         payment,
         installment:  installmentDoc,
         couponError:  priceResult.couponError || null,
@@ -597,6 +621,7 @@ export async function POST(req) {
     );
   } catch (error) {
     console.error("خطا در ثبت نهایی سفارش:", error);
+    if (error.code === "WALLET_CHECKOUT_ERROR") return badRequest(error.message, error.status);
     return NextResponse.json({ message: "خطای داخلی سرور" }, { status: 500 });
   }
 }

@@ -6,7 +6,7 @@ import vm from 'node:vm';
 
 const source = await readFile(new URL('../src/app/api/wallet/route.js', import.meta.url), 'utf8');
 
-async function walletRoute({ token = 'valid', user = { _id: 'me', walletBalance: 7500 }, reviews = [], coaches = [], fail = false } = {}) {
+async function walletRoute({ token = 'valid', user = { _id: 'me', walletBalance: 7500 }, reviews = [], coaches = [], wallet = [], fail = false } = {}) {
   const calls = [];
   const context = vm.createContext({ console: { error() {} } });
   const ledger = (name, rows) => ({
@@ -36,6 +36,7 @@ async function walletRoute({ token = 'valid', user = { _id: 'me', walletBalance:
     } } },
     'base/models/ReviewCreditTransaction': { default: ledger('reviews', reviews) },
     'base/models/CoachWalletTransaction': { default: ledger('coaches', coaches) },
+    'base/models/WalletTransaction': { default: ledger('wallet', wallet) },
     'base/utils/auth': { verifyToken: (value) => value === 'valid' ? { userId: 'me' } : false },
   };
   const mod = new vm.SourceTextModule(source, { context });
@@ -95,4 +96,14 @@ test('database failure returns an error instead of a misleading zero balance', a
   const result = await walletRoute({ fail: true });
   assert.equal(result.status, 500);
   assert.equal(result.body.wallet, undefined);
+});
+
+
+test('wallet spending and refunds preserve direction and never expose another user history', async () => {
+  const result = await walletRoute({ wallet: [
+    { _id: 'd', user: 'me', type: 'debit', amount: 200, description: 'payment', createdAt: '2026-01-01' },
+    { _id: 'c', user: 'me', type: 'credit', amount: 200, description: 'refund', createdAt: '2026-01-02' },
+    { _id: 'private', user: 'other', type: 'debit', amount: 900, createdAt: '2026-01-03' },
+  ] });
+  assert.deepEqual(result.body.transactions.map(t => [t._id, t.type, t.amount]), [['c', 'credit', 200], ['d', 'debit', 200]]);
 });

@@ -36,6 +36,7 @@ const FULFILLMENT_STATUS = {
 const PAYMENT_METHOD = {
   ONLINE:       { label: "پرداخت آنلاین", icon: CreditCard },
   BANK_RECEIPT: { label: "رسید بانکی",    icon: Receipt },
+  WALLET: { label: "کیف پول", icon: Receipt },
   INSTALLMENT:  { label: "اقساطی",        icon: ReceiptText },
 };
 

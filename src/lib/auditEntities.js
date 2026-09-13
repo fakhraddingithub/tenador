@@ -79,6 +79,7 @@ export const AUDIT_ENUMS = {
     FAILED: "ناموفق",
   },
   paymentMethod: {
+    WALLET: "پرداخت با کیف پول",
     ONLINE: "پرداخت آنلاین",
     BANK_RECEIPT: "فیش بانکی",
   },

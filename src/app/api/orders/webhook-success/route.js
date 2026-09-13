@@ -43,6 +43,7 @@ export async function POST(req) {
       return NextResponse.json({ message: "سفارش یافت نشد" }, { status: 404 });
     }
 
+    if (order.walletPaidOriginal > 0) return NextResponse.json({ message: "پرداخت این سفارش از مسیر کیف پول ثبت می‌شود" }, { status: 409 });
     if (order.paymentStatus === "PAID") {
       await markOrderUsedProductsSold(order);
       return NextResponse.json({ message: "سفارش قبلاً پردازش شده است" }, { status: 200 });

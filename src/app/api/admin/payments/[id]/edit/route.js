@@ -58,6 +58,11 @@ export async function PATCH(req, { params }) {
         return NextResponse.json({ message: "پرداخت یافت نشد" }, { status: 404 });
       }
 
+      if (payment.method === "WALLET") {
+        await session.abortTransaction();
+        session.endSession();
+        return NextResponse.json({ message: "پرداخت کیف پول قابل ویرایش دستی نیست" }, { status: 400 });
+      }
       const order = await Order.findById(payment.order).session(session);
       if (!order) {
         await session.abortTransaction();

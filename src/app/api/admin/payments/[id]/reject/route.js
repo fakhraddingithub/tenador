@@ -1,3 +1,4 @@
+import "base/models/registerModels";
 /**
  * src/app/api/admin/payments/[id]/reject/route.js
  *
@@ -30,7 +31,7 @@ export async function POST(req, { params }) {
     const body = await req.json().catch(() => ({}));
     const rejectReason = body?.rejectReason?.trim() || "";
 
-    const payment = await Payment.findById(paymentId);
+    let payment = await Payment.findById(paymentId);
     if (!payment) {
       return NextResponse.json({ message: "پرداخت یافت نشد" }, { status: 404 });
     }
@@ -56,7 +57,7 @@ export async function POST(req, { params }) {
       );
     }
 
-    const order = await Order.findById(payment.order);
+    let order = await Order.findById(payment.order);
     if (!order) {
       return NextResponse.json({ message: "سفارش مرتبط یافت نشد" }, { status: 404 });
     }
@@ -65,6 +66,15 @@ export async function POST(req, { params }) {
     session.startTransaction();
 
     try {
+      // Read inside the write transaction so concurrent refunds/approvals conflict.
+      payment = await Payment.findById(paymentId).session(session);
+      order = payment && await Order.findById(payment.order).session(session);
+      if (!order || ["PAID", "REJECTED"].includes(payment.status)) {
+        await session.abortTransaction();
+        await session.endSession();
+        return NextResponse.json({ message: "وضعیت سفارش یا پرداخت تغییر کرده است؛ صفحه را تازه کنید" }, { status: 409 });
+      }
+
       payment.status = "REJECTED";
       payment.bankReceipt.reviewStatus = "REJECTED";
       payment.bankReceipt.reviewedBy = admin.userId;
@@ -76,7 +86,7 @@ export async function POST(req, { params }) {
       const approvedPayments = await Payment.find({
         _id: { $in: order.payments, $ne: payment._id },
         status: "PAID",
-      }).lean();
+      }).session(session).lean();
 
       const totalPaid = approvedPayments.reduce((s, p) => s + p.amount, 0);
 

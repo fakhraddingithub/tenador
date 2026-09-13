@@ -1,3 +1,4 @@
+import "base/models/registerModels";
 import { NextResponse } from "next/server";
 import connectToDB from "base/configs/db";
 import Payment from "base/models/Payment";
@@ -37,7 +38,7 @@ export async function POST(req, { params }) {
       );
     }
 
-    const payment = await Payment.findById(paymentId);
+    let payment = await Payment.findById(paymentId);
     if (!payment) {
       return NextResponse.json({ message: "پرداخت یافت نشد" }, { status: 404 });
     }
@@ -60,7 +61,7 @@ export async function POST(req, { params }) {
       );
     }
 
-    const order = await Order.findById(payment.order);
+    let order = await Order.findById(payment.order);
     if (!order) {
       return NextResponse.json(
         { message: "سفارش مرتبط یافت نشد" },
@@ -68,19 +69,24 @@ export async function POST(req, { params }) {
       );
     }
 
-    // محاسبه مجموع پرداخت‌های قبلی تأییدشده (به‌جز همین پرداخت)
-    const previousApproved = await Payment.find({
-      _id: { $in: order.payments, $ne: payment._id },
-      status: "PAID",
-    }).lean();
-    const alreadyPaidTotal = previousApproved.reduce((s, p) => s + p.amount, 0);
-    const newTotal = alreadyPaidTotal + parsedAmount;
-    const isFullyPaid = newTotal >= order.totalPrice;
-
+    if (order.fulfillmentStatus === "CANCELED") return NextResponse.json({ message: "سفارش لغو شده قابل تأیید پرداخت نیست" }, { status: 409 });
     const session = await mongoose.startSession();
     session.startTransaction();
 
     try {
+      // Read inside the write transaction so concurrent refunds/approvals conflict.
+      payment = await Payment.findById(paymentId).session(session);
+      order = payment && await Order.findById(payment.order).session(session);
+      if (!order || payment.status === "PAID" || order.fulfillmentStatus === "CANCELED") {
+        await session.abortTransaction();
+        await session.endSession();
+        return NextResponse.json({ message: "وضعیت سفارش یا پرداخت تغییر کرده است؛ صفحه را تازه کنید" }, { status: 409 });
+      }
+
+      const previousApproved = await Payment.find({ order: order._id, _id: { $ne: payment._id }, status: "PAID" }).session(session).lean();
+      const newTotal = previousApproved.reduce((sum, p) => sum + p.amount, 0) + parsedAmount;
+      const isFullyPaid = newTotal >= order.totalPrice;
+
       // بروزرسانی پرداخت با مبلغ تأیید‌شده
       payment.amount = parsedAmount;
       payment.status = "PAID";

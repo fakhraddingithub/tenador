@@ -84,7 +84,7 @@ const PaymentPage = ({ trackingCode }) => {
   // ─── ارسال فرم ───
   const handleSubmit = async () => {
     
-    if (order.paymentMethod === 'BANK_RECEIPT' && receiptUrls.length === 0) {
+    if (['BANK_RECEIPT', 'WALLET'].includes(order.paymentMethod) && receiptUrls.length === 0) {
       toast.error('لطفاً حداقل یک تصویر فیش واریزی بارگذاری کنید.');
       return;
     }
@@ -106,7 +106,7 @@ const PaymentPage = ({ trackingCode }) => {
         await editProfile({ email });
       }
       
-      if (order.paymentMethod === 'BANK_RECEIPT') {
+      if (['BANK_RECEIPT', 'WALLET'].includes(order.paymentMethod)) {
         const result = await submitPaymentReceipt({
           orderId:          order._id,
           receiptImageUrls: receiptUrls,   // ← آرایه
@@ -212,7 +212,7 @@ const PaymentPage = ({ trackingCode }) => {
         <SubmitPaymentButton
           loading={submitLoading}
           disabled={
-            (order.paymentMethod === 'BANK_RECEIPT' && receiptUrls.length === 0) ||
+            (['BANK_RECEIPT', 'WALLET'].includes(order.paymentMethod) && receiptUrls.length === 0) ||
             !rulesChecked
           }
           onClick={handleSubmit}

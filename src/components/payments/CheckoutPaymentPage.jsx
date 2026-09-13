@@ -75,6 +75,9 @@ const CheckoutPaymentPage = () => {
   const [receiptUrls,  setReceiptUrls]  = useState([]);
   const [email,        setEmail]        = useState('');
   const [rulesChecked, setRulesChecked] = useState(false);
+  const walletAmount = Number(checkout?.walletAmount || 0);
+  const payable = Math.max(0, totalPrice - walletAmount);
+  const fullyWalletPaid = walletAmount > 0 && payable === 0;
 
   // ─── بارگذاری اطلاعات مرحله ثبت سفارش ───
   useEffect(() => {
@@ -113,6 +116,9 @@ const CheckoutPaymentPage = () => {
         // کد تخفیفِ اعمال‌شده در صفحه ثبت سفارش — سرور دوباره اعتبارسنجی می‌کند
         couponCode:      appliedCoupon?.code ?? null,
         description:     checkout.description,
+        walletAmount,
+        checkoutKey: checkout.checkoutKey,
+        expectedTotal: totalPrice,
         ...paymentFields,
       }),
     });
@@ -147,7 +153,7 @@ const CheckoutPaymentPage = () => {
 
   // ─── ثبت رسید بانکی ───
   const handleBankReceiptSubmit = async () => {
-    if (receiptUrls.length === 0) {
+    if (receiptUrls.length === 0 && !fullyWalletPaid) {
       toast.error('لطفاً حداقل یک تصویر فیش واریزی بارگذاری کنید.');
       return;
     }
@@ -171,7 +177,7 @@ const CheckoutPaymentPage = () => {
 
       await handleCheckoutSuccess(
         data.trackingCode,
-        'سفارش شما ثبت شد؛ اطلاعات پرداخت در حال بررسی است و نتیجه تا ساعاتی دیگر اعلام خواهد شد.',
+        fullyWalletPaid ? 'سفارش شما با پرداخت از کیف پول ثبت شد.' : 'سفارش شما ثبت شد؛ اطلاعات پرداخت در حال بررسی است و نتیجه تا ساعاتی دیگر اعلام خواهد شد.',
       );
     } catch (error) {
       console.error(error);
@@ -219,10 +225,16 @@ const CheckoutPaymentPage = () => {
     );
   }
 
+  if (walletAmount > totalPrice) {
+    return <div className="space-y-4 p-6 text-center"><p>مبلغ سبد تغییر کرده است؛ مبلغ کیف پول را دوباره انتخاب کنید.</p><Link href="/p-user/signOrder" className="text-[var(--color-primary)]">بازگشت به ثبت سفارش</Link></div>;
+  }
+
   // ─── سفارش مجازی (هنوز در دیتابیس ساخته نشده) برای کامپوننت‌های نمایش ───
   const pseudoOrder = {
     trackingCode:  null, // پس از تکمیل پرداخت صادر می‌شود
-    paymentMethod: checkout.paymentMethod,
+    paymentMethod: fullyWalletPaid ? 'WALLET' : checkout.paymentMethod,
+    walletPaid: walletAmount,
+    payments: walletAmount > 0 ? [{ method: 'WALLET', status: 'PAID', amount: walletAmount }] : [],
     items: cartItems.map((item) => ({
       itemType: item.itemType,
       quantity: item.quantity,
@@ -263,7 +275,7 @@ const CheckoutPaymentPage = () => {
   );
 
   // ─── اقساط ───
-  if (checkout.paymentMethod === 'INSTALLMENT') {
+  if (checkout.paymentMethod === 'INSTALLMENT' && !fullyWalletPaid) {
     return (
       <div>
         {backLink}
@@ -287,9 +299,10 @@ const CheckoutPaymentPage = () => {
         </div>
 
         <div className="md:w-2/3 flex flex-col gap-4 sm:gap-6 md:px-6">
-          <BankInfoBox />
+          {!fullyWalletPaid && <BankInfoBox />}
 
-          <ReceiptUploader onFileChange={setReceiptUrls} />
+          {!fullyWalletPaid && <ReceiptUploader onFileChange={setReceiptUrls} />}
+          {fullyWalletPaid && <p className="rounded-xl bg-emerald-50 p-4 text-sm text-emerald-800">تمام مبلغ سفارش از کیف پول پرداخت می‌شود و نیازی به فیش بانکی نیست.</p>}
 
           <EmailBox
             show={!user?.email}
@@ -304,7 +317,7 @@ const CheckoutPaymentPage = () => {
 
           <SubmitPaymentButton
             loading={submitLoading}
-            disabled={receiptUrls.length === 0 || !rulesChecked}
+            disabled={(!fullyWalletPaid && receiptUrls.length === 0) || !rulesChecked}
             onClick={handleBankReceiptSubmit}
           />
         </div>

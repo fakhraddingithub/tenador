@@ -17,6 +17,7 @@ import { deriveCheckStatus, summarizeInstallment } from "base/services/installme
 import { syncOrderFulfillmentFromTracking } from "@/lib/orderFulfillmentSync";
 import { markOrderUsedProductsSold } from "@/lib/usedProductOrderStatus";
 import { deleteOrderPermanently } from "base/services/orderDeletion";
+import { updateOrderWithWallet } from "base/services/walletOrder.service";
 
 // فقط برای ثبت شدن مدل‌ها در Mongoose / جلوگیری از MissingSchemaError
 import "base/models/Payment";
@@ -258,11 +259,8 @@ export async function PATCH(req, { params }) {
     if (paymentStatus) update.paymentStatus = paymentStatus;
     if (fulfillmentStatus) update.fulfillmentStatus = fulfillmentStatus;
 
-    const order = await Order.findByIdAndUpdate(
-      orderId,
-      { $set: update },
-      { new: true }
-    )
+    await updateOrderWithWallet(orderId, update);
+    const order = await Order.findById(orderId)
       .populate({
         path: "user",
         select: "name lastName phone email coach",

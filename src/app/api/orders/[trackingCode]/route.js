@@ -122,7 +122,7 @@ export async function DELETE(req, { params }) {
     }
 
     // فقط سفارش‌های لغو نشده و پرداخت‌نشده قابل حذف هستند
-    if (order.paymentStatus !== "UNPAID") {
+    if (order.paymentStatus !== "UNPAID" || order.walletPaid > 0) {
       return NextResponse.json(
         { message: "فقط سفارش‌های پرداخت‌نشده قابل حذف هستند" },
         { status: 400 }

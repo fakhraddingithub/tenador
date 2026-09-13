@@ -23,6 +23,7 @@ const OrderSummary = ({ order }) => {
     BANK_RECEIPT:  'فیش بانکی',
     INSTALLMENT:   'اقساطی',
     ONLINE:        'پرداخت آنلاین',
+    WALLET:        'کیف پول',
   };
 
   // پرداخت‌های تأییدشده‌ی قبلی (سفارش‌های «پرداخت جزئی») — مانده = کل − پرداخت‌شده
@@ -183,12 +184,13 @@ const OrderSummary = ({ order }) => {
             <span className="font-medium text-gray-800">{formatPrice(order.totalPrice)}</span>
           </div>
           <div className="flex justify-between items-center gap-2 flex-wrap text-emerald-600">
-            <span>پرداخت‌شده تاکنون</span>
-            <span className="font-medium">− {formatPrice(paidTotal)}</span>
+            <span>{order.walletPaid > 0 ? 'سایر پرداخت‌های تأییدشده' : 'پرداخت‌شده تاکنون'}</span>
+            <span className="font-medium">− {formatPrice(Math.max(0, paidTotal - (order.walletPaid || 0)))}</span>
           </div>
         </div>
       )}
 
+      {order.walletPaid > 0 && <div className="mb-3 flex justify-between gap-2 text-sm text-emerald-700"><span>پرداخت با کیف پول</span><span>− {formatPrice(order.walletPaid)}</span></div>}
       {/* مبلغ قابل پرداخت */}
       <div className="flex justify-between items-center gap-2 flex-wrap bg-[var(--color-primary)]/5 p-3.5 sm:p-4 rounded-[6px] border border-[var(--color-primary)]/10">
         <span className="font-bold text-[#1a1a1a] text-[13px] sm:text-sm">

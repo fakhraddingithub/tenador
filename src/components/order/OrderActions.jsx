@@ -25,6 +25,8 @@ const OrderActions = ({
   selectedAddress,
   selectedPaymentMethod,
   onProceed,           // () => void — هدایت به صفحه پرداخت
+  walletAmount = 0,
+  walletInvalid = false,
 }) => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [description, setDescription] = useState('');
@@ -40,6 +42,7 @@ const OrderActions = ({
   }, []);
 
   const validateOrder = () => {
+    if (walletInvalid) { toast.error('مبلغ کیف پول را بررسی کنید'); return false; }
     if (!cartItems?.length) {
       toast.error('سبد خرید شما خالی است');
       return false;
@@ -103,6 +106,8 @@ const OrderActions = ({
       // ذخیره و کاربر به صفحه پرداخت هدایت می‌شود
       // (کد تخفیف جداگانه در storage سبد نگه داشته می‌شود — useCart)
       savePendingCheckout({
+        walletAmount,
+        checkoutKey: crypto.randomUUID(),
         addressId:       selectedAddress._id || null,
         addressSnapshot: !selectedAddress._id ? selectedAddress : null,
         paymentMethod:   selectedPaymentMethod,
@@ -118,7 +123,7 @@ const OrderActions = ({
   };
 
   const isReady =
-    cartItems?.length > 0 && selectedAddress && selectedPaymentMethod;
+    cartItems?.length > 0 && selectedAddress && selectedPaymentMethod && !walletInvalid;
 
   return (
     <aside

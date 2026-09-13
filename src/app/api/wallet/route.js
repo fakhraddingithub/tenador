@@ -5,6 +5,7 @@ import "base/models/registerModels";
 import User from "base/models/User";
 import ReviewCreditTransaction from "base/models/ReviewCreditTransaction";
 import CoachWalletTransaction from "base/models/CoachWalletTransaction";
+import WalletTransaction from "base/models/WalletTransaction";
 import { verifyToken } from "base/utils/auth";
 
 export async function GET() {
@@ -21,13 +22,16 @@ export async function GET() {
       return NextResponse.json({ message: "حساب کاربری یافت نشد" }, { status: 401 });
     }
 
-    const [reviewCredits, coachCredits] = await Promise.all([
+    const [reviewCredits, coachCredits, walletTransactions] = await Promise.all([
       ReviewCreditTransaction.find({ user: user._id })
         .select("amount createdAt").sort({ createdAt: -1 }).limit(50).lean(),
       CoachWalletTransaction.find({ coach: user._id })
         .select("amount createdAt").sort({ createdAt: -1 }).limit(50).lean(),
+      WalletTransaction.find({ user: user._id })
+        .select("type amount description createdAt").sort({ createdAt: -1 }).limit(50).lean(),
     ]);
     const transactions = [
+      ...walletTransactions,
       ...reviewCredits.map((tx) => ({ ...tx, type: "credit", description: "پاداش نظر تأییدشده" })),
       ...coachCredits.map((tx) => ({ ...tx, type: "credit", description: "اعتبار مربی" })),
     ].sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt)).slice(0, 50);

@@ -20,6 +20,8 @@ const CartSummary = ({
   onRemoveCoupon,   // () => void
   isLoading,
   showCoupon = true,
+  walletSection = null,
+  walletAmount = 0,
 }) => {
   const [couponInput, setCouponInput] = useState('');
   const [isApplying, setIsApplying] = useState(false);
@@ -130,6 +132,7 @@ const CartSummary = ({
       </div>
       )}
 
+      {walletSection}
       {/* تفکیک قیمت */}
       <div className="space-y-3 text-sm">
         <div className="flex items-center justify-between">
@@ -163,6 +166,7 @@ const CartSummary = ({
         </div>
       </div>
 
+      {walletAmount > 0 && <div className="flex items-center justify-between gap-2 text-sm text-emerald-700"><span>پرداخت با کیف پول</span><span>− {formatPriceWithCurrency(walletAmount)}</span></div>}
       {/* جمع کل */}
       <div className="pt-4 border-t border-slate-200">
         <div className="flex items-center justify-between">

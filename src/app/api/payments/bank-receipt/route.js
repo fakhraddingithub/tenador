@@ -46,10 +46,10 @@ async function reserveUsedProducts(order) {
     (i) => i.itemType === "used_product" && i.usedProduct,
   );
   for (const item of usedItems) {
-    await UsedProduct.findByIdAndUpdate(item.usedProduct, {
-      status: "reserved",
-      order:  order._id,
-    });
+    await UsedProduct.updateOne({
+      _id: item.usedProduct,
+      $or: [{ status: "available" }, { status: "reserved", order: order._id }],
+    }, { $set: { status: "reserved", order: order._id } });
   }
 }
 
@@ -92,6 +92,7 @@ export async function POST(req) {
       );
     }
 
+    if (order.fulfillmentStatus === "CANCELED") return NextResponse.json({ message: "سفارش لغو شده قابل پرداخت نیست" }, { status: 409 });
     if (order.paymentStatus === "PAID") {
       return NextResponse.json(
         { message: "این سفارش قبلاً پرداخت شده است" },
@@ -222,7 +223,7 @@ export async function POST(req) {
         );
       }
 
-      if (downPaymentAmount > order.totalPrice) {
+      if (downPaymentAmount > order.totalPrice - (order.walletPaid || 0)) {
         return NextResponse.json(
           { message: "پیش‌پرداخت نمی‌تواند بیشتر از مبلغ کل سفارش باشد" },
           { status: 400 },
@@ -269,7 +270,7 @@ export async function POST(req) {
       const monthlyRatePct = await getMonthlyInstallmentRate();
 
       // مانده + سود ماهانه — منبع واحد محاسبه (installmentFinance). همه مبالغ تومان.
-      const remaining = order.totalPrice - downPaymentAmount;
+      const remaining = order.totalPrice - (order.walletPaid || 0) - downPaymentAmount;
       const checksTotal = checks.reduce((s, c) => s + (Number(c.amount) || 0), 0);
       const terms = buildInstallmentTerms({
         principal: remaining,
@@ -304,7 +305,7 @@ export async function POST(req) {
       const installmentDoc = await Installment.create({
         order:          order._id,
         downPayment:    downPayment._id,
-        totalAmount:    order.totalPrice,
+        totalAmount:    order.totalPrice - (order.walletPaid || 0),
         numberOfChecks,
         status:         "PENDING",
         checks: checks.map((c) => ({

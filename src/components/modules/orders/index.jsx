@@ -235,10 +235,11 @@ function OrderDetailModal({ order, onClose, isStore = false }) {
                     <span className="font-medium">− {formatPrice(order.couponDiscount)} تومان</span>
                   </div>
                 )}
+                {order.walletPaid > 0 && <div className="flex justify-between px-4 py-2.5 text-emerald-700"><span>پرداخت با کیف پول</span><span>− {formatPrice(order.walletPaid)} تومان</span></div>}
                 <div className="flex justify-between px-4 py-3 bg-gray-50">
-                  <span className="font-bold text-[#1a1a1a]">مبلغ کل</span>
+                  <span className="font-bold text-[#1a1a1a]">{order.walletPaid > 0 ? 'مبلغ پس از پرداخت کیف پول' : 'مبلغ کل'}</span>
                   <div className="flex items-baseline gap-1">
-                    <span className="text-lg font-bold text-[#aa4725] tracking-tight">{formatPrice(order.totalPrice)}</span>
+                    <span className="text-lg font-bold text-[#aa4725] tracking-tight">{formatPrice(Math.max(0, order.totalPrice - (order.walletPaid || 0)))}</span>
                     <span className="text-[11px] font-bold text-[#aa4725]/60">تومان</span>
                   </div>
                 </div>

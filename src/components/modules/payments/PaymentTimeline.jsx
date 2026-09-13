@@ -17,6 +17,12 @@ function buildSteps(payment) {
   const reviewedAt = payment.bankReceipt?.reviewedAt
   const status = payment.status
 
+  if (payment.method === 'WALLET') {
+    const steps = [{ label: 'پرداخت با کیف پول', date: created, state: 'done' }]
+    if (payment.meta?.refundedAmount > 0) steps.push({ label: 'بازگشت اعتبار به کیف پول', date: payment.updatedAt, state: 'done' })
+    return steps
+  }
+
   if (payment.method === 'ONLINE') {
     const paidAt = payment.onlinePayment?.paidAt
     if (status === 'FAILED') {

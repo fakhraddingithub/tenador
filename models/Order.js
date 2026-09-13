@@ -191,6 +191,10 @@ const OrderSchema = new mongoose.Schema(
       min: 0,
     },
 
+    // Net confirmed wallet payment; totalPrice remains the price after discounts.
+    walletPaid: { type: Number, default: 0, min: 0 },
+    walletPaidOriginal: { type: Number, default: 0, min: 0 },
+
     totalPrice: {
       type: Number,
       required: true,
@@ -207,7 +211,7 @@ const OrderSchema = new mongoose.Schema(
 
     paymentMethod: {
       type: String,
-      enum: ["ONLINE", "BANK_RECEIPT", "INSTALLMENT"],
+      enum: ["ONLINE", "BANK_RECEIPT", "INSTALLMENT", "WALLET"],
       required: true,
     },
 

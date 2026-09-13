@@ -18,6 +18,7 @@
  */
 
 import Payment from "base/models/Payment";
+import { refundOrderWallet } from "base/services/walletOrder.service";
 
 /**
  * بازمحاسبه‌ی subtotalPrice / discountAmount / couponDiscount / totalPrice از روی
@@ -91,7 +92,9 @@ export async function recalcAndApply(order, session) {
   })
     .session(session)
     .lean();
-  const totalPaid = paidPayments.reduce((s, p) => s + (p.amount || 0), 0);
+  const otherPaid = paidPayments.filter((p) => p.method !== "WALLET").reduce((s, p) => s + (p.amount || 0), 0);
+  const refunded = await refundOrderWallet(order, Math.max(0, order.totalPrice - otherPaid), session);
+  const totalPaid = paidPayments.reduce((s, p) => s + (p.amount || 0), 0) - refunded;
 
   order.paymentStatus = derivePaymentStatus(totalPaid, order.totalPrice);
   // fulfillmentStatus عمداً دست‌نخورده می‌ماند — جریانِ ارسال را ادمین دستی مدیریت می‌کند.

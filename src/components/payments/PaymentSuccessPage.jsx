@@ -31,6 +31,7 @@ function formatPrice(price) {
 
 const PAYMENT_LABEL = {
     BANK_RECEIPT: "فیش بانکی",
+    WALLET: "کیف پول",
     INSTALLMENT:  "اقساطی",
     ONLINE:       "پرداخت آنلاین",
 };
@@ -223,11 +224,12 @@ export default function PaymentSuccessPage({ trackingCode }) {
                                             )}
                                         </div>
                                     )}
+                                    {order.walletPaid > 0 && <div className="mb-3 flex justify-between text-sm text-emerald-700"><span>پرداخت با کیف پول</span><span>− {formatPrice(order.walletPaid)} تومان</span></div>}
                                     <div className="flex justify-between items-center">
                                         <span className="font-bold text-[#1a1a1a] text-sm">مبلغ قابل پرداخت:</span>
                                         <div className="flex items-baseline gap-1">
                                             <span className="text-xl font-bold text-[var(--color-primary)] tracking-tight">
-                                                {formatPrice(order?.totalPrice ?? 0)}
+                                                {formatPrice(Math.max(0, (order?.totalPrice ?? 0) - (order.walletPaid || 0)))}
                                             </span>
                                             <span className="text-xs font-bold text-[var(--color-primary)]/70">تومان</span>
                                         </div>
