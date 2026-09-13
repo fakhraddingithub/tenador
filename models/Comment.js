@@ -47,7 +47,9 @@ const CommentSchema = new mongoose.Schema(
       trim: true,
     },
 
-    // تصاویر واقعی کالای دست دوم پس از دریافت توسط خریدار
+    // تصاویر واقعی کالای دریافت‌شده — برای نظرِ خریدِ تأییدشده، چه محصول نو و
+    // چه دست دوم. اعتبارسنجیِ «چه کسی حق تصویر دارد» در روت POST /api/comments
+    // انجام می‌شود؛ اسکیما فقط سقفِ تعداد را تضمین می‌کند.
     images: {
       type: [String],
       default: [],
@@ -103,6 +105,28 @@ CommentSchema.index({ product: 1, status: 1, parent: 1 });
 CommentSchema.index({ user: 1, product: 1, parent: 1 });
 CommentSchema.index({ usedProduct: 1, status: 1, parent: 1 });
 CommentSchema.index({ user: 1, usedProduct: 1, parent: 1 });
+
+// «هر کاربر، برای هر محصول، فقط یک نظرِ سطح‌بالا». چکِ findOne در روت یک پنجره‌ی
+// رقابتی دارد؛ تنها چیزی که دو ثبتِ هم‌زمان را واقعاً غیرممکن می‌کند همین ایندکس
+// است و روت خطای E11000 آن را به ۴۰۹ ترجمه می‌کند. partial است تا پاسخ‌ها
+// (parent !== null) و سمتِ خالیِ product/usedProduct را در بر نگیرد.
+// autoIndex خاموش است → با `npm run ensure:indexes` ساخته می‌شود. اگر داده‌ی
+// تکراریِ قدیمی مانع ساختش شود، آن اسکریپت گزارش می‌دهد و چیزی از کار نمی‌افتد
+// (روت همچنان چکِ findOne را دارد).
+CommentSchema.index(
+  { user: 1, product: 1 },
+  {
+    unique: true,
+    partialFilterExpression: { product: { $type: "objectId" }, parent: null },
+  }
+);
+CommentSchema.index(
+  { user: 1, usedProduct: 1 },
+  {
+    unique: true,
+    partialFilterExpression: { usedProduct: { $type: "objectId" }, parent: null },
+  }
+);
 
 CommentSchema.set("toJSON", { virtuals: true });
 CommentSchema.set("toObject", { virtuals: true });

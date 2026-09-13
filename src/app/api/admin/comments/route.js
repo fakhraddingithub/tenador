@@ -37,7 +37,6 @@ export async function GET(req) {
         .populate("user", "name lastName phone avatar")
         .populate("product", "name mainImage slug")
         .populate("usedProduct", "name images slug")
-        .populate({ path: "parent", select: "text" })
         .sort({ createdAt: -1 })
         .skip((page - 1) * limit)
         .limit(limit)
@@ -45,6 +44,22 @@ export async function GET(req) {
       Comment.countDocuments(filter),
       Comment.aggregate([{ $group: { _id: "$status", n: { $sum: 1 } } }]),
     ]);
+
+    // متنِ نظرِ والد در یک کوئری جدا خوانده می‌شود، نه با populate: populate
+    // روی مرجعِ حذف‌شده null برمی‌گرداند و آن‌وقت خودِ «این یک پاسخ است» هم گم
+    // می‌شود. این‌طور شناسه‌ی خام باقی می‌ماند و ادمین «والد حذف شده» را می‌بیند.
+    const parentIds = [...new Set(items.filter((c) => c.parent).map((c) => String(c.parent)))];
+    if (parentIds.length > 0) {
+      const parents = await Comment.find({ _id: { $in: parentIds } })
+        .select("text status images rating createdAt user")
+        .populate("user", "name lastName")
+        .lean();
+      const byId = new Map(parents.map((p) => [String(p._id), p]));
+      for (const comment of items) {
+        if (!comment.parent) continue;
+        comment.parentComment = byId.get(String(comment.parent)) || null;
+      }
+    }
 
     const countsByStatus = { pending: 0, approved: 0, rejected: 0 };
     for (const c of counts) {

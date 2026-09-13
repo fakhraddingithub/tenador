@@ -19,6 +19,7 @@ import {
   FaExpand,
 } from "react-icons/fa";
 import RatingStars from "@/components/reviews/RatingStars";
+import CommentImageLightbox from "@/components/ui/CommentImageLightbox";
 import { useAdminPermissions } from "@/components/admin/AdminPermissionProvider";
 import MarkNotificationsRead from "@/components/admin/MarkNotificationsRead";
 
@@ -155,21 +156,28 @@ export default function CommentsModeration() {
         credentials: "include",
       });
       if (res.ok) {
-        toast.success("نظر حذف شد");
-        const removed = comments.find((c) => c._id === id);
+        const payload = await res.json().catch(() => ({}));
+        toast.success(payload.message || "نظر حذف شد");
         fetchComments(
-          (cur) =>
-            cur && {
+          (cur) => {
+            if (!cur) return cur;
+            // حذفِ والد، پاسخ‌هایش را هم می‌برد؛ فهرستِ روی صفحه باید همان را
+            // نشان دهد، وگرنه پاسخ‌هایی می‌مانند که دیگر در دیتابیس نیستند.
+            const removed = (cur.comments ?? []).filter(
+              (c) => c._id === id || String(c.parent || "") === String(id),
+            );
+            const counts = { ...(cur.counts ?? {}) };
+            for (const c of removed) {
+              if (c.status in counts) counts[c.status] = Math.max(0, counts[c.status] - 1);
+            }
+            return {
               ...cur,
-              comments: (cur.comments ?? []).filter((c) => c._id !== id),
-              counts:
-                removed && cur.counts && removed.status in cur.counts
-                  ? {
-                      ...cur.counts,
-                      [removed.status]: Math.max(0, cur.counts[removed.status] - 1),
-                    }
-                  : cur.counts,
-            },
+              comments: (cur.comments ?? []).filter(
+                (c) => c._id !== id && String(c.parent || "") !== String(id),
+              ),
+              counts,
+            };
+          },
           { revalidate: false },
         );
       } else {
@@ -323,6 +331,11 @@ export default function CommentsModeration() {
                       </a>
                     )}
 
+                    {/* نظرِ والد — ادمین باید بدون جست‌وجو بفهمد پاسخ به چیست */}
+                    {c.parent && (
+                      <ParentCommentContext parent={c.parentComment} />
+                    )}
+
                     {/* rating */}
                     {c.rating > 0 && (
                       <div className="mb-2">
@@ -432,42 +445,56 @@ export default function CommentsModeration() {
         </div>
       )}
 
-      <AnimatePresence>
-        {lightboxImage && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 p-4 backdrop-blur-sm"
-            onClick={() => setLightboxImage(null)}
-            role="dialog"
-            aria-modal="true"
-            aria-label="پیش‌نمایش تصویر نظر"
+      <CommentImageLightbox
+        src={lightboxImage}
+        onClose={() => setLightboxImage(null)}
+        alt="پیش‌نمایش تصویر نظر"
+      />
+    </div>
+  );
+}
+
+/**
+ * بافتِ نظرِ والد برای یک پاسخ.
+ *
+ * `parent` می‌تواند null باشد: نظرِ والد حذف شده ولی شناسه‌اش هنوز روی پاسخ
+ * هست. در آن حالت هم باید چیزی نشان داده شود، وگرنه ادمین یک «پاسخ» می‌بیند
+ * که معلوم نیست به چه چیزی است.
+ */
+function ParentCommentContext({ parent }) {
+  if (!parent) {
+    return (
+      <div className="mb-2 rounded-lg border border-dashed border-gray-200 bg-gray-50/70 px-3 py-2 text-[11px] text-gray-400">
+        نظری که این پاسخ به آن داده شده، حذف شده است.
+      </div>
+    );
+  }
+
+  return (
+    <div className="mb-2 rounded-lg border border-gray-200 bg-gray-50/70 p-3">
+      <div className="mb-1.5 flex flex-wrap items-center gap-2">
+        <span className="inline-flex items-center gap-1 text-[11px] font-bold text-gray-500">
+          <FaReply className="h-2.5 w-2.5 scale-x-[-1]" />
+          در پاسخ به نظرِ{" "}
+          {getUserFullName(parent.user, "کاربر حذف‌شده")}
+        </span>
+        {parent.status && (
+          <span
+            className={`rounded-full border px-2 py-0.5 text-[10px] font-bold ${STATUS_BADGE[parent.status]}`}
           >
-            <motion.div
-              initial={{ opacity: 0, scale: 0.96 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.96 }}
-              className="relative max-h-[90vh] max-w-5xl"
-              onClick={(event) => event.stopPropagation()}
-            >
-              <img
-                src={lightboxImage}
-                alt="تصویر بزرگ محصول دریافت‌شده"
-                className="max-h-[88vh] max-w-full rounded-xl object-contain shadow-2xl"
-              />
-              <button
-                type="button"
-                onClick={() => setLightboxImage(null)}
-                className="absolute left-3 top-3 flex h-10 w-10 items-center justify-center rounded-full bg-black/65 text-white transition hover:bg-black"
-                aria-label="بستن تصویر"
-              >
-                <FaTimes />
-              </button>
-            </motion.div>
-          </motion.div>
+            {STATUS_LABEL[parent.status]}
+          </span>
         )}
-      </AnimatePresence>
+        {parent.rating > 0 && <RatingStars value={parent.rating} size={11} />}
+        {parent.images?.length > 0 && (
+          <span className="text-[10px] text-gray-400">
+            {parent.images.length.toLocaleString("fa-IR")} تصویر
+          </span>
+        )}
+      </div>
+      <p className="line-clamp-3 whitespace-pre-line border-r-2 border-[#aa4725]/30 pr-2.5 text-xs leading-relaxed text-gray-500">
+        {parent.text}
+      </p>
     </div>
   );
 }

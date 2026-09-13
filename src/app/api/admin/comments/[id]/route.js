@@ -71,14 +71,34 @@ export async function DELETE(req, { params }) {
       return NextResponse.json({ message: "نظر یافت نشد" }, { status: 404 });
     }
 
-    // اعلانِ این نظر همان _id را دارد؛ بدون حذفش یک شمارنده‌ی خوانده‌نشده‌ی
+    // پاسخ‌های این نظر بدون والد بی‌معنا می‌شوند (و هرگز جایی نمایش داده
+    // نمی‌شوند)؛ همراهِ والد حذف می‌شوند تا رکوردِ یتیم در دیتابیس نماند.
+    // درخت تک‌سطحی است، پس یک مرحله کافی است.
+    const orphanedReplies = await Comment.find({ parent: deleted._id })
+      .select("_id")
+      .lean();
+    const removedIds = [deleted._id, ...orphanedReplies.map((r) => r._id)];
+    if (orphanedReplies.length > 0) {
+      await Comment.deleteMany({ _id: { $in: orphanedReplies.map((r) => r._id) } });
+    }
+
+    // اعلانِ هر نظر همان _id را دارد؛ بدون حذفشان شمارنده‌ی خوانده‌نشده‌ی
     // بدونِ مقصد باقی می‌ماند. خطای اعلان نباید حذفِ انجام‌شده را بشکند.
-    await Notification.deleteOne({ _id: deleted._id }).catch(() => {});
+    await Notification.deleteMany({ _id: { $in: removedIds } }).catch(() => {});
 
     // اگر نظرِ حذف‌شده تأییدشده بود، از نمایش عمومی هم باید برود
     revalidateContent(["comments"]);
 
-    return NextResponse.json({ message: "نظر حذف شد" }, { status: 200 });
+    return NextResponse.json(
+      {
+        message:
+          orphanedReplies.length > 0
+            ? `نظر و ${orphanedReplies.length.toLocaleString("fa-IR")} پاسخ آن حذف شد`
+            : "نظر حذف شد",
+        deletedReplies: orphanedReplies.length,
+      },
+      { status: 200 }
+    );
   } catch (error) {
     console.error("[DELETE /api/admin/comments/:id]", error);
     return NextResponse.json({ message: "خطای داخلی سرور" }, { status: 500 });

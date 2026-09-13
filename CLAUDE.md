@@ -13,6 +13,7 @@ npm run test:product-creation                # Product create + edit end to end 
 npm test -- tests/paymentWorkflow.test.js   # Run a single test file
 npm test -- -t "name of test"                # Run tests matching a name
 npm run test:sender-address                  # Sender-address validation (print flow)
+npm run test:comment-photos-replies          # Comment photos + replies (real mongo, real Comment schema)
 npm run test:db      # Test MongoDB connection
 npm run check:mongodb # Inspect MongoDB collections/state
 
@@ -370,7 +371,7 @@ Beyond the storefront, several self-contained subsystems each span a model + ser
 | Admin notifications | `services/notificationService.js`, `models/Notification.js` | Bell/sidebar UI; beware the payment dual-path/webhook early-return gotcha |
 | Admin audit log | `models/auditPlugin.js`, `src/lib/adminAuditScope.js`, `src/lib/auditEntities.js`, `models/AdminActivity.js` | Append-only ledger of what each admin actually changed — see **Admin audit log** below |
 | User broadcasts | `services/userNotificationService.js`, `models/UserNotification*.js` | Admin→user broadcasts with watermark read-tracking |
-| Reviews / comments | `services/comment.service.js`, `models/Comment.js` | Moderated, one-per-product, "verified purchase" badge |
+| Reviews / comments | `services/comment.service.js`, `models/Comment.js` | Moderated, one-per-product, "verified purchase" badge, buyer photos and one level of replies — see **Comment photos and replies** below |
 | Support tickets | `models/Ticket.js`, `models/TicketMessage.js`, `api/tickets`, `api/admin/tickets` | Department/priority ticket system with per-ticket chat (user dashboard + admin panel), attachments via `/api/upload`, email notice on admin reply |
 | CMS info pages | `services/pageContent.service.js`, `src/lib/pageDefaults.js`, `models/PageContent.js` | Block-based editor; `SectionRenderer` renders blocks; `ContactMessage` inbox |
 | Coach system | `models/CoachCredit.js`, `models/CoachWalletTransaction.js`, `api/admin/coach-*` | Coach applications, codes, credits/wallet |
@@ -379,6 +380,59 @@ Beyond the storefront, several self-contained subsystems each span a model + ser
 | Order flows | `src/lib/flowTraversal.js`, `p-admin/admin-order-flows`, `models/OrderFlow*` | Admin-defined DAG of order stages; traversal turns the graph into a customer-facing step sequence |
 | Financial analytics | `services/analyticsService.js`, `p-admin/financial` | Revenue/collected/outstanding/collect-rate via aggregation pipelines (no N+1); overdue from installment-check due dates |
 | Web push | `src/lib/push.js`, `models/PushSubscription.js` | Server-side Web Push via VAPID; Node-only (needs native crypto); auto-prunes expired subscriptions (404/410) |
+
+### Comment photos and replies
+
+One `Comment` model carries everything: `product` **xor** `usedProduct`, an optional
+`parent` (one level, never deeper), and `images` (≤ 4). Photos and replies are not a
+second system — they are the same document with two more fields populated.
+
+**Who may attach a photo.** The rule is the *purchase*, not the product type. It used to
+be `!usedProduct || !verified → 403`, which is why buyers of new products could not post
+photos; it is now just `!verified → 403`. `verified` is set server-side only after
+`POST /api/comments` confirms the order belongs to the caller, contains the item, and is
+`SENT`/`DELIVERED` — the client cannot assert it. Every URL must live on the configured
+ImageKit host (`isTrustedImageUrl`), so an approved comment can never render a
+third-party image.
+
+**Upload happens before the comment is created**, in `ReviewModal`. A failed upload throws
+before `POST /api/comments` is ever called, so there is no half-saved comment to clean up —
+and the user still has their text and their files to retry with. Image validation runs
+*before* the reply/top-level branch too, so no path can quietly drop the array.
+
+**Replies are deliberately one level deep.** `POST /api/comments` refuses a parent that is
+missing (404), not approved (409), belongs to another product (400), or is itself a reply
+(400); replies carry no images and no rating. A reply never counts as its author's
+one-per-product top-level comment — the duplicate check and the unique indexes are all
+scoped to `parent: null`.
+
+**Nothing is ever orphaned, from either end:**
+
+| where | what stops the orphan |
+|---|---|
+| `DELETE /api/admin/comments/:id` | deletes the parent's replies with it, and their notifications |
+| `getApprovedReviews` | one query, nested in memory; a reply whose parent is not in the approved set is dropped entirely — it never resurfaces as a standalone review |
+| admin list route | reads the parent's text with a **second query, not `populate`**. Populate returns `null` for a deleted ref and the `parent` id goes with it, so the panel would lose the fact that the comment is a reply at all. The raw id stays and `parentComment: null` renders «والد حذف شده است» |
+
+**The duplicate race.** `findOne` then `create` has a window two concurrent submissions can
+both pass. The partial unique indexes on `{user, product}` / `{user, usedProduct}`
+(`parent: null` only) close it, and the route translates `E11000` into the same 409 as the
+pre-check. `autoIndex` is off, so they are built by `npm run ensure:indexes`; if legacy
+duplicates block the build that script reports it and nothing breaks — the pre-check still
+stands.
+
+**Backward compatibility.** `images` defaults to `[]` and `parent` to `null`, so every
+pre-existing comment is already valid without migration. `getApprovedReviews` still honours
+the legacy `status`-less `approved: true` shape and hands those comments an empty `replies`.
+
+`src/components/ui/CommentImageLightbox.jsx` is the single lightbox — the admin panel, the
+product page and the second-hand section had (or would have had) three byte-identical
+copies. `object-contain` inside `max-h`/`max-w` is what makes any aspect ratio safe; the
+thumbnails are `aspect-square` + `object-cover` so a panorama cannot stretch a grid.
+
+```bash
+npm run test:comment-photos-replies   # real mongo, real schema, real unique index
+```
 
 ### Admin audit log
 

@@ -10,13 +10,15 @@
  *   rating   (اختیاری) — ۱ تا ۵ (برای نظرهای سطح‌بالا)
  *   parent   (اختیاری) — شناسه‌ی نظر والد (پاسخ به نظر دیگر)
  *   orderId  (اختیاری) — اگر نظر از مسیر سفارشِ تحویل‌شده ثبت شود
- *   images   (اختیاری) — حداکثر ۴ تصویر؛ فقط برای خرید دست دوم تأییدشده
+ *   images   (اختیاری) — حداکثر ۴ تصویر؛ فقط برای نظرِ سطح‌بالای خریدِ تأییدشده
+ *                        (محصول نو یا دست دوم — قانون یکی است)
  *
  * کاربر هرگز از بدنه خوانده نمی‌شود؛ همیشه از توکن استخراج می‌شود.
  */
 
 import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
+import mongoose from "mongoose";
 import connectToDB from "base/configs/db";
 import "base/models/registerModels";
 import { verifyToken } from "base/utils/auth";
@@ -58,6 +60,12 @@ function isTrustedImageUrl(value) {
   }
 }
 
+// شناسه‌ی نامعتبر باید ۴۰۰ بدهد، نه ۵۰۰. بدون این، هر رشته‌ی دلخواه در بدنه
+// داخل findById به CastError تبدیل می‌شد و به‌عنوان «خطای داخلی سرور» بیرون می‌آمد.
+const isObjectId = (value) =>
+  typeof value === "string" && mongoose.Types.ObjectId.isValid(value) &&
+  String(new mongoose.Types.ObjectId(value)) === value;
+
 async function getAuthUser() {
   const cookieStore = await cookies();
   const token = cookieStore.get("accessToken")?.value;
@@ -87,6 +95,24 @@ export async function POST(req) {
         { status: 400 }
       );
     }
+    if (!isObjectId(product || usedProduct)) {
+      return NextResponse.json(
+        { message: "شناسه‌ی محصول نامعتبر است" },
+        { status: 400 }
+      );
+    }
+    if (parent !== undefined && parent !== null && !isObjectId(parent)) {
+      return NextResponse.json(
+        { message: "شناسه‌ی نظر والد نامعتبر است" },
+        { status: 400 }
+      );
+    }
+    if (orderId !== undefined && orderId !== null && !isObjectId(orderId)) {
+      return NextResponse.json(
+        { message: "شناسه‌ی سفارش نامعتبر است" },
+        { status: 400 }
+      );
+    }
 
     const trimmed = typeof text === "string" ? text.trim() : "";
     if (trimmed.length < MIN_TEXT) {
@@ -111,6 +137,31 @@ export async function POST(req) {
       ratingValue = r;
     }
 
+    // تصاویر پیش از انشعابِ «پاسخ/نظر» اعتبارسنجی می‌شوند تا هیچ مسیری
+    // نتواند آرایه‌ی تصویر را بی‌صدا دور بیندازد.
+    const imageUrls = Array.isArray(body.images)
+      ? [...new Set(body.images.map((url) => String(url).trim()).filter(Boolean))]
+      : [];
+
+    if (!Array.isArray(body.images) && body.images !== undefined && body.images !== null) {
+      return NextResponse.json(
+        { message: "قالب تصاویر نامعتبر است" },
+        { status: 400 }
+      );
+    }
+    if (imageUrls.length > MAX_IMAGES) {
+      return NextResponse.json(
+        { message: "حداکثر ۴ تصویر برای هر نظر مجاز است" },
+        { status: 400 }
+      );
+    }
+    if (imageUrls.some((url) => !isTrustedImageUrl(url))) {
+      return NextResponse.json(
+        { message: "آدرس یکی از تصاویر نامعتبر است" },
+        { status: 400 }
+      );
+    }
+
     const targetId = usedProduct || product;
     const targetField = usedProduct ? "usedProduct" : "product";
 
@@ -128,19 +179,49 @@ export async function POST(req) {
     // ── پاسخ به یک نظر ──
     if (isReply) {
       const parentDoc = await Comment.findById(parent)
-        .select("_id product usedProduct")
+        .select("_id product usedProduct parent status")
         .lean();
-      if (
-        !parentDoc ||
-        String(parentDoc[targetField] || "") !== String(targetId)
-      ) {
-        return NextResponse.json({ message: "نظر والد نامعتبر است" }, { status: 400 });
+
+      // نظرِ والدِ حذف‌شده یا متعلق به محصولی دیگر → ۴۰۴/۴۰۰ صریح، نه پاسخِ یتیم
+      if (!parentDoc) {
+        return NextResponse.json(
+          { message: "نظری که به آن پاسخ می‌دهید دیگر در دسترس نیست" },
+          { status: 404 }
+        );
+      }
+      if (String(parentDoc[targetField] || "") !== String(targetId)) {
+        return NextResponse.json(
+          { message: "نظر والد متعلق به این محصول نیست" },
+          { status: 400 }
+        );
+      }
+      // فقط زیرِ نظری که عمومی شده می‌توان پاسخ گذاشت؛ پاسخ به نظرِ ردشده یا
+      // در انتظارِ بازبینی یعنی پاسخی که هرگز جایی برای نمایش ندارد.
+      if (parentDoc.status !== "approved") {
+        return NextResponse.json(
+          { message: "تنها به نظرهای تأییدشده می‌توان پاسخ داد" },
+          { status: 409 }
+        );
+      }
+      // درختِ نظرها عمداً تک‌سطحی است: پاسخ‌به‌پاسخ نداریم تا نمایش و
+      // یتیم‌شدن هر دو ساده بمانند.
+      if (parentDoc.parent) {
+        return NextResponse.json(
+          { message: "پاسخ به یک پاسخ امکان‌پذیر نیست" },
+          { status: 400 }
+        );
+      }
+      if (imageUrls.length > 0) {
+        return NextResponse.json(
+          { message: "ارسال تصویر در پاسخ امکان‌پذیر نیست" },
+          { status: 400 }
+        );
       }
 
       const reply = await Comment.create({
         user: auth.userId,
         [targetField]: targetId,
-        parent,
+        parent: parentDoc._id,
         text: trimmed,
         status: "pending",
       });
@@ -209,39 +290,39 @@ export async function POST(req) {
       linkedOrder = orderId;
     }
 
-    const imageUrls = Array.isArray(body.images)
-      ? [...new Set(body.images.map((url) => String(url).trim()).filter(Boolean))]
-      : [];
-
-    if (imageUrls.length > MAX_IMAGES) {
+    // حقِ تصویر به «خریدِ تأییدشده» گره خورده است، نه به نوع محصول: کسی که
+    // کالا را واقعاً تحویل گرفته می‌تواند عکسِ آن را نشان دهد — نو یا دست دوم.
+    if (imageUrls.length > 0 && !verified) {
       return NextResponse.json(
-        { message: "حداکثر ۴ تصویر برای هر نظر مجاز است" },
-        { status: 400 }
-      );
-    }
-    if (imageUrls.some((url) => !isTrustedImageUrl(url))) {
-      return NextResponse.json(
-        { message: "آدرس یکی از تصاویر نامعتبر است" },
-        { status: 400 }
-      );
-    }
-    if (imageUrls.length > 0 && (!usedProduct || !verified)) {
-      return NextResponse.json(
-        { message: "تصویر فقط برای نظر خرید تأییدشده‌ی دست دوم مجاز است" },
+        { message: "تصویر فقط برای نظرِ خریدِ تأییدشده مجاز است" },
         { status: 403 }
       );
     }
 
-    const comment = await Comment.create({
-      user: auth.userId,
-      [targetField]: targetId,
-      order: linkedOrder,
-      text: trimmed,
-      rating: ratingValue,
-      images: imageUrls,
-      isVerifiedPurchase: verified,
-      status: "pending",
-    });
+    let comment;
+    try {
+      comment = await Comment.create({
+        user: auth.userId,
+        [targetField]: targetId,
+        order: linkedOrder,
+        text: trimmed,
+        rating: ratingValue,
+        images: imageUrls,
+        isVerifiedPurchase: verified,
+        status: "pending",
+      });
+    } catch (error) {
+      // دو ارسالِ هم‌زمان می‌توانند هر دو از چکِ findOne بالا رد شوند؛ ایندکسِ
+      // یکتای partial روی {user, product|usedProduct, parent:null} دومی را
+      // متوقف می‌کند و اینجا به همان ۴۰۹ «نظر تکراری» ترجمه می‌شود.
+      if (error?.code === 11000) {
+        return NextResponse.json(
+          { message: "شما قبلاً برای این محصول نظر ثبت کرده‌اید", code: "DUPLICATE" },
+          { status: 409 }
+        );
+      }
+      throw error;
+    }
 
     await notifyNewComment(comment, { productName: productDoc.name });
 
@@ -257,6 +338,15 @@ export async function POST(req) {
     );
   } catch (error) {
     console.error("[POST /api/comments]", error);
+    // پیامِ اعتبارسنجیِ اسکیما برای کاربر قابل‌فهم است و چیزی از درونِ سرور لو
+    // نمی‌دهد؛ بقیه‌ی خطاها پشت پیامِ عمومی می‌مانند.
+    if (error?.name === "ValidationError") {
+      const first = Object.values(error.errors || {})[0];
+      return NextResponse.json(
+        { message: first?.message || "اطلاعات نظر نامعتبر است" },
+        { status: 400 }
+      );
+    }
     return NextResponse.json({ message: "خطای داخلی سرور" }, { status: 500 });
   }
 }

@@ -144,7 +144,11 @@ const ProductTabs = ({
       {sectionId === "reviews" && (
         <div className="space-y-6 px-2">
           <ReviewForm productId={productId} />
-          <ProductReviews reviews={reviews} stats={reviewStats} />
+          <ProductReviews
+            reviews={reviews}
+            stats={reviewStats}
+            productId={productId}
+          />
         </div>
       )}
     </>

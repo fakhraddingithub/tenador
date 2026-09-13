@@ -2,8 +2,8 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { AnimatePresence, motion } from "framer-motion";
-import { FaCheckCircle, FaQuoteRight, FaStar, FaTimes } from "react-icons/fa";
+import { FaCheckCircle, FaQuoteRight, FaStar } from "react-icons/fa";
+import CommentImageLightbox from "@/components/ui/CommentImageLightbox";
 
 function formatDate(value) {
   try {
@@ -141,42 +141,11 @@ export default function UsedProductReviewsSection({ reviews = [] }) {
         </div>
       </div>
 
-      <AnimatePresence>
-        {lightboxImage && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 p-4 backdrop-blur-sm"
-            onClick={() => setLightboxImage(null)}
-            role="dialog"
-            aria-modal="true"
-            aria-label="تصویر محصول دریافت‌شده"
-          >
-            <motion.div
-              initial={{ opacity: 0, scale: 0.96 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.96 }}
-              className="relative max-h-[90vh] max-w-5xl"
-              onClick={(event) => event.stopPropagation()}
-            >
-              <img
-                src={lightboxImage}
-                alt="تصویر بزرگ ارسالی خریدار"
-                className="max-h-[88vh] max-w-full rounded-xl object-contain shadow-2xl"
-              />
-              <button
-                type="button"
-                onClick={() => setLightboxImage(null)}
-                className="absolute left-3 top-3 flex h-10 w-10 items-center justify-center rounded-full bg-black/65 text-white transition hover:bg-black"
-                aria-label="بستن تصویر"
-              >
-                <FaTimes />
-              </button>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+      <CommentImageLightbox
+        src={lightboxImage}
+        onClose={() => setLightboxImage(null)}
+        alt="تصویر ارسالی خریدار"
+      />
     </section>
   );
 }

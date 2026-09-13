@@ -82,7 +82,10 @@ export default function ReviewModal({ order, product, onClose, onDone }) {
       images.map(async ({ file }) => {
         const formData = new FormData();
         formData.append("file", file);
-        formData.append("folder", "used-product-reviews");
+        formData.append(
+          "folder",
+          isUsedProduct ? "used-product-reviews" : "product-reviews"
+        );
 
         const response = await fetch("/api/upload", {
           method: "POST",
@@ -104,9 +107,9 @@ export default function ReviewModal({ order, product, onClose, onDone }) {
 
     setSubmitting(true);
     try {
-      const uploadedImages = isUsedProduct && images.length > 0
-        ? await uploadImages()
-        : [];
+      // آپلود عمداً پیش از ثبتِ نظر انجام می‌شود: اگر شکست بخورد، اصلاً نظری
+      // ساخته نمی‌شود و کاربر با همان متن و همان عکس‌ها دوباره تلاش می‌کند.
+      const uploadedImages = images.length > 0 ? await uploadImages() : [];
       const res = await fetch("/api/comments", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -218,58 +221,56 @@ export default function ReviewModal({ order, product, onClose, onDone }) {
               </div>
             </div>
 
-            {isUsedProduct && (
-              <div className="space-y-2">
-                <div className="flex items-center justify-between gap-3">
-                  <div>
-                    <p className="text-xs font-bold text-gray-700">
-                      تصاویر محصول دریافت‌شده
-                    </p>
-                    <p className="mt-0.5 text-[11px] text-gray-400">
-                      اختیاری؛ حداکثر ۴ تصویر JPG، PNG یا WebP
-                    </p>
-                  </div>
-                  {images.length < MAX_IMAGES && (
-                    <label className="inline-flex cursor-pointer items-center gap-1.5 rounded-lg border border-[#aa4725]/25 bg-[#aa4725]/5 px-3 py-2 text-xs font-bold text-[#aa4725] transition hover:bg-[#aa4725]/10">
-                      <FaCamera />
-                      افزودن عکس
-                      <input
-                        type="file"
-                        accept="image/jpeg,image/png,image/webp"
-                        multiple
-                        className="sr-only"
-                        onChange={addImages}
-                      />
-                    </label>
-                  )}
+            <div className="space-y-2">
+              <div className="flex items-center justify-between gap-3">
+                <div>
+                  <p className="text-xs font-bold text-gray-700">
+                    تصاویر محصول دریافت‌شده
+                  </p>
+                  <p className="mt-0.5 text-[11px] text-gray-400">
+                    اختیاری؛ حداکثر ۴ تصویر JPG، PNG یا WebP
+                  </p>
                 </div>
-
-                {images.length > 0 && (
-                  <div className="grid grid-cols-4 gap-2">
-                    {images.map((image, index) => (
-                      <div
-                        key={`${image.file.name}-${image.file.lastModified}-${index}`}
-                        className="group relative aspect-square overflow-hidden rounded-lg border border-gray-200 bg-gray-50"
-                      >
-                        <img
-                          src={image.preview}
-                          alt={`تصویر انتخابی ${index + 1}`}
-                          className="h-full w-full object-cover"
-                        />
-                        <button
-                          type="button"
-                          onClick={() => removeImage(index)}
-                          aria-label="حذف تصویر"
-                          className="absolute left-1 top-1 flex h-6 w-6 items-center justify-center rounded-full bg-black/65 text-[10px] text-white transition hover:bg-red-600"
-                        >
-                          <FaTrash />
-                        </button>
-                      </div>
-                    ))}
-                  </div>
+                {images.length < MAX_IMAGES && (
+                  <label className="inline-flex cursor-pointer items-center gap-1.5 rounded-lg border border-[#aa4725]/25 bg-[#aa4725]/5 px-3 py-2 text-xs font-bold text-[#aa4725] transition hover:bg-[#aa4725]/10">
+                    <FaCamera />
+                    افزودن عکس
+                    <input
+                      type="file"
+                      accept="image/jpeg,image/png,image/webp"
+                      multiple
+                      className="sr-only"
+                      onChange={addImages}
+                    />
+                  </label>
                 )}
               </div>
-            )}
+
+              {images.length > 0 && (
+                <div className="grid grid-cols-4 gap-2">
+                  {images.map((image, index) => (
+                    <div
+                      key={`${image.file.name}-${image.file.lastModified}-${index}`}
+                      className="group relative aspect-square overflow-hidden rounded-lg border border-gray-200 bg-gray-50"
+                    >
+                      <img
+                        src={image.preview}
+                        alt={`تصویر انتخابی ${index + 1}`}
+                        className="h-full w-full object-cover"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => removeImage(index)}
+                        aria-label="حذف تصویر"
+                        className="absolute left-1 top-1 flex h-6 w-6 items-center justify-center rounded-full bg-black/65 text-[10px] text-white transition hover:bg-red-600"
+                      >
+                        <FaTrash />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
 
             <button
               type="submit"
