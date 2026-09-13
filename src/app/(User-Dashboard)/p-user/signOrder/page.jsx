@@ -186,7 +186,7 @@ const OrderPage = () => {
                 walletAmount={walletAmount}
                 walletInvalid={walletInvalid || isCartLoading}
                 selectedAddress={selectedAddress}
-                selectedPaymentMethod={payable === 0 && walletAmount > 0 ? 'BANK_RECEIPT' : selectedPaymentMethod}
+                selectedPaymentMethod={payable === 0 && (walletAmount > 0 || appliedCoupon?.createdByCoach) ? 'BANK_RECEIPT' : selectedPaymentMethod}
                 onProceed={handleProceedToPayment}
               />
 

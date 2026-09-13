@@ -1,5 +1,6 @@
 "use client";
 
+import CoachCouponPanel from "@/components/order/CoachCouponPanel";
 import { getUserFullName } from "base/utils/userName";
 
 import { useState, useEffect } from "react";
@@ -63,7 +64,8 @@ function StudentCard({ student }) {
                 {formatDate(tx.createdAt)}
               </div>
               <span className="text-xs font-bold text-emerald-600">
-                +{tx.amount.toLocaleString("fa-IR")} تومان
+                +{(tx.amount - (tx.reversedAmount || 0)).toLocaleString("fa-IR")} تومان
+                {tx.reversedAmount > 0 && <span className="mr-2 text-slate-500">(کردیت برگشت داده شد)</span>}
               </span>
             </div>
           ))}
@@ -183,7 +185,7 @@ export default function CoachDashboardPage() {
             {(coach.walletBalance || 0).toLocaleString("fa-IR")}
           </p>
           <p className="text-[10px] text-emerald-500 mt-0.5 flex items-center justify-center gap-1">
-            <Wallet size={9} /> موجودی (تومان)
+            <Wallet size={9} /> کیف پول مشترک (تومان)
           </p>
         </div>
 
@@ -196,6 +198,8 @@ export default function CoachDashboardPage() {
           </p>
         </div>
       </div>
+
+      <CoachCouponPanel onBalanceChange={balance => setData(previous => ({ ...previous, coach: { ...previous.coach, walletBalance: balance } }))} />
 
       {/* Students Section */}
       <div className="space-y-3">

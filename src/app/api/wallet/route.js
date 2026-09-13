@@ -33,7 +33,7 @@ export async function GET() {
     const transactions = [
       ...walletTransactions,
       ...reviewCredits.map((tx) => ({ ...tx, type: "credit", description: "پاداش نظر تأییدشده" })),
-      ...coachCredits.map((tx) => ({ ...tx, type: "credit", description: "اعتبار مربی" })),
+      ...coachCredits.map((tx) => ({ ...tx, type: "credit", description: "واریز از کردیت خرید شاگرد" })),
     ].sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt)).slice(0, 50);
 
     return NextResponse.json(

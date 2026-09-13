@@ -1,3 +1,4 @@
+import { grantAutomaticCoachCredit } from "base/services/coachWallet.service";
 /**
  * PATCH /api/installments/checks/[checkId]/status
  *
@@ -142,6 +143,8 @@ export async function PATCH(req, { params }) {
             { session: dbSession }
           );
           order.paymentStatus = "PAID";
+          order.coachCreditEligible = true;
+          await grantAutomaticCoachCredit(order, dbSession);
           await order.save({ session: dbSession });
         }
       }
@@ -173,18 +176,6 @@ export async function PATCH(req, { params }) {
       } catch (mailErr) {
         console.error("[installment email]", mailErr);
       }
-    }
-
-    /* webhook کردیت مربی (فقط اگر همه پرداخت شد) */
-    if (allCleared) {
-      fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/api/orders/webhook-success`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "x-webhook-secret": process.env.WEBHOOK_SECRET || "",
-        },
-        body: JSON.stringify({ orderId: installment.order }),
-      }).catch((e) => console.error("[installment webhook]", e));
     }
 
     return NextResponse.json(

@@ -173,7 +173,7 @@ export async function POST(req) {
       expectedTotal,
     } = body;
     validateWalletAmount(walletAmount);
-    const walletIdentity = walletAmount > 0 ? walletCheckoutIdentity(user.userId, checkoutKey, body) : null;
+    let walletIdentity = walletAmount > 0 || (couponCode && checkoutKey) ? walletCheckoutIdentity(user.userId, checkoutKey, body) : null;
     if (walletIdentity) {
       const existing = await findWalletCheckout(walletIdentity);
       if (existing) return NextResponse.json({ ...existing, replayed: true }, { status: 200 });
@@ -299,7 +299,7 @@ export async function POST(req) {
       );
     }
 
-    if (priceResult.finalTotalToman <= 0) {
+    if (priceResult.finalTotalToman < 0 || (priceResult.finalTotalToman === 0 && !priceResult.coupon?.createdByCoach)) {
       return badRequest("مبلغ سفارش نامعتبر است");
     }
 
@@ -319,7 +319,8 @@ export async function POST(req) {
     }
     if (walletAmount > orderTotal) return badRequest("مبلغ کیف پول بیشتر از مبلغ سفارش است؛ آن را اصلاح کنید");
     const totalPrice = orderTotal - walletAmount; // external amount after wallet
-    const fullyWalletPaid = walletAmount > 0 && totalPrice === 0;
+    const fullyWalletPaid = totalPrice === 0 && (walletAmount > 0 || !!priceResult.coupon?.createdByCoach);
+    if (priceResult.coupon?.createdByCoach && !walletIdentity) walletIdentity = walletCheckoutIdentity(user.userId, checkoutKey, body);
 
     // ─── اعتبارسنجی داده‌های پرداخت (قبل از ساخت سفارش) ───
     let bankImageUrls = [];
@@ -472,13 +473,14 @@ export async function POST(req) {
     // ═══ ۳. ساخت سفارش + پرداخت — سفارش بدون پرداخت باقی نمی‌ماند ═══
     const orderDraft = {
       user:           user.userId,
+      coachCreditEligible: true,
       items:          orderItems,
       subtotalPrice:  priceResult.subtotalToman,
       discountAmount: priceResult.discountToman,
       couponDiscount: priceResult.couponDiscountToman,
       totalPrice: orderTotal,
       coupon: priceResult.coupon
-        ? { code: priceResult.coupon.code, _id: priceResult.coupon._id }
+        ? { code: priceResult.coupon.code, _id: priceResult.coupon._id, createdByCoach: priceResult.coupon.createdByCoach, coachName: priceResult.coupon.coachName }
         : { code: null, _id: null },
       paymentMethod,
       paymentStatus:     "UNPAID",
@@ -496,7 +498,7 @@ export async function POST(req) {
     let payment;
     let installmentDoc = null;
 
-    if (walletAmount > 0) {
+    if (walletAmount > 0 || priceResult.coupon?.createdByCoach) {
       const result = await createWalletOrder({ identity: walletIdentity, draft: orderDraft, amount: walletAmount, bankImages: bankImageUrls, installmentData });
       if (result.replayed) return NextResponse.json({ ...result.receipt, replayed: true }, { status: 200 });
       order = result.order;
@@ -606,7 +608,7 @@ export async function POST(req) {
     return NextResponse.json(
       {
         message:
-          fullyWalletPaid ? "سفارش با پرداخت کامل از کیف پول ثبت شد" : paymentMethod === "INSTALLMENT"
+          fullyWalletPaid ? "سفارش بدون مانده پرداخت ثبت شد" : paymentMethod === "INSTALLMENT"
             ? "سفارش و درخواست اقساط با موفقیت ثبت شد و در انتظار تأیید است"
             : "سفارش و رسید بانکی با موفقیت ثبت شد و در انتظار تأیید است",
         orderId:      order._id,

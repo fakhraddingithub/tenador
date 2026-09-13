@@ -19,6 +19,7 @@
 
 import Payment from "base/models/Payment";
 import { refundOrderWallet } from "base/services/walletOrder.service";
+import { grantAutomaticCoachCredit } from "base/services/coachWallet.service";
 
 /**
  * بازمحاسبه‌ی subtotalPrice / discountAmount / couponDiscount / totalPrice از روی
@@ -96,6 +97,7 @@ export async function recalcAndApply(order, session) {
   const refunded = await refundOrderWallet(order, Math.max(0, order.totalPrice - otherPaid), session);
   const totalPaid = paidPayments.reduce((s, p) => s + (p.amount || 0), 0) - refunded;
 
-  order.paymentStatus = derivePaymentStatus(totalPaid, order.totalPrice);
+  order.paymentStatus = order.totalPrice === 0 && order.coupon?.createdByCoach ? "PAID" : derivePaymentStatus(totalPaid, order.totalPrice);
+  await grantAutomaticCoachCredit(order, session);
   // fulfillmentStatus عمداً دست‌نخورده می‌ماند — جریانِ ارسال را ادمین دستی مدیریت می‌کند.
 }

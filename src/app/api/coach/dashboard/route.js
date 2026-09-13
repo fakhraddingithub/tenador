@@ -8,6 +8,7 @@ import { cookies } from "next/headers";
 
 import connectToDB from "base/configs/db";
 import { verifyToken } from "base/utils/auth";
+import "base/models/registerModels";
 import User from "base/models/User";
 import CoachWalletTransaction from "base/models/CoachWalletTransaction";
 
@@ -50,12 +51,12 @@ export async function GET() {
     const txByStudent = {};
     for (const tx of transactions) {
       const sid = tx.student?.toString() || "__manual__";
-      creditByStudent[sid] = (creditByStudent[sid] || 0) + tx.amount;
+      creditByStudent[sid] = (creditByStudent[sid] || 0) + tx.amount - (tx.reversedAmount || 0);
       if (!txByStudent[sid]) txByStudent[sid] = [];
       txByStudent[sid].push(tx);
     }
 
-    const totalCreditEarned = transactions.reduce((sum, t) => sum + t.amount, 0);
+    const totalCreditEarned = transactions.reduce((sum, t) => sum + t.amount - (t.reversedAmount || 0), 0);
 
     const studentsWithCredit = students.map((s) => {
       const sid = s._id.toString();

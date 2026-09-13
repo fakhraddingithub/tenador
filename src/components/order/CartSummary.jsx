@@ -4,6 +4,7 @@
  * src/components/order/CartSummary.jsx
  */
 
+import { couponDisplayCode } from "@/lib/couponLabel";
 import { useState } from 'react';
 import { FiTag, FiCheck, FiX, FiShoppingBag, FiRefreshCw, FiTrash2 } from 'react-icons/fi';
 import { formatPriceWithCurrency, toPersianNumbers } from 'base/utils/formatters';
@@ -117,7 +118,7 @@ const CartSummary = ({
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-1 text-sm text-emerald-600">
               <FiCheck className="w-4 h-4" />
-              <span>کد «{appliedCoupon.code}» اعمال شد</span>
+              <span>کد «{couponDisplayCode(appliedCoupon)}» اعمال شد</span>
             </div>
             <button
               onClick={handleRemove}

@@ -1,3 +1,4 @@
+import { grantAutomaticCoachCredit } from "base/services/coachWallet.service";
 import "base/models/registerModels";
 import { NextResponse } from "next/server";
 import connectToDB from "base/configs/db";
@@ -102,6 +103,8 @@ export async function POST(req, { params }) {
       }
       order.reviewedBy = admin.userId;
       order.reviewedAt = new Date();
+      order.coachCreditEligible = true;
+      await grantAutomaticCoachCredit(order, session);
       await order.save({ session });
 
       await session.commitTransaction();
@@ -114,21 +117,6 @@ export async function POST(req, { params }) {
       // برای پرداخت‌های قدیمی که پیش از ایجاد اعلان ثبت شده‌اند fallback است؛
       // پرداخت‌های جدید به‌کمک payment id اعلان تکراری نمی‌سازند.
       await notifyNewPayment(order, payment, { confirmed: true });
-
-      // webhook کردیت مربی (پس از commit)
-      if (isFullyPaid) {
-        fetch(
-          `${process.env.NEXT_PUBLIC_BASE_URL}/api/orders/webhook-success`,
-          {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-              "x-webhook-secret": process.env.WEBHOOK_SECRET || "",
-            },
-            body: JSON.stringify({ orderId: order._id }),
-          },
-        ).catch((e) => console.error("[approve webhook]", e));
-      }
 
       return NextResponse.json(
         {

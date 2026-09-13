@@ -12,6 +12,7 @@ async function review(action, { canceled = false, paidMeanwhile = false, wallet 
   const query = (value) => ({ session(s) { assert.equal(s, session); calls.push('snapshot'); return this; }, lean: async () => value, then(resolve, reject) { return Promise.resolve(value).then(resolve, reject); } });
   const deps = {
     'base/models/registerModels': {},
+    'base/services/coachWallet.service': { grantAutomaticCoachCredit: async () => {} },
     'next/server': { NextResponse: { json: (body, opts) => ({ body, status: opts.status }) } },
     'base/configs/db': { default: async () => {} },
     'base/models/Order': { default: { findById: () => { orderReads++; return query(orderReads > 1 && canceled ? { ...order, fulfillmentStatus: 'CANCELED' } : order); } } },

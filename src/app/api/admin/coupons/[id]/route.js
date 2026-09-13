@@ -26,6 +26,7 @@ export async function PATCH(req, { params }) {
     const body = await req.json();
 
     const coupon = await Coupon.findById(id);
+    if (coupon?.createdByCoach) return NextResponse.json({ error: "این کد از موجودی کیف پول ساخته شده و قابل ویرایش یا حذف نیست" }, { status: 409 });
     if (!coupon) {
       return NextResponse.json(
         { error: "کد تخفیف یافت نشد" },
@@ -172,6 +173,7 @@ export async function DELETE(req, { params }) {
     const { id } = await params;
 
     const coupon = await Coupon.findById(id);
+    if (coupon?.createdByCoach) return NextResponse.json({ error: "این کد از موجودی کیف پول ساخته شده و قابل ویرایش یا حذف نیست" }, { status: 409 });
     if (!coupon) {
       return NextResponse.json(
         { error: "کد تخفیف یافت نشد" },

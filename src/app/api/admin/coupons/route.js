@@ -85,7 +85,7 @@ export async function GET() {
 
     const couponsWithUsage = coupons.map((c) => ({
       ...c,
-      usedCount: usageMap.get(c.code) || 0,
+      usedCount: c.createdByCoach ? (c.usedAt ? 1 : 0) : usageMap.get(c.code) || 0,
     }));
 
     return NextResponse.json({ coupons: couponsWithUsage }, { status: 200 });

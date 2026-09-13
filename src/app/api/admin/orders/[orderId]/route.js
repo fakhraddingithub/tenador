@@ -315,6 +315,7 @@ export async function PATCH(req, { params }) {
     );
   } catch (error) {
     console.error("[admin/orders/:id PATCH]", error);
+    if (error.code === "WALLET_CHECKOUT_ERROR") return NextResponse.json({ message: error.message }, { status: error.status || 409 });
     return NextResponse.json(
       { message: "خطای داخلی سرور" },
       { status: 500 }
@@ -379,6 +380,7 @@ export async function DELETE(req, { params }) {
     );
   } catch (error) {
     console.error("[admin/orders/:id DELETE]", error);
+    if (error.code === "WALLET_CHECKOUT_ERROR") return NextResponse.json({ message: error.message }, { status: error.status || 409 });
     return NextResponse.json({ message: "خطای داخلی سرور" }, { status: 500 });
   }
 }

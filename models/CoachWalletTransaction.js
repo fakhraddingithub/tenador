@@ -11,7 +11,10 @@ const CoachWalletTransactionSchema = new mongoose.Schema(
     student: { type: mongoose.Schema.Types.ObjectId, ref: "User", default: null },
     order:   { type: mongoose.Schema.Types.ObjectId, ref: "Order", default: null },
     amount:  { type: Number, required: true, min: 1 },
-    addedBy: { type: mongoose.Schema.Types.ObjectId, ref: "User", required: true },
+    reversedAmount: { type: Number, default: 0, min: 0 },
+    ruleCredits: [{ rule: { type: mongoose.Schema.Types.ObjectId, ref: "CoachCredit" }, amount: Number }],
+    source: { type: String, enum: ["manual", "automatic"], default: "manual" },
+    addedBy: { type: mongoose.Schema.Types.ObjectId, ref: "User", default: null },
     note:    { type: String, default: "" },
   },
   { timestamps: true }

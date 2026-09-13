@@ -1,5 +1,6 @@
 "use client";
 
+import { couponDisplayCode } from "@/lib/couponLabel";
 import Link from "next/link";
 import {
     FiCheckCircle,
@@ -218,7 +219,7 @@ export default function PaymentSuccessPage({ trackingCode }) {
                                             )}
                                             {order.couponDiscount > 0 && (
                                                 <div className="flex justify-between text-emerald-600">
-                                                    <span>{order.coupon?.isManual ? "تخفیف مدیریت" : `تخفیف کد «${order.coupon?.code}»`}</span>
+                                                    <span>{order.coupon?.isManual ? "تخفیف مدیریت" : `تخفیف کد «${couponDisplayCode(order.coupon)}»`}</span>
                                                     <span className="font-medium">− {formatPrice(order.couponDiscount)} تومان</span>
                                                 </div>
                                             )}

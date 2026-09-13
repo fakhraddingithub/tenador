@@ -14,6 +14,7 @@
  *   NEXT_PUBLIC_LOGO_URL=https://www.tenador.com/logo/logo.svg  (اختیاری)
  */
 
+import { couponDisplayCode } from "@/lib/couponLabel";
 import nodemailer from 'nodemailer';
 import { DEPARTMENT_LABELS as TICKET_DEPARTMENT_LABELS } from 'base/utils/ticketMeta';
 
@@ -272,10 +273,10 @@ function buildEmailHtml(order, isAdmin = false, installment = null) {
       <td style="padding:8px 16px; text-align:left; color:#16a34a; font-weight:600; font-size:13px; direction:rtl;">− ${formatPrice(order.discountAmount)}</td>
     </tr>` : '';
 
-  const couponLabel = order.coupon?.isManual ? 'تخفیف مدیریت' : `تخفیف کد «${order.coupon?.code ?? ''}»`;
+  const couponLabel = order.coupon?.isManual ? 'تخفیف مدیریت' : `تخفیف کد «${couponDisplayCode(order.coupon)}»`;
   const couponRow = (order.couponDiscount ?? 0) > 0 ? `
     <tr>
-      <td colspan="4" style="padding:8px 16px; text-align:right; color:#555; font-size:13px;">${couponLabel}</td>
+      <td colspan="4" style="padding:8px 16px; text-align:right; color:#555; font-size:13px;">${escapeHtml(couponLabel)}</td>
       <td style="padding:8px 16px; text-align:left; color:#16a34a; font-weight:600; font-size:13px; direction:rtl;">− ${formatPrice(order.couponDiscount)}</td>
     </tr>` : '';
 

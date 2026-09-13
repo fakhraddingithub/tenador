@@ -1,5 +1,6 @@
 "use client";
 
+import { couponDisplayCode } from "@/lib/couponLabel";
 import AdminInput from "@/components/admin/AdminInput";
 import { getUserFullName } from "base/utils/userName";
 
@@ -2016,7 +2017,7 @@ function ManagementDiscountModal({ order, orderId, onSuccess, onClose }) {
                 <AlertTriangle size={12} /><span>این سفارش کد تخفیف دارد</span>
               </div>
               <p>
-                کد «{order.coupon.code}» به مبلغ {formatPrice(order.couponDiscount)} تومان روی این سفارش فعال است؛
+                کد «{couponDisplayCode(order.coupon)}» به مبلغ {formatPrice(order.couponDiscount)} تومان روی این سفارش فعال است؛
                 ابتدا باید آن حذف شود (این مسیر جایگزینِ خودکار انجام نمی‌دهد).
               </p>
             </div>
@@ -2950,7 +2951,7 @@ export default function AdminOrderDetailClient({ orderId }) {
                     <span>
                       {order.coupon?.isManual
                         ? "تخفیف مدیریت"
-                        : `تخفیف کوپن ${order.coupon?.code ? `(${order.coupon.code})` : ""}`}
+                        : `تخفیف کوپن ${order.coupon?.code ? `(${couponDisplayCode(order.coupon)})` : ""}`}
                     </span>
                     <span className="flex items-center gap-2">
                       <span className="text-green-600">- {formatPrice(order.couponDiscount)} تومان</span>

@@ -202,6 +202,8 @@ const OrderSchema = new mongoose.Schema(
     },
 
     coupon: {
+      createdByCoach: { type: mongoose.Schema.Types.ObjectId, ref: "User", default: null },
+      coachName: { type: String, default: null },
       code: { type: String, default: null },
       _id:  { type: mongoose.Schema.Types.ObjectId, ref: "Coupon", default: null },
       // تخفیف مدیریت: مبلغ به‌صورت دستی توسط ادمین روی همین سفارش ثبت شده — کد
@@ -214,6 +216,8 @@ const OrderSchema = new mongoose.Schema(
       enum: ["ONLINE", "BANK_RECEIPT", "INSTALLMENT", "WALLET"],
       required: true,
     },
+    coachCreditEligible: { type: Boolean, default: false },
+    coachCreditProcessedAt: { type: Date, default: null },
 
     paymentStatus: {
       type: String,

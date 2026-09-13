@@ -16,8 +16,9 @@ import { NextResponse } from "next/server";
 import connectToDB from "base/configs/db";
 import Order from "base/models/Order";
 import Payment from "base/models/Payment";
-import User from "base/models/User";
-import { computeCoachCredit } from "base/services/priceEngine";
+import { grantAutomaticCoachCredit } from "base/services/coachWallet.service";
+import { runWithOptionalTransaction } from "base/utils/mongoTransactions";
+
 import { notifyNewPayment } from "base/services/notificationService";
 import { sendOrderConfirmationEmail } from "@/lib/emailService";
 import { markOrderUsedProductsSold } from "@/lib/usedProductOrderStatus";
@@ -43,7 +44,7 @@ export async function POST(req) {
       return NextResponse.json({ message: "سفارش یافت نشد" }, { status: 404 });
     }
 
-    if (order.walletPaidOriginal > 0) return NextResponse.json({ message: "پرداخت این سفارش از مسیر کیف پول ثبت می‌شود" }, { status: 409 });
+    if (order.fulfillmentStatus === "CANCELED") return NextResponse.json({ message: "سفارش لغو شده است" }, { status: 409 });
     if (order.paymentStatus === "PAID") {
       await markOrderUsedProductsSold(order);
       return NextResponse.json({ message: "سفارش قبلاً پردازش شده است" }, { status: 200 });
@@ -65,9 +66,17 @@ export async function POST(req) {
     }
 
     // ─── آپدیت وضعیت سفارش ───
-    await Order.findByIdAndUpdate(orderId, {
-      paymentStatus:     "PAID",
-      fulfillmentStatus: "PROCESSING",
+    await runWithOptionalTransaction(async session => {
+      const fresh = await Order.findById(orderId).session(session);
+      if (!fresh || fresh.fulfillmentStatus === "CANCELED") throw new Error("Order no longer payable");
+      if (fresh.paymentStatus === "PAID") return;
+      const paid = await Payment.find({ order: fresh._id, status: "PAID" }).session(session).lean();
+      if (paid.reduce((sum, p) => sum + p.amount, 0) < fresh.totalPrice) throw new Error("Insufficient confirmed payments");
+      fresh.paymentStatus = "PAID";
+      fresh.fulfillmentStatus = "PROCESSING";
+      fresh.coachCreditEligible = true;
+      await grantAutomaticCoachCredit(fresh, session);
+      await fresh.save({ session });
     });
     await markOrderUsedProductsSold(order);
 
@@ -82,32 +91,6 @@ export async function POST(req) {
     } catch (emailErr) {
       // خطای ایمیل نباید روند اصلی را متوقف کند
       console.error("خطا در ارسال ایمیل:", emailErr);
-    }
-
-    // ─── محاسبه کردیت مربی ───
-    const buyer = order.user;
-    if (buyer?.coach) {
-      const creditItems = order.items.map((item) => ({
-        productId:  item.product?._id?.toString() ?? item.product?.toString(),
-        categoryId: item.product?.category?.toString(),
-        serieId:    item.product?.serie?.toString(),
-        lineTotalToman: item.unitPrice * item.quantity,
-      }));
-
-      const creditAmount = await computeCoachCredit(
-        buyer.coach.toString(),
-        creditItems
-      );
-
-      if (creditAmount > 0) {
-        await User.findByIdAndUpdate(buyer.coach, {
-          $inc: { walletBalance: creditAmount },
-        });
-
-        console.log(
-          `کردیت مربی ${buyer.coach} — مبلغ: ${creditAmount} تومان — سفارش: ${orderId}`
-        );
-      }
     }
 
     return NextResponse.json(

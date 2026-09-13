@@ -15,7 +15,6 @@ import { getCachedRate, eurToToman } from "@/lib/Exchangerate";
 import DiscountRule from "base/models/DiscountRule";
 import FlashSale from "base/models/FlashSale";
 import Coupon from "base/models/Coupon";
-import CoachCredit from "base/models/CoachCredit";
 import Order from "base/models/Order";
 
 // ---------------------------------------------------------------------------
@@ -138,6 +137,7 @@ export async function validateCoupon(couponCode, userId, cartTotalToman, cartIte
 
   if (!coupon) return { valid: false, discount: 0, coupon: null, reason: "کد تخفیف معتبر نیست" };
 
+  if (coupon.createdByCoach && coupon.usedAt) return { valid: false, discount: 0, coupon: null, reason: "این کد تخفیف قبلاً استفاده شده است" };
   if ((coupon.minCartValue || 0) > cartTotalToman) {
     return {
       valid: false, discount: 0, coupon: null,
@@ -188,43 +188,7 @@ export async function validateCoupon(couponCode, userId, cartTotalToman, cartIte
 // ---------------------------------------------------------------------------
 // 5. محاسبه کردیت مربی
 // ---------------------------------------------------------------------------
-export async function computeCoachCredit(coachId, items) {
-  if (!coachId || !items?.length) return 0;
-
-  const now = new Date();
-  const coachObjectId = new mongoose.Types.ObjectId(coachId.toString());
-
-  const rules = await CoachCredit.find({
-    active: true,
-    $or: [{ scope: "all_coaches" }, { scope: "specific_coach", coach: coachObjectId }],
-  })
-    .sort({ priority: -1 })
-    .lean();
-
-  if (!rules.length) return 0;
-
-  let totalCredit = 0;
-  for (const item of items) {
-    if (!item.lineTotalToman || item.lineTotalToman <= 0) continue;
-    const matchingRule = rules.find((r) => {
-      if (r.targetType === "all") return true;
-      if (!r.targets?.length) return false;
-      const targets = r.targets.map((t) => t.toString());
-      if (r.targetType === "product"  && targets.includes(item.productId?.toString()))  return true;
-      if (r.targetType === "category" && targets.includes(item.categoryId?.toString())) return true;
-      if (r.targetType === "serie"    && targets.includes(item.serieId?.toString()))    return true;
-      return false;
-    });
-    if (!matchingRule) continue;
-    const credit =
-      matchingRule.credit.kind === "percent"
-        ? Math.floor(item.lineTotalToman * (matchingRule.credit.value / 100))
-        : matchingRule.credit.value;
-    totalCredit += Math.max(0, credit);
-  }
-
-  return totalCredit;
-}
+export { computeCoachCredit } from "base/services/coachCreditCalculation";
 
 // ---------------------------------------------------------------------------
 // 6. تابع اصلی — محاسبه قیمت سبد خرید (با پشتیبانی از used products)
@@ -386,7 +350,7 @@ export async function computeCartPrice(cartItems, user = null, couponCode = null
     );
     if (couponResult.valid) {
       couponDiscount = couponResult.discount;
-      appliedCoupon  = { code: couponResult.coupon.code, _id: couponResult.coupon._id };
+      appliedCoupon  = { code: couponResult.coupon.code, _id: couponResult.coupon._id, createdByCoach: couponResult.coupon.createdByCoach, coachName: couponResult.coupon.coachName };
     } else {
       couponError = couponResult.reason;
     }

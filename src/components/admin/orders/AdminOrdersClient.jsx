@@ -1,5 +1,6 @@
 "use client";
 
+import { couponDisplayCode } from "@/lib/couponLabel";
 import OrderFlowSelectionsView from "@/components/order/OrderFlowSelectionsView";
 import { getUserFullName } from "base/utils/userName";
 
@@ -516,7 +517,7 @@ function OrderDetailModal({ orderId, onClose, onOpenFull }) {
                   {order.discountAmount > 0 && <InfoRow label="تخفیف" value={`${formatPrice(order.discountAmount)} ت`} />}
                   {order.couponDiscount > 0 && (
                     <InfoRow
-                      label={order.coupon?.isManual ? "تخفیف مدیریت" : `تخفیف کد ${order.coupon?.code || ""}`}
+                      label={order.coupon?.isManual ? "تخفیف مدیریت" : `تخفیف کد ${couponDisplayCode(order.coupon)}`}
                       value={`${formatPrice(order.couponDiscount)} ت`}
                     />
                   )}

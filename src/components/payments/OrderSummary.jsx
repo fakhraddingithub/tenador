@@ -1,3 +1,4 @@
+import { couponDisplayCode } from "@/lib/couponLabel";
 import React from 'react';
 import { MdOutlineConfirmationNumber, MdOutlineReceiptLong, MdOutlinePayment } from 'react-icons/md';
 import VariantSummary from '@/components/order/VariantSummary';
@@ -169,7 +170,7 @@ const OrderSummary = ({ order }) => {
           )}
           {order.couponDiscount > 0 && (
             <div className="flex justify-between items-center gap-2 flex-wrap text-emerald-600">
-              <span>{order.coupon?.isManual ? "تخفیف مدیریت" : `تخفیف کد «${order.coupon?.code}»`}</span>
+              <span>{order.coupon?.isManual ? "تخفیف مدیریت" : `تخفیف کد «${couponDisplayCode(order.coupon)}»`}</span>
               <span className="font-medium">− {formatPrice(order.couponDiscount)}</span>
             </div>
           )}

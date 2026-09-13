@@ -106,3 +106,23 @@ test('zero-wallet checkout retains ordinary bank receipt totals and does not cal
   assert.equal(calls.find(c => c[0] === 'legacy-payment')[1].amount, 1000);
   assert.ok(!calls.some(c => ['identity', 'create'].includes(c[0])));
 });
+
+
+test('coach coupon checkout uses atomic persistence even when wallet debit is zero', async () => {
+  const coupon = { _id: 'gift', code: 'GIFT', createdByCoach: 'coach', coachName: 'Coach Name' };
+  const { response, calls } = await checkout(requestBody({ walletAmount: 0, couponCode: 'GIFT' }), { coupon });
+  assert.equal(response.status, 201);
+  const args = calls.find(c => c[0] === 'create')[1];
+  assert.equal(args.amount, 0);
+  assert.equal(args.draft.coupon.createdByCoach, 'coach');
+  assert.equal(args.draft.coupon.coachName, 'Coach Name');
+});
+
+test('full coach coupon permits zero payable without receipt or installment data', async () => {
+  const coupon = { _id: 'gift', code: 'GIFT', createdByCoach: 'coach', coachName: 'Coach Name' };
+  for (const paymentMethod of ['BANK_RECEIPT', 'INSTALLMENT']) {
+    const { response, calls } = await checkout(requestBody({ walletAmount: 0, couponCode: 'GIFT', paymentMethod, expectedTotal: 0, receiptImageUrls: [] }), { coupon, price: 0 });
+    assert.equal(response.status, 201);
+    assert.equal(calls.find(c => c[0] === 'create')[1].draft.totalPrice, 0);
+  }
+});

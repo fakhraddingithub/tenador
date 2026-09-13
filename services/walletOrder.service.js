@@ -1,5 +1,6 @@
 import { createHash } from "node:crypto";
 import "base/models/registerModels";
+import { consumeCoachCoupon, grantAutomaticCoachCredit, reverseAutomaticCoachCredit } from "base/services/coachWallet.service";
 import Order from "base/models/Order";
 import User from "base/models/User";
 import Payment from "base/models/Payment";
@@ -43,33 +44,39 @@ export async function findWalletCheckout(identity, session = null) {
 
 export async function createWalletOrder({ identity, draft, amount, bankImages = [], installmentData = null }) {
   validateWalletAmount(amount);
-  if (amount <= 0 || !Number.isSafeInteger(draft.totalPrice) || amount > draft.totalPrice) throw walletError("مبلغ کیف پول بیشتر از مبلغ سفارش یا نامعتبر است", 400);
+  if ((!draft.coupon?.createdByCoach && amount <= 0) || !Number.isSafeInteger(draft.totalPrice) || draft.totalPrice < 0 || amount > draft.totalPrice) throw walletError("مبلغ کیف پول بیشتر از مبلغ سفارش یا نامعتبر است", 400);
   const work = async (session) => {
     requireTransaction(session);
     const existing = await findWalletCheckout(identity, session);
     if (existing) return { receipt: existing, replayed: true };
     const order = new Order({ ...draft, walletPaid: amount, walletPaidOriginal: amount, payments: [],
-      paymentMethod: amount === draft.totalPrice ? "WALLET" : draft.paymentMethod,
-      paymentStatus: amount === draft.totalPrice ? "PAID" : "PARTIALLY_PAID",
+      paymentMethod: amount === draft.totalPrice ? (amount > 0 ? "WALLET" : "BANK_RECEIPT") : draft.paymentMethod,
+      paymentStatus: amount === draft.totalPrice ? "PAID" : amount > 0 ? "PARTIALLY_PAID" : "UNPAID",
       fulfillmentStatus: amount === draft.totalPrice ? "PROCESSING" : "WAITING",
     });
     // Claim retry key before touching money. Unique _id serializes same requests.
     await WalletCheckout.create([{ ...identity, orderId: order._id }], { session });
+    if (amount > 0) {
     const debit = await User.updateOne({ _id: draft.user, walletBalance: { $gte: amount, $lte: Number.MAX_SAFE_INTEGER }, isBanned: { $ne: true } },
       { $inc: { walletBalance: -amount } }, { session });
     if (debit.modifiedCount !== 1) throw walletError("موجودی کیف پول کافی نیست یا حساب غیرفعال است؛ موجودی را دوباره بررسی کنید");
+    } else if (!await User.exists({ _id: draft.user, isBanned: { $ne: true } }).session(session)) { throw walletError("حساب کاربری غیرفعال است", 403); }
     await order.save({ session });
+    await consumeCoachCoupon(order, session);
     for (const id of new Set(order.items.filter((i) => i.itemType === "used_product").map((i) => String(i.usedProduct)))) {
       const reserved = await UsedProduct.updateOne({ _id: id, status: "available" },
         { $set: { status: amount === draft.totalPrice ? "sold" : "reserved", order: order._id } }, { session });
       if (reserved.modifiedCount !== 1) throw walletError("یکی از محصولات دست دوم دیگر موجود نیست");
     }
+    let payment = null;
+    if (amount > 0) {
     const [walletPayment] = await Payment.create([{ order: order._id, method: "WALLET", amount, status: "PAID", meta: { originalAmount: amount } }], { session });
     order.payments.push(walletPayment._id);
     await WalletTransaction.create([{ user: draft.user, order: order._id, trackingCode: order.trackingCode,
       type: "debit", amount, description: "پرداخت با کیف پول" }], { session });
+    payment = walletPayment;
+    }
     const due = draft.totalPrice - amount;
-    let payment = walletPayment;
     let installment = null;
     if (due > 0) {
       const isInstallment = draft.paymentMethod === "INSTALLMENT";
@@ -85,6 +92,7 @@ export async function createWalletOrder({ identity, draft, amount, bankImages = 
           })) }], { session });
       }
     }
+    await grantAutomaticCoachCredit(order, session);
     await order.save({ session });
     const receipt = { ...identity, orderId: order._id, trackingCode: order.trackingCode, totalPrice: order.totalPrice, walletPaid: amount };
     await WalletCheckout.updateOne({ _id: identity._id }, { $set: receipt }, { session });
@@ -129,13 +137,19 @@ export async function updateOrderWithWallet(orderId, update) {
     const order = await Order.findById(orderId).session(session);
     if (!order) return null;
     const hadWallet = order.walletPaid > 0;
-    if (update.fulfillmentStatus === "CANCELED") await refundOrderWallet(order, 0, session);
+    const wasPaid = order.paymentStatus === "PAID";
+    if (update.fulfillmentStatus === "CANCELED") {
+      await reverseAutomaticCoachCredit(order, session);
+      await refundOrderWallet(order, 0, session);
+    }
     Object.assign(order, update);
     if (hadWallet) {
       const paid = await Payment.find({ order: order._id, status: "PAID" }).session(session).lean();
       const total = paid.reduce((sum, p) => sum + p.amount, 0);
       order.paymentStatus = total >= order.totalPrice ? "PAID" : total > 0 ? "PARTIALLY_PAID" : "UNPAID";
     }
+    if (!wasPaid && order.paymentStatus === "PAID") order.coachCreditEligible = true;
+    await grantAutomaticCoachCredit(order, session);
     await order.save({ session });
     return order;
   });

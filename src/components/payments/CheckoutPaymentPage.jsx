@@ -78,6 +78,7 @@ const CheckoutPaymentPage = () => {
   const walletAmount = Number(checkout?.walletAmount || 0);
   const payable = Math.max(0, totalPrice - walletAmount);
   const fullyWalletPaid = walletAmount > 0 && payable === 0;
+  const fullyCovered = payable === 0 && (walletAmount > 0 || !!appliedCoupon?.createdByCoach);
 
   // ─── بارگذاری اطلاعات مرحله ثبت سفارش ───
   useEffect(() => {
@@ -153,7 +154,7 @@ const CheckoutPaymentPage = () => {
 
   // ─── ثبت رسید بانکی ───
   const handleBankReceiptSubmit = async () => {
-    if (receiptUrls.length === 0 && !fullyWalletPaid) {
+    if (receiptUrls.length === 0 && !fullyCovered) {
       toast.error('لطفاً حداقل یک تصویر فیش واریزی بارگذاری کنید.');
       return;
     }
@@ -177,7 +178,7 @@ const CheckoutPaymentPage = () => {
 
       await handleCheckoutSuccess(
         data.trackingCode,
-        fullyWalletPaid ? 'سفارش شما با پرداخت از کیف پول ثبت شد.' : 'سفارش شما ثبت شد؛ اطلاعات پرداخت در حال بررسی است و نتیجه تا ساعاتی دیگر اعلام خواهد شد.',
+        fullyCovered ? 'سفارش شما بدون مانده پرداخت ثبت شد.' : 'سفارش شما ثبت شد؛ اطلاعات پرداخت در حال بررسی است و نتیجه تا ساعاتی دیگر اعلام خواهد شد.',
       );
     } catch (error) {
       console.error(error);
@@ -232,7 +233,7 @@ const CheckoutPaymentPage = () => {
   // ─── سفارش مجازی (هنوز در دیتابیس ساخته نشده) برای کامپوننت‌های نمایش ───
   const pseudoOrder = {
     trackingCode:  null, // پس از تکمیل پرداخت صادر می‌شود
-    paymentMethod: fullyWalletPaid ? 'WALLET' : checkout.paymentMethod,
+    paymentMethod: fullyCovered ? (fullyWalletPaid ? 'WALLET' : 'BANK_RECEIPT') : checkout.paymentMethod,
     walletPaid: walletAmount,
     payments: walletAmount > 0 ? [{ method: 'WALLET', status: 'PAID', amount: walletAmount }] : [],
     items: cartItems.map((item) => ({
@@ -275,7 +276,7 @@ const CheckoutPaymentPage = () => {
   );
 
   // ─── اقساط ───
-  if (checkout.paymentMethod === 'INSTALLMENT' && !fullyWalletPaid) {
+  if (checkout.paymentMethod === 'INSTALLMENT' && !fullyCovered) {
     return (
       <div>
         {backLink}
@@ -299,10 +300,10 @@ const CheckoutPaymentPage = () => {
         </div>
 
         <div className="md:w-2/3 flex flex-col gap-4 sm:gap-6 md:px-6">
-          {!fullyWalletPaid && <BankInfoBox />}
+          {!fullyCovered && <BankInfoBox />}
 
-          {!fullyWalletPaid && <ReceiptUploader onFileChange={setReceiptUrls} />}
-          {fullyWalletPaid && <p className="rounded-xl bg-emerald-50 p-4 text-sm text-emerald-800">تمام مبلغ سفارش از کیف پول پرداخت می‌شود و نیازی به فیش بانکی نیست.</p>}
+          {!fullyCovered && <ReceiptUploader onFileChange={setReceiptUrls} />}
+          {fullyCovered && <p className="rounded-xl bg-emerald-50 p-4 text-sm text-emerald-800">مبلغ سفارش با اعتبار انتخاب‌شده پوشش داده می‌شود و نیازی به فیش بانکی نیست.</p>}
 
           <EmailBox
             show={!user?.email}
@@ -317,7 +318,7 @@ const CheckoutPaymentPage = () => {
 
           <SubmitPaymentButton
             loading={submitLoading}
-            disabled={(!fullyWalletPaid && receiptUrls.length === 0) || !rulesChecked}
+            disabled={(!fullyCovered && receiptUrls.length === 0) || !rulesChecked}
             onClick={handleBankReceiptSubmit}
           />
         </div>

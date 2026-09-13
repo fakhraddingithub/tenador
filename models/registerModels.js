@@ -35,6 +35,8 @@ import "base/models/Banner";
 import "base/models/Brand";
 import "base/models/Category";
 import "base/models/CoachCredit";
+import "base/models/CoachWalletTransaction";
+import "base/models/CoachCouponIssue";
 import "base/models/Comment";
 import "base/models/ContactMessage";
 import "base/models/Coupon";

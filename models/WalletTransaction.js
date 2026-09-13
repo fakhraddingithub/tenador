@@ -2,8 +2,9 @@ import mongoose from "mongoose";
 
 const schema = new mongoose.Schema({
   user: { type: mongoose.Schema.Types.ObjectId, ref: "User", required: true, index: true },
-  order: { type: mongoose.Schema.Types.ObjectId, ref: "Order", required: true },
-  trackingCode: { type: String, required: true },
+  order: { type: mongoose.Schema.Types.ObjectId, ref: "Order", default: null },
+  trackingCode: { type: String, default: null },
+  coupon: { type: mongoose.Schema.Types.ObjectId, ref: "Coupon", default: null },
   type: { type: String, enum: ["debit", "credit"], required: true },
   amount: { type: Number, required: true, min: 1 },
   description: { type: String, required: true },
