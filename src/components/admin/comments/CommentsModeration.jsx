@@ -264,6 +264,12 @@ export default function CommentsModeration() {
                 <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                   {/* Right: content */}
                   <div className="min-w-0 flex-1">
+                    {/* نظرِ والد بالای پاسخ، پیش از هر چیزِ دیگر: ادمین باید
+                        اول ببیند به چه چیزی پاسخ داده شده، بعد خودِ پاسخ را */}
+                    {c.parent && (
+                      <ParentCommentContext parent={c.parentComment} />
+                    )}
+
                     {/* user + product */}
                     <div className="mb-2 flex flex-wrap items-center gap-2">
                       <span className="inline-flex items-center gap-1.5 text-sm font-bold text-[#1a1a1a]">
@@ -276,12 +282,8 @@ export default function CommentsModeration() {
                           خرید تأییدشده
                         </span>
                       )}
-                      {c.parent && (
-                        <span className="inline-flex items-center gap-1 rounded-full bg-gray-100 px-2 py-0.5 text-[11px] font-medium text-gray-500">
-                          <FaReply className="h-2.5 w-2.5" />
-                          پاسخ
-                        </span>
-                      )}
+                      {/* بَجِ «پاسخ» اینجا حذف شد: ParentCommentContext بالای
+                          همین کارت همان را با بافتِ کامل می‌گوید */}
                       {status === "all" && (
                         <span
                           className={`rounded-full border px-2 py-0.5 text-[11px] font-bold ${STATUS_BADGE[c.status]}`}
@@ -329,11 +331,6 @@ export default function CommentsModeration() {
                           دست دوم: {c.usedProduct.name}
                         </span>
                       </a>
-                    )}
-
-                    {/* نظرِ والد — ادمین باید بدون جست‌وجو بفهمد پاسخ به چیست */}
-                    {c.parent && (
-                      <ParentCommentContext parent={c.parentComment} />
                     )}
 
                     {/* rating */}
@@ -455,46 +452,65 @@ export default function CommentsModeration() {
 }
 
 /**
- * بافتِ نظرِ والد برای یک پاسخ.
+ * نظرِ اصلی، بالای پاسخ.
+ *
+ * ساختار عمداً «نظر اصلی ← فلش ← پاسخ» است: کارتِ خاکستری‌رنگ نظرِ والد را با
+ * نام نویسنده و متنِ کاملش نشان می‌دهد و فلش، کارتِ سفیدِ پاسخ را که زیرش
+ * می‌آید به آن وصل می‌کند. متن clamp نمی‌شود — ادمین برای داوریِ یک پاسخ باید
+ * همه‌ی چیزی را که پاسخ به آن داده شده ببیند، نه سه خط اولش را.
  *
  * `parent` می‌تواند null باشد: نظرِ والد حذف شده ولی شناسه‌اش هنوز روی پاسخ
  * هست. در آن حالت هم باید چیزی نشان داده شود، وگرنه ادمین یک «پاسخ» می‌بیند
  * که معلوم نیست به چه چیزی است.
  */
 function ParentCommentContext({ parent }) {
-  if (!parent) {
-    return (
-      <div className="mb-2 rounded-lg border border-dashed border-gray-200 bg-gray-50/70 px-3 py-2 text-[11px] text-gray-400">
-        نظری که این پاسخ به آن داده شده، حذف شده است.
-      </div>
-    );
-  }
-
   return (
-    <div className="mb-2 rounded-lg border border-gray-200 bg-gray-50/70 p-3">
-      <div className="mb-1.5 flex flex-wrap items-center gap-2">
-        <span className="inline-flex items-center gap-1 text-[11px] font-bold text-gray-500">
-          <FaReply className="h-2.5 w-2.5 scale-x-[-1]" />
-          در پاسخ به نظرِ{" "}
-          {getUserFullName(parent.user, "کاربر حذف‌شده")}
-        </span>
-        {parent.status && (
-          <span
-            className={`rounded-full border px-2 py-0.5 text-[10px] font-bold ${STATUS_BADGE[parent.status]}`}
-          >
-            {STATUS_LABEL[parent.status]}
+    <div className="mb-1">
+      <div className="rounded-lg border border-[#e8e4df] bg-[#f5f3f0] p-3">
+        <div className="mb-2 flex flex-wrap items-center gap-2">
+          <span className="inline-flex items-center gap-1 rounded-full bg-white px-2 py-0.5 text-[10px] font-bold text-gray-500 ring-1 ring-[#e8e4df]">
+            <FaRegCommentDots className="h-2.5 w-2.5" />
+            نظر اصلی
           </span>
-        )}
-        {parent.rating > 0 && <RatingStars value={parent.rating} size={11} />}
-        {parent.images?.length > 0 && (
-          <span className="text-[10px] text-gray-400">
-            {parent.images.length.toLocaleString("fa-IR")} تصویر
-          </span>
+          {parent && (
+            <>
+              <span className="inline-flex items-center gap-1.5 text-xs font-bold text-[#1a1a1a]">
+                <FaUser className="text-[10px] text-gray-400" />
+                {getUserFullName(parent.user, "کاربر حذف‌شده")}
+              </span>
+              {parent.status && (
+                <span
+                  className={`rounded-full border px-2 py-0.5 text-[10px] font-bold ${STATUS_BADGE[parent.status]}`}
+                >
+                  {STATUS_LABEL[parent.status]}
+                </span>
+              )}
+              {parent.rating > 0 && <RatingStars value={parent.rating} size={11} />}
+              {parent.images?.length > 0 && (
+                <span className="text-[10px] text-gray-400">
+                  {parent.images.length.toLocaleString("fa-IR")} تصویر
+                </span>
+              )}
+            </>
+          )}
+        </div>
+
+        {parent ? (
+          <p className="whitespace-pre-line break-words border-r-2 border-[#aa4725]/30 pr-2.5 text-xs leading-relaxed text-gray-600">
+            {parent.text}
+          </p>
+        ) : (
+          <p className="text-[11px] italic text-gray-400">
+            این نظر حذف شده است.
+          </p>
         )}
       </div>
-      <p className="line-clamp-3 whitespace-pre-line border-r-2 border-[#aa4725]/30 pr-2.5 text-xs leading-relaxed text-gray-500">
-        {parent.text}
-      </p>
+
+      {/* پیوندِ دیداریِ «نظر اصلی ← پاسخ» */}
+      <div className="flex items-center gap-1.5 py-1.5 pr-3 text-[11px] font-bold text-gray-400">
+        <FaReply className="h-2.5 w-2.5 -scale-x-100" />
+        پاسخ
+      </div>
     </div>
   );
 }
