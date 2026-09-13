@@ -520,7 +520,10 @@ function OrderDetailModal({ orderId, onClose, onOpenFull }) {
                       value={`${formatPrice(order.couponDiscount)} ت`}
                     />
                   )}
-                  <InfoRow label="مبلغ کل" value={<span className="text-[var(--color-primary)] font-black">{formatPrice(order.totalPrice)} ت</span>} />
+                  {order.walletPaid > 0 && (
+                    <InfoRow label="پرداخت با کیف پول" value={<span className="text-emerald-700">− {formatPrice(order.walletPaid)} ت</span>} />
+                  )}
+                  <InfoRow label={order.walletPaid > 0 ? "مبلغ پس از پرداخت کیف پول" : "مبلغ کل"} value={<span className="text-[var(--color-primary)] font-black">{formatPrice(Math.max(0, order.totalPrice - (order.walletPaid || 0)))} ت</span>} />
                   {order.priceEUR ? <InfoRow label="مبلغ یورویی" value={`€ ${formatPrice(order.priceEUR)}`} /> : null}
                 </ModalSection>
 
