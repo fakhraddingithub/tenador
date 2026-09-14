@@ -173,6 +173,8 @@ export async function PATCH(req, { params }) {
     });
     if (denied) return denied;
 
+    if (Object.hasOwn(body, "walletBalance")) return NextResponse.json({ message: "برای تغییر موجودی از بخش تراکنش کیف پول با مبلغ و توضیح استفاده کنید" }, { status: 400 });
+
     // ۴) نوع‌های سخت — پیش از هر نوشتنی. رشته‌ی "false"، عددِ نامعتبر و مقدار
     //    منفی اینجا ۴۲۲ می‌گیرند، نه اینکه بی‌صدا تفسیر شوند.
     const valid = validateUserPatchPayload(body);
@@ -206,8 +208,7 @@ export async function PATCH(req, { params }) {
     }
 
     if (valid.values.level !== undefined) user.level = valid.values.level;
-    if (valid.values.walletBalance !== undefined)
-      user.walletBalance = valid.values.walletBalance;
+
     if (valid.values.isBanned !== undefined) user.isBanned = valid.values.isBanned;
 
     if (body.role !== undefined) {

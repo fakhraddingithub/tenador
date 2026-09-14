@@ -36,12 +36,13 @@ function roundPercent(base, value) {
   return Number((2n * numerator + denominator) / (2n * denominator));
 }
 
-async function grantInSession(comment, session) {
+async function grantInSession(comment, session, options = {}) {
+  const cache = options.cache;
   if (comment.parent || !comment.order || !comment.isVerifiedPurchase ||
       Boolean(comment.product) === Boolean(comment.usedProduct)) {
     return { status: "ineligible" };
   }
-  const order = await Order.findById(comment.order).session(session).lean();
+  const order = cache ? cache.orders.get(String(comment.order)) : await Order.findById(comment.order).session(session).lean();
   if (!order || String(order.user) !== String(comment.user) ||
       !["SENT", "DELIVERED"].includes(order.fulfillmentStatus)) {
     return { status: "ineligible" };
@@ -56,15 +57,14 @@ async function grantInSession(comment, session) {
 
   // Legacy ledger rows may already have increased the wallet: never repay them
   // automatically. A whole-order reward also covers every product in it.
-  const prior = await ReviewCreditTransaction.find({ order: order._id }).session(session).lean();
-  if (prior.some((tx) => !tx.item || String(tx.item) === String(item))) {
-    return { status: "already_granted" };
-  }
-  const config = await getReviewCreditConfig(session);
+  const prior = cache ? (cache.credits.get(String(order._id)) || []) : await ReviewCreditTransaction.find({ order: order._id }).session(session).lean();
+  const paid = prior.find(tx => !tx.item || String(tx.item) === String(item));
+  if (paid) return { status: "already_granted", amount: paid.amount };
+  const config = cache ? cache.config : await getReviewCreditConfig(session);
   if (!config.enabled) return { status: "disabled" };
   // Do not stack a whole-order reward on previously awarded item rewards.
   if (config.granularity === "per-order" && prior.length) return { status: "already_granted" };
-  const user = await User.findById(comment.user).session(session).lean();
+  const user = cache ? cache.users.get(String(comment.user)) : await User.findById(comment.user).session(session).lean();
   if (!user || !config.eligibleRoles.includes(user.role)) return { status: "ineligible" };
 
   let base = order.totalPrice;
@@ -80,11 +80,13 @@ async function grantInSession(comment, session) {
   if (!validMoney(base)) {
     throw creditError("مبلغ مبنای پاداش معتبر نیست", "INVALID_REVIEW_CREDIT_AMOUNT");
   }
-  const amount = config.kind === "percent" ? roundPercent(base, config.value) : Math.round(config.value);
-  if (!Number.isSafeInteger(amount)) {
+  const amount = comment.reviewRewardAmount != null ? comment.reviewRewardAmount : config.kind === "percent" ? roundPercent(base, config.value) : Math.round(config.value);
+  if (!Number.isSafeInteger(amount) || amount < 0) {
     throw creditError("مبلغ پاداش معتبر نیست", "INVALID_REVIEW_CREDIT_AMOUNT");
   }
-  if (amount === 0) return { status: "zero_amount" };
+  if (options.preview) return { status: amount === 0 ? "zero_amount" : "eligible", amount };
+  if (options.expectedAmount !== undefined && options.expectedAmount !== amount) throw creditError("مبلغ پاداش تغییر کرده است؛ فهرست نظرات را تازه کنید", "REVIEW_CREDIT_CONFLICT");
+  if (amount === 0) return { status: "zero_amount", amount: 0 };
   if (!validMoney(user.walletBalance ?? 0) || !validMoney((user.walletBalance ?? 0) + amount)) {
     throw creditError("موجودی کیف پول معتبر نیست", "INVALID_REVIEW_CREDIT_AMOUNT");
   }
@@ -96,7 +98,7 @@ async function grantInSession(comment, session) {
     order: order._id, user: user._id, comment: comment._id,
     itemType: config.granularity === "per-item" ? itemType : null,
     item: config.granularity === "per-item" ? item : null,
-    granularity: config.granularity, kind: config.kind, value: config.value, amount,
+    granularity: config.granularity, kind: comment.reviewRewardAmount != null ? "amount" : config.kind, value: comment.reviewRewardAmount != null ? amount : config.value, amount,
   }], { session });
   // Serializes grants for one owner. A concurrent wallet write forces Mongo to
   // retry the complete transaction and re-read the ledger, including scope changes.
@@ -107,19 +109,60 @@ async function grantInSession(comment, session) {
 
 // Caller authenticates the moderator and connects to DB. No external side
 // effects here: Mongo may re-run this callback after a transient conflict.
-export async function moderateCommentWithReviewCredit(id, status) {
+export async function moderateCommentWithReviewCredit(id, status, options = {}) {
   if (!["approved", "rejected", "pending"].includes(status)) throw new Error("Invalid comment status");
   return runWithOptionalTransaction(async (session) => {
-    const comment = await Comment.findById(id).session(session);
+    const comment = await Comment.findById(id).select("+reviewRewardAmount +reviewRewardLocked +reviewRewardEditedBy +reviewRewardEditedAt").session(session);
     if (!comment) return null;
     const credit = status === "approved"
-      ? await grantInSession(comment, session)
+      ? await grantInSession(comment, session, options)
       : { status: "not_requested" };
+    if (comment.status === "approved" || comment.approved || status === "approved") comment.reviewRewardLocked = true;
     comment.status = status;
     // Force a versioned write on re-approval too, to conflict with a concurrent
     // rejection/deletion instead of granting against an outdated comment read.
     comment.increment();
     await comment.save({ session });
     return { comment, credit };
+  });
+}
+
+export async function getCommentRewardPreviews(comments) {
+  const normalized = comments.map(c => ({ ...c, user: c.user?._id || c.user, product: c.product?._id || c.product, usedProduct: c.usedProduct?._id || c.usedProduct }));
+  const orderIds = [...new Set(normalized.map(c => c.order && String(c.order)).filter(Boolean))];
+  const userIds = [...new Set(normalized.map(c => c.user && String(c.user)).filter(Boolean))];
+  const [orders, users, credits, config] = await Promise.all([
+    Order.find({ _id: { $in: orderIds } }).select('user items totalPrice fulfillmentStatus').lean(),
+    User.find({ _id: { $in: userIds } }).select('role walletBalance').lean(),
+    ReviewCreditTransaction.find({ order: { $in: orderIds } }).select('order item amount comment').lean(),
+    getReviewCreditConfig().catch(() => null),
+  ]);
+  const cache = { orders: new Map(orders.map(o => [String(o._id), o])), users: new Map(users.map(u => [String(u._id), u])), credits: new Map(), config };
+  for (const tx of credits) { const key = String(tx.order); cache.credits.set(key, [...(cache.credits.get(key) || []), tx]); }
+  return Promise.all(normalized.map(async c => {
+    try {
+      if (!config) return { status: 'error', amount: null, canEdit: false };
+      const reward = await grantInSession(c, null, { preview: true, cache });
+      return { ...reward, amount: reward.amount ?? 0, custom: c.reviewRewardAmount != null,
+        canEdit: !c.reviewRewardLocked && c.status !== 'approved' && !c.approved && ['eligible', 'zero_amount'].includes(reward.status) };
+    } catch { return { status: 'error', amount: null, canEdit: false }; }
+  }));
+}
+
+export async function setCommentRewardAmount(id, amount, adminId) {
+  if (amount !== null && (!Number.isSafeInteger(amount) || amount < 0)) throw creditError('مبلغ پاداش باید عدد صحیح و نامنفی به تومان باشد', 'INVALID_REVIEW_CREDIT_AMOUNT');
+  return runWithOptionalTransaction(async session => {
+    if (!session?.inTransaction()) throw creditError('ویرایش پاداش به تراکنش امن نیاز دارد', 'REVIEW_CREDIT_TRANSACTION_REQUIRED');
+    const comment = await Comment.findById(id).select("+reviewRewardAmount +reviewRewardLocked +reviewRewardEditedBy +reviewRewardEditedAt").session(session);
+    if (!comment) return null;
+    if (comment.status === 'approved' || comment.approved || comment.reviewRewardLocked) throw creditError('مبلغ پاداش پس از تأیید نظر قابل تغییر نیست', 'REVIEW_CREDIT_CONFLICT');
+    const reward = await grantInSession(comment, session, { preview: true });
+    if (!['eligible', 'zero_amount'].includes(reward.status)) throw creditError('این نظر واجد پاداش قابل ویرایش نیست یا پاداش آن قبلاً ثبت شده است', 'REVIEW_CREDIT_CONFLICT');
+    comment.reviewRewardAmount = amount;
+    comment.reviewRewardEditedBy = adminId;
+    comment.reviewRewardEditedAt = new Date();
+    comment.increment();
+    await comment.save({ session });
+    return { amount: (await grantInSession(comment, session, { preview: true })).amount ?? 0 };
   });
 }

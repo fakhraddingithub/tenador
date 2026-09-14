@@ -629,6 +629,9 @@ export const AUDIT_ENTITIES = {
       approved: { label: "تأییدشده", type: "bool" },
       text: { label: "متن" },
       rating: { label: "امتیاز", type: "number" },
+      reviewRewardAmount: { label: "مبلغ سفارشی پاداش نظر", type: "number" },
+      reviewRewardEditedBy: { label: "ویرایش‌کننده پاداش", type: "ref" },
+      reviewRewardLocked: { label: "قفل مبلغ پاداش", type: "bool" },
     },
     refine: ({ changes, name }) => {
       const next = changes?.status?.to ?? (changes?.approved ? (changes.approved.to ? "approved" : "rejected") : null);
@@ -656,6 +659,19 @@ export const AUDIT_ENTITIES = {
   ContactMessage: { key: "contactMessage", label: "پیام تماس", priority: 50 },
   UserNotification: { key: "userNotification", label: "اطلاعیه کاربران", priority: 57 },
   CoachCredit: { key: "coachCredit", label: "اعتبار مربی", priority: 82 },
+  WalletTransaction: {
+    key: "walletTransaction", label: "تراکنش کیف پول کاربر", priority: 85,
+    fields: {
+      user: { label: "کاربر", type: "ref" },
+      admin: { label: "ادمین ثبت‌کننده", type: "ref" },
+      type: { label: "نوع تراکنش" },
+      amount: { label: "مبلغ", type: "number" },
+      description: { label: "توضیح تراکنش" },
+      balanceBefore: { label: "موجودی پیش از تراکنش", type: "number" },
+      balanceAfter: { label: "موجودی پس از تراکنش", type: "number" },
+    },
+  },
+  WalletAdjustment: { key: "walletAdjustment", label: "افزایش یا کاهش کیف پول توسط ادمین", priority: 84 },
   CoachWalletTransaction: { key: "coachWallet", label: "تراکنش کیف پول مربی", priority: 82 },
   ReviewCreditTransaction: { key: "reviewCredit", label: "اعتبار نظر", priority: 50 },
   HealthCard: { key: "healthCard", label: "کارت سلامت", priority: 54 },

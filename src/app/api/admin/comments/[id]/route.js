@@ -23,13 +23,14 @@ export async function PATCH(req, { params }) {
     await connectToDB();
 
     const { id } = await params;
-    const { status } = await req.json().catch(() => ({}));
+    const { status, expectedRewardAmount } = await req.json().catch(() => ({}));
 
     if (!["approved", "rejected", "pending"].includes(status)) {
       return NextResponse.json({ message: "وضعیت نامعتبر است" }, { status: 400 });
     }
 
-    const result = await moderateCommentWithReviewCredit(id, status);
+    if (expectedRewardAmount !== undefined && (!Number.isSafeInteger(expectedRewardAmount) || expectedRewardAmount < 0)) return NextResponse.json({ message: "مبلغ پاداش نامعتبر است" }, { status: 400 });
+    const result = await moderateCommentWithReviewCredit(id, status, { expectedAmount: expectedRewardAmount });
     if (!result) {
       return NextResponse.json({ message: "نظر یافت نشد" }, { status: 404 });
     }
@@ -50,11 +51,11 @@ export async function PATCH(req, { params }) {
     return NextResponse.json({ message, comment, credit: { status: credit.status, amount: credit.amount ?? 0 } }, { status: 200 });
   } catch (error) {
     console.error("[PATCH /api/admin/comments/:id]", error);
-    const known = ["INVALID_REVIEW_CREDIT_CONFIG", "INVALID_REVIEW_CREDIT_AMOUNT", "REVIEW_CREDIT_TRANSACTION_REQUIRED"].includes(error.code);
+    const known = ["REVIEW_CREDIT_CONFLICT", "INVALID_REVIEW_CREDIT_CONFIG", "INVALID_REVIEW_CREDIT_AMOUNT", "REVIEW_CREDIT_TRANSACTION_REQUIRED"].includes(error.code);
     return NextResponse.json({
       message: known ? error.message : "ثبت وضعیت نظر و پاداش با خطا روبه‌رو شد؛ دوباره تلاش کنید",
       code: known ? error.code : "COMMENT_MODERATION_FAILED",
-    }, { status: error.code === "REVIEW_CREDIT_TRANSACTION_REQUIRED" ? 503 : 500 });
+    }, { status: error.code === "REVIEW_CREDIT_CONFLICT" ? 409 : error.code === "REVIEW_CREDIT_TRANSACTION_REQUIRED" ? 503 : 500 });
   }
 }
 

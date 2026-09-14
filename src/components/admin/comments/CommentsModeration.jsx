@@ -21,6 +21,7 @@ import {
 import RatingStars from "@/components/reviews/RatingStars";
 import CommentImageLightbox from "@/components/ui/CommentImageLightbox";
 import { useAdminPermissions } from "@/components/admin/AdminPermissionProvider";
+import CommentReward from "./CommentReward";
 import MarkNotificationsRead from "@/components/admin/MarkNotificationsRead";
 
 const STATUS_TABS = [
@@ -99,7 +100,7 @@ export default function CommentsModeration() {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
-        body: JSON.stringify({ status: newStatus }),
+        body: JSON.stringify({ status: newStatus, expectedRewardAmount: newStatus === "approved" ? comments.find(c => c._id === id)?.reward?.amount ?? undefined : undefined }),
       });
       if (res.ok) {
         const result = await res.json();
@@ -122,11 +123,12 @@ export default function CommentsModeration() {
                 newStatus,
               ),
             },
-          { revalidate: false },
+          { revalidate: true },
         );
       } else {
         const d = await res.json().catch(() => ({}));
         toast.error(d.message || "خطا در بروزرسانی");
+        if (res.status === 409) await fetchComments();
       }
     } catch {
       toast.error("خطا در ارتباط با سرور");
@@ -178,7 +180,7 @@ export default function CommentsModeration() {
               counts,
             };
           },
-          { revalidate: false },
+          { revalidate: true },
         );
       } else {
         toast.error("خطا در حذف");
@@ -377,11 +379,12 @@ export default function CommentsModeration() {
                   </div>
 
                   {/* Left: actions */}
-                  {(canModerate || canDelete) && (
-                  <div className="flex flex-shrink-0 items-center gap-2 sm:flex-col sm:items-stretch">
+                  {(canModerate || canDelete || can("comments.adjustReward") || (c.order && c.isVerifiedPurchase && !c.parent)) && (
+                  <div className="flex flex-shrink-0 flex-col items-stretch gap-2">
+                    <CommentReward comment={c} canEdit={can("comments.adjustReward")} disabled={busyId === c._id} onSaved={() => fetchComments()} />
                     {canModerate && (c.status !== "approved" || (c.order && c.isVerifiedPurchase && !c.parent)) && (
                       <button
-                        disabled={busyId === c._id}
+                        disabled={busyId === c._id || c.reward?.status === "error"}
                         onClick={() => changeStatus(c._id, "approved")}
                         className="inline-flex items-center justify-center gap-1.5 rounded-lg bg-emerald-600 px-3 py-2 text-xs font-bold text-white transition-colors hover:bg-emerald-700 disabled:opacity-50"
                       >

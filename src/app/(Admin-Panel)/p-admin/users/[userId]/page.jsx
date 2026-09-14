@@ -1,5 +1,6 @@
 'use client'
 
+import AdminUserWallet from "@/components/admin/users/AdminUserWallet";
 import AdminInput from "@/components/admin/AdminInput";
 import { useState, useEffect } from 'react'
 import { useParams, useRouter } from 'next/navigation'
@@ -30,7 +31,6 @@ const FIELD_PERMISSION = {
   phone: 'users.edit',
   level: 'users.edit',
   role: 'users.changeRole',
-  walletBalance: 'users.adjustWallet',
   isBanned: 'users.ban',
 }
 
@@ -101,7 +101,7 @@ export default function AdminUserDetailsPage() {
   const canChangeRole = can('users.changeRole')
   const canAdjustWallet = can('users.adjustWallet')
   const canBan = can('users.ban')
-  const canEditAnything = canEditProfile || canChangeRole || canAdjustWallet || canBan
+  const canEditAnything = canEditProfile || canChangeRole || canBan
 
   const fetchData = async () => {
     try {
@@ -117,7 +117,6 @@ export default function AdminUserDetailsPage() {
           phone: u.phone || '',
           role: u.role || 'user',
           level: u.level ?? 0,
-          walletBalance: u.walletBalance ?? 0,
           isBanned: !!u.isBanned,
         })
       } else {
@@ -145,7 +144,6 @@ export default function AdminUserDetailsPage() {
       if (!can(permission)) continue
       const previous =
         field === 'isBanned' ? !!current.isBanned
-          : field === 'walletBalance' ? (current.walletBalance ?? 0)
             : field === 'level' ? (current.level ?? 0)
               : (current[field] || '')
       if (String(form[field]) !== String(previous)) payload[field] = form[field]
@@ -192,7 +190,6 @@ export default function AdminUserDetailsPage() {
       phone: u.phone || '',
       role: u.role || 'user',
       level: u.level ?? 0,
-      walletBalance: u.walletBalance ?? 0,
       isBanned: !!u.isBanned,
     })
     setEditing(false)
@@ -355,22 +352,10 @@ export default function AdminUserDetailsPage() {
               {/* Wallet */}
               <div className="space-y-1">
                 <label className="text-[11px] font-bold text-gray-400 block">موجودی کیف پول</label>
-                {editing && canAdjustWallet ? (
-                  <div className="relative">
-                    <AdminInput
-                      type="number"
-                      value={form.walletBalance}
-                      onChange={(e) => setForm({ ...form, walletBalance: e.target.value })}
-                      className="w-full text-right rounded-[var(--radius)] border border-gray-200 bg-gray-50/50 px-3 py-2 pr-9 text-xs font-bold focus:border-[var(--color-primary)] focus:bg-white focus:outline-none"
-                    />
-                    <Wallet size={14} className="absolute right-3 top-2.5 text-gray-400" />
-                  </div>
-                ) : (
-                  <div className="flex items-center gap-2 text-xs font-bold text-gray-700 bg-gray-50/60 border border-gray-100 rounded-[var(--radius)] px-3 py-2">
-                    <Wallet size={14} className="text-emerald-500" />
-                    {fmtToman(user.walletBalance)}
-                  </div>
-                )}
+                <div className="flex items-center gap-2 text-xs font-bold text-gray-700 bg-gray-50/60 border border-gray-100 rounded-[var(--radius)] px-3 py-2">
+                  <Wallet size={14} className="text-emerald-500" />
+                  {fmtToman(user.walletBalance)}
+                </div>
               </div>
 
               {/* Ban toggle */}
@@ -402,6 +387,8 @@ export default function AdminUserDetailsPage() {
           </Card>
 
           {/* Orders */}
+          <AdminUserWallet userId={user._id} canAdjust={canAdjustWallet} onBalanceChange={(balance) => setData(current => ({ ...current, user: { ...current.user, walletBalance: balance } }))} />
+
           <Card>
             <SectionTitle icon={Package} title="سفارش‌ها" count={orders.length} />
             {orders.length > 0 ? (

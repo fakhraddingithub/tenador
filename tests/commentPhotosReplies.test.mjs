@@ -99,6 +99,7 @@ function postRoute() {
 
 function adminListRoute() {
   return load("../src/app/api/admin/comments/route.js", {
+    "base/services/reviewCredit.service": { getCommentRewardPreviews: async comments => comments.map(() => ({ amount: 0, status: "ineligible", canEdit: false })) },
     "next/server": { NextResponse },
     "base/configs/db": { default: async () => {} },
     "base/models/registerModels": {},

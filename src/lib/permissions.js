@@ -552,7 +552,7 @@ const SECTION_DEFINITIONS = [
           // walletBalance پول است، نه فیلدِ پروفایل. زیر users.edit بودنش یعنی
           // هرکس بتواند نام کاربر را اصلاح کند، می‌توانست موجودی کیف پولش را
           // هم تغییر دهد.
-          { key: "adjustWallet", title: "تغییر موجودی کیف پول کاربر" },
+          { key: "adjustWallet", title: "افزایش و کاهش کیف پول با ثبت توضیح تراکنش" },
         ],
       },
       {
@@ -640,6 +640,7 @@ const SECTION_DEFINITIONS = [
         permissions: [
           { key: "view", title: "مشاهده نظرات" },
           { key: "moderate", title: "تأیید / رد نظر" },
+          { key: "adjustReward", title: "ویرایش مبلغ پاداش نظر پیش از تأیید" },
           { key: "delete", title: "حذف نظر" },
         ],
       },

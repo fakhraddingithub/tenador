@@ -61,7 +61,7 @@ export default function RolandGarros({ content }) {
                 </Link>
 
                 <div className="flex flex-col items-center sm:items-start">
-                  <span className="text-2xl font-black italic text-white sm:text-3xl">
+                  <span className="text-2xl font-black text-white sm:text-3xl">
                     {banner.statValue}
                   </span>
                   <span className="text-xs font-bold text-gray-500">

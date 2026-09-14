@@ -64,6 +64,10 @@ const CommentSchema = new mongoose.Schema(
       min: 1,
       max: 5,
     },
+    reviewRewardAmount: { select: false, type: Number, default: null, min: 0 },
+    reviewRewardEditedBy: { select: false, type: mongoose.Schema.Types.ObjectId, ref: "User", default: null },
+    reviewRewardEditedAt: { select: false, type: Date, default: null },
+    reviewRewardLocked: { select: false, type: Boolean, default: false },
 
     // وضعیت بازبینی توسط ادمین — منبع حقیقت برای نمایش عمومی
     status: {

@@ -15,6 +15,8 @@ import "base/models/registerModels";
 import Comment from "base/models/Comment";
 import requireAdminPermission from "@/lib/requireAdminPermission";
 
+import { getCommentRewardPreviews } from "base/services/reviewCredit.service";
+
 export async function GET(req) {
   const { denied } = await requireAdminPermission("comments.view");
   if (denied) return denied;
@@ -34,6 +36,7 @@ export async function GET(req) {
 
     const [items, total, counts] = await Promise.all([
       Comment.find(filter)
+        .select("+reviewRewardAmount +reviewRewardLocked")
         .populate("user", "name lastName phone avatar")
         .populate("product", "name mainImage slug")
         .populate("usedProduct", "name images slug")
@@ -61,6 +64,9 @@ export async function GET(req) {
       }
     }
 
+    const rewards = await getCommentRewardPreviews(items);
+    items.forEach((item, index) => { item.reward = rewards[index]; });
+
     const countsByStatus = { pending: 0, approved: 0, rejected: 0 };
     for (const c of counts) {
       if (c._id in countsByStatus) countsByStatus[c._id] = c.n;
@@ -72,7 +78,7 @@ export async function GET(req) {
         pagination: { page, limit, total, pages: Math.ceil(total / limit) },
         counts: countsByStatus,
       },
-      { status: 200 }
+      { status: 200, headers: { "Cache-Control": "private, no-store" } }
     );
   } catch (error) {
     console.error("[GET /api/admin/comments]", error);

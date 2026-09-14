@@ -8,6 +8,9 @@ const schema = new mongoose.Schema({
   type: { type: String, enum: ["debit", "credit"], required: true },
   amount: { type: Number, required: true, min: 1 },
   description: { type: String, required: true },
+  admin: { type: mongoose.Schema.Types.ObjectId, ref: "User", default: null },
+  balanceBefore: { type: Number, default: null },
+  balanceAfter: { type: Number, default: null },
 }, { timestamps: true });
 schema.index({ user: 1, createdAt: -1 });
 export default mongoose.models.WalletTransaction || mongoose.model("WalletTransaction", schema);

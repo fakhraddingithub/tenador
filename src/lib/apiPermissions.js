@@ -110,6 +110,8 @@ export const ADMIN_API_PERMISSIONS = {
   },
 
   // ── پشتیبانی ───────────────────────────────────────────────────────
+  "/admin/users/[userId]/wallet": { GET: "users.view", POST: "users.adjustWallet" },
+  "/admin/comments/[id]/reward": { PATCH: "comments.adjustReward" },
   "/admin/comments": { GET: "comments.view" },
   "/admin/comments/[id]": { PATCH: "comments.moderate", DELETE: "comments.delete" },
   "/admin/contact-messages": { GET: "contactMessages.view" },

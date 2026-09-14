@@ -71,6 +71,7 @@ import "base/models/TicketMessage";
 import "base/models/UsedProduct";
 import "base/models/User";
 import "base/models/WalletTransaction";
+import "base/models/WalletAdjustment";
 import "base/models/WalletCheckout";
 import "base/models/UserNotification";
 import "base/models/UserNotificationState";

@@ -3775,7 +3775,6 @@ test("the user detail page sends only changed fields the admin may change", () =
     ["name", "users.edit"],
     ["level", "users.edit"],
     ["role", "users.changeRole"],
-    ["walletBalance", "users.adjustWallet"],
     ["isBanned", "users.ban"],
   ]) {
     assert.ok(
@@ -3794,7 +3793,8 @@ test("the user detail page sends only changed fields the admin may change", () =
   // و هر ورودی جدا گیت می‌شود
   assert.match(source, /\{editing && canEditProfile \? \(/);
   assert.match(source, /\{editing && canChangeRole \? \(/);
-  assert.match(source, /\{editing && canAdjustWallet \? \(/);
+  assert.match(source, /canAdjust=\{canAdjustWallet\}/);
+  assert.doesNotMatch(source, /walletBalance: 'users.adjustWallet'/);
   assert.match(source, /\{editing && canBan \? \(/);
   assert.match(source, /canEditAnything && \(/);
 });

@@ -9,7 +9,7 @@ import { MongoMemoryReplSet } from 'mongodb-memory-server';
 register('./aliasHooks.mjs', import.meta.url);
 register('./reviewCreditHooks.mjs', import.meta.url);
 process.env.MONGODB_URI_TENADOR = 'mongodb://127.0.0.1:1/unused-test-placeholder';
-const { moderateCommentWithReviewCredit: moderate } = await import('../services/reviewCredit.service.js');
+const { moderateCommentWithReviewCredit: moderate, setCommentRewardAmount: setReward, getCommentRewardPreviews: previews } = await import('../services/reviewCredit.service.js');
 const { validateReviewCreditConfig } = await import('../src/lib/reviewCreditFinance.js');
 const User = mongoose.model('User');
 const Order = mongoose.model('Order');
@@ -64,6 +64,64 @@ async function state(s) {
     count: await Ledger.countDocuments(),
   };
 }
+
+test('preview, custom amount and approval use the same calculation without exposing private fields', async () => {
+  const s = await seed();
+  assert.equal((await previews([s.comment.toObject()]))[0].amount, 200);
+  assert.equal((await setReward(s.comment._id, 1234, oid())).amount, 1234);
+  const publicComment = await Comment.findById(s.comment._id).lean();
+  for (const key of ['reviewRewardAmount', 'reviewRewardEditedBy', 'reviewRewardEditedAt', 'reviewRewardLocked']) assert.equal(publicComment[key], undefined);
+  const adminComment = await Comment.findById(s.comment._id).select('+reviewRewardAmount +reviewRewardLocked').lean();
+  const preview = (await previews([adminComment]))[0];
+  assert.equal(preview.amount, 1234);
+  assert.equal(preview.canEdit, true);
+  await moderate(s.comment._id, 'approved', { expectedAmount: 1234 });
+  assert.deepEqual(await state(s), { balance: 1934, status: 'approved', count: 1 });
+  assert.equal((await Ledger.findOne()).kind, 'amount');
+  await assert.rejects(setReward(s.comment._id, 50, oid()), { code: 'REVIEW_CREDIT_CONFLICT' });
+  await moderate(s.comment._id, 'rejected');
+  await assert.rejects(setReward(s.comment._id, 50, oid()), { code: 'REVIEW_CREDIT_CONFLICT' });
+});
+
+test('zero override suppresses payment; resetting a pending override restores automatic reward', async () => {
+  const s = await seed();
+  await setReward(s.comment._id, 0, oid());
+  assert.equal((await setReward(s.comment._id, null, oid())).amount, 200);
+  await setReward(s.comment._id, 0, oid());
+  assert.equal((await moderate(s.comment._id, 'approved', { expectedAmount: 0 })).credit.status, 'zero_amount');
+  assert.deepEqual(await state(s), { balance: 700, status: 'approved', count: 0 });
+  await assert.rejects(setReward(s.comment._id, 50, oid()), { code: 'REVIEW_CREDIT_CONFLICT' });
+});
+
+test('stale preview cannot approve or pay a changed reward', async () => {
+  const s = await seed();
+  await setReward(s.comment._id, 800, oid());
+  await assert.rejects(moderate(s.comment._id, 'approved', { expectedAmount: 200 }), { code: 'REVIEW_CREDIT_CONFLICT' });
+  assert.deepEqual(await state(s), { balance: 700, status: 'pending', count: 0 });
+});
+
+test('invalid overrides and unavailable transactions cannot change the reward', async () => {
+  const s = await seed();
+  for (const amount of [-1, 1.2, '100', undefined, Number.MAX_SAFE_INTEGER + 1]) await assert.rejects(setReward(s.comment._id, amount, oid()), { code: 'INVALID_REVIEW_CREDIT_AMOUNT' });
+  process.env.MONGODB_TRANSACTIONS = 'disabled';
+  await assert.rejects(setReward(s.comment._id, 100, oid()), { code: 'REVIEW_CREDIT_TRANSACTION_REQUIRED' });
+  assert.deepEqual(await state(s), { balance: 700, status: 'pending', count: 0 });
+});
+
+test('concurrent reward edit and approval either rejects the stale approval or pays the original amount and locks editing', async () => {
+  const s = await seed();
+  const outcomes = await Promise.allSettled([setReward(s.comment._id, 800, oid()), moderate(s.comment._id, 'approved', { expectedAmount: 200 })]);
+  const current = await state(s);
+  if (outcomes[1].status === 'fulfilled') {
+    assert.equal(current.balance, 900);
+    assert.equal(current.count, 1);
+    await assert.rejects(setReward(s.comment._id, 900, oid()), { code: 'REVIEW_CREDIT_CONFLICT' });
+  } else {
+    assert.equal(outcomes[1].reason.code, 'REVIEW_CREDIT_CONFLICT');
+    assert.equal(current.balance, 700);
+    assert.equal(current.count, 0);
+  }
+});
 
 test('sums all purchased variants and quantities for this product only', async () => {
   const s = await seed({ sameProduct: true });

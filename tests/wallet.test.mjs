@@ -40,9 +40,17 @@ async function walletRoute({ token = 'valid', user = { _id: 'me', walletBalance:
     'base/utils/auth': { verifyToken: (value) => value === 'valid' ? { userId: 'me' } : false },
   };
   const mod = new vm.SourceTextModule(source, { context });
-  await mod.link((name) => new vm.SyntheticModule(Object.keys(deps[name]), function () {
-    for (const [key, value] of Object.entries(deps[name])) this.setExport(key, value);
-  }, { context }));
+  async function linker(name) {
+    if (name === 'base/services/walletHistory.service') {
+      const helper = new vm.SourceTextModule(await readFile(new URL('../services/walletHistory.service.js', import.meta.url), 'utf8'), { context });
+      await helper.link(linker);
+      return helper;
+    }
+    return new vm.SyntheticModule(Object.keys(deps[name]), function () {
+      for (const [key, value] of Object.entries(deps[name])) this.setExport(key, value);
+    }, { context });
+  }
+  await mod.link(linker);
   await mod.evaluate();
   const response = await mod.namespace.GET();
   return { ...JSON.parse(JSON.stringify(response)), calls };
