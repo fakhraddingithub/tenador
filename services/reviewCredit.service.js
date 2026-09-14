@@ -94,7 +94,7 @@ async function grantInSession(comment, session, options = {}) {
   if (!session?.inTransaction()) {
     throw creditError("واریز پاداش به پشتیبانی تراکنش اتمی MongoDB نیاز دارد؛ تأیید نظر ثبت نشد", "REVIEW_CREDIT_TRANSACTION_REQUIRED");
   }
-  await ReviewCreditTransaction.create([{
+  const [ledger] = await ReviewCreditTransaction.create([{
     order: order._id, user: user._id, comment: comment._id,
     itemType: config.granularity === "per-item" ? itemType : null,
     item: config.granularity === "per-item" ? item : null,
@@ -104,7 +104,7 @@ async function grantInSession(comment, session, options = {}) {
   // retry the complete transaction and re-read the ledger, including scope changes.
   const update = await User.updateOne({ _id: user._id }, { $inc: { walletBalance: amount } }, { session });
   if (update.modifiedCount !== 1) throw new Error("Review credit wallet update failed");
-  return { status: "granted", amount, userId: user._id, email: user.email, trackingCode: order.trackingCode };
+  return { status: "granted", notificationId: `review:${ledger._id}`, amount, userId: user._id, email: user.email, trackingCode: order.trackingCode };
 }
 
 // Caller authenticates the moderator and connects to DB. No external side

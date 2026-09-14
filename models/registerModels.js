@@ -77,3 +77,5 @@ import "base/models/UserNotification";
 import "base/models/UserNotificationState";
 import "base/models/Variant";
 import "base/models/Event";
+
+import "base/models/WalletNotification";

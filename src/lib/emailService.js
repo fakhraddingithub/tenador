@@ -19,8 +19,9 @@ import nodemailer from 'nodemailer';
 import { DEPARTMENT_LABELS as TICKET_DEPARTMENT_LABELS } from 'base/utils/ticketMeta';
 
 // ─── Transporter ─────────────────────────────────────────────────────────────
-function createTransporter() {
+function createTransporter(options = {}) {
   return nodemailer.createTransport({
+    ...options,
     host:   process.env.EMAIL_HOST,
     port:   Number(process.env.EMAIL_PORT ?? 587),
     secure: Number(process.env.EMAIL_PORT) === 465,
@@ -832,4 +833,28 @@ export async function sendPasswordResetCodeEmail(to, code, expiresInMinutes = 10
 </html>`.trim();
 
   await sendSingle(to, 'کد بازیابی رمز عبور — تنادور', html);
+}
+
+/** Wallet outbox needs failures to propagate so delivery can be retried. */
+export async function sendWalletTransactionEmail(transaction, customerEmail) {
+  if (!process.env.EMAIL_HOST || !process.env.EMAIL_USER) throw new Error('Wallet email transport is not configured');
+  const credit = transaction.type === 'credit';
+  const title = credit ? 'واریز به کیف پول' : 'برداشت از کیف پول';
+  const html = buildSimpleNoticeHtml({
+    title, emoji: credit ? '💰' : '💳',
+    greeting: credit ? 'مبلغی به کیف پول شما اضافه شد.' : 'مبلغی از کیف پول شما کسر شد.',
+    rows: [
+      { label: 'مبلغ تراکنش', value: formatPrice(transaction.amount) },
+      { label: 'توضیح تراکنش', value: escapeHtml(transaction.description) },
+      ...(transaction.trackingCode ? [{ label: 'کد سفارش', value: escapeHtml(transaction.trackingCode) }] : []),
+    ],
+    ctaPath: '/p-user/wallet', ctaLabel: 'مشاهده کیف پول',
+  });
+  const transporter = createTransporter({ connectionTimeout: 10000, greetingTimeout: 10000, socketTimeout: 20000 });
+  const result = await transporter.sendMail({
+    from: process.env.EMAIL_FROM ?? process.env.EMAIL_USER, to: customerEmail,
+    subject: title + ' — تنادور', html,
+    messageId: '<wallet-' + String(transaction._id).replace(/[^a-zA-Z0-9-]/g, '-') + '@tenador.ir>',
+  });
+  if (!result.accepted?.length) throw new Error('Wallet email recipient was not accepted');
 }

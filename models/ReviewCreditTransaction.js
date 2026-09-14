@@ -1,3 +1,4 @@
+import walletNotificationPlugin from "./walletNotificationPlugin.js";
 import mongoose from "mongoose";
 
 /**
@@ -60,6 +61,8 @@ const ReviewCreditTransactionSchema = new mongoose.Schema(
 );
 
 ReviewCreditTransactionSchema.index({ order: 1, item: 1 }, { unique: true });
+
+ReviewCreditTransactionSchema.plugin(walletNotificationPlugin, { source: "review" });
 
 export default mongoose.models.ReviewCreditTransaction ||
   mongoose.model("ReviewCreditTransaction", ReviewCreditTransactionSchema);

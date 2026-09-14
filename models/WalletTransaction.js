@@ -1,3 +1,4 @@
+import walletNotificationPlugin from "./walletNotificationPlugin.js";
 import mongoose from "mongoose";
 
 const schema = new mongoose.Schema({
@@ -13,4 +14,6 @@ const schema = new mongoose.Schema({
   balanceAfter: { type: Number, default: null },
 }, { timestamps: true });
 schema.index({ user: 1, createdAt: -1 });
+schema.plugin(walletNotificationPlugin, { source: "wallet" });
+
 export default mongoose.models.WalletTransaction || mongoose.model("WalletTransaction", schema);

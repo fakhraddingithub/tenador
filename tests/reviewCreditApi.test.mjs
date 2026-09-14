@@ -86,16 +86,14 @@ test('invalid status and missing comment do not run a payment', async () => {
   assert.equal((await route.PATCH(request(), params)).status, 404);
 });
 
-test('all notification failures are contained after a committed reward', async () => {
+test('review notifications reuse the durable receipt and never fail the committed reward', async () => {
   const calls = [];
   const notify = await load('../src/lib/reviewCreditGranting.js', {
-    '@/lib/emailService': { sendWalletCreditEmail: () => { calls.push('email'); throw new Error('sync email failure'); } },
-    'base/services/userNotificationService': { createUserNotification: async () => { calls.push('inbox'); throw new Error('inbox failure'); } },
-    '@/lib/push': { sendPushToUser: async (_, payload) => { calls.push(payload.url); throw new Error('push failure'); } },
+    'base/services/walletNotificationDelivery': { deliverWalletNotification: async id => { calls.push(id); throw new Error('temporary delivery failure'); } },
   });
-  await notify.notifyReviewCreditGranted({ status: 'granted', userId: 'user', amount: 200, email: 'test@example.invalid', trackingCode: 'T1' });
-  assert.deepEqual(calls, ['email', 'inbox', '/p-user/wallet']);
-  await notify.notifyReviewCreditGranted({ status: 'already_granted' });
+  await notify.notifyReviewCreditGranted({ status: 'granted', notificationId: 'review:tx' });
+  assert.deepEqual(calls, ['review:tx']);
+  await notify.notifyReviewCreditGranted({ status: 'already_granted', notificationId: 'review:tx' });
   await notify.notifyReviewCreditGranted({ status: 'disabled' });
-  assert.equal(calls.length, 3);
+  assert.equal(calls.length, 1);
 });

@@ -1,3 +1,4 @@
+import walletNotificationPlugin from "./walletNotificationPlugin.js";
 // base/models/CoachWalletTransaction.js
 import mongoose from "mongoose";
 
@@ -22,6 +23,8 @@ const CoachWalletTransactionSchema = new mongoose.Schema(
 
 CoachWalletTransactionSchema.index({ coach: 1, createdAt: -1 });
 CoachWalletTransactionSchema.index({ coach: 1, student: 1 });
+
+CoachWalletTransactionSchema.plugin(walletNotificationPlugin, { source: "coach" });
 
 export default mongoose.models.CoachWalletTransaction ||
   mongoose.model("CoachWalletTransaction", CoachWalletTransactionSchema);
