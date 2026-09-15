@@ -225,7 +225,7 @@ ${fieldRules.label}
 
 targetAudience:
 ${fieldRules.targetAudience}
-- Allowed values: "مردانه" | "زنانه" | "بچگانه" | "یونی سکس"
+- Allowed values only: "مردانه" | "زنانه" | "بچگانه" | "یونی سکس"
 - Choose exactly ONE based on who the product is actually made/marketed for.
 - Use "یونی سکس" only when the product is genuinely suitable for both adults: men AND women.
 - IMPORTANT: "یونی سکس" NEVER includes children. If the product is made for children, use "بچگانه".
