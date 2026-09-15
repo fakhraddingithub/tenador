@@ -12,7 +12,7 @@ export default async function EditOrderFlowPage({ params }) {
   await connectToDB();
   const {flowId}= await params
   const flow = await OrderFlow.findById(flowId)
-    .populate({ path: "rootCategory", select: "title name sport", populate: { path: "sport", select: "title name" } })
+    .populate({ path: "rootCategory", select: "title name sport additionalSports", populate: { path: "sport", select: "title name" } })
     .lean();
 
   if (!flow) {

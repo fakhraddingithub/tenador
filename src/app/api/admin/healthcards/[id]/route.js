@@ -14,7 +14,7 @@ export async function GET(_, { params }) {
     await connectToDB();
     const { id } = await params;
     const card = await HealthCard.findById(id)
-      .populate({ path: "category", select: "title slug sport", populate: { path: "sport", select: "title name" } })
+      .populate({ path: "category", select: "title slug sport additionalSports", populate: { path: "sport", select: "title name" } })
       .lean();
     if (!card) return NextResponse.json({ error: "یافت نشد" }, { status: 404 });
     return NextResponse.json({ card });
@@ -43,7 +43,7 @@ export async function PUT(req, { params }) {
       id,
       { fields: fields || [] },
       { new: true, runValidators: true }
-    ).populate({ path: "category", select: "title slug sport", populate: { path: "sport", select: "title name" } });
+    ).populate({ path: "category", select: "title slug sport additionalSports", populate: { path: "sport", select: "title name" } });
 
     if (!card) return NextResponse.json({ error: "یافت نشد" }, { status: 404 });
 

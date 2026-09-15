@@ -113,7 +113,7 @@ export async function PUT(req, { params }) {
       .populate({
         path: "baseProduct",
         select: "name mainImage sku category",
-        populate: { path: "category", select: "title sport", populate: { path: "sport", select: "title name" } },
+        populate: { path: "category", select: "title sport additionalSports", populate: { path: "sport", select: "title name" } },
       })
       .populate({
         path: "baseVariant",

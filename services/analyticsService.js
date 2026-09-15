@@ -423,7 +423,7 @@ async function productCategoryBrand(from, to) {
       $lookup: {
         from: "categories", localField: "product.category", foreignField: "_id", as: "cat",
         pipeline: [
-          { $project: { title: 1, name: 1, sport: 1 } },
+          { $project: { title: 1, name: 1, sport: 1, additionalSports: 1 } },
           { $lookup: { from: "sports", localField: "sport", foreignField: "_id", as: "sport", pipeline: [{ $project: { title: 1, name: 1 } }] } },
           { $set: { sport: { $arrayElemAt: ["$sport", 0] } } },
         ],
@@ -462,9 +462,10 @@ async function productCategoryBrand(from, to) {
   const catMap = new Map();
   const brandMap = new Map();
   for (const p of products) {
-    const c = catMap.get(p.categoryName) || { name: p.categoryName, revenue: 0, units: 0, orders: 0 };
+    const categoryKey = String(p.categoryId || "uncategorized");
+    const c = catMap.get(categoryKey) || { name: p.categoryName, revenue: 0, units: 0, orders: 0 };
     c.revenue += p.revenue; c.units += p.units; c.orders += p.orderCount;
-    catMap.set(p.categoryName, c);
+    catMap.set(categoryKey, c);
     const b = brandMap.get(p.brandName) || { name: p.brandName, revenue: 0, units: 0, orders: 0 };
     b.revenue += p.revenue; b.units += p.units; b.orders += p.orderCount;
     brandMap.set(p.brandName, b);

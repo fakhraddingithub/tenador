@@ -48,7 +48,7 @@ export async function PUT(req, { params }) {
       { name, description, rootCategory, nodes, edges, isActive },
       // returnDocument: "after" جایگزینِ new: true است (رفتار یکسان، بدون هشدارِ deprecation)
       { returnDocument: "after", runValidators: true }
-    ).populate({ path: "rootCategory", select: "title name sport", populate: { path: "sport", select: "title name" } });
+    ).populate({ path: "rootCategory", select: "title name sport additionalSports", populate: { path: "sport", select: "title name" } });
 
     if (!flow)
       return NextResponse.json({ message: "فرایند یافت نشد" }, { status: 404 });

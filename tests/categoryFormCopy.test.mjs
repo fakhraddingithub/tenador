@@ -294,7 +294,7 @@ test("والد فقط از ورزشِ جاری — شاملِ دسته‌های 
   assert.deepEqual(parentCategoryChoices(catalog, null), []);
 });
 
-test("«بارگذاری از دسته دیگر» همه‌ی ورزش‌ها را با نام ورزش نشان می‌دهد", () => {
+test("«بارگذاری از دسته دیگر» فقط برای دسته‌های اختصاصی نام ورزش را نشان می‌دهد", () => {
   const options = loadFromCategoryOptions(catalog);
 
   assert.equal(options.length, catalog.length);
@@ -302,6 +302,8 @@ test("«بارگذاری از دسته دیگر» همه‌ی ورزش‌ها ر
     .filter((o) => o.value === "t-racket" || o.value === "p-racket")
     .map((o) => o.label);
   assert.deepEqual(racketLabels.sort(), ["راکت پدل", "راکت تنیس"].sort());
+  assert.equal(options.find((option) => option.value === "t-guard").label,
+    catalog.find((category) => category._id === "t-guard").title);
   // دو دسته‌ی هم‌نام دیگر یکسان دیده نمی‌شوند
   assert.equal(new Set(options.map((o) => o.label)).size, options.length);
 

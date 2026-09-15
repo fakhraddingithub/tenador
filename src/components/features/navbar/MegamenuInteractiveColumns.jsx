@@ -157,7 +157,7 @@ export default function MegamenuInteractiveColumns({ sport, onClose, selectedAud
                     />
                   )}
                   <span className="flex-grow text-right font-bold">
-                    {getCategoryLabel(cat, { navbar: true })}
+                    {getCategoryLabel(cat)}
                   </span>
                   <FiChevronLeft size={16} className="opacity-20" />
                 </>
@@ -196,7 +196,7 @@ export default function MegamenuInteractiveColumns({ sport, onClose, selectedAud
                                   className={`${childButtonStyle(false)} cursor-default`}
                                 >
                                   <span className="flex-grow text-right">
-                                    {getCategoryLabel(child, { navbar: true })}
+                                    {getCategoryLabel(child)}
                                   </span>
                                 </div>
                               </li>
@@ -212,7 +212,7 @@ export default function MegamenuInteractiveColumns({ sport, onClose, selectedAud
                                   )}
                                 >
                                   <span className="flex-grow text-right">
-                                    {getCategoryLabel(child, { navbar: true })}
+                                    {getCategoryLabel(child)}
                                   </span>
                                 </Link>
                               </li>

@@ -55,7 +55,7 @@ export async function GET(req) {
         return NextResponse.json({ items: items.map((s) => ({ _id: s._id, label: s.title || s.name, sub: s.brand?.title || "", image: s.logo || null })) });
       }
       if (type === "category") {
-        const items = await Category.find({ _id: { $in: ids } }).select("_id name title icon image sport").populate({ path: "sport", select: "title name" }).lean();
+        const items = await Category.find({ _id: { $in: ids } }).select("_id name title icon image sport additionalSports").populate({ path: "sport", select: "title name" }).lean();
         return NextResponse.json({ items: items.map((c) => ({ _id: c._id, label: getCategoryLabel(c), image: c.icon || c.image || null })) });
       }
       if (type === "sport") {
@@ -115,7 +115,7 @@ export async function GET(req) {
         if (ids.length) clause.$or.push({ sport: { $in: ids } });
       });
       const found = await Category.find(filter)
-        .select("_id name title icon image sport")
+        .select("_id name title icon image sport additionalSports")
         .populate({ path: "sport", select: "title name" })
         .limit(CANDIDATE_LIMIT)
         .lean();

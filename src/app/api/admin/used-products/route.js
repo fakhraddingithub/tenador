@@ -34,7 +34,7 @@ export async function GET(req) {
         .populate({
           path: "baseProduct",
           select: "name mainImage category sku",
-          populate: { path: "category", select: "title sport", populate: { path: "sport", select: "title name" } },
+          populate: { path: "category", select: "title sport additionalSports", populate: { path: "sport", select: "title name" } },
         })
         .populate({
           path: "baseVariant",

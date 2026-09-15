@@ -13,7 +13,7 @@ export async function GET() {
   try {
     await connectToDB();
     const cards = await HealthCard.find()
-      .populate({ path: "category", select: "title slug sport", populate: { path: "sport", select: "title name" } })
+      .populate({ path: "category", select: "title slug sport additionalSports", populate: { path: "sport", select: "title name" } })
       .sort({ createdAt: -1 })
       .lean();
     return NextResponse.json({ cards });
