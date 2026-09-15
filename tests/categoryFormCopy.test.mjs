@@ -301,7 +301,7 @@ test("«بارگذاری از دسته دیگر» همه‌ی ورزش‌ها ر
   const racketLabels = options
     .filter((o) => o.value === "t-racket" || o.value === "p-racket")
     .map((o) => o.label);
-  assert.deepEqual(racketLabels.sort(), ["راکت — پدل", "راکت — تنیس"].sort());
+  assert.deepEqual(racketLabels.sort(), ["راکت پدل", "راکت تنیس"].sort());
   // دو دسته‌ی هم‌نام دیگر یکسان دیده نمی‌شوند
   assert.equal(new Set(options.map((o) => o.label)).size, options.length);
 

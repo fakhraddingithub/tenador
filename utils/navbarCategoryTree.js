@@ -42,6 +42,8 @@ export function insertStructuralParents(sports, docsById) {
       categories.push({
         _id: doc._id,
         title: doc.title,
+        sport: doc.sport,
+        additionalSports: doc.additionalSports,
         slug: doc.slug,
         icon: doc.icon,
         order: doc.order,

@@ -1,5 +1,6 @@
 'use client';
 
+import { getCategoryLabel } from "base/utils/categoryLabel";
 import AdminInput from "@/components/admin/AdminInput";
 import { useState, useEffect, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
@@ -227,7 +228,7 @@ export default function UsedProductForm({ initialData }) {
             )}
             <div className="flex-grow">
               <p className="font-bold text-sm">{selectedProduct.name}</p>
-              <p className="text-xs text-neutral-400">{selectedProduct.category?.title}</p>
+              <p className="text-xs text-neutral-400">{getCategoryLabel(selectedProduct.category)}</p>
             </div>
             {!isEdit && (
               <button type="button" onClick={clearProduct} className="text-neutral-400 hover:text-red-500 transition-colors">
@@ -255,7 +256,7 @@ export default function UsedProductForm({ initialData }) {
                     {p.mainImage && <img src={p.mainImage} alt="" className="w-10 h-10 rounded object-cover" />}
                     <div>
                       <p className="text-sm font-bold">{p.name}</p>
-                      <p className="text-xs text-neutral-400">{p.category?.title}</p>
+                      <p className="text-xs text-neutral-400">{getCategoryLabel(p.category)}</p>
                     </div>
                   </button>
                 ))}

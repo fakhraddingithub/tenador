@@ -1,3 +1,4 @@
+import "base/models/registerModels";
 import { NextResponse } from "next/server";
 import connectToDB from "base/configs/db";
 import HealthCard from "base/models/HealthCard";
@@ -12,7 +13,7 @@ export async function GET() {
   try {
     await connectToDB();
     const cards = await HealthCard.find()
-      .populate("category", "title slug")
+      .populate({ path: "category", select: "title slug sport", populate: { path: "sport", select: "title name" } })
       .sort({ createdAt: -1 })
       .lean();
     return NextResponse.json({ cards });

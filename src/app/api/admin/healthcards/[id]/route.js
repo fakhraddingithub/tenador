@@ -1,3 +1,4 @@
+import "base/models/registerModels";
 import { NextResponse } from "next/server";
 import { revalidatePath } from "next/cache";
 import connectToDB from "base/configs/db";
@@ -13,7 +14,7 @@ export async function GET(_, { params }) {
     await connectToDB();
     const { id } = await params;
     const card = await HealthCard.findById(id)
-      .populate("category", "title slug")
+      .populate({ path: "category", select: "title slug sport", populate: { path: "sport", select: "title name" } })
       .lean();
     if (!card) return NextResponse.json({ error: "یافت نشد" }, { status: 404 });
     return NextResponse.json({ card });
@@ -42,7 +43,7 @@ export async function PUT(req, { params }) {
       id,
       { fields: fields || [] },
       { new: true, runValidators: true }
-    ).populate("category", "title slug");
+    ).populate({ path: "category", select: "title slug sport", populate: { path: "sport", select: "title name" } });
 
     if (!card) return NextResponse.json({ error: "یافت نشد" }, { status: 404 });
 

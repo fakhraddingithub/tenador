@@ -1,3 +1,4 @@
+import "base/models/registerModels";
 import { NextResponse } from "next/server";
 import mongoose from "mongoose";
 import connectToDB from "base/configs/db";
@@ -21,7 +22,7 @@ export async function GET(req) {
 
   const categoriesQuery = Category.find(filter)
     .sort({ order: 1, createdAt: 1 })
-    .populate('parent')
+    .populate({ path: "parent", populate: { path: "sport", select: "title name" } })
     .populate('sport', 'title name slug')
     .populate('additionalSports', 'title name slug')
     .lean();

@@ -1,5 +1,6 @@
 'use client';
 
+import { getCategoryLabel } from "base/utils/categoryLabel";
 import { useState, useEffect } from 'react';
 import useSWR from 'swr';
 import Link from 'next/link';
@@ -120,7 +121,7 @@ export default function UsedProductsPage() {
               <div className="flex-grow min-w-0 flex flex-col gap-1">
                 <div className="flex flex-wrap items-center gap-2">
                   <span className="text-[10px] uppercase tracking-wider font-bold text-[var(--color-primary)] bg-[var(--color-primary)]/10 px-2 py-0.5 rounded-md">
-                    {item.baseProduct?.category?.title || 'دسته‌بندی'}
+                    {getCategoryLabel(item.baseProduct?.category) || 'دسته‌بندی'}
                   </span>
                   <span className={`text-[10px] px-2 py-0.5 rounded-md font-bold ring-1 ring-inset ${STATUS_COLOR[item.status]} ring-opacity-20`}>
                     {STATUS_LABEL[item.status]}

@@ -1,5 +1,6 @@
 'use client';
 
+import { getCategoryLabel } from "base/utils/categoryLabel";
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useCategories } from '@/hooks/useAdminRefData';
@@ -134,13 +135,13 @@ export default function HealthCardForm({ initialData, categoryLocked }) {
           >
             <option value="">انتخاب دسته‌بندی</option>
             {categories.map(c => (
-              <option key={c._id} value={c._id}>{c.title}</option>
+              <option key={c._id} value={c._id}>{getCategoryLabel(c)}</option>
             ))}
           </select>
         </div>
       ) : (
         <div className="bg-neutral-50 border border-neutral-200 rounded-[var(--radius)] px-4 py-3 text-sm font-bold text-neutral-600">
-          دسته‌بندی: {initialData?.category?.title}
+          دسته‌بندی: {getCategoryLabel(initialData?.category)}
         </div>
       )}
 

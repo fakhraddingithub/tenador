@@ -1,5 +1,6 @@
 'use client';
 
+import { getCategoryLabel } from "base/utils/categoryLabel";
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import {
@@ -48,7 +49,6 @@ import { showError } from '@/lib/swal';
 import { invalidateAdminCache } from '@/lib/adminCache';
 import {
   buildCategoryCopy,
-  categorySportTitle,
   loadFromCategoryOptions,
   parentCategoryChoices,
 } from '@/lib/categoryFormCopy.mjs';
@@ -472,7 +472,7 @@ The color code may appear in formats like:
     setCurrentTabItem({ title: '', description: '', link: '', image: '' });
 
     showToast.success(
-      `همه‌ی اطلاعات از دسته «${source.title} — ${categorySportTitle(source)}» کپی شد`,
+      `همه‌ی اطلاعات از دسته «${getCategoryLabel(source)}» کپی شد`,
     );
   };
 
@@ -858,7 +858,7 @@ The color code may appear in formats like:
               name="parent"
               value={formData.parent}
               onChange={(e) => setFormData((prev) => ({ ...prev, parent: e.target.value }))}
-              options={parentCategories.map((cat) => ({ value: cat._id, label: cat.title }))}
+              options={parentCategories.map((cat) => ({ value: cat._id, label: getCategoryLabel(cat) }))}
               placeholder="والد را انتخاب کنید"
               disabled={!formData.sport}
               hint={

@@ -1,5 +1,6 @@
 'use client';
 
+import { getCategoryLabel } from "base/utils/categoryLabel";
 import { useState, useEffect } from 'react';
 import useSWR from 'swr';
 import Link from 'next/link';
@@ -24,7 +25,7 @@ export default function HealthCardsPage() {
   }, [error]);
 
   const handleDelete = async (card) => {
-    const ok = await confirmDelete('حذف HealthCard', `آیا مطمئنید؟ "${card.category?.title}" حذف می‌شود.`);
+    const ok = await confirmDelete('حذف HealthCard', `آیا مطمئنید؟ "${getCategoryLabel(card.category)}" حذف می‌شود.`);
     if (!ok) return;
     try {
       const res = await fetch(`/api/admin/healthcards/${card._id}`, { method: 'DELETE' });
@@ -68,7 +69,7 @@ export default function HealthCardsPage() {
           {cards.map(card => (
             <div key={card._id} className="flex items-center justify-between bg-white border border-neutral-200 rounded-[var(--radius)] px-5 py-4 hover:shadow-md transition-all">
               <div>
-                <p className="font-bold text-neutral-800">{card.category?.title || '—'}</p>
+                <p className="font-bold text-neutral-800">{getCategoryLabel(card.category) || '—'}</p>
                 <p className="text-xs text-neutral-400 mt-0.5">{card.fields?.length || 0} فیلد ارزیابی</p>
               </div>
               {(can('healthCards.edit') || can('healthCards.delete')) && (

@@ -21,6 +21,7 @@
  * آکولاد امن است.
  */
 
+import { getCategoryLabel } from "base/utils/categoryLabel";
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { getServiceOptions, validateServiceOptions } from "@/lib/serviceConfig";
@@ -110,10 +111,8 @@ function StepCardShell({
 
   const subtitle =
     node.type === "category"
-      ? category?.title || (getNodeCategoryId(node) ? "—" : "بدون دسته‌بندی")
+      ? getCategoryLabel(category) || (getNodeCategoryId(node) ? "—" : "بدون دسته‌بندی")
       : node.serviceName?.trim() || "بدون نام خدمت";
-
-  const sportName = category?.sport?.name || category?.sport?.title || null;
 
   return (
     <div
@@ -174,9 +173,6 @@ function StepCardShell({
           </h3>
           <p className="mt-1 truncate text-xs" style={{ color: MUTED }} title={subtitle}>
             {subtitle}
-            {sportName && (
-              <span className="opacity-70"> · {sportName}</span>
-            )}
           </p>
         </div>
 

@@ -13,6 +13,7 @@
  * مانده‌ی معوق و سررسیدها از چک‌های اقساطی (با dueDate) محاسبه می‌شود.
  */
 
+import { getCategoryLabel } from "base/utils/categoryLabel";
 import connectToDB from "base/configs/db";
 import "base/models/registerModels";
 import Order from "base/models/Order";
@@ -419,7 +420,14 @@ async function productCategoryBrand(from, to) {
     },
     { $addFields: { product: { $arrayElemAt: ["$product", 0] } } },
     {
-      $lookup: { from: "categories", localField: "product.category", foreignField: "_id", as: "cat", pipeline: [{ $project: { name: 1 } }] },
+      $lookup: {
+        from: "categories", localField: "product.category", foreignField: "_id", as: "cat",
+        pipeline: [
+          { $project: { title: 1, name: 1, sport: 1 } },
+          { $lookup: { from: "sports", localField: "sport", foreignField: "_id", as: "sport", pipeline: [{ $project: { title: 1, name: 1 } }] } },
+          { $set: { sport: { $arrayElemAt: ["$sport", 0] } } },
+        ],
+      },
     },
     {
       $lookup: { from: "brands", localField: "product.brand", foreignField: "_id", as: "brand", pipeline: [{ $project: { name: 1 } }] },
@@ -432,7 +440,7 @@ async function productCategoryBrand(from, to) {
         image: "$product.mainImage",
         sku: "$product.sku",
         categoryId: { $arrayElemAt: ["$cat._id", 0] },
-        categoryName: { $ifNull: [{ $arrayElemAt: ["$cat.name", 0] }, "بدون دسته"] },
+        category: { $arrayElemAt: ["$cat", 0] },
         brandId: { $arrayElemAt: ["$brand._id", 0] },
         brandName: { $ifNull: [{ $arrayElemAt: ["$brand.name", 0] }, "بدون برند"] },
         revenue: 1,
@@ -444,7 +452,7 @@ async function productCategoryBrand(from, to) {
   ]);
 
   const totalRevenue = rows.reduce((s, r) => s + r.revenue, 0) || 1;
-  const products = rows.map((r) => ({ ...r, avgPrice: Math.round(r.avgPrice), contribution: +((r.revenue / totalRevenue) * 100).toFixed(1) }));
+  const products = rows.map(({ category, ...r }) => ({ ...r, categoryName: getCategoryLabel(category) || "بدون دسته", avgPrice: Math.round(r.avgPrice), contribution: +((r.revenue / totalRevenue) * 100).toFixed(1) }));
 
   const topProducts = [...products].sort((a, b) => b.revenue - a.revenue).slice(0, 10);
   const topByUnits = [...products].sort((a, b) => b.units - a.units).slice(0, 10);

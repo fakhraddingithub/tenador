@@ -1,5 +1,7 @@
 // src/app/api/admin/discounts/search/route.js
-import { rankBySearch, withSearch } from "@/lib/search";
+import "base/models/registerModels";
+import { getCategoryLabel } from "base/utils/categoryLabel";
+import { buildSearchFilter, matchesSearch, rankBySearch, searchTokens, withSearch } from "@/lib/search";
 import connectToDB from "base/configs/db";
 import Product from "base/models/Product";
 import Brand from "base/models/Brand";
@@ -53,8 +55,8 @@ export async function GET(req) {
         return NextResponse.json({ items: items.map((s) => ({ _id: s._id, label: s.title || s.name, sub: s.brand?.title || "", image: s.logo || null })) });
       }
       if (type === "category") {
-        const items = await Category.find({ _id: { $in: ids } }).select("_id name title icon image").lean();
-        return NextResponse.json({ items: items.map((c) => ({ _id: c._id, label: c.title || c.name, image: c.icon || c.image || null })) });
+        const items = await Category.find({ _id: { $in: ids } }).select("_id name title icon image sport").populate({ path: "sport", select: "title name" }).lean();
+        return NextResponse.json({ items: items.map((c) => ({ _id: c._id, label: getCategoryLabel(c), image: c.icon || c.image || null })) });
       }
       if (type === "sport") {
         const items = await Sport.find({ _id: { $in: ids } }).select("_id name title icon image").lean();
@@ -103,11 +105,23 @@ export async function GET(req) {
     // ── دسته‌بندی ─────────────────────────────────────────────────────────────
     if (type === "category") {
       if (!q) return NextResponse.json({ items: [] });
-      const items = rankByTitle(q, await Category.find(byTitle(q))
-        .select("_id name title icon image")
+      // Match each word against either the category or its owner sport.
+      const tokens = searchTokens(q);
+      if (!tokens.length) return NextResponse.json({ items: [] });
+      const sports = await Sport.find({ $or: tokens.map(byTitle) }).select("title name").lean();
+      const filter = buildSearchFilter(q, ["title", "name"]);
+      filter.$and.forEach((clause, index) => {
+        const ids = sports.filter((sport) => matchesSearch(tokens[index], sport.title, sport.name)).map((sport) => sport._id);
+        if (ids.length) clause.$or.push({ sport: { $in: ids } });
+      });
+      const found = await Category.find(filter)
+        .select("_id name title icon image sport")
+        .populate({ path: "sport", select: "title name" })
         .limit(CANDIDATE_LIMIT)
-        .lean());
-      return NextResponse.json({ items: items.map((c) => ({ _id: c._id, label: c.title || c.name, image: c.icon || c.image || null })) });
+        .lean();
+      const items = rankBySearch(q, found, (category) => [[getCategoryLabel(category), 2], [category.name, 1]])
+        .slice(0, RESULT_LIMIT);
+      return NextResponse.json({ items: items.map((c) => ({ _id: c._id, label: getCategoryLabel(c), image: c.icon || c.image || null })) });
     }
 
     // ── ورزش ──────────────────────────────────────────────────────────────────

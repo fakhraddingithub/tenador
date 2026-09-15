@@ -1,5 +1,6 @@
 'use client';
 
+import { getCategoryLabel } from "base/utils/categoryLabel";
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
@@ -111,7 +112,7 @@ function RecentRow({ item }) {
         <p className="font-bold text-sm text-neutral-800 truncate group-hover:text-[var(--color-primary)] transition-colors">
           {item.name}
         </p>
-        <p className="text-[11px] text-neutral-400 mt-0.5">{item.baseProduct?.category?.title}</p>
+        <p className="text-[11px] text-neutral-400 mt-0.5">{getCategoryLabel(item.baseProduct?.category)}</p>
       </div>
 
       {item.overallScore != null && (

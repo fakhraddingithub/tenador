@@ -1,5 +1,6 @@
 'use client';
 
+import { getCategoryLabel } from "base/utils/categoryLabel";
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
@@ -200,7 +201,7 @@ export default function AdminProducts() {
             label="دسته‌بندی"
             value={categoryFilter}
             onChange={(v) => { setCategoryFilter(v); setPage(1); }}
-            options={[{ value: '', label: 'همه دسته‌ها' }, ...categories.map((c) => ({ value: c._id, label: c.title || c.name }))]}
+            options={[{ value: '', label: 'همه دسته‌ها' }, ...categories.map((c) => ({ value: c._id, label: getCategoryLabel(c) }))]}
           />
           <FilterSelect
             label="برند"

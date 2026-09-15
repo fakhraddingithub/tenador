@@ -13,6 +13,8 @@
  *                    هم‌نام‌اند: «راکت» تنیس و «راکت» پدل).
  */
 
+import { getCategoryLabel } from "../../utils/categoryLabel.js";
+
 const idOf = (value) => {
   const candidate = value?._id ?? value;
   return candidate === undefined || candidate === null ? "" : String(candidate);
@@ -42,7 +44,7 @@ export function parentCategoryChoices(categories = [], sportId) {
 
 /**
  * گزینه‌های «بارگذاری از دسته دیگر»: همه‌ی ورزش‌ها، مرتب‌شده بر اساس ورزش و
- * سپس عنوان، با برچسبِ «عنوان دسته — نام ورزش».
+ * سپس عنوان، با برچسبِ «عنوان دسته نام ورزش».
  */
 export function loadFromCategoryOptions(categories = []) {
   return [...categories]
@@ -53,7 +55,7 @@ export function loadFromCategoryOptions(categories = []) {
     )
     .map((category) => ({
       value: idOf(category?._id),
-      label: `${category?.title || ""} — ${categorySportTitle(category)}`,
+      label: getCategoryLabel(category),
     }));
 }
 

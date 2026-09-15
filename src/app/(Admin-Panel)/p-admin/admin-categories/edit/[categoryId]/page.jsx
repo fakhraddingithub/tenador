@@ -1,5 +1,6 @@
 'use client';
 
+import { getCategoryLabel } from "base/utils/categoryLabel";
 import { useState, useEffect, useMemo } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import AdminLoader from '@/components/admin/AdminLoader';
@@ -457,7 +458,7 @@ export default function EditCategory() {
         attributes: [...prev.attributes, ...inheritedAttributes]
       }));
 
-      showToast.success(`اطلاعات دسته "${selectedParent.title}" به لیست فعلی اضافه شد`);
+      showToast.success(`اطلاعات دسته "${getCategoryLabel(selectedParent)}" به لیست فعلی اضافه شد`);
     }
   };
 
@@ -826,7 +827,7 @@ export default function EditCategory() {
               label="دسته والد"
               value={formData.parent}
               onChange={(e) => setFormData((prev) => ({ ...prev, parent: e.target.value }))}
-              options={parentCategories.map((cat) => ({ value: cat._id, label: cat.title }))}
+              options={parentCategories.map((cat) => ({ value: cat._id, label: getCategoryLabel(cat) }))}
               placeholder="والد را انتخاب کنید"
               disabled={!formData.sport}
               hint={

@@ -1,3 +1,4 @@
+import "base/models/registerModels";
 import OrderFlowForm from "@/components/admin/orderFlow/OrderFlowForm";
 import connectToDB from "base/configs/db";
 import OrderFlow from "base/models/OrderFlow";
@@ -11,7 +12,7 @@ export default async function EditOrderFlowPage({ params }) {
   await connectToDB();
   const {flowId}= await params
   const flow = await OrderFlow.findById(flowId)
-    .populate("rootCategory", "title name")
+    .populate({ path: "rootCategory", select: "title name sport", populate: { path: "sport", select: "title name" } })
     .lean();
 
   if (!flow) {

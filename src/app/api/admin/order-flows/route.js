@@ -1,3 +1,4 @@
+import "base/models/registerModels";
 import { NextResponse } from "next/server";
 import connectToDB from "base/configs/db";
 import OrderFlow from "base/models/OrderFlow";
@@ -13,7 +14,7 @@ export async function GET(req) {
   try {
     await connectToDB();
     const flows = await OrderFlow.find({})
-      .populate("rootCategory", "title name")
+      .populate({ path: "rootCategory", select: "title name sport", populate: { path: "sport", select: "title name" } })
       .sort({ createdAt: -1 });
     return NextResponse.json({ flows });
   } catch (error) {
@@ -54,7 +55,7 @@ export async function POST(req) {
       isActive: isActive !== undefined ? isActive : true,
     });
 
-    await flow.populate("rootCategory", "title name");
+    await flow.populate({ path: "rootCategory", select: "title name sport", populate: { path: "sport", select: "title name" } });
 
     return NextResponse.json({ flow }, { status: 201 });
   } catch (error) {

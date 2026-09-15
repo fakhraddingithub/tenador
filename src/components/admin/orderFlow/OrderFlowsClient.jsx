@@ -1,5 +1,6 @@
 "use client";
 
+import { getCategoryLabel } from "base/utils/categoryLabel";
 import { matchesSearch } from "@/lib/search";
 import { useState, useEffect } from "react";
 import useSWR from "swr";
@@ -95,7 +96,7 @@ export default function OrderFlowsClient() {
     }
   };
 
-  const filtered = flows.filter((f) => matchesSearch(search, f.name, f.rootCategory?.title));
+  const filtered = flows.filter((f) => matchesSearch(search, f.name, getCategoryLabel(f.rootCategory)));
 
   return (
     <div style={{ fontFamily: "Vazirmatn, sans-serif", direction: "rtl" }}>
@@ -262,7 +263,7 @@ function FlowCard({ flow, onToggle, onDelete }) {
             </div>
             {flow.rootCategory && (
               <p className="text-xs" style={{ color: COLORS.muted }}>
-                دسته‌بندی: {flow.rootCategory.title}
+                دسته‌بندی: {getCategoryLabel(flow.rootCategory)}
               </p>
             )}
             {flow.description && (

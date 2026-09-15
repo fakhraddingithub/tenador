@@ -1,5 +1,6 @@
 "use client";
 
+import { getCategoryLabel } from "base/utils/categoryLabel";
 import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { useCategories } from "@/hooks/useAdminRefData";
@@ -201,10 +202,9 @@ export default function OrderFlowForm({ initialFlow = null }) {
                 {loadingCats ? "در حال بارگذاری..." : "انتخاب دسته‌بندی..."}
               </option>
               {categories.map((cat) => {
-                const sportName = cat.sport?.name || cat.sport?.title;
                 return (
                   <option key={cat._id} value={cat._id}>
-                    {sportName ? `${cat.title} — ${sportName}` : cat.title}
+                    {getCategoryLabel(cat)}
                   </option>
                 );
               })}

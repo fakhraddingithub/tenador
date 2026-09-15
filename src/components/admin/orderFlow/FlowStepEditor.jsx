@@ -11,6 +11,7 @@
  * ذخیره‌ی نهایی همچنان با دکمه‌ی «ذخیره فرایند» انجام می‌شود.
  */
 
+import { getCategoryLabel } from "base/utils/categoryLabel";
 import { useEffect, useRef } from "react";
 import { FiGrid, FiTool, FiX } from "react-icons/fi";
 import { getServiceOptions } from "@/lib/serviceConfig";
@@ -222,10 +223,9 @@ export default function FlowStepEditor({
                 >
                   <option value="">انتخاب دسته‌بندی...</option>
                   {categories.map((cat) => {
-                    const sportName = cat.sport?.name || cat.sport?.title;
                     return (
                       <option key={cat._id} value={cat._id}>
-                        {sportName ? `${cat.title} — ${sportName}` : cat.title}
+                        {getCategoryLabel(cat)}
                       </option>
                     );
                   })}

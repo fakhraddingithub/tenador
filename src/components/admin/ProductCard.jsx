@@ -1,5 +1,6 @@
 'use client';
 
+import { getCategoryLabel } from "base/utils/categoryLabel";
 import Image from 'next/image';
 import Link from 'next/link';
 import { FaEdit, FaTrash, FaImage } from 'react-icons/fa';
@@ -85,8 +86,8 @@ export default function ProductCard({ product, onEdit, onDelete }) {
         className="flex items-center justify-between px-4 h-[40px] text-[11px] font-bold border-t"
         style={{ borderColor: 'var(--admin-border)', color: 'var(--admin-text-muted)' }}
       >
-        <span className="truncate max-w-[45%]" title={category?.title || '-'}>
-          {category?.title || 'بدون دسته'}
+        <span className="truncate max-w-[45%]" title={getCategoryLabel(category) || '-'}>
+          {getCategoryLabel(category) || 'بدون دسته'}
         </span>
         <span
           className="truncate max-w-[45%] text-left"

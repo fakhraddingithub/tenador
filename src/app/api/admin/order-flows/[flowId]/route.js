@@ -1,3 +1,4 @@
+import "base/models/registerModels";
 import { NextResponse } from "next/server";
 import connectToDB from "base/configs/db";
 import OrderFlow from "base/models/OrderFlow";
@@ -47,7 +48,7 @@ export async function PUT(req, { params }) {
       { name, description, rootCategory, nodes, edges, isActive },
       // returnDocument: "after" جایگزینِ new: true است (رفتار یکسان، بدون هشدارِ deprecation)
       { returnDocument: "after", runValidators: true }
-    ).populate("rootCategory", "title name");
+    ).populate({ path: "rootCategory", select: "title name sport", populate: { path: "sport", select: "title name" } });
 
     if (!flow)
       return NextResponse.json({ message: "فرایند یافت نشد" }, { status: 404 });

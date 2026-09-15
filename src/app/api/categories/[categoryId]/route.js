@@ -31,7 +31,7 @@ export async function GET(req, { params }) {
     await connectToDB();
     const { categoryId } = await params;
     const category = await Category.findById(categoryId)
-      .populate('parent')
+      .populate({ path: "parent", populate: { path: "sport", select: "title name" } })
       .populate('sport', 'title name slug')
       .populate('additionalSports', 'title name slug')
       .lean();

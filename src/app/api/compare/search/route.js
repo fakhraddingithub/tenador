@@ -1,4 +1,5 @@
 // app/api/compare/search/route.js
+import "base/models/registerModels";
 import { NextResponse } from 'next/server';
 import connectToDB from 'base/configs/db'; // مسیر اتصال به دیتابیس خود را تنظیم کنید
 import Product from 'base/models/Product';  // مدل محصول شما
@@ -39,7 +40,8 @@ export async function GET(request) {
       .select('slug mainImage category technicalStats name color sku tag brand serie')
       .populate({
         path: 'category',
-        select: 'title technicalStats',
+        select: 'title technicalStats sport additionalSports',
+        populate: { path: "sport", select: "title name" },
       })
       .populate('brand', 'title name')
       .populate('serie', 'title name')

@@ -1,3 +1,4 @@
+import "base/models/registerModels";
 import { unstable_cache } from "next/cache";
 import connectToDB from "base/configs/db";
 import Sport from "base/models/Sport";
@@ -48,7 +49,7 @@ async function attachStructuralParents(sports) {
   let frontier = missingParentIds(sports);
   while (frontier.length > 0) {
     const rows = await Category.find({ _id: { $in: frontier } })
-      .select("_id title slug icon order parent")
+      .select("_id title slug icon order parent sport additionalSports")
       .lean();
     const next = [];
     for (const row of rows) {
@@ -106,6 +107,8 @@ async function buildNavbarData() {
         $group: {
           _id: { sport: "$_visibleSports", category: "$category._id" },
           title: { $first: "$category.title" },
+          sport: { $first: "$category.sport" },
+          additionalSports: { $first: "$category.additionalSports" },
           slug: { $first: "$category.slug" },
           icon: { $first: "$category.icon" },
           order: { $first: "$category.order" },
@@ -135,6 +138,8 @@ async function buildNavbarData() {
     sport.categories.push({
       _id: row._id.category,
       title: row.title,
+      sport: row.sport,
+      additionalSports: row.additionalSports,
       slug: row.slug,
       icon: row.icon,
       order: row.order,
@@ -144,6 +149,13 @@ async function buildNavbarData() {
   }
 
   await attachStructuralParents(sports);
+
+  for (const sport of sports) {
+    for (const category of sport.categories) {
+      const owner = sportMap.get(String(category.sport));
+      category.sport = owner ? { _id: owner._id, title: owner.title } : null;
+    }
+  }
 
   // ───────────────────────────────────────────────────────────────────────
   // ۲) فراداده‌ی «ویژگیِ فیلترِ مگامنو» هر دسته: نام، برچسب و گزینه‌های تعریف‌شده.
@@ -427,6 +439,6 @@ export const getCachedNavbar = unstable_cache(
     return JSON.parse(JSON.stringify(data));
   },
   // کلید با اضافه‌شدنِ دسته‌های ساختاری (hasProducts) بامپ شد تا کشِ قدیمی سرو نشود
-  ["navbar-data", "target-audience-unisex-v1", "structural-parents-v1"],
+  ["navbar-data", "target-audience-unisex-v1", "structural-parents-v1", "category-sport-label-v1"],
   { revalidate: 10800, tags: ["navbar"] },
 );

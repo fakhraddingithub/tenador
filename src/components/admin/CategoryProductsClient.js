@@ -1,5 +1,6 @@
 "use client";
 
+import { getCategoryLabel } from "base/utils/categoryLabel";
 import { useMemo, useState } from "react";
 import useSWR from "swr";
 import { useRouter } from "next/navigation";
@@ -169,7 +170,7 @@ export default function CategoryProductsClient({ categoryId }) {
     if (!category) return;
     const confirmed = await confirmDelete(
       "حذف دسته‌بندی",
-      `آیا مطمئن هستید که می‌خواهید "${category.title}" را حذف کنید؟ تمام محصولات این دسته بدون دسته‌بندی خواهند ماند.`
+      `آیا مطمئن هستید که می‌خواهید "${getCategoryLabel(category)}" را حذف کنید؟ تمام محصولات این دسته بدون دسته‌بندی خواهند ماند.`
     );
     if (!confirmed) return;
 
@@ -232,7 +233,7 @@ export default function CategoryProductsClient({ categoryId }) {
               <FaLayerGroup size={16} />
             </div>
             <div>
-              <h1 className="text-xl font-bold text-gray-900">{category?.title}</h1>
+              <h1 className="text-xl font-bold text-gray-900">{getCategoryLabel(category)}</h1>
               <p className="text-xs font-bold text-gray-400 mt-0.5 flex items-center gap-1.5">
                 <FaTags style={{ color: "var(--color-secondary)" }} size={10} />
                 مدیریت محصولات این مجموعه
@@ -357,7 +358,7 @@ export default function CategoryProductsClient({ categoryId }) {
           <p className="text-gray-400 text-xs mb-4">
             {hasActiveFilter
               ? "فیلترها را تغییر داده یا پاک کنید."
-              : `هنوز هیچ محصولی برای دسته‌بندی ${category?.title} ثبت نکرده‌اید.`}
+              : `هنوز هیچ محصولی برای دسته‌بندی ${getCategoryLabel(category)} ثبت نکرده‌اید.`}
           </p>
           {!hasActiveFilter && can("products.create") && (
             <button

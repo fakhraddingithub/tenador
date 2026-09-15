@@ -1,5 +1,6 @@
 'use client';
 
+import { getCategoryLabel } from "base/utils/categoryLabel";
 import AdminInput from "@/components/admin/AdminInput";
 import { useState, useEffect, useMemo } from 'react';
 import { useRouter, useParams } from 'next/navigation';
@@ -612,7 +613,7 @@ export default function ProductEditPage() {
   // اعتبارسنجی می‌کند). هر مقدارِ خارج از این فهرست کهنه است و به "" می‌افتد.
   const limitedEditionOptions = limitedEditions
     .filter(c => (c.brand?._id || c.brand) === formData.brand)
-    .map(c => ({ value: c._id, label: c.title || c.name }));
+    .map(c => ({ value: c._id, label: getCategoryLabel(c) }));
   const selectedLimitedEdition = limitedEditionOptions.some(
     o => o.value === formData.limitedEdition
   )
@@ -908,7 +909,7 @@ export default function ProductEditPage() {
             error={fieldErrors.category}
             value={formData.category}
             onChange={e => updateField('category', e.target.value)}
-            options={categories.map(c => ({ value: c._id, label: c.title }))}
+            options={categories.map(c => ({ value: c._id, label: getCategoryLabel(c) }))}
           />
           <Input
             label="قیمت پایه"

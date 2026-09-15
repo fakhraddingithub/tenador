@@ -1,5 +1,6 @@
 'use client';
 
+import { getCategoryLabel } from "base/utils/categoryLabel";
 import { matchesSearch } from "@/lib/search";
 import { useState } from 'react';
 import useSWR from 'swr';
@@ -47,7 +48,7 @@ export default function SportCategoriesDetail() {
   } = useCategories(sportId, Boolean(sportId));
 
   const handleDelete = async (category) => {
-    const confirmed = await confirmDelete('حذف دسته‌بندی', `آیا مطمئن هستید که می‌خواهید "${category.title}" را حذف کنید؟`);
+    const confirmed = await confirmDelete('حذف دسته‌بندی', `آیا مطمئن هستید که می‌خواهید "${getCategoryLabel(category)}" را حذف کنید؟`);
     if (!confirmed) return;
     try {
       const res = await fetch(`/api/categories/${category._id}`, { method: 'DELETE' });
@@ -56,7 +57,7 @@ export default function SportCategoriesDetail() {
     } catch { showError('خطا', 'خطا در ارتباط با سرور'); }
   };
 
-  const filtered = categories.filter((c) => matchesSearch(searchTerm, c.title, c.name, c.slug));
+  const filtered = categories.filter((c) => matchesSearch(searchTerm, getCategoryLabel(c), c.name, c.slug));
 
   const sensors = useSensors(useSensor(PointerSensor));
 

@@ -1,5 +1,6 @@
 'use client';
 
+import { getCategoryLabel } from "base/utils/categoryLabel";
 import { useState, useEffect } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import AdminLayout from '@/components/admin/Layout';
@@ -118,7 +119,7 @@ export default function AddVariant() {
               <span className="font-semibold">محصول:</span> {product?.name}
             </p>
             <p className="text-sm text-gray-700 mt-1">
-              <span className="font-semibold">دسته‌بندی:</span> {category?.title || '-'}
+              <span className="font-semibold">دسته‌بندی:</span> {getCategoryLabel(category) || '-'}
             </p>
           </div>
 

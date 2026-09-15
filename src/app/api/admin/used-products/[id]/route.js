@@ -6,6 +6,7 @@
  * DELETE → حذف (فقط اگه فروخته نشده)
  */
 
+import "base/models/registerModels";
 import { NextResponse } from "next/server";
 import { revalidatePath } from "next/cache";
 import connectToDB from "base/configs/db";
@@ -26,7 +27,7 @@ export async function GET(_, { params }) {
     const item = await UsedProduct.findById(id)
       .populate({
         path: "baseProduct",
-        populate: { path: "category" },
+        populate: { path: "category", populate: { path: "sport", select: "title name" } },
       })
       .populate({
         path: "baseVariant",
@@ -112,7 +113,7 @@ export async function PUT(req, { params }) {
       .populate({
         path: "baseProduct",
         select: "name mainImage sku category",
-        populate: { path: "category", select: "title" },
+        populate: { path: "category", select: "title sport", populate: { path: "sport", select: "title name" } },
       })
       .populate({
         path: "baseVariant",

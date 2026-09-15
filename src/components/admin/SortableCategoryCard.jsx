@@ -1,5 +1,6 @@
 "use client";
 
+import { getCategoryLabel } from "base/utils/categoryLabel";
 import { useRouter } from "next/navigation";
 import { FaFolderOpen, FaBoxOpen, FaShapes } from "react-icons/fa";
 import { FiEdit3, FiTrash2, FiMenu } from "react-icons/fi";
@@ -53,7 +54,7 @@ export default function SortableCategoryCard({
         {category.image ? (
           <img
             src={category.image}
-            alt={category.title}
+            alt={getCategoryLabel(category)}
             className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500 pointer-events-none"
           />
         ) : (
@@ -122,7 +123,7 @@ export default function SortableCategoryCard({
             )}
           </div>
           <h3 className="text-sm font-bold text-gray-800 group-hover:text-[var(--color-primary)] transition-colors truncate">
-            {category.title}
+            {getCategoryLabel(category)}
           </h3>
         </div>
 

@@ -4,6 +4,7 @@
 // فرم ساخت/ویرایش کد تخفیف — هم‌خانواده با DiscountRuleForm.
 // اعتبارسنجی و اعمال کد هنگام خرید از قبل در priceEngine انجام می‌شود.
 
+import { getCategoryLabel } from "base/utils/categoryLabel";
 import AdminInput from "@/components/admin/AdminInput";
 import { useState, useEffect, useRef, useCallback } from "react";
 import { toast } from "react-toastify";
@@ -160,7 +161,7 @@ function CategoryTargetField({ selectedIds, onChange }) {
               }
               className="accent-[#aa4725]"
             />
-            <span className="truncate">{cat.title}</span>
+            <span className="truncate">{getCategoryLabel(cat)}</span>
           </label>
         );
       })}

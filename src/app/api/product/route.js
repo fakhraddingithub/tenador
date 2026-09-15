@@ -1,3 +1,4 @@
+import "base/models/registerModels";
 import { NextResponse } from "next/server";
 import connectToDB from "base/configs/db";
 import Product from "base/models/Product";
@@ -103,7 +104,11 @@ export async function GET(req) {
       .populate('athlete', 'name title slug')
       // با withVariants (انتخاب محصول در مودال فرایند سفارش) تعریف ویژگی‌های دسته هم
       // لازم است: برچسب واریانت‌ها (labelMap) و ساخت فیلترهای پویا از همین‌ها ساخته می‌شوند.
-      .populate('category', withVariants ? 'name title slug attributes variantAttributes' : 'name title slug')
+      .populate({
+        path: 'category',
+        select: withVariants ? 'name title slug attributes variantAttributes sport additionalSports' : 'name title slug sport additionalSports',
+        populate: { path: "sport", select: "title name" },
+      })
       .populate('serie', 'name title slug')
       .populate('limitedEdition', 'name title slug')
       .sort({ order: 1, createdAt: -1 });
