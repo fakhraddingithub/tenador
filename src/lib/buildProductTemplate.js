@@ -23,9 +23,8 @@ function getPromptContext(prompts, field) {
  * Builds the full AI prompt for product data extraction.
  *
  * @param {Object} params
- * @param {Object}   params.category        - Populated category document
+ * @param {Object}   params.category        - Category with populated sport (_id, name, title)
  * @param {Array}    params.brands           - Populated brand documents (with .series)
- * @param {Array}    params.sports           - Sport documents
  * @param {Array}    params.athletes         - Athlete documents
  * @param {Array}   [params.limitedEditions] - Limited edition documents (optional)
  * @param {string}   params.rawContent       - Raw text to extract product data from
@@ -34,7 +33,6 @@ function getPromptContext(prompts, field) {
 export function buildProductTemplate({
   category,
   brands,
-  sports,
   athletes,
   limitedEditions = [],
   rawContent,
@@ -43,7 +41,10 @@ export function buildProductTemplate({
   if (!category) throw new Error("category is required");
   if (!category._id) throw new Error("category._id is required");
   if (!Array.isArray(brands)) throw new Error("brands must be an array");
-  if (!Array.isArray(sports)) throw new Error("sports must be an array");
+  if (!category.sport?._id || !category.sport.name?.trim()) {
+    throw new Error("category.sport must be populated with _id and name");
+  }
+  const sportId = category.sport._id.toString();
   if (!Array.isArray(athletes)) throw new Error("athletes must be an array");
   if (typeof rawContent !== "string" || rawContent.trim().length < 50) {
     throw new Error("rawContent is too short (minimum 50 characters)");
@@ -126,11 +127,6 @@ export function buildProductTemplate({
   const brandList = brands.map((b) => ({
     id: b._id.toString(),
     name: b.name,
-  }));
-
-  const sportList = sports.map((s) => ({
-    id: s._id.toString(),
-    name: s.name,
   }));
 
   const athleteList = athletes.map((a) => ({
@@ -258,7 +254,9 @@ limitedEdition:
 - A product can have BOTH a serie and a limited edition at the same time.
 
 sport:
-- Choose exactly ONE id from AVAILABLE SPORTS based on actual product usage.
+- MUST be exactly: "${sportId}"
+- This is the selected category's owning sport. Do NOT change this value.
+- Do NOT infer or select a sport from the raw content, product name, or category name.
 
 athlete:
 - Pick ALL relevant athlete ids from AVAILABLE ATHLETES as a JSON array.
@@ -350,6 +348,10 @@ CATEGORY DEFINITION
 =================================================================
 Category Name : ${category.title}
 Category ID   : ${category._id}
+Category Sport Name : ${category.sport.name}
+Category Sport Title: ${category.sport.title || category.sport.name}
+Category Sport ID   : ${sportId}
+This category belongs to the sport above. Categories with the same name in other sports are different categories.
 
 Category Attributes (single-value fields → output in "attributes"):
 ${globalAttributeInstructions || "  (none defined)"}
@@ -374,11 +376,6 @@ ${customTabInstructions}
 AVAILABLE BRANDS
 =================================================================
 ${JSON.stringify(brandList, null, 2)}
-
-=================================================================
-AVAILABLE SPORTS
-=================================================================
-${JSON.stringify(sportList, null, 2)}
 
 =================================================================
 AVAILABLE ATHLETES
@@ -416,7 +413,7 @@ Output exactly this structure with no extra fields:
   "brand": "ID_FROM_BRANDS_LIST",
   "serie": "ID_FROM_SERIES_LIST_OR_EMPTY_STRING",
   "limitedEdition": "ID_FROM_LIMITED_EDITIONS_LIST_OR_EMPTY_STRING",
-  "sport": "ID_FROM_SPORTS_LIST",
+  "sport": "${sportId}",
   "athlete": [],
   "category": "${category._id}",
   "attributes": {

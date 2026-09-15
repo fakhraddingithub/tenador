@@ -4,6 +4,7 @@ import { useState } from "react";
 import { toast } from "react-toastify";
 import Swal from "sweetalert2";
 import { useAdminPermissions } from "@/components/admin/AdminPermissionProvider";
+import { parseAiProductDraft } from "@/lib/parseAiProductDraft";
 
 /**
  * Step 1: Generate AI prompt
@@ -16,6 +17,7 @@ export default function AIProductDraftStep({ categoryId, onConfirm }) {
   const [step, setStep] = useState("RAW"); // RAW | PROMPT | RESULT
   const [rawContent, setRawContent] = useState("");
   const [aiPrompt, setAiPrompt] = useState("");
+  const [draftMeta, setDraftMeta] = useState(null);
   const [aiResult, setAiResult] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -44,6 +46,7 @@ export default function AIProductDraftStep({ categoryId, onConfirm }) {
       }
 
       setAiPrompt(data.draft);
+      setDraftMeta(data.meta);
       setStep("PROMPT");
       toast.success("پرامپت ساخته شد");
     } catch (err) {
@@ -60,7 +63,7 @@ export default function AIProductDraftStep({ categoryId, onConfirm }) {
 
   function handleValidateAndConfirm() {
     try {
-      const parsed = JSON.parse(aiResult);
+      const parsed = parseAiProductDraft(aiResult, categoryId, draftMeta);
 
       Swal.fire({
         icon: "success",
@@ -70,11 +73,11 @@ export default function AIProductDraftStep({ categoryId, onConfirm }) {
 
       // تحویل داده به والد
       onConfirm(parsed);
-    } catch {
+    } catch (err) {
       Swal.fire({
         icon: "error",
         title: "JSON نامعتبر",
-        text: "پاسخ AI فرمت JSON درست نداره",
+        text: err instanceof SyntaxError ? "پاسخ AI فرمت JSON درست نداره" : err.message,
       });
     }
   }

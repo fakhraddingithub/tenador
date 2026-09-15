@@ -1,7 +1,7 @@
+import "base/models/registerModels";
 import connectToDB from "base/configs/db";
 import Category from "base/models/Category";
 import Brand from "base/models/Brand";
-import Sport from "base/models/Sport";
 import Athlete from "base/models/Athlete";
 import LimitedEdition from "base/models/LimitedEdition";
 
@@ -26,14 +26,22 @@ export async function POST(req) {
     }
 
     // 1. Load category
-    const category = await Category.findById(categoryId).lean();
+    const category = await Category.findById(categoryId)
+      .populate({ path: "sport", select: "name title" })
+      .lean();
     if (!category) {
       return Response.json({ error: "Category not found" }, { status: 404 });
     }
 
-    // 2. Load ALL brands & sports (real behavior)
+    if (!category.sport?._id || !category.sport.name?.trim()) {
+      return Response.json(
+        { error: "ورزش اصلی این دسته‌بندی معتبر نیست؛ ابتدا ورزش دسته‌بندی را اصلاح کنید" },
+        { status: 400 }
+      );
+    }
+
+    // 2. Load reference lists; sport comes only from the selected category.
     const brands = await Brand.find({}, { name: 1 }).populate("series").lean();
-    const sports = await Sport.find({}, { name: 1 }).lean();
     const athletes = await Athlete.find({}, { name: 1 }).lean();
     // brand لازم است تا قیدِ «ادیشن ← برند مالک» به مدل داده شود؛ بدونِ آن مدل
     // می‌توانست ادیشنِ یک برند را به محصولِ برندِ دیگری بچسباند.
@@ -41,9 +49,9 @@ export async function POST(req) {
       .populate({ path: "brand", select: "name" })
       .lean();
 
-    if (!brands.length || !sports.length) {
+    if (!brands.length) {
       return Response.json(
-        { error: "Brands or sports not configured" },
+        { error: "Brands not configured" },
         { status: 500 }
       );
     }
@@ -52,7 +60,6 @@ export async function POST(req) {
     const prompt = buildProductTemplate({
       category,
       brands,
-      sports,
       athletes,
       limitedEditions,
       rawContent,
@@ -64,6 +71,12 @@ export async function POST(req) {
         draft: prompt,
         meta: {
           category: category.title,
+          categoryId: category._id.toString(),
+          sport: {
+            id: category.sport._id.toString(),
+            name: category.sport.name,
+            title: category.sport.title,
+          },
           aiModel: "gpt-4.1-mini",
         },
       },

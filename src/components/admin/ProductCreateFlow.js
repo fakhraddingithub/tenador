@@ -6,7 +6,7 @@ import Swal from "sweetalert2";
 import ProductCreateForm from "./ProductCreateForm";
 import { useAdminPermissions } from "@/components/admin/AdminPermissionProvider";
 import { getApiErrorMessage } from "@/lib/apiClientError";
-import { normalizeTargetAudience } from "base/utils/targetAudience";
+import { parseAiProductDraft } from "@/lib/parseAiProductDraft";
 
 const steps = [
   { id: 1, label: "متن خام" },
@@ -24,6 +24,7 @@ export default function AddProductToCategory({ categoryId }) {
 
   const [rawContent, setRawContent] = useState("");
   const [aiPrompt, setAiPrompt] = useState("");
+  const [draftMeta, setDraftMeta] = useState(null);
   const [aiResult, setAiResult] = useState("");
   const [parsedProduct, setParsedProduct] = useState(null);
 
@@ -45,6 +46,8 @@ export default function AddProductToCategory({ categoryId }) {
       if (!res.ok) throw new Error(getApiErrorMessage(data, "خطا در ساخت پرامپت"));
 
       setAiPrompt(data.draft);
+      setDraftMeta(data.meta);
+      setParsedProduct(null);
       setStep(2);
       toast.success("پرامپت ساخته شد");
     } catch (e) {
@@ -56,12 +59,7 @@ export default function AddProductToCategory({ categoryId }) {
 
   function handleValidateJSON() {
     try {
-      const parsed = JSON.parse(aiResult);
-      if (parsed.targetAudience != null && parsed.targetAudience !== "") {
-        const normalizedTargetAudience = normalizeTargetAudience(parsed.targetAudience);
-        if (!normalizedTargetAudience) throw new Error("invalid targetAudience");
-        parsed.targetAudience = normalizedTargetAudience;
-      }
+      const parsed = parseAiProductDraft(aiResult, categoryId, draftMeta);
       setParsedProduct(parsed);
       setStep(3);
 
@@ -70,11 +68,11 @@ export default function AddProductToCategory({ categoryId }) {
         title: "JSON معتبره",
         text: "می‌تونی محصول رو ویرایش و ثبت کنی",
       });
-    } catch {
+    } catch (err) {
       Swal.fire({
         icon: "error",
         title: "JSON نامعتبر",
-        text: "فرمت خروجی AI غلطه",
+        text: err instanceof SyntaxError ? "فرمت خروجی AI غلطه" : err.message,
       });
     }
   }
