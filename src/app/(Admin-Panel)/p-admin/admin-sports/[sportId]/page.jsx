@@ -8,7 +8,7 @@ import { useRouter, useParams } from 'next/navigation';
 import Link from 'next/link';
 import { motion } from 'framer-motion';
 import { showToast } from '@/lib/toast';
-import { confirmDelete, showError } from '@/lib/swal';
+import { confirmCategoryDelete, showError } from '@/lib/swal';
 import {
   FaPlus, FaFolderOpen, FaSearch, FaArrowRight, FaShapes,
 } from 'react-icons/fa';
@@ -48,12 +48,12 @@ export default function SportCategoriesDetail() {
   } = useCategories(sportId, Boolean(sportId));
 
   const handleDelete = async (category) => {
-    const confirmed = await confirmDelete('حذف دسته‌بندی', `آیا مطمئن هستید که می‌خواهید "${getCategoryLabel(category)}" را حذف کنید؟`);
-    if (!confirmed) return;
+    const confirmationSlug = await confirmCategoryDelete(category);
+    if (!confirmationSlug) return;
     try {
-      const res = await fetch(`/api/categories/${category._id}`, { method: 'DELETE' });
-      if (res.ok) { showToast.success('دسته‌بندی حذف شد'); fetchCategories(); }
-      else { const data = await res.json(); showError('خطا', data.error || 'خطا در حذف'); }
+      const res = await fetch(`/api/categories/${category._id}`, { method: 'DELETE', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ confirmationSlug }) });
+      if (res.ok) { showToast.success('دسته‌بندی و محصولات آن حذف شدند'); fetchCategories(); }
+      else { const data = await res.json(); showError('خطا', data.error || data.message || 'خطا در حذف'); }
     } catch { showError('خطا', 'خطا در ارتباط با سرور'); }
   };
 

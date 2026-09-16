@@ -128,7 +128,7 @@ export default function SortableCategoryCard({
         </div>
 
         {/* Actions — ردیف کامل حذف می‌شود اگر هیچ اکشنی مجاز نباشد */}
-        {(can("categories.edit") || can("categories.delete")) && (
+        {(can("categories.edit") || (can("categories.delete") && can("products.delete"))) && (
         <div className="flex items-center gap-2 pt-3 border-t border-gray-50">
           {can("categories.edit") && (
           <button
@@ -141,7 +141,7 @@ export default function SortableCategoryCard({
             <FiEdit3 size={13} /> ویرایش
           </button>
           )}
-          {can("categories.delete") && (
+          {(can("categories.delete") && can("products.delete")) && (
           <button
             onClick={(e) => {
               e.stopPropagation();

@@ -5,6 +5,9 @@ import Category from "base/models/Category";
 import Order from "base/models/Order";
 import Product from "base/models/Product";
 import Variant from "base/models/Variant";
+import PriceCache from "base/models/PriceCache";
+import SlugRegistery from "base/models/SlugRegistery";
+import { CategoryDeletionError, deleteCategoryWithProducts } from "base/services/categoryDeletion";
 import { NextResponse } from "next/server";
 import {
   revalidateCategoryVisibilityPaths,
@@ -282,17 +285,18 @@ export async function PUT(req, { params }) {
 // DELETE: حذف کتگوری
 // ---------------------------------------------------------
 export async function DELETE(req, { params }) {
-  const { denied } = await requireAdminPermission("categories.delete");
+  const { denied } = await requireAdminPermission(["categories.delete", "products.delete"]);
   if (denied) return denied;
 
   try {
     await connectToDB();
     const { categoryId } = await params;
 
-    const category = await Category.findByIdAndDelete(categoryId);
-    if (!category) {
-      return NextResponse.json({ error: "دسته‌بندی پیدا نشد" }, { status: 404 });
-    }
+    const body = await req.json();
+    const { category, deletedProducts } = await deleteCategoryWithProducts({
+      Category, Product, Variant, PriceCache, SlugRegistery,
+      categoryId, confirmationSlug: body?.confirmationSlug,
+    });
 
     const affectedSportSlugs = await getCategoryVisibilitySportSlugs(category);
     revalidateContent(["navbar", "categories", "products"]);
@@ -301,8 +305,11 @@ export async function DELETE(req, { params }) {
       categorySlug: category.slug,
     });
 
-    return NextResponse.json({ message: "دسته‌بندی با موفقیت حذف شد" });
+    return NextResponse.json({ message: "دسته‌بندی و محصولات آن با موفقیت حذف شدند", deletedProducts });
   } catch (error) {
+    if (error instanceof CategoryDeletionError) {
+      return NextResponse.json({ error: error.message }, { status: error.status });
+    }
     return handleApiError(error, "خطا در حذف دسته‌بندی");
   }
 }

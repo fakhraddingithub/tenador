@@ -7,7 +7,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { ProductCard } from "@/components/admin";
 import { showToast } from "@/lib/toast";
-import { confirmDelete, showError } from "@/lib/swal";
+import { confirmCategoryDelete, confirmDelete, showError } from "@/lib/swal";
 import {
   FaPlus,
   FaEdit,
@@ -168,19 +168,17 @@ export default function CategoryProductsClient({ categoryId }) {
 
   const handleDelete = async () => {
     if (!category) return;
-    const confirmed = await confirmDelete(
-      "حذف دسته‌بندی",
-      `آیا مطمئن هستید که می‌خواهید "${getCategoryLabel(category)}" را حذف کنید؟ تمام محصولات این دسته بدون دسته‌بندی خواهند ماند.`
-    );
-    if (!confirmed) return;
+    const confirmationSlug = await confirmCategoryDelete(category);
+    if (!confirmationSlug) return;
 
     try {
-      const res = await fetch(`/api/categories/${categoryId}`, { method: "DELETE" });
-      if (!res.ok) throw new Error();
-      showToast.success("دسته‌بندی با موفقیت حذف شد");
+      const res = await fetch(`/api/categories/${categoryId}`, { method: "DELETE", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ confirmationSlug }) });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || data.message || "خطا در حذف دسته‌بندی");
+      showToast.success(data.message);
       router.push("/p-admin/admin-categories");
-    } catch {
-      showError("خطا", "خطا در حذف دسته‌بندی");
+    } catch (error) {
+      showError("خطا", error.message);
     }
   };
 
@@ -266,7 +264,7 @@ export default function CategoryProductsClient({ categoryId }) {
           </button>
           )}
 
-          {can("categories.delete") && (
+          {(can("categories.delete") && can("products.delete")) && (
           <button
             onClick={handleDelete}
             className="flex items-center gap-2 px-4 py-2.5 rounded-[var(--radius)] text-sm font-bold bg-white border-2 border-red-100 text-red-500 hover:bg-red-50 transition-all"
