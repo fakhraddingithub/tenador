@@ -1,6 +1,5 @@
 "use client";
 
-import { getCategoryLabel } from "base/utils/categoryLabel";
 import { getUserFullName } from "base/utils/userName";
 
 import { useState, useEffect, useRef, useCallback } from "react";
@@ -73,7 +72,7 @@ function SearchResultItem({ product, onClick }) {
         </span>
         {product.category?.title && (
           <span className="text-gray-400 text-xs truncate">
-            {getCategoryLabel(product.category)}
+            {product.category.title}
           </span>
         )}
       </div>
@@ -456,7 +455,7 @@ function MobileCategoryDrawer({ navData, onClose, selectedAudience, onSelectAudi
                           />
                         )}
                         <span className="min-w-0 flex-1 text-xs leading-tight truncate">
-                          {getCategoryLabel(cat)}
+                          {cat.title}
                         </span>
                         {kids.length > 0 && (
                           <FiChevronLeft
@@ -482,7 +481,7 @@ function MobileCategoryDrawer({ navData, onClose, selectedAudience, onSelectAudi
                                     // زیردسته‌ی ساختاری هم صفحه‌ی خالی دارد ⇒ لینک نمی‌شود
                                     <div className="mr-3 flex items-center gap-1.5 border-r border-white/10 px-3 py-2 text-right text-[11px] font-medium leading-5 text-gray-400">
                                       <span className="min-w-0 flex-1 truncate">
-                                        {getCategoryLabel(child)}
+                                        {child.title}
                                       </span>
                                     </div>
                                   ) : (
@@ -495,7 +494,7 @@ function MobileCategoryDrawer({ navData, onClose, selectedAudience, onSelectAudi
                                       className="mr-3 flex items-center gap-1.5 border-r border-white/10 px-3 py-2 text-right text-[11px] font-medium leading-5 text-gray-400 transition-colors hover:bg-white/[0.04] hover:text-[#aa4725]"
                                     >
                                       <span className="min-w-0 flex-1 truncate">
-                                        {getCategoryLabel(child)}
+                                        {child.title}
                                       </span>
                                     </Link>
                                   )}
@@ -525,7 +524,7 @@ function MobileCategoryDrawer({ navData, onClose, selectedAudience, onSelectAudi
                 onClick={onClose}
                 className="block px-2 py-2 mb-1 text-[11px] font-bold text-[#aa4725] truncate"
               >
-                مشاهده‌ی همه‌ی {getCategoryLabel(activeCategory)}
+                مشاهده‌ی همه‌ی {activeCategory.title}
               </Link>
             )}
 

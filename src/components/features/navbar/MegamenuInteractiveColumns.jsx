@@ -23,7 +23,6 @@
  *   - برند:  /[sport]/[category]/[brand]        (الگوی ۵ — با کانتکستِ دسته)
  */
 
-import { getCategoryLabel } from "base/utils/categoryLabel";
 import { useState } from "react";
 import Link from "next/link";
 import { FiChevronLeft } from "react-icons/fi";
@@ -157,7 +156,7 @@ export default function MegamenuInteractiveColumns({ sport, onClose, selectedAud
                     />
                   )}
                   <span className="flex-grow text-right font-bold">
-                    {getCategoryLabel(cat)}
+                    {cat.title}
                   </span>
                   <FiChevronLeft size={16} className="opacity-20" />
                 </>
@@ -196,7 +195,7 @@ export default function MegamenuInteractiveColumns({ sport, onClose, selectedAud
                                   className={`${childButtonStyle(false)} cursor-default`}
                                 >
                                   <span className="flex-grow text-right">
-                                    {getCategoryLabel(child)}
+                                    {child.title}
                                   </span>
                                 </div>
                               </li>
@@ -212,7 +211,7 @@ export default function MegamenuInteractiveColumns({ sport, onClose, selectedAud
                                   )}
                                 >
                                   <span className="flex-grow text-right">
-                                    {getCategoryLabel(child)}
+                                    {child.title}
                                   </span>
                                 </Link>
                               </li>

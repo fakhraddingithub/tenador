@@ -12,7 +12,7 @@ test("admin labels distinguish same-title categories using the owner's Persian t
   assert.equal(getCategoryLabel({ title: "  راکت  ", sport: tennis }), "راکت تنیس");
 });
 
-test("shared categories omit the owner in both admin and navbar", () => {
+test("shared categories omit the owner in admin labels", () => {
   for (const additionalSports of [["padel"], [padel]]) {
     const category = Object.freeze({ title: "کفش", slug: "shoes", sport: tennis, additionalSports });
     assert.equal(getCategoryLabel(category), "کفش");
@@ -22,7 +22,7 @@ test("shared categories omit the owner in both admin and navbar", () => {
   }
 });
 
-test("legacy non-shared categories show their owner in the navbar", () => {
+test("legacy non-shared categories show their owner in admin labels", () => {
   for (const additionalSports of [undefined, null, []]) {
     assert.equal(getCategoryLabel({ title: "راکت", sport: tennis, additionalSports }), "راکت تنیس");
   }
@@ -38,13 +38,15 @@ test("missing and unpopulated references never render IDs or undefined", () => {
   assert.equal(getCategoryLabel({ name: "Racket", sport: { name: "Tennis" } }), "Racket Tennis");
 });
 
-test("structural parents retain the owner and sharing metadata used by navbar labels", () => {
+test("structural parents retain their raw title and category metadata", () => {
   for (const additionalSports of [[], [padel]]) {
     const parent = { _id: "parent", title: "پوشاک", sport: tennis, additionalSports };
     const sports = [{ _id: "tennis", categories: [{ _id: "child", parent: "parent" }] }];
     insertStructuralParents(sports, new Map([["parent", parent]]));
     const inserted = sports[0].categories[1];
-    assert.equal(getCategoryLabel(inserted), additionalSports.length ? "پوشاک" : "پوشاک تنیس");
+    assert.equal(inserted.title, "پوشاک");
+    assert.equal(inserted.sport, tennis);
+    assert.deepEqual(inserted.additionalSports, additionalSports);
     assert.equal(inserted.hasProducts, false);
     assert.deepEqual(inserted.brands, []);
   }

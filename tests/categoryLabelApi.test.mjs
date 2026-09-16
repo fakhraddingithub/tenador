@@ -47,17 +47,17 @@ before(async () => {
 });
 after(async () => { await mongoose.disconnect(); await server?.stop(); });
 
-test("navbar includes owner labels, shared labels in both sports, and structural parents", async () => {
+test("navbar preserves plain category titles for exclusive, shared and structural categories", async () => {
   const { getCachedNavbar } = await import("../src/lib/navbarService.js");
   const sports = await getCachedNavbar();
   for (const sport of sports) {
     const shoes = sport.categories.find((category) => category.slug === "shoes");
-    assert.equal(getCategoryLabel(shoes), "کفش");
+    assert.equal(shoes.title, "کفش");
     const structural = sport.categories.find((category) => category.slug === "equipment");
-    assert.equal(getCategoryLabel(structural), "تجهیزات");
+    assert.equal(structural.title, "تجهیزات");
     assert.equal(structural.hasProducts, false);
     const ownRacket = sport.categories.find((category) => category.slug === "racket");
-    assert.equal(getCategoryLabel(ownRacket), `راکت ${sport.title}`);
+    assert.equal(ownRacket.title, "راکت");
   }
 });
 
