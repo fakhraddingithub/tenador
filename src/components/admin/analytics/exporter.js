@@ -33,11 +33,14 @@ export function exportCsv(filename, columns, rows) {
 
 // ─── سازنده‌های مجموعه‌داده از payloadِ تحلیل ──────────────────────────────
 export function buildDatasets(data) {
-  return {
+  const isEuro = data?.meta?.currency === "EUR";
+  const unit = isEuro ? "یورو" : "تومان";
+  const round = (v) => isEuro ? Math.round(Number(v) * 100) / 100 : Math.round(v);
+  const datasets = {
     revenue: {
       columns: [
         { key: "date", label: "تاریخ" },
-        { key: "revenue", label: "درآمد (تومان)" },
+        { key: "revenue", label: `درآمد (${unit})` },
         { key: "orders", label: "تعداد سفارش" },
       ],
       rows: (data?.revenue?.daily || []).map((d) => ({ date: d.date, revenue: d.revenue, orders: d.orders })),
@@ -52,8 +55,8 @@ export function buildDatasets(data) {
         { key: "lifetimeOrders", label: "سفارش کل" },
       ],
       rows: (data?.customers?.topByRevenue || []).map((c) => ({
-        name: c.name, phone: c.phone, rangeRevenue: Math.round(c.rangeRevenue),
-        rangeOrders: c.rangeOrders, lifetimeRevenue: Math.round(c.lifetimeRevenue), lifetimeOrders: c.lifetimeOrders,
+        name: c.name, phone: c.phone, rangeRevenue: round(c.rangeRevenue),
+        rangeOrders: c.rangeOrders, lifetimeRevenue: round(c.lifetimeRevenue), lifetimeOrders: c.lifetimeOrders,
       })),
     },
     products: {
@@ -68,7 +71,7 @@ export function buildDatasets(data) {
       ],
       rows: (data?.products?.list || []).map((p) => ({
         name: p.name, brandName: p.brandName, categoryName: p.categoryName,
-        units: p.units, revenue: Math.round(p.revenue), avgPrice: p.avgPrice, contribution: p.contribution,
+        units: p.units, revenue: round(p.revenue), avgPrice: p.avgPrice, contribution: p.contribution,
       })),
     },
     receivables: {
@@ -82,10 +85,18 @@ export function buildDatasets(data) {
       ],
       rows: (data?.receivables?.byCustomer || []).map((d) => ({
         customer: d.customer, phone: d.phone, trackingCode: d.trackingCode,
-        amount: Math.round(d.amount), overdue: Math.round(d.overdue), nextDue: d.nextDue ? faDate(d.nextDue) : "—",
+        amount: round(d.amount), overdue: isEuro ? "—" : round(d.overdue), nextDue: d.nextDue ? faDate(d.nextDue) : "—",
       })),
     },
   };
+  if (isEuro) {
+    for (const dataset of Object.values(datasets)) {
+      for (const column of dataset.columns) {
+        if (["rangeRevenue", "lifetimeRevenue", "revenue", "avgPrice", "amount"].includes(column.key) && !column.label.includes(unit)) column.label += ` (${unit})`;
+      }
+    }
+  }
+  return datasets;
 }
 
 // ─── Excel چندبرگه‌ای (import پویای xlsx) ─────────────────────────────────
@@ -97,12 +108,12 @@ export async function exportWorkbook(data, rangeLabel) {
   // برگه‌ی خلاصه‌ی KPI
   const k = data?.kpis || {};
   const summary = [
-    ["گزارش تحلیل مالی", rangeLabel || ""],
+    [data?.meta?.currency === "EUR" ? "گزارش تحلیل مالی (یورو)" : "گزارش تحلیل مالی", rangeLabel || ""],
     [],
     ["معیار", "مقدار", "تغییر ٪"],
     ["درآمد کل", k.revenue?.value ?? 0, k.revenue?.change ?? ""],
     ["وصول‌شده", k.collected?.value ?? 0, k.collected?.change ?? ""],
-    ["مطالبات معوق", k.outstanding?.value ?? 0, k.outstanding?.change ?? ""],
+    [data?.meta?.currency === "EUR" ? "مانده‌ی وصول‌نشده" : "مطالبات معوق", k.outstanding?.value ?? 0, k.outstanding?.change ?? ""],
     ["تعداد سفارش", k.orders?.value ?? 0, k.orders?.change ?? ""],
     ["میانگین ارزش سفارش", k.aov?.value ?? 0, k.aov?.change ?? ""],
     ["مشتریان فعال", k.customers?.value ?? 0, ""],
@@ -126,19 +137,22 @@ export async function exportWorkbook(data, rangeLabel) {
 
 // ─── PDF از طریق پنجره‌ی چاپ (پشتیبانی کاملِ فارسی/RTL) ───────────────────
 export function exportPdf(data, rangeLabel) {
+  const isEuro = data?.meta?.currency === "EUR";
+  const unit = isEuro ? "یورو" : "تومان";
+  const format = isEuro ? (v) => Number(v ?? 0).toLocaleString("fa-IR", { maximumFractionDigits: 2 }) : fa;
   const k = data?.kpis || {};
   const ds = buildDatasets(data);
   const win = window.open("", "_blank");
   if (!win) return;
 
   const kpiRow = (label, value, change) =>
-    `<tr><td>${label}</td><td style="text-align:left;font-weight:700">${fa(value)}</td><td style="text-align:left;color:#888">${change != null && change !== "" ? fa(change) + "٪" : "—"}</td></tr>`;
+    `<tr><td>${label}</td><td style="text-align:left;font-weight:700">${format(value)}</td><td style="text-align:left;color:#888">${change != null && change !== "" ? fa(change) + "٪" : "—"}</td></tr>`;
 
   const table = (title, dset, limit = 10) => `
     <h3>${title}</h3>
     <table>
       <thead><tr>${dset.columns.map((c) => `<th>${c.label}</th>`).join("")}</tr></thead>
-      <tbody>${dset.rows.slice(0, limit).map((r) => `<tr>${dset.columns.map((c) => `<td>${typeof r[c.key] === "number" ? fa(r[c.key]) : (r[c.key] ?? "")}</td>`).join("")}</tr>`).join("")}</tbody>
+      <tbody>${dset.rows.slice(0, limit).map((r) => `<tr>${dset.columns.map((c) => `<td>${typeof r[c.key] === "number" ? format(r[c.key]) : (r[c.key] ?? "")}</td>`).join("")}</tr>`).join("")}</tbody>
     </table>`;
 
   win.document.write(`
@@ -156,23 +170,23 @@ export function exportPdf(data, rangeLabel) {
   th { background: #faf7f5; color: #888; font-weight: 700; }
   @media print { @page { margin: 12mm; } }
 </style></head><body>
-  <h1>گزارش تحلیل مالی و هوش فروش</h1>
+  <h1>گزارش تحلیل مالی و هوش فروش (${unit})</h1>
   <div class="sub">بازه: ${rangeLabel || "—"} — تاریخ تولید: ${faDate(new Date(), true)}</div>
   <h3>خلاصه‌ی اجرایی</h3>
   <table>
     <thead><tr><th>معیار</th><th style="text-align:left">مقدار</th><th style="text-align:left">تغییر</th></tr></thead>
     <tbody>
-      ${kpiRow("درآمد کل (تومان)", k.revenue?.value, k.revenue?.change)}
+      ${kpiRow(`درآمد کل (${unit})`, k.revenue?.value, k.revenue?.change)}
       ${kpiRow("وصول‌شده", k.collected?.value, k.collected?.change)}
-      ${kpiRow("مطالبات معوق", k.outstanding?.value, k.outstanding?.change)}
+      ${kpiRow(isEuro ? "مانده‌ی وصول‌نشده" : "مطالبات معوق", k.outstanding?.value, k.outstanding?.change)}
       ${kpiRow("تعداد سفارش", k.orders?.value, k.orders?.change)}
       ${kpiRow("میانگین ارزش سفارش", k.aov?.value, k.aov?.change)}
       ${kpiRow("نرخ وصول (٪)", k.collectionRate?.value, null)}
     </tbody>
   </table>
-  ${table("محصولات برتر", { columns: ds.products.columns, rows: data?.products?.top?.map((p) => ({ name: p.name, brandName: p.brandName, categoryName: p.categoryName, units: p.units, revenue: Math.round(p.revenue), avgPrice: p.avgPrice, contribution: p.contribution })) || [] })}
+  ${table("محصولات برتر", { columns: ds.products.columns, rows: data?.products?.top?.map((p) => ({ name: p.name, brandName: p.brandName, categoryName: p.categoryName, units: p.units, revenue: isEuro ? p.revenue : Math.round(p.revenue), avgPrice: p.avgPrice, contribution: p.contribution })) || [] })}
   ${table("مشتریان برتر", ds.customers)}
-  ${table("مطالبات معوق", ds.receivables)}
+  ${table(isEuro ? "مانده‌ی وصول‌نشده" : "مطالبات معوق", ds.receivables)}
   <script>window.onload = () => { window.print(); };</script>
 </body></html>`);
   win.document.close();

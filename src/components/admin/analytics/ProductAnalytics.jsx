@@ -1,9 +1,11 @@
 "use client";
 
+import { useAnalyticsCurrency } from "./CurrencyContext";
+
 import { memo, useState } from "react";
 import { Package, TrendingDown, Lightbulb, Trophy } from "lucide-react";
 import { ChartCard, EmptyState } from "./primitives";
-import { fa, compactToman } from "./format";
+
 
 const TABS = [
   { key: "top", label: "بیشترین درآمد" },
@@ -11,6 +13,7 @@ const TABS = [
 ];
 
 function ProductRow({ p, i, showUnits }) {
+  const { fa, compactToman } = useAnalyticsCurrency();
   return (
     <tr className="border-b border-gray-50 hover:bg-gray-50/60 transition">
       <td className="py-2 px-2">
@@ -44,6 +47,7 @@ function ProductRow({ p, i, showUnits }) {
 }
 
 function ProductAnalytics({ data, loading }) {
+  const { fa, compactToman } = useAnalyticsCurrency();
   const [tab, setTab] = useState("top");
   const rows = data?.[tab] || [];
   const underperformers = data?.underperformers || [];

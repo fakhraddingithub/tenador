@@ -29,6 +29,10 @@ export async function GET(req) {
 
   try {
     const { searchParams } = new URL(req.url);
+    const currency = searchParams.get("currency") || "IRT";
+    if (!["IRT", "EUR"].includes(currency)) {
+      return NextResponse.json({ message: "واحد پول نامعتبر است" }, { status: 400 });
+    }
     const now = new Date();
 
     const to = parseDate(searchParams.get("to"), now);
@@ -38,7 +42,7 @@ export async function GET(req) {
       return NextResponse.json({ message: "بازه‌ی تاریخ نامعتبر است" }, { status: 400 });
     }
 
-    const data = await computeAnalytics({ from, to });
+    const data = await computeAnalytics({ from, to, currency });
     return NextResponse.json(data, { status: 200 });
   } catch (error) {
     console.error("[admin/analytics GET]", error);

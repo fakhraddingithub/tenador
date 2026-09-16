@@ -18,7 +18,15 @@ import connectToDB from "base/configs/db";
 import "base/models/registerModels";
 import Order from "base/models/Order";
 import Installment from "base/models/Installment";
-import User from "base/models/User";
+import { aggregateEuroOrders, euroPaymentStages, euroReceivables } from "base/services/euroAnalytics";
+
+// Currency is request-local; Toman pipelines keep their original behavior.
+function aggregateOrders(currency, pipeline) {
+  return currency === "EUR" ? aggregateEuroOrders(pipeline) : Order.aggregate(pipeline);
+}
+function roundMoney(value, currency) {
+  return currency === "EUR" ? Math.round((value + Number.EPSILON) * 100) / 100 : Math.round(value);
+}
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
@@ -51,7 +59,8 @@ const COLLECTED_EXPR = {
 };
 
 // مراحل الحاقِ پرداخت‌ها و چک‌های اقساط به هر سفارش
-function lookupPaymentsAndChecks() {
+function lookupPaymentsAndChecks(currency) {
+  if (currency === "EUR") return euroPaymentStages();
   return [
     {
       $lookup: {
@@ -105,11 +114,11 @@ function lookupPaymentsAndChecks() {
  * ───────────────────────────────────────────────────────────────────────── */
 
 // KPIهای هسته‌ای برای یک بازه‌ی دلخواه
-async function coreMetrics(from, to) {
+async function coreMetrics(from, to, currency) {
   const match = { createdAt: { $gte: from, $lte: to }, ...NON_CANCELED };
-  const res = await Order.aggregate([
+  const res = await aggregateOrders(currency, [
     { $match: match },
-    ...lookupPaymentsAndChecks(),
+    ...lookupPaymentsAndChecks(currency),
     { $addFields: { collected: COLLECTED_EXPR } },
     { $addFields: { outstanding: { $max: [0, { $subtract: ["$totalPrice", "$collected"] }] } } },
     {
@@ -137,14 +146,14 @@ async function coreMetrics(from, to) {
   ]);
 
   const m = res[0] || { revenue: 0, orders: 0, collected: 0, outstanding: 0, units: 0, customers: 0 };
-  m.aov = m.orders > 0 ? Math.round(m.revenue / m.orders) : 0;
+  m.aov = m.orders > 0 ? roundMoney(m.revenue / m.orders, currency) : 0;
   m.collectionRate = m.revenue > 0 ? +((m.collected / m.revenue) * 100).toFixed(1) : 0;
   return m;
 }
 
 // مشتری‌های جدید/بازگشتی در بازه (بر اساس اولین سفارشِ تاریخی)
-async function customerMix(from, to) {
-  const res = await Order.aggregate([
+async function customerMix(from, to, currency) {
+  const res = await aggregateOrders(currency, [
     { $match: NON_CANCELED },
     {
       $group: {
@@ -169,8 +178,8 @@ async function customerMix(from, to) {
 }
 
 // سری زمانیِ روزانه‌ی درآمد و تعداد سفارش در بازه
-async function dailySeries(from, to) {
-  const rows = await Order.aggregate([
+async function dailySeries(from, to, currency) {
+  const rows = await aggregateOrders(currency, [
     { $match: { createdAt: { $gte: from, $lte: to }, ...NON_CANCELED } },
     {
       $group: {
@@ -186,13 +195,13 @@ async function dailySeries(from, to) {
 }
 
 // سری ماهانه‌ی ۱۲ ماه گذشته (مستقل از فیلتر) برای نمودار روند بلندمدت
-async function monthlySeries(to) {
+async function monthlySeries(to, currency) {
   const start = new Date(to.getTime());
   start.setMonth(start.getMonth() - 11);
   start.setDate(1);
   start.setHours(0, 0, 0, 0);
 
-  const rows = await Order.aggregate([
+  const rows = await aggregateOrders(currency, [
     { $match: { createdAt: { $gte: start, $lte: to }, ...NON_CANCELED } },
     {
       $group: {
@@ -208,10 +217,10 @@ async function monthlySeries(to) {
 }
 
 // هیت‌مپ: درآمد بر اساس روز هفته و روز ماه
-async function heatmaps(from, to) {
+async function heatmaps(from, to, currency) {
   const match = { createdAt: { $gte: from, $lte: to }, ...NON_CANCELED };
   const [weekday, dayOfMonth] = await Promise.all([
-    Order.aggregate([
+    aggregateOrders(currency, [
       { $match: match },
       {
         $group: {
@@ -222,7 +231,7 @@ async function heatmaps(from, to) {
       },
       { $project: { _id: 0, dow: "$_id", revenue: 1, orders: 1 } },
     ]),
-    Order.aggregate([
+    aggregateOrders(currency, [
       { $match: match },
       {
         $group: {
@@ -239,7 +248,8 @@ async function heatmaps(from, to) {
 }
 
 // تحلیل مطالبات: سطل‌بندیِ سنیِ چک‌های پرداخت‌نشده + بدهیِ هر مشتری
-async function receivables(now = new Date()) {
+async function receivables(now = new Date(), currency) {
+  if (currency === "EUR") return euroReceivables();
   const rows = await Installment.aggregate([
     { $unwind: "$checks" },
     { $match: { "checks.status": { $in: ["PENDING", "BOUNCED"] } } },
@@ -324,9 +334,9 @@ async function receivables(now = new Date()) {
 }
 
 // رتبه‌بندیِ مشتری‌ها (درآمد، تعداد سفارش) + بخش‌بندی + CLV
-async function customerAnalytics(from, to) {
+async function customerAnalytics(from, to, currency) {
   // همه‌ی سفارش‌ها (برای CLV/segmentation تاریخی) + درآمد در بازه
-  const rows = await Order.aggregate([
+  const rows = await aggregateOrders(currency, [
     { $match: NON_CANCELED },
     {
       $group: {
@@ -387,7 +397,7 @@ async function customerAnalytics(from, to) {
 
   return {
     segmentation: { vip, repeat, oneTime, atRisk, highValue, total: totalCustomers },
-    clv: { average: Math.round(avgClv), perCustomer: totalCustomers > 0 ? Math.round(avgClv) : 0 },
+    clv: { average: roundMoney(avgClv, currency), perCustomer: totalCustomers > 0 ? roundMoney(avgClv, currency) : 0 },
     topByRevenue,
     topByOrders,
     topByAov,
@@ -395,15 +405,15 @@ async function customerAnalytics(from, to) {
 }
 
 // عملکرد محصول/دسته/برند — با unwind آیتم‌ها و join محصول (یک‌بار)
-async function productCategoryBrand(from, to) {
-  const rows = await Order.aggregate([
+async function productCategoryBrand(from, to, currency) {
+  const rows = await aggregateOrders(currency, [
     { $match: { createdAt: { $gte: from, $lte: to }, ...NON_CANCELED } },
     { $unwind: "$items" },
-    { $match: { "items.itemType": { $ne: "used_product" }, "items.product": { $ne: null } } },
+    { $match: { "items.itemType": { $ne: "used_product" }, "items.product": { $ne: null }, ...(currency === "EUR" ? { "items.priceEUR": { $type: "number", $gte: 0 } } : {}) } },
     {
       $group: {
         _id: "$items.product",
-        revenue: { $sum: { $multiply: ["$items.unitPrice", "$items.quantity"] } },
+        revenue: { $sum: { $multiply: [currency === "EUR" ? "$items.priceEUR" : "$items.unitPrice", "$items.quantity"] } },
         units: { $sum: "$items.quantity" },
         orders: { $addToSet: "$_id" },
       },
@@ -452,7 +462,7 @@ async function productCategoryBrand(from, to) {
   ]);
 
   const totalRevenue = rows.reduce((s, r) => s + r.revenue, 0) || 1;
-  const products = rows.map(({ category, ...r }) => ({ ...r, categoryName: getCategoryLabel(category) || "بدون دسته", avgPrice: Math.round(r.avgPrice), contribution: +((r.revenue / totalRevenue) * 100).toFixed(1) }));
+  const products = rows.map(({ category, ...r }) => ({ ...r, categoryName: getCategoryLabel(category) || "بدون دسته", avgPrice: roundMoney(r.avgPrice, currency), contribution: +((r.revenue / totalRevenue) * 100).toFixed(1) }));
 
   const topProducts = [...products].sort((a, b) => b.revenue - a.revenue).slice(0, 10);
   const topByUnits = [...products].sort((a, b) => b.units - a.units).slice(0, 10);
@@ -486,15 +496,15 @@ function pctChange(curr, prev) {
 }
 
 // رشدِ یک معیار بین دو بازه‌ی مطلق (برای رشد ماهانه/فصلی/سالانه)
-async function periodRevenue(from, to) {
-  const r = await Order.aggregate([
+async function periodRevenue(from, to, currency) {
+  const r = await aggregateOrders(currency, [
     { $match: { createdAt: { $gte: from, $lte: to }, ...NON_CANCELED } },
     { $group: { _id: null, revenue: { $sum: "$totalPrice" } } },
   ]);
   return r[0]?.revenue || 0;
 }
 
-async function growthBlocks(now) {
+async function growthBlocks(now, currency) {
   const startOfMonth = (d) => new Date(d.getFullYear(), d.getMonth(), 1);
   const startOfQuarter = (d) => new Date(d.getFullYear(), Math.floor(d.getMonth() / 3) * 3, 1);
   const startOfYear = (d) => new Date(d.getFullYear(), 0, 1);
@@ -507,12 +517,12 @@ async function growthBlocks(now) {
   const yPrevStart = new Date(yStart.getFullYear() - 1, 0, 1);
 
   const [mCurr, mPrev, qCurr, qPrev, yCurr, yPrev] = await Promise.all([
-    periodRevenue(mStart, now),
-    periodRevenue(mPrevStart, new Date(mStart.getTime() - 1)),
-    periodRevenue(qStart, now),
-    periodRevenue(qPrevStart, new Date(qStart.getTime() - 1)),
-    periodRevenue(yStart, now),
-    periodRevenue(yPrevStart, new Date(yStart.getTime() - 1)),
+    periodRevenue(mStart, now, currency),
+    periodRevenue(mPrevStart, new Date(mStart.getTime() - 1), currency),
+    periodRevenue(qStart, now, currency),
+    periodRevenue(qPrevStart, new Date(qStart.getTime() - 1), currency),
+    periodRevenue(yStart, now, currency),
+    periodRevenue(yPrevStart, new Date(yStart.getTime() - 1), currency),
   ]);
 
   return {
@@ -523,16 +533,16 @@ async function growthBlocks(now) {
 }
 
 // تولید کارت‌های بینش خودکار از داده‌ی محاسبه‌شده
-function buildInsights({ core, prevCore, pcb, customers, receivables: recv, heatmap, growth }) {
+function buildInsights({ core, prevCore, pcb, customers, receivables: recv, heatmap, growth }, currency) {
   const insights = [];
-  const fmt = (n) => new Intl.NumberFormat("fa-IR").format(Math.round(n));
+  const fmt = (n) => new Intl.NumberFormat("fa-IR").format(roundMoney(n, currency));
 
   // پیکِ روز هفته
   if (heatmap.weekday?.length) {
     const WD = ["", "یکشنبه", "دوشنبه", "سه‌شنبه", "چهارشنبه", "پنجشنبه", "جمعه", "شنبه"];
     const peak = [...heatmap.weekday].sort((a, b) => b.revenue - a.revenue)[0];
     if (peak && peak.revenue > 0) {
-      insights.push({ type: "peak", tone: "info", text: `بیشترین فروش در روز «${WD[peak.dow] || peak.dow}» رخ می‌دهد (${fmt(peak.revenue)} تومان).` });
+      insights.push({ type: "peak", tone: "info", text: `بیشترین فروش در روز «${WD[peak.dow] || peak.dow}» رخ می‌دهد (${fmt(peak.revenue)} ${currency === "EUR" ? "یورو" : "تومان"}).` });
     }
   }
   // سهم دسته‌ی برتر
@@ -581,7 +591,7 @@ function buildInsights({ core, prevCore, pcb, customers, receivables: recv, heat
  * @param {Date} opts.from
  * @param {Date} opts.to
  */
-export async function computeAnalytics({ from, to }) {
+export async function computeAnalytics({ from, to, currency = "IRT" }) {
   await connectToDB();
 
   const now = new Date();
@@ -601,16 +611,16 @@ export async function computeAnalytics({ from, to }) {
     pcb,
     growth,
   ] = await Promise.all([
-    coreMetrics(from, to),
-    coreMetrics(prevFrom, prevTo),
-    customerMix(from, to),
-    dailySeries(from, to),
-    monthlySeries(to),
-    heatmaps(from, to),
-    receivables(now),
-    customerAnalytics(from, to),
-    productCategoryBrand(from, to),
-    growthBlocks(now),
+    coreMetrics(from, to, currency),
+    coreMetrics(prevFrom, prevTo, currency),
+    customerMix(from, to, currency),
+    dailySeries(from, to, currency),
+    monthlySeries(to, currency),
+    heatmaps(from, to, currency),
+    receivables(now, currency),
+    customerAnalytics(from, to, currency),
+    productCategoryBrand(from, to, currency),
+    growthBlocks(now, currency),
   ]);
 
   // KPIهای اجراییِ با مقایسه‌ی بازه‌ی قبل
@@ -630,10 +640,11 @@ export async function computeAnalytics({ from, to }) {
     yearlyGrowth: { value: growth.yearly.change, current: growth.yearly.current, previous: growth.yearly.previous },
   };
 
-  const insights = buildInsights({ core, prevCore, pcb, customers, receivables: recv, heatmap, growth });
+  const insights = buildInsights({ core, prevCore, pcb, customers, receivables: recv, heatmap, growth }, currency);
 
   return {
     meta: {
+      currency,
       from: from.toISOString(),
       to: to.toISOString(),
       prevFrom: prevFrom.toISOString(),

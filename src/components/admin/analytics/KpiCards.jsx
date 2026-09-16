@@ -1,5 +1,7 @@
 "use client";
 
+import { useAnalyticsCurrency } from "./CurrencyContext";
+
 import { memo } from "react";
 import {
   DollarSign, Wallet, AlertCircle, ShoppingCart, Receipt, Users,
@@ -30,6 +32,9 @@ const CONFIG = [
 ];
 
 function KpiCard({ cfg, data }) {
+  const { compactToman, unit, isEuro } = useAnalyticsCurrency();
+  const money = cfg.unit === "تومان";
+  const formatValue = money && isEuro ? compactToman : cfg.fmt;
   const Icon = cfg.icon;
   const value = data?.value ?? 0;
   const change = data?.change;
@@ -47,19 +52,19 @@ function KpiCard({ cfg, data }) {
           : <TrendBadge change={change} invert={cfg.invert} size="xs" />}
       </div>
 
-      <p className="text-[11px] font-bold text-gray-400 mt-3">{cfg.label}</p>
+      <p className="text-[11px] font-bold text-gray-400 mt-3">{isEuro && cfg.key === "outstanding" ? "مانده‌ی وصول‌نشده" : cfg.label}</p>
       <p className="text-lg font-black text-gray-800 mt-0.5 leading-tight">
-        {cfg.isGrowth ? pct(value) : cfg.fmt(value)}
-        {cfg.unit && !cfg.isGrowth ? <span className="text-[10px] font-bold text-gray-400 mr-1">{cfg.unit}</span> : null}
+        {cfg.isGrowth ? pct(value) : formatValue(value)}
+        {cfg.unit && !cfg.isGrowth ? <span className="text-[10px] font-bold text-gray-400 mr-1">{money ? unit : cfg.unit}</span> : null}
       </p>
 
       {/* مقایسه با بازه‌ی قبل */}
       {cfg.isGrowth ? (
         data?.current != null ? (
-          <p className="text-[10px] text-gray-400 mt-1.5">دوره فعلی: {compactToman(data.current)} تومان</p>
+          <p className="text-[10px] text-gray-400 mt-1.5">دوره فعلی: {compactToman(data.current)} {unit}</p>
         ) : null
       ) : prev != null ? (
-        <p className="text-[10px] text-gray-400 mt-1.5">دوره قبل: {cfg.fmt(prev)}{cfg.unit && cfg.unit !== "تومان" ? "" : ""}</p>
+        <p className="text-[10px] text-gray-400 mt-1.5">دوره قبل: {formatValue(prev)}{cfg.unit && cfg.unit !== "تومان" ? "" : ""}</p>
       ) : (
         <p className="text-[10px] text-gray-300 mt-1.5">—</p>
       )}

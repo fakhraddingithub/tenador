@@ -1,5 +1,7 @@
 "use client";
 
+import { useAnalyticsCurrency } from "./CurrencyContext";
+
 import { useState, useMemo, memo } from "react";
 import {
   ResponsiveContainer, AreaChart, Area, BarChart, Bar, XAxis, YAxis,
@@ -7,9 +9,10 @@ import {
 } from "recharts";
 import { LineChart as LineIcon } from "lucide-react";
 import { ChartCard, EmptyState } from "./primitives";
-import { fa, compactToman, axisShort, faDayLabel, faMonthLabel, COLORS } from "./format";
+import { faDayLabel, faMonthLabel, COLORS } from "./format";
 
 function RevenueTooltip({ active, payload, label }) {
+  const { fa, unit } = useAnalyticsCurrency();
   if (!active || !payload?.length) return null;
   return (
     <div className="bg-white rounded-xl border border-gray-200 shadow-lg px-3 py-2 text-xs" dir="rtl">
@@ -17,7 +20,7 @@ function RevenueTooltip({ active, payload, label }) {
       {payload.map((p) => (
         <p key={p.dataKey} className="text-gray-500 flex items-center gap-1.5">
           <span className="w-2 h-2 rounded-full" style={{ background: p.color }} />
-          {p.name}: <span className="font-bold text-gray-800">{fa(p.value)}{p.dataKey === "revenue" ? " تومان" : ""}</span>
+          {p.name}: <span className="font-bold text-gray-800">{fa(p.value)}{p.dataKey === "revenue" ? ` ${unit}` : ""}</span>
         </p>
       ))}
     </div>
@@ -30,6 +33,7 @@ const VIEWS = [
 ];
 
 function RevenueTrends({ daily = [], monthly = [], loading }) {
+  const { compactToman, axisShort, unit } = useAnalyticsCurrency();
   const [view, setView] = useState("daily");
 
   const data = useMemo(() => {
@@ -57,7 +61,7 @@ function RevenueTrends({ daily = [], monthly = [], loading }) {
   );
 
   return (
-    <ChartCard icon={LineIcon} title="روند درآمد" subtitle={`مجموع نمایش‌داده‌شده: ${compactToman(totalRevenue)} تومان`} action={action}>
+    <ChartCard icon={LineIcon} title="روند درآمد" subtitle={`مجموع نمایش‌داده‌شده: ${compactToman(totalRevenue)} ${unit}`} action={action}>
       {loading ? (
         <div className="h-72 animate-pulse bg-gray-50 rounded-xl" />
       ) : data.length === 0 ? (

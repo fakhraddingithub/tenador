@@ -1,9 +1,11 @@
 "use client";
 
+import { useAnalyticsCurrency } from "./CurrencyContext";
+
 import { memo, useMemo } from "react";
 import { Flame, TrendingUp, TrendingDown } from "lucide-react";
 import { ChartCard, EmptyState } from "./primitives";
-import { fa, compactToman, WEEKDAYS, WEEKDAY_ORDER } from "./format";
+import { WEEKDAYS, WEEKDAY_ORDER } from "./format";
 
 // رنگِ سلول بر اساس شدت (۰..۱) — از روشن به رنگ برند
 function heatColor(t) {
@@ -16,6 +18,7 @@ function heatColor(t) {
 }
 
 function Cell({ label, value, max, sub }) {
+  const { fa, unit } = useAnalyticsCurrency();
   const t = max > 0 ? value / max : 0;
   const bg = heatColor(t);
   const textLight = t > 0.55;
@@ -23,7 +26,7 @@ function Cell({ label, value, max, sub }) {
     <div
       className="rounded-lg flex flex-col items-center justify-center aspect-square p-1 transition hover:ring-2 hover:ring-[#aa4725]/40 cursor-default"
       style={{ background: bg }}
-      title={`${label}: ${fa(value)} تومان`}
+      title={`${label}: ${fa(value)} ${unit}`}
     >
       <span className={`text-[10px] font-bold leading-none ${textLight ? "text-white/90" : "text-gray-500"}`}>{label}</span>
       {sub && <span className={`text-[8px] mt-0.5 leading-none ${textLight ? "text-white/70" : "text-gray-400"}`}>{sub}</span>}
@@ -32,6 +35,7 @@ function Cell({ label, value, max, sub }) {
 }
 
 function SalesHeatmap({ weekday = [], dayOfMonth = [], loading }) {
+  const { fa, compactToman } = useAnalyticsCurrency();
   const wd = useMemo(() => {
     const map = Object.fromEntries(weekday.map((w) => [w.dow, w]));
     return WEEKDAY_ORDER.map((dow) => ({ dow, label: WEEKDAYS[dow], revenue: map[dow]?.revenue || 0, orders: map[dow]?.orders || 0 }));

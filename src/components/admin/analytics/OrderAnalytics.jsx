@@ -1,5 +1,7 @@
 "use client";
 
+import { useAnalyticsCurrency } from "./CurrencyContext";
+
 import { memo, useMemo } from "react";
 import {
   ResponsiveContainer, ComposedChart, Bar, Line, XAxis, YAxis,
@@ -7,9 +9,10 @@ import {
 } from "recharts";
 import { ShoppingCart } from "lucide-react";
 import { ChartCard, Card, EmptyState } from "./primitives";
-import { fa, compactToman, axisShort, faDayLabel, COLORS } from "./format";
+import { faDayLabel, COLORS } from "./format";
 
 function OrderTooltip({ active, payload, label }) {
+  const { fa, unit } = useAnalyticsCurrency();
   if (!active || !payload?.length) return null;
   return (
     <div className="bg-white rounded-xl border border-gray-200 shadow-lg px-3 py-2 text-xs" dir="rtl">
@@ -17,7 +20,7 @@ function OrderTooltip({ active, payload, label }) {
       {payload.map((p) => (
         <p key={p.dataKey} className="text-gray-500 flex items-center gap-1.5">
           <span className="w-2 h-2 rounded-full" style={{ background: p.color }} />
-          {p.name}: <span className="font-bold text-gray-800">{fa(p.value)}{p.dataKey === "aov" ? " تومان" : ""}</span>
+          {p.name}: <span className="font-bold text-gray-800">{fa(p.value)}{p.dataKey === "aov" ? ` ${unit}` : ""}</span>
         </p>
       ))}
     </div>
@@ -25,9 +28,10 @@ function OrderTooltip({ active, payload, label }) {
 }
 
 function OrderAnalytics({ daily = [], loading }) {
+  const { fa, axisShort, unit } = useAnalyticsCurrency();
   const data = useMemo(
-    () => daily.map((d) => ({ label: faDayLabel(d.date), orders: d.orders, aov: d.orders > 0 ? Math.round(d.revenue / d.orders) : 0 })),
-    [daily]
+    () => daily.map((d) => ({ label: faDayLabel(d.date), orders: d.orders, aov: d.orders > 0 ? (unit === "یورو" ? Math.round(d.revenue / d.orders * 100) / 100 : Math.round(d.revenue / d.orders)) : 0 })),
+    [daily, unit]
   );
 
   const stats = useMemo(() => {

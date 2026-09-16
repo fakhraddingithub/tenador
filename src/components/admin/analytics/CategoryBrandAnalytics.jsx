@@ -1,20 +1,23 @@
 "use client";
 
+import { useAnalyticsCurrency } from "./CurrencyContext";
+
 import { memo, useState, useMemo } from "react";
 import {
   ResponsiveContainer, PieChart, Pie, Cell, Tooltip, Treemap,
 } from "recharts";
 import { FolderTree, Tag } from "lucide-react";
 import { ChartCard, EmptyState } from "./primitives";
-import { fa, compactToman, CATEGORICAL } from "./format";
+import { CATEGORICAL } from "./format";
 
 function ShareTooltip({ active, payload }) {
+  const { fa, unit } = useAnalyticsCurrency();
   if (!active || !payload?.length) return null;
   const p = payload[0]?.payload || {};
   return (
     <div className="bg-white rounded-xl border border-gray-200 shadow-lg px-3 py-1.5 text-xs" dir="rtl">
       <p className="font-bold text-gray-700">{p.name}</p>
-      <p className="text-gray-500">درآمد: <span className="font-bold text-gray-800">{fa(p.revenue ?? p.value)} تومان</span></p>
+      <p className="text-gray-500">درآمد: <span className="font-bold text-gray-800">{fa(p.revenue ?? p.value)} {unit}</span></p>
       {p.share != null && <p className="text-gray-500">سهم: <span className="font-bold">{fa(p.share)}٪</span></p>}
     </div>
   );
@@ -22,6 +25,7 @@ function ShareTooltip({ active, payload }) {
 
 // محتوای سفارشیِ سلولِ Treemap
 function TreemapCell(props) {
+  const { fa } = useAnalyticsCurrency();
   const { x, y, width, height, index, name, share } = props;
   const color = CATEGORICAL[index % CATEGORICAL.length];
   const showLabel = width > 54 && height > 28;
@@ -84,6 +88,7 @@ function CategoryCard({ categories = [], loading }) {
 }
 
 function BrandCard({ brands = [], loading }) {
+  const { fa, compactToman } = useAnalyticsCurrency();
   const empty = !loading && brands.length === 0;
   const max = brands[0]?.revenue || 1;
 

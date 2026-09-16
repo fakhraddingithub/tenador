@@ -18,9 +18,12 @@ import InsightCards from "./InsightCards";
 import { FadeIn, SectionTitle } from "./primitives";
 import { faDate } from "./format";
 import { useAdminPermissions } from "@/components/admin/AdminPermissionProvider";
+import { AnalyticsCurrencyContext } from "./CurrencyContext";
+import EuroReceivables from "./EuroReceivables";
 
 export default function AnalyticsDashboard() {
   const { can } = useAdminPermissions();
+  const [currency, setCurrency] = useState("IRT");
   const [preset, setPreset] = useState("last30");
   const [range, setRange] = useState(() => presetRange("last30"));
   const [data, setData] = useState(null);
@@ -28,12 +31,13 @@ export default function AnalyticsDashboard() {
   const [error, setError] = useState(false);
   const reqId = useRef(0);
 
-  const fetchData = useCallback(async (r) => {
+  const fetchData = useCallback(async (r, selectedCurrency = currency) => {
     const id = ++reqId.current;
     setLoading(true);
+    setData(null);
     setError(false);
     try {
-      const sp = new URLSearchParams({ from: r.from.toISOString(), to: r.to.toISOString() });
+      const sp = new URLSearchParams({ from: r.from.toISOString(), to: r.to.toISOString(), currency: selectedCurrency });
       const res = await fetch(`/api/admin/analytics?${sp.toString()}`);
       const json = await res.json();
       if (id !== reqId.current) return; // درخواستِ منسوخ
@@ -46,7 +50,7 @@ export default function AnalyticsDashboard() {
     } finally {
       if (id === reqId.current) setLoading(false);
     }
-  }, []);
+  }, [currency]);
 
   // واکشیِ اولیه — با تأخیرِ صفر تا setStateِ همگام در بدنه‌ی افکت رخ ندهد
   useEffect(() => {
@@ -67,6 +71,7 @@ export default function AnalyticsDashboard() {
   );
 
   return (
+    <AnalyticsCurrencyContext.Provider value={currency}>
     <div dir="rtl" className="space-y-5">
       {/* Header */}
       <div className="flex items-center justify-between gap-3 flex-wrap">
@@ -84,6 +89,29 @@ export default function AnalyticsDashboard() {
         )}
       </div>
 
+      <div role="tablist" aria-label="واحد تحلیل مالی" className="flex gap-2 border-b border-gray-200">
+        {[["IRT", "آنالیز تومانی"], ["EUR", "آنالیز یورویی"]].map(([key, label]) => (
+          <button key={key} type="button" role="tab" id={`analytics-tab-${key}`} aria-selected={currency === key}
+            aria-controls="analytics-panel"
+            tabIndex={currency === key ? 0 : -1}
+            onKeyDown={(event) => {
+              if (!["ArrowLeft", "ArrowRight", "Home", "End"].includes(event.key)) return;
+              event.preventDefault();
+              const next = event.key === "Home" ? "IRT" : event.key === "End" ? "EUR" : currency === "EUR" ? "IRT" : "EUR";
+              document.getElementById(`analytics-tab-${next}`)?.focus();
+              if (next !== currency) { setCurrency(next); fetchData(range, next); }
+            }}
+            onClick={() => { if (currency !== key) { setCurrency(key); fetchData(range, key); } }}
+            className={`min-h-11 px-4 py-2 text-sm font-bold border-b-2 transition-colors focus-visible:outline-2 focus-visible:outline-[#aa4725] ${currency === key ? "border-[#aa4725] text-[#aa4725]" : "border-transparent text-gray-500 hover:text-gray-800"}`}>
+            {label}
+          </button>
+        ))}
+      </div>
+      <div id="analytics-panel" role="tabpanel" aria-labelledby={`analytics-tab-${currency}`} className="space-y-5">
+      {currency === "EUR" && <p className="rounded-xl bg-amber-50 border border-amber-100 p-3 text-xs leading-6 text-amber-900">
+        منبع مبالغ فقط اطلاعات یورویی ثبت‌شده توسط ادمین در سفارش‌هاست؛ قیمت محصولات و تبدیل تومان استفاده نمی‌شود.
+        سفارش‌های بدون مبلغ یورویی در این آمار نیستند. تحلیل محصول، دسته و برند فقط اقلام دارای قیمت یورویی ثبت‌شده را شامل می‌شود؛ بنابراین جمع آن می‌تواند با مبلغ کل سفارش‌ها متفاوت باشد. مبالغ به یورو هستند.
+      </p>}
       {/* Global filter */}
       <GlobalFilter preset={preset} range={range} onChange={onFilterChange} onRefresh={() => fetchData(range)} loading={loading} />
 
@@ -119,8 +147,8 @@ export default function AnalyticsDashboard() {
 
           {/* Receivables */}
           <FadeIn delay={0.05}>
-            <SectionTitle icon={AlertTriangle} title="مطالبات و بدهی‌ها" subtitle="تحلیل سنی و بدهکاران" />
-            <ReceivablesPanel data={data?.receivables} loading={loading} />
+            <SectionTitle icon={AlertTriangle} title="مطالبات و بدهی‌ها" subtitle={currency === "EUR" ? "مانده‌ی سفارش‌ها بر اساس پرداخت‌های یورویی" : "تحلیل سنی و بدهکاران"} />
+            {currency === "EUR" ? <EuroReceivables data={data?.receivables} loading={loading} /> : <ReceivablesPanel data={data?.receivables} loading={loading} />}
           </FadeIn>
 
           {/* Customers */}
@@ -133,6 +161,8 @@ export default function AnalyticsDashboard() {
           <FadeIn delay={0.05}><CategoryBrandAnalytics categories={data?.categories} brands={data?.brands} loading={loading} /></FadeIn>
         </>
       )}
+      </div>
     </div>
+    </AnalyticsCurrencyContext.Provider>
   );
 }

@@ -1,10 +1,12 @@
 "use client";
 
+import { useAnalyticsCurrency } from "./CurrencyContext";
+
 import { memo, useMemo, useState } from "react";
 import { ResponsiveContainer, PieChart, Pie, Cell, Tooltip } from "recharts";
 import { Users, Crown, Repeat, UserX, Gem, Heart } from "lucide-react";
 import { ChartCard, Card, EmptyState } from "./primitives";
-import { fa, compactToman, CATEGORICAL } from "./format";
+import { CATEGORICAL } from "./format";
 
 const SEG = [
   { key: "vip", label: "ویژه (VIP)", icon: Crown, color: "#ffbf00" },
@@ -15,6 +17,7 @@ const SEG = [
 ];
 
 function SegTooltip({ active, payload }) {
+  const { fa } = useAnalyticsCurrency();
   if (!active || !payload?.length) return null;
   const p = payload[0];
   return (
@@ -31,6 +34,7 @@ const TABS = [
 ];
 
 function CustomerAnalytics({ data, loading }) {
+  const { fa, compactToman } = useAnalyticsCurrency();
   const [tab, setTab] = useState("topByRevenue");
   const seg = data?.segmentation;
 
