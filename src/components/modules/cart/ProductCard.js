@@ -123,9 +123,10 @@ export default function ProductCard({ product, rate, onQuickView, overlay = null
 
       {/* محتوا */}
       <div className="p-4 pt-0 flex flex-col items-center text-center relative z-10 pointer-events-none flex-1">
-        <div className="mb-4 h-[60px] flex flex-col justify-start">
-          <h3 className="text-[14px] font-bold text-gray-800 leading-6 mb-1">{farsi}</h3>
-          <p className="text-[12px] text-gray-800 font-medium leading-4 line-clamp-2 dir-ltr">{english}</p>
+        {/* زیر ۴۰۰px: دو خط فارسی (۴۰) + فاصله (۴) + انگلیسی (۱۶) = همان ۶۰px */}
+        <div className="mb-4 h-[60px] flex flex-col justify-start max-[400px]:w-full max-[400px]:min-w-0 max-[400px]:shrink-0" title={name}>
+          <h3 className="text-[14px] font-bold text-gray-800 leading-6 mb-1 max-[400px]:leading-5 max-[400px]:line-clamp-2 max-[400px]:shrink-0 max-[400px]:[overflow-wrap:anywhere]">{farsi}</h3>
+          <p dir="ltr" className={`text-[12px] text-gray-800 font-medium leading-4 line-clamp-2 max-[400px]:shrink-0 max-[400px]:[overflow-wrap:anywhere] ${farsi ? "max-[400px]:line-clamp-1" : ""}`}>{english}</p>
         </div>
 
         {/* قیمت */}
