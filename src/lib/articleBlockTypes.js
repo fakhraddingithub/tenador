@@ -95,3 +95,24 @@ export function sanitizeMergedGrid(value) {
   }
   return grid;
 }
+
+// عرضِ مرجع برای پیش‌نمایشِ مودال — همان فرمولِ رندر (MergedGrid) با عرضِ معلوم:
+// موبایل = گوشیِ ۳۹۰px منهای حاشیه‌ی ۱۶px دو طرف، فاصله‌ی ۱rem؛ دسکتاپ = عرضِ
+// متداولِ محتوا با فاصله‌ی ۱.۵rem. فقط برای نمایش است و روی رندر اثری ندارد.
+export const MERGED_GRID_REFERENCE = {
+  mobile: { viewport: 390, width: 358, gap: 16 },
+  desktop: { viewport: 1024, width: 1024, gap: 24 },
+};
+
+/**
+ * نتیجه‌ی واقعیِ یک breakpoint در عرضِ داده‌شده: عرضِ هر ستون، چند ستونِ کامل در
+ * دید است، و کمینه‌ی عرضی که columns ستون در آن جا می‌شوند. کمینه‌ی عرض (minWidth)
+ * بر تعدادِ ستون غلبه می‌کند — این همان چیزی است که قبلاً در پیش‌نمایش دیده نمی‌شد.
+ */
+export function mergedGridColumnsAt(settings, { width, gap }) {
+  const { columns } = settings;
+  if (settings.fit) return { columnWidth: (width - (columns - 1) * gap) / columns, visible: columns, requiredWidth: 0 };
+  const columnWidth = Math.max((width - (columns - 1) * gap) / columns, settings.minWidth);
+  const visible = Math.max(1, Math.min(columns, Math.floor((width + gap) / (columnWidth + gap) + 1e-9)));
+  return { columnWidth, visible, requiredWidth: columns * settings.minWidth + (columns - 1) * gap };
+}

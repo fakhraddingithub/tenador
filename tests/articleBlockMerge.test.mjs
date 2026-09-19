@@ -140,3 +140,19 @@ test("server: same validation inside, unique ids across the tree, depth and size
   assert.ok(errors["blocks.0.data.blocks"]);
   assert.equal(out[0].data.blocks.length, MAX_MERGED_CHILDREN);
 });
+
+test("modal preview uses the render formula: min width overrides the column count (Blade vs Defyer case)", async () => {
+  const { mergedGridColumnsAt, MERGED_GRID_REFERENCE } = await import("../src/lib/articleBlockTypes.js");
+  const blade = { columns: 2, rows: 1, fit: false, minWidth: 300 };  // stored mobile setting of the Blade series block
+  const defyer = { columns: 1, rows: 1, fit: false, minWidth: 300 }; // stored mobile setting of the Defyer series block
+  // widths measured in Chrome on the built app (content width = viewport - 32px padding, gap 16px)
+  for (const [viewport, bladeWidth, defyerWidth] of [[360, 300, 328], [390, 300, 358], [430, 300, 398]]) {
+    const at = { width: viewport - 32, gap: 16 };
+    assert.equal(mergedGridColumnsAt(blade, at).columnWidth, bladeWidth, `blade @${viewport}`);
+    assert.equal(mergedGridColumnsAt(defyer, at).columnWidth, defyerWidth, `defyer @${viewport}`);
+  }
+  const phone = MERGED_GRID_REFERENCE.mobile;
+  assert.deepEqual(mergedGridColumnsAt(blade, phone), { columnWidth: 300, visible: 1, requiredWidth: 616 }, "2 columns never fit on a phone with min 300px");
+  assert.equal(mergedGridColumnsAt({ ...blade, minWidth: 0 }, phone).visible, 2, "without a min width both columns fit");
+  assert.equal(mergedGridColumnsAt({ ...blade, fit: true }, phone).visible, 2, "fit always shows the configured columns");
+});

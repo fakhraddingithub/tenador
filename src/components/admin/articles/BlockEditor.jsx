@@ -14,7 +14,7 @@ import { ARTICLE_BLOCKS, BLOCK_ACCENT_HINTS, BLOCK_GROUPS, BLOCK_SPACING_LABELS,
 import { BLOCK_WIDTHS, blockWidth, insertBlockAt } from "@/lib/articleBlockLayout";
 import { confirmDelete } from "@/lib/swal";
 import { IMAGE_DISPLAY_HEIGHT, MAX_IMAGE_BLOCK_ITEMS, mirrorFirstImage, normalizeImageHref } from "@/lib/articleImageBlock";
-import { MAX_MERGED_CHILDREN, MAX_MERGE_DEPTH, MERGED_GRID_LIMITS, defaultMergedGrid, isMergedBlock, mergedChildren, sanitizeMergedGrid } from "@/lib/articleBlockTypes";
+import { MAX_MERGED_CHILDREN, MAX_MERGE_DEPTH, MERGED_GRID_LIMITS, MERGED_GRID_REFERENCE, defaultMergedGrid, isMergedBlock, mergedChildren, mergedGridColumnsAt, sanitizeMergedGrid } from "@/lib/articleBlockTypes";
 import { cloneWithFreshIds, mergeBlocker, mergeBlocks, unmergeBlock } from "@/lib/articleBlockMerge";
 
 const BLOCK_WIDTH_LABELS = { full: "تمام عرض", "1/2": "نصف عرض", "1/3": "یک‌سوم عرض", "2/3": "دو‌سوم عرض" };
@@ -228,21 +228,30 @@ function MoveDialog({ index, total, onMove, onClose }) {
 
 const BREAKPOINT_LABELS = { desktop: "دسکتاپ", mobile: "موبایل" };
 
-/** شمای کوچکِ نتیجه: ستون‌های قابلِ دیدن پررنگ، ستون‌های بیرون‌زده (اسلایدر) کم‌رنگ. */
-function GridPreview({ settings, count }) {
+/**
+ * شمای کوچکِ نتیجه در عرضِ مرجعِ هر breakpoint (همان فرمولِ رندر): ستون‌هایی که
+ * واقعاً در دید هستند پررنگ، بقیه (اسلایدر) کم‌رنگ. کمینه‌ی عرض در محاسبه هست —
+ * «۲ ستون» با کمینه‌ی ۳۰۰px در گوشی عملاً ۱ ستون است و پیش‌نمایش همین را نشان می‌دهد.
+ */
+function GridPreview({ breakpoint, settings, count }) {
+  const fa = (value) => Math.round(value).toLocaleString("fa-IR");
+  const reference = MERGED_GRID_REFERENCE[breakpoint];
+  const { columnWidth, visible, requiredWidth } = mergedGridColumnsAt(settings, reference);
   const columns = settings.fit ? settings.columns : Math.max(settings.columns, Math.ceil(count / settings.rows));
   const rows = Math.ceil(count / columns);
+  const place = breakpoint === "mobile" ? `گوشیِ ${fa(reference.viewport)}px` : `عرضِ ${fa(reference.width)}px`;
   return <div className="space-y-1.5">
     <div className="overflow-hidden">
       <div className="grid gap-0.5" style={{ gridTemplateColumns: `repeat(${columns}, 14px)` }} aria-hidden="true">
-        {Array.from({ length: count }, (_, index) => <span key={index} className={`h-3.5 rounded-sm ${index % columns < settings.columns ? "bg-[var(--color-primary)]" : "bg-[var(--color-primary)]/25"}`} />)}
+        {Array.from({ length: count }, (_, index) => <span key={index} className={`h-3.5 rounded-sm ${index % columns < visible ? "bg-[var(--color-primary)]" : "bg-[var(--color-primary)]/25"}`} />)}
       </div>
     </div>
     <p className="text-[11px] text-gray-500">{settings.fit
-      ? `${settings.columns.toLocaleString("fa-IR")} ستون × ${rows.toLocaleString("fa-IR")} ردیف — بدونِ اسکرولِ افقی`
-      : columns > settings.columns
-        ? `${settings.columns.toLocaleString("fa-IR")} ستون در دید، ${rows.toLocaleString("fa-IR")} ردیف؛ بقیه با کشیدنِ افقی`
-        : `${columns.toLocaleString("fa-IR")} ستون × ${rows.toLocaleString("fa-IR")} ردیف${settings.minWidth ? " — اگر جا نشود، اسلایدرِ افقی" : ""}`}</p>
+      ? `${fa(settings.columns)} ستون × ${fa(rows)} ردیف — بدونِ اسکرولِ افقی`
+      : `در ${place}: ${fa(visible)} ستونِ کامل در دید، هر ستون ≈ ${fa(columnWidth)}px${columns > visible ? "؛ بقیه با کشیدنِ افقی" : ""}`}</p>
+    {!settings.fit && visible < settings.columns ? <p role="alert" className="text-[11px] font-bold leading-5 text-amber-700">
+      {`با کمینه‌ی عرضِ ${fa(settings.minWidth)}px، ${fa(settings.columns)} ستون دست‌کم ${fa(requiredWidth)}px جا می‌خواهد؛ در ${place} فقط ${fa(visible)} ستون دیده می‌شود. کمینه‌ی عرض را کم کنید یا تعدادِ ستون را ${fa(visible)} بگذارید.`}
+    </p> : null}
   </div>;
 }
 
@@ -282,7 +291,7 @@ function MergedLayoutModal({ grid, count, onApply, onClose }) {
             </div>
             <label className="block"><span className="mb-1 block text-[11px] font-bold text-gray-600">کمینه‌ی عرضِ هر ستون (px، ۰ = بدونِ کمینه)</span>{number(breakpoint, "minWidth", settings.fit)}</label>
             {settings.fit ? <p className="text-[10px] text-gray-400">در این حالت تعداد ردیف‌ها خودکار است.</p> : null}
-            <GridPreview settings={sanitizeMergedGrid(draft)?.[breakpoint] || settings} count={count} />
+            <GridPreview breakpoint={breakpoint} settings={sanitizeMergedGrid(draft)?.[breakpoint] || settings} count={count} />
           </fieldset>;
         })}
       </div>
