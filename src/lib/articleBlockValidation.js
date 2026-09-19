@@ -1,6 +1,9 @@
 import mongoose from "mongoose";
 // نسبی، نه با نامک @: این فایل مستقیم زیر node هم تست می‌شود.
 import { richTextValue } from "./sanitizeRichText.js";
+import {
+  IMAGE_DISPLAY_HEIGHT, MAX_IMAGE_BLOCK_ITEMS, OVERLAY_ALIGNS, OVERLAY_DIRS, OVERLAY_POSITIONS, OVERLAY_SIZES, mirrorFirstImage, normalizeImageHref,
+} from "./articleImageBlock.js";
 
 const string = (value, max) => typeof value === "string" ? value.trim().slice(0, max) : "";
 
@@ -103,6 +106,58 @@ function gallery(value, errors, field) {
   }).filter((item) => typeof item === "string" ? item : item.url);
 }
 
+const positiveInt = (value) => (Number.isInteger(value) && value > 0 ? value : undefined);
+
+// پیش‌فرض‌ها (md / center / rtl / center / سایه‌دار) ذخیره نمی‌شوند؛ خروجیِ
+// بی‌کلید undefined است — همان قراردادِ sanitizeArticleBlockStyle.
+function imageOverlay(value) {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return undefined;
+  const overlay = {};
+  const color = hexColor(value.color);
+  if (color) overlay.color = color;
+  if (value.size !== "md" && OVERLAY_SIZES.includes(value.size)) overlay.size = value.size;
+  if (value.align !== "center" && OVERLAY_ALIGNS.includes(value.align)) overlay.align = value.align;
+  if (value.dir !== "rtl" && OVERLAY_DIRS.includes(value.dir)) overlay.dir = value.dir;
+  if (value.position !== "center" && OVERLAY_POSITIONS.includes(value.position)) overlay.position = value.position;
+  if (value.shade === false) overlay.shade = false;
+  return Object.keys(overlay).length ? overlay : undefined;
+}
+
+// بلوکِ تصویرِ بدونِ کلیدهای جدید دقیقاً همان خروجیِ قبلی را می‌دهد؛ کلیدهای
+// images / displayHeight / overlay فقط وقتی اضافه می‌شوند که واقعاً مقدار دارند.
+function imageBlock(data, errors, field) {
+  const result = { url: url(data.url, errors, `${field}.url`, { media: true }), alt: string(data.alt, 300), caption: string(data.caption, 500), width: positiveInt(data.width), height: positiveInt(data.height) };
+
+  if (Array.isArray(data.images)) {
+    if (data.images.length > MAX_IMAGE_BLOCK_ITEMS) errors[`${field}.images`] = `Image block cannot exceed ${MAX_IMAGE_BLOCK_ITEMS} images`;
+    const images = data.images.slice(0, MAX_IMAGE_BLOCK_ITEMS).map((item, index) => {
+      const image = item && typeof item === "object" && !Array.isArray(item) ? item : {};
+      const at = `${field}.images.${index}`;
+      const entry = { url: url(image.url, errors, `${at}.url`, { media: true }), alt: string(image.alt, 300) };
+      if (positiveInt(image.width)) entry.width = image.width;
+      if (positiveInt(image.height)) entry.height = image.height;
+      const href = normalizeImageHref(image.href);
+      if (href === null) errors[`${at}.href`] = `پیوندِ تصویرِ ${index + 1} نامعتبر است (مثلاً ‎/tennis/racket‎ یا ‎https://…‎)`;
+      else if (href) entry.href = href;
+      const overlayText = string(image.overlayText, 500);
+      if (overlayText) entry.overlayText = overlayText;
+      return entry;
+    }).filter((image) => image.url);
+    if (images.length) Object.assign(result, { images }, mirrorFirstImage(images));
+  }
+
+  if (data.displayHeight != null && data.displayHeight !== "") {
+    const height = Math.round(Number(data.displayHeight));
+    if (Number.isFinite(height)) {
+      result.displayHeight = Math.min(IMAGE_DISPLAY_HEIGHT.max, Math.max(IMAGE_DISPLAY_HEIGHT.min, height));
+    }
+  }
+
+  const overlay = imageOverlay(data.overlay);
+  if (overlay) result.overlay = overlay;
+  return result;
+}
+
 const entitySlider = (key) => (data, errors, field) => ({
   title: string(data.title, 300),
   [key]: idList(data[key], errors, `${field}.${key}`),
@@ -111,7 +166,7 @@ const entitySlider = (key) => (data, errors, field) => ({
 const validators = {
   heading: (data) => ({ text: string(data.text, 500), ...rich(data.html), level: ["h2", "h3", "h4"].includes(data.level) ? data.level : "h2" }),
   paragraph: (data) => ({ text: string(data.text, 50000), ...rich(data.html) }),
-  image: (data, errors, field) => ({ url: url(data.url, errors, `${field}.url`, { media: true }), alt: string(data.alt, 300), caption: string(data.caption, 500), width: Number.isInteger(data.width) && data.width > 0 ? data.width : undefined, height: Number.isInteger(data.height) && data.height > 0 ? data.height : undefined }),
+  image: imageBlock,
   gallery: (data, errors, field) => ({ images: gallery(data.images, errors, `${field}.images`) }),
   video: (data, errors, field) => ({ url: url(data.url, errors, `${field}.url`, { media: true }), title: string(data.title, 300) }),
   quote: (data) => ({ text: string(data.text, 5000), ...rich(data.html), author: string(data.author, 300) }),

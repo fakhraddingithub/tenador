@@ -40,7 +40,7 @@ export const BLOCK_TABLE_VARIANT_LABELS = { default: "پیش‌فرض", striped:
 export const ARTICLE_BLOCKS = {
   heading: { label: "تیتر", group: "محتوا", icon: FiType, defaults: { text: "", level: "h2" }, fields: [text("text", "متن تیتر", "rich", { singleLine: true }), text("level", "سطح تیتر", "select", { options: ["h2", "h3", "h4"] })], styleKeys: TEXTY },
   paragraph: { label: "پاراگراف", group: "محتوا", icon: FiAlignRight, defaults: { text: "" }, fields: [text("text", "متن پاراگراف", "rich")], styleKeys: TEXTY },
-  image: { label: "تصویر", group: "رسانه", icon: FiImage, defaults: { url: "", alt: "", caption: "" }, fields: [text("url", "تصویر", "image"), text("alt", "متن جایگزین"), text("caption", "زیرنویس")], styleKeys: SPACING_ONLY },
+  image: { label: "تصویر", group: "رسانه", icon: FiImage, defaults: { url: "", alt: "", caption: "" }, fields: [text("images", "تصاویر", "imageList"), text("displayHeight", "ارتفاع نمایش", "imageHeight"), text("overlay", "ظاهر متن روی تصویر", "imageOverlay"), text("caption", "زیرنویس")], styleKeys: SPACING_ONLY },
   gallery: { label: "گالری", group: "رسانه", icon: FiGrid, defaults: { images: [] }, fields: [text("images", "تصاویر", "gallery")], styleKeys: SPACING_ONLY },
   video: { label: "ویدئو", group: "رسانه", icon: FiPlay, defaults: { url: "", title: "" }, fields: [text("url", "آدرس ویدئو", "url"), text("title", "عنوان ویدئو")], styleKeys: SPACING_ONLY },
   quote: { label: "نقل‌قول", group: "محتوا", icon: FiMessageSquare, defaults: { text: "", author: "" }, fields: [text("text", "متن نقل‌قول", "rich"), text("author", "نام گوینده")], styleKeys: ["spacing", "textColor", "background", "accent"] },

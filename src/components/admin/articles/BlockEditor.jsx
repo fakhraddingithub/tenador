@@ -2,6 +2,7 @@
 
 import { matchesSearch } from "@/lib/search";
 import { useEffect, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { DndContext, KeyboardSensor, PointerSensor, closestCenter, useSensor, useSensors } from "@dnd-kit/core";
 import { SortableContext, arrayMove, sortableKeyboardCoordinates, useSortable, verticalListSortingStrategy } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
@@ -12,6 +13,7 @@ import RichTextField from "./RichTextField";
 import { ARTICLE_BLOCKS, BLOCK_ACCENT_HINTS, BLOCK_GROUPS, BLOCK_SPACING_LABELS, BLOCK_STYLE_LABELS, BLOCK_TABLE_VARIANT_LABELS, createArticleBlock } from "./blockRegistry";
 import { BLOCK_WIDTHS, blockWidth, insertBlockAt } from "@/lib/articleBlockLayout";
 import { confirmDelete } from "@/lib/swal";
+import { IMAGE_DISPLAY_HEIGHT, MAX_IMAGE_BLOCK_ITEMS, mirrorFirstImage, normalizeImageHref } from "@/lib/articleImageBlock";
 
 const BLOCK_WIDTH_LABELS = { full: "تمام عرض", "1/2": "نصف عرض", "1/3": "یک‌سوم عرض", "2/3": "دو‌سوم عرض" };
 
@@ -21,7 +23,17 @@ const inputClass = "w-full px-3 py-2.5 border bg-gray-50 text-sm outline-none fo
 // برچسب می‌زند و مرورگر هاور و کلیکِ کلِ ناحیه را به همان دکمه می‌فرستد. فیلدِ
 // متنِ غنی یک نوارِ دکمه دارد (اولینش «پررنگ») و ناحیه‌ی ویرایشش contentEditable
 // است که اصلاً برچسب‌پذیر نیست — پس باید در یک wrapper ساده بنشیند.
-const fieldWrapper = (kind) => (kind === "rich" ? "div" : "label");
+// همین دلیل برای فیلدهای چندکنترلیِ تصویر (چند input و دکمه) هم صادق است.
+const fieldWrapper = (kind) => (["rich", "imageList", "imageOverlay"].includes(kind) ? "div" : "label");
+// این نوع‌ها کلِ data را می‌خوانند و وصله‌ی چندکلیدی برمی‌گردانند.
+const WHOLE_DATA_KINDS = ["table", "rich", "imageList"];
+const PATCH_KINDS = ["table", "image", "rich", "imageList"];
+
+// مودال‌ها به body می‌روند: هر نیایی با transform یا backdrop-filter (مثلِ کارتِ
+// مینی‌مقاله با backdrop-blur) بلوکِ دربرگیرنده‌ی position:fixed می‌شود و مودال را
+// در خودش حبس می‌کند. متغیرهای تمِ ادمین روی .admin-scope تعریف شده‌اند، پس
+// پورتال هم داخلِ همان کلاس می‌نشیند؛ `contents` نمی‌گذارد پس‌زمینه‌ی آن رنگ شود.
+const AdminPortal = ({ children }) => createPortal(<div className="admin-scope contents" dir="rtl">{children}</div>, document.body);
 
 function FaqEditor({ value = [], onChange }) {
   const items = value.length ? value : [{ question: "", answer: "" }];
@@ -47,6 +59,82 @@ function ImageFieldWithSize({ value, onChange }) {
     probe.src = url;
   };
   return <ImageUpload value={value || ""} onChange={emit} folder="articles" className="mb-0" />;
+}
+
+// در ویرایشگر اسلاتِ خالی هم باید دیده شود، پس برخلافِ imageBlockItems چیزی
+// فیلتر نمی‌شود. بلوکِ قدیمی (بدونِ images) به‌صورتِ یک آیتم خوانده می‌شود و
+// تا ادمین به فهرست دست نزند، به همان شکلِ قدیمی باقی می‌ماند.
+const editorImageItems = (data) => (Array.isArray(data?.images) && data.images.length
+  ? data.images
+  : [{ url: data?.url || "", alt: data?.alt || "", width: data?.width, height: data?.height }]);
+
+function ImageListEditor({ data, onChange }) {
+  // ابعادِ تصویر نامتقارن می‌رسد (پس از بارگذاریِ probe)؛ مبنای هر تغییر آخرین
+  // داده است، نه closure کهنه — وگرنه متنِ تایپ‌شده در همان فاصله پاک می‌شد.
+  const latest = useRef(data);
+  useEffect(() => { latest.current = data; });
+  const items = editorImageItems(data);
+  const emit = (images) => onChange({ images, ...mirrorFirstImage(images.filter((image) => image.url)) });
+  const update = (index, patch) => emit(editorImageItems(latest.current).map((item, i) => (i === index ? { ...item, ...patch } : item)));
+  const remove = (index) => emit(editorImageItems(latest.current).filter((_, i) => i !== index));
+  const add = () => emit([...editorImageItems(latest.current), { url: "", alt: "" }]);
+  const small = "block text-[11px] font-bold text-gray-500";
+  return <div className="space-y-3">
+    {items.map((item, index) => <div key={index} className="space-y-2 border p-3" style={{ borderColor: "var(--admin-border)", borderRadius: "var(--admin-radius)" }}>
+      <div className="flex items-center justify-between text-[11px] font-bold text-gray-500">
+        <span>تصویر {(index + 1).toLocaleString("fa-IR")}</span>
+        {items.length > 1 ? <button type="button" onClick={() => remove(index)} className="text-red-600">حذف تصویر</button> : null}
+      </div>
+      {/* ImageUpload پیش‌نمایش را فقط یک‌بار از value می‌خواند؛ key بر اساسِ آدرس
+          باعث می‌شود پس از حذفِ یک تصویر، اسلاتِ جابه‌جاشده پیش‌نمایشِ درست را نشان دهد. */}
+      <ImageFieldWithSize key={item.url || `empty-${index}`} value={item.url} onChange={(patch) => update(index, patch)} />
+      <label className="block"><span className={small}>متن جایگزین</span><input value={item.alt || ""} onChange={(e) => update(index, { alt: e.target.value })} className={inputClass} /></label>
+      <label className="block"><span className={small}>پیوند (اختیاری — در همین زبانه باز می‌شود)</span><input dir="ltr" value={item.href || ""} onChange={(e) => update(index, { href: e.target.value })} placeholder="/tennis/racket یا https://…" aria-invalid={normalizeImageHref(item.href) === null} className={inputClass} />
+        {normalizeImageHref(item.href) === null ? <span role="alert" className="mt-1 block text-[11px] font-bold text-red-600">این پیوند معتبر نیست و ذخیره‌ی برند را رد می‌کند. آن را اصلاح یا پاک کنید.</span> : null}
+      </label>
+      <label className="block"><span className={small}>متن روی تصویر (اختیاری)</span><textarea rows={2} value={item.overlayText || ""} onChange={(e) => update(index, { overlayText: e.target.value })} className={`${inputClass} font-sans`} /></label>
+      {!item.url && (item.overlayText || item.href) ? <p className="text-[11px] text-amber-600">تا تصویری بارگذاری نشود، متن و پیوندِ این مورد ذخیره نمی‌شوند.</p> : null}
+    </div>)}
+    <button type="button" onClick={add} disabled={items.length >= MAX_IMAGE_BLOCK_ITEMS} className="text-xs font-bold text-[var(--color-primary)] disabled:opacity-40">+ افزودن تصویر</button>
+  </div>;
+}
+
+function ImageHeightField({ value, onChange }) {
+  return <div className="flex flex-wrap items-center gap-2">
+    <input type="number" min={IMAGE_DISPLAY_HEIGHT.min} max={IMAGE_DISPLAY_HEIGHT.max} step={10} value={value ?? ""} placeholder="خودکار" onChange={(e) => onChange(e.target.value === "" ? undefined : Number(e.target.value))} className={`${inputClass} w-32`} />
+    <span className="text-[11px] text-gray-400">پیکسل ({IMAGE_DISPLAY_HEIGHT.min.toLocaleString("fa-IR")} تا {IMAGE_DISPLAY_HEIGHT.max.toLocaleString("fa-IR")}). خالی = اندازه‌ی اصلیِ تصویر. در موبایل متناسب کوچک می‌شود.</span>
+  </div>;
+}
+
+const OVERLAY_OPTION_LABELS = {
+  size: { sm: "کوچک", md: "متوسط", lg: "بزرگ", xl: "خیلی بزرگ" },
+  align: { right: "راست", center: "وسط", left: "چپ" },
+  position: { top: "بالا", center: "وسط", bottom: "پایین" },
+  dir: { rtl: "راست به چپ", ltr: "چپ به راست" },
+};
+const OVERLAY_DEFAULTS = { size: "md", align: "center", position: "center", dir: "rtl" };
+const OVERLAY_FIELD_LABELS = { size: "اندازه متن", align: "چینش افقی", position: "جای عمودی", dir: "جهت متن" };
+
+/** ظاهرِ متنِ روی تصویر؛ مقدارِ پیش‌فرض ذخیره نمی‌شود (همان قراردادِ BlockStylePanel). */
+function ImageOverlayField({ value, onChange }) {
+  const current = value || {};
+  const set = (key, next) => {
+    const overlay = { ...current };
+    if (next === undefined) delete overlay[key]; else overlay[key] = next;
+    onChange(Object.keys(overlay).length ? overlay : undefined);
+  };
+  return <div className="space-y-3 border p-3" style={{ borderColor: "var(--admin-border)", borderRadius: "var(--admin-radius)" }}>
+    <p className="text-[11px] text-gray-400">متنِ هر تصویر در کارتِ همان تصویر نوشته می‌شود؛ این تنظیمات برای همه‌ی تصاویرِ این بلوک است.</p>
+    <ColorControl label="رنگ متن" hint="پیش‌فرض سفید" value={current.color} onChange={(next) => set("color", next)} />
+    <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+      {Object.keys(OVERLAY_DEFAULTS).map((key) => <label key={key} className="block"><span className="mb-1 block text-[11px] font-bold text-gray-600">{OVERLAY_FIELD_LABELS[key]}</span>
+        <select value={current[key] || OVERLAY_DEFAULTS[key]} onChange={(e) => set(key, e.target.value === OVERLAY_DEFAULTS[key] ? undefined : e.target.value)} className={inputClass}>
+          {Object.entries(OVERLAY_OPTION_LABELS[key]).map(([option, text]) => <option key={option} value={option}>{text}</option>)}
+        </select>
+      </label>)}
+    </div>
+    <label className="flex items-center gap-2 text-[11px] font-bold text-gray-600"><input type="checkbox" checked={current.shade !== false} onChange={(e) => set("shade", e.target.checked ? undefined : false)} />سایه‌ی تیره پشت متن (برای خوانایی)</label>
+  </div>;
 }
 
 /** رنگ سه‌حالته: تنظیم‌نشده (پیش‌فرضِ قالب) یا یک هگزِ مشخص. */
@@ -95,6 +183,9 @@ function BlockField({ field, value, onChange, align, onAlign }) {
   if (field.kind === "textarea" || field.kind === "html") return <textarea dir={field.kind === "html" ? "ltr" : "rtl"} rows={field.kind === "html" ? 9 : 4} value={value || ""} onChange={(e) => onChange(e.target.value)} className={`${inputClass} ${field.kind === "html" ? "font-mono" : "font-sans"}`} />;
   if (field.kind === "select") return <select value={value || ""} onChange={(e) => onChange(e.target.value)} className={inputClass}>{field.options.map((option) => <option key={option} value={option}>{option}</option>)}</select>;
   if (field.kind === "image") return <ImageFieldWithSize value={value} onChange={onChange} />;
+  if (field.kind === "imageList") return <ImageListEditor data={value} onChange={onChange} />;
+  if (field.kind === "imageHeight") return <ImageHeightField value={value} onChange={onChange} />;
+  if (field.kind === "imageOverlay") return <ImageOverlayField value={value} onChange={onChange} />;
   if (field.kind === "gallery") return <ImageUpload value={value || []} onChange={onChange} folder="articles" multiple className="mb-0" />;
   if (field.kind === "entity" || field.kind === "entities") return <ArticleEntityPicker type={field.entityType} value={value} onChange={onChange} multiple={field.kind === "entities"} />;
   if (field.kind === "faq") return <FaqEditor value={value} onChange={onChange} />;
@@ -108,13 +199,16 @@ function MoveDialog({ index, total, onMove, onClose }) {
   const [target, setTarget] = useState(String(index + 1));
   const submit = (event) => {
     event.preventDefault();
+    // رویدادِ React از پورتال هم در درختِ React بالا می‌رود؛ ویرایشگر داخلِ فرمِ
+    // برند/سری است و بدونِ این، «انتقال» آن فرم را هم ثبت می‌کرد.
+    event.stopPropagation();
     const position = Number(target);
     if (!Number.isInteger(position) || position < 1 || position > total) return;
     // onMove همان arrayMove است: شناسه‌ها دست‌نخورده می‌مانند و فقط ترتیب عوض می‌شود.
     onMove(index, position - 1);
     onClose();
   };
-  return <div className="fixed inset-0 z-[100] bg-black/30 flex items-center justify-center p-4" onMouseDown={onClose}>
+  return <AdminPortal><div className="fixed inset-0 z-[100] bg-black/30 flex items-center justify-center p-4" onMouseDown={onClose}>
     <form role="dialog" aria-modal="true" aria-label="جابجایی بلوک" onSubmit={submit} onKeyDown={(e) => { if (e.key === "Escape") onClose(); }} onMouseDown={(e) => e.stopPropagation()} className="a-card w-full max-w-xs p-4 space-y-3 shadow-xl">
       <p className="text-sm">موقعیت فعلی: <strong>{index + 1}</strong> از {total}</p>
       <label className="block text-xs font-bold text-gray-600">انتقال به موقعیت
@@ -125,7 +219,7 @@ function MoveDialog({ index, total, onMove, onClose }) {
         <button type="button" onClick={onClose} className="flex-1 py-2 text-xs font-bold border" style={{ borderColor: "var(--admin-border)", borderRadius: "var(--admin-radius)" }}>انصراف</button>
       </div>
     </form>
-  </div>;
+  </div></AdminPortal>;
 }
 
 function SortableBlock({ block, index, total, onUpdate, onStyle, onLayout, onRemove, onDuplicate, onMove }) {
@@ -160,7 +254,7 @@ function SortableBlock({ block, index, total, onUpdate, onStyle, onLayout, onRem
         <button type="button" onClick={() => setOpen((value) => !value)} aria-expanded={open} className="p-1.5 text-gray-400 focus-visible:outline-2 focus-visible:outline-[var(--color-primary)]" aria-label="باز و بسته کردن">{open ? <FiChevronUp /> : <FiChevronDown />}</button>
       </div>
     </header>
-    {open ? <div className="p-4 space-y-4"><BlockStylePanel type={block.type} style={block.style} layout={block.layout} onChange={onStyle} onLayout={onLayout} />{definition?.fields.length ? definition.fields.map((field) => { const Wrapper = fieldWrapper(field.kind); return <Wrapper key={field.key} className="block"><span className="block text-xs font-bold mb-1.5 text-gray-600">{field.label}</span><BlockField field={field} value={field.kind === "table" || field.kind === "rich" ? block.data : block.data?.[field.key]} onChange={(next) => onUpdate(field.kind === "table" || field.kind === "image" || field.kind === "rich" ? next : { [field.key]: next })} align={block.style?.align} onAlign={setAlign} /></Wrapper>; }) : <p className="text-xs text-gray-400 text-center py-3">این بلوک تنظیمات دیگری ندارد.</p>}</div> : null}
+    {open ? <div className="p-4 space-y-4"><BlockStylePanel type={block.type} style={block.style} layout={block.layout} onChange={onStyle} onLayout={onLayout} />{definition?.fields.length ? definition.fields.map((field) => { const Wrapper = fieldWrapper(field.kind); return <Wrapper key={field.key} className="block"><span className="block text-xs font-bold mb-1.5 text-gray-600">{field.label}</span><BlockField field={field} value={WHOLE_DATA_KINDS.includes(field.kind) ? block.data : block.data?.[field.key]} onChange={(next) => onUpdate(PATCH_KINDS.includes(field.kind) ? next : { [field.key]: next })} align={block.style?.align} onAlign={setAlign} /></Wrapper>; }) : <p className="text-xs text-gray-400 text-center py-3">این بلوک تنظیمات دیگری ندارد.</p>}</div> : null}
     {moveOpen ? <MoveDialog index={index} total={total} onMove={onMove} onClose={() => setMoveOpen(false)} /> : null}
   </section>;
 }
@@ -177,7 +271,7 @@ function BlockLibrary({ total, onAdd, onClose }) {
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, [onClose]);
-  return <div className="fixed inset-0 z-[100] bg-black/30 flex items-start justify-center p-4 pt-[10vh]" onMouseDown={onClose}><div role="dialog" aria-modal="true" aria-labelledby="block-library-title" className="w-full max-w-2xl max-h-[76vh] overflow-hidden a-card shadow-xl" onMouseDown={(e) => e.stopPropagation()}>
+  return <AdminPortal><div className="fixed inset-0 z-[100] bg-black/30 flex items-start justify-center p-4 pt-[10vh]" onMouseDown={onClose}><div role="dialog" aria-modal="true" aria-labelledby="block-library-title" className="w-full max-w-2xl max-h-[76vh] overflow-hidden a-card shadow-xl" onMouseDown={(e) => e.stopPropagation()}>
     <div className="flex items-center gap-3 p-4 border-b" style={{ borderColor: "var(--admin-border)" }}><FiSearch aria-hidden="true" className="text-gray-400" /><h2 id="block-library-title" className="sr-only">Block library</h2><input aria-label="Search blocks" autoFocus value={query} onChange={(e) => setQuery(e.target.value)} placeholder="جستجوی نوع بلوک..." className="flex-1 outline-none text-sm" /><button type="button" onClick={onClose} aria-label="Close block library" className="rounded p-1 focus-visible:outline-2 focus-visible:outline-[var(--color-primary)]"><FiX aria-hidden="true" /></button></div>
     <label className="flex flex-wrap items-center gap-2 px-4 py-2.5 border-b text-xs font-bold text-gray-600" style={{ borderColor: "var(--admin-border)" }}>
       <span>موقعیت بلوک جدید</span>
@@ -185,7 +279,7 @@ function BlockLibrary({ total, onAdd, onClose }) {
       <span className="text-[11px] font-normal text-gray-400">از {total + 1} — بلوک‌های بعدی یک شماره جلو می‌روند.</span>
     </label>
     <div className="p-4 overflow-y-auto max-h-[65vh] space-y-5">{groups.map(({ group, blocks }) => <section key={group}><h3 className="text-[11px] font-black text-gray-400 mb-2">{group}</h3><div className="grid grid-cols-2 sm:grid-cols-3 gap-2">{blocks.map(([type, item]) => { const Icon = item.icon; return <button key={type} type="button" onClick={() => onAdd(type, position)} className="flex items-center gap-2.5 p-3 border text-right hover:bg-[var(--color-primary-soft)] hover:border-[var(--color-primary)] transition-colors" style={{ borderColor: "var(--admin-border)", borderRadius: "var(--admin-radius)" }}><Icon className="text-[var(--color-primary)]" /><span className="text-xs font-bold">{item.label}</span></button>; })}</div></section>)}</div>
-  </div></div>;
+  </div></div></AdminPortal>;
 }
 
 export default function BlockEditor({ value = [], onChange, libraryOpen: openProp, onLibraryOpen }) {

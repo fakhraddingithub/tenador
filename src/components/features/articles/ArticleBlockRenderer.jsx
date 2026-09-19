@@ -7,6 +7,7 @@ import { PublicProductGrid, PublicUsedProductGrid } from "@/components/features/
 import { sanitizeArticleHtml } from "@/lib/sanitizeArticleHtml";
 import { sanitizeRichText } from "@/lib/sanitizeRichText";
 import { BLOCK_WIDTH_CLASS, blockWidth, groupBlockRows } from "@/lib/articleBlockLayout";
+import { imageBlockItems } from "@/lib/articleImageBlock";
 
 const ordered = (values, map) => (Array.isArray(values) ? values : values ? [values] : []).map((id) => map?.[String(id)]).filter(Boolean);
 const blockSection = "my-9 scroll-mt-28";
@@ -111,6 +112,51 @@ function EntityCards({ title, items, kind, visuals }) {
   );
 }
 
+// ——— بلوکِ تصویر: چند تصویر، ارتفاعِ دلخواه، متنِ روی تصویر، پیوند ————————
+// بلوکِ «ساده» (یک تصویر، بدونِ ارتفاع/پیوند/متن) از مسیرِ قدیمی و با همان
+// نشانه‌گذاریِ قبلی رندر می‌شود، تا مقاله‌های موجود ذره‌ای تغییر نکنند.
+function isPlainImageBlock(data) {
+  const items = imageBlockItems(data);
+  return items.length <= 1 && !data.displayHeight && !items[0]?.href && !items[0]?.overlayText;
+}
+
+const OVERLAY_TEXT_SIZE = { sm: "text-sm md:text-base", md: "text-base md:text-2xl", lg: "text-lg md:text-3xl", xl: "text-xl md:text-5xl" };
+const OVERLAY_VERTICAL = { top: "justify-start", center: "justify-center", bottom: "justify-end" };
+const OVERLAY_TEXT_ALIGN = { right: "text-right", center: "text-center", left: "text-left" };
+const IMAGE_GRID_COLS = { 2: "sm:grid-cols-2", 3: "sm:grid-cols-2 lg:grid-cols-3", 4: "sm:grid-cols-2 lg:grid-cols-4" };
+
+function ImageTile({ item, height, overlay = {}, sizes }) {
+  const alt = item.alt || item.overlayText || "تصویر مقاله";
+  const media = height
+    // ارتفاعِ ثابت با object-cover؛ در موبایل به ۷۵vw محدود می‌شود تا تصویرِ
+    // باریک‌شده به نواری بلند و بریده تبدیل نشود.
+    ? <div className="relative w-full" style={{ height: `min(${height}px, 75vw)` }}><Image src={item.url} alt={alt} fill sizes={sizes} className="object-cover" /></div>
+    : <Image src={item.url} alt={alt} width={item.width || 1600} height={item.height || 900} sizes={sizes} className="h-auto w-full" />;
+  const text = item.overlayText
+    ? <div dir={overlay.dir || "rtl"} className={`absolute inset-0 flex flex-col p-4 md:p-8 ${OVERLAY_VERTICAL[overlay.position || "center"]} ${overlay.shade === false ? "" : "bg-black/35"}`}>
+      <p className={`whitespace-pre-line font-black leading-snug ${OVERLAY_TEXT_SIZE[overlay.size || "md"]} ${OVERLAY_TEXT_ALIGN[overlay.align || "center"]}`} style={{ color: overlay.color || "#ffffff", textShadow: "0 1px 3px rgba(0,0,0,.45)" }}>{item.overlayText}</p>
+    </div>
+    : null;
+  const tile = "relative block overflow-hidden rounded-[var(--radius)]";
+  // پیوند در همان زبانه باز می‌شود (بدونِ target) — ناوبریِ عادیِ سایت.
+  return item.href
+    ? <Link href={item.href} aria-label={alt} className={`${tile} transition-opacity hover:opacity-95 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-primary)]`}>{media}{text}</Link>
+    : <div className={tile}>{media}{text}</div>;
+}
+
+function ImageBlock({ data, spacing }) {
+  const items = imageBlockItems(data);
+  if (!items.length) return null;
+  const cols = Math.min(items.length, 4);
+  const sizes = cols === 1 ? "(max-width: 1024px) 100vw, 1200px" : `(max-width: 640px) 100vw, ${Math.ceil(100 / cols)}vw`;
+  return <figure className={blockSection} style={spacing || undefined}>
+    <div className={cols === 1 ? "" : `grid grid-cols-1 gap-3 ${IMAGE_GRID_COLS[cols]}`}>
+      {items.map((item, index) => <ImageTile key={`${item.url}-${index}`} item={item} height={data.displayHeight} overlay={data.overlay} sizes={sizes} />)}
+    </div>
+    {data.caption ? <figcaption className="mt-3 text-center text-xs leading-6 text-gray-500">{data.caption}</figcaption> : null}
+  </figure>;
+}
+
 function videoEmbed(url) {
   try {
     const value = new URL(url);
@@ -142,6 +188,7 @@ export default function ArticleBlockRenderer({ blocks = [], entities, preview = 
     // تصویرِ محتوا با نسبتِ واقعیِ خودش رندر می‌شود: عرض/ارتفاعِ ذخیره‌شده فقط
     // جا را پیش از بارگذاری رزرو می‌کند (aspect-ratio: auto w/h) و پس از بارگذاری
     // نسبتِ ذاتیِ تصویر جای آن را می‌گیرد — پس هیچ بُرشی رخ نمی‌دهد.
+    if (block.type === "image" && !isPlainImageBlock(data)) return <ImageBlock key={block.id} data={data} spacing={v.spacing} />;
     if (block.type === "image" && data.url) return <figure key={block.id} className={blockSection} style={v.spacing || undefined}><Image src={data.url} alt={data.alt || "تصویر مقاله"} width={data.width || 1600} height={data.height || 900} sizes="(max-width: 1024px) 100vw, 820px" className="h-auto w-full rounded-[var(--radius)]" />{data.caption ? <figcaption className="mt-3 text-center text-xs leading-6 text-gray-500">{data.caption}</figcaption> : null}</figure>;
     if (block.type === "gallery") {
       const images = (data.images || []).map((image) => typeof image === "string" ? { url: image, alt: "" } : image).filter((image) => image.url);
