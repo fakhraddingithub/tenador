@@ -87,8 +87,8 @@ const needsBackfill = (block) =>
 async function backfillCollection(db, collectionName, blocksField) {
   const collection = db.collection(collectionName);
   const docs = await collection
-    // images can also sit inside a merged block (data.blocks)
-    .find({ $or: [{ [`${blocksField}.type`]: "image" }, { [`${blocksField}.data.blocks.type`]: "image" }] })
+    // images can also sit inside merged blocks (data.blocks, any depth)
+    .find({ $or: [{ [`${blocksField}.type`]: "image" }, { [`${blocksField}.type`]: "merged" }] })
     .project({ [blocksField]: 1, title: 1, slug: 1, name: 1 })
     .toArray();
 

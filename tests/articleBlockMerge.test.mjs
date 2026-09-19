@@ -3,7 +3,7 @@
  *
  * ادغام/جداسازیِ بلوک‌ها. قاعده‌ی اصلی: جداسازی دقیقاً همان بلوک‌ها را، با همان
  * شناسه، داده، استایل، عرض و ترتیب برمی‌گرداند — و محتوای داخلِ بلوکِ ادغام‌شده
- * از هیچ اعتبارسنجی‌ای فرار نمی‌کند.
+ * (در هر عمقی) از هیچ اعتبارسنجی‌ای فرار نمی‌کند.
  */
 import test from "node:test";
 import assert from "node:assert/strict";
@@ -11,8 +11,8 @@ import { register } from "node:module";
 
 register("./aliasHooks.mjs", import.meta.url);
 
-const { mergeBlocks, unmergeBlock, cloneWithFreshIds } = await import("../src/lib/articleBlockMerge.js");
-const { flattenArticleBlocks, MAX_MERGED_CHILDREN } = await import("../src/lib/articleBlockTypes.js");
+const { mergeBlocks, mergeBlocker, unmergeBlock, cloneWithFreshIds } = await import("../src/lib/articleBlockMerge.js");
+const { flattenArticleBlocks, mergeDepth, sanitizeMergedGrid, defaultMergedGrid, MAX_MERGED_CHILDREN, MAX_MERGE_DEPTH } = await import("../src/lib/articleBlockTypes.js");
 const { sanitizeArticleBlocks } = await import("@/lib/articleValidation");
 
 const article = () => [
@@ -22,6 +22,7 @@ const article = () => [
   { id: "c", type: "quote", version: 1, data: { text: "نقل", author: "x" } },
   { id: "d", type: "divider", version: 1, data: {} },
 ];
+const allIds = (blocks) => flattenArticleBlocks(blocks).map((block) => block.id);
 
 test("merging adjacent blocks replaces them with one block at the same position, children verbatim", () => {
   const before = article();
@@ -39,50 +40,100 @@ test("unmerge restores exactly the original blocks and order (round trip)", () =
   assert.deepEqual(unmergeBlock(before, "a"), before, "a normal block is never 'unmerged'");
 });
 
-test("only 2..max contiguous, non-merged blocks can be merged", () => {
+test("a merged block can be merged again; each unmerge peels exactly one level", () => {
+  const before = article();
+  const once = mergeBlocks(before, ["a", "b"]);                   // h, M1(a,b), c, d
+  const twice = mergeBlocks(once, [once[1].id, "c"]);              // h, M2(M1(a,b), c), d
+  assert.ok(twice, "merged + normal block merge is allowed");
+  assert.deepEqual(twice.map((block) => block.type), ["heading", "merged", "divider"]);
+  assert.equal(mergeDepth(twice[1]), 2);
+  assert.deepEqual(allIds(twice), ["h", "a", "b", "c", "d"], "no content lost or duplicated");
+  const peeled = unmergeBlock(twice, twice[1].id);
+  assert.deepEqual(peeled, once, "unmerging the outer block gives back exactly the previous state");
+  assert.deepEqual(unmergeBlock(peeled, peeled[1].id), before);
+  // two merged blocks merged with each other
+  const both = mergeBlocks(once, ["c", "d"]);                      // h, M1(a,b), M3(c,d)
+  const joined = mergeBlocks(both, [both[1].id, both[2].id]);       // h, M4(M1, M3)
+  assert.deepEqual(joined.map((block) => block.type), ["heading", "merged"]);
+  assert.deepEqual(allIds(joined), ["h", "a", "b", "c", "d"]);
+  assert.deepEqual(unmergeBlock(joined, joined[1].id), both);
+});
+
+test("merge rules: 2..max contiguous blocks, depth limit", () => {
   const blocks = article();
-  assert.equal(mergeBlocks(blocks, ["a"]), null);
-  assert.equal(mergeBlocks(blocks, ["a", "c"]), null, "gap in between");
+  assert.equal(mergeBlocker(blocks, ["a"]), "few");
+  assert.equal(mergeBlocker(blocks, ["a", "c"]), "gap");
   assert.equal(mergeBlocks(blocks, ["a", "ghost"]), null);
-  const once = mergeBlocks(blocks, ["a", "b"]);
-  assert.equal(mergeBlocks(once, [once[1].id, "c"]), null, "no nesting");
+  // enough neighbours to keep merging one level deeper each time
+  let current = [...blocks, ...Array.from({ length: MAX_MERGE_DEPTH + 2 }, (_, i) => ({ id: `extra${i}`, type: "divider", data: {} }))];
+  for (let level = 1; level <= MAX_MERGE_DEPTH; level += 1) {
+    const top = current.find((block) => block.type === "merged") || current[1];
+    current = mergeBlocks(current, [top.id, current[current.indexOf(top) + 1].id]);
+    assert.ok(current, `level ${level}`);
+  }
+  const top = current.find((block) => block.type === "merged");
+  assert.equal(mergeDepth(top), MAX_MERGE_DEPTH);
+  assert.equal(mergeBlocker(current, [top.id, current[current.indexOf(top) + 1].id]), "deep");
   const many = Array.from({ length: MAX_MERGED_CHILDREN + 1 }, (_, i) => ({ id: `p${i}`, type: "paragraph", data: { text: String(i) } }));
-  assert.equal(mergeBlocks(many, many.map((block) => block.id)), null);
-  assert.equal(mergeBlocks(many, many.slice(0, MAX_MERGED_CHILDREN).map((block) => block.id))[0].data.blocks.length, MAX_MERGED_CHILDREN);
+  assert.equal(mergeBlocker(many, many.map((block) => block.id)), "many");
 });
 
-test("duplicating a merged block gives every block in the copy a fresh id", () => {
-  const merged = mergeBlocks(article(), ["a", "b"])[1];
-  const copy = cloneWithFreshIds(merged);
-  const ids = [merged.id, ...merged.data.blocks.map((block) => block.id)];
-  const copyIds = [copy.id, ...copy.data.blocks.map((block) => block.id)];
-  assert.equal(new Set([...ids, ...copyIds]).size, ids.length * 2);
-  assert.deepEqual(copy.data.blocks.map(({ id, ...rest }) => rest), merged.data.blocks.map(({ id, ...rest }) => rest));
+test("duplicating gives every block in the copy a fresh id, at any depth", () => {
+  const once = mergeBlocks(article(), ["a", "b"]);
+  const nested = mergeBlocks(once, [once[1].id, "c"])[1];
+  const copy = cloneWithFreshIds(nested);
+  const original = allIds([nested]).concat(nested.id, nested.data.blocks[0].id);
+  const fresh = allIds([copy]).concat(copy.id, copy.data.blocks[0].id);
+  assert.equal(new Set([...original, ...fresh]).size, original.length * 2);
+  const strip = (block) => (block.type === "merged" ? { type: block.type, blocks: block.data.blocks.map(strip) } : { ...block, id: undefined });
+  assert.deepEqual(strip(copy), strip(nested));
 });
 
-test("flattenArticleBlocks exposes merged children to every consumer", () => {
-  const merged = mergeBlocks(article(), ["a", "b"]);
-  assert.deepEqual(flattenArticleBlocks(merged).map((block) => block.id), ["h", "a", "b", "c", "d"]);
+test("flattenArticleBlocks exposes children at any depth", () => {
+  const once = mergeBlocks(article(), ["a", "b"]);
+  const twice = mergeBlocks(once, [once[1].id, "c"]);
+  assert.deepEqual(allIds(twice), ["h", "a", "b", "c", "d"]);
   assert.deepEqual(flattenArticleBlocks(undefined), []);
 });
 
-test("server: a merged block survives sanitising unchanged", () => {
-  const errors = {};
-  const clean = sanitizeArticleBlocks(article(), errors);
-  assert.deepEqual(errors, {});
-  const merged = mergeBlocks(clean, ["a", "b", "c"]);
-  const again = sanitizeArticleBlocks(merged, errors);
-  assert.deepEqual(errors, {});
-  assert.deepEqual(again, merged);
-  assert.deepEqual(unmergeBlock(again, again[1].id), clean);
+test("grid settings are clamped per breakpoint; anything incomplete means the default row layout", () => {
+  assert.deepEqual(sanitizeMergedGrid({ desktop: { columns: 6, rows: 2, fit: true }, mobile: { columns: 2, rows: 6, fit: false, minWidth: 180 } }),
+    { desktop: { columns: 6, rows: 2, fit: true, minWidth: 0 }, mobile: { columns: 2, rows: 6, fit: false, minWidth: 180 } });
+  assert.deepEqual(sanitizeMergedGrid({ desktop: { columns: 99, rows: 0, fit: "yes", minWidth: -5 }, mobile: { columns: "3", rows: "x" } }),
+    { desktop: { columns: 12, rows: 1, fit: false, minWidth: 0 }, mobile: { columns: 3, rows: 1, fit: false, minWidth: 0 } });
+  for (const bad of [undefined, null, [], "grid", {}, { desktop: {} }]) assert.equal(sanitizeMergedGrid(bad), undefined, JSON.stringify(bad));
+  const defaults = defaultMergedGrid(12);
+  assert.deepEqual([defaults.desktop.columns, defaults.mobile.columns, defaults.mobile.rows], [12, 2, 6]);
 });
 
-test("server: children get the same validation, ids are unique across the tree, no nesting", () => {
+test("server: merged blocks (nested, with grid) survive sanitising unchanged", () => {
+  const errors = {};
+  const clean = sanitizeArticleBlocks(article(), errors);
+  const once = mergeBlocks(clean, ["a", "b"]);
+  const twice = mergeBlocks(once, [once[1].id, "c"]);
+  twice[1].data.grid = { desktop: { columns: 2, rows: 1, fit: false, minWidth: 0 }, mobile: { columns: 1, rows: 2, fit: true, minWidth: 0 } };
+  const again = sanitizeArticleBlocks(twice, errors);
+  assert.deepEqual(errors, {});
+  assert.deepEqual(again, twice);
+  assert.deepEqual(unmergeBlock(unmergeBlock(again, again[1].id), once[1].id), clean);
+});
+
+test("server: legacy merged blocks without grid stay exactly as stored", () => {
+  const errors = {};
+  const legacy = [{ id: "m", type: "merged", version: 1, data: { blocks: [{ id: "x", type: "divider", version: 1, data: {} }] } }];
+  assert.deepEqual(sanitizeArticleBlocks(legacy, errors), legacy);
+  assert.deepEqual(errors, {});
+});
+
+test("server: same validation inside, unique ids across the tree, depth and size limits", () => {
   const bad = (blocks) => { const errors = {}; sanitizeArticleBlocks(blocks, errors); return errors; };
   const child = { id: "x1", type: "button", data: { label: "l", href: "javascript:alert(1)" } };
-  assert.ok(bad([{ id: "m", type: "merged", data: { blocks: [child] } }])["blocks.0.data.blocks.0.data.href"]);
+  assert.ok(bad([{ id: "m", type: "merged", data: { blocks: [{ id: "m2", type: "merged", data: { blocks: [child] } }] } }])["blocks.0.data.blocks.0.data.blocks.0.data.href"], "deep children validated");
   assert.ok(bad([{ id: "dup", type: "divider", data: {} }, { id: "m", type: "merged", data: { blocks: [{ id: "dup", type: "divider", data: {} }] } }])["blocks.1.data.blocks.0.id"]);
-  assert.ok(bad([{ id: "m", type: "merged", data: { blocks: [{ id: "m2", type: "merged", data: { blocks: [] } }] } }])["blocks.0.data.blocks.0.type"]);
+  let deep = { id: "leaf", type: "divider", data: {} };
+  for (let level = 0; level <= MAX_MERGE_DEPTH; level += 1) deep = { id: `m${level}`, type: "merged", data: { blocks: [deep] } };
+  const deepErrors = bad([deep]);
+  assert.ok(Object.keys(deepErrors).some((key) => key.endsWith(".type")), "more than MAX_MERGE_DEPTH levels is rejected");
   const tooMany = Array.from({ length: MAX_MERGED_CHILDREN + 1 }, (_, i) => ({ id: `c${i}`, type: "divider", data: {} }));
   const errors = {};
   const out = sanitizeArticleBlocks([{ id: "m", type: "merged", data: { blocks: tooMany } }], errors);

@@ -8,7 +8,7 @@ import { sanitizeArticleHtml } from "@/lib/sanitizeArticleHtml";
 import { sanitizeRichText } from "@/lib/sanitizeRichText";
 import { BLOCK_WIDTH_CLASS, blockWidth, groupBlockRows } from "@/lib/articleBlockLayout";
 import { imageBlockItems } from "@/lib/articleImageBlock";
-import { flattenArticleBlocks, isMergedBlock, mergedChildren } from "@/lib/articleBlockTypes";
+import { flattenArticleBlocks, isMergedBlock, mergedChildren, sanitizeMergedGrid } from "@/lib/articleBlockTypes";
 
 const ordered = (values, map) => (Array.isArray(values) ? values : values ? [values] : []).map((id) => map?.[String(id)]).filter(Boolean);
 const blockSection = "my-9 scroll-mt-28";
@@ -87,9 +87,10 @@ function normalizeHeadingLevels(blocks = []) {
     previous = Math.max(2, Math.min(4, Number.isFinite(requested) ? requested : 2, previous + 1));
     return { ...block, data: { ...block.data, level: `h${previous}` } };
   };
-  return blocks.map((block) => (isMergedBlock(block)
-    ? { ...block, data: { ...block.data, blocks: mergedChildren(block).map(normalize) } }
-    : normalize(block)));
+  const walk = (block) => (isMergedBlock(block)
+    ? { ...block, data: { ...block.data, blocks: mergedChildren(block).map(walk) } }
+    : normalize(block));
+  return blocks.map(walk);
 }
 
 export function articleHeadings(blocks = []) {
@@ -102,6 +103,46 @@ export function articleHeadings(blocks = []) {
 // له شود. وقتی صفحه جا ندارد (موبایل) سطر سرریز می‌شود و به یک اسلایدرِ افقیِ
 // snap‌دار تبدیل می‌شود؛ در دسکتاپ جمعِ عرض‌ها دقیقاً ۱۰۰٪ است (فاصله کسر می‌شود).
 const MERGED_WIDTH_PERCENT = { "1/2": 50, "1/3": 100 / 3, "2/3": 200 / 3 };
+
+/**
+ * چیدمانِ شبکه‌ای (data.grid)، جدا برای موبایل و دسکتاپ (مرز: md).
+ *  - fit: دقیقاً columns ستونِ جمع‌شونده؛ ردیف‌ها خودکار؛ اسکرولِ افقی هرگز.
+ *  - بدونِ fit: K = max(columns, ⌈n/rows⌉) ستون، هر ستون به پهنای یک‌ستونِ
+ *    columns تایی (و دست‌کم minWidth)؛ هرچه بیرون بزند، اسلایدرِ افقیِ snap‌دار.
+ * مقدارها با متغیرهای CSS می‌آیند و کلاس‌ها ثابت‌اند (تیلویند فقط رشته‌ی ثابت می‌سازد).
+ */
+function MergedGrid({ items, grid, spacing }) {
+  const vars = {};
+  for (const [key, settings] of [["m", grid.mobile], ["d", grid.desktop]]) {
+    const columns = settings.fit ? settings.columns : Math.max(settings.columns, Math.ceil(items.length / settings.rows));
+    vars[`--c${key}`] = settings.columns;
+    vars[`--k${key}`] = columns;
+    vars[`--w${key}`] = `max(calc((100% - (${settings.columns} - 1) * var(--g)) / ${settings.columns}), ${settings.minWidth}px)`;
+  }
+  const scrolls = !grid.mobile.fit || !grid.desktop.fit;
+  return <div
+    data-merged-block
+    {...(scrolls ? { role: "region", "aria-label": "محتوای کنارِ هم — برای دیدنِ بقیه به چپ و راست بکشید", tabIndex: 0 } : {})}
+    className={[
+      blockSection,
+      "pb-2 [scrollbar-width:thin] focus-visible:outline-2 focus-visible:outline-[var(--color-primary)]",
+      grid.mobile.fit ? "overflow-x-visible" : "overflow-x-auto overscroll-x-contain snap-x snap-mandatory",
+      grid.desktop.fit ? "md:overflow-x-visible md:snap-none" : "md:overflow-x-auto md:snap-x md:snap-mandatory",
+    ].join(" ")}
+    style={spacing || undefined}
+  >
+    <div
+      className={[
+        "grid items-start gap-[var(--g)] [--g:1rem] md:[--g:1.5rem]",
+        grid.mobile.fit ? "grid-cols-[repeat(var(--cm),minmax(0,1fr))]" : "grid-cols-[repeat(var(--km),var(--wm))]",
+        grid.desktop.fit ? "md:grid-cols-[repeat(var(--cd),minmax(0,1fr))]" : "md:grid-cols-[repeat(var(--kd),var(--wd))]",
+      ].join(" ")}
+      style={vars}
+    >
+      {items.map(({ child, node }) => <div key={child.id} className="min-w-0 snap-start *:my-0">{node}</div>)}
+    </div>
+  </div>;
+}
 
 function MergedBlock({ items, spacing }) {
   const share = 100 / items.length;
@@ -210,7 +251,13 @@ export default function ArticleBlockRenderer({ blocks = [], entities, preview = 
       // فرزندان با همین renderBlock رندر می‌شوند — هر نوع بلوک داخلِ ادغام دقیقاً
       // همان‌طور دیده می‌شود که بیرونِ آن.
       const items = mergedChildren(block).map((child) => ({ child, node: renderBlock(child) })).filter((item) => item.node);
-      return items.length ? <MergedBlock key={block.id} items={items} spacing={v.spacing} /> : null;
+      if (!items.length) return null;
+      // بدونِ grid: همان ردیفِ پیش‌فرضِ قبلی، بدونِ هیچ تغییری.
+      // پیش‌نمایشِ ادمین وضعیتِ ذخیره‌نشده را رندر می‌کند، پس grid اینجا هم پاک‌سازی می‌شود.
+      const grid = sanitizeMergedGrid(data.grid);
+      return grid
+        ? <MergedGrid key={block.id} items={items} grid={grid} spacing={v.spacing} />
+        : <MergedBlock key={block.id} items={items} spacing={v.spacing} />;
     }
     if (block.type === "heading") {
       const level = ["h2", "h3", "h4"].includes(data.level) ? data.level : "h2";

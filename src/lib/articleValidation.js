@@ -1,6 +1,6 @@
 import mongoose from "mongoose";
 import { isValidArticleSlug, normalizeArticleSlug } from "base/utils/articleSlug";
-import { ARTICLE_BLOCK_TYPE_SET, MAX_MERGED_CHILDREN, MERGED_BLOCK_TYPE } from "@/lib/articleBlockTypes";
+import { ARTICLE_BLOCK_TYPE_SET, MAX_MERGED_CHILDREN, MAX_MERGE_DEPTH, MERGED_BLOCK_TYPE, sanitizeMergedGrid } from "@/lib/articleBlockTypes";
 import { safeArticleUrl, sanitizeArticleBlockData, sanitizeArticleBlockStyle } from "@/lib/articleBlockValidation";
 import { sanitizeArticleBlockLayout } from "@/lib/articleBlockLayout";
 
@@ -55,7 +55,8 @@ function sanitizeCover(value) {
   };
 }
 
-function sanitizeBlock(block, errors, path, ids, nested) {
+// level = تعدادِ بلوک‌های ادغام‌شده‌ی بالای این بلوک.
+function sanitizeBlock(block, errors, path, ids, level) {
   const item = block && typeof block === "object" && !Array.isArray(block) ? block : {};
   const id = text(item.id, 120);
   const type = text(item.type, 80);
@@ -64,7 +65,8 @@ function sanitizeBlock(block, errors, path, ids, nested) {
   ids.add(id);
   if (!type) errors[`${path}.type`] = "block type is required";
   if (type && !ARTICLE_BLOCK_TYPE_SET.has(type)) errors[`${path}.type`] = "block type is not supported";
-  if (nested && type === MERGED_BLOCK_TYPE) errors[`${path}.type`] = "merged blocks cannot be nested";
+  const tooDeep = type === MERGED_BLOCK_TYPE && level >= MAX_MERGE_DEPTH;
+  if (tooDeep) errors[`${path}.type`] = `merged blocks cannot be nested more than ${MAX_MERGE_DEPTH} levels`;
 
   let data = {};
   if (type === MERGED_BLOCK_TYPE) {
@@ -72,7 +74,10 @@ function sanitizeBlock(block, errors, path, ids, nested) {
     // اعتبارسنجیِ یک نوع بلوک از راهِ ادغام وجود ندارد.
     const children = Array.isArray(item.data?.blocks) ? item.data.blocks : [];
     if (children.length > MAX_MERGED_CHILDREN) errors[`${path}.data.blocks`] = `merged block cannot hold more than ${MAX_MERGED_CHILDREN} blocks`;
-    data = { blocks: nested ? [] : children.slice(0, MAX_MERGED_CHILDREN).map((child, index) => sanitizeBlock(child, errors, `${path}.data.blocks.${index}`, ids, true)) };
+    data = { blocks: tooDeep ? [] : children.slice(0, MAX_MERGED_CHILDREN).map((child, index) => sanitizeBlock(child, errors, `${path}.data.blocks.${index}`, ids, level + 1)) };
+    // grid فقط وقتی ذخیره می‌شود که تنظیم شده باشد؛ نبودنش یعنی چیدمانِ ردیفیِ پیش‌فرض.
+    const grid = sanitizeMergedGrid(item.data?.grid);
+    if (grid) data.grid = grid;
   } else if (ARTICLE_BLOCK_TYPE_SET.has(type)) {
     data = sanitizeArticleBlockData(type, item.data, errors, `${path}.data`);
   }
@@ -102,7 +107,7 @@ export function sanitizeArticleBlocks(value, errors) {
   // شناسه‌ها در کلِ درخت یکتا هستند (فرزندانِ بلوکِ ادغام‌شده هم)، چون در
   // ویرایشگر شناسه‌ی DOM و در رندر کلید و لنگرِ تیترها از همین ساخته می‌شوند.
   const ids = new Set();
-  const blocks = value.slice(0, MAX_BLOCKS).map((block, index) => sanitizeBlock(block, errors, `blocks.${index}`, ids, false));
+  const blocks = value.slice(0, MAX_BLOCKS).map((block, index) => sanitizeBlock(block, errors, `blocks.${index}`, ids, 0));
 
   try {
     if (Buffer.byteLength(JSON.stringify(blocks), "utf8") > MAX_BLOCK_BYTES) {
