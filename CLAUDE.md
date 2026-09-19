@@ -213,19 +213,36 @@ audiences an attribute means anything for — e.g. بالانس only on an adult
 | `["بچگانه"]` | applies only to بچگانه products |
 
 `attributeAppliesToAudience()` decides, built on the same `getTargetAudienceStorageMatches()`
-the filters use, so the unisex rule cannot drift between the two. It deliberately answers
-**"applies"** in three cases, so nothing is ever hidden on a guess: an empty list, a product
-whose `targetAudience` is blank or unrecognised (legacy, not yet backfilled), and a list with
-no valid value in it (corrupt data is not an instruction to hide).
+the filters use, so the unisex rule cannot drift between the two. It answers **"applies"** in
+exactly two cases, and both are about the *attribute's configuration*, never about the product:
+an empty list (no restriction), and a list with no valid value in it (an unreadable restriction
+is a broken category, and a broken category must not erase the attribute from every product).
+
+**A product whose `targetAudience` is blank or unrecognised satisfies no restriction, so a
+scoped attribute does not apply to it.** "Unspecified" means unspecified, not "everything" —
+and a stored value never overrides the rule, so a legacy kids racket that still has a «بالانس»
+value in the database does not show it. Only unscoped attributes survive an unset audience.
 
 Where it takes effect:
 
 | layer | behaviour |
 |---|---|
 | AI prompt (`buildProductTemplate.js`) | a scoped attribute carries `Applies ONLY when targetAudience is one of: [...]` — the **expanded** list, so the model never has to infer the unisex rule — plus one rule under `attributes:` telling it to omit the key outright |
-| both admin product forms | the field is not rendered when it doesn't apply; the target-audience dropdown shows/hides it live |
+| both admin product forms | the field is not rendered when it doesn't apply; the target-audience dropdown shows/hides it live. With no audience picked yet, scoped fields stay hidden until one is — the select sits directly above them |
 | `validateProductFields` | only ever **relaxes** the required check, using the *effective* audience (payload value, else the stored one — same fallback as category/basePrice) |
-| `product.service.js` + second-hand page | the spec table drops the row, so a kids racket shows no blank «بالانس» |
+| `product.service.js` + second-hand page | filter **before** merging the stored value in, so a scoped-out attribute never reaches the browser at all — the filtering is server-side, not a render-time decision |
+
+**The radar chart is the one audience-dependent thing left in a component.**
+`ProductAttributesTable` (shared by the new and second-hand product pages) hides
+`ProductComparisonGraph` for a kids product and leaves its grid column empty — the column
+itself stays, so the spec list keeps exactly the width it has for every other audience. The
+decision goes through `isKidsAudience()` rather than a `"بچگانه"` literal in the component, and
+`tests/productPageAudience.test.mjs` fails if the `targetAudience` prop is dropped anywhere on
+the way from either template to the table.
+
+Note `ProductAttributesTable` still returns `null` when there are no attributes to show, which
+predates this feature: a product whose attributes are *all* scoped out has an empty specs tab,
+chart included, exactly as a category with no fixed attributes always has.
 
 Rules that are load-bearing:
 
@@ -245,9 +262,10 @@ Rules that are load-bearing:
   it for variants** — variant scoping is not a feature.
 
 ```bash
-npm run test:target-audience    # the helper's truth table + route normalization
-npm run test:ai-product-draft   # the category prompt and the per-attribute rule in the draft
-npm run test:product-creation   # required-check relaxation, through the real create/edit routes
+npm run test:target-audience       # the helper's truth table + route normalization
+npm run test:product-page-audience # product-page wiring: server-side filter, radar rule, props
+npm run test:ai-product-draft      # the category prompt and the per-attribute rule in the draft
+npm run test:product-creation      # required-check relaxation, through the real create/edit routes
 ```
 
 ### Order EUR pricing (independent of Toman)

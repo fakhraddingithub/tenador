@@ -153,6 +153,7 @@ const UsedProductTabs = ({
   description,
   attributes=[],
   technicalStats=[],
+  targetAudience,
 }) => {
   const isMobile = useMobileProductLayout();
   const [activeTab, setActiveTab] = useState("health");
@@ -173,7 +174,11 @@ const UsedProductTabs = ({
       )}
       {sectionId === "attributes" && (
         <div className="bg-gray-50/50 rounded-[6px] p-1 border border-gray-100">
-          <ProductAttributesTable attributes={attributes} technicalStats={technicalStats} />
+          <ProductAttributesTable
+            attributes={attributes}
+            technicalStats={technicalStats}
+            targetAudience={targetAudience}
+          />
         </div>
       )}
       {sectionId === "reviews" && (

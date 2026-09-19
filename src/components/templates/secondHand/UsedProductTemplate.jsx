@@ -23,6 +23,7 @@ const UsedProductTemplate = ({ product }) => {
             description={product.baseProduct.longDescription}
             attributes={product.baseProduct.attributes}
             technicalStats={technicalStats}
+            targetAudience={product.baseProduct.targetAudience}
           />
         </div>
       </div>

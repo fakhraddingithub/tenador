@@ -182,9 +182,11 @@ test('an attribute scoped to other audiences is not demanded, and its stored val
   assert.deepEqual(validateProductFields(definition,
     { attributes: { ...attributes, balance: 'HL' }, targetAudience: 'بچگانه' }), {});
 
-  // محصولِ قدیمیِ بدونِ مخاطب هدف دقیقاً رفتارِ قبلی را دارد (هیچ‌چیز نرم نمی‌شود)
-  assert.match(validateProductFields(definition, { attributes }).error, /بالانس/);
-  assert.match(validateProductFields(definition, { attributes, targetAudience: null }).error, /بالانس/);
+  // محصولِ بدونِ مخاطب هدف هیچ محدودیتی را برآورده نمی‌کند، پس ویژگیِ محدودشده
+  // نه نمایش داده می‌شود و نه الزامی است. ویژگیِ بدونِ محدودیت همچنان الزامی است.
+  assert.deepEqual(validateProductFields(definition, { attributes }), {});
+  assert.deepEqual(validateProductFields(definition, { attributes, targetAudience: null }), {});
+  assert.match(validateProductFields(definition, { attributes: {} }).error, /جنس/);
 });
 test('create API rejects a negative base price and an out-of-range stat', async () => {
   const withCategory = (name, extra) => ({ ...data(name), category: fieldsCategory._id,

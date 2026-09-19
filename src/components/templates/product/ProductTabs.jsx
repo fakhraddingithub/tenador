@@ -80,6 +80,7 @@ const ProductTabs = ({
   description,
   attributes,
   technicalStats,
+  targetAudience,
   customTab,
   customTabItemIds = [],
   productId,
@@ -131,7 +132,11 @@ const ProductTabs = ({
       )}
       {sectionId === "attributes" && (
         <div className="rounded-[6px] border border-gray-100 bg-gray-50/50 p-1">
-          <ProductAttributesTable attributes={attributes} technicalStats={technicalStats} />
+          <ProductAttributesTable
+            attributes={attributes}
+            technicalStats={technicalStats}
+            targetAudience={targetAudience}
+          />
         </div>
       )}
       {sectionId === "customTab" && (

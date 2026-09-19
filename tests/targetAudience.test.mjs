@@ -7,6 +7,7 @@ import {
   buildTargetAudienceMatch,
   filterAttributesByAudience,
   getEffectiveTargetAudienceFilters,
+  isKidsAudience,
   normalizeTargetAudience,
   targetAudienceListMatches,
 } from "../utils/targetAudience.js";
@@ -72,6 +73,21 @@ test("ویژگیِ بدونِ محدودیت برای هر مخاطبی کارب
   }
 });
 
+test("محصولِ بدونِ مخاطب هدف فقط ویژگی‌های بدونِ محدودیت را می‌گیرد", () => {
+  // مقدارِ ذخیره‌شده هرگز قاعده را نقض نمی‌کند: نبودِ مخاطب هدف یعنی هیچ
+  // محدودیتی برآورده نشده، نه «همه‌چیز را نشان بده».
+  for (const audience of [null, undefined, "", "   ", "نامعتبر"]) {
+    assert.equal(attributeAppliesToAudience(["بچگانه"], audience), false);
+    assert.equal(attributeAppliesToAudience(["یونی سکس"], audience), false);
+    assert.equal(
+      attributeAppliesToAudience(["مردانه", "زنانه", "بچگانه", "یونی سکس"], audience),
+      false,
+    );
+    // ویژگیِ بدونِ محدودیت همچنان دیده می‌شود
+    assert.equal(attributeAppliesToAudience([], audience), true);
+  }
+});
+
 test("ویژگیِ یونی سکس برای بزرگسالان کاربرد دارد و برای بچگانه نه", () => {
   assert.equal(attributeAppliesToAudience(["یونی سکس"], "مردانه"), true);
   assert.equal(attributeAppliesToAudience(["یونی سکس"], "زنانه"), true);
@@ -93,16 +109,24 @@ test("ویژگیِ مردانه روی محصولِ یونی سکس کاربرد
   assert.equal(attributeAppliesToAudience(["مردانه", "بچگانه"], "بچگانه"), true);
 });
 
-test("مقدار قدیمی همه و مخاطبِ نامشخص، ویژگی را پنهان نمی‌کنند", () => {
-  // «همه» در هر دو سمت به یونی سکس نرمال می‌شود
+test("مقدار قدیمی «همه» در هر دو سمت به یونی سکس نرمال می‌شود", () => {
   assert.equal(attributeAppliesToAudience(["همه"], "مردانه"), true);
   assert.equal(attributeAppliesToAudience(["یونی سکس"], "همه"), true);
-  // محصولِ قدیمی بدونِ مخاطب هدف: هیچ ویژگی‌ای پنهان نمی‌شود
-  assert.equal(attributeAppliesToAudience(["بچگانه"], null), true);
-  assert.equal(attributeAppliesToAudience(["بچگانه"], ""), true);
-  assert.equal(attributeAppliesToAudience(["بچگانه"], "نامعتبر"), true);
-  // مقدارِ تگِ نامعتبر نادیده گرفته می‌شود، نه اینکه همه‌چیز را پنهان کند
+  assert.equal(attributeAppliesToAudience(["همه"], "بچگانه"), false);
+});
+
+test("محدودیتِ ناخوانا یعنی بدونِ محدودیت، نه پنهان‌سازی", () => {
+  // پیکربندیِ خرابِ دسته نباید ویژگی را از همه‌ی محصولات حذف کند
   assert.equal(attributeAppliesToAudience(["نامعتبر"], "بچگانه"), true);
+  assert.equal(attributeAppliesToAudience(["نامعتبر"], "مردانه"), true);
+  assert.equal(attributeAppliesToAudience(["نامعتبر"], null), true);
+});
+
+test("isKidsAudience فقط بچگانه را می‌شناسد و نامِ مستعار را هم", () => {
+  assert.equal(isKidsAudience("بچگانه"), true);
+  for (const value of ["مردانه", "زنانه", "یونی سکس", "همه", "یونیسکس", "", null, undefined, 42]) {
+    assert.equal(isKidsAudience(value), false, String(value));
+  }
 });
 
 test("فیلترِ فهرستِ ویژگی‌ها همان قاعده را روی آرایه اعمال می‌کند", () => {
@@ -120,7 +144,10 @@ test("فیلترِ فهرستِ ویژگی‌ها همان قاعده را رو�
     filterAttributesByAudience(attributes, "بچگانه").map((a) => a.name),
     ["Head Size", "Kid Grip"],
   );
-  // محصولِ بدونِ مخاطب هدف همه‌ی ویژگی‌ها را می‌بیند (رفتارِ قبلی)
-  assert.equal(filterAttributesByAudience(attributes, null).length, 3);
+  // محصولِ بدونِ مخاطب هدف فقط ویژگی‌های بدونِ محدودیت را می‌بیند
+  assert.deepEqual(
+    filterAttributesByAudience(attributes, null).map((a) => a.name),
+    ["Head Size"],
+  );
   assert.deepEqual(filterAttributesByAudience(null, "مردانه"), []);
 });

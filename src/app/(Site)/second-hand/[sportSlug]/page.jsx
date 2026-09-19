@@ -186,6 +186,8 @@ export default async function UsedProductPage({ params }) {
       longDescription:  raw.baseProduct.longDescription  || "",
       attributes:       mergedAttributes,
       technicalStats:   raw.baseProduct.technicalStats   || [],
+      // نمودار رادار برای محصولِ بچگانه نمایش داده نمی‌شود (ProductAttributesTable)
+      targetAudience:   raw.baseProduct.targetAudience   || null,
       color:            raw.baseProduct.color,
       brand: raw.baseProduct.brand
         ? {

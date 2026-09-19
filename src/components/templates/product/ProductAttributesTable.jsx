@@ -4,6 +4,7 @@ import { useState, useRef } from "react";
 import { motion } from "framer-motion";
 import ProductComparisonGraph from "@/components/templates/productCompare/ProductComparisonGraph";
 import AttributeInfoTooltip from "./AttributeInfoTooltip";
+import { isKidsAudience } from "base/utils/targetAudience";
 
 // یک ردیفِ مشخصات فنی. اگر ویژگی توضیح داشته باشد، کلِ ردیف کلیک‌پذیر می‌شود و
 // تولتیپِ آن باز/بسته می‌شود (آیکونِ ؟ فقط نشانگر است).
@@ -59,9 +60,16 @@ function SpecRow({ attr, index, open, onToggle, onClose }) {
   );
 }
 
-const ProductAttributesTable = ({ attributes = [], technicalStats }) => {
+// ویژگی‌ها پیش از رسیدن به اینجا سمتِ سرور بر اساس مخاطب هدف فیلتر شده‌اند
+// (services/product.service.js و صفحه‌ی دستِ‌دوم)؛ اینجا فقط رندر می‌شوند.
+// تنها تصمیمِ وابسته به مخاطب هدف در این لایه، نمایشِ نمودار رادار است.
+const ProductAttributesTable = ({ attributes = [], technicalStats, targetAudience }) => {
   // فقط یک تولتیپ هم‌زمان باز است → اندیسِ ردیفِ باز در والد نگه‌داری می‌شود.
   const [openIndex, setOpenIndex] = useState(null);
+
+  // محصولِ بچگانه نمودار رادار ندارد؛ ستونِ آن خالی می‌ماند تا چیدمانِ دو ستونه
+  // و عرضِ فهرستِ مشخصات دقیقاً همان بماند که برای بقیه‌ی مخاطب‌هاست.
+  const showComparisonGraph = !isKidsAudience(targetAudience);
 
   if (!attributes || attributes.length === 0) return null;
 
@@ -86,7 +94,9 @@ const ProductAttributesTable = ({ attributes = [], technicalStats }) => {
       </div>
 
       <div dir="rtl">
-        <ProductComparisonGraph technicalStats={technicalStats} />
+        {showComparisonGraph && (
+          <ProductComparisonGraph technicalStats={technicalStats} />
+        )}
       </div>
     </motion.div>
   );

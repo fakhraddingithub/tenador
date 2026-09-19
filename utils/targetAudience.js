@@ -99,10 +99,15 @@ export function targetAudienceListMatches(values, selected) {
  * فیلترهاست تا رفتارِ «یونی سکس» در کلِ سیستم یکی بماند: تگِ «یونی سکس» یعنی
  * بزرگسال — مردانه و زنانه را هم می‌گیرد و هرگز بچگانه را نمی‌گیرد.
  *
- * سه حالت عمداً «کاربرد دارد» برمی‌گردانند تا هیچ داده‌ای بی‌صدا پنهان نشود:
+ * دو حالت عمداً «کاربرد دارد» برمی‌گردانند، و هر دو درباره‌ی *پیکربندیِ ویژگی*‌اند،
+ * نه درباره‌ی محصول:
  *   - فهرستِ خالی/نبود  → بدونِ محدودیت (رفتارِ همه‌ی ویژگی‌های موجود، بدون مهاجرت)
- *   - مخاطبِ هدفِ محصول خالی یا ناشناخته → محصولِ قدیمیِ Backfill‌نشده
- *   - فهرستی که هیچ مقدارِ معتبری ندارد → داده‌ی خراب، نه دستورِ پنهان‌سازی
+ *   - فهرستی که هیچ مقدارِ معتبری ندارد → محدودیتِ ناخوانا؛ پیکربندیِ خرابِ دسته
+ *     نباید ویژگی را از همه‌ی محصولات حذف کند
+ *
+ * اما محصولی که مخاطب هدفش خالی یا ناشناخته است هیچ محدودیتی را برآورده نمی‌کند:
+ * ویژگیِ محدودشده روی آن کاربرد **ندارد**. «مخاطبِ نامشخص» یعنی نامشخص، نه «همه»،
+ * و وجودِ مقدارِ ذخیره‌شده روی محصول هرگز این قاعده را نقض نمی‌کند.
  */
 export function attributeAppliesToAudience(targetAudiences, productAudience) {
   if (!Array.isArray(targetAudiences) || targetAudiences.length === 0) return true;
@@ -113,9 +118,18 @@ export function attributeAppliesToAudience(targetAudiences, productAudience) {
   if (allowed.length === 0) return true;
 
   const productMatches = getTargetAudienceStorageMatches(productAudience);
-  if (productMatches.length === 0) return true;
+  if (productMatches.length === 0) return false;
 
   return allowed.some((value) => productMatches.includes(value));
+}
+
+/**
+ * آیا این مقدار «بچگانه» است؟ تنها جایی که یک مخاطبِ خاص رفتارِ ویژه دارد
+ * (نمودار رادارِ صفحه‌ی محصول) و عمداً از همین‌جا می‌آید تا رشته‌ی جادویی
+ * «بچگانه» در کامپوننت‌ها تکرار نشود.
+ */
+export function isKidsAudience(value) {
+  return normalizeTargetAudience(value) === TARGET_AUDIENCE.KIDS;
 }
 
 /** همان قاعده، اعمال‌شده روی آرایه‌ی ویژگی‌های دسته. */
