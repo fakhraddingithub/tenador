@@ -8,11 +8,33 @@ import sanitizeHtml from "sanitize-html";
  * آن بلوک با افزودنِ این قابلیت گشاد نمی‌شود.
  */
 
-// اندازه‌ها نسبی‌اند (em) تا در تیتر و پاراگراف هر دو معنا بدهند؛ مقادیرِ مطلق
-// در تیترِ بزرگ نتیجه‌ی عجیبی می‌دادند.
-export const RICH_TEXT_FONT_SIZES = ["0.8em", "1em", "1.25em", "1.5em", "2em"];
+// اندازه‌ی متن به پیکسل، مثلِ Word: عددی که ادمین می‌بیند همان است که در سایت
+// رندر می‌شود. فهرستِ پیش‌فرضِ کشویی + هر عددِ صحیحِ دلخواه در همین بازه.
+export const RICH_TEXT_PX_SIZES = [8, 9, 10, 11, 12, 14, 16, 18, 20, 22, 24, 26, 28, 32, 36, 40, 48, 56, 64, 72, 96];
+export const RICH_TEXT_PX_RANGE = { min: 8, max: 96 };
 
-const FONT_SIZE_PATTERN = new RegExp(`^(?:${RICH_TEXT_FONT_SIZES.map((size) => size.replace(".", "\\.")).join("|")})$`);
+// اندازه‌های نسبیِ قدیمی. دیگر ساخته نمی‌شوند ولی محتوای ذخیره‌شده با آن‌ها
+// باید همچنان معتبر بماند — این پاک‌ساز هنگامِ رندرِ عمومی هم اجرا می‌شود.
+export const RICH_TEXT_LEGACY_EM_SIZES = ["0.8em", "1em", "1.25em", "1.5em", "2em"];
+
+/**
+ * ورودیِ دلخواهِ کاربر ("18", "18px", " ۱۸ ") → عددِ صحیحِ px در بازه، یا null.
+ * اعشار گرد می‌شود؛ خارج از بازه رد می‌شود (نه اینکه بی‌صدا به لبه بچسبد).
+ */
+export function normalizeFontSizePx(value) {
+  const raw = String(value ?? "")
+    .trim()
+    .replace(/[۰-۹]/g, (digit) => String("۰۱۲۳۴۵۶۷۸۹".indexOf(digit)))
+    .replace(/px$/i, "")
+    .trim();
+  if (!/^\d+(?:\.\d+)?$/.test(raw)) return null;
+  const size = Math.round(Number(raw));
+  return size >= RICH_TEXT_PX_RANGE.min && size <= RICH_TEXT_PX_RANGE.max ? size : null;
+}
+
+// ۸ تا ۹۶، فقط عددِ صحیح — همان بازه‌ی normalizeFontSizePx.
+const PX_SIZE_PATTERN = /^(?:[89]|[1-8]\d|9[0-6])px$/;
+const LEGACY_EM_PATTERN = new RegExp(`^(?:${RICH_TEXT_LEGACY_EM_SIZES.map((size) => size.replace(".", "\\.")).join("|")})$`);
 const STYLEABLE = ["span", "b", "strong", "i", "em", "u", "s"];
 const MAX_INPUT = 100000;
 
@@ -27,7 +49,7 @@ const OPTIONS = {
       // execCommand در مرورگرها rgb() می‌دهد و انتخابگرِ رنگ هگز؛ هر دو پذیرفته
       // می‌شوند، ولی هیچ شکلِ دیگری (نام، var، url، expression) نه.
       color: [/^#[0-9a-fA-F]{6}$/, /^rgb\(\s*\d{1,3}\s*,\s*\d{1,3}\s*,\s*\d{1,3}\s*\)$/],
-      "font-size": [FONT_SIZE_PATTERN],
+      "font-size": [PX_SIZE_PATTERN, LEGACY_EM_PATTERN],
     },
   },
   allowedSchemes: ["http", "https", "mailto", "tel"],

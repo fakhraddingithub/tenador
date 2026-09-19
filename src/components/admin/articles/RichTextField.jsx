@@ -1,8 +1,9 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
-import { FiAlignCenter, FiAlignLeft, FiAlignRight, FiBold, FiCheck, FiItalic, FiLink, FiSlash, FiType, FiUnderline, FiX } from "react-icons/fi";
-import { RICH_TEXT_FONT_SIZES } from "@/lib/sanitizeRichText";
+import { useEffect, useId, useRef, useState } from "react";
+import { FiAlignCenter, FiAlignLeft, FiAlignRight, FiBold, FiCheck, FiChevronDown, FiItalic, FiLink, FiSlash, FiType, FiUnderline, FiX } from "react-icons/fi";
+import { RICH_TEXT_PX_RANGE, RICH_TEXT_PX_SIZES, normalizeFontSizePx } from "@/lib/sanitizeRichText";
+import { applyFontSize, readSelectionSize, serializeEditor } from "@/lib/richTextFontSize";
 
 /**
  * ویرایشگرِ کوچکِ متنِ غنی برای بلوک‌های متنی.
@@ -13,7 +14,6 @@ import { RICH_TEXT_FONT_SIZES } from "@/lib/sanitizeRichText";
  * می‌شود تا نشانه‌گذاریِ ناخواسته اصلاً وارد ویرایشگر نشود.
  */
 
-const FONT_SIZE_LABELS = ["خیلی کوچک", "کوچک", "عادی", "بزرگ", "خیلی بزرگ"];
 const ALIGNS = [["right", FiAlignRight, "راست‌چین"], ["center", FiAlignCenter, "وسط‌چین"], ["left", FiAlignLeft, "چپ‌چین"]];
 
 // نشانیِ نامعتبر یا با پروتکلِ خطرناک (javascript:, data:) هرگز اعمال نمی‌شود.
@@ -52,6 +52,81 @@ function ToolButton({ title, active, onClick, children }) {
   >{children}</button>;
 }
 
+/**
+ * اندازه‌ی متن به پیکسل، مثلِ Word: کادرِ عددی (تایپِ دلخواه، اعمال با Enter یا
+ * Tab) + فهرستِ پیش‌فرض‌ها. `current` اندازه‌ی انتخابِ فعلی است: "18px"، اندازه‌ی
+ * قدیمیِ em، "" (پیش‌فرضِ بلوک) یا null (چند اندازه).
+ */
+function FontSizeControl({ current, onApply }) {
+  const [draft, setDraft] = useState(null);
+  const [open, setOpen] = useState(false);
+  const box = useRef(null);
+  const listId = useId();
+  const shown = draft ?? (current ? current.replace(/px$/, "") : "");
+  const invalid = draft !== null && draft.trim() !== "" && normalizeFontSizePx(draft) === null;
+
+  useEffect(() => {
+    if (!open) return undefined;
+    const close = (event) => { if (!box.current?.contains(event.target)) setOpen(false); };
+    document.addEventListener("mousedown", close);
+    return () => document.removeEventListener("mousedown", close);
+  }, [open]);
+
+  const commit = () => {
+    const px = normalizeFontSizePx(draft);
+    if (px) onApply(px);
+    if (px || !draft?.trim()) setDraft(null);
+  };
+  const choose = (px) => { setOpen(false); setDraft(null); onApply(px); };
+
+  return <div ref={box} className="relative flex items-center gap-1 text-gray-500" title="اندازه متن (پیکسل)">
+    <FiType aria-hidden="true" />
+    <div className="flex items-center border bg-white" style={{ borderColor: invalid ? "var(--admin-danger)" : "var(--admin-border)", borderRadius: "var(--admin-radius)" }}>
+      <input
+        role="combobox"
+        aria-label="اندازه متن به پیکسل"
+        aria-expanded={open}
+        aria-controls={listId}
+        aria-invalid={invalid || undefined}
+        inputMode="numeric"
+        dir="ltr"
+        value={shown}
+        placeholder={current === null ? "—" : "پیش‌فرض"}
+        onChange={(event) => setDraft(event.target.value)}
+        onKeyDown={(event) => {
+          // ویرایشگر داخلِ فرمِ برند/سری/مقاله است؛ Enter نباید آن فرم را ثبت کند.
+          if (event.key === "Enter") { event.preventDefault(); commit(); }
+          else if (event.key === "Tab") commit();
+          else if (event.key === "Escape") { setDraft(null); setOpen(false); }
+          else if (event.key === "ArrowDown") { event.preventDefault(); setOpen(true); }
+        }}
+        // با blur چیزی اعمال نمی‌شود (مثلِ Word): کلیک در ویرایشگر یعنی انتخابِ تازه،
+        // و اعمالِ عدد روی آن غافلگیرکننده بود.
+        onBlur={() => setDraft(null)}
+        className="w-10 bg-transparent px-1 py-0.5 text-center text-[11px] text-gray-700 outline-none placeholder:text-[10px] placeholder:text-gray-400"
+      />
+      <span className="pl-0.5 text-[10px] text-gray-400">px</span>
+      <button type="button" aria-label="فهرست اندازه‌ها" onMouseDown={(event) => event.preventDefault()} onClick={() => setOpen((value) => !value)} className="px-0.5 py-1 text-gray-400 hover:text-[var(--color-primary)]"><FiChevronDown /></button>
+    </div>
+    {invalid ? <span role="alert" className="absolute top-full right-0 z-20 mt-1 whitespace-nowrap rounded bg-white px-2 py-1 text-[10px] text-red-600 shadow">عددی بین {RICH_TEXT_PX_RANGE.min} تا {RICH_TEXT_PX_RANGE.max}</span> : null}
+    {open ? <ul id={listId} role="listbox" aria-label="اندازه‌های متن" className="absolute top-full right-0 z-20 mt-1 max-h-60 w-28 overflow-y-auto border bg-white py-1 shadow-lg" style={{ borderColor: "var(--admin-border)", borderRadius: "var(--admin-radius)" }}>
+      {[null, ...RICH_TEXT_PX_SIZES].map((px) => {
+        const selected = px ? current === `${px}px` : current === "";
+        return <li key={px ?? "default"} role="option" aria-selected={selected}>
+          <button
+            type="button"
+            // انتخابِ ویرایشگر باید حفظ شود؛ بدونِ این، کلیک فوکوس را می‌گیرد.
+            onMouseDown={(event) => event.preventDefault()}
+            onClick={() => choose(px)}
+            dir={px ? "ltr" : "rtl"}
+            className={`block w-full px-3 py-1 text-right text-xs hover:bg-[var(--color-primary-soft)] ${selected ? "font-bold text-[var(--color-primary)]" : "text-gray-700"}`}
+          >{px ?? "پیش‌فرض"}</button>
+        </li>;
+      })}
+    </ul> : null}
+  </div>;
+}
+
 export default function RichTextField({ value, onChange, align, onAlign, singleLine = false }) {
   const ref = useRef(null);
   const savedRange = useRef(null);
@@ -59,20 +134,56 @@ export default function RichTextField({ value, onChange, align, onAlign, singleL
   const [linkOpen, setLinkOpen] = useState(false);
   const [linkUrl, setLinkUrl] = useState("");
   const [linkInvalid, setLinkInvalid] = useState(false);
+  const [currentSize, setCurrentSize] = useState("");
 
   // همگام‌سازی فقط وقتی ویرایشگر فوکوس ندارد: حینِ تایپ، React نباید به محتوای
   // contentEditable دست بزند (مکان‌نما می‌پرد)، ولی بازیابیِ یک نسخه‌ی قدیمی یا
-  // بارگذاریِ اولیه باید دیده شود.
+  // بارگذاریِ اولیه باید دیده شود. خروجیِ خودِ ما (serializeEditor) هم «همان
+  // محتوا» حساب می‌شود؛ وگرنه رفتنِ فوکوس به کادرِ اندازه DOM را بازسازی می‌کرد و
+  // انتخابِ ذخیره‌شده به گره‌های جداشده اشاره می‌کرد.
   useEffect(() => {
     const element = ref.current;
     if (!element || element === document.activeElement) return;
     const incoming = value?.html || escapeHtml(value?.text || "");
-    if (element.innerHTML !== incoming) element.innerHTML = incoming;
+    if (element.innerHTML !== incoming && serializeEditor(element).html !== incoming) element.innerHTML = incoming;
   }, [value?.html, value?.text]);
+
+  // آخرین انتخابِ داخلِ ویرایشگر همیشه نگه داشته می‌شود — با موس یا صفحه‌کلید —
+  // تا کنترل‌های نوارِ ابزار (اندازه، پیوند) بعد از گرفتنِ فوکوس هم بدانند روی چه
+  // متنی کار کنند. قبلاً فقط mousedown روی کشویی آن را ذخیره می‌کرد.
+  useEffect(() => {
+    const onSelection = () => {
+      const root = ref.current;
+      const selection = window.getSelection();
+      if (!root || !selection?.rangeCount) return;
+      const range = selection.getRangeAt(0);
+      if (!root.contains(range.commonAncestorContainer)) return;
+      savedRange.current = range.cloneRange();
+      setCurrentSize(readSelectionSize(range, root));
+    };
+    document.addEventListener("selectionchange", onSelection);
+    return () => document.removeEventListener("selectionchange", onSelection);
+  }, []);
 
   const emit = () => {
     const element = ref.current;
-    if (element) onChange({ text: element.innerText, html: element.innerHTML });
+    if (element) onChange(serializeEditor(element));
+  };
+
+  const applySize = (px) => {
+    const root = ref.current;
+    const range = savedRange.current;
+    if (!root || !range || !root.contains(range.commonAncestorContainer)) return;
+    root.focus({ preventScroll: true });
+    const next = applyFontSize(root, range, px);
+    if (next) {
+      const selection = window.getSelection();
+      selection.removeAllRanges();
+      selection.addRange(next);
+      savedRange.current = next.cloneRange();
+      setCurrentSize(readSelectionSize(next, root));
+    }
+    emit();
   };
 
   const insideEditor = () => {
@@ -113,25 +224,6 @@ export default function RichTextField({ value, onChange, align, onAlign, singleL
     document.execCommand(command, false, argument);
     emit();
     refreshMarks();
-  };
-
-  // execCommand("fontSize") فقط ۱ تا ۷ می‌پذیرد و <font size> می‌سازد، پس
-  // اندازه دستی روی محدوده‌ی انتخاب‌شده گذاشته می‌شود.
-  const applyFontSize = (size) => {
-    const selection = window.getSelection();
-    if (!size || !selection?.rangeCount || selection.isCollapsed || !insideEditor()) return;
-    const range = selection.getRangeAt(0);
-    const span = document.createElement("span");
-    span.style.fontSize = size;
-    span.appendChild(range.extractContents());
-    // اندازه‌های تودرتو باعث می‌شدند تغییرِ دوباره اثر نکند.
-    for (const nested of span.querySelectorAll("[style*='font-size']")) nested.style.removeProperty("font-size");
-    range.insertNode(span);
-    const next = document.createRange();
-    next.selectNodeContents(span);
-    selection.removeAllRanges();
-    selection.addRange(next);
-    emit();
   };
 
   // فوکوس پیش از بازگرداندن محدوده: execCommand روی عنصرِ فوکوس‌دار اثر می‌کند و
@@ -184,28 +276,7 @@ export default function RichTextField({ value, onChange, align, onAlign, singleL
       {ALIGNS.map(([key, Icon, label]) => <ToolButton key={key} title={label} active={align === key} onClick={() => onAlign(align === key ? undefined : key)}><Icon /></ToolButton>)}
 
       <span className="mx-1 h-5 w-px bg-gray-200" />
-      <label className="flex items-center gap-1 text-gray-500" title="اندازه متن انتخاب‌شده">
-        <FiType aria-hidden="true" />
-        <select
-          aria-label="اندازه متن انتخاب‌شده"
-          value=""
-          onMouseDown={(event) => { savedRange.current = window.getSelection()?.rangeCount ? window.getSelection().getRangeAt(0).cloneRange() : null; event.stopPropagation(); }}
-          onChange={(event) => {
-            const size = event.target.value;
-            event.target.value = "";
-            if (savedRange.current) {
-              const selection = window.getSelection();
-              selection.removeAllRanges();
-              selection.addRange(savedRange.current);
-            }
-            applyFontSize(size);
-          }}
-          className="bg-transparent text-[11px] outline-none"
-        >
-          <option value="">اندازه</option>
-          {RICH_TEXT_FONT_SIZES.map((size, index) => <option key={size} value={size}>{FONT_SIZE_LABELS[index]}</option>)}
-        </select>
-      </label>
+      <FontSizeControl current={currentSize} onApply={applySize} />
 
       <label className="flex items-center gap-1" title="رنگ متن انتخاب‌شده">
         <input

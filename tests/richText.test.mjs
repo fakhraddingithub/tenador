@@ -12,7 +12,7 @@
 
 import test from "node:test";
 import assert from "node:assert/strict";
-import { RICH_TEXT_FONT_SIZES, richTextValue, sanitizeRichText } from "../src/lib/sanitizeRichText.js";
+import { RICH_TEXT_LEGACY_EM_SIZES, RICH_TEXT_PX_RANGE, RICH_TEXT_PX_SIZES, normalizeFontSizePx, richTextValue, sanitizeRichText } from "../src/lib/sanitizeRichText.js";
 
 // ——— ورودی‌های غیررشته‌ای ————————————————————————————————————————————
 
@@ -85,12 +85,27 @@ test("فقط رنگِ هگز یا rgb پذیرفته می‌شود", () => {
   }
 });
 
-test("فقط اندازه‌های فهرست‌شده پذیرفته می‌شوند", () => {
-  for (const size of RICH_TEXT_FONT_SIZES) {
+test("اندازه‌ی پیکسلی در بازه و اندازه‌های قدیمیِ em پذیرفته می‌شوند", () => {
+  const sizes = [...RICH_TEXT_PX_SIZES.map((px) => `${px}px`), "8px", "13px", "96px", ...RICH_TEXT_LEGACY_EM_SIZES];
+  for (const size of sizes) {
     assert.equal(sanitizeRichText(`<span style="font-size:${size}">x</span>`), `<span style="font-size:${size}">x</span>`, size);
   }
-  for (const bad of ["99em", "1.3em", "40px", "300%", "xx-large", "calc(1em + 5px)"]) {
+  // مرورگر style را با فاصله و ; سریال می‌کند؛ همان شکل هم باید بماند.
+  assert.equal(sanitizeRichText(`<span style="font-size: 20px;">x</span>`), `<span style="font-size:20px">x</span>`);
+  for (const bad of ["7px", "97px", "200px", "16.5px", "0px", "-12px", "99em", "1.3em", "300%", "xx-large", "calc(1em + 5px)", "20PX", "20 px"]) {
     assert.equal(sanitizeRichText(`<span style="font-size:${bad}">x</span>`), "<span>x</span>", bad);
+  }
+});
+
+test("ورودیِ دستیِ اندازه نرمال می‌شود و خارج از بازه رد می‌شود", () => {
+  const ok = { "18": 18, "18px": 18, " 24 ": 24, "۱۸": 18, "۳۲px": 32, "13.4": 13, "13.6": 14, "8": 8, "96": 96, "96PX": 96 };
+  for (const [input, expected] of Object.entries(ok)) assert.equal(normalizeFontSizePx(input), expected, input);
+  for (const bad of ["", "  ", "7", "97", "200", "-5", "abc", "12pt", "1e2", null, undefined]) {
+    assert.equal(normalizeFontSizePx(bad), null, String(bad));
+  }
+  // هر عددی که نرمال‌ساز می‌پذیرد، پاک‌ساز هم می‌پذیرد — دو سمت نباید جدا شوند.
+  for (let px = RICH_TEXT_PX_RANGE.min; px <= RICH_TEXT_PX_RANGE.max; px += 1) {
+    assert.equal(sanitizeRichText(`<span style="font-size:${px}px">x</span>`), `<span style="font-size:${px}px">x</span>`, `${px}px`);
   }
 });
 
