@@ -2,6 +2,8 @@
 
 import { getCategoryLabel } from "base/utils/categoryLabel";
 import AdminInput from "@/components/admin/AdminInput";
+import ProductSectionJsonModal from '@/components/admin/ProductSectionJsonModal';
+import { BASIC_PRODUCT_FIELDS, productAttributeType } from '@/lib/productSectionJson';
 import { useState, useEffect, useMemo } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import { FaEdit, FaBox, FaImages, FaTags, FaCogs, FaPalette, FaRunning, FaLayerGroup } from 'react-icons/fa';
@@ -35,7 +37,7 @@ function normalizeInitialAttributes(attributes = {}, categoryAttributes = []) {
   const result = {};
   for (const attr of categoryAttributes) {
     const value = attributes[attr.name];
-    if (attr.type === 'select') {
+    if (productAttributeType(attr) === 'select') {
       result[attr.name] = Array.isArray(value) ? value.join(', ') : (value ?? '');
     } else {
       result[attr.name] = value ?? '';
@@ -103,20 +105,20 @@ function CollapsibleSection({
   className = 'bg-white p-8 rounded-[2.5rem] shadow-sm border border-gray-100',
   titleClassName = 'font-bold text-gray-800',
   headerExtra = null,
+  onEditJson,
   bodyClassName = '',
 }) {
   const contentId = `${id}-content`;
 
   return (
     <div className={className}>
+      <div className={`flex flex-wrap items-center gap-2 border-b pb-4 ${isOpen ? 'mb-6' : 'mb-0'}`}>
       <button
         type="button"
         onClick={onToggle}
         aria-expanded={isOpen}
         aria-controls={contentId}
-        className={`flex items-center gap-2 border-b pb-4 w-full text-right transition-colors hover:text-gray-900 ${
-          isOpen ? 'mb-6' : 'mb-0'
-        }`}
+        className="flex min-h-11 flex-1 items-center gap-2 text-right transition-colors hover:text-gray-900"
       >
         {icon}
         <h2 className={titleClassName}>{title}</h2>
@@ -125,6 +127,13 @@ function CollapsibleSection({
           {isOpen ? <FiChevronUp /> : <FiChevronDown />}
         </span>
       </button>
+      {onEditJson && (
+        <button type="button" onClick={onEditJson}
+          className="min-h-11 rounded-xl border border-gray-300 px-3 py-2 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-50 focus-visible:outline-2 focus-visible:outline-blue-600">
+          ویرایش جیسون
+        </button>
+      )}
+      </div>
       <AnimatedCollapse id={contentId} isOpen={isOpen} className={bodyClassName}>
         {children}
       </AnimatedCollapse>
@@ -195,6 +204,7 @@ export default function ProductEditPage() {
   // خطاهای فیلدیِ سرور — پیش‌تر فقط در یک مودالِ خلاصه دیده می‌شدند و در فرمی
   // با بخش‌های جمع‌شونده، ادمین نمی‌دانست کدام بخش را باید باز کند.
   const [fieldErrors, setFieldErrors] = useState({});
+  const [jsonSection, setJsonSection] = useState(null);
 
   // تعدادِ واریانتِ محصول هنگام بارگذاری — «هیچ واریانتی» فقط برای محصولی
   // مجاز است که از قبل هم واریانت نداشته (سرور همین قاعده را دارد).
@@ -666,12 +676,12 @@ export default function ProductEditPage() {
         const rawValue = formData.attributes?.[attr.name];
         if (rawValue === undefined || rawValue === null || rawValue === '') continue;
 
-        if (attr.type === 'select') {
+        if (productAttributeType(attr) === 'select') {
           normalizedAttributes[attr.name] = String(rawValue)
             .split(',')
             .map(v => v.trim())
             .filter(Boolean);
-        } else if (attr.type === 'number') {
+        } else if (productAttributeType(attr) === 'number') {
           normalizedAttributes[attr.name] = Number(rawValue);
         } else {
           normalizedAttributes[attr.name] = rawValue;
@@ -774,6 +784,24 @@ export default function ProductEditPage() {
   // ---------------------------
   return (
     <form onSubmit={handleSubmit} className="max-w-5xl mx-auto space-y-8 pb-20">
+      {jsonSection && (
+        <ProductSectionJsonModal
+          section={jsonSection}
+          form={formData}
+          category={selectedCategory}
+          onClose={() => setJsonSection(null)}
+          onApply={(patch) => {
+            setFormData(prev => ({ ...prev, ...patch }));
+            const keys = jsonSection === 'basicInfo' ? Object.keys(BASIC_PRODUCT_FIELDS)
+              : jsonSection === 'fixedAttributes' ? visibleCategoryAttributes.map(attr => attr.name)
+              : categoryTechnicalStats.map(stat => stat.name);
+            setFieldErrors(prev => Object.fromEntries(Object.entries(prev).filter(([key]) => !keys.includes(key))));
+            setOpenSections(prev => ({ ...prev, [jsonSection]: true }));
+            setJsonSection(null);
+            showToast.success('تغییرات جیسون روی فرم اعمال شد؛ برای ثبت نهایی محصول را ذخیره کنید');
+          }}
+        />
+      )}
 
       {/* Header */}
       <div className="flex justify-between items-center bg-white p-6 rounded-3xl shadow-sm border border-gray-100">
@@ -800,6 +828,7 @@ export default function ProductEditPage() {
       <CollapsibleSection
         id="basic-info"
         title="اطلاعات پایه"
+        onEditJson={() => setJsonSection('basicInfo')}
         icon={<FaBox className="text-gray-400" />}
         isOpen={isSectionOpen('basicInfo')}
         onToggle={() => toggleSection('basicInfo')}
@@ -1011,6 +1040,7 @@ export default function ProductEditPage() {
         <CollapsibleSection
           id="fixed-attributes"
           title="ویژگی‌های ثابت"
+          onEditJson={() => setJsonSection('fixedAttributes')}
           icon={<FaTags className="text-gray-400" />}
           isOpen={isSectionOpen('fixedAttributes')}
           onToggle={() => toggleSection('fixedAttributes')}
@@ -1026,11 +1056,11 @@ export default function ProductEditPage() {
                     </td>
                     <td className="p-2">
                       <Input
-                        type={attr.type === 'number' ? 'number' : 'text'}
+                        type={productAttributeType(attr) === 'number' ? 'number' : 'text'}
                         error={fieldErrors[attr.name]}
-                        value={formData.attributes?.[attr.name] || ''}
+                        value={formData.attributes?.[attr.name] ?? ''}
                         onChange={e => updateAttribute(attr.name, e.target.value)}
-                        placeholder={attr.type === 'select' ? 'مقادیر با کاما جدا شوند' : ''}
+                        placeholder={productAttributeType(attr) === 'select' ? 'مقادیر با کاما جدا شوند' : ''}
                       />
                     </td>
                   </tr>
@@ -1320,6 +1350,7 @@ export default function ProductEditPage() {
         <CollapsibleSection
           id="technical-stats"
           title="تحلیل فنی (نمودار رادار)"
+          onEditJson={() => setJsonSection('technicalStats')}
           icon={(
             <div className="bg-orange-50 p-2 rounded-lg text-orange-500">
               <FaCogs size={20} />
@@ -1346,7 +1377,7 @@ export default function ProductEditPage() {
                   max="100"
                   className="bg-white"
                   error={fieldErrors[stat.name]}
-                  value={formData.technicalStats?.[stat.name] || ''}
+                  value={formData.technicalStats?.[stat.name] ?? ''}
                   onChange={e => updateTechnicalStat(stat.name, e.target.value)}
                   placeholder="نمره از ۱۰۰"
                 />

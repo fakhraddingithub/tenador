@@ -8,7 +8,8 @@ import Brand from "base/models/Brand";
 import { registerSlug } from "base/actions/registerSlug";
 import { revalidateContent } from "@/lib/revalidate";
 import { sanitizeSerieSportEntries } from "@/lib/serieSportContent";
-import { handleApiError } from "@/lib/apiError";
+import { apiError, handleApiError } from "@/lib/apiError";
+import { sanitizeArticleBlocks } from "@/lib/articleValidation";
 import requireAdminPermission from "@/lib/requireAdminPermission";
 
 export async function POST(req) {
@@ -38,6 +39,8 @@ export async function POST(req) {
       isLimitedEdition = false,
 
       isNewSerie = false,
+
+      articleBlocks = [],
     } = body;
 
     /*
@@ -150,6 +153,14 @@ export async function POST(req) {
 
     const sanitizedSportImages = sanitizeSerieSportEntries(sportImages);
 
+    const blockErrors = {};
+    const sanitizedArticleBlocks = sanitizeArticleBlocks(articleBlocks, blockErrors);
+    if (Object.keys(blockErrors).length > 0) {
+      return apiError("بلوک‌های مینی مقاله معتبر نیستند", 400, {
+        fieldErrors: blockErrors,
+      });
+    }
+
     /*
      |--------------------------------------------------------------------------
      | Create Serie
@@ -179,6 +190,8 @@ export async function POST(req) {
       isLimitedEdition,
 
       isNewSerie,
+
+      articleBlocks: sanitizedArticleBlocks,
     });
 
     /*

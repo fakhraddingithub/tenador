@@ -11,24 +11,30 @@ const BlockEditor = dynamic(() => import("@/components/admin/articles/BlockEdito
   ),
 });
 
-export default function BrandMiniArticleEditor({ value = [], onChange }) {
+export default function BrandMiniArticleEditor({
+  value = [],
+  onChange,
+  headingId = "brand-mini-article-title",
+  title = "مینی مقاله صفحه برند",
+  description = "این بلوک‌ها فقط زیر هدر صفحه اصلی برند نمایش داده می‌شوند. خالی گذاشتن این بخش باعث می‌شود هیچ سکشنی ساخته نشود.",
+  className = "bg-white/80 backdrop-blur-xl border border-white rounded-[2.5rem] p-6 md:p-8 shadow-xl shadow-gray-200/40",
+  actions = null,
+}) {
   return (
-    <section
-      aria-labelledby="brand-mini-article-title"
-      className="bg-white/80 backdrop-blur-xl border border-white rounded-[2.5rem] p-6 md:p-8 shadow-xl shadow-gray-200/40"
-    >
+    <section aria-labelledby={headingId} className={className}>
       <div className="mb-6 flex items-start gap-3">
         <span className="mt-0.5 flex size-10 shrink-0 items-center justify-center rounded-xl bg-[var(--color-primary-soft)] text-[var(--color-primary)]">
           <FiFileText aria-hidden="true" />
         </span>
-        <div>
-          <h2 id="brand-mini-article-title" className="text-lg font-bold text-gray-800">
-            مینی مقاله صفحه برند
+        <div className="min-w-0 flex-1">
+          <h2 id={headingId} className="text-lg font-bold text-gray-800">
+            {title}
           </h2>
           <p className="mt-1 text-xs leading-6 text-gray-500">
-            این بلوک‌ها فقط زیر هدر صفحه اصلی برند نمایش داده می‌شوند. خالی گذاشتن این بخش باعث می‌شود هیچ سکشنی ساخته نشود.
+            {description}
           </p>
         </div>
+        {actions}
       </div>
 
       <BlockEditor value={value} onChange={onChange} />

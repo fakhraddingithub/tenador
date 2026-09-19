@@ -18,6 +18,7 @@
     "test:product-page-audience": "node --test tests/productPageAudience.test.mjs",
     "test:limited-edition-relations": "node --test tests/limitedEditionRelations.test.mjs",
     "test:brand-collaboration": "node --test tests/brandCollaboration.test.mjs",
+    "test:mini-articles": "node --test --test-timeout=180000 tests/miniArticles.test.mjs",
     "report:limited-edition-brand-mismatch": "node scripts/reportLimitedEditionBrandMismatch.js",
     "test:grouped-product-pagination": "node --test tests/groupedProductPagination.test.mjs",
     "test:category-sports": "node --test tests/categorySportVisibility.test.mjs",

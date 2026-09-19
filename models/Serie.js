@@ -1,5 +1,6 @@
 import mongoose from "mongoose";
 import { createSlug } from "base/utils/slugify";
+import { ArticleBlockSchema } from "base/models/articleSchemas";
 
 const schema = new mongoose.Schema(
   {
@@ -37,6 +38,15 @@ const schema = new mongoose.Schema(
     colors: {
       primary: String,
       secondary: String,
+    },
+
+    // Optional block-based mini article rendered only on this serie's own page.
+    // select:false: series are listed/populated in many places (navbar, brand
+    // pages, sliders); read with .select("+articleBlocks").
+    articleBlocks: {
+      type: [ArticleBlockSchema],
+      default: [],
+      select: false,
     },
 
     logo: {

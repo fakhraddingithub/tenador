@@ -7,7 +7,7 @@ export class CategoryDeletionError extends Error {
 }
 
 export async function deleteCategoryWithProducts({
-  Category, Product, Variant, PriceCache, SlugRegistery,
+  Category, Product, Variant, PriceCache, SlugRegistery, Brand,
   categoryId, confirmationSlug,
 }) {
   return Category.db.transaction(async (session) => {
@@ -25,6 +25,14 @@ export async function deleteCategoryWithProducts({
     await SlugRegistery.deleteMany({ type: "category", refId: category._id }, { session });
     // Children are separate categories; detach them rather than leaving a missing parent.
     await Category.updateMany({ parent: category._id }, { $set: { parent: null } }, { session });
+    // Brand mini articles written for this category would otherwise dangle.
+    if (Brand) {
+      await Brand.updateMany(
+        { "categoryArticles.category": category._id },
+        { $pull: { categoryArticles: { category: category._id } } },
+        { session },
+      );
+    }
     await Category.deleteOne({ _id: category._id }, { session });
     return { category, deletedProducts: deleted.deletedCount };
   });

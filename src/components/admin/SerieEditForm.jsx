@@ -27,6 +27,7 @@ const emptyFormData = {
   headImage: "",
   image: "",
   sportImages: [],
+  articleBlocks: [],
 };
 
 function buildFormData(data) {
@@ -47,6 +48,7 @@ function buildFormData(data) {
     headImage: data?.headImage || "",
     image: data?.image || "",
     sportImages: Array.isArray(data?.sportImages) ? data.sportImages : [],
+    articleBlocks: Array.isArray(data?.articleBlocks) ? data.articleBlocks : [],
   };
 }
 

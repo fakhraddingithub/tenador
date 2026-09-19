@@ -2,6 +2,7 @@ import connectToDB from "base/configs/db";
 import mongoose from "mongoose";
 import "base/models/registerModels";
 import Category from "base/models/Category";
+import Brand from "base/models/Brand";
 import Order from "base/models/Order";
 import Product from "base/models/Product";
 import Variant from "base/models/Variant";
@@ -307,12 +308,12 @@ export async function DELETE(req, { params }) {
 
     const body = await req.json();
     const { category, deletedProducts } = await deleteCategoryWithProducts({
-      Category, Product, Variant, PriceCache, SlugRegistery,
+      Category, Product, Variant, PriceCache, SlugRegistery, Brand,
       categoryId, confirmationSlug: body?.confirmationSlug,
     });
 
     const affectedSportSlugs = await getCategoryVisibilitySportSlugs(category);
-    revalidateContent(["navbar", "categories", "products"]);
+    revalidateContent(["navbar", "categories", "products", "brands"]);
     revalidateCategoryVisibilityPaths({
       sportSlugs: affectedSportSlugs,
       categorySlug: category.slug,

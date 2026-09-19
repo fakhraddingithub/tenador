@@ -9,6 +9,7 @@ import { toast } from 'react-toastify';
 import { getApiErrorMessage } from '@/lib/apiClientError';
 import { invalidateAdminCache } from '@/lib/adminCache';
 import BrandMiniArticleEditor from '@/components/admin/brands/BrandMiniArticleEditor';
+import BrandCategoryArticlesEditor from '@/components/admin/brands/BrandCategoryArticlesEditor';
 
 const DEFAULT_PROMPT_FIELDS = ['name', 'title', 'description'];
 
@@ -22,7 +23,7 @@ export default function EditBrand() {
 
   const [formData, setFormData] = useState({
     name: '', title: '', country: '', foundedYear: '', description: '',
-    logo: '', icon: '', monochromeLogo: '', image: '', prompts: [], articleBlocks: [],
+    logo: '', icon: '', monochromeLogo: '', image: '', prompts: [], articleBlocks: [], categoryArticles: [],
   });
 
   // ۱. دریافت اطلاعات برند برای ویرایش
@@ -51,6 +52,7 @@ export default function EditBrand() {
           image: data.brand.image || '',
           prompts: mergedPrompts,
           articleBlocks: data.brand.articleBlocks || [],
+          categoryArticles: data.brand.categoryArticles || [],
         });
       } catch (err) {
         toast.error('خطا در بارگذاری اطلاعات برند');
@@ -242,6 +244,11 @@ export default function EditBrand() {
             <BrandMiniArticleEditor
               value={formData.articleBlocks}
               onChange={(articleBlocks) => setFormData((current) => ({ ...current, articleBlocks }))}
+            />
+
+            <BrandCategoryArticlesEditor
+              value={formData.categoryArticles}
+              onChange={(update) => setFormData((current) => ({ ...current, categoryArticles: update(current.categoryArticles) }))}
             />
           </div>
 

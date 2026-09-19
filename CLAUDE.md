@@ -434,6 +434,30 @@ npm run check:padel-match-data  # read-only coverage report against the live cat
 npm run check:racket-match-data # same, for tennis
 ```
 
+### Mini articles (brand, brand+category, serie)
+
+Block-based mini articles rendered under the page hero by the shared `BrandMiniArticleSection`
+(same `ArticleBlockSchema` / `sanitizeArticleBlocks` / `BlockEditor` as full articles):
+
+| field | page | admin |
+|---|---|---|
+| `Brand.articleBlocks` | root brand page `/[brand]` only | brand add/edit |
+| `Brand.categoryArticles[] {category, blocks}` | `/[sport]/[category]/[brand]` only — never `/[sport]/[brand]` | brand add/edit (`BrandCategoryArticlesEditor`) |
+| `Serie.articleBlocks` | that serie's own page only (parent and child series are independent) | `SerieFormLayout` (create + edit) |
+
+- `categoryArticles` and `Serie.articleBlocks` are **`select: false`** so navbar/product/series payloads never
+  carry them. Public reads go through `services/miniArticle.service.js`; the brand+category read projects only
+  the matching entry with `$elemMatch`. Admin GETs use `.select("+…")`.
+- The category is the entry's identity: `sanitizeBrandCategoryArticles` rejects duplicates and drops empty
+  entries; the routes 400 on an unknown category. Deleting a category `$pull`s its entries from every brand
+  (inside the `deleteCategoryWithProducts` transaction).
+- `undefined` ≠ `[]` in both PUT routes. The serie PUT copies body keys onto the doc, so `articleBlocks` is
+  excluded from that loop and sanitized explicitly.
+
+```bash
+npm run test:mini-articles
+```
+
 ### Slug System
 
 `SlugRegistery` model maps dynamic URL segments (sport/category/brand slugs) to their entity types. `actions/registerSlug.js` is a server action that creates entries on entity creation. This powers ISR revalidation — when a slug is revalidated, the correct entity page is rebuilt.

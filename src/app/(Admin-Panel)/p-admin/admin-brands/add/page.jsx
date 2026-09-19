@@ -9,6 +9,7 @@ import { toast } from 'react-toastify';
 import { getApiErrorMessage } from '@/lib/apiClientError';
 import { invalidateAdminCache } from '@/lib/adminCache';
 import BrandMiniArticleEditor from '@/components/admin/brands/BrandMiniArticleEditor';
+import BrandCategoryArticlesEditor from '@/components/admin/brands/BrandCategoryArticlesEditor';
 
 export default function AddBrand() {
   const router = useRouter();
@@ -35,6 +36,7 @@ export default function AddBrand() {
     logo: '', icon: '', monochromeLogo: '', image: '',
     prompts: initialPrompts,
     articleBlocks: [],
+    categoryArticles: [],
   });
 
   const uploadImage = async (file, field) => {
@@ -197,6 +199,11 @@ export default function AddBrand() {
             <BrandMiniArticleEditor
               value={formData.articleBlocks}
               onChange={(articleBlocks) => setFormData((current) => ({ ...current, articleBlocks }))}
+            />
+
+            <BrandCategoryArticlesEditor
+              value={formData.categoryArticles}
+              onChange={(update) => setFormData((current) => ({ ...current, categoryArticles: update(current.categoryArticles) }))}
             />
           </div>
 

@@ -45,6 +45,27 @@ const schema = new mongoose.Schema(
       default: [],
     },
 
+    // One mini article per category, rendered only on /[sport]/[category]/[brand].
+    // The category is the identity: at most one entry per category (enforced by
+    // sanitizeBrandCategoryArticles). select:false keeps these blocks out of the
+    // many places that load or populate brands (navbar, products, series …);
+    // read them with .select("+categoryArticles") or an explicit projection.
+    categoryArticles: {
+      type: [
+        {
+          _id: false,
+          category: {
+            type: mongoose.Schema.Types.ObjectId,
+            ref: "Category",
+            required: true,
+          },
+          blocks: { type: [ArticleBlockSchema], default: [] },
+        },
+      ],
+      default: [],
+      select: false,
+    },
+
     logo: {
       type: String,
       default: "",

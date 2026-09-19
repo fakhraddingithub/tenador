@@ -1,9 +1,11 @@
 import connectToDB from "base/configs/db";
 import Brand from "base/models/Brand";
+import Category from "base/models/Category";
 import { NextResponse } from "next/server";
 import { revalidateContent } from "@/lib/revalidate";
 import { apiError, handleApiError } from "@/lib/apiError";
 import { sanitizeArticleBlocks } from "@/lib/articleValidation";
+import { findMissingCategoryIds, sanitizeBrandCategoryArticles } from "@/lib/brandCategoryArticles";
 import requireAdminPermission from "@/lib/requireAdminPermission";
 
 export async function GET(req, { params }) {
@@ -11,10 +13,12 @@ export async function GET(req, { params }) {
     await connectToDB();
     const { brandId } = await params;
     
-    const brand = await Brand.findById(brandId).populate({
-      path: "series",
-      options: { sort: { order: 1, createdAt: -1 } },
-    });
+    const brand = await Brand.findById(brandId)
+      .select("+categoryArticles")
+      .populate({
+        path: "series",
+        options: { sort: { order: 1, createdAt: -1 } },
+      });
     
     if (!brand) {
       return NextResponse.json(
@@ -26,6 +30,7 @@ export async function GET(req, { params }) {
     brand.series = brand.series || [];
     brand.prompts = brand.prompts || [];
     brand.articleBlocks = brand.articleBlocks || [];
+    brand.categoryArticles = brand.categoryArticles || [];
 
     return NextResponse.json({ brand });
   } catch (error) {
@@ -53,6 +58,7 @@ export async function PUT(req, { params }) {
       image, 
       prompts,
       articleBlocks,
+      categoryArticles,
     } = body;
 
     const brand = await Brand.findById(brandId);
@@ -81,6 +87,21 @@ export async function PUT(req, { params }) {
         });
       }
       brand.articleBlocks = sanitizedArticleBlocks;
+    }
+
+    // undefined = this request is not about category articles; leave them alone.
+    if (categoryArticles !== undefined) {
+      const categoryArticleErrors = {};
+      const sanitizedCategoryArticles = sanitizeBrandCategoryArticles(categoryArticles, categoryArticleErrors);
+      if (Object.keys(categoryArticleErrors).length > 0) {
+        return apiError("مینی مقاله‌های دسته‌بندی معتبر نیستند", 400, {
+          fieldErrors: categoryArticleErrors,
+        });
+      }
+      if ((await findMissingCategoryIds(Category, sanitizedCategoryArticles)).length > 0) {
+        return apiError("دسته‌بندی انتخاب‌شده برای مینی مقاله پیدا نشد", 400);
+      }
+      brand.categoryArticles = sanitizedCategoryArticles;
     }
 
     if (prompts !== undefined && Array.isArray(prompts)) {

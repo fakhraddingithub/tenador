@@ -29,6 +29,7 @@ function buildInitialFormData(initialData, brandId) {
     sportImages: Array.isArray(initialData?.sportImages)
       ? initialData.sportImages
       : [],
+    articleBlocks: [],
   };
 }
 

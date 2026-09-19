@@ -1,9 +1,11 @@
 import connectToDB from "base/configs/db";
 import Brand from "base/models/Brand";
+import Category from "base/models/Category";
 import { registerSlug } from "base/actions/registerSlug";
 import { revalidateContent } from "@/lib/revalidate";
 import { apiError, handleApiError } from "@/lib/apiError";
 import { sanitizeArticleBlocks } from "@/lib/articleValidation";
+import { findMissingCategoryIds, sanitizeBrandCategoryArticles } from "@/lib/brandCategoryArticles";
 import requireAdminPermission from "@/lib/requireAdminPermission";
 
 export async function POST(req) {
@@ -27,6 +29,7 @@ export async function POST(req) {
       image = "",
       prompts = [],
       articleBlocks = [],
+      categoryArticles = [],
     } = body;
 
     // validation
@@ -72,6 +75,17 @@ export async function POST(req) {
       });
     }
 
+    const categoryArticleErrors = {};
+    const sanitizedCategoryArticles = sanitizeBrandCategoryArticles(categoryArticles, categoryArticleErrors);
+    if (Object.keys(categoryArticleErrors).length > 0) {
+      return apiError("مینی مقاله‌های دسته‌بندی معتبر نیستند", 400, {
+        fieldErrors: categoryArticleErrors,
+      });
+    }
+    if ((await findMissingCategoryIds(Category, sanitizedCategoryArticles)).length > 0) {
+      return apiError("دسته‌بندی انتخاب‌شده برای مینی مقاله پیدا نشد", 400);
+    }
+
     // duplicate check
     const exists = await Brand.findOne({ name: normalizedName });
     if (exists) {
@@ -99,6 +113,7 @@ export async function POST(req) {
       image: image.trim(),
       prompts: sanitizedPrompts,
       articleBlocks: sanitizedArticleBlocks,
+      categoryArticles: sanitizedCategoryArticles,
     });
 
     // register slug

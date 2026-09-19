@@ -18,6 +18,7 @@ import {
 } from "react-icons/fa";
 
 import ImageUpload from "./ImageUpload";
+import BrandMiniArticleEditor from "./brands/BrandMiniArticleEditor";
 
 const inputClass =
   "w-full rounded-[6px] border border-gray-200 bg-gray-50 px-3 py-2.5 text-sm font-medium text-gray-900 outline-none transition focus:border-[var(--color-primary)] focus:bg-white focus:ring-2 focus:ring-orange-100 disabled:cursor-not-allowed disabled:opacity-60";
@@ -565,6 +566,15 @@ export default function SerieFormLayout({
           );
         })}
       </div>
+
+      <BrandMiniArticleEditor
+        headingId="serie-mini-article-title"
+        title="مینی مقاله صفحه سری"
+        description="این بلوک‌ها فقط زیر هدر صفحه همین سری نمایش داده می‌شوند (نه سری والد یا زیرسری‌ها). خالی گذاشتن این بخش باعث می‌شود هیچ سکشنی ساخته نشود."
+        className="rounded-[6px] border border-gray-200 bg-white p-4 shadow-sm md:p-6"
+        value={Array.isArray(formData?.articleBlocks) ? formData.articleBlocks : []}
+        onChange={(articleBlocks) => setFormData((prev) => ({ ...prev, articleBlocks }))}
+      />
 
       <button
         type="submit"

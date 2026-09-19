@@ -6,7 +6,8 @@ import Serie from "base/models/Serie";
 import Brand from "base/models/Brand";
 import { revalidateContent } from "@/lib/revalidate";
 import { sanitizeSerieSportEntries } from "@/lib/serieSportContent";
-import { handleApiError } from "@/lib/apiError";
+import { apiError, handleApiError } from "@/lib/apiError";
+import { sanitizeArticleBlocks } from "@/lib/articleValidation";
 import requireAdminPermission from "@/lib/requireAdminPermission";
 
 export async function GET(req, { params }) {
@@ -16,6 +17,7 @@ export async function GET(req, { params }) {
     const { id } = await params;
 
     const serie = await Serie.findById(id)
+      .select("+articleBlocks")
       .populate("brand")
       .populate("parentSerie");
 
@@ -175,8 +177,20 @@ export async function PUT(req, { params }) {
       serie.sportImages = sanitizeSerieSportEntries(body.sportImages);
     }
 
+    // undefined = this request is not about the mini article; leave it alone.
+    if (body.articleBlocks !== undefined) {
+      const blockErrors = {};
+      const sanitizedArticleBlocks = sanitizeArticleBlocks(body.articleBlocks, blockErrors);
+      if (Object.keys(blockErrors).length > 0) {
+        return apiError("بلوک‌های مینی مقاله معتبر نیستند", 400, {
+          fieldErrors: blockErrors,
+        });
+      }
+      serie.articleBlocks = sanitizedArticleBlocks;
+    }
+
     Object.keys(body).forEach((key) => {
-      if (key === "sportImages") return;
+      if (key === "sportImages" || key === "articleBlocks") return;
 
       serie[key] = body[key];
     });
