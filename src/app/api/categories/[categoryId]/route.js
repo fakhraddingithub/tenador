@@ -11,6 +11,7 @@ import SlugRegistery from "base/models/SlugRegistery";
 import { CategoryDeletionError, deleteCategoryWithProducts } from "base/services/categoryDeletion";
 import { NextResponse } from "next/server";
 import {
+  purgeSportPagesCdn,
   revalidateCategoryVisibilityPaths,
   revalidateContent,
 } from "@/lib/revalidate";
@@ -318,6 +319,8 @@ export async function DELETE(req, { params }) {
       sportSlugs: affectedSportSlugs,
       categorySlug: category.slug,
     });
+    // The cascade removed this category's brand mini articles from CDN-cached pages.
+    await purgeSportPagesCdn();
 
     return NextResponse.json({ message: "دسته‌بندی و محصولات آن با موفقیت حذف شدند", deletedProducts });
   } catch (error) {

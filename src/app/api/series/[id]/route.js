@@ -4,7 +4,7 @@ import connectToDB from "base/configs/db";
 
 import Serie from "base/models/Serie";
 import Brand from "base/models/Brand";
-import { revalidateContent } from "@/lib/revalidate";
+import { purgeSportPagesCdn, revalidateContent } from "@/lib/revalidate";
 import { sanitizeSerieSportEntries } from "@/lib/serieSportContent";
 import { apiError, handleApiError } from "@/lib/apiError";
 import { sanitizeArticleBlocks } from "@/lib/articleValidation";
@@ -198,6 +198,8 @@ export async function PUT(req, { params }) {
     await serie.save();
 
     revalidateContent(["navbar", "series", "brands"]);
+    // The serie article renders on /[sport]/[brand]/[serie], which the CDN caches.
+    if (body.articleBlocks !== undefined) await purgeSportPagesCdn();
 
     return NextResponse.json(
       {

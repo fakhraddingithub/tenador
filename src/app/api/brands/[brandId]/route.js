@@ -2,7 +2,7 @@ import connectToDB from "base/configs/db";
 import Brand from "base/models/Brand";
 import Category from "base/models/Category";
 import { NextResponse } from "next/server";
-import { revalidateContent } from "@/lib/revalidate";
+import { purgeSportPagesCdn, revalidateContent } from "@/lib/revalidate";
 import { apiError, handleApiError } from "@/lib/apiError";
 import { sanitizeArticleBlocks } from "@/lib/articleValidation";
 import { findMissingCategoryIds, sanitizeBrandCategoryArticles } from "@/lib/brandCategoryArticles";
@@ -116,6 +116,8 @@ export async function PUT(req, { params }) {
     await brand.save();
 
     revalidateContent(["navbar", "brands"]);
+    // Category articles render on /[sport]/[category]/[brand], which the CDN caches.
+    if (categoryArticles !== undefined) await purgeSportPagesCdn();
 
     return NextResponse.json({
       message: "برند با موفقیت به‌روزرسانی شد",

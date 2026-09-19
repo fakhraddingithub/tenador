@@ -454,8 +454,16 @@ Block-based mini articles rendered under the page hero by the shared `BrandMiniA
 - `undefined` ≠ `[]` in both PUT routes. The serie PUT copies body keys onto the doc, so `articleBlocks` is
   excluded from that loop and sanitized explicitly.
 
+- **CDN purge.** Everything under `/[sport]/…` is cached at Vercel's CDN for an hour (`Vercel-CDN-Cache-Control`
+  in `next.config.mjs`). Those routes are `force-dynamic`, so they carry no Next path tags and
+  `revalidatePath`/`revalidateTag` cannot reach the CDN copy — a saved article kept showing the old content.
+  They now carry one constant tag (`src/lib/cdnCacheTags.js`) and every mini-article write awaits
+  `purgeSportPagesCdn()` (`@vercel/functions`; a no-op outside Vercel). The root brand page `/wilson` is not
+  CDN-cached. Other admin edits that show on sport pages (products, brand titles) still wait out the hour.
+
 ```bash
 npm run test:mini-articles
+npm run test:cdn-purge
 ```
 
 ### Slug System

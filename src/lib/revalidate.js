@@ -1,4 +1,6 @@
 import { revalidatePath, revalidateTag } from "next/cache";
+import { dangerouslyDeleteByTag } from "@vercel/functions";
+import { SPORT_PAGES_CDN_TAG } from "@/lib/cdnCacheTags";
 
 /**
  * تمام تگ‌های محتوایی کش‌شده را باطل می‌کند.
@@ -27,6 +29,24 @@ export function revalidateContent(tags = CONTENT_TAGS) {
     } catch {
       // در محیط‌هایی که revalidateTag در دسترس نیست بی‌صدا رد شو
     }
+  }
+}
+
+/**
+ * صفحه‌های /[sport]/… را از CDNِ Vercel پاک می‌کند (نه فقط کشِ داده).
+ *
+ * این صفحه‌ها تا یک ساعت (+ یک روز stale) روی CDN می‌مانند و چون force-dynamic
+ * هستند، revalidatePath/revalidateTag به نسخه‌ی CDN نمی‌رسند؛ مینی‌مقاله‌ی
+ * برند+دسته یا سری ذخیره می‌شد ولی صفحه‌ی فروشگاه محتوای قدیمی را نشان می‌داد.
+ * delete (نه invalidate) تا همان درخواستِ بعدی محتوای تازه را ببیند. خارج از
+ * Vercel (توسعه، next start، تست) این فراخوانی کاری نمی‌کند.
+ * باید پیش از پاسخ await شود؛ پس از ارسالِ پاسخ، تابع ممکن است متوقف شود.
+ */
+export async function purgeSportPagesCdn() {
+  try {
+    await dangerouslyDeleteByTag(SPORT_PAGES_CDN_TAG);
+  } catch {
+    // Cache invalidation must never make a successful admin mutation fail.
   }
 }
 

@@ -6,7 +6,7 @@ import Serie from "base/models/Serie";
 import Brand from "base/models/Brand";
 // ۱. ایمپورت کردن اکشن رجیستر اسلاگ
 import { registerSlug } from "base/actions/registerSlug";
-import { revalidateContent } from "@/lib/revalidate";
+import { purgeSportPagesCdn, revalidateContent } from "@/lib/revalidate";
 import { sanitizeSerieSportEntries } from "@/lib/serieSportContent";
 import { apiError, handleApiError } from "@/lib/apiError";
 import { sanitizeArticleBlocks } from "@/lib/articleValidation";
@@ -234,6 +234,8 @@ export async function POST(req) {
      */
 
     revalidateContent(["navbar", "series", "brands"]);
+    // The serie article renders on /[sport]/[brand]/[serie], which the CDN caches.
+    if (sanitizedArticleBlocks.length > 0) await purgeSportPagesCdn();
 
     return NextResponse.json(
       {

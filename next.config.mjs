@@ -1,4 +1,5 @@
 import { LEGACY_MATCH_REDIRECTS } from "./src/lib/matchTools.js";
+import { SPORT_PAGES_CDN_TAG } from "./src/lib/cdnCacheTags.js";
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
@@ -26,10 +27,12 @@ const nextConfig = {
         value: "public, s-maxage=3600, stale-while-revalidate=86400",
       },
     ];
+    // Tagged so an admin save can purge them (see src/lib/cdnCacheTags.js).
+    const sportHeaders = [...headers, { key: "Vercel-Cache-Tag", value: SPORT_PAGES_CDN_TAG }];
     const sports = "tennis|padel|badminton|squash|beachtennis|pickleball|ping-pong";
     return [
-      { source: `/:sport(${sports})`, headers },
-      { source: `/:sport(${sports})/:path*`, headers },
+      { source: `/:sport(${sports})`, headers: sportHeaders },
+      { source: `/:sport(${sports})/:path*`, headers: sportHeaders },
       { source: "/content/:path*", headers },
     ];
   },

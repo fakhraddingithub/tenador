@@ -2,7 +2,7 @@ import connectToDB from "base/configs/db";
 import Brand from "base/models/Brand";
 import Category from "base/models/Category";
 import { registerSlug } from "base/actions/registerSlug";
-import { revalidateContent } from "@/lib/revalidate";
+import { purgeSportPagesCdn, revalidateContent } from "@/lib/revalidate";
 import { apiError, handleApiError } from "@/lib/apiError";
 import { sanitizeArticleBlocks } from "@/lib/articleValidation";
 import { findMissingCategoryIds, sanitizeBrandCategoryArticles } from "@/lib/brandCategoryArticles";
@@ -129,6 +129,7 @@ export async function POST(req) {
     });
 
     revalidateContent(["navbar", "brands"]);
+    if (sanitizedCategoryArticles.length > 0) await purgeSportPagesCdn();
 
     return Response.json(
       {
