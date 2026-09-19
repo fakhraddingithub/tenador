@@ -123,16 +123,18 @@ function CollapsibleSection({
         {icon}
         <h2 className={titleClassName}>{title}</h2>
         {headerExtra}
-        <span className="mr-auto text-gray-400 transition-transform duration-200">
-          {isOpen ? <FiChevronUp /> : <FiChevronDown />}
-        </span>
       </button>
       {onEditJson && (
         <button type="button" onClick={onEditJson}
-          className="min-h-11 rounded-xl border border-gray-300 px-3 py-2 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-50 focus-visible:outline-2 focus-visible:outline-blue-600">
+          className="min-h-11 rounded-xl border border-[var(--admin-border-strong)] bg-[var(--color-primary-soft)] px-3 py-2 text-sm font-medium text-[var(--color-primary)] transition-colors hover:border-[var(--color-primary)] focus-visible:outline-2 focus-visible:outline-[var(--color-primary)]">
           ویرایش جیسون
         </button>
       )}
+      <button type="button" onClick={onToggle} aria-expanded={isOpen} aria-controls={contentId}
+        aria-label={`${isOpen ? 'بستن' : 'باز کردن'} بخش ${title}`}
+        className="flex size-11 shrink-0 items-center justify-center rounded-xl text-[var(--admin-text-muted)] transition-colors hover:bg-[var(--color-primary-soft)] hover:text-[var(--color-primary)] focus-visible:outline-2 focus-visible:outline-[var(--color-primary)]">
+        {isOpen ? <FiChevronUp aria-hidden="true" /> : <FiChevronDown aria-hidden="true" />}
+      </button>
       </div>
       <AnimatedCollapse id={contentId} isOpen={isOpen} className={bodyClassName}>
         {children}
