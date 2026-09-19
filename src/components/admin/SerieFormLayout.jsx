@@ -20,10 +20,10 @@ import {
 import ImageUpload from "./ImageUpload";
 import BrandMiniArticleEditor from "./brands/BrandMiniArticleEditor";
 
-const inputClass =
+export const inputClass =
   "w-full rounded-[6px] border border-gray-200 bg-gray-50 px-3 py-2.5 text-sm font-medium text-gray-900 outline-none transition focus:border-[var(--color-primary)] focus:bg-white focus:ring-2 focus:ring-orange-100 disabled:cursor-not-allowed disabled:opacity-60";
 
-const textareaClass =
+export const textareaClass =
   "w-full resize-y rounded-[6px] border border-gray-200 bg-gray-50 px-3 py-2.5 text-sm leading-7 text-gray-900 outline-none transition focus:border-[var(--color-primary)] focus:bg-white focus:ring-2 focus:ring-orange-100";
 
 const uploadClass =
@@ -37,7 +37,7 @@ function fieldValue(value) {
   return value || "";
 }
 
-function Field({ label, icon: Icon, children }) {
+export function Field({ label, icon: Icon, children }) {
   return (
     <label className="block space-y-1.5">
       <span className="flex items-center gap-2 text-xs font-bold text-gray-500">
@@ -49,7 +49,7 @@ function Field({ label, icon: Icon, children }) {
   );
 }
 
-function TextInput({ label, icon, dir = "rtl", ...props }) {
+export function TextInput({ label, icon, dir = "rtl", ...props }) {
   return (
     <Field label={label} icon={icon}>
       <input {...props} dir={dir} className={inputClass} />
@@ -57,7 +57,7 @@ function TextInput({ label, icon, dir = "rtl", ...props }) {
   );
 }
 
-function TextareaInput({ label, rows = 3, ...props }) {
+export function TextareaInput({ label, rows = 3, ...props }) {
   return (
     <Field label={label}>
       <textarea {...props} rows={rows} className={textareaClass} />
@@ -101,7 +101,7 @@ function ColorInput({ label, value, onChange }) {
   );
 }
 
-function AccordionBox({ title, eyebrow, icon: Icon, open, onToggle, actions, badges, children }) {
+export function AccordionBox({ title, eyebrow, icon: Icon, open, onToggle, actions, badges, children }) {
   return (
     <section className="overflow-hidden rounded-[6px] border border-gray-200 bg-white shadow-sm">
       <div

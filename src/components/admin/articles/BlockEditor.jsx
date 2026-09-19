@@ -295,9 +295,21 @@ function MergedLayoutModal({ grid, count, onApply, onClose }) {
   </div></AdminPortal>;
 }
 
-function SortableBlock({ block, index, total, onUpdate, onStyle, onLayout, onRemove, onDuplicate, onMove, selectable = false, selected = false, onSelect, onUnmerge }) {
+// خلاصه‌ی یک‌خطیِ بلوکِ بسته‌شده، تا بلوک‌ها بدونِ باز کردن از هم تشخیص داده شوند.
+const plainText = (value) => String(value ?? "").replace(/<[^>]*>/g, " ").replace(/\s+/g, " ").trim();
+function blockSummary(block) {
+  const data = block.data || {};
+  if (isMergedBlock(block)) return `${mergedChildren(block).length.toLocaleString("fa-IR")} بلوک`;
+  const text = plainText(data.text || data.title || data.label || data.caption || data.question || data.author || data.html);
+  if (text) return text.length > 80 ? `${text.slice(0, 80)}…` : text;
+  const list = Object.values(data).find((item) => Array.isArray(item) && item.length);
+  if (list) return `${list.length.toLocaleString("fa-IR")} ${block.type === "image" || block.type === "gallery" ? "تصویر" : "مورد"}`;
+  if (data.url) return data.url.split("/").pop();
+  return "";
+}
+
+function SortableBlock({ block, index, total, onUpdate, onStyle, onLayout, onRemove, onDuplicate, onMove, selectable = false, selected = false, onSelect, onUnmerge, open = true, onToggle }) {
   const [gridOpen, setGridOpen] = useState(false);
-  const [open, setOpen] = useState(true);
   const [moveOpen, setMoveOpen] = useState(false);
   const definition = ARTICLE_BLOCKS[block.type];
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: block.id });
@@ -312,8 +324,8 @@ function SortableBlock({ block, index, total, onUpdate, onStyle, onLayout, onRem
   // شناسه‌ی DOM از id پایدارِ بلوک ساخته می‌شود نه از اندیس — اندیس با هر درج و
   // جابه‌جایی عوض می‌شود. tabIndex هم هست تا بشود بعد از ساخت، فوکوس را واقعاً
   // داخلِ بلوکِ تازه برد (نه فقط اسکرول).
-  return <section ref={setNodeRef} id={blockDomId(block.id)} tabIndex={-1} style={{ transform: CSS.Transform.toString(transform), transition, opacity: isDragging ? .55 : 1 }} className="a-card group outline-none">
-    <header className="flex items-center gap-2 px-3 py-2.5 border-b" style={{ borderColor: "var(--admin-border)" }}>
+  return <section ref={setNodeRef} id={blockDomId(block.id)} tabIndex={-1} style={{ transform: CSS.Transform.toString(transform), transition, opacity: isDragging ? .55 : 1 }} className="a-card group overflow-hidden outline-none">
+    <header className={`flex items-center gap-2 bg-gray-50 px-3 py-2.5 ${open ? "border-b" : ""}`} style={{ borderColor: "var(--admin-border)" }}>
       {/* بلوکِ ادغام‌شده هم مثلِ هر بلوکِ دیگری قابلِ انتخاب و ادغامِ دوباره است. */}
       {selectable ? <input type="checkbox" checked={selected} onChange={onSelect} title="انتخاب برای ادغام" aria-label={`انتخاب بلوک ${index + 1} برای ادغام`} className="size-4 shrink-0 cursor-pointer accent-[var(--color-primary)]" /> : null}
       <button type="button" onClick={() => setMoveOpen(true)} className="min-w-6 h-6 px-1.5 border text-[11px] font-black text-gray-500 hover:border-[var(--color-primary)] hover:text-[var(--color-primary)]" style={{ borderColor: "var(--admin-border)", borderRadius: "var(--admin-radius)" }} aria-label={`بلوک ${index + 1} از ${total} — تغییر موقعیت`}>{index + 1}</button>
@@ -321,18 +333,22 @@ function SortableBlock({ block, index, total, onUpdate, onStyle, onLayout, onRem
           برمی‌دارد و pointercancel می‌دهد؛ dnd-kit خودش این را ست نمی‌کند و
           همین علتِ نامطمئن بودنِ کشیدن در موبایل بود. */}
       <button type="button" {...attributes} {...listeners} className="touch-none p-2 cursor-grab text-gray-400 hover:text-[var(--color-primary)]" aria-label="جابجایی بلوک"><FiMenu /></button>
-      <Icon className="text-[var(--color-primary)]" /><strong className="text-sm">{definition?.label || block.type}</strong>
-      <div className="mr-auto flex items-center gap-1">
+      {/* کلِ عنوان بلوک را باز و بسته می‌کند (آکاردئون)؛ بسته که باشد، خلاصه‌اش دیده می‌شود. */}
+      <button type="button" onClick={onToggle} aria-expanded={open} aria-controls={`${blockDomId(block.id)}-body`} className="flex min-w-0 flex-1 items-center gap-2 text-right focus-visible:outline-2 focus-visible:outline-[var(--color-primary)]">
+        <Icon className="shrink-0 text-[var(--color-primary)]" /><strong className="shrink-0 text-sm">{definition?.label || block.type}</strong>
+        {!open && blockSummary(block) ? <span className="min-w-0 truncate text-xs text-gray-400">{blockSummary(block)}</span> : null}
+      </button>
+      <div className="flex shrink-0 items-center gap-1">
         <button type="button" onClick={() => onMove(index, index - 1)} disabled={index === 0} className="p-1.5 text-gray-400 disabled:opacity-20" aria-label="انتقال به بالا"><FiChevronUp /></button>
         <button type="button" onClick={() => onMove(index, index + 1)} disabled={index === total - 1} className="p-1.5 text-gray-400" aria-label="انتقال به پایین"><FiChevronDown /></button>
         {onUnmerge ? <button type="button" onClick={() => setGridOpen(true)} className="flex items-center gap-1 px-1.5 py-1 text-[11px] font-bold text-gray-500 hover:text-[var(--color-primary)]" aria-label="تنظیمات چیدمان بلوک ادغام‌شده"><FiGrid />چیدمان</button> : null}
         {onUnmerge ? <button type="button" onClick={onUnmerge} className="flex items-center gap-1 px-1.5 py-1 text-[11px] font-bold text-gray-500 hover:text-[var(--color-primary)]" aria-label="جداسازی بلوک‌های ادغام‌شده"><FiScissors />جداسازی</button> : null}
         <button type="button" onClick={onDuplicate} className="p-1.5 text-gray-400 hover:text-[var(--color-primary)]" aria-label="تکثیر بلوک"><FiCopy /></button>
         <button type="button" onClick={onRemove} className="p-1.5 text-gray-400 hover:text-red-600" aria-label="حذف بلوک"><FiTrash2 /></button>
-        <button type="button" onClick={() => setOpen((value) => !value)} aria-expanded={open} className="p-1.5 text-gray-400 focus-visible:outline-2 focus-visible:outline-[var(--color-primary)]" aria-label="باز و بسته کردن">{open ? <FiChevronUp /> : <FiChevronDown />}</button>
+        <button type="button" onClick={onToggle} aria-expanded={open} className="p-1.5 text-gray-400 focus-visible:outline-2 focus-visible:outline-[var(--color-primary)]" aria-label="باز و بسته کردن">{open ? <FiChevronUp /> : <FiChevronDown />}</button>
       </div>
     </header>
-    {open ? <div className="p-4 space-y-4"><BlockStylePanel type={block.type} style={block.style} layout={block.layout} onChange={onStyle} onLayout={onLayout} />{definition?.fields.length ? definition.fields.map((field) => { const Wrapper = fieldWrapper(field.kind); return <Wrapper key={field.key} className="block"><span className="block text-xs font-bold mb-1.5 text-gray-600">{field.label}</span><BlockField field={field} value={WHOLE_DATA_KINDS.includes(field.kind) ? block.data : block.data?.[field.key]} onChange={(next) => onUpdate(PATCH_KINDS.includes(field.kind) ? next : { [field.key]: next })} align={block.style?.align} onAlign={setAlign} /></Wrapper>; }) : <p className="text-xs text-gray-400 text-center py-3">این بلوک تنظیمات دیگری ندارد.</p>}</div> : null}
+    {open ? <div id={`${blockDomId(block.id)}-body`} className="p-4 space-y-4"><BlockStylePanel type={block.type} style={block.style} layout={block.layout} onChange={onStyle} onLayout={onLayout} />{definition?.fields.length ? definition.fields.map((field) => { const Wrapper = fieldWrapper(field.kind); return <Wrapper key={field.key} className="block"><span className="block text-xs font-bold mb-1.5 text-gray-600">{field.label}</span><BlockField field={field} value={WHOLE_DATA_KINDS.includes(field.kind) ? block.data : block.data?.[field.key]} onChange={(next) => onUpdate(PATCH_KINDS.includes(field.kind) ? next : { [field.key]: next })} align={block.style?.align} onAlign={setAlign} /></Wrapper>; }) : <p className="text-xs text-gray-400 text-center py-3">این بلوک تنظیمات دیگری ندارد.</p>}</div> : null}
     {moveOpen ? <MoveDialog index={index} total={total} onMove={onMove} onClose={() => setMoveOpen(false)} /> : null}
     {gridOpen ? <MergedLayoutModal grid={block.data?.grid} count={mergedChildren(block).length} onApply={(grid) => { onUpdate({ grid }); setGridOpen(false); }} onClose={() => setGridOpen(false)} /> : null}
   </section>;
@@ -373,6 +389,14 @@ export default function BlockEditor({ value = [], onChange, libraryOpen: openPro
     window.addEventListener("article-block-selection", onOtherSelection);
     return () => window.removeEventListener("article-block-selection", onOtherSelection);
   }, [editorId]);
+  // بلوک‌های بسته (آکاردئون). بلوکِ تازه همیشه باز است چون شناسه‌اش اینجا نیست.
+  const [collapsed, setCollapsed] = useState(() => new Set());
+  const toggleOpen = (id) => setCollapsed((current) => {
+    const next = new Set(current);
+    if (next.has(id)) next.delete(id); else next.add(id);
+    return next;
+  });
+  const allCollapsed = value.length > 0 && value.every((block) => collapsed.has(block.id));
   const toggleSelected = (id) => {
     window.dispatchEvent(new CustomEvent("article-block-selection", { detail: editorId }));
     setSelection((current) => (current.includes(id) ? current.filter((item) => item !== id) : [...current, id]));
@@ -449,8 +473,13 @@ export default function BlockEditor({ value = [], onChange, libraryOpen: openPro
       <button type="button" onClick={() => setSelection([])} className="px-2 py-1.5 font-bold text-gray-500 hover:text-red-600">لغو انتخاب</button>
       <span className="text-[11px] text-gray-500">{blocker ? blockerText[blocker] : "چیدمانِ بلوکِ ادغام‌شده از دکمه‌ی «چیدمان» روی خودش تنظیم می‌شود."}</span>
     </div></AdminPortal> : null}
+    {value.length > 1 ? <div className="flex justify-end">
+      <button type="button" onClick={() => setCollapsed(allCollapsed ? new Set() : new Set(value.map((block) => block.id)))} className="inline-flex items-center gap-1 text-[11px] font-bold text-gray-500 hover:text-[var(--color-primary)]">
+        {allCollapsed ? <><FiChevronDown />باز کردنِ همه</> : <><FiChevronUp />بستنِ همه</>}
+      </button>
+    </div> : null}
     <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={({ active, over }) => { if (!over || active.id === over.id) return; move(value.findIndex((item) => item.id === active.id), value.findIndex((item) => item.id === over.id)); }}>
-      <SortableContext items={value.map((item) => item.id)} strategy={verticalListSortingStrategy}>{value.map((block, index) => <SortableBlock key={block.id} block={block} index={index} total={value.length} onUpdate={(patch) => onChange(latest.current.map((item) => item.id === block.id ? { ...item, data: { ...item.data, ...patch } } : item))} onStyle={(style) => setBlockKey(block.id, "style", style)} onLayout={(layout) => setBlockKey(block.id, "layout", layout)} onRemove={() => remove(block)} onDuplicate={() => onChange([...value.slice(0, index + 1), cloneWithFreshIds(block), ...value.slice(index + 1)])} onMove={move} selectable selected={selectedIds.includes(block.id)} onSelect={() => toggleSelected(block.id)} onUnmerge={isMergedBlock(block) ? () => onChange(unmergeBlock(latest.current, block.id)) : undefined} />)}</SortableContext>
+      <SortableContext items={value.map((item) => item.id)} strategy={verticalListSortingStrategy}>{value.map((block, index) => <SortableBlock key={block.id} block={block} index={index} total={value.length} onUpdate={(patch) => onChange(latest.current.map((item) => item.id === block.id ? { ...item, data: { ...item.data, ...patch } } : item))} onStyle={(style) => setBlockKey(block.id, "style", style)} onLayout={(layout) => setBlockKey(block.id, "layout", layout)} onRemove={() => remove(block)} onDuplicate={() => onChange([...value.slice(0, index + 1), cloneWithFreshIds(block), ...value.slice(index + 1)])} onMove={move} open={!collapsed.has(block.id)} onToggle={() => toggleOpen(block.id)} selectable selected={selectedIds.includes(block.id)} onSelect={() => toggleSelected(block.id)} onUnmerge={isMergedBlock(block) ? () => onChange(unmergeBlock(latest.current, block.id)) : undefined} />)}</SortableContext>
     </DndContext>
     <button type="button" onClick={() => setLibraryOpen(true)} className="w-full flex items-center justify-center gap-2 py-3 border border-dashed text-sm font-bold text-[var(--color-primary)] hover:bg-[var(--color-primary-soft)]" style={{ borderColor: "var(--color-primary)", borderRadius: "var(--admin-radius)" }}><FiPlus /> افزودن بلوک</button>
     {value.length === 0 ? <p className="text-center text-xs text-gray-400">برای شروع اولین بلوک را اضافه کنید.</p> : null}

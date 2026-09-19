@@ -2,14 +2,17 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter, useParams } from 'next/navigation';
-import Link from 'next/link';
-import Image from 'next/image';
-import { FaArrowRight, FaCloudUploadAlt, FaGlobeAmericas, FaCalendarAlt, FaCheckCircle, FaRocket, FaEdit, FaParagraph, FaMagic } from 'react-icons/fa';
+import { FaGlobeAmericas, FaCalendarAlt, FaRocket, FaEdit, FaParagraph, FaMagic, FaSync } from 'react-icons/fa';
 import { toast } from 'react-toastify';
 import { getApiErrorMessage } from '@/lib/apiClientError';
 import { invalidateAdminCache } from '@/lib/adminCache';
 import BrandMiniArticleEditor from '@/components/admin/brands/BrandMiniArticleEditor';
 import BrandCategoryArticlesEditor from '@/components/admin/brands/BrandCategoryArticlesEditor';
+import BrandUploadField from '@/components/admin/brands/BrandUploadField';
+import { AccordionBox, Field, TextInput, TextareaInput, textareaClass } from '@/components/admin/SerieFormLayout';
+
+// هم‌ظاهر با کارتِ مینی‌مقاله در فرمِ سری.
+const SECTION_CLASS = 'rounded-[6px] border border-gray-200 bg-white p-4 shadow-sm md:p-6';
 
 const DEFAULT_PROMPT_FIELDS = ['name', 'title', 'description'];
 
@@ -20,6 +23,9 @@ export default function EditBrand() {
   const [loading, setLoading] = useState(true); // لودینگ اولیه صفحه
   const [saving, setSaving] = useState(false); // لودینگ دکمه ثبت
   const [uploading, setUploading] = useState({ logo: false, icon: false, monochromeLogo: false, image: false });
+  // فقط نما: باز/بسته بودنِ بخش‌ها (هم‌شکلِ فرمِ سری). داده‌ی فرم به آن وابسته نیست.
+  const [openBoxes, setOpenBoxes] = useState({ main: true, ai: true });
+  const toggleBox = (key) => setOpenBoxes((prev) => ({ ...prev, [key]: !prev[key] }));
 
   const [formData, setFormData] = useState({
     name: '', title: '', country: '', foundedYear: '', description: '',
@@ -121,249 +127,164 @@ export default function EditBrand() {
   };
 
   if (loading) return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50">
-      <div className="flex flex-col items-center gap-4">
-        <div className="w-12 h-12 border-4 border-[var(--color-primary)] border-t-transparent rounded-full animate-spin"></div>
-        <p className="text-gray-400 font-bold animate-pulse">در حال فراخوانی هویت برند...</p>
-      </div>
+    <div className="flex h-96 flex-col items-center justify-center gap-4">
+      <FaSync className="animate-spin text-4xl" />
+      <p className="text-xs font-bold">در حال فراخوانی هویت برند...</p>
     </div>
   );
 
   return (
-    <div className="min-h-screen pb-20 bg-gray-50/30">
-      {/* --- Header Section --- */}
-      <header className="max-w-5xl mx-auto px-6 py-10 flex justify-between items-end">
-        <div>
-          <h1 className="text-4xl font-bold text-gray-800 tracking-tight">
-            ویرایش برند <span className="text-[var(--color-secondary)]">{formData.title || formData.name}</span>
-          </h1>
-        </div>
-        <div className="hidden md:block text-left italic font-bold text-gray-200/50 text-6xl select-none uppercase tracking-tighter text-outline">Update</div>
-      </header>
+    <div className="flex justify-center">
+      <form onSubmit={handleSubmit} className="mx-auto w-full max-w-7xl pb-16" dir="rtl">
+        <div className="space-y-4">
+          {/* --- Header (هم‌شکلِ فرمِ سری) --- */}
+          <div className="flex flex-col gap-3 rounded-[6px] border border-gray-200 bg-white px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex min-w-0 items-center gap-3">
+              <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-[6px] bg-black text-[var(--color-primary)]">
+                <FaEdit />
+              </span>
+              <div className="min-w-0">
+                <h2 className="truncate text-lg font-extrabold text-gray-950">ویرایش برند</h2>
+                <p className="truncate text-xs font-bold text-gray-500">
+                  برند: <span className="text-gray-900">{formData.title || formData.name || "-"}</span>
+                </p>
+              </div>
+            </div>
+          </div>
 
-      <main className="max-w-5xl mx-auto px-6">
-        <form onSubmit={handleSubmit} className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+          <AccordionBox
+            title="ویرایش شناسنامه برند"
+            eyebrow="هویت بصری، نام‌ها و توضیحات برند"
+            icon={FaEdit}
+            open={openBoxes.main}
+            onToggle={() => toggleBox("main")}
+          >
+            <div className="grid grid-cols-1 gap-4 lg:grid-cols-[minmax(240px,33%)_minmax(0,1fr)]" dir="rtl">
+              <div className="min-w-0 space-y-3">
+                <BrandUploadField
+                  label="تصویر کاور برند"
+                  badge={formData.image ? <span className="rounded-[6px] bg-green-50 px-2 py-0.5 text-[10px] font-bold text-green-600">تصویر فعلی موجود است</span> : null}
+                  url={formData.image}
+                  loading={uploading.image}
+                  onSelect={(f) => uploadImage(f, 'image')}
+                  aspect="aspect-[21/9]"
+                />
+                <div className="grid grid-cols-2 items-end gap-3 xl:grid-cols-3">
+                  <BrandUploadField
+                    label="Main Brand Logo"
+                    url={formData.logo}
+                    loading={uploading.logo}
+                    onSelect={(f) => uploadImage(f, 'logo')}
+                    square
+                  />
+                  <BrandUploadField
+                    label="Favicon / Icon"
+                    url={formData.icon}
+                    loading={uploading.icon}
+                    onSelect={(f) => uploadImage(f, 'icon')}
+                    square
+                  />
+                  <BrandUploadField
+                    label="لوگوی مونوکروم (Monochrome Logo)"
+                    url={formData.monochromeLogo}
+                    loading={uploading.monochromeLogo}
+                    onSelect={(f) => uploadImage(f, 'monochromeLogo')}
+                    square
+                  />
+                </div>
+              </div>
 
-          {/* --- Right Column: Info --- */}
-          <div className="lg:col-span-2 space-y-6">
-            <div className="bg-white/80 backdrop-blur-xl border border-white rounded-[2.5rem] p-8 shadow-xl shadow-gray-200/40">
-              <h2 className="text-lg font-bold text-gray-800 mb-6 flex items-center gap-2">
-                <span className="w-2 h-6 bg-[var(--color-primary)] rounded-full" /> ویرایش شناسنامه برند
-              </h2>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div className="space-y-2">
-                  <label className="text-xs font-bold text-gray-400 mr-2 uppercase tracking-widest">نام سیستمی</label>
-                  <input
+              <div className="min-w-0 space-y-3">
+                <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+                  <TextInput
+                    label="نام سیستمی"
                     required
-                    className="w-full bg-gray-50 border-2 border-transparent focus:border-[var(--color-primary)] focus:bg-white rounded-2xl px-5 py-4 outline-none transition-all font-bold text-gray-700"
                     value={formData.name}
                     onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                   />
-                </div>
-                <div className="space-y-2">
-                  <label className="text-xs font-bold text-gray-400 mr-2 uppercase tracking-widest">عنوان نمایشی</label>
-                  <input
+                  <TextInput
+                    label="عنوان نمایشی"
                     required
-                    className="w-full bg-gray-50 border-2 border-transparent focus:border-[var(--color-primary)] focus:bg-white rounded-2xl px-5 py-4 outline-none transition-all font-bold text-gray-700"
                     value={formData.title}
                     onChange={(e) => setFormData({ ...formData, title: e.target.value })}
                   />
-                </div>
-                <div className="space-y-2">
-                  <label className="text-xs font-bold text-gray-400 mr-2 uppercase flex items-center gap-1"><FaGlobeAmericas size={10} /> کشور</label>
-                  <input
-                    className="w-full bg-gray-50 border-2 border-transparent focus:border-[var(--color-primary)] focus:bg-white rounded-2xl px-5 py-4 outline-none transition-all font-bold text-gray-700"
+                  <TextInput
+                    label="کشور"
+                    icon={FaGlobeAmericas}
                     value={formData.country}
                     onChange={(e) => setFormData({ ...formData, country: e.target.value })}
                   />
-                </div>
-                <div className="space-y-2">
-                  <label className="text-xs font-bold text-gray-400 mr-2 uppercase flex items-center gap-1"><FaCalendarAlt size={10} /> سال پایه گذاری</label>
-                  <input
+                  <TextInput
+                    label="سال پایه گذاری"
+                    icon={FaCalendarAlt}
                     type="number"
-                    className="w-full bg-gray-50 border-2 border-transparent focus:border-[var(--color-primary)] focus:bg-white rounded-2xl px-5 py-4 outline-none transition-all font-bold text-gray-700"
                     value={formData.foundedYear}
                     onChange={(e) => setFormData({ ...formData, foundedYear: e.target.value })}
                   />
                 </div>
-              </div>
-
-              <div className="mt-6 space-y-2">
-                <label className="text-xs font-bold text-gray-400 mr-2 uppercase">توضیحات و بیوگرافی</label>
-                <textarea
+                <TextareaInput
+                  label="توضیحات و بیوگرافی"
                   rows={5}
-                  className="w-full bg-gray-50 border-2 border-transparent focus:border-[var(--color-primary)] focus:bg-white rounded-[2rem] px-5 py-4 outline-none transition-all font-medium text-gray-600 resize-none"
                   value={formData.description}
                   onChange={(e) => setFormData({ ...formData, description: e.target.value })}
                 />
               </div>
-
-              <div className="bg-white/80 backdrop-blur-xl border border-white rounded-[2.5rem] p-8 shadow-xl shadow-gray-200/40">
-                <h2 className="text-lg font-bold text-gray-800 mb-6 flex items-center gap-2">
-                  <FaMagic className="text-[var(--color-primary)]" /> ویرایش دستورالعمل‌های هوش مصنوعی
-                </h2>
-                <p className="text-[11px] text-gray-400 mb-6 font-bold leading-relaxed">
-                  این دستورالعمل‌ها به AI کمک می‌کنند تا مقادیر &quot;سری‌های&quot; زیرمجموعه این برند را دقیق‌تر تولید کند.
-                </p>
-
-                <div className="space-y-6">
-                  {formData.prompts.map((item, index) => (
-                    <div key={item.field} className="space-y-2 group">
-                      <label className="text-[10px] font-bold text-gray-400 mr-2 uppercase flex items-center gap-1 group-focus-within:text-[var(--color-primary)] transition-colors">
-                        <FaParagraph size={10} /> دستورالعمل تولید {item.field}
-                      </label>
-                      <textarea
-                        dir='ltr'
-                        rows={3}
-                        placeholder={`مثلاً: نام سری‌های ${formData.title} باید کوتاه و ورزشی باشد...`}
-                        className="w-full text-left [direction:ltr] bg-gray-50 border-2 border-transparent focus:border-[var(--color-primary)] focus:bg-white rounded-2xl px-5 py-4 outline-none transition-all font-medium text-sm text-gray-600 shadow-sm resize-none"
-                        value={item.context}
-                        onChange={(e) => handlePromptChange(index, e.target.value)}
-                      />
-                    </div>
-                  ))}
-                </div>
-              </div>
             </div>
+          </AccordionBox>
 
-            {/* Banner Update */}
-            <div className="bg-white/80 backdrop-blur-xl border border-white rounded-[2.5rem] p-8 shadow-xl shadow-gray-200/40">
-              <div className="flex justify-between items-center mb-6">
-                <h2 className="text-lg font-bold text-gray-800">تصویر کاور برند</h2>
-                {formData.image && <span className="text-[10px] font-bold text-green-500 bg-green-50 px-3 py-1 rounded-full uppercase">تصویر فعلی موجود است</span>}
-              </div>
-              <UploadField
-                url={formData.image}
-                loading={uploading.image}
-                onSelect={(f) => uploadImage(f, 'image')}
-                aspect="aspect-[21/9]"
-              />
-            </div>
-
-            <BrandMiniArticleEditor
-              value={formData.articleBlocks}
-              onChange={(articleBlocks) => setFormData((current) => ({ ...current, articleBlocks }))}
-            />
-
-            <BrandCategoryArticlesEditor
-              value={formData.categoryArticles}
-              onChange={(update) => setFormData((current) => ({ ...current, categoryArticles: update(current.categoryArticles) }))}
-            />
-          </div>
-
-          {/* --- Left Column: Assets & Action --- */}
-          <div className="space-y-8">
-            <div className="bg-gray-900 rounded-[2.5rem] p-8 text-white shadow-2xl relative overflow-hidden">
-              <div className="absolute top-0 right-0 w-32 h-32 bg-[var(--color-primary)] opacity-10 blur-[50px] -mr-16 -mt-16"></div>
-              <h2 className="text-lg font-bold mb-8 flex items-center justify-between relative z-10">
-                Visual Assets
-                <FaEdit className="text-[var(--color-secondary)] opacity-50" />
-              </h2>
-
-              <div className="space-y-10 relative z-10">
-                <div className="group">
-                  <p className="text-[10px] font-bold uppercase text-gray-500 mb-3 tracking-[0.2em] text-center group-hover:text-[var(--color-secondary)] transition-colors">Main Brand Logo</p>
-                  <UploadField
-                    url={formData.logo}
-                    loading={uploading.logo}
-                    onSelect={(f) => uploadImage(f, 'logo')}
-                    isSquare
+          <AccordionBox
+            title="ویرایش دستورالعمل‌های هوش مصنوعی"
+            eyebrow="مقادیرِ سری‌های این برند"
+            icon={FaMagic}
+            open={openBoxes.ai}
+            onToggle={() => toggleBox("ai")}
+          >
+            <div className="space-y-3">
+              <p className="text-[11px] font-bold leading-6 text-gray-500">این دستورالعمل‌ها به AI کمک می‌کنند تا مقادیر &quot;سری‌های&quot; زیرمجموعه این برند را دقیق‌تر تولید کند.</p>
+              {formData.prompts.map((item, index) => (
+                <Field key={item.field} label={`دستورالعمل تولید ${item.field}`} icon={FaParagraph}>
+                  <textarea
+                    dir='ltr'
+                    rows={3}
+                    placeholder={`مثلاً: نام سری‌های ${formData.title} باید کوتاه و ورزشی باشد...`}
+                    className={`${textareaClass} text-left [direction:ltr]`}
+                    value={item.context}
+                    onChange={(e) => handlePromptChange(index, e.target.value)}
                   />
-                </div>
-
-                <div className="group">
-                  <p className="text-[10px] font-bold uppercase text-gray-500 mb-3 tracking-[0.2em] text-center group-hover:text-[var(--color-secondary)] transition-colors">Favicon / Icon</p>
-                  <UploadField
-                    url={formData.icon}
-                    loading={uploading.icon}
-                    onSelect={(f) => uploadImage(f, 'icon')}
-                    isSquare
-                    small
-                  />
-                </div>
-
-                <div className="group">
-                  <p className="text-[10px] font-bold uppercase text-gray-500 mb-3 tracking-[0.2em] text-center group-hover:text-[var(--color-secondary)] transition-colors">لوگوی مونوکروم (Monochrome Logo)</p>
-                  <UploadField
-                    url={formData.monochromeLogo}
-                    loading={uploading.monochromeLogo}
-                    onSelect={(f) => uploadImage(f, 'monochromeLogo')}
-                    isSquare
-                  />
-                </div>
-              </div>
+                </Field>
+              ))}
             </div>
+          </AccordionBox>
 
-            {/* Save Button */}
-            <button
-              type="submit"
-              disabled={saving}
-              className={`w-full py-6 rounded-[2rem] font-bold text-xl shadow-2xl transition-all flex items-center justify-center gap-3 active:scale-95 group ${saving ? 'bg-gray-800 text-gray-500' : 'bg-gradient-to-r from-[var(--color-primary)] to-[var(--color-secondary)] text-white hover:shadow-[0_20px_40px_rgba(var(--color-primary-rgb),0.3)] hover:-translate-y-1'
-                }`}
-            >
-              {saving ? (
-                <div className="w-6 h-6 border-4 border-white/30 border-t-white rounded-full animate-spin" />
-              ) : (
-                <>ذخیره تغییرات برند <FaRocket className="group-hover:translate-x-1 group-hover:-translate-y-1 transition-transform" /></>
-              )}
-            </button>
+          <BrandMiniArticleEditor
+            className={SECTION_CLASS}
+            value={formData.articleBlocks}
+            onChange={(articleBlocks) => setFormData((current) => ({ ...current, articleBlocks }))}
+          />
 
-            <p className="text-[10px] text-center text-gray-400 font-bold uppercase tracking-widest px-4">
-              آخرین ویرایش توسط سیستم در: {new Date().toLocaleDateString('fa-IR')}
-            </p>
-          </div>
-        </form>
-      </main>
-    </div>
-  );
-}
+          <BrandCategoryArticlesEditor
+            className={SECTION_CLASS}
+            value={formData.categoryArticles}
+            onChange={(update) => setFormData((current) => ({ ...current, categoryArticles: update(current.categoryArticles) }))}
+          />
 
-// کامپوننت UploadField همان قبلی است اما با کمی استایل ظریف‌تر برای حالت ویرایش
-function UploadField({ url, loading, onSelect, isSquare, small, aspect = "aspect-video" }) {
-  return (
-    <div className={`relative group ${isSquare ? (small ? 'w-24 h-24 mx-auto' : 'w-44 h-44 mx-auto') : 'w-full'} ${!isSquare && aspect}`}>
-      <label className={`
-        flex flex-col items-center justify-center w-full h-full border-2 border-dashed rounded-[2.5rem] 
-        cursor-pointer transition-all duration-500 overflow-hidden relative group-hover:shadow-lg
-        ${url ? 'border-transparent' : 'border-gray-200 bg-gray-50 hover:border-[var(--color-primary)] hover:bg-white'}
-      `}>
-        {url ? (
-          <>
-            <Image
-              src={url}
-              alt="پیش‌نمایش تصویر برند"
-              fill
-              sizes={isSquare ? (small ? "96px" : "176px") : "(max-width: 1024px) 100vw, 640px"}
-              className="object-cover rounded-[2.5rem] transition-transform duration-700 group-hover:scale-110"
-            />
-            <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-all flex flex-col items-center justify-center gap-2 backdrop-blur-[2px]">
-              <FaCloudUploadAlt className="text-white text-3xl animate-bounce" />
-              <span className="text-[10px] font-bold text-white uppercase tracking-widest">تغییر تصویر</span>
-            </div>
-          </>
-        ) : (
-          <div className="text-center p-4">
-            {loading ? (
-              <div className="w-8 h-8 border-4 border-[var(--color-primary)]/20 border-t-[var(--color-primary)] rounded-full animate-spin mx-auto" />
+          <button
+            type="submit"
+            disabled={saving}
+            className="flex w-full items-center justify-center gap-3 rounded-[6px] bg-black px-5 py-4 text-base font-extrabold text-white transition hover:-translate-y-0.5 disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            {saving ? (
+              <span className="h-6 w-6 rounded-full border-4 border-white/20 border-t-white animate-spin" />
             ) : (
-              <>
-                <div className="w-12 h-12 bg-white rounded-2xl flex items-center justify-center mx-auto mb-3 shadow-sm group-hover:scale-110 transition-transform">
-                  <FaCloudUploadAlt className="text-gray-300 group-hover:text-[var(--color-primary)] transition-colors text-2xl" />
-                </div>
-                {!small && <span className="text-[10px] font-bold text-gray-400 uppercase tracking-tighter">انتخاب فایل جدید</span>}
-              </>
+              <>ذخیره تغییرات برند <FaRocket className="text-[var(--color-primary)]" /></>
             )}
-          </div>
-        )}
-        <input type="file" hidden accept="image/*" disabled={loading} onChange={(e) => onSelect(e.target.files[0])} />
-      </label>
+          </button>
 
-      {url && !loading && (
-        <div className="absolute -top-2 -right-2 bg-green-500 text-white w-7 h-7 rounded-full flex items-center justify-center shadow-xl border-2 border-white">
-          <FaCheckCircle size={12} />
+          <p className="text-center text-[10px] font-bold uppercase tracking-widest text-gray-400">
+            آخرین ویرایش توسط سیستم در: {new Date().toLocaleDateString('fa-IR')}
+          </p>
         </div>
-      )}
+      </form>
     </div>
   );
 }

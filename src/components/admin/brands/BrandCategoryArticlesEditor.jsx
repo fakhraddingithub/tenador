@@ -15,7 +15,7 @@ const idOf = (value) => String(value?._id || value || "");
  * (prev => next) so edits to different categories can never overwrite each
  * other with a stale array.
  */
-export default function BrandCategoryArticlesEditor({ value = [], onChange }) {
+export default function BrandCategoryArticlesEditor({ value = [], onChange, className = "bg-white/80 backdrop-blur-xl border border-white rounded-[2.5rem] p-6 md:p-8 shadow-xl shadow-gray-200/40" }) {
   const { categories, isLoading } = useCategories();
   const [selected, setSelected] = useState("");
 
@@ -60,7 +60,7 @@ export default function BrandCategoryArticlesEditor({ value = [], onChange }) {
   return (
     <section
       aria-labelledby="brand-category-articles-title"
-      className="bg-white/80 backdrop-blur-xl border border-white rounded-[2.5rem] p-6 md:p-8 shadow-xl shadow-gray-200/40 space-y-6"
+      className={`${className} space-y-6`}
     >
       <div className="flex items-start gap-3">
         <span className="mt-0.5 flex size-10 shrink-0 items-center justify-center rounded-xl bg-[var(--color-primary-soft)] text-[var(--color-primary)]">
