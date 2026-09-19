@@ -21,6 +21,7 @@
     "test:mini-articles": "node --test --test-timeout=180000 tests/miniArticles.test.mjs",
     "test:article-image-block": "node --test tests/articleImageBlock.test.mjs",
     "test:cdn-purge": "node --test tests/cdnPurge.test.mjs",
+    "test:block-merge": "node --test tests/articleBlockMerge.test.mjs",
     "report:limited-edition-brand-mismatch": "node scripts/reportLimitedEditionBrandMismatch.js",
     "test:grouped-product-pagination": "node --test tests/groupedProductPagination.test.mjs",
     "test:category-sports": "node --test tests/categorySportVisibility.test.mjs",

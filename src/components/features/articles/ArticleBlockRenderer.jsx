@@ -8,6 +8,7 @@ import { sanitizeArticleHtml } from "@/lib/sanitizeArticleHtml";
 import { sanitizeRichText } from "@/lib/sanitizeRichText";
 import { BLOCK_WIDTH_CLASS, blockWidth, groupBlockRows } from "@/lib/articleBlockLayout";
 import { imageBlockItems } from "@/lib/articleImageBlock";
+import { flattenArticleBlocks, isMergedBlock, mergedChildren } from "@/lib/articleBlockTypes";
 
 const ordered = (values, map) => (Array.isArray(values) ? values : values ? [values] : []).map((id) => map?.[String(id)]).filter(Boolean);
 const blockSection = "my-9 scroll-mt-28";
@@ -76,18 +77,50 @@ function safeHeadingId(block) {
   return `article-${String(block.id || "heading").replace(/[^a-zA-Z0-9_-]/g, "-")}`;
 }
 
+// تیترهای داخلِ بلوکِ ادغام‌شده هم به ترتیبِ خواندن شماره‌گذاری می‌شوند، تا
+// سطحِ تیتر در متن و در فهرستِ مطالب یکی باشد.
 function normalizeHeadingLevels(blocks = []) {
   let previous = 1;
-  return blocks.map((block) => {
+  const normalize = (block) => {
     if (block.type !== "heading") return block;
     const requested = Number(String(block.data?.level || "h2").slice(1));
     previous = Math.max(2, Math.min(4, Number.isFinite(requested) ? requested : 2, previous + 1));
     return { ...block, data: { ...block.data, level: `h${previous}` } };
-  });
+  };
+  return blocks.map((block) => (isMergedBlock(block)
+    ? { ...block, data: { ...block.data, blocks: mergedChildren(block).map(normalize) } }
+    : normalize(block)));
 }
 
 export function articleHeadings(blocks = []) {
-  return normalizeHeadingLevels(blocks).filter((block) => block.type === "heading" && block.data?.text).map((block) => ({ id: safeHeadingId(block), text: block.data.text, level: block.data.level || "h2" }));
+  return flattenArticleBlocks(normalizeHeadingLevels(blocks)).filter((block) => block.type === "heading" && block.data?.text).map((block) => ({ id: safeHeadingId(block), text: block.data.text, level: block.data.level || "h2" }));
+}
+
+// ——— بلوکِ ادغام‌شده ————————————————————————————————————————————————————
+// یک سطرِ افقی که هرگز روی هم چیده نمی‌شود. هر فرزند عرضِ خودش را دارد (۱/۲،
+// ۱/۳، ۲/۳) و فرزندِ بی‌عرض سهمِ مساوی می‌گیرد؛ کمینه‌ی ۱۶rem نمی‌گذارد محتوا
+// له شود. وقتی صفحه جا ندارد (موبایل) سطر سرریز می‌شود و به یک اسلایدرِ افقیِ
+// snap‌دار تبدیل می‌شود؛ در دسکتاپ جمعِ عرض‌ها دقیقاً ۱۰۰٪ است (فاصله کسر می‌شود).
+const MERGED_WIDTH_PERCENT = { "1/2": 50, "1/3": 100 / 3, "2/3": 200 / 3 };
+
+function MergedBlock({ items, spacing }) {
+  const share = 100 / items.length;
+  const gapShare = (items.length - 1) / items.length;
+  return <div
+    role="region"
+    aria-label="محتوای کنارِ هم — برای دیدنِ بقیه به چپ و راست بکشید"
+    tabIndex={0}
+    data-merged-block
+    className={`${blockSection} snap-x snap-mandatory overflow-x-auto overscroll-x-contain pb-2 [scrollbar-width:thin] focus-visible:outline-2 focus-visible:outline-[var(--color-primary)]`}
+    style={spacing || undefined}
+  >
+    <div className="flex items-start gap-[var(--merged-gap)] [--merged-gap:1rem] md:[--merged-gap:1.5rem]">
+      {items.map(({ child, node }) => {
+        const percent = MERGED_WIDTH_PERCENT[blockWidth(child)] ?? share;
+        return <div key={child.id} className="min-w-[16rem] shrink-0 grow-0 snap-start *:my-0" style={{ flexBasis: `calc(${percent}% - var(--merged-gap) * ${gapShare})` }}>{node}</div>;
+      })}
+    </div>
+  </div>;
 }
 
 function EntityCards({ title, items, kind, visuals }) {
@@ -173,6 +206,12 @@ export default function ArticleBlockRenderer({ blocks = [], entities, preview = 
   const renderBlock = (block) => {
     const data = block.data || {};
     const v = blockVisuals(block);
+    if (isMergedBlock(block)) {
+      // فرزندان با همین renderBlock رندر می‌شوند — هر نوع بلوک داخلِ ادغام دقیقاً
+      // همان‌طور دیده می‌شود که بیرونِ آن.
+      const items = mergedChildren(block).map((child) => ({ child, node: renderBlock(child) })).filter((item) => item.node);
+      return items.length ? <MergedBlock key={block.id} items={items} spacing={v.spacing} /> : null;
+    }
     if (block.type === "heading") {
       const level = ["h2", "h3", "h4"].includes(data.level) ? data.level : "h2";
       const Tag = level;

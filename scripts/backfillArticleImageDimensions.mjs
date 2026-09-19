@@ -11,6 +11,7 @@
  *   node --env-file=.env scripts/backfillArticleImageDimensions.mjs --apply
  */
 import mongoose from "mongoose";
+import { flattenArticleBlocks } from "../src/lib/articleBlockTypes.js";
 
 const APPLY = process.argv.includes("--apply");
 const MAX_BYTES = 8 * 1024 * 1024;
@@ -86,7 +87,8 @@ const needsBackfill = (block) =>
 async function backfillCollection(db, collectionName, blocksField) {
   const collection = db.collection(collectionName);
   const docs = await collection
-    .find({ [`${blocksField}.type`]: "image" })
+    // images can also sit inside a merged block (data.blocks)
+    .find({ $or: [{ [`${blocksField}.type`]: "image" }, { [`${blocksField}.data.blocks.type`]: "image" }] })
     .project({ [blocksField]: 1, title: 1, slug: 1, name: 1 })
     .toArray();
 
@@ -96,7 +98,7 @@ async function backfillCollection(db, collectionName, blocksField) {
     const blocks = doc[blocksField] || [];
     let changed = false;
 
-    for (const block of blocks) {
+    for (const block of flattenArticleBlocks(blocks)) {
       if (block?.type !== "image") continue;
       stats.scanned += 1;
       if (!needsBackfill(block)) { stats.skipped += 1; continue; }

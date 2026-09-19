@@ -6,7 +6,7 @@ import { createPortal } from "react-dom";
 import { DndContext, KeyboardSensor, PointerSensor, closestCenter, useSensor, useSensors } from "@dnd-kit/core";
 import { SortableContext, arrayMove, sortableKeyboardCoordinates, useSortable, verticalListSortingStrategy } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { FiChevronDown, FiChevronUp, FiCopy, FiDroplet, FiMenu, FiPlus, FiSearch, FiTrash2, FiX } from "react-icons/fi";
+import { FiChevronDown, FiChevronUp, FiColumns, FiCopy, FiDroplet, FiMenu, FiPlus, FiScissors, FiSearch, FiTrash2, FiX } from "react-icons/fi";
 import ImageUpload from "@/components/admin/ImageUpload";
 import ArticleEntityPicker from "./ArticleEntityPicker";
 import RichTextField from "./RichTextField";
@@ -14,6 +14,8 @@ import { ARTICLE_BLOCKS, BLOCK_ACCENT_HINTS, BLOCK_GROUPS, BLOCK_SPACING_LABELS,
 import { BLOCK_WIDTHS, blockWidth, insertBlockAt } from "@/lib/articleBlockLayout";
 import { confirmDelete } from "@/lib/swal";
 import { IMAGE_DISPLAY_HEIGHT, MAX_IMAGE_BLOCK_ITEMS, mirrorFirstImage, normalizeImageHref } from "@/lib/articleImageBlock";
+import { MAX_MERGED_CHILDREN, isMergedBlock } from "@/lib/articleBlockTypes";
+import { cloneWithFreshIds, mergeBlocks, unmergeBlock } from "@/lib/articleBlockMerge";
 
 const BLOCK_WIDTH_LABELS = { full: "تمام عرض", "1/2": "نصف عرض", "1/3": "یک‌سوم عرض", "2/3": "دو‌سوم عرض" };
 
@@ -24,7 +26,7 @@ const inputClass = "w-full px-3 py-2.5 border bg-gray-50 text-sm outline-none fo
 // متنِ غنی یک نوارِ دکمه دارد (اولینش «پررنگ») و ناحیه‌ی ویرایشش contentEditable
 // است که اصلاً برچسب‌پذیر نیست — پس باید در یک wrapper ساده بنشیند.
 // همین دلیل برای فیلدهای چندکنترلیِ تصویر (چند input و دکمه) هم صادق است.
-const fieldWrapper = (kind) => (["rich", "imageList", "imageOverlay"].includes(kind) ? "div" : "label");
+const fieldWrapper = (kind) => (["rich", "imageList", "imageOverlay", "mergedBlocks"].includes(kind) ? "div" : "label");
 // این نوع‌ها کلِ data را می‌خوانند و وصله‌ی چندکلیدی برمی‌گردانند.
 const WHOLE_DATA_KINDS = ["table", "rich", "imageList"];
 const PATCH_KINDS = ["table", "image", "rich", "imageList"];
@@ -186,6 +188,8 @@ function BlockField({ field, value, onChange, align, onAlign }) {
   if (field.kind === "imageList") return <ImageListEditor data={value} onChange={onChange} />;
   if (field.kind === "imageHeight") return <ImageHeightField value={value} onChange={onChange} />;
   if (field.kind === "imageOverlay") return <ImageOverlayField value={value} onChange={onChange} />;
+  // فرزندانِ بلوکِ ادغام‌شده با همین ویرایشگر ویرایش می‌شوند (nested: بدونِ ادغامِ تودرتو).
+  if (field.kind === "mergedBlocks") return <BlockEditor value={Array.isArray(value) ? value : []} onChange={onChange} nested />;
   if (field.kind === "gallery") return <ImageUpload value={value || []} onChange={onChange} folder="articles" multiple className="mb-0" />;
   if (field.kind === "entity" || field.kind === "entities") return <ArticleEntityPicker type={field.entityType} value={value} onChange={onChange} multiple={field.kind === "entities"} />;
   if (field.kind === "faq") return <FaqEditor value={value} onChange={onChange} />;
@@ -222,7 +226,7 @@ function MoveDialog({ index, total, onMove, onClose }) {
   </div></AdminPortal>;
 }
 
-function SortableBlock({ block, index, total, onUpdate, onStyle, onLayout, onRemove, onDuplicate, onMove }) {
+function SortableBlock({ block, index, total, onUpdate, onStyle, onLayout, onRemove, onDuplicate, onMove, selectable = false, selected = false, onSelect, onUnmerge }) {
   const [open, setOpen] = useState(true);
   const [moveOpen, setMoveOpen] = useState(false);
   const definition = ARTICLE_BLOCKS[block.type];
@@ -240,6 +244,8 @@ function SortableBlock({ block, index, total, onUpdate, onStyle, onLayout, onRem
   // داخلِ بلوکِ تازه برد (نه فقط اسکرول).
   return <section ref={setNodeRef} id={blockDomId(block.id)} tabIndex={-1} style={{ transform: CSS.Transform.toString(transform), transition, opacity: isDragging ? .55 : 1 }} className="a-card group outline-none">
     <header className="flex items-center gap-2 px-3 py-2.5 border-b" style={{ borderColor: "var(--admin-border)" }}>
+      {/* بلوکِ ادغام‌شده خودش قابلِ ادغامِ دوباره نیست (فقط یک سطح). */}
+      {selectable ? <input type="checkbox" checked={selected} onChange={onSelect} disabled={Boolean(onUnmerge)} title={onUnmerge ? "بلوکِ ادغام‌شده را نمی‌توان دوباره ادغام کرد" : "انتخاب برای ادغام"} aria-label={`انتخاب بلوک ${index + 1} برای ادغام`} className="size-4 shrink-0 cursor-pointer accent-[var(--color-primary)] disabled:cursor-not-allowed disabled:opacity-30" /> : null}
       <button type="button" onClick={() => setMoveOpen(true)} className="min-w-6 h-6 px-1.5 border text-[11px] font-black text-gray-500 hover:border-[var(--color-primary)] hover:text-[var(--color-primary)]" style={{ borderColor: "var(--admin-border)", borderRadius: "var(--admin-radius)" }} aria-label={`بلوک ${index + 1} از ${total} — تغییر موقعیت`}>{index + 1}</button>
       {/* touch-none لازم است: بدونِ آن مرورگر لمسِ روی دستگیره را برای اسکرول
           برمی‌دارد و pointercancel می‌دهد؛ dnd-kit خودش این را ست نمی‌کند و
@@ -249,6 +255,7 @@ function SortableBlock({ block, index, total, onUpdate, onStyle, onLayout, onRem
       <div className="mr-auto flex items-center gap-1">
         <button type="button" onClick={() => onMove(index, index - 1)} disabled={index === 0} className="p-1.5 text-gray-400 disabled:opacity-20" aria-label="انتقال به بالا"><FiChevronUp /></button>
         <button type="button" onClick={() => onMove(index, index + 1)} disabled={index === total - 1} className="p-1.5 text-gray-400" aria-label="انتقال به پایین"><FiChevronDown /></button>
+        {onUnmerge ? <button type="button" onClick={onUnmerge} className="flex items-center gap-1 px-1.5 py-1 text-[11px] font-bold text-gray-500 hover:text-[var(--color-primary)]" aria-label="جداسازی بلوک‌های ادغام‌شده"><FiScissors />جداسازی</button> : null}
         <button type="button" onClick={onDuplicate} className="p-1.5 text-gray-400 hover:text-[var(--color-primary)]" aria-label="تکثیر بلوک"><FiCopy /></button>
         <button type="button" onClick={onRemove} className="p-1.5 text-gray-400 hover:text-red-600" aria-label="حذف بلوک"><FiTrash2 /></button>
         <button type="button" onClick={() => setOpen((value) => !value)} aria-expanded={open} className="p-1.5 text-gray-400 focus-visible:outline-2 focus-visible:outline-[var(--color-primary)]" aria-label="باز و بسته کردن">{open ? <FiChevronUp /> : <FiChevronDown />}</button>
@@ -265,7 +272,7 @@ function BlockLibrary({ total, onAdd, onClose }) {
   // بتوان مثلاً مستقیم بینِ بلوکِ ۴ و ۵ بلوک ساخت — نه اینکه اول در انتها
   // ساخته و بعد دستی جابه‌جا شود.
   const [position, setPosition] = useState(String(total + 1));
-  const groups = useMemo(() => BLOCK_GROUPS.map((group) => ({ group, blocks: Object.entries(ARTICLE_BLOCKS).filter(([, item]) => item.group === group && matchesSearch(query, item.label)) })).filter((item) => item.blocks.length), [query]);
+  const groups = useMemo(() => BLOCK_GROUPS.map((group) => ({ group, blocks: Object.entries(ARTICLE_BLOCKS).filter(([, item]) => !item.hidden && item.group === group && matchesSearch(query, item.label)) })).filter((item) => item.blocks.length), [query]);
   useEffect(() => {
     const onKey = (event) => { if (event.key === "Escape") onClose(); };
     window.addEventListener("keydown", onKey);
@@ -282,7 +289,13 @@ function BlockLibrary({ total, onAdd, onClose }) {
   </div></div></AdminPortal>;
 }
 
-export default function BlockEditor({ value = [], onChange, libraryOpen: openProp, onLibraryOpen }) {
+export default function BlockEditor({ value = [], onChange, libraryOpen: openProp, onLibraryOpen, nested = false }) {
+  // انتخاب برای ادغام؛ فقط شناسه‌هایی که هنوز در فهرست هستند حساب می‌شوند.
+  const [selection, setSelection] = useState([]);
+  const selectedIds = selection.filter((id) => value.some((block) => block.id === id));
+  const selectedIndices = selectedIds.map((id) => value.findIndex((block) => block.id === id)).sort((a, b) => a - b);
+  const contiguous = selectedIndices.every((index, i) => i === 0 || index === selectedIndices[i - 1] + 1);
+  const toggleSelected = (id) => setSelection((current) => (current.includes(id) ? current.filter((item) => item !== id) : [...current, id]));
   // کتابخانه‌ی بلوک از نوارِ شناورِ پایینِ ویرایشگرِ مقاله هم باز می‌شود؛ اگر
   // والد آن را کنترل نکند (مثلِ مینی‌مقاله‌ی برند) همان حالتِ داخلی کار می‌کند.
   const [ownOpen, setOwnOpen] = useState(false);
@@ -332,9 +345,24 @@ export default function BlockEditor({ value = [], onChange, libraryOpen: openPro
     if (!(await confirmDelete(`حذف بلوک «${label}»؟`, "محتوای این بلوک از ویرایشگر برداشته می‌شود."))) return;
     onChange(latest.current.filter((item) => item.id !== block.id));
   };
+  const merge = () => {
+    const next = mergeBlocks(latest.current, selectedIds);
+    if (!next) return;
+    setSelection([]);
+    onChange(next);
+  };
+  const tooMany = selectedIds.length > MAX_MERGED_CHILDREN;
   return <div className="space-y-3">
+    {!nested && selectedIds.length > 0 ? <div role="toolbar" aria-label="ادغام بلوک‌ها" className="sticky top-2 z-10 flex flex-wrap items-center gap-2 border bg-white p-2 text-xs shadow-sm" style={{ borderColor: "var(--color-primary)", borderRadius: "var(--admin-radius)" }}>
+      <span className="font-bold">{selectedIds.length.toLocaleString("fa-IR")} بلوک انتخاب شده</span>
+      <button type="button" onClick={merge} disabled={selectedIds.length < 2 || !contiguous || tooMany} className="inline-flex items-center gap-1.5 px-3 py-1.5 font-bold text-white bg-[var(--color-primary)] disabled:cursor-not-allowed disabled:opacity-40" style={{ borderRadius: "var(--admin-radius)" }}><FiColumns />ادغام در یک بلوک</button>
+      <button type="button" onClick={() => setSelection([])} className="px-2 py-1.5 font-bold text-gray-500 hover:text-red-600">لغو انتخاب</button>
+      <span className="text-[11px] text-gray-500">
+        {selectedIds.length < 2 ? "دست‌کم دو بلوکِ کنارِ هم را انتخاب کنید." : !contiguous ? "فقط بلوک‌های پشتِ‌سرِ‌هم (بدونِ فاصله) ادغام می‌شوند." : tooMany ? `حداکثر ${MAX_MERGED_CHILDREN.toLocaleString("fa-IR")} بلوک.` : "در موبایل، ردیفِ ادغام‌شده افقی اسکرول می‌شود."}
+      </span>
+    </div> : null}
     <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={({ active, over }) => { if (!over || active.id === over.id) return; move(value.findIndex((item) => item.id === active.id), value.findIndex((item) => item.id === over.id)); }}>
-      <SortableContext items={value.map((item) => item.id)} strategy={verticalListSortingStrategy}>{value.map((block, index) => <SortableBlock key={block.id} block={block} index={index} total={value.length} onUpdate={(patch) => onChange(latest.current.map((item) => item.id === block.id ? { ...item, data: { ...item.data, ...patch } } : item))} onStyle={(style) => setBlockKey(block.id, "style", style)} onLayout={(layout) => setBlockKey(block.id, "layout", layout)} onRemove={() => remove(block)} onDuplicate={() => onChange([...value.slice(0, index + 1), { ...structuredClone(block), id: crypto.randomUUID() }, ...value.slice(index + 1)])} onMove={move} />)}</SortableContext>
+      <SortableContext items={value.map((item) => item.id)} strategy={verticalListSortingStrategy}>{value.map((block, index) => <SortableBlock key={block.id} block={block} index={index} total={value.length} onUpdate={(patch) => onChange(latest.current.map((item) => item.id === block.id ? { ...item, data: { ...item.data, ...patch } } : item))} onStyle={(style) => setBlockKey(block.id, "style", style)} onLayout={(layout) => setBlockKey(block.id, "layout", layout)} onRemove={() => remove(block)} onDuplicate={() => onChange([...value.slice(0, index + 1), cloneWithFreshIds(block), ...value.slice(index + 1)])} onMove={move} selectable={!nested} selected={selectedIds.includes(block.id)} onSelect={() => toggleSelected(block.id)} onUnmerge={isMergedBlock(block) ? () => onChange(unmergeBlock(latest.current, block.id)) : undefined} />)}</SortableContext>
     </DndContext>
     <button type="button" onClick={() => setLibraryOpen(true)} className="w-full flex items-center justify-center gap-2 py-3 border border-dashed text-sm font-bold text-[var(--color-primary)] hover:bg-[var(--color-primary-soft)]" style={{ borderColor: "var(--color-primary)", borderRadius: "var(--admin-radius)" }}><FiPlus /> افزودن بلوک</button>
     {value.length === 0 ? <p className="text-center text-xs text-gray-400">برای شروع اولین بلوک را اضافه کنید.</p> : null}

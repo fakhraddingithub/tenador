@@ -1,4 +1,5 @@
 import { countArticleWords } from "@/lib/articleContent";
+import { flattenArticleBlocks } from "@/lib/articleBlockTypes";
 import { buildArticlePath } from "base/utils/articleSlug";
 const SITE_URL = (process.env.NEXT_PUBLIC_SITE_URL || "https://tenador.com").replace(/\/+$/, "");
 
@@ -60,7 +61,7 @@ export function articleSchemas(article, products = []) {
   const url = absoluteArticleUrl(buildArticlePath(article.category.slug, article.slug));
   const image = absoluteArticleUrl(imageUrl(article));
   const authorName = [article.author?.name, article.author?.lastName].filter(Boolean).join(" ") || "تنادور";
-  const faqItems = (article.blocks || []).filter((block) => block.type === "faq").flatMap((block) => block.data?.items || []).filter((item) => item.question && item.answer);
+  const faqItems = flattenArticleBlocks(article.blocks).filter((block) => block.type === "faq").flatMap((block) => block.data?.items || []).filter((item) => item.question && item.answer);
   const schemas = [
     {
       "@context": "https://schema.org", "@type": "BreadcrumbList",

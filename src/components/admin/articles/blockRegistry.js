@@ -1,7 +1,7 @@
 import {
   FiAlignRight, FiBarChart2, FiBox, FiColumns, FiGrid, FiImage, FiLink, FiList,
   FiMail, FiMessageSquare, FiMinus, FiPlay, FiShoppingBag, FiStar, FiTable,
-  FiTag, FiType, FiZap,
+  FiLayers, FiTag, FiType, FiZap,
 } from "react-icons/fi";
 import { ARTICLE_BLOCK_TYPES } from "@/lib/articleBlockTypes";
 
@@ -62,6 +62,8 @@ export const ARTICLE_BLOCKS = {
   relatedArticles: { label: "مقالات مرتبط", group: "محتوا", icon: FiList, defaults: { title: "مقالات مرتبط", articles: [] }, fields: [text("title", "عنوان"), entity("articles", "مقالات", "article")], styleKeys: TITLED },
   newsletterCta: { label: "عضویت خبرنامه", group: "بازاریابی", icon: FiMail, defaults: { title: "", description: "", buttonLabel: "عضویت" }, fields: [text("title", "عنوان"), text("description", "توضیح", "textarea"), text("buttonLabel", "متن دکمه")], styleKeys: ["spacing", "textColor", "background", "accent"] },
   customHtml: { label: "HTML سفارشی", group: "پیشرفته", icon: FiBox, defaults: { html: "" }, fields: [text("html", "کد HTML", "html")], styleKeys: TEXTY },
+  // فقط با «ادغام» ساخته می‌شود (hidden: در کتابخانه‌ی بلوک نیست). فرزندان عیناً در data.blocks می‌مانند.
+  merged: { label: "بلوک ادغام‌شده", group: "چیدمان", icon: FiLayers, hidden: true, defaults: { blocks: [] }, fields: [text("blocks", "بلوک‌های این ردیف — عرضِ هر بلوک (از «ظاهر و چیدمان» خودش) سهمِ آن در ردیف است؛ در موبایل ردیف افقی اسکرول می‌شود", "mergedBlocks")], styleKeys: SPACING_ONLY },
 };
 
 const missingDefinitions = ARTICLE_BLOCK_TYPES.filter((type) => !ARTICLE_BLOCKS[type]);

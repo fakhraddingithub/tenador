@@ -1,4 +1,5 @@
 import mongoose from "mongoose";
+import { flattenArticleBlocks } from "@/lib/articleBlockTypes";
 import { unstable_cache } from "next/cache";
 import connectToDB from "base/configs/db";
 import "base/models/registerModels";
@@ -47,8 +48,10 @@ function collectBlockReferences(blocks = []) {
 }
 
 export async function resolveArticleEntities(article) {
-  const refs = collectBlockReferences(article.blocks);
-  const dynamicBlocks = (article.blocks || []).filter((block) =>
+  // فرزندانِ بلوکِ ادغام‌شده هم محصول/برند/… ارجاع می‌دهند؛ بدونِ این در رندر خالی می‌ماندند.
+  const allBlocks = flattenArticleBlocks(article.blocks);
+  const refs = collectBlockReferences(allBlocks);
+  const dynamicBlocks = allBlocks.filter((block) =>
     ["latestProducts", "bestSellers", "amazingOffers"].includes(block.type));
 
   const [rate, products, brands, series, categories, sports, articles, usedProducts, dynamicProducts] = await Promise.all([
