@@ -90,3 +90,38 @@ export function targetAudienceListMatches(values, selected) {
   if (!normalizedSelected) return !selected;
   return getEffectiveTargetAudienceFilters(values).includes(normalizedSelected);
 }
+
+/**
+ * آیا یک ویژگیِ ثابتِ دسته برای محصولی با این مخاطب هدف کاربرد دارد؟
+ *
+ * `targetAudiences` روی ویژگی یعنی «این ویژگی فقط برای این مخاطب‌ها معنی دارد»
+ * (مثلاً بالانس فقط روی راکتِ بزرگسال). قاعده‌ی تطبیق دقیقاً همان قاعده‌ی
+ * فیلترهاست تا رفتارِ «یونی سکس» در کلِ سیستم یکی بماند: تگِ «یونی سکس» یعنی
+ * بزرگسال — مردانه و زنانه را هم می‌گیرد و هرگز بچگانه را نمی‌گیرد.
+ *
+ * سه حالت عمداً «کاربرد دارد» برمی‌گردانند تا هیچ داده‌ای بی‌صدا پنهان نشود:
+ *   - فهرستِ خالی/نبود  → بدونِ محدودیت (رفتارِ همه‌ی ویژگی‌های موجود، بدون مهاجرت)
+ *   - مخاطبِ هدفِ محصول خالی یا ناشناخته → محصولِ قدیمیِ Backfill‌نشده
+ *   - فهرستی که هیچ مقدارِ معتبری ندارد → داده‌ی خراب، نه دستورِ پنهان‌سازی
+ */
+export function attributeAppliesToAudience(targetAudiences, productAudience) {
+  if (!Array.isArray(targetAudiences) || targetAudiences.length === 0) return true;
+
+  const allowed = targetAudiences
+    .map(normalizeTargetAudience)
+    .filter(Boolean);
+  if (allowed.length === 0) return true;
+
+  const productMatches = getTargetAudienceStorageMatches(productAudience);
+  if (productMatches.length === 0) return true;
+
+  return allowed.some((value) => productMatches.includes(value));
+}
+
+/** همان قاعده، اعمال‌شده روی آرایه‌ی ویژگی‌های دسته. */
+export function filterAttributesByAudience(attributes, productAudience) {
+  if (!Array.isArray(attributes)) return [];
+  return attributes.filter((attr) =>
+    attributeAppliesToAudience(attr?.targetAudiences, productAudience),
+  );
+}

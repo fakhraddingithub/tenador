@@ -14,7 +14,7 @@
     "test:coach-wallet": "node --experimental-vm-modules --test --test-timeout=180000 tests/coachWallet.test.mjs tests/coachCouponApi.test.mjs",
     "test:wallet-orders": "node --experimental-vm-modules --test --test-timeout=180000 tests/walletOrder.test.mjs tests/walletCheckoutApi.test.mjs tests/walletPaymentReview.test.mjs tests/wallet.test.mjs",
     "test:search": "node --test tests/search.test.mjs",
-    "test:target-audience": "node --test tests/targetAudience.test.mjs",
+    "test:target-audience": "node --test tests/targetAudience.test.mjs tests/categoryAttributeAudience.test.mjs",
     "test:limited-edition-relations": "node --test tests/limitedEditionRelations.test.mjs",
     "test:brand-collaboration": "node --test tests/brandCollaboration.test.mjs",
     "report:limited-edition-brand-mismatch": "node scripts/reportLimitedEditionBrandMismatch.js",

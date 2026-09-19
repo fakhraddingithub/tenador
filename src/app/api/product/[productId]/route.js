@@ -219,6 +219,12 @@ export async function PUT(request, { params }) {
       attributes,
       technicalStats,
       basePrice,
+      // مخاطبِ هدفِ مؤثر — دقیقاً مثلِ دسته و قیمت پایه: اگر payload آن را نداده،
+      // مقدارِ فعلیِ محصول ملاک است. گرفتنِ مقدارِ خامِ payload یعنی هر ویرایشِ
+      // بی‌ربط (مثلاً فقط توضیحات) ویژگی‌های محدودشده را دوباره الزامی می‌کرد.
+      targetAudience: sent("targetAudience")
+        ? normalizedTargetAudience
+        : product.targetAudience,
     });
     if (fieldValidation.error) {
       return apiError(fieldValidation.error, 400, {

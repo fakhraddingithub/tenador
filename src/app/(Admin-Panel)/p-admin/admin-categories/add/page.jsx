@@ -44,6 +44,7 @@ import Textarea from '@/components/admin/Textarea';
 import Input from '@/components/admin/Input';
 import Select from '@/components/admin/Select';
 import AdditionalSportsField from '@/components/admin/AdditionalSportsField';
+import AttributeAudienceField from '@/components/admin/AttributeAudienceField';
 import { showToast } from '@/lib/toast';
 import { showError } from '@/lib/swal';
 import { invalidateAdminCache } from '@/lib/adminCache';
@@ -104,6 +105,11 @@ function SortableAttribute({ attr, onRemove, onEdit }) {
             <span className="font-bold text-neutral-800">{attr.label}</span>
             {attr.required && <span className="text-[10px] bg-red-50 text-red-500 px-1.5 py-0.5 rounded border border-red-100">الزامی</span>}
             {attr.filterable && <span className="text-[10px] bg-emerald-50 text-emerald-600 px-1.5 py-0.5 rounded border border-emerald-100">قابل فیلتر</span>}
+            {Array.isArray(attr.targetAudiences) && attr.targetAudiences.length > 0 && (
+              <span className="text-[10px] bg-indigo-50 text-indigo-600 px-1.5 py-0.5 rounded border border-indigo-100">
+                {attr.targetAudiences.join("، ")}
+              </span>
+            )}
           </div>
           <div className="flex items-center gap-2 mt-1">
             <span className="text-xs text-neutral-500 font-mono">{attr.name}</span>
@@ -225,6 +231,16 @@ The color code may appear in formats like:
       `
     },
     {
+      field: 'targetAudience',
+      context: `- Decide who this specific product is actually made and marketed for.
+- Prefer explicit signals in the raw content (e.g. "men's", "women's", "junior", "kids",
+  "بزرگسال", "بچگانه", a junior size range, a youth-specific model name).
+- If the product is made for children or juniors, always choose "بچگانه" — never "یونی سکس".
+- Choose "یونی سکس" only for adult products genuinely suitable for both men and women.
+- Never leave this field empty; pick the single best-fitting value.
+      `
+    },
+    {
       field: 'tag',
       context: `- Persian keywords
   - Array of short strings
@@ -258,6 +274,8 @@ The color code may appear in formats like:
     options: '',
     prompt: '',
     description: '',
+    // خالی = بدونِ محدودیتِ مخاطب هدف (رفتارِ پیش‌فرض و سازگار با گذشته)
+    targetAudiences: [],
   });
 
   const [variantAttributes, setVariantAttributes] = useState([]);
@@ -498,6 +516,7 @@ The color code may appear in formats like:
       options: currentAttribute.options ? currentAttribute.options.split(',').map(o => o.trim()).filter(Boolean) : [],
       prompt: currentAttribute.prompt || '',
       description: currentAttribute.description?.trim() || '',
+      targetAudiences: currentAttribute.targetAudiences || [],
     };
 
     if (editingId) {
@@ -534,6 +553,7 @@ The color code may appear in formats like:
       options: '',
       prompt: '',
       description: '',
+      targetAudiences: [],
     });
     setEditingId(null);
   };
@@ -548,6 +568,7 @@ The color code may appear in formats like:
       options: Array.isArray(attr.options) ? attr.options.join(', ') : '',
       prompt: attr.prompt || '',
       description: attr.description || '',
+      targetAudiences: Array.isArray(attr.targetAudiences) ? attr.targetAudiences : [],
     });
     document.getElementById('attribute-form-anchor')?.scrollIntoView({ behavior: 'smooth' });
   };
@@ -981,6 +1002,11 @@ The color code may appear in formats like:
                   value={currentAttribute.prompt}
                   onChange={(e) => setCurrentAttribute((p) => ({ ...p, prompt: e.target.value }))}
                   placeholder="راهنمای اختصاصی برای این ویژگی جهت استفاده در تولید محتوا توسط AI..."
+                />
+
+                <AttributeAudienceField
+                  value={currentAttribute.targetAudiences}
+                  onChange={(next) => setCurrentAttribute((p) => ({ ...p, targetAudiences: next }))}
                 />
 
                 <div className="flex items-center gap-3 pt-2">

@@ -188,6 +188,68 @@ reports through `handleApiError` like everything else.
 npm run test:product-creation   # create + edit, real replica set, real schemas and hooks
 ```
 
+### Target audience: the category prompt, and audience-scoped fixed attributes
+
+`utils/targetAudience.js` is the single source of truth for the four values
+(`مردانه`/`زنانه`/`بچگانه`/`یونی سکس`) and for the one rule everything reuses:
+**«یونی سکس» means adults — it matches men and women, and never children.**
+
+Two things hang off it here.
+
+**1. `targetAudience` is a prompt-able field like any other.**
+`buildProductTemplate.js` always read `getPromptContext(category.prompts, "targetAudience")`;
+what was missing was the field in the `productFields` list of both category admin pages, so
+no admin could ever fill it. It is there now (with a default context in the add page), and
+`tests/categoryFormCopy.test.mjs` keeps the two lists in sync with the copy helper.
+
+**2. A fixed attribute can be scoped to target audiences.**
+`Category.attributes[].targetAudiences` (an array on the shared `AttributeSchema`) says which
+audiences an attribute means anything for — e.g. بالانس only on an adult racket.
+
+| value | meaning |
+|---|---|
+| `[]` / absent (default) | no restriction — every pre-existing attribute keeps its old behaviour with **no migration** |
+| `["یونی سکس"]` | applies to مردانه, زنانه and یونی سکس products; never بچگانه |
+| `["بچگانه"]` | applies only to بچگانه products |
+
+`attributeAppliesToAudience()` decides, built on the same `getTargetAudienceStorageMatches()`
+the filters use, so the unisex rule cannot drift between the two. It deliberately answers
+**"applies"** in three cases, so nothing is ever hidden on a guess: an empty list, a product
+whose `targetAudience` is blank or unrecognised (legacy, not yet backfilled), and a list with
+no valid value in it (corrupt data is not an instruction to hide).
+
+Where it takes effect:
+
+| layer | behaviour |
+|---|---|
+| AI prompt (`buildProductTemplate.js`) | a scoped attribute carries `Applies ONLY when targetAudience is one of: [...]` — the **expanded** list, so the model never has to infer the unisex rule — plus one rule under `attributes:` telling it to omit the key outright |
+| both admin product forms | the field is not rendered when it doesn't apply; the target-audience dropdown shows/hides it live |
+| `validateProductFields` | only ever **relaxes** the required check, using the *effective* audience (payload value, else the stored one — same fallback as category/basePrice) |
+| `product.service.js` + second-hand page | the spec table drops the row, so a kids racket shows no blank «بالانس» |
+
+Rules that are load-bearing:
+
+- **The payload loop stays over the full `categoryAttributes`, only rendering is filtered.**
+  A hidden attribute's stored value is re-sent untouched, so changing a product's audience —
+  or the category rule — never silently deletes data. PUT is a full replace of `attributes`;
+  filtering the loop instead would have made an unrelated edit destructive.
+- **`validateProductFields` never rejects a value for a scoped-out attribute**, only skips its
+  required check. It has to, precisely because the form keeps re-sending stored values —
+  rejecting them would turn every such save into a 400.
+- **Both category routes normalize before the model sees the value.** The schema `enum` rejects
+  the legacy `همه`, which the rest of the system reads as `یونی سکس`;
+  `src/lib/categoryAttributeAudience.js` canonicalizes first and turns a genuinely unknown value
+  into a Persian message instead of a raw mongoose `ValidationError`. `undefined` there means
+  "this request isn't about audiences" and leaves the attribute alone.
+- `variantAttributes` share `AttributeSchema` and therefore carry the field, but **no path reads
+  it for variants** — variant scoping is not a feature.
+
+```bash
+npm run test:target-audience    # the helper's truth table + route normalization
+npm run test:ai-product-draft   # the category prompt and the per-attribute rule in the draft
+npm run test:product-creation   # required-check relaxation, through the real create/edit routes
+```
+
 ### Order EUR pricing (independent of Toman)
 
 An order carries a **manual** EUR amount (`order.priceEUR`) plus an EUR payment history

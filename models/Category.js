@@ -1,5 +1,6 @@
 import mongoose from "mongoose";
 import { createSlug } from "base/utils/slugify";
+import { TARGET_AUDIENCE_VALUES } from "base/utils/targetAudience";
 
 const AttributeSchema = new mongoose.Schema(
   {
@@ -33,6 +34,19 @@ const AttributeSchema = new mongoose.Schema(
     options: { type: [String], default: [] },
 
     prompt: { type: String, trim: true },
+
+    // مخاطب‌های هدفی که این ویژگی برایشان معنی دارد — مثلاً «بالانس» فقط روی
+    // راکتِ بزرگسال. آرایه‌ی خالی (پیش‌فرض) یعنی «بدونِ محدودیت»، پس هر ویژگیِ
+    // موجود دقیقاً رفتارِ قبلی‌اش را بدونِ هیچ مهاجرتی نگه می‌دارد.
+    // قاعده‌ی تطبیق در utils/targetAudience.js#attributeAppliesToAudience است و
+    // همان قاعده‌ی فیلترهاست: «یونی سکس» یعنی بزرگسال، نه بچگانه.
+    // فعلاً فقط روی attributes (ویژگی‌های ثابت) اعمال می‌شود؛ variantAttributes
+    // همین اسکیما را دارد اما هیچ مسیری آن را نمی‌خواند.
+    targetAudiences: {
+      type: [String],
+      enum: TARGET_AUDIENCE_VALUES,
+      default: [],
+    },
 
     // ویژگیِ چندواحدی (Change 3): مثلاً سایز با واحدهای ["EU", "سانتی‌متر"].
     // مقدارِ اصلی (primary) همان واحدِ اول است؛ سایر واحدها فقط برای نمایش‌اند و

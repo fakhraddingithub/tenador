@@ -97,6 +97,8 @@ export function buildCategoryCopy(
     ...attr,
     options: copyList(attr?.options),
     units: copyList(attr?.units),
+    // آرایه‌ها کپی می‌شوند تا ویرایش در فرمِ تازه به دسته‌ی مبدأ نشت نکند
+    targetAudiences: copyList(attr?.targetAudiences),
     id: makeId(prefix),
     order: index + 1,
   });

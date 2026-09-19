@@ -21,6 +21,7 @@ import { renameVariantValue } from '@/lib/variantValueOps';
 import { invalidateAdminCache } from '@/lib/adminCache';
 import {
   TARGET_AUDIENCE_SELECT_OPTIONS,
+  filterAttributesByAudience,
   normalizeTargetAudience,
 } from 'base/utils/targetAudience';
 
@@ -172,6 +173,13 @@ export default function ProductCreateForm({ initialData = {}, categoryId = '' })
   // ---------------------------
   const selectedCategory = categories.find(c => c._id === formData.category);
   const categoryAttributes = selectedCategory?.attributes || [];
+  // ویژگی‌هایی که دسته به مخاطبِ دیگری محدودشان کرده اصلاً پرسیده نمی‌شوند.
+  // حلقه‌ی ساختِ payload عمداً روی categoryAttributes کامل می‌ماند: مقدارِ فیلدِ
+  // پنهان خالی است و همان‌جا رد می‌شود، پس چیزی جا نمی‌افتد و چیزی هم ساخته نمی‌شود.
+  const visibleCategoryAttributes = filterAttributesByAudience(
+    categoryAttributes,
+    formData.targetAudience,
+  );
   const categoryVariantAttributes = selectedCategory?.variantAttributes || [];
   const categoryTechnicalStats = selectedCategory?.technicalStats || [];
   const categoryCustomTab = selectedCategory?.customTab;
@@ -725,12 +733,12 @@ export default function ProductCreateForm({ initialData = {}, categoryId = '' })
       </div>
 
       {/* ── Category Attributes (fixed) ── */}
-      {categoryAttributes.length > 0 && (
+      {visibleCategoryAttributes.length > 0 && (
         <div className="border-t pt-6">
           <h3 className="font-bold mb-4">ویژگی‌های ثابت</h3>
           <table className="w-full border rounded-lg">
             <tbody>
-              {categoryAttributes.map(attr => (
+              {visibleCategoryAttributes.map(attr => (
                 <tr key={attr.name} className="border-b">
                   <td className="p-3 font-medium bg-gray-50 whitespace-nowrap">
                     {attr.label}

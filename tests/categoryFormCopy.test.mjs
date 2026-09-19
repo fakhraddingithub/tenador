@@ -32,6 +32,7 @@ const PROMPT_FIELDS = [
   "longDescription",
   "color",
   "basePrice",
+  "targetAudience",
   "tag",
 ];
 
@@ -68,6 +69,7 @@ const tennisRacket = () => ({
       prompt: "از محتوا استخراج کن",
       multiUnit: true,
       units: ["in²", "cm²"],
+      targetAudiences: ["یونی سکس"],
     },
     { name: "Suitable for", label: "مناسب برای", options: ["آقایان"] },
   ],
@@ -207,6 +209,11 @@ test("تمام زیرفیلدهای ویژگی‌های ثابت و متغیر �
   assert.match(grip.id, /^vattr-/);
   head.options.push("110");
   assert.deepEqual(source.attributes[0].options, ["95", "100"]);
+  head.targetAudiences.push("بچگانه");
+  assert.deepEqual(source.attributes[0].targetAudiences, ["یونی سکس"]);
+
+  // ویژگیِ بدونِ محدودیت، بدونِ محدودیت کپی می‌شود (نه با پیش‌فرضِ ساختگی)
+  assert.deepEqual(copy.formData.attributes[1].targetAudiences, []);
 });
 
 test("پرامپت‌ها وفادار کپی می‌شوند: نبودِ پرامپت یعنی خالی، نه پیش‌فرض", () => {

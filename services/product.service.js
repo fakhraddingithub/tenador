@@ -11,6 +11,7 @@ import SiteSetting from "base/models/SiteSetting";
 import { getCachedRate } from "@/lib/Exchangerate";
 import { attachListingPrices } from "base/services/priceEngine";
 import { getProductListingPage } from "base/services/productListing.service";
+import { filterAttributesByAudience } from "base/utils/targetAudience";
 
 const modelsMap = { Sport, Brand, Athlete, Category };
 
@@ -163,7 +164,13 @@ export const getProductBySlug = unstable_cache(
         throw err;
       }
 
-      const mergedAttributes = product.category.attributes.map((attr) => ({
+      // ویژگی‌هایی که دسته به مخاطبِ دیگری محدودشان کرده اصلاً ردیفی در تبِ
+      // مشخصات فنی نمی‌گیرند؛ وگرنه راکتِ بچگانه یک ردیفِ «بالانس»ِ خالی نشان
+      // می‌داد. مقدارِ ذخیره‌شده روی خودِ محصول دست‌نخورده می‌ماند.
+      const mergedAttributes = filterAttributesByAudience(
+        product.category.attributes,
+        product.targetAudience,
+      ).map((attr) => ({
         ...attr,
         value: product.attributes?.[attr.name] ?? null,
       }));

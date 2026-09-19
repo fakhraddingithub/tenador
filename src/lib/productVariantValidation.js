@@ -1,4 +1,5 @@
 import { makeComboKey } from './variantKey.js';
+import { attributeAppliesToAudience } from '../../utils/targetAudience.js';
 
 // Shared by the create form, the create API and the edit API; optional empty
 // dimensions create no variants. Keeping both validators here is what stops
@@ -77,8 +78,18 @@ export function validateProductVariants(
  * `undefined` means "this request is not setting that field" and is skipped;
  * `{}` means "no values" and is validated. That distinction is what lets the
  * edit route leave untouched fields alone while still refusing invalid ones.
+ *
+ * `targetAudience` is the product's *effective* audience (payload value, or the
+ * stored one when the payload omits it). It only ever relaxes the **required**
+ * check: an attribute the category scoped to other audiences cannot be demanded
+ * from this product. It deliberately does NOT reject a value for a scoped-out
+ * attribute — the admin form keeps re-sending values already stored on the
+ * product so that changing the audience (or the category rule) never silently
+ * deletes data. Rejecting them here would turn every such save into a 400.
  */
-export function validateProductFields(category, { attributes, technicalStats, basePrice } = {}) {
+export function validateProductFields(
+  category, { attributes, technicalStats, basePrice, targetAudience } = {},
+) {
   const fieldErrors = {};
   const fail = (key, message) => { if (!fieldErrors[key]) fieldErrors[key] = message; };
 
@@ -99,6 +110,7 @@ export function validateProductFields(category, { attributes, technicalStats, ba
       }
       for (const attr of category?.attributes || []) {
         if (!attr.required) continue;
+        if (!attributeAppliesToAudience(attr.targetAudiences, targetAudience)) continue;
         const value = attributes[attr.name];
         const empty = value === undefined || value === null
           || (Array.isArray(value) ? value.length === 0 : String(value).trim() === '');

@@ -5,6 +5,14 @@
  * Returns a prompt string that instructs the AI to output valid, consistent JSON.
  */
 
+// مسیرِ نسبی (نه اسمِ مستعارِ base/) عمدی است: tests/aiProductDraft.test.mjs این
+// فایل را به‌صورتِ ایمپورتِ ایستا و *پیش از* register کردنِ hookِ اسم‌های مستعار
+// می‌خواند، پس یک ایمپورتِ base/ اینجا آن تست را در resolve می‌شکند.
+import {
+  TARGET_AUDIENCE_VALUES,
+  attributeAppliesToAudience,
+} from "../../utils/targetAudience.js";
+
 /**
  * Extracts the context string for a given field from category.prompts array.
  * Safely handles null/undefined and returns a clean string.
@@ -53,12 +61,44 @@ export function buildProductTemplate({
   // ─── Category Global Attributes ───────────────────────────────────────────
   // These produce single-value fields in "attributes" object.
   // The KEY the AI must use is attr.name (English). The label (Persian) is shown for context only.
+  //
+  // An attribute may be restricted to some target audiences (e.g. balance only
+  // makes sense on an adult racket). The model picks targetAudience itself, so
+  // the restriction has to travel with the attribute as a conditional rule. The
+  // list below is the EXPANDED set of product targetAudience values that keep
+  // the attribute applicable — computed with the same helper the rest of the
+  // system uses, so the model never has to infer the "یونی سکس = adults" rule.
+  const attributeAudienceScope = (attr) => {
+    const allowed = (TARGET_AUDIENCE_VALUES || []).filter((audience) =>
+      attributeAppliesToAudience(attr?.targetAudiences, audience),
+    );
+    return allowed.length === TARGET_AUDIENCE_VALUES.length ? null : allowed;
+  };
+
+  const restrictedAttributes = (category.attributes || [])
+    .map((attr) => ({ attr, scope: attributeAudienceScope(attr) }))
+    .filter(({ scope }) => scope !== null);
+
   const globalAttributeInstructions = (category.attributes || [])
     .map((attr) => {
       const rule = attr.prompt ? ` | Extraction Rule: ${attr.prompt}` : "";
-      return `  - KEY: "${attr.name}" | Persian Label (context only): ${attr.label} | Type: single string or number${rule}`;
+      const scope = attributeAudienceScope(attr);
+      const audience = scope
+        ? ` | Applies ONLY when targetAudience is one of: ${JSON.stringify(scope)} — otherwise OMIT this key entirely`
+        : "";
+      return `  - KEY: "${attr.name}" | Persian Label (context only): ${attr.label} | Type: single string or number${rule}${audience}`;
     })
     .join("\n");
+
+  const audienceScopedAttributeRule = restrictedAttributes.length
+    ? `- Some attributes below only apply to certain target audiences. AFTER you decide "targetAudience",
+  drop every attribute whose "Applies ONLY when targetAudience is one of" list does not contain the value
+  you chose — omit the key entirely, do NOT output null, "" or a guessed value. Audience-scoped attributes
+  in this category:
+${restrictedAttributes
+  .map(({ attr, scope }) => `  - "${attr.name}" (${attr.label}) → ${JSON.stringify(scope)}`)
+  .join("\n")}`
+    : "";
 
   // ─── Variant Attributes ───────────────────────────────────────────────────
   // These produce array-value fields in "variantOptions" object.
@@ -274,6 +314,7 @@ attributes:
 - If a value is NOT found in raw content:
   - If the attribute is logically required → infer it from professional knowledge.
   - If it is optional → omit the key entirely.
+${audienceScopedAttributeRule || "- Every attribute in this category applies to every target audience."}
 
 variantOptions:
 - This is a flat JSON object where each value is an ARRAY of strings.

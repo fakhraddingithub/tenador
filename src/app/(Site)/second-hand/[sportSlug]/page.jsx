@@ -9,6 +9,7 @@ import UsedProductTemplate from "@/components/templates/secondHand/UsedProductTe
 import { notFound } from "next/navigation";
 import { getCachedRate, eurToToman } from "@/lib/Exchangerate";
 import TaxonomyBreadcrumbs from "@/components/seo/TaxonomyBreadcrumbs";
+import { filterAttributesByAudience } from "base/utils/targetAudience";
 
 // ⚠️ اسلاگ‌های فارسی با هدر x-next-cache-tags ناسازگارند (باگ Next: کاراکتر
 // غیر-ASCII در هدر → ERR_INVALID_CHAR → خطای ۵۰۰). داینامیک رندر می‌شود تا هدر
@@ -126,7 +127,11 @@ export default async function UsedProductPage({ params }) {
   const orderOf = (key) =>
     cardFieldOrder.has(key) ? cardFieldOrder.get(key) : Infinity;
 
-  const mergedAttributes = (raw.baseProduct.category?.attributes || []).map((attr) => ({
+  // همان قاعده‌ی صفحه‌ی محصولِ نو: ویژگیِ محدودشده به مخاطبِ دیگر ردیف نمی‌گیرد
+  const mergedAttributes = filterAttributesByAudience(
+    raw.baseProduct.category?.attributes || [],
+    raw.baseProduct.targetAudience,
+  ).map((attr) => ({
     ...attr,
     value: raw.baseProduct.attributes?.[attr.name] ?? null,
   }));

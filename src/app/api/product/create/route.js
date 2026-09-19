@@ -154,6 +154,8 @@ export async function POST(req) {
       attributes: attributes || {},
       technicalStats: technicalStats || {},
       basePrice,
+      // ویژگی‌هایی که دسته به مخاطبِ دیگری محدودشان کرده برای این محصول الزامی نیستند
+      targetAudience: normalizedTargetAudience,
     });
     if (fieldValidation.error) {
       return apiError(fieldValidation.error, 400, {

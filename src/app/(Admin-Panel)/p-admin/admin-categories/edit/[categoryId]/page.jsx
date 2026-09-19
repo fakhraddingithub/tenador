@@ -45,6 +45,7 @@ import Textarea from '@/components/admin/Textarea';
 import Input from '@/components/admin/Input';
 import Select from '@/components/admin/Select';
 import AdditionalSportsField from '@/components/admin/AdditionalSportsField';
+import AttributeAudienceField from '@/components/admin/AttributeAudienceField';
 import { showToast } from '@/lib/toast';
 import { showError } from '@/lib/swal';
 import { invalidateAdminCache } from '@/lib/adminCache';
@@ -104,6 +105,11 @@ function SortableAttribute({ attr, onRemove, onEdit }) {
             <span className="font-bold text-neutral-800">{attr.label}</span>
             {attr.required && <span className="text-[10px] bg-red-50 text-red-500 px-1.5 py-0.5 rounded border border-red-100">الزامی</span>}
             {attr.filterable && <span className="text-[10px] bg-emerald-50 text-emerald-600 px-1.5 py-0.5 rounded border border-emerald-100">قابل فیلتر</span>}
+            {Array.isArray(attr.targetAudiences) && attr.targetAudiences.length > 0 && (
+              <span className="text-[10px] bg-indigo-50 text-indigo-600 px-1.5 py-0.5 rounded border border-indigo-100">
+                {attr.targetAudiences.join("، ")}
+              </span>
+            )}
           </div>
           <div className="flex items-center gap-2 mt-1">
             <span className="text-xs text-neutral-500 font-mono">{attr.name}</span>
@@ -162,6 +168,7 @@ export default function EditCategory() {
     'longDescription',
     'color',
     'basePrice',
+    'targetAudience',
     'tag',
   ];
 
@@ -190,6 +197,8 @@ export default function EditCategory() {
     options: '',
     prompt: '',
     description: '',
+    // خالی = بدونِ محدودیتِ مخاطب هدف (رفتارِ پیش‌فرض و سازگار با گذشته)
+    targetAudiences: [],
   });
 
   const [variantAttributes, setVariantAttributes] = useState([]);
@@ -483,6 +492,7 @@ export default function EditCategory() {
       options: currentAttribute.options ? currentAttribute.options.split(',').map(o => o.trim()).filter(Boolean) : [],
       prompt: currentAttribute.prompt || '',
       description: currentAttribute.description?.trim() || '',
+      targetAudiences: currentAttribute.targetAudiences || [],
     };
 
     if (editingId) {
@@ -510,7 +520,7 @@ export default function EditCategory() {
   };
 
   const resetAttributeForm = () => {
-    setCurrentAttribute({ name: '', label: '', required: true, filterable: false, options: '', prompt: '', description: '' });
+    setCurrentAttribute({ name: '', label: '', required: true, filterable: false, options: '', prompt: '', description: '', targetAudiences: [] });
     setEditingId(null);
   };
 
@@ -524,6 +534,7 @@ export default function EditCategory() {
       options: Array.isArray(attr.options) ? attr.options.join(', ') : '',
       prompt: attr.prompt || '',
       description: attr.description || '',
+      targetAudiences: Array.isArray(attr.targetAudiences) ? attr.targetAudiences : [],
     });
     document.getElementById('attribute-form-anchor')?.scrollIntoView({ behavior: 'smooth' });
   };
@@ -901,6 +912,11 @@ export default function EditCategory() {
                 <Textarea label="توضیح ویژگی (اختیاری — نمایش به‌صورت تولتیپ راهنما در صفحه‌ی محصول)" value={currentAttribute.description} onChange={(e) => setCurrentAttribute(p => ({ ...p, description: e.target.value }))} placeholder="توضیح کوتاهی که کاربر با کلیک روی آیکون ؟ کنار این ویژگی در تب مشخصات فنی می‌بیند..." />
 
                 <Textarea label="پرامپت ویژگی" value={currentAttribute.prompt} onChange={(e) => setCurrentAttribute(p => ({ ...p, prompt: e.target.value }))} />
+
+                <AttributeAudienceField
+                  value={currentAttribute.targetAudiences}
+                  onChange={(next) => setCurrentAttribute(p => ({ ...p, targetAudiences: next }))}
+                />
 
                 <div className="flex gap-3">
                   <Button type="button" onClick={handleAddOrUpdateAttribute}>{editingId ? 'بروزرسانی ویژگی' : 'افزودن به لیست'}</Button>

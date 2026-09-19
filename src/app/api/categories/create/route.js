@@ -13,6 +13,7 @@ import {
   validateCategorySportConfiguration,
 } from "base/services/categorySportValidation.service";
 import requireAdminPermission from "@/lib/requireAdminPermission";
+import { normalizeAttributeAudiences } from "@/lib/categoryAttributeAudience";
 
 export async function POST(req) {
   const { denied } = await requireAdminPermission("categories.create");
@@ -91,6 +92,19 @@ export async function POST(req) {
     const variantError = validateAttrList(variantAttributes, "متغیر (Variant)");
     if (variantError) return Response.json({ error: variantError }, { status: 400 });
 
+    // مخاطب‌های هدفِ هر ویژگی: «همه»ی قدیمی به «یونی سکس» تبدیل و مقدارِ ناشناخته رد می‌شود
+    const normalizedAttrs = normalizeAttributeAudiences(attributes, "عمومی (Global)");
+    if (normalizedAttrs.error) {
+      return Response.json({ error: normalizedAttrs.error }, { status: 400 });
+    }
+    const normalizedVariantAttrs = normalizeAttributeAudiences(
+      variantAttributes,
+      "متغیر (Variant)",
+    );
+    if (normalizedVariantAttrs.error) {
+      return Response.json({ error: normalizedVariantAttrs.error }, { status: 400 });
+    }
+
 
     // ۴. اعتبارسنجی شاخص‌های فنی نمودار (Technical Stats) - با دقت کامل
     if (technicalStats && Array.isArray(technicalStats)) {
@@ -140,8 +154,8 @@ export async function POST(req) {
       prompts: prompts || [],
       icon: icon.trim(),
       image: image.trim(),
-      attributes: attributes || [],           // ویژگی‌های ثابت (Global)
-      variantAttributes: variantAttributes || [], // ویژگی‌های متغیر
+      attributes: normalizedAttrs.attributes || [],           // ویژگی‌های ثابت (Global)
+      variantAttributes: normalizedVariantAttrs.attributes || [], // ویژگی‌های متغیر
       megaMenuFilterAttribute: normalizedMegaFilter,
       technicalStats: technicalStats || [],
       technicalStatsPrompt: technicalStatsPrompt || "",

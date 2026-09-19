@@ -24,6 +24,7 @@ import { renameVariantValue } from '@/lib/variantValueOps';
 import { invalidateAdminCache } from '@/lib/adminCache';
 import {
   TARGET_AUDIENCE_SELECT_OPTIONS,
+  filterAttributesByAudience,
   normalizeTargetAudience,
 } from 'base/utils/targetAudience';
 
@@ -395,6 +396,14 @@ export default function ProductEditPage() {
   // ---------------------------
   const selectedCategory = categories.find(c => c._id === formData.category);
   const categoryAttributes = selectedCategory?.attributes || [];
+  // فقط ویژگی‌هایی که دسته برای مخاطبِ هدفِ این محصول مجازشان کرده نمایش داده می‌شوند.
+  // حلقه‌ی ساختِ payload عمداً روی categoryAttributes کامل می‌ماند: مقدارِ ویژگیِ
+  // پنهان در استیت باقی است و دوباره فرستاده می‌شود، پس تغییرِ مخاطب هدف (یا قاعده‌ی
+  // دسته) هیچ داده‌ای را بی‌صدا پاک نمی‌کند.
+  const visibleCategoryAttributes = filterAttributesByAudience(
+    categoryAttributes,
+    formData.targetAudience,
+  );
   const categoryVariantAttributes = selectedCategory?.variantAttributes || [];
   const categoryTechnicalStats = selectedCategory?.technicalStats || [];
   const categoryCustomTab = selectedCategory?.customTab;
@@ -998,7 +1007,7 @@ export default function ProductEditPage() {
       )}
 
       {/* Category Attributes */}
-      {categoryAttributes.length > 0 && (
+      {visibleCategoryAttributes.length > 0 && (
         <CollapsibleSection
           id="fixed-attributes"
           title="ویژگی‌های ثابت"
@@ -1009,7 +1018,7 @@ export default function ProductEditPage() {
           <div className="overflow-hidden border rounded-2xl">
             <table className="w-full">
               <tbody className="divide-y divide-gray-100">
-                {categoryAttributes.map(attr => (
+                {visibleCategoryAttributes.map(attr => (
                   <tr key={attr.name}>
                     <td className="p-4 bg-gray-50/50 font-bold text-gray-600 text-sm w-1/3">
                       {attr.label}

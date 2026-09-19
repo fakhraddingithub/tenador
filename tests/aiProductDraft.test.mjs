@@ -147,3 +147,50 @@ test('corrected AI data persists with the selected category and owner through th
   assert.equal(String(stored.category), id);
   assert.equal(String(stored.sport), String(padel._id));
 });
+
+// ── مخاطب هدف: پرامپتِ دسته و محدودیتِ مخاطبِ ویژگی‌های ثابت ─────────────────
+
+test('the category prompt for targetAudience reaches the draft', async () => {
+  const Category = mongoose.model('Category');
+  const scoped = await Category.create({
+    name: 'audience-prompt', title: 'راکت', sport: tennis._id,
+    prompts: [{ field: 'targetAudience', context: 'راکت زیر ۲۵ اینچ همیشه بچگانه است' }],
+  });
+
+  const { draft } = await (await requestDraft(scoped._id)).json();
+  assert.ok(draft.includes('راکت زیر ۲۵ اینچ همیشه بچگانه است'),
+    'پرامپتِ مخاطب هدفِ دسته در پرامپت نیامد');
+  // قاعده‌های ثابتِ قبلی نباید جای خود را به پرامپت بدهند
+  assert.ok(draft.includes('"مردانه" | "زنانه" | "بچگانه" | "یونی سکس"'));
+});
+
+test('an audience-scoped attribute carries its expanded audience list, and an unscoped one does not', async () => {
+  const Category = mongoose.model('Category');
+  const scoped = await Category.create({
+    name: 'audience-attrs', title: 'راکت', sport: tennis._id,
+    attributes: [
+      { name: 'Balance', label: 'بالانس', targetAudiences: ['یونی سکس'] },
+      { name: 'Head Size', label: 'اندازه سر' },
+      { name: 'Junior Length', label: 'طول جوانان', targetAudiences: ['بچگانه'] },
+    ],
+  });
+
+  const { draft } = await (await requestDraft(scoped._id)).json();
+
+  // «یونی سکس» به سه مقدارِ بزرگسال باز می‌شود تا مدل مجبور به استنتاج نباشد
+  assert.match(draft,
+    /KEY: "Balance".*Applies ONLY when targetAudience is one of: \["مردانه","زنانه","یونی سکس"\]/);
+  assert.match(draft,
+    /KEY: "Junior Length".*Applies ONLY when targetAudience is one of: \["بچگانه"\]/);
+  // ویژگیِ بدونِ محدودیت هیچ قیدی نمی‌گیرد
+  assert.doesNotMatch(draft, /KEY: "Head Size".*Applies ONLY/);
+  // و قاعده‌ی کلی هم در بخش attributes آمده است
+  assert.ok(draft.includes('drop every attribute whose "Applies ONLY when targetAudience is one of" list'));
+  assert.ok(draft.includes('"Balance" (بالانس) → ["مردانه","زنانه","یونی سکس"]'));
+});
+
+test('a category with no scoped attribute says so instead of leaving a dangling rule', async () => {
+  const { draft } = await (await requestDraft(tennisCategory._id)).json();
+  assert.ok(draft.includes('Every attribute in this category applies to every target audience.'));
+  assert.ok(!draft.includes('Applies ONLY when targetAudience'));
+});

@@ -161,6 +161,31 @@ test('product field validation catches every hole the create route used to leak'
   assert.deepEqual(validateProductFields(definition, { basePrice: '', attributes: { material: 'x' },
     technicalStats: { power: 100 } }), {});
 });
+
+test('an attribute scoped to other audiences is not demanded, and its stored value is not rejected', () => {
+  // «بالانس» فقط برای بزرگسال تعریف شده؛ «جنس» برای همه
+  const definition = { attributes: [
+    { name: 'material', label: 'جنس', required: true },
+    { name: 'balance', label: 'بالانس', required: true, targetAudiences: ['یونی سکس'] },
+  ] };
+  const attributes = { material: 'گرافیت' };
+
+  // محصولِ بزرگسال: هر دو الزامی‌اند
+  assert.match(validateProductFields(definition, { attributes, targetAudience: 'مردانه' }).error, /بالانس/);
+  assert.match(validateProductFields(definition, { attributes, targetAudience: 'یونی سکس' }).error, /بالانس/);
+
+  // محصولِ بچگانه: بالانس اصلاً کاربرد ندارد، پس الزامی هم نیست
+  assert.deepEqual(validateProductFields(definition, { attributes, targetAudience: 'بچگانه' }), {});
+
+  // مقدارِ ذخیره‌شده‌ی یک ویژگیِ خارج از دامنه رد نمی‌شود — فرمِ ویرایش آن را
+  // دوباره می‌فرستد و رد کردنش یعنی حذفِ بی‌صدای داده یا ۴۰۰ شدنِ هر ذخیره
+  assert.deepEqual(validateProductFields(definition,
+    { attributes: { ...attributes, balance: 'HL' }, targetAudience: 'بچگانه' }), {});
+
+  // محصولِ قدیمیِ بدونِ مخاطب هدف دقیقاً رفتارِ قبلی را دارد (هیچ‌چیز نرم نمی‌شود)
+  assert.match(validateProductFields(definition, { attributes }).error, /بالانس/);
+  assert.match(validateProductFields(definition, { attributes, targetAudience: null }).error, /بالانس/);
+});
 test('create API rejects a negative base price and an out-of-range stat', async () => {
   const withCategory = (name, extra) => ({ ...data(name), category: fieldsCategory._id,
     attributes: { material: 'x' }, variantOptions: {}, ...extra });
@@ -259,6 +284,46 @@ test('edit applies the same field validation the create route does', async () =>
   const stored = await Product.findById(product._id).lean();
   assert.deepEqual(stored.attributes ?? {}, {});
   assert.deepEqual(stored.technicalStats ?? {}, {});
+});
+
+test('audience-scoped attributes travel through the real create and edit routes', async () => {
+  const scopedCategory = await mongoose.model('Category').create({
+    name: 'scoped-rackets', title: 'راکت دامنه‌دار', sport: category.sport,
+    attributes: [
+      { name: 'material', label: 'جنس', required: true },
+      { name: 'balance', label: 'بالانس', required: true, targetAudiences: ['یونی سکس'] },
+    ],
+    variantAttributes: [],
+  });
+  const base = (name, extra) => ({ ...data(name), category: scopedCategory._id, ...extra });
+
+  // محصولِ بچگانه بدونِ «بالانس» ساخته می‌شود؛ بزرگسال بدونِ آن رد می‌شود
+  const kids = await POST({ json: async () => base('scoped-kids', {
+    targetAudience: 'بچگانه', attributes: { material: 'گرافیت' } }) });
+  assert.equal(kids.status, 201, JSON.stringify(await kids.clone().json()));
+  const adult = await POST({ json: async () => base('scoped-adult', {
+    targetAudience: 'مردانه', attributes: { material: 'گرافیت' } }) });
+  assert.equal(adult.status, 400);
+  assert.ok((await adult.json()).fieldErrors?.balance);
+
+  // ویرایشی که مخاطب هدف را نمی‌فرستد باید مقدارِ ذخیره‌شده‌ی محصول را ملاک بگیرد،
+  // وگرنه تغییرِ توضیحاتِ یک محصولِ بچگانه ناگهان «بالانس» را الزامی می‌کرد
+  const { product: kidsProduct } = await kids.json();
+  const descriptionOnly = await put(kidsProduct._id, { shortDescription: 'ویرایش‌شده' });
+  assert.equal(descriptionOnly.status, 200, JSON.stringify(await descriptionOnly.clone().json()));
+
+  // مقدارِ ذخیره‌شده‌ی یک ویژگیِ خارج از دامنه، ذخیره را ۴۰۰ نمی‌کند و پاک هم نمی‌شود
+  const keepsStored = await put(kidsProduct._id, {
+    attributes: { material: 'گرافیت', balance: 'HL' } });
+  assert.equal(keepsStored.status, 200, JSON.stringify(await keepsStored.clone().json()));
+  const stored = await Product.findById(kidsProduct._id).lean();
+  assert.equal(stored.attributes.balance, 'HL');
+
+  // و تغییرِ صریحِ مخاطب هدف به بزرگسال دوباره «بالانس» را الزامی می‌کند
+  const becomesAdult = await put(kidsProduct._id, {
+    targetAudience: 'مردانه', attributes: { material: 'گرافیت' } });
+  assert.equal(becomesAdult.status, 400);
+  assert.ok((await becomesAdult.json()).fieldErrors?.balance);
 });
 
 test('a normal edit keeps variant identity and still applies real changes', async () => {

@@ -25,6 +25,7 @@ import {
   migrateVariantAttributeData,
   planVariantAttributeRenames,
 } from "@/lib/categoryVariantAttributeRename";
+import { normalizeAttributeAudiences } from "@/lib/categoryAttributeAudience";
 
 // ---------------------------------------------------------
 // GET: دریافت جزئیات یک کتگوری
@@ -135,7 +136,12 @@ export async function PUT(req, { params }) {
       if (!validateAttrs(attributes)) {
         return NextResponse.json({ error: "ویژگی‌های عمومی (Attributes) نامعتبر هستند" }, { status: 400 });
       }
-      category.attributes = attributes;
+      // مخاطب‌های هدفِ هر ویژگی: «همه»ی قدیمی canonical و مقدارِ ناشناخته رد می‌شود
+      const normalizedAttrs = normalizeAttributeAudiences(attributes, "عمومی (Global)");
+      if (normalizedAttrs.error) {
+        return NextResponse.json({ error: normalizedAttrs.error }, { status: 400 });
+      }
+      category.attributes = normalizedAttrs.attributes;
     }
 
     let variantRenames = [];
@@ -143,9 +149,16 @@ export async function PUT(req, { params }) {
       if (!validateAttrs(variantAttributes)) {
         return NextResponse.json({ error: "ویژگی‌های واریانت نامعتبر هستند" }, { status: 400 });
       }
+      const normalizedVariantAttrs = normalizeAttributeAudiences(
+        variantAttributes,
+        "متغیر (Variant)",
+      );
+      if (normalizedVariantAttrs.error) {
+        return NextResponse.json({ error: normalizedVariantAttrs.error }, { status: 400 });
+      }
       const renamePlan = planVariantAttributeRenames(
         category.variantAttributes || [],
-        variantAttributes,
+        normalizedVariantAttrs.attributes,
       );
       category.variantAttributes = renamePlan.definitions;
       variantRenames = renamePlan.renames;
