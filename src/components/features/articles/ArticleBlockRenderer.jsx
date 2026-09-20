@@ -1,6 +1,6 @@
 import Image from "next/image";
 import Link from "next/link";
-import { FiArrowLeft, FiInfo } from "react-icons/fi";
+import { FiArrowLeft, FiDownload, FiExternalLink, FiInfo } from "react-icons/fi";
 import ArticleCard from "@/components/features/articles/ArticleCard";
 import ArticleNewsletterForm from "@/components/features/articles/ArticleNewsletterForm";
 import { PublicProductGrid, PublicUsedProductGrid } from "@/components/features/articles/PublicProductGrid";
@@ -11,10 +11,15 @@ import { imageBlockItems } from "@/lib/articleImageBlock";
 import { flattenArticleBlocks, isMergedBlock, mergedChildren, sanitizeMergedGrid } from "@/lib/articleBlockTypes";
 
 const ordered = (values, map) => (Array.isArray(values) ? values : values ? [values] : []).map((id) => map?.[String(id)]).filter(Boolean);
-const blockSection = "my-9 scroll-mt-28";
+// فاصله‌ی پیش‌فرض صفر است: دو بلوکِ پشتِ‌سرِ‌هم که فاصله‌ای برایشان تنظیم نشده،
+// چسبیده رندر می‌شوند (همان چیزی که در ویرایشگر دیده می‌شود). محتوای قدیمی با
+// scripts/pinBlockSpacing.mjs فاصله‌ی قبلی‌اش را صریح گرفته است، پس جابه‌جا نمی‌شود.
+// پاراگراف (my-5) و جداکننده (my-10) فاصله‌ی خودشان را دارند و دست‌نخورده‌اند.
+const blockSection = "scroll-mt-28";
 
 // ——— استایلِ اختیاریِ سطحِ بلوک ———————————————————————————————————————
-const SPACING_CSS = { none: "0rem", sm: "1rem", lg: "4rem" };
+// "md" دیگر پیش‌فرضِ ضمنی نیست، پس مقدارِ صریحِ خودش را دارد (همان ۳۶px قبلی).
+const SPACING_CSS = { none: "0rem", sm: "1rem", md: "2.25rem", lg: "4rem" };
 
 /** روی رنگِ داده‌شده، متنِ تیره یا روشن را انتخاب می‌کند تا خوانا بماند. */
 function readableOn(hex) {
@@ -231,6 +236,19 @@ function ImageBlock({ data, spacing }) {
   </figure>;
 }
 
+// ——— دکمه ————————————————————————————————————————————————————————————
+// همه‌ی کلیدها اختیاری‌اند: دکمه‌ی قدیمی (فقط label/href/style) دقیقاً مثل قبل
+// رندر می‌شود — جز آیکنِ فلش که دیگر اجباری نیست و پیش‌فرض ندارد.
+const BUTTON_SIZE_CLASS = { sm: "px-4 py-2 text-sm", md: "px-6 py-3", lg: "px-8 py-4 text-lg" };
+const BUTTON_VARIANT_CLASS = {
+  outline: "border-black/20 hover:bg-gray-900 hover:text-white",
+  secondary: "border-[var(--color-secondary)] bg-[var(--color-secondary)] text-gray-900",
+  primary: "border-[var(--color-primary)] bg-[var(--color-primary)] text-white hover:bg-transparent hover:text-[var(--color-primary)]",
+};
+// سند RTL است: «راست» یعنی شروعِ خط.
+const BUTTON_JUSTIFY = { right: "flex-start", center: "center", left: "flex-end" };
+const BUTTON_ICON = { arrow: FiArrowLeft, external: FiExternalLink, download: FiDownload };
+
 function videoEmbed(url) {
   try {
     const value = new URL(url);
@@ -290,7 +308,20 @@ export default function ArticleBlockRenderer({ blocks = [], entities, preview = 
       // رنگِ دلخواه، حالتِ hover کلاس‌ها را کنار می‌گذارد (inline همیشه برنده است)
       // که رفتارِ قابلِ پیش‌بینی‌تری است تا ترکیبِ نیمه‌کاره‌ی دو رنگ.
       const label = v.text || (v.accent ? readableOn(v.accent) : null);
-      return <div key={block.id} className={blockSection} style={v.spacing || undefined}><Link href={data.href} className={`inline-flex items-center gap-2 rounded-[var(--radius)] border-2 px-6 py-3 font-bold transition-colors ${data.style === "outline" ? "border-black/20 hover:bg-gray-900 hover:text-white" : data.style === "secondary" ? "border-[var(--color-secondary)] bg-[var(--color-secondary)] text-gray-900" : "border-[var(--color-primary)] bg-[var(--color-primary)] text-white hover:bg-transparent hover:text-[var(--color-primary)]"}`} style={merge(v.accent && { backgroundColor: v.accent, borderColor: v.accent }, label && { color: label })}>{data.label || "مشاهده"}<FiArrowLeft /></Link></div>;
+      const Icon = BUTTON_ICON[data.icon];
+      return <div key={block.id} className={blockSection} style={merge(v.spacing, data.align && { textAlign: data.align })}>
+        <Link
+          href={data.href}
+          className={`${data.fullWidth ? "flex w-full" : "inline-flex"} items-center gap-2 rounded-[var(--radius)] border-2 font-bold transition-colors ${BUTTON_SIZE_CLASS[data.size] || BUTTON_SIZE_CLASS.md} ${BUTTON_VARIANT_CLASS[data.style] || BUTTON_VARIANT_CLASS.primary}`}
+          style={merge(
+            v.accent && { backgroundColor: v.accent, borderColor: v.accent },
+            label && { color: label },
+            data.fontSize && { fontSize: `${data.fontSize}px` },
+            // چینشِ متن فقط وقتی دیده می‌شود که دکمه از متنش پهن‌تر باشد (تمام‌عرض).
+            data.fullWidth && { justifyContent: BUTTON_JUSTIFY[data.textAlign] || "center" },
+          )}
+        >{data.label || "مشاهده"}{Icon ? <Icon aria-hidden="true" /> : null}</Link>
+      </div>;
     }
     if (block.type === "callout") return <aside key={block.id} className={`${blockSection} flex gap-4 rounded-[var(--radius)] border border-[color-mix(in_srgb,var(--color-primary)_25%,transparent)] bg-[color-mix(in_srgb,var(--color-primary)_7%,white)] p-5`} style={merge(v.spacing, v.background && { backgroundColor: v.background }, v.accent && { borderColor: v.accent })}><FiInfo className="mt-1 shrink-0 text-xl text-[var(--color-primary)]" style={v.accent ? { color: v.accent } : undefined} /><div>{data.title ? <strong className="mb-2 block text-gray-900" style={v.text ? { color: v.text } : undefined}>{data.title}</strong> : null}<p className="whitespace-pre-line text-sm leading-7 text-gray-700" style={v.text ? { color: v.text } : undefined}>{data.text}</p></div></aside>;
     if (block.type === "table") {

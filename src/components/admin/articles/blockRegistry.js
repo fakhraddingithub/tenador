@@ -34,7 +34,7 @@ export const BLOCK_ACCENT_HINTS = {
   newsletterCta: "رنگ دکمه",
 };
 
-export const BLOCK_SPACING_LABELS = { none: "بدون فاصله", sm: "کم", md: "پیش‌فرض", lg: "زیاد" };
+export const BLOCK_SPACING_LABELS = { none: "بدون فاصله (پیش‌فرض)", sm: "کم", md: "متوسط", lg: "زیاد" };
 export const BLOCK_TABLE_VARIANT_LABELS = { default: "پیش‌فرض", striped: "راه‌راه", bordered: "خط‌دار", plain: "ساده" };
 
 export const ARTICLE_BLOCKS = {
@@ -45,7 +45,22 @@ export const ARTICLE_BLOCKS = {
   video: { label: "ویدئو", group: "رسانه", icon: FiPlay, defaults: { url: "", title: "" }, fields: [text("url", "آدرس ویدئو", "url"), text("title", "عنوان ویدئو")], styleKeys: SPACING_ONLY },
   quote: { label: "نقل‌قول", group: "محتوا", icon: FiMessageSquare, defaults: { text: "", author: "" }, fields: [text("text", "متن نقل‌قول", "rich"), text("author", "نام گوینده")], styleKeys: ["spacing", "textColor", "background", "accent"] },
   divider: { label: "جداکننده", group: "چیدمان", icon: FiMinus, defaults: {}, fields: [], styleKeys: ["spacing", "accent"] },
-  button: { label: "دکمه", group: "محتوا", icon: FiLink, defaults: { label: "مشاهده", href: "", style: "primary" }, fields: [text("label", "متن دکمه"), text("href", "پیوند", "url"), text("style", "نوع", "select", { options: ["primary", "outline", "secondary"] })], styleKeys: ["spacing", "textColor", "accent"] },
+  button: {
+    label: "دکمه", group: "محتوا", icon: FiLink,
+    defaults: { label: "مشاهده", href: "", style: "primary" },
+    fields: [
+      text("label", "متن دکمه"),
+      text("href", "پیوند", "url"),
+      text("style", "نوع", "select", { options: ["primary", "outline", "secondary"], labels: { primary: "اصلی", outline: "خطی", secondary: "ثانویه" } }),
+      text("size", "اندازه دکمه", "select", { options: ["sm", "md", "lg"], labels: { sm: "کوچک", md: "متوسط", lg: "بزرگ" } }),
+      text("fontSize", "اندازه متن دکمه", "fontSize"),
+      text("align", "جای دکمه در صفحه", "select", { options: ["right", "center", "left"], labels: { right: "راست", center: "وسط", left: "چپ" } }),
+      text("fullWidth", "دکمه تمام‌عرض", "checkbox"),
+      text("textAlign", "چینش متن داخل دکمه (وقتی تمام‌عرض است)", "select", { options: ["right", "center", "left"], labels: { right: "راست", center: "وسط", left: "چپ" } }),
+      text("icon", "آیکن", "select", { options: ["none", "arrow", "external", "download"], labels: { none: "بدون آیکن", arrow: "فلش", external: "پیوند بیرونی", download: "دانلود" } }),
+    ],
+    styleKeys: ["spacing", "textColor", "accent"],
+  },
   callout: { label: "نکته برجسته", group: "محتوا", icon: FiZap, defaults: { title: "", text: "", tone: "info" }, fields: [text("title", "عنوان"), text("text", "متن", "textarea"), text("tone", "نوع", "select", { options: ["info", "success", "warning", "danger"] })], styleKeys: ["spacing", "textColor", "background", "accent"] },
   table: { label: "جدول", group: "داده", icon: FiTable, defaults: { headers: ["ستون ۱", "ستون ۲"], rows: [["", ""]] }, fields: [text("table", "داده‌های جدول", "table")], styleKeys: ["spacing", "textColor", "accent", "tableVariant"] },
   faq: { label: "سوالات متداول", group: "داده", icon: FiList, defaults: { items: [{ question: "", answer: "" }] }, fields: [text("items", "پرسش‌ها", "faq")], styleKeys: ["spacing", "textColor", "background", "accent"] },

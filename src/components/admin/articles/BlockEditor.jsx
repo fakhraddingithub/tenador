@@ -26,7 +26,7 @@ const inputClass = "w-full px-3 py-2.5 border bg-gray-50 text-sm outline-none fo
 // متنِ غنی یک نوارِ دکمه دارد (اولینش «پررنگ») و ناحیه‌ی ویرایشش contentEditable
 // است که اصلاً برچسب‌پذیر نیست — پس باید در یک wrapper ساده بنشیند.
 // همین دلیل برای فیلدهای چندکنترلیِ تصویر (چند input و دکمه) هم صادق است.
-const fieldWrapper = (kind) => (["rich", "imageList", "imageOverlay", "mergedBlocks"].includes(kind) ? "div" : "label");
+const fieldWrapper = (kind) => (["rich", "imageList", "imageOverlay", "mergedBlocks", "checkbox"].includes(kind) ? "div" : "label");
 // این نوع‌ها کلِ data را می‌خوانند و وصله‌ی چندکلیدی برمی‌گردانند.
 const WHOLE_DATA_KINDS = ["table", "rich", "imageList"];
 const PATCH_KINDS = ["table", "image", "rich", "imageList"];
@@ -170,7 +170,7 @@ function BlockStylePanel({ type, style, layout, onChange, onLayout }) {
     <summary className="flex cursor-pointer items-center gap-2 text-xs font-bold text-gray-600"><FiDroplet className="text-[var(--color-primary)]" />ظاهر و چیدمان بلوک{customised ? <span className="rounded-full bg-[var(--color-primary-soft)] px-2 py-0.5 text-[10px] text-[var(--color-primary)]">{customised.toLocaleString("fa-IR")} تنظیم</span> : null}</summary>
     <div className="mt-3 space-y-3">
       <label className="block"><span className="mb-1 block text-[11px] font-bold text-gray-600">عرض بلوک</span><select value={width} onChange={(e) => onLayout(e.target.value === "full" ? undefined : { width: e.target.value })} className={inputClass}>{BLOCK_WIDTHS.map((value) => <option key={value} value={value}>{BLOCK_WIDTH_LABELS[value]}</option>)}</select><span className="mt-1 block text-[10px] text-gray-400">بلوک‌های کنارِ هم در دسکتاپ یک ردیف می‌شوند و در موبایل زیر هم قرار می‌گیرند.</span></label>
-      {keys.includes("spacing") ? <label className="block"><span className="mb-1 block text-[11px] font-bold text-gray-600">{BLOCK_STYLE_LABELS.spacing}</span><select value={current.spacing || "md"} onChange={(e) => set("spacing", e.target.value === "md" ? undefined : e.target.value)} className={inputClass}>{Object.entries(BLOCK_SPACING_LABELS).map(([value, text]) => <option key={value} value={value}>{text}</option>)}</select></label> : null}
+      {keys.includes("spacing") ? <label className="block"><span className="mb-1 block text-[11px] font-bold text-gray-600">{BLOCK_STYLE_LABELS.spacing}</span><select value={current.spacing || "none"} onChange={(e) => set("spacing", e.target.value === "none" ? undefined : e.target.value)} className={inputClass}>{Object.entries(BLOCK_SPACING_LABELS).map(([value, text]) => <option key={value} value={value}>{text}</option>)}</select></label> : null}
       {keys.includes("tableVariant") ? <label className="block"><span className="mb-1 block text-[11px] font-bold text-gray-600">{BLOCK_STYLE_LABELS.tableVariant}</span><select value={current.tableVariant || "default"} onChange={(e) => set("tableVariant", e.target.value === "default" ? undefined : e.target.value)} className={inputClass}>{Object.entries(BLOCK_TABLE_VARIANT_LABELS).map(([value, text]) => <option key={value} value={value}>{text}</option>)}</select></label> : null}
       {["textColor", "background", "accent"].filter((key) => keys.includes(key)).map((key) => <ColorControl key={key} label={BLOCK_STYLE_LABELS[key]} hint={key === "accent" ? BLOCK_ACCENT_HINTS[type] : null} value={current[key]} onChange={(value) => set(key, value)} />)}
       {customised ? <button type="button" onClick={() => { onChange(undefined); onLayout(undefined); }} className="text-[11px] font-bold text-gray-500 hover:text-red-600">بازگشت به حالت پیش‌فرض</button> : null}
@@ -183,7 +183,10 @@ const blockDomId = (id) => `article-block-${id}`;
 function BlockField({ field, value, onChange, align, onAlign }) {
   if (field.kind === "rich") return <RichTextField value={value} onChange={onChange} align={align} onAlign={onAlign} singleLine={field.singleLine} />;
   if (field.kind === "textarea" || field.kind === "html") return <textarea dir={field.kind === "html" ? "ltr" : "rtl"} rows={field.kind === "html" ? 9 : 4} value={value || ""} onChange={(e) => onChange(e.target.value)} className={`${inputClass} ${field.kind === "html" ? "font-mono" : "font-sans"}`} />;
-  if (field.kind === "select") return <select value={value || ""} onChange={(e) => onChange(e.target.value)} className={inputClass}>{field.options.map((option) => <option key={option} value={option}>{option}</option>)}</select>;
+  if (field.kind === "select") return <select value={value || field.options[0]} onChange={(e) => onChange(e.target.value)} className={inputClass}>{field.options.map((option) => <option key={option} value={option}>{field.labels?.[option] || option}</option>)}</select>;
+  if (field.kind === "checkbox") return <label className="flex items-center gap-2 text-xs font-bold text-gray-600"><input type="checkbox" checked={value === true} onChange={(e) => onChange(e.target.checked)} className="size-4 accent-[var(--color-primary)]" />فعال</label>;
+  // اندازه‌ی متن به پیکسل، همان بازه و همان نرمال‌سازی متنِ غنی.
+  if (field.kind === "fontSize") return <div className="flex flex-wrap items-center gap-2"><input type="number" min={8} max={96} value={value ?? ""} placeholder="پیش‌فرض" onChange={(e) => onChange(e.target.value === "" ? undefined : Number(e.target.value))} className={`${inputClass} w-28`} /><span className="text-[11px] text-gray-400">پیکسل — خالی = اندازه‌ی پیش‌فرضِ دکمه</span></div>;
   if (field.kind === "image") return <ImageFieldWithSize value={value} onChange={onChange} />;
   if (field.kind === "imageList") return <ImageListEditor data={value} onChange={onChange} />;
   if (field.kind === "imageHeight") return <ImageHeightField value={value} onChange={onChange} />;
@@ -333,8 +336,13 @@ function SortableBlock({ block, index, total, onUpdate, onStyle, onLayout, onRem
   // شناسه‌ی DOM از id پایدارِ بلوک ساخته می‌شود نه از اندیس — اندیس با هر درج و
   // جابه‌جایی عوض می‌شود. tabIndex هم هست تا بشود بعد از ساخت، فوکوس را واقعاً
   // داخلِ بلوکِ تازه برد (نه فقط اسکرول).
-  return <section ref={setNodeRef} id={blockDomId(block.id)} tabIndex={-1} style={{ transform: CSS.Transform.toString(transform), transition, opacity: isDragging ? .55 : 1 }} className="a-card group overflow-hidden outline-none">
-    <header className={`flex items-center gap-2 bg-gray-50 px-3 py-2.5 ${open ? "border-b" : ""}`} style={{ borderColor: "var(--admin-border)" }}>
+  // کارت عمداً overflow-hidden ندارد: هر لایه‌ی بازشوی داخلِ بلوک (نتایجِ جستجوی
+  // محصول، فهرستِ اندازه‌ی قلم) absolute است و بیرونِ کارت باز می‌شود؛ با بریدن،
+  // تقریباً کاملاً نامرئی و غیرقابلِ کلیک می‌شد. آکاردئون با رندرِ شرطی است نه
+  // انیمیشنِ ارتفاع، پس به بریدن نیازی ندارد و فقط گردیِ گوشه‌ها لازم بود که
+  // همان را خودِ header با border-radius: inherit می‌گیرد.
+  return <section ref={setNodeRef} id={blockDomId(block.id)} tabIndex={-1} style={{ transform: CSS.Transform.toString(transform), transition, opacity: isDragging ? .55 : 1 }} className="a-card group outline-none">
+    <header className={`flex items-center gap-2 bg-gray-50 px-3 py-2.5 ${open ? "border-b rounded-t-[inherit]" : "rounded-[inherit]"}`} style={{ borderColor: "var(--admin-border)" }}>
       {/* بلوکِ ادغام‌شده هم مثلِ هر بلوکِ دیگری قابلِ انتخاب و ادغامِ دوباره است. */}
       {selectable ? <input type="checkbox" checked={selected} onChange={onSelect} title="انتخاب برای ادغام" aria-label={`انتخاب بلوک ${index + 1} برای ادغام`} className="size-4 shrink-0 cursor-pointer accent-[var(--color-primary)]" /> : null}
       <button type="button" onClick={() => setMoveOpen(true)} className="min-w-6 h-6 px-1.5 border text-[11px] font-black text-gray-500 hover:border-[var(--color-primary)] hover:text-[var(--color-primary)]" style={{ borderColor: "var(--admin-border)", borderRadius: "var(--admin-radius)" }} aria-label={`بلوک ${index + 1} از ${total} — تغییر موقعیت`}>{index + 1}</button>

@@ -1,6 +1,6 @@
 import mongoose from "mongoose";
 // نسبی، نه با نامک @: این فایل مستقیم زیر node هم تست می‌شود.
-import { richTextValue } from "./sanitizeRichText.js";
+import { normalizeFontSizePx, richTextValue } from "./sanitizeRichText.js";
 import {
   IMAGE_DISPLAY_HEIGHT, MAX_IMAGE_BLOCK_ITEMS, OVERLAY_ALIGNS, OVERLAY_DIRS, OVERLAY_POSITIONS, OVERLAY_SIZES, mirrorFirstImage, normalizeImageHref,
 } from "./articleImageBlock.js";
@@ -52,7 +52,9 @@ export function sanitizeArticleBlockStyle(value) {
   if (!value || typeof value !== "object" || Array.isArray(value)) return undefined;
 
   const style = {};
-  if (value.spacing !== "md" && BLOCK_SPACINGS.includes(value.spacing)) style.spacing = value.spacing;
+  // پیش‌فرض حالا «بدونِ فاصله» است، پس همان یکی حذف می‌شود و "md" (فاصله‌ی
+  // ۳۶پیکسلیِ قدیمی، که مهاجرت روی محتوای موجود نوشته) باید ذخیره بماند.
+  if (value.spacing !== "none" && BLOCK_SPACINGS.includes(value.spacing)) style.spacing = value.spacing;
   for (const key of BLOCK_COLOR_KEYS) {
     const color = hexColor(value[key]);
     if (color) style[key] = color;
@@ -158,6 +160,11 @@ function imageBlock(data, errors, field) {
   return result;
 }
 
+// واژگانِ بسته‌ی دکمه (هم‌نام با کنترل‌های ویرایشگر).
+export const BUTTON_ALIGNS = ["right", "center", "left"];
+export const BUTTON_SIZES = ["sm", "md", "lg"];
+export const BUTTON_ICONS = ["none", "arrow", "external", "download"];
+
 const entitySlider = (key) => (data, errors, field) => ({
   title: string(data.title, 300),
   [key]: idList(data[key], errors, `${field}.${key}`),
@@ -171,7 +178,19 @@ const validators = {
   video: (data, errors, field) => ({ url: url(data.url, errors, `${field}.url`, { media: true }), title: string(data.title, 300) }),
   quote: (data) => ({ text: string(data.text, 5000), ...rich(data.html), author: string(data.author, 300) }),
   divider: () => ({}),
-  button: (data, errors, field) => ({ label: string(data.label, 160), href: url(data.href, errors, `${field}.href`), style: ["primary", "outline", "secondary"].includes(data.style) ? data.style : "primary" }),
+  // گزینه‌های تازه همه اختیاری‌اند و مقدارِ پیش‌فرض *ذخیره نمی‌شود*، پس دکمه‌های
+  // موجود دقیقاً همان داده‌ی قبلی را نگه می‌دارند.
+  button: (data, errors, field) => {
+    const result = { label: string(data.label, 160), href: url(data.href, errors, `${field}.href`), style: ["primary", "outline", "secondary"].includes(data.style) ? data.style : "primary" };
+    if (BUTTON_ALIGNS.includes(data.align) && data.align !== "right") result.align = data.align;
+    if (BUTTON_ALIGNS.includes(data.textAlign) && data.textAlign !== "center") result.textAlign = data.textAlign;
+    if (BUTTON_SIZES.includes(data.size) && data.size !== "md") result.size = data.size;
+    const fontSize = normalizeFontSizePx(data.fontSize);
+    if (fontSize) result.fontSize = fontSize;
+    if (data.fullWidth === true) result.fullWidth = true;
+    if (BUTTON_ICONS.includes(data.icon) && data.icon !== "none") result.icon = data.icon;
+    return result;
+  },
   callout: (data) => ({ title: string(data.title, 300), text: string(data.text, 10000), tone: ["info", "success", "warning", "danger"].includes(data.tone) ? data.tone : "info" }),
   table: (data, errors, field) => {
     const headers = (Array.isArray(data.headers) ? data.headers : []).slice(0, 30).map((item) => string(item, 500));

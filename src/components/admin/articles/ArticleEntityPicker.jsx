@@ -74,8 +74,10 @@ export default function ArticleEntityPicker({ type, value, onChange, multiple = 
         <div className="relative">
           <FiSearch className="absolute right-3 top-3 text-gray-400" />
           <input role="combobox" aria-controls={resultsId} aria-expanded={Boolean(query)} aria-autocomplete="list" value={query} onChange={(event) => changeQuery(event.target.value)} placeholder={placeholder} className="w-full pr-9 pl-3 py-2.5 border bg-gray-50 text-sm outline-none focus:border-[var(--color-primary)]" style={{ borderColor: "var(--admin-border)", borderRadius: "var(--admin-radius)" }} />
+          {/* لایه‌بندیِ ویرایشگر: نوارهای شناور ۴۰/۵۰ و مودال‌ها ۱۰۰ — نتایج بینِ
+              این دو می‌نشیند تا نه زیرِ نوارِ ادغام برود نه روی مودال‌ها. */}
           {query ? (
-            <div id={resultsId} role="listbox" className="absolute z-50 top-full right-0 left-0 mt-1 max-h-64 overflow-y-auto a-card shadow-lg">
+            <div id={resultsId} role="listbox" className="absolute z-[60] top-full right-0 left-0 mt-1 max-h-64 overflow-y-auto a-card shadow-lg">
               {loading ? <p className="p-3 text-xs text-gray-400">در حال جستجو...</p> : results.map((item) => (
                 <button key={item._id} role="option" aria-selected="false" type="button" onClick={() => add(item)} className="w-full flex items-center gap-3 p-3 text-right hover:bg-[var(--color-primary-soft)] border-b last:border-0" style={{ borderColor: "var(--admin-border)" }}>
                   {item.image ? <Image src={item.image} alt="" width={36} height={36} className="h-9 w-9 rounded object-cover" /> : <span className="w-9 h-9 bg-gray-100 rounded" />}

@@ -16,14 +16,16 @@ test("شیء خالی یا پر از کلیدهای ناشناخته undefined �
   assert.equal(sanitizeArticleBlockStyle({ nope: 1, padding: "10px", boxShadow: "0 0 0 red" }), undefined);
 });
 
+// پیش‌فرضِ فاصله از "md" به "none" تغییر کرد (بلوک‌های بدونِ تنظیم چسبیده‌اند)،
+// پس حالا "none" حذف می‌شود و "md" — که مهاجرت روی محتوای قدیمی نوشته — می‌ماند.
 test("مقادیرِ پیش‌فرض حذف می‌شوند", () => {
-  assert.equal(sanitizeArticleBlockStyle({ spacing: "md" }), undefined);
+  assert.equal(sanitizeArticleBlockStyle({ spacing: "none" }), undefined);
   assert.equal(sanitizeArticleBlockStyle({ tableVariant: "default" }), undefined);
-  assert.equal(sanitizeArticleBlockStyle({ spacing: "md", tableVariant: "default" }), undefined);
+  assert.equal(sanitizeArticleBlockStyle({ spacing: "none", tableVariant: "default" }), undefined);
 });
 
 test("فاصله‌ی معتبر نگه داشته می‌شود و نامعتبر حذف", () => {
-  assert.deepEqual(sanitizeArticleBlockStyle({ spacing: "none" }), { spacing: "none" });
+  assert.deepEqual(sanitizeArticleBlockStyle({ spacing: "md" }), { spacing: "md" });
   assert.deepEqual(sanitizeArticleBlockStyle({ spacing: "sm" }), { spacing: "sm" });
   assert.deepEqual(sanitizeArticleBlockStyle({ spacing: "lg" }), { spacing: "lg" });
   assert.equal(sanitizeArticleBlockStyle({ spacing: "huge" }), undefined);

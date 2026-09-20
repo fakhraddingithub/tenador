@@ -476,6 +476,33 @@ npm run test:mini-articles
 npm run test:cdn-purge
 ```
 
+### Block spacing: the default is zero
+
+Every block used to carry `my-9` (36px) through the shared `blockSection` class, and the spacing control's
+"md" was that same implicit default. Two blocks placed together therefore never sat flush, and setting
+"no spacing" on one of them changed nothing visible — the gap came from the *neighbour's* margin (margins
+collapse, the larger wins). The editor shows blocks as separate cards, so this only appeared in preview.
+
+`blockSection` now has **no margin**: blocks with no spacing configured render flush, and "md" is a real
+2.25rem value like any other. `sanitizeArticleBlockStyle` therefore strips `"none"` (the new default) and
+keeps `"md"`, which is the reverse of before — a stored `"md"` must survive a save.
+
+Existing content keeps its exact look because the migration writes the previously implicit spacing:
+
+```bash
+npm run check:block-spacing     # dry run
+npm run migrate:block-spacing   # writes style.spacing = "md" where it was implicit (idempotent)
+```
+
+It walks articles, article revisions, brand mini articles + category articles + brochures, and serie
+articles, including blocks nested in merged blocks. **paragraph (`my-5`) and divider (`my-10`) carry their
+own margins, not the shared one, so they are deliberately skipped** — pinning "md" would change 20/40px to 36px.
+Run it right after deploying; until then, untouched blocks render flush.
+
+```bash
+npm run test:block-spacing
+```
+
 ### Slug System
 
 `SlugRegistery` model maps dynamic URL segments (sport/category/brand slugs) to their entity types. `actions/registerSlug.js` is a server action that creates entries on entity creation. This powers ISR revalidation — when a slug is revalidated, the correct entity page is rebuilt.
