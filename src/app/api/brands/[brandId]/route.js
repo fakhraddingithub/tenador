@@ -76,6 +76,11 @@ export async function PUT(req, { params }) {
     if (name !== undefined) brand.name = name.trim();
     if (title !== undefined) brand.title = title.trim();
     if (country !== undefined) brand.country = country || null;
+    // قبلاً خوانده می‌شد ولی هرگز نوشته نمی‌شد: ویرایشِ «سال تأسیس» بی‌اثر بود.
+    if (foundedYear !== undefined) {
+      const year = Number(foundedYear);
+      brand.foundedYear = foundedYear === null || foundedYear === "" || Number.isNaN(year) ? null : year;
+    }
     if (description !== undefined) brand.description = description.trim();
     if (logo !== undefined) brand.logo = logo.trim();
     if (icon !== undefined) brand.icon = icon.trim();
