@@ -45,6 +45,22 @@ const schema = new mongoose.Schema(
       default: [],
     },
 
+    // بروشورِ برند: محتوای بلوکیِ تمام‌صفحه که — فقط وقتی status === "published"
+    // است — جای محتوای صفحه‌ی برند را می‌گیرد. پیش‌نویس هرگز عمومی نمی‌شود.
+    // select:false مثل بقیه‌ی محتواهای بلوکی، تا در ناوبار/محصول/سری حمل نشود.
+    brochure: {
+      type: new mongoose.Schema(
+        {
+          status: { type: String, enum: ["draft", "published"], default: "draft" },
+          blocks: { type: [ArticleBlockSchema], default: [] },
+          updatedAt: { type: Date, default: Date.now },
+        },
+        { _id: false, minimize: false },
+      ),
+      default: undefined,
+      select: false,
+    },
+
     // One mini article per category, rendered only on /[sport]/[category]/[brand].
     // The category is the identity: at most one entry per category (enforced by
     // sanitizeBrandCategoryArticles). select:false keeps these blocks out of the

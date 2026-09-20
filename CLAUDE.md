@@ -461,6 +461,16 @@ Block-based mini articles rendered under the page hero by the shared `BrandMiniA
   `purgeSportPagesCdn()` (`@vercel/functions`; a no-op outside Vercel). The root brand page `/wilson` is not
   CDN-cached. Other admin edits that show on sport pages (products, brand titles) still wait out the hour.
 
+**Brand brochure** (`Brand.brochure = { status, blocks, updatedAt }`, also `select: false`) is the block content that
+*replaces* the brand page. The root brand route reads it first (`getPublishedBrandBrochure`, one indexed query that
+matches `status: "published"` in the query itself, so a draft never leaves the database); with a live brochure it
+renders `BrandBrochure` instead of `BrandGroupedView`, and **without one the previous rendering path is untouched** —
+including the legacy `articleBlocks` mini article, whose data is kept and still rendered as the fallback. The URL,
+metadata, canonical and `TaxonomyStructuredData` stay the brand page's, so no second public URL exists.
+The editor is `/p-admin/admin-brands/[brandId]/brochure` — the article `BlockEditor` plus a publication-status panel,
+without the article-only sidebars (category, tags, cover, slug, SEO). The brand form links to it through
+`BrandBrochureCard` (the old "mini article" section).
+
 ```bash
 npm run test:mini-articles
 npm run test:cdn-purge

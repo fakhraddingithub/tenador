@@ -6,7 +6,7 @@ import { FaGlobeAmericas, FaCalendarAlt, FaRocket, FaEdit, FaParagraph, FaMagic,
 import { toast } from 'react-toastify';
 import { getApiErrorMessage } from '@/lib/apiClientError';
 import { invalidateAdminCache } from '@/lib/adminCache';
-import BrandMiniArticleEditor from '@/components/admin/brands/BrandMiniArticleEditor';
+import BrandBrochureCard from '@/components/admin/brands/BrandBrochureCard';
 import BrandCategoryArticlesEditor from '@/components/admin/brands/BrandCategoryArticlesEditor';
 import BrandUploadField from '@/components/admin/brands/BrandUploadField';
 import { AccordionBox, Field, TextInput, TextareaInput, textareaClass } from '@/components/admin/SerieFormLayout';
@@ -25,6 +25,8 @@ export default function EditBrand() {
   const [uploading, setUploading] = useState({ logo: false, icon: false, monochromeLogo: false, image: false });
   // فقط نما: باز/بسته بودنِ بخش‌ها (هم‌شکلِ فرمِ سری). داده‌ی فرم به آن وابسته نیست.
   const [openBoxes, setOpenBoxes] = useState({ main: true, ai: true });
+  // فقط برای نشان دادنِ وضعیت روی کارتِ بروشور؛ خودِ بروشور جای دیگری ویرایش می‌شود.
+  const [brochureStatus, setBrochureStatus] = useState(null);
   const toggleBox = (key) => setOpenBoxes((prev) => ({ ...prev, [key]: !prev[key] }));
 
   const [formData, setFormData] = useState({
@@ -60,6 +62,7 @@ export default function EditBrand() {
           articleBlocks: data.brand.articleBlocks || [],
           categoryArticles: data.brand.categoryArticles || [],
         });
+        setBrochureStatus(data.brochureStatus || null);
       } catch (err) {
         toast.error('خطا در بارگذاری اطلاعات برند');
         router.push('/p-admin/admin-brands');
@@ -256,11 +259,7 @@ export default function EditBrand() {
             </div>
           </AccordionBox>
 
-          <BrandMiniArticleEditor
-            className={SECTION_CLASS}
-            value={formData.articleBlocks}
-            onChange={(articleBlocks) => setFormData((current) => ({ ...current, articleBlocks }))}
-          />
+          <BrandBrochureCard className={SECTION_CLASS} brandId={brandId} status={brochureStatus} />
 
           <BrandCategoryArticlesEditor
             className={SECTION_CLASS}

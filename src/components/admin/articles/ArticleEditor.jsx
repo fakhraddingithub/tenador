@@ -32,7 +32,7 @@ function Counter({ value, max }) { const length = String(value || "").length; re
  * ponytail: در موبایلِ بسته، محتوا هنوز با Tab قابلِ رسیدن است (inert بدونِ
  * دانستنِ نقطه‌ی شکست ممکن نیست)؛ اگر مهم شد، با matchMedia + inert حل می‌شود.
  */
-function Panel({ title, icon, children }) {
+export function Panel({ title, icon, children }) {
   const [open, setOpen] = useState(false);
   return <section className="a-card">
     <header className="border-b" style={{ borderColor: "var(--admin-border)" }}>

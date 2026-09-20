@@ -16,6 +16,7 @@ import TaxonomyStructuredData from "@/components/seo/TaxonomyStructuredData";
 import TaxonomyBreadcrumbs from "@/components/seo/TaxonomyBreadcrumbs";
 import { getBrandGroupedSections } from "base/services/brandGrouped.service";
 import { resolveArticleEntities } from "base/services/publicArticle.service";
+import { getPublishedBrandBrochure } from "base/services/miniArticle.service";
 import { normalizeTargetAudience } from "base/utils/targetAudience";
 import { BRAND_SECTIONS_PER_BATCH } from "base/utils/groupedProductPagination";
 
@@ -98,6 +99,31 @@ export default async function DynamicSportPage({ params, searchParams }) {
     const sp = (await searchParams) || {};
     const targetAudience = normalizeTargetAudience(sp.targetAudience);
     const brandId = ctx.filters.brand._id;
+
+    // بروشورِ *منتشرشده* جای محتوای صفحه‌ی برند را می‌گیرد — آدرس، متادیتا،
+    // کانونیکال و داده‌ی ساختاری همان‌اند. پیش‌نویس هرگز اینجا نمی‌آید، و برندِ
+    // بدونِ بروشورِ منتشرشده دقیقاً مسیرِ قبلی را می‌رود (یک کوئریِ ایندکس‌دار).
+    const brochureBlocks = await getPublishedBrandBrochure(brandId);
+    if (brochureBlocks) {
+      const { default: BrandBrochure } = await import("@/components/features/brands/BrandBrochure");
+      const brochureEntities = await resolveArticleEntities({ blocks: brochureBlocks });
+      const brochureFilters = { ...ctx.filters, brand: { ...ctx.filters.brand, articleBlocks: undefined, series: undefined } };
+      return (
+        <>
+          <TaxonomyStructuredData
+            filters={brochureFilters}
+            products={[]}
+            canonical={`${SITE_URL}/${sportSlug}`}
+          />
+          <BrandBrochure
+            blocks={brochureBlocks}
+            entities={brochureEntities}
+            brandName={ctx.filters.brand.title || ctx.filters.brand.name || ""}
+            breadcrumbs={<TaxonomyBreadcrumbs filters={brochureFilters} />}
+          />
+        </>
+      );
+    }
     const articleBlocks = Array.isArray(ctx.filters.brand.articleBlocks)
       ? ctx.filters.brand.articleBlocks
       : [];

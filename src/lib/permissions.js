@@ -989,6 +989,7 @@ export const ADMIN_ROUTE_PERMISSIONS = {
   "/p-admin/admin-brands/add": ["brands.create"],
   "/p-admin/admin-brands/edit/[brandId]": ["brands.edit"],
   "/p-admin/admin-brands/[brandId]": ["brands.view"],
+  "/p-admin/admin-brands/[brandId]/brochure": ["brands.edit"],
   "/p-admin/admin-brands/[brandId]/add-serie": ["series.create"],
   "/p-admin/admin-brands/[brandId]/[serieId]": ["series.view"],
   "/p-admin/admin-brands/[brandId]/[serieId]/edit": ["series.edit"],

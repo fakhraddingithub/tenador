@@ -228,3 +228,52 @@ test("serie article: own page only, parent and child independent, select:false e
   await doc.save();
   assert.deepEqual((await getSerieArticleBlocks(parent._id)).map((x) => x.id), ["parent"]);
 });
+
+/* ── brand brochure ────────────────────────────────────────────────────── */
+
+test("brochure: only a published one with blocks is public; a draft never is", async () => {
+  const { getPublishedBrandBrochure } = await import("base/services/miniArticle.service");
+  const brand = await Brand.create({
+    name: "Head", title: "هد",
+    articleBlocks: [block("legacy-mini")], // the old mini article must survive untouched
+    brochure: { status: "draft", blocks: [block("draft-1")] },
+  });
+
+  assert.equal(await getPublishedBrandBrochure(brand._id), null, "draft is never public");
+  await Brand.updateOne({ _id: brand._id }, { $set: { "brochure.status": "published" } });
+  assert.deepEqual((await getPublishedBrandBrochure(brand._id)).map((b) => b.id), ["draft-1"]);
+  assert.deepEqual(await getPublishedBrandBrochure(String(brand._id)), (await getPublishedBrandBrochure(brand._id)));
+
+  // published but empty is not "live" — the brand page must stay as it is
+  await Brand.updateOne({ _id: brand._id }, { $set: { "brochure.blocks": [] } });
+  assert.equal(await getPublishedBrandBrochure(brand._id), null);
+  assert.equal(await getPublishedBrandBrochure(new mongoose.Types.ObjectId()), null, "brand without a brochure");
+  assert.equal(await getPublishedBrandBrochure("nonsense"), null);
+
+  const kept = await Brand.findById(brand._id).lean();
+  assert.deepEqual(kept.articleBlocks.map((b) => b.id), ["legacy-mini"], "mini article data is never touched");
+  assert.equal("brochure" in kept, false, "brochure is select:false like the other block fields");
+});
+
+test("brochure: sanitiser keeps only the two statuses and runs blocks through the article rules", async () => {
+  const { sanitizeBrandBrochure, isBrochureLive } = await import("@/lib/brandBrochure");
+  const errors = {};
+  const clean = sanitizeBrandBrochure({ status: "published", blocks: [block("a")] }, errors);
+  assert.deepEqual(errors, {});
+  assert.equal(clean.status, "published");
+  assert.deepEqual(clean.blocks.map((b) => b.id), ["a"]);
+  assert.ok(clean.updatedAt instanceof Date);
+
+  const bad = {};
+  assert.equal(sanitizeBrandBrochure({ status: "archived", blocks: [] }, bad).status, "draft", "unknown status falls back to draft");
+  assert.ok(bad.status);
+  const blockErrors = {};
+  sanitizeBrandBrochure({ status: "draft", blocks: [{ id: "x", type: "button", data: { href: "javascript:alert(1)" } }] }, blockErrors);
+  assert.ok(blockErrors["blocks.0.data.href"], "children get the same validation as article blocks");
+  assert.deepEqual(sanitizeBrandBrochure(null, {}).blocks, []);
+
+  assert.equal(isBrochureLive({ status: "published", blocks: [block("a")] }), true);
+  for (const value of [null, undefined, { status: "draft", blocks: [block("a")] }, { status: "published", blocks: [] }]) {
+    assert.equal(isBrochureLive(value), false, JSON.stringify(value));
+  }
+});

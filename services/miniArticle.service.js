@@ -43,3 +43,20 @@ export async function getSerieArticleBlocks(serieId) {
   const doc = await Serie.findById(serie).select("articleBlocks").lean();
   return Array.isArray(doc?.articleBlocks) ? doc.articleBlocks : [];
 }
+
+/**
+ * بروشورِ منتشرشده‌ی برند، یا null. پیش‌نویس هرگز برنمی‌گردد — شرطِ status در خودِ
+ * کوئری است، پس محتوای منتشرنشده اصلاً از دیتابیس بیرون نمی‌آید.
+ */
+export async function getPublishedBrandBrochure(brandId) {
+  const brand = toObjectId(brandId);
+  if (!brand) return null;
+
+  await connectToDB();
+  const doc = await Brand.findOne(
+    { _id: brand, "brochure.status": "published" },
+    { brochure: 1 },
+  ).lean();
+  const blocks = doc?.brochure?.blocks;
+  return Array.isArray(blocks) && blocks.length > 0 ? blocks : null;
+}

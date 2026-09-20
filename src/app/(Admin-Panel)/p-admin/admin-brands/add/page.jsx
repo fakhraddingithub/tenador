@@ -6,7 +6,7 @@ import { FaGlobeAmericas, FaCalendarAlt, FaCheckCircle, FaRocket, FaMagic, FaPar
 import { toast } from 'react-toastify';
 import { getApiErrorMessage } from '@/lib/apiClientError';
 import { invalidateAdminCache } from '@/lib/adminCache';
-import BrandMiniArticleEditor from '@/components/admin/brands/BrandMiniArticleEditor';
+import BrandBrochureCard from '@/components/admin/brands/BrandBrochureCard';
 import BrandCategoryArticlesEditor from '@/components/admin/brands/BrandCategoryArticlesEditor';
 import BrandUploadField from '@/components/admin/brands/BrandUploadField';
 import { AccordionBox, Field, TextInput, TextareaInput, textareaClass } from '@/components/admin/SerieFormLayout';
@@ -215,11 +215,7 @@ export default function AddBrand() {
             </div>
           </AccordionBox>
 
-          <BrandMiniArticleEditor
-            className={SECTION_CLASS}
-            value={formData.articleBlocks}
-            onChange={(articleBlocks) => setFormData((current) => ({ ...current, articleBlocks }))}
-          />
+          <BrandBrochureCard className={SECTION_CLASS} />
 
           <BrandCategoryArticlesEditor
             className={SECTION_CLASS}

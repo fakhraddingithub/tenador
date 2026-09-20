@@ -14,7 +14,7 @@ export async function GET(req, { params }) {
     const { brandId } = await params;
     
     const brand = await Brand.findById(brandId)
-      .select("+categoryArticles")
+      .select("+categoryArticles +brochure")
       .populate({
         path: "series",
         options: { sort: { order: 1, createdAt: -1 } },
@@ -31,8 +31,12 @@ export async function GET(req, { params }) {
     brand.prompts = brand.prompts || [];
     brand.articleBlocks = brand.articleBlocks || [];
     brand.categoryArticles = brand.categoryArticles || [];
+    // فقط *وضعیتِ* بروشور، برای نشان دادن روی دکمه‌ی صفحه‌ی برند؛ خودِ بلوک‌ها
+    // از روتِ بروشور خوانده می‌شوند تا پاسخِ این روت بی‌دلیل سنگین نشود.
+    const brochureStatus = brand.brochure?.blocks?.length ? brand.brochure.status : null;
+    brand.brochure = undefined;
 
-    return NextResponse.json({ brand });
+    return NextResponse.json({ brand, brochureStatus });
   } catch (error) {
     return handleApiError(error, "خطا در دریافت برند");
   }
