@@ -3,11 +3,10 @@
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { toast } from "react-toastify";
-import { FiArrowRight, FiExternalLink, FiFileText, FiPlus, FiSave, FiSettings } from "react-icons/fi";
+import { FiArrowRight, FiExternalLink, FiEye, FiFileText, FiPlus, FiSave } from "react-icons/fi";
 import Button from "@/components/admin/Button";
 import PageHeader from "@/components/admin/PageHeader";
 import BlockEditor from "@/components/admin/articles/BlockEditor";
-import { Panel } from "@/components/admin/articles/ArticleEditor";
 import { getApiErrorMessage } from "@/lib/apiClientError";
 
 /**
@@ -81,54 +80,48 @@ export default function BrandBrochureEditor({ brandId }) {
 
   const liveUrl = persisted.status === "published" && persisted.hasBlocks && brand?.slug ? `/${brand.slug}` : null;
   const brandName = brand?.title || brand?.name || "";
+  const statusSelect = <label className="flex items-center gap-1.5 text-[11px] font-bold text-gray-500">
+    وضعیت
+    <select
+      id="brochure-status"
+      value={status}
+      onChange={(e) => update({ status: e.target.value })}
+      className="border bg-white px-2 py-1.5 text-xs font-bold outline-none focus:border-[var(--color-primary)]"
+      style={{ borderColor: "var(--admin-border)", borderRadius: "var(--admin-radius)" }}
+    >
+      <option value="draft">پیش‌نویس</option>
+      <option value="published">منتشرشده</option>
+    </select>
+  </label>;
+
   return <>
+    {/* وضعیتِ انتشار در خودِ هدر می‌نشیند تا ستونِ کناری حذف شود و بلوک‌ها تمامِ
+        عرضِ صفحه را بگیرند — بروشور جز همین یک تنظیم چیزی ندارد. */}
     <PageHeader
       title={`بروشور برند${brandName ? ` ${brandName}` : ""}`}
-      subtitle="محتوای تمام‌صفحه‌ی برند با همان بلوک‌های مقاله. فقط نسخه‌ی «منتشرشده» جای صفحه‌ی برند را می‌گیرد."
+      subtitle={status === "published"
+        ? "پس از ذخیره، این محتوا جای صفحه‌ی برند را می‌گیرد. آدرس برند عوض نمی‌شود."
+        : "پیش‌نویس فقط در پنل دیده می‌شود؛ صفحه‌ی برند مثل قبل باقی می‌ماند."}
       icon={<FiFileText />}
-      actions={<div className="flex flex-wrap gap-2">
+      actions={<div className="flex flex-wrap items-center gap-2">
+        {statusSelect}
+        {status === "published"
+          ? <Button size="sm" variant="secondary" loading={saving} onClick={() => save("draft")}>لغو انتشار</Button>
+          : <Button size="sm" loading={saving} onClick={() => save("published")} disabled={blocks.length === 0} title={blocks.length === 0 ? "برای انتشار دست‌کم یک بلوک لازم است" : undefined}>انتشار</Button>}
+        <span className="text-[11px] text-gray-400">{dirty ? "تغییرات ذخیره‌نشده" : "بدون تغییر"} · {blocks.length.toLocaleString("fa-IR")} بلوک</span>
         <Link href={`/p-admin/admin-brands/edit/${brandId}`}><Button variant="secondary" icon={<FiArrowRight />}>بازگشت به برند</Button></Link>
+        <Button variant="secondary" onClick={() => window.open(`/p-admin/admin-brands/${brandId}/brochure/preview`, "_blank")} icon={<FiEye />}>پیش‌نمایش</Button>
         {liveUrl ? <Button variant="secondary" onClick={() => window.open(liveUrl, "_blank", "noopener,noreferrer")} icon={<FiExternalLink />}>مشاهده در سایت</Button> : null}
         <Button loading={saving} onClick={() => save()} icon={<FiSave />}>ذخیره</Button>
       </div>}
     />
-    <div className="grid grid-cols-1 items-start gap-5 pb-24 xl:grid-cols-[minmax(0,1fr)_330px]">
-      <main className="order-2 min-w-0 space-y-4 xl:order-1">
-        <BlockEditor value={blocks} onChange={(next) => update({ blocks: next })} libraryOpen={addBlockOpen} onLibraryOpen={setAddBlockOpen} />
-      </main>
-      <aside className="order-1 space-y-4 xl:order-2 xl:sticky xl:top-36">
-        <Panel title="وضعیت انتشار" icon={<FiSettings className="text-[var(--color-primary)]" />}>
-          <label className="block text-xs font-bold mb-1.5" htmlFor="brochure-status">وضعیت</label>
-          <select
-            id="brochure-status"
-            value={status}
-            onChange={(e) => update({ status: e.target.value })}
-            className="w-full border bg-gray-50 px-3 py-2.5 text-sm outline-none focus:border-[var(--color-primary)] focus:bg-white"
-            style={{ borderColor: "var(--admin-border)", borderRadius: "var(--admin-radius)" }}
-          >
-            <option value="draft">پیش‌نویس</option>
-            <option value="published">منتشرشده</option>
-          </select>
-          <p className="mt-3 text-[11px] leading-6 text-gray-500">
-            {status === "published"
-              ? "پس از ذخیره، این محتوا جای صفحه‌ی برند را می‌گیرد. آدرس برند عوض نمی‌شود."
-              : "پیش‌نویس فقط همین‌جا دیده می‌شود؛ صفحه‌ی برند مثل قبل باقی می‌ماند."}
-          </p>
-          <div className="mt-4 flex gap-2">
-            {status === "published"
-              ? <Button size="sm" variant="secondary" className="flex-1" loading={saving} onClick={() => save("draft")}>لغو انتشار</Button>
-              : <Button size="sm" className="flex-1" loading={saving} onClick={() => save("published")} disabled={blocks.length === 0}>انتشار روی صفحه‌ی برند</Button>}
-          </div>
-          {blocks.length === 0 ? <p className="mt-2 text-[11px] font-bold text-gray-400">برای انتشار دست‌کم یک بلوک لازم است.</p> : null}
-          <div className="mt-4 flex items-center justify-between border-t pt-3 text-[11px]" style={{ borderColor: "var(--admin-border)" }}>
-            <span>{dirty ? "تغییرات ذخیره‌نشده" : "بدون تغییر"}</span>
-            <span>{blocks.length.toLocaleString("fa-IR")} بلوک</span>
-          </div>
-        </Panel>
-      </aside>
+    {/* تمامِ عرضِ صفحه برای بلوک‌ها؛ فضای امن تا نوارِ شناورِ پایین. */}
+    <div className="min-w-0 pb-24">
+      <BlockEditor value={blocks} onChange={(next) => update({ blocks: next })} libraryOpen={addBlockOpen} onLibraryOpen={setAddBlockOpen} />
     </div>
     <div className="a-card fixed bottom-4 left-4 z-40 flex gap-2 p-2 shadow-lg" style={{ paddingBottom: "calc(0.5rem + env(safe-area-inset-bottom))" }}>
       <Button size="sm" variant="secondary" onClick={() => setAddBlockOpen(true)} icon={<FiPlus />}>افزودن بلوک</Button>
+      <Button size="sm" variant="secondary" onClick={() => window.open(`/p-admin/admin-brands/${brandId}/brochure/preview`, "_blank")} icon={<FiEye />}>پیش‌نمایش</Button>
       {liveUrl ? <Button size="sm" variant="secondary" onClick={() => window.open(liveUrl, "_blank", "noopener,noreferrer")} icon={<FiExternalLink />}>مشاهده در سایت</Button> : null}
       <Button size="sm" loading={saving} onClick={() => save()} icon={<FiSave />}>ذخیره</Button>
     </div>
