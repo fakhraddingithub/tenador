@@ -10,6 +10,7 @@
 
 import { useState, useRef, useEffect, useCallback, useMemo } from "react";
 import Link from "next/link";
+import { buildSerieNames } from "@/lib/seo/taxonomyNames";
 import ProductCard from "@/components/modules/cart/ProductCard";
 import QuickViewModal from "@/components/modules/cart/QuickViewModal";
 import SearchBar from "@/components/templates/products/SearchBar";
@@ -42,6 +43,7 @@ export default function SerieGroupedView({
   belowHero = null,
 }) {
   const serieTitle = pageInfo?.title || pageInfo?.name || "";
+  const heading = buildSerieNames(filters.brand, pageInfo).heading;
   const sportSlug = filters?.sport?.slug || "";
 
   // ─── State ───
@@ -379,7 +381,7 @@ export default function SerieGroupedView({
         <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent z-10" />
         <div className="absolute inset-0 z-20 flex flex-col justify-center items-center text-center px-4">
           <h1 className="text-xl md:text-4xl font-bold text-white mb-4 drop-shadow-xl">
-            {serieTitle}
+            {heading}
           </h1>
           <div className="w-20 h-1 bg-[var(--color-primary)] rounded-full mb-4" />
         </div>

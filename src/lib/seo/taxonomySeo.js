@@ -1,3 +1,5 @@
+import { buildSerieNames, taxonomyEnglishName } from "./taxonomyNames.js";
+
 const SITE_URL = (process.env.NEXT_PUBLIC_SITE_URL || "https://tenador.com").replace(/\/+$/, "");
 
 function label(entity) {
@@ -21,17 +23,18 @@ export function buildTaxonomyMetadata(filters) {
   }
 
   if (serie && brand && sport) {
+    const names = buildSerieNames(filters.brand, filters.serie);
     return {
-      title: `خرید ${sport} ${brand} سری ${serie}`,
+      title: `محصولات ${names.localized} | خرید و قیمت انواع ${names.english || names.localized}`,
       description:
         filters.serie.description ||
-        `مشاهده و خرید محصولات سری ${serie} برند ${brand} برای ${sport} با بررسی قیمت، مشخصات و موجودی در تنادور.`,
+        `مشاهده و خرید محصولات ${names.localized} برای ${sport} با بررسی قیمت، مشخصات و موجودی در تنادور.`,
     };
   }
 
   if (category && brand && sport) {
     return {
-      title: `خرید ${category} ${sport} ${brand}`,
+      title: `${category} ${sport} ${brand} | خرید و قیمت انواع ${taxonomyEnglishName(filters.brand) || brand}`,
       description:
         `مشاهده و خرید محصولات ${category} ${sport} از برند ${brand} با بررسی قیمت، مشخصات و موجودی در تنادور.`,
     };

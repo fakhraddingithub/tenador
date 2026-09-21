@@ -1,6 +1,7 @@
 "use client";
 
 import { matchesSearch } from "@/lib/search";
+import { buildSerieNames } from "@/lib/seo/taxonomyNames";
 import { useState, useMemo, useEffect, useRef } from "react";
 import ProductList from "@/components/templates/products/ProductList";
 import useFilterScrollAnchor from "@/hooks/useFilterScrollAnchor";
@@ -119,6 +120,10 @@ export default function SportPageClient({
 
     const limitedEditionTitle =
       filters?.limitedEdition?.title || filters?.limitedEdition?.name || "";
+
+    if (serieTitle && !limitedEditionTitle) {
+      return buildSerieNames(filters?.brand, filters?.serie).heading;
+    }
 
     if (serieTitle || limitedEditionTitle) {
       // مقدارهایی که وجود دارند را با یک فاصله به هم می‌چسبانیم
