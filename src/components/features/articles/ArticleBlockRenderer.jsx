@@ -202,7 +202,7 @@ function MergedBlock({ items, spacing }) {
   </div>;
 }
 
-function EntityCards({ title, items, kind, visuals }) {
+function EntityCards({ title, items, kind, visuals, inMerged = false }) {
   if (!items.length) return null;
   const v = visuals || {};
   const details = {
@@ -214,7 +214,7 @@ function EntityCards({ title, items, kind, visuals }) {
   return (
     <section className={blockSection} style={v.spacing || undefined}>
       {title ? <h2 className="mb-5 text-xl font-black text-gray-900" style={v.text ? { color: v.text } : undefined}>{title}</h2> : null}
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4">
+      <div className={`grid gap-3 ${inMerged ? slotGrid(items.length, SLOT_TILES) : "grid-cols-2 sm:grid-cols-3 md:grid-cols-4"}`}>
         {items.map((item) => {
           const meta = details[kind](item);
           return <Link key={item._id} href={meta.href} className="group flex min-h-32 flex-col items-center justify-center rounded-[var(--radius)] border border-black/10 bg-white p-5 text-center transition-[transform,border-color,box-shadow] motion-safe:hover:-translate-y-1 hover:border-[var(--color-primary)] hover:shadow-lg focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-primary)]">{meta.image ? <span className="relative mb-3 block h-14 w-20"><Image src={meta.image} alt={item.title || item.name} fill sizes="80px" className="object-contain" /></span> : null}<strong className="text-sm text-gray-800 group-hover:text-[var(--color-primary)]">{item.title || item.name}</strong></Link>;
@@ -235,6 +235,16 @@ function isPlainImageBlock(data) {
 const OVERLAY_TEXT_SIZE = { sm: "text-sm md:text-base", md: "text-base md:text-2xl", lg: "text-lg md:text-3xl", xl: "text-xl md:text-5xl" };
 const OVERLAY_VERTICAL = { top: "justify-start", center: "justify-center", bottom: "justify-end" };
 const OVERLAY_TEXT_ALIGN = { right: "text-right", center: "text-center", left: "text-left" };
+/**
+ * ستون‌های یک شبکه‌ی داخلی وقتی بلوک داخلِ خانه‌ی یک بلوکِ ادغام‌شده است: بر اساسِ
+ * عرضِ همان خانه (auto-fill)، نه نقطه‌شکن‌های صفحه. یک مورد تمامِ خانه را می‌گیرد.
+ * min(...,100%) نمی‌گذارد در خانه‌ی باریک‌تر از کمینه، چیزی سرریز کند.
+ */
+const SLOT_ONE = "grid-cols-1";
+const SLOT_CARDS = "grid-cols-[repeat(auto-fill,minmax(min(12rem,100%),1fr))]";
+const SLOT_TILES = "grid-cols-[repeat(auto-fill,minmax(min(8rem,100%),1fr))]";
+const slotGrid = (count, many = SLOT_CARDS) => (count === 1 ? SLOT_ONE : many);
+
 const IMAGE_GRID_COLS = { 2: "sm:grid-cols-2", 3: "sm:grid-cols-2 lg:grid-cols-3", 4: "sm:grid-cols-2 lg:grid-cols-4" };
 
 function ImageTile({ item, height, overlay = {}, sizes }) {
@@ -256,13 +266,13 @@ function ImageTile({ item, height, overlay = {}, sizes }) {
     : <div className={tile}>{media}{text}</div>;
 }
 
-function ImageBlock({ data, spacing }) {
+function ImageBlock({ data, spacing, inMerged = false }) {
   const items = imageBlockItems(data);
   if (!items.length) return null;
   const cols = Math.min(items.length, 4);
   const sizes = cols === 1 ? "(max-width: 1024px) 100vw, 1200px" : `(max-width: 640px) 100vw, ${Math.ceil(100 / cols)}vw`;
   return <figure className={blockSection} style={spacing || undefined}>
-    <div className={cols === 1 ? "" : `grid grid-cols-1 gap-3 ${IMAGE_GRID_COLS[cols]}`}>
+    <div className={cols === 1 ? "" : `grid gap-3 ${inMerged ? slotGrid(items.length, SLOT_TILES) : `grid-cols-1 ${IMAGE_GRID_COLS[cols]}`}`}>
       {items.map((item, index) => <ImageTile key={`${item.url}-${index}`} item={item} height={data.displayHeight} overlay={data.overlay} sizes={sizes} />)}
     </div>
     {data.caption ? <figcaption className="mt-3 text-center text-xs leading-6 text-gray-500">{data.caption}</figcaption> : null}
@@ -295,13 +305,21 @@ function videoEmbed(url) {
 export default function ArticleBlockRenderer({ blocks = [], entities, preview = false, interactive = false }) {
   const maps = entities?.maps || {};
   const rate = entities?.rate || 1;
-  const renderBlock = (block) => {
+  /**
+   * inMerged یعنی «این بلوک داخلِ خانه‌ی یک بلوکِ ادغام‌شده رندر می‌شود».
+   *
+   * تنها چیزی که با آن عوض می‌شود، شبکه‌ی *داخلیِ* خودِ بلوک است: بیرون، ستون‌ها
+   * از نقطه‌شکن‌های صفحه می‌آیند (که همان اندازه‌ی همیشگیِ کارت را می‌دهد)، و
+   * داخل، از عرضِ خانه‌ای که والد به بلوک داده است. محتوای بلوک دست‌نخورده است —
+   * سلسله‌مراتب همان می‌ماند: ادغام جای بلوک را تعیین می‌کند، بلوک محتوای خودش را.
+   */
+  const renderBlock = (block, inMerged = false) => {
     const data = block.data || {};
     const v = blockVisuals(block);
     if (isMergedBlock(block)) {
       // فرزندان با همین renderBlock رندر می‌شوند — هر نوع بلوک داخلِ ادغام دقیقاً
       // همان‌طور دیده می‌شود که بیرونِ آن.
-      const items = mergedChildren(block).map((child) => ({ child, node: renderBlock(child) })).filter((item) => item.node);
+      const items = mergedChildren(block).map((child) => ({ child, node: renderBlock(child, true) })).filter((item) => item.node);
       if (!items.length) return null;
       // بدونِ grid: همان ردیفِ پیش‌فرضِ قبلی، بدونِ هیچ تغییری.
       // پیش‌نمایشِ ادمین وضعیتِ ذخیره‌نشده را رندر می‌کند، پس grid اینجا هم پاک‌سازی می‌شود.
@@ -325,11 +343,11 @@ export default function ArticleBlockRenderer({ blocks = [], entities, preview = 
     // تصویرِ محتوا با نسبتِ واقعیِ خودش رندر می‌شود: عرض/ارتفاعِ ذخیره‌شده فقط
     // جا را پیش از بارگذاری رزرو می‌کند (aspect-ratio: auto w/h) و پس از بارگذاری
     // نسبتِ ذاتیِ تصویر جای آن را می‌گیرد — پس هیچ بُرشی رخ نمی‌دهد.
-    if (block.type === "image" && !isPlainImageBlock(data)) return <ImageBlock key={block.id} data={data} spacing={v.spacing} />;
+    if (block.type === "image" && !isPlainImageBlock(data)) return <ImageBlock key={block.id} data={data} spacing={v.spacing} inMerged={inMerged} />;
     if (block.type === "image" && data.url) return <figure key={block.id} className={blockSection} style={v.spacing || undefined}><Image src={data.url} alt={data.alt || "تصویر مقاله"} width={data.width || 1600} height={data.height || 900} sizes="(max-width: 1024px) 100vw, 820px" className="h-auto w-full rounded-[var(--radius)]" />{data.caption ? <figcaption className="mt-3 text-center text-xs leading-6 text-gray-500">{data.caption}</figcaption> : null}</figure>;
     if (block.type === "gallery") {
       const images = (data.images || []).map((image) => typeof image === "string" ? { url: image, alt: "" } : image).filter((image) => image.url);
-      return images.length ? <div key={block.id} className={`${blockSection} grid grid-cols-2 gap-3`} style={v.spacing || undefined}>{images.map((image, index) => <figure key={`${image.url}-${index}`} className={`relative overflow-hidden rounded-[var(--radius)] bg-gray-100 ${index === 0 && images.length % 2 ? "col-span-2 aspect-[16/8]" : "aspect-square"}`}><Image src={image.url} alt={image.alt || data.alt || "تصویر گالری مقاله"} fill sizes="(max-width: 768px) 50vw, 400px" className="object-cover" loading="lazy" />{image.caption ? <figcaption className="absolute inset-x-0 bottom-0 bg-black/60 p-2 text-xs text-white">{image.caption}</figcaption> : null}</figure>)}</div> : null;
+      return images.length ? <div key={block.id} className={`${blockSection} grid gap-3 ${inMerged ? slotGrid(images.length, SLOT_TILES) : "grid-cols-2"}`} style={v.spacing || undefined}>{images.map((image, index) => <figure key={`${image.url}-${index}`} className={`relative overflow-hidden rounded-[var(--radius)] bg-gray-100 ${index === 0 && images.length % 2 ? "col-span-2 aspect-[16/8]" : "aspect-square"}`}><Image src={image.url} alt={image.alt || data.alt || "تصویر گالری مقاله"} fill sizes="(max-width: 768px) 50vw, 400px" className="object-cover" loading="lazy" />{image.caption ? <figcaption className="absolute inset-x-0 bottom-0 bg-black/60 p-2 text-xs text-white">{image.caption}</figcaption> : null}</figure>)}</div> : null;
     }
     if (block.type === "video" && data.url) {
       const embed = videoEmbed(data.url);
@@ -366,20 +384,20 @@ export default function ArticleBlockRenderer({ blocks = [], entities, preview = 
     if (block.type === "faq") return <section key={block.id} className={blockSection} style={v.spacing || undefined}><div className="space-y-3">{(data.items || []).filter((item) => item.question).map((item, index) => <details key={index} className="group rounded-[var(--radius)] border border-gray-200 bg-white p-5" style={merge(v.background && { backgroundColor: v.background }, v.accent && { borderColor: v.accent })}><summary className="cursor-pointer list-none font-bold text-gray-900" style={v.text ? { color: v.text } : undefined}>{item.question}</summary><p className="mt-4 border-t border-gray-100 pt-4 leading-8 text-gray-600" style={v.text ? { color: v.text } : undefined}>{item.answer}</p></details>)}</div></section>;
     if (block.type === "productCard" || block.type === "productSlider") {
       const products = block.type === "productCard" ? ordered(data.product, maps.products) : ordered(data.products, maps.products);
-      return products.length ? <section key={block.id} className={blockSection} style={v.spacing || undefined}>{data.title ? <h2 className="mb-5 text-xl font-black" style={v.text ? { color: v.text } : undefined}>{data.title}</h2> : null}<PublicProductGrid products={products} rate={rate} /></section> : null;
+      return products.length ? <section key={block.id} className={blockSection} style={v.spacing || undefined}>{data.title ? <h2 className="mb-5 text-xl font-black" style={v.text ? { color: v.text } : undefined}>{data.title}</h2> : null}<PublicProductGrid products={products} rate={rate} fill={inMerged} /></section> : null;
     }
     if (["latestProducts", "bestSellers", "amazingOffers"].includes(block.type)) {
       const products = entities?.dynamicProducts?.[String(block.id)] || [];
-      return products.length ? <section key={block.id} className={blockSection} style={v.spacing || undefined}><h2 className="mb-5 text-xl font-black" style={v.text ? { color: v.text } : undefined}>{data.title}</h2><PublicProductGrid products={products} rate={rate} /></section> : null;
+      return products.length ? <section key={block.id} className={blockSection} style={v.spacing || undefined}><h2 className="mb-5 text-xl font-black" style={v.text ? { color: v.text } : undefined}>{data.title}</h2><PublicProductGrid products={products} rate={rate} fill={inMerged} /></section> : null;
     }
     if (["brandSlider", "collectionSlider", "categorySlider", "sportSlider"].includes(block.type)) {
       const config = { brandSlider: ["brands", data.brands], collectionSlider: ["series", data.collections], categorySlider: ["categories", data.categories], sportSlider: ["sports", data.sports] }[block.type];
-      return <EntityCards key={block.id} title={data.title} kind={config[0]} items={ordered(config[1], maps[config[0]])} visuals={v} />;
+      return <EntityCards key={block.id} title={data.title} kind={config[0]} items={ordered(config[1], maps[config[0]])} visuals={v} inMerged={inMerged} />;
     }
-    if (block.type === "usedProducts") return <section key={block.id} className={blockSection} style={v.spacing || undefined}>{data.title ? <h2 className="mb-5 text-xl font-black" style={v.text ? { color: v.text } : undefined}>{data.title}</h2> : null}<PublicUsedProductGrid products={ordered(data.products, maps.usedProducts)} /></section>;
+    if (block.type === "usedProducts") return <section key={block.id} className={blockSection} style={v.spacing || undefined}>{data.title ? <h2 className="mb-5 text-xl font-black" style={v.text ? { color: v.text } : undefined}>{data.title}</h2> : null}<PublicUsedProductGrid fill={inMerged} products={ordered(data.products, maps.usedProducts)} /></section>;
     if (block.type === "relatedArticles") {
       const articles = ordered(data.articles, maps.articles).filter((item) => item.category?.status !== "archived");
-      return articles.length ? <section key={block.id} className={blockSection} style={v.spacing || undefined}><h2 className="mb-5 text-xl font-black" style={v.text ? { color: v.text } : undefined}>{data.title || "مقالات مرتبط"}</h2><div className="grid gap-4 md:grid-cols-2">{articles.map((article) => <ArticleCard key={article._id} article={article} />)}</div></section> : null;
+      return articles.length ? <section key={block.id} className={blockSection} style={v.spacing || undefined}><h2 className="mb-5 text-xl font-black" style={v.text ? { color: v.text } : undefined}>{data.title || "مقالات مرتبط"}</h2><div className={`grid gap-4 ${inMerged ? slotGrid(articles.length) : "md:grid-cols-2"}`}>{articles.map((article) => <ArticleCard key={article._id} article={article} />)}</div></section> : null;
     }
     if (block.type === "newsletterCta") return <section key={block.id} className={`${blockSection} rounded-[var(--radius)] bg-[#20232a] p-6 text-white md:p-8`} style={merge(v.spacing, v.background && { backgroundColor: v.background }, v.text && { color: v.text })}><h2 className="text-2xl font-black">{data.title || "عضویت در خبرنامه تنادور"}</h2><p className="mt-2 leading-8 text-gray-300" style={v.text ? { color: v.text } : undefined}>{data.description || "جدیدترین راهنماها و پیشنهادهای تنادور را دریافت کنید."}</p>{preview ? <div className="mt-4 inline-flex rounded-[var(--radius)] bg-[var(--color-secondary)] px-5 py-2.5 text-sm font-bold text-gray-900" style={v.accent ? { backgroundColor: v.accent, color: readableOn(v.accent) } : undefined}>{data.buttonLabel || "\u0639\u0636\u0648\u06cc\u062a"}</div> : <ArticleNewsletterForm buttonLabel={data.buttonLabel} />}</section>;
     if (block.type === "customHtml" && data.html) return <div key={block.id} className={`${blockSection} leading-8 text-gray-700`} style={merge(v.spacing, padded(v), v.text && { color: v.text })} dangerouslySetInnerHTML={{ __html: sanitizeArticleHtml(data.html) }} />;

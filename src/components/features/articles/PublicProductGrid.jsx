@@ -8,12 +8,25 @@ import UsedProductCard from "@/components/templates/secondHands/UsedProductCard"
 const QuickViewModal = dynamic(() => import("@/components/modules/cart/QuickViewModal"), { ssr: false });
 const UsedQuickViewModal = dynamic(() => import("@/components/templates/secondHands/Usedquickviewmodal"), { ssr: false });
 
-export function PublicProductGrid({ products = [], rate = 1 }) {
+/**
+ * ستون‌ها: بیرونِ بلوکِ ادغام‌شده همان نقطه‌شکن‌های صفحه (اندازه‌ی کارت در صفحه
+ * عوض نمی‌شود)، و داخلِ آن *بر اساسِ عرضِ خانه*. media query عرضِ پنجره را
+ * می‌سنجد، پس داخلِ ستونی ۳۰۰ پیکسلی هم «دسکتاپ» بود و چهار ستون می‌ساخت —
+ * ریشه‌ی باگِ «کارتِ محصولِ باریک».
+ *
+ * رشته‌ها عمداً ثابت‌اند: تیلویند فقط کلاسِ عینی را می‌سازد.
+ */
+const GRID_PAGE = "grid-cols-2 md:grid-cols-3 lg:grid-cols-4";
+const GRID_FILL_ONE = "grid-cols-1";
+const GRID_FILL_MANY = "grid-cols-[repeat(auto-fill,minmax(min(12rem,100%),1fr))]";
+export const slotColumns = (fill, count) => (!fill ? GRID_PAGE : count === 1 ? GRID_FILL_ONE : GRID_FILL_MANY);
+
+export function PublicProductGrid({ products = [], rate = 1, fill = false }) {
   const [selectedProduct, setSelectedProduct] = useState(null);
   if (!products.length) return null;
   return (
     <>
-      <div className="grid grid-cols-2 gap-3 md:grid-cols-3 lg:grid-cols-4">
+      <div className={`grid gap-3 ${slotColumns(fill, products.length)}`}>
         {products.map((product) => (
           <ProductCard
             key={product._id}
@@ -29,12 +42,12 @@ export function PublicProductGrid({ products = [], rate = 1 }) {
   );
 }
 
-export function PublicUsedProductGrid({ products = [] }) {
+export function PublicUsedProductGrid({ products = [], fill = false }) {
   const [selectedProduct, setSelectedProduct] = useState(null);
   if (!products.length) return null;
   return (
     <>
-      <div className="grid grid-cols-2 gap-3 md:grid-cols-3">
+      <div className={`grid gap-3 ${fill ? slotColumns(fill, products.length) : "grid-cols-2 md:grid-cols-3"}`}>
         {products.map((product) => (
           <UsedProductCard key={product._id} product={product} onQuickView={() => setSelectedProduct(product)} />
         ))}

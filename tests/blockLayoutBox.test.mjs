@@ -148,3 +148,46 @@ test("refreshِ پس از ذخیره، ویرایش‌های بعدی را پا�
   assert.match(src, /justSaved\.current = JSON\.stringify\(blocks\)/);
   assert.match(src, /if \(justSaved\.current && JSON\.stringify\(saved\) === justSaved\.current\)/);
 });
+
+// ——— شبکه‌ی داخلیِ بلوک، داخلِ خانه‌ی بلوکِ ادغام‌شده ————————————————————
+// ریشه‌ی باگِ «کارتِ محصولِ باریک»: شبکه‌ی داخلیِ بلوک ستون‌هایش را از
+// نقطه‌شکن‌های *صفحه* می‌گرفت (md:/lg:)، و داخلِ ستونی ۳۰۰ پیکسلی هم پنجره هنوز
+// «دسکتاپ» بود — پس کارت یک‌چهارمِ خانه می‌شد.
+test("فرزندانِ بلوکِ ادغام‌شده با پرچمِ inMerged رندر می‌شوند", async () => {
+  const src = await read("../src/components/features/articles/ArticleBlockRenderer.jsx");
+  assert.match(src, /const renderBlock = \(block, inMerged = false\) =>/);
+  assert.match(src, /mergedChildren\(block\)\.map\(\(child\) => \(\{ child, node: renderBlock\(child, true\) \}\)\)/);
+});
+
+test("هر بلوکی که شبکه‌ی داخلی دارد، inMerged را می‌گیرد", async () => {
+  const src = await read("../src/components/features/articles/ArticleBlockRenderer.jsx");
+  for (const call of [
+    /<PublicProductGrid products=\{products\} rate=\{rate\} fill=\{inMerged\} \/>/,
+    /<PublicUsedProductGrid fill=\{inMerged\}/,
+    /<EntityCards [^>]*inMerged=\{inMerged\}/,
+    /<ImageBlock [^>]*inMerged=\{inMerged\}/,
+  ]) assert.match(src, call, String(call));
+  // گالری و مقالاتِ مرتبط هم همان قاعده را دارند.
+  assert.match(src, /inMerged \? slotGrid\(images\.length, SLOT_TILES\) : "grid-cols-2"/);
+  assert.match(src, /inMerged \? slotGrid\(articles\.length\) : "md:grid-cols-2"/);
+});
+
+test("ستون‌های داخلِ خانه از عرضِ خانه می‌آیند، نه از نقطه‌شکنِ صفحه", async () => {
+  const src = await read("../src/components/features/articles/ArticleBlockRenderer.jsx");
+  const slots = src.slice(src.indexOf("const SLOT_ONE"), src.indexOf("const IMAGE_GRID_COLS"));
+  // auto-fill یعنی «هرچه در این عرض جا می‌شود»؛ min(...,100%) یعنی در خانه‌ی
+  // باریک‌تر از کمینه هم چیزی بیرون نمی‌زند.
+  assert.match(slots, /auto-fill/);
+  assert.match(slots, /min\(12rem,100%\)/);
+  assert.match(slots, /min\(8rem,100%\)/);
+  // هیچ نقطه‌شکنِ صفحه‌ای در مسیرِ داخلِ خانه نباید باشد.
+  assert.doesNotMatch(slots, /\b(sm|md|lg|xl):/);
+});
+
+test("بیرونِ بلوکِ ادغام‌شده، کلاس‌های صفحه دست‌نخورده‌اند", async () => {
+  const src = await read("../src/components/features/articles/PublicProductGrid.jsx");
+  // همان سه کلاسِ قبلی، تا اندازه‌ی کارت در صفحه ذره‌ای عوض نشود.
+  assert.match(src, /const GRID_PAGE = "grid-cols-2 md:grid-cols-3 lg:grid-cols-4"/);
+  assert.match(src, /const GRID_FILL_ONE = "grid-cols-1"/);
+  assert.match(src, /slotColumns = \(fill, count\) => \(!fill \? GRID_PAGE : count === 1 \? GRID_FILL_ONE : GRID_FILL_MANY\)/);
+});

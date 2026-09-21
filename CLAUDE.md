@@ -578,6 +578,17 @@ Rules that are load-bearing:
   legacy flex row) do this, so per-child width, spacing and alignment work in fit, non-fit and
   legacy modes alike, and a child with no layout keys leaves its cell byte-identical.
   Hierarchy: the merged block owns the container and the grid; each child owns its own slot.
+- **A block’s own internal grid is sized by its slot, not by the viewport.** Product cards,
+  entity cards, image blocks, the gallery and related articles all laid their contents out
+  with page breakpoints (`md:grid-cols-3 lg:grid-cols-4`), and a media query measures the
+  *window* — so inside a 300px merged cell the page was still "desktop" and a single product
+  card became one of four columns, about 116px wide in a 499px cell. `renderBlock` now passes
+  `inMerged` to children of a merged block, and in that mode those grids use
+  `repeat(auto-fill, minmax(min(<size>,100%), 1fr))` — how many fit in *this* slot — with a
+  single item filling the slot outright. Outside a merged block the page classes are
+  untouched, so a card on an article page is exactly the size it always was (still precisely
+  one quarter of its container at `lg`). `min(…,100%)` is what stops a slot narrower than the
+  minimum from overflowing; no width overrides, no `!important`.
 
 The controls live in **`BlockLayoutModal`** (Size / Spacing / Horizontal / Vertical /
 Responsive / Colours), opened both from the block card and from the Preview — one modal,
