@@ -10,6 +10,7 @@ const cloneFilters = (filters = {}) => ({
   search: filters.search || "",
   minPrice: Number(filters.minPrice) || 0,
   maxPrice: Number(filters.maxPrice) || 0,
+  categoryAttributes: Object.fromEntries(Object.entries(filters.categoryAttributes || {}).map(([name, values]) => [name, [...values]])),
 });
 
 export function buildBrandGroupedViewCacheKey({
@@ -17,6 +18,7 @@ export function buildBrandGroupedViewCacheKey({
   sportId,
   categoryId,
   attrFilters = [],
+  categoryAttributes = {},
   targetAudience,
 }) {
   return JSON.stringify([
@@ -24,6 +26,7 @@ export function buildBrandGroupedViewCacheKey({
     String(sportId || ""),
     String(categoryId || ""),
     attrFilters,
+    categoryAttributes,
     String(targetAudience || ""),
   ]);
 }

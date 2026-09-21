@@ -18,6 +18,7 @@
  */
 
 import { NextResponse } from "next/server";
+import { parseCategoryAttributes } from "@/lib/categoryFilterState";
 import { getBrandGroupedSections } from "base/services/brandGrouped.service";
 import { normalizeTargetAudience } from "base/utils/targetAudience";
 import {
@@ -74,10 +75,22 @@ export async function GET(req) {
       return NextResponse.json({ error: "مخاطب هدف نامعتبر است" }, { status: 400 });
     }
 
+    let categoryAttributes;
+    try {
+      categoryAttributes = parseCategoryAttributes(searchParams.get("categoryAttributes"));
+    } catch {
+      return NextResponse.json({ error: "فیلتر ویژگی نامعتبر است" }, { status: 400 });
+    }
+    const categoryId = searchParams.get("categoryId") || null;
+    if (categoryId && !/^[a-f0-9]{24}$/i.test(categoryId)) {
+      return NextResponse.json({ error: "دسته‌بندی نامعتبر است" }, { status: 400 });
+    }
+
     const data = await getBrandGroupedSections({
       brandId,
       sportId: searchParams.get("sportId") || null,
-      categoryId: searchParams.get("categoryId") || null,
+      categoryId,
+      categoryAttributes,
       attrFilters,
       offset: toInt(searchParams.get("offset"), 0),
       productOffset: toInt(searchParams.get("productOffset"), 0),

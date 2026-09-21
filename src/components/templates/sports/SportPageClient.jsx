@@ -1,6 +1,7 @@
 "use client";
 
 import { matchesSearch } from "@/lib/search";
+import CategoryAttributeFilters from "@/components/features/filters/CategoryAttributeFilters";
 import { buildSerieNames } from "@/lib/seo/taxonomyNames";
 import { useState, useMemo, useEffect, useRef } from "react";
 import ProductList from "@/components/templates/products/ProductList";
@@ -23,6 +24,7 @@ import {
 export default function SportPageClient({
   products: initialProducts = [],
   pageInfo = {},
+  filterCategories = [],
   filters = {},
   rate,
   series = [],
@@ -61,8 +63,10 @@ export default function SportPageClient({
   // رویداد که category پاس نمی‌دهند، هیچ فیلتر ویژگی نشان نمی‌دهند.
   // ─────────────────────────────────────────────
   const attributeMeta = useMemo(
-    () => buildAttributeMeta(filters?.category?.attributes, products),
-    [filters?.category, products],
+    () => filters?.serie && !filters?.limitedEdition
+      ? (filterCategories.find((c) => c._id === localFilters.categories[0])?.attributeMeta || [])
+      : buildAttributeMeta(filters?.category?.attributes, products),
+    [filters?.category, filters?.serie, filters?.limitedEdition, products, filterCategories, localFilters.categories],
   );
 
   const [attrFilters, setAttrFilters] = useState({});
@@ -269,6 +273,9 @@ export default function SportPageClient({
   // با تغییرِ انتخابِ برند، سری‌های انتخاب‌شده‌ای که به برند(های) جدید تعلق
   // ندارند حذف می‌شوند تا فیلترِ نامرئی باقی نماند.
   const applyLocalFilters = (next) => {
+    if (filters?.serie && JSON.stringify(next.categories) !== JSON.stringify(localFilters.categories)) {
+      applyAttrFilters({});
+    }
     if (next.series?.length && next.brands?.length) {
       const prunedSeries = next.series.filter((id) => {
         // برندِ گروه از ریشه گرفته می‌شود — هم‌راستا با محدودسازیِ گزینه‌ها
@@ -404,7 +411,16 @@ export default function SportPageClient({
               setFilters={applyLocalFilters}
               hideSportFilter={true}
               seriesOptions={seriesFilterOptions}
-              attributeMeta={attributeMeta}
+              categoryFilter={filters?.serie && !filters?.limitedEdition ? (
+                <CategoryAttributeFilters
+                  categories={filterCategories}
+                  categoryId={localFilters.categories[0] || ""}
+                  attributes={attrFilters}
+                  onCategoryChange={(id) => applyLocalFilters({ ...localFilters, categories: id ? [id] : [] })}
+                  onAttributesChange={applyAttrFilters}
+                />
+              ) : null}
+              attributeMeta={filters?.serie && !filters?.limitedEdition ? [] : attributeMeta}
               attrFilters={attrFilters}
               setAttrFilters={applyAttrFilters}
             />

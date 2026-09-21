@@ -16,6 +16,8 @@
 
 import { useState, useRef, useEffect, useCallback, useMemo } from "react";
 import Link from "next/link";
+import CategoryAttributeFilters from "@/components/features/filters/CategoryAttributeFilters";
+import { countActiveAttrFilters } from "@/lib/attributeFilters";
 import ProductCard from "@/components/modules/cart/ProductCard";
 import QuickViewModal from "@/components/modules/cart/QuickViewModal";
 import SearchBar from "@/components/templates/products/SearchBar";
@@ -55,6 +57,8 @@ export default function BrandGroupedView({
   attrFilters = EMPTY_ATTR_FILTERS,
   filterMeta = null,
   initialData = {},
+  filterCategories = [],
+  initialCategoryAttributes = {},
   title = "",
   belowHero = null,
   targetAudience = null,
@@ -64,6 +68,7 @@ export default function BrandGroupedView({
     sportId,
     categoryId,
     attrFilters,
+    categoryAttributes: initialCategoryAttributes,
     targetAudience,
   });
   // در hydration اولیه cache خالی است و دقیقاً initialData سرور رندر می‌شود.
@@ -74,6 +79,7 @@ export default function BrandGroupedView({
     search: "",
     minPrice: 0,
     maxPrice: 0,
+    categoryAttributes: initialCategoryAttributes,
   };
 
   // مقدارِ فعالِ کارتِ فیلترِ سایدبار = مقدارِ فیلترِ هم‌نام با ویژگیِ مگامنو
@@ -115,6 +121,10 @@ export default function BrandGroupedView({
   const [searchTerm, setSearchTerm] = useState(startingFilters.search);
   const [minPrice, setMinPrice] = useState(startingFilters.minPrice);
   const [maxPrice, setMaxPrice] = useState(startingFilters.maxPrice);
+
+  const [selectedCategory, setSelectedCategory] = useState(categoryId || "");
+  const [categoryAttributes, setCategoryAttributes] = useState(startingFilters.categoryAttributes || initialCategoryAttributes);
+  const dirtyFiltersRef = useRef(false);
 
   // Quick view
   const [selectedProduct, setSelectedProduct] = useState(null);
@@ -174,6 +184,8 @@ export default function BrandGroupedView({
     search: searchTerm.trim(),
     minPrice: Number(minPrice) || 0,
     maxPrice: Number(maxPrice) || 0,
+    categoryId: selectedCategory,
+    categoryAttributes,
   });
 
   // ─── ساختِ URL واکشی ───
@@ -189,6 +201,7 @@ export default function BrandGroupedView({
       if (Array.isArray(attrFilters) && attrFilters.length > 0) {
         params.set("attrFilters", JSON.stringify(attrFilters));
       }
+      if (Object.keys(f.categoryAttributes || {}).length) params.set("categoryAttributes", JSON.stringify(f.categoryAttributes));
       params.set("offset", String(offset));
       params.set("productOffset", String(productOffset));
       params.set("limit", String(BRAND_SECTIONS_PER_BATCH));
@@ -207,6 +220,7 @@ export default function BrandGroupedView({
   // افکتِ debounce) تا تلاشِ مجددِ مقدارِ قدیمی حتی در پنجره‌ی ۴۰۰ms هم زنده نماند.
   const invalidateFilters = useCallback(() => {
     filterVersionRef.current += 1;
+    dirtyFiltersRef.current = true;
     abortRef.current?.abort();
     setStatus(null);
   }, []);
@@ -224,7 +238,7 @@ export default function BrandGroupedView({
   const run = useCallback(
     async (op, opts = {}) => {
       // observer نباید درخواستِ موازی بسازد
-      if (op === "loadMore" && (loadingRef.current || !hasMoreRef.current)) {
+      if (op === "loadMore" && (dirtyFiltersRef.current || loadingRef.current || !hasMoreRef.current)) {
         return "skipped";
       }
 
@@ -280,6 +294,7 @@ export default function BrandGroupedView({
               const incomingProductOffset = data.nextProductOffset ?? 0;
               const incomingTotalCount = data.totalCount ?? 0;
               filterRef.current = filters;
+              dirtyFiltersRef.current = false;
               syncRefs({
                 sections: incoming,
                 index: incomingIndex,
@@ -388,7 +403,7 @@ export default function BrandGroupedView({
     );
     return () => clearTimeout(t);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [searchTerm, minPrice, maxPrice, run]);
+  }, [searchTerm, minPrice, maxPrice, selectedCategory, categoryAttributes, run]);
 
   // ─── IntersectionObserver برای infinite scroll ───
   // وابسته به sections.length و hasMore: پس از هر batch، observer دوباره ساخته
@@ -432,14 +447,26 @@ export default function BrandGroupedView({
 
   // هندلرهای فیلتر — همگی ابتدا نسخه را بی‌اعتبار می‌کنند
   const handleSearchChange = (value) => {
+    if (value === searchTerm) return;
     invalidateFilters();
     setSearchTerm(value);
   };
 
   const handlePriceChange = ({ min, max }) => {
+    if (min === minPrice && max === maxPrice) return;
     invalidateFilters();
     setMinPrice(min);
     setMaxPrice(max);
+  };
+
+  const handleCategoryChange = (value) => {
+    invalidateFilters();
+    setSelectedCategory(value);
+    setCategoryAttributes({});
+  };
+  const handleAttributesChange = (value) => {
+    invalidateFilters();
+    setCategoryAttributes(value);
   };
 
   const resetFilters = () => {
@@ -447,6 +474,8 @@ export default function BrandGroupedView({
     setSearchTerm("");
     setMinPrice(0);
     setMaxPrice(0);
+    setSelectedCategory(categoryId || "");
+    setCategoryAttributes({});
   };
 
   // دامنه‌ی اسلایدرِ قیمت از روی قیمتِ تومانِ محصولاتِ بارگذاری‌شده (کامپوننتِ
@@ -465,7 +494,8 @@ export default function BrandGroupedView({
   // تعداد فیلترهای فعالِ سایدبار — فقط برای بجِ دکمه‌ی موبایلِ MobileFilterDrawer.
   // (جستجو در نوارِ بالا قرار دارد و جزو سایدبار نیست.)
   const activeCount =
-    (Number(minPrice) > 0 ? 1 : 0) + (Number(maxPrice) > 0 ? 1 : 0);
+    (Number(minPrice) > 0 ? 1 : 0) + (Number(maxPrice) > 0 ? 1 : 0) +
+    (!categoryId && selectedCategory ? 1 : 0) + countActiveAttrFilters(categoryAttributes);
 
   // پس از اعمالِ فیلتر (ریستِ نتایج)، اگر لیست کوتاه شد، نمای صفحه را به ناحیه‌ی
   // فیلتر لنگر می‌اندازد. به filterToken وابسته است تا با loadMore (افزایشِ نتایج)
@@ -555,6 +585,15 @@ export default function BrandGroupedView({
                 <FiRotateCcw size={11} /> حذف فیلترها
               </button>
             </div>
+
+            <CategoryAttributeFilters
+              categories={filterCategories}
+              categoryId={selectedCategory}
+              fixedCategory={true}
+              attributes={categoryAttributes}
+              onCategoryChange={handleCategoryChange}
+              onAttributesChange={handleAttributesChange}
+            />
 
             {/* فیلتر ویژگیِ مگامنو — مقدار اولیه از URL، تغییر با navigationِ نرم */}
             <AttributeFilterCard

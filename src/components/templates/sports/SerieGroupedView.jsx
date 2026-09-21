@@ -10,6 +10,8 @@
 
 import { useState, useRef, useEffect, useCallback, useMemo } from "react";
 import Link from "next/link";
+import CategoryAttributeFilters from "@/components/features/filters/CategoryAttributeFilters";
+import { countActiveAttrFilters } from "@/lib/attributeFilters";
 import { buildSerieNames } from "@/lib/seo/taxonomyNames";
 import ProductCard from "@/components/modules/cart/ProductCard";
 import QuickViewModal from "@/components/modules/cart/QuickViewModal";
@@ -39,6 +41,8 @@ export default function SerieGroupedView({
   targetAudience = null,
   brandSlug = "",
   initialData = {},
+  filterCategories = [],
+  initialCategoryAttributes = {},
   title = "",
   belowHero = null,
 }) {
@@ -63,6 +67,10 @@ export default function SerieGroupedView({
   const [minPrice, setMinPrice] = useState(0);
   const [maxPrice, setMaxPrice] = useState(0);
 
+  const [selectedCategory, setSelectedCategory] = useState(categoryId || "");
+  const [categoryAttributes, setCategoryAttributes] = useState(initialCategoryAttributes);
+  const dirtyFiltersRef = useRef(false);
+
   const [selectedProduct, setSelectedProduct] = useState(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
 
@@ -73,7 +81,7 @@ export default function SerieGroupedView({
   const hasMoreRef = useRef(hasMore);
   const nextOffsetRef = useRef(nextOffset);
   const loadedKeysRef = useRef(new Set((initialData.sections || []).map((s) => s.key)));
-  const filterRef = useRef({ search: "", minPrice: 0, maxPrice: 0 });
+  const filterRef = useRef({ search: "", minPrice: 0, maxPrice: 0, categoryId: categoryId || "", categoryAttributes: initialCategoryAttributes });
   const sentinelRef = useRef(null);
   const mountedRef = useRef(false);
   // کنار زدنِ درخواستِ در جریان، لغوِ انتظارِ backoff، و پاک‌سازیِ unmount
@@ -93,6 +101,8 @@ export default function SerieGroupedView({
     search: searchTerm.trim(),
     minPrice: Number(minPrice) || 0,
     maxPrice: Number(maxPrice) || 0,
+    categoryId: selectedCategory,
+    categoryAttributes,
   });
 
   // خالص: فیلترها آرگومان‌اند، نه خوانده‌شده از ref.
@@ -102,8 +112,9 @@ export default function SerieGroupedView({
       const params = new URLSearchParams();
       params.set("serieId", serieId);
       if (sportId) params.set("sportId", sportId);
-      if (categoryId) params.set("categoryId", categoryId);
+      if (f.categoryId) params.set("categoryId", f.categoryId);
       if (targetAudience) params.set("targetAudience", targetAudience);
+      if (Object.keys(f.categoryAttributes || {}).length) params.set("categoryAttributes", JSON.stringify(f.categoryAttributes));
       params.set("offset", String(offset));
       params.set("limit", String(BATCH_SECTIONS));
       if (f.minPrice > 0) params.set("minPrice", String(f.minPrice));
@@ -112,7 +123,7 @@ export default function SerieGroupedView({
       if (withIndex) params.set("withIndex", "1");
       return `/api/series/grouped?${params.toString()}`;
     },
-    [serieId, sportId, categoryId, targetAudience]
+    [serieId, sportId, targetAudience]
   );
 
   // هر تغییرِ فیلترِ قابلِ‌مشاهده: نسخه را بالا ببر و هر درخواست/انتظارِ backoffِ
@@ -120,6 +131,7 @@ export default function SerieGroupedView({
   // تلاشِ مجددِ مقدارِ قدیمی حتی در پنجره‌ی ۴۰۰ms هم زنده نماند.
   const invalidateFilters = useCallback(() => {
     filterVersionRef.current += 1;
+    dirtyFiltersRef.current = true;
     abortRef.current?.abort();
     setStatus(null);
   }, []);
@@ -136,7 +148,7 @@ export default function SerieGroupedView({
   // تغییر نمی‌کند.
   const run = useCallback(
     async (op, opts = {}) => {
-      if (op === "loadMore" && (loadingRef.current || !hasMoreRef.current)) {
+      if (op === "loadMore" && (dirtyFiltersRef.current || loadingRef.current || !hasMoreRef.current)) {
         return "skipped";
       }
 
@@ -182,6 +194,7 @@ export default function SerieGroupedView({
             if (op === "applyFilters") {
               const incoming = data.sections || [];
               filterRef.current = filters;
+              dirtyFiltersRef.current = false;
               loadedKeysRef.current = new Set(incoming.map((s) => s.key));
               syncRefs({
                 sections: incoming,
@@ -259,7 +272,7 @@ export default function SerieGroupedView({
     );
     return () => clearTimeout(t);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [searchTerm, minPrice, maxPrice, run]);
+  }, [searchTerm, minPrice, maxPrice, selectedCategory, categoryAttributes, run]);
 
   useEffect(() => {
     const el = sentinelRef.current;
@@ -297,14 +310,26 @@ export default function SerieGroupedView({
 
   // هندلرهای فیلتر — همگی ابتدا نسخه را بی‌اعتبار می‌کنند
   const handleSearchChange = (value) => {
+    if (value === searchTerm) return;
     invalidateFilters();
     setSearchTerm(value);
   };
 
   const handlePriceChange = ({ min, max }) => {
+    if (min === minPrice && max === maxPrice) return;
     invalidateFilters();
     setMinPrice(min);
     setMaxPrice(max);
+  };
+
+  const handleCategoryChange = (value) => {
+    invalidateFilters();
+    setSelectedCategory(value);
+    setCategoryAttributes({});
+  };
+  const handleAttributesChange = (value) => {
+    invalidateFilters();
+    setCategoryAttributes(value);
   };
 
   const resetFilters = () => {
@@ -312,6 +337,8 @@ export default function SerieGroupedView({
     setSearchTerm("");
     setMinPrice(0);
     setMaxPrice(0);
+    setSelectedCategory(categoryId || "");
+    setCategoryAttributes({});
   };
 
   // دامنه‌ی اسلایدرِ قیمت از روی قیمتِ تومانِ محصولاتِ بارگذاری‌شده (کامپوننتِ
@@ -329,7 +356,8 @@ export default function SerieGroupedView({
 
   // تعداد فیلترهای فعالِ سایدبار — فقط برای بجِ دکمه‌ی موبایلِ MobileFilterDrawer.
   const activeCount =
-    (Number(minPrice) > 0 ? 1 : 0) + (Number(maxPrice) > 0 ? 1 : 0);
+    (Number(minPrice) > 0 ? 1 : 0) + (Number(maxPrice) > 0 ? 1 : 0) +
+    (!categoryId && selectedCategory ? 1 : 0) + countActiveAttrFilters(categoryAttributes);
 
   // پس از اعمالِ فیلتر، اگر لیست کوتاه شد، نمای صفحه را به ناحیه‌ی فیلتر لنگر می‌اندازد.
   const anchorRef = useRef(null);
@@ -411,6 +439,15 @@ export default function SerieGroupedView({
                 <FiRotateCcw size={11} /> حذف فیلترها
               </button>
             </div>
+
+            <CategoryAttributeFilters
+              categories={filterCategories}
+              categoryId={selectedCategory}
+              fixedCategory={Boolean(categoryId)}
+              attributes={categoryAttributes}
+              onCategoryChange={handleCategoryChange}
+              onAttributesChange={handleAttributesChange}
+            />
 
             {/* نویگیشن زیرسری‌ها */}
             {index.length > 0 && (

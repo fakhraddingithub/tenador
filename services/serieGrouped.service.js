@@ -9,6 +9,7 @@
  */
 
 import { unstable_cache } from "next/cache";
+import { buildCategoryAttributeMatch } from "base/services/listingFilterCatalog.service";
 import mongoose from "mongoose";
 import connectToDB from "base/configs/db";
 import Serie from "base/models/Serie";
@@ -81,7 +82,7 @@ async function buildChildTree(parentSerieId) {
   return { parent, directChildren, descendantsByChild, allDescendantIds };
 }
 
-async function buildBaseMatch({ parentSerieId, allDescendantIds, sportId, categoryId, targetAudience, search }) {
+async function buildBaseMatch({ parentSerieId, allDescendantIds, sportId, categoryId, categoryAttributes, targetAudience, search }) {
   const parentOid = toObjectId(parentSerieId);
   const serieScope = [
     parentOid,
@@ -90,6 +91,9 @@ async function buildBaseMatch({ parentSerieId, allDescendantIds, sportId, catego
 
   const match = { isActive: true, serie: { $in: serieScope } };
   if (categoryId) match.category = toObjectId(categoryId);
+  Object.assign(match, await buildCategoryAttributeMatch(
+    { serieId: parentSerieId, sportId, targetAudience }, categoryId, categoryAttributes,
+  ));
   const audienceMatch = buildTargetAudienceMatch(targetAudience);
   if (audienceMatch) match.targetAudience = audienceMatch;
   // جستجوی توکنی؛ توکنی که در نامِ محصول نیست می‌تواند با برند/سری تطبیق بخورد
@@ -116,6 +120,7 @@ async function _getSerieGroupedIndex(params) {
     serieId,
     sportId = null,
     categoryId = null,
+    categoryAttributes = {},
     targetAudience = null,
     search = "",
   } = params || {};
@@ -132,6 +137,7 @@ async function _getSerieGroupedIndex(params) {
     allDescendantIds,
     sportId,
     categoryId,
+    categoryAttributes,
     targetAudience,
     search,
   });
@@ -231,7 +237,7 @@ async function _getSerieGroupedIndex(params) {
 
 const getSerieGroupedIndex = unstable_cache(
   _getSerieGroupedIndex,
-  ["serie-grouped-index", "target-audience-unisex-v1"],
+  ["serie-grouped-index", "target-audience-unisex-v1", "category-attributes-v1"],
   { revalidate: 10800, tags: ["products", "categories", "series"] }
 );
 
@@ -240,6 +246,7 @@ async function _getSerieGroupedSections(params) {
     serieId,
     sportId = null,
     categoryId = null,
+    categoryAttributes = {},
     targetAudience = null,
     offset = 0,
     limit = 2,
@@ -256,7 +263,7 @@ async function _getSerieGroupedSections(params) {
   await connectToDB();
 
   const [indexPayload, rate] = await Promise.all([
-    getSerieGroupedIndex({ serieId, sportId, categoryId, targetAudience, search }),
+    getSerieGroupedIndex({ serieId, sportId, categoryId, categoryAttributes, targetAudience, search }),
     getCachedRate(),
   ]);
 
@@ -271,6 +278,7 @@ async function _getSerieGroupedSections(params) {
     allDescendantIds,
     sportId,
     categoryId,
+    categoryAttributes,
     targetAudience,
     search,
   });
@@ -343,6 +351,6 @@ async function _getSerieGroupedSections(params) {
 
 export const getSerieGroupedSections = unstable_cache(
   _getSerieGroupedSections,
-  ["serie-grouped-sections", "target-audience-unisex-v1"],
+  ["serie-grouped-sections", "target-audience-unisex-v1", "category-attributes-v1"],
   { revalidate: 10800, tags: ["products", "categories", "series"] }
 );

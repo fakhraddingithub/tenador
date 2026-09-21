@@ -1,0 +1,89 @@
+import "base/models/registerModels";
+import { unstable_cache } from "next/cache";
+import mongoose from "mongoose";
+import connectToDB from "base/configs/db";
+import Product from "base/models/Product";
+import Serie from "base/models/Serie";
+import LimitedEdition from "base/models/LimitedEdition";
+import { applyProductSportVisibility } from "base/services/categorySportVisibility.service";
+import { buildTargetAudienceMatch } from "base/utils/targetAudience";
+import { buildCollaborationScopes, collaborationMatchBranches } from "base/utils/brandCollaboration";
+import { buildAttributeMeta, productMatchesAttrFilters } from "@/lib/attributeFilters";
+
+const oid = (value) => new mongoose.Types.ObjectId(String(value));
+
+// A lightweight, unpriced snapshot of the WHOLE listing, not its first batch.
+// It stays server-side; only category names and filter options reach the browser.
+const getCatalog = unstable_cache(async (scope) => {
+  await connectToDB();
+  let match = { isActive: true };
+  if (scope.categoryId) match.category = oid(scope.categoryId);
+  if (scope.serieId) {
+    const parent = await Serie.findById(scope.serieId).select("brand").lean();
+    if (!parent) return { products: [], categories: [] };
+    match.brand = parent.brand;
+    const ids = new Set([String(scope.serieId)]);
+    if (scope.descendants !== false) {
+      const tree = await Serie.find({ brand: parent.brand }).select("parentSerie").lean();
+      let changed = true;
+      while (changed) {
+        changed = false;
+        for (const child of tree) {
+          if (ids.has(String(child.parentSerie)) && !ids.has(String(child._id))) {
+            ids.add(String(child._id));
+            changed = true;
+          }
+        }
+      }
+    }
+    match.serie = { $in: [...ids].map(oid) };
+  } else if (scope.brandId) {
+    const editions = await LimitedEdition.find({ relatedBrands: scope.brandId }).select("brand").lean();
+    const branches = collaborationMatchBranches(buildCollaborationScopes(editions, scope.brandId), oid);
+    match.$or = [{ brand: oid(scope.brandId) }, ...branches];
+  } else {
+    return { products: [], categories: [] };
+  }
+  const audience = buildTargetAudienceMatch(scope.targetAudience);
+  if (audience) match.targetAudience = audience;
+  if (scope.sportId) match = await applyProductSportVisibility(match, {
+    sportId: scope.sportId, categoryId: scope.categoryId || null,
+  });
+  const products = await Product.find(match).select("category attributes color variants")
+    .populate({ path: "category", select: "title name order attributes" })
+    .populate({ path: "variants", select: "attributes color" }).lean();
+  const categories = new Map();
+  for (const product of products) {
+    const category = product.category;
+    if (!category?._id) continue;
+    const id = String(category._id);
+    if (!categories.has(id)) categories.set(id, { ...category, products: [] });
+    categories.get(id).products.push(product);
+  }
+  return JSON.parse(JSON.stringify({
+    products: products.map((p) => ({ ...p, category: p.category?._id || null })),
+    categories: [...categories.values()]
+      .sort((a, b) => (a.order ?? Number.MAX_SAFE_INTEGER) - (b.order ?? Number.MAX_SAFE_INTEGER))
+      .map((category) => ({
+        _id: category._id, title: category.title || category.name,
+        attributeMeta: buildAttributeMeta(category.attributes, category.products),
+      })),
+  }));
+}, ["listing-filter-catalog-v1"], {
+  revalidate: 300, tags: ["products", "categories", "series", "brands", "limited-editions"],
+});
+
+export async function getListingFilterOptions(scope) {
+  return (await getCatalog(scope)).categories;
+}
+
+export async function buildCategoryAttributeMatch(scope, categoryId, selections = {}) {
+  if (!categoryId || !Object.values(selections || {}).some((v) => Array.isArray(v) && v.length)) return {};
+  const { categories, products } = await getCatalog(scope);
+  const category = categories.find((c) => c._id === String(categoryId));
+  if (!category) return { _id: { $in: [] } };
+  // Metadata is server-owned: client-supplied field names cannot become Mongo paths.
+  const ids = products.filter((p) => p.category === String(categoryId) &&
+    productMatchesAttrFilters(p, selections, category.attributeMeta)).map((p) => oid(p._id));
+  return { _id: { $in: ids } };
+}

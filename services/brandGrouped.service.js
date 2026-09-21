@@ -24,6 +24,7 @@
  */
 
 import { unstable_cache } from "next/cache";
+import { buildCategoryAttributeMatch } from "base/services/listingFilterCatalog.service";
 import mongoose from "mongoose";
 import connectToDB from "base/configs/db";
 import Serie from "base/models/Serie";
@@ -211,8 +212,9 @@ function attrValueMatchers(v) {
  * هر ویژگی می‌تواند چند مقدار داشته باشد (OR درونِ ویژگی) و ویژگی‌ها با AND ترکیب
  * می‌شوند. بازگشتِ {} یعنی فیلتری اعمال نمی‌شود.
  */
-async function buildAttrMatches(attrFilters) {
-  if (!Array.isArray(attrFilters) || attrFilters.length === 0) return {};
+async function buildAttrMatches(attrFilters, scope, categoryAttributes) {
+  const categoryMatch = await buildCategoryAttributeMatch(scope, scope.categoryId, categoryAttributes);
+  if (!Array.isArray(attrFilters) || attrFilters.length === 0) return categoryMatch;
 
   const conditions = []; // یک شرطِ {$or:[محصول, واریانت]} برای هر ویژگی (با AND)
 
@@ -237,10 +239,10 @@ async function buildAttrMatches(attrFilters) {
     });
   }
 
-  if (conditions.length === 0) return {};
+  if (conditions.length === 0) return categoryMatch;
   // همیشه داخلِ $and بسته‌بندی می‌شود تا با کلیدِ $orِ بخشِ «محصولات <برند>» در
   // fetchSectionProducts تداخل نکند (در غیرِ این صورت اسپردِ baseMatch آن را بازنویسی می‌کرد).
-  return { $and: conditions };
+  return andMongoFilters({ $and: conditions }, categoryMatch);
 }
 
 function withinPrice(p, minPrice, maxPrice) {
@@ -269,6 +271,7 @@ async function _getBrandGroupedIndex(params) {
     sportId = null,
     categoryId = null,
     attrFilters = [],
+    categoryAttributes = {},
     search = "",
     targetAudience = null,
   } = params || {};
@@ -282,7 +285,7 @@ async function _getBrandGroupedIndex(params) {
     brand,
   ] = await Promise.all([
     buildSeriesTree(brandId),
-    buildAttrMatches(attrFilters),
+    buildAttrMatches(attrFilters, { brandId, sportId, categoryId, targetAudience }, categoryAttributes),
     getRelatedLimitedEditions(brandId),
     Brand.findById(toObjectId(brandId)).select("title name").lean(),
   ]);
@@ -397,7 +400,7 @@ async function _getBrandGroupedIndex(params) {
 const getBrandGroupedIndex = unstable_cache(
   _getBrandGroupedIndex,
   [
-    "brand-grouped-index",
+    "brand-grouped-index", "category-attributes-v1",
     "target-audience-unisex-v1",
     // v2: همکاری‌ها بخشِ مستقل ندارند و به برندِ مالکِ ادیشن محدودند
     "limited-edition-relations-v3",
@@ -411,6 +414,7 @@ async function _getBrandGroupedSections(params) {
     sportId = null,
     categoryId = null,
     attrFilters = [],
+    categoryAttributes = {},
     offset = 0,
     productOffset = 0,
     limit = BRAND_SECTIONS_PER_BATCH,
@@ -442,9 +446,9 @@ async function _getBrandGroupedSections(params) {
     rate,
     extra,
   ] = await Promise.all([
-    getBrandGroupedIndex({ brandId, sportId, categoryId, attrFilters, search, targetAudience }),
+    getBrandGroupedIndex({ brandId, sportId, categoryId, attrFilters, categoryAttributes, search, targetAudience }),
     getCachedRate(),
-    buildAttrMatches(attrFilters),
+    buildAttrMatches(attrFilters, { brandId, sportId, categoryId, targetAudience }, categoryAttributes),
   ]);
 
   const [baseMatch, brandlessBaseMatch] = await Promise.all([
@@ -561,7 +565,7 @@ async function _getBrandGroupedSections(params) {
 export const getBrandGroupedSections = unstable_cache(
   _getBrandGroupedSections,
   [
-    "brand-grouped-sections",
+    "brand-grouped-sections", "category-attributes-v1",
     "target-audience-unisex-v1",
     // v2: همکاری‌ها بخشِ مستقل ندارند و به برندِ مالکِ ادیشن محدودند
     "limited-edition-relations-v3",

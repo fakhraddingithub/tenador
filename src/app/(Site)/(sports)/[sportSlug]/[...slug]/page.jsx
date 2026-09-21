@@ -1,4 +1,5 @@
 import { notFound, permanentRedirect } from "next/navigation";
+import { getListingFilterOptions } from "base/services/listingFilterCatalog.service";
 import SportPageClient from "@/components/templates/sports/SportPageClient";
 import BrandGroupedView from "@/components/templates/sports/BrandGroupedView";
 import SerieGroupedView from "@/components/templates/sports/SerieGroupedView";
@@ -195,22 +196,27 @@ export default async function SportDynamicSlugPage({ params, searchParams }) {
     // ── فیلترهای ویژگی: همه‌ی پارامترهای ویژگیِ موجود در URL خوانده می‌شوند
     //    (مثلِ ?capacity=10 یا ?Suitable for=خانم‌ها) و نوعِ هرکدام (ثابت/متغیر)
     //    برای ساختِ کوئریِ درست در brandGrouped تعیین می‌شود. ──
-    const attrFilters = resolveAttrFilters(filters.category, sp);
+    const allAttrFilters = resolveAttrFilters(filters.category, sp);
+    const managedNames = new Set((filters.category?.attributes || []).filter((a) => a.filterable).map((a) => a.name));
+    const attrFilters = allAttrFilters.filter((f) => !managedNames.has(f.name));
+    const categoryAttributes = Object.fromEntries(allAttrFilters.filter((f) => managedNames.has(f.name)).map((f) => [f.name, f.values]));
 
     // مینی مقاله‌ی برند+دسته فقط روی /[sport]/[category]/[brand]؛ صفحه‌ی
     // /[sport]/[brand] (بدونِ دسته) هیچ مقاله‌ای نمی‌گیرد.
-    const [initialData, categoryArticleBlocks] = await Promise.all([
+    const [initialData, categoryArticleBlocks, filterCategories] = await Promise.all([
       getBrandGroupedSections({
         brandId,
         sportId,
         categoryId,
         attrFilters,
+        categoryAttributes,
         offset: 0,
         limit: BRAND_SECTIONS_PER_BATCH,
         withIndex: true,
         targetAudience,
       }),
       categoryId ? getBrandCategoryArticleBlocks(brandId, categoryId) : [],
+      getListingFilterOptions({ brandId, sportId, categoryId, targetAudience }),
     ]);
 
     const pageInfo = { ...filters.brand };
@@ -234,7 +240,7 @@ export default async function SportDynamicSlugPage({ params, searchParams }) {
             String(brandId),
             String(sportId || ""),
             String(categoryId || ""),
-            attrFilters,
+            allAttrFilters,
             String(targetAudience || ""),
           ])}
           pageInfo={pageInfo}
@@ -244,7 +250,9 @@ export default async function SportDynamicSlugPage({ params, searchParams }) {
           sportId={sportId}
           categoryId={categoryId}
           attrFilters={attrFilters}
-          filterMeta={buildFilterMeta(filters.category)}
+          filterMeta={managedNames.has(filters.category?.megaMenuFilterAttribute) ? null : buildFilterMeta(filters.category)}
+          filterCategories={filterCategories}
+          initialCategoryAttributes={categoryAttributes}
           initialData={initialData}
           page={page}
           targetAudience={targetAudience}
@@ -267,7 +275,7 @@ export default async function SportDynamicSlugPage({ params, searchParams }) {
     const categoryId = filters.category?._id || null;
     const brandSlug = filters.brand?.slug || "";
 
-    const [initialData, serieArticleBlocks] = await Promise.all([
+    const [initialData, serieArticleBlocks, filterCategories] = await Promise.all([
       getSerieGroupedSections({
         serieId,
         sportId,
@@ -278,6 +286,7 @@ export default async function SportDynamicSlugPage({ params, searchParams }) {
         withIndex: true,
       }),
       getSerieArticleBlocks(serieId),
+      getListingFilterOptions({ serieId, sportId, targetAudience }),
     ]);
 
     const pageInfo = filters.serie;
@@ -294,6 +303,8 @@ export default async function SportDynamicSlugPage({ params, searchParams }) {
           canonical={`${SITE_URL}/${slugs.join("/")}`}
         />
         <SerieGroupedView
+          key={JSON.stringify([String(serieId), String(sportId), targetAudience])}
+          filterCategories={filterCategories}
           pageInfo={pageInfo}
           filters={filters}
           rate={rate}
@@ -355,6 +366,8 @@ export default async function SportDynamicSlugPage({ params, searchParams }) {
         canonical={`${SITE_URL}/${slugs.join("/")}`}
       />
       <SportPageClient
+        key={JSON.stringify(slugs)}
+        filterCategories={searchData.filters.serie ? await getListingFilterOptions({ serieId: String(searchData.filters.serie._id), sportId: String(searchData.filters.sport._id), targetAudience, descendants: false }) : []}
         pageInfo={pageInfo}
         filters={searchData.filters}
         products={searchData.results}
