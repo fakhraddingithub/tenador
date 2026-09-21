@@ -6,7 +6,7 @@ import ArticleNewsletterForm from "@/components/features/articles/ArticleNewslet
 import { PublicProductGrid, PublicUsedProductGrid } from "@/components/features/articles/PublicProductGrid";
 import { sanitizeArticleHtml } from "@/lib/sanitizeArticleHtml";
 import { sanitizeRichText } from "@/lib/sanitizeRichText";
-import { BLOCK_ALIGN_SELF, BLOCK_JUSTIFY, BLOCK_WIDTH_CLASS, blockBoxStyle, blockWidth, groupBlockRows } from "@/lib/articleBlockLayout";
+import { BLOCK_ALIGN_SELF, BLOCK_WIDTH_CLASS, blockBoxProps, blockWidth, groupBlockRows } from "@/lib/articleBlockLayout";
 import { imageBlockItems } from "@/lib/articleImageBlock";
 import { flattenArticleBlocks, isMergedBlock, mergedChildren, sanitizeMergedGrid } from "@/lib/articleBlockTypes";
 
@@ -151,7 +151,19 @@ function MergedGrid({ items, grid, spacing }) {
       ].join(" ")}
       style={vars}
     >
-      {items.map(({ child, node }) => <div key={child.id} className="min-w-0 snap-start *:my-0">{node}</div>)}
+      {items.map(({ child, node }) => {
+        // چیدمانِ فرزند روی *خانه‌ی خودش* می‌نشیند: عرض/فاصله/جای‌گیریِ افقی از
+        // جعبه و هم‌ترازیِ عمودی از align-self. خانه همان سهمِ فرزند در شبکه
+        // است، پس نه wrapper اضافه‌ای لازم است و نه با ریستِ حاشیه‌ی خانه
+        // (*:my-0، که به فرزندانِ خانه می‌خورد نه خودش) تداخل می‌کند.
+        const box = blockBoxProps(child);
+        const alignSelf = BLOCK_ALIGN_SELF[child?.layout?.alignY];
+        return <div
+          key={child.id}
+          className={`min-w-0 snap-start *:my-0${box ? ` ${box.className}` : ""}`}
+          style={box || alignSelf ? { ...(box?.style || {}), ...(alignSelf ? { alignSelf } : null) } : undefined}
+        >{node}</div>;
+      })}
     </div>
   </div>;
 }
@@ -170,7 +182,15 @@ function MergedBlock({ items, spacing }) {
     <div className="flex items-start gap-[var(--merged-gap)] [--merged-gap:1rem] md:[--merged-gap:1.5rem]">
       {items.map(({ child, node }) => {
         const percent = MERGED_WIDTH_PERCENT[blockWidth(child)] ?? share;
-        return <div key={child.id} className="min-w-[16rem] shrink-0 grow-0 snap-start *:my-0" style={{ flexBasis: `calc(${percent}% - var(--merged-gap) * ${gapShare})` }}>{node}</div>;
+        // همان قاعده‌ی شبکه، روی خانه‌ی flex: سهمِ خانه از flexBasis می‌آید و
+        // اندازه/جای‌گیریِ خودِ فرزند داخلِ آن سهم از جعبه.
+        const box = blockBoxProps(child);
+        const alignSelf = BLOCK_ALIGN_SELF[child?.layout?.alignY];
+        return <div
+          key={child.id}
+          className={`min-w-[16rem] shrink-0 grow-0 snap-start *:my-0${box ? ` ${box.className}` : ""}`}
+          style={{ flexBasis: `calc(${percent}% - var(--merged-gap) * ${gapShare})`, ...(box?.style || {}), ...(alignSelf ? { alignSelf } : null) }}
+        >{node}</div>;
       })}
     </div>
   </div>;
@@ -373,9 +393,8 @@ export default function ArticleBlockRenderer({ blocks = [], entities, preview = 
    * فرزندش نمی‌شکند.
    */
   const boxed = (block, node) => {
-    const vars = blockBoxStyle(block);
-    const justify = BLOCK_JUSTIFY[block?.layout?.alignX];
-    if (!vars && !justify && !interactive) return node;
+    const box = blockBoxProps(block);
+    if (!box && !interactive) return node;
     const hooks = interactive ? { "data-block-id": block.id, "data-block-type": block.type } : null;
     // دستگیره‌ی کشیدن باید *داخلِ* همین wrapper باشد تا با بلوک جابه‌جا شود.
     // نویسه‌ی ⠿ است تا رندرِ عمومی به هیچ آیکونی وابسته نشود؛ استایلش در تمِ
@@ -385,10 +404,8 @@ export default function ArticleBlockRenderer({ blocks = [], entities, preview = 
       : null;
     // بدونِ چیدمان، wrapper فقط یک div خالیِ بی‌اثر است (نه flex) تا در حالتِ
     // interactive هم پیش‌نمایش دقیقاً همان چیزی باشد که سایت نشان می‌دهد.
-    if (!vars && !justify) return <div key={block.id} {...hooks}>{handle}{node}</div>;
-    const style = { ...(vars || {}), ...(justify ? { "--bj": justify } : null) };
-    const keep = block?.layout?.keepOnMobile ? " a-block-box--keep" : "";
-    return <div key={block.id} className={`a-block-box${keep}`} style={style} {...hooks}>{handle}{node}</div>;
+    if (!box) return <div key={block.id} {...hooks}>{handle}{node}</div>;
+    return <div key={block.id} className={box.className} style={box.style} {...hooks}>{handle}{node}</div>;
   };
 
   const rendered = [];

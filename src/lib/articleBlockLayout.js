@@ -122,6 +122,25 @@ export function blockBoxStyle(block) {
 export const BLOCK_JUSTIFY = { right: "flex-start", center: "center", left: "flex-end" };
 export const BLOCK_ALIGN_SELF = { top: "start", center: "center", bottom: "end" };
 
+/**
+ * کلاس و استایلِ جعبه، آماده برای نشستن روی *هر* عنصری که سهمِ بلوک است:
+ * wrapperِ بلوکِ سطحِ‌اول، یا خانه‌ی خودِ فرزند داخلِ بلوکِ ادغام‌شده. همین است که
+ * می‌گذارد فرزندِ ادغام‌شده بدونِ یک wrapper اضافه (و بدونِ جنگِ specificity با
+ * ریستِ حاشیه‌ی خانه) دقیقاً همان تنظیمات را بگیرد.
+ *
+ * null یعنی این بلوک چیدمانی ندارد و باید عیناً مثلِ قبل رندر شود.
+ * هم‌ترازیِ عمودی اینجا نیست: آن خاصیتِ *خانه* است، نه جعبه، و همان‌جا اعمال می‌شود.
+ */
+export function blockBoxProps(block) {
+  const vars = blockBoxStyle(block);
+  const justify = BLOCK_JUSTIFY[block?.layout?.alignX];
+  if (!vars && !justify) return null;
+  return {
+    className: `a-block-box${block?.layout?.keepOnMobile ? " a-block-box--keep" : ""}`,
+    style: { ...(vars || {}), ...(justify ? { "--bj": justify } : null) },
+  };
+}
+
 /** عرضِ مؤثرِ یک بلوک؛ هر چیزِ ناشناخته تمام‌عرض حساب می‌شود. */
 export function blockWidth(block) {
   const width = block?.layout?.width;

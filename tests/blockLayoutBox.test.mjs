@@ -2,7 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import { ArticleBlockLayoutSchema } from "../models/articleSchemas.js";
-import { BLOCK_ALIGN_SELF, BLOCK_JUSTIFY, BLOCK_MARGIN_KEYS, sanitizeArticleBlockLayout } from "../src/lib/articleBlockLayout.js";
+import { BLOCK_ALIGN_SELF, BLOCK_JUSTIFY, BLOCK_MARGIN_KEYS, blockBoxProps, sanitizeArticleBlockLayout } from "../src/lib/articleBlockLayout.js";
 
 const read = (path) => readFile(new URL(path, import.meta.url), "utf8");
 
@@ -50,7 +50,7 @@ test("مودالِ چیدمان همان پاک‌سازیِ سرور را پی�
 // ——— رندر: wrapper فقط وقتی لازم است ————————————————————————————————
 test("بلوکِ بدونِ چیدمان هیچ wrapper اضافه‌ای نمی‌گیرد", async () => {
   const src = await read("../src/components/features/articles/ArticleBlockRenderer.jsx");
-  assert.match(src, /if \(!vars && !justify && !interactive\) return node;/);
+  assert.match(src, /if \(!box && !interactive\) return node;/);
   // جای‌گیریِ عمودی روی خانه‌ی سطر می‌نشیند، چون تنها جایی است که بلوک سطری برای
   // هم‌ترازی دارد.
   assert.match(src, /const alignSelf = BLOCK_ALIGN_SELF\[item\.block\?\.layout\?\.alignY\]/);
@@ -91,4 +91,32 @@ test("جابه‌جایی فقط ترتیب را عوض می‌کند و شنا�
   assert.match(fn, /const \[moved\] = next\.splice\(from, 1\)/);
   // اندیسِ مقصد بعد از برداشتن دوباره پیدا می‌شود، وگرنه حرکتِ رو به پایین یکی کم می‌آورد.
   assert.match(fn, /const at = next\.findIndex\(\(block\) => block\.id === toId\)/);
+});
+
+// ——— فرزندِ بلوکِ ادغام‌شده ———————————————————————————————————————————
+// چیدمانِ فرزند روی *خانه‌ی خودش* می‌نشیند، نه در یک wrapper تازه: خانه همان سهمِ
+// فرزند در شبکه است، و چون ریستِ حاشیه‌ی خانه (*:my-0) به فرزندانِ خانه می‌خورد
+// نه به خودش، هیچ جنگِ specificity با فاصله‌ی تنظیم‌شده پیش نمی‌آید.
+test("هر دو مسیرِ بلوکِ ادغام‌شده، چیدمانِ فرزند را روی خانه اعمال می‌کنند", async () => {
+  const src = await read("../src/components/features/articles/ArticleBlockRenderer.jsx");
+  const grid = src.slice(src.indexOf("function MergedGrid"), src.indexOf("function MergedBlock"));
+  const legacy = src.slice(src.indexOf("function MergedBlock"), src.indexOf("function EntityCards"));
+  for (const [name, body] of [["MergedGrid", grid], ["MergedBlock", legacy]]) {
+    assert.match(body, /const box = blockBoxProps\(child\)/, name);
+    assert.match(body, /BLOCK_ALIGN_SELF\[child\?\.layout\?\.alignY\]/, name);
+    // ریستِ حاشیه‌ی خانه باید بماند — رفتارِ فعلیِ بلوک‌های بدونِ چیدمان به آن وابسته است.
+    assert.match(body, /\*:my-0/, name);
+  }
+});
+
+test("فرزندِ بدونِ چیدمان، خانه‌اش دقیقاً مثلِ قبل می‌ماند", () => {
+  // blockBoxProps هیچ چیزی برنمی‌گرداند، پس نه کلاسی اضافه می‌شود نه استایلی.
+  assert.equal(blockBoxProps({ id: "x", type: "paragraph" }), null);
+  assert.equal(blockBoxProps({ layout: { width: "1/2" } }), null, "عرضِ ستونی جعبه نیست — سهم از سطر است");
+});
+
+test("blockBoxProps کلاسِ «در موبایل هم حفظ شود» را حمل می‌کند", () => {
+  assert.deepEqual(blockBoxProps({ layout: { widthPct: 40 } }), { className: "a-block-box", style: { "--bw": "40%" } });
+  assert.deepEqual(blockBoxProps({ layout: { widthPct: 40, keepOnMobile: true } }), { className: "a-block-box a-block-box--keep", style: { "--bw": "40%" } });
+  assert.deepEqual(blockBoxProps({ layout: { alignX: "center" } }), { className: "a-block-box", style: { "--bj": "center" } });
 });

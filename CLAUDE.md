@@ -541,6 +541,14 @@ Rules that are load-bearing:
   does not declare.
 - `alignY` is applied to the **row cell**, the only place a block has a row to align in;
   on a full-width block it is a no-op and the modal says so.
+- **A child of a merged block gets the same box, on its own grid/flex cell.** `blockBoxProps`
+  returns the class and variables for whichever element *is* the block's slot: the wrapper for
+  a top-level block, the cell itself for a merged child. Putting it on the cell (rather than
+  adding a wrapper inside it) is what keeps the cell's `*:my-0` reset — which targets the
+  cell's *children* — from fighting a configured margin. Both merged renderers (grid and the
+  legacy flex row) do this, so per-child width, spacing and alignment work in fit, non-fit and
+  legacy modes alike, and a child with no layout keys leaves its cell byte-identical.
+  Hierarchy: the merged block owns the container and the grid; each child owns its own slot.
 
 The controls live in **`BlockLayoutModal`** (Size / Spacing / Horizontal / Vertical /
 Responsive / Colours), opened both from the block card and from the Preview — one modal,
