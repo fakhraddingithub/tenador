@@ -34,11 +34,93 @@ export function insertBlockAt(items = [], block, position) {
   return [...items.slice(0, index), block, ...items.slice(index)];
 }
 
+
+// ——— جعبه‌ی بلوک: عرضِ درصدی، فاصله‌ی هر طرف، و جای‌گیریِ افقی/عمودی ————————
+// این‌ها *مستقل* از width بالا هستند و با هم تداخل ندارند: width می‌گوید بلوک
+// چه سهمی از سطر را می‌گیرد (گروه‌بندیِ سطرها)، اینجا می‌گوید داخلِ همان سهم چه
+// اندازه‌ای باشد و کجا بنشیند. نبودِ هر کلید یعنی رفتارِ قبلی، پس محتوای موجود
+// بدونِ مهاجرت دقیقاً مثلِ قبل رندر می‌شود.
+
+/** در RTL «راست» شروعِ خط است؛ نگاشت به flex در رندر انجام می‌شود. */
+export const BLOCK_ALIGN_X = ["right", "center", "left"];
+export const BLOCK_ALIGN_Y = ["top", "center", "bottom"];
+export const BLOCK_MARGIN_KEYS = ["mt", "mb", "ml", "mr"];
+
+/** درصدِ عرض: زیرِ ۵٪ عملاً نامرئی است و بالای ۱۰۰ سرریز می‌کند. */
+export const BLOCK_WIDTH_PCT = { min: 5, max: 100, step: 1 };
+/** فاصله‌ها به rem؛ سقفِ ۸ یعنی ۱۲۸px که برای یک بلوک بیش از کافی است. */
+export const BLOCK_MARGIN_REM = { min: 0, max: 8, step: 0.25 };
+
+const clamp = (value, { min, max, step }) => {
+  const number = typeof value === "number" ? value : Number.parseFloat(value);
+  if (!Number.isFinite(number)) return undefined;
+  const stepped = Math.round(number / step) * step;
+  // گردکردنِ شناور: 0.30000000000000004 نباید ذخیره شود.
+  return Math.min(Math.max(Number(stepped.toFixed(4)), min), max);
+};
+
+export const clampBlockWidthPct = (value) => clamp(value, BLOCK_WIDTH_PCT);
+export const clampBlockMargin = (value) => clamp(value, BLOCK_MARGIN_REM);
+
 export function sanitizeArticleBlockLayout(value) {
   if (!value || typeof value !== "object" || Array.isArray(value)) return undefined;
+
+  const layout = {};
   // "full" پیش‌فرض است و ذخیره نمی‌شود تا بلوکِ بدونِ چیدمان واقعاً بدونِ کلید بماند.
-  return BLOCK_WIDTH_SPANS[value.width] ? { width: value.width } : undefined;
+  if (BLOCK_WIDTH_SPANS[value.width]) layout.width = value.width;
+
+  // ۱۰۰٪ هم پیش‌فرض است و ذخیره نمی‌شود — «تمامِ سهمِ خودش».
+  const widthPct = clampBlockWidthPct(value.widthPct);
+  if (widthPct !== undefined && widthPct !== 100) layout.widthPct = widthPct;
+
+  // صفر مقدارِ معناداری است (یعنی «فاصله‌ی پیش‌تنظیمِ style را هم خنثی کن»)، پس
+  // برخلافِ بقیه‌ی پیش‌فرض‌ها حذف نمی‌شود؛ فقط *نبودِ* کلید یعنی «دست نزن».
+  for (const key of BLOCK_MARGIN_KEYS) {
+    const margin = clampBlockMargin(value[key]);
+    if (margin !== undefined) layout[key] = margin;
+  }
+
+  // "right" شروعِ خط است، یعنی همان جایی که بلوک بدونِ تنظیم می‌نشیند.
+  if (BLOCK_ALIGN_X.includes(value.alignX) && value.alignX !== "right") layout.alignX = value.alignX;
+  if (BLOCK_ALIGN_Y.includes(value.alignY) && value.alignY !== "top") layout.alignY = value.alignY;
+  // پیش‌فرض: در موبایل بلوک تمام‌عرض می‌شود تا هیچ درصدی سرریز نسازد.
+  if (value.keepOnMobile === true) layout.keepOnMobile = true;
+
+  return Object.keys(layout).length ? layout : undefined;
 }
+
+/**
+ * چیدمان را به متغیرهای CSS ترجمه می‌کند. کلاسِ .a-block-box (در globals.css)
+ * تصمیم می‌گیرد این متغیرها از کدام breakpoint اعمال شوند — با inline style
+ * نمی‌شود media query نوشت، و همین جداسازی است که «واکنش‌گرایی» را از «چیدمان»
+ * جدا نگه می‌دارد.
+ *
+ * خروجیِ null یعنی این بلوک هیچ جعبه‌ای لازم ندارد و باید دقیقاً مثلِ قبل (بدونِ
+ * هیچ wrapper اضافه‌ای) رندر شود.
+ */
+export function blockBoxStyle(block) {
+  const layout = block?.layout;
+  if (!layout || typeof layout !== "object") return null;
+
+  const vars = {};
+  const widthPct = clampBlockWidthPct(layout.widthPct);
+  if (widthPct !== undefined && widthPct !== 100) vars["--bw"] = `${widthPct}%`;
+  for (const key of BLOCK_MARGIN_KEYS) {
+    const margin = clampBlockMargin(layout[key]);
+    if (margin !== undefined) vars[`--b${key.slice(1)}`] = `${margin}rem`;
+  }
+  if (!Object.keys(vars).length) return null;
+
+  // فاصله‌ی افقی از عرض کم می‌شود، نه اینکه رویش سوار شود: بلوکِ ۱۰۰٪ با حاشیه‌ی
+  // چپ و راست هم هرگز از ظرفش بیرون نمی‌زند. (بدونِ حاشیه‌ی منفی، بدونِ سرریز.)
+  const side = (clampBlockMargin(layout.ml) || 0) + (clampBlockMargin(layout.mr) || 0);
+  if (side) vars["--bmx"] = `${side}rem`;
+  return vars;
+}
+
+/** جای‌گیریِ افقیِ جعبه داخلِ سهمِ خودش. در RTL شروعِ خط سمتِ راست است. */
+export const BLOCK_JUSTIFY = { right: "flex-start", center: "center", left: "flex-end" };
+export const BLOCK_ALIGN_SELF = { top: "start", center: "center", bottom: "end" };
 
 /** عرضِ مؤثرِ یک بلوک؛ هر چیزِ ناشناخته تمام‌عرض حساب می‌شود. */
 export function blockWidth(block) {

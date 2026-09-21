@@ -23,6 +23,7 @@
     "test:cdn-purge": "node --test tests/cdnPurge.test.mjs",
     "test:block-merge": "node --test tests/articleBlockMerge.test.mjs",
     "test:block-spacing": "node --test tests/blockSpacing.test.mjs",
+    "test:block-layout": "node --test tests/blockLayoutBox.test.mjs tests/articleBlockLayout.test.mjs",
     "report:limited-edition-brand-mismatch": "node scripts/reportLimitedEditionBrandMismatch.js",
     "test:grouped-product-pagination": "node --test tests/groupedProductPagination.test.mjs",
     "test:category-sports": "node --test tests/categorySportVisibility.test.mjs",

@@ -7,7 +7,7 @@ import { getAdminContext } from "@/lib/adminContext";
 import { canAccessAdminRoute } from "@/lib/permissions";
 import { resolveArticleEntities } from "base/services/publicArticle.service";
 import { isBrochureLive } from "@/lib/brandBrochure";
-import BrandBrochure from "@/components/features/brands/BrandBrochure";
+import PreviewCanvas from "@/components/admin/articles/PreviewCanvas";
 
 /**
  * پیش‌نمایشِ بروشور — دقیقاً مثلِ پیش‌نمایشِ مقاله: کامپوننتِ سروری، پشتِ همان
@@ -27,6 +27,8 @@ export default async function BrandBrochurePreview({ brandId }) {
   const entities = blocks.length ? await resolveArticleEntities({ blocks }) : null;
   const live = isBrochureLive(brand.brochure);
   const canEdit = canAccessAdminRoute(ctx?.permissions || [], "/p-admin/admin-brands/[brandId]/brochure");
+  // lean → ObjectId/Date؛ باید ساده شود تا از مرزِ سرور→کلاینت رد شود.
+  const plain = (value) => JSON.parse(JSON.stringify(value ?? null));
 
   return (
     <div className="mx-auto max-w-[1440px]">
@@ -53,9 +55,19 @@ export default async function BrandBrochurePreview({ brandId }) {
         </div>
       </div>
 
+      {/* همان ظرفِ BrandBrochure (تا پیش‌نمایش دقیقاً شکلِ صفحه‌ی برند باشد)
+          ولی محتوایش از بوم می‌آید تا قابلِ ویرایش بماند. وضعیتِ انتشار در
+          بدنه‌ی ذخیره تکرار می‌شود، وگرنه PUT آن را به پیش‌نویس برمی‌گرداند. */}
       {blocks.length ? (
-        <div className="a-card overflow-hidden">
-          <BrandBrochure blocks={blocks} entities={entities} brandName={brand.title || brand.name || ""} />
+        <div className="a-card">
+          <div className="mx-auto max-w-[1100px] px-4 py-8 sm:px-8">
+            <PreviewCanvas
+              blocks={plain(blocks)}
+              entities={plain(entities)}
+              canEdit={canEdit}
+              endpoint={{ url: `/api/brands/${brandId}/brochure`, method: "PUT", extra: { status: brand.brochure?.status || "draft" } }}
+            />
+          </div>
         </div>
       ) : (
         <p className="a-card p-12 text-center text-sm text-gray-400">هنوز بلوکی به این بروشور اضافه نشده است.</p>

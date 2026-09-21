@@ -6,7 +6,7 @@ import ArticleNewsletterForm from "@/components/features/articles/ArticleNewslet
 import { PublicProductGrid, PublicUsedProductGrid } from "@/components/features/articles/PublicProductGrid";
 import { sanitizeArticleHtml } from "@/lib/sanitizeArticleHtml";
 import { sanitizeRichText } from "@/lib/sanitizeRichText";
-import { BLOCK_WIDTH_CLASS, blockWidth, groupBlockRows } from "@/lib/articleBlockLayout";
+import { BLOCK_ALIGN_SELF, BLOCK_JUSTIFY, BLOCK_WIDTH_CLASS, blockBoxStyle, blockWidth, groupBlockRows } from "@/lib/articleBlockLayout";
 import { imageBlockItems } from "@/lib/articleImageBlock";
 import { flattenArticleBlocks, isMergedBlock, mergedChildren, sanitizeMergedGrid } from "@/lib/articleBlockTypes";
 
@@ -35,10 +35,17 @@ function readableOn(hex) {
 function blockVisuals(block) {
   const style = block?.style || {};
   const gap = SPACING_CSS[style.spacing];
+  // فاصله‌ی دقیقِ هر طرف (چیدمان) بر پیش‌تنظیمِ بالا/پایین (استایل) اولویت دارد،
+  // وگرنه دو مقدار روی هم جمع می‌شدند و «۱rem از بالا» عملاً ۳.۲۵rem می‌شد.
+  const layout = block?.layout || {};
+  const spacing = gap === undefined ? null : {
+    ...(layout.mt === undefined ? { marginTop: gap } : null),
+    ...(layout.mb === undefined ? { marginBottom: gap } : null),
+  };
   return {
     // فاصله باید inline باشد: کلاسِ my-* تیلویند را نمی‌توان با کلاسِ دیگری
     // غلبه کرد، چون ترتیبِ استایل‌شیت تعیین‌کننده است نه ترتیبِ صفتِ class.
-    spacing: gap === undefined ? null : { marginTop: gap, marginBottom: gap },
+    spacing: spacing && Object.keys(spacing).length ? spacing : null,
     text: style.textColor || null,
     background: style.background || null,
     accent: style.accent || null,
@@ -259,7 +266,7 @@ function videoEmbed(url) {
   return null;
 }
 
-export default function ArticleBlockRenderer({ blocks = [], entities, preview = false }) {
+export default function ArticleBlockRenderer({ blocks = [], entities, preview = false, interactive = false }) {
   const maps = entities?.maps || {};
   const rate = entities?.rate || 1;
   const renderBlock = (block) => {
@@ -355,10 +362,39 @@ export default function ArticleBlockRenderer({ blocks = [], entities, preview = 
 
   // بلوک‌هایی که چیزی رندر نمی‌کنند پیش از گروه‌بندی کنار می‌روند تا نه جایی در
   // سطر بگیرند و نه دنباله‌ی کنارِ‌هم را بی‌دلیل بشکنند.
+  /**
+   * جعبه‌ی چیدمان دورِ بلوک — *فقط* وقتی چیزی برای اعمال هست. بلوکی که چیدمان
+   * ندارد هیچ wrapper اضافه‌ای نمی‌گیرد، پس خروجیِ محتوای موجود بایت‌به‌بایت
+   * همان قبلی است.
+   *
+   * در حالتِ interactive (پیش‌نمایشِ قابلِ ویرایش) همین wrapper شناسه‌ی بلوک را
+   * هم حمل می‌کند: کلیک روی هر فرزندی — از جمله فرزندِ یک بلوکِ ادغام‌شده — با
+   * closest به همین بیرونی‌ترین بلوک می‌رسد، پس انتخابِ بلوکِ ادغام‌شده هرگز به
+   * فرزندش نمی‌شکند.
+   */
+  const boxed = (block, node) => {
+    const vars = blockBoxStyle(block);
+    const justify = BLOCK_JUSTIFY[block?.layout?.alignX];
+    if (!vars && !justify && !interactive) return node;
+    const hooks = interactive ? { "data-block-id": block.id, "data-block-type": block.type } : null;
+    // دستگیره‌ی کشیدن باید *داخلِ* همین wrapper باشد تا با بلوک جابه‌جا شود.
+    // نویسه‌ی ⠿ است تا رندرِ عمومی به هیچ آیکونی وابسته نشود؛ استایلش در تمِ
+    // ادمین است و بیرونِ پیش‌نمایش اصلاً کلاسی برای نمایشش وجود ندارد.
+    const handle = interactive
+      ? <span key="handle" data-drag-handle="" className="preview-handle" aria-hidden="true">⠿</span>
+      : null;
+    // بدونِ چیدمان، wrapper فقط یک div خالیِ بی‌اثر است (نه flex) تا در حالتِ
+    // interactive هم پیش‌نمایش دقیقاً همان چیزی باشد که سایت نشان می‌دهد.
+    if (!vars && !justify) return <div key={block.id} {...hooks}>{handle}{node}</div>;
+    const style = { ...(vars || {}), ...(justify ? { "--bj": justify } : null) };
+    const keep = block?.layout?.keepOnMobile ? " a-block-box--keep" : "";
+    return <div key={block.id} className={`a-block-box${keep}`} style={style} {...hooks}>{handle}{node}</div>;
+  };
+
   const rendered = [];
   for (const block of normalizeHeadingLevels(blocks)) {
     const node = renderBlock(block);
-    if (node) rendered.push({ block, node });
+    if (node) rendered.push({ block, node: boxed(block, node) });
   }
 
   return groupBlockRows(rendered, (item) => blockWidth(item.block)).map((row) => {
@@ -368,7 +404,10 @@ export default function ArticleBlockRenderer({ blocks = [], entities, preview = 
     // زیرِ md اصلاً grid نیست، پس فرزندها بلوکی می‌مانند و طبیعی روی هم می‌چینند.
     return (
       <div key={`row-${row.blocks[0].block.id}`} className="md:grid md:grid-cols-6 md:items-start md:gap-x-6">
-        {row.blocks.map((item) => <div key={item.block.id} className={`min-w-0 ${BLOCK_WIDTH_CLASS[blockWidth(item.block)]}`}>{item.node}</div>)}
+        {row.blocks.map((item) => {
+          const alignSelf = BLOCK_ALIGN_SELF[item.block?.layout?.alignY];
+          return <div key={item.block.id} className={`min-w-0 ${BLOCK_WIDTH_CLASS[blockWidth(item.block)]}`} style={alignSelf ? { alignSelf } : undefined}>{item.node}</div>;
+        })}
       </div>
     );
   });

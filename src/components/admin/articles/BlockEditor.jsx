@@ -2,24 +2,22 @@
 
 import { matchesSearch } from "@/lib/search";
 import { useEffect, useId, useMemo, useRef, useState } from "react";
-import { createPortal } from "react-dom";
 import { DndContext, KeyboardSensor, PointerSensor, closestCenter, useSensor, useSensors } from "@dnd-kit/core";
 import { SortableContext, arrayMove, sortableKeyboardCoordinates, useSortable, verticalListSortingStrategy } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { FiChevronDown, FiChevronUp, FiColumns, FiCopy, FiDroplet, FiGrid, FiMenu, FiPlus, FiScissors, FiSearch, FiTrash2, FiX } from "react-icons/fi";
+import { FiChevronDown, FiChevronUp, FiColumns, FiCopy, FiDroplet, FiGrid, FiMenu, FiPlus, FiScissors, FiSearch, FiSettings, FiTrash2, FiX } from "react-icons/fi";
 import ImageUpload from "@/components/admin/ImageUpload";
 import ArticleEntityPicker from "./ArticleEntityPicker";
+import BlockLayoutModal from "./BlockLayoutModal";
+import { AdminPortal, inputClass } from "./blockUi";
 import RichTextField from "./RichTextField";
-import { ARTICLE_BLOCKS, BLOCK_ACCENT_HINTS, BLOCK_GROUPS, BLOCK_SPACING_LABELS, BLOCK_STYLE_LABELS, BLOCK_TABLE_VARIANT_LABELS, createArticleBlock } from "./blockRegistry";
-import { BLOCK_WIDTHS, blockWidth, insertBlockAt } from "@/lib/articleBlockLayout";
+import { ARTICLE_BLOCKS, BLOCK_GROUPS, createArticleBlock } from "./blockRegistry";
+import { insertBlockAt } from "@/lib/articleBlockLayout";
 import { confirmDelete } from "@/lib/swal";
 import { IMAGE_DISPLAY_HEIGHT, MAX_IMAGE_BLOCK_ITEMS, mirrorFirstImage, normalizeImageHref } from "@/lib/articleImageBlock";
 import { MAX_MERGED_CHILDREN, MAX_MERGE_DEPTH, MERGED_GRID_LIMITS, MERGED_GRID_REFERENCE, defaultMergedGrid, isMergedBlock, mergedChildren, mergedGridColumnsAt, sanitizeMergedGrid } from "@/lib/articleBlockTypes";
 import { cloneWithFreshIds, mergeBlocker, mergeBlocks, unmergeBlock } from "@/lib/articleBlockMerge";
 
-const BLOCK_WIDTH_LABELS = { full: "تمام عرض", "1/2": "نصف عرض", "1/3": "یک‌سوم عرض", "2/3": "دو‌سوم عرض" };
-
-const inputClass = "w-full px-3 py-2.5 border bg-gray-50 text-sm outline-none focus:bg-white focus:border-[var(--color-primary)] focus-visible:ring-2 focus-visible:ring-[var(--color-primary)]/20";
 
 // <button> عنصری «برچسب‌پذیر» است، پس <label> بدونِ for اولین دکمه‌ی داخلش را
 // برچسب می‌زند و مرورگر هاور و کلیکِ کلِ ناحیه را به همان دکمه می‌فرستد. فیلدِ
@@ -31,11 +29,6 @@ const fieldWrapper = (kind) => (["rich", "imageList", "imageOverlay", "mergedBlo
 const WHOLE_DATA_KINDS = ["table", "rich", "imageList"];
 const PATCH_KINDS = ["table", "image", "rich", "imageList"];
 
-// مودال‌ها به body می‌روند: هر نیایی با transform یا backdrop-filter (مثلِ کارتِ
-// مینی‌مقاله با backdrop-blur) بلوکِ دربرگیرنده‌ی position:fixed می‌شود و مودال را
-// در خودش حبس می‌کند. متغیرهای تمِ ادمین روی .admin-scope تعریف شده‌اند، پس
-// پورتال هم داخلِ همان کلاس می‌نشیند؛ `contents` نمی‌گذارد پس‌زمینه‌ی آن رنگ شود.
-const AdminPortal = ({ children }) => createPortal(<div className="admin-scope contents" dir="rtl">{children}</div>, document.body);
 
 function FaqEditor({ value = [], onChange }) {
   const items = value.length ? value : [{ question: "", answer: "" }];
@@ -151,34 +144,60 @@ function ColorControl({ label, hint, value, onChange }) {
 }
 
 /**
- * کنترل‌های ظاهرِ بلوک. حذفِ آخرین مقدار، کلِ style را undefined می‌کند تا بلوک
- * دقیقاً به حالتِ «بدونِ استایل» برگردد و مثل قبل رندر شود.
+ * دکمه‌ی «ظاهر و چیدمان بلوک». خودِ کنترل‌ها در BlockLayoutModal هستند — همان
+ * مودالی که ویرایشگرِ پیش‌نمایش هم باز می‌کند، پس یک تنظیم در دو جا رفتار
+ * متفاوتی ندارد. مودال فقط وقتی باز است mount می‌شود، پس وضعیتش هرگز کهنه نیست.
  */
-function BlockStylePanel({ type, style, layout, onChange, onLayout }) {
-  const keys = ARTICLE_BLOCKS[type]?.styleKeys || [];
-  const current = style || {};
-  const width = blockWidth({ layout });
-  const set = (key, value) => {
-    const next = { ...current };
-    if (value === undefined) delete next[key];
-    else next[key] = value;
-    onChange(Object.keys(next).length ? next : undefined);
-  };
-  const customised = Object.keys(current).length + (width === "full" ? 0 : 1);
-  // بالای بلوک می‌نشیند، پس خطِ جداکننده زیرِ آن است نه بالایش.
-  return <details className="border-b pb-3" style={{ borderColor: "var(--admin-border)" }}>
-    <summary className="flex cursor-pointer items-center gap-2 text-xs font-bold text-gray-600"><FiDroplet className="text-[var(--color-primary)]" />ظاهر و چیدمان بلوک{customised ? <span className="rounded-full bg-[var(--color-primary-soft)] px-2 py-0.5 text-[10px] text-[var(--color-primary)]">{customised.toLocaleString("fa-IR")} تنظیم</span> : null}</summary>
-    <div className="mt-3 space-y-3">
-      <label className="block"><span className="mb-1 block text-[11px] font-bold text-gray-600">عرض بلوک</span><select value={width} onChange={(e) => onLayout(e.target.value === "full" ? undefined : { width: e.target.value })} className={inputClass}>{BLOCK_WIDTHS.map((value) => <option key={value} value={value}>{BLOCK_WIDTH_LABELS[value]}</option>)}</select><span className="mt-1 block text-[10px] text-gray-400">بلوک‌های کنارِ هم در دسکتاپ یک ردیف می‌شوند و در موبایل زیر هم قرار می‌گیرند.</span></label>
-      {keys.includes("spacing") ? <label className="block"><span className="mb-1 block text-[11px] font-bold text-gray-600">{BLOCK_STYLE_LABELS.spacing}</span><select value={current.spacing || "none"} onChange={(e) => set("spacing", e.target.value === "none" ? undefined : e.target.value)} className={inputClass}>{Object.entries(BLOCK_SPACING_LABELS).map(([value, text]) => <option key={value} value={value}>{text}</option>)}</select></label> : null}
-      {keys.includes("tableVariant") ? <label className="block"><span className="mb-1 block text-[11px] font-bold text-gray-600">{BLOCK_STYLE_LABELS.tableVariant}</span><select value={current.tableVariant || "default"} onChange={(e) => set("tableVariant", e.target.value === "default" ? undefined : e.target.value)} className={inputClass}>{Object.entries(BLOCK_TABLE_VARIANT_LABELS).map(([value, text]) => <option key={value} value={value}>{text}</option>)}</select></label> : null}
-      {["textColor", "background", "accent"].filter((key) => keys.includes(key)).map((key) => <ColorControl key={key} label={BLOCK_STYLE_LABELS[key]} hint={key === "accent" ? BLOCK_ACCENT_HINTS[type] : null} value={current[key]} onChange={(value) => set(key, value)} />)}
-      {customised ? <button type="button" onClick={() => { onChange(undefined); onLayout(undefined); }} className="text-[11px] font-bold text-gray-500 hover:text-red-600">بازگشت به حالت پیش‌فرض</button> : null}
-    </div>
-  </details>;
+function BlockStylePanel({ type, style, layout, onApply }) {
+  const [open, setOpen] = useState(false);
+  // شمارشِ تغییرها روی خودِ داده است، نه روی یک پرچمِ جدا، تا با «بازگشت به حالت
+  // پیش‌فرض» خودبه‌خود صفر شود.
+  const customised = Object.keys(style || {}).length + Object.keys(layout || {}).length;
+  return <div className="border-b pb-3" style={{ borderColor: "var(--admin-border)" }}>
+    <button type="button" onClick={() => setOpen(true)} className="flex w-full items-center gap-2 text-xs font-bold text-gray-600 hover:text-[var(--color-primary)]">
+      <FiDroplet className="text-[var(--color-primary)]" />ظاهر و چیدمان بلوک
+      {customised ? <span className="rounded-full bg-[var(--color-primary-soft)] px-2 py-0.5 text-[10px] font-black text-[var(--color-primary)]">{customised.toLocaleString("fa-IR")}</span> : null}
+      <FiSettings className="mr-auto text-gray-400" aria-hidden="true" />
+    </button>
+    {open ? <BlockLayoutModal
+      type={type}
+      style={style}
+      layout={layout}
+      onApply={onApply}
+      onClose={() => setOpen(false)}
+    /> : null}
+  </div>;
 }
 
 const blockDomId = (id) => `article-block-${id}`;
+
+/**
+ * فیلدهای محتوای یک بلوک. هم کارتِ ویرایشگر از آن استفاده می‌کند هم مودالِ
+ * ویرایش در پیش‌نمایش — یعنی هر نوعِ بلوکی که اینجا کار می‌کند، آنجا هم بدونِ
+ * کارِ اضافه کار می‌کند (از جمله بلوکِ ادغام‌شده، که فیلدش خودش یک BlockEditor است).
+ */
+export function BlockFields({ block, onUpdate, onStyle }) {
+  const definition = ARTICLE_BLOCKS[block.type];
+  const setAlign = (align) => {
+    const next = { ...(block.style || {}) };
+    if (align) next.align = align; else delete next.align;
+    onStyle(Object.keys(next).length ? next : undefined);
+  };
+  if (!definition?.fields.length) return <p className="text-xs text-gray-400 text-center py-3">این بلوک تنظیمات دیگری ندارد.</p>;
+  return definition.fields.map((field) => {
+    const Wrapper = fieldWrapper(field.kind);
+    return <Wrapper key={field.key} className="block">
+      <span className="block text-xs font-bold mb-1.5 text-gray-600">{field.label}</span>
+      <BlockField
+        field={field}
+        value={WHOLE_DATA_KINDS.includes(field.kind) ? block.data : block.data?.[field.key]}
+        onChange={(next) => onUpdate(PATCH_KINDS.includes(field.kind) ? next : { [field.key]: next })}
+        align={block.style?.align}
+        onAlign={setAlign}
+      />
+    </Wrapper>;
+  });
+}
 
 function BlockField({ field, value, onChange, align, onAlign }) {
   if (field.kind === "rich") return <RichTextField value={value} onChange={onChange} align={align} onAlign={onAlign} singleLine={field.singleLine} />;
@@ -320,19 +339,12 @@ function blockSummary(block) {
   return "";
 }
 
-function SortableBlock({ block, index, total, onUpdate, onStyle, onLayout, onRemove, onDuplicate, onMove, selectable = false, selected = false, onSelect, onUnmerge, open = true, onToggle }) {
+function SortableBlock({ block, index, total, onUpdate, onStyle, onAppearance, onRemove, onDuplicate, onMove, selectable = false, selected = false, onSelect, onUnmerge, open = true, onToggle }) {
   const [gridOpen, setGridOpen] = useState(false);
   const [moveOpen, setMoveOpen] = useState(false);
   const definition = ARTICLE_BLOCKS[block.type];
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: block.id });
   const Icon = definition?.icon || FiMenu;
-  // چینش از نوارِ ابزارِ متن تنظیم می‌شود ولی جایش همان style بلوک است (خاصیتی
-  // سطحِ خط است، نه سطحِ کاراکتر)؛ حذفِ آخرین کلید، کلِ style را برمی‌دارد.
-  const setAlign = (align) => {
-    const next = { ...(block.style || {}) };
-    if (align) next.align = align; else delete next.align;
-    onStyle(Object.keys(next).length ? next : undefined);
-  };
   // شناسه‌ی DOM از id پایدارِ بلوک ساخته می‌شود نه از اندیس — اندیس با هر درج و
   // جابه‌جایی عوض می‌شود. tabIndex هم هست تا بشود بعد از ساخت، فوکوس را واقعاً
   // داخلِ بلوکِ تازه برد (نه فقط اسکرول).
@@ -365,7 +377,7 @@ function SortableBlock({ block, index, total, onUpdate, onStyle, onLayout, onRem
         <button type="button" onClick={onToggle} aria-expanded={open} className="p-1.5 text-gray-400 focus-visible:outline-2 focus-visible:outline-[var(--color-primary)]" aria-label="باز و بسته کردن">{open ? <FiChevronUp /> : <FiChevronDown />}</button>
       </div>
     </header>
-    {open ? <div id={`${blockDomId(block.id)}-body`} className="p-4 space-y-4"><BlockStylePanel type={block.type} style={block.style} layout={block.layout} onChange={onStyle} onLayout={onLayout} />{definition?.fields.length ? definition.fields.map((field) => { const Wrapper = fieldWrapper(field.kind); return <Wrapper key={field.key} className="block"><span className="block text-xs font-bold mb-1.5 text-gray-600">{field.label}</span><BlockField field={field} value={WHOLE_DATA_KINDS.includes(field.kind) ? block.data : block.data?.[field.key]} onChange={(next) => onUpdate(PATCH_KINDS.includes(field.kind) ? next : { [field.key]: next })} align={block.style?.align} onAlign={setAlign} /></Wrapper>; }) : <p className="text-xs text-gray-400 text-center py-3">این بلوک تنظیمات دیگری ندارد.</p>}</div> : null}
+    {open ? <div id={`${blockDomId(block.id)}-body`} className="p-4 space-y-4"><BlockStylePanel type={block.type} style={block.style} layout={block.layout} onApply={onAppearance} /><BlockFields block={block} onUpdate={onUpdate} onStyle={onStyle} /></div> : null}
     {moveOpen ? <MoveDialog index={index} total={total} onMove={onMove} onClose={() => setMoveOpen(false)} /> : null}
     {gridOpen ? <MergedLayoutModal grid={block.data?.grid} count={mergedChildren(block).length} onApply={(grid) => { onUpdate({ grid }); setGridOpen(false); }} onClose={() => setGridOpen(false)} /> : null}
   </section>;
@@ -431,10 +443,19 @@ export default function BlockEditor({ value = [], onChange, libraryOpen: openPro
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 6 } }), useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }));
   // مقدارِ خالی کلید را کاملاً حذف می‌کند (نه اینکه شیءِ خالی بگذارد) تا بلوک
   // واقعاً به حالتِ «بدونِ استایل/چیدمان» برگردد و مثل قبل رندر شود.
-  const setBlockKey = (id, key, value_) => onChange(latest.current.map((item) => {
+  const setBlockKey = (id, key, value_) => setBlockKeys(id, { [key]: value_ });
+  /**
+   * چند کلید با *یک* به‌روزرسانی. دو فراخوانیِ پشتِ‌سرِ‌هم کار نمی‌کند: latest
+   * در یک effect پر می‌شود، یعنی تا پیش از رندرِ بعدی هنوز آرایه‌ی قبلی است و
+   * فراخوانیِ دوم، تغییرِ اولی را بی‌صدا دور می‌ریزد. «ظاهر و چیدمان» دقیقاً
+   * همین است: هم style را عوض می‌کند هم layout را.
+   */
+  const setBlockKeys = (id, patch) => onChange(latest.current.map((item) => {
     if (item.id !== id) return item;
     const next = { ...item };
-    if (value_) next[key] = value_; else delete next[key];
+    for (const [key, value_] of Object.entries(patch)) {
+      if (value_) next[key] = value_; else delete next[key];
+    }
     return next;
   }));
   const move = (from, to) => { if (to < 0 || to >= value.length) return; onChange(arrayMove(value, from, to)); };
@@ -496,7 +517,7 @@ export default function BlockEditor({ value = [], onChange, libraryOpen: openPro
       </button>
     </div> : null}
     <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={({ active, over }) => { if (!over || active.id === over.id) return; move(value.findIndex((item) => item.id === active.id), value.findIndex((item) => item.id === over.id)); }}>
-      <SortableContext items={value.map((item) => item.id)} strategy={verticalListSortingStrategy}>{value.map((block, index) => <SortableBlock key={block.id} block={block} index={index} total={value.length} onUpdate={(patch) => onChange(latest.current.map((item) => item.id === block.id ? { ...item, data: { ...item.data, ...patch } } : item))} onStyle={(style) => setBlockKey(block.id, "style", style)} onLayout={(layout) => setBlockKey(block.id, "layout", layout)} onRemove={() => remove(block)} onDuplicate={() => onChange([...value.slice(0, index + 1), cloneWithFreshIds(block), ...value.slice(index + 1)])} onMove={move} open={!collapsed.has(block.id)} onToggle={() => toggleOpen(block.id)} selectable selected={selectedIds.includes(block.id)} onSelect={() => toggleSelected(block.id)} onUnmerge={isMergedBlock(block) ? () => onChange(unmergeBlock(latest.current, block.id)) : undefined} />)}</SortableContext>
+      <SortableContext items={value.map((item) => item.id)} strategy={verticalListSortingStrategy}>{value.map((block, index) => <SortableBlock key={block.id} block={block} index={index} total={value.length} onUpdate={(patch) => onChange(latest.current.map((item) => item.id === block.id ? { ...item, data: { ...item.data, ...patch } } : item))} onStyle={(style) => setBlockKey(block.id, "style", style)} onAppearance={(next) => setBlockKeys(block.id, { style: next.style, layout: next.layout })} onRemove={() => remove(block)} onDuplicate={() => onChange([...value.slice(0, index + 1), cloneWithFreshIds(block), ...value.slice(index + 1)])} onMove={move} open={!collapsed.has(block.id)} onToggle={() => toggleOpen(block.id)} selectable selected={selectedIds.includes(block.id)} onSelect={() => toggleSelected(block.id)} onUnmerge={isMergedBlock(block) ? () => onChange(unmergeBlock(latest.current, block.id)) : undefined} />)}</SortableContext>
     </DndContext>
     <button type="button" onClick={() => setLibraryOpen(true)} className="w-full flex items-center justify-center gap-2 py-3 border border-dashed text-sm font-bold text-[var(--color-primary)] hover:bg-[var(--color-primary-soft)]" style={{ borderColor: "var(--color-primary)", borderRadius: "var(--admin-radius)" }}><FiPlus /> افزودن بلوک</button>
     {value.length === 0 ? <p className="text-center text-xs text-gray-400">برای شروع اولین بلوک را اضافه کنید.</p> : null}

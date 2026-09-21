@@ -446,3 +446,38 @@
   outline: none !important;
   box-shadow: none !important;
 }
+
+/* ─── جعبه‌ی چیدمانِ بلوک (عرضِ درصدی، فاصله‌ی هر طرف، جای‌گیری) ───
+   مقادیر از inline style می‌آیند (متغیرهای --b*)، ولی *کِی* اعمال شوند اینجا
+   تصمیم گرفته می‌شود — چون media query در inline style ممکن نیست. همین مرز،
+   «چیدمان» را از «واکنش‌گرایی» جدا نگه می‌دارد.
+
+   پیش‌فرضِ موبایل تمام‌عرض است: درصد فقط از md به بالا اعمال می‌شود، مگر اینکه
+   ادمین صریحاً «در موبایل هم حفظ شود» را بزند. نبودِ این قاعده یعنی یک بلوکِ ۳۰٪
+   روی گوشی به ستونی باریک و ناخوانا تبدیل شود. */
+.a-block-box {
+  display: flex;
+  justify-content: var(--bj, flex-start);
+  margin-top: var(--bt, 0);
+  margin-bottom: var(--bb, 0);
+}
+.a-block-box > * {
+  width: 100%;
+}
+/* عرضِ افقی از عرضِ موجود کم می‌شود (--bmx) تا بلوکِ ۱۰۰٪ با حاشیه‌ی کناری هم
+   هرگز سرریز نکند؛ بدونِ حاشیه‌ی منفی و بدونِ اسکرولِ افقی. */
+@media (min-width: 768px) {
+  .a-block-box > * {
+    width: var(--bw, 100%);
+    max-width: calc(100% - var(--bmx, 0rem));
+    margin-left: var(--bl, 0);
+    margin-right: var(--br, 0);
+  }
+}
+/* «در موبایل هم حفظ شود»: همان قاعده، بدونِ شرطِ breakpoint. */
+.a-block-box--keep > * {
+  width: var(--bw, 100%);
+  max-width: calc(100% - var(--bmx, 0rem));
+  margin-left: var(--bl, 0);
+  margin-right: var(--br, 0);
+}

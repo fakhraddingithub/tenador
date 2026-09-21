@@ -1,6 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import {
+  blockBoxStyle,
   blockWidth,
   groupBlockRows,
   insertBlockAt,
@@ -151,4 +152,55 @@ test("درج در فهرستِ خالی و تک‌بلوکی درست کار م�
   const one = b();
   assert.deepEqual(insertBlockAt([one], fresh, 1).map((x) => x.id), [fresh.id, one.id]);
   assert.deepEqual(insertBlockAt([one], fresh, 2).map((x) => x.id), [one.id, fresh.id]);
+});
+
+// ——— جعبه‌ی بلوک: عرضِ درصدی، فاصله‌ی هر طرف، جای‌گیری ———————————————————
+
+test("درصدِ عرض کلَمپ و گِرد می‌شود و ۱۰۰ ذخیره نمی‌شود", () => {
+  assert.deepEqual(sanitizeArticleBlockLayout({ widthPct: 60 }), { widthPct: 60 });
+  assert.deepEqual(sanitizeArticleBlockLayout({ widthPct: "45" }), { widthPct: 45 });
+  assert.deepEqual(sanitizeArticleBlockLayout({ widthPct: 1 }), { widthPct: 5 });
+  assert.deepEqual(sanitizeArticleBlockLayout({ widthPct: 400 }), undefined, "۱۰۰ پیش‌فرض است، پس چیزی نمی‌ماند");
+  assert.equal(sanitizeArticleBlockLayout({ widthPct: 100 }), undefined);
+  assert.equal(sanitizeArticleBlockLayout({ widthPct: "abc" }), undefined);
+});
+
+test("فاصله‌ها به گامِ ۰٫۲۵ گِرد می‌شوند و صفر معنادار است", () => {
+  assert.deepEqual(sanitizeArticleBlockLayout({ mt: 1.3 }), { mt: 1.25 });
+  assert.deepEqual(sanitizeArticleBlockLayout({ mb: 0 }), { mb: 0 }, "صفر یعنی «پیش‌تنظیم را خنثی کن»، نه «تنظیم نشده»");
+  assert.deepEqual(sanitizeArticleBlockLayout({ ml: 99 }), { ml: 8 });
+  assert.deepEqual(sanitizeArticleBlockLayout({ mr: -3 }), { mr: 0 }, "فاصله‌ی منفی هرگز ذخیره نمی‌شود");
+  assert.equal(sanitizeArticleBlockLayout({ mt: null }), undefined);
+});
+
+test("جای‌گیریِ پیش‌فرض ذخیره نمی‌شود، بقیه می‌ماند", () => {
+  assert.equal(sanitizeArticleBlockLayout({ alignX: "right", alignY: "top" }), undefined);
+  assert.deepEqual(sanitizeArticleBlockLayout({ alignX: "center" }), { alignX: "center" });
+  assert.deepEqual(sanitizeArticleBlockLayout({ alignY: "bottom" }), { alignY: "bottom" });
+  assert.equal(sanitizeArticleBlockLayout({ alignX: "justify", alignY: "middle" }), undefined);
+});
+
+test("keepOnMobile فقط با true دقیق ذخیره می‌شود", () => {
+  assert.deepEqual(sanitizeArticleBlockLayout({ widthPct: 50, keepOnMobile: true }), { widthPct: 50, keepOnMobile: true });
+  assert.deepEqual(sanitizeArticleBlockLayout({ widthPct: 50, keepOnMobile: "yes" }), { widthPct: 50 });
+});
+
+test("عرضِ ستونیِ قدیمی و جعبه‌ی جدید کنارِ هم می‌مانند", () => {
+  assert.deepEqual(
+    sanitizeArticleBlockLayout({ width: "1/2", widthPct: 80, alignX: "center", mt: 2 }),
+    { width: "1/2", widthPct: 80, mt: 2, alignX: "center" },
+  );
+});
+
+test("blockBoxStyle برای بلوکِ بدونِ جعبه null می‌دهد", () => {
+  for (const block of [undefined, {}, { layout: {} }, { layout: { width: "1/2" } }, { layout: { alignX: "center" } }]) {
+    assert.equal(blockBoxStyle(block), null, JSON.stringify(block));
+  }
+});
+
+test("blockBoxStyle متغیرهای CSS می‌سازد و فاصله‌ی افقی را از عرض کم می‌کند", () => {
+  assert.deepEqual(blockBoxStyle({ layout: { widthPct: 60 } }), { "--bw": "60%" });
+  assert.deepEqual(blockBoxStyle({ layout: { mt: 1.5, mb: 0 } }), { "--bt": "1.5rem", "--bb": "0rem" });
+  // ۱۰۰٪ با حاشیه‌ی کناری: بدونِ --bmx سرریز می‌کرد.
+  assert.deepEqual(blockBoxStyle({ layout: { ml: 1, mr: 2 } }), { "--bl": "1rem", "--br": "2rem", "--bmx": "3rem" });
 });

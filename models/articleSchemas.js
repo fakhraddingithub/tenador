@@ -41,8 +41,23 @@ export const ArticleBlockStyleSchema = new mongoose.Schema(
 );
 
 // چیدمانِ اختیاری. "full" ذخیره نمی‌شود؛ نبودِ این کلید یعنی تمام‌عرض.
+//
+// هر کلیدی که اینجا اعلام نشود را mongoose در حالتِ strict بی‌صدا دور می‌ریزد —
+// یعنی فیلدِ جدیدِ چیدمان باید *هم* در sanitizeArticleBlockLayout باشد هم اینجا.
+// بازه‌ها عمداً همان بازه‌های آن تابع‌اند (BLOCK_WIDTH_PCT / BLOCK_MARGIN_REM).
+const marginRem = { type: Number, min: 0, max: 8 };
 export const ArticleBlockLayoutSchema = new mongoose.Schema(
-  { width: { type: String, enum: ["1/2", "1/3", "2/3"] } },
+  {
+    width: { type: String, enum: ["1/2", "1/3", "2/3"] },
+    widthPct: { type: Number, min: 5, max: 100 },
+    mt: marginRem,
+    mb: marginRem,
+    ml: marginRem,
+    mr: marginRem,
+    alignX: { type: String, enum: ["left", "center", "right"] },
+    alignY: { type: String, enum: ["top", "center", "bottom"] },
+    keepOnMobile: { type: Boolean },
+  },
   { _id: false, minimize: false },
 );
 

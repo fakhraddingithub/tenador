@@ -503,6 +503,77 @@ Run it right after deploying; until then, untouched blocks render flush.
 npm run test:block-spacing
 ```
 
+### Block layout box, and the editable Preview
+
+Two features, one rule: **a block with no layout keys renders exactly as before, with no
+extra wrapper at all.** Everything below is additive and needs no migration.
+
+**The layout box** (`block.layout`) now carries more than the original row span:
+
+| key | meaning |
+|---|---|
+| `width` | `1/2`·`1/3`·`2/3` — the block's *share of a row*, unchanged; still what `groupBlockRows` groups on |
+| `widthPct` | 5–100 — how much of that share the block fills |
+| `mt`/`mb`/`ml`/`mr` | per-side margin in **rem** (0–8, quarter steps) |
+| `alignX` / `alignY` | where the box sits horizontally / vertically |
+| `keepOnMobile` | keep the width and side margins on phones too |
+
+`width` and `widthPct` are deliberately separate knobs, not one: the first decides whether
+blocks sit side by side, the second decides the size *inside* that slot — so an existing
+two-column row keeps working while a full-width image can still be 60% and centred.
+
+Rules that are load-bearing:
+
+- **Values become CSS variables; the stylesheet decides when they apply.** `blockBoxStyle`
+  emits `--bw`/`--bt`/`--bl`/… and `.a-block-box` (globals.css) applies them from `md` up
+  only — an inline style cannot carry a media query, and that split is what keeps
+  "layout" and "responsive" from being the same decision. `keepOnMobile` switches to the
+  unconditional rule.
+- **Horizontal margins are subtracted from the width, never added on top**
+  (`max-width: calc(100% - var(--bmx))`). A 100% block with side margins therefore cannot
+  overflow — no negative margins anywhere.
+- **An explicit `mt`/`mb` replaces the `style.spacing` preset for that side** instead of
+  stacking with it, otherwise "1rem from the top" silently rendered as 3.25rem.
+- **A new layout key must be added in *three* places** — `sanitizeArticleBlockLayout`, the
+  modal, and `ArticleBlockLayoutSchema`. Mongoose strict mode drops undeclared keys
+  silently, which is exactly how `widthPct` once passed every layer and still saved
+  nothing. `tests/blockLayoutBox.test.mjs` fails if the sanitizer keeps a key the schema
+  does not declare.
+- `alignY` is applied to the **row cell**, the only place a block has a row to align in;
+  on a full-width block it is a no-op and the modal says so.
+
+The controls live in **`BlockLayoutModal`** (Size / Spacing / Horizontal / Vertical /
+Responsive / Colours), opened both from the block card and from the Preview — one modal,
+so a setting cannot behave differently in the two places. It sanitizes with the *server's*
+function before handing values back, so what the modal shows is what the database stores.
+
+**The Preview is an editor.** `PreviewCanvas` (client) wraps the *same public*
+`ArticleBlockRenderer` — passing `interactive` makes the renderer wrap each **top-level**
+block in a `data-block-id` element, and every interaction hangs off that one hook:
+
+- double-click → that block's modal (content fields + layout), changes visible instantly;
+- drag the grip → reorder; only the array order changes, ids and data move untouched;
+- click → select. Hover/selection/drop feedback is pure CSS on data attributes, so it
+  cannot drift out of position the way a measured floating overlay does.
+- **Merged blocks are one unit for free**: only top-level blocks carry the hook, so
+  `closest("[data-block-id]")` from any child resolves to the merged block itself.
+- Drag needs 6px of movement before it starts, so a double-click never becomes a drag and
+  a drag never opens the modal.
+
+Saving posts the whole array to the page's existing endpoint (`PATCH /api/admin/articles/:id`
+or `PUT /api/brands/:id/brochure`) and then `router.refresh()`es, so server-resolved
+entities catch up without a page reload. Both preview routes stay server components for
+auth and data; `canEdit` is a separate permission, and a read-only admin still sees the old
+static preview.
+
+The mobile toggle narrows the canvas to 390px and switches the box rule to its phone
+behaviour; note it is **approximate** — the blocks' own `md:` classes are media queries and
+still read the real window width.
+
+```bash
+npm run test:block-layout
+```
+
 ### Slug System
 
 `SlugRegistery` model maps dynamic URL segments (sport/category/brand slugs) to their entity types. `actions/registerSlug.js` is a server action that creates entries on entity creation. This powers ISR revalidation — when a slug is revalidated, the correct entity page is rebuilt.

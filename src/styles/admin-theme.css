@@ -157,3 +157,84 @@
   .admin-scope .admin-aside-mobile { width: 280px !important; }
   .admin-scope .admin-main-mobile { margin-right: 0 !important; }
 }
+
+/* ─── پیش‌نمایشِ قابلِ ویرایش ───
+   بازخوردِ دیداری کاملاً CSS است و روی data-attributeهایی می‌نشیند که خودِ
+   رندرکننده‌ی عمومی (با پرچمِ interactive) گذاشته — پس نه لایه‌ی شناوری هست که
+   با تغییرِ چیدمان جا بماند، نه اندازه‌گیری‌ای که با اسکرول خراب شود. */
+.admin-scope .preview-canvas [data-block-id] {
+  position: relative;
+}
+/* خطِ دور، خودِ بلوک را می‌گیرد نه ظرفش: بلوکِ ۵۰٪ باید ۵۰٪ هم هایلایت شود. */
+.admin-scope .preview-canvas [data-block-id]:hover > :not(.preview-handle) {
+  outline: 1px dashed var(--color-primary);
+  outline-offset: 3px;
+}
+.admin-scope .preview-canvas [data-block-id][data-selected="true"] > :not(.preview-handle) {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 3px;
+}
+/* خطِ درج: بالا یا پایینِ بلوکی که زیرِ نشانگر است. */
+.admin-scope .preview-canvas [data-block-id][data-drop]::after {
+  content: "";
+  position: absolute;
+  inset-inline: 0;
+  height: 3px;
+  border-radius: 2px;
+  background: var(--color-primary);
+  z-index: 6;
+}
+.admin-scope .preview-canvas [data-block-id][data-drop="before"]::after {
+  top: -2px;
+}
+.admin-scope .preview-canvas [data-block-id][data-drop="after"]::after {
+  bottom: -2px;
+}
+/* دستگیره فقط روی هاور/انتخاب دیده می‌شود تا پیش‌نمایش شلوغ نشود.
+   touch-action: none لازم است، وگرنه مرورگر لمسِ روی دستگیره را برای اسکرول
+   برمی‌دارد و کشیدن در موبایل نیمه‌کاره رها می‌شود. */
+.admin-scope .preview-canvas .preview-handle {
+  position: absolute;
+  top: 2px;
+  inset-inline-end: 2px;
+  z-index: 7;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  border-radius: var(--admin-radius);
+  background: var(--color-primary);
+  color: #fff;
+  font-size: 13px;
+  line-height: 1;
+  cursor: grab;
+  opacity: 0;
+  touch-action: none;
+  transition: opacity .15s ease;
+}
+.admin-scope .preview-canvas [data-block-id]:hover > .preview-handle,
+.admin-scope .preview-canvas [data-block-id][data-selected="true"] > .preview-handle {
+  opacity: 1;
+}
+.admin-scope .preview-canvas .preview-handle:active {
+  cursor: grabbing;
+}
+/* روی دستگاهِ لمسی هاوری وجود ندارد، پس دستگیره همیشه دیده می‌شود. */
+@media (hover: none) {
+  .admin-scope .preview-canvas .preview-handle {
+    opacity: 1;
+  }
+}
+
+/* حالتِ «موبایل» در پیش‌نمایش عرضِ *ظرف* را کم می‌کند، ولی media queryها با عرضِ
+   *پنجره* سنجیده می‌شوند و همچنان دسکتاپ می‌مانند. برای همین قاعده‌ی جعبه‌ی
+   چیدمان اینجا صریحاً به حالتِ موبایل برگردانده می‌شود تا نتیجه‌ی واقعیِ گوشی
+   دیده شود. این قاعده فقط داخلِ پیش‌نمایشِ ادمین وجود دارد و به رندرِ سایت
+   دست نمی‌زند. */
+.admin-scope .preview-canvas[data-viewport="mobile"] .a-block-box:not(.a-block-box--keep) > * {
+  width: 100%;
+  max-width: 100%;
+  margin-left: 0;
+  margin-right: 0;
+}

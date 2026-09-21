@@ -116,7 +116,10 @@ test("renderer: plain blocks keep the legacy markup path; links open in the same
 
 test("editor: block library and move dialog are portaled into an admin-scope wrapper", async () => {
   const src = await readFile(new URL("../src/components/admin/articles/BlockEditor.jsx", import.meta.url), "utf8");
-  assert.match(src, /createPortal\(<div className="admin-scope contents"/);
+  // AdminPortal حالا مشترک است (ویرایشگرِ پیش‌نمایش هم همان را باز می‌کند)، پس
+  // تعریفش در blockUi است؛ قاعده همان است: پورتال داخلِ .admin-scope می‌نشیند.
+  const ui = await readFile(new URL("../src/components/admin/articles/blockUi.jsx", import.meta.url), "utf8");
+  assert.match(ui, /createPortal\(<div className="admin-scope contents"/);
   for (const name of ["function MoveDialog", "function BlockLibrary"]) {
     const start = src.indexOf(name);
     const body = src.slice(start, src.indexOf("\nfunction ", start + 1) === -1 ? undefined : src.indexOf("\nfunction ", start + 1));
