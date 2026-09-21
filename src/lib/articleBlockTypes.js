@@ -63,19 +63,32 @@ export function flattenArticleBlocks(blocks = []) {
 //  - بدونِ fit: چیدمانِ columns × rows حفظ می‌شود؛ آیتم‌هایی که در rows ردیف جا
 //    نمی‌شوند به کنار می‌روند و سطر به اسلایدرِ افقی تبدیل می‌شود.
 export const MERGED_GRID_BREAKPOINTS = ["desktop", "mobile"];
-export const MERGED_GRID_LIMITS = { columns: [1, 12], rows: [1, 12], minWidth: [0, 800] };
+export const MERGED_GRID_LIMITS = { columns: [1, 12], rows: [1, 12], minWidth: [0, 800], gap: [0, 8] };
+
+// فاصله‌ی بینِ خانه‌ها به rem، جدا برای هر breakpoint. **پیش‌فرض صفر است**: بلوکِ
+// ادغام‌شده از خودش هیچ فاصله‌ای اضافه نمی‌کند و فرزندها چسبیده رندر می‌شوند مگر
+// اینکه ادمین صریحاً فاصله بگذارد. گامِ ۰٫۲۵ همان گامِ فاصله‌های بلوک است.
+export const MERGED_GRID_GAP_STEP = 0.25;
 
 const clampInt = (value, [min, max], fallback) => {
   const number = Math.round(Number(value));
   return Number.isFinite(number) ? Math.min(max, Math.max(min, number)) : fallback;
 };
 
+const clampGap = (value) => {
+  const [min, max] = MERGED_GRID_LIMITS.gap;
+  const number = Number(value);
+  if (!Number.isFinite(number)) return 0;
+  const stepped = Math.round(number / MERGED_GRID_GAP_STEP) * MERGED_GRID_GAP_STEP;
+  return Math.min(max, Math.max(min, Number(stepped.toFixed(4))));
+};
+
 /** پیش‌فرضِ پنجره‌ی تنظیمات برای بلوکی که هنوز grid ندارد. */
 export function defaultMergedGrid(count) {
   const columns = Math.min(Math.max(count, 1), MERGED_GRID_LIMITS.columns[1]);
   return {
-    desktop: { columns, rows: 1, fit: true, minWidth: 0 },
-    mobile: { columns: Math.min(columns, 2), rows: Math.max(1, Math.ceil(count / Math.min(columns, 2))), fit: true, minWidth: 0 },
+    desktop: { columns, rows: 1, fit: true, minWidth: 0, gap: 0 },
+    mobile: { columns: Math.min(columns, 2), rows: Math.max(1, Math.ceil(count / Math.min(columns, 2))), fit: true, minWidth: 0, gap: 0 },
   };
 }
 
@@ -91,14 +104,18 @@ export function sanitizeMergedGrid(value) {
       rows: clampInt(source.rows, MERGED_GRID_LIMITS.rows, 1),
       fit: source.fit === true,
       minWidth: clampInt(source.minWidth ?? 0, MERGED_GRID_LIMITS.minWidth, 0),
+      // نبودِ کلید یعنی صفر — محتوای موجود بدونِ مهاجرت معتبر می‌ماند و فاصله‌ی
+      // پیش‌فرضِ قبلی را scripts/pinMergedGap.mjs صریح می‌کند.
+      gap: clampGap(source.gap ?? 0),
     };
   }
   return grid;
 }
 
 // عرضِ مرجع برای پیش‌نمایشِ مودال — همان فرمولِ رندر (MergedGrid) با عرضِ معلوم:
-// موبایل = گوشیِ ۳۹۰px منهای حاشیه‌ی ۱۶px دو طرف، فاصله‌ی ۱rem؛ دسکتاپ = عرضِ
-// متداولِ محتوا با فاصله‌ی ۱.۵rem. فقط برای نمایش است و روی رندر اثری ندارد.
+// موبایل = گوشیِ ۳۹۰px منهای حاشیه‌ی ۱۶px دو طرف؛ دسکتاپ = عرضِ متداولِ محتوا.
+// فقط برای نمایش است و روی رندر اثری ندارد. مقدارِ gap اینجا صرفاً یک مرجعِ
+// تاریخی است؛ پیش‌نمایشِ مودال فاصله‌ی *تنظیم‌شده* را می‌فرستد.
 export const MERGED_GRID_REFERENCE = {
   mobile: { viewport: 390, width: 358, gap: 16 },
   desktop: { viewport: 1024, width: 1024, gap: 24 },

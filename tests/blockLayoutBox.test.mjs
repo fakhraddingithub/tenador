@@ -67,7 +67,7 @@ test("پیش‌نمایش همان رندرکننده‌ی عمومی را به 
   assert.match(src, /import ArticleBlockRenderer from "@\/components\/features\/articles\/ArticleBlockRenderer"/);
   assert.match(src, /<ArticleBlockRenderer blocks=\{blocks\} entities=\{entities\} preview interactive=\{canEdit\} \/>/);
   // فیلدهای ویرایش هم همان فیلدهای ویرایشگرِ کارتی‌اند.
-  assert.match(src, /import \{ BlockFields \} from "\.\/BlockEditor"/);
+  assert.match(src, /import \{ BlockFields[^}]*\} from "\.\/BlockEditor"/);
 });
 
 test("کلیک روی فرزندِ بلوکِ ادغام‌شده به خودِ آن بلوک می‌رسد", async () => {
@@ -119,4 +119,32 @@ test("blockBoxProps کلاسِ «در موبایل هم حفظ شود» را ح�
   assert.deepEqual(blockBoxProps({ layout: { widthPct: 40 } }), { className: "a-block-box", style: { "--bw": "40%" } });
   assert.deepEqual(blockBoxProps({ layout: { widthPct: 40, keepOnMobile: true } }), { className: "a-block-box a-block-box--keep", style: { "--bw": "40%" } });
   assert.deepEqual(blockBoxProps({ layout: { alignX: "center" } }), { className: "a-block-box", style: { "--bj": "center" } });
+});
+
+// ——— کنترل‌های پیش‌نمایش ————————————————————————————————————————————
+test("پیش‌نمایش همان مودال‌ها و همان افزودنِ بلوکِ ویرایشگر را باز می‌کند", async () => {
+  const src = await read("../src/components/admin/articles/PreviewCanvas.jsx");
+  // نه نسخه‌ی دوم: هر سه از BlockEditor/BlockLayoutModal می‌آیند.
+  assert.match(src, /import \{ BlockFields, BlockLibrary, MergedLayoutModal \} from "\.\/BlockEditor"/);
+  assert.match(src, /const block = createArticleBlock\(type\);/);
+  assert.match(src, /insertBlockAt\(blocks, block, position\)/);
+});
+
+test("چیدمانِ شبکه فقط روی خودِ بلوکِ ادغام‌شده می‌نشیند", async () => {
+  const src = await read("../src/components/admin/articles/PreviewCanvas.jsx");
+  // data.grid عوض می‌شود و data.blocks (تنظیماتِ فرزندها) دست‌نخورده می‌ماند.
+  assert.match(src, /onChange\(\{ \.\.\.block, data: \{ \.\.\.block\.data, grid \} \}\)/);
+});
+
+test("نوارِ ثابتِ پایین در پیش‌نمایش هست و روی محتوا نمی‌افتد", async () => {
+  const src = await read("../src/components/admin/articles/PreviewCanvas.jsx");
+  assert.match(src, /fixed bottom-4 left-4 z-40/);
+  // فضای امن زیرِ آخرین بلوک، تا نوار چیزی را نپوشاند.
+  assert.match(src, /canEdit \? " pb-24" : ""/);
+});
+
+test("refreshِ پس از ذخیره، ویرایش‌های بعدی را پاک نمی‌کند", async () => {
+  const src = await read("../src/components/admin/articles/PreviewCanvas.jsx");
+  assert.match(src, /justSaved\.current = JSON\.stringify\(blocks\)/);
+  assert.match(src, /if \(justSaved\.current && JSON\.stringify\(saved\) === justSaved\.current\)/);
 });

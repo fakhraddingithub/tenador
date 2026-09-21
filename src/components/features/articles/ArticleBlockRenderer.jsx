@@ -129,6 +129,10 @@ function MergedGrid({ items, grid, spacing }) {
     const columns = settings.fit ? settings.columns : Math.max(settings.columns, Math.ceil(items.length / settings.rows));
     vars[`--c${key}`] = settings.columns;
     vars[`--k${key}`] = columns;
+    // فاصله‌ی هر breakpoint جداست و با media query عوض می‌شود، پس مقدارش متغیرِ
+    // خودش را دارد و کلاس‌ها ثابت می‌مانند (inline style نمی‌تواند media query
+    // داشته باشد — همان مرزِ «چیدمان» و «واکنش‌گرایی» در جعبه‌ی بلوک).
+    vars[`--g${key}`] = `${settings.gap}rem`;
     vars[`--w${key}`] = `max(calc((100% - (${settings.columns} - 1) * var(--g)) / ${settings.columns}), ${settings.minWidth}px)`;
   }
   const scrolls = !grid.mobile.fit || !grid.desktop.fit;
@@ -145,7 +149,7 @@ function MergedGrid({ items, grid, spacing }) {
   >
     <div
       className={[
-        "grid items-start gap-[var(--g)] [--g:1rem] md:[--g:1.5rem]",
+        "grid items-start gap-[var(--g)] [--g:var(--gm)] md:[--g:var(--gd)]",
         grid.mobile.fit ? "grid-cols-[repeat(var(--cm),minmax(0,1fr))]" : "grid-cols-[repeat(var(--km),var(--wm))]",
         grid.desktop.fit ? "md:grid-cols-[repeat(var(--cd),minmax(0,1fr))]" : "md:grid-cols-[repeat(var(--kd),var(--wd))]",
       ].join(" ")}
@@ -179,7 +183,9 @@ function MergedBlock({ items, spacing }) {
     className={`${blockSection} snap-x snap-mandatory overflow-x-auto overscroll-x-contain pb-2 [scrollbar-width:thin] focus-visible:outline-2 focus-visible:outline-[var(--color-primary)]`}
     style={spacing || undefined}
   >
-    <div className="flex items-start gap-[var(--merged-gap)] [--merged-gap:1rem] md:[--merged-gap:1.5rem]">
+    {/* بلوکِ ادغام‌شده‌ی قدیمی (بدونِ grid) تنظیمِ فاصله ندارد، پس مثلِ حالتِ
+        پیش‌فرضِ جدید فاصله‌ی صفر می‌گیرد؛ متغیر می‌ماند چون سهمِ هر خانه از آن کم می‌شود. */}
+    <div className="flex items-start gap-[var(--merged-gap)] [--merged-gap:0rem]">
       {items.map(({ child, node }) => {
         const percent = MERGED_WIDTH_PERCENT[blockWidth(child)] ?? share;
         // همان قاعده‌ی شبکه، روی خانه‌ی flex: سهمِ خانه از flexBasis می‌آید و

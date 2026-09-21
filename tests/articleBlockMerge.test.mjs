@@ -98,9 +98,9 @@ test("flattenArticleBlocks exposes children at any depth", () => {
 
 test("grid settings are clamped per breakpoint; anything incomplete means the default row layout", () => {
   assert.deepEqual(sanitizeMergedGrid({ desktop: { columns: 6, rows: 2, fit: true }, mobile: { columns: 2, rows: 6, fit: false, minWidth: 180 } }),
-    { desktop: { columns: 6, rows: 2, fit: true, minWidth: 0 }, mobile: { columns: 2, rows: 6, fit: false, minWidth: 180 } });
+    { desktop: { columns: 6, rows: 2, fit: true, minWidth: 0, gap: 0 }, mobile: { columns: 2, rows: 6, fit: false, minWidth: 180, gap: 0 } });
   assert.deepEqual(sanitizeMergedGrid({ desktop: { columns: 99, rows: 0, fit: "yes", minWidth: -5 }, mobile: { columns: "3", rows: "x" } }),
-    { desktop: { columns: 12, rows: 1, fit: false, minWidth: 0 }, mobile: { columns: 3, rows: 1, fit: false, minWidth: 0 } });
+    { desktop: { columns: 12, rows: 1, fit: false, minWidth: 0, gap: 0 }, mobile: { columns: 3, rows: 1, fit: false, minWidth: 0, gap: 0 } });
   for (const bad of [undefined, null, [], "grid", {}, { desktop: {} }]) assert.equal(sanitizeMergedGrid(bad), undefined, JSON.stringify(bad));
   const defaults = defaultMergedGrid(12);
   assert.deepEqual([defaults.desktop.columns, defaults.mobile.columns, defaults.mobile.rows], [12, 2, 6]);
@@ -111,7 +111,7 @@ test("server: merged blocks (nested, with grid) survive sanitising unchanged", (
   const clean = sanitizeArticleBlocks(article(), errors);
   const once = mergeBlocks(clean, ["a", "b"]);
   const twice = mergeBlocks(once, [once[1].id, "c"]);
-  twice[1].data.grid = { desktop: { columns: 2, rows: 1, fit: false, minWidth: 0 }, mobile: { columns: 1, rows: 2, fit: true, minWidth: 0 } };
+  twice[1].data.grid = { desktop: { columns: 2, rows: 1, fit: false, minWidth: 0, gap: 0 }, mobile: { columns: 1, rows: 2, fit: true, minWidth: 0, gap: 0 } };
   const again = sanitizeArticleBlocks(twice, errors);
   assert.deepEqual(errors, {});
   assert.deepEqual(again, twice);
@@ -155,4 +155,67 @@ test("modal preview uses the render formula: min width overrides the column coun
   assert.deepEqual(mergedGridColumnsAt(blade, phone), { columnWidth: 300, visible: 1, requiredWidth: 616 }, "2 columns never fit on a phone with min 300px");
   assert.equal(mergedGridColumnsAt({ ...blade, minWidth: 0 }, phone).visible, 2, "without a min width both columns fit");
   assert.equal(mergedGridColumnsAt({ ...blade, fit: true }, phone).visible, 2, "fit always shows the configured columns");
+});
+
+// ——— فاصله‌ی بینِ فرزندان: پیش‌فرض صفر، و تنظیم‌شدنی برای هر breakpoint ————
+
+test("فاصله پیش‌فرض صفر است و نبودِ کلید هم صفر می‌دهد", async () => {
+  const { sanitizeMergedGrid, defaultMergedGrid } = await import("../src/lib/articleBlockTypes.js");
+  const fresh = defaultMergedGrid(3);
+  assert.equal(fresh.desktop.gap, 0);
+  assert.equal(fresh.mobile.gap, 0);
+  // گریدِ ذخیره‌شده‌ی قدیمی (بدونِ کلیدِ gap) باید معتبر بماند و صفر بگیرد.
+  const legacy = sanitizeMergedGrid({ desktop: { columns: 2, rows: 1, fit: true }, mobile: { columns: 1, rows: 2, fit: true } });
+  assert.equal(legacy.desktop.gap, 0);
+  assert.equal(legacy.mobile.gap, 0);
+});
+
+test("فاصله به rem کلَمپ و به گامِ ۰٫۲۵ گِرد می‌شود", async () => {
+  const { sanitizeMergedGrid, MERGED_GRID_LIMITS } = await import("../src/lib/articleBlockTypes.js");
+  const grid = (desktopGap, mobileGap) => sanitizeMergedGrid({
+    desktop: { columns: 2, rows: 1, fit: true, gap: desktopGap },
+    mobile: { columns: 1, rows: 1, fit: true, gap: mobileGap },
+  });
+  assert.equal(grid(1.5, 0.5).desktop.gap, 1.5);
+  assert.equal(grid(1.5, 0.5).mobile.gap, 0.5, "دسکتاپ و موبایل مستقل‌اند");
+  assert.equal(grid(1.3, 0).desktop.gap, 1.25);
+  assert.equal(grid(-5, 0).desktop.gap, MERGED_GRID_LIMITS.gap[0]);
+  assert.equal(grid(99, 0).desktop.gap, MERGED_GRID_LIMITS.gap[1]);
+  assert.equal(grid("x", 0).desktop.gap, 0);
+});
+
+test("رندرکننده فاصله را از تنظیمات می‌گیرد، نه از یک مقدارِ ثابت", async () => {
+  const { readFile } = await import("node:fs/promises");
+  const src = await readFile(new URL("../src/components/features/articles/ArticleBlockRenderer.jsx", import.meta.url), "utf8");
+  // متغیرِ هر breakpoint جداست و کلاس‌ها ثابت‌اند (تیلویند فقط رشته‌ی ثابت می‌سازد).
+  assert.match(src, /vars\[`--g\$\{key\}`\] = `\$\{settings\.gap\}rem`/);
+  assert.match(src, /gap-\[var\(--g\)\] \[--g:var\(--gm\)\] md:\[--g:var\(--gd\)\]/);
+  // مسیرِ قدیمیِ بدونِ grid هم دیگر فاصله‌ی پیش‌فرض ندارد.
+  assert.match(src, /\[--merged-gap:0rem\]/);
+  assert.doesNotMatch(src, /--merged-gap:1rem/);
+});
+
+test("مهاجرت فاصله‌ی ضمنیِ قبلی را صریح می‌کند و idempotent است", async () => {
+  const { pinMergedGap, LEGACY_MERGED_GAP } = await import("../src/lib/mergedGapMigration.js");
+  const blocks = [
+    { id: "a", type: "paragraph", data: {} },
+    { id: "m", type: "merged", data: { grid: { desktop: { columns: 2 }, mobile: { columns: 1 } }, blocks: [
+      { id: "m2", type: "merged", data: { grid: { desktop: { columns: 3 }, mobile: { columns: 1 } }, blocks: [] } },
+    ] } },
+    // بدونِ grid: مسیرِ رندرِ قدیمی است و تنظیمِ فاصله ندارد — دست نخورد.
+    { id: "legacy", type: "merged", data: { blocks: [] } },
+  ];
+  assert.equal(pinMergedGap(blocks), 2, "هر دو بلوکِ گریددار، در هر عمقی");
+  assert.equal(blocks[1].data.grid.desktop.gap, LEGACY_MERGED_GAP.desktop);
+  assert.equal(blocks[1].data.grid.mobile.gap, LEGACY_MERGED_GAP.mobile);
+  assert.equal(blocks[1].data.blocks[0].data.grid.desktop.gap, LEGACY_MERGED_GAP.desktop);
+  assert.equal(blocks[2].data.grid, undefined, "بلوکِ بدونِ grid نباید grid بگیرد");
+  assert.equal(pinMergedGap(blocks), 0, "بارِ دوم صفر");
+});
+
+test("فاصله‌ی صریحِ ذخیره‌شده هرگز بازنویسی نمی‌شود", async () => {
+  const { pinMergedGap } = await import("../src/lib/mergedGapMigration.js");
+  const blocks = [{ id: "m", type: "merged", data: { grid: { desktop: { columns: 2, gap: 0 }, mobile: { columns: 1, gap: 0 } }, blocks: [] } }];
+  assert.equal(pinMergedGap(blocks), 0, "صفرِ صریح یعنی «کاربر چسبیده می‌خواهد»، نه «تنظیم نشده»");
+  assert.equal(blocks[0].data.grid.desktop.gap, 0);
 });

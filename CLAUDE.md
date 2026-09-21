@@ -503,6 +503,35 @@ Run it right after deploying; until then, untouched blocks render flush.
 npm run test:block-spacing
 ```
 
+### Merged-block gap: the default is zero
+
+The gap between a merged block's children used to be hardcoded in the renderer (1rem on
+mobile, 1.5rem from `md` up). It is now **part of the grid configuration, per breakpoint,
+in rem — and its default is 0**, so a merged block adds no spacing of its own unless an
+admin asks for it.
+
+`grid.desktop.gap` / `grid.mobile.gap` follow the same contract as every other grid key:
+absent means 0, values are clamped to 0–8rem on a 0.25 step, and `sanitizeMergedGrid`
+writes them explicitly. The renderer keeps the two values in their own variables
+(`--gm`/`--gd`) and the `md` switch stays in a static class, because an inline style
+cannot carry a media query — the same split the block layout box uses.
+
+A merged block **without** a grid is the pre-grid rendering path and has no gap setting,
+so it now renders at 0 too.
+
+Existing content keeps its exact look by making the old implicit gap explicit:
+
+```bash
+npm run check:merged-gap     # dry run
+npm run migrate:merged-gap   # writes desktop 1.5 / mobile 1 where gap was absent (idempotent)
+```
+
+**Run it before content gets re-saved.** Saving a merged block through the admin writes
+`gap: 0` explicitly (that is the new default), after which the migration can no longer
+tell "never configured" from "deliberately zero" — exactly like the block-spacing
+migration, and for the same reason. A block whose gap is already explicit is never
+touched, and a grid-less merged block is skipped rather than given a grid it never had.
+
 ### Block layout box, and the editable Preview
 
 Two features, one rule: **a block with no layout keys renders exactly as before, with no
@@ -573,6 +602,18 @@ or `PUT /api/brands/:id/brochure`) and then `router.refresh()`es, so server-reso
 entities catch up without a page reload. Both preview routes stay server components for
 auth and data; `canEdit` is a separate permission, and a read-only admin still sees the old
 static preview.
+
+The Preview carries the **same fixed bottom bar as the card editor** (Add Block + Save) plus
+a sticky top strip (viewport toggle, revert, dirty state); the canvas keeps `pb-24` so the
+bar never covers the last block. Add Block opens the editor's own `BlockLibrary` and inserts
+through `insertBlockAt`, so a block added from the Preview is indistinguishable from one
+added in the editor. A merged block's own modal offers **«چیدمان دسکتاپ و موبایل»**, which
+opens the editor's `MergedLayoutModal` — columns, rows, minimum width and gap per
+breakpoint. It writes `data.grid` only, so child layout settings under it are untouched.
+
+Saving from the Preview posts the whole array and then refreshes. The refresh would
+normally reset the canvas from server state; a `justSaved` guard skips that reset when the
+server returns exactly what was sent, so edits made while the refresh is in flight survive.
 
 The mobile toggle narrows the canvas to 390px and switches the box rule to its phone
 behaviour; note it is **approximate** — the blocks' own `md:` classes are media queries and

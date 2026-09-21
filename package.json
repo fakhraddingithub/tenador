@@ -53,6 +53,8 @@
     "migrate:coach-codes": "node scripts/migrateCoachCodeFormat.js",
     "migrate:category-sport": "node scripts/migrateCategorySportScope.js",
     "check:block-spacing": "node scripts/pinBlockSpacing.mjs",
+    "check:merged-gap": "node scripts/pinMergedGap.mjs",
+    "migrate:merged-gap": "node scripts/pinMergedGap.mjs --apply",
     "migrate:block-spacing": "node scripts/pinBlockSpacing.mjs --apply",
     "check:article-image-dimensions": "node --env-file=.env scripts/backfillArticleImageDimensions.mjs",
     "migrate:article-image-dimensions": "node --env-file=.env scripts/backfillArticleImageDimensions.mjs --apply",

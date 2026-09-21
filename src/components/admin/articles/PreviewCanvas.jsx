@@ -3,13 +3,15 @@
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "react-toastify";
-import { FiEye, FiMonitor, FiRotateCcw, FiSave, FiSmartphone, FiX } from "react-icons/fi";
+import { FiEye, FiGrid, FiMonitor, FiPlus, FiRotateCcw, FiSave, FiSmartphone, FiX } from "react-icons/fi";
 import ArticleBlockRenderer from "@/components/features/articles/ArticleBlockRenderer";
 import { getApiErrorMessage } from "@/lib/apiClientError";
 import { isMergedBlock, mergedChildren } from "@/lib/articleBlockTypes";
-import { ARTICLE_BLOCKS } from "./blockRegistry";
+import { insertBlockAt } from "@/lib/articleBlockLayout";
+import { ARTICLE_BLOCKS, createArticleBlock } from "./blockRegistry";
 import BlockLayoutModal from "./BlockLayoutModal";
-import { BlockFields } from "./BlockEditor";
+// همان مودال‌هایی که ویرایشگرِ کارتی باز می‌کند — نه نسخه‌ی دومی از آن‌ها.
+import { BlockFields, BlockLibrary, MergedLayoutModal } from "./BlockEditor";
 import { AdminPortal } from "./blockUi";
 
 /**
@@ -46,13 +48,15 @@ function moveBlock(blocks, fromId, toId, after) {
 
 function EditModal({ block, onChange, onClose }) {
   const [layoutOpen, setLayoutOpen] = useState(false);
+  const [gridOpen, setGridOpen] = useState(false);
   const definition = ARTICLE_BLOCKS[block.type];
+  const merged = isMergedBlock(block);
 
   useEffect(() => {
-    const onKey = (event) => { if (event.key === "Escape" && !layoutOpen) onClose(); };
+    const onKey = (event) => { if (event.key === "Escape" && !layoutOpen && !gridOpen) onClose(); };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [onClose, layoutOpen]);
+  }, [onClose, layoutOpen, gridOpen]);
 
   // هر تغییر مستقیم روی وضعیتِ بوم می‌نشیند، پس نتیجه بی‌درنگ در پیش‌نمایش
   // دیده می‌شود و «ذخیره» فقط کارِ ماندگارکردن را می‌کند.
@@ -64,12 +68,20 @@ function EditModal({ block, onChange, onClose }) {
       <div role="dialog" aria-modal="true" aria-label={`ویرایش بلوک ${definition?.label || block.type}`} onMouseDown={(event) => event.stopPropagation()} className="a-card w-full max-w-3xl shadow-xl">
         <header className="flex items-center gap-2 border-b px-4 py-3" style={{ borderColor: "var(--admin-border)" }}>
           <strong className="text-sm">{definition?.label || block.type}</strong>
-          {isMergedBlock(block) ? (
+          {merged ? (
             <span className="rounded-full bg-[var(--color-primary-soft)] px-2 py-0.5 text-[10px] font-black text-[var(--color-primary)]">
               بلوک ادغام‌شده · {mergedChildren(block).length.toLocaleString("fa-IR")} بلوک
             </span>
           ) : null}
-          <button type="button" onClick={() => setLayoutOpen(true)} className="mr-auto text-[11px] font-bold text-gray-500 hover:text-[var(--color-primary)]">ظاهر و چیدمان</button>
+          {/* چیدمانِ شبکه‌ی ادغام (ستون/ردیف/فاصله‌ی دسکتاپ و موبایل) فقط روی
+              *خودِ* بلوکِ ادغام‌شده می‌نشیند؛ تنظیماتِ فرزندها در فهرستِ پایین
+              دست‌نخورده می‌ماند. */}
+          {merged ? (
+            <button type="button" onClick={() => setGridOpen(true)} className="mr-auto flex items-center gap-1 text-[11px] font-bold text-gray-500 hover:text-[var(--color-primary)]">
+              <FiGrid aria-hidden="true" />چیدمان دسکتاپ و موبایل
+            </button>
+          ) : null}
+          <button type="button" onClick={() => setLayoutOpen(true)} className={`${merged ? "" : "mr-auto "}text-[11px] font-bold text-gray-500 hover:text-[var(--color-primary)]`}>ظاهر و چیدمان</button>
           <button type="button" onClick={onClose} className="p-1 text-gray-400 hover:text-red-600" aria-label="بستن"><FiX /></button>
         </header>
         <div className="max-h-[68vh] space-y-4 overflow-y-auto p-4">
@@ -81,6 +93,14 @@ function EditModal({ block, onChange, onClose }) {
         </footer>
       </div>
     </div>
+    {gridOpen ? (
+      <MergedLayoutModal
+        grid={block.data?.grid}
+        count={mergedChildren(block).length}
+        onApply={(grid) => { onChange({ ...block, data: { ...block.data, grid } }); setGridOpen(false); }}
+        onClose={() => setGridOpen(false)}
+      />
+    ) : null}
     {layoutOpen ? (
       <BlockLayoutModal
         type={block.type}
@@ -99,14 +119,22 @@ export default function PreviewCanvas({ blocks: saved = [], entities, endpoint, 
   const [selected, setSelected] = useState(null);
   const [editing, setEditing] = useState(null);
   const [viewport, setViewport] = useState("desktop");
+  const [libraryOpen, setLibraryOpen] = useState(false);
   const [saving, setSaving] = useState(false);
   const [dirty, setDirty] = useState(false);
   const canvas = useRef(null);
   const drag = useRef(null);
 
   // وضعیتِ ذخیره‌شده تنها منبعِ حقیقت است: بعد از هر ذخیره (و هر refresh سروری)
-  // بوم دوباره از همان چیزی پر می‌شود که واقعاً در دیتابیس است.
-  useEffect(() => { setBlocks(saved); setDirty(false); }, [saved]);
+  // بوم دوباره از همان چیزی پر می‌شود که واقعاً در دیتابیس است. اما refreshِ پس
+  // از ذخیره نباید ویرایش‌های بعدیِ کاربر را پاک کند، پس وقتی سرور دقیقاً همان
+  // چیزی را برمی‌گرداند که فرستادیم، دست به وضعیت نمی‌زنیم.
+  const justSaved = useRef(null);
+  useEffect(() => {
+    if (justSaved.current && JSON.stringify(saved) === justSaved.current) { justSaved.current = null; return; }
+    setBlocks(saved);
+    setDirty(false);
+  }, [saved]);
 
   useEffect(() => {
     const warn = (event) => { if (dirty) event.preventDefault(); };
@@ -200,6 +228,7 @@ export default function PreviewCanvas({ blocks: saved = [], entities, endpoint, 
       });
       const data = await response.json().catch(() => ({}));
       if (!response.ok) throw new Error(getApiErrorMessage(data, "ذخیره تغییرات انجام نشد"));
+      justSaved.current = JSON.stringify(blocks);
       setDirty(false);
       toast.success("تغییرات ذخیره شد");
       // داده‌های وابسته (محصول، مقاله، …) سمتِ سرور حل می‌شوند؛ refresh آن‌ها را
@@ -210,6 +239,16 @@ export default function PreviewCanvas({ blocks: saved = [], entities, endpoint, 
     } finally {
       setSaving(false);
     }
+  };
+
+  // بلوکِ تازه در همان موقعیتی که کاربر خواسته درج می‌شود (همان insertBlockAt
+  // ویرایشگر) و بی‌درنگ برای ویرایش باز می‌شود.
+  const addBlock = (type, position) => {
+    const block = createArticleBlock(type);
+    apply(insertBlockAt(blocks, block, position));
+    setLibraryOpen(false);
+    setSelected(block.id);
+    setEditing(block.id);
   };
 
   const editingBlock = editing ? blocks.find((item) => item.id === editing) : null;
@@ -258,7 +297,7 @@ export default function PreviewCanvas({ blocks: saved = [], entities, endpoint, 
           حالتِ گوشی برمی‌گرداند. توجه: media queryهای خودِ بلوک‌ها (کلاس‌های md:)
           با عرضِ *پنجره* سنجیده می‌شوند، پس این نما تقریبی است — برای آزمایشِ
           دقیق باید پنجره را واقعاً کوچک کرد. */}
-      <div className={viewport === "mobile" ? "mx-auto w-[390px] max-w-full" : ""}>
+      <div className={`${viewport === "mobile" ? "mx-auto w-[390px] max-w-full" : ""}${canEdit ? " pb-24" : ""}`}>
         <div
           ref={canvas}
           className={canEdit ? "preview-canvas" : undefined}
@@ -273,6 +312,19 @@ export default function PreviewCanvas({ blocks: saved = [], entities, endpoint, 
           <ArticleBlockRenderer blocks={blocks} entities={entities} preview interactive={canEdit} />
         </div>
       </div>
+
+      {canEdit ? (
+        <div className="a-card fixed bottom-4 left-4 z-40 flex gap-2 p-2 shadow-lg" style={{ paddingBottom: "calc(0.5rem + env(safe-area-inset-bottom))" }}>
+          <button type="button" onClick={() => setLibraryOpen(true)} className="flex items-center gap-1.5 border px-3 py-1.5 text-xs font-bold" style={{ borderColor: "var(--admin-border)", borderRadius: "var(--admin-radius)" }}>
+            <FiPlus aria-hidden="true" />افزودن بلوک
+          </button>
+          <button type="button" onClick={save} disabled={saving || !dirty} className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-white bg-[var(--color-primary)] disabled:opacity-40" style={{ borderRadius: "var(--admin-radius)" }}>
+            <FiSave aria-hidden="true" />{saving ? "در حال ذخیره…" : "ذخیره"}
+          </button>
+        </div>
+      ) : null}
+
+      {libraryOpen ? <BlockLibrary total={blocks.length} onAdd={addBlock} onClose={() => setLibraryOpen(false)} /> : null}
 
       {editingBlock ? (
         // key = شناسه‌ی بلوک: جابه‌جا شدن بینِ دو بلوک، مودال را از نو می‌سازد و

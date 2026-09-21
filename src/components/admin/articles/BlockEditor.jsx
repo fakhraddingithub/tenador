@@ -15,7 +15,7 @@ import { ARTICLE_BLOCKS, BLOCK_GROUPS, createArticleBlock } from "./blockRegistr
 import { insertBlockAt } from "@/lib/articleBlockLayout";
 import { confirmDelete } from "@/lib/swal";
 import { IMAGE_DISPLAY_HEIGHT, MAX_IMAGE_BLOCK_ITEMS, mirrorFirstImage, normalizeImageHref } from "@/lib/articleImageBlock";
-import { MAX_MERGED_CHILDREN, MAX_MERGE_DEPTH, MERGED_GRID_LIMITS, MERGED_GRID_REFERENCE, defaultMergedGrid, isMergedBlock, mergedChildren, mergedGridColumnsAt, sanitizeMergedGrid } from "@/lib/articleBlockTypes";
+import { MAX_MERGED_CHILDREN, MAX_MERGE_DEPTH, MERGED_GRID_GAP_STEP, MERGED_GRID_LIMITS, MERGED_GRID_REFERENCE, defaultMergedGrid, isMergedBlock, mergedChildren, mergedGridColumnsAt, sanitizeMergedGrid } from "@/lib/articleBlockTypes";
 import { cloneWithFreshIds, mergeBlocker, mergeBlocks, unmergeBlock } from "@/lib/articleBlockMerge";
 
 
@@ -257,7 +257,9 @@ const BREAKPOINT_LABELS = { desktop: "دسکتاپ", mobile: "موبایل" };
  */
 function GridPreview({ breakpoint, settings, count }) {
   const fa = (value) => Math.round(value).toLocaleString("fa-IR");
-  const reference = MERGED_GRID_REFERENCE[breakpoint];
+  // فاصله‌ی مرجع همان چیزی است که ادمین تنظیم کرده (rem → px)، وگرنه شِما با
+  // یک فاصله‌ی ثابت حساب می‌شد و با نتیجه‌ی واقعی نمی‌خواند.
+  const reference = { ...MERGED_GRID_REFERENCE[breakpoint], gap: (settings.gap || 0) * 16 };
   const { columnWidth, visible, requiredWidth } = mergedGridColumnsAt(settings, reference);
   const columns = settings.fit ? settings.columns : Math.max(settings.columns, Math.ceil(count / settings.rows));
   const rows = Math.ceil(count / columns);
@@ -282,12 +284,14 @@ function GridPreview({ breakpoint, settings, count }) {
  * مودال است تا جای دائمی در ویرایشگر نگیرد. «چیدمانِ ردیفیِ پیش‌فرض» grid را
  * برمی‌دارد و بلوک دقیقاً مثلِ قبل (یک ردیفِ افقی) رندر می‌شود.
  */
-function MergedLayoutModal({ grid, count, onApply, onClose }) {
+export function MergedLayoutModal({ grid, count, onApply, onClose }) {
   const [draft, setDraft] = useState(() => sanitizeMergedGrid(grid) || defaultMergedGrid(count));
   const set = (breakpoint, key, value) => setDraft((current) => ({ ...current, [breakpoint]: { ...current[breakpoint], [key]: value } }));
   const number = (breakpoint, key, disabled) => {
     const [min, max] = MERGED_GRID_LIMITS[key];
-    return <input type="number" min={min} max={max} disabled={disabled} value={draft[breakpoint][key]} onChange={(e) => set(breakpoint, key, e.target.value === "" ? min : Number(e.target.value))} className={`${inputClass} disabled:opacity-40`} />;
+    // فاصله به rem است و اعشار می‌گیرد؛ ستون و ردیف عددِ صحیح‌اند.
+    const step = key === "gap" ? MERGED_GRID_GAP_STEP : 1;
+    return <input type="number" min={min} max={max} step={step} disabled={disabled} value={draft[breakpoint][key] ?? 0} onChange={(e) => set(breakpoint, key, e.target.value === "" ? min : Number(e.target.value))} className={`${inputClass} disabled:opacity-40`} />;
   };
   const apply = () => onApply(sanitizeMergedGrid(draft));
   return <AdminPortal><div className="fixed inset-0 z-[100] flex items-start justify-center overflow-y-auto bg-black/30 p-4 pt-[8vh]" onMouseDown={onClose}>
@@ -311,7 +315,10 @@ function MergedLayoutModal({ grid, count, onApply, onClose }) {
               <label className="block"><span className="mb-1 block text-[11px] font-bold text-gray-600">ستون</span>{number(breakpoint, "columns", false)}</label>
               <label className="block"><span className="mb-1 block text-[11px] font-bold text-gray-600">ردیف</span>{number(breakpoint, "rows", settings.fit)}</label>
             </div>
-            <label className="block"><span className="mb-1 block text-[11px] font-bold text-gray-600">کمینه‌ی عرضِ هر ستون (px، ۰ = بدونِ کمینه)</span>{number(breakpoint, "minWidth", settings.fit)}</label>
+            <div className="grid grid-cols-2 gap-2">
+              <label className="block"><span className="mb-1 block text-[11px] font-bold text-gray-600">فاصله بین بلوک‌ها (rem)</span>{number(breakpoint, "gap", false)}</label>
+              <label className="block"><span className="mb-1 block text-[11px] font-bold text-gray-600">کمینه‌ی عرضِ ستون (px)</span>{number(breakpoint, "minWidth", settings.fit)}</label>
+            </div>
             {settings.fit ? <p className="text-[10px] text-gray-400">در این حالت تعداد ردیف‌ها خودکار است.</p> : null}
             <GridPreview breakpoint={breakpoint} settings={sanitizeMergedGrid(draft)?.[breakpoint] || settings} count={count} />
           </fieldset>;
@@ -383,7 +390,7 @@ function SortableBlock({ block, index, total, onUpdate, onStyle, onAppearance, o
   </section>;
 }
 
-function BlockLibrary({ total, onAdd, onClose }) {
+export function BlockLibrary({ total, onAdd, onClose }) {
   const [query, setQuery] = useState("");
   // موقعیتِ بلوکِ تازه، ۱-پایه. پیش‌فرض انتهای مقاله است ولی قابلِ ویرایش، تا
   // بتوان مثلاً مستقیم بینِ بلوکِ ۴ و ۵ بلوک ساخت — نه اینکه اول در انتها
