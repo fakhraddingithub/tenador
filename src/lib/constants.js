@@ -45,9 +45,20 @@ export const FOOTER_SECTIONS = [
   {
     title: 'راهنمای خرید',
     links: [
+      { label: 'راهنمای انتخاب محصول مناسب', href: '/match' },
+      { label: 'مقایسه محصولات', href: '/compare' },
       { label: 'نحوه ثبت سفارش', href: '/how-to-order' },
       { label: 'رویه ارسال سفارش', href: '/shipping' },
       { label: 'شیوه‌های پرداخت', href: '/payment' },
+    ],
+  },
+  {
+    title: 'صفحات پربازدید',
+    links: [
+      { label: 'راکت تنیس ویلسون', href: '/tennis/racket/wilson' },
+      { label: 'تجهیزات تنیس', href: '/tennis' },
+      { label: 'تجهیزات پدل', href: '/padel' },
+      { label: 'راکت دست دوم', href: '/second-hand/tennis/racket' },
     ],
   },
 ];
