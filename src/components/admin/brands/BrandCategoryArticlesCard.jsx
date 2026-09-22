@@ -1,9 +1,10 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { FiEdit3, FiFileText, FiPlus } from "react-icons/fi";
+import { useCategories } from "@/hooks/useAdminRefData";
 
 /**
  * جعبه‌ی «مینی‌مقاله‌ی برند در هر دسته» — هم‌شکلِ جعبه‌ی بروشور: اینجا فقط
@@ -14,21 +15,19 @@ import { FiEdit3, FiFileText, FiPlus } from "react-icons/fi";
  */
 export default function BrandCategoryArticlesCard({ brandId = null, entries = [], className = "" }) {
   const router = useRouter();
-  const [categories, setCategories] = useState([]);
   const [selected, setSelected] = useState("");
+  // همان منبعِ همیشگیِ دسته‌ها در پنل: هوکِ مشترکِ داده‌ی مرجع (‎/api/categories
+  // با کشِ SWR). نسخه‌ی اولِ این کارت ‎/api/category را صدا می‌زد — مسیری که وجود
+  // ندارد — پس فهرست همیشه خالی بود و نامِ کارت‌های موجود هم به «دسته‌بندی» برمی‌گشت.
+  const { categories, isLoading, error } = useCategories();
 
-  useEffect(() => {
-    let cancelled = false;
-    fetch("/api/category")
-      .then((response) => response.json())
-      .then((data) => {
-        if (cancelled) return;
-        const list = Array.isArray(data) ? data : data?.categories || data?.data || [];
-        setCategories(list);
-      })
-      .catch(() => {});
-    return () => { cancelled = true; };
-  }, []);
+  // دسته زیرِ یک ورزش تعریف می‌شود و دو ورزش می‌توانند دسته‌ی هم‌نام داشته باشند،
+  // پس نامِ ورزش هم کنارِ نام می‌آید؛ وگرنه دو گزینه‌ی «راکت» از هم جدا نمی‌شوند.
+  const label = (category) => {
+    const name = category?.title || category?.name || "دسته‌بندی";
+    const sport = category?.sport?.title || category?.sport?.name;
+    return sport ? `${name} — ${sport}` : name;
+  };
 
   // کارت‌های موجود: هر ورودیِ ذخیره‌شده، با نامِ دسته‌اش.
   const written = useMemo(() => {
@@ -37,8 +36,7 @@ export default function BrandCategoryArticlesCard({ brandId = null, entries = []
       .filter((entry) => entry?.category && (entry.blocks?.length ?? 0) > 0)
       .map((entry) => {
         const id = String(entry.category?._id || entry.category);
-        const category = byId.get(id);
-        return { id, count: entry.blocks.length, name: category?.title || category?.name || "دسته‌بندی" };
+        return { id, count: entry.blocks.length, name: label(byId.get(id)) };
       });
   }, [entries, categories]);
 
@@ -91,9 +89,11 @@ export default function BrandCategoryArticlesCard({ brandId = null, entries = []
               onChange={(event) => setSelected(event.target.value)}
               className="min-w-44 rounded-[6px] border border-gray-200 bg-white px-3 py-2 text-xs font-bold text-gray-700 outline-none focus:border-[var(--color-primary)]"
             >
-              <option value="">یک دسته‌بندی انتخاب کنید…</option>
+              <option value="">
+                {isLoading ? "در حال بارگذاری دسته‌بندی‌ها…" : error ? "خطا در دریافت دسته‌بندی‌ها" : "یک دسته‌بندی انتخاب کنید…"}
+              </option>
               {remaining.map((item) => (
-                <option key={item._id} value={item._id}>{item.title || item.name}</option>
+                <option key={item._id} value={item._id}>{label(item)}</option>
               ))}
             </select>
             <button

@@ -227,3 +227,20 @@ test("رندرِ عمومی هیچ‌کدام از این‌ها را ندارد
   assert.match(src, /const handle = interactive\s/);
   assert.match(src, /data-edit-block=""/);
 });
+
+// ——— دسته‌بندی‌های جعبه‌ی مینی‌مقاله ——————————————————————————————————
+// نسخه‌ی اول این کارت /api/category را صدا می‌زد — مسیری که وجود ندارد — پس
+// کشویی همیشه خالی بود و نامِ کارت‌های موجود هم به «دسته‌بندی» برمی‌گشت.
+test("کارتِ مینی‌مقاله‌ی دسته از همان منبعِ مشترکِ دسته‌ها می‌خواند", async () => {
+  const src = await read("../src/components/admin/brands/BrandCategoryArticlesCard.jsx");
+  assert.match(src, /import \{ useCategories \} from "@\/hooks\/useAdminRefData"/);
+  assert.match(src, /const \{ categories, isLoading, error \} = useCategories\(\)/);
+  // هیچ واکشیِ دستی‌ای نباید برگردد.
+  assert.doesNotMatch(src, /fetch\("\/api\/category"/);
+  assert.doesNotMatch(src, /fetch\("\/api\/categories/);
+});
+
+test("گزینه‌ها نامِ ورزش را هم دارند (دسته زیرِ ورزش تعریف می‌شود)", async () => {
+  const src = await read("../src/components/admin/brands/BrandCategoryArticlesCard.jsx");
+  assert.match(src, /const sport = category\?\.sport\?\.title \|\| category\?\.sport\?\.name;/);
+});
