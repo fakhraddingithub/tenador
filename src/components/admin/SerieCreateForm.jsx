@@ -91,6 +91,7 @@ export default function SerieCreateForm({
       <SerieFormLayout
         formData={formData}
         setFormData={setFormData}
+        brandId={brandId}
         brandName={brandName}
         parentSeries={parentSeries}
         loading={loading}

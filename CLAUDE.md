@@ -634,6 +634,52 @@ still read the real window width.
 npm run test:block-layout
 ```
 
+### Rich text: colour, and why it "did not work with bold"
+
+`<input type="color">` only fires an event when its value **changes**. Picking the same
+colour again for a new selection — or confirming the OS picker without moving it — fires
+nothing at all, so the command never ran and the text merely stayed bold. The colour was
+never being stripped: a trace showed no `foreColor` command at all in those cases, and the
+sanitiser keeps `color` on every styleable tag.
+
+The swatch therefore only *chooses* a colour (kept in state) and a toolbar button
+**applies** it, which works however many times it is pressed. `exec()` also restores the
+saved range when the selection is no longer inside the editor — the OS picker holds focus
+while it is open, and until now only `applyLink` handled that.
+
+### Links inside the editor Preview
+
+In the Preview a single click on a link or card **does not navigate**, and a double-click
+opens the destination in a new tab. The interception is in the **capture** phase: a product
+card is a Next `<Link>` whose own `onClick` sits on the anchor and runs before any
+ancestor's, so a bubble-phase `preventDefault` arrives after routing has already started.
+Because a double-click on a link now belongs to the link, each block also carries a small
+edit button next to the drag grip — otherwise a block that is entirely a link (a product
+card) could not be opened for editing. None of this exists on the published page: the
+renderer only emits those hooks under `interactive`.
+
+### Mini articles have their own pages
+
+`Serie.articleBlocks` and `Brand.categoryArticles[]` are edited the way the brand brochure
+is: a card in the form, and the writing happens on a dedicated page.
+
+| content | box | page | endpoint |
+|---|---|---|---|
+| brand brochure | `BrandBrochureCard` | `…/[brandId]/brochure` | `/api/brands/:id/brochure` |
+| serie mini article | `SerieMiniArticleCard` | `…/[brandId]/[serieId]/mini-article` | `/api/series/:id/mini-article` |
+| brand + category | `BrandCategoryArticlesCard` | `…/[brandId]/category-article/[categoryId]` | `/api/brands/:id/category-article/:categoryId` |
+
+All three run the **same** `BlockDocumentEditor` (same `BlockEditor`, same floating bar,
+same editable Preview), so "the same capabilities" is one component rather than a promise.
+The stored data and the public rendering paths are untouched — the forms simply no longer
+edit these fields inline, which also means saving a brand or a serie can no longer
+overwrite an article written on its own page. The category route writes **only** the entry
+for that category and leaves the others alone; an empty block list removes the entry, the
+same rule the brand form always had.
+
+Note `/api/series` already uses `[id]`, so the new route is `[id]/mini-article` — Next
+refuses two different slug names at one path level.
+
 ### Slug System
 
 `SlugRegistery` model maps dynamic URL segments (sport/category/brand slugs) to their entity types. `actions/registerSlug.js` is a server action that creates entries on entity creation. This powers ISR revalidation — when a slug is revalidated, the correct entity page is rebuilt.

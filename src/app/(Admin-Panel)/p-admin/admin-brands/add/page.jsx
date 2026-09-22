@@ -7,7 +7,7 @@ import { toast } from 'react-toastify';
 import { getApiErrorMessage } from '@/lib/apiClientError';
 import { invalidateAdminCache } from '@/lib/adminCache';
 import BrandBrochureCard from '@/components/admin/brands/BrandBrochureCard';
-import BrandCategoryArticlesEditor from '@/components/admin/brands/BrandCategoryArticlesEditor';
+import BrandCategoryArticlesCard from '@/components/admin/brands/BrandCategoryArticlesCard';
 import BrandUploadField from '@/components/admin/brands/BrandUploadField';
 import { AccordionBox, Field, TextInput, TextareaInput, textareaClass } from '@/components/admin/SerieFormLayout';
 
@@ -217,10 +217,9 @@ export default function AddBrand() {
 
           <BrandBrochureCard className={SECTION_CLASS} />
 
-          <BrandCategoryArticlesEditor
+          <BrandCategoryArticlesCard
             className={SECTION_CLASS}
-            value={formData.categoryArticles}
-            onChange={(update) => setFormData((current) => ({ ...current, categoryArticles: update(current.categoryArticles) }))}
+            entries={formData.categoryArticles}
           />
 
           <button

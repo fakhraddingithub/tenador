@@ -238,3 +238,35 @@
   margin-left: 0;
   margin-right: 0;
 }
+
+/* دکمه‌ی ویرایشِ بلوک، کنارِ دستگیره‌ی کشیدن. در پیش‌نمایش دابل‌کلیک روی پیوند
+   مقصد را باز می‌کند، پس بلوکی که تمامش یک پیوند است (کارتِ محصول) به یک راهِ
+   صریح برای ویرایش نیاز دارد. */
+.admin-scope .preview-canvas .preview-edit {
+  position: absolute;
+  top: 2px;
+  inset-inline-end: 32px;
+  z-index: 7;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  border-radius: var(--admin-radius);
+  background: var(--color-primary);
+  color: #fff;
+  font-size: 13px;
+  line-height: 1;
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity .15s ease;
+}
+.admin-scope .preview-canvas [data-block-id]:hover > .preview-edit,
+.admin-scope .preview-canvas [data-block-id][data-selected="true"] > .preview-edit {
+  opacity: 1;
+}
+@media (hover: none) {
+  .admin-scope .preview-canvas .preview-edit {
+    opacity: 1;
+  }
+}

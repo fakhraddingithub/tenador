@@ -191,3 +191,39 @@ test("بیرونِ بلوکِ ادغام‌شده، کلاس‌های صفحه �
   assert.match(src, /const GRID_FILL_ONE = "grid-cols-1"/);
   assert.match(src, /slotColumns = \(fill, count\) => \(!fill \? GRID_PAGE : count === 1 \? GRID_FILL_ONE : GRID_FILL_MANY\)/);
 });
+
+// ——— رنگِ متن: چرا «با پررنگ هم‌زمان کار نمی‌کرد» ————————————————————————
+// <input type="color"> فقط وقتی رویداد می‌دهد که مقدارش *عوض شود*. برداشتنِ
+// همان رنگِ قبلی برای یک انتخابِ تازه (یا بستنِ پنجره‌ی رنگ بدونِ تغییر) هیچ
+// رویدادی ندارد، پس فرمان اصلاً اجرا نمی‌شد — نه اینکه رنگ پاک شود.
+test("رنگ یک راهِ اعمالِ مستقل از تغییرِ مقدار دارد", async () => {
+  const src = await read("../src/components/admin/articles/RichTextField.jsx");
+  assert.match(src, /title="اعمال رنگ روی متن انتخاب‌شده"/);
+  assert.match(src, /onClick=\{\(\) => exec\("foreColor", colour\)\}/);
+  // رنگِ انتخاب‌شده در state است، وگرنه دکمه نمی‌داند چه رنگی را دوباره بگذارد.
+  assert.match(src, /const \[colour, setColour\] = useState\("#aa4725"\)/);
+});
+
+test("هر فرمان روی انتخابِ ذخیره‌شده اجرا می‌شود، نه هر جا که فوکوس است", async () => {
+  const src = await read("../src/components/admin/articles/RichTextField.jsx");
+  assert.match(src, /if \(!insideEditor\(\) && !restoreRange\(\)\) ref\.current\?\.focus\(\);/);
+  // restoreRange باید پیش از exec تعریف شده باشد (وگرنه در زمانِ فراخوانی undefined است).
+  assert.ok(src.indexOf("const restoreRange") < src.indexOf("const exec ="), "restoreRange باید بالاتر از exec باشد");
+});
+
+// ——— پیوند در پیش‌نمایش ——————————————————————————————————————————————
+test("در پیش‌نمایش، کلیک پیمایش نمی‌کند و دابل‌کلیک زبانه‌ی تازه باز می‌کند", async () => {
+  const src = await read("../src/components/admin/articles/PreviewCanvas.jsx");
+  // فازِ capture حیاتی است: <Link> نکست روی خودِ عنصر onClick دارد و در فازِ
+  // bubble زودتر اجرا شده و مسیریابی را شروع کرده است.
+  assert.match(src, /onClickCapture=\{onClickCapture\}/);
+  assert.match(src, /const onClickCapture = \(event\) => \{\s*if \(linkAt\(event\)\) event\.preventDefault\(\);/);
+  assert.match(src, /window\.open\(href, "_blank", "noopener,noreferrer"\)/);
+});
+
+test("رندرِ عمومی هیچ‌کدام از این‌ها را ندارد", async () => {
+  const src = await read("../src/components/features/articles/ArticleBlockRenderer.jsx");
+  // دستگیره و دکمه‌ی ویرایش فقط در حالتِ interactive ساخته می‌شوند.
+  assert.match(src, /const handle = interactive\s/);
+  assert.match(src, /data-edit-block=""/);
+});

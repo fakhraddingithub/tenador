@@ -204,13 +204,56 @@ export default function PreviewCanvas({ blocks: saved = [], entities, endpoint, 
     if (next !== blocks) apply(next);
   };
 
+  /**
+   * پیوندها در پیش‌نمایش *پیمایش نمی‌کنند*.
+   *
+   * اینجا جای ویرایش است؛ یک کلیکِ اتفاقی روی کارتِ محصول نباید ادمین را از
+   * ویرایشگر بیرون ببرد. کلیک جلوگیری می‌شود و دابل‌کلیک مقصد را در زبانه‌ی
+   * تازه باز می‌کند تا کارِ ذخیره‌نشده از بین نرود. صفحه‌ی منتشرشده هیچ‌کدامِ
+   * این‌ها را ندارد: آنجا همان پیوندِ معمولی با یک کلیک است.
+   */
+  const linkAt = (event) => event.target.closest?.("a[href]") || null;
+
+  /**
+   * جلوگیری در فازِ *capture* انجام می‌شود، نه bubble.
+   *
+   * کارت‌ها <Link> نکست‌اند و خودشان روی همان عنصر onClick دارند؛ آن handler
+   * پیش از هر نیایی اجرا می‌شود، پس preventDefault در فازِ bubble دیر می‌رسد و
+   * مسیریابی از قبل شروع شده است. در capture، نکست مقدارِ defaultPrevented را
+   * می‌بیند و کاری نمی‌کند — و پیوندِ ساده هم رفتارِ پیش‌فرضش را از دست می‌دهد.
+   */
+  const onClickCapture = (event) => {
+    if (linkAt(event)) event.preventDefault();
+  };
+
+  const onDoubleClickCapture = (event) => {
+    const link = linkAt(event);
+    if (link) event.preventDefault();
+  };
+
   const onClick = (event) => {
+    const link = linkAt(event);
+    if (link) event.preventDefault();
+    if (event.target.closest?.("[data-edit-block]")) {
+      const element = event.target.closest("[data-block-id]");
+      const block = element && blocks.find((item) => item.id === element.dataset.blockId);
+      if (block) { setSelected(block.id); setEditing(block.id); return; }
+    }
     const element = event.target.closest?.("[data-block-id]");
     setSelected(element ? element.dataset.blockId : null);
   };
 
   const onDoubleClick = (event) => {
     if (!canEdit) return;
+    const link = linkAt(event);
+    if (link) {
+      // دابل‌کلیکِ روی پیوند = باز کردنِ مقصد، نه ویرایشِ بلوک. noopener لازم
+      // است: بدونِ آن صفحه‌ی تازه به window.opener دسترسی دارد.
+      event.preventDefault();
+      const href = link.getAttribute("href");
+      if (href) window.open(href, "_blank", "noopener,noreferrer");
+      return;
+    }
     const element = event.target.closest?.("[data-block-id]");
     if (!element) return;
     // closest یعنی بیرونی‌ترین بلوکِ سطحِ‌اول — برای بلوکِ ادغام‌شده، خودِ آن.
@@ -306,6 +349,8 @@ export default function PreviewCanvas({ blocks: saved = [], entities, endpoint, 
           onPointerMove={onPointerMove}
           onPointerUp={endDrag}
           onPointerCancel={endDrag}
+          onClickCapture={onClickCapture}
+          onDoubleClickCapture={onDoubleClickCapture}
           onClick={onClick}
           onDoubleClick={onDoubleClick}
         >

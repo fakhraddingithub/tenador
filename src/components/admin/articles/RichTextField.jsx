@@ -135,6 +135,9 @@ export default function RichTextField({ value, onChange, align, onAlign, singleL
   const [linkUrl, setLinkUrl] = useState("");
   const [linkInvalid, setLinkInvalid] = useState(false);
   const [currentSize, setCurrentSize] = useState("");
+  // رنگِ انتخاب‌شده در state است تا دکمه‌ی «اعمال رنگ» همیشه بداند چه رنگی را
+  // دوباره بگذارد، حتی وقتی خودِ input رویدادی نداده است.
+  const [colour, setColour] = useState("#aa4725");
 
   // همگام‌سازی فقط وقتی ویرایشگر فوکوس ندارد: حینِ تایپ، React نباید به محتوای
   // contentEditable دست بزند (مکان‌نما می‌پرد)، ولی بازیابیِ یک نسخه‌ی قدیمی یا
@@ -210,8 +213,23 @@ export default function RichTextField({ value, onChange, align, onAlign, singleL
     link: Boolean(currentLink()),
   });
 
+  // فوکوس پیش از بازگرداندن محدوده: execCommand روی عنصرِ فوکوس‌دار اثر می‌کند و
+  // در این لحظه ممکن است فوکوس روی کادرِ نشانی یا انتخابگرِ رنگ باشد، نه ویرایشگر.
+  const restoreRange = () => {
+    const range = savedRange.current;
+    if (!range || !ref.current?.contains(range.commonAncestorContainer)) return false;
+    ref.current.focus();
+    const selection = window.getSelection();
+    selection.removeAllRanges();
+    selection.addRange(range);
+    return true;
+  };
+
   const exec = (command, argument) => {
-    if (!insideEditor()) ref.current?.focus();
+    // فرمان باید روی *همان* انتخابی اجرا شود که کاربر داشت. اگر فوکوس جای
+    // دیگری رفته (پنجره‌ی رنگِ سیستم، کادرِ نشانی، …)، محدوده‌ی ذخیره‌شده
+    // برمی‌گردد — همان کاری که applyLink از قبل می‌کرد و بقیه‌ی فرمان‌ها نمی‌کردند.
+    if (!insideEditor() && !restoreRange()) ref.current?.focus();
     // فقط برای رنگ: styleWithCSS باعث می‌شود به‌جای <font> قدیمی، span با style
     // بدهد — همان چیزی که واژگانِ پاک‌سازی می‌پذیرد.
     //
@@ -224,17 +242,6 @@ export default function RichTextField({ value, onChange, align, onAlign, singleL
     document.execCommand(command, false, argument);
     emit();
     refreshMarks();
-  };
-
-  // فوکوس پیش از بازگرداندن محدوده: execCommand روی عنصرِ فوکوس‌دار اثر می‌کند و
-  // در این لحظه فوکوس روی کادرِ نشانی است، نه ویرایشگر.
-  const restoreRange = () => {
-    if (!savedRange.current) return false;
-    ref.current?.focus();
-    const selection = window.getSelection();
-    selection.removeAllRanges();
-    selection.addRange(savedRange.current);
-    return true;
   };
 
   const openLink = () => {
@@ -278,16 +285,26 @@ export default function RichTextField({ value, onChange, align, onAlign, singleL
       <span className="mx-1 h-5 w-px bg-gray-200" />
       <FontSizeControl current={currentSize} onApply={applySize} />
 
-      <label className="flex items-center gap-1" title="رنگ متن انتخاب‌شده">
+      {/* رنگ دو راهِ اعمال دارد، و دلیلش یک محدودیتِ خودِ پلتفرم است:
+          <input type="color"> فقط وقتی رویداد می‌دهد که مقدارش *عوض شود*. اگر
+          کاربر همان رنگِ قبلی را برای یک انتخابِ تازه بردارد (یا پنجره‌ی رنگ را
+          بدونِ تغییر ببندد)، هیچ رویدادی نمی‌آید و ظاهراً «رنگ کار نمی‌کند» —
+          دقیقاً همان چیزی که با پررنگ‌کردن هم‌زمان دیده می‌شد. پس انتخابِ رنگِ
+          تازه بی‌درنگ اعمال می‌شود، و دکمه‌ی کنارش همیشه رنگِ فعلی را دوباره
+          اعمال می‌کند. */}
+      <label className="flex items-center" title="انتخاب رنگ متن">
         <input
           type="color"
-          aria-label="رنگ متن انتخاب‌شده"
-          defaultValue="#aa4725"
+          aria-label="انتخاب رنگ متن"
+          value={colour}
           onMouseDown={(event) => event.stopPropagation()}
-          onChange={(event) => exec("foreColor", event.target.value)}
+          onChange={(event) => { setColour(event.target.value); exec("foreColor", event.target.value); }}
           className="h-6 w-7 cursor-pointer border-0 bg-transparent p-0"
         />
       </label>
+      <ToolButton title="اعمال رنگ روی متن انتخاب‌شده" onClick={() => exec("foreColor", colour)}>
+        <span aria-hidden="true" className="block h-3 w-3 rounded-full border border-black/20" style={{ background: colour }} />
+      </ToolButton>
 
       <ToolButton title={marks.link ? "ویرایش پیوند" : "پیوند روی متن انتخاب‌شده"} active={marks.link} onClick={openLink}><FiLink /></ToolButton>
       {linkOpen ? <span className="flex items-center gap-1">

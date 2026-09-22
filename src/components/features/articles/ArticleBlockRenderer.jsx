@@ -423,8 +423,14 @@ export default function ArticleBlockRenderer({ blocks = [], entities, preview = 
     // دستگیره‌ی کشیدن باید *داخلِ* همین wrapper باشد تا با بلوک جابه‌جا شود.
     // نویسه‌ی ⠿ است تا رندرِ عمومی به هیچ آیکونی وابسته نشود؛ استایلش در تمِ
     // ادمین است و بیرونِ پیش‌نمایش اصلاً کلاسی برای نمایشش وجود ندارد.
+    // دستگیره‌ی کشیدن و دکمه‌ی ویرایش. دکمه‌ی ویرایش لازم است چون در پیش‌نمایش
+    // دابل‌کلیک روی یک *پیوند* آن را در زبانه‌ی تازه باز می‌کند؛ بلوکی که تمامش
+    // یک پیوند است (کارتِ محصول) بدونِ این دکمه راهی برای ویرایش نداشت.
     const handle = interactive
-      ? <span key="handle" data-drag-handle="" className="preview-handle" aria-hidden="true">⠿</span>
+      ? [
+        <span key="handle" data-drag-handle="" className="preview-handle" aria-hidden="true">⠿</span>,
+        <span key="edit" data-edit-block="" className="preview-edit" role="button" tabIndex={-1} title="ویرایش این بلوک" aria-hidden="true">✎</span>,
+      ]
       : null;
     // بدونِ چیدمان، wrapper فقط یک div خالیِ بی‌اثر است (نه flex) تا در حالتِ
     // interactive هم پیش‌نمایش دقیقاً همان چیزی باشد که سایت نشان می‌دهد.

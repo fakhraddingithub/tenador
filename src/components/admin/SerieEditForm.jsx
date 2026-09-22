@@ -153,6 +153,8 @@ export default function SerieEditForm({ id, brandId }) {
       <SerieFormLayout
         formData={formData}
         setFormData={setFormData}
+        brandId={brandId || formData.brand}
+        serieId={id}
         brandName={brandName}
         parentSeries={parentSeries}
         loading={loading}
