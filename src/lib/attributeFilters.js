@@ -248,3 +248,36 @@ export function countActiveAttrFilters(attrFilters = {}) {
   }
   return n;
 }
+
+/**
+ * متادیتای فیلترِ چند دسته را در یک لیستِ واحد ادغام می‌کند — برای صفحه‌هایی که
+ * چند دسته هم‌زمان قابلِ انتخاب‌اند (سری). کلیدِ یکتایی «نامِ ویژگی» است: گزینه‌ها
+ * یکی می‌شوند و شمارنده‌ها جمع؛ اگر نوعِ دو دسته یکی نباشد «متن» (عام‌ترین حالت)
+ * برنده است. ترتیب و سقفِ ۳۰ گزینه همان قراردادِ buildAttributeMeta است.
+ */
+export function mergeAttributeMeta(categories = []) {
+  const byName = new Map();
+  for (const category of categories) {
+    for (const attr of category?.attributeMeta || []) {
+      let entry = byName.get(attr.name);
+      if (!entry) {
+        entry = { name: attr.name, label: attr.label, type: attr.type, counts: new Map() };
+        byName.set(attr.name, entry);
+      }
+      if (entry.type !== attr.type) entry.type = "text";
+      for (const opt of attr.options || []) {
+        entry.counts.set(opt.value, (entry.counts.get(opt.value) || 0) + (opt.count || 0));
+      }
+    }
+  }
+  return [...byName.values()].map(({ counts, ...meta }) => {
+    if (meta.type === "color") return meta;
+    const options = [...counts.entries()].map(([value, count]) => ({ value, count }));
+    options.sort(
+      meta.type === "number"
+        ? (a, b) => Number(a.value) - Number(b.value)
+        : (a, b) => b.count - a.count || a.value.localeCompare(b.value, "fa"),
+    );
+    return { ...meta, options: options.slice(0, 30) };
+  });
+}

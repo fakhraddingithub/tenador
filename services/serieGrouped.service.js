@@ -82,7 +82,7 @@ async function buildChildTree(parentSerieId) {
   return { parent, directChildren, descendantsByChild, allDescendantIds };
 }
 
-async function buildBaseMatch({ parentSerieId, allDescendantIds, sportId, categoryId, categoryAttributes, targetAudience, search }) {
+async function buildBaseMatch({ parentSerieId, allDescendantIds, sportId, categoryId, categoryIds, categoryAttributes, targetAudience, search }) {
   const parentOid = toObjectId(parentSerieId);
   const serieScope = [
     parentOid,
@@ -90,9 +90,14 @@ async function buildBaseMatch({ parentSerieId, allDescendantIds, sportId, catego
   ].filter(Boolean);
 
   const match = { isActive: true, serie: { $in: serieScope } };
-  if (categoryId) match.category = toObjectId(categoryId);
+  // categoryId از خودِ مسیر می‌آید (دامنه‌ی ثابت)، categoryIds از چک‌باکس‌های سایدبار.
+  const scopedCategoryIds = categoryId ? [String(categoryId)] : (categoryIds || []).map(String);
+  if (scopedCategoryIds.length === 1) match.category = toObjectId(scopedCategoryIds[0]);
+  else if (scopedCategoryIds.length > 1) {
+    match.category = { $in: scopedCategoryIds.map(toObjectId).filter(Boolean) };
+  }
   Object.assign(match, await buildCategoryAttributeMatch(
-    { serieId: parentSerieId, sportId, targetAudience }, categoryId, categoryAttributes,
+    { serieId: parentSerieId, sportId, targetAudience }, scopedCategoryIds, categoryAttributes,
   ));
   const audienceMatch = buildTargetAudienceMatch(targetAudience);
   if (audienceMatch) match.targetAudience = audienceMatch;
@@ -120,6 +125,7 @@ async function _getSerieGroupedIndex(params) {
     serieId,
     sportId = null,
     categoryId = null,
+    categoryIds = [],
     categoryAttributes = {},
     targetAudience = null,
     search = "",
@@ -137,6 +143,7 @@ async function _getSerieGroupedIndex(params) {
     allDescendantIds,
     sportId,
     categoryId,
+    categoryIds,
     categoryAttributes,
     targetAudience,
     search,
@@ -246,6 +253,7 @@ async function _getSerieGroupedSections(params) {
     serieId,
     sportId = null,
     categoryId = null,
+    categoryIds = [],
     categoryAttributes = {},
     targetAudience = null,
     offset = 0,
@@ -263,7 +271,7 @@ async function _getSerieGroupedSections(params) {
   await connectToDB();
 
   const [indexPayload, rate] = await Promise.all([
-    getSerieGroupedIndex({ serieId, sportId, categoryId, categoryAttributes, targetAudience, search }),
+    getSerieGroupedIndex({ serieId, sportId, categoryId, categoryIds, categoryAttributes, targetAudience, search }),
     getCachedRate(),
   ]);
 
@@ -278,6 +286,7 @@ async function _getSerieGroupedSections(params) {
     allDescendantIds,
     sportId,
     categoryId,
+    categoryIds,
     categoryAttributes,
     targetAudience,
     search,

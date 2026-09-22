@@ -1,25 +1,65 @@
 "use client";
 
-import { useId } from "react";
 import AttributeFilters from "@/components/features/filters/AttributeFilters";
+import FilterGroup from "@/components/features/filters/FilterGroup";
+import { mergeAttributeMeta } from "@/lib/attributeFilters";
 
-export default function CategoryAttributeFilters({ categories = [], categoryId = "", fixedCategory = false, attributes = {}, onCategoryChange, onAttributesChange }) {
-  const id = useId();
-  const category = categories.find((c) => String(c._id) === String(categoryId));
+/**
+ * «نوع محصول + ویژگی‌هایش» — آخرین بخشِ سایدبارِ صفحه‌های سری/برند.
+ *
+ * انتخابِ دسته چندتایی و چک‌باکسی است (دقیقاً همان FilterGroupِ صفحه‌ی ورزش).
+ * تا وقتی هیچ دسته‌ای انتخاب نشده، ویژگی‌های «همه‌ی» دسته‌هایی که در این صفحه
+ * محصول دارند نشان داده می‌شوند؛ با انتخابِ دسته، فقط ویژگی‌های همان دسته‌ها
+ * می‌مانند. ویژگی‌های هم‌نامِ چند دسته در یک بخش ادغام می‌شوند.
+ *
+ * fixedCategory یعنی دسته از خودِ مسیر می‌آید (صفحه‌ی برند+دسته): نه انتخابگری
+ * رندر می‌شود و نه — وقتی مسیر هیچ دسته‌ای ندارد — ویژگی‌ای.
+ *
+ * کارت ندارد: والد آن را داخلِ کارتِ خودش می‌گذارد (همان الگوی FilterGroup).
+ */
+export default function CategoryAttributeFilters({
+  categories = [],
+  selected = [],
+  fixedCategory = false,
+  attributes = {},
+  onCategoryChange,
+  onAttributesChange,
+}) {
   return (
-    <div className="bg-white rounded-[6px] border border-gray-100 shadow-sm overflow-hidden">
-      {!fixedCategory && (
-        <div className="p-5 border-b border-gray-50">
-          <label htmlFor={id} className="block text-sm font-bold mb-3">نوع محصول</label>
-          <select id={id} value={categoryId || ""} onChange={(e) => onCategoryChange(e.target.value)}
-            className="w-full min-h-11 rounded border border-gray-200 bg-white px-3 text-sm">
-            <option value="">همه دسته‌بندی‌ها</option>
-            {categories.map((c) => <option key={c._id} value={c._id}>{c.title}</option>)}
-          </select>
-          {!category && <p className="text-xs text-gray-500 mt-3">برای فیلتر ویژگی‌ها، نوع محصول را انتخاب کنید.</p>}
-        </div>
+    <>
+      {!fixedCategory && categories.length > 0 && (
+        <FilterGroup
+          title="نوع محصول"
+          items={categories}
+          type="categories"
+          filters={{ categories: selected }}
+          setFilters={(next) => onCategoryChange(next.categories)}
+        />
       )}
-      <AttributeFilters attrMeta={category?.attributeMeta || []} attrFilters={attributes} setAttrFilters={onAttributesChange} />
-    </div>
+      <AttributeFilters
+        attrMeta={mergeAttributeMeta(activeCategories(categories, selected, fixedCategory))}
+        attrFilters={attributes}
+        setAttrFilters={onAttributesChange}
+      />
+    </>
   );
+}
+
+/**
+ * دسته‌هایی که ویژگی‌هایشان باید دیده شود. بدونِ انتخاب: همه (مگر در حالتِ
+ * fixedCategory که «بدونِ انتخاب» یعنی مسیر دسته ندارد، پس هیچ‌کدام).
+ * export شده تا والدها بتوانند همین مجموعه را برای هرس‌کردنِ فیلترهای
+ * ناپیدا بخوانند — نمایش و فیلتر نباید از هم جدا شوند.
+ */
+export function activeCategories(categories, selected = [], fixedCategory = false) {
+  if (selected.length === 0) return fixedCategory ? [] : categories;
+  return categories.filter((c) => selected.includes(String(c._id)));
+}
+
+/** فیلترهای ویژگیِ دیگر نامرئی را دور می‌ریزد (پس از تغییرِ انتخابِ دسته). */
+export function pruneAttributes(attributes, categories, selected, fixedCategory = false) {
+  const visible = new Set(
+    mergeAttributeMeta(activeCategories(categories, selected, fixedCategory)).map((m) => m.name),
+  );
+  return Object.fromEntries(Object.entries(attributes || {}).filter(([name]) => visible.has(name)));
 }

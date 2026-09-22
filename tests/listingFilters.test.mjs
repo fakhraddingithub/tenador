@@ -116,3 +116,34 @@ test("malformed filter payloads are rejected", () => {
   }
   assert.deepEqual([...parseCategoryAttributes('{"Weight":["300","300"]}').Weight], ["300"]);
 });
+
+test("category checkboxes scope several categories at once and merge their attributes", async () => {
+  const base = { serieId: String(root), sportId: String(sport), withIndex: true };
+  const both = { ...base, categoryIds: [String(racket), String(shoes)] };
+  // هر دو دسته تیک خورده‌اند → همان نتیجه‌ی «بدون فیلتر»
+  assert.equal((await getSerieGroupedSections(both)).totalCount, 27);
+  // یک دسته → فقط محصولات همان دسته
+  assert.equal((await getSerieGroupedSections({ ...base, categoryIds: [String(shoes)] })).totalCount, 1);
+  // ویژگیِ یکی از دسته‌ها روی مجموعه‌ی ادغام‌شده هم اعمال می‌شود
+  assert.equal(
+    (await getSerieGroupedSections({ ...both, categoryAttributes: { Size: ["42"] } })).totalCount, 1);
+  // بدونِ هیچ تیکی، ویژگی‌های همه‌ی دسته‌ها فعال‌اند (نه «هیچ‌کدام»)
+  assert.equal(
+    (await getSerieGroupedSections({ ...base, categoryAttributes: { Size: ["42"] } })).totalCount, 1);
+  // categoryIdِ مسیر همچنان بر تیک‌ها مقدم است
+  assert.equal(
+    (await getSerieGroupedSections({ ...base, categoryId: String(racket), categoryIds: [String(shoes)] })).totalCount, 26);
+});
+
+test("mergeAttributeMeta unions options and falls back to text on a type clash", async () => {
+  const { mergeAttributeMeta } = await import("@/lib/attributeFilters");
+  const merged = mergeAttributeMeta([
+    { attributeMeta: [{ name: "W", label: "وزن", type: "number", options: [{ value: "300", count: 2 }] }] },
+    { attributeMeta: [{ name: "W", label: "وزن", type: "text", options: [{ value: "300", count: 1 }, { value: "سبک", count: 5 }] }] },
+    { attributeMeta: [{ name: "S", label: "سایز", type: "number", options: [{ value: "42", count: 1 }] }] },
+  ]);
+  assert.deepEqual(merged.map((m) => m.name), ["W", "S"]);
+  assert.equal(merged[0].type, "text");
+  // متنی = مرتب بر اساس فراوانی (همان قراردادِ buildAttributeMeta)
+  assert.deepEqual(merged[0].options, [{ value: "سبک", count: 5 }, { value: "300", count: 3 }]);
+});

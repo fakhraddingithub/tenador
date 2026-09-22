@@ -5,7 +5,7 @@
  * بر اساس زیرسری‌های مستقیم برمی‌گرداند (برای infinite scroll).
  *
  * query params:
- *   serieId (الزامی), sportId?, categoryId?
+ *   serieId (الزامی), sportId?, categoryId?, categoryIds? (تکرارشونده)
  *   targetAudience? (مردانه | زنانه | بچگانه | یونی سکس)
  *   offset (پیش‌فرض 0), limit (پیش‌فرض 2)
  *   minPrice?, maxPrice?, search?
@@ -43,15 +43,22 @@ export async function GET(req) {
     } catch {
       return NextResponse.json({ error: "فیلتر ویژگی نامعتبر است" }, { status: 400 });
     }
-    const categoryId = searchParams.get("categoryId") || null;
-    if (categoryId && !/^[a-f0-9]{24}$/i.test(categoryId)) {
+    // categoryId = دامنه‌ی ثابتِ مسیر، categoryIds = انتخابِ چک‌باکسیِ سایدبار
+    const ids = [
+      ...(searchParams.get("categoryId") ? [searchParams.get("categoryId")] : []),
+      ...searchParams.getAll("categoryIds"),
+    ];
+    if (ids.length > 50 || ids.some((id) => !/^[a-f0-9]{24}$/i.test(id))) {
       return NextResponse.json({ error: "دسته‌بندی نامعتبر است" }, { status: 400 });
     }
+    const categoryId = searchParams.get("categoryId") || null;
+    const categoryIds = searchParams.getAll("categoryIds");
 
     const data = await getSerieGroupedSections({
       serieId,
       sportId: searchParams.get("sportId") || null,
       categoryId,
+      categoryIds,
       categoryAttributes,
       targetAudience,
       offset: toInt(searchParams.get("offset"), 0),

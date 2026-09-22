@@ -122,7 +122,6 @@ export default function BrandGroupedView({
   const [minPrice, setMinPrice] = useState(startingFilters.minPrice);
   const [maxPrice, setMaxPrice] = useState(startingFilters.maxPrice);
 
-  const [selectedCategory, setSelectedCategory] = useState(categoryId || "");
   const [categoryAttributes, setCategoryAttributes] = useState(startingFilters.categoryAttributes || initialCategoryAttributes);
   const dirtyFiltersRef = useRef(false);
 
@@ -184,7 +183,6 @@ export default function BrandGroupedView({
     search: searchTerm.trim(),
     minPrice: Number(minPrice) || 0,
     maxPrice: Number(maxPrice) || 0,
-    categoryId: selectedCategory,
     categoryAttributes,
   });
 
@@ -403,7 +401,7 @@ export default function BrandGroupedView({
     );
     return () => clearTimeout(t);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [searchTerm, minPrice, maxPrice, selectedCategory, categoryAttributes, run]);
+  }, [searchTerm, minPrice, maxPrice, categoryAttributes, run]);
 
   // ─── IntersectionObserver برای infinite scroll ───
   // وابسته به sections.length و hasMore: پس از هر batch، observer دوباره ساخته
@@ -459,11 +457,6 @@ export default function BrandGroupedView({
     setMaxPrice(max);
   };
 
-  const handleCategoryChange = (value) => {
-    invalidateFilters();
-    setSelectedCategory(value);
-    setCategoryAttributes({});
-  };
   const handleAttributesChange = (value) => {
     invalidateFilters();
     setCategoryAttributes(value);
@@ -474,7 +467,6 @@ export default function BrandGroupedView({
     setSearchTerm("");
     setMinPrice(0);
     setMaxPrice(0);
-    setSelectedCategory(categoryId || "");
     setCategoryAttributes({});
   };
 
@@ -495,7 +487,7 @@ export default function BrandGroupedView({
   // (جستجو در نوارِ بالا قرار دارد و جزو سایدبار نیست.)
   const activeCount =
     (Number(minPrice) > 0 ? 1 : 0) + (Number(maxPrice) > 0 ? 1 : 0) +
-    (!categoryId && selectedCategory ? 1 : 0) + countActiveAttrFilters(categoryAttributes);
+    countActiveAttrFilters(categoryAttributes);
 
   // پس از اعمالِ فیلتر (ریستِ نتایج)، اگر لیست کوتاه شد، نمای صفحه را به ناحیه‌ی
   // فیلتر لنگر می‌اندازد. به filterToken وابسته است تا با loadMore (افزایشِ نتایج)
@@ -586,15 +578,6 @@ export default function BrandGroupedView({
               </button>
             </div>
 
-            <CategoryAttributeFilters
-              categories={filterCategories}
-              categoryId={selectedCategory}
-              fixedCategory={true}
-              attributes={categoryAttributes}
-              onCategoryChange={handleCategoryChange}
-              onAttributesChange={handleAttributesChange}
-            />
-
             {/* فیلتر ویژگیِ مگامنو — مقدار اولیه از URL، تغییر با navigationِ نرم */}
             <AttributeFilterCard
               meta={filterMeta}
@@ -652,6 +635,19 @@ export default function BrandGroupedView({
                 onChange={handlePriceChange}
               />
             </div>
+
+            {/* ویژگی‌های دسته‌ی همین مسیر — آخرین بخشِ فیلترها */}
+            {categoryId && (
+              <div className="bg-white rounded-[6px] border border-gray-100 shadow-sm overflow-hidden">
+                <CategoryAttributeFilters
+                  categories={filterCategories}
+                  selected={[String(categoryId)]}
+                  fixedCategory={true}
+                  attributes={categoryAttributes}
+                  onAttributesChange={handleAttributesChange}
+                />
+              </div>
+            )}
           </div>
           </MobileFilterDrawer>
         </aside>

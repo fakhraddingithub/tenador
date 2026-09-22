@@ -8,7 +8,7 @@ import LimitedEdition from "base/models/LimitedEdition";
 import { applyProductSportVisibility } from "base/services/categorySportVisibility.service";
 import { buildTargetAudienceMatch } from "base/utils/targetAudience";
 import { buildCollaborationScopes, collaborationMatchBranches } from "base/utils/brandCollaboration";
-import { buildAttributeMeta, productMatchesAttrFilters } from "@/lib/attributeFilters";
+import { buildAttributeMeta, mergeAttributeMeta, productMatchesAttrFilters } from "@/lib/attributeFilters";
 
 const oid = (value) => new mongoose.Types.ObjectId(String(value));
 
@@ -77,13 +77,29 @@ export async function getListingFilterOptions(scope) {
   return (await getCatalog(scope)).categories;
 }
 
-export async function buildCategoryAttributeMatch(scope, categoryId, selections = {}) {
-  if (!categoryId || !Object.values(selections || {}).some((v) => Array.isArray(v) && v.length)) return {};
+// دامنه‌ی دسته‌ها را به لیستی از رشته‌های id تبدیل می‌کند (یکی، چندتا، یا هیچ).
+const toIdList = (value) =>
+  (Array.isArray(value) ? value : value ? [value] : []).map(String).filter(Boolean);
+
+/**
+ * فیلترِ ویژگی‌های دسته → یک شرطِ _id روی محصولات.
+ *
+ * categoryIds می‌تواند یک id، آرایه‌ای از idها، یا خالی باشد؛ خالی یعنی «همه‌ی
+ * دسته‌های این لیست» — دقیقاً همان مجموعه‌ای که سایدبار ویژگی‌هایش را نشان
+ * می‌دهد. متادیتا سمتِ سرور ساخته می‌شود، پس نامِ فیلدی که کاربر می‌فرستد
+ * هرگز به یک مسیرِ Mongo تبدیل نمی‌شود.
+ */
+export async function buildCategoryAttributeMatch(scope, categoryIds, selections = {}) {
+  if (!Object.values(selections || {}).some((v) => Array.isArray(v) && v.length)) return {};
+  const ids = toIdList(categoryIds);
   const { categories, products } = await getCatalog(scope);
-  const category = categories.find((c) => c._id === String(categoryId));
-  if (!category) return { _id: { $in: [] } };
-  // Metadata is server-owned: client-supplied field names cannot become Mongo paths.
-  const ids = products.filter((p) => p.category === String(categoryId) &&
-    productMatchesAttrFilters(p, selections, category.attributeMeta)).map((p) => oid(p._id));
-  return { _id: { $in: ids } };
+  const active = ids.length ? categories.filter((c) => ids.includes(c._id)) : categories;
+  if (active.length === 0) return { _id: { $in: [] } };
+  // ادغامِ متادیتا همان چیزی است که کلاینت می‌بیند، پس نتیجه‌ی دو طرف یکی است.
+  const meta = mergeAttributeMeta(active);
+  const activeIds = new Set(active.map((c) => c._id));
+  const matched = products
+    .filter((p) => activeIds.has(p.category) && productMatchesAttrFilters(p, selections, meta))
+    .map((p) => oid(p._id));
+  return { _id: { $in: matched } };
 }

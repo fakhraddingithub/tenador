@@ -1,7 +1,7 @@
 "use client";
 
 import { matchesSearch } from "@/lib/search";
-import CategoryAttributeFilters from "@/components/features/filters/CategoryAttributeFilters";
+import CategoryAttributeFilters, { pruneAttributes } from "@/components/features/filters/CategoryAttributeFilters";
 import { buildSerieNames } from "@/lib/seo/taxonomyNames";
 import { useState, useMemo, useEffect, useRef } from "react";
 import ProductList from "@/components/templates/products/ProductList";
@@ -16,6 +16,7 @@ import SportHero from "@/components/templates/sports/SportHero";
 import { FiShoppingBag } from "react-icons/fi";
 import {
   buildAttributeMeta,
+  mergeAttributeMeta,
   parseAttrFiltersFromParams,
   writeAttrFiltersToParams,
   productMatchesAttrFilters,
@@ -62,11 +63,16 @@ export default function SportPageClient({
   // صفحه‌ی دسته (که category دارد) نمایش داده می‌شوند. صفحه‌ی اصلی ورزش و صفحه‌ی
   // رویداد که category پاس نمی‌دهند، هیچ فیلتر ویژگی نشان نمی‌دهند.
   // ─────────────────────────────────────────────
+  const isSeriePage = Boolean(filters?.serie) && !filters?.limitedEdition;
   const attributeMeta = useMemo(
-    () => filters?.serie && !filters?.limitedEdition
-      ? (filterCategories.find((c) => c._id === localFilters.categories[0])?.attributeMeta || [])
+    () => isSeriePage
+      ? mergeAttributeMeta(
+          localFilters.categories.length
+            ? filterCategories.filter((c) => localFilters.categories.includes(String(c._id)))
+            : filterCategories,
+        )
       : buildAttributeMeta(filters?.category?.attributes, products),
-    [filters?.category, filters?.serie, filters?.limitedEdition, products, filterCategories, localFilters.categories],
+    [filters?.category, isSeriePage, products, filterCategories, localFilters.categories],
   );
 
   const [attrFilters, setAttrFilters] = useState({});
@@ -273,8 +279,8 @@ export default function SportPageClient({
   // با تغییرِ انتخابِ برند، سری‌های انتخاب‌شده‌ای که به برند(های) جدید تعلق
   // ندارند حذف می‌شوند تا فیلترِ نامرئی باقی نماند.
   const applyLocalFilters = (next) => {
-    if (filters?.serie && JSON.stringify(next.categories) !== JSON.stringify(localFilters.categories)) {
-      applyAttrFilters({});
+    if (isSeriePage && JSON.stringify(next.categories) !== JSON.stringify(localFilters.categories)) {
+      applyAttrFilters(pruneAttributes(attrFilters, filterCategories, next.categories));
     }
     if (next.series?.length && next.brands?.length) {
       const prunedSeries = next.series.filter((id) => {
@@ -411,16 +417,16 @@ export default function SportPageClient({
               setFilters={applyLocalFilters}
               hideSportFilter={true}
               seriesOptions={seriesFilterOptions}
-              categoryFilter={filters?.serie && !filters?.limitedEdition ? (
+              categoryFilter={isSeriePage ? (
                 <CategoryAttributeFilters
                   categories={filterCategories}
-                  categoryId={localFilters.categories[0] || ""}
+                  selected={localFilters.categories}
                   attributes={attrFilters}
-                  onCategoryChange={(id) => applyLocalFilters({ ...localFilters, categories: id ? [id] : [] })}
+                  onCategoryChange={(ids) => applyLocalFilters({ ...localFilters, categories: ids })}
                   onAttributesChange={applyAttrFilters}
                 />
               ) : null}
-              attributeMeta={filters?.serie && !filters?.limitedEdition ? [] : attributeMeta}
+              attributeMeta={isSeriePage ? [] : attributeMeta}
               attrFilters={attrFilters}
               setAttrFilters={applyAttrFilters}
             />

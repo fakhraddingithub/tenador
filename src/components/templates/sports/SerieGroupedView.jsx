@@ -10,7 +10,7 @@
 
 import { useState, useRef, useEffect, useCallback, useMemo } from "react";
 import Link from "next/link";
-import CategoryAttributeFilters from "@/components/features/filters/CategoryAttributeFilters";
+import CategoryAttributeFilters, { pruneAttributes } from "@/components/features/filters/CategoryAttributeFilters";
 import { countActiveAttrFilters } from "@/lib/attributeFilters";
 import { buildSerieNames } from "@/lib/seo/taxonomyNames";
 import ProductCard from "@/components/modules/cart/ProductCard";
@@ -67,7 +67,8 @@ export default function SerieGroupedView({
   const [minPrice, setMinPrice] = useState(0);
   const [maxPrice, setMaxPrice] = useState(0);
 
-  const [selectedCategory, setSelectedCategory] = useState(categoryId || "");
+  // انتخابِ چندتاییِ دسته (چک‌باکس)؛ در مسیرِ دارای دسته، همان یکی و ثابت است.
+  const [selectedCategories, setSelectedCategories] = useState(categoryId ? [String(categoryId)] : []);
   const [categoryAttributes, setCategoryAttributes] = useState(initialCategoryAttributes);
   const dirtyFiltersRef = useRef(false);
 
@@ -81,7 +82,7 @@ export default function SerieGroupedView({
   const hasMoreRef = useRef(hasMore);
   const nextOffsetRef = useRef(nextOffset);
   const loadedKeysRef = useRef(new Set((initialData.sections || []).map((s) => s.key)));
-  const filterRef = useRef({ search: "", minPrice: 0, maxPrice: 0, categoryId: categoryId || "", categoryAttributes: initialCategoryAttributes });
+  const filterRef = useRef({ search: "", minPrice: 0, maxPrice: 0, categoryIds: categoryId ? [String(categoryId)] : [], categoryAttributes: initialCategoryAttributes });
   const sentinelRef = useRef(null);
   const mountedRef = useRef(false);
   // کنار زدنِ درخواستِ در جریان، لغوِ انتظارِ backoff، و پاک‌سازیِ unmount
@@ -101,7 +102,7 @@ export default function SerieGroupedView({
     search: searchTerm.trim(),
     minPrice: Number(minPrice) || 0,
     maxPrice: Number(maxPrice) || 0,
-    categoryId: selectedCategory,
+    categoryIds: selectedCategories,
     categoryAttributes,
   });
 
@@ -112,7 +113,8 @@ export default function SerieGroupedView({
       const params = new URLSearchParams();
       params.set("serieId", serieId);
       if (sportId) params.set("sportId", sportId);
-      if (f.categoryId) params.set("categoryId", f.categoryId);
+      if (categoryId) params.set("categoryId", categoryId);
+      else for (const id of f.categoryIds || []) params.append("categoryIds", id);
       if (targetAudience) params.set("targetAudience", targetAudience);
       if (Object.keys(f.categoryAttributes || {}).length) params.set("categoryAttributes", JSON.stringify(f.categoryAttributes));
       params.set("offset", String(offset));
@@ -123,7 +125,7 @@ export default function SerieGroupedView({
       if (withIndex) params.set("withIndex", "1");
       return `/api/series/grouped?${params.toString()}`;
     },
-    [serieId, sportId, targetAudience]
+    [serieId, sportId, categoryId, targetAudience]
   );
 
   // هر تغییرِ فیلترِ قابلِ‌مشاهده: نسخه را بالا ببر و هر درخواست/انتظارِ backoffِ
@@ -272,7 +274,7 @@ export default function SerieGroupedView({
     );
     return () => clearTimeout(t);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [searchTerm, minPrice, maxPrice, selectedCategory, categoryAttributes, run]);
+  }, [searchTerm, minPrice, maxPrice, selectedCategories, categoryAttributes, run]);
 
   useEffect(() => {
     const el = sentinelRef.current;
@@ -322,10 +324,12 @@ export default function SerieGroupedView({
     setMaxPrice(max);
   };
 
-  const handleCategoryChange = (value) => {
+  // با تغییرِ انتخابِ دسته فقط ویژگی‌هایی که دیگر دیده نمی‌شوند حذف می‌شوند،
+  // نه همه — وگرنه افزودنِ یک دسته انتخاب‌های قبلی را هم پاک می‌کرد.
+  const handleCategoryChange = (next) => {
     invalidateFilters();
-    setSelectedCategory(value);
-    setCategoryAttributes({});
+    setSelectedCategories(next);
+    setCategoryAttributes((prev) => pruneAttributes(prev, filterCategories, next));
   };
   const handleAttributesChange = (value) => {
     invalidateFilters();
@@ -337,7 +341,7 @@ export default function SerieGroupedView({
     setSearchTerm("");
     setMinPrice(0);
     setMaxPrice(0);
-    setSelectedCategory(categoryId || "");
+    setSelectedCategories(categoryId ? [String(categoryId)] : []);
     setCategoryAttributes({});
   };
 
@@ -357,7 +361,7 @@ export default function SerieGroupedView({
   // تعداد فیلترهای فعالِ سایدبار — فقط برای بجِ دکمه‌ی موبایلِ MobileFilterDrawer.
   const activeCount =
     (Number(minPrice) > 0 ? 1 : 0) + (Number(maxPrice) > 0 ? 1 : 0) +
-    (!categoryId && selectedCategory ? 1 : 0) + countActiveAttrFilters(categoryAttributes);
+    (categoryId ? 0 : selectedCategories.length) + countActiveAttrFilters(categoryAttributes);
 
   // پس از اعمالِ فیلتر، اگر لیست کوتاه شد، نمای صفحه را به ناحیه‌ی فیلتر لنگر می‌اندازد.
   const anchorRef = useRef(null);
@@ -440,15 +444,6 @@ export default function SerieGroupedView({
               </button>
             </div>
 
-            <CategoryAttributeFilters
-              categories={filterCategories}
-              categoryId={selectedCategory}
-              fixedCategory={Boolean(categoryId)}
-              attributes={categoryAttributes}
-              onCategoryChange={handleCategoryChange}
-              onAttributesChange={handleAttributesChange}
-            />
-
             {/* نویگیشن زیرسری‌ها */}
             {index.length > 0 && (
               <div className="bg-white rounded-[6px] border border-gray-100 shadow-sm p-5">
@@ -500,6 +495,18 @@ export default function SerieGroupedView({
                 bounds={priceBounds}
                 value={{ min: minPrice, max: maxPrice }}
                 onChange={handlePriceChange}
+              />
+            </div>
+
+            {/* نوع محصول + ویژگی‌هایش — آخرین بخشِ فیلترها */}
+            <div className="bg-white rounded-[6px] border border-gray-100 shadow-sm overflow-hidden">
+              <CategoryAttributeFilters
+                categories={filterCategories}
+                selected={selectedCategories}
+                fixedCategory={Boolean(categoryId)}
+                attributes={categoryAttributes}
+                onCategoryChange={handleCategoryChange}
+                onAttributesChange={handleAttributesChange}
               />
             </div>
           </div>
