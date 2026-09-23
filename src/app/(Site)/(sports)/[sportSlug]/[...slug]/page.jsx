@@ -1,5 +1,6 @@
 import { notFound, permanentRedirect } from "next/navigation";
 import { getListingFilterOptions } from "base/services/listingFilterCatalog.service";
+import { mergeAttributeMeta, parseAttrFiltersFromParams } from "@/lib/attributeFilters";
 import SportPageClient from "@/components/templates/sports/SportPageClient";
 import BrandGroupedView from "@/components/templates/sports/BrandGroupedView";
 import SerieGroupedView from "@/components/templates/sports/SerieGroupedView";
@@ -68,6 +69,19 @@ function resolveAttrFilters(category, sp) {
     out.push({ name: def.name, values });
   }
   return out;
+}
+
+// پارامترهای ویژگیِ URL را با همان تابعی می‌خواند که کلاینت آن‌ها را می‌نویسد، تا
+// یک لینکِ فیلترشده روی رندرِ سرور همان نما را بدهد. searchParams یک آبجکتِ ساده
+// است، پس اول به URLSearchParams تبدیل می‌شود (مقادیرِ چندگانه هم پشتیبانی می‌شوند).
+function readAttrParams(attrMeta, sp) {
+  const params = new URLSearchParams();
+  for (const [key, raw] of Object.entries(sp || {})) {
+    for (const value of Array.isArray(raw) ? raw : [raw]) {
+      if (typeof value === "string") params.append(key, value);
+    }
+  }
+  return parseAttrFiltersFromParams(params, attrMeta);
 }
 
 // فرادادهٔ فیلتر برای کارتِ سایدبارِ صفحه‌ی برند (برچسب + گزینه‌های تعریف‌شده).
@@ -275,18 +289,23 @@ export default async function SportDynamicSlugPage({ params, searchParams }) {
     const categoryId = filters.category?._id || null;
     const brandSlug = filters.brand?.slug || "";
 
-    const [initialData, serieArticleBlocks, filterCategories] = await Promise.all([
+    // دسته‌ها اول لازم‌اند تا بدانیم کدام پارامترهای URL «ویژگی» هستند؛ هر دو
+    // فراخوانی روی یک کش می‌نشینند، پس این ترتیب هزینه‌ی اضافه ندارد.
+    const filterCategories = await getListingFilterOptions({ serieId, sportId, targetAudience });
+    const categoryAttributes = readAttrParams(mergeAttributeMeta(filterCategories), sp);
+
+    const [initialData, serieArticleBlocks] = await Promise.all([
       getSerieGroupedSections({
         serieId,
         sportId,
         categoryId,
+        categoryAttributes,
         targetAudience,
         offset: 0,
         limit: INITIAL_SECTIONS,
         withIndex: true,
       }),
       getSerieArticleBlocks(serieId),
-      getListingFilterOptions({ serieId, sportId, targetAudience }),
     ]);
 
     const pageInfo = filters.serie;
@@ -303,8 +322,9 @@ export default async function SportDynamicSlugPage({ params, searchParams }) {
           canonical={`${SITE_URL}/${slugs.join("/")}`}
         />
         <SerieGroupedView
-          key={JSON.stringify([String(serieId), String(sportId), targetAudience])}
+          key={JSON.stringify([String(serieId), String(sportId), targetAudience, categoryAttributes])}
           filterCategories={filterCategories}
+          initialCategoryAttributes={categoryAttributes}
           pageInfo={pageInfo}
           filters={filters}
           rate={rate}

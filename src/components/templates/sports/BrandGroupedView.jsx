@@ -17,7 +17,11 @@
 import { useState, useRef, useEffect, useCallback, useMemo } from "react";
 import Link from "next/link";
 import CategoryAttributeFilters from "@/components/features/filters/CategoryAttributeFilters";
-import { countActiveAttrFilters } from "@/lib/attributeFilters";
+import {
+  countActiveAttrFilters,
+  mergeAttributeMeta,
+  syncAttrFiltersToUrl,
+} from "@/lib/attributeFilters";
 import ProductCard from "@/components/modules/cart/ProductCard";
 import QuickViewModal from "@/components/modules/cart/QuickViewModal";
 import SearchBar from "@/components/templates/products/SearchBar";
@@ -457,9 +461,16 @@ export default function BrandGroupedView({
     setMaxPrice(max);
   };
 
+  // هر تغییرِ ویژگی روی نوار آدرس هم می‌نشیند (مثلِ صفحه‌ی دسته) — سرور همین
+  // پارامترها را موقعِ رندرِ اولیه می‌خواند، پس لینک همان نما را بازتولید می‌کند.
+  const applyAttributes = (next) => {
+    setCategoryAttributes(next);
+    syncAttrFiltersToUrl(next, mergeAttributeMeta(filterCategories));
+  };
+
   const handleAttributesChange = (value) => {
     invalidateFilters();
-    setCategoryAttributes(value);
+    applyAttributes(value);
   };
 
   const resetFilters = () => {
@@ -467,7 +478,7 @@ export default function BrandGroupedView({
     setSearchTerm("");
     setMinPrice(0);
     setMaxPrice(0);
-    setCategoryAttributes({});
+    applyAttributes({});
   };
 
   // دامنه‌ی اسلایدرِ قیمت از روی قیمتِ تومانِ محصولاتِ بارگذاری‌شده (کامپوننتِ

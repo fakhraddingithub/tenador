@@ -124,6 +124,30 @@ export function writeAttrFiltersToParams(params, attrFilters = {}, attrMeta = []
 }
 
 /**
+ * فیلترهای ویژگی را روی نوار آدرس می‌نویسد — همان قراردادِ صفحه‌ی دسته، حالا
+ * مشترک با صفحه‌های برند+دسته و سری، تا یک لینکِ فیلترشده همه‌جا قابلِ اشتراک باشد.
+ *
+ * replaceState (نه router.push): داده‌ی این صفحه‌ها یا از قبل در حافظه است یا خودِ
+ * کامپوننت آن را واکشی می‌کند، پس رفتن به سرور فقط یک رفت‌وبرگشتِ اضافه بود.
+ * attrMeta باید «همه‌ی» ویژگی‌های ممکنِ صفحه باشد، نه فقط دیده‌شده‌ها، وگرنه
+ * پارامترِ یک ویژگیِ پنهان‌شده در آدرس جا می‌ماند.
+ */
+export function syncAttrFiltersToUrl(attrFilters, attrMeta) {
+  if (typeof window === "undefined") return;
+  const params = writeAttrFiltersToParams(
+    new URLSearchParams(window.location.search),
+    attrFilters,
+    attrMeta,
+  );
+  const qs = params.toString();
+  window.history.replaceState(
+    null,
+    "",
+    qs ? `${window.location.pathname}?${qs}` : window.location.pathname,
+  );
+}
+
+/**
  * آیا محصول با فیلترهای ویژگی مطابقت دارد؟ (AND بین ویژگی‌ها، OR درون هر ویژگی)
  * - رنگ → تطبیقِ هیبریدیِ هر سواچِ انتخاب‌شده (متن + hue).
  * - عددی → تطبیقِ دقیق با یکی از مقادیرِ انتخاب‌شده.

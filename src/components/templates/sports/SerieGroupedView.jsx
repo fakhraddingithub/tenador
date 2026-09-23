@@ -11,7 +11,11 @@
 import { useState, useRef, useEffect, useCallback, useMemo } from "react";
 import Link from "next/link";
 import CategoryAttributeFilters, { pruneAttributes } from "@/components/features/filters/CategoryAttributeFilters";
-import { countActiveAttrFilters } from "@/lib/attributeFilters";
+import {
+  countActiveAttrFilters,
+  mergeAttributeMeta,
+  syncAttrFiltersToUrl,
+} from "@/lib/attributeFilters";
 import { buildSerieNames } from "@/lib/seo/taxonomyNames";
 import ProductCard from "@/components/modules/cart/ProductCard";
 import QuickViewModal from "@/components/modules/cart/QuickViewModal";
@@ -324,16 +328,23 @@ export default function SerieGroupedView({
     setMaxPrice(max);
   };
 
+  // هر تغییرِ ویژگی روی نوار آدرس هم می‌نشیند (مثلِ صفحه‌ی دسته)، تا لینک
+  // قابلِ اشتراک باشد. دامنه‌ی پاک‌سازی «همه‌ی» دسته‌هاست، نه دسته‌های انتخابی.
+  const applyAttributes = (next) => {
+    setCategoryAttributes(next);
+    syncAttrFiltersToUrl(next, mergeAttributeMeta(filterCategories));
+  };
+
   // با تغییرِ انتخابِ دسته فقط ویژگی‌هایی که دیگر دیده نمی‌شوند حذف می‌شوند،
   // نه همه — وگرنه افزودنِ یک دسته انتخاب‌های قبلی را هم پاک می‌کرد.
   const handleCategoryChange = (next) => {
     invalidateFilters();
     setSelectedCategories(next);
-    setCategoryAttributes((prev) => pruneAttributes(prev, filterCategories, next));
+    applyAttributes(pruneAttributes(categoryAttributes, filterCategories, next));
   };
   const handleAttributesChange = (value) => {
     invalidateFilters();
-    setCategoryAttributes(value);
+    applyAttributes(value);
   };
 
   const resetFilters = () => {
@@ -342,7 +353,7 @@ export default function SerieGroupedView({
     setMinPrice(0);
     setMaxPrice(0);
     setSelectedCategories(categoryId ? [String(categoryId)] : []);
-    setCategoryAttributes({});
+    applyAttributes({});
   };
 
   // دامنه‌ی اسلایدرِ قیمت از روی قیمتِ تومانِ محصولاتِ بارگذاری‌شده (کامپوننتِ

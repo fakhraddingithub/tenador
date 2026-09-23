@@ -18,7 +18,7 @@ import {
   buildAttributeMeta,
   mergeAttributeMeta,
   parseAttrFiltersFromParams,
-  writeAttrFiltersToParams,
+  syncAttrFiltersToUrl,
   productMatchesAttrFilters,
 } from "@/lib/attributeFilters";
 
@@ -92,22 +92,11 @@ export default function SportPageClient({
   }, [attributeMeta.length]);
 
   // اعمال تغییر فیلتر ویژگی + همگام‌سازی URL بدون رفرش کامل صفحه.
-  // history.replaceState استفاده می‌شود تا داده‌ی سرور دوباره fetch نشود و
-  // تجربه‌ی فیلتر آنی بماند (داده‌ها از قبل در حافظه هستند).
+  // روی صفحه‌ی سری، «همه‌ی» ویژگی‌های ممکن پاک‌سازی می‌شوند نه فقط ویژگی‌های
+  // دسته‌های انتخاب‌شده، وگرنه پارامترِ ویژگیِ یک دسته‌ی تیک‌خورده‌ی قبلی می‌ماند.
   const applyAttrFilters = (next) => {
     setAttrFilters(next);
-    if (typeof window === "undefined") return;
-    const params = writeAttrFiltersToParams(
-      new URLSearchParams(window.location.search),
-      next,
-      attributeMeta,
-    );
-    const qs = params.toString();
-    window.history.replaceState(
-      null,
-      "",
-      qs ? `${window.location.pathname}?${qs}` : window.location.pathname,
-    );
+    syncAttrFiltersToUrl(next, isSeriePage ? mergeAttributeMeta(filterCategories) : attributeMeta);
   };
 
   // ─────────────────────────────────────────────
