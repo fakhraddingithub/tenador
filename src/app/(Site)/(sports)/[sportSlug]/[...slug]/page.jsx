@@ -385,8 +385,11 @@ export default async function SportDynamicSlugPage({ params, searchParams }) {
         products={searchData.results}
         canonical={`${SITE_URL}/${slugs.join("/")}`}
       />
+      {/* فیلترها همیشه از URL می‌آیند: رفتن به همین مسیر با پارامترهای دیگر
+          (مثلاً از نوبار، بدونِ هیچ پارامتری) کامپوننت را از نو می‌سازد، وگرنه
+          React وضعیتِ فیلترِ قبلیِ کاربر را در جای خودش نگه می‌داشت. */}
       <SportPageClient
-        key={JSON.stringify(slugs)}
+        key={JSON.stringify([slugs, Object.entries(sp).sort()])}
         filterCategories={searchData.filters.serie ? await getListingFilterOptions({ serieId: String(searchData.filters.serie._id), sportId: String(searchData.filters.sport._id), targetAudience, descendants: false }) : []}
         pageInfo={pageInfo}
         filters={searchData.filters}

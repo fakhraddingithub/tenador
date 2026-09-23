@@ -75,16 +75,19 @@ export default function BrandGroupedView({
     categoryAttributes: initialCategoryAttributes,
     targetAudience,
   });
-  // در hydration اولیه cache خالی است و دقیقاً initialData سرور رندر می‌شود.
-  // در بازگشت با navigation داخلی، lazy initializer وضعیت کامل قبلی را می‌گیرد.
-  const [cachedSnapshot] = useState(() => readBrandGroupedViewCache(cacheKey));
-  const startingData = cachedSnapshot || initialData;
-  const startingFilters = cachedSnapshot?.filters || {
+  // فیلترهای این بازدید، هرچه URL می‌گوید — نه چیزی که کاربر قبلاً انتخاب کرده بود.
+  const entryFilters = {
     search: "",
     minPrice: 0,
     maxPrice: 0,
     categoryAttributes: initialCategoryAttributes,
   };
+  // در hydration اولیه cache خالی است و دقیقاً initialData سرور رندر می‌شود.
+  // در بازگشت با navigation داخلی، lazy initializer وضعیت کامل قبلی را می‌گیرد —
+  // اما فقط اگر با همین فیلترها ساخته شده باشد (بررسی داخلِ readBrandGroupedViewCache).
+  const [cachedSnapshot] = useState(() => readBrandGroupedViewCache(cacheKey, entryFilters));
+  const startingData = cachedSnapshot || initialData;
+  const startingFilters = cachedSnapshot?.filters || entryFilters;
 
   // مقدارِ فعالِ کارتِ فیلترِ سایدبار = مقدارِ فیلترِ هم‌نام با ویژگیِ مگامنو
   const activeFilterValue =
