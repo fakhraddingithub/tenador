@@ -7,6 +7,7 @@ import { PublicProductGrid, PublicUsedProductGrid } from "@/components/features/
 import { sanitizeArticleHtml } from "@/lib/sanitizeArticleHtml";
 import { sanitizeRichText } from "@/lib/sanitizeRichText";
 import { BLOCK_ALIGN_SELF, BLOCK_WIDTH_CLASS, blockBoxProps, blockWidth, groupBlockRows } from "@/lib/articleBlockLayout";
+import DragScroll from "@/components/features/articles/DragScroll";
 import { imageBlockItems } from "@/lib/articleImageBlock";
 import { flattenArticleBlocks, isMergedBlock, mergedChildren, sanitizeMergedGrid } from "@/lib/articleBlockTypes";
 
@@ -147,6 +148,8 @@ function MergedGrid({ items, grid, spacing }) {
     ].join(" ")}
     style={spacing || undefined}
   >
+    {/* کشیدن با ماوس فقط جایی معنا دارد که ظرف واقعاً اسکرول شود. */}
+    {scrolls ? <DragScroll /> : null}
     <div
       className={[
         "grid items-start gap-[var(--g)] [--g:var(--gm)] md:[--g:var(--gd)]",
@@ -183,6 +186,7 @@ function MergedBlock({ items, spacing }) {
     className={`${blockSection} snap-x snap-mandatory overflow-x-auto overscroll-x-contain pb-2 [scrollbar-width:thin] focus-visible:outline-2 focus-visible:outline-[var(--color-primary)]`}
     style={spacing || undefined}
   >
+    <DragScroll />
     {/* بلوکِ ادغام‌شده‌ی قدیمی (بدونِ grid) تنظیمِ فاصله ندارد، پس مثلِ حالتِ
         پیش‌فرضِ جدید فاصله‌ی صفر می‌گیرد؛ متغیر می‌ماند چون سهمِ هر خانه از آن کم می‌شود. */}
     <div className="flex items-start gap-[var(--merged-gap)] [--merged-gap:0rem]">
@@ -379,7 +383,7 @@ export default function ArticleBlockRenderer({ blocks = [], entities, preview = 
       const variant = TABLE_VARIANTS[v.tableVariant] || TABLE_VARIANTS.default;
       const head = v.accent ? { backgroundColor: v.accent, color: readableOn(v.accent) } : undefined;
       const cell = v.text ? { color: v.text } : undefined;
-      return <div key={block.id} className={`${blockSection} ${variant.wrapper}`} style={v.spacing || undefined}><table className="w-full min-w-[560px] text-right text-sm"><thead className={variant.head} style={head}><tr>{(data.headers || []).map((header, index) => <th key={index} scope="col" className={variant.th}>{header}</th>)}</tr></thead><tbody>{(data.rows || []).map((row, rowIndex) => <tr key={rowIndex} className={variant.row}>{row.map((cellValue, index) => <td key={index} className={variant.cell} style={cell}>{cellValue}</td>)}</tr>)}</tbody></table></div>;
+      return <div key={block.id} className={`${blockSection} ${variant.wrapper}`} style={v.spacing || undefined}><DragScroll /><table className="w-full min-w-[560px] text-right text-sm"><thead className={variant.head} style={head}><tr>{(data.headers || []).map((header, index) => <th key={index} scope="col" className={variant.th}>{header}</th>)}</tr></thead><tbody>{(data.rows || []).map((row, rowIndex) => <tr key={rowIndex} className={variant.row}>{row.map((cellValue, index) => <td key={index} className={variant.cell} style={cell}>{cellValue}</td>)}</tr>)}</tbody></table></div>;
     }
     if (block.type === "faq") return <section key={block.id} className={blockSection} style={v.spacing || undefined}><div className="space-y-3">{(data.items || []).filter((item) => item.question).map((item, index) => <details key={index} className="group rounded-[var(--radius)] border border-gray-200 bg-white p-5" style={merge(v.background && { backgroundColor: v.background }, v.accent && { borderColor: v.accent })}><summary className="cursor-pointer list-none font-bold text-gray-900" style={v.text ? { color: v.text } : undefined}>{item.question}</summary><p className="mt-4 border-t border-gray-100 pt-4 leading-8 text-gray-600" style={v.text ? { color: v.text } : undefined}>{item.answer}</p></details>)}</div></section>;
     if (block.type === "productCard" || block.type === "productSlider") {

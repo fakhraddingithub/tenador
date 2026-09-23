@@ -481,3 +481,27 @@
   margin-left: var(--bl, 0);
   margin-right: var(--br, 0);
 }
+
+/* ─── کشیدن با ماوس برای اسکرولِ افقی ───
+   کلاس‌ها را جزیره‌ی DragScroll می‌گذارد و برمی‌دارد: «drag-scroll» یعنی این ظرف
+   واقعاً اسکرولِ افقی دارد (وگرنه نشانگر نباید عوض شود)، و «--active» یعنی همین
+   حالا در حالِ کشیدن است.
+
+   snap فقط حینِ کشیدن خاموش می‌شود: با scroll-snap: mandatory هر نوشتنِ
+   scrollLeft بی‌درنگ به نزدیک‌ترین نقطه می‌پرد و حرکت تکه‌تکه می‌شود. پس از رها
+   کردن دوباره روشن است و ظرف خودش سرِ جای درست می‌نشیند. */
+.drag-scroll {
+  cursor: grab;
+}
+.drag-scroll--active {
+  cursor: grabbing;
+  scroll-snap-type: none;
+  user-select: none;
+  -webkit-user-select: none;
+}
+/* روی لمس دست نمی‌زنیم: اسکرولِ بومی از قبل درست کار می‌کند. */
+@media (hover: none) {
+  .drag-scroll {
+    cursor: auto;
+  }
+}

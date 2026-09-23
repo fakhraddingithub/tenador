@@ -244,3 +244,39 @@ test("گزینه‌ها نامِ ورزش را هم دارند (دسته زیر�
   const src = await read("../src/components/admin/brands/BrandCategoryArticlesCard.jsx");
   assert.match(src, /const sport = category\?\.sport\?\.title \|\| category\?\.sport\?\.name;/);
 });
+
+// ——— کشیدن با ماوس روی اسلایدرهای افقی ————————————————————————————————
+test("جزیره‌ی کشیدن به ظرفِ اسکرولِ موجود وصل می‌شود، نه به مارک‌آپِ تازه", async () => {
+  const src = await read("../src/components/features/articles/DragScroll.jsx");
+  // رندرکننده سروری است؛ جزیره خودش را به parentElement می‌بندد تا آن فایل
+  // کلاینتی نشود (sanitize-html نباید وارد باندلِ مرورگر شود).
+  assert.match(src, /anchor\.current\?\.parentElement/);
+  assert.match(src, /<span ref=\{anchor\} hidden aria-hidden="true" \/>/);
+});
+
+test("کشیدن فقط با ماوس، با آستانه، و بدونِ دست‌زدن به نوارِ اسکرول", async () => {
+  const src = await read("../src/components/features/articles/DragScroll.jsx");
+  assert.match(src, /event\.pointerType !== "mouse"/);
+  assert.match(src, /Math\.abs\(dx\) < DRAG_THRESHOLD/);
+  // نوارِ اسکرول زیرِ ناحیه‌ی محتواست و باید دستِ مرورگر بماند.
+  assert.match(src, /event\.clientY > element\.getBoundingClientRect\(\)\.top \+ element\.clientHeight/);
+  // فیلدها و دستگیره‌های ویرایشگر استثنا هستند.
+  assert.match(src, /input, textarea, select, \[contenteditable\], \[data-drag-handle\], \[data-edit-block\]/);
+});
+
+test("کلیکِ پس از کشیدن بلعیده می‌شود، ولی کلیکِ ساده نه", async () => {
+  const src = await read("../src/components/features/articles/DragScroll.jsx");
+  assert.match(src, /swallowClick = state\.dragging;/);
+  // capture لازم است: <Link> نکست روی خودِ لنگر می‌نشیند و bubble دیر است.
+  assert.match(src, /element\.addEventListener\("click", onClickCapture, true\)/);
+  assert.match(src, /swallowClick = false;\s*\n\s*if \(event\.pointerType/);
+});
+
+test("هر ظرفِ اسکرولِ افقی جزیره را دارد", async () => {
+  const src = await read("../src/components/features/articles/ArticleBlockRenderer.jsx");
+  // شبکه‌ی ادغام فقط وقتی اسکرول دارد، ردیفِ قدیمی همیشه، و جدولِ پهن.
+  assert.match(src, /\{scrolls \? <DragScroll \/> : null\}/);
+  const legacy = src.slice(src.indexOf("function MergedBlock"), src.indexOf("function EntityCards"));
+  assert.match(legacy, /<DragScroll \/>/);
+  assert.match(src, /style=\{v\.spacing \|\| undefined\}><DragScroll \/><table/);
+});

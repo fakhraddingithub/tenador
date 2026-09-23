@@ -680,6 +680,36 @@ same rule the brand form always had.
 Note `/api/series` already uses `[id]`, so the new route is `[id]/mini-article` — Next
 refuses two different slug names at one path level.
 
+### Drag to scroll the horizontal sliders
+
+A block wider than the page already scrolls horizontally; on desktop it can now also be
+**dragged with the mouse**, like any carousel. `DragScroll` is an invisible client island
+(`<span hidden>`) that binds to its own `parentElement` — the existing scroll container.
+That indirection is the point: the block renderer is a server component and must stay one,
+because making it client would drag `sanitize-html` into the browser bundle. No markup
+changes, and the native scrollbar is untouched.
+
+It is rendered in the three places that actually scroll: the merged grid (only when
+`scrolls`), the legacy merged row, and a wide table.
+
+Each rule exists for a real trap:
+
+- **Mouse only.** Touch already scrolls natively; intercepting it only adds lag.
+- **A 5px threshold** separates a click from a drag. Below it the click goes through
+  untouched, so links, cards and buttons behave normally; above it the block scrolls and
+  the click that follows is swallowed **in the capture phase** — a Next `<Link>` handles
+  its own click on the anchor, so a bubble-phase `preventDefault` would arrive too late.
+- **Text selection is disabled only once a drag starts**, not on every mousedown, so
+  focusing a field or selecting text deliberately still works. Inputs, textareas,
+  contenteditable and the Preview's own grips are excluded outright.
+- **Snap is turned off for the duration of the drag.** With `scroll-snap-type: mandatory`
+  every `scrollLeft` write jumps to the nearest snap point and the drag feels like it is
+  stuttering; it snaps once, at the end, where it should.
+- **A press on the scrollbar is ignored** (`clientY` below `clientHeight`), so the native
+  bar keeps working exactly as before.
+- Scrolling is applied as a **delta** (`start - dx`), which is direction-agnostic: in this
+  RTL document `scrollLeft` runs from 0 down to −max, and the same formula holds.
+
 ### Slug System
 
 `SlugRegistery` model maps dynamic URL segments (sport/category/brand slugs) to their entity types. `actions/registerSlug.js` is a server action that creates entries on entity creation. This powers ISR revalidation — when a slug is revalidated, the correct entity page is rebuilt.
