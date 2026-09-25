@@ -136,8 +136,15 @@ export default function AdminLayout({ children }) {
   // صفحه‌های داخلی = عمقِ بیشتر از /p-admin/<section>. صفحه‌های سطح‌بالا
   // (داشبورد و ریشه‌ی هر بخش) دکمه‌ی بازگشت ندارند.
   const isNested = pathname.split("/").filter(Boolean).length > 2;
+  // صفحه‌ی پیش‌نمایش همیشه در تبِ تازه باز می‌شود (window.open)، پس تاریخچه‌ای
+  // ندارد و بازگشت به fallback یعنی داشبورد می‌افتاد. مقصدِ درست، ویرایشگرِ
+  // *همین* محتواست — و آن دقیقاً همین مسیر بدونِ «/preview» است، برای مقاله،
+  // بروشور، مینی‌مقاله‌ی سری و مینی‌مقاله‌ی دسته یکسان. پس یک قاعده، بدونِ
+  // هیچ شناسه‌ی سفت‌وسختی.
+  const previewEditor = pathname.endsWith("/preview") ? pathname.slice(0, -"/preview".length) : null;
   const goBack = () => {
-    if (window.history.length > 1) router.back();
+    if (previewEditor) router.push(previewEditor);
+    else if (window.history.length > 1) router.back();
     else router.push("/p-admin");
   };
 

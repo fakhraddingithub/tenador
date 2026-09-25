@@ -280,3 +280,15 @@ test("هر ظرفِ اسکرولِ افقی جزیره را دارد", async () 
   assert.match(legacy, /<DragScroll \/>/);
   assert.match(src, /style=\{v\.spacing \|\| undefined\}><DragScroll \/><table/);
 });
+
+// ——— دکمه‌ی بازگشت روی صفحه‌ی پیش‌نمایش ————————————————————————————————
+// پیش‌نمایش همیشه با window.open باز می‌شود، پس آن تب تاریخچه ندارد و
+// fallbackِ قبلی (داشبورد) اجرا می‌شد. مقصدِ درست، ویرایشگرِ *همین* محتواست —
+// همان مسیر بدونِ «/preview»، برای هر چهار نوع یکسان.
+test("بازگشت از پیش‌نمایش به ویرایشگرِ همان محتوا می‌رود", async () => {
+  const src = await read("../src/components/admin/Layout.jsx");
+  assert.match(src, /const previewEditor = pathname\.endsWith\("\/preview"\) \? pathname\.slice\(0, -"\/preview"\.length\) : null;/);
+  assert.match(src, /if \(previewEditor\) router\.push\(previewEditor\);/);
+  // مسیرهای دیگر دست‌نخورده‌اند: تاریخچه، و بعد داشبورد.
+  assert.match(src, /else if \(window\.history\.length > 1\) router\.back\(\);\s*\n\s*else router\.push\("\/p-admin"\);/);
+});
