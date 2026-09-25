@@ -238,7 +238,10 @@ Where it takes effect:
 itself stays, so the spec list keeps exactly the width it has for every other audience. The
 decision goes through `isKidsAudience()` rather than a `"بچگانه"` literal in the component, and
 `tests/productPageAudience.test.mjs` fails if the `targetAudience` prop is dropped anywhere on
-the way from either template to the table.
+the way from either template to the table. The same column is also left empty when the product
+has no non-zero value for any of the category's `technicalStats` (`hasChartableStats` in
+`src/lib/technicalStatsChart.mjs`, which reads the stats exactly the way the chart does), so an
+all-zero radar is never drawn.
 
 Note `ProductAttributesTable` still returns `null` when there are no attributes to show, which
 predates this feature: a product whose attributes are *all* scoped out has an empty specs tab,

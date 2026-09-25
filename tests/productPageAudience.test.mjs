@@ -27,6 +27,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 
+import { hasChartableStats } from "../src/lib/technicalStatsChart.mjs";
 import {
   attributeAppliesToAudience,
   filterAttributesByAudience,
@@ -86,7 +87,7 @@ test("نمودار رادار فقط با isKidsAudience تصمیم گرفته �
     "کامپوننت از منبعِ واحد استفاده نمی‌کند",
   );
   assert.ok(
-    source.includes("const showComparisonGraph = !isKidsAudience(targetAudience)"),
+    /const showComparisonGraph =\s*!isKidsAudience\(targetAudience\) && hasChartableStats\(technicalStats\)/.test(source),
     "شرطِ نمایشِ نمودار عوض شده است",
   );
   assert.ok(
@@ -166,4 +167,23 @@ test("رفتارِ نهایی برای هر مخاطب هدف همان چیزی 
 
   // و مقدارِ ذخیره‌شده هرگز قاعده را نقض نمی‌کند
   assert.equal(attributeAppliesToAudience(["بچگانه"], "مردانه"), false);
+});
+
+/* ── نمودارِ خالی هرگز رسم نمی‌شود ─────────────────────────────────────────── */
+
+test("نمودار رادار فقط با دستِ‌کم یک شاخصِ فنیِ غیرصفر نمایش داده می‌شود", () => {
+  const categoryStats = [{ name: "power" }, { name: "control" }];
+
+  assert.equal(hasChartableStats(undefined), false);
+  assert.equal(hasChartableStats({}), false);
+  assert.equal(hasChartableStats({ productStats: {}, categoryStats }), false);
+  assert.equal(hasChartableStats({ productStats: { power: 0, control: "0" }, categoryStats }), false);
+  // مقدارِ غیرصفر روی شاخصی که دسته تعریفش نکرده، در نمودار رسم نمی‌شود
+  assert.equal(hasChartableStats({ productStats: { spin: 80 }, categoryStats }), false);
+  // دسته‌ی بدونِ شاخص: چیزی برای رسم نیست
+  assert.equal(hasChartableStats({ productStats: { power: 80 }, categoryStats: [] }), false);
+  assert.equal(hasChartableStats({ productStats: { power: "abc" }, categoryStats }), false);
+
+  assert.equal(hasChartableStats({ productStats: { power: 0, control: 45 }, categoryStats }), true);
+  assert.equal(hasChartableStats({ productStats: { power: "70" }, categoryStats }), true);
 });

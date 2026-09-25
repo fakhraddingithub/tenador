@@ -5,6 +5,7 @@ import { motion } from "framer-motion";
 import ProductComparisonGraph from "@/components/templates/productCompare/ProductComparisonGraph";
 import AttributeInfoTooltip from "./AttributeInfoTooltip";
 import { isKidsAudience } from "base/utils/targetAudience";
+import { hasChartableStats } from "@/lib/technicalStatsChart.mjs";
 
 // یک ردیفِ مشخصات فنی. اگر ویژگی توضیح داشته باشد، کلِ ردیف کلیک‌پذیر می‌شود و
 // تولتیپِ آن باز/بسته می‌شود (آیکونِ ؟ فقط نشانگر است).
@@ -69,7 +70,10 @@ const ProductAttributesTable = ({ attributes = [], technicalStats, targetAudienc
 
   // محصولِ بچگانه نمودار رادار ندارد؛ ستونِ آن خالی می‌ماند تا چیدمانِ دو ستونه
   // و عرضِ فهرستِ مشخصات دقیقاً همان بماند که برای بقیه‌ی مخاطب‌هاست.
-  const showComparisonGraph = !isKidsAudience(targetAudience);
+  // محصولی هم که هیچ شاخصِ فنیِ غیرصفری ندارد نمودار ندارد — وگرنه یک رادارِ خالی
+  // (همراهِ جستجو و عنوانش) نمایش داده می‌شد.
+  const showComparisonGraph =
+    !isKidsAudience(targetAudience) && hasChartableStats(technicalStats);
 
   if (!attributes || attributes.length === 0) return null;
 
