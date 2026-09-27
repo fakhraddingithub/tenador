@@ -5,7 +5,9 @@ export default function robots() {
     rules: [
       {
         userAgent: "*",
-        allow: ["/"],
+        // Next.js adds ?dpl=... to CSS/JS URLs. This more-specific rule
+        // keeps rendering assets crawlable despite the query-string block.
+        allow: ["/", "/_next/static/"],
         disallow: [
           "/p-admin/",
           "/p-user/",
@@ -14,11 +16,8 @@ export default function robots() {
           "/cart/",
           "/login-register",
           "/auth/",
-          // هر URL حاویِ query-string (فیلترهای اتریبیوت، صفحه‌بندی، جستجو و...) از
-          // ایندکس/کرالِ گوگل و سایر بات‌ها معاف می‌شود، تا فقط نسخه‌ی کانونیکالِ
-          // هر صفحه (بدونِ پارامتر) کرال شود. این هزاران ترکیبِ فیلترِ ممکن روی
-          // صفحاتِ ورزش/دسته‌بندی/محصول را از بودجه‌ی کرال و بارِ سرور خارج می‌کند،
-          // بدونِ این‌که هیچ صفحه‌ی واقعیِ سایت از دسترسِ کرال خارج شود.
+          // Limit crawling of parameterized pages; static assets are allowed above.
+          // A crawl restriction does not itself prevent URL indexing.
           "/*?*",
         ],
       },
