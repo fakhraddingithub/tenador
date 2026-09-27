@@ -1,9 +1,9 @@
 "use client";
 
 import { useEffect, useId, useRef, useState } from "react";
-import { FiAlignCenter, FiAlignLeft, FiAlignRight, FiBold, FiCheck, FiChevronDown, FiItalic, FiLink, FiSlash, FiType, FiUnderline, FiX } from "react-icons/fi";
-import { RICH_TEXT_PX_RANGE, RICH_TEXT_PX_SIZES, normalizeFontSizePx } from "@/lib/sanitizeRichText";
-import { applyFontSize, readSelectionSize, serializeEditor } from "@/lib/richTextFontSize";
+import { FiAlignCenter, FiAlignLeft, FiAlignRight, FiBold, FiCheck, FiChevronDown, FiItalic, FiLink, FiMenu, FiSlash, FiType, FiUnderline, FiX } from "react-icons/fi";
+import { RICH_TEXT_LINE_HEIGHTS, RICH_TEXT_LINE_HEIGHT_RANGE, RICH_TEXT_PX_RANGE, RICH_TEXT_PX_SIZES, normalizeFontSizePx, normalizeLineHeight } from "@/lib/sanitizeRichText";
+import { applyInlineStyle, readSelectionStyle, serializeEditor } from "@/lib/richTextInlineStyle";
 
 /**
  * ویرایشگرِ کوچکِ متنِ غنی برای بلوک‌های متنی.
@@ -57,13 +57,13 @@ function ToolButton({ title, active, onClick, children }) {
  * Tab) + فهرستِ پیش‌فرض‌ها. `current` اندازه‌ی انتخابِ فعلی است: "18px"، اندازه‌ی
  * قدیمیِ em، "" (پیش‌فرضِ بلوک) یا null (چند اندازه).
  */
-function FontSizeControl({ current, onApply }) {
+function NumericStyleControl({ label, unit, icon, range, presets, normalize, format, current, onApply }) {
   const [draft, setDraft] = useState(null);
   const [open, setOpen] = useState(false);
   const box = useRef(null);
   const listId = useId();
   const shown = draft ?? (current ? current.replace(/px$/, "") : "");
-  const invalid = draft !== null && draft.trim() !== "" && normalizeFontSizePx(draft) === null;
+  const invalid = draft !== null && draft.trim() !== "" && normalize(draft) === null;
 
   useEffect(() => {
     if (!open) return undefined;
@@ -73,18 +73,18 @@ function FontSizeControl({ current, onApply }) {
   }, [open]);
 
   const commit = () => {
-    const px = normalizeFontSizePx(draft);
-    if (px) onApply(px);
-    if (px || !draft?.trim()) setDraft(null);
+    const value = normalize(draft);
+    if (value) onApply(value);
+    if (value || !draft?.trim()) setDraft(null);
   };
-  const choose = (px) => { setOpen(false); setDraft(null); onApply(px); };
+  const choose = (value) => { setOpen(false); setDraft(null); onApply(value); };
 
-  return <div ref={box} className="relative flex items-center gap-1 text-gray-500" title="اندازه متن (پیکسل)">
-    <FiType aria-hidden="true" />
+  return <div ref={box} className="relative flex items-center gap-1 text-gray-500" title={label}>
+    {icon}
     <div className="flex items-center border bg-white" style={{ borderColor: invalid ? "var(--admin-danger)" : "var(--admin-border)", borderRadius: "var(--admin-radius)" }}>
       <input
         role="combobox"
-        aria-label="اندازه متن به پیکسل"
+        aria-label={label}
         aria-expanded={open}
         aria-controls={listId}
         aria-invalid={invalid || undefined}
@@ -105,22 +105,22 @@ function FontSizeControl({ current, onApply }) {
         onBlur={() => setDraft(null)}
         className="w-10 bg-transparent px-1 py-0.5 text-center text-[11px] text-gray-700 outline-none placeholder:text-[10px] placeholder:text-gray-400"
       />
-      <span className="pl-0.5 text-[10px] text-gray-400">px</span>
-      <button type="button" aria-label="فهرست اندازه‌ها" onMouseDown={(event) => event.preventDefault()} onClick={() => setOpen((value) => !value)} className="px-0.5 py-1 text-gray-400 hover:text-[var(--color-primary)]"><FiChevronDown /></button>
+      {unit ? <span className="pl-0.5 text-[10px] text-gray-400">{unit}</span> : null}
+      <button type="button" aria-label={`فهرست ${label}`} onMouseDown={(event) => event.preventDefault()} onClick={() => setOpen((value) => !value)} className="px-0.5 py-1 text-gray-400 hover:text-[var(--color-primary)]"><FiChevronDown /></button>
     </div>
-    {invalid ? <span role="alert" className="absolute top-full right-0 z-20 mt-1 whitespace-nowrap rounded bg-white px-2 py-1 text-[10px] text-red-600 shadow">عددی بین {RICH_TEXT_PX_RANGE.min} تا {RICH_TEXT_PX_RANGE.max}</span> : null}
-    {open ? <ul id={listId} role="listbox" aria-label="اندازه‌های متن" className="absolute top-full right-0 z-20 mt-1 max-h-60 w-28 overflow-y-auto border bg-white py-1 shadow-lg" style={{ borderColor: "var(--admin-border)", borderRadius: "var(--admin-radius)" }}>
-      {[null, ...RICH_TEXT_PX_SIZES].map((px) => {
-        const selected = px ? current === `${px}px` : current === "";
-        return <li key={px ?? "default"} role="option" aria-selected={selected}>
+    {invalid ? <span role="alert" className="absolute top-full right-0 z-20 mt-1 whitespace-nowrap rounded bg-white px-2 py-1 text-[10px] text-red-600 shadow">عددی بین {range.min} تا {range.max}</span> : null}
+    {open ? <ul id={listId} role="listbox" aria-label={label} className="absolute top-full right-0 z-20 mt-1 max-h-60 w-28 overflow-y-auto border bg-white py-1 shadow-lg" style={{ borderColor: "var(--admin-border)", borderRadius: "var(--admin-radius)" }}>
+      {[null, ...presets].map((value) => {
+        const selected = value ? current === format(value) : current === "";
+        return <li key={value ?? "default"} role="option" aria-selected={selected}>
           <button
             type="button"
             // انتخابِ ویرایشگر باید حفظ شود؛ بدونِ این، کلیک فوکوس را می‌گیرد.
             onMouseDown={(event) => event.preventDefault()}
-            onClick={() => choose(px)}
-            dir={px ? "ltr" : "rtl"}
+            onClick={() => choose(value)}
+            dir={value ? "ltr" : "rtl"}
             className={`block w-full px-3 py-1 text-right text-xs hover:bg-[var(--color-primary-soft)] ${selected ? "font-bold text-[var(--color-primary)]" : "text-gray-700"}`}
-          >{px ?? "پیش‌فرض"}</button>
+          >{value ?? "پیش‌فرض"}</button>
         </li>;
       })}
     </ul> : null}
@@ -135,6 +135,7 @@ export default function RichTextField({ value, onChange, align, onAlign, singleL
   const [linkUrl, setLinkUrl] = useState("");
   const [linkInvalid, setLinkInvalid] = useState(false);
   const [currentSize, setCurrentSize] = useState("");
+  const [currentLeading, setCurrentLeading] = useState("");
   // رنگِ انتخاب‌شده در state است تا دکمه‌ی «اعمال رنگ» همیشه بداند چه رنگی را
   // دوباره بگذارد، حتی وقتی خودِ input رویدادی نداده است.
   const [colour, setColour] = useState("#aa4725");
@@ -162,7 +163,8 @@ export default function RichTextField({ value, onChange, align, onAlign, singleL
       const range = selection.getRangeAt(0);
       if (!root.contains(range.commonAncestorContainer)) return;
       savedRange.current = range.cloneRange();
-      setCurrentSize(readSelectionSize(range, root));
+      setCurrentSize(readSelectionStyle(range, root, "font-size"));
+      setCurrentLeading(readSelectionStyle(range, root, "line-height"));
     };
     document.addEventListener("selectionchange", onSelection);
     return () => document.removeEventListener("selectionchange", onSelection);
@@ -173,18 +175,23 @@ export default function RichTextField({ value, onChange, align, onAlign, singleL
     if (element) onChange(serializeEditor(element));
   };
 
-  const applySize = (px) => {
+  /**
+   * هر دو کنترل از یک مسیر می‌روند، پس اعمالِ اندازه هرگز ارتفاعِ خطِ دستی را
+   * پاک نمی‌کند و برعکس: applyInlineStyle فقط همان ویژگی را دست می‌زند.
+   */
+  const applyStyle = (prop, value) => {
     const root = ref.current;
     const range = savedRange.current;
     if (!root || !range || !root.contains(range.commonAncestorContainer)) return;
     root.focus({ preventScroll: true });
-    const next = applyFontSize(root, range, px);
+    const next = applyInlineStyle(root, range, prop, value);
     if (next) {
       const selection = window.getSelection();
       selection.removeAllRanges();
       selection.addRange(next);
       savedRange.current = next.cloneRange();
-      setCurrentSize(readSelectionSize(next, root));
+      setCurrentSize(readSelectionStyle(next, root, "font-size"));
+      setCurrentLeading(readSelectionStyle(next, root, "line-height"));
     }
     emit();
   };
@@ -283,7 +290,30 @@ export default function RichTextField({ value, onChange, align, onAlign, singleL
       {ALIGNS.map(([key, Icon, label]) => <ToolButton key={key} title={label} active={align === key} onClick={() => onAlign(align === key ? undefined : key)}><Icon /></ToolButton>)}
 
       <span className="mx-1 h-5 w-px bg-gray-200" />
-      <FontSizeControl current={currentSize} onApply={applySize} />
+      <NumericStyleControl
+        label="اندازه متن (پیکسل)"
+        unit="px"
+        icon={<FiType aria-hidden="true" />}
+        range={RICH_TEXT_PX_RANGE}
+        presets={RICH_TEXT_PX_SIZES}
+        normalize={normalizeFontSizePx}
+        format={(px) => `${px}px`}
+        current={currentSize}
+        onApply={(px) => applyStyle("font-size", px ? `${px}px` : null)}
+      />
+      {/* ارتفاعِ خط *ضریب* است نه طول: با اندازه‌ی قلمِ همان متن حساب می‌شود، پس
+          عوض‌کردنِ اندازه مقدارِ دستی را خراب نمی‌کند. */}
+      <NumericStyleControl
+        label="فاصله خطوط"
+        unit=""
+        icon={<FiMenu aria-hidden="true" />}
+        range={RICH_TEXT_LINE_HEIGHT_RANGE}
+        presets={RICH_TEXT_LINE_HEIGHTS}
+        normalize={normalizeLineHeight}
+        format={(value) => String(value)}
+        current={currentLeading}
+        onApply={(value) => applyStyle("line-height", value ? String(value) : null)}
+      />
 
       {/* رنگ دو راهِ اعمال دارد، و دلیلش یک محدودیتِ خودِ پلتفرم است:
           <input type="color"> فقط وقتی رویداد می‌دهد که مقدارش *عوض شود*. اگر

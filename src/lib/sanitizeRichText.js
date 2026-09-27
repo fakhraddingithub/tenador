@@ -17,6 +17,27 @@ export const RICH_TEXT_PX_RANGE = { min: 8, max: 96 };
 // باید همچنان معتبر بماند — این پاک‌ساز هنگامِ رندرِ عمومی هم اجرا می‌شود.
 export const RICH_TEXT_LEGACY_EM_SIZES = ["0.8em", "1em", "1.25em", "1.5em", "2em"];
 
+// ارتفاعِ خط به‌صورتِ *ضریب* ذخیره می‌شود، نه طول. عددِ بی‌واحد با اندازه‌ی قلمِ
+// همان متن حساب می‌شود، پس تغییرِ اندازه هم آن را خراب نمی‌کند و هم لازم نیست
+// دوباره تنظیم شود — چیزی که "24px" نمی‌دهد.
+export const RICH_TEXT_LINE_HEIGHTS = [1, 1.15, 1.25, 1.5, 1.75, 2, 2.5];
+export const RICH_TEXT_LINE_HEIGHT_RANGE = { min: 0.8, max: 3 };
+
+/**
+ * ورودیِ دلخواهِ کاربر ("1.5", "۱٫۵", "1,5") → ضریبِ ارتفاعِ خط در بازه، یا null.
+ * حداکثر دو رقمِ اعشار (همان چیزی که الگوی پاک‌سازی می‌پذیرد).
+ */
+export function normalizeLineHeight(value) {
+  const raw = String(value ?? "")
+    .trim()
+    .replace(/[۰-۹]/g, (digit) => String("۰۱۲۳۴۵۶۷۸۹".indexOf(digit)))
+    .replace(/[٫,]/g, ".")
+    .trim();
+  if (!/^\d+(?:\.\d+)?$/.test(raw)) return null;
+  const height = Math.round(Number(raw) * 100) / 100;
+  return height >= RICH_TEXT_LINE_HEIGHT_RANGE.min && height <= RICH_TEXT_LINE_HEIGHT_RANGE.max ? height : null;
+}
+
 /**
  * ورودیِ دلخواهِ کاربر ("18", "18px", " ۱۸ ") → عددِ صحیحِ px در بازه، یا null.
  * اعشار گرد می‌شود؛ خارج از بازه رد می‌شود (نه اینکه بی‌صدا به لبه بچسبد).
@@ -35,6 +56,7 @@ export function normalizeFontSizePx(value) {
 // ۸ تا ۹۶، فقط عددِ صحیح — همان بازه‌ی normalizeFontSizePx.
 const PX_SIZE_PATTERN = /^(?:[89]|[1-8]\d|9[0-6])px$/;
 const LEGACY_EM_PATTERN = new RegExp(`^(?:${RICH_TEXT_LEGACY_EM_SIZES.map((size) => size.replace(".", "\\.")).join("|")})$`);
+const LINE_HEIGHT_PATTERN = /^(?:0?\.(?:8\d?|9\d?)|[12](?:\.\d{1,2})?|3(?:\.0{1,2})?)$/;
 const STYLEABLE = ["span", "b", "strong", "i", "em", "u", "s"];
 const MAX_INPUT = 100000;
 
@@ -50,6 +72,8 @@ const OPTIONS = {
       // می‌شوند، ولی هیچ شکلِ دیگری (نام، var، url، expression) نه.
       color: [/^#[0-9a-fA-F]{6}$/, /^rgb\(\s*\d{1,3}\s*,\s*\d{1,3}\s*,\s*\d{1,3}\s*\)$/],
       "font-size": [PX_SIZE_PATTERN, LEGACY_EM_PATTERN],
+      // ۰٫۸ تا ۳، بی‌واحد، حداکثر دو رقمِ اعشار — همان بازه‌ی normalizeLineHeight.
+      "line-height": [LINE_HEIGHT_PATTERN],
     },
   },
   allowedSchemes: ["http", "https", "mailto", "tel"],

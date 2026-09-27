@@ -852,21 +852,46 @@ while larger text typographically wants a **smaller** one. The rule is one decla
 
 ```css
 .rt-flow,
-.rt-flow * { line-height: calc(12px + 1em); }
+.rt-flow * { line-height: calc(8px + 1em); }
 ```
 
 | size | line height | ratio |
 |---|---|---|
-| 12px | 24px | 2.00 |
-| 16px | 28px | 1.75 |
-| 24px | 36px | 1.50 |
-| 32px | 44px | 1.38 |
-| 48px | 60px | 1.25 |
+| 12px | 20px | 1.67 |
+| 16px | 24px | 1.50 |
+| 24px | 32px | 1.33 |
+| 32px | 40px | 1.25 |
+| 48px | 56px | 1.17 |
+
+The base was 12px at first; 1.75 read too airy for this template's Persian text. Only the
+base moved — the slope stays `1em`, so "larger text, tighter ratio" is unchanged, and a
+manual value never touches this rule at all.
 
 **`.rt-flow *` is load-bearing.** A line height *with a unit* inherits as the computed
 length, not as the formula — without the descendant rule a `font-size: 32px` span inside a
 16px paragraph would still inherit 28px, which is the original bug. With it, every element
 resolves `1em` against its own size.
+
+**A manual value is part of the text, not editor state.** The toolbar's «فاصله خطوط»
+control writes `line-height` onto the same kind of `<span>` the font size uses, and
+`sanitizeRichText` allows it — so it survives saving, reopening, the preview and the
+published article, mini article and brochure alike. It is stored as a **unitless
+multiplier** (0.8–3): a ratio resolves against each element's own font size, so changing
+the size afterwards keeps the spacing proportional instead of invalidating it.
+
+Two things make that work:
+
+- **One implementation for both properties.** `richTextFontSize.js` was hardcoded to
+  `font-size` in every function; a second copy for line height would have had each
+  operation stripping the other's property. It is now `richTextInlineStyle.js`,
+  parameterised by CSS property — `applyInlineStyle(root, range, prop, value)`,
+  `readSelectionStyle`, and a `tidy` that de-duplicates each property independently.
+  Applying a size touches only `font-size`; "default" line height lifts out of
+  line-height ancestors only.
+- **`.rt-flow [style*="line-height"] * { line-height: inherit }`.** The span itself wins on
+  inline specificity, but its *descendants* would take the default rule above and cancel
+  the admin's value. `inherit` passes the ratio down, so a differently-sized nested span
+  keeps the same spacing.
 
 It is applied to the blocks that accept an inline font size — heading, paragraph, quote,
 custom HTML — and to the editor's `contentEditable`, so what the admin types matches the
