@@ -1,6 +1,6 @@
 import {
   FiAlignRight, FiBarChart2, FiBox, FiColumns, FiGrid, FiImage, FiLink, FiList,
-  FiMail, FiMessageSquare, FiMinus, FiPlay, FiShoppingBag, FiStar, FiTable,
+  FiFeather, FiMail, FiMessageSquare, FiMinus, FiPlay, FiShoppingBag, FiStar, FiTable,
   FiLayers, FiTag, FiType, FiZap,
 } from "react-icons/fi";
 import { ARTICLE_BLOCK_TYPES } from "@/lib/articleBlockTypes";
@@ -39,6 +39,17 @@ export const BLOCK_TABLE_VARIANT_LABELS = { default: "پیش‌فرض", striped:
 
 export const ARTICLE_BLOCKS = {
   heading: { label: "تیتر", group: "محتوا", icon: FiType, defaults: { text: "", level: "h2" }, fields: [text("text", "متن تیتر", "rich", { singleLine: true }), text("level", "سطح تیتر", "select", { options: ["h2", "h3", "h4"] })], styleKeys: TEXTY },
+  tenadorTitle: {
+    label: "تیتر تنادور", group: "محتوا", icon: FiFeather,
+    defaults: { highlight: "", title: "", subtitle: "" },
+    fields: [
+      text("highlight", "متن نارنجی (ابتدای عنوان)"),
+      text("title", "ادامه‌ی عنوان"),
+      text("subtitle", "زیرعنوان"),
+    ],
+    // ظاهر عیناً همان عنوانِ بخش‌های صفحه‌ی اصلی است و تنظیم‌پذیر نیست.
+    styleKeys: SPACING_ONLY,
+  },
   paragraph: { label: "پاراگراف", group: "محتوا", icon: FiAlignRight, defaults: { text: "" }, fields: [text("text", "متن پاراگراف", "rich")], styleKeys: TEXTY },
   image: { label: "تصویر", group: "رسانه", icon: FiImage, defaults: { url: "", alt: "", caption: "" }, fields: [text("images", "تصاویر", "imageList"), text("displayHeight", "ارتفاع نمایش", "imageHeight"), text("overlay", "ظاهر متن روی تصویر", "imageOverlay"), text("caption", "زیرنویس")], styleKeys: SPACING_ONLY },
   gallery: { label: "گالری", group: "رسانه", icon: FiGrid, defaults: { images: [] }, fields: [text("images", "تصاویر", "gallery")], styleKeys: SPACING_ONLY },

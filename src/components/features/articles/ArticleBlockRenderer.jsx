@@ -8,6 +8,8 @@ import { sanitizeArticleHtml } from "@/lib/sanitizeArticleHtml";
 import { sanitizeRichText } from "@/lib/sanitizeRichText";
 import { BLOCK_ALIGN_SELF, BLOCK_WIDTH_CLASS, blockBoxProps, blockWidth, groupBlockRows } from "@/lib/articleBlockLayout";
 import DragScroll from "@/components/features/articles/DragScroll";
+import HomeSectionHeading from "@/components/features/home/HomeSectionHeading";
+import MergedSliderNav from "@/components/features/articles/MergedSliderNav";
 import { imageBlockItems } from "@/lib/articleImageBlock";
 import { flattenArticleBlocks, isMergedBlock, mergedChildren, sanitizeMergedGrid } from "@/lib/articleBlockTypes";
 
@@ -137,7 +139,9 @@ function MergedGrid({ items, grid, spacing }) {
     vars[`--w${key}`] = `max(calc((100% - (${settings.columns} - 1) * var(--g)) / ${settings.columns}), ${settings.minWidth}px)`;
   }
   const scrolls = !grid.mobile.fit || !grid.desktop.fit;
-  return <div
+  // شبکه‌ای که هرگز اسکرول نمی‌شود هیچ wrapper و هیچ دکمه‌ای نمی‌گیرد — خروجیِ
+  // محتوای موجود دقیقاً همان قبلی می‌ماند.
+  const scroller = <div
     data-merged-block
     {...(scrolls ? { role: "region", "aria-label": "محتوای کنارِ هم — برای دیدنِ بقیه به چپ و راست بکشید", tabIndex: 0 } : {})}
     className={[
@@ -146,7 +150,7 @@ function MergedGrid({ items, grid, spacing }) {
       grid.mobile.fit ? "overflow-x-visible" : "overflow-x-auto overscroll-x-contain snap-x snap-mandatory",
       grid.desktop.fit ? "md:overflow-x-visible md:snap-none" : "md:overflow-x-auto md:snap-x md:snap-mandatory",
     ].join(" ")}
-    style={spacing || undefined}
+    style={scrolls ? undefined : spacing || undefined}
   >
     {/* کشیدن با ماوس فقط جایی معنا دارد که ظرف واقعاً اسکرول شود. */}
     {scrolls ? <DragScroll /> : null}
@@ -173,18 +177,30 @@ function MergedGrid({ items, grid, spacing }) {
       })}
     </div>
   </div>;
+  return scrolls ? <SliderFrame spacing={spacing}>{scroller}</SliderFrame> : scroller;
+}
+
+/**
+ * قابِ «اسلایدر» — همان چیدمانِ سرصفحه‌ی اسلایدرهای صفحه‌ی اصلی: ناوبری بالا و
+ * در انتهای ردیف (در RTL سمتِ چپ)، و خودِ اسلایدر زیرِ آن. فاصله‌ی بیرونیِ بلوک
+ * به قاب منتقل می‌شود تا بالای *کلِ* اسلایدر بنشیند، نه بینِ دکمه‌ها و محتوا.
+ */
+function SliderFrame({ spacing, children }) {
+  return <div className={blockSection} style={spacing || undefined}>
+    <MergedSliderNav label="پیمایشِ محتوای کنارِ هم" />
+    {children}
+  </div>;
 }
 
 function MergedBlock({ items, spacing }) {
   const share = 100 / items.length;
   const gapShare = (items.length - 1) / items.length;
-  return <div
+  return <SliderFrame spacing={spacing}><div
     role="region"
     aria-label="محتوای کنارِ هم — برای دیدنِ بقیه به چپ و راست بکشید"
     tabIndex={0}
     data-merged-block
     className={`${blockSection} snap-x snap-mandatory overflow-x-auto overscroll-x-contain pb-2 [scrollbar-width:thin] focus-visible:outline-2 focus-visible:outline-[var(--color-primary)]`}
-    style={spacing || undefined}
   >
     <DragScroll />
     {/* بلوکِ ادغام‌شده‌ی قدیمی (بدونِ grid) تنظیمِ فاصله ندارد، پس مثلِ حالتِ
@@ -203,7 +219,7 @@ function MergedBlock({ items, spacing }) {
         >{node}</div>;
       })}
     </div>
-  </div>;
+  </div></SliderFrame>;
 }
 
 function EntityCards({ title, items, kind, visuals, inMerged = false }) {
@@ -331,6 +347,17 @@ export default function ArticleBlockRenderer({ blocks = [], entities, preview = 
       return grid
         ? <MergedGrid key={block.id} items={items} grid={grid} spacing={v.spacing} />
         : <MergedBlock key={block.id} items={items} spacing={v.spacing} />;
+    }
+    if (block.type === "tenadorTitle") {
+      // متنِ نارنجی و ادامه‌ی عنوان یک عنوان‌اند؛ برشِ رنگ از همان رشته انجام
+      // می‌شود، پس چندواژه‌ای هم درست رنگ می‌گیرد.
+      const highlight = (data.highlight || "").trim();
+      const rest = (data.title || "").trim();
+      const title = [highlight, rest].filter(Boolean).join(" ");
+      if (!title && !data.subtitle) return null;
+      return <div key={block.id} className={blockSection} style={v.spacing || undefined}>
+        <HomeSectionHeading id={safeHeadingId(block)} title={title} highlight={highlight} subtitle={data.subtitle || ""} />
+      </div>;
     }
     if (block.type === "heading") {
       const level = ["h2", "h3", "h4"].includes(data.level) ? data.level : "h2";

@@ -6,7 +6,7 @@ import { Swiper, SwiperSlide } from "swiper/react";
 
 import { Navigation, Autoplay, Pagination } from "swiper/modules";
 
-import { FiArrowLeft, FiArrowRight, FiPlusCircle } from "react-icons/fi";
+import { FiPlusCircle } from "react-icons/fi";
 
 import "swiper/css";
 
@@ -18,6 +18,7 @@ import QuickViewModal from "@/components/modules/cart/QuickViewModal";
 
 import Link from "next/link";
 import HomeSectionHeading from "@/components/features/home/HomeSectionHeading";
+import HomeSliderNav from "@/components/features/home/HomeSliderNav";
 
 export default function ProductSlider({
   title = "پرفروش‌ترین محصولات",
@@ -68,19 +69,7 @@ export default function ProductSlider({
 
           {/* کنترلرهای ناوبری (مخفی در موبایل برای تمیزی بیشتر، نمایش در تبلت به بالا) */}
 
-          <div className="hidden md:flex items-center mt-8 md:mt-0">
-            <div className="flex bg-white/80 backdrop-blur-md shadow-xl shadow-black/5 rounded-xl p-1 border border-white/50">
-              <button className="product-prev-btn w-12 h-12 flex items-center justify-center text-gray-400 hover:text-[#aa4725] hover:bg-[#aa4725]/5 transition-all rounded-lg">
-                <FiArrowRight size={22} />
-              </button>
-
-              <div className="w-[1px] h-6 bg-gray-100 self-center mx-1" />
-
-              <button className="product-next-btn w-12 h-12 flex items-center justify-center text-gray-400 hover:text-[#aa4725] hover:bg-[#aa4725]/5 transition-all rounded-lg">
-                <FiArrowLeft size={22} />
-              </button>
-            </div>
-          </div>
+          <HomeSliderNav prevClass="product-prev-btn" nextClass="product-next-btn" />
         </div>
 
         {/* اسلایدر */}

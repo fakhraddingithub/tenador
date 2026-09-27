@@ -713,6 +713,47 @@ Each rule exists for a real trap:
 - Scrolling is applied as a **delta** (`start - dx`), which is direction-agnostic: in this
   RTL document `scrollLeft` runs from 0 down to −max, and the same formula holds.
 
+### Merged-block slider controls, and the «تیتر تنادور» block
+
+Both reuse the homepage's own implementation rather than a look-alike, because a
+copy is a thing that drifts the first time one side changes.
+
+**The slider nav.** `HomeSliderNav` is the pill of two arrow buttons that was inline in
+`BestSellers`; it now lives in `src/components/features/home/HomeSliderNav.jsx` and
+`BestSellers` renders it with the Swiper hook classes (`product-prev-btn`/`-next-btn`).
+`AmazingOffers` is deliberately **not** converted — its radii differ (16/12px vs 12/8px),
+so folding it in would have changed the homepage.
+
+A merged block that scrolls is wrapped in `SliderFrame`: nav above, scroller below, the
+block's outer spacing moved onto the frame so it stays above the *whole* slider.
+`MergedSliderNav` is a client island in the `DragScroll` mould — it binds to the existing
+`[data-merged-block]` sibling, so the renderer stays a server component.
+
+| rule | why |
+|---|---|
+| a grid whose `scrolls` is false gets no frame and no buttons | existing content renders exactly as before |
+| "wider than the page" is **measured** (`scrollWidth > clientWidth`), not read from the grid config | a no-fit grid can still fit in practice; a `ResizeObserver` watches the scroller *and* its row, since images change the content width late |
+| one press moves **one cell**, not one page | the cell's width plus the computed `column-gap` — the Swiper analogue |
+| `scrollBy` with a fixed sign | in this RTL document `scrollLeft` runs 0 → −max, and a delta is direction-agnostic |
+| `hidden md:flex` | exactly what the homepage does; touch still scrolls natively and the mouse drag is untouched |
+
+The buttons disable at the two ends (`disabled:opacity-40`). The homepage never passes
+those props — it does not load `swiper/css/navigation` — so its output is unchanged.
+
+**«تیتر تنادور»** renders `HomeSectionHeading`, the same component the four homepage
+sections use, so typography, sizes, colours and the subtitle's side rule are not
+re-specified anywhere. Only three texts are editable (orange, the rest of the title,
+subtitle) and `styleKeys` is spacing-only.
+
+`HomeSectionHeading` used to split the title into words and colour the one equal to
+`highlight`; it now slices the string at the highlight, so a **multi-word** orange part
+works. Every homepage call passes a single leading word, and the rendered output for
+those is identical.
+
+```bash
+npm run test:block-layout
+```
+
 ### Slug System
 
 `SlugRegistery` model maps dynamic URL segments (sport/category/brand slugs) to their entity types. `actions/registerSlug.js` is a server action that creates entries on entity creation. This powers ISR revalidation — when a slug is revalidated, the correct entity page is rebuilt.

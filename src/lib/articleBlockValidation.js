@@ -173,6 +173,8 @@ const entitySlider = (key) => (data, errors, field) => ({
 const validators = {
   heading: (data) => ({ text: string(data.text, 500), ...rich(data.html), level: ["h2", "h3", "h4"].includes(data.level) ? data.level : "h2" }),
   paragraph: (data) => ({ text: string(data.text, 50000), ...rich(data.html) }),
+  // فقط سه متن؛ بقیه‌ی ظاهر از HomeSectionHeading می‌آید و قابلِ تنظیم نیست.
+  tenadorTitle: (data) => ({ highlight: string(data.highlight, 200), title: string(data.title, 300), subtitle: string(data.subtitle, 500) }),
   image: imageBlock,
   gallery: (data, errors, field) => ({ images: gallery(data.images, errors, `${field}.images`) }),
   video: (data, errors, field) => ({ url: url(data.url, errors, `${field}.url`, { media: true }), title: string(data.title, 300) }),

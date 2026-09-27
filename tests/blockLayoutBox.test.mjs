@@ -321,3 +321,51 @@ test("سربرگِ کارت رنگِ ثابت ندارد و از گروه می�
   const header = editor.slice(editor.indexOf("<header className={`flex items-center gap-2"));
   assert.ok(!header.slice(0, 200).includes("bg-gray-50"));
 });
+
+// ——— اسلایدرِ بلوکِ ادغام‌شده و تیترِ تنادور ————————————————————————————
+// هر دو باید *همان* پیاده‌سازیِ صفحه‌ی اصلی باشند، نه یک کپیِ شبیه؛ کپی همان
+// روزی از هم دور می‌افتد که یکی‌شان عوض شود.
+test("دکمه‌های اسلایدر همان کامپوننتِ صفحه‌ی اصلی‌اند", async () => {
+  const nav = await read("../src/components/features/articles/MergedSliderNav.jsx");
+  const home = await read("../src/components/features/bestSellers/BestSellers.js");
+  assert.match(nav, /import HomeSliderNav from "@\/components\/features\/home\/HomeSliderNav"/);
+  assert.match(home, /import HomeSliderNav from "@\/components\/features\/home\/HomeSliderNav"/);
+  assert.match(home, /<HomeSliderNav prevClass="product-prev-btn" nextClass="product-next-btn" \/>/);
+  // مارک‌آپِ دکمه فقط یک جا تعریف شده است.
+  const shared = await read("../src/components/features/home/HomeSliderNav.jsx");
+  assert.match(shared, /w-12 h-12 flex items-center justify-center text-gray-400 hover:text-\[#aa4725\]/);
+  assert.ok(!home.includes("w-12 h-12 flex items-center justify-center"));
+});
+
+test("ناوبری فقط وقتی هست که بلوک واقعاً اسلایدر شده باشد", async () => {
+  const renderer = await read("../src/components/features/articles/ArticleBlockRenderer.jsx");
+  // شبکه‌ای که اسکرول نمی‌شود، نه قاب می‌گیرد نه دکمه.
+  assert.match(renderer, /return scrolls \? <SliderFrame spacing=\{spacing\}>\{scroller\}<\/SliderFrame> : scroller;/);
+  // و «پهن‌تر از صفحه» اندازه‌گیری می‌شود، نه از تنظیمات حدس زده شود.
+  const nav = await read("../src/components/features/articles/MergedSliderNav.jsx");
+  assert.match(nav, /scroller\.scrollWidth - scroller\.clientWidth/);
+  assert.match(nav, /if \(!state\.scrolls\) return <span ref=\{anchor\} hidden \/>;/);
+  // کشیدن با ماوس دست‌نخورده است.
+  assert.match(renderer, /\{scrolls \? <DragScroll \/> : null\}/);
+});
+
+test("تیتر تنادور از همان عنوانِ بخش‌های صفحه‌ی اصلی می‌آید", async () => {
+  const renderer = await read("../src/components/features/articles/ArticleBlockRenderer.jsx");
+  assert.match(renderer, /import HomeSectionHeading from "@\/components\/features\/home\/HomeSectionHeading"/);
+  assert.match(renderer, /<HomeSectionHeading id=\{safeHeadingId\(block\)\} title=\{title\} highlight=\{highlight\} subtitle=/);
+  // فقط سه متن قابلِ ویرایش است.
+  const registry = await read("../src/components/admin/articles/blockRegistry.js");
+  const definition = registry.slice(registry.indexOf("  tenadorTitle: {"), registry.indexOf("  paragraph: {"));
+  assert.match(definition, /styleKeys: SPACING_ONLY/);
+  assert.deepEqual([...definition.matchAll(/text\("(\w+)"/g)].map((m) => m[1]), ["highlight", "title", "subtitle"]);
+  const validation = await read("../src/lib/articleBlockValidation.js");
+  assert.match(validation, /tenadorTitle: \(data\) => \(\{ highlight: string\(data\.highlight, 200\), title: string\(data\.title, 300\), subtitle: string\(data\.subtitle, 500\) \}\)/);
+  const types = await read("../src/lib/articleBlockTypes.js");
+  assert.match(types, /"tenadorTitle",/);
+});
+
+test("رنگِ عنوان از روی خودِ رشته بریده می‌شود، پس چندواژه‌ای هم کار می‌کند", async () => {
+  const src = await read("../src/components/features/home/HomeSectionHeading.jsx");
+  assert.match(src, /String\(title\)\.indexOf\(highlight\)/);
+  assert.ok(!src.includes("title.split(\" \")"));
+});
