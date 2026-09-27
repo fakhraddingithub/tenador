@@ -71,6 +71,30 @@ export function flattenArticleBlocks(blocks = []) {
 // بلوکِ تصویر (روی تصویر). هر جا که «فرزندانِ یک بلوک» لازم است — پاک‌سازی،
 // رونوشت، جمع‌کردنِ ارجاع‌ها — باید از این‌ها استفاده شود، وگرنه یکی از دو حالت
 // خاموش از قلم می‌افتد.
+export const HEADER_BLOCK_TYPE = "header";
+
+/**
+ * هدر جای ثابتی دارد: بالاترین چیزِ صفحه، بالای بردکرامب و بیرونِ ستونِ محتوا.
+ * پس از جریانِ بلوک‌ها جدا می‌شود و صفحه خودش آن را در جای درست رندر می‌کند.
+ *
+ * جایی که هدر جدا نمی‌شود (پیش‌نمایش، مینی‌مقاله)، همان‌جا در جریان رندر می‌شود —
+ * هیچ صفحه‌ای بی‌سر نمی‌ماند.
+ */
+export function splitHeaderBlock(blocks) {
+  const list = Array.isArray(blocks) ? blocks : [];
+  const at = list.findIndex((block) => block?.type === HEADER_BLOCK_TYPE);
+  if (at < 0) return { header: null, blocks: list };
+  return { header: list[at], blocks: list.filter((_, index) => index !== at) };
+}
+
+/** یک هدر، در صدر. هر چه بیشتر باشد کنار می‌رود — قاعده در *داده* است، نه در UI. */
+export function normalizeHeaderPosition(blocks) {
+  const list = Array.isArray(blocks) ? blocks : [];
+  const headers = list.filter((block) => block?.type === HEADER_BLOCK_TYPE);
+  if (!headers.length) return list;
+  return [headers[0], ...list.filter((block) => block?.type !== HEADER_BLOCK_TYPE)];
+}
+
 export const IMAGE_BLOCK_TYPE = "image";
 export const IMAGE_SLIDER_BLOCK_TYPE = "imageSlider";
 // اسلایدرِ تصویر فقط بلوکِ تصویر می‌پذیرد — هم ویرایشگر همین را نشان می‌دهد هم

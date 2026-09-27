@@ -1,6 +1,6 @@
 import mongoose from "mongoose";
 import { isValidArticleSlug, normalizeArticleSlug } from "base/utils/articleSlug";
-import { ARTICLE_BLOCK_TYPE_SET, IMAGE_BLOCK_TYPE, IMAGE_SLIDER_BLOCK_TYPE, IMAGE_SLIDER_CHILD_TYPES, MAX_MERGED_CHILDREN, MAX_MERGE_DEPTH, MERGED_BLOCK_TYPE, sanitizeMergedGrid } from "@/lib/articleBlockTypes";
+import { ARTICLE_BLOCK_TYPE_SET, IMAGE_BLOCK_TYPE, IMAGE_SLIDER_BLOCK_TYPE, IMAGE_SLIDER_CHILD_TYPES, MAX_MERGED_CHILDREN, MAX_MERGE_DEPTH, MERGED_BLOCK_TYPE, normalizeHeaderPosition, sanitizeMergedGrid } from "@/lib/articleBlockTypes";
 import { safeArticleUrl, sanitizeArticleBlockData, sanitizeArticleBlockStyle } from "@/lib/articleBlockValidation";
 import { sanitizeArticleBlockLayout } from "@/lib/articleBlockLayout";
 
@@ -128,7 +128,10 @@ export function sanitizeArticleBlocks(value, errors) {
   // شناسه‌ها در کلِ درخت یکتا هستند (فرزندانِ بلوکِ ادغام‌شده هم)، چون در
   // ویرایشگر شناسه‌ی DOM و در رندر کلید و لنگرِ تیترها از همین ساخته می‌شوند.
   const ids = new Set();
-  const blocks = value.slice(0, MAX_BLOCKS).map((block, index) => sanitizeBlock(block, errors, `blocks.${index}`, ids, 0));
+  // هدر همیشه اولین بلوک است و فقط یکی: صفحه آن را بالای بردکرامب و بیرونِ ستونِ
+  // محتوا رندر می‌کند، پس جایش در آرایه باید همان باشد که رندر می‌شود. قاعده
+  // اینجاست نه در ویرایشگر، تا از هیچ مسیری (کشیدن، پیش‌نمایش، API) دور نخورد.
+  const blocks = normalizeHeaderPosition(value.slice(0, MAX_BLOCKS)).map((block, index) => sanitizeBlock(block, errors, `blocks.${index}`, ids, 0));
 
   try {
     if (Buffer.byteLength(JSON.stringify(blocks), "utf8") > MAX_BLOCK_BYTES) {

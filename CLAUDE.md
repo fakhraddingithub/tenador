@@ -911,6 +911,30 @@ the athlete page and the CMS section renderer all render it. The block renders *
 component**, so height, gradient, image crop, h1 typography and the accent bar are not
 re-specified anywhere and a change to the site header reaches the block for free.
 
+**It is the top of the page, not a block in the column.** The page splits it out of the
+block flow (`splitHeaderBlock`) and renders it *before* its own `<header>`, which is where
+the breadcrumb lives:
+
+```
+Navbar → Header (full width) → Breadcrumb → content
+```
+
+Rendered outside every container, so `SportHero`'s `w-full` is the viewport — the same as
+the sport page. **The navbar gap is not re-implemented:** `Navbar` already renders a global
+`h-[64px] lg:h-[75px]` spacer on every non-home page, so the header simply starts below it.
+Measured at 1400px the article's hero is `{x: 0, y: 75, w: 1388, h: 220}` and `/products`'
+hero is the same to the pixel; at 390px both are `{x: 0, y: 64, w: 390, h: 100}`.
+
+**The "only at the top" rule lives in the data, not the UI.** `sanitizeArticleBlocks` runs
+`normalizeHeaderPosition` first: one header, at index 0. A header stored in the middle of
+the array is hoisted on the next save, and a second one is dropped — so dragging, the
+preview's reorder, or a hand-written API call cannot break the invariant. The editor is
+only feedback: the registry marks the block `once: true`, which hides it from the library
+once one exists, and inserting it always lands at position 1.
+
+The brand brochure does the same split above its breadcrumbs. Where nothing splits it (the
+mini-article section, the editor preview) it still renders in place, so no page is headless.
+
 Only two things are editable, `data.title` and `data.url`; `styleKeys` is spacing-only.
 The image key is `url` because the shared `image` field kind is in `PATCH_KINDS` and emits
 `{url, width, height}` at the top level of `data` — the validator keeps only `title` and

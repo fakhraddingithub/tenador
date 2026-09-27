@@ -353,6 +353,17 @@ function videoEmbed(url) {
   return null;
 }
 
+/**
+ * هدرِ تمام‌عرضِ صفحه — *بیرونِ* هر ظرفی رندر می‌شود، پس مثلِ صفحه‌ی ورزش تمامِ
+ * عرضِ صفحه را می‌گیرد. فاصله‌ی نوارِ بالا را خودِ Navbar با اسپیسرِ سراسری‌اش
+ * می‌گذارد (h-[64px] lg:h-[75px])، پس اینجا هیچ فاصله‌ی دستی‌ای لازم نیست.
+ */
+export function ArticleHeaderBlock({ block }) {
+  const data = block?.data || {};
+  if (!data.url && !data.title) return null;
+  return <SportHero image={data.url} title={data.title} alt={data.title} />;
+}
+
 export default function ArticleBlockRenderer({ blocks = [], entities, preview = false, interactive = false }) {
   const maps = entities?.maps || {};
   const rate = entities?.rate || 1;

@@ -60,7 +60,9 @@ export const ARTICLE_BLOCKS = {
   video: { label: "ویدئو", group: "رسانه", icon: FiPlay, defaults: { url: "", title: "" }, fields: [text("url", "آدرس ویدئو", "url"), text("title", "عنوان ویدئو")], styleKeys: SPACING_ONLY },
   quote: { label: "نقل‌قول", group: "محتوا", icon: FiMessageSquare, defaults: { text: "", author: "" }, fields: [text("text", "متن نقل‌قول", "rich"), text("author", "نام گوینده")], styleKeys: ["spacing", "textColor", "background", "accent"] },
   // همان هدرِ صفحه‌ی ورزش. ظاهرش از SportHero می‌آید، پس فقط دو چیز تنظیم‌پذیر است.
-  header: { label: "هدر", group: "چیدمان", icon: FiLayout, defaults: { title: "", url: "" }, fields: [text("title", "متن تیتر (H1)"), text("url", "تصویر پس‌زمینه", "image")], styleKeys: SPACING_ONLY },
+  // once: جایش بالاترین نقطه‌ی صفحه است، پس دو تا معنا ندارد — کتابخانه پس از
+  // افزودن پنهانش می‌کند و پاک‌سازیِ سرور هم همین را نگه می‌دارد.
+  header: { label: "هدر", group: "چیدمان", icon: FiLayout, once: true, defaults: { title: "", url: "" }, fields: [text("title", "متن تیتر (H1)"), text("url", "تصویر پس‌زمینه", "image")], styleKeys: SPACING_ONLY },
   divider: { label: "جداکننده", group: "چیدمان", icon: FiMinus, defaults: {}, fields: [], styleKeys: ["spacing", "accent"] },
   button: {
     label: "دکمه", group: "محتوا", icon: FiLink,

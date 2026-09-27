@@ -1,4 +1,5 @@
-import ArticleBlockRenderer from "@/components/features/articles/ArticleBlockRenderer";
+import ArticleBlockRenderer, { ArticleHeaderBlock } from "@/components/features/articles/ArticleBlockRenderer";
+import { splitHeaderBlock } from "@/lib/articleBlockTypes";
 
 /**
  * بروشورِ برند: محتوای بلوکیِ تمام‌صفحه که جای محتوای صفحه‌ی برند را می‌گیرد.
@@ -9,13 +10,16 @@ import ArticleBlockRenderer from "@/components/features/articles/ArticleBlockRen
  */
 export default function BrandBrochure({ blocks = [], entities, brandName = "", breadcrumbs = null }) {
   if (!Array.isArray(blocks) || blocks.length === 0) return null;
+  // همان ترتیبِ صفحه‌ی مقاله: هدرِ تمام‌عرض بالای بردکرامب، بیرونِ ظرفِ محتوا.
+  const { header, blocks: body } = splitHeaderBlock(blocks);
 
   return (
     <main className="bg-white" data-brand-brochure>
+      {header ? <ArticleHeaderBlock block={header} /> : null}
       {breadcrumbs}
       <div className="mx-auto w-full max-w-[1440px] px-4 py-4 md:py-8 lg:px-8">
         <h1 className="sr-only">{brandName}</h1>
-        <ArticleBlockRenderer blocks={blocks} entities={entities} />
+        <ArticleBlockRenderer blocks={body} entities={entities} />
       </div>
     </main>
   );

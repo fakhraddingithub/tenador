@@ -15,7 +15,7 @@ import { ARTICLE_BLOCKS, BLOCK_GROUPS, BLOCK_GROUP_SLUGS, createArticleBlock } f
 import { insertBlockAt } from "@/lib/articleBlockLayout";
 import { confirmDelete } from "@/lib/swal";
 import { IMAGE_DISPLAY_HEIGHT, IMAGE_SHADE, MAX_IMAGE_BLOCK_ITEMS, clampImageShade, mirrorFirstImage, normalizeImageHref } from "@/lib/articleImageBlock";
-import { IMAGE_SLIDER_CHILD_TYPES, IMAGE_SLIDER_DELAY, IMAGE_SLIDER_HEIGHT, MAX_MERGED_CHILDREN, MAX_MERGE_DEPTH, MERGED_GRID_GAP_STEP, MERGED_GRID_LIMITS, MERGED_GRID_REFERENCE, defaultMergedGrid, imageOverlayChildren, isMergedBlock, mergedChildren, mergedGridColumnsAt, sanitizeMergedGrid } from "@/lib/articleBlockTypes";
+import { IMAGE_SLIDER_CHILD_TYPES, IMAGE_SLIDER_DELAY, IMAGE_SLIDER_HEIGHT, MAX_MERGED_CHILDREN, MAX_MERGE_DEPTH, MERGED_GRID_GAP_STEP, normalizeHeaderPosition, MERGED_GRID_LIMITS, MERGED_GRID_REFERENCE, defaultMergedGrid, imageOverlayChildren, isMergedBlock, mergedChildren, mergedGridColumnsAt, sanitizeMergedGrid } from "@/lib/articleBlockTypes";
 import { cloneWithFreshIds, mergeBlocker, mergeBlocks, unmergeBlock } from "@/lib/articleBlockMerge";
 
 
@@ -420,13 +420,14 @@ function SortableBlock({ block, index, total, onUpdate, onStyle, onAppearance, o
   </section>;
 }
 
-export function BlockLibrary({ total, onAdd, onClose, allow = null }) {
+export function BlockLibrary({ total, onAdd, onClose, allow = null, taken = [] }) {
   const [query, setQuery] = useState("");
   // موقعیتِ بلوکِ تازه، ۱-پایه. پیش‌فرض انتهای مقاله است ولی قابلِ ویرایش، تا
   // بتوان مثلاً مستقیم بینِ بلوکِ ۴ و ۵ بلوک ساخت — نه اینکه اول در انتها
   // ساخته و بعد دستی جابه‌جا شود.
   const [position, setPosition] = useState(String(total + 1));
-  const groups = useMemo(() => BLOCK_GROUPS.map((group) => ({ group, blocks: Object.entries(ARTICLE_BLOCKS).filter(([type, item]) => !item.hidden && item.group === group && (!allow || allow.includes(type)) && matchesSearch(query, item.label)) })).filter((item) => item.blocks.length), [query, allow]);
+  // بلوکِ once فقط یک‌بار: پس از افزودن از کتابخانه برداشته می‌شود.
+  const groups = useMemo(() => BLOCK_GROUPS.map((group) => ({ group, blocks: Object.entries(ARTICLE_BLOCKS).filter(([type, item]) => !item.hidden && item.group === group && (!allow || allow.includes(type)) && !(item.once && taken.includes(type)) && matchesSearch(query, item.label)) })).filter((item) => item.blocks.length), [query, allow, taken]);
   useEffect(() => {
     const onKey = (event) => { if (event.key === "Escape") onClose(); };
     window.addEventListener("keydown", onKey);
@@ -507,7 +508,9 @@ export default function BlockEditor({ value = [], onChange, libraryOpen: openPro
   const add = (type, position) => {
     const block = createArticleBlock(type);
     pendingScroll.current = block.id;
-    onChange(insertBlockAt(value, block, position));
+    // هدر جای انتخابی ندارد: همیشه بالاترین بلوک است، چون صفحه هم همان‌جا
+    // رندرش می‌کند (بالای بردکرامب، تمام‌عرض). سرور هم همین را تثبیت می‌کند.
+    onChange(normalizeHeaderPosition(insertBlockAt(value, block, ARTICLE_BLOCKS[type]?.once ? 1 : position)));
     setLibraryOpen(false);
   };
   // پس از کامیتِ رندری که بلوکِ تازه در آن آمده اجرا می‌شود. اگر والد به‌روزرسانی
@@ -564,6 +567,6 @@ export default function BlockEditor({ value = [], onChange, libraryOpen: openPro
     </DndContext>
     <button type="button" onClick={() => setLibraryOpen(true)} className="w-full flex items-center justify-center gap-2 py-3 border border-dashed text-sm font-bold text-[var(--color-primary)] hover:bg-[var(--color-primary-soft)]" style={{ borderColor: "var(--color-primary)", borderRadius: "var(--admin-radius)" }}><FiPlus /> افزودن بلوک</button>
     {value.length === 0 ? <p className="text-center text-xs text-gray-400">برای شروع اولین بلوک را اضافه کنید.</p> : null}
-    {libraryOpen ? <BlockLibrary total={value.length} onAdd={add} onClose={() => setLibraryOpen(false)} allow={allow} /> : null}
+    {libraryOpen ? <BlockLibrary total={value.length} onAdd={add} onClose={() => setLibraryOpen(false)} allow={allow} taken={value.map((block) => block.type)} /> : null}
   </div>;
 }

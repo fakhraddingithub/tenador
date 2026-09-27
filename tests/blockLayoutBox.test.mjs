@@ -522,3 +522,59 @@ test("یک تایمر، با پاک‌سازی؛ ناوبریِ دستی آن ر
   assert.match(controls, /cancelAnimationFrame\(current\.current\)/);
 });
 
+
+// ——— هدر: بالاترین چیزِ صفحه ————————————————————————————————————
+test("هدر به صدر می‌رود و فقط یکی می‌ماند — قاعده در داده است", async () => {
+  const { normalizeHeaderPosition, splitHeaderBlock } = await import("../src/lib/articleBlockTypes.js");
+  const p1 = { id: "p1", type: "paragraph" };
+  const h1 = { id: "h1", type: "header" };
+  const h2 = { id: "h2", type: "header" };
+  assert.deepEqual(normalizeHeaderPosition([p1, h1]).map((b) => b.id), ["h1", "p1"]);
+  assert.deepEqual(normalizeHeaderPosition([p1, h1, h2]).map((b) => b.id), ["h1", "p1"], "هدرِ دوم می‌افتد");
+  assert.deepEqual(normalizeHeaderPosition([p1]).map((b) => b.id), ["p1"], "بدونِ هدر دست‌نخورده");
+  const split = splitHeaderBlock([p1, h1]);
+  assert.equal(split.header.id, "h1");
+  assert.deepEqual(split.blocks.map((b) => b.id), ["p1"], "از جریانِ بلوک‌ها بیرون می‌آید");
+
+  // و همین در پاک‌سازیِ سرور هم اعمال می‌شود، از هر مسیری که داده برسد.
+  const { sanitizeArticleBlocks } = await import("../src/lib/articleValidation.js");
+  const saved = sanitizeArticleBlocks([
+    { id: "a", type: "paragraph", version: 1, data: { text: "x" } },
+    { id: "b", type: "header", version: 1, data: { title: "ت" } },
+    { id: "c", type: "header", version: 1, data: { title: "دوم" } },
+  ], {});
+  assert.deepEqual(saved.map((b) => b.type), ["header", "paragraph"]);
+});
+
+test("صفحه‌ها ترتیبِ Navbar → هدر → بردکرامب → محتوا را می‌سازند", async () => {
+  const page = await read("../src/components/features/articles/PublicArticlePage.jsx");
+  assert.match(page, /const \{ header, blocks \} = splitHeaderBlock\(article\.blocks\);/);
+  // هدر *پیش از* <header>ِ صفحه (که بردکرامب داخلش است) می‌آید.
+  assert.ok(page.indexOf("<ArticleHeaderBlock block={header} />") < page.indexOf('<header className="border-b'), "هدر باید بالای بردکرامب باشد");
+  // و از جریانِ ستونِ محتوا بیرون رفته، وگرنه دوبار رندر می‌شد.
+  assert.match(page, /<ArticleBlockRenderer blocks=\{blocks\} entities=\{entities\} \/>/);
+  const brochure = await read("../src/components/features/brands/BrandBrochure.jsx");
+  assert.ok(brochure.indexOf("<ArticleHeaderBlock block={header} />") < brochure.indexOf("{breadcrumbs}"));
+});
+
+test("هدرِ تمام‌عرض هیچ ظرفی ندارد و فاصله‌ی نوار را از خودِ Navbar می‌گیرد", async () => {
+  const renderer = await read("../src/components/features/articles/ArticleBlockRenderer.jsx");
+  const fn = renderer.slice(renderer.indexOf("export function ArticleHeaderBlock"), renderer.indexOf("export default function ArticleBlockRenderer"));
+  // بدونِ container/blockSection: عرضِ SportHero یعنی تمامِ عرضِ صفحه.
+  assert.match(fn, /return <SportHero image=\{data\.url\} title=\{data\.title\} alt=\{data\.title\} \/>;/);
+  for (const wrapper of ["blockSection", "container", "max-w-"]) assert.ok(!fn.includes(wrapper), wrapper);
+  // فاصله‌ی نوارِ بالا سراسری است و اینجا تکرار نمی‌شود.
+  const navbar = await read("../src/components/features/navbar/Navbar.js");
+  assert.match(navbar, /\{!isHomePage && <div className="h-\[64px\] lg:h-\[75px\]" \/>\}/);
+  for (const spacing of ["64px", "75px", "pt-"]) assert.ok(!fn.includes(spacing), spacing);
+});
+
+test("ویرایشگر هدر را یک‌بار و در صدر می‌گذارد", async () => {
+  const registry = await read("../src/components/admin/articles/blockRegistry.js");
+  assert.match(registry, /header: \{ label: "هدر", group: "چیدمان", icon: FiLayout, once: true,/);
+  const editor = await read("../src/components/admin/articles/BlockEditor.jsx");
+  assert.match(editor, /!\(item\.once && taken\.includes\(type\)\)/, "کتابخانه باید بلوکِ once را پنهان کند");
+  assert.match(editor, /ARTICLE_BLOCKS\[type\]\?\.once \? 1 : position/, "هدر همیشه در موقعیتِ یک");
+  assert.match(editor, /onChange\(normalizeHeaderPosition\(insertBlockAt/);
+});
+

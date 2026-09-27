@@ -1,14 +1,17 @@
 import Image from "next/image";
 import Link from "next/link";
 import { FiChevronLeft, FiClock, FiHome, FiRefreshCw, FiUser } from "react-icons/fi";
-import ArticleBlockRenderer, { articleHeadings } from "@/components/features/articles/ArticleBlockRenderer";
+import ArticleBlockRenderer, { ArticleHeaderBlock, articleHeadings } from "@/components/features/articles/ArticleBlockRenderer";
+import { splitHeaderBlock } from "@/lib/articleBlockTypes";
 import ArticleReadingTools from "@/components/features/articles/ArticleReadingTools";
 import ArticleCard, { formatArticleDate } from "@/components/features/articles/ArticleCard";
 import { absoluteArticleUrl, articleSchemas } from "@/lib/articleSeo";
 import { buildArticlePath } from "base/utils/articleSlug";
 
 export default function PublicArticlePage({ article, relatedArticles = [], entities }) {
-  const headings = articleHeadings(article.blocks);
+  // هدر از جریانِ بلوک‌ها بیرون می‌آید تا بالای بردکرامب و تمام‌عرض بنشیند.
+  const { header, blocks } = splitHeaderBlock(article.blocks);
+  const headings = articleHeadings(blocks);
   const url = absoluteArticleUrl(buildArticlePath(article.category.slug, article.slug));
   const authorName = [article.author?.name, article.author?.lastName].filter(Boolean).join(" ") || "تحریریه تنادور";
   const explicitProducts = Object.values(entities?.maps?.products || {});
@@ -20,6 +23,7 @@ export default function PublicArticlePage({ article, relatedArticles = [], entit
   return (
     <article className="bg-[var(--color-background)] pb-20"><a href="#article-content" className="sr-only focus:not-sr-only focus:fixed focus:right-4 focus:top-4 focus:z-[100] focus:rounded focus:bg-white focus:p-3">{"\u067e\u0631\u0634 \u0628\u0647 \u0645\u062d\u062a\u0648\u0627\u06cc \u0645\u0642\u0627\u0644\u0647"}</a>
       {schemas.map((schema, index) => <script key={index} type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(schema).replace(/</g, "\\u003c") }} />)}
+      {header ? <ArticleHeaderBlock block={header} /> : null}
       <header className="border-b border-black/5 bg-white">
         <div className="container mx-auto px-4 py-8 md:px-12 md:py-12 lg:px-16 xl:px-20">
           <nav className="mb-7 flex flex-wrap items-center gap-2 text-xs text-gray-500" aria-label="مسیر صفحه"><Link href="/" aria-label="خانه"><FiHome /></Link><FiChevronLeft aria-hidden="true" /><Link href={`/${article.category.slug}`} className="hover:text-[var(--color-primary)]">{article.category.name}</Link><FiChevronLeft aria-hidden="true" /><span className="max-w-48 truncate">{article.title}</span></nav>
@@ -41,7 +45,7 @@ export default function PublicArticlePage({ article, relatedArticles = [], entit
       <div className="container mx-auto grid max-w-7xl gap-10 px-4 pt-10 md:px-12 lg:grid-cols-[240px_minmax(0,820px)] lg:justify-center lg:px-16 xl:px-20">
         <div className="order-2 lg:order-1"><ArticleReadingTools headings={headings} title={article.title} url={url} /></div>
         <div id="article-content" tabIndex={-1} data-article-body className="order-1 min-w-0 rounded-[var(--radius)] bg-white px-5 py-3 md:px-10 lg:order-2">
-          <ArticleBlockRenderer blocks={article.blocks} entities={entities} />
+          <ArticleBlockRenderer blocks={blocks} entities={entities} />
           <section className="my-12 rounded-[var(--radius)] border border-dashed border-gray-300 bg-gray-50 p-6 text-center"><h2 className="font-black text-gray-800">دیدگاه‌ها</h2><p className="mt-2 text-sm leading-7 text-gray-500">امکان ثبت و نمایش دیدگاه‌ها به‌زودی به مجله تنادور اضافه می‌شود.</p></section>
         </div>
       </div>
