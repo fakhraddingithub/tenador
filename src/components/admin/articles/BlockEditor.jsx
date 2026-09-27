@@ -11,7 +11,7 @@ import ArticleEntityPicker from "./ArticleEntityPicker";
 import BlockLayoutModal from "./BlockLayoutModal";
 import { AdminPortal, inputClass } from "./blockUi";
 import RichTextField from "./RichTextField";
-import { ARTICLE_BLOCKS, BLOCK_GROUPS, createArticleBlock } from "./blockRegistry";
+import { ARTICLE_BLOCKS, BLOCK_GROUPS, BLOCK_GROUP_SLUGS, createArticleBlock } from "./blockRegistry";
 import { insertBlockAt } from "@/lib/articleBlockLayout";
 import { confirmDelete } from "@/lib/swal";
 import { IMAGE_DISPLAY_HEIGHT, MAX_IMAGE_BLOCK_ITEMS, mirrorFirstImage, normalizeImageHref } from "@/lib/articleImageBlock";
@@ -360,8 +360,9 @@ function SortableBlock({ block, index, total, onUpdate, onStyle, onAppearance, o
   // تقریباً کاملاً نامرئی و غیرقابلِ کلیک می‌شد. آکاردئون با رندرِ شرطی است نه
   // انیمیشنِ ارتفاع، پس به بریدن نیازی ندارد و فقط گردیِ گوشه‌ها لازم بود که
   // همان را خودِ header با border-radius: inherit می‌گیرد.
-  return <section ref={setNodeRef} id={blockDomId(block.id)} tabIndex={-1} style={{ transform: CSS.Transform.toString(transform), transition, opacity: isDragging ? .55 : 1 }} className="a-card a-block-card group outline-none">
-    <header className={`flex items-center gap-2 bg-gray-50 px-3 py-2.5 ${open ? "border-b rounded-t-[inherit]" : "rounded-[inherit]"}`} style={{ borderColor: "var(--admin-border)" }}>
+  return <section ref={setNodeRef} id={blockDomId(block.id)} tabIndex={-1} style={{ transform: CSS.Transform.toString(transform), transition, opacity: isDragging ? .55 : 1 }} className="a-card a-block-card group outline-none" data-block-group={BLOCK_GROUP_SLUGS[definition?.group] || "content"}>
+    {/* رنگِ پس‌زمینه و مرزِ سربرگ از گروهِ بلوک می‌آید (admin-theme.css)، نه از کلاسِ ثابت. */}
+    <header className={`flex items-center gap-2 px-3 py-2.5 ${open ? "border-b rounded-t-[inherit]" : "rounded-[inherit]"}`}>
       {/* بلوکِ ادغام‌شده هم مثلِ هر بلوکِ دیگری قابلِ انتخاب و ادغامِ دوباره است. */}
       {selectable ? <input type="checkbox" checked={selected} onChange={onSelect} title="انتخاب برای ادغام" aria-label={`انتخاب بلوک ${index + 1} برای ادغام`} className="size-4 shrink-0 cursor-pointer accent-[var(--color-primary)]" /> : null}
       <button type="button" onClick={() => setMoveOpen(true)} className="min-w-6 h-6 px-1.5 border text-[11px] font-black text-gray-500 hover:border-[var(--color-primary)] hover:text-[var(--color-primary)]" style={{ borderColor: "var(--admin-border)", borderRadius: "var(--admin-radius)" }} aria-label={`بلوک ${index + 1} از ${total} — تغییر موقعیت`}>{index + 1}</button>
@@ -371,7 +372,7 @@ function SortableBlock({ block, index, total, onUpdate, onStyle, onAppearance, o
       <button type="button" {...attributes} {...listeners} className="touch-none p-2 cursor-grab text-gray-400 hover:text-[var(--color-primary)]" aria-label="جابجایی بلوک"><FiMenu /></button>
       {/* کلِ عنوان بلوک را باز و بسته می‌کند (آکاردئون)؛ بسته که باشد، خلاصه‌اش دیده می‌شود. */}
       <button type="button" onClick={onToggle} aria-expanded={open} aria-controls={`${blockDomId(block.id)}-body`} className="flex min-w-0 flex-1 items-center gap-2 text-right focus-visible:outline-2 focus-visible:outline-[var(--color-primary)]">
-        <Icon className="shrink-0 text-[var(--color-primary)]" /><strong className="shrink-0 text-sm">{definition?.label || block.type}</strong>
+        <Icon className="shrink-0" style={{ color: "var(--admin-block-accent)" }} /><strong className="shrink-0 text-sm">{definition?.label || block.type}</strong>
         {!open && blockSummary(block) ? <span className="min-w-0 truncate text-xs text-gray-400">{blockSummary(block)}</span> : null}
       </button>
       <div className="flex shrink-0 items-center gap-1">
@@ -509,7 +510,7 @@ export default function BlockEditor({ value = [], onChange, libraryOpen: openPro
     deep: `ادغامِ تودرتو حداکثر ${MAX_MERGE_DEPTH.toLocaleString("fa-IR")} سطح.`,
   };
   // فاصله‌ی بینِ کارت‌های بلوک: با ۱۲px دو کارتِ پشتِ‌سرِ‌هم به هم می‌چسبیدند.
-  return <div className="space-y-5">
+  return <div className="space-y-6">
     {/* نوارِ ادغام به body می‌رود و به پایینِ صفحه ثابت می‌شود: کارتِ مینی‌مقاله
         backdrop-blur دارد و position:fixed را در خودش حبس می‌کرد. روی موبایل بالاتر
         می‌نشیند تا نوارِ شناورِ ویرایشگرِ مقاله (پایین-چپ) را نپوشاند. */}

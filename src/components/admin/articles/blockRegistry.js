@@ -86,6 +86,24 @@ if (missingDefinitions.length) throw new Error(`Missing article block definition
 
 export const BLOCK_GROUPS = [...new Set(Object.values(ARTICLE_BLOCKS).map((block) => block.group))];
 
+// نامِ لاتینِ هر گروه، فقط برای رنگ‌بندیِ کارتِ بلوک در ویرایشگر (data-block-group؛
+// رنگ‌ها در admin-theme.css). گروه همان دسته‌بندیِ کتابخانه‌ی بلوک است، پس رنگ با
+// همان چیزی که ادمین هنگامِ افزودن دیده یکی است — نه ۲۵ رنگِ جدا که فهرست را شلوغ کند.
+export const BLOCK_GROUP_SLUGS = {
+  "محتوا": "content",
+  "رسانه": "media",
+  "چیدمان": "layout",
+  "داده": "data",
+  "فروشگاه": "shop",
+  "پویا": "dynamic",
+  "بازاریابی": "marketing",
+  "پیشرفته": "advanced",
+};
+
+// گروهِ تازه بدونِ رنگ، خاموش از قلم می‌افتد؛ همان‌طور که تعریفِ جاافتاده‌ی بلوک می‌افتاد.
+const missingGroupSlugs = BLOCK_GROUPS.filter((group) => !BLOCK_GROUP_SLUGS[group]);
+if (missingGroupSlugs.length) throw new Error(`Missing block group slugs: ${missingGroupSlugs.join(", ")}`);
+
 export function createArticleBlock(type) {
   const definition = ARTICLE_BLOCKS[type];
   if (!definition) throw new Error(`Unknown article block type: ${type}`);

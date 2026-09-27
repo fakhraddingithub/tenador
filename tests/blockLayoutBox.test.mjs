@@ -292,3 +292,32 @@ test("بازگشت از پیش‌نمایش به ویرایشگرِ همان م�
   // مسیرهای دیگر دست‌نخورده‌اند: تاریخچه، و بعد داشبورد.
   assert.match(src, /else if \(window\.history\.length > 1\) router\.back\(\);\s*\n\s*else router\.push\("\/p-admin"\);/);
 });
+
+// ——— رنگِ کارتِ بلوک بر اساسِ گروه ————————————————————————————————————
+// گروه در blockRegistry تعریف می‌شود و رنگ در admin-theme.css؛ گروهِ تازه‌ای که
+// رنگ نگیرد، خاموش به رنگِ پیش‌فرض می‌افتد و دقیقاً همان «همه شبیهِ هم» برمی‌گردد.
+test("هر گروهِ بلوک، هم نامِ لاتین دارد هم رنگ", async () => {
+  const registry = await read("../src/components/admin/articles/blockRegistry.js");
+  const css = await read("../src/styles/admin-theme.css");
+  const groups = [...registry.matchAll(/group: "([^"]+)"/g)].map((m) => m[1]);
+  const slugs = Object.fromEntries([...registry.slice(registry.indexOf("BLOCK_GROUP_SLUGS")).matchAll(/"([^"]+)": "([a-z]+)"/g)]
+    .map((m) => [m[1], m[2]]));
+  assert.ok(groups.length);
+  for (const group of new Set(groups)) {
+    const slug = slugs[group];
+    assert.ok(slug, `گروهِ «${group}» نامِ لاتین ندارد`);
+    assert.ok(css.includes(`[data-block-group="${slug}"]`), `گروهِ «${group}» رنگ ندارد`);
+    // هر دو متغیّر لازم است: مرز و پس‌زمینه‌ی سربرگ.
+    const rule = css.slice(css.indexOf(`[data-block-group="${slug}"]`)).split("\n")[0];
+    assert.match(rule, /--admin-block-accent:/);
+    assert.match(rule, /--admin-block-tint:/);
+  }
+});
+
+test("سربرگِ کارت رنگِ ثابت ندارد و از گروه می‌خواند", async () => {
+  const editor = await read("../src/components/admin/articles/BlockEditor.jsx");
+  assert.match(editor, /data-block-group=\{BLOCK_GROUP_SLUGS\[definition\?\.group\] \|\| "content"\}/);
+  // bg-gray-50 روی سربرگ، رنگِ گروه را می‌پوشاند.
+  const header = editor.slice(editor.indexOf("<header className={`flex items-center gap-2"));
+  assert.ok(!header.slice(0, 200).includes("bg-gray-50"));
+});

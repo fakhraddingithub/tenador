@@ -18,8 +18,6 @@
   --admin-card: #ffffff;
   --admin-border: #e3e6df;
   --admin-border-strong: #cfd4c8;
-  /* نوارِ شروعِ کارتِ بلوک — تُنِ آرامِ رنگِ اصلی، تا فهرستِ بلند شلوغ نشود. */
-  --admin-block-accent: #c8927b;
   --admin-text: #14201a;
   --admin-text-muted: #6b7a70;
 
@@ -274,21 +272,35 @@
 }
 
 /* ─── کارتِ بلوک در ویرایشگر ───
-   در فهرستی از ده‌ها بلوکِ پشتِ‌سرِ‌هم، کارتِ معمولی (مرزِ بسیار روشن) با کارتِ
-   بعدی یکی دیده می‌شد. سه چیز مرز را آشکار می‌کند بدونِ شلوغ‌کردنِ صفحه:
-   مرزِ پررنگ‌ترِ همین تم، یک نوارِ باریک روی لبه‌ی *شروع* (در RTL سمتِ راست) که
-   ابتدای هر بلوک را نشان می‌دهد، و فاصله‌ی بیشتر بینِ کارت‌ها (در BlockEditor).
-   رنگ و ساختار محتوا دست‌نخورده است. */
+   در فهرستی از ده‌ها بلوکِ پشتِ‌سرِ‌هم، کارتِ معمولی (مرزِ بسیار روشن، سربرگِ خاکستری)
+   با کارتِ بعدی یکی دیده می‌شد و نوعِ بلوک فقط از روی متنِ عنوان خوانده می‌شد.
+   هر کارت دو متغیّر از گروهِ خودش می‌گیرد — --admin-block-accent (مرز، نوارِ لبه،
+   آیکن) و --admin-block-tint (پس‌زمینه‌ی سربرگ) — و بقیه‌ی قاعده‌ها فقط از همین دو
+   می‌خوانند. گروه همان دسته‌بندیِ کتابخانه‌ی بلوک است (BLOCK_GROUP_SLUGS)، پس رنگ،
+   دسته و آیکن یک چیز را می‌گویند. رنگ‌ها عمداً کم‌اشباع‌اند: تفاوت باید دیده شود،
+   نه اینکه صفحه رنگین‌کمان شود. */
 .admin-scope .a-block-card {
-  border-color: var(--admin-border-strong);
-  border-inline-start-width: 3px;
-  border-inline-start-color: var(--admin-block-accent);
-  transition: border-color .15s ease, box-shadow .15s ease;
+  --admin-block-accent: #c8927b;
+  --admin-block-tint: #fdf5f1;
+  border-color: var(--admin-block-accent);
+  border-inline-start-width: 4px;
+  transition: box-shadow .15s ease, border-color .15s ease;
 }
-/* بلوکی که با آن کار می‌شود پررنگ‌تر می‌شود — بازخوردِ «همین‌جا هستم». */
+.admin-scope .a-block-card > header {
+  background: var(--admin-block-tint);
+  border-color: var(--admin-block-accent);
+}
+/* بلوکی که با آن کار می‌شود جلو می‌آید — بازخوردِ «همین‌جا هستم». */
 .admin-scope .a-block-card:hover,
 .admin-scope .a-block-card:focus-within {
-  border-color: var(--admin-border-strong);
-  border-inline-start-color: var(--color-primary);
   box-shadow: var(--admin-shadow);
 }
+
+.admin-scope .a-block-card[data-block-group="content"]   { --admin-block-accent: #c07a56; --admin-block-tint: #fbf1ea; }
+.admin-scope .a-block-card[data-block-group="media"]     { --admin-block-accent: #8f7bbe; --admin-block-tint: #f4f1fb; }
+.admin-scope .a-block-card[data-block-group="layout"]    { --admin-block-accent: #8d9c95; --admin-block-tint: #f1f5f3; }
+.admin-scope .a-block-card[data-block-group="data"]      { --admin-block-accent: #5f94bd; --admin-block-tint: #edf4fa; }
+.admin-scope .a-block-card[data-block-group="shop"]      { --admin-block-accent: #5c9c72; --admin-block-tint: #edf6f0; }
+.admin-scope .a-block-card[data-block-group="dynamic"]   { --admin-block-accent: #c49a35; --admin-block-tint: #fbf5e6; }
+.admin-scope .a-block-card[data-block-group="marketing"] { --admin-block-accent: #c1738f; --admin-block-tint: #fbeff3; }
+.admin-scope .a-block-card[data-block-group="advanced"]  { --admin-block-accent: #7c8794; --admin-block-tint: #f1f3f6; }
