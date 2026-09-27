@@ -1,6 +1,6 @@
 import {
   FiAlignRight, FiBarChart2, FiBox, FiColumns, FiGrid, FiImage, FiLink, FiList,
-  FiFeather, FiMail, FiMessageSquare, FiMinus, FiPlay, FiShoppingBag, FiStar, FiTable,
+  FiFeather, FiLayout, FiMail, FiMessageSquare, FiMinus, FiPlay, FiShoppingBag, FiStar, FiTable,
   FiLayers, FiTag, FiType, FiZap,
 } from "react-icons/fi";
 import { ARTICLE_BLOCK_TYPES } from "@/lib/articleBlockTypes";
@@ -57,6 +57,8 @@ export const ARTICLE_BLOCKS = {
   gallery: { label: "گالری", group: "رسانه", icon: FiGrid, defaults: { images: [] }, fields: [text("images", "تصاویر", "gallery")], styleKeys: SPACING_ONLY },
   video: { label: "ویدئو", group: "رسانه", icon: FiPlay, defaults: { url: "", title: "" }, fields: [text("url", "آدرس ویدئو", "url"), text("title", "عنوان ویدئو")], styleKeys: SPACING_ONLY },
   quote: { label: "نقل‌قول", group: "محتوا", icon: FiMessageSquare, defaults: { text: "", author: "" }, fields: [text("text", "متن نقل‌قول", "rich"), text("author", "نام گوینده")], styleKeys: ["spacing", "textColor", "background", "accent"] },
+  // همان هدرِ صفحه‌ی ورزش. ظاهرش از SportHero می‌آید، پس فقط دو چیز تنظیم‌پذیر است.
+  header: { label: "هدر", group: "چیدمان", icon: FiLayout, defaults: { title: "", url: "" }, fields: [text("title", "متن تیتر (H1)"), text("url", "تصویر پس‌زمینه", "image")], styleKeys: SPACING_ONLY },
   divider: { label: "جداکننده", group: "چیدمان", icon: FiMinus, defaults: {}, fields: [], styleKeys: ["spacing", "accent"] },
   button: {
     label: "دکمه", group: "محتوا", icon: FiLink,

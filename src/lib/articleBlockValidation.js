@@ -164,6 +164,9 @@ const validators = {
   paragraph: (data) => ({ text: string(data.text, 50000), ...rich(data.html) }),
   // فقط سه متن؛ بقیه‌ی ظاهر از HomeSectionHeading می‌آید و قابلِ تنظیم نیست.
   tenadorTitle: (data) => ({ highlight: string(data.highlight, 200), title: string(data.title, 300), subtitle: string(data.subtitle, 500) }),
+  // هدر: فقط تیتر و تصویر. بقیه‌ی ظاهر از SportHero می‌آید و تنظیم‌پذیر نیست،
+  // پس width/height ای که کادرِ تصویر می‌فرستد هم ذخیره نمی‌شود (<img> ساده است).
+  header: (data, errors, field) => ({ title: string(data.title, 300), url: url(data.url, errors, `${field}.url`, { media: true }) }),
   image: imageBlock,
   gallery: (data, errors, field) => ({ images: gallery(data.images, errors, `${field}.images`) }),
   video: (data, errors, field) => ({ url: url(data.url, errors, `${field}.url`, { media: true }), title: string(data.title, 300) }),

@@ -415,3 +415,31 @@ test("پیش‌نمایش رنگِ سایت را نشان می‌دهد، نه �
   const canvas = await read("../src/components/admin/articles/PreviewCanvas.jsx");
   assert.ok(canvas.includes('className={`site-colors${canEdit ? " preview-canvas" : ""}`}'));
 });
+
+// ——— بلوکِ هدر ————————————————————————————————————————————————
+test("هدر از همان SportHero سایت می‌آید، نه یک کپیِ شبیه", async () => {
+  const renderer = await read("../src/components/features/articles/ArticleBlockRenderer.jsx");
+  assert.match(renderer, /import SportHero from "@\/components\/templates\/sports\/SportHero"/);
+  assert.match(renderer, /<SportHero image=\{data\.url\} title=\{data\.title\} alt=\{data\.title\} \/>/);
+  // هیچ اندازه\u200cای دوباره اینجا نوشته نشده باشد: ارتفاع، گرادیان و تایپوگرافی
+  // فقط از خودِ کامپوننت بیاید، وگرنه روزی از هدرِ سایت دور می\u200cافتد.
+  const branch = renderer.slice(renderer.indexOf('block.type === "header"'), renderer.indexOf('block.type === "heading"'));
+  for (const copied of ["h-[100px]", "md:h-[220px]", "bg-gradient-to-t", "drop-shadow-xl", "text-xl md:text-4xl"]) {
+    assert.ok(!branch.includes(copied), `"${copied}" در بلوک تکرار شده است`);
+  }
+});
+
+test("هدر فقط دو چیزِ تنظیم\u200cپذیر دارد: تیتر و تصویر", async () => {
+  const registry = await read("../src/components/admin/articles/blockRegistry.js");
+  const definition = registry.slice(registry.indexOf("  header: {"), registry.indexOf("  divider: {"));
+  assert.deepEqual([...definition.matchAll(/text\("(\w+)"/g)].map((m) => m[1]), ["title", "url"]);
+  assert.match(definition, /styleKeys: SPACING_ONLY/);
+  // کلیدِ تصویر باید url باشد: کادرِ تصویرِ مشترک patch را با همین نام می\u200cفرستد.
+  assert.match(definition, /text\("url", "[^"]+", "image"\)/);
+
+  const validation = await read("../src/lib/articleBlockValidation.js");
+  assert.match(validation, /header: \(data, errors, field\) => \(\{ title: string\(data\.title, 300\), url: url\(data\.url, errors, `\$\{field\}\.url`, \{ media: true \}\) \}\)/);
+  const types = await read("../src/lib/articleBlockTypes.js");
+  assert.match(types, /"header",/);
+});
+

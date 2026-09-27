@@ -9,6 +9,7 @@ import { sanitizeRichText } from "@/lib/sanitizeRichText";
 import { BLOCK_ALIGN_SELF, BLOCK_WIDTH_CLASS, blockBoxProps, blockWidth, groupBlockRows } from "@/lib/articleBlockLayout";
 import DragScroll from "@/components/features/articles/DragScroll";
 import HomeSectionHeading from "@/components/features/home/HomeSectionHeading";
+import SportHero from "@/components/templates/sports/SportHero";
 import MergedSliderNav from "@/components/features/articles/MergedSliderNav";
 import { clampImageShade, imageBlockItems } from "@/lib/articleImageBlock";
 import { blockChildren, blockHoldsBlocks, flattenArticleBlocks, imageOverlayChildren, isMergedBlock, mergedChildren, sanitizeMergedGrid } from "@/lib/articleBlockTypes";
@@ -386,6 +387,14 @@ export default function ArticleBlockRenderer({ blocks = [], entities, preview = 
       if (!title && !data.subtitle) return null;
       return <div key={block.id} className={blockSection} style={v.spacing || undefined}>
         <HomeSectionHeading id={safeHeadingId(block)} title={title} highlight={highlight} subtitle={data.subtitle || ""} />
+      </div>;
+    }
+    if (block.type === "header") {
+      // SportHero منبعِ یگانه است: ارتفاع، گرادیان، برشِ تصویر، تایپوگرافیِ h1 و
+      // خطِ زیرِ آن همه از همان‌جا می‌آید. نبودنِ تصویر را هم خودش fallback دارد.
+      if (!data.url && !data.title) return null;
+      return <div key={block.id} className={blockSection} style={v.spacing || undefined}>
+        <SportHero image={data.url} title={data.title} alt={data.title} />
       </div>;
     }
     if (block.type === "heading") {

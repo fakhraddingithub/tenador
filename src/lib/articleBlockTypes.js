@@ -1,6 +1,7 @@
 export const ARTICLE_BLOCK_TYPES = [
   "heading",
   "tenadorTitle",
+  "header",
   "paragraph",
   "image",
   "gallery",

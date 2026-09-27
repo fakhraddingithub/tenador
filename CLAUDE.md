@@ -903,6 +903,33 @@ control, so nothing there can fall out of step. Font sizes themselves are untouc
 npm run test:block-layout   # includes tests/richTextLineHeight.test.mjs
 ```
 
+### The «هدر» block is the site's own hero
+
+`SportHero` (`src/components/templates/sports/SportHero.jsx`) is already the single
+source of truth for the full-bleed header — the sport page, `/products`, `/second-hand`,
+the athlete page and the CMS section renderer all render it. The block renders **the same
+component**, so height, gradient, image crop, h1 typography and the accent bar are not
+re-specified anywhere and a change to the site header reaches the block for free.
+
+Only two things are editable, `data.title` and `data.url`; `styleKeys` is spacing-only.
+The image key is `url` because the shared `image` field kind is in `PATCH_KINDS` and emits
+`{url, width, height}` at the top level of `data` — the validator keeps only `title` and
+`url` (`SportHero` renders a plain `<img>`, so the dimensions would be dead data).
+
+Measured against `/products` at 1400px and 390px, every property matches: height 220/100,
+`overflow: hidden`, `object-fit: cover` with the image at 105% of the box, the same
+gradient, h1 36px/20px at weight 700 centred white with `margin-bottom: 16px`, and the
+80×4 primary bar. The only difference is width, which is the article column rather than
+the viewport — inherent to being a block.
+
+Note the block emits an `<h1>`, exactly as the site header does, so an article that uses it
+has two `<h1>`s (its own title and the block's). That is the price of being identical;
+`articleHeadings` deliberately ignores it, like `tenadorTitle`.
+
+```bash
+npm run test:block-layout
+```
+
 ### Slug System
 
 `SlugRegistery` model maps dynamic URL segments (sport/category/brand slugs) to their entity types. `actions/registerSlug.js` is a server action that creates entries on entity creation. This powers ISR revalidation — when a slug is revalidated, the correct entity page is rebuilt.
