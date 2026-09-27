@@ -11,8 +11,9 @@ import DragScroll from "@/components/features/articles/DragScroll";
 import HomeSectionHeading from "@/components/features/home/HomeSectionHeading";
 import SportHero from "@/components/templates/sports/SportHero";
 import MergedSliderNav from "@/components/features/articles/MergedSliderNav";
+import ImageSliderControls from "@/components/features/articles/ImageSliderControls";
 import { clampImageShade, imageBlockItems } from "@/lib/articleImageBlock";
-import { blockChildren, blockHoldsBlocks, flattenArticleBlocks, imageOverlayChildren, isMergedBlock, mergedChildren, sanitizeMergedGrid } from "@/lib/articleBlockTypes";
+import { IMAGE_SLIDER_DELAY, IMAGE_SLIDER_HEIGHT, blockChildren, blockHoldsBlocks, flattenArticleBlocks, imageOverlayChildren, imageSliderChildren, isMergedBlock, mergedChildren, sanitizeMergedGrid } from "@/lib/articleBlockTypes";
 
 const ordered = (values, map) => (Array.isArray(values) ? values : values ? [values] : []).map((id) => map?.[String(id)]).filter(Boolean);
 // فاصله‌ی پیش‌فرض صفر است: دو بلوکِ پشتِ‌سرِ‌هم که فاصله‌ای برایشان تنظیم نشده،
@@ -412,6 +413,33 @@ export default function ArticleBlockRenderer({ blocks = [], entities, preview = 
     // تصویرِ محتوا با نسبتِ واقعیِ خودش رندر می‌شود: عرض/ارتفاعِ ذخیره‌شده فقط
     // جا را پیش از بارگذاری رزرو می‌کند (aspect-ratio: auto w/h) و پس از بارگذاری
     // نسبتِ ذاتیِ تصویر جای آن را می‌گیرد — پس هیچ بُرشی رخ نمی‌دهد.
+    if (block.type === "imageSlider") {
+      // تصویرها *همان* بلوکِ تصویرند و با همین renderBlock رندر می‌شوند، پس هر
+      // توانایی‌ای که بیرون دارند (چند تصویر، پیوند، لایه‌ی تیره، بلوکِ رویی)
+      // داخلِ اسلایدر هم دارند. inMerged چون سهمشان یک قابِ محدود است.
+      const slides = imageSliderChildren(block).map((child) => ({ child, node: renderBlock(child, true) })).filter((item) => item.node);
+      if (!slides.length) return null;
+      const height = Math.min(IMAGE_SLIDER_HEIGHT.max, Math.max(IMAGE_SLIDER_HEIGHT.min, Number(data.height) || IMAGE_SLIDER_HEIGHT.default));
+      const delay = Math.min(IMAGE_SLIDER_DELAY.max, Math.max(IMAGE_SLIDER_DELAY.min, Number(data.delay) || IMAGE_SLIDER_DELAY.default));
+      return <div key={block.id} className={`${blockSection} relative`} style={v.spacing || undefined}>
+        {/* ظرفِ اسکرولِ بومی + snap: کشیدن با ماوس کارِ DragScroll است و
+            «رفتن به اسلایدِ درست» را خودِ snap انجام می‌دهد. */}
+        <div
+          data-image-slider
+          role="region"
+          aria-label="اسلایدر تصویر — برای دیدنِ بقیه به چپ و راست بکشید"
+          tabIndex={0}
+          className="a-slider snap-x snap-mandatory overflow-x-auto overscroll-x-contain rounded-[var(--radius)] focus-visible:outline-2 focus-visible:outline-[var(--color-primary)]"
+          style={{ "--slide-h": `${height}px` }}
+        >
+          <DragScroll />
+          <div className="flex">
+            {slides.map(({ child, node }) => <div key={child.id} className="a-slide w-full shrink-0 snap-start">{node}</div>)}
+          </div>
+        </div>
+        <ImageSliderControls delay={delay} />
+      </div>;
+    }
     if (block.type === "image" && !isPlainImageBlock(data)) {
       // بلوک‌های رویِ تصویر با همین renderBlock رندر می‌شوند و inMerged می‌گیرند:
       // سهمشان یک ناحیه‌ی محدود است، پس شبکه‌ی داخلیِ خودشان باید از عرضِ همان

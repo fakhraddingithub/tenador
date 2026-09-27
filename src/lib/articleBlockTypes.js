@@ -4,6 +4,7 @@ export const ARTICLE_BLOCK_TYPES = [
   "header",
   "paragraph",
   "image",
+  "imageSlider",
   "gallery",
   "video",
   "quote",
@@ -59,7 +60,10 @@ export function flattenArticleBlocks(blocks = []) {
     // بلوکِ ادغام‌شده محتوای خودش را ندارد، پس *جایش* را فرزندانش می‌گیرند.
     ? flattenArticleBlocks(mergedChildren(block))
     // بلوکِ تصویر خودش محتواست و فرزندانش روی آن می‌نشینند، پس هر دو می‌آیند.
-    : [block, ...flattenArticleBlocks(imageOverlayChildren(block))]));
+    : isImageSliderBlock(block)
+      // اسلایدر خودش محتوایی ندارد؛ فقط ظرفِ تصویرهاست.
+      ? flattenArticleBlocks(imageSliderChildren(block))
+      : [block, ...flattenArticleBlocks(imageOverlayChildren(block))]));
 }
 
 // ——— بلوکی که بلوکِ دیگری در خود دارد ————————————————————————————————
@@ -68,10 +72,20 @@ export function flattenArticleBlocks(blocks = []) {
 // رونوشت، جمع‌کردنِ ارجاع‌ها — باید از این‌ها استفاده شود، وگرنه یکی از دو حالت
 // خاموش از قلم می‌افتد.
 export const IMAGE_BLOCK_TYPE = "image";
+export const IMAGE_SLIDER_BLOCK_TYPE = "imageSlider";
+// اسلایدرِ تصویر فقط بلوکِ تصویر می‌پذیرد — هم ویرایشگر همین را نشان می‌دهد هم
+// پاک‌سازیِ سرور همین را نگه می‌دارد، پس از هیچ راهی نوعِ دیگری داخلش نمی‌ماند.
+export const IMAGE_SLIDER_CHILD_TYPES = [IMAGE_BLOCK_TYPE];
+export const isImageSliderBlock = (block) => block?.type === IMAGE_SLIDER_BLOCK_TYPE;
+export const imageSliderChildren = (block) => (isImageSliderBlock(block) && Array.isArray(block.data?.blocks) ? block.data.blocks : []);
+export const IMAGE_SLIDER_DELAY = { min: 1000, max: 20000, step: 500, default: 5000 };
+export const IMAGE_SLIDER_HEIGHT = { min: 120, max: 900, step: 10, default: 320 };
 export const isImageBlock = (block) => block?.type === IMAGE_BLOCK_TYPE;
 export const imageOverlayChildren = (block) => (isImageBlock(block) && Array.isArray(block.data?.blocks) ? block.data.blocks : []);
-export const blockHoldsBlocks = (block) => isMergedBlock(block) || isImageBlock(block);
-export const blockChildren = (block) => (isMergedBlock(block) ? mergedChildren(block) : imageOverlayChildren(block));
+export const blockHoldsBlocks = (block) => isMergedBlock(block) || isImageBlock(block) || isImageSliderBlock(block);
+export const blockChildren = (block) => (isMergedBlock(block)
+  ? mergedChildren(block)
+  : isImageSliderBlock(block) ? imageSliderChildren(block) : imageOverlayChildren(block));
 
 // ——— چیدمانِ شبکه‌ایِ بلوکِ ادغام‌شده (data.grid) ————————————————————————
 // نبودنِ grid یعنی همان ردیفِ افقیِ پیش‌فرض (رفتارِ قبلی، بدونِ هیچ تغییر).

@@ -3,7 +3,8 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 
 import HomeSliderNav from "@/components/features/home/HomeSliderNav";
-import { HOME_SLIDER_AUTOPLAY, HOME_SLIDER_SPEED, homeSliderEase } from "@/lib/homeSlider";
+import { HOME_SLIDER_AUTOPLAY } from "@/lib/homeSlider";
+import { EDGE, scrollerEdges, stepScroller } from "@/lib/sliderScroller";
 
 /**
  * دکمه‌های عقب/جلو و حرکتِ خودکارِ بلوکِ ادغام‌شده، وقتی واقعاً اسلایدر شده است.
@@ -23,21 +24,14 @@ import { HOME_SLIDER_AUTOPLAY, HOME_SLIDER_SPEED, homeSliderEase } from "@/lib/h
  *    ممکن است در عمل جا شود؛ تا scrollWidth از clientWidth بیشتر نشود هیچ
  *    دکمه‌ای رندر نمی‌شود. ResizeObserver روی ظرف *و* روی ردیفِ داخلش است، چون
  *    عرضِ محتوا هم با تصویرِ دیررس عوض می‌شود.
- *  - **یک «اسلاید» یعنی یک خانه.** عرضِ خانه‌ی اول به‌اضافه‌ی gap، تا مثلِ
- *    Swiper یک کارت جلو برود، نه یک صفحه.
- *  - **حرکت با rAF است نه behavior:"smooth"**، چون مرورگر مدتِ smooth را خودش
- *    تعیین می‌کند و «همان سرعتِ صفحه‌ی اصلی» آن‌طور به‌دست نمی‌آید. در طولِ
- *    حرکت snap خاموش است — با scroll-snap: mandatory هر نوشتنِ scrollLeft به
- *    نزدیک‌ترین نقطه می‌پرد (همان تله‌ای که DragScroll هم دارد).
- *  - **در RTL، scrollLeft از ۰ تا منفی می‌رود.** کران‌ها از جهتِ محاسبه‌شده
- *    می‌آیند و مقایسه‌ها روی قدرِمطلق‌اند.
+ *  - **یک «اسلاید»، حرکتِ rAF، و جهتِ راست‌به‌چپ** همه از `sliderScroller`
+ *    می‌آیند — همان مکانیکی که اسلایدرِ تصویر هم از آن استفاده می‌کند، تا
+ *    سرعت و رفتارِ لبه‌ها بینِ دو اسلایدر از هم دور نیفتد.
  *  - **autoplay با اولین دخالتِ کاربر می‌ایستد** (disableOnInteraction صفحه‌ی
  *    اصلی)، و با prefers-reduced-motion اصلاً شروع نمی‌شود. در انتها مثلِ
  *    Swiper به ابتدا برمی‌گردد.
  *  - اسکرول و کشیدن با ماوس دست‌نخورده‌اند؛ این فقط scrollLeft می‌نویسد.
  */
-const EDGE = 2;
-
 export default function MergedSliderNav({ label }) {
   const anchor = useRef(null);
   const frame = useRef(0);
@@ -50,11 +44,7 @@ export default function MergedSliderNav({ label }) {
     const scroller = scrollerOf();
     if (!scroller) return undefined;
 
-    const measure = () => {
-      const max = scroller.scrollWidth - scroller.clientWidth;
-      const at = Math.abs(scroller.scrollLeft);
-      setState({ scrolls: max > EDGE, atStart: at <= EDGE, atEnd: at >= max - EDGE });
-    };
+    const measure = () => setState(scrollerEdges(scroller));
     measure();
 
     // هر دخالتِ کاربر، حرکتِ خودکار را برای همیشه می‌خواباند.
@@ -77,41 +67,8 @@ export default function MergedSliderNav({ label }) {
     };
   }, []);
 
-  const animateTo = useCallback((scroller, target) => {
-    cancelAnimationFrame(frame.current);
-    const from = scroller.scrollLeft;
-    const delta = target - from;
-    if (!delta) return;
-    const started = performance.now();
-    const snap = scroller.style.scrollSnapType;
-    scroller.style.scrollSnapType = "none";
-    const tick = (now) => {
-      const progress = Math.min(1, (now - started) / HOME_SLIDER_SPEED);
-      scroller.scrollLeft = from + delta * homeSliderEase(progress);
-      if (progress < 1) frame.current = requestAnimationFrame(tick);
-      else scroller.style.scrollSnapType = snap;
-    };
-    frame.current = requestAnimationFrame(tick);
-  }, []);
-
   /** ‎1 یک خانه جلو، ‎-1 یک خانه عقب، ‎0 برگشت به ابتدا (مثلِ انتهای Swiper). */
-  const step = useCallback((direction) => {
-    const scroller = scrollerOf();
-    if (!scroller) return;
-    if (!direction) {
-      animateTo(scroller, 0);
-      return;
-    }
-    const max = scroller.scrollWidth - scroller.clientWidth;
-    // جهتِ «جلو» با راستِ‌به‌چپ عوض می‌شود، چون scrollLeft آنجا از ۰ تا منفی می‌رود.
-    const forward = getComputedStyle(scroller).direction === "rtl" ? -1 : 1;
-    const [lo, hi] = forward < 0 ? [-max, 0] : [0, max];
-    const row = [...scroller.children].find((child) => child.clientWidth > 0);
-    const cell = row?.firstElementChild;
-    const gap = parseFloat(getComputedStyle(row || scroller).columnGap) || 0;
-    const amount = (cell?.getBoundingClientRect().width || scroller.clientWidth * 0.8) + gap;
-    animateTo(scroller, Math.min(hi, Math.max(lo, scroller.scrollLeft + forward * direction * amount)));
-  }, [animateTo]);
+  const step = useCallback((direction) => stepScroller(scrollerOf(), direction, frame), []);
 
   // حرکتِ خودکار — همان delayِ صفحه‌ی اصلی، و در انتها برگشت به ابتدا.
   useEffect(() => {

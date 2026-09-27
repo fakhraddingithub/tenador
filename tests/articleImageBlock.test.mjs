@@ -178,7 +178,7 @@ test("editor: block library and move dialog are portaled into an admin-scope wra
 // ——— تصویر به‌عنوانِ ظرف ————————————————————————————————————————
 test("فرزندانِ تصویر از همان BlockEditor می‌آیند، نه یک نسخه‌ی محدود", async () => {
   const registry = await readFile(new URL("../src/components/admin/articles/blockRegistry.js", import.meta.url), "utf8");
-  const definition = registry.slice(registry.indexOf("  image: {"), registry.indexOf("  gallery: {"));
+  const definition = registry.slice(registry.indexOf("  image: {"), registry.indexOf("  imageSlider: {"));
   assert.deepEqual([...definition.matchAll(/text\("(\w+)"/g)].map((m) => m[1]), ["images", "displayHeight", "shade", "blocks", "caption"]);
   // همان kind ای که فرزندانِ بلوکِ ادغام‌شده را ویرایش می‌کند: یعنی همان
   // ویرایشگر، با همه‌ی تنظیماتِ همیشگیِ هر بلوک.

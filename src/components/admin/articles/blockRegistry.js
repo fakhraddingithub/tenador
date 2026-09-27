@@ -3,7 +3,7 @@ import {
   FiFeather, FiLayout, FiMail, FiMessageSquare, FiMinus, FiPlay, FiShoppingBag, FiStar, FiTable,
   FiLayers, FiTag, FiType, FiZap,
 } from "react-icons/fi";
-import { ARTICLE_BLOCK_TYPES } from "@/lib/articleBlockTypes";
+import { ARTICLE_BLOCK_TYPES, IMAGE_SLIDER_DELAY, IMAGE_SLIDER_HEIGHT } from "@/lib/articleBlockTypes";
 
 const text = (key, label, kind = "text", extra = {}) => ({ key, label, kind, ...extra });
 const entity = (key, label, entityType, multiple = true) => ({ key, label, kind: multiple ? "entities" : "entity", entityType });
@@ -54,6 +54,8 @@ export const ARTICLE_BLOCKS = {
   // تصویر یک *ظرف* است: تصویرِ پس‌زمینه، یک لایه‌ی تیره، و بلوک‌های واقعی روی
   // آن‌ها (همان ویرایشگر و همان تنظیماتِ همیشگیِ هر بلوک).
   image: { label: "تصویر", group: "رسانه", icon: FiImage, defaults: { url: "", alt: "", caption: "" }, fields: [text("images", "تصاویر", "imageList"), text("displayHeight", "ارتفاع نمایش", "imageHeight"), text("shade", "لایه‌ی تیره و جای محتوا", "imageShade"), text("blocks", "بلوک‌های روی تصویر", "mergedBlocks"), text("caption", "زیرنویس")], styleKeys: SPACING_ONLY },
+  // اسلایدرِ تصویر: ظرفی که فقط بلوکِ *تصویر* می‌پذیرد، با اندازه‌ی ثابت.
+  imageSlider: { label: "اسلایدر تصویر", group: "رسانه", icon: FiColumns, defaults: { blocks: [], delay: IMAGE_SLIDER_DELAY.default, height: IMAGE_SLIDER_HEIGHT.default }, fields: [text("blocks", "تصاویر اسلایدر", "imageSliderBlocks"), text("slider", "اندازه و زمان‌بندی", "imageSliderSettings")], styleKeys: SPACING_ONLY },
   gallery: { label: "گالری", group: "رسانه", icon: FiGrid, defaults: { images: [] }, fields: [text("images", "تصاویر", "gallery")], styleKeys: SPACING_ONLY },
   video: { label: "ویدئو", group: "رسانه", icon: FiPlay, defaults: { url: "", title: "" }, fields: [text("url", "آدرس ویدئو", "url"), text("title", "عنوان ویدئو")], styleKeys: SPACING_ONLY },
   quote: { label: "نقل‌قول", group: "محتوا", icon: FiMessageSquare, defaults: { text: "", author: "" }, fields: [text("text", "متن نقل‌قول", "rich"), text("author", "نام گوینده")], styleKeys: ["spacing", "textColor", "background", "accent"] },

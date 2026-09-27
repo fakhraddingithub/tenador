@@ -930,6 +930,53 @@ has two `<h1>`s (its own title and the block's). That is the price of being iden
 npm run test:block-layout
 ```
 
+### The «اسلایدر تصویر» block
+
+A carousel whose only children are **the existing Image block** — every capability it has
+outside (several images, links, the dark shade, blocks on top) it has inside, because the
+slides go through the same `renderBlock`.
+
+```
+data: { blocks: [image…], height: px (120–900), delay: ms (1000–20000) }
+```
+
+**Only images get in, and the server is what enforces it.** `sanitizeBlock` filters the
+children by `IMAGE_SLIDER_CHILD_TYPES` before recursing, so no other type survives whatever
+the editor does. The editor is only feedback: `BlockEditor` takes an `allow` list, which
+filters the block library and switches "merge" off — a merged block inside a slider would
+be dropped by the server and confuse the admin.
+
+**The mechanics are shared, not copied.** `src/lib/sliderScroller.js` holds what the merged
+slider already had — RTL-aware bounds, one-cell step, and the rAF tween at the homepage's
+speed and easing — and both sliders call it. Dragging is the existing `DragScroll` island
+(5px threshold, click swallowed in the capture phase, selection off, mouse only), and
+`scroll-snap` is what turns a drag into "go to the right slide".
+
+Rules that were real bugs:
+
+- **Snap is restored with `removeProperty`, never by putting back a saved value.** Two
+  overlapping movements — a rapid second arrow click, or a click during an autoplay tween —
+  made the second one save `"none"` and put `"none"` back, leaving snap off for good.
+  Measured before the fix: a drag settled at `-169` instead of a slide edge.
+- **One timer.** The interval lives in a single effect keyed on `[scrolls, delay, restart]`;
+  every manual arrow press and every `pointerdown` bumps `restart`, so the effect's own
+  cleanup replaces the timer instead of stacking a second one.
+- **A fixed frame, not a fixed image.** `--slide-h` sits on the scroller, `.a-slide` takes it,
+  and every layer of the image block inside (figure, the tile grid, the layered stack) is
+  `height: 100%` with `object-fit: cover` on the `<img>`. Descendant selectors, no
+  `!important`: the image block's own classes are single-class, so `.a-slide img` already
+  wins — and the image block outside a slider is untouched.
+- Width comes from the block's ordinary layout box («ظاهر و چیدمان»), not a second control.
+
+Measured at 1400px and 390px: slides and images all 740×320 (318×320 on mobile) from three
+completely different source aspect ratios, the container height unchanged through autoplay,
+five rapid arrow clicks and a drag. A 220px drag settles exactly one slide over; an 80px
+drag springs back; a plain click on a linked slide still navigates.
+
+```bash
+npm run test:block-layout
+```
+
 ### Slug System
 
 `SlugRegistery` model maps dynamic URL segments (sport/category/brand slugs) to their entity types. `actions/registerSlug.js` is a server action that creates entries on entity creation. This powers ISR revalidation — when a slug is revalidated, the correct entity page is rebuilt.

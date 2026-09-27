@@ -1,8 +1,12 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
+import { register } from "node:module";
 import { ArticleBlockLayoutSchema } from "../models/articleSchemas.js";
 import { BLOCK_ALIGN_SELF, BLOCK_JUSTIFY, BLOCK_MARGIN_KEYS, blockBoxProps, sanitizeArticleBlockLayout } from "../src/lib/articleBlockLayout.js";
+
+// articleValidation با نام‌های مستعار (base/ و @/) به بقیه ارجاع می‌دهد.
+register("./aliasHooks.mjs", import.meta.url);
 
 const read = (path) => readFile(new URL(path, import.meta.url), "utf8");
 
@@ -343,7 +347,8 @@ test("ناوبری فقط وقتی هست که بلوک واقعاً اسلای�
   assert.match(renderer, /return scrolls \? <SliderFrame spacing=\{spacing\}>\{scroller\}<\/SliderFrame> : scroller;/);
   // و «پهن‌تر از صفحه» اندازه‌گیری می‌شود، نه از تنظیمات حدس زده شود.
   const nav = await read("../src/components/features/articles/MergedSliderNav.jsx");
-  assert.match(nav, /scroller\.scrollWidth - scroller\.clientWidth/);
+  const lib = await read("../src/lib/sliderScroller.js");
+  assert.match(lib, /scroller\.scrollWidth - scroller\.clientWidth/);
   assert.match(nav, /if \(!state\.scrolls\) return <span ref=\{anchor\} hidden \/>;/);
   // کشیدن با ماوس دست‌نخورده است.
   assert.match(renderer, /\{scrolls \? <DragScroll \/> : null\}/);
@@ -396,12 +401,14 @@ test("حرکتِ اسلایدرِ ادغام‌شده از همان تنظیما
     assert.ok(!src.includes("delay: 5000"), `${file} still carries its own delay`);
   }
   const nav = await read("../src/components/features/articles/MergedSliderNav.jsx");
-  assert.match(nav, /HOME_SLIDER_AUTOPLAY, HOME_SLIDER_SPEED, homeSliderEase/);
+  const lib = await read("../src/lib/sliderScroller.js");
+  // مکانیکِ حرکت یک جاست و هر دو اسلایدر از آن می‌خوانند.
+  assert.match(lib, /HOME_SLIDER_SPEED, homeSliderEase/);
   // behavior:"smooth" مدتش را مرورگر تعیین می‌کند؛ با آن «همان سرعت» ممکن نیست.
-  assert.ok(!nav.includes('behavior: "smooth"'));
-  assert.match(nav, /\(now - started\) \/ HOME_SLIDER_SPEED/);
+  assert.ok(!lib.includes('behavior: "smooth"'));
+  assert.match(lib, /\(now - started\) \/ HOME_SLIDER_SPEED/);
   // snap در طولِ حرکت خاموش است، وگرنه هر نوشتنِ scrollLeft می‌پرد.
-  assert.match(nav, /scroller\.style\.scrollSnapType = "none"/);
+  assert.match(lib, /scroller\.style\.scrollSnapType = "none"/);
   assert.match(nav, /setInterval\(\(\) => step\(state\.atEnd \? 0 : 1\), HOME_SLIDER_AUTOPLAY\.delay\)/);
 });
 
@@ -441,5 +448,77 @@ test("هدر فقط دو چیزِ تنظیم\u200cپذیر دارد: تیتر و
   assert.match(validation, /header: \(data, errors, field\) => \(\{ title: string\(data\.title, 300\), url: url\(data\.url, errors, `\$\{field\}\.url`, \{ media: true \}\) \}\)/);
   const types = await read("../src/lib/articleBlockTypes.js");
   assert.match(types, /"header",/);
+});
+
+
+// ——— اسلایدرِ تصویر ————————————————————————————————————————————
+test("اسلایدرِ تصویر همان مکانیکِ اسلایدرهای دیگر را دارد، نه یک نسخه‌ی موازی", async () => {
+  const controls = await read("../src/components/features/articles/ImageSliderControls.jsx");
+  assert.match(controls, /from "@\/lib\/sliderScroller"/);
+  // حرکت/کشیدن اینجا دوباره نوشته نشده باشد.
+  assert.ok(!controls.includes("requestAnimationFrame") || !controls.includes("homeSliderEase"));
+  const renderer = await read("../src/components/features/articles/ArticleBlockRenderer.jsx");
+  // کشیدن با ماوس همان جزیره‌ی مشترک است (آستانه، بلعیدنِ کلیک، انتخابِ متن).
+  const branch = renderer.slice(renderer.indexOf('block.type === "imageSlider"'), renderer.indexOf('block.type === "image" &&'));
+  assert.match(branch, /<DragScroll \/>/);
+  assert.match(branch, /snap-x snap-mandatory/);
+});
+
+test("کلیکِ پیاپی snap را برای همیشه خاموش نمی‌کند", async () => {
+  const lib = await read("../src/lib/sliderScroller.js");
+  // بازگرداندنِ مقدارِ ذخیره‌شده، با دو حرکتِ هم‌پوشان «none» را ماندگار می‌کرد.
+  assert.match(lib, /scroller\.style\.removeProperty\("scroll-snap-type"\)/);
+  assert.ok(!/const snap = scroller\.style\.scrollSnapType/.test(lib), "مقدارِ قبلی نباید ذخیره شود");
+  // حرکتِ قبلی لغو می‌شود تا از موقعیتِ فعلی شروع کند.
+  assert.match(lib, /cancelAnimationFrame\(frame\.current\)/);
+});
+
+test("فقط بلوکِ تصویر داخلِ اسلایدر می‌ماند — در ویرایشگر و در سرور", async () => {
+  const { sanitizeArticleBlocks } = await import("../src/lib/articleValidation.js");
+  const errors = {};
+  const [slider] = sanitizeArticleBlocks([{
+    id: "sl", type: "imageSlider", version: 1,
+    data: { blocks: [
+      { id: "a", type: "image", version: 1, data: { url: "https://ik.imagekit.io/t/a.jpg" } },
+      { id: "b", type: "paragraph", version: 1, data: { text: "نباید بماند" } },
+      { id: "c", type: "merged", version: 1, data: { blocks: [] } },
+    ] },
+  }], errors);
+  assert.deepEqual(errors, {});
+  assert.deepEqual(slider.data.blocks.map((b) => b.type), ["image"], "نوعِ دیگری نباید بماند");
+  // اندازه و مکث همیشه ذخیره می‌شوند و روی پله و داخلِ بازه می‌نشینند.
+  assert.equal(slider.data.height, 320);
+  assert.equal(slider.data.delay, 5000);
+  const [clamped] = sanitizeArticleBlocks([{ id: "s2", type: "imageSlider", version: 1, data: { height: 5000, delay: 10, blocks: [] } }], {});
+  assert.equal(clamped.data.height, 900);
+  assert.equal(clamped.data.delay, 1000);
+
+  const editor = await read("../src/components/admin/articles/BlockEditor.jsx");
+  assert.match(editor, /if \(field\.kind === "imageSliderBlocks"\) return <BlockEditor value=\{Array\.isArray\(value\) \? value : \[\]\} onChange=\{onChange\} allow=\{IMAGE_SLIDER_CHILD_TYPES\} \/>;/);
+  // کتابخانه فیلتر می‌شود و «ادغام» خاموش است (بلوکِ merged را سرور دور می‌ریزد).
+  assert.match(editor, /\(!allow \|\| allow\.includes\(type\)\)/);
+  assert.match(editor, /selectable=\{!allow\}/);
+});
+
+test("اسلایدر با عوض‌شدنِ اسلاید تغییرِ اندازه نمی‌دهد", async () => {
+  const css = await read("../src/app/globals.css");
+  // ارتفاع روی خودِ خانه است و از متغیّرِ ظرف می‌آید؛ تصویر در همان قاب برش می‌خورد.
+  assert.match(css, /\.a-slide \{\s*\r?\n\s*height: var\(--slide-h\);/);
+  assert.match(css, /\.a-slide img \{[\s\S]*?object-fit: cover;/);
+  // بدونِ !important: کلاس‌های خودِ بلوکِ تصویر تک‌کلاسه‌اند و انتخابگرِ نزولی خاص‌تر است.
+  const slice = css.slice(css.indexOf(".a-slider {"), css.indexOf("ارتفاعِ خطِ متنِ بلوک‌ها"));
+  assert.ok(!slice.includes("!important"));
+});
+
+test("یک تایمر، با پاک‌سازی؛ ناوبریِ دستی آن را از نو می‌چیند", async () => {
+  const controls = await read("../src/components/features/articles/ImageSliderControls.jsx");
+  assert.equal((controls.match(/setInterval\(/g) || []).length, 1, "بیش از یک تایمر");
+  assert.match(controls, /return \(\) => clearInterval\(timer\);/);
+  // با هر ناوبری/دخالت، بازه از نو شروع می‌شود (restart در وابستگی‌های effect).
+  assert.match(controls, /\[edges\.scrolls, delay, restart\]/);
+  assert.match(controls, /setRestart\(\(value\) => value \+ 1\)/);
+  // شنونده‌ها و رشته‌ی انیمیشن در unmount پاک می‌شوند.
+  assert.match(controls, /observer\.disconnect\(\)/);
+  assert.match(controls, /cancelAnimationFrame\(current\.current\)/);
 });
 

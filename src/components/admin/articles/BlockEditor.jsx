@@ -15,7 +15,7 @@ import { ARTICLE_BLOCKS, BLOCK_GROUPS, BLOCK_GROUP_SLUGS, createArticleBlock } f
 import { insertBlockAt } from "@/lib/articleBlockLayout";
 import { confirmDelete } from "@/lib/swal";
 import { IMAGE_DISPLAY_HEIGHT, IMAGE_SHADE, MAX_IMAGE_BLOCK_ITEMS, clampImageShade, mirrorFirstImage, normalizeImageHref } from "@/lib/articleImageBlock";
-import { MAX_MERGED_CHILDREN, MAX_MERGE_DEPTH, MERGED_GRID_GAP_STEP, MERGED_GRID_LIMITS, MERGED_GRID_REFERENCE, defaultMergedGrid, imageOverlayChildren, isMergedBlock, mergedChildren, mergedGridColumnsAt, sanitizeMergedGrid } from "@/lib/articleBlockTypes";
+import { IMAGE_SLIDER_CHILD_TYPES, IMAGE_SLIDER_DELAY, IMAGE_SLIDER_HEIGHT, MAX_MERGED_CHILDREN, MAX_MERGE_DEPTH, MERGED_GRID_GAP_STEP, MERGED_GRID_LIMITS, MERGED_GRID_REFERENCE, defaultMergedGrid, imageOverlayChildren, isMergedBlock, mergedChildren, mergedGridColumnsAt, sanitizeMergedGrid } from "@/lib/articleBlockTypes";
 import { cloneWithFreshIds, mergeBlocker, mergeBlocks, unmergeBlock } from "@/lib/articleBlockMerge";
 
 
@@ -24,7 +24,7 @@ import { cloneWithFreshIds, mergeBlocker, mergeBlocks, unmergeBlock } from "@/li
 // متنِ غنی یک نوارِ دکمه دارد (اولینش «پررنگ») و ناحیه‌ی ویرایشش contentEditable
 // است که اصلاً برچسب‌پذیر نیست — پس باید در یک wrapper ساده بنشیند.
 // همین دلیل برای فیلدهای چندکنترلیِ تصویر (چند input و دکمه) هم صادق است.
-const fieldWrapper = (kind) => (["rich", "imageList", "imageShade", "mergedBlocks", "checkbox"].includes(kind) ? "div" : "label");
+const fieldWrapper = (kind) => (["rich", "imageList", "imageShade", "imageSliderSettings", "mergedBlocks", "imageSliderBlocks", "checkbox"].includes(kind) ? "div" : "label");
 // این نوع‌ها کلِ data را می‌خوانند و وصله‌ی چندکلیدی برمی‌گردانند.
 const WHOLE_DATA_KINDS = ["table", "rich", "imageList"];
 const PATCH_KINDS = ["table", "image", "rich", "imageList"];
@@ -97,6 +97,30 @@ function ImageHeightField({ value, onChange }) {
   return <div className="flex flex-wrap items-center gap-2">
     <input type="number" min={IMAGE_DISPLAY_HEIGHT.min} max={IMAGE_DISPLAY_HEIGHT.max} step={10} value={value ?? ""} placeholder="خودکار" onChange={(e) => onChange(e.target.value === "" ? undefined : Number(e.target.value))} className={`${inputClass} w-32`} />
     <span className="text-[11px] text-gray-400">پیکسل ({IMAGE_DISPLAY_HEIGHT.min.toLocaleString("fa-IR")} تا {IMAGE_DISPLAY_HEIGHT.max.toLocaleString("fa-IR")}). خالی = اندازه‌ی اصلیِ تصویر. در موبایل متناسب کوچک می‌شود.</span>
+  </div>;
+}
+
+/**
+ * اندازه و زمان‌بندیِ اسلایدرِ تصویر. ارتفاع *ثابت* است — همین است که نمی‌گذارد
+ * اسلایدر با عوض‌شدنِ تصویر بالا و پایین بپرد؛ تصویرها با object-cover در همان
+ * قاب جا می‌شوند. عرض از «ظاهر و چیدمان» خودِ بلوک می‌آید، مثلِ هر بلوکِ دیگر.
+ */
+function ImageSliderSettings({ block, onUpdate }) {
+  const delay = Number(block.data?.delay) || IMAGE_SLIDER_DELAY.default;
+  const height = Number(block.data?.height) || IMAGE_SLIDER_HEIGHT.default;
+  const row = (label, hint, spec, current, key, unit) => <label className="block">
+    <span className="mb-1 block text-[11px] font-bold text-gray-600">{label}</span>
+    <div className="flex items-center gap-3">
+      <input type="range" min={spec.min} max={spec.max} step={spec.step} value={current} onChange={(event) => onUpdate({ [key]: Number(event.target.value) })} className="h-1.5 flex-1 cursor-pointer accent-[var(--color-primary)]" />
+      <input type="number" min={spec.min} max={spec.max} step={spec.step} value={current} onChange={(event) => onUpdate({ [key]: Number(event.target.value) })} className={`${inputClass} w-24`} />
+      <span className="shrink-0 text-[11px] text-gray-400">{unit}</span>
+    </div>
+    <span className="mt-1 block text-[11px] text-gray-400">{hint}</span>
+  </label>;
+  return <div className="space-y-3 border p-3" style={{ borderColor: "var(--admin-border)", borderRadius: "var(--admin-radius)" }}>
+    {row("ارتفاع اسلایدر", "همه‌ی تصویرها در همین ارتفاع برش می‌خورند، پس اسلایدر با عوض‌شدنِ اسلاید تغییرِ اندازه نمی‌دهد.", IMAGE_SLIDER_HEIGHT, height, "height", "پیکسل")}
+    {row("مکث هر اسلاید", "زمانِ ماندنِ هر تصویر پیش از رفتن به بعدی.", IMAGE_SLIDER_DELAY, delay, "delay", "میلی‌ثانیه")}
+    <p className="text-[11px] text-gray-400">عرضِ اسلایدر از «ظاهر و چیدمان» همین بلوک تنظیم می‌شود.</p>
   </div>;
 }
 
@@ -211,6 +235,10 @@ function BlockField({ field, value, onChange, align, onAlign, block, onUpdate })
   if (field.kind === "imageShade") return <ImageShadeField block={block} onUpdate={onUpdate} />;
   // فرزندانِ بلوکِ ادغام‌شده با همین ویرایشگر ویرایش می‌شوند — ادغامِ دوباره هم داخلش کار می‌کند.
   if (field.kind === "mergedBlocks") return <BlockEditor value={Array.isArray(value) ? value : []} onChange={onChange} />;
+  // همان ویرایشگر، ولی کتابخانه‌اش فقط بلوکِ تصویر را نشان می‌دهد و «ادغام» ندارد:
+  // تصویرهای اسلایدر همه‌ی توانایی‌های همیشگیِ بلوکِ تصویر را دارند.
+  if (field.kind === "imageSliderBlocks") return <BlockEditor value={Array.isArray(value) ? value : []} onChange={onChange} allow={IMAGE_SLIDER_CHILD_TYPES} />;
+  if (field.kind === "imageSliderSettings") return <ImageSliderSettings block={block} onUpdate={onUpdate} />;
   if (field.kind === "gallery") return <ImageUpload value={value || []} onChange={onChange} folder="articles" multiple className="mb-0" />;
   if (field.kind === "entity" || field.kind === "entities") return <ArticleEntityPicker type={field.entityType} value={value} onChange={onChange} multiple={field.kind === "entities"} />;
   if (field.kind === "faq") return <FaqEditor value={value} onChange={onChange} />;
@@ -392,13 +420,13 @@ function SortableBlock({ block, index, total, onUpdate, onStyle, onAppearance, o
   </section>;
 }
 
-export function BlockLibrary({ total, onAdd, onClose }) {
+export function BlockLibrary({ total, onAdd, onClose, allow = null }) {
   const [query, setQuery] = useState("");
   // موقعیتِ بلوکِ تازه، ۱-پایه. پیش‌فرض انتهای مقاله است ولی قابلِ ویرایش، تا
   // بتوان مثلاً مستقیم بینِ بلوکِ ۴ و ۵ بلوک ساخت — نه اینکه اول در انتها
   // ساخته و بعد دستی جابه‌جا شود.
   const [position, setPosition] = useState(String(total + 1));
-  const groups = useMemo(() => BLOCK_GROUPS.map((group) => ({ group, blocks: Object.entries(ARTICLE_BLOCKS).filter(([, item]) => !item.hidden && item.group === group && matchesSearch(query, item.label)) })).filter((item) => item.blocks.length), [query]);
+  const groups = useMemo(() => BLOCK_GROUPS.map((group) => ({ group, blocks: Object.entries(ARTICLE_BLOCKS).filter(([type, item]) => !item.hidden && item.group === group && (!allow || allow.includes(type)) && matchesSearch(query, item.label)) })).filter((item) => item.blocks.length), [query, allow]);
   useEffect(() => {
     const onKey = (event) => { if (event.key === "Escape") onClose(); };
     window.addEventListener("keydown", onKey);
@@ -415,7 +443,12 @@ export function BlockLibrary({ total, onAdd, onClose }) {
   </div></div></AdminPortal>;
 }
 
-export default function BlockEditor({ value = [], onChange, libraryOpen: openProp, onLibraryOpen }) {
+/**
+ * allow فهرستِ نوع‌های مجاز است (اسلایدرِ تصویر فقط «تصویر» می‌پذیرد). با آن،
+ * کتابخانه فقط همان‌ها را نشان می‌دهد و «ادغام» خاموش می‌شود — ادغام یک بلوکِ
+ * merged می‌سازد که پاک‌سازیِ سرور از داخلِ اسلایدر دور می‌ریزد.
+ */
+export default function BlockEditor({ value = [], onChange, libraryOpen: openProp, onLibraryOpen, allow = null }) {
   // انتخاب برای ادغام؛ فقط شناسه‌هایی که هنوز در فهرست هستند حساب می‌شوند.
   const [selection, setSelection] = useState([]);
   const selectedIds = selection.filter((id) => value.some((block) => block.id === id));
@@ -515,7 +548,7 @@ export default function BlockEditor({ value = [], onChange, libraryOpen: openPro
     {/* نوارِ ادغام به body می‌رود و به پایینِ صفحه ثابت می‌شود: کارتِ مینی‌مقاله
         backdrop-blur دارد و position:fixed را در خودش حبس می‌کرد. روی موبایل بالاتر
         می‌نشیند تا نوارِ شناورِ ویرایشگرِ مقاله (پایین-چپ) را نپوشاند. */}
-    {selectedIds.length > 0 ? <AdminPortal><div role="toolbar" aria-label="ادغام بلوک‌ها" className="fixed inset-x-0 bottom-[calc(4.5rem+env(safe-area-inset-bottom))] z-50 mx-auto flex w-[calc(100%-2rem)] max-w-2xl flex-wrap items-center gap-2 border bg-white p-2.5 text-xs shadow-xl md:bottom-[calc(1rem+env(safe-area-inset-bottom))]" style={{ borderColor: "var(--color-primary)", borderRadius: "var(--admin-radius)" }}>
+    {selectedIds.length > 0 && !allow ? <AdminPortal><div role="toolbar" aria-label="ادغام بلوک‌ها" className="fixed inset-x-0 bottom-[calc(4.5rem+env(safe-area-inset-bottom))] z-50 mx-auto flex w-[calc(100%-2rem)] max-w-2xl flex-wrap items-center gap-2 border bg-white p-2.5 text-xs shadow-xl md:bottom-[calc(1rem+env(safe-area-inset-bottom))]" style={{ borderColor: "var(--color-primary)", borderRadius: "var(--admin-radius)" }}>
       <span className="font-bold">{selectedIds.length.toLocaleString("fa-IR")} بلوک انتخاب شده</span>
       <button type="button" onClick={merge} disabled={Boolean(blocker)} className="inline-flex items-center gap-1.5 px-3 py-1.5 font-bold text-white bg-[var(--color-primary)] disabled:cursor-not-allowed disabled:opacity-40" style={{ borderRadius: "var(--admin-radius)" }}><FiColumns />ادغام در یک بلوک</button>
       <button type="button" onClick={() => setSelection([])} className="px-2 py-1.5 font-bold text-gray-500 hover:text-red-600">لغو انتخاب</button>
@@ -527,10 +560,10 @@ export default function BlockEditor({ value = [], onChange, libraryOpen: openPro
       </button>
     </div> : null}
     <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={({ active, over }) => { if (!over || active.id === over.id) return; move(value.findIndex((item) => item.id === active.id), value.findIndex((item) => item.id === over.id)); }}>
-      <SortableContext items={value.map((item) => item.id)} strategy={verticalListSortingStrategy}>{value.map((block, index) => <SortableBlock key={block.id} block={block} index={index} total={value.length} onUpdate={(patch) => onChange(latest.current.map((item) => item.id === block.id ? { ...item, data: { ...item.data, ...patch } } : item))} onStyle={(style) => setBlockKey(block.id, "style", style)} onAppearance={(next) => setBlockKeys(block.id, { style: next.style, layout: next.layout })} onRemove={() => remove(block)} onDuplicate={() => onChange([...value.slice(0, index + 1), cloneWithFreshIds(block), ...value.slice(index + 1)])} onMove={move} open={!collapsed.has(block.id)} onToggle={() => toggleOpen(block.id)} selectable selected={selectedIds.includes(block.id)} onSelect={() => toggleSelected(block.id)} onUnmerge={isMergedBlock(block) ? () => onChange(unmergeBlock(latest.current, block.id)) : undefined} />)}</SortableContext>
+      <SortableContext items={value.map((item) => item.id)} strategy={verticalListSortingStrategy}>{value.map((block, index) => <SortableBlock key={block.id} block={block} index={index} total={value.length} onUpdate={(patch) => onChange(latest.current.map((item) => item.id === block.id ? { ...item, data: { ...item.data, ...patch } } : item))} onStyle={(style) => setBlockKey(block.id, "style", style)} onAppearance={(next) => setBlockKeys(block.id, { style: next.style, layout: next.layout })} onRemove={() => remove(block)} onDuplicate={() => onChange([...value.slice(0, index + 1), cloneWithFreshIds(block), ...value.slice(index + 1)])} onMove={move} open={!collapsed.has(block.id)} onToggle={() => toggleOpen(block.id)} selectable={!allow} selected={selectedIds.includes(block.id)} onSelect={() => toggleSelected(block.id)} onUnmerge={isMergedBlock(block) ? () => onChange(unmergeBlock(latest.current, block.id)) : undefined} />)}</SortableContext>
     </DndContext>
     <button type="button" onClick={() => setLibraryOpen(true)} className="w-full flex items-center justify-center gap-2 py-3 border border-dashed text-sm font-bold text-[var(--color-primary)] hover:bg-[var(--color-primary-soft)]" style={{ borderColor: "var(--color-primary)", borderRadius: "var(--admin-radius)" }}><FiPlus /> افزودن بلوک</button>
     {value.length === 0 ? <p className="text-center text-xs text-gray-400">برای شروع اولین بلوک را اضافه کنید.</p> : null}
-    {libraryOpen ? <BlockLibrary total={value.length} onAdd={add} onClose={() => setLibraryOpen(false)} /> : null}
+    {libraryOpen ? <BlockLibrary total={value.length} onAdd={add} onClose={() => setLibraryOpen(false)} allow={allow} /> : null}
   </div>;
 }

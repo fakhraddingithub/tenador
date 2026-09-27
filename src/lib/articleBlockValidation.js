@@ -4,8 +4,16 @@ import { normalizeFontSizePx, richTextValue } from "./sanitizeRichText.js";
 import {
   IMAGE_CONTENT_POSITIONS, IMAGE_DISPLAY_HEIGHT, MAX_IMAGE_BLOCK_ITEMS, clampImageShade, mirrorFirstImage, normalizeImageHref,
 } from "./articleImageBlock.js";
+import { IMAGE_SLIDER_DELAY, IMAGE_SLIDER_HEIGHT } from "./articleBlockTypes.js";
 
 const string = (value, max) => typeof value === "string" ? value.trim().slice(0, max) : "";
+
+/** عدد را روی پله‌ی تعریف‌شده و داخلِ بازه می‌نشاند؛ نامعتبر → پیش‌فرض. */
+const clampStep = (value, spec) => {
+  const number = Math.round(Number(value) / spec.step) * spec.step;
+  if (!Number.isFinite(number)) return spec.default;
+  return Math.min(spec.max, Math.max(spec.min, number));
+};
 
 // کلیدِ html فقط وقتی ساخته می‌شود که قالب‌بندیِ واقعی وجود داشته باشد؛ در غیر
 // این صورت شیءِ خالی برمی‌گردد و دادهٔ بلوک دقیقاً همان شکلِ قبلی را دارد.
@@ -168,6 +176,12 @@ const validators = {
   // پس width/height ای که کادرِ تصویر می‌فرستد هم ذخیره نمی‌شود (<img> ساده است).
   header: (data, errors, field) => ({ title: string(data.title, 300), url: url(data.url, errors, `${field}.url`, { media: true }) }),
   image: imageBlock,
+  // مکث و ارتفاع؛ فرزندان در sanitizeBlock بازگشتی پاک می‌شوند. هر دو همیشه
+  // ذخیره می‌شوند چون «اندازه‌ی ثابت» ویژگیِ تعریفیِ این بلوک است، نه یک افزونه.
+  imageSlider: (data) => ({
+    delay: clampStep(data.delay, IMAGE_SLIDER_DELAY),
+    height: clampStep(data.height, IMAGE_SLIDER_HEIGHT),
+  }),
   gallery: (data, errors, field) => ({ images: gallery(data.images, errors, `${field}.images`) }),
   video: (data, errors, field) => ({ url: url(data.url, errors, `${field}.url`, { media: true }), title: string(data.title, 300) }),
   quote: (data) => ({ text: string(data.text, 5000), ...rich(data.html), author: string(data.author, 300) }),
