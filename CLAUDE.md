@@ -840,6 +840,44 @@ a paragraph has its own. **Run it before an admin re-saves those blocks:** a sav
 npm run test:article-image-block
 ```
 
+### Line height follows the font size
+
+Text blocks had a fixed line height — `leading-9` (36px) on the paragraph and quote,
+`leading-8` (32px) in the editor — so changing a span's font size moved nothing: 32px
+text collided with itself and 12px text floated apart.
+
+A unitless ratio would not have been the fix either. It keeps *one* ratio for every size,
+while larger text typographically wants a **smaller** one. The rule is one declaration in
+`globals.css`:
+
+```css
+.rt-flow,
+.rt-flow * { line-height: calc(12px + 1em); }
+```
+
+| size | line height | ratio |
+|---|---|---|
+| 12px | 24px | 2.00 |
+| 16px | 28px | 1.75 |
+| 24px | 36px | 1.50 |
+| 32px | 44px | 1.38 |
+| 48px | 60px | 1.25 |
+
+**`.rt-flow *` is load-bearing.** A line height *with a unit* inherits as the computed
+length, not as the formula — without the descendant rule a `font-size: 32px` span inside a
+16px paragraph would still inherit 28px, which is the original bug. With it, every element
+resolves `1em` against its own size.
+
+It is applied to the blocks that accept an inline font size — heading, paragraph, quote,
+custom HTML — and to the editor's `contentEditable`, so what the admin types matches the
+article (the preview already renders through the public renderer). Table cells, callouts,
+FAQ answers and captions keep their fixed leading on purpose: they have no font-size
+control, so nothing there can fall out of step. Font sizes themselves are untouched.
+
+```bash
+npm run test:block-layout   # includes tests/richTextLineHeight.test.mjs
+```
+
 ### Slug System
 
 `SlugRegistery` model maps dynamic URL segments (sport/category/brand slugs) to their entity types. `actions/registerSlug.js` is a server action that creates entries on entity creation. This powers ISR revalidation — when a slug is revalidated, the correct entity page is rebuilt.

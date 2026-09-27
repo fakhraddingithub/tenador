@@ -351,7 +351,7 @@ export default function RichTextField({ value, onChange, align, onAlign, singleL
       // دیده شود؛ وگرنه دکمه‌های چینش هیچ اثری در ویرایشگر نشان نمی‌دهند و
       // کاربر فکر می‌کند کار نمی‌کنند (خروجیِ عمومی از قبل درست بود).
       style={align ? { textAlign: align } : undefined}
-      className={`w-full px-3 py-2.5 text-sm leading-8 outline-none focus:bg-white ${singleLine ? "" : "min-h-24"}`}
+      className={`rt-flow w-full px-3 py-2.5 text-sm outline-none focus:bg-white ${singleLine ? "" : "min-h-24"}`}
     />
   </div>;
 }

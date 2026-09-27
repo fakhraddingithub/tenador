@@ -392,13 +392,13 @@ export default function ArticleBlockRenderer({ blocks = [], entities, preview = 
       const level = ["h2", "h3", "h4"].includes(data.level) ? data.level : "h2";
       const Tag = level;
       const sizes = { h2: "text-2xl md:text-3xl", h3: "text-xl md:text-2xl", h4: "text-lg md:text-xl" };
-      return <Tag key={block.id} id={safeHeadingId(block)} className={`${blockSection} ${sizes[level]} font-black leading-relaxed text-gray-900`} style={merge(v.spacing, padded(v), v.text && { color: v.text }, v.align && { textAlign: v.align })} {...richContent(data)} />;
+      return <Tag key={block.id} id={safeHeadingId(block)} className={`${blockSection} ${sizes[level]} rt-flow font-black text-gray-900`} style={merge(v.spacing, padded(v), v.text && { color: v.text }, v.align && { textAlign: v.align })} {...richContent(data)} />;
     }
     if (block.type === "paragraph") {
       const content = richContent(data);
       // شکستِ خط در حالتِ HTML با <br> می‌آید، پس whitespace-pre-line آنجا فقط
       // فاصله‌های اضافیِ خودِ نشانه‌گذاری را دوباره نمایش می‌داد.
-      return <p key={block.id} className={`my-5 ${content.children === undefined ? "" : "whitespace-pre-line "}text-[16px] leading-9 text-gray-700 md:text-[17px]`} style={merge(v.spacing, padded(v), v.text && { color: v.text }, v.align && { textAlign: v.align })} {...content} />;
+      return <p key={block.id} className={`my-5 ${content.children === undefined ? "" : "whitespace-pre-line "}rt-flow text-[16px] text-gray-700 md:text-[17px]`} style={merge(v.spacing, padded(v), v.text && { color: v.text }, v.align && { textAlign: v.align })} {...content} />;
     }
     // تصویرِ محتوا با نسبتِ واقعیِ خودش رندر می‌شود: عرض/ارتفاعِ ذخیره‌شده فقط
     // جا را پیش از بارگذاری رزرو می‌کند (aspect-ratio: auto w/h) و پس از بارگذاری
@@ -419,7 +419,7 @@ export default function ArticleBlockRenderer({ blocks = [], entities, preview = 
       const embed = videoEmbed(data.url);
       return <figure key={block.id} className={blockSection} style={v.spacing || undefined}><div className="aspect-video overflow-hidden rounded-[var(--radius)] bg-black">{embed ? <iframe src={embed} title={data.title || "ویدئوی مقاله"} loading="lazy" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowFullScreen className="h-full w-full" /> : <video src={data.url} controls preload="metadata" className="h-full w-full" />}</div>{data.title ? <figcaption className="mt-3 text-center text-xs text-gray-500">{data.title}</figcaption> : null}</figure>;
     }
-    if (block.type === "quote") return <blockquote key={block.id} className={`${blockSection} border-r-4 border-[var(--color-primary)] bg-[color-mix(in_srgb,var(--color-primary)_6%,white)] px-6 py-5 text-lg font-bold leading-9 text-gray-800`} style={merge(v.spacing, v.accent && { borderRightColor: v.accent }, v.background && { backgroundColor: v.background }, v.text && { color: v.text }, v.align && { textAlign: v.align })}><p {...richContent(data)} />{data.author ? <footer className="mt-3 text-sm font-normal text-gray-500">— {data.author}</footer> : null}</blockquote>;
+    if (block.type === "quote") return <blockquote key={block.id} className={`${blockSection} border-r-4 border-[var(--color-primary)] bg-[color-mix(in_srgb,var(--color-primary)_6%,white)] px-6 py-5 rt-flow text-lg font-bold text-gray-800`} style={merge(v.spacing, v.accent && { borderRightColor: v.accent }, v.background && { backgroundColor: v.background }, v.text && { color: v.text }, v.align && { textAlign: v.align })}><p {...richContent(data)} />{data.author ? <footer className="mt-3 text-sm font-normal text-gray-500">— {data.author}</footer> : null}</blockquote>;
     if (block.type === "divider") return <hr key={block.id} className="my-10 border-gray-200" style={merge(v.spacing, v.accent && { borderColor: v.accent })} />;
     if (block.type === "button" && data.href) {
       // رنگِ دلخواه، حالتِ hover کلاس‌ها را کنار می‌گذارد (inline همیشه برنده است)
@@ -466,7 +466,7 @@ export default function ArticleBlockRenderer({ blocks = [], entities, preview = 
       return articles.length ? <section key={block.id} className={blockSection} style={v.spacing || undefined}><h2 className="mb-5 text-xl font-black" style={v.text ? { color: v.text } : undefined}>{data.title || "مقالات مرتبط"}</h2><div className={`grid gap-4 ${inMerged ? slotGrid(articles.length) : "md:grid-cols-2"}`}>{articles.map((article) => <ArticleCard key={article._id} article={article} />)}</div></section> : null;
     }
     if (block.type === "newsletterCta") return <section key={block.id} className={`${blockSection} rounded-[var(--radius)] bg-[#20232a] p-6 text-white md:p-8`} style={merge(v.spacing, v.background && { backgroundColor: v.background }, v.text && { color: v.text })}><h2 className="text-2xl font-black">{data.title || "عضویت در خبرنامه تنادور"}</h2><p className="mt-2 leading-8 text-gray-300" style={v.text ? { color: v.text } : undefined}>{data.description || "جدیدترین راهنماها و پیشنهادهای تنادور را دریافت کنید."}</p>{preview ? <div className="mt-4 inline-flex rounded-[var(--radius)] bg-[var(--color-secondary)] px-5 py-2.5 text-sm font-bold text-gray-900" style={v.accent ? { backgroundColor: v.accent, color: readableOn(v.accent) } : undefined}>{data.buttonLabel || "\u0639\u0636\u0648\u06cc\u062a"}</div> : <ArticleNewsletterForm buttonLabel={data.buttonLabel} />}</section>;
-    if (block.type === "customHtml" && data.html) return <div key={block.id} className={`${blockSection} leading-8 text-gray-700`} style={merge(v.spacing, padded(v), v.text && { color: v.text })} dangerouslySetInnerHTML={{ __html: sanitizeArticleHtml(data.html) }} />;
+    if (block.type === "customHtml" && data.html) return <div key={block.id} className={`${blockSection} rt-flow text-gray-700`} style={merge(v.spacing, padded(v), v.text && { color: v.text })} dangerouslySetInnerHTML={{ __html: sanitizeArticleHtml(data.html) }} />;
     return null;
   };
 
