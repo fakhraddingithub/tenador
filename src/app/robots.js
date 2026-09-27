@@ -7,7 +7,13 @@ export default function robots() {
         userAgent: "*",
         // Next.js adds ?dpl=... to CSS/JS URLs. This more-specific rule
         // keeps rendering assets crawlable despite the query-string block.
-        allow: ["/", "/_next/static/"],
+        allow: [
+          "/",
+          "/_next/static/",
+          // Public product batches are needed to render the rest of brand listings.
+          // Include the query delimiter so other API paths are not allowed.
+          "/api/brands/grouped?",
+        ],
         disallow: [
           "/p-admin/",
           "/p-user/",
