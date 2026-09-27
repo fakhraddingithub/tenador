@@ -18,6 +18,8 @@
   --admin-card: #ffffff;
   --admin-border: #e3e6df;
   --admin-border-strong: #cfd4c8;
+  /* نوارِ شروعِ کارتِ بلوک — تُنِ آرامِ رنگِ اصلی، تا فهرستِ بلند شلوغ نشود. */
+  --admin-block-accent: #c8927b;
   --admin-text: #14201a;
   --admin-text-muted: #6b7a70;
 
@@ -269,4 +271,24 @@
   .admin-scope .preview-canvas .preview-edit {
     opacity: 1;
   }
+}
+
+/* ─── کارتِ بلوک در ویرایشگر ───
+   در فهرستی از ده‌ها بلوکِ پشتِ‌سرِ‌هم، کارتِ معمولی (مرزِ بسیار روشن) با کارتِ
+   بعدی یکی دیده می‌شد. سه چیز مرز را آشکار می‌کند بدونِ شلوغ‌کردنِ صفحه:
+   مرزِ پررنگ‌ترِ همین تم، یک نوارِ باریک روی لبه‌ی *شروع* (در RTL سمتِ راست) که
+   ابتدای هر بلوک را نشان می‌دهد، و فاصله‌ی بیشتر بینِ کارت‌ها (در BlockEditor).
+   رنگ و ساختار محتوا دست‌نخورده است. */
+.admin-scope .a-block-card {
+  border-color: var(--admin-border-strong);
+  border-inline-start-width: 3px;
+  border-inline-start-color: var(--admin-block-accent);
+  transition: border-color .15s ease, box-shadow .15s ease;
+}
+/* بلوکی که با آن کار می‌شود پررنگ‌تر می‌شود — بازخوردِ «همین‌جا هستم». */
+.admin-scope .a-block-card:hover,
+.admin-scope .a-block-card:focus-within {
+  border-color: var(--admin-border-strong);
+  border-inline-start-color: var(--color-primary);
+  box-shadow: var(--admin-shadow);
 }

@@ -360,7 +360,7 @@ function SortableBlock({ block, index, total, onUpdate, onStyle, onAppearance, o
   // تقریباً کاملاً نامرئی و غیرقابلِ کلیک می‌شد. آکاردئون با رندرِ شرطی است نه
   // انیمیشنِ ارتفاع، پس به بریدن نیازی ندارد و فقط گردیِ گوشه‌ها لازم بود که
   // همان را خودِ header با border-radius: inherit می‌گیرد.
-  return <section ref={setNodeRef} id={blockDomId(block.id)} tabIndex={-1} style={{ transform: CSS.Transform.toString(transform), transition, opacity: isDragging ? .55 : 1 }} className="a-card group outline-none">
+  return <section ref={setNodeRef} id={blockDomId(block.id)} tabIndex={-1} style={{ transform: CSS.Transform.toString(transform), transition, opacity: isDragging ? .55 : 1 }} className="a-card a-block-card group outline-none">
     <header className={`flex items-center gap-2 bg-gray-50 px-3 py-2.5 ${open ? "border-b rounded-t-[inherit]" : "rounded-[inherit]"}`} style={{ borderColor: "var(--admin-border)" }}>
       {/* بلوکِ ادغام‌شده هم مثلِ هر بلوکِ دیگری قابلِ انتخاب و ادغامِ دوباره است. */}
       {selectable ? <input type="checkbox" checked={selected} onChange={onSelect} title="انتخاب برای ادغام" aria-label={`انتخاب بلوک ${index + 1} برای ادغام`} className="size-4 shrink-0 cursor-pointer accent-[var(--color-primary)]" /> : null}
@@ -508,7 +508,8 @@ export default function BlockEditor({ value = [], onChange, libraryOpen: openPro
     many: `حداکثر ${MAX_MERGED_CHILDREN.toLocaleString("fa-IR")} بلوک در یک ادغام.`,
     deep: `ادغامِ تودرتو حداکثر ${MAX_MERGE_DEPTH.toLocaleString("fa-IR")} سطح.`,
   };
-  return <div className="space-y-3">
+  // فاصله‌ی بینِ کارت‌های بلوک: با ۱۲px دو کارتِ پشتِ‌سرِ‌هم به هم می‌چسبیدند.
+  return <div className="space-y-5">
     {/* نوارِ ادغام به body می‌رود و به پایینِ صفحه ثابت می‌شود: کارتِ مینی‌مقاله
         backdrop-blur دارد و position:fixed را در خودش حبس می‌کرد. روی موبایل بالاتر
         می‌نشیند تا نوارِ شناورِ ویرایشگرِ مقاله (پایین-چپ) را نپوشاند. */}
