@@ -2,7 +2,7 @@ import mongoose from "mongoose";
 // نسبی، نه با نامک @: این فایل مستقیم زیر node هم تست می‌شود.
 import { normalizeFontSizePx, richTextValue } from "./sanitizeRichText.js";
 import {
-  IMAGE_DISPLAY_HEIGHT, MAX_IMAGE_BLOCK_ITEMS, OVERLAY_ALIGNS, OVERLAY_DIRS, OVERLAY_POSITIONS, OVERLAY_SIZES, mirrorFirstImage, normalizeImageHref,
+  IMAGE_CONTENT_POSITIONS, IMAGE_DISPLAY_HEIGHT, MAX_IMAGE_BLOCK_ITEMS, clampImageShade, mirrorFirstImage, normalizeImageHref,
 } from "./articleImageBlock.js";
 
 const string = (value, max) => typeof value === "string" ? value.trim().slice(0, max) : "";
@@ -110,23 +110,9 @@ function gallery(value, errors, field) {
 
 const positiveInt = (value) => (Number.isInteger(value) && value > 0 ? value : undefined);
 
-// پیش‌فرض‌ها (md / center / rtl / center / سایه‌دار) ذخیره نمی‌شوند؛ خروجیِ
-// بی‌کلید undefined است — همان قراردادِ sanitizeArticleBlockStyle.
-function imageOverlay(value) {
-  if (!value || typeof value !== "object" || Array.isArray(value)) return undefined;
-  const overlay = {};
-  const color = hexColor(value.color);
-  if (color) overlay.color = color;
-  if (value.size !== "md" && OVERLAY_SIZES.includes(value.size)) overlay.size = value.size;
-  if (value.align !== "center" && OVERLAY_ALIGNS.includes(value.align)) overlay.align = value.align;
-  if (value.dir !== "rtl" && OVERLAY_DIRS.includes(value.dir)) overlay.dir = value.dir;
-  if (value.position !== "center" && OVERLAY_POSITIONS.includes(value.position)) overlay.position = value.position;
-  if (value.shade === false) overlay.shade = false;
-  return Object.keys(overlay).length ? overlay : undefined;
-}
-
 // بلوکِ تصویرِ بدونِ کلیدهای جدید دقیقاً همان خروجیِ قبلی را می‌دهد؛ کلیدهای
-// images / displayHeight / overlay فقط وقتی اضافه می‌شوند که واقعاً مقدار دارند.
+// images / displayHeight / shade / contentPosition فقط وقتی اضافه می‌شوند که
+// واقعاً مقدار دارند.
 function imageBlock(data, errors, field) {
   const result = { url: url(data.url, errors, `${field}.url`, { media: true }), alt: string(data.alt, 300), caption: string(data.caption, 500), width: positiveInt(data.width), height: positiveInt(data.height) };
 
@@ -141,8 +127,6 @@ function imageBlock(data, errors, field) {
       const href = normalizeImageHref(image.href);
       if (href === null) errors[`${at}.href`] = `پیوندِ تصویرِ ${index + 1} نامعتبر است (مثلاً ‎/tennis/racket‎ یا ‎https://…‎)`;
       else if (href) entry.href = href;
-      const overlayText = string(image.overlayText, 500);
-      if (overlayText) entry.overlayText = overlayText;
       return entry;
     }).filter((image) => image.url);
     if (images.length) Object.assign(result, { images }, mirrorFirstImage(images));
@@ -155,8 +139,13 @@ function imageBlock(data, errors, field) {
     }
   }
 
-  const overlay = imageOverlay(data.overlay);
-  if (overlay) result.overlay = overlay;
+  // لایه‌ی تیره و جای عمودیِ بلوک‌های روی تصویر. پیش‌فرض‌ها ذخیره نمی‌شوند، پس
+  // بلوکِ تصویرِ موجود بایت‌به‌بایت همان داده‌ی قبلی را نگه می‌دارد. خودِ
+  // data.blocks اینجا نیست: بلوک‌های تودرتو در sanitizeBlock بازگشتی پاک می‌شوند،
+  // با همان اعتبارسنجی‌ای که بیرون دارند.
+  const shade = clampImageShade(data.shade);
+  if (shade) result.shade = shade;
+  if (data.contentPosition !== "center" && IMAGE_CONTENT_POSITIONS.includes(data.contentPosition)) result.contentPosition = data.contentPosition;
   return result;
 }
 

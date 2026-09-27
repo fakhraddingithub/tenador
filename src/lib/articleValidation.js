@@ -1,6 +1,6 @@
 import mongoose from "mongoose";
 import { isValidArticleSlug, normalizeArticleSlug } from "base/utils/articleSlug";
-import { ARTICLE_BLOCK_TYPE_SET, MAX_MERGED_CHILDREN, MAX_MERGE_DEPTH, MERGED_BLOCK_TYPE, sanitizeMergedGrid } from "@/lib/articleBlockTypes";
+import { ARTICLE_BLOCK_TYPE_SET, IMAGE_BLOCK_TYPE, MAX_MERGED_CHILDREN, MAX_MERGE_DEPTH, MERGED_BLOCK_TYPE, sanitizeMergedGrid } from "@/lib/articleBlockTypes";
 import { safeArticleUrl, sanitizeArticleBlockData, sanitizeArticleBlockStyle } from "@/lib/articleBlockValidation";
 import { sanitizeArticleBlockLayout } from "@/lib/articleBlockLayout";
 
@@ -80,6 +80,17 @@ function sanitizeBlock(block, errors, path, ids, level) {
     if (grid) data.grid = grid;
   } else if (ARTICLE_BLOCK_TYPE_SET.has(type)) {
     data = sanitizeArticleBlockData(type, item.data, errors, `${path}.data`);
+    if (type === IMAGE_BLOCK_TYPE) {
+      // بلوک‌های روی تصویر با *همین* تابع پاک‌سازی می‌شوند، پس هیچ نوعی از راهِ
+      // تصویر از اعتبارسنجیِ خودش فرار نمی‌کند. عمق همان سقفِ ادغام را دارد:
+      // تصویرِ داخلِ تصویرِ داخلِ تصویر جایی تمام می‌شود.
+      const children = Array.isArray(item.data?.blocks) ? item.data.blocks : [];
+      if (children.length > MAX_MERGED_CHILDREN) errors[`${path}.data.blocks`] = `image block cannot hold more than ${MAX_MERGED_CHILDREN} blocks`;
+      const nested = level >= MAX_MERGE_DEPTH
+        ? []
+        : children.slice(0, MAX_MERGED_CHILDREN).map((child, index) => sanitizeBlock(child, errors, `${path}.data.blocks.${index}`, ids, level + 1));
+      if (nested.length) data.blocks = nested;
+    }
   }
 
   const sanitized = {

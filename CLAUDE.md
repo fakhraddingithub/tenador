@@ -781,6 +781,65 @@ those is identical.
 npm run test:block-layout
 ```
 
+### The image block is a background container
+
+«متن روی تصویر» is gone. It was a miniature block with its own size, colour and
+direction settings that nothing else shared, and it could only ever be text. The image
+block now holds **real blocks** instead: `data.blocks`, edited with the same
+`BlockEditor`, so a heading, a button or a product card on an image keeps every setting
+it has anywhere else.
+
+Layers, in DOM order inside one `relative` stack:
+
+| | |
+|---|---|
+| the image (or the grid of images) | unchanged |
+| `data.shade` — 0–90%, step 5 | an independent `rgba(0,0,0,x)` layer, `aria-hidden`, `pointer-events-none` |
+| `data.blocks` | a `grid` layer whose `align-content` is `data.contentPosition` |
+
+Rules that are load-bearing:
+
+- **The block layer is a *sibling* of the tiles, never inside one.** A linked image tile is
+  a `<Link>`; a button or card inside it is invalid HTML and steals the click.
+- **The block layer is `pointer-events-none` and each cell is `pointer-events-auto`**, so
+  the image's own link still works in the gaps between blocks.
+- **The shade is its own layer, not `opacity` on anything.** Opacity would fade the nested
+  blocks' colours too, which is exactly what the shade exists to prevent.
+- **Vertical placement is `content-*` on a grid, not `justify-*` on a flex column.** On a
+  flex column `align-self` means *horizontal*, and the layout box's `alignY` would silently
+  change meaning; on a grid it stays vertical, the same as a merged block's cell.
+- **Per-block placement is the ordinary layout box** — `blockBoxProps` for width, side
+  margins and `alignX`, `BLOCK_ALIGN_SELF` for `alignY`. Nothing image-specific.
+- Children render with `inMerged`, so their internal grids size to the image area rather
+  than to the page breakpoints.
+- `isPlainImageBlock` now also requires no shade and no children, so an existing simple
+  image still takes the old markup path byte for byte.
+
+**Nesting is now a general property, not a merged-block one.** `blockHoldsBlocks` /
+`blockChildren` in `articleBlockTypes.js` answer for both, and every walker uses them:
+`sanitizeBlock` recurses into image children with the same validation and the same
+`MAX_MERGE_DEPTH` / `MAX_MERGED_CHILDREN` caps and the same tree-wide unique ids;
+`reId` gives a copy fresh ids at any depth; the renderer's entity `walk` descends both.
+`flattenArticleBlocks` treats them differently on purpose — a merged block is *replaced*
+by its children (it has no content of its own), an image block yields **itself and** its
+children, so the image-dimension script still sees every image.
+
+```bash
+npm run check:image-overlay-text     # dry run
+npm run migrate:image-overlay-text   # each overlayText becomes a nested paragraph
+```
+
+The migration loses nothing: every `overlayText` becomes a nested paragraph in order,
+`overlay.align`/`overlay.color` become that paragraph's `style`, the old implicit
+`bg-black/35` becomes `shade: 35` (or nothing, if the admin had turned the shade off), and
+`overlay.position` becomes `contentPosition`. Size and direction are not carried over —
+a paragraph has its own. **Run it before an admin re-saves those blocks:** a save drops
+`overlayText` (it is no longer in the validator) and the text does not come back.
+
+```bash
+npm run test:article-image-block
+```
+
 ### Slug System
 
 `SlugRegistery` model maps dynamic URL segments (sport/category/brand slugs) to their entity types. `actions/registerSlug.js` is a server action that creates entries on entity creation. This powers ISR revalidation — when a slug is revalidated, the correct entity page is rebuilt.

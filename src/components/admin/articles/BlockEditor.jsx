@@ -14,8 +14,8 @@ import RichTextField from "./RichTextField";
 import { ARTICLE_BLOCKS, BLOCK_GROUPS, BLOCK_GROUP_SLUGS, createArticleBlock } from "./blockRegistry";
 import { insertBlockAt } from "@/lib/articleBlockLayout";
 import { confirmDelete } from "@/lib/swal";
-import { IMAGE_DISPLAY_HEIGHT, MAX_IMAGE_BLOCK_ITEMS, mirrorFirstImage, normalizeImageHref } from "@/lib/articleImageBlock";
-import { MAX_MERGED_CHILDREN, MAX_MERGE_DEPTH, MERGED_GRID_GAP_STEP, MERGED_GRID_LIMITS, MERGED_GRID_REFERENCE, defaultMergedGrid, isMergedBlock, mergedChildren, mergedGridColumnsAt, sanitizeMergedGrid } from "@/lib/articleBlockTypes";
+import { IMAGE_DISPLAY_HEIGHT, IMAGE_SHADE, MAX_IMAGE_BLOCK_ITEMS, clampImageShade, mirrorFirstImage, normalizeImageHref } from "@/lib/articleImageBlock";
+import { MAX_MERGED_CHILDREN, MAX_MERGE_DEPTH, MERGED_GRID_GAP_STEP, MERGED_GRID_LIMITS, MERGED_GRID_REFERENCE, defaultMergedGrid, imageOverlayChildren, isMergedBlock, mergedChildren, mergedGridColumnsAt, sanitizeMergedGrid } from "@/lib/articleBlockTypes";
 import { cloneWithFreshIds, mergeBlocker, mergeBlocks, unmergeBlock } from "@/lib/articleBlockMerge";
 
 
@@ -24,7 +24,7 @@ import { cloneWithFreshIds, mergeBlocker, mergeBlocks, unmergeBlock } from "@/li
 // متنِ غنی یک نوارِ دکمه دارد (اولینش «پررنگ») و ناحیه‌ی ویرایشش contentEditable
 // است که اصلاً برچسب‌پذیر نیست — پس باید در یک wrapper ساده بنشیند.
 // همین دلیل برای فیلدهای چندکنترلیِ تصویر (چند input و دکمه) هم صادق است.
-const fieldWrapper = (kind) => (["rich", "imageList", "imageOverlay", "mergedBlocks", "checkbox"].includes(kind) ? "div" : "label");
+const fieldWrapper = (kind) => (["rich", "imageList", "imageShade", "mergedBlocks", "checkbox"].includes(kind) ? "div" : "label");
 // این نوع‌ها کلِ data را می‌خوانند و وصله‌ی چندکلیدی برمی‌گردانند.
 const WHOLE_DATA_KINDS = ["table", "rich", "imageList"];
 const PATCH_KINDS = ["table", "image", "rich", "imageList"];
@@ -87,8 +87,7 @@ function ImageListEditor({ data, onChange }) {
       <label className="block"><span className={small}>پیوند (اختیاری — در همین زبانه باز می‌شود)</span><input dir="ltr" value={item.href || ""} onChange={(e) => update(index, { href: e.target.value })} placeholder="/tennis/racket یا https://…" aria-invalid={normalizeImageHref(item.href) === null} className={inputClass} />
         {normalizeImageHref(item.href) === null ? <span role="alert" className="mt-1 block text-[11px] font-bold text-red-600">این پیوند معتبر نیست و ذخیره‌ی برند را رد می‌کند. آن را اصلاح یا پاک کنید.</span> : null}
       </label>
-      <label className="block"><span className={small}>متن روی تصویر (اختیاری)</span><textarea rows={2} value={item.overlayText || ""} onChange={(e) => update(index, { overlayText: e.target.value })} className={`${inputClass} font-sans`} /></label>
-      {!item.url && (item.overlayText || item.href) ? <p className="text-[11px] text-amber-600">تا تصویری بارگذاری نشود، متن و پیوندِ این مورد ذخیره نمی‌شوند.</p> : null}
+      {!item.url && item.href ? <p className="text-[11px] text-amber-600">تا تصویری بارگذاری نشود، پیوندِ این مورد ذخیره نمی‌شود.</p> : null}
     </div>)}
     <button type="button" onClick={add} disabled={items.length >= MAX_IMAGE_BLOCK_ITEMS} className="text-xs font-bold text-[var(--color-primary)] disabled:opacity-40">+ افزودن تصویر</button>
   </div>;
@@ -101,34 +100,32 @@ function ImageHeightField({ value, onChange }) {
   </div>;
 }
 
-const OVERLAY_OPTION_LABELS = {
-  size: { sm: "کوچک", md: "متوسط", lg: "بزرگ", xl: "خیلی بزرگ" },
-  align: { right: "راست", center: "وسط", left: "چپ" },
-  position: { top: "بالا", center: "وسط", bottom: "پایین" },
-  dir: { rtl: "راست به چپ", ltr: "چپ به راست" },
-};
-const OVERLAY_DEFAULTS = { size: "md", align: "center", position: "center", dir: "rtl" };
-const OVERLAY_FIELD_LABELS = { size: "اندازه متن", align: "چینش افقی", position: "جای عمودی", dir: "جهت متن" };
+const IMAGE_POSITION_LABELS = { top: "بالا", center: "وسط", bottom: "پایین" };
 
-/** ظاهرِ متنِ روی تصویر؛ مقدارِ پیش‌فرض ذخیره نمی‌شود (همان قراردادِ BlockStylePanel). */
-function ImageOverlayField({ value, onChange }) {
-  const current = value || {};
-  const set = (key, next) => {
-    const overlay = { ...current };
-    if (next === undefined) delete overlay[key]; else overlay[key] = next;
-    onChange(Object.keys(overlay).length ? overlay : undefined);
-  };
+/**
+ * لایه‌ی تیره و جای عمودیِ بلوک‌های روی تصویر — دو تنظیمِ خودِ *ظرف*.
+ * خودِ بلوک‌های رویی تنظیماتِ همیشگیِ خودشان را دارند و اینجا کاری با آن‌ها نیست.
+ * مقدارِ پیش‌فرض (بدونِ تیرگی، وسط) ذخیره نمی‌شود — همان قراردادِ BlockStylePanel.
+ */
+function ImageShadeField({ block, onUpdate }) {
+  const shade = clampImageShade(block.data?.shade);
+  const position = block.data?.contentPosition || "center";
   return <div className="space-y-3 border p-3" style={{ borderColor: "var(--admin-border)", borderRadius: "var(--admin-radius)" }}>
-    <p className="text-[11px] text-gray-400">متنِ هر تصویر در کارتِ همان تصویر نوشته می‌شود؛ این تنظیمات برای همه‌ی تصاویرِ این بلوک است.</p>
-    <ColorControl label="رنگ متن" hint="پیش‌فرض سفید" value={current.color} onChange={(next) => set("color", next)} />
-    <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-      {Object.keys(OVERLAY_DEFAULTS).map((key) => <label key={key} className="block"><span className="mb-1 block text-[11px] font-bold text-gray-600">{OVERLAY_FIELD_LABELS[key]}</span>
-        <select value={current[key] || OVERLAY_DEFAULTS[key]} onChange={(e) => set(key, e.target.value === OVERLAY_DEFAULTS[key] ? undefined : e.target.value)} className={inputClass}>
-          {Object.entries(OVERLAY_OPTION_LABELS[key]).map(([option, text]) => <option key={option} value={option}>{text}</option>)}
-        </select>
-      </label>)}
-    </div>
-    <label className="flex items-center gap-2 text-[11px] font-bold text-gray-600"><input type="checkbox" checked={current.shade !== false} onChange={(e) => set("shade", e.target.checked ? undefined : false)} />سایه‌ی تیره پشت متن (برای خوانایی)</label>
+    <label className="block">
+      <span className="mb-1 block text-[11px] font-bold text-gray-600">تیرگیِ لایه روی تصویر</span>
+      <div className="flex items-center gap-3">
+        <input type="range" min={IMAGE_SHADE.min} max={IMAGE_SHADE.max} step={IMAGE_SHADE.step} value={shade} onChange={(e) => onUpdate({ shade: clampImageShade(e.target.value) })} className="h-1.5 flex-1 cursor-pointer accent-[var(--color-primary)]" />
+        <span className="w-12 shrink-0 text-center text-[11px] font-bold text-gray-600">{shade.toLocaleString("fa-IR")}٪</span>
+      </div>
+      <span className="mt-1 block text-[11px] text-gray-400">بینِ تصویر و بلوک‌های رویی می‌نشیند تا متن خوانا شود. ۰ یعنی بدونِ لایه.</span>
+    </label>
+    <label className="block">
+      <span className="mb-1 block text-[11px] font-bold text-gray-600">جای عمودیِ بلوک‌های روی تصویر</span>
+      <select value={position} onChange={(e) => onUpdate({ contentPosition: e.target.value })} className={inputClass}>
+        {Object.entries(IMAGE_POSITION_LABELS).map(([option, text]) => <option key={option} value={option}>{text}</option>)}
+      </select>
+      <span className="mt-1 block text-[11px] text-gray-400">جای افقی، عرض و فاصله‌ی هر بلوک از «ظاهر و چیدمان» خودِ آن بلوک می‌آید.</span>
+    </label>
   </div>;
 }
 
@@ -190,6 +187,8 @@ export function BlockFields({ block, onUpdate, onStyle }) {
       <span className="block text-xs font-bold mb-1.5 text-gray-600">{field.label}</span>
       <BlockField
         field={field}
+        block={block}
+        onUpdate={onUpdate}
         value={WHOLE_DATA_KINDS.includes(field.kind) ? block.data : block.data?.[field.key]}
         onChange={(next) => onUpdate(PATCH_KINDS.includes(field.kind) ? next : { [field.key]: next })}
         align={block.style?.align}
@@ -199,7 +198,7 @@ export function BlockFields({ block, onUpdate, onStyle }) {
   });
 }
 
-function BlockField({ field, value, onChange, align, onAlign }) {
+function BlockField({ field, value, onChange, align, onAlign, block, onUpdate }) {
   if (field.kind === "rich") return <RichTextField value={value} onChange={onChange} align={align} onAlign={onAlign} singleLine={field.singleLine} />;
   if (field.kind === "textarea" || field.kind === "html") return <textarea dir={field.kind === "html" ? "ltr" : "rtl"} rows={field.kind === "html" ? 9 : 4} value={value || ""} onChange={(e) => onChange(e.target.value)} className={`${inputClass} ${field.kind === "html" ? "font-mono" : "font-sans"}`} />;
   if (field.kind === "select") return <select value={value || field.options[0]} onChange={(e) => onChange(e.target.value)} className={inputClass}>{field.options.map((option) => <option key={option} value={option}>{field.labels?.[option] || option}</option>)}</select>;
@@ -209,7 +208,7 @@ function BlockField({ field, value, onChange, align, onAlign }) {
   if (field.kind === "image") return <ImageFieldWithSize value={value} onChange={onChange} />;
   if (field.kind === "imageList") return <ImageListEditor data={value} onChange={onChange} />;
   if (field.kind === "imageHeight") return <ImageHeightField value={value} onChange={onChange} />;
-  if (field.kind === "imageOverlay") return <ImageOverlayField value={value} onChange={onChange} />;
+  if (field.kind === "imageShade") return <ImageShadeField block={block} onUpdate={onUpdate} />;
   // فرزندانِ بلوکِ ادغام‌شده با همین ویرایشگر ویرایش می‌شوند — ادغامِ دوباره هم داخلش کار می‌کند.
   if (field.kind === "mergedBlocks") return <BlockEditor value={Array.isArray(value) ? value : []} onChange={onChange} />;
   if (field.kind === "gallery") return <ImageUpload value={value || []} onChange={onChange} folder="articles" multiple className="mb-0" />;
@@ -338,6 +337,8 @@ const plainText = (value) => String(value ?? "").replace(/<[^>]*>/g, " ").replac
 function blockSummary(block) {
   const data = block.data || {};
   if (isMergedBlock(block)) return `${mergedChildren(block).length.toLocaleString("fa-IR")} بلوک`;
+  const onImage = imageOverlayChildren(block).length;
+  if (onImage) return `${onImage.toLocaleString("fa-IR")} بلوک روی تصویر`;
   const text = plainText(data.text || data.title || data.label || data.caption || data.question || data.author || data.html);
   if (text) return text.length > 80 ? `${text.slice(0, 80)}…` : text;
   const list = Object.values(data).find((item) => Array.isArray(item) && item.length);

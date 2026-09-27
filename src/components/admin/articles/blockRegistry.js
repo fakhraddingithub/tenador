@@ -51,7 +51,9 @@ export const ARTICLE_BLOCKS = {
     styleKeys: SPACING_ONLY,
   },
   paragraph: { label: "پاراگراف", group: "محتوا", icon: FiAlignRight, defaults: { text: "" }, fields: [text("text", "متن پاراگراف", "rich")], styleKeys: TEXTY },
-  image: { label: "تصویر", group: "رسانه", icon: FiImage, defaults: { url: "", alt: "", caption: "" }, fields: [text("images", "تصاویر", "imageList"), text("displayHeight", "ارتفاع نمایش", "imageHeight"), text("overlay", "ظاهر متن روی تصویر", "imageOverlay"), text("caption", "زیرنویس")], styleKeys: SPACING_ONLY },
+  // تصویر یک *ظرف* است: تصویرِ پس‌زمینه، یک لایه‌ی تیره، و بلوک‌های واقعی روی
+  // آن‌ها (همان ویرایشگر و همان تنظیماتِ همیشگیِ هر بلوک).
+  image: { label: "تصویر", group: "رسانه", icon: FiImage, defaults: { url: "", alt: "", caption: "" }, fields: [text("images", "تصاویر", "imageList"), text("displayHeight", "ارتفاع نمایش", "imageHeight"), text("shade", "لایه‌ی تیره و جای محتوا", "imageShade"), text("blocks", "بلوک‌های روی تصویر", "mergedBlocks"), text("caption", "زیرنویس")], styleKeys: SPACING_ONLY },
   gallery: { label: "گالری", group: "رسانه", icon: FiGrid, defaults: { images: [] }, fields: [text("images", "تصاویر", "gallery")], styleKeys: SPACING_ONLY },
   video: { label: "ویدئو", group: "رسانه", icon: FiPlay, defaults: { url: "", title: "" }, fields: [text("url", "آدرس ویدئو", "url"), text("title", "عنوان ویدئو")], styleKeys: SPACING_ONLY },
   quote: { label: "نقل‌قول", group: "محتوا", icon: FiMessageSquare, defaults: { text: "", author: "" }, fields: [text("text", "متن نقل‌قول", "rich"), text("author", "نام گوینده")], styleKeys: ["spacing", "textColor", "background", "accent"] },

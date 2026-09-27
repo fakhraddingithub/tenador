@@ -10,8 +10,8 @@ import { BLOCK_ALIGN_SELF, BLOCK_WIDTH_CLASS, blockBoxProps, blockWidth, groupBl
 import DragScroll from "@/components/features/articles/DragScroll";
 import HomeSectionHeading from "@/components/features/home/HomeSectionHeading";
 import MergedSliderNav from "@/components/features/articles/MergedSliderNav";
-import { imageBlockItems } from "@/lib/articleImageBlock";
-import { flattenArticleBlocks, isMergedBlock, mergedChildren, sanitizeMergedGrid } from "@/lib/articleBlockTypes";
+import { clampImageShade, imageBlockItems } from "@/lib/articleImageBlock";
+import { blockChildren, blockHoldsBlocks, flattenArticleBlocks, imageOverlayChildren, isMergedBlock, mergedChildren, sanitizeMergedGrid } from "@/lib/articleBlockTypes";
 
 const ordered = (values, map) => (Array.isArray(values) ? values : values ? [values] : []).map((id) => map?.[String(id)]).filter(Boolean);
 // فاصله‌ی پیش‌فرض صفر است: دو بلوکِ پشتِ‌سرِ‌هم که فاصله‌ای برایشان تنظیم نشده،
@@ -102,8 +102,8 @@ function normalizeHeadingLevels(blocks = []) {
     previous = Math.max(2, Math.min(4, Number.isFinite(requested) ? requested : 2, previous + 1));
     return { ...block, data: { ...block.data, level: `h${previous}` } };
   };
-  const walk = (block) => (isMergedBlock(block)
-    ? { ...block, data: { ...block.data, blocks: mergedChildren(block).map(walk) } }
+  const walk = (block) => (blockHoldsBlocks(block)
+    ? { ...block, data: { ...block.data, blocks: blockChildren(block).map(walk) } }
     : normalize(block));
   return blocks.map(walk);
 }
@@ -245,17 +245,16 @@ function EntityCards({ title, items, kind, visuals, inMerged = false }) {
   );
 }
 
-// ——— بلوکِ تصویر: چند تصویر، ارتفاعِ دلخواه، متنِ روی تصویر، پیوند ————————
-// بلوکِ «ساده» (یک تصویر، بدونِ ارتفاع/پیوند/متن) از مسیرِ قدیمی و با همان
-// نشانه‌گذاریِ قبلی رندر می‌شود، تا مقاله‌های موجود ذره‌ای تغییر نکنند.
+// ——— بلوکِ تصویر: چند تصویر، ارتفاعِ دلخواه، پیوند، و بلوک‌های روی تصویر ————
+// بلوکِ «ساده» (یک تصویر، بدونِ ارتفاع/پیوند/لایه/بلوکِ رویی) از مسیرِ قدیمی و با
+// همان نشانه‌گذاریِ قبلی رندر می‌شود، تا مقاله‌های موجود ذره‌ای تغییر نکنند.
 function isPlainImageBlock(data) {
   const items = imageBlockItems(data);
-  return items.length <= 1 && !data.displayHeight && !items[0]?.href && !items[0]?.overlayText;
+  return items.length <= 1 && !data.displayHeight && !items[0]?.href
+    && !data.shade && !imageOverlayChildren({ type: "image", data }).length;
 }
 
-const OVERLAY_TEXT_SIZE = { sm: "text-sm md:text-base", md: "text-base md:text-2xl", lg: "text-lg md:text-3xl", xl: "text-xl md:text-5xl" };
-const OVERLAY_VERTICAL = { top: "justify-start", center: "justify-center", bottom: "justify-end" };
-const OVERLAY_TEXT_ALIGN = { right: "text-right", center: "text-center", left: "text-left" };
+const OVERLAY_VERTICAL = { top: "content-start", center: "content-center", bottom: "content-end" };
 /**
  * ستون‌های یک شبکه‌ی داخلی وقتی بلوک داخلِ خانه‌ی یک بلوکِ ادغام‌شده است: بر اساسِ
  * عرضِ همان خانه (auto-fill)، نه نقطه‌شکن‌های صفحه. یک مورد تمامِ خانه را می‌گیرد.
@@ -268,34 +267,63 @@ const slotGrid = (count, many = SLOT_CARDS) => (count === 1 ? SLOT_ONE : many);
 
 const IMAGE_GRID_COLS = { 2: "sm:grid-cols-2", 3: "sm:grid-cols-2 lg:grid-cols-3", 4: "sm:grid-cols-2 lg:grid-cols-4" };
 
-function ImageTile({ item, height, overlay = {}, sizes }) {
-  const alt = item.alt || item.overlayText || "تصویر مقاله";
+function ImageTile({ item, height, sizes }) {
+  const alt = item.alt || "تصویر مقاله";
   const media = height
     // ارتفاعِ ثابت با object-cover؛ در موبایل به ۷۵vw محدود می‌شود تا تصویرِ
     // باریک‌شده به نواری بلند و بریده تبدیل نشود.
     ? <div className="relative w-full" style={{ height: `min(${height}px, 75vw)` }}><Image src={item.url} alt={alt} fill sizes={sizes} className="object-cover" /></div>
     : <Image src={item.url} alt={alt} width={item.width || 1600} height={item.height || 900} sizes={sizes} className="h-auto w-full" />;
-  const text = item.overlayText
-    ? <div dir={overlay.dir || "rtl"} className={`absolute inset-0 flex flex-col p-4 md:p-8 ${OVERLAY_VERTICAL[overlay.position || "center"]} ${overlay.shade === false ? "" : "bg-black/35"}`}>
-      <p className={`whitespace-pre-line font-black leading-snug ${OVERLAY_TEXT_SIZE[overlay.size || "md"]} ${OVERLAY_TEXT_ALIGN[overlay.align || "center"]}`} style={{ color: overlay.color || "#ffffff", textShadow: "0 1px 3px rgba(0,0,0,.45)" }}>{item.overlayText}</p>
-    </div>
-    : null;
   const tile = "relative block overflow-hidden rounded-[var(--radius)]";
   // پیوند در همان زبانه باز می‌شود (بدونِ target) — ناوبریِ عادیِ سایت.
   return item.href
-    ? <Link href={item.href} aria-label={alt} className={`${tile} transition-opacity hover:opacity-95 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-primary)]`}>{media}{text}</Link>
-    : <div className={tile}>{media}{text}</div>;
+    ? <Link href={item.href} aria-label={alt} className={`${tile} transition-opacity hover:opacity-95 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-primary)]`}>{media}</Link>
+    : <div className={tile}>{media}</div>;
 }
 
-function ImageBlock({ data, spacing, inMerged = false }) {
+/**
+ * بلوکِ تصویر به‌عنوانِ پس‌زمینه: تصویر (یا شبکه‌ی تصاویر) زیر، لایه‌ی تیره روی
+ * آن، و بلوک‌های واقعی روی هر دو — دقیقاً همین ترتیب، با سه لایه‌ی هم‌مرکز.
+ *
+ * قاعده‌هایی که تله‌ی واقعی داشتند:
+ *
+ *  - **بلوک‌های رویی خواهرِ تصویرند، نه فرزندِ آن.** تصویرِ پیونددار خودش یک
+ *    <Link> است و گذاشتنِ دکمه/پیوند داخلِ آن هم HTML نامعتبر است هم کلیک را
+ *    می‌دزدد. لایه‌ی رویی کنارِ شبکه می‌نشیند، نه داخلِ کاشی.
+ *  - **لایه‌ی رویی pointer-events-none است و هر خانه auto.** پس در فاصله‌ی
+ *    بینِ بلوک‌ها، پیوندِ خودِ تصویر همچنان کار می‌کند.
+ *  - **لایه‌ی تیره جدا از بلوک‌هاست.** یک لایه‌ی مستقل با رنگِ سیاهِ نیمه‌شفاف،
+ *    نه opacity روی چیزی؛ وگرنه رنگِ خودِ بلوک‌های رویی هم کم‌رنگ می‌شد.
+ *  - **جای عمودی با content-* روی یک شبکه است**، نه justify روی flex-column:
+ *    آن‌وقت align-self هر خانه (همان alignY جعبه‌ی چیدمان) معنیِ «عمودی» را
+ *    نگه می‌دارد، دقیقاً مثلِ خانه‌ی بلوکِ ادغام‌شده.
+ */
+function ImageBlock({ data, spacing, inMerged = false, overlay = [] }) {
   const items = imageBlockItems(data);
   if (!items.length) return null;
   const cols = Math.min(items.length, 4);
   const sizes = cols === 1 ? "(max-width: 1024px) 100vw, 1200px" : `(max-width: 640px) 100vw, ${Math.ceil(100 / cols)}vw`;
+  const shade = clampImageShade(data.shade);
+  const layered = shade > 0 || overlay.length > 0;
+  const grid = <div className={cols === 1 ? "" : `grid gap-3 ${inMerged ? slotGrid(items.length, SLOT_TILES) : `grid-cols-1 ${IMAGE_GRID_COLS[cols]}`}`}>
+    {items.map((item, index) => <ImageTile key={`${item.url}-${index}`} item={item} height={data.displayHeight} sizes={sizes} />)}
+  </div>;
   return <figure className={blockSection} style={spacing || undefined}>
-    <div className={cols === 1 ? "" : `grid gap-3 ${inMerged ? slotGrid(items.length, SLOT_TILES) : `grid-cols-1 ${IMAGE_GRID_COLS[cols]}`}`}>
-      {items.map((item, index) => <ImageTile key={`${item.url}-${index}`} item={item} height={data.displayHeight} overlay={data.overlay} sizes={sizes} />)}
-    </div>
+    {layered ? <div className="relative overflow-hidden rounded-[var(--radius)]">
+      {grid}
+      {shade ? <div aria-hidden="true" className="pointer-events-none absolute inset-0 rounded-[var(--radius)]" style={{ backgroundColor: `rgba(0, 0, 0, ${shade / 100})` }} /> : null}
+      {overlay.length ? <div className={`pointer-events-none absolute inset-0 grid grid-cols-1 gap-3 p-4 md:p-8 ${OVERLAY_VERTICAL[data.contentPosition] || OVERLAY_VERTICAL.center}`}>
+        {overlay.map(({ child, node }) => {
+          const box = blockBoxProps(child);
+          const alignSelf = BLOCK_ALIGN_SELF[child?.layout?.alignY];
+          return <div
+            key={child.id}
+            className={`pointer-events-auto min-w-0 *:my-0${box ? ` ${box.className}` : ""}`}
+            style={box || alignSelf ? { ...(box?.style || {}), ...(alignSelf ? { alignSelf } : null) } : undefined}
+          >{node}</div>;
+        })}
+      </div> : null}
+    </div> : grid}
     {data.caption ? <figcaption className="mt-3 text-center text-xs leading-6 text-gray-500">{data.caption}</figcaption> : null}
   </figure>;
 }
@@ -375,7 +403,13 @@ export default function ArticleBlockRenderer({ blocks = [], entities, preview = 
     // تصویرِ محتوا با نسبتِ واقعیِ خودش رندر می‌شود: عرض/ارتفاعِ ذخیره‌شده فقط
     // جا را پیش از بارگذاری رزرو می‌کند (aspect-ratio: auto w/h) و پس از بارگذاری
     // نسبتِ ذاتیِ تصویر جای آن را می‌گیرد — پس هیچ بُرشی رخ نمی‌دهد.
-    if (block.type === "image" && !isPlainImageBlock(data)) return <ImageBlock key={block.id} data={data} spacing={v.spacing} inMerged={inMerged} />;
+    if (block.type === "image" && !isPlainImageBlock(data)) {
+      // بلوک‌های رویِ تصویر با همین renderBlock رندر می‌شوند و inMerged می‌گیرند:
+      // سهمشان یک ناحیه‌ی محدود است، پس شبکه‌ی داخلیِ خودشان باید از عرضِ همان
+      // ناحیه بیاید، نه از نقطه‌شکنِ صفحه — همان قاعده‌ی خانه‌ی بلوکِ ادغام‌شده.
+      const overlay = imageOverlayChildren(block).map((child) => ({ child, node: renderBlock(child, true) })).filter((item) => item.node);
+      return <ImageBlock key={block.id} data={data} spacing={v.spacing} inMerged={inMerged} overlay={overlay} />;
+    }
     if (block.type === "image" && data.url) return <figure key={block.id} className={blockSection} style={v.spacing || undefined}><Image src={data.url} alt={data.alt || "تصویر مقاله"} width={data.width || 1600} height={data.height || 900} sizes="(max-width: 1024px) 100vw, 820px" className="h-auto w-full rounded-[var(--radius)]" />{data.caption ? <figcaption className="mt-3 text-center text-xs leading-6 text-gray-500">{data.caption}</figcaption> : null}</figure>;
     if (block.type === "gallery") {
       const images = (data.images || []).map((image) => typeof image === "string" ? { url: image, alt: "" } : image).filter((image) => image.url);

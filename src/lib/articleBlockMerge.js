@@ -5,7 +5,7 @@
  * پس جداسازی دقیقاً همان بلوک‌ها و همان ترتیب را برمی‌گرداند. بلوکِ ادغام‌شده هم
  * یک بلوکِ عادی است و می‌تواند دوباره ادغام شود؛ جداسازی فقط یک سطح را باز می‌کند.
  */
-import { MAX_MERGED_CHILDREN, MAX_MERGE_DEPTH, MERGED_BLOCK_TYPE, isMergedBlock, mergeDepth, mergedChildren } from "./articleBlockTypes.js";
+import { MAX_MERGED_CHILDREN, MAX_MERGE_DEPTH, MERGED_BLOCK_TYPE, blockChildren, blockHoldsBlocks, isMergedBlock, mergeDepth, mergedChildren } from "./articleBlockTypes.js";
 
 /** دلیلِ ادغام‌ناپذیریِ انتخاب (برای پیامِ نوارِ ادغام)، یا null اگر قابلِ ادغام است. */
 export function mergeBlocker(blocks, selectedIds) {
@@ -35,7 +35,12 @@ export function unmergeBlock(blocks, mergedId) {
 
 const reId = (block) => {
   const copy = { ...block, id: crypto.randomUUID() };
-  if (isMergedBlock(copy)) copy.data = { ...copy.data, blocks: mergedChildren(copy).map(reId) };
+  // هر بلوکی که بلوک در خود دارد — ادغام‌شده یا تصویر — وگرنه رونوشت، شناسه‌ی
+  // تکراری می‌سازد و سرور کلِ ذخیره را رد می‌کند.
+  // فقط وقتی واقعاً فرزندی هست: وگرنه روی هر تصویرِ ساده یک blocks: [] خالی
+  // می‌نشست و رونوشت دیگر با اصلش یکی نبود.
+  const nested = blockChildren(copy);
+  if (blockHoldsBlocks(copy) && nested.length) copy.data = { ...copy.data, blocks: nested.map(reId) };
   return copy;
 };
 

@@ -9,7 +9,11 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import { sanitizeArticleBlockData } from "../src/lib/articleBlockValidation.js";
+import { register } from "node:module";
 import { imageBlockItems, mirrorFirstImage } from "../src/lib/articleImageBlock.js";
+
+// articleValidation با نام‌های مستعار (base/ و @/) به بقیه ارجاع می‌دهد.
+register("./aliasHooks.mjs", import.meta.url);
 
 const URL1 = "https://ik.imagekit.io/tenador/a.jpg";
 const URL2 = "https://ik.imagekit.io/tenador/b.jpg";
@@ -30,14 +34,14 @@ test("multiple images are kept, capped, and the first is mirrored into the legac
   const { out, errors } = sanitize({
     url: "", caption: "",
     images: [
-      { url: URL1, alt: "one", width: 800, height: 400, href: "/tennis/racket", overlayText: "  راکت‌ها  " },
+      { url: URL1, alt: "one", width: 800, height: 400, href: "/tennis/racket" },
       { url: "", alt: "empty slot is dropped" },
       { url: URL2, alt: "two", href: "https://tenador.com/x" },
     ],
   });
   assert.deepEqual(errors, {});
   assert.equal(out.images.length, 2);
-  assert.deepEqual(out.images[0], { url: URL1, alt: "one", width: 800, height: 400, href: "/tennis/racket", overlayText: "راکت‌ها" });
+  assert.deepEqual(out.images[0], { url: URL1, alt: "one", width: 800, height: 400, href: "/tennis/racket" });
   assert.deepEqual(out.images[1], { url: URL2, alt: "two", href: "https://tenador.com/x" });
   assert.equal(out.url, URL1);
   assert.equal(out.alt, "one");
@@ -87,13 +91,51 @@ test("displayHeight is clamped; blank means no key", () => {
   }
 });
 
-test("overlay keeps only valid non-default values", () => {
-  assert.equal("overlay" in sanitize({ url: URL1, overlay: { size: "md", align: "center", dir: "rtl", position: "center" } }).out, false);
-  assert.deepEqual(
-    sanitize({ url: URL1, overlay: { color: "#FFAA00", size: "xl", align: "right", dir: "ltr", position: "bottom", shade: false, junk: 1 } }).out.overlay,
-    { color: "#ffaa00", size: "xl", align: "right", dir: "ltr", position: "bottom", shade: false },
-  );
-  assert.equal("overlay" in sanitize({ url: URL1, overlay: { color: "red", size: "huge", position: 3 } }).out, false);
+test("متنِ روی تصویر دیگر ذخیره نمی‌شود — بلوک‌های رویی جایش را گرفته‌اند", () => {
+  const { out } = sanitize({ url: URL1, images: [{ url: URL1, overlayText: "راکت‌ها" }], overlay: { size: "xl", color: "#ffaa00" } });
+  assert.equal("overlayText" in out.images[0], false);
+  assert.equal("overlay" in out, false);
+});
+
+test("لایه‌ی تیره و جای محتوا: پیش‌فرض ذخیره نمی‌شود، نامعتبر می‌افتد", () => {
+  // ۰ و هر مقدارِ نامعتبر یعنی «بدونِ لایه»، پس کلید اصلاً نوشته نمی‌شود —
+  // بلوکِ تصویرِ موجود بایت‌به‌بایت همان داده‌ی قبلی را نگه می‌دارد.
+  for (const blank of [undefined, null, "", 0, -20, "نه"]) {
+    assert.equal("shade" in sanitize({ url: URL1, shade: blank }).out, false, String(blank));
+  }
+  assert.equal(sanitize({ url: URL1, shade: 40 }).out.shade, 40);
+  assert.equal(sanitize({ url: URL1, shade: 43 }).out.shade, 45, "روی پله‌ی ۵تایی می‌نشیند");
+  assert.equal(sanitize({ url: URL1, shade: 500 }).out.shade, 90, "سقف ۹۰ است تا تصویر کاملاً سیاه نشود");
+  assert.equal("contentPosition" in sanitize({ url: URL1, contentPosition: "center" }).out, false);
+  assert.equal("contentPosition" in sanitize({ url: URL1, contentPosition: "sideways" }).out, false);
+  assert.equal(sanitize({ url: URL1, contentPosition: "bottom" }).out.contentPosition, "bottom");
+});
+
+test("بلوک‌های روی تصویر از همان مسیرِ بازگشتیِ بلوک رد می‌شوند", async () => {
+  const { sanitizeArticleBlocks } = await import("../src/lib/articleValidation.js");
+  const errors = {};
+  const [image] = sanitizeArticleBlocks([{
+    id: "img", type: "image", version: 1,
+    data: { url: URL1, blocks: [{ id: "p", type: "paragraph", version: 1, data: { text: "روی تصویر" } }] },
+  }], errors);
+  assert.deepEqual(errors, {});
+  assert.equal(image.data.blocks.length, 1);
+  assert.equal(image.data.blocks[0].type, "paragraph");
+  assert.equal(image.data.blocks[0].data.text, "روی تصویر");
+
+  // نوعِ ناشناخته از راهِ تصویر هم رد می‌شود، نه اینکه بی‌صدا ذخیره شود.
+  const bad = {};
+  sanitizeArticleBlocks([{ id: "img2", type: "image", version: 1, data: { url: URL1, blocks: [{ id: "x", type: "evil", data: {} }] } }], bad);
+  assert.ok(bad["blocks.0.data.blocks.0.type"]);
+
+  // شناسه‌ها در کلِ درخت یکتا می‌مانند.
+  const dup = {};
+  sanitizeArticleBlocks([{ id: "same", type: "image", version: 1, data: { url: URL1, blocks: [{ id: "same", type: "paragraph", data: {} }] } }], dup);
+  assert.ok(dup["blocks.0.data.blocks.0.id"]);
+
+  // بدونِ فرزند، کلیدِ blocks اصلاً نوشته نمی‌شود.
+  const [plain] = sanitizeArticleBlocks([{ id: "img3", type: "image", version: 1, data: { url: URL1 } }], {});
+  assert.equal("blocks" in plain.data, false);
 });
 
 test("imageBlockItems reads both shapes and ignores empty slots", () => {
@@ -108,7 +150,13 @@ test("imageBlockItems reads both shapes and ignores empty slots", () => {
 // از روی سورس قفل می‌شود.
 test("renderer: plain blocks keep the legacy markup path; links open in the same tab", async () => {
   const src = await readFile(new URL("../src/components/features/articles/ArticleBlockRenderer.jsx", import.meta.url), "utf8");
-  assert.match(src, /block\.type === "image" && !isPlainImageBlock\(data\)\) return <ImageBlock/);
+  assert.match(src, /block\.type === "image" && !isPlainImageBlock\(data\)\) \{/);
+  // بلوک‌های رویی خواهرِ تصویرند: کاشیِ پیونددار یک <Link> است و بلوکِ تعاملی
+  // داخلش هم HTML نامعتبر است هم کلیک را می‌دزدد.
+  assert.match(src, /overlay\.length \? <div className=\{`pointer-events-none absolute inset-0 grid/);
+  assert.match(src, /pointer-events-auto min-w-0/);
+  // لایه‌ی تیره لایه‌ی خودش است، نه opacity روی محتوا.
+  assert.match(src, /backgroundColor: `rgba\(0, 0, 0, \$\{shade \/ 100\}\)`/);
   assert.match(src, /block\.type === "image" && data\.url\) return <figure key=\{block\.id\} className=\{blockSection\} style=\{v\.spacing \|\| undefined\}><Image src=\{data\.url\} alt=\{data\.alt \|\| "تصویر مقاله"\} width=\{data\.width \|\| 1600\} height=\{data\.height \|\| 900\}/);
   const tile = src.slice(src.indexOf("function ImageTile"), src.indexOf("function ImageBlock"));
   assert.doesNotMatch(tile, /target=/);
@@ -126,3 +174,29 @@ test("editor: block library and move dialog are portaled into an admin-scope wra
     assert.match(body, /return <AdminPortal><div className="fixed inset-0/, name);
   }
 });
+
+// ——— تصویر به‌عنوانِ ظرف ————————————————————————————————————————
+test("فرزندانِ تصویر از همان BlockEditor می‌آیند، نه یک نسخه‌ی محدود", async () => {
+  const registry = await readFile(new URL("../src/components/admin/articles/blockRegistry.js", import.meta.url), "utf8");
+  const definition = registry.slice(registry.indexOf("  image: {"), registry.indexOf("  gallery: {"));
+  assert.deepEqual([...definition.matchAll(/text\("(\w+)"/g)].map((m) => m[1]), ["images", "displayHeight", "shade", "blocks", "caption"]);
+  // همان kind ای که فرزندانِ بلوکِ ادغام‌شده را ویرایش می‌کند: یعنی همان
+  // ویرایشگر، با همه‌ی تنظیماتِ همیشگیِ هر بلوک.
+  assert.match(definition, /text\("blocks", "[^"]+", "mergedBlocks"\)/);
+
+  const editor = await readFile(new URL("../src/components/admin/articles/BlockEditor.jsx", import.meta.url), "utf8");
+  assert.match(editor, /if \(field\.kind === "mergedBlocks"\) return <BlockEditor/);
+  assert.ok(!editor.includes("overlayText"), "فیلدِ متنِ روی تصویر باید رفته باشد");
+});
+
+test("جمع‌کردنِ درختِ بلوک‌ها هم خودِ تصویر را می‌بیند هم بلوک‌های رویش", async () => {
+  const { flattenArticleBlocks } = await import("../src/lib/articleBlockTypes.js");
+  const flat = flattenArticleBlocks([{
+    id: "img", type: "image", data: { url: URL1, blocks: [{ id: "p", type: "paragraph", data: { text: "x" } }] },
+  }, {
+    id: "m", type: "merged", data: { blocks: [{ id: "q", type: "quote", data: {} }] },
+  }]);
+  // تصویر خودش محتواست (اسکریپتِ ابعاد باید ببیندش)، بلوکِ ادغام‌شده نه.
+  assert.deepEqual(flat.map((block) => block.id), ["img", "p", "q"]);
+});
+

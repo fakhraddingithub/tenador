@@ -54,8 +54,23 @@ export function mergeDepth(block) {
  * استفاده کند، وگرنه محتوای داخلِ بلوکِ ادغام‌شده دیده نمی‌شود.
  */
 export function flattenArticleBlocks(blocks = []) {
-  return (Array.isArray(blocks) ? blocks : []).flatMap((block) => (isMergedBlock(block) ? flattenArticleBlocks(mergedChildren(block)) : [block]));
+  return (Array.isArray(blocks) ? blocks : []).flatMap((block) => (isMergedBlock(block)
+    // بلوکِ ادغام‌شده محتوای خودش را ندارد، پس *جایش* را فرزندانش می‌گیرند.
+    ? flattenArticleBlocks(mergedChildren(block))
+    // بلوکِ تصویر خودش محتواست و فرزندانش روی آن می‌نشینند، پس هر دو می‌آیند.
+    : [block, ...flattenArticleBlocks(imageOverlayChildren(block))]));
 }
+
+// ——— بلوکی که بلوکِ دیگری در خود دارد ————————————————————————————————
+// دو حالت هست و هر دو data.blocks را نگه می‌دارند: بلوکِ ادغام‌شده (کنارِ هم) و
+// بلوکِ تصویر (روی تصویر). هر جا که «فرزندانِ یک بلوک» لازم است — پاک‌سازی،
+// رونوشت، جمع‌کردنِ ارجاع‌ها — باید از این‌ها استفاده شود، وگرنه یکی از دو حالت
+// خاموش از قلم می‌افتد.
+export const IMAGE_BLOCK_TYPE = "image";
+export const isImageBlock = (block) => block?.type === IMAGE_BLOCK_TYPE;
+export const imageOverlayChildren = (block) => (isImageBlock(block) && Array.isArray(block.data?.blocks) ? block.data.blocks : []);
+export const blockHoldsBlocks = (block) => isMergedBlock(block) || isImageBlock(block);
+export const blockChildren = (block) => (isMergedBlock(block) ? mergedChildren(block) : imageOverlayChildren(block));
 
 // ——— چیدمانِ شبکه‌ایِ بلوکِ ادغام‌شده (data.grid) ————————————————————————
 // نبودنِ grid یعنی همان ردیفِ افقیِ پیش‌فرض (رفتارِ قبلی، بدونِ هیچ تغییر).
