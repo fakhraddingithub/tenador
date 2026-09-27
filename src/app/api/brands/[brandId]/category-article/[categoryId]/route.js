@@ -39,6 +39,7 @@ export async function GET(req, { params }) {
       brand: { _id: brand._id, name: brand.name, title: brand.title, slug: brand.slug },
       category: { _id: category._id, name: category.name, title: category.title, slug: category.slug, sport: category.sport },
       blocks: entry?.blocks || [],
+      blocksBottom: entry?.blocksBottom || [],
     });
   } catch (error) {
     return handleApiError(error, "خطا در دریافت مینی‌مقاله دسته");
@@ -59,22 +60,29 @@ export async function PUT(req, { params }) {
     if (!(await Category.exists({ _id: categoryId }))) return apiError("دسته‌بندی پیدا نشد", 404);
 
     const body = await req.json();
-    if (body?.blocks === undefined) return apiError("بلوکی ارسال نشده است", 400);
+    if (body?.blocks === undefined && body?.blocksBottom === undefined) return apiError("بلوکی ارسال نشده است", 400);
 
     const errors = {};
-    const blocks = sanitizeArticleBlocks(body.blocks, errors);
+    const current = (brand.categoryArticles || []).find((item) => sameCategory(item, categoryId));
+    // undefined ≠ []: بخشی که در بدنه نیست همان چیزی می‌ماند که بود، پس
+    // ذخیره‌ی یکی از دو مینی‌مقاله هرگز دیگری را پاک نمی‌کند.
+    const blocks = body?.blocks === undefined ? (current?.blocks || []) : sanitizeArticleBlocks(body.blocks, errors);
+    const blocksBottom = body?.blocksBottom === undefined ? (current?.blocksBottom || []) : sanitizeArticleBlocks(body.blocksBottom, errors);
     if (Object.keys(errors).length > 0) return apiError("محتوای مینی‌مقاله معتبر نیست", 400, { fieldErrors: errors });
 
     const others = (brand.categoryArticles || []).filter((item) => !sameCategory(item, categoryId));
-    // ورودیِ بدونِ بلوک اصلاً نگه داشته نمی‌شود — همان قاعده‌ی فرمِ برند.
-    brand.categoryArticles = blocks.length ? [...others, { category: categoryId, blocks }] : others;
+    // ورودیِ بدونِ هیچ بلوکی (در هیچ‌کدام از دو بخش) نگه داشته نمی‌شود — همان
+    // قاعده‌ی فرمِ برند، فقط حالا برای هر دو بخش.
+    brand.categoryArticles = blocks.length || blocksBottom.length
+      ? [...others, { category: categoryId, blocks, blocksBottom }]
+      : others;
     await brand.save();
 
     revalidateContent(["navbar", "brands", "products", "categories"]);
     // صفحه‌ی برند+دسته زیرِ مسیرهای ورزشی است و یک ساعت روی CDN کش می‌شود.
     await purgeSportPagesCdn();
 
-    return NextResponse.json({ message: "مینی‌مقاله دسته ذخیره شد", blocks });
+    return NextResponse.json({ message: "مینی‌مقاله دسته ذخیره شد", blocks, blocksBottom });
   } catch (error) {
     return handleApiError(error, "خطا در ذخیره مینی‌مقاله دسته");
   }

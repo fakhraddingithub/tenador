@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { FiFileText } from "react-icons/fi";
-import BlockDocumentEditor from "@/components/admin/articles/BlockDocumentEditor";
+import BlockDocumentEditor, { MINI_ARTICLE_SECTIONS, parseMiniArticle, miniArticleBody } from "@/components/admin/articles/BlockDocumentEditor";
 
 /**
  * مینی‌مقاله‌ی سری روی صفحه‌ی خودش — همان تجربه‌ی بروشورِ برند، با همان
@@ -17,15 +17,17 @@ export default function SerieMiniArticleEditor({ brandId, serieId }) {
     <BlockDocumentEditor
       endpoint={`/api/series/${serieId}/mini-article`}
       title={`مینی مقاله سری${serie ? ` ${serie.title || serie.name}` : ""}`}
-      subtitle="این بلوک‌ها فقط زیر هدرِ صفحه‌ی همین سری دیده می‌شوند — نه سریِ والد و نه زیرسری‌ها."
+      subtitle="بالا و پایینِ صفحه‌ی همین سری — نه سریِ والد و نه زیرسری‌ها."
       icon={<FiFileText />}
       backHref={`${base}/edit`}
       backLabel="بازگشت به سری"
       previewHref={`${base}/mini-article/preview`}
+      sections={MINI_ARTICLE_SECTIONS}
       parse={(data) => {
         setSerie(data?.serie || null);
-        return { blocks: Array.isArray(data?.blocks) ? data.blocks : [] };
+        return parseMiniArticle(data);
       }}
+      toBody={miniArticleBody}
       missingMessage="بارگذاری مینی‌مقاله سری انجام نشد"
     />
   );

@@ -23,7 +23,11 @@ export default async function BrandCategoryArticlePreviewPage({ params }) {
 
   const entry = (brand.categoryArticles || []).find((item) => String(item?.category) === String(categoryId));
   const blocks = entry?.blocks || [];
-  const entities = blocks.length ? await resolveArticleEntities({ blocks }) : null;
+  const blocksBottom = entry?.blocksBottom || [];
+  const [entities, entitiesBottom] = await Promise.all([
+    blocks.length ? resolveArticleEntities({ blocks }) : null,
+    blocksBottom.length ? resolveArticleEntities({ blocks: blocksBottom }) : null,
+  ]);
   const plain = (value) => JSON.parse(JSON.stringify(value ?? null));
   const canEdit = canAccessAdminRoute(ctx?.permissions || [], "/p-admin/admin-brands/[brandId]/category-article/[categoryId]");
   // صفحه‌ی عمومیِ این محتوا: /[sport]/[category]/[brand]
@@ -32,13 +36,14 @@ export default async function BrandCategoryArticlePreviewPage({ params }) {
   return (
     <MiniArticlePreview
       title={`پیش‌نمایش مینی مقاله ${brand.title || brand.name} — ${category.title || category.name}`}
-      note="این محتوا فقط روی صفحه‌ی همین برند در همین دسته دیده می‌شود."
+      note="بالا و پایینِ صفحه‌ی همین برند در همین دسته، به همان ترتیبِ سایت."
       editHref={canEdit ? `/p-admin/admin-brands/${brandId}/category-article/${categoryId}` : null}
       liveHref={live}
-      blocks={plain(blocks)}
-      entities={plain(entities)}
       canEdit={canEdit}
-      endpoint={{ url: `/api/brands/${brandId}/category-article/${categoryId}`, method: "PUT" }}
+      sections={[
+        { key: "blocks", label: "مینی‌مقاله بالای صفحه", blocks: plain(blocks), entities: plain(entities), endpoint: { url: `/api/brands/${brandId}/category-article/${categoryId}`, method: "PUT", key: "blocks" } },
+        { key: "blocksBottom", label: "مینی‌مقاله پایین صفحه", blocks: plain(blocksBottom), entities: plain(entitiesBottom), endpoint: { url: `/api/brands/${brandId}/category-article/${categoryId}`, method: "PUT", key: "blocksBottom" } },
+      ]}
     />
   );
 }

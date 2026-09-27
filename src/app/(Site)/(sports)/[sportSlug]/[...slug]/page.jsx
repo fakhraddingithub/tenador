@@ -111,6 +111,19 @@ async function buildMiniArticleSection(blocks, label) {
   return <BrandMiniArticleSection blocks={blocks} entities={entities} label={label} />;
 }
 
+/**
+ * هر مینی‌مقاله دو بخش دارد: بالای صفحه (زیرِ هدر) و پایینِ آن. همان تابعِ بالا
+ * برای هر دو اجرا می‌شود، پس رندرِ دو بخش دقیقاً یکی است و هیچ‌کدام نسخه‌ی
+ * دومِ دیگری نیست.
+ */
+async function buildMiniArticleSections(article, label) {
+  const [top, bottom] = await Promise.all([
+    buildMiniArticleSection(article?.top, label),
+    buildMiniArticleSection(article?.bottom, label),
+  ]);
+  return { top, bottom };
+}
+
 // ⚠️ اسلاگ‌های فارسی با هدر x-next-cache-tags ناسازگارند (باگ Next: کاراکتر
 // غیر-ASCII در هدر → ERR_INVALID_CHAR → خطای ۵۰۰). داینامیک رندر می‌شود تا هدر
 // کش روت ساخته نشود؛ کوئری‌ها همچنان با unstable_cache کش می‌مانند.
@@ -237,7 +250,7 @@ export default async function SportDynamicSlugPage({ params, searchParams }) {
     delete pageInfo.articleBlocks;
     delete pageInfo.series;
     const viewFilters = { ...filters, brand: pageInfo };
-    const miniArticleSection = await buildMiniArticleSection(
+    const miniArticle = await buildMiniArticleSections(
       categoryArticleBlocks,
       `درباره ${filters.category?.title || ""} ${pageInfo.title || pageInfo.name || ""}`.trim(),
     );
@@ -274,9 +287,10 @@ export default async function SportDynamicSlugPage({ params, searchParams }) {
           belowHero={
             <>
               <TaxonomyBreadcrumbs filters={viewFilters} />
-              {miniArticleSection}
+              {miniArticle.top}
             </>
           }
+          belowContent={miniArticle.bottom}
         />
       </>
     );
@@ -309,7 +323,7 @@ export default async function SportDynamicSlugPage({ params, searchParams }) {
     ]);
 
     const pageInfo = filters.serie;
-    const miniArticleSection = await buildMiniArticleSection(
+    const miniArticle = await buildMiniArticleSections(
       serieArticleBlocks,
       `درباره سری ${pageInfo.title || pageInfo.name || ""}`.trim(),
     );
@@ -339,9 +353,10 @@ export default async function SportDynamicSlugPage({ params, searchParams }) {
           belowHero={
             <>
               <TaxonomyBreadcrumbs filters={filters} />
-              {miniArticleSection}
+              {miniArticle.top}
             </>
           }
+          belowContent={miniArticle.bottom}
         />
       </>
     );
@@ -371,12 +386,12 @@ export default async function SportDynamicSlugPage({ params, searchParams }) {
       : [];
 
   // زیرسری‌ها (level > 0) از این مسیر سرو می‌شوند؛ مقاله‌ی خودِ همان سری، نه والدش.
-  const miniArticleSection = searchData.filters.serie
-    ? await buildMiniArticleSection(
+  const miniArticle = searchData.filters.serie
+    ? await buildMiniArticleSections(
         await getSerieArticleBlocks(searchData.filters.serie._id),
         `درباره سری ${searchData.filters.serie.title || searchData.filters.serie.name || ""}`.trim(),
       )
-    : null;
+    : { top: null, bottom: null };
 
   return (
     <>
@@ -410,9 +425,10 @@ export default async function SportDynamicSlugPage({ params, searchParams }) {
         belowHero={
           <>
             <TaxonomyBreadcrumbs filters={searchData.filters} />
-            {miniArticleSection}
+            {miniArticle.top}
           </>
         }
+        belowContent={miniArticle.bottom}
       />
     </>
   );

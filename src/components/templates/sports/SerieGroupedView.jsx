@@ -49,6 +49,9 @@ export default function SerieGroupedView({
   initialCategoryAttributes = {},
   title = "",
   belowHero = null,
+  // مینی‌مقاله‌ی پایینِ صفحه. مثلِ belowHero فقط یک اسلات است: خودِ صفحه
+  // تصمیم می‌گیرد چه چیزی آنجا برود، این نما فقط جایش را می‌داند.
+  belowContent = null,
 }) {
   const serieTitle = pageInfo?.title || pageInfo?.name || "";
   const heading = buildSerieNames(filters.brand, pageInfo).heading;
@@ -629,6 +632,8 @@ export default function SerieGroupedView({
           )}
         </main>
       </div>
+
+      {belowContent}
 
       <QuickViewModal
         product={selectedProduct}

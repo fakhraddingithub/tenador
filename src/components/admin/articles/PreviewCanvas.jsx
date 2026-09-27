@@ -267,7 +267,9 @@ export default function PreviewCanvas({ blocks: saved = [], entities, endpoint, 
       const response = await fetch(endpoint.url, {
         method: endpoint.method,
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ...(endpoint.extra || {}), blocks }),
+        // endpoint.key یعنی «این بوم کدام بخشِ سند است». مسیرهای مینی‌مقاله
+        // کلیدِ نبوده را دست نمی‌زنند، پس ذخیره‌ی یک بخش بخشِ دیگر را نگه می‌دارد.
+        body: JSON.stringify({ ...(endpoint.extra || {}), [endpoint.key || "blocks"]: blocks }),
       });
       const data = await response.json().catch(() => ({}));
       if (!response.ok) throw new Error(getApiErrorMessage(data, "ذخیره تغییرات انجام نشد"));

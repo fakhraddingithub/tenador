@@ -34,10 +34,13 @@ export function sanitizeBrandCategoryArticles(value, errors) {
 
     const blockErrors = {};
     const blocks = sanitizeArticleBlocks(entry?.blocks, blockErrors);
+    // بخشِ پایینی از همین‌جا هم رد می‌شود؛ وگرنه ذخیره‌ی فرمِ برند آن را
+    // بی‌صدا می‌انداخت، چون این تابع خروجیِ نهاییِ categoryArticles را می‌سازد.
+    const blocksBottom = sanitizeArticleBlocks(entry?.blocksBottom ?? [], blockErrors);
     for (const [key, message] of Object.entries(blockErrors)) {
       errors[`${prefix}.${key}`] = message;
     }
-    if (blocks.length > 0) out.push({ category, blocks });
+    if (blocks.length > 0 || blocksBottom.length > 0) out.push({ category, blocks, blocksBottom });
   });
   return out;
 }

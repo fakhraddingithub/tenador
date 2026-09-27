@@ -111,7 +111,7 @@ test("each brand+category page gets only its own article", async () => {
     categoryArticles: [{ category: racket, blocks: [block("h-racket")] }],
   });
 
-  const ids = async (b, c) => (await getBrandCategoryArticleBlocks(b, c)).map((x) => x.id);
+  const ids = async (b, c) => (await getBrandCategoryArticleBlocks(b, c)).top.map((x) => x.id);
   assert.deepEqual(await ids(wilson._id, racket), ["w-racket"]);
   assert.deepEqual(await ids(String(wilson._id), String(bag)), ["w-bag"], "string ids from JSON-serialized filters");
   assert.deepEqual(await ids(head._id, racket), ["h-racket"]);
@@ -175,9 +175,9 @@ test("editing one category's article leaves the others byte-identical", async ()
   assert.deepEqual(errors, {});
   await doc.save();
 
-  assert.deepEqual((await getBrandCategoryArticleBlocks(created._id, racket)).map((x) => x.id), ["r2"]);
+  assert.deepEqual((await getBrandCategoryArticleBlocks(created._id, racket)).top.map((x) => x.id), ["r2"]);
   assert.deepEqual(
-    await getBrandCategoryArticleBlocks(created._id, bag),
+    (await getBrandCategoryArticleBlocks(created._id, bag)).top,
     loaded.categoryArticles[1].blocks,
   );
 });
@@ -214,10 +214,10 @@ test("serie article: own page only, parent and child independent, select:false e
   const child = await Serie.create({ name: "Pro Lite", title: "پرو لایت", brand: brand._id, parentSerie: parent._id });
   const other = await Serie.create({ name: "Tour", title: "تور", brand: brand._id, articleBlocks: [block("tour")] });
 
-  assert.deepEqual((await getSerieArticleBlocks(parent._id)).map((x) => x.id), ["parent"]);
-  assert.deepEqual(await getSerieArticleBlocks(String(child._id)), [], "child does not inherit");
-  assert.deepEqual((await getSerieArticleBlocks(other._id)).map((x) => x.id), ["tour"]);
-  assert.deepEqual(await getSerieArticleBlocks(null), []);
+  assert.deepEqual((await getSerieArticleBlocks(parent._id)).top.map((x) => x.id), ["parent"]);
+  assert.deepEqual((await getSerieArticleBlocks(String(child._id))).top, [], "child does not inherit");
+  assert.deepEqual((await getSerieArticleBlocks(other._id)).top.map((x) => x.id), ["tour"]);
+  assert.deepEqual(await getSerieArticleBlocks(null), { top: [], bottom: [] });
 
   const listed = await Serie.find({ brand: brand._id }).lean();
   assert.ok(listed.every((s) => !("articleBlocks" in s)), "lists never carry the blocks");
@@ -226,7 +226,7 @@ test("serie article: own page only, parent and child independent, select:false e
   const doc = await Serie.findById(parent._id);
   doc.title = "پرو ۲";
   await doc.save();
-  assert.deepEqual((await getSerieArticleBlocks(parent._id)).map((x) => x.id), ["parent"]);
+  assert.deepEqual((await getSerieArticleBlocks(parent._id)).top.map((x) => x.id), ["parent"]);
 });
 
 /* ── brand brochure ────────────────────────────────────────────────────── */

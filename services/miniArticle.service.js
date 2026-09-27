@@ -18,11 +18,21 @@ import Serie from "base/models/Serie";
 const toObjectId = (value) =>
   value && mongoose.isValidObjectId(value) ? new mongoose.Types.ObjectId(String(value)) : null;
 
+/**
+ * هر مینی‌مقاله دو بخش دارد: بالای صفحه و پایینِ آن. شکلِ خروجی همیشه
+ * `{ top, bottom }` است — محتوای قدیمی که فقط `blocks` دارد، `bottom` خالی
+ * می‌گیرد، پس هیچ مهاجرتی لازم نیست.
+ */
+const sections = (top, bottom) => ({
+  top: Array.isArray(top) ? top : [],
+  bottom: Array.isArray(bottom) ? bottom : [],
+});
+
 /** Blocks written for exactly this (brand, category) pair — never another category's. */
 export async function getBrandCategoryArticleBlocks(brandId, categoryId) {
   const brand = toObjectId(brandId);
   const category = toObjectId(categoryId);
-  if (!brand || !category) return [];
+  if (!brand || !category) return sections();
 
   await connectToDB();
   const doc = await Brand.findOne(
@@ -30,18 +40,18 @@ export async function getBrandCategoryArticleBlocks(brandId, categoryId) {
     { categoryArticles: { $elemMatch: { category } } },
   ).lean();
   const entry = doc?.categoryArticles?.[0];
-  return entry && String(entry.category) === String(category) && Array.isArray(entry.blocks)
-    ? entry.blocks
-    : [];
+  return entry && String(entry.category) === String(category)
+    ? sections(entry.blocks, entry.blocksBottom)
+    : sections();
 }
 
 export async function getSerieArticleBlocks(serieId) {
   const serie = toObjectId(serieId);
-  if (!serie) return [];
+  if (!serie) return sections();
 
   await connectToDB();
-  const doc = await Serie.findById(serie).select("articleBlocks").lean();
-  return Array.isArray(doc?.articleBlocks) ? doc.articleBlocks : [];
+  const doc = await Serie.findById(serie).select("articleBlocks articleBlocksBottom").lean();
+  return sections(doc?.articleBlocks, doc?.articleBlocksBottom);
 }
 
 /**

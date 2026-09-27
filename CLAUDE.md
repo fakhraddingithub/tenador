@@ -448,6 +448,36 @@ Block-based mini articles rendered under the page hero by the shared `BrandMiniA
 | `Brand.categoryArticles[] {category, blocks}` | `/[sport]/[category]/[brand]` only — never `/[sport]/[brand]` | brand add/edit (`BrandCategoryArticlesEditor`) |
 | `Serie.articleBlocks` | that serie's own page only (parent and child series are independent) | `SerieFormLayout` (create + edit) |
 
+**A mini article has two sections: above the page content and below it.** The bottom one is
+a *sibling field*, never a reshape — `Serie.articleBlocksBottom` and
+`Brand.categoryArticles[].blocksBottom`. Content that only has `blocks` stays valid with an
+empty bottom, so there is no migration. (The brand brochure has no such pair: it replaces
+the page, so "above/below the content" means nothing there.)
+
+| | |
+|---|---|
+| public read | `miniArticle.service.js` always returns `{ top, bottom }` |
+| public render | `belowHero` (top) and the new `belowContent` (bottom) on `BrandGroupedView`, `SerieGroupedView` and `SportPageClient` — both go through the *same* `buildMiniArticleSection`, so neither is a second implementation |
+| API | both routes follow `undefined ≠ []` **per section**: a body without `blocksBottom` leaves the bottom alone, and vice versa. That is what lets the preview save one section at a time |
+| brand+category entry | dropped only when **both** sections are empty (the old rule, now for two) |
+
+**One editor, two sections — and one `DndContext`.** `BlockDocumentEditor` takes a
+`sections` list (default: the single `blocks` section, so the brochure is untouched) and
+renders one `BlockEditor` per section with `dnd={false}`, hosting the `DndContext` itself.
+That is the whole reason a block can be dragged from the top mini article to the bottom
+one: two `SortableContext`s under one context. Each section is also a `useDroppable`, so an
+**empty** section is still a valid drop target. `MINI_ARTICLE_SECTIONS` fixes the labels and
+the keys, and those keys are the API's keys, so nothing has to be mapped.
+
+The preview shows both with the page's own content between them —
+**top → «محتوای خودِ صفحه» → bottom** — through the same `PreviewCanvas`, i.e. the same
+public renderer. Each canvas carries `endpoint.key`, so saving one section posts only that
+key and the other survives.
+
+```bash
+npm run test:mini-articles
+```
+
 - `categoryArticles` and `Serie.articleBlocks` are **`select: false`** so navbar/product/series payloads never
   carry them. Public reads go through `services/miniArticle.service.js`; the brand+category read projects only
   the matching entry with `$elemMatch`. Admin GETs use `.select("+…")`.

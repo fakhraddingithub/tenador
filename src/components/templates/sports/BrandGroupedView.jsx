@@ -65,6 +65,9 @@ export default function BrandGroupedView({
   initialCategoryAttributes = {},
   title = "",
   belowHero = null,
+  // مینی‌مقاله‌ی پایینِ صفحه. مثلِ belowHero فقط یک اسلات است: خودِ صفحه
+  // تصمیم می‌گیرد چه چیزی آنجا برود، این نما فقط جایش را می‌داند.
+  belowContent = null,
   targetAudience = null,
 }) {
   const cacheKey = buildBrandGroupedViewCacheKey({
@@ -774,6 +777,8 @@ export default function BrandGroupedView({
           )}
         </main>
       </div>
+
+      {belowContent}
 
       <QuickViewModal
         product={selectedProduct}

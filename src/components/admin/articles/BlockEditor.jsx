@@ -192,6 +192,12 @@ function BlockStylePanel({ type, style, layout, onApply }) {
 
 const blockDomId = (id) => `article-block-${id}`;
 
+/** DndContext فقط وقتی ساخته می‌شود که والد یکی نساخته باشد. */
+function MaybeDndContext({ enabled, sensors, onDragEnd, children }) {
+  if (!enabled) return children;
+  return <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={onDragEnd}>{children}</DndContext>;
+}
+
 /**
  * فیلدهای محتوای یک بلوک. هم کارتِ ویرایشگر از آن استفاده می‌کند هم مودالِ
  * ویرایش در پیش‌نمایش — یعنی هر نوعِ بلوکی که اینجا کار می‌کند، آنجا هم بدونِ
@@ -445,11 +451,16 @@ export function BlockLibrary({ total, onAdd, onClose, allow = null, taken = [] }
 }
 
 /**
+ * dnd=false یعنی «DndContext را والد می‌گذارد». مینی‌مقاله دو بخش دارد (بالا و
+ * پایینِ صفحه) و کشیدنِ بلوک از یکی به دیگری فقط وقتی ممکن است که هر دو در *یک*
+ * DndContext باشند؛ پس آنجا والد آن را می‌سازد و جابه‌جایی را خودش انجام می‌دهد.
+ * پیش‌فرض true است، پس هر استفاده‌ی موجود دقیقاً مثلِ قبل کار می‌کند.
+ *
  * allow فهرستِ نوع‌های مجاز است (اسلایدرِ تصویر فقط «تصویر» می‌پذیرد). با آن،
  * کتابخانه فقط همان‌ها را نشان می‌دهد و «ادغام» خاموش می‌شود — ادغام یک بلوکِ
  * merged می‌سازد که پاک‌سازیِ سرور از داخلِ اسلایدر دور می‌ریزد.
  */
-export default function BlockEditor({ value = [], onChange, libraryOpen: openProp, onLibraryOpen, allow = null }) {
+export default function BlockEditor({ value = [], onChange, libraryOpen: openProp, onLibraryOpen, allow = null, dnd = true }) {
   // انتخاب برای ادغام؛ فقط شناسه‌هایی که هنوز در فهرست هستند حساب می‌شوند.
   const [selection, setSelection] = useState([]);
   const selectedIds = selection.filter((id) => value.some((block) => block.id === id));
@@ -562,9 +573,9 @@ export default function BlockEditor({ value = [], onChange, libraryOpen: openPro
         {allCollapsed ? <><FiChevronDown />باز کردنِ همه</> : <><FiChevronUp />بستنِ همه</>}
       </button>
     </div> : null}
-    <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={({ active, over }) => { if (!over || active.id === over.id) return; move(value.findIndex((item) => item.id === active.id), value.findIndex((item) => item.id === over.id)); }}>
+    <MaybeDndContext enabled={dnd} sensors={sensors} onDragEnd={({ active, over }) => { if (!over || active.id === over.id) return; move(value.findIndex((item) => item.id === active.id), value.findIndex((item) => item.id === over.id)); }}>
       <SortableContext items={value.map((item) => item.id)} strategy={verticalListSortingStrategy}>{value.map((block, index) => <SortableBlock key={block.id} block={block} index={index} total={value.length} onUpdate={(patch) => onChange(latest.current.map((item) => item.id === block.id ? { ...item, data: { ...item.data, ...patch } } : item))} onStyle={(style) => setBlockKey(block.id, "style", style)} onAppearance={(next) => setBlockKeys(block.id, { style: next.style, layout: next.layout })} onRemove={() => remove(block)} onDuplicate={() => onChange([...value.slice(0, index + 1), cloneWithFreshIds(block), ...value.slice(index + 1)])} onMove={move} open={!collapsed.has(block.id)} onToggle={() => toggleOpen(block.id)} selectable={!allow} selected={selectedIds.includes(block.id)} onSelect={() => toggleSelected(block.id)} onUnmerge={isMergedBlock(block) ? () => onChange(unmergeBlock(latest.current, block.id)) : undefined} />)}</SortableContext>
-    </DndContext>
+    </MaybeDndContext>
     <button type="button" onClick={() => setLibraryOpen(true)} className="w-full flex items-center justify-center gap-2 py-3 border border-dashed text-sm font-bold text-[var(--color-primary)] hover:bg-[var(--color-primary-soft)]" style={{ borderColor: "var(--color-primary)", borderRadius: "var(--admin-radius)" }}><FiPlus /> افزودن بلوک</button>
     {value.length === 0 ? <p className="text-center text-xs text-gray-400">برای شروع اولین بلوک را اضافه کنید.</p> : null}
     {libraryOpen ? <BlockLibrary total={value.length} onAdd={add} onClose={() => setLibraryOpen(false)} allow={allow} taken={value.map((block) => block.type)} /> : null}

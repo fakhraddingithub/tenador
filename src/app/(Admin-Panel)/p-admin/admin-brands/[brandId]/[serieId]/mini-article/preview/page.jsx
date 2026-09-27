@@ -14,23 +14,28 @@ export default async function SerieMiniArticlePreviewPage({ params }) {
   const { brandId, serieId } = await params;
 
   await connectToDB();
-  const serie = await Serie.findById(serieId).select("+articleBlocks name title slug").lean();
+  const serie = await Serie.findById(serieId).select("+articleBlocks +articleBlocksBottom name title slug").lean();
   if (!serie) notFound();
 
   const blocks = serie.articleBlocks || [];
-  const entities = blocks.length ? await resolveArticleEntities({ blocks }) : null;
+  const blocksBottom = serie.articleBlocksBottom || [];
+  const [entities, entitiesBottom] = await Promise.all([
+    blocks.length ? resolveArticleEntities({ blocks }) : null,
+    blocksBottom.length ? resolveArticleEntities({ blocks: blocksBottom }) : null,
+  ]);
   const plain = (value) => JSON.parse(JSON.stringify(value ?? null));
   const canEdit = canAccessAdminRoute(ctx?.permissions || [], "/p-admin/admin-brands/[brandId]/[serieId]/mini-article");
 
   return (
     <MiniArticlePreview
       title={`پیش‌نمایش مینی مقاله سری ${serie.title || serie.name || ""}`}
-      note="این محتوا زیر هدرِ صفحه‌ی همین سری دیده می‌شود."
+      note="بالا و پایینِ صفحه‌ی همین سری، به همان ترتیبی که روی سایت دیده می‌شود."
       editHref={canEdit ? `/p-admin/admin-brands/${brandId}/${serieId}/mini-article` : null}
-      blocks={plain(blocks)}
-      entities={plain(entities)}
       canEdit={canEdit}
-      endpoint={{ url: `/api/series/${serieId}/mini-article`, method: "PUT" }}
+      sections={[
+        { key: "blocks", label: "مینی‌مقاله بالای صفحه", blocks: plain(blocks), entities: plain(entities), endpoint: { url: `/api/series/${serieId}/mini-article`, method: "PUT", key: "blocks" } },
+        { key: "blocksBottom", label: "مینی‌مقاله پایین صفحه", blocks: plain(blocksBottom), entities: plain(entitiesBottom), endpoint: { url: `/api/series/${serieId}/mini-article`, method: "PUT", key: "blocksBottom" } },
+      ]}
     />
   );
 }

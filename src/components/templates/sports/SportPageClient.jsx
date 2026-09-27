@@ -39,6 +39,9 @@ export default function SportPageClient({
   titleOverride = null, // override the computed hero <h1>
   headerExtra = null, // node rendered under the title divider (e.g. countdown)
   belowHero = null, // node rendered right below the hero (e.g. description block)
+  // مینی‌مقاله‌ی پایینِ صفحه. مثلِ belowHero فقط یک اسلات است: خودِ صفحه
+  // تصمیم می‌گیرد چه چیزی آنجا برود، این نما فقط جایش را می‌داند.
+  belowContent = null,
   cardOverlay = null, // forwarded to ProductList → each ProductCard (event flair)
   campaignBadge = null, // forwarded to ProductList → each ProductCard badge stack
 }) {
@@ -494,6 +497,8 @@ export default function SportPageClient({
             sportTitle={`لیمیتد ادیشن ${pageInfo.title}`}
           />
         )}
+
+      {belowContent}
     </div>
   );
 }

@@ -76,6 +76,8 @@ const schema = new mongoose.Schema(
             required: true,
           },
           blocks: { type: [ArticleBlockSchema], default: [] },
+          // مینی‌مقاله‌ی پایینِ همان صفحه؛ نبودنش یعنی «ندارد» (بدونِ مهاجرت).
+          blocksBottom: { type: [ArticleBlockSchema], default: [] },
         },
       ],
       default: [],

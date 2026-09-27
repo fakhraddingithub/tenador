@@ -49,6 +49,14 @@ const schema = new mongoose.Schema(
       select: false,
     },
 
+    // مینی‌مقاله‌ی *پایینِ* همان صفحه. فیلدِ خواهر است نه تغییرِ شکلِ داده: هر
+    // سریِ موجود بدونِ مهاجرت معتبر می‌ماند و نبودنِ این فیلد یعنی «ندارد».
+    articleBlocksBottom: {
+      type: [ArticleBlockSchema],
+      default: [],
+      select: false,
+    },
+
     logo: {
       type: String,
       default: "",
