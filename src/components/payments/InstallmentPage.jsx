@@ -75,6 +75,7 @@ const InstallmentPage = ({ order, user, onFinalSubmit }) => {
   const installmentBase = Math.max(0, order.totalPrice - (order.walletPaid || 0));
   const [downPayment, setDownPayment] = useState(0);
   const [downPaymentReceipts, setDownPaymentReceipts] = useState([]);
+  const [bankPaymentOpen, setBankPaymentOpen] = useState(false);
   const [installmentCount, setInstallmentCount] = useState(1);
   const [checks, setChecks] = useState([]);
   const [email, setEmail] = useState('');
@@ -259,6 +260,8 @@ const InstallmentPage = ({ order, user, onFinalSubmit }) => {
                     value={downPayment}
                     onChange={setDownPayment}
                     max={installmentBase}
+                    onBankPayment={() => setBankPaymentOpen(true)}
+                    bankPaymentOpen={bankPaymentOpen}
                   />
                   <InstallmentCalculator
                     count={installmentCount}
@@ -266,14 +269,22 @@ const InstallmentPage = ({ order, user, onFinalSubmit }) => {
                     rate={monthlyRatePct}
                   />
                 </div>
-              </section>
-
-              {/* رسید واریز پیش‌پرداخت — برای ثبت درخواست الزامی است */}
-              <section>
-                <h3 className="text-lg font-bold text-gray-800 border-b border-gray-100 pb-2 mb-4">
-                  رسید واریز پیش‌پرداخت
-                </h3>
-                <ReceiptUploader onFileChange={setDownPaymentReceipts} />
+                {/* رسید واریز پیش‌پرداخت — برای ثبت درخواست الزامی است */}
+                <div
+                  id="down-payment-receipt"
+                  aria-hidden={!bankPaymentOpen}
+                  inert={!bankPaymentOpen}
+                  className={`grid transition-[grid-template-rows,opacity] duration-300 ease-in-out motion-reduce:transition-none ${bankPaymentOpen ? 'grid-rows-[1fr] opacity-100' : 'grid-rows-[0fr] opacity-0'}`}
+                >
+                  <div className="min-h-0 overflow-hidden">
+                    <section className="pt-8">
+                      <h3 className="text-lg font-bold text-gray-800 border-b border-gray-100 pb-2 mb-4">
+                        رسید واریز پیش‌پرداخت
+                      </h3>
+                      <ReceiptUploader onFileChange={setDownPaymentReceipts} />
+                    </section>
+                  </div>
+                </div>
               </section>
 
               <InstallmentResult calculations={calculations} />

@@ -1,7 +1,7 @@
 import React from 'react';
 import { HiOutlineCash, HiOutlineGlobeAlt, HiOutlineLibrary } from 'react-icons/hi';
 
-const DownPaymentSection = ({ value, onChange, max }) => {
+const DownPaymentSection = ({ value, onChange, max, onBankPayment, bankPaymentOpen }) => {
   const handleChange = (e) => {
     const val = Number(e.target.value.replace(/\D/g, ''));
     if (val <= max) {
@@ -27,11 +27,21 @@ const DownPaymentSection = ({ value, onChange, max }) => {
       
       {value > 0 && (
         <div className="grid grid-cols-2 gap-3 mt-4">
-          <button className="flex items-center justify-center gap-2 py-2 px-3 bg-[var(--color-primary)] text-white text-xs rounded-[var(--radius)] hover:opacity-90 transition-opacity">
+          <button
+            type="button"
+            disabled
+            className="flex items-center justify-center gap-2 py-2 px-3 bg-gray-100 text-gray-500 text-xs rounded-[var(--radius)] cursor-not-allowed"
+          >
             <HiOutlineGlobeAlt />
-            پرداخت آنلاین
+            پرداخت آنلاین (غیرفعال)
           </button>
-          <button className="flex items-center justify-center gap-2 py-2 px-3 border border-[var(--color-secondary)] text-[var(--color-text)] text-xs rounded-[var(--radius)] hover:bg-amber-50 transition-colors">
+          <button
+            type="button"
+            onClick={onBankPayment}
+            aria-expanded={bankPaymentOpen}
+            aria-controls="down-payment-receipt"
+            className="flex items-center justify-center gap-2 py-2 px-3 border border-[var(--color-secondary)] text-[var(--color-text)] text-xs rounded-[var(--radius)] hover:bg-amber-50 transition-colors"
+          >
             <HiOutlineLibrary />
             پرداخت بانکی
           </button>
