@@ -343,7 +343,7 @@ export default function PreviewCanvas({ blocks: saved = [], entities, endpoint, 
       <div className={`${viewport === "mobile" ? "mx-auto w-[390px] max-w-full" : ""}${canEdit ? " pb-24" : ""}`}>
         <div
           ref={canvas}
-          className={canEdit ? "preview-canvas" : undefined}
+          className={`site-colors${canEdit ? " preview-canvas" : ""}`}
           data-viewport={viewport}
           onPointerDown={onPointerDown}
           onPointerMove={onPointerMove}

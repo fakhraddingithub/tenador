@@ -181,12 +181,13 @@ function MergedGrid({ items, grid, spacing }) {
 }
 
 /**
- * قابِ «اسلایدر» — همان چیدمانِ سرصفحه‌ی اسلایدرهای صفحه‌ی اصلی: ناوبری بالا و
- * در انتهای ردیف (در RTL سمتِ چپ)، و خودِ اسلایدر زیرِ آن. فاصله‌ی بیرونیِ بلوک
- * به قاب منتقل می‌شود تا بالای *کلِ* اسلایدر بنشیند، نه بینِ دکمه‌ها و محتوا.
+ * قابِ «اسلایدر» — همان چیدمانِ سرصفحه‌ی اسلایدرهای صفحه‌ی اصلی: ناوبری در
+ * انتهای ردیفِ بالا (در RTL سمتِ چپ) و خودِ اسلایدر زیرِ آن. ناوبری absolute
+ * است و قاب فقط containing block آن است، پس هیچ ارتفاعی به جریانِ صفحه اضافه
+ * نمی‌کند: فاصله‌ی بلوکِ بالایی تا اسلایدر همانی می‌ماند که ادمین تنظیم کرده.
  */
 function SliderFrame({ spacing, children }) {
-  return <div className={blockSection} style={spacing || undefined}>
+  return <div className={`${blockSection} relative`} style={spacing || undefined}>
     <MergedSliderNav label="پیمایشِ محتوای کنارِ هم" />
     {children}
   </div>;

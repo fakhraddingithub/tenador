@@ -369,3 +369,49 @@ test("رنگِ عنوان از روی خودِ رشته بریده می‌شود
   assert.match(src, /String\(title\)\.indexOf\(highlight\)/);
   assert.ok(!src.includes("title.split(\" \")"));
 });
+
+// ——— ناوبری نباید ردیف بگیرد، و حرکت باید یکی باشد ————————————————————
+test("ناوبری بیرونِ جریانِ صفحه است، با همان فاصله‌ی صفحه‌ی اصلی", async () => {
+  const nav = await read("../src/components/features/articles/MergedSliderNav.jsx");
+  // absolute + bottom-full: هیچ ارتفاعی اضافه نمی‌کند، پس فاصله‌ی بلوکِ بالایی
+  // تا اسلایدر همانی می‌ماند که ادمین تنظیم کرده.
+  assert.match(nav, /className="pointer-events-none absolute bottom-full end-0 mb-10 md:mb-16"/);
+  // mb-10/md:mb-16 دقیقاً فاصله‌ی سرصفحه تا اسلایدر در صفحه‌ی اصلی است.
+  const home = await read("../src/components/features/bestSellers/BestSellers.js");
+  assert.match(home, /justify-between mb-10 md:mb-16/);
+  const renderer = await read("../src/components/features/articles/ArticleBlockRenderer.jsx");
+  assert.match(renderer, /<div className=\{`\$\{blockSection\} relative`\}/);
+});
+
+test("حرکتِ اسلایدرِ ادغام‌شده از همان تنظیماتِ صفحه‌ی اصلی می‌آید", async () => {
+  const shared = await read("../src/lib/homeSlider.js");
+  assert.match(shared, /HOME_SLIDER_AUTOPLAY = \{ delay: 5000, disableOnInteraction: true \}/);
+  assert.match(shared, /HOME_SLIDER_SPEED = 300/);
+  for (const file of ["bestSellers/BestSellers.js", "amazingOffers/AmazingOffers.js"]) {
+    const src = await read(`../src/components/features/${file}`);
+    assert.match(src, /import \{ HOME_SLIDER_AUTOPLAY, HOME_SLIDER_SPEED \} from "@\/lib\/homeSlider"/);
+    assert.match(src, /speed=\{HOME_SLIDER_SPEED\}/);
+    assert.match(src, /autoplay=\{\{ \.\.\.HOME_SLIDER_AUTOPLAY \}\}/);
+    // هیچ عددِ موازی‌ای نماند.
+    assert.ok(!src.includes("delay: 5000"), `${file} still carries its own delay`);
+  }
+  const nav = await read("../src/components/features/articles/MergedSliderNav.jsx");
+  assert.match(nav, /HOME_SLIDER_AUTOPLAY, HOME_SLIDER_SPEED, homeSliderEase/);
+  // behavior:"smooth" مدتش را مرورگر تعیین می‌کند؛ با آن «همان سرعت» ممکن نیست.
+  assert.ok(!nav.includes('behavior: "smooth"'));
+  assert.match(nav, /\(now - started\) \/ HOME_SLIDER_SPEED/);
+  // snap در طولِ حرکت خاموش است، وگرنه هر نوشتنِ scrollLeft می‌پرد.
+  assert.match(nav, /scroller\.style\.scrollSnapType = "none"/);
+  assert.match(nav, /setInterval\(\(\) => step\(state\.atEnd \? 0 : 1\), HOME_SLIDER_AUTOPLAY\.delay\)/);
+});
+
+test("پیش‌نمایش رنگِ سایت را نشان می‌دهد، نه پریمریِ سبزِ پنل", async () => {
+  const css = (await read("../src/app/globals.css")).split(/\r?\n/);
+  // همان اعلانِ :root است، نه یک کپیِ دوم که از آن جدا بیفتد.
+  const at = css.findIndex((line) => line.trim() === ".site-colors {");
+  assert.ok(at > 0, "کلاسِ .site-colors نیست");
+  assert.equal(css[at - 1].trim(), ":root,");
+  assert.match(css[at + 1], /--primary: 15 64% 41%;/);
+  const canvas = await read("../src/components/admin/articles/PreviewCanvas.jsx");
+  assert.ok(canvas.includes('className={`site-colors${canEdit ? " preview-canvas" : ""}`}'));
+});

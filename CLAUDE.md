@@ -724,10 +724,17 @@ copy is a thing that drifts the first time one side changes.
 `AmazingOffers` is deliberately **not** converted — its radii differ (16/12px vs 12/8px),
 so folding it in would have changed the homepage.
 
-A merged block that scrolls is wrapped in `SliderFrame`: nav above, scroller below, the
-block's outer spacing moved onto the frame so it stays above the *whole* slider.
-`MergedSliderNav` is a client island in the `DragScroll` mould — it binds to the existing
-`[data-merged-block]` sibling, so the renderer stays a server component.
+A merged block that scrolls is wrapped in `SliderFrame`, whose only job is to be the
+containing block. `MergedSliderNav` is a client island in the `DragScroll` mould — it binds
+to the existing `[data-merged-block]` sibling, so the renderer stays a server component —
+and it is **absolutely positioned** (`absolute bottom-full end-0 mb-10 md:mb-16`).
+
+Out of flow is the point: on the homepage the buttons sit *level with the section heading*,
+not between the heading and the slider, and the 40/64px is the header's own bottom margin.
+A normal row would instead add its height to the gap between the preceding block and the
+slider, and that gap is something the admin sets per block. Measured: the frame's height
+equals the scroller's, so a «تیتر تنادور» above a slider keeps exactly the spacing it was
+given, and the buttons still land 64px above the slider.
 
 | rule | why |
 |---|---|
@@ -744,6 +751,26 @@ those props — it does not load `swiper/css/navigation` — so its output is un
 sections use, so typography, sizes, colours and the subtitle's side rule are not
 re-specified anywhere. Only three texts are editable (orange, the rest of the title,
 subtitle) and `styleKeys` is spacing-only.
+
+**Motion.** `src/lib/homeSlider.js` holds the one set of numbers: `HOME_SLIDER_AUTOPLAY`
+(delay 5000, `disableOnInteraction`), `HOME_SLIDER_SPEED` (300ms) and the `ease` curve.
+Both homepage sliders now pass them explicitly — the values are the ones already running
+there, Swiper's own defaults for speed and easing — and the merged slider reads the same
+file, so "the same rhythm" is an import rather than a promise.
+
+The merged slider cannot use `behavior: "smooth"`: the browser picks that duration, so the
+speed could never match. It tweens `scrollLeft` over `HOME_SLIDER_SPEED` with
+`homeSliderEase` (the bezier solved by bisection, since `scrollLeft` takes no CSS
+transition), with snap switched off for the duration — the same trap `DragScroll` has.
+Autoplay advances one cell every 5s, rewinds to the start at the end exactly as Swiper does,
+stops for good on the first pointer/wheel/key interaction or nav press, and never starts
+under `prefers-reduced-motion`.
+
+**The preview renders site colours, not the panel's.** `.admin-scope` redefines
+`--color-primary` to the panel green, and the preview canvas lives inside it — so the
+heading's orange came out green. `globals.css` now declares its tokens on `:root, .site-colors`
+(one declaration, not a copy) and `PreviewCanvas` carries `site-colors`. Measured: the
+heading is `rgb(170, 71, 37)` in the preview and on the published page alike.
 
 `HomeSectionHeading` used to split the title into words and colour the one equal to
 `highlight`; it now slices the string at the highlight, so a **multi-word** orange part

@@ -10,6 +10,7 @@ import ProductCard from "@/components/modules/cart/ProductCard";
 import QuickViewModal from "@/components/modules/cart/QuickViewModal";
 import Link from "next/link";
 import HomeSectionHeading from "@/components/features/home/HomeSectionHeading";
+import { HOME_SLIDER_AUTOPLAY, HOME_SLIDER_SPEED } from "@/lib/homeSlider";
 
 export default function ProductSlider({
   title = "پیشنهادهای شگفت انگیز",
@@ -65,10 +66,8 @@ export default function ProductSlider({
             slidesPerView={2.1}
             centeredSlides={false}
             watchOverflow={true}
-            autoplay={{
-              delay: 5000,
-              disableOnInteraction: true,
-            }}
+            speed={HOME_SLIDER_SPEED}
+            autoplay={{ ...HOME_SLIDER_AUTOPLAY }}
             navigation={{
               nextEl: ".product-next-btn-2",
               prevEl: ".product-prev-btn-2",
