@@ -98,6 +98,7 @@
     "@fontsource/alex-brush": "^5.2.8",
     "@fontsource/great-vibes": "^5.2.8",
     "@hello-pangea/dnd": "^18.0.1",
+    "@microsoft/clarity": "^1.0.2",
     "@vercel/functions": "^3.9.8",
     "bcryptjs": "^3.0.3",
     "bullmq": "^5.65.1",
