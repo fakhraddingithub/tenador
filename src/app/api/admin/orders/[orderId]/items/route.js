@@ -38,6 +38,10 @@ import { recalcAndApply } from "base/services/orderRecalc";
 import { applyOrderEurTotal } from "base/services/orderEurRecalc";
 import { buildVariantSnapshot } from "@/lib/variantImages";
 
+import { acquireTrackingMutation } from "base/services/orderTrackingMutation";
+import { manualTrackingCount, lineTracking } from "@/lib/manualTracking";
+import { connectWarehouseDB, getItemTrackingModel } from "@/lib/warehouseDb";
+
 import requireAdminPermission from "@/lib/requireAdminPermission";
 
 import User from "base/models/User";
@@ -48,6 +52,7 @@ export async function POST(req, { params }) {
   const { actor: admin, denied } = await requireAdminPermission("orders.editItems");
   if (denied) return denied;
 
+  let release;
   try {
     await connectToDB();
 
@@ -56,6 +61,7 @@ export async function POST(req, { params }) {
       return NextResponse.json({ message: "شناسه سفارش نامعتبر است" }, { status: 400 });
     }
 
+    release = await acquireTrackingMutation(orderId);
     const body = await req.json();
     const { productId, variantId, quantity } = body;
 
@@ -138,6 +144,7 @@ export async function POST(req, { params }) {
       return NextResponse.json({ message: "قیمت محاسبه‌شده برای آیتم نامعتبر است" }, { status: 400 });
     }
 
+    await release.assertOwned();
     const session = await mongoose.startSession();
     session.startTransaction();
     try {
@@ -184,7 +191,9 @@ export async function POST(req, { params }) {
     }
   } catch (error) {
     console.error("[admin/orders/:id/items POST]", error);
-    return NextResponse.json({ message: "خطای داخلی سرور" }, { status: 500 });
+    return NextResponse.json({ message: error.status ? error.message : "خطای داخلی سرور" }, { status: error.status || 500 });
+  } finally {
+    if (release) await release();
   }
 }
 
@@ -193,6 +202,7 @@ export async function PATCH(req, { params }) {
   const { actor: admin, denied } = await requireAdminPermission("orders.editItems");
   if (denied) return denied;
 
+  let release;
   try {
     await connectToDB();
 
@@ -201,6 +211,7 @@ export async function PATCH(req, { params }) {
       return NextResponse.json({ message: "شناسه سفارش نامعتبر است" }, { status: 400 });
     }
 
+    release = await acquireTrackingMutation(orderId);
     const body = await req.json();
     const { itemId, quantity } = body;
     if (!isId(itemId)) {
@@ -211,6 +222,7 @@ export async function PATCH(req, { params }) {
       return NextResponse.json({ message: "تعداد باید عددی صحیح و حداقل ۱ باشد" }, { status: 400 });
     }
 
+    await release.assertOwned();
     const session = await mongoose.startSession();
     session.startTransaction();
     try {
@@ -238,6 +250,18 @@ export async function PATCH(req, { params }) {
         );
       }
 
+      if (order.manualTrackingEnabled) {
+        const conn = await connectWarehouseDB();
+        const tracked = await getItemTrackingModel(conn).find({ tenadorOrderId: orderId.toString() }).lean();
+        const index = order.items.indexOf(item);
+        const lines = [item, ...(item.flowSelections || []).filter((s) => s.nodeType === "category" && s.selectedProduct)];
+        const exceeds = lines.some((line) => manualTrackingCount(line) + lineTracking(item, index, line === item ? null : line.nodeId, tracked).length > qty);
+        if (exceeds) {
+          const error = new Error("ابتدا تعداد وضعیت‌های دستی یا ترکینگ‌های تخصیص‌یافته را کاهش دهید");
+          error.status = 409;
+          throw error;
+        }
+      }
       item.quantity = qty;
       order.reviewedBy = new mongoose.Types.ObjectId(admin.userId);
       order.reviewedAt = new Date();
@@ -261,7 +285,9 @@ export async function PATCH(req, { params }) {
     }
   } catch (error) {
     console.error("[admin/orders/:id/items PATCH]", error);
-    return NextResponse.json({ message: "خطای داخلی سرور" }, { status: 500 });
+    return NextResponse.json({ message: error.status ? error.message : "خطای داخلی سرور" }, { status: error.status || 500 });
+  } finally {
+    if (release) await release();
   }
 }
 
@@ -270,6 +296,7 @@ export async function DELETE(req, { params }) {
   const { actor: admin, denied } = await requireAdminPermission("orders.editItems");
   if (denied) return denied;
 
+  let release;
   try {
     await connectToDB();
 
@@ -278,12 +305,14 @@ export async function DELETE(req, { params }) {
       return NextResponse.json({ message: "شناسه سفارش نامعتبر است" }, { status: 400 });
     }
 
+    release = await acquireTrackingMutation(orderId);
     const body = await req.json();
     const { itemId } = body;
     if (!isId(itemId)) {
       return NextResponse.json({ message: "شناسه آیتم نامعتبر است" }, { status: 400 });
     }
 
+    await release.assertOwned();
     const session = await mongoose.startSession();
     session.startTransaction();
     try {
@@ -316,6 +345,19 @@ export async function DELETE(req, { params }) {
       const releasedUsedId =
         item.itemType === "used_product" && item.usedProduct ? item.usedProduct : null;
 
+      if (order.manualTrackingEnabled) {
+        const conn = await connectWarehouseDB();
+        const index = order.items.indexOf(item);
+        const assigned = await getItemTrackingModel(conn).exists({
+          tenadorOrderId: orderId.toString(),
+          $or: [{ orderItemIndex: { $gte: index } }, { orderItemIndex: null }],
+        });
+        if (assigned) {
+          const error = new Error("پیش از حذف آیتم، ترکینگ‌های آن و آیتم‌های بعدی را جدا کنید تا اتصال بارکدها جابه‌جا نشود");
+          error.status = 409;
+          throw error;
+        }
+      }
       item.deleteOne();
 
       if (releasedUsedId) {
@@ -348,6 +390,8 @@ export async function DELETE(req, { params }) {
     }
   } catch (error) {
     console.error("[admin/orders/:id/items DELETE]", error);
-    return NextResponse.json({ message: "خطای داخلی سرور" }, { status: 500 });
+    return NextResponse.json({ message: error.status ? error.message : "خطای داخلی سرور" }, { status: error.status || 500 });
+  } finally {
+    if (release) await release();
   }
 }

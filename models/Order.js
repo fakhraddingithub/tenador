@@ -5,10 +5,32 @@
  */
 
 import mongoose from "mongoose";
+import { MANUAL_TRACKING_STATUSES } from "../src/lib/manualTracking.js";
+
+const ManualTrackingSchema = new mongoose.Schema({
+  status: { type: String, enum: Object.keys(MANUAL_TRACKING_STATUSES), required: true },
+  quantity: { type: Number, min: 1, required: true, validate: Number.isSafeInteger },
+}, { _id: false });
+
+const manualTrackingFields = () => ({
+  manualTracking: { type: [ManualTrackingSchema], default: undefined },
+  manualTrackingRevision: { type: Number, default: 0 },
+  manualTrackingHistory: {
+    type: [new mongoose.Schema({
+      before: [ManualTrackingSchema],
+      after: [ManualTrackingSchema],
+      by: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
+      at: { type: Date, default: Date.now },
+    }, { _id: false })],
+    default: undefined,
+    select: false,
+  },
+});
 
 // انتخاب‌های فرایند سفارش برای هر آیتم (خدمات + محصولات انتخاب‌شده)
 const OrderFlowSelectionSchema = new mongoose.Schema(
   {
+    ...manualTrackingFields(),
     nodeId:    { type: String },
     nodeLabel: { type: String, default: "" },
     nodeType:  { type: String, enum: ["service", "category"] },
@@ -95,6 +117,12 @@ const EurPaymentSchema = new mongoose.Schema(
 
 const OrderSchema = new mongoose.Schema(
   {
+    manualTrackingEnabled: { type: Boolean, default: false },
+    trackingMutationLock: {
+      type: new mongoose.Schema({ token: String, expiresAt: Date }, { _id: false }),
+      default: undefined,
+      select: false,
+    },
     trackingCode: {
       type: String,
       unique: true,
@@ -110,6 +138,7 @@ const OrderSchema = new mongoose.Schema(
 
     items: [
       {
+        ...manualTrackingFields(),
         // محصول معمولی (Product)
         product: {
           type: mongoose.Schema.Types.ObjectId,

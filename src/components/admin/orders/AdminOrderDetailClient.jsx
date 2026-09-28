@@ -21,6 +21,7 @@ import {
   Search, Minus, Pencil, Printer,
 } from "lucide-react";
 import SenderAddressModal from "@/components/admin/orders/SenderAddressModal";
+import ManualTrackingEditor from "@/components/admin/orders/ManualTrackingEditor";
 import OrderPrintOverlay from "@/components/print/OrderPrintOverlay";
 import FlowProductIdentity from "@/components/order/FlowProductIdentity";
 import OrderFlowSelectionsView from "@/components/order/OrderFlowSelectionsView";
@@ -886,6 +887,7 @@ function ScanModal({ target, orderId, mode = "choose", onSuccess, onClose }) {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           action: "mark_purchase",
+          itemId: target.itemId,
           orderItemIndex: target.orderItemIndex,
           flowNodeId: target.flowNodeId || null,
         }),
@@ -937,6 +939,7 @@ function ScanModal({ target, orderId, mode = "choose", onSuccess, onClose }) {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           barcode: code,
+          itemId: target.itemId,
           orderItemIndex: target.orderItemIndex,
           flowNodeId: target.flowNodeId || null,
           procurementStatus: procurementStatus || "IN_STOCK",
@@ -1337,7 +1340,8 @@ function TrackingPanel({ orderId, orderItems, orderFulfillmentStatus, onStatusCh
     try {
       const res = await fetch(`/api/admin/orders/${orderId}/tracking`);
       const d = await res.json();
-      if (res.ok) setData(d);
+      if (!res.ok) throw new Error(d.message || "خطا در دریافت اطلاعات ترکینگ");
+      setData(d);
     } catch (err) {
       toast.error("خطا در دریافت اطلاعات ترکینگ");
     } finally {
@@ -1383,10 +1387,12 @@ function TrackingPanel({ orderId, orderItems, orderFulfillmentStatus, onStatusCh
     quantity,
     remainingCount,
     procurementStatus,
+    manualTracking = [],
+    manualTrackingRevision = 0,
     target,
     addLabel = "اسکن بارکد",
   }) => {
-    const complete = scannedCount >= quantity;
+    const complete = remainingCount <= 0;
     const isToPurchase = procurementStatus === "TO_PURCHASE";
     const remainText = new Intl.NumberFormat("fa-IR").format(remainingCount);
     return (
@@ -1403,13 +1409,22 @@ function TrackingPanel({ orderId, orderItems, orderFulfillmentStatus, onStatusCh
           </div>
         )}
 
+        <ManualTrackingEditor
+          orderId={orderId}
+          target={{ itemId: target.itemId, orderItemIndex: target.orderItemIndex, flowNodeId: target.flowNodeId }}
+          line={{ manualTracking, manualTrackingRevision, scannedCount }}
+          quantity={quantity}
+          canEdit={canAssign && data?.order?.fulfillmentStatus !== "CANCELED"}
+          onSaved={async () => { await fetchTracking(); onStatusChange?.(); }}
+        />
+
         {/* خطی که «باید خریداری شود» علامت خورده و هنوز خریداری/اسکن نشده */}
         {!complete && isToPurchase && (
           <div className="space-y-2">
             <div className="flex items-center gap-2 text-xs font-bold text-amber-700 bg-amber-50
               border border-amber-200 rounded-xl px-3 py-2">
               <ShoppingBag size={13} className="shrink-0" />
-              باید خریداری شود — پس از خرید، بارکد را وارد/اسکن کنید
+              {remainText} عدد باید خریداری شود — پس از خرید، بارکد را وارد/اسکن کنید
             </div>
             {canAssign && (
             <button
@@ -1439,7 +1454,7 @@ function TrackingPanel({ orderId, orderItems, orderFulfillmentStatus, onStatusCh
         {complete && (
           <div className="flex items-center gap-2 text-xs text-green-600 font-bold">
             <CheckCircle size={13} />
-            تمام {new Intl.NumberFormat("fa-IR").format(quantity)} عدد شناسایی شد
+            تمام {new Intl.NumberFormat("fa-IR").format(quantity)} عدد تعیین وضعیت شد
           </div>
         )}
       </div>
@@ -1457,7 +1472,8 @@ function TrackingPanel({ orderId, orderItems, orderFulfillmentStatus, onStatusCh
 
   if (!data) return null;
 
-  const allComplete = data.totalScanned >= data.totalRequired && data.totalRequired > 0;
+  const totalHandled = data.totalScanned + (data.totalManual || 0);
+  const allComplete = totalHandled >= data.totalRequired && data.totalRequired > 0;
 
   return (
     <div className="space-y-4">
@@ -1473,15 +1489,18 @@ function TrackingPanel({ orderId, orderItems, orderFulfillmentStatus, onStatusCh
               : <Scan size={18} className="text-blue-600" />}
             <div>
               <p className={`text-sm font-black ${allComplete ? "text-green-800" : "text-blue-800"}`}>
-                {allComplete ? "همه محصولات شناسایی شدند" : "در حال شناسایی محصولات"}
+                {allComplete ? "همه محصولات تعیین وضعیت شدند" : "در حال تعیین وضعیت محصولات"}
               </p>
               <p className={`text-xs mt-0.5 ${allComplete ? "text-green-600" : "text-blue-600"}`}>
                 {new Intl.NumberFormat("fa-IR").format(data.totalScanned)} از{" "}
                 {new Intl.NumberFormat("fa-IR").format(data.totalRequired)} عدد اسکن شده
+                {data.totalManual > 0 && ` · ${new Intl.NumberFormat("fa-IR").format(data.totalManual)} عدد با وضعیت دستی`}
+                {` · ${new Intl.NumberFormat("fa-IR").format(Math.max(0, data.totalRequired - totalHandled))} عدد باقی‌مانده`}
               </p>
             </div>
           </div>
           <button onClick={fetchTracking}
+            aria-label="تازه‌سازی اطلاعات ترکینگ"
             className="w-8 h-8 flex items-center justify-center rounded-xl bg-white/70 hover:bg-white text-gray-500 transition">
             <RefreshCw size={14} />
           </button>
@@ -1491,7 +1510,7 @@ function TrackingPanel({ orderId, orderItems, orderFulfillmentStatus, onStatusCh
         <div className="mt-3 bg-white/50 rounded-full h-2 overflow-hidden">
           <div
             className={`h-full rounded-full transition-all duration-500 ${allComplete ? "bg-green-500" : "bg-blue-500"}`}
-            style={{ width: `${data.totalRequired > 0 ? Math.min(100, (data.totalScanned / data.totalRequired) * 100) : 0}%` }}
+            style={{ width: `${data.totalRequired > 0 ? Math.min(100, (totalHandled / data.totalRequired) * 100) : 0}%` }}
           />
         </div>
       </div>
@@ -1504,7 +1523,7 @@ function TrackingPanel({ orderId, orderItems, orderFulfillmentStatus, onStatusCh
         const itemRequired =
           mainRequired + flowList.reduce((s, f) => s + f.quantity, 0);
         const itemScanned =
-          item.scannedCount + flowList.reduce((s, f) => s + f.scannedCount, 0);
+          item.scannedCount + (item.manualCount || 0) + flowList.reduce((s, f) => s + f.scannedCount + (f.manualCount || 0), 0);
         const isComplete = itemScanned >= itemRequired && itemRequired > 0;
         const isExpanded = expanded[item.index] !== false; // default open
 
@@ -1602,8 +1621,11 @@ function TrackingPanel({ orderId, orderItems, orderFulfillmentStatus, onStatusCh
                           quantity: item.quantity,
                           remainingCount: item.remainingCount,
                           procurementStatus: item.procurementStatus,
+                          manualTracking: item.manualTracking,
+                          manualTrackingRevision: item.manualTrackingRevision,
                           addLabel: "اسکن بارکد",
                           target: {
+                            itemId: item.itemId,
                             productName: item.product?.name,
                             productImage: item.product?.mainImage,
                             productSku: item.product?.sku,
@@ -1615,6 +1637,17 @@ function TrackingPanel({ orderId, orderItems, orderFulfillmentStatus, onStatusCh
                         })
                       )}
                     </div>
+
+                    {item.isUsed && (
+                      <ManualTrackingEditor
+                        orderId={orderId}
+                        target={{ itemId: item.itemId, orderItemIndex: item.index }}
+                        line={item}
+                        quantity={1}
+                        canEdit={canAssign && data.order?.fulfillmentStatus !== "CANCELED"}
+                        onSaved={async () => { await fetchTracking(); onStatusChange?.(); }}
+                      />
+                    )}
 
                     {/* ─── خطوط انتخاب‌های فرایند سفارش ─── */}
                     {flowList.map((f) => (
@@ -1642,8 +1675,11 @@ function TrackingPanel({ orderId, orderItems, orderFulfillmentStatus, onStatusCh
                           quantity: f.quantity,
                           remainingCount: f.remainingCount,
                           procurementStatus: f.procurementStatus,
+                          manualTracking: f.manualTracking,
+                          manualTrackingRevision: f.manualTrackingRevision,
                           addLabel: "اسکن بارکد این مورد",
                           target: {
+                            itemId: item.itemId,
                             productName: `${f.product?.name || ""}${f.variantLabel ? ` (${f.variantLabel})` : ""}`,
                             productImage: f.product?.mainImage,
                             productSku: f.product?.sku,

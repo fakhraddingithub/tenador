@@ -14,6 +14,9 @@
  * وضعیت‌های میانی گردش‌کار (WAITING / NEEDS_PURCHASE / SENT) که ادمین یا
  * منطق موجود ست کرده دست‌نخورده می‌مانند و سفارشِ بدون بارکد هیچ‌وقت
  * خودکار تغییر نمی‌کند — وگرنه هر همگام‌سازی، وضعیت دستی را می‌شکست.
+ * استثنا: در سفارش‌های دارای manualTrackingEnabled، تعداد وضعیت‌های دستی هم
+ * محاسبه می‌شود و همه‌ی واحدهای خطوط اصلی و انتخاب‌های فرایند باید تحویل شوند.
+ * حتی پس از پاک‌کردن آخرین وضعیت دستی، تعدادهای نامشخص مانع تحویل کل می‌شوند.
  *
  * آپدیت به‌صورت compare-and-swap شرطی است (فقط از همان وضعیتی که تصمیم بر
  * اساس آن گرفته شد) تا race با آپدیت دستی/همزمان وضعیت ناسازگار نسازد؛ و
@@ -23,7 +26,9 @@
  */
 
 import connectToDB from "base/configs/db";
+import "base/models/registerModels";
 import Order from "base/models/Order";
+import { manualOrderDeliveryStatuses } from "@/lib/manualTracking";
 import {
   connectWarehouseDB,
   getItemTrackingModel,
@@ -58,7 +63,7 @@ export async function syncOrderFulfillmentFromTracking(orderId) {
 
     await connectToDB();
     const order = await Order.findById(id)
-      .select("fulfillmentStatus items.itemType items.usedProduct")
+      .select("fulfillmentStatus manualTrackingEnabled updatedAt items.itemType items.usedProduct items.product items.variant items.quantity items.manualTracking items.flowSelections.nodeType items.flowSelections.selectedProduct items.flowSelections.nodeId items.flowSelections.manualTracking")
       .lean();
     if (!order || order.fulfillmentStatus === "CANCELED") return null;
 
@@ -70,7 +75,7 @@ export async function syncOrderFulfillmentFromTracking(orderId) {
     // دست دوم‌ها با tenadorOrderId یا usedProductRef (سازگار با داده‌های قدیمی)
     const usedProductIds = (order.items || [])
       .filter((it) => it.itemType === "used_product" && it.usedProduct)
-      .map((it) => it.usedProduct.toString());
+      .map((it) => (it.usedProduct._id || it.usedProduct).toString());
 
     const usedFilter =
       usedProductIds.length > 0
@@ -78,11 +83,17 @@ export async function syncOrderFulfillmentFromTracking(orderId) {
         : { tenadorOrderId: id };
 
     const [items, usedItems] = await Promise.all([
-      ItemTracking.find({ tenadorOrderId: id }).select("status").lean(),
-      UsedItemTracking.find(usedFilter).select("status").lean(),
+      ItemTracking.find({ tenadorOrderId: id }).select("status productRef variantRef orderItemIndex flowNodeId barcode trackingId").lean(),
+      UsedItemTracking.find(usedFilter).select("status usedProductRef").lean(),
     ]);
 
-    const statuses = [...items, ...usedItems].map((t) => t.status);
+    if (order.manualTrackingEnabled && usedProductIds.length) {
+      await Order.populate(order, { path: "items.usedProduct", select: "warehouseTrackingId assignedBarcode assignedTrackingCode" });
+    }
+
+    const statuses = order.manualTrackingEnabled
+      ? manualOrderDeliveryStatuses(order, items, usedItems)
+      : [...items, ...usedItems].map((t) => t.status);
     const next = decideAutoFulfillment(order.fulfillmentStatus, statuses);
     if (!next) return null;
 
@@ -96,7 +107,7 @@ export async function syncOrderFulfillmentFromTracking(orderId) {
     }
 
     const res = await Order.updateOne(
-      { _id: id, fulfillmentStatus: order.fulfillmentStatus },
+      { _id: id, fulfillmentStatus: order.fulfillmentStatus, ...(order.manualTrackingEnabled ? { updatedAt: order.updatedAt } : {}) },
       { $set: set }
     );
     if (res.modifiedCount > 0) {

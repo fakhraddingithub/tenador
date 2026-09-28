@@ -13,6 +13,8 @@
  */
 
 import { NextResponse } from "next/server";
+import mongoose from "mongoose";
+import "base/models/registerModels";
 import connectToDB from "base/configs/db";
 import {
   connectWarehouseDB,
@@ -24,6 +26,9 @@ import Order from "base/models/Order";
 import { syncOrderFulfillmentFromTracking } from "@/lib/orderFulfillmentSync";
 
 import requireAdminPermission from "@/lib/requireAdminPermission";
+import { acquireTrackingMutation } from "base/services/orderTrackingMutation";
+import { manualTrackingCount, trackingQuantities, matchMainTracking, lineTracking, validateManualTracking } from "@/lib/manualTracking";
+import { revalidateContent } from "@/lib/revalidate";
 
 /**
  * تنظیم وضعیت تأمین یک خطِ سفارش (محصول اصلی یا یک انتخابِ فرایند) روی خود سند سفارش
@@ -131,36 +136,6 @@ export async function GET(req, { params }) {
     //    حتی اگر چند محصول دست دومِ هم‌پایه در یک سفارش باشند
     //  - محصول معمولی بدون orderItemIndex (داده‌های قدیمی): با productRef + variantRef
     //  - آیتم‌های متعلق به انتخاب‌های فرایند (flowNodeId غیرنال) هرگز اینجا شمرده نمی‌شوند
-    const matchMainTracking = (item, index) =>
-      trackingItems.filter((t) => {
-        if (t.flowNodeId) return false;
-
-        // ۱) تطبیق صریح با ایندکس خطِ سفارش
-        if (t.orderItemIndex !== null && t.orderItemIndex !== undefined) {
-          return t.orderItemIndex === index;
-        }
-
-        // ۲) محصول دست دوم: تطبیق دقیق با tracking ثبت‌شده روی خود محصول دست دوم
-        if (item.itemType === "used_product") {
-          const up = item.usedProduct;
-          if (!up) return false;
-          const trackId = up.warehouseTrackingId?.toString();
-          if (trackId && t._id?.toString() === trackId) return true;
-          if (up.assignedBarcode && t.barcode === up.assignedBarcode) return true;
-          if (up.assignedTrackingCode && t.trackingId === up.assignedTrackingCode)
-            return true;
-          return false;
-        }
-
-        // ۳) fallback قدیمی فقط برای محصولات معمولی
-        const productMatch =
-          t.productRef?.toString() === item.product?._id?.toString();
-        const variantMatch = item.variant
-          ? t.variantRef?.toString() === item.variant?._id?.toString()
-          : true;
-        return productMatch && variantMatch;
-      });
-
     // ساختار خروجی: برای هر آیتم سفارش، tracking خطِ اصلی + خطوط انتخاب‌های فرایند
     const itemsWithTracking = order.items.map((item, index) => {
       const isUsed = item.itemType === "used_product";
@@ -169,7 +144,7 @@ export async function GET(req, { params }) {
       const usedRelated = isUsed
         ? usedTrackingByProduct.get(item.usedProduct?._id?.toString()) || []
         : [];
-      const mainRelated = [...matchMainTracking(item, index), ...usedRelated];
+      const mainRelated = [...matchMainTracking(item, index, trackingItems), ...usedRelated];
       const mainRequired = isUsed ? 1 : item.quantity;
 
       // خطوط انتخاب فرایند (فقط نودهای category که محصول فیزیکی دارند)
@@ -195,7 +170,7 @@ export async function GET(req, { params }) {
             procurementStatus: s.procurementStatus || null,
             quantity: item.quantity,
             scannedCount: related.length,
-            remainingCount: item.quantity - related.length,
+            ...trackingQuantities(s, item.quantity, related.length),
             trackingItems: related,
           };
         });
@@ -213,6 +188,7 @@ export async function GET(req, { params }) {
 
       return {
         index,
+        itemId: item._id,
         itemType: item.itemType || "product",
         isUsed,
         product,
@@ -221,7 +197,7 @@ export async function GET(req, { params }) {
         quantity: item.quantity,
         unitPrice: item.unitPrice,
         scannedCount: mainRelated.length,
-        remainingCount: mainRequired - mainRelated.length,
+        ...trackingQuantities(item, mainRequired, mainRelated.length),
         trackingItems: mainRelated,
         flowTracking,
       };
@@ -250,6 +226,7 @@ export async function GET(req, { params }) {
         },
         itemsWithTracking,
         totalScanned,
+        totalManual: itemsWithTracking.reduce((sum, item) => sum + item.manualCount + item.flowTracking.reduce((n, f) => n + f.manualCount, 0), 0),
         totalRequired,
       },
       { status: 200 }
@@ -265,26 +242,30 @@ export async function POST(req, { params }) {
   const { actor: admin, denied } = await requireAdminPermission("orderTracking.assign");
   if (denied) return denied;
 
+  let release;
   try {
     await connectToDB();
     const { orderId } = await params;
+    if (!mongoose.isValidObjectId(orderId)) return NextResponse.json({ message: "شناسه سفارش نامعتبر است" }, { status: 400 });
+    release = await acquireTrackingMutation(orderId);
     const body = await req.json();
     const { barcode, orderItemIndex, procurementStatus } = body;
     // flowNodeId: اگر مقدار داشته باشد، بارکد برای یک «انتخابِ فرایند» (نود category) ثبت می‌شود
     const flowNodeId = body.flowNodeId || null;
-    // action: "scan" (پیش‌فرض) یا "mark_purchase" (علامت‌گذاری «باید خریداری شود» بدون بارکد)
+    // action: scan / mark_purchase / set_manual (تعداد وضعیت‌های بدون بارکد)
     const action = body.action || "scan";
 
     const order = await Order.findById(orderId)
       .populate("items.product", "name mainImage sku _id")
       .populate("items.variant", "sku attributes _id")
+      .populate("items.usedProduct", "warehouseTrackingId assignedBarcode assignedTrackingCode")
       .lean();
 
     if (!order)
       return NextResponse.json({ message: "سفارش یافت نشد" }, { status: 404 });
 
     if (
-      orderItemIndex === undefined ||
+      !Number.isInteger(orderItemIndex) ||
       orderItemIndex < 0 ||
       orderItemIndex >= order.items.length
     )
@@ -294,11 +275,85 @@ export async function POST(req, { params }) {
       );
 
     const targetItem = order.items[orderItemIndex];
+    if (body.itemId && String(targetItem._id) !== body.itemId) {
+      return NextResponse.json({ message: "اقلام سفارش تغییر کرده‌اند؛ صفحه را تازه‌سازی کنید" }, { status: 409 });
+    }
+    const targetLine = flowNodeId
+      ? (targetItem.flowSelections || []).find((s) => s.nodeId === flowNodeId && s.nodeType === "category" && s.selectedProduct)
+      : targetItem;
+    if (!targetLine) return NextResponse.json({ message: "انتخاب فرایند یافت نشد" }, { status: 400 });
+
+    if (action === "set_manual") {
+      if (!body.itemId || !Number.isSafeInteger(body.revision) || body.revision < 0) {
+        return NextResponse.json({ message: "شناسه آیتم و نسخه وضعیت الزامی است" }, { status: 400 });
+      }
+      if (order.fulfillmentStatus === "CANCELED") {
+        return NextResponse.json({ message: "ثبت وضعیت دستی برای این مورد مجاز نیست" }, { status: 400 });
+      }
+      if ((targetLine.manualTrackingRevision || 0) !== body.revision) {
+        return NextResponse.json({ message: "وضعیت توسط کاربر دیگری تغییر کرده است؛ اطلاعات را تازه‌سازی کنید" }, { status: 409 });
+      }
+      const warehouseConn = await connectWarehouseDB();
+      const Tracking = getItemTrackingModel(warehouseConn);
+      const tracked = await Tracking.find({ tenadorOrderId: orderId.toString() }).lean();
+      const usedTracked = !flowNodeId && targetItem.itemType === "used_product" && targetItem.usedProduct
+        ? await getUsedItemTrackingModel(warehouseConn).find({ usedProductRef: String(targetItem.usedProduct._id) }).lean()
+        : [];
+      const assigned = lineTracking(targetItem, orderItemIndex, flowNodeId, tracked, usedTracked).length;
+      const quantity = !flowNodeId && targetItem.itemType === "used_product" ? 1 : targetItem.quantity;
+      let rows;
+      try {
+        rows = validateManualTracking(body.manualTracking, quantity - assigned);
+      } catch (error) {
+        return NextResponse.json({ message: error.message }, { status: 400 });
+      }
+      const prefix = flowNodeId
+        ? `items.${orderItemIndex}.flowSelections.${targetItem.flowSelections.indexOf(targetLine)}`
+        : `items.${orderItemIndex}`;
+      await release.assertOwned();
+      const saved = await Order.updateOne({
+        _id: orderId,
+        fulfillmentStatus: { $ne: "CANCELED" },
+        [`items.${orderItemIndex}._id`]: targetItem._id,
+        [`items.${orderItemIndex}.quantity`]: targetItem.quantity,
+      }, {
+        $set: {
+          [`${prefix}.manualTracking`]: rows,
+          manualTrackingEnabled: true,
+          ...(assigned + manualTrackingCount({ manualTracking: rows }) === quantity && targetLine.procurementStatus === "TO_PURCHASE"
+            ? { [`${prefix}.procurementStatus`]: null } : {}),
+        },
+        $inc: { [`${prefix}.manualTrackingRevision`]: 1 },
+        $push: { [`${prefix}.manualTrackingHistory`]: {
+          before: targetLine.manualTracking || [], after: rows, by: admin.userId, at: new Date(),
+        } },
+      }, { runValidators: true });
+      if (!saved.matchedCount) {
+        return NextResponse.json({ message: "سفارش تغییر کرده است؛ اطلاعات را تازه‌سازی کنید" }, { status: 409 });
+      }
+      const fresh = await Order.findById(orderId).select("fulfillmentStatus items.procurementStatus items.flowSelections.procurementStatus").lean();
+      if (fresh?.fulfillmentStatus === "NEEDS_PURCHASE" && !orderHasPendingPurchase(fresh)) {
+        await Order.updateOne({ _id: orderId, fulfillmentStatus: "NEEDS_PURCHASE" }, { $set: { fulfillmentStatus: "PROCESSING" } });
+      }
+      const fulfillmentStatus = await syncOrderFulfillmentFromTracking(orderId);
+      revalidateContent(["orders"]);
+      return NextResponse.json({ message: "وضعیت‌های دستی ذخیره شد", fulfillmentStatus });
+    }
+    if (!["scan", "mark_purchase"].includes(action)) {
+      return NextResponse.json({ message: "عملیات نامعتبر است" }, { status: 400 });
+    }
 
     // ─── علامت‌گذاری «باید خریداری شود» (بدون بارکد) ───
     // محصول هنوز خریداری نشده و بارکدی ندارد؛ فقط خطِ سفارش علامت می‌خورد و
     // وضعیت کل سفارش به «باید خریداری شود» تغییر می‌کند تا در لیست سفارش‌ها قابل شناسایی باشد.
     if (action === "mark_purchase") {
+      if (manualTrackingCount(targetLine) > 0) {
+        const conn = await connectWarehouseDB();
+        const tracked = await getItemTrackingModel(conn).find({ tenadorOrderId: orderId.toString() }).lean();
+        if (lineTracking(targetItem, orderItemIndex, flowNodeId, tracked).length + manualTrackingCount(targetLine) >= targetItem.quantity) {
+          return NextResponse.json({ message: "تعداد نامشخصی برای خرید باقی نمانده است" }, { status: 400 });
+        }
+      }
       if (flowNodeId) {
         const selection = (targetItem.flowSelections || []).find(
           (s) => s.nodeId === flowNodeId && s.nodeType === "category"
@@ -311,6 +366,7 @@ export async function POST(req, { params }) {
         }
       }
 
+      await release.assertOwned();
       await setOrderLineProcurement(orderId, orderItemIndex, flowNodeId, "TO_PURCHASE");
       await Order.updateOne(
         { _id: orderId, fulfillmentStatus: { $nin: ["DELIVERED", "CANCELED"] } },
@@ -327,7 +383,7 @@ export async function POST(req, { params }) {
       );
     }
 
-    if (!barcode?.trim())
+    if (typeof barcode !== "string" || !barcode.trim())
       return NextResponse.json(
         { message: "بارکد یا کد رهگیری الزامی است" },
         { status: 400 }
@@ -353,6 +409,10 @@ export async function POST(req, { params }) {
         },
         { status: 404 }
       );
+    }
+
+    if (trackingItem.tenadorOrderId === orderId.toString()) {
+      return NextResponse.json({ message: "این بارکد قبلاً به همین سفارش اختصاص یافته است" }, { status: 409 });
     }
 
     // بررسی که این بارکد قبلاً به سفارش دیگری اختصاص نیافته باشد
@@ -451,7 +511,8 @@ export async function POST(req, { params }) {
 
     const alreadyScanned = await ItemTracking.countDocuments(quotaFilter);
 
-    if (alreadyScanned >= requiredCount) {
+    const manualCount = manualTrackingCount(targetLine);
+    if (alreadyScanned + manualCount >= requiredCount) {
       return NextResponse.json(
         {
           message: `تعداد مجاز برای این ${label} (${requiredCount} عدد) تکمیل شده`,
@@ -485,12 +546,14 @@ export async function POST(req, { params }) {
       addedById: admin.userId,
     });
 
+    await release.assertOwned();
     await trackingItem.save();
 
     // ─── بروزرسانی وضعیت تأمینِ خطِ سفارش روی خود سند سفارش ───
     // اگر این خط قبلاً «باید خریداری شود» بوده، حالا «خریداری شد» می‌شود؛ در غیر این صورت
     // مقدار ارسالی از کلاینت (IN_STOCK / PURCHASED) ثبت می‌شود.
-    const lineProcurement = procurementStatus || "IN_STOCK";
+    const lineProcurement = order.manualTrackingEnabled && targetLine.procurementStatus === "TO_PURCHASE" && alreadyScanned + manualCount + 1 < requiredCount
+      ? "TO_PURCHASE" : procurementStatus || "IN_STOCK";
     await setOrderLineProcurement(orderId, orderItemIndex, flowNodeId, lineProcurement);
 
     // اگر سفارش در وضعیت «باید خریداری شود» بوده و دیگر هیچ خطی منتظر خرید نیست،
@@ -528,14 +591,16 @@ export async function POST(req, { params }) {
           procurementStatus: trackingItem.procurementStatus,
         },
         scannedCount: alreadyScanned + 1,
-        remainingCount: requiredCount - alreadyScanned - 1,
+        remainingCount: requiredCount - alreadyScanned - manualCount - 1,
         fulfillmentStatus: updatedFulfillment,
       },
       { status: 200 }
     );
   } catch (error) {
     console.error("[admin/orders/:id/tracking POST]", error);
-    return NextResponse.json({ message: "خطای داخلی سرور" }, { status: 500 });
+    return NextResponse.json({ message: error.status ? error.message : "خطای داخلی سرور" }, { status: error.status || 500 });
+  } finally {
+    if (release) await release();
   }
 }
 
@@ -544,9 +609,12 @@ export async function DELETE(req, { params }) {
   const { actor: admin, denied } = await requireAdminPermission("orderTracking.assign");
   if (denied) return denied;
 
+  let release;
   try {
     await connectToDB();
     const { orderId } = await params;
+    if (!mongoose.isValidObjectId(orderId)) return NextResponse.json({ message: "شناسه سفارش نامعتبر است" }, { status: 400 });
+    release = await acquireTrackingMutation(orderId);
     const body = await req.json();
     const { trackingItemId } = body;
 
@@ -597,6 +665,7 @@ export async function DELETE(req, { params }) {
       addedById: admin.userId,
     });
 
+    await release.assertOwned();
     await item.save();
 
     // حذف بارکد ممکن است ترکیب باقی‌مانده را «همه تحویل‌شده» کند (یا برعکس)
@@ -608,6 +677,8 @@ export async function DELETE(req, { params }) {
     );
   } catch (error) {
     console.error("[admin/orders/:id/tracking DELETE]", error);
-    return NextResponse.json({ message: "خطای داخلی سرور" }, { status: 500 });
+    return NextResponse.json({ message: error.status ? error.message : "خطای داخلی سرور" }, { status: error.status || 500 });
+  } finally {
+    if (release) await release();
   }
 }
