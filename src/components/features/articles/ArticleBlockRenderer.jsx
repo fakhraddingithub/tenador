@@ -459,9 +459,13 @@ export default function ArticleBlockRenderer({ blocks = [], entities, preview = 
       return <ImageBlock key={block.id} data={data} spacing={v.spacing} inMerged={inMerged} overlay={overlay} />;
     }
     if (block.type === "image" && data.url) return <figure key={block.id} className={blockSection} style={v.spacing || undefined}><Image src={data.url} alt={data.alt || "تصویر مقاله"} width={data.width || 1600} height={data.height || 900} sizes="(max-width: 1024px) 100vw, 820px" className="h-auto w-full rounded-[var(--radius)]" />{data.caption ? <figcaption className="mt-3 text-center text-xs leading-6 text-gray-500">{data.caption}</figcaption> : null}</figure>;
+    // هیچ بلوکی زیرِ تصویر رنگِ توپُر نمی‌گذارد: کاشیِ گالری یک bg-gray-100 داشت
+    // (نگهدارنده‌ی زمانِ بارگذاری) که هر PNG شفافی را روی یک مستطیلِ خاکستری صاف
+    // می‌کرد — جای پس‌زمینه‌ی صفحه. ابعادِ کاشی از aspect-* می‌آید نه از رنگ، پس
+    // حذفش نه پرش می‌سازد نه چیزی از تصویرهای بدونِ شفافیت کم می‌کند.
     if (block.type === "gallery") {
       const images = (data.images || []).map((image) => typeof image === "string" ? { url: image, alt: "" } : image).filter((image) => image.url);
-      return images.length ? <div key={block.id} className={`${blockSection} grid gap-3 ${inMerged ? slotGrid(images.length, SLOT_TILES) : "grid-cols-2"}`} style={v.spacing || undefined}>{images.map((image, index) => <figure key={`${image.url}-${index}`} className={`relative overflow-hidden rounded-[var(--radius)] bg-gray-100 ${index === 0 && images.length % 2 ? "col-span-2 aspect-[16/8]" : "aspect-square"}`}><Image src={image.url} alt={image.alt || data.alt || "تصویر گالری مقاله"} fill sizes="(max-width: 768px) 50vw, 400px" className="object-cover" loading="lazy" />{image.caption ? <figcaption className="absolute inset-x-0 bottom-0 bg-black/60 p-2 text-xs text-white">{image.caption}</figcaption> : null}</figure>)}</div> : null;
+      return images.length ? <div key={block.id} className={`${blockSection} grid gap-3 ${inMerged ? slotGrid(images.length, SLOT_TILES) : "grid-cols-2"}`} style={v.spacing || undefined}>{images.map((image, index) => <figure key={`${image.url}-${index}`} className={`relative overflow-hidden rounded-[var(--radius)] ${index === 0 && images.length % 2 ? "col-span-2 aspect-[16/8]" : "aspect-square"}`}><Image src={image.url} alt={image.alt || data.alt || "تصویر گالری مقاله"} fill sizes="(max-width: 768px) 50vw, 400px" className="object-cover" loading="lazy" />{image.caption ? <figcaption className="absolute inset-x-0 bottom-0 bg-black/60 p-2 text-xs text-white">{image.caption}</figcaption> : null}</figure>)}</div> : null;
     }
     if (block.type === "video" && data.url) {
       const embed = videoEmbed(data.url);

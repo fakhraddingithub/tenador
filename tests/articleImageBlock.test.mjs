@@ -200,3 +200,39 @@ test("جمع‌کردنِ درختِ بلوک‌ها هم خودِ تصویر ر
   assert.deepEqual(flat.map((block) => block.id), ["img", "p", "q"]);
 });
 
+
+// ——— شفافیت ————————————————————————————————————————————————————
+// یک PNG شفاف باید پس‌زمینه‌ی صفحه را نشان دهد، نه رنگی که بلوک زیرش گذاشته.
+test("هیچ بلوکی زیرِ تصویر رنگِ توپُر نمی‌گذارد", async () => {
+  const src = await readFile(new URL("../src/components/features/articles/ArticleBlockRenderer.jsx", import.meta.url), "utf8");
+  const branch = (from, to) => src.slice(src.indexOf(from), src.indexOf(to));
+
+  // کاشیِ گالری یک bg-gray-100 داشت که هر تصویرِ شفافی را روی مستطیلِ خاکستری صاف می‌کرد.
+  const gallery = branch('block.type === "gallery"', 'block.type === "video"');
+  assert.doesNotMatch(gallery, /\bbg-(?!black\/60)/, "گالری نباید زیرِ تصویر رنگ بگذارد");
+
+  // بلوکِ تصویر (هر دو مسیر) و کاشی‌اش هم همین‌طور.
+  const tile = branch("function ImageTile", "function ImageBlock");
+  assert.doesNotMatch(tile, /\bbg-/);
+  const imageBlock = branch("function ImageBlock", "const BUTTON_SIZE_CLASS");
+  // تنها رنگِ مجاز، لایه‌ی تیره‌ای است که ادمین خودش خواسته (data.shade).
+  assert.doesNotMatch(imageBlock, /\bbg-(?!\[)/);
+  assert.match(imageBlock, /backgroundColor: `rgba\(0, 0, 0, \$\{shade \/ 100\}\)`/);
+  // و اسلایدر فقط اندازه را ثابت می‌کند، رنگ نمی‌گذارد.
+  const css = await readFile(new URL("../src/app/globals.css", import.meta.url), "utf8");
+  const slide = css.slice(css.indexOf(".a-slider {"), css.indexOf(".a-slide figcaption"));
+  // زیرنویس روی تصویر می‌نشیند نه پشتِ آن، پس رنگش اینجا حساب نمی‌شود.
+  assert.doesNotMatch(slide, /background(-color)?:/);
+});
+
+test("لودرِ ImageKit شفافیت را صاف نمی‌کند", async () => {
+  // خروجیِ لودر به متغیّرِ محیطی وابسته است، پس خودِ قاعده‌ی ساختِ پارامترها سنجیده می‌شود.
+  const src = await readFile(new URL("../src/lib/imagekitLoader.js", import.meta.url), "utf8");
+  // f-auto برای مرورگرهای امروزی WebP/AVIF می‌دهد که آلفا دارند (سنجیده‌شده روی
+  // یک PNG شفاف: خروجیِ WebP پرچمِ آلفا دارد و گوشه‌هایش alpha=0 است).
+  assert.match(src, /"f-auto"/);
+  // bg-… پارامترِ ImageKit است و ناحیه‌ی شفاف را با رنگ پر می‌کند؛ هرگز ساخته نشود.
+  assert.doesNotMatch(src, /`bg-/);
+  assert.doesNotMatch(src, /"bg-/);
+});
+
