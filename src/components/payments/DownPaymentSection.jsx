@@ -1,9 +1,10 @@
 import React from 'react';
+import { toEnglishDigits } from '@/lib/addressForm.mjs';
 import { HiOutlineCash, HiOutlineGlobeAlt, HiOutlineLibrary } from 'react-icons/hi';
 
 const DownPaymentSection = ({ value, onChange, max, onBankPayment, bankPaymentOpen }) => {
   const handleChange = (e) => {
-    const val = Number(e.target.value.replace(/\D/g, ''));
+    const val = Number(toEnglishDigits(e.target.value).replace(/\D/g, ''));
     if (val <= max) {
       onChange(val);
     }
@@ -17,7 +18,8 @@ const DownPaymentSection = ({ value, onChange, max, onBankPayment, bankPaymentOp
       <div className="relative">
         <input
           type="text"
-          value={value.toLocaleString()}
+          inputMode="numeric"
+          value={value.toLocaleString('en-US')}
           onChange={handleChange}
           className="w-full pr-10 pl-4 py-3 border border-gray-200 rounded-[var(--radius)] focus:ring-2 focus:ring-[var(--color-primary)] focus:border-transparent outline-none transition-all font-bold"
           placeholder="مبلغ به تومان..."

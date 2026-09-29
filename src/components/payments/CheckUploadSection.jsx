@@ -1,4 +1,5 @@
 import React from 'react';
+import { toEnglishDigits } from '@/lib/addressForm.mjs';
 import DatePicker from "react-multi-date-picker";
 import persian from "react-date-object/calendars/persian";
 import persian_fa from "react-date-object/locales/persian_fa";
@@ -86,9 +87,10 @@ const CheckUploadSection = ({ checks, onUpdate, onRemove, remainingBalance }) =>
                   <label className="text-[10px] text-gray-500 mr-1">مبلغ چک (تومان)</label>
                   <input
                     type="text"
-                    value={check.amount.toLocaleString()}
+                    inputMode="numeric"
+                    value={check.amount.toLocaleString('en-US')}
                     onChange={(e) => {
-                      const val = Number(e.target.value.replace(/\D/g, ''));
+                      const val = Number(toEnglishDigits(e.target.value).replace(/\D/g, ''));
                       onUpdate(index, 'amount', val);
                     }}
                     className="w-full p-2 text-xs border border-gray-200 rounded-[var(--radius)] outline-none focus:border-[var(--color-secondary)] transition-all font-bold"
