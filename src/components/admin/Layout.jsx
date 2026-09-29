@@ -25,6 +25,7 @@ import { AiFillProduct } from "react-icons/ai";
 import { RiMenuFoldLine, RiMenuUnfoldLine } from "react-icons/ri";
 import { FiGitBranch, FiArrowRight } from "react-icons/fi";
 import { ShoppingCart } from "lucide-react";
+import AssistantWidget from "./assistant/AssistantWidget";
 import NotificationBell from "./NotificationBell";
 import { useNotifications } from "./NotificationProvider";
 import { useAdminPermissions } from "./AdminPermissionProvider";
@@ -353,6 +354,7 @@ export default function AdminLayout({ children }) {
         </main>
       </motion.div>
 
+      <AssistantWidget />
       <AnimatePresence>
         {mobileOpen && (
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.2 }}

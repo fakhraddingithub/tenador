@@ -32,6 +32,7 @@ export const isBranch = (value) => !!value && typeof value === "object" && "bran
 export const ANY_ADMIN = null;
 
 export const ADMIN_API_PERMISSIONS = {
+  "/admin/assistant": { GET: "assistant.use", POST: "assistant.use" },
   // ── ادمین‌ها و نقش‌ها ───────────────────────────────────────────────
   "/admin/admins": { GET: "admins.view", POST: "admins.create" },
   // انتخابگرِ کاربر برای ساختِ عضویت — همان کلیدِ ساخت، نه users.view

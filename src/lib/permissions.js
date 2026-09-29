@@ -32,6 +32,17 @@
 
 const SECTION_DEFINITIONS = [
   {
+    key: "assistant",
+    title: "دستیار هوشمند",
+    path: "/p-admin/assistant",
+    modules: [{
+      key: "assistant", title: "دستیار هوشمند",
+      description: "گفت‌وگو دربارهٔ داده‌ها؛ هر ابزار به مجوز مشاهدهٔ بخش خودش هم نیاز دارد",
+      path: "/p-admin/assistant", api: ["/api/admin/assistant"],
+      permissions: [{ key: "use", title: "استفاده از دستیار هوشمند" }],
+    }],
+  },
+  {
     key: "dashboard",
     title: "داشبورد",
     path: "/p-admin",
@@ -965,6 +976,7 @@ const ALL_KEYS_SET = new Set(ALL_KEYS);
  * ──────────────────────────────────────────────────────────────────────────── */
 
 export const ADMIN_ROUTE_PERMISSIONS = {
+  "/p-admin/assistant": ["assistant.use"],
   "/p-admin": ["dashboard.view"],
 
   // مقالات

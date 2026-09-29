@@ -24,6 +24,7 @@ import "base/models/Address";
 import "base/models/Admin";
 import "base/models/AdminRole";
 import "base/models/AdminActivity";
+import "base/models/AssistantQuota";
 import "base/models/Article";
 import "base/models/ArticleCategory";
 import "base/models/ArticleRedirect";

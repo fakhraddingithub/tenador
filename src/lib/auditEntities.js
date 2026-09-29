@@ -35,6 +35,7 @@ export const AUDIT_IGNORED_MODELS = new Set([
   "AdminActivity",
   "PriceCache",
   "RateLimitHit",
+  "AssistantQuota",
   "Otp",
   "PasswordResetToken",
   "PushSubscription",

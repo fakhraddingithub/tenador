@@ -114,7 +114,7 @@ function lookupPaymentsAndChecks(currency) {
  * ───────────────────────────────────────────────────────────────────────── */
 
 // KPIهای هسته‌ای برای یک بازه‌ی دلخواه
-async function coreMetrics(from, to, currency) {
+async function coreMetrics(from, to, currency, options = {}) {
   const match = { createdAt: { $gte: from, $lte: to }, ...NON_CANCELED };
   const res = await aggregateOrders(currency, [
     { $match: match },
@@ -143,12 +143,18 @@ async function coreMetrics(from, to, currency) {
         customers: { $size: "$customers" },
       },
     },
-  ]);
+  ]).option(options);
 
   const m = res[0] || { revenue: 0, orders: 0, collected: 0, outstanding: 0, units: 0, customers: 0 };
   m.aov = m.orders > 0 ? roundMoney(m.revenue / m.orders, currency) : 0;
   m.collectionRate = m.revenue > 0 ? +((m.collected / m.revenue) * 100).toFixed(1) : 0;
   return m;
+}
+
+// Small read-only entry point for chat; reuses the dashboard's financial definitions.
+export async function computeAssistantFinancialSummary({ from, to, currency }) {
+  await connectToDB();
+  return { from: from.toISOString(), to: to.toISOString(), currency, ...await coreMetrics(from, to, currency, { maxTimeMS: 5000 }) };
 }
 
 // مشتری‌های جدید/بازگشتی در بازه (بر اساس اولین سفارشِ تاریخی)
