@@ -107,7 +107,7 @@ export default function ProfileModule() {
   // هر مسیر خطا (نوع/حجم نامعتبر، تایم‌اوت، خطای شبکه، خطای سرور) پیام فارسیِ مشخص نشان می‌دهد
   // و در نهایت همیشه اسپینر خاموش می‌شود (بدون اسپینر بی‌نهایت).
   const MAX_UPLOAD = 5 * 1024 * 1024; // ۵ مگابایت
-  const IMAGE_TYPES = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp', 'image/svg+xml'];
+  const IMAGE_TYPES = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp', 'image/avif', 'image/svg+xml'];
 
   const uploadFile = async (file, field, inputEl, { allowPdf = false, onSuccess }) => {
     if (!file) return;
@@ -115,14 +115,14 @@ export default function ProfileModule() {
     // اعتبارسنجی سمت کلاینت: نوع فایل
     const allowedTypes = allowPdf ? [...IMAGE_TYPES, 'application/pdf'] : IMAGE_TYPES;
     const extOk = allowPdf
-      ? /\.(jpe?g|png|webp|svg|pdf)$/i.test(file.name || '')
-      : /\.(jpe?g|png|webp|svg)$/i.test(file.name || '');
+      ? /\.(jpe?g|png|webp|avif|svg|pdf)$/i.test(file.name || '')
+      : /\.(jpe?g|png|webp|avif|svg)$/i.test(file.name || '');
     if (!allowedTypes.includes(file.type) && !extOk) {
       if (inputEl) inputEl.value = '';
       return toast.error(
         allowPdf
-          ? 'فرمت فایل نامعتبر است. فقط تصویر (JPG/PNG/WebP) یا PDF مجاز است'
-          : 'فرمت فایل نامعتبر است. فقط تصویر (JPG/PNG/WebP) مجاز است'
+          ? 'فرمت فایل نامعتبر است. فقط تصویر (JPG/PNG/WebP/AVIF/SVG) یا PDF مجاز است'
+          : 'فرمت فایل نامعتبر است. فقط تصویر (JPG/PNG/WebP/AVIF/SVG) مجاز است'
       );
     }
 

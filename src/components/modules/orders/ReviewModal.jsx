@@ -10,7 +10,7 @@ const MIN_TEXT = 3;
 const MAX_TEXT = 1000;
 const MAX_IMAGES = 4;
 const MAX_IMAGE_SIZE = 5 * 1024 * 1024;
-const ALLOWED_IMAGE_TYPES = ["image/jpeg", "image/png", "image/webp"];
+const ALLOWED_IMAGE_TYPES = ["image/jpeg", "image/png", "image/webp", "image/avif"];
 
 /**
  * مودال ثبت نظر از مسیر سفارش — orderId و product را به API می‌فرستد تا
@@ -52,7 +52,7 @@ export default function ReviewModal({ order, product, onClose, onDone }) {
 
     for (const file of selected) {
       if (!ALLOWED_IMAGE_TYPES.includes(file.type)) {
-        toast.error("فقط تصاویر JPG، PNG و WebP مجاز هستند");
+        toast.error("فقط تصاویر JPG، PNG، WebP و AVIF مجاز هستند");
         return;
       }
       if (file.size > MAX_IMAGE_SIZE) {
@@ -228,7 +228,7 @@ export default function ReviewModal({ order, product, onClose, onDone }) {
                     تصاویر محصول دریافت‌شده
                   </p>
                   <p className="mt-0.5 text-[11px] text-gray-400">
-                    اختیاری؛ حداکثر ۴ تصویر JPG، PNG یا WebP
+                    اختیاری؛ حداکثر ۴ تصویر JPG، PNG، WebP یا AVIF
                   </p>
                 </div>
                 {images.length < MAX_IMAGES && (
@@ -237,7 +237,7 @@ export default function ReviewModal({ order, product, onClose, onDone }) {
                     افزودن عکس
                     <input
                       type="file"
-                      accept="image/jpeg,image/png,image/webp"
+                      accept="image/jpeg,image/png,image/webp,image/avif"
                       multiple
                       className="sr-only"
                       onChange={addImages}

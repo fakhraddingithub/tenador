@@ -45,7 +45,7 @@ const AttachmentUploader = ({ onChange, disabled = false, compact = false }) => 
 
   const uploadFile = async (file) => {
     if (!isAllowedFile(file)) {
-      toast.error('فقط تصویر (JPG/PNG/WebP) یا PDF مجاز است')
+      toast.error('فقط تصویر (JPG/PNG/WebP/AVIF/SVG) یا PDF مجاز است')
       return
     }
     if (file.size > MAX_SIZE) {

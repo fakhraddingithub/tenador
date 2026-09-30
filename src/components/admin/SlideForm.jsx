@@ -136,7 +136,7 @@ export default function SlideForm({ initialData = {}, mode = 'create', slideId }
               <label htmlFor="slide-img" className="flex flex-col items-center cursor-pointer text-gray-400 hover:text-[var(--color-primary)] transition-colors p-8">
                 <FiUploadCloud size={38} className="mb-3" />
                 <span className="text-sm font-bold">فایل را اینجا بکشید یا کلیک کنید</span>
-                <span className="text-xs mt-1 text-gray-300">حداکثر ۲ مگابایت — WebP، JPG، PNG</span>
+                <span className="text-xs mt-1 text-gray-300">حداکثر ۲ مگابایت — WebP، JPG، PNG، AVIF</span>
               </label>
             )}
             <input id="slide-img" type="file" className="hidden" onChange={handleImageChange} accept="image/*" />

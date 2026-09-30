@@ -32,6 +32,7 @@ const ALLOWED_MIME = [
   "image/jpg",
   "image/png",
   "image/webp",
+  "image/avif",
   "image/svg+xml",
   "application/pdf",
 ];
@@ -59,10 +60,10 @@ export async function POST(req) {
     // در این حالت به پسوند نام فایل اتکا می‌کنیم.
     const isAllowedType =
       ALLOWED_MIME.includes(file.type) ||
-      /\.(jpe?g|png|webp|svg|pdf)$/i.test(file.name || "");
+      /\.(jpe?g|png|webp|avif|svg|pdf)$/i.test(file.name || "");
     if (!isAllowedType) {
       return NextResponse.json(
-        { error: "فرمت فایل نامعتبر است. فقط تصویر (JPG/PNG/WebP) یا PDF مجاز است" },
+        { error: "فرمت فایل نامعتبر است. فقط تصویر (JPG/PNG/WebP/AVIF/SVG) یا PDF مجاز است" },
         { status: 415 }
       );
     }
