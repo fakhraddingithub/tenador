@@ -3,6 +3,7 @@ import mongoose from 'mongoose';
 import { DATASETS, LIMITS, recordPath } from '../src/lib/assistant/catalog.js';
 import { AssistantError, assert, compileQuery, escapeRegex, text, timeRange } from '../src/lib/assistant/validation.js';
 import { canAccessAdminRoute } from '../src/lib/permissions.js';
+import { datasetStages, compileAnalysis, analysisResult } from '../src/lib/assistant/analysis.js';
 
 const MAX_MS = 5000;
 const oid = (value) => new mongoose.Types.ObjectId(value);
@@ -19,12 +20,18 @@ function recordSource(name, row, permissions) {
   return source(permissions, title, recordPath(name, row), d.path);
 }
 function cleanRows(rows) {
-  return rows.map((row) => Object.fromEntries(Object.entries(row).map(([key, value]) => [key, typeof value === 'string' ? safeString(value) : value])));
+  const clean = (value) => {
+    if (typeof value === 'string') return safeString(value);
+    if (Array.isArray(value)) return value.map(clean);
+    if (value && Object.getPrototypeOf(value) === Object.prototype) return Object.fromEntries(Object.entries(value).map(([key, item]) => [key, clean(item)]));
+    return value;
+  };
+  return rows.map(clean);
 }
 
 export async function queryData(input, permissions) {
   const q = compileQuery(input, permissions, oid);
-  const prefix = [{ $match: q.filter }];
+  const prefix = [...datasetStages(q.definition), { $match: q.filter }];
   const baseSource = source(permissions, q.definition.title, q.definition.path);
   if (q.operation === 'count') {
     const rows = await aggregate(q.definition.model, [...prefix, { $count: 'count' }]);
@@ -126,6 +133,11 @@ export async function executeAssistantTool(input, permissions, now = new Date())
   assert(input && typeof input === 'object' && !Array.isArray(input));
   const allowed = new Set(permissions);
   if (input.tool === 'query') return queryData(input, permissions);
+  if (input.tool === 'analyze') {
+    const compiled = compileAnalysis(input, permissions, oid);
+    const rows = await aggregate(compiled.q.definition.model, compiled.pipeline);
+    return { data: analysisResult(compiled, rows[0] || {}), sources: [source(permissions, compiled.q.definition.title, compiled.q.definition.path)].filter(Boolean) };
+  }
   if (input.tool === 'activity') {
     if (!allowed.has('admins.viewActivity')) throw new AssistantError('مجوز مشاهدهٔ فعالیت ادمین‌ها لازم است.', 403);
     return activity(input, permissions, now);

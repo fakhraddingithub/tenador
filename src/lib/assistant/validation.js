@@ -1,4 +1,4 @@
-import { DATASETS, LIMITS, hasOwn } from './catalog.js';
+import { DATASETS, RELATIONS, LIMITS, hasOwn } from './catalog.js';
 
 export class AssistantError extends Error {
   constructor(message, status = 400) { super(message); this.status = status; }
@@ -53,8 +53,14 @@ export function timeRange(range = 'today', from = '', to = '', now = new Date())
 
 export function compileQuery(input, permissions, toId = (value) => value) {
   assert(plain(input) && hasOwn(DATASETS, input.dataset));
-  const d = DATASETS[input.dataset];
+  let d = DATASETS[input.dataset];
   if (!new Set(permissions).has(d.permission)) throw new AssistantError('دسترسی به این بخش مجاز نیست.', 403);
+  if (input.join) {
+    assert(hasOwn(RELATIONS, input.dataset) && hasOwn(RELATIONS[input.dataset], input.join));
+    const target = DATASETS[input.join];
+    if (!new Set(permissions).has(target.permission)) throw new AssistantError('دسترسی به دادهٔ مرتبط مجاز نیست.', 403);
+    d = { ...d, fields: { ...d.fields, ...Object.fromEntries(Object.entries(target.fields).map(([k,v]) => [`related.${k}`, v])) }, relation: { target: input.join, fields: target.fields, local: RELATIONS[input.dataset][input.join] } };
+  }
   const operation = input.operation;
   assert(['list', 'count', 'sum', 'group'].includes(operation));
   const filters = input.filters ?? [];
@@ -63,9 +69,18 @@ export function compileQuery(input, permissions, toId = (value) => value) {
     assert(plain(filter) && hasOwn(d.fields, filter.field));
     const { field, op } = filter;
     const type = d.fields[field];
-    assert(['eq', 'ne', 'contains', 'gte', 'lt'].includes(op));
+    assert(['eq', 'ne', 'contains', 'gte', 'lt', 'exists', 'in'].includes(op));
+    if (op === 'in') {
+      assert(Array.isArray(filter.values) && filter.values.length > 0 && filter.values.length <= LIMITS.rows);
+      const values = filter.values.map(value => {
+        const compiled = compileQuery({ dataset: input.dataset, join: input.join, operation: 'list', filters: [{ field, op: 'eq', value }] }, permissions, toId);
+        return compiled.filter.$and[0][field].$eq;
+      });
+      return { [field]: { $in: values } };
+    }
     assert(typeof filter.value === 'string');
     let value = text(filter.value, 120);
+    if (op === 'exists') { assert(['true', 'false'].includes(value)); return value === 'true' ? { [field]: { $exists: true, $ne: null } } : { [field]: null }; }
     if (type === 'id') { assert(/^[a-f\d]{24}$/i.test(value)); value = toId(value); }
     if (type === 'number') { assert(value !== '' && Number.isFinite(Number(value))); value = Number(value); }
     if (type === 'boolean') { assert(['true', 'false'].includes(value)); value = value === 'true'; }
