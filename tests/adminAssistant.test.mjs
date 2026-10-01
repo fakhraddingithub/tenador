@@ -4,6 +4,7 @@ import { AssistantError, compileQuery, readChatBody, timeRange, validateChat } f
 import { availableCatalog, DATASETS } from '../src/lib/assistant/catalog.js';
 import { runAssistant } from '../src/lib/assistant/orchestrator.js';
 import { compileAnalysis } from '../src/lib/assistant/analysis.js';
+import { classifyGeminiError, readProviderError } from '../src/lib/assistant/providerErrors.js';
 import { canAccessAdminRoute, getAllPermissionKeys } from '../src/lib/permissions.js';
 
 test('query compiler fails closed for permissions, schema fields and injection', () => {
@@ -137,4 +138,30 @@ test('batch id filters are typed and bounded, never interpreted as Mongo operato
   for (const values of [[], Array(9).fill('123456789012345678901234'), [{ $ne: null }], ['$where']]) {
     assert.throws(() => compileQuery({ ...q, filters: [{ field: '_id', op: 'in', values }] }, ['products.view']));
   }
+});
+
+test('provider errors distinguish credentials, schema, model, quota and region without echoing secrets', () => {
+  for (const [status, message, expected] of [
+    [403, 'Your API key was reported as leaked. secret-example', 'KEY_BLOCKED'],
+    [400, 'API key not valid. secret-example', 'KEY_INVALID'],
+    [400, 'User location is not supported for the API use.', 'REGION_UNSUPPORTED'],
+    [400, 'Invalid JSON payload: generationConfig.responseSchema secret-example', 'REQUEST_SCHEMA'],
+    [404, 'models/example not found', 'MODEL_UNAVAILABLE'],
+    [429, 'Quota exceeded', 'QUOTA'],
+    [403, 'Permission denied secret-example', 'PERMISSION_DENIED'],
+    [403, 'API has not been used in project secret-example', 'API_DISABLED'],
+    [400, 'Please enable billing', 'BILLING'],
+  ]) {
+    const error = classifyGeminiError(status, { error: { message } });
+    assert.equal(error.code, `GEMINI_${expected}`);
+    assert.ok(!error.message.includes('secret-example'));
+    assert.equal(error.providerStatus, status);
+  }
+  assert.equal(classifyGeminiError(403, null).code, 'GEMINI_ACCESS_DENIED');
+});
+
+test('provider error bodies are bounded and HTML errors are handled safely', async () => {
+  assert.equal(await readProviderError(new Response('<html>403 Forbidden</html>')), null);
+  assert.equal(await readProviderError(new Response('x'.repeat(17000))), null);
+  assert.deepEqual(await readProviderError(new Response('{"error":{"message":"bad"}}')), { error: { message: 'bad' } });
 });
