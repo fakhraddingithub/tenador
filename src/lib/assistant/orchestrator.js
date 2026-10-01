@@ -8,20 +8,16 @@ export const PLAN_SCHEMA = {
     followUp: { type: 'BOOLEAN' },
     queries: { type: 'ARRAY', maxItems: LIMITS.queries, items: { type: 'OBJECT', properties: {
       tool: { type: 'STRING', enum: ['query', 'analyze', 'activity', 'finance'] },
-      dataset: str, operation: str, join: str,
-      filters: { type: 'ARRAY', maxItems: LIMITS.filters, items: { type: 'OBJECT', properties: { field: str, op: { type: 'STRING', enum: ['eq', 'ne', 'contains', 'gte', 'lt', 'exists', 'in'] }, value: str, values: { type: 'ARRAY', maxItems: LIMITS.rows, items: str } }, required: ['field', 'op'] } },
-      metric: str, groupBy: str, sortBy: str, direction: { type: 'INTEGER', minimum: -1, maximum: 1 }, limit: { type: 'INTEGER', minimum: 1, maximum: LIMITS.rows },
-      metrics: { type: 'ARRAY', maxItems: 4, items: { type: 'OBJECT', properties: { op: { type: 'STRING', enum: ['count', 'sum', 'avg', 'min', 'max', 'distinct'] }, field: str }, required: ['op'] } },
-      bucket: { type: 'STRING', enum: ['day', 'week', 'month', 'year'] }, sortMetric: { type: 'INTEGER', minimum: 0, maximum: 3 }, dateField: str,
-      periods: { type: 'ARRAY', maxItems: 2, items: { type: 'OBJECT', properties: { from: str, to: str }, required: ['from', 'to'] } },
-      actor: str, entity: str, range: { type: 'STRING', enum: ['today', 'yesterday', 'last7days', 'last30days', 'custom'] }, from: str, to: str,
-      currency: { type: 'STRING', enum: ['IRT', 'EUR'] },
-    }, required: ['tool'] } },
+      // Keep the provider's constrained schema small. Tool arguments are still
+      // parsed as data and fully checked by our server-side read-only compilers.
+      argumentsJson: str,
+    }, required: ['tool', 'argumentsJson'] } },
   }, required: ['queries', 'followUp', 'clarification'],
 };
 export const ANSWER_SCHEMA = { type: 'OBJECT', properties: { answer: str, sourceIds: { type: 'ARRAY', items: str, maxItems: 8 } }, required: ['answer', 'sourceIds'] };
 
-const ROUTER = `You are JEV, a read-only router for a Persian store admin. Output a minimal query plan, no reasoning.
+const ROUTER = String.raw`You are JEV, a read-only router for a Persian store admin. Output a minimal query plan, no reasoning.
+Return queries as [{"tool":"query","argumentsJson":"{\"dataset\":\"orders\",\"operation\":\"count\"}"}], followUp:boolean, clarification:string (empty unless a question/refusal is needed). argumentsJson is a JSON-encoded OBJECT containing only the selected tool's arguments described below; omit tool inside it. Do not encode code or raw Mongo stages. Omit unused optional arguments.
 Choose ONLY permitted datasets/tools. Never write, execute code, or generate raw Mongo queries. For changes/out-of-scope/ambiguity return clarification in Persian and queries=[].
 query: dataset, operation=list/count/sum/group, AND filters=[{field,op:eq/ne/contains/gte/lt/exists,value:string}], limit<=8, sortBy, direction=-1 newest/largest. exists takes true/false (false includes null). sum needs numeric metric; group needs groupBy and optional metric. Count/sum operate on ALL matches, lists are samples. Use count for how many, never count a sample. Fields marked id need exact 24-char ids: look up names first, then followUp=true. Never guess ids.
 analyze: available for EVERY permitted dataset, not just finance. metrics=[{op:count/sum/avg/min/max/distinct,field}] up to 4; optional groupBy, date bucket=day/week/month/year, sortMetric=0..3, direction,limit<=8. All metrics cover ALL matching records. For time comparison use dateField and periods=[{from,to},{from,to}] with ISO offsets, first baseline then comparison. Server computes exact totals, difference and percent change. Buckets are Gregorian in Tehran; for Persian months supply explicit date periods. Use this for product rankings, user growth, ticket breakdowns, review ratings, discounts, order items, checks, or any supported business question.
@@ -63,7 +59,8 @@ export async function runAssistant({ message, history, permissions, actorId, gen
     }
     // Sequential bounded reads keep the small shared DB pool available to the storefront.
     let newReads = 0;
-    for (const query of plan.queries) {
+    for (const encoded of plan.queries) {
+      const query = decodeToolQuery(encoded);
       const key = JSON.stringify(query);
       if (executed.has(key)) continue;
       if (executed.size >= LIMITS.totalQueries) break;
@@ -98,4 +95,16 @@ export async function runAssistant({ message, history, permissions, actorId, gen
   const ids = Array.isArray(response.value.sourceIds) ? response.value.sourceIds.slice(0, 8) : [];
   const selected = sources.filter((s) => ids.includes(s.id));
   return pack(response.value.answer.slice(0, 2500), (selected.length ? selected : sources).slice(0, 8));
+}
+
+export function decodeToolQuery(encoded) {
+  assert(plain(encoded), 'ساختار ابزار در پاسخ مدل نامعتبر است.');
+  // Accept the legacy shape for existing integrations; it uses the same validators.
+  if (!Object.hasOwn(encoded, 'argumentsJson')) return encoded;
+  assert(typeof encoded.argumentsJson === 'string' && encoded.argumentsJson.length <= 10000, 'پارامترهای ابزار بیش از حد بزرگ یا نامعتبرند.');
+  let args;
+  try { args = JSON.parse(encoded.argumentsJson); } catch { throw new AssistantError('پارامترهای ابزار JSON معتبر نیستند؛ دوباره تلاش کنید.'); }
+  assert(plain(args), 'پارامترهای ابزار باید یک شیء JSON باشند.');
+  assert(!Object.hasOwn(args, 'tool'), 'نام ابزار نباید داخل پارامترها تکرار شود.');
+  return { ...args, tool: encoded.tool };
 }

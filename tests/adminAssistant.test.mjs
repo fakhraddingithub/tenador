@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { AssistantError, compileQuery, readChatBody, timeRange, validateChat } from '../src/lib/assistant/validation.js';
 import { availableCatalog, DATASETS } from '../src/lib/assistant/catalog.js';
-import { runAssistant } from '../src/lib/assistant/orchestrator.js';
+import { runAssistant, decodeToolQuery, PLAN_SCHEMA } from '../src/lib/assistant/orchestrator.js';
 import { compileAnalysis } from '../src/lib/assistant/analysis.js';
 import { classifyGeminiError, readProviderError } from '../src/lib/assistant/providerErrors.js';
 import { canAccessAdminRoute, getAllPermissionKeys } from '../src/lib/permissions.js';
@@ -164,4 +164,33 @@ test('provider error bodies are bounded and HTML errors are handled safely', asy
   assert.equal(await readProviderError(new Response('<html>403 Forbidden</html>')), null);
   assert.equal(await readProviderError(new Response('x'.repeat(17000))), null);
   assert.deepEqual(await readProviderError(new Response('{"error":{"message":"bad"}}')), { error: { message: 'bad' } });
+});
+
+test('compact provider schema decodes read plans without permitting arbitrary execution', () => {
+  assert.ok(JSON.stringify(PLAN_SCHEMA).length < 600);
+  const query = decodeToolQuery({ tool: 'analyze', argumentsJson: JSON.stringify({ dataset: 'orders', metrics: [{ op: 'sum', field: 'totalPrice' }] }) });
+  assert.equal(compileAnalysis(query, ['orders.view']).metrics[0].field, 'totalPrice');
+  for (const argumentsJson of ['null', '[]', '{bad', 'x'.repeat(10001), '{"tool":"delete"}']) {
+    assert.throws(() => decodeToolQuery({ tool: 'query', argumentsJson }));
+  }
+  const forbidden = decodeToolQuery({ tool: 'query', argumentsJson: '{"dataset":"orders","operation":"delete"}' });
+  assert.throws(() => compileQuery(forbidden, ['orders.view']));
+  assert.throws(() => compileAnalysis(query, ['users.view']), e => e.status === 403);
+});
+
+test('planner prompt contains a valid wire-format example and tools receive decoded arguments', async () => {
+  let calls = 0;
+  const result = await runAssistant({ message: 'چند سفارش؟', history: [], permissions: ['orders.view'],
+    generate: async ({ system, schema }) => {
+      calls++;
+      if (calls === 1) {
+        assert.deepEqual(schema, PLAN_SCHEMA);
+        const example = JSON.parse(system.match(/Return queries as (\[.*\]), followUp:/)[1]);
+        assert.equal(decodeToolQuery(example[0]).dataset, 'orders');
+        return { tokens: 1, value: { queries: example, clarification: '', followUp: false } };
+      }
+      return { tokens: 1, value: { answer: '۷ سفارش ثبت شده است.', sourceIds: [] } };
+    }, execute: async q => { assert.deepEqual(q, { tool: 'query', dataset: 'orders', operation: 'count' }); return { data: { count: 7 }, sources: [] }; },
+  });
+  assert.equal(result.calls, 2);
 });
