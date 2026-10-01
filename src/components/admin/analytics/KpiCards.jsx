@@ -52,7 +52,7 @@ function KpiCard({ cfg, data }) {
           : <TrendBadge change={change} invert={cfg.invert} size="xs" />}
       </div>
 
-      <p className="text-[11px] font-bold text-gray-400 mt-3">{isEuro && cfg.key === "outstanding" ? "مانده‌ی وصول‌نشده" : cfg.label}</p>
+      <p className="text-[11px] font-bold text-gray-400 mt-3">{isEuro ? ({ collected: "وصول‌شده در بازه", outstanding: "مانده‌ی سفارش‌های بازه", collectionRate: "نرخ وصول سفارش‌های بازه" }[cfg.key] || cfg.label) : cfg.label}</p>
       <p className="text-lg font-black text-gray-800 mt-0.5 leading-tight">
         {cfg.isGrowth ? pct(value) : formatValue(value)}
         {cfg.unit && !cfg.isGrowth ? <span className="text-[10px] font-bold text-gray-400 mr-1">{money ? unit : cfg.unit}</span> : null}

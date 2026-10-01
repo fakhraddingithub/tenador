@@ -26,10 +26,10 @@ before(async () => {
   await db.collection("brands").insertOne({ _id: brand, name: "Test brand" });
   const order = (extra) => ({ _id: oid(), trackingCode: String(oid()), user, createdAt: new Date("2026-09-10T12:00:00Z"), totalPrice: 1000000, fulfillmentStatus: "PROCESSING", items: [{ product, unitPrice: 500000, quantity: 2 }], ...extra });
   const paid = oid();
-  const mixed = order({ priceEUR: 100.75, payments: [paid], paymentsEUR: [{ amount: 20.1 }, { amount: 10.15 }], items: [{ product, unitPrice: 888888, priceEUR: 25.25, quantity: 2 }, { product, unitPrice: 999999, quantity: 1 }] });
+  const mixed = order({ priceEUR: 100.75, payments: [paid], paymentsEUR: [{ amount: 20.1, confirmedAt: from }, { amount: 10.15, createdAt: to }], items: [{ product, unitPrice: 888888, priceEUR: 25.25, quantity: 2 }, { product, unitPrice: 999999, quantity: 1 }] });
   await db.collection("orders").insertMany([
     mixed,
-    order({ priceEUR: 10.25, paymentsEUR: [{ amount: 50 }] }),
+    order({ priceEUR: 10.25, paymentsEUR: [{ amount: 50, confirmedAt: from }] }),
     order({ priceEUR: 0, paymentsEUR: [] }),
     order({ priceEUR: null, paymentsEUR: [{ amount: 77777 }] }),
     order({}),
@@ -48,7 +48,8 @@ test("EUR uses admin order amounts/payments, excludes absent and cancelled price
   assert.equal(d.kpis.orders.value, 3);
   assert.equal(d.kpis.revenue.value, 111);
   assert.equal(d.kpis.revenue.prev, 40.25);
-  assert.equal(d.kpis.collected.value, 40.5);
+  assert.equal(d.kpis.collected.value, 80.25);
+  assert.equal(d.collections.count, 3);
   assert.equal(d.kpis.outstanding.value, 70.5);
   assert.equal(d.kpis.aov.value, 37);
   assert.equal(d.revenue.daily[0].revenue, 111);
@@ -80,6 +81,8 @@ test("Empty EUR range returns empty charts and zero KPIs", async () => {
   assert.equal(d.kpis.orders.value, 0);
   assert.equal(d.kpis.revenue.value, 0);
   assert.equal(d.kpis.aov.value, 0);
+  assert.equal(d.kpis.collected.value, 0);
+  assert.deepEqual(d.collections, { total: 0, count: 0, daily: [] });
   assert.deepEqual(d.revenue.daily, []);
   assert.deepEqual(d.products.list, []);
 });
@@ -96,7 +99,40 @@ test("Export datasets preserve EUR cents and labels without changing Toman round
   assert.equal(euro.receivables.rows[0].overdue, "—");
   assert.ok(euro.products.columns.find((c) => c.key === "revenue").label.includes("یورو"));
   assert.ok(euro.revenue.columns[1].label.includes("یورو"));
+  assert.equal(euro.collections.rows.reduce((sum, r) => sum + r.amount, 0), 80.25);
   const toman = buildDatasets({ ...data, meta: { currency: "IRT" } });
   assert.equal(toman.products.rows[0].revenue, 51);
   assert.ok(toman.revenue.columns[1].label.includes("تومان"));
+});
+
+test("Recent receipts on old unpriced orders use payment dates, not order or edit dates", async () => {
+  const orders = mongoose.connection.db.collection("orders");
+  const id = oid(), cancelledId = oid();
+  const before = await computeAnalytics({ from, to, currency: "EUR" });
+  const old = new Date("2025-01-01T00:00:00Z");
+  const after = new Date(to.getTime() + 1);
+  try {
+    await orders.insertMany([
+      { _id: id, trackingCode: String(id), user: oid(), createdAt: old, updatedAt: from, fulfillmentStatus: "PROCESSING", totalPrice: 900000,
+        paymentsEUR: [
+          { amount: 12.15, confirmedAt: from, createdAt: old },
+          { amount: 7.2, createdAt: to },
+          { amount: 30.45, confirmedAt: new Date(from.getTime() - 1), updatedAt: from },
+          { amount: 500, confirmedAt: after, createdAt: from },
+          { amount: 900, updatedAt: from },
+        ],
+      },
+      { _id: cancelledId, trackingCode: String(cancelledId), createdAt: old, fulfillmentStatus: "CANCELED", paymentsEUR: [{ amount: 9999, confirmedAt: from }] },
+    ]);
+    const result = await computeAnalytics({ from, to, currency: "EUR" });
+    assert.equal(result.kpis.collected.value, 99.6);
+    assert.equal(result.kpis.collected.prev, 30.45);
+    assert.equal(result.collections.count, 5);
+    assert.equal(result.kpis.revenue.value, before.kpis.revenue.value);
+    assert.equal(result.kpis.orders.value, before.kpis.orders.value);
+    assert.equal(result.kpis.collectionRate.value, before.kpis.collectionRate.value);
+    assert.equal(result.kpis.outstanding.value, before.kpis.outstanding.value);
+  } finally {
+    await orders.deleteMany({ _id: { $in: [id, cancelledId] } });
+  }
 });

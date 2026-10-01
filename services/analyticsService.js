@@ -11,6 +11,9 @@
  *   نرخ وصول (collectRate) = collected / revenue
  *
  * مانده‌ی معوق و سررسیدها از چک‌های اقساطی (با dueDate) محاسبه می‌شود.
+ * در تب EUR، کارت وصول‌شده و نمودار پرداخت‌ها از تاریخ خود paymentsEUR
+ * محاسبه می‌شوند، حتی برای سفارش قدیمی یا فاقد priceEUR. فروش، مانده و نرخ
+ * وصول همچنان مربوط به گروه سفارش‌های ایجادشده در بازه هستند.
  */
 
 import { getCategoryLabel } from "base/utils/categoryLabel";
@@ -18,7 +21,7 @@ import connectToDB from "base/configs/db";
 import "base/models/registerModels";
 import Order from "base/models/Order";
 import Installment from "base/models/Installment";
-import { aggregateEuroOrders, euroPaymentStages, euroReceivables } from "base/services/euroAnalytics";
+import { aggregateEuroOrders, euroPaymentStages, euroReceivables, euroCollections } from "base/services/euroAnalytics";
 
 // Currency is request-local; Toman pipelines keep their original behavior.
 function aggregateOrders(currency, pipeline) {
@@ -616,6 +619,8 @@ export async function computeAnalytics({ from, to, currency = "IRT" }) {
     customers,
     pcb,
     growth,
+    collections,
+    prevCollections,
   ] = await Promise.all([
     coreMetrics(from, to, currency),
     coreMetrics(prevFrom, prevTo, currency),
@@ -627,12 +632,17 @@ export async function computeAnalytics({ from, to, currency = "IRT" }) {
     customerAnalytics(from, to, currency),
     productCategoryBrand(from, to, currency),
     growthBlocks(now, currency),
+    currency === "EUR" ? euroCollections(from, to) : null,
+    currency === "EUR" ? euroCollections(prevFrom, prevTo) : null,
   ]);
+
+  const collected = collections?.total ?? core.collected;
+  const prevCollected = prevCollections?.total ?? prevCore.collected;
 
   // KPIهای اجراییِ با مقایسه‌ی بازه‌ی قبل
   const kpis = {
     revenue: { value: core.revenue, prev: prevCore.revenue, change: pctChange(core.revenue, prevCore.revenue) },
-    collected: { value: core.collected, prev: prevCore.collected, change: pctChange(core.collected, prevCore.collected) },
+    collected: { value: collected, prev: prevCollected, change: pctChange(collected, prevCollected) },
     outstanding: { value: core.outstanding, prev: prevCore.outstanding, change: pctChange(core.outstanding, prevCore.outstanding) },
     orders: { value: core.orders, prev: prevCore.orders, change: pctChange(core.orders, prevCore.orders) },
     aov: { value: core.aov, prev: prevCore.aov, change: pctChange(core.aov, prevCore.aov) },
@@ -659,6 +669,7 @@ export async function computeAnalytics({ from, to, currency = "IRT" }) {
     },
     kpis,
     revenue: { daily, monthly },
+    ...(collections ? { collections } : {}),
     heatmap,
     receivables: recv,
     customers,

@@ -52,6 +52,7 @@ export default function ExportMenu({ data, rangeLabel, disabled }) {
           <div className="my-1 border-t border-gray-100" />
           <p className="px-3 py-1 text-[10px] font-bold text-gray-400">CSV</p>
           <MenuItem icon={FileText} label="درآمد روزانه" onClick={() => csv("revenue", "درآمد")} />
+          {data?.meta?.currency === "EUR" && <MenuItem icon={FileText} label="پرداخت‌های یورویی" onClick={() => csv("collections", "پرداخت‌های-یورویی")} />}
           <MenuItem icon={FileText} label="مشتریان برتر" onClick={() => csv("customers", "مشتریان")} />
           <MenuItem icon={FileText} label="محصولات" onClick={() => csv("products", "محصولات")} />
           <MenuItem icon={FileText} label="مطالبات" onClick={() => csv("receivables", "مطالبات")} />

@@ -20,6 +20,7 @@ import { faDate } from "./format";
 import { useAdminPermissions } from "@/components/admin/AdminPermissionProvider";
 import { AnalyticsCurrencyContext } from "./CurrencyContext";
 import EuroReceivables from "./EuroReceivables";
+import EuroCollections from "./EuroCollections";
 
 export default function AnalyticsDashboard() {
   const { can } = useAdminPermissions();
@@ -110,7 +111,9 @@ export default function AnalyticsDashboard() {
       <div id="analytics-panel" role="tabpanel" aria-labelledby={`analytics-tab-${currency}`} className="space-y-5">
       {currency === "EUR" && <p className="rounded-xl bg-amber-50 border border-amber-100 p-3 text-xs leading-6 text-amber-900">
         منبع مبالغ فقط اطلاعات یورویی ثبت‌شده توسط ادمین در سفارش‌هاست؛ قیمت محصولات و تبدیل تومان استفاده نمی‌شود.
-        سفارش‌های بدون مبلغ یورویی در این آمار نیستند. تحلیل محصول، دسته و برند فقط اقلام دارای قیمت یورویی ثبت‌شده را شامل می‌شود؛ بنابراین جمع آن می‌تواند با مبلغ کل سفارش‌ها متفاوت باشد. مبالغ به یورو هستند.
+        وصول‌شده بر اساس تاریخ ثبت پرداخت است و پرداخت سفارش‌های قدیمی یا بدون مبلغ کل یورویی را هم شامل می‌شود.
+        فروش، تعداد سفارش، مانده و نرخ وصول سفارش‌های بازه بر اساس تاریخ ایجاد سفارش و مبلغ کل یورویی هستند؛ نرخ وصول، نسبت پرداخت‌های همان سفارش‌ها به مبلغ آن‌هاست.
+        تحلیل محصول، دسته و برند فقط اقلام دارای قیمت یورویی ثبت‌شده را شامل می‌شود؛ بنابراین جمع آن می‌تواند با مبلغ کل سفارش‌ها متفاوت باشد. مبالغ به یورو هستند.
       </p>}
       {/* Global filter */}
       <GlobalFilter preset={preset} range={range} onChange={onFilterChange} onRefresh={() => fetchData(range)} loading={loading} />
@@ -130,6 +133,7 @@ export default function AnalyticsDashboard() {
           </FadeIn>
 
           {/* Insights */}
+          {currency === "EUR" && <EuroCollections data={data?.collections} loading={loading} />}
           {!loading && data?.insights?.length > 0 && (
             <FadeIn delay={0.05}><InsightCards insights={data.insights} loading={loading} /></FadeIn>
           )}

@@ -90,6 +90,14 @@ export function buildDatasets(data) {
     },
   };
   if (isEuro) {
+    datasets.collections = {
+      columns: [
+        { key: "date", label: "تاریخ ثبت پرداخت" },
+        { key: "amount", label: "وصول‌شده (یورو)" },
+        { key: "count", label: "تعداد پرداخت" },
+      ],
+      rows: data?.collections?.daily || [],
+    };
     for (const dataset of Object.values(datasets)) {
       for (const column of dataset.columns) {
         if (["rangeRevenue", "lifetimeRevenue", "revenue", "avgPrice", "amount"].includes(column.key) && !column.label.includes(unit)) column.label += ` (${unit})`;
@@ -112,13 +120,13 @@ export async function exportWorkbook(data, rangeLabel) {
     [],
     ["معیار", "مقدار", "تغییر ٪"],
     ["درآمد کل", k.revenue?.value ?? 0, k.revenue?.change ?? ""],
-    ["وصول‌شده", k.collected?.value ?? 0, k.collected?.change ?? ""],
+    [data?.meta?.currency === "EUR" ? "وصول‌شده بر اساس تاریخ ثبت پرداخت" : "وصول‌شده", k.collected?.value ?? 0, k.collected?.change ?? ""],
     [data?.meta?.currency === "EUR" ? "مانده‌ی وصول‌نشده" : "مطالبات معوق", k.outstanding?.value ?? 0, k.outstanding?.change ?? ""],
     ["تعداد سفارش", k.orders?.value ?? 0, k.orders?.change ?? ""],
     ["میانگین ارزش سفارش", k.aov?.value ?? 0, k.aov?.change ?? ""],
     ["مشتریان فعال", k.customers?.value ?? 0, ""],
     ["مشتریان جدید", k.newCustomers?.value ?? 0, ""],
-    ["نرخ وصول (٪)", k.collectionRate?.value ?? 0, ""],
+    [data?.meta?.currency === "EUR" ? "نرخ وصول سفارش‌های بازه (٪)" : "نرخ وصول (٪)", k.collectionRate?.value ?? 0, ""],
   ];
   XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(summary), "خلاصه");
 
@@ -130,6 +138,7 @@ export async function exportWorkbook(data, rangeLabel) {
   sheetFor("مشتریان", ds.customers);
   sheetFor("محصولات", ds.products);
   sheetFor("مطالبات", ds.receivables);
+  if (ds.collections) sheetFor("پرداخت‌های یورویی", ds.collections);
 
   const out = XLSX.write(wb, { bookType: "xlsx", type: "array" });
   downloadBlob(new Blob([out], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" }), `تحلیل-مالی-${Date.now()}.xlsx`);
@@ -177,15 +186,16 @@ export function exportPdf(data, rangeLabel) {
     <thead><tr><th>معیار</th><th style="text-align:left">مقدار</th><th style="text-align:left">تغییر</th></tr></thead>
     <tbody>
       ${kpiRow(`درآمد کل (${unit})`, k.revenue?.value, k.revenue?.change)}
-      ${kpiRow("وصول‌شده", k.collected?.value, k.collected?.change)}
+      ${kpiRow(isEuro ? "وصول‌شده بر اساس تاریخ ثبت پرداخت" : "وصول‌شده", k.collected?.value, k.collected?.change)}
       ${kpiRow(isEuro ? "مانده‌ی وصول‌نشده" : "مطالبات معوق", k.outstanding?.value, k.outstanding?.change)}
       ${kpiRow("تعداد سفارش", k.orders?.value, k.orders?.change)}
       ${kpiRow("میانگین ارزش سفارش", k.aov?.value, k.aov?.change)}
-      ${kpiRow("نرخ وصول (٪)", k.collectionRate?.value, null)}
+      ${kpiRow(isEuro ? "نرخ وصول سفارش‌های بازه (٪)" : "نرخ وصول (٪)", k.collectionRate?.value, null)}
     </tbody>
   </table>
   ${table("محصولات برتر", { columns: ds.products.columns, rows: data?.products?.top?.map((p) => ({ name: p.name, brandName: p.brandName, categoryName: p.categoryName, units: p.units, revenue: isEuro ? p.revenue : Math.round(p.revenue), avgPrice: p.avgPrice, contribution: p.contribution })) || [] })}
   ${table("مشتریان برتر", ds.customers)}
+  ${ds.collections ? table("پرداخت‌های یورویی بر اساس تاریخ ثبت پرداخت", ds.collections, ds.collections.rows.length) : ""}
   ${table(isEuro ? "مانده‌ی وصول‌نشده" : "مطالبات معوق", ds.receivables)}
   <script>window.onload = () => { window.print(); };</script>
 </body></html>`);
