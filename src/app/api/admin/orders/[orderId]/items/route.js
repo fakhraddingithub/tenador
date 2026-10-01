@@ -37,6 +37,7 @@ import { computeCartPrice } from "base/services/priceEngine";
 import { recalcAndApply } from "base/services/orderRecalc";
 import { applyOrderEurTotal } from "base/services/orderEurRecalc";
 import { buildVariantSnapshot } from "@/lib/variantImages";
+import { validateAdminItemFlow, mapAdminFlowSelection } from "base/services/adminOrderItemFlow";
 
 import { acquireTrackingMutation } from "base/services/orderTrackingMutation";
 import { manualTrackingCount, lineTracking } from "@/lib/manualTracking";
@@ -63,20 +64,23 @@ export async function POST(req, { params }) {
 
     release = await acquireTrackingMutation(orderId);
     const body = await req.json();
-    const { productId, variantId, quantity } = body;
+    const { productId, variantId, quantity, flowSelections = [] } = body;
 
     if (!isId(productId)) {
       return NextResponse.json({ message: "شناسه محصول نامعتبر است" }, { status: 400 });
     }
-    const qty = Math.floor(Number(quantity));
-    if (!Number.isFinite(qty) || qty < 1) {
+    const qty = Number(quantity);
+    if (!Number.isSafeInteger(qty) || qty < 1) {
       return NextResponse.json({ message: "تعداد باید عددی صحیح و حداقل ۱ باشد" }, { status: 400 });
     }
 
     // محصول و (در صورت وجود) واریانت باید معتبر باشند و واریانت متعلق به همین محصول باشد
-    const product = await Product.findById(productId).select("_id name variants").lean();
+    const product = await Product.findById(productId).select("_id name variants category").lean();
     if (!product) {
       return NextResponse.json({ message: "محصول یافت نشد" }, { status: 404 });
+    }
+    if (!variantId && await Variant.exists({ productId })) {
+      return NextResponse.json({ message: "لطفاً یک واریانت انتخاب کنید" }, { status: 400 });
     }
     if (variantId) {
       if (!isId(variantId)) {
@@ -90,6 +94,8 @@ export async function POST(req, { params }) {
         );
       }
     }
+
+    const validatedSelections = await validateAdminItemFlow(product, flowSelections);
 
     // اسنپ‌شاتِ واریانت برای نمایشِ پایدارِ سفارش (تصویر/چندواحدی)
     let variantSnapshot = [];
@@ -122,7 +128,7 @@ export async function POST(req, { params }) {
     let priceResult;
     try {
       priceResult = await computeCartPrice(
-        [{ productId: String(productId), variantId: variantId ? String(variantId) : null, quantity: qty, itemType: "product" }],
+        [{ productId: String(productId), variantId: variantId ? String(variantId) : null, quantity: qty, itemType: "product", flowSelections: validatedSelections }],
         userCtx,
         null // بدون اعمال مجددِ کوپن روی آیتمِ افزوده‌شده
       );
@@ -130,6 +136,9 @@ export async function POST(req, { params }) {
       return NextResponse.json({ message: err.message || "خطا در محاسبه قیمت آیتم" }, { status: 400 });
     }
 
+    if (priceResult?.flowConfigErrors?.length) {
+      return NextResponse.json({ message: priceResult.flowConfigErrors.join(" ") }, { status: 400 });
+    }
     const priced = priceResult?.items?.[0];
     if (!priced) {
       return NextResponse.json({ message: "محاسبه قیمت آیتم ناموفق بود" }, { status: 400 });
@@ -165,7 +174,7 @@ export async function POST(req, { params }) {
         unitPrice,
         unitDiscount,
         basePriceToman,
-        flowSelections: [],
+        flowSelections: (priced.flowSelections || []).map(mapAdminFlowSelection),
         variantSnapshot,
       });
 

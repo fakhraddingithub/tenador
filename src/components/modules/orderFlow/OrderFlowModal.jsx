@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useId, useMemo, useRef, useState } from "react";
 import { FiX, FiChevronLeft, FiChevronRight, FiCheck, FiSettings, FiTag } from "react-icons/fi";
 import { toast } from "react-toastify";
 import { buildStepSequence } from "@/lib/flowTraversal";
@@ -27,7 +27,14 @@ export default function OrderFlowModal({
   variantId = null,
   onConfirm,
   flow: flowProp = null, // فرایند از پیش واکشی‌شده (اختیاری) — از واکشی دوباره جلوگیری می‌کند
+  confirmLabel = "تایید و افزودن به سبد",
+  confirmErrorMessage = "خطا در افزودن به سبد خرید",
+  overlayClassName = "z-[110]",
+  onBackToProduct,
+  productSummary,
 }) {
+  const titleId = useId();
+  const submitLock = useRef(false);
   const [loading, setLoading] = useState(false);
   const [flow, setFlow] = useState(flowProp);
   const [currentIndex, setCurrentIndex] = useState(0);
@@ -63,18 +70,21 @@ export default function OrderFlowModal({
   // ─── تکمیل نهایی: صدا زدن onConfirm و بستن مودال ───
   const handleComplete = useCallback(
     async (flowSelections) => {
+      if (submitLock.current) return;
+      submitLock.current = true;
       setSubmitting(true);
       try {
         await onConfirm?.(flowSelections);
         onClose?.();
       } catch (err) {
         console.error("OrderFlowModal: confirm failed", err);
-        toast.error("خطا در افزودن به سبد خرید");
+        toast.error(err.message || confirmErrorMessage);
       } finally {
+        submitLock.current = false;
         setSubmitting(false);
       }
     },
-    [onConfirm, onClose]
+    [onConfirm, onClose, confirmErrorMessage]
   );
 
   // ─── واکشی فرایند هنگام باز شدن ───
@@ -145,12 +155,14 @@ export default function OrderFlowModal({
     currentIncomplete;
 
   // ─── ناوبری ───
-  const advance = () => {
-    if (isLastStep) {
-      finalize();
-    } else {
-      setCurrentIndex(Math.min(safeIndex + 1, steps.length - 1));
-    }
+  const advance = (nextSelections = selections) => {
+    if (submitLock.current) return;
+    const visible = resolveVisibleSteps(allSteps, nextSelections).visibleNodes;
+    const currentPosition = allSteps.findIndex((node) => node.id === currentNode?.id);
+    const nextIndex = visible.findIndex((node) => allSteps.indexOf(node) > currentPosition);
+    if (nextIndex < 0) {
+      handleComplete(visible.map((node) => nextSelections[node.id]).filter(Boolean));
+    } else setCurrentIndex(nextIndex);
   };
 
   const goNext = () => {
@@ -162,25 +174,18 @@ export default function OrderFlowModal({
     advance();
   };
 
-  const goBack = () => setCurrentIndex(Math.max(safeIndex - 1, 0));
-
-  const skipStep = () => {
-    if (currentNode) {
-      setSelections((prev) => {
-        const next = { ...prev };
-        delete next[currentNode.id]; // رد کردن = حذف انتخاب
-        return next;
-      });
-    }
-    advance(); // رد کردن، اعتبارسنجی واریانت را دور می‌زند
+  const goBack = () => {
+    if (submitLock.current) return;
+    if (safeIndex === 0 && onBackToProduct) onBackToProduct();
+    else setCurrentIndex(Math.max(safeIndex - 1, 0));
   };
 
-  // ─── تایید نهایی: ساخت آرایه‌ی انتخاب‌ها به ترتیب مراحل ───
-  const finalize = async () => {
-    const ordered = steps
-      .map((node) => selections[node.id])
-      .filter(Boolean);
-    await handleComplete(ordered);
+  const skipStep = () => {
+    if (submitLock.current) return;
+    const next = { ...selections };
+    if (currentNode) delete next[currentNode.id];
+    setSelections(next);
+    advance(next); // شرط‌ها و ثبت نهایی باید انتخابِ حذف‌شده را نادیده بگیرند.
   };
 
   const progress =
@@ -188,25 +193,29 @@ export default function OrderFlowModal({
 
   return (
     <div
-      className="fixed inset-0 z-[110] bg-black/40 backdrop-blur-sm flex items-end sm:items-center justify-center sm:px-4 animate-fade-in"
-      onClick={onClose}
+      className={`fixed inset-0 ${overlayClassName} bg-black/40 backdrop-blur-sm flex items-end sm:items-center justify-center sm:px-4 animate-fade-in`}
+      dir="rtl"
+      onClick={() => { if (!submitLock.current) onClose?.(); }}
     >
       <div
         className="w-full sm:max-w-2xl bg-white rounded-t-[16px] sm:rounded-[8px] shadow-xl animate-scale-in flex flex-col h-[88vh] sm:h-[620px] max-h-[90vh]"
         onClick={(e) => e.stopPropagation()}
+        role="dialog" aria-modal="true" aria-labelledby={titleId} aria-busy={submitting}
       >
         {/* ─── Header ─── */}
         <div className="flex items-center justify-between px-5 py-4 border-b border-gray-200 shrink-0">
           <div className="min-w-0">
-            <h2 className="text-base font-semibold text-[#0d0d0d] truncate">
+            <h2 id={titleId} className="text-base font-semibold text-[#0d0d0d] truncate">
               سفارش‌سازی محصول
             </h2>
             {product?.name && (
               <p className="text-xs text-gray-500 truncate mt-0.5">{product.name}</p>
             )}
+            {productSummary && <p className="text-xs text-gray-500 mt-1">{productSummary}</p>}
           </div>
           <button
             onClick={onClose}
+            disabled={submitting}
             className="p-2 rounded-md hover:bg-gray-100 transition-colors shrink-0"
             aria-label="بستن"
           >
@@ -246,7 +255,7 @@ export default function OrderFlowModal({
         )}
 
         {/* ─── Body ─── */}
-        <div className="px-5 py-5 overflow-y-auto grow flex flex-col min-h-0">
+        <fieldset disabled={submitting} inert={submitting} className="px-5 py-5 overflow-y-auto grow flex flex-col min-h-0 min-w-0">
           {loading ? (
             <div className="space-y-3">
               {[1, 2, 3].map((i) => (
@@ -262,25 +271,28 @@ export default function OrderFlowModal({
               showError={showStepError}
               onIncompleteChange={setCurrentIncomplete}
             />
+          ) : flow ? (
+            <p className="text-sm text-gray-500">مرحله‌ای برای تکمیل وجود ندارد؛ می‌توانید محصول را تأیید کنید.</p>
           ) : null}
-        </div>
+        </fieldset>
 
         {/* ─── Footer / Navigation ─── */}
-        {!loading && steps.length > 0 && (
-          <div className="flex items-center justify-between gap-3 px-5 py-4 border-t border-gray-200 shrink-0">
+        {!loading && flow && (
+          <div className="flex flex-wrap items-center justify-between gap-3 px-5 py-4 border-t border-gray-200 shrink-0">
             <button
               onClick={goBack}
-              disabled={safeIndex === 0}
+              disabled={submitting || (safeIndex === 0 && !onBackToProduct)}
               className="flex items-center gap-1 px-4 py-2.5 rounded-[6px] text-sm text-gray-600 hover:bg-gray-100 transition disabled:opacity-40 disabled:cursor-not-allowed"
             >
               <FiChevronRight className="w-4 h-4" />
-              قبلی
+              {safeIndex === 0 && onBackToProduct ? "بازگشت به محصول" : "قبلی"}
             </button>
 
-            <div className="flex items-center gap-2">
+            <div className="flex flex-wrap items-center gap-2">
               {currentNode && !currentNode.required && (
                 <button
                   onClick={skipStep}
+                  disabled={submitting}
                   className="px-4 py-2.5 rounded-[6px] text-sm text-gray-500 hover:text-[#aa4725] hover:bg-gray-50 transition"
                 >
                   رد کردن
@@ -291,10 +303,10 @@ export default function OrderFlowModal({
                 disabled={!canProceed || submitting}
                 className="flex items-center gap-1 px-5 py-2.5 rounded-[6px] bg-[#aa4725] text-white text-sm font-medium hover:opacity-90 transition disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                {isLastStep ? (
+                {isLastStep || steps.length === 0 ? (
                   <>
                     <FiCheck className="w-4 h-4" />
-                    {submitting ? "در حال افزودن..." : "تایید و افزودن به سبد"}
+                    {submitting ? "در حال افزودن..." : confirmLabel}
                   </>
                 ) : (
                   <>

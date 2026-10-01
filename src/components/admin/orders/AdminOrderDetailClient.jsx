@@ -6,6 +6,7 @@ import { getUserFullName } from "base/utils/userName";
 
 import { useState, useEffect, useCallback, useRef } from "react";
 import { useRouter } from "next/navigation";
+import dynamic from "next/dynamic";
 import { motion, AnimatePresence } from "framer-motion";
 import Swal from "sweetalert2";
 import { toast } from "react-toastify";
@@ -25,9 +26,12 @@ import ManualTrackingEditor from "@/components/admin/orders/ManualTrackingEditor
 import OrderPrintOverlay from "@/components/print/OrderPrintOverlay";
 import FlowProductIdentity from "@/components/order/FlowProductIdentity";
 import OrderFlowSelectionsView from "@/components/order/OrderFlowSelectionsView";
+import { buildStepSequence } from "@/lib/flowTraversal";
 import VariantSummary from "@/components/order/VariantSummary";
 import InstallmentChecksPanel from "@/components/admin/financial/InstallmentChecksPanel";
 import { useAdminPermissions } from "@/components/admin/AdminPermissionProvider";
+
+const OrderFlowModal = dynamic(() => import("@/components/modules/orderFlow/OrderFlowModal"));
 
 /* ─── Constants ─────────────────────────────────────────────────────── */
 
@@ -438,28 +442,57 @@ function AddItemModal({ orderId, onSuccess, onClose }) {
   const [quantity, setQuantity] = useState(1);
   const [submitting, setSubmitting] = useState(false);
   const timer = useRef(null);
+  const [flow, setFlow] = useState(null);
+  const [flowOpen, setFlowOpen] = useState(false);
+  const [optionsError, setOptionsError] = useState("");
+  const optionsRequest = useRef(null);
+  const searchRequest = useRef(null);
+  const submitLock = useRef(false);
+
+  useEffect(() => () => {
+    clearTimeout(timer.current);
+    optionsRequest.current?.abort();
+    searchRequest.current?.abort();
+  }, []);
 
   const runSearch = useCallback(async (q) => {
     if (!q?.trim()) { setResults([]); setOpenList(false); return; }
+    searchRequest.current?.abort();
+    const controller = new AbortController();
+    searchRequest.current = controller;
     setSearching(true);
     try {
-      const res = await fetch(`/api/admin/discounts/search?type=product&q=${encodeURIComponent(q)}`);
+      const res = await fetch(`/api/admin/orders/item-options?q=${encodeURIComponent(q)}`, { signal: controller.signal });
       const data = await res.json();
+      if (!res.ok) throw new Error(data.message || "خطا در جستجوی محصول");
+      if (controller.signal.aborted) return;
       setResults(data.items || []);
       setOpenList(true);
-    } catch { setResults([]); }
-    finally { setSearching(false); }
+    } catch (error) {
+      if (!controller.signal.aborted) { setResults([]); toast.error(error.message); }
+    } finally { if (!controller.signal.aborted) setSearching(false); }
   }, []);
 
   const handleQuery = (val) => {
     setQuery(val);
     clearTimeout(timer.current);
+    searchRequest.current?.abort();
+    setSearching(false);
+    setOpenList(false);
     if (!val.trim()) { setResults([]); setOpenList(false); return; }
     timer.current = setTimeout(() => runSearch(val), 300);
   };
 
   const selectProduct = async (item) => {
+    clearTimeout(timer.current);
+    searchRequest.current?.abort();
+    optionsRequest.current?.abort();
+    const controller = new AbortController();
+    optionsRequest.current = controller;
+    setSearching(false);
     setProduct(item);
+    setFlow(null);
+    setOptionsError("");
     setOpenList(false);
     setQuery("");
     setResults([]);
@@ -467,14 +500,25 @@ function AddItemModal({ orderId, onSuccess, onClose }) {
     setVariants([]);
     setLoadingVariants(true);
     try {
-      const res = await fetch(`/api/admin/discounts/search?type=variant&productId=${item._id}`);
+      const res = await fetch(`/api/admin/orders/item-options?productId=${item._id}`, { signal: controller.signal });
       const data = await res.json();
+      if (!res.ok) throw new Error(data.message || "خطا در دریافت اطلاعات محصول");
+      if (controller.signal.aborted) return;
       setVariants(data.items || []);
-    } catch { toast.error("خطا در دریافت واریانت‌ها"); }
-    finally { setLoadingVariants(false); }
+      setProduct({ ...item, ...data.product });
+      setFlow(data.flow || null);
+    } catch (error) {
+      if (!controller.signal.aborted) setOptionsError(error.message || "خطا در دریافت اطلاعات محصول");
+    } finally { if (!controller.signal.aborted) setLoadingVariants(false); }
   };
 
   const resetProduct = () => {
+    if (submitLock.current) return;
+    optionsRequest.current?.abort();
+    setLoadingVariants(false);
+    setOptionsError("");
+    setFlow(null);
+    setFlowOpen(false);
     setProduct(null);
     setVariants([]);
     setVariantId(null);
@@ -482,13 +526,12 @@ function AddItemModal({ orderId, onSuccess, onClose }) {
   };
 
   const needsVariant = variants.length > 0;
-  const canSubmit = product && (!needsVariant || variantId) && quantity >= 1 && !submitting;
+  const hasFlow = flow && buildStepSequence(flow).length > 0;
+  const canSubmit = product && !loadingVariants && !optionsError && (!needsVariant || variantId) && Number.isSafeInteger(quantity) && quantity >= 1 && !submitting;
 
-  const handleSubmit = async () => {
-    if (!canSubmit) {
-      if (needsVariant && !variantId) toast.error("لطفاً یک واریانت انتخاب کنید");
-      return;
-    }
+  const saveItem = async (flowSelections = []) => {
+    if (submitLock.current) return;
+    submitLock.current = true;
     setSubmitting(true);
     try {
       const res = await fetch(`/api/admin/orders/${orderId}/items`, {
@@ -498,6 +541,7 @@ function AddItemModal({ orderId, onSuccess, onClose }) {
           productId: product._id,
           variantId: variantId || null,
           quantity: Math.max(1, Math.floor(quantity)),
+          flowSelections,
         }),
       });
       const data = await res.json();
@@ -505,24 +549,44 @@ function AddItemModal({ orderId, onSuccess, onClose }) {
       toast.success(data.message || "آیتم افزوده شد");
       onSuccess();
       onClose();
-    } catch (err) {
-      toast.error(err.message || "خطا در افزودن آیتم");
+    } finally {
+      submitLock.current = false;
       setSubmitting(false);
     }
   };
+
+  const handleSubmit = async () => {
+    if (!canSubmit || submitLock.current) return;
+    if (hasFlow) { setFlowOpen(true); return; }
+    try { await saveItem(); }
+    catch (error) { toast.error(error.message || "خطا در افزودن آیتم"); }
+  };
+
+  const close = () => { if (!submitLock.current) onClose(); };
+  if (flowOpen) return (
+    <OrderFlowModal
+      isOpen flow={flow} product={product} quantity={quantity} variantId={variantId}
+      onConfirm={saveItem} onClose={() => { if (!submitLock.current) setFlowOpen(false); }}
+      onBackToProduct={() => setFlowOpen(false)}
+      confirmLabel="تأیید و افزودن به سفارش"
+      confirmErrorMessage="خطا در افزودن آیتم به سفارش"
+      overlayClassName="z-[260]" productSummary={`${variants.find((variant) => String(variant._id) === variantId)?.label || ""} · تعداد: ${quantity.toLocaleString("fa-IR")}`}
+    />
+  );
 
   return (
     <motion.div
       initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
       className="fixed inset-0 z-[260] flex items-center justify-center p-4"
       style={{ background: "rgba(0,0,0,0.5)", backdropFilter: "blur(4px)" }}
-      onClick={onClose}
+      onClick={close}
     >
       <motion.div
         initial={{ scale: 0.92, opacity: 0, y: 20 }} animate={{ scale: 1, opacity: 1, y: 0 }}
         exit={{ scale: 0.92, opacity: 0, y: 20 }}
         transition={{ type: "spring", damping: 24, stiffness: 280 }}
-        className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden"
+        className="bg-white rounded-2xl shadow-2xl w-full max-w-md max-h-[90vh] overflow-y-auto"
+        role="dialog" aria-modal="true" aria-label="افزودن آیتم به سفارش"
         dir="rtl" onClick={(e) => e.stopPropagation()}
       >
         <div className="bg-[var(--color-primary)] px-5 py-4 flex items-center justify-between">
@@ -530,12 +594,12 @@ function AddItemModal({ orderId, onSuccess, onClose }) {
             <Plus size={18} />
             <span className="font-bold text-sm">افزودن آیتم به سفارش</span>
           </div>
-          <button onClick={onClose} className="text-white/70 hover:text-white transition">
+          <button onClick={close} disabled={submitting} aria-label="بستن" className="text-white/70 hover:text-white transition">
             <X size={18} />
           </button>
         </div>
 
-        <div className="p-5 space-y-4">
+        <fieldset disabled={submitting} className="p-5 space-y-4 min-w-0">
           {!product ? (
             <div className="relative">
               <label className="block text-sm font-bold text-gray-700 mb-2">جستجوی محصول</label>
@@ -557,8 +621,9 @@ function AddItemModal({ orderId, onSuccess, onClose }) {
                   {results.length === 0
                     ? <li className="px-4 py-6 text-sm text-gray-400 text-center">محصولی یافت نشد</li>
                     : results.map((item) => (
-                      <li key={String(item._id)} onMouseDown={() => selectProduct(item)}
-                        className="flex items-center gap-2.5 px-3 py-2.5 hover:bg-gray-50 cursor-pointer transition border-b border-gray-50 last:border-none">
+                      <li key={String(item._id)} className="border-b border-gray-50 last:border-none">
+                        <button type="button" onClick={() => selectProduct(item)}
+                          className="w-full flex items-center gap-2.5 px-3 py-2.5 hover:bg-gray-50 cursor-pointer transition focus-visible:outline-2 focus-visible:outline-[var(--color-primary)]">
                         {item.image
                           ? <img src={item.image} alt="" className="w-9 h-9 rounded-lg object-cover flex-shrink-0" />
                           : <div className="w-9 h-9 rounded-lg bg-gray-100 flex-shrink-0" />}
@@ -566,6 +631,7 @@ function AddItemModal({ orderId, onSuccess, onClose }) {
                           <p className="text-sm font-bold text-gray-800 truncate">{item.label}</p>
                           {item.sub && <p className="text-xs text-gray-400 truncate">{item.sub}</p>}
                         </div>
+                        </button>
                       </li>
                     ))}
                 </ul>
@@ -588,7 +654,12 @@ function AddItemModal({ orderId, onSuccess, onClose }) {
               {/* واریانت‌ها */}
               {loadingVariants ? (
                 <div className="flex items-center justify-center gap-2 py-3 text-sm text-gray-400">
-                  <Loader2 size={15} className="animate-spin text-[var(--color-primary)]" /> بارگذاری واریانت‌ها...
+                  <Loader2 size={15} className="animate-spin text-[var(--color-primary)]" /> بارگذاری واریانت‌ها و فرایند سفارش...
+                </div>
+              ) : optionsError ? (
+                <div role="alert" className="rounded-xl bg-red-50 p-3 text-sm text-red-700">
+                  <p>{optionsError}</p>
+                  <button onClick={() => selectProduct(product)} className="mt-2 font-bold underline">تلاش دوباره</button>
                 </div>
               ) : needsVariant ? (
                 <div className="space-y-2">
@@ -637,18 +708,18 @@ function AddItemModal({ orderId, onSuccess, onClose }) {
               </div>
 
               <p className="text-[11px] text-gray-400 leading-relaxed bg-[color:var(--color-primary)]/5 border border-[color:var(--color-primary)]/15 rounded-xl px-3 py-2">
-                قیمت این آیتم سمت سرور و دقیقاً از همان موتور قیمت‌گذاری سفارش (شامل تخفیف‌های فعال) محاسبه و به‌صورت اسنپ‌شات ثبت می‌شود.
+                {hasFlow ? "در مرحله بعد، خدمات و محصولات فرایند سفارش را انتخاب کنید. آیتم پس از تأیید نهایی به سفارش اضافه می‌شود." : "قیمت نهایی با احتساب تخفیف‌های فعال محاسبه و در سفارش ثبت می‌شود."}
               </p>
 
               <button onClick={handleSubmit} disabled={!canSubmit}
                 className="w-full bg-[var(--color-primary)] hover:bg-[var(--color-primary-hover)] text-white font-bold py-2.5 rounded-xl text-sm
                   transition flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed">
                 {submitting ? <Loader2 size={15} className="animate-spin" /> : <Plus size={15} />}
-                افزودن به سفارش
+                {submitting ? "در حال افزودن..." : hasFlow ? "ادامه و تکمیل فرایند سفارش" : "افزودن به سفارش"}
               </button>
             </>
           )}
-        </div>
+        </fieldset>
       </motion.div>
     </motion.div>
   );

@@ -70,6 +70,7 @@ before(async () => {
     "base/services/orderRecalc": { recalcAndApply: async () => {} },
     "base/services/orderEurRecalc": { applyOrderEurTotal() {} },
     "@/lib/variantImages": { buildVariantSnapshot() {} },
+    "base/services/adminOrderItemFlow": { validateAdminItemFlow() {}, mapAdminFlowSelection() {} },
   });
 }, { timeout: 180000 });
 

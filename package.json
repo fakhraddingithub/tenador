@@ -30,6 +30,7 @@
     "test:category-sports": "node --test tests/categorySportVisibility.test.mjs",
     "test:navbar-category-tree": "node --test tests/navbarCategoryTree.test.mjs",
     "test:order-flow-steps": "node --test tests/orderFlowStepOrder.test.mjs",
+    "test:admin-order-flow": "node --experimental-loader ./tests/aliasHooks.mjs --experimental-vm-modules --test --test-timeout=180000 tests/adminOrderFlowModal.test.mjs tests/adminOrderItemFlow.test.mjs tests/manualOrderTracking.test.mjs tests/serviceConfig.test.mjs tests/flowConditions.test.mjs tests/orderFlowStepOrder.test.mjs tests/orderItemEur.test.mjs",
     "test:product-creation": "node --test --test-timeout=180000 tests/productCreation.test.mjs",
     "test:ai-product-draft": "node --test --test-timeout=180000 tests/aiProductDraft.test.mjs",
     "test:variant-reconcile": "node --test tests/variantReconcile.test.mjs",
