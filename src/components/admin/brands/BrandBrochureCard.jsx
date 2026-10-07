@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { FiEdit3, FiFileText, FiPlus } from "react-icons/fi";
+import { FiEdit3, FiEye, FiFileText, FiPlus } from "react-icons/fi";
 
 const STATUS = {
   published: { label: "منتشرشده", className: "bg-green-50 text-green-700", note: "این بروشور هم‌اکنون جای محتوای صفحه‌ی برند را گرفته است." },
@@ -34,12 +34,26 @@ export default function BrandBrochureCard({ brandId = null, status = null, class
       </div>
 
       {brandId ? (
-        <Link
-          href={`/p-admin/admin-brands/${brandId}/brochure`}
-          className="inline-flex items-center gap-2 rounded-[6px] bg-black px-4 py-2.5 text-sm font-bold text-white transition hover:-translate-y-0.5"
-        >
-          {status ? <><FiEdit3 aria-hidden="true" />ویرایش بروشور برند</> : <><FiPlus aria-hidden="true" />ساخت بروشور برند</>}
-        </Link>
+        <div className="flex flex-wrap items-center gap-2">
+          <Link
+            href={`/p-admin/admin-brands/${brandId}/brochure`}
+            className="inline-flex items-center gap-2 rounded-[6px] bg-black px-4 py-2.5 text-sm font-bold text-white transition hover:-translate-y-0.5"
+          >
+            {status ? <><FiEdit3 aria-hidden="true" />ویرایش بروشور برند</> : <><FiPlus aria-hidden="true" />ساخت بروشور برند</>}
+          </Link>
+          {/* پیش‌نمایش بدونِ عبور از ویرایشگر. در زبانه‌ی تازه، تا فرمِ برندِ
+              ذخیره‌نشده از دست نرود. فقط وقتی بروشوری هست که دیدنش معنا دارد. */}
+          {status ? (
+            <a
+              href={`/p-admin/admin-brands/${brandId}/brochure/preview`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-2 rounded-[6px] border border-gray-200 bg-white px-4 py-2.5 text-sm font-bold text-gray-700 transition hover:border-[var(--color-primary)] hover:text-[var(--color-primary)]"
+            >
+              <FiEye aria-hidden="true" />پیش‌نمایش
+            </a>
+          ) : null}
+        </div>
       ) : (
         <p className="rounded-[6px] border border-dashed border-gray-300 px-4 py-3 text-[11px] font-bold text-gray-500">
           ابتدا برند را ذخیره کنید؛ پس از آن دکمه‌ی «ساخت بروشور برند» در همین بخش ظاهر می‌شود.

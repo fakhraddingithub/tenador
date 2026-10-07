@@ -5,7 +5,7 @@ import { useEffect, useId, useMemo, useRef, useState } from "react";
 import { DndContext, KeyboardSensor, PointerSensor, closestCenter, useSensor, useSensors } from "@dnd-kit/core";
 import { SortableContext, arrayMove, sortableKeyboardCoordinates, useSortable, verticalListSortingStrategy } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { FiChevronDown, FiChevronUp, FiColumns, FiCopy, FiDroplet, FiGrid, FiMenu, FiPlus, FiScissors, FiSearch, FiSettings, FiTrash2, FiX } from "react-icons/fi";
+import { FiChevronDown, FiChevronUp, FiClipboard, FiColumns, FiCopy, FiDroplet, FiGrid, FiMenu, FiPlus, FiScissors, FiSearch, FiSettings, FiShare2, FiTrash2, FiX } from "react-icons/fi";
 import ImageUpload from "@/components/admin/ImageUpload";
 import ArticleEntityPicker from "./ArticleEntityPicker";
 import BlockLayoutModal from "./BlockLayoutModal";
@@ -13,7 +13,9 @@ import { AdminPortal, inputClass } from "./blockUi";
 import RichTextField from "./RichTextField";
 import { ARTICLE_BLOCKS, BLOCK_GROUPS, BLOCK_GROUP_SLUGS, createArticleBlock } from "./blockRegistry";
 import { insertBlockAt } from "@/lib/articleBlockLayout";
+import { toast } from "react-toastify";
 import { confirmDelete } from "@/lib/swal";
+import { BLOCK_CLIPBOARD_EVENT, copyBlockToClipboard, readBlockClipboard, takeBlockFromClipboard } from "@/lib/articleBlockClipboard";
 import { IMAGE_DISPLAY_HEIGHT, IMAGE_SHADE, MAX_IMAGE_BLOCK_ITEMS, clampImageShade, mirrorFirstImage, normalizeImageHref } from "@/lib/articleImageBlock";
 import { IMAGE_SLIDER_CHILD_TYPES, IMAGE_SLIDER_DELAY, IMAGE_SLIDER_HEIGHT, MAX_MERGED_CHILDREN, MAX_MERGE_DEPTH, MERGED_GRID_GAP_STEP, normalizeHeaderPosition, MERGED_GRID_LIMITS, MERGED_GRID_REFERENCE, defaultMergedGrid, imageOverlayChildren, isMergedBlock, mergedChildren, mergedGridColumnsAt, sanitizeMergedGrid } from "@/lib/articleBlockTypes";
 import { cloneWithFreshIds, mergeBlocker, mergeBlocks, unmergeBlock } from "@/lib/articleBlockMerge";
@@ -381,7 +383,7 @@ function blockSummary(block) {
   return "";
 }
 
-function SortableBlock({ block, index, total, onUpdate, onStyle, onAppearance, onRemove, onDuplicate, onMove, selectable = false, selected = false, onSelect, onUnmerge, open = true, onToggle }) {
+function SortableBlock({ block, index, total, onUpdate, onStyle, onAppearance, onRemove, onDuplicate, onCopy, onMove, selectable = false, selected = false, onSelect, onUnmerge, open = true, onToggle }) {
   const [gridOpen, setGridOpen] = useState(false);
   const [moveOpen, setMoveOpen] = useState(false);
   const definition = ARTICLE_BLOCKS[block.type];
@@ -415,7 +417,10 @@ function SortableBlock({ block, index, total, onUpdate, onStyle, onAppearance, o
         <button type="button" onClick={() => onMove(index, index + 1)} disabled={index === total - 1} className="p-1.5 text-gray-400" aria-label="انتقال به پایین"><FiChevronDown /></button>
         {onUnmerge ? <button type="button" onClick={() => setGridOpen(true)} className="flex items-center gap-1 px-1.5 py-1 text-[11px] font-bold text-gray-500 hover:text-[var(--color-primary)]" aria-label="تنظیمات چیدمان بلوک ادغام‌شده"><FiGrid />چیدمان</button> : null}
         {onUnmerge ? <button type="button" onClick={onUnmerge} className="flex items-center gap-1 px-1.5 py-1 text-[11px] font-bold text-gray-500 hover:text-[var(--color-primary)]" aria-label="جداسازی بلوک‌های ادغام‌شده"><FiScissors />جداسازی</button> : null}
-        <button type="button" onClick={onDuplicate} className="p-1.5 text-gray-400 hover:text-[var(--color-primary)]" aria-label="تکثیر بلوک"><FiCopy /></button>
+        <button type="button" onClick={onDuplicate} className="p-1.5 text-gray-400 hover:text-[var(--color-primary)]" aria-label="تکثیر بلوک" title="تکثیر در همین سند"><FiCopy /></button>
+        {/* تکثیر، بلوک را همین‌جا دوبرابر می‌کند؛ این یکی آن را برای *سندِ دیگر*
+            برمی‌دارد — مقاله، بروشور یا مینی‌مقاله. */}
+        {onCopy ? <button type="button" onClick={onCopy} className="p-1.5 text-gray-400 hover:text-[var(--color-primary)]" aria-label="کپی بلوک برای سند دیگر" title="کپی برای چسباندن در سندِ دیگر"><FiShare2 /></button> : null}
         <button type="button" onClick={onRemove} className="p-1.5 text-gray-400 hover:text-red-600" aria-label="حذف بلوک"><FiTrash2 /></button>
         <button type="button" onClick={onToggle} aria-expanded={open} className="p-1.5 text-gray-400 focus-visible:outline-2 focus-visible:outline-[var(--color-primary)]" aria-label="باز و بسته کردن">{open ? <FiChevronUp /> : <FiChevronDown />}</button>
       </div>
@@ -472,6 +477,19 @@ export default function BlockEditor({ value = [], onChange, libraryOpen: openPro
     window.addEventListener("article-block-selection", onOtherSelection);
     return () => window.removeEventListener("article-block-selection", onOtherSelection);
   }, [editorId]);
+  // محتوای کلیپ‌بورد؛ با رویدادِ خودمان (همین تب) و storage (تبِ دیگر) تازه می‌شود.
+  const [clipboard, setClipboard] = useState(null);
+  useEffect(() => {
+    const sync = () => setClipboard(readBlockClipboard());
+    sync();
+    window.addEventListener(BLOCK_CLIPBOARD_EVENT, sync);
+    window.addEventListener("storage", sync);
+    return () => {
+      window.removeEventListener(BLOCK_CLIPBOARD_EVENT, sync);
+      window.removeEventListener("storage", sync);
+    };
+  }, []);
+
   // بلوک‌های بسته (آکاردئون). بلوکِ تازه همیشه باز است چون شناسه‌اش اینجا نیست.
   const [collapsed, setCollapsed] = useState(() => new Set());
   const toggleOpen = (id) => setCollapsed((current) => {
@@ -516,6 +534,23 @@ export default function BlockEditor({ value = [], onChange, libraryOpen: openPro
   // بلوکِ تازه ممکن است وسطِ مقاله درج شود، پس باید به خودِ عنصرِ رندرشده رفت.
   // شناسه در ref می‌ماند (نه state) تا رندرِ اضافه‌ای تحمیل نشود.
   const pendingScroll = useRef(null);
+  const copy = (block) => {
+    const label = ARTICLE_BLOCKS[block.type]?.label || block.type;
+    if (copyBlockToClipboard(block, label)) toast.success(`«${label}» کپی شد — در هر سندِ دیگری می‌توانید بچسبانید.`);
+  };
+
+  /** شناسه‌ها در چسباندن تازه می‌شوند، پس چسباندن در همین سند هم بی‌خطر است. */
+  const paste = () => {
+    const block = takeBlockFromClipboard();
+    if (!block) return;
+    if (allow && !allow.includes(block.type)) {
+      toast.error("این بلوک در اینجا پذیرفته نمی‌شود.");
+      return;
+    }
+    pendingScroll.current = block.id;
+    onChange(normalizeHeaderPosition([...latest.current, block]));
+  };
+
   const add = (type, position) => {
     const block = createArticleBlock(type);
     pendingScroll.current = block.id;
@@ -574,9 +609,17 @@ export default function BlockEditor({ value = [], onChange, libraryOpen: openPro
       </button>
     </div> : null}
     <MaybeDndContext enabled={dnd} sensors={sensors} onDragEnd={({ active, over }) => { if (!over || active.id === over.id) return; move(value.findIndex((item) => item.id === active.id), value.findIndex((item) => item.id === over.id)); }}>
-      <SortableContext items={value.map((item) => item.id)} strategy={verticalListSortingStrategy}>{value.map((block, index) => <SortableBlock key={block.id} block={block} index={index} total={value.length} onUpdate={(patch) => onChange(latest.current.map((item) => item.id === block.id ? { ...item, data: { ...item.data, ...patch } } : item))} onStyle={(style) => setBlockKey(block.id, "style", style)} onAppearance={(next) => setBlockKeys(block.id, { style: next.style, layout: next.layout })} onRemove={() => remove(block)} onDuplicate={() => onChange([...value.slice(0, index + 1), cloneWithFreshIds(block), ...value.slice(index + 1)])} onMove={move} open={!collapsed.has(block.id)} onToggle={() => toggleOpen(block.id)} selectable={!allow} selected={selectedIds.includes(block.id)} onSelect={() => toggleSelected(block.id)} onUnmerge={isMergedBlock(block) ? () => onChange(unmergeBlock(latest.current, block.id)) : undefined} />)}</SortableContext>
+      <SortableContext items={value.map((item) => item.id)} strategy={verticalListSortingStrategy}>{value.map((block, index) => <SortableBlock key={block.id} block={block} index={index} total={value.length} onUpdate={(patch) => onChange(latest.current.map((item) => item.id === block.id ? { ...item, data: { ...item.data, ...patch } } : item))} onStyle={(style) => setBlockKey(block.id, "style", style)} onAppearance={(next) => setBlockKeys(block.id, { style: next.style, layout: next.layout })} onRemove={() => remove(block)} onDuplicate={() => onChange([...value.slice(0, index + 1), cloneWithFreshIds(block), ...value.slice(index + 1)])} onCopy={() => copy(block)} onMove={move} open={!collapsed.has(block.id)} onToggle={() => toggleOpen(block.id)} selectable={!allow} selected={selectedIds.includes(block.id)} onSelect={() => toggleSelected(block.id)} onUnmerge={isMergedBlock(block) ? () => onChange(unmergeBlock(latest.current, block.id)) : undefined} />)}</SortableContext>
     </MaybeDndContext>
-    <button type="button" onClick={() => setLibraryOpen(true)} className="w-full flex items-center justify-center gap-2 py-3 border border-dashed text-sm font-bold text-[var(--color-primary)] hover:bg-[var(--color-primary-soft)]" style={{ borderColor: "var(--color-primary)", borderRadius: "var(--admin-radius)" }}><FiPlus /> افزودن بلوک</button>
+    <div className="flex flex-wrap items-stretch gap-2">
+      <button type="button" onClick={() => setLibraryOpen(true)} className="flex min-w-48 flex-1 items-center justify-center gap-2 py-3 border border-dashed text-sm font-bold text-[var(--color-primary)] hover:bg-[var(--color-primary-soft)]" style={{ borderColor: "var(--color-primary)", borderRadius: "var(--admin-radius)" }}><FiPlus /> افزودن بلوک</button>
+      {/* فقط وقتی چیزی برای چسباندن هست — دکمه‌ی همیشه‌خاموش چیزی را روشن نمی‌کند. */}
+      {clipboard && (!allow || allow.includes(clipboard.block.type)) ? (
+        <button type="button" onClick={paste} title={`چسباندنِ «${clipboard.label || clipboard.block.type}»`} className="flex items-center justify-center gap-2 border border-dashed px-4 py-3 text-sm font-bold text-gray-600 hover:bg-gray-50" style={{ borderColor: "var(--admin-border-strong)", borderRadius: "var(--admin-radius)" }}>
+          <FiClipboard /> چسباندنِ «{clipboard.label || clipboard.block.type}»
+        </button>
+      ) : null}
+    </div>
     {value.length === 0 ? <p className="text-center text-xs text-gray-400">برای شروع اولین بلوک را اضافه کنید.</p> : null}
     {libraryOpen ? <BlockLibrary total={value.length} onAdd={add} onClose={() => setLibraryOpen(false)} allow={allow} taken={value.map((block) => block.type)} /> : null}
   </div>;

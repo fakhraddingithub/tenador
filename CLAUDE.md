@@ -1031,6 +1031,49 @@ drag springs back; a plain click on a linked slide still navigates.
 npm run test:block-layout
 ```
 
+### Authoring: a block clipboard, and what scales with what
+
+**Copying a block between documents** goes through `src/lib/articleBlockClipboard.js` —
+`localStorage`, because each document (article, brochure, mini article) has its own editor
+on its own page and React state cannot span them. A block is just JSON, so nothing needs a
+server round trip. Every block card carries a «کپی برای سندِ دیگر» button next to the
+existing duplicate (duplicate stays *within* the document; this one travels), and a paste
+button appears beside «افزودن بلوک» only when the clipboard holds something the current
+editor accepts.
+
+| rule | why |
+|---|---|
+| paste always runs `cloneWithFreshIds` | ids are unique across a document's whole tree; without it, pasting into the same document made the save 400 |
+| a type that is no longer in `ARTICLE_BLOCK_TYPE_SET` is refused | the clipboard can outlive a deploy |
+| `allow` is honoured | the image slider only takes images, so the paste button hides there |
+| paste runs `normalizeHeaderPosition` | the header block stays at index 0 |
+| reads and writes never throw | a private window or blocked storage just leaves the buttons inert |
+
+**Blocks on an image scale with the image, not the viewport.** They used to carry their own
+fixed sizes (`text-2xl`, `px-6 py-3`), which read the *page* breakpoints — on a phone the
+frame shrank and the text did not, so it filled or overflowed the picture. The overlay layer
+is now a container (`.a-image-overlay`, `container-type: inline-size`) whose base size comes
+from `clamp(0.6rem, 3.2cqw, 1.0625rem)` — the frame's own width, bounded at both ends —
+and everything inside is expressed in `em`: headings, text, the gap, the padding, and the
+button's label, padding, border and radius. Measured on one article: a 740px frame gives
+17px base / 34px heading / button padding 10.2×25.5, and the same block in a 318px frame
+gives 12.5px / 25px / 7.5×18.7. Outside an image nothing changes — the rules only exist
+inside `.a-image-overlay`, and they beat Tailwind's single-class utilities on specificity
+without `!important`.
+
+**Default spacing is per type.** "Zero unless configured" stays the general rule;
+`BLOCK_DEFAULT_SPACING` lists the three deliberate exceptions — heading and paragraph get
+1rem top and bottom, the Tenador title gets 5rem at the **bottom only**. An admin's
+`style.spacing` replaces the default outright, and `layout.mt`/`mb` still override one side
+at a time; the paragraph's old `my-5` class is gone so there is only ever one source.
+
+The brand form now links straight to a preview for the brochure and for each category's mini
+article, in a new tab so an unsaved brand form is not lost.
+
+```bash
+npm run test:block-layout   # includes tests/blockAuthoring.test.mjs
+```
+
 ### Slug System
 
 `SlugRegistery` model maps dynamic URL segments (sport/category/brand slugs) to their entity types. `actions/registerSlug.js` is a server action that creates entries on entity creation. This powers ISR revalidation — when a slug is revalidated, the correct entity page is rebuilt.

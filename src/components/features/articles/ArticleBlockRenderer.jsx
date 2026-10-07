@@ -26,6 +26,20 @@ const blockSection = "scroll-mt-28";
 // "md" دیگر پیش‌فرضِ ضمنی نیست، پس مقدارِ صریحِ خودش را دارد (همان ۳۶px قبلی).
 const SPACING_CSS = { none: "0rem", sm: "1rem", md: "2.25rem", lg: "4rem" };
 
+/**
+ * فاصله‌ی بالا/پایین وقتی ادمین چیزی تنظیم نکرده است.
+ *
+ * «پیش‌فرضِ بلوک صفر است» قاعده‌ی عمومی می‌ماند؛ این‌ها استثناهای صریح‌اند، برای
+ * بلوک‌هایی که در عمل همیشه فاصله می‌خواهند: متن (تیتر و پاراگراف)، و تیترِ
+ * تنادور که زیرش یک بخشِ تازه شروع می‌شود. تنظیمِ ادمین (style.spacing) و
+ * فاصله‌ی دقیقِ جعبه‌ی چیدمان (layout.mt/mb) هر دو بر این می‌چربند.
+ */
+const BLOCK_DEFAULT_SPACING = {
+  heading: { marginTop: "1rem", marginBottom: "1rem" },
+  paragraph: { marginTop: "1rem", marginBottom: "1rem" },
+  tenadorTitle: { marginBottom: "5rem" },
+};
+
 /** روی رنگِ داده‌شده، متنِ تیره یا روشن را انتخاب می‌کند تا خوانا بماند. */
 function readableOn(hex) {
   const value = parseInt(hex.slice(1), 16);
@@ -40,12 +54,14 @@ function readableOn(hex) {
 function blockVisuals(block) {
   const style = block?.style || {};
   const gap = SPACING_CSS[style.spacing];
+  const fallback = BLOCK_DEFAULT_SPACING[block?.type];
   // فاصله‌ی دقیقِ هر طرف (چیدمان) بر پیش‌تنظیمِ بالا/پایین (استایل) اولویت دارد،
   // وگرنه دو مقدار روی هم جمع می‌شدند و «۱rem از بالا» عملاً ۳.۲۵rem می‌شد.
   const layout = block?.layout || {};
-  const spacing = gap === undefined ? null : {
-    ...(layout.mt === undefined ? { marginTop: gap } : null),
-    ...(layout.mb === undefined ? { marginBottom: gap } : null),
+  const preset = gap === undefined ? fallback || null : { marginTop: gap, marginBottom: gap };
+  const spacing = preset === null ? null : {
+    ...(layout.mt === undefined && preset.marginTop !== undefined ? { marginTop: preset.marginTop } : null),
+    ...(layout.mb === undefined && preset.marginBottom !== undefined ? { marginBottom: preset.marginBottom } : null),
   };
   return {
     // فاصله باید inline باشد: کلاسِ my-* تیلویند را نمی‌توان با کلاسِ دیگری
@@ -314,7 +330,7 @@ function ImageBlock({ data, spacing, inMerged = false, overlay = [] }) {
     {layered ? <div className="relative overflow-hidden rounded-[var(--radius)]">
       {grid}
       {shade ? <div aria-hidden="true" className="pointer-events-none absolute inset-0 rounded-[var(--radius)]" style={{ backgroundColor: `rgba(0, 0, 0, ${shade / 100})` }} /> : null}
-      {overlay.length ? <div className={`pointer-events-none absolute inset-0 grid grid-cols-1 gap-3 p-4 md:p-8 ${OVERLAY_VERTICAL[data.contentPosition] || OVERLAY_VERTICAL.center}`}>
+      {overlay.length ? <div className={`a-image-overlay pointer-events-none absolute inset-0 grid grid-cols-1 ${OVERLAY_VERTICAL[data.contentPosition] || OVERLAY_VERTICAL.center}`}>
         {overlay.map(({ child, node }) => {
           const box = blockBoxProps(child);
           const alignSelf = BLOCK_ALIGN_SELF[child?.layout?.alignY];
@@ -419,7 +435,7 @@ export default function ArticleBlockRenderer({ blocks = [], entities, preview = 
       const content = richContent(data);
       // شکستِ خط در حالتِ HTML با <br> می‌آید، پس whitespace-pre-line آنجا فقط
       // فاصله‌های اضافیِ خودِ نشانه‌گذاری را دوباره نمایش می‌داد.
-      return <p key={block.id} className={`my-5 ${content.children === undefined ? "" : "whitespace-pre-line "}rt-flow text-[16px] text-gray-700 md:text-[17px]`} style={merge(v.spacing, padded(v), v.text && { color: v.text }, v.align && { textAlign: v.align })} {...content} />;
+      return <p key={block.id} className={`${content.children === undefined ? "" : "whitespace-pre-line "}rt-flow text-[16px] text-gray-700 md:text-[17px]`} style={merge(v.spacing, padded(v), v.text && { color: v.text }, v.align && { textAlign: v.align })} {...content} />;
     }
     // تصویرِ محتوا با نسبتِ واقعیِ خودش رندر می‌شود: عرض/ارتفاعِ ذخیره‌شده فقط
     // جا را پیش از بارگذاری رزرو می‌کند (aspect-ratio: auto w/h) و پس از بارگذاری
@@ -481,7 +497,7 @@ export default function ArticleBlockRenderer({ blocks = [], entities, preview = 
       return <div key={block.id} className={blockSection} style={merge(v.spacing, data.align && { textAlign: data.align })}>
         <Link
           href={data.href}
-          className={`${data.fullWidth ? "flex w-full" : "inline-flex"} items-center gap-2 rounded-[var(--radius)] border-2 font-bold transition-colors ${BUTTON_SIZE_CLASS[data.size] || BUTTON_SIZE_CLASS.md} ${BUTTON_VARIANT_CLASS[data.style] || BUTTON_VARIANT_CLASS.primary}`}
+          className={`a-btn ${data.fullWidth ? "flex w-full" : "inline-flex"} items-center gap-2 rounded-[var(--radius)] border-2 font-bold transition-colors ${BUTTON_SIZE_CLASS[data.size] || BUTTON_SIZE_CLASS.md} ${BUTTON_VARIANT_CLASS[data.style] || BUTTON_VARIANT_CLASS.primary}`}
           style={merge(
             v.accent && { backgroundColor: v.accent, borderColor: v.accent },
             label && { color: label },

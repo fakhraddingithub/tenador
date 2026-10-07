@@ -153,7 +153,7 @@ test("renderer: plain blocks keep the legacy markup path; links open in the same
   assert.match(src, /block\.type === "image" && !isPlainImageBlock\(data\)\) \{/);
   // بلوک‌های رویی خواهرِ تصویرند: کاشیِ پیونددار یک <Link> است و بلوکِ تعاملی
   // داخلش هم HTML نامعتبر است هم کلیک را می‌دزدد.
-  assert.match(src, /overlay\.length \? <div className=\{`pointer-events-none absolute inset-0 grid/);
+  assert.match(src, /overlay\.length \? <div className=\{`a-image-overlay pointer-events-none absolute inset-0 grid/);
   assert.match(src, /pointer-events-auto min-w-0/);
   // لایه‌ی تیره لایه‌ی خودش است، نه opacity روی محتوا.
   assert.match(src, /backgroundColor: `rgba\(0, 0, 0, \$\{shade \/ 100\}\)`/);

@@ -3,7 +3,7 @@
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { FiEdit3, FiFileText, FiPlus } from "react-icons/fi";
+import { FiEdit3, FiEye, FiFileText, FiPlus } from "react-icons/fi";
 import { useCategories } from "@/hooks/useAdminRefData";
 
 /**
@@ -66,15 +66,26 @@ export default function BrandCategoryArticlesCard({ brandId = null, entries = []
           {written.length ? (
             <ul className="grid gap-2 sm:grid-cols-2">
               {written.map((item) => (
-                <li key={item.id}>
+                <li key={item.id} className="flex items-stretch gap-1">
                   <Link
                     href={`/p-admin/admin-brands/${brandId}/category-article/${item.id}`}
-                    className="flex items-center gap-2 rounded-[6px] border border-gray-200 bg-white px-3 py-2.5 text-xs font-bold text-gray-700 transition hover:border-[var(--color-primary)] hover:text-[var(--color-primary)]"
+                    className="flex min-w-0 flex-1 items-center gap-2 rounded-[6px] border border-gray-200 bg-white px-3 py-2.5 text-xs font-bold text-gray-700 transition hover:border-[var(--color-primary)] hover:text-[var(--color-primary)]"
                   >
                     <FiEdit3 aria-hidden="true" className="shrink-0" />
                     <span className="min-w-0 truncate">{item.name}</span>
                     <span className="mr-auto shrink-0 text-[10px] font-normal text-gray-400">{item.count.toLocaleString("fa-IR")} بلوک</span>
                   </Link>
+                  {/* پیش‌نمایشِ همین دسته، بدونِ باز کردنِ ویرایشگر. */}
+                  <a
+                    href={`/p-admin/admin-brands/${brandId}/category-article/${item.id}/preview`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    title={`پیش‌نمایش ${item.name}`}
+                    aria-label={`پیش‌نمایش مینی مقاله ${item.name}`}
+                    className="flex shrink-0 items-center rounded-[6px] border border-gray-200 bg-white px-3 text-gray-500 transition hover:border-[var(--color-primary)] hover:text-[var(--color-primary)]"
+                  >
+                    <FiEye aria-hidden="true" />
+                  </a>
                 </li>
               ))}
             </ul>
