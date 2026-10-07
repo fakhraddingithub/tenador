@@ -32,25 +32,25 @@ test("فاصله‌ی پیش‌فرض فقط برای همان بلوک‌هاس
   assert.ok(!src.includes("my-5 "));
 });
 
-test("بلوک‌های روی تصویر با عرضِ *تصویر* کوچک می‌شوند، نه با نقطه‌شکنِ صفحه", async () => {
+test("هر بلوکی روی تصویر با یک نسبتِ واحد کوچک می‌شود", async () => {
   const css = await read("../src/app/globals.css");
   const scope = css.slice(css.indexOf(".a-image-overlay {"), css.indexOf("/* ─── اسلایدرِ تصویر ───"));
-  // قاب خودش container است و اندازه‌ی پایه از عرضِ همان قاب می‌آید.
+  // قاب container است و لایه‌ی مقیاس یکجا کوچک می‌شود — نه فهرستی از عنصرها،
+  // که هر بلوکِ تازه‌ای (نقل‌قول، نکته، جدول) از قلم می‌افتاد.
   assert.match(scope, /container-type: inline-size;/);
-  assert.match(scope, /font-size: clamp\(.*cqw.*\);/);
-  // بقیه در em، پس همه‌چیز با هم مقیاس می‌گیرد — از جمله خودِ دکمه.
-  for (const rule of [/\.a-image-overlay h1,/, /\.a-image-overlay h3 \{/, /\.a-image-overlay \.a-btn \{/]) {
-    assert.match(scope, rule);
+  assert.match(scope, /zoom: min\(1, tan\(atan2\(100cqw, var\(--a-overlay-ref\)\)\)\);/);
+  // zoom، نه transform: zoom روی *چیدمان* اثر می‌گذارد، پس درصدها درست حل می‌شوند.
+  assert.ok(!scope.includes("transform:"));
+  // min(1, …) یعنی قابِ پهن‌تر از مرجع دست‌نخورده می‌ماند (دسکتاپ عوض نمی‌شود).
+  assert.match(scope, /--a-overlay-ref: \d+rem;/);
+  // و دیگر هیچ اندازه‌ی عنصر‌به‌عنصری اینجا نیست.
+  for (const stale of [".a-image-overlay h1", ".a-image-overlay .a-btn", "clamp("]) {
+    assert.ok(!scope.includes(stale), stale);
   }
-  assert.match(scope, /\.a-image-overlay \.a-btn \{[\s\S]*?padding: 0\.6em 1\.5em;/);
-  assert.match(scope, /\.a-image-overlay \.a-btn \{[\s\S]*?border-radius: 0\.4em;/);
-  // هیچ‌جای این دامنه px ثابت نیست، جز کفِ ضخامتِ مرز.
-  assert.ok(!/\d+px/.test(scope.replace("max(1px, 0.12em)", "")), "اندازه‌ی ثابت در دامنه‌ی تصویر");
 
   const src = await read("../src/components/features/articles/ArticleBlockRenderer.jsx");
-  assert.match(src, /className=\{`a-image-overlay pointer-events-none absolute inset-0 grid grid-cols-1 /);
-  // قلابِ دکمه پایدار است، وگرنه قاعده به هر پیوندی می‌خورد.
-  assert.match(src, /className=\{`a-btn \$\{data\.fullWidth/);
+  assert.match(src, /className="a-image-overlay pointer-events-none absolute inset-0"/);
+  assert.match(src, /a-overlay-scale grid grid-cols-1 /);
 });
 
 test("کپیِ بلوک بینِ سندها: شناسه‌ی تازه، نوعِ معتبر، بی‌استثنا", async () => {

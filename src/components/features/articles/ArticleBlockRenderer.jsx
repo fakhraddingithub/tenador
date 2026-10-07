@@ -330,7 +330,11 @@ function ImageBlock({ data, spacing, inMerged = false, overlay = [] }) {
     {layered ? <div className="relative overflow-hidden rounded-[var(--radius)]">
       {grid}
       {shade ? <div aria-hidden="true" className="pointer-events-none absolute inset-0 rounded-[var(--radius)]" style={{ backgroundColor: `rgba(0, 0, 0, ${shade / 100})` }} /> : null}
-      {overlay.length ? <div className={`a-image-overlay pointer-events-none absolute inset-0 grid grid-cols-1 ${OVERLAY_VERTICAL[data.contentPosition] || OVERLAY_VERTICAL.center}`}>
+      {overlay.length ? <div className="a-image-overlay pointer-events-none absolute inset-0">
+        {/* لایه‌ی مقیاس: بلوک‌ها در یک فضای مرجع چیده می‌شوند و بعد *یکجا* به
+            اندازه‌ی قاب کوچک می‌شوند، پس هر چیزی — عرض، فاصله، تورفتگی، قلم —
+            با یک نسبت کم می‌شود و هیچ‌وقت از تصویر بیرون نمی‌زند. */}
+        <div className={`a-overlay-scale grid grid-cols-1 ${OVERLAY_VERTICAL[data.contentPosition] || OVERLAY_VERTICAL.center}`}>
         {overlay.map(({ child, node }) => {
           const box = blockBoxProps(child);
           const alignSelf = BLOCK_ALIGN_SELF[child?.layout?.alignY];
@@ -340,6 +344,7 @@ function ImageBlock({ data, spacing, inMerged = false, overlay = [] }) {
             style={box || alignSelf ? { ...(box?.style || {}), ...(alignSelf ? { alignSelf } : null) } : undefined}
           >{node}</div>;
         })}
+        </div>
       </div> : null}
     </div> : grid}
     {data.caption ? <figcaption className="mt-3 text-center text-xs leading-6 text-gray-500">{data.caption}</figcaption> : null}

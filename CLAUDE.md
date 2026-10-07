@@ -1049,17 +1049,38 @@ editor accepts.
 | paste runs `normalizeHeaderPosition` | the header block stays at index 0 |
 | reads and writes never throw | a private window or blocked storage just leaves the buttons inert |
 
-**Blocks on an image scale with the image, not the viewport.** They used to carry their own
-fixed sizes (`text-2xl`, `px-6 py-3`), which read the *page* breakpoints — on a phone the
-frame shrank and the text did not, so it filled or overflowed the picture. The overlay layer
-is now a container (`.a-image-overlay`, `container-type: inline-size`) whose base size comes
-from `clamp(0.6rem, 3.2cqw, 1.0625rem)` — the frame's own width, bounded at both ends —
-and everything inside is expressed in `em`: headings, text, the gap, the padding, and the
-button's label, padding, border and radius. Measured on one article: a 740px frame gives
-17px base / 34px heading / button padding 10.2×25.5, and the same block in a 318px frame
-gives 12.5px / 25px / 7.5×18.7. Outside an image nothing changes — the rules only exist
-inside `.a-image-overlay`, and they beat Tailwind's single-class utilities on specificity
-without `!important`.
+**Blocks on an image scale with the image, not the viewport.** They carry their own fixed
+sizes (`text-2xl`, `px-6 py-5`, `border-r-4`), which read the *page* breakpoints — on a
+phone the frame shrank and the block did not, so it covered or overflowed the picture.
+
+The first attempt rewrote sizes element by element in `em`, and was incomplete by
+construction: every block not in that list (quote, callout, table, anything added later)
+stayed full size. Instead of enumerating elements, the **whole layer is laid out in a
+reference space and then scaled once**:
+
+```css
+.a-image-overlay { container-type: inline-size; }
+.a-overlay-scale { --a-overlay-ref: 40rem; width: 100%; height: 100%; }
+@supports (zoom: 1) {
+  .a-overlay-scale { zoom: min(1, tan(atan2(100cqw, var(--a-overlay-ref)))); }
+}
+```
+
+- **`zoom`, not `transform`** — zoom affects *layout*, so percentages resolve in the scaled
+  space and `100%` still fills the frame exactly; a transform would leave the layout box at
+  full size.
+- **`tan(atan2(a, b))`** is the standard way to get a unitless ratio from two lengths; `zoom`
+  needs a number, and CSS cannot divide one length by another directly.
+- **`min(1, …)`** means a frame wider than the reference is untouched, so desktop renders
+  exactly as before.
+- Because it is one factor on the whole subtree, *every* block scales — width, height, font,
+  padding, margins, borders, radius — including ones that do not exist yet.
+
+Measured on one article with a heading, quote, paragraph, callout and button stacked on a
+420px image: at a 740px frame `zoom: 1` and the painted sizes are unchanged; at a 318px
+frame `zoom: 0.497` and every block halves (quote 100→63px tall, callout 102→52, button
+52→26 and 83→41 wide) with nothing outside the frame. Outside an image nothing changes —
+the rules exist only under `.a-image-overlay`.
 
 **Default spacing is per type.** "Zero unless configured" stays the general rule;
 `BLOCK_DEFAULT_SPACING` lists the three deliberate exceptions — heading and paragraph get
