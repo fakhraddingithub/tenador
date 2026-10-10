@@ -115,7 +115,28 @@ test("خاصیت‌های CSSِ خارج از واژگان دور ریخته م�
 });
 
 test("style روی تگی که اجازه ندارد نمی‌نشیند", () => {
-  assert.equal(sanitizeRichText('<a href="https://x.test" style="color:#aa4725">م</a>').includes("style"), false);
+  // br هیچ صفتی نمی‌گیرد. (پیش‌تر این تست <a> را مثال می‌زد — همان رفتاری که
+  // رنگِ پیوند را دور می‌ریخت؛ پیوند حالا style می‌گیرد، تست پایین.)
+  assert.equal(sanitizeRichText('م<br style="color:#aa4725">ن').includes("style"), false);
+});
+
+test("رنگِ پیوند حفظ می‌شود — کروم آن را مستقیم روی خودِ <a> می‌نویسد", () => {
+  // دقیقاً خروجیِ execCommand("foreColor") وقتی کلِ متنِ یک پیوند انتخاب شده است.
+  const chrome = 'سلام <a href="https://x.test" style="color: rgb(255, 0, 0);">دنیا</a> متن';
+  assert.match(sanitizeRichText(chrome), /<a href="https:\/\/x\.test" style="color:rgb\(255, 0, 0\)">دنیا<\/a>/);
+  assert.match(sanitizeRichText('<a href="https://x.test" style="color:#aa4725">م</a>'), /style="color:#aa4725"/);
+  // و ذخیره هم می‌شود (richTextValue همان مسیرِ ذخیره است).
+  assert.match(richTextValue(chrome), /style="color:rgb\(255, 0, 0\)"/);
+  // اندازه و ارتفاعِ خطِ مجاز هم روی پیوند همان رفتارِ span را دارند.
+  assert.match(sanitizeRichText('<a href="https://x.test" style="font-size:20px">م</a>'), /font-size:20px/);
+});
+
+test("روی پیوند هم فقط واژگانِ مجاز می‌ماند", () => {
+  for (const bad of ["color:red", "color:var(--x)", "background:url(x)", "position:fixed", "font-size:200px"]) {
+    assert.equal(sanitizeRichText(`<a href="https://x.test" style="${bad}">م</a>`).includes("style"), false, bad);
+  }
+  // و طرحِ خطرناک در پیوند با داشتنِ style هم رد می‌شود.
+  assert.equal(sanitizeRichText('<a href="javascript:alert(1)" style="color:#aa4725">م</a>').includes("javascript"), false);
 });
 
 // ——— شکستِ خط ————————————————————————————————————————————————————————

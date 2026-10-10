@@ -63,7 +63,10 @@ const MAX_INPUT = 100000;
 const OPTIONS = {
   allowedTags: ["b", "strong", "i", "em", "u", "s", "a", "span", "br"],
   allowedAttributes: {
-    a: ["href", "target", "rel"],
+    // style روی پیوند هم: وقتی ادمین رنگ را روی *تمامِ* متنِ یک پیوند می‌گذارد،
+    // کروم آن را مستقیم روی خودِ <a> می‌نویسد، نه روی span ای داخلش. بدونِ این،
+    // رنگ هنگامِ ذخیره دور ریخته می‌شد. مقدارها همان فهرستِ allowedStyles است.
+    a: ["href", "target", "rel", "style"],
     ...Object.fromEntries(STYLEABLE.map((tag) => [tag, ["style"]])),
   },
   allowedStyles: {

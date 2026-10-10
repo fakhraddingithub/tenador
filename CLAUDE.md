@@ -680,6 +680,14 @@ The swatch therefore only *chooses* a colour (kept in state) and a toolbar butto
 saved range when the selection is no longer inside the editor — the OS picker holds focus
 while it is open, and until now only `applyLink` handled that.
 
+**A coloured link kept losing its colour on save.** When the selection is *exactly* a link's
+text, Chrome writes the colour straight onto the `<a>` (`<a href style="color:…">`), not onto a
+span inside it — and `sanitizeRichText` allowed `style` only on the formatting tags, so the
+validator dropped it. `<a>` now accepts `style` too; the values are still limited to the same
+`allowedStyles` vocabulary (hex/rgb colour, px font size, unitless line height). One function
+sanitises both the save path and the render path for articles, brochures and mini articles,
+so that one line fixes all six.
+
 ### Links inside the editor Preview
 
 In the Preview a single click on a link or card **does not navigate**, and a double-click
