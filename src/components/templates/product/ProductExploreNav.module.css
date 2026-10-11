@@ -1,0 +1,144 @@
+.nav {
+  margin-block-end: clamp(1.5rem, 3vw, 2.5rem);
+  padding: 5px;
+  border: 1px solid hsl(var(--border) / 0.65);
+  border-radius: var(--radius);
+  background: linear-gradient(110deg, hsl(var(--primary) / 0.025), hsl(var(--background)) 55%);
+}
+
+.list {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 5px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.item {
+  min-width: 0;
+}
+
+.link {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 100%;
+  min-height: 48px;
+  padding: 8px;
+  border: 1px solid transparent;
+  border-radius: max(2px, calc(var(--radius) - 2px));
+  color: hsl(var(--foreground));
+  text-decoration: none;
+  transition: background-color 180ms ease, border-color 180ms ease, color 180ms ease;
+}
+
+.icon {
+  flex-shrink: 0;
+  color: hsl(var(--primary));
+}
+
+.copy {
+  display: flex;
+  min-width: 0;
+  flex: 1;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.hint {
+  color: hsl(var(--foreground) / 0.66);
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.label {
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1.7;
+  overflow-wrap: anywhere;
+}
+
+.arrow {
+  flex-shrink: 0;
+  color: hsl(var(--foreground) / 0.4);
+  transition: transform 180ms ease, color 180ms ease;
+}
+
+.collection {
+  border-color: hsl(var(--primary) / 0.12);
+  background: hsl(var(--primary) / 0.055);
+  color: hsl(var(--primary));
+}
+
+.collection .hint,
+.collection .arrow {
+  color: hsl(var(--primary));
+}
+
+.link:focus-visible {
+  outline: 2px solid hsl(var(--primary));
+  outline-offset: 1px;
+}
+
+.link:active {
+  background: hsl(var(--primary) / 0.12);
+}
+
+@media (max-width: 479px) {
+  .hint,
+  .arrow {
+    display: none;
+  }
+
+  .link {
+    gap: 6px;
+  }
+}
+
+@media (hover: hover) {
+  .link:hover {
+    border-color: hsl(var(--primary) / 0.18);
+    background: hsl(var(--primary) / 0.07);
+    color: hsl(var(--primary));
+  }
+
+  .link:hover .arrow {
+    color: hsl(var(--primary));
+    transform: translateX(-3px);
+  }
+}
+
+@media (min-width: 768px) {
+  .list {
+    grid-template-columns: 0.8fr 1fr 0.8fr 1.4fr;
+  }
+
+  .link {
+    padding-inline: 12px;
+  }
+
+  .label {
+    font-size: 13px;
+  }
+}
+
+@media (min-width: 1280px) {
+  .copy {
+    flex-direction: row;
+    align-items: baseline;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .link,
+  .arrow {
+    transition: none;
+  }
+
+  .link:hover .arrow {
+    transform: none;
+  }
+}

@@ -110,13 +110,12 @@ export default async function ProductPage({ params }) {
         <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent z-10" />
       </div>
 
-      <div className="max-w-7xl mx-auto px-4 py-8">
-        <ProductTemplate
-          product={product}
-          reviews={reviews}
-          reviewStats={reviewStats}
-        />
-      </div>
+      <ProductTemplate
+        product={product}
+        reviews={reviews}
+        reviewStats={reviewStats}
+        rate={rate}
+      />
     </>
   );
 }
