@@ -23,8 +23,11 @@
  *   }
  */
 
+import "base/models/registerModels";
+import { applyCategorySubtree } from "base/services/categorySubtree.service";
+import { buildStorefrontAudienceMatch } from "base/utils/targetAudience";
 import { unstable_cache } from "next/cache";
-import { buildCategoryAttributeMatch } from "base/services/listingFilterCatalog.service";
+import { buildCategoryAttributeMatch, buildCategorySelectionMatch } from "base/services/listingFilterCatalog.service";
 import mongoose from "mongoose";
 import connectToDB from "base/configs/db";
 import Serie from "base/models/Serie";
@@ -40,7 +43,6 @@ import { applyProductSportVisibility } from "base/services/categorySportVisibili
 import { andMongoFilters } from "base/utils/categorySportVisibility";
 import { withProductSearch } from "@/lib/productSearch";
 import {
-  buildTargetAudienceMatch,
   LISTING_FIELDS,
   POPULATES,
 } from "base/services/productListing.service";
@@ -133,13 +135,13 @@ async function buildBaseMatch({
   const brandObjectId = toObjectId(brandId);
   const match = { isActive: true };
   if (brandObjectId) match.brand = brandObjectId;
-  if (categoryId) match.category = toObjectId(categoryId);
   if (extra && typeof extra === "object") Object.assign(match, extra);
   // مخاطبِ هدف (navbar audience tabs) — مستقلِ کاملِ فیلترهای موجودیتی/ویژگی بالا
-  const audienceMatch = buildTargetAudienceMatch(targetAudience);
+  const audienceMatch = buildStorefrontAudienceMatch(targetAudience);
   if (audienceMatch) match.targetAudience = audienceMatch;
   // جستجوی توکنی؛ توکنی که در نامِ محصول نیست می‌تواند با برند/سری تطبیق بخورد
   Object.assign(match, await withProductSearch(match, search));
+  if (categoryId) return applyCategorySubtree(match, { categoryId, sportId });
   return sportId
     ? applyProductSportVisibility(match, { sportId, categoryId })
     : match;
@@ -213,7 +215,10 @@ function attrValueMatchers(v) {
  * می‌شوند. بازگشتِ {} یعنی فیلتری اعمال نمی‌شود.
  */
 async function buildAttrMatches(attrFilters, scope, categoryAttributes) {
-  const categoryMatch = await buildCategoryAttributeMatch(scope, scope.categoryId, categoryAttributes);
+  const categoryMatch = andMongoFilters(
+    await buildCategorySelectionMatch(scope, scope.categoryIds),
+    await buildCategoryAttributeMatch(scope, scope.categoryIds, categoryAttributes),
+  );
   if (!Array.isArray(attrFilters) || attrFilters.length === 0) return categoryMatch;
 
   const conditions = []; // یک شرطِ {$or:[محصول, واریانت]} برای هر ویژگی (با AND)
@@ -270,6 +275,7 @@ async function _getBrandGroupedIndex(params) {
     brandId,
     sportId = null,
     categoryId = null,
+    categoryIds = [],
     attrFilters = [],
     categoryAttributes = {},
     search = "",
@@ -285,7 +291,7 @@ async function _getBrandGroupedIndex(params) {
     brand,
   ] = await Promise.all([
     buildSeriesTree(brandId),
-    buildAttrMatches(attrFilters, { brandId, sportId, categoryId, targetAudience }, categoryAttributes),
+    buildAttrMatches(attrFilters, { brandId, sportId, categoryId, categoryIds, targetAudience }, categoryAttributes),
     getRelatedLimitedEditions(brandId),
     Brand.findById(toObjectId(brandId)).select("title name").lean(),
   ]);
@@ -295,12 +301,13 @@ async function _getBrandGroupedIndex(params) {
   const collaborationScopes = buildCollaborationScopes(relatedEditions, brandId);
 
   const [baseMatch, brandlessBaseMatch] = await Promise.all([
-    buildBaseMatch({ brandId, sportId, categoryId, search, extra, targetAudience }),
+    buildBaseMatch({ brandId, sportId, categoryId, categoryIds, search, extra, targetAudience }),
     collaborationScopes.length
       ? buildBaseMatch({
           brandId: null,
           sportId,
           categoryId,
+          categoryIds,
           search,
           extra,
           targetAudience,
@@ -401,7 +408,7 @@ const getBrandGroupedIndex = unstable_cache(
   _getBrandGroupedIndex,
   [
     "brand-grouped-index", "category-attributes-v1",
-    "target-audience-unisex-v1",
+    "kids-subtree-v2",
     // v2: همکاری‌ها بخشِ مستقل ندارند و به برندِ مالکِ ادیشن محدودند
     "limited-edition-relations-v3",
   ],
@@ -413,6 +420,7 @@ async function _getBrandGroupedSections(params) {
     brandId,
     sportId = null,
     categoryId = null,
+    categoryIds = [],
     attrFilters = [],
     categoryAttributes = {},
     offset = 0,
@@ -446,18 +454,19 @@ async function _getBrandGroupedSections(params) {
     rate,
     extra,
   ] = await Promise.all([
-    getBrandGroupedIndex({ brandId, sportId, categoryId, attrFilters, categoryAttributes, search, targetAudience }),
+    getBrandGroupedIndex({ brandId, sportId, categoryId, categoryIds, attrFilters, categoryAttributes, search, targetAudience }),
     getCachedRate(),
-    buildAttrMatches(attrFilters, { brandId, sportId, categoryId, targetAudience }, categoryAttributes),
+    buildAttrMatches(attrFilters, { brandId, sportId, categoryId, categoryIds, targetAudience }, categoryAttributes),
   ]);
 
   const [baseMatch, brandlessBaseMatch] = await Promise.all([
-    buildBaseMatch({ brandId, sportId, categoryId, search, extra, targetAudience }),
+    buildBaseMatch({ brandId, sportId, categoryId, categoryIds, search, extra, targetAudience }),
     collaborationScopes.length
       ? buildBaseMatch({
           brandId: null,
           sportId,
           categoryId,
+          categoryIds,
           search,
           extra,
           targetAudience,
@@ -566,7 +575,7 @@ export const getBrandGroupedSections = unstable_cache(
   _getBrandGroupedSections,
   [
     "brand-grouped-sections", "category-attributes-v1",
-    "target-audience-unisex-v1",
+    "kids-subtree-v2",
     // v2: همکاری‌ها بخشِ مستقل ندارند و به برندِ مالکِ ادیشن محدودند
     "limited-edition-relations-v3",
     "brand-product-cursor-v1",

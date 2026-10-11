@@ -16,7 +16,7 @@
 
 import { useState, useRef, useEffect, useCallback, useMemo } from "react";
 import Link from "next/link";
-import CategoryAttributeFilters from "@/components/features/filters/CategoryAttributeFilters";
+import CategoryAttributeFilters, { pruneAttributes } from "@/components/features/filters/CategoryAttributeFilters";
 import {
   countActiveAttrFilters,
   mergeAttributeMeta,
@@ -84,6 +84,7 @@ export default function BrandGroupedView({
     minPrice: 0,
     maxPrice: 0,
     categoryAttributes: initialCategoryAttributes,
+    categoryIds: [],
   };
   // در hydration اولیه cache خالی است و دقیقاً initialData سرور رندر می‌شود.
   // در بازگشت با navigation داخلی، lazy initializer وضعیت کامل قبلی را می‌گیرد —
@@ -132,6 +133,7 @@ export default function BrandGroupedView({
   const [minPrice, setMinPrice] = useState(startingFilters.minPrice);
   const [maxPrice, setMaxPrice] = useState(startingFilters.maxPrice);
 
+  const [categoryIds, setCategoryIds] = useState(startingFilters.categoryIds || []);
   const [categoryAttributes, setCategoryAttributes] = useState(startingFilters.categoryAttributes || initialCategoryAttributes);
   const dirtyFiltersRef = useRef(false);
 
@@ -194,6 +196,7 @@ export default function BrandGroupedView({
     minPrice: Number(minPrice) || 0,
     maxPrice: Number(maxPrice) || 0,
     categoryAttributes,
+    categoryIds,
   });
 
   // ─── ساختِ URL واکشی ───
@@ -206,6 +209,7 @@ export default function BrandGroupedView({
       params.set("brandId", brandId);
       if (sportId) params.set("sportId", sportId);
       if (categoryId) params.set("categoryId", categoryId);
+      for (const id of f.categoryIds || []) params.append("categoryIds", id);
       if (Array.isArray(attrFilters) && attrFilters.length > 0) {
         params.set("attrFilters", JSON.stringify(attrFilters));
       }
@@ -411,7 +415,7 @@ export default function BrandGroupedView({
     );
     return () => clearTimeout(t);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [searchTerm, minPrice, maxPrice, categoryAttributes, run]);
+  }, [searchTerm, minPrice, maxPrice, categoryAttributes, categoryIds, run]);
 
   // ─── IntersectionObserver برای infinite scroll ───
   // وابسته به sections.length و hasMore: پس از هر batch، observer دوباره ساخته
@@ -479,11 +483,18 @@ export default function BrandGroupedView({
     applyAttributes(value);
   };
 
+  const handleCategoriesChange = (ids) => {
+    invalidateFilters();
+    setCategoryIds(ids);
+    applyAttributes(pruneAttributes(categoryAttributes, filterCategories, ids));
+  };
+
   const resetFilters = () => {
     invalidateFilters();
     setSearchTerm("");
     setMinPrice(0);
     setMaxPrice(0);
+    setCategoryIds([]);
     applyAttributes({});
   };
 
@@ -504,7 +515,7 @@ export default function BrandGroupedView({
   // (جستجو در نوارِ بالا قرار دارد و جزو سایدبار نیست.)
   const activeCount =
     (Number(minPrice) > 0 ? 1 : 0) + (Number(maxPrice) > 0 ? 1 : 0) +
-    countActiveAttrFilters(categoryAttributes);
+    categoryIds.length + countActiveAttrFilters(categoryAttributes);
 
   // پس از اعمالِ فیلتر (ریستِ نتایج)، اگر لیست کوتاه شد، نمای صفحه را به ناحیه‌ی
   // فیلتر لنگر می‌اندازد. به filterToken وابسته است تا با loadMore (افزایشِ نتایج)
@@ -658,8 +669,8 @@ export default function BrandGroupedView({
               <div className="bg-white rounded-[6px] border border-gray-100 shadow-sm overflow-hidden">
                 <CategoryAttributeFilters
                   categories={filterCategories}
-                  selected={[String(categoryId)]}
-                  fixedCategory={true}
+                  selected={categoryIds}
+                  onCategoryChange={handleCategoriesChange}
                   attributes={categoryAttributes}
                   onAttributesChange={handleAttributesChange}
                 />

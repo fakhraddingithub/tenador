@@ -223,14 +223,16 @@ export default async function SportDynamicSlugPage({ params, searchParams }) {
     // ── فیلترهای ویژگی: همه‌ی پارامترهای ویژگیِ موجود در URL خوانده می‌شوند
     //    (مثلِ ?capacity=10 یا ?Suitable for=خانم‌ها) و نوعِ هرکدام (ثابت/متغیر)
     //    برای ساختِ کوئریِ درست در brandGrouped تعیین می‌شود. ──
+    const filterCategories = await getListingFilterOptions({ brandId, sportId, categoryId, targetAudience });
+    const catalogMeta = mergeAttributeMeta(filterCategories);
     const allAttrFilters = resolveAttrFilters(filters.category, sp);
-    const managedNames = new Set((filters.category?.attributes || []).filter((a) => a.filterable).map((a) => a.name));
+    const managedNames = new Set(catalogMeta.map((a) => a.name));
     const attrFilters = allAttrFilters.filter((f) => !managedNames.has(f.name));
-    const categoryAttributes = Object.fromEntries(allAttrFilters.filter((f) => managedNames.has(f.name)).map((f) => [f.name, f.values]));
+    const categoryAttributes = categoryId ? readAttrParams(catalogMeta, sp) : {};
 
     // مینی مقاله‌ی برند+دسته فقط روی /[sport]/[category]/[brand]؛ صفحه‌ی
     // /[sport]/[brand] (بدونِ دسته) هیچ مقاله‌ای نمی‌گیرد.
-    const [initialData, categoryArticleBlocks, filterCategories] = await Promise.all([
+    const [initialData, categoryArticleBlocks] = await Promise.all([
       getBrandGroupedSections({
         brandId,
         sportId,
@@ -243,7 +245,6 @@ export default async function SportDynamicSlugPage({ params, searchParams }) {
         targetAudience,
       }),
       categoryId ? getBrandCategoryArticleBlocks(brandId, categoryId) : [],
-      getListingFilterOptions({ brandId, sportId, categoryId, targetAudience }),
     ]);
 
     const pageInfo = { ...filters.brand };
@@ -268,6 +269,7 @@ export default async function SportDynamicSlugPage({ params, searchParams }) {
             String(sportId || ""),
             String(categoryId || ""),
             allAttrFilters,
+            categoryAttributes,
             String(targetAudience || ""),
           ])}
           pageInfo={pageInfo}
@@ -405,7 +407,7 @@ export default async function SportDynamicSlugPage({ params, searchParams }) {
           React وضعیتِ فیلترِ قبلیِ کاربر را در جای خودش نگه می‌داشت. */}
       <SportPageClient
         key={JSON.stringify([slugs, Object.entries(sp).sort()])}
-        filterCategories={searchData.filters.serie ? await getListingFilterOptions({ serieId: String(searchData.filters.serie._id), sportId: String(searchData.filters.sport._id), targetAudience, descendants: false }) : []}
+        filterCategories={searchData.filters.category ? await getListingFilterOptions({ categoryId: String(searchData.filters.category._id), sportId: String(searchData.filters.sport._id), targetAudience }) : searchData.filters.serie ? await getListingFilterOptions({ serieId: String(searchData.filters.serie._id), sportId: String(searchData.filters.sport._id), targetAudience, descendants: false }) : []}
         pageInfo={pageInfo}
         filters={searchData.filters}
         products={searchData.results}

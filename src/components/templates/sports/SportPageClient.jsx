@@ -1,6 +1,7 @@
 "use client";
 
 import { matchesSearch } from "@/lib/search";
+import { filterCategoriesBySelection, selectedCategoryIds } from "base/utils/categorySubtree";
 import CategoryAttributeFilters, { pruneAttributes } from "@/components/features/filters/CategoryAttributeFilters";
 import { buildSerieNames } from "@/lib/seo/taxonomyNames";
 import { useState, useMemo, useEffect, useRef } from "react";
@@ -67,15 +68,14 @@ export default function SportPageClient({
   // رویداد که category پاس نمی‌دهند، هیچ فیلتر ویژگی نشان نمی‌دهند.
   // ─────────────────────────────────────────────
   const isSeriePage = Boolean(filters?.serie) && !filters?.limitedEdition;
+  const hasCategoryCatalog = isSeriePage || Boolean(filters?.category);
   const attributeMeta = useMemo(
-    () => isSeriePage
+    () => hasCategoryCatalog
       ? mergeAttributeMeta(
-          localFilters.categories.length
-            ? filterCategories.filter((c) => localFilters.categories.includes(String(c._id)))
-            : filterCategories,
+          filterCategoriesBySelection(filterCategories, localFilters.categories),
         )
       : buildAttributeMeta(filters?.category?.attributes, products),
-    [filters?.category, isSeriePage, products, filterCategories, localFilters.categories],
+    [filters?.category, hasCategoryCatalog, products, filterCategories, localFilters.categories],
   );
 
   const [attrFilters, setAttrFilters] = useState({});
@@ -99,7 +99,7 @@ export default function SportPageClient({
   // دسته‌های انتخاب‌شده، وگرنه پارامترِ ویژگیِ یک دسته‌ی تیک‌خورده‌ی قبلی می‌ماند.
   const applyAttrFilters = (next) => {
     setAttrFilters(next);
-    syncAttrFiltersToUrl(next, isSeriePage ? mergeAttributeMeta(filterCategories) : attributeMeta);
+    syncAttrFiltersToUrl(next, hasCategoryCatalog ? mergeAttributeMeta(filterCategories) : attributeMeta);
   };
 
   // ─────────────────────────────────────────────
@@ -271,7 +271,7 @@ export default function SportPageClient({
   // با تغییرِ انتخابِ برند، سری‌های انتخاب‌شده‌ای که به برند(های) جدید تعلق
   // ندارند حذف می‌شوند تا فیلترِ نامرئی باقی نماند.
   const applyLocalFilters = (next) => {
-    if (isSeriePage && JSON.stringify(next.categories) !== JSON.stringify(localFilters.categories)) {
+    if (hasCategoryCatalog && JSON.stringify(next.categories) !== JSON.stringify(localFilters.categories)) {
       applyAttrFilters(pruneAttributes(attrFilters, filterCategories, next.categories));
     }
     if (next.series?.length && next.brands?.length) {
@@ -294,6 +294,9 @@ export default function SportPageClient({
   // Product Filtering
   // ─────────────────────────────────────────────
   const filteredProducts = useMemo(() => {
+    const categoryIds = hasCategoryCatalog
+      ? selectedCategoryIds(filterCategories, localFilters.categories)
+      : localFilters.categories;
     return products.filter((product) => {
       const matchesQuery = matchesSearch(
         searchTerm,
@@ -312,7 +315,7 @@ export default function SportPageClient({
 
       const matchesCategory =
         localFilters.categories.length === 0 ||
-        localFilters.categories.includes(
+        categoryIds.includes(
           product.category?._id?.toString() || product.category?.toString(),
         );
 
@@ -350,7 +353,7 @@ export default function SportPageClient({
         matchesAttributes
       );
     });
-  }, [searchTerm, localFilters, products, attrFilters, attributeMeta, serieRootResolver]);
+  }, [searchTerm, localFilters, products, attrFilters, attributeMeta, serieRootResolver, hasCategoryCatalog, filterCategories]);
 
   // با تغییرِ فیلتر و کوتاه‌شدنِ لیست، نمای صفحه را به ناحیه‌ی فیلتر لنگر می‌اندازد
   // (جلوگیری از افتادن روی فوتر). signal = خودِ فیلترها؛ بارگذاریِ محصولات بیشتر اسکرول را تغییر نمی‌دهد.
@@ -381,6 +384,7 @@ export default function SportPageClient({
             series={series.filter(
               (serie) => serie.isNewSerie && !serie.isLimitedEdition,
             )}
+            targetAudience={listingFilter.targetAudience}
             sportSlug={pageInfo.slug}
             sportTitle={pageInfo.title}
           />
@@ -390,6 +394,7 @@ export default function SportPageClient({
       {filters?.serie && !filters?.limitedEdition && (
         <LimitedEditionsStrip
           limitedEditions={pageLimitedEditions}
+          targetAudience={listingFilter.targetAudience}
           brandSlug={filters?.brand?.slug}
         />
       )}
@@ -409,7 +414,7 @@ export default function SportPageClient({
               setFilters={applyLocalFilters}
               hideSportFilter={true}
               seriesOptions={seriesFilterOptions}
-              categoryFilter={isSeriePage ? (
+              categoryFilter={hasCategoryCatalog ? (
                 <CategoryAttributeFilters
                   categories={filterCategories}
                   selected={localFilters.categories}
@@ -418,7 +423,7 @@ export default function SportPageClient({
                   onAttributesChange={applyAttrFilters}
                 />
               ) : null}
-              attributeMeta={isSeriePage ? [] : attributeMeta}
+              attributeMeta={hasCategoryCatalog ? [] : attributeMeta}
               attrFilters={attrFilters}
               setAttrFilters={applyAttrFilters}
             />
@@ -493,6 +498,7 @@ export default function SportPageClient({
         !filters?.limitedEdition && (
           <SeriesSlider
             series={series.filter((serie) => serie.isLimitedEdition)}
+            targetAudience={listingFilter.targetAudience}
             sportSlug={pageInfo.slug}
             sportTitle={`لیمیتد ادیشن ${pageInfo.title}`}
           />

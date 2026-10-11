@@ -1,3 +1,4 @@
+import "base/models/registerModels";
 import { unstable_cache } from "next/cache";
 import connectToDB from "base/configs/db";
 import Product from "base/models/Product";
@@ -28,7 +29,7 @@ export const getProducts = unstable_cache(
   async () => {
     return getProductListingPage();
   },
-  ["all-products"],
+  ["all-products-kids-separated-v2"],
   { revalidate: 10800, tags: ["products"] }
 );
 
@@ -228,7 +229,7 @@ export const getFilterableAttributes = unstable_cache(
 );
 
 export const getPageDataBySlug = unstable_cache(
-  async (slug) => {
+  async (slug, targetAudience = null) => {
     await connectToDB();
 
     const slugData = await SlugRegistery.findOne({ slug: slug.toLowerCase() }).lean();
@@ -253,7 +254,7 @@ export const getPageDataBySlug = unstable_cache(
     // the public render never needs a second request or a client-side fetch.
     const [listing, articleEntities] = await Promise.all([
       getProductListingPage({
-        filter: { [slugData.filterField]: entityInfo._id },
+        filter: { [slugData.filterField]: entityInfo._id, targetAudience },
       }),
       articleBlocks.length > 0
         ? import("base/services/publicArticle.service").then(
@@ -280,7 +281,7 @@ export const getPageDataBySlug = unstable_cache(
       })
     );
   },
-  ["page-data-by-slug"],
+  ["page-data-by-slug-kids-separated-v2"],
   {
     revalidate: 10800,
     tags: ["products", "sports", "categories", "brands", "series", "articles"],

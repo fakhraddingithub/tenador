@@ -4,7 +4,7 @@ import connectToDB from "base/configs/db";
 import Sport from "base/models/Sport";
 import Product from "base/models/Product";
 import Category from "base/models/Category";
-import { getEffectiveTargetAudienceFilters } from "base/utils/targetAudience";
+import { getEffectiveTargetAudienceFilters, normalizeTargetAudience } from "base/utils/targetAudience";
 import {
   fillStructuralAudiences,
   insertStructuralParents,
@@ -321,7 +321,6 @@ async function buildNavbarData() {
         sport: { $ne: null },
         category: { $ne: null },
         brand: { $ne: null },
-        targetAudience: { $nin: [null, ""] },
       },
     },
     {
@@ -338,7 +337,7 @@ async function buildNavbarData() {
     {
       $group: {
         _id: { sport: "$_visibleSports", category: "$category", brand: "$brand" },
-        values: { $addToSet: "$targetAudience" },
+        values: { $addToSet: { $ifNull: ["$targetAudience", null] } },
       },
     },
   ]);
@@ -354,7 +353,8 @@ async function buildNavbarData() {
     const bKey = brandId.toString();
     // دادهٔ قدیمی «همه» نیز اینجا به مردانه+زنانه گسترش می‌یابد؛ بچگانه فقط
     // با محصولی که صریحاً بچگانه است در navData ثبت می‌شود.
-    const values = getEffectiveTargetAudienceFilters(row.values.map(String));
+    const values = getEffectiveTargetAudienceFilters(row.values);
+    if (row.values.some((value) => !normalizeTargetAudience(value))) values.push(null);
 
     const scKey = `${sKey}|${cKey}`;
     let inner = audienceByCatBrand.get(scKey);
@@ -364,10 +364,10 @@ async function buildNavbarData() {
     }
     inner.set(bKey, new Set(values));
 
-    let catSet = audienceByCategory.get(cKey);
+    let catSet = audienceByCategory.get(scKey);
     if (!catSet) {
       catSet = new Set();
-      audienceByCategory.set(cKey, catSet);
+      audienceByCategory.set(scKey, catSet);
     }
     for (const v of values) catSet.add(v);
 
@@ -390,7 +390,7 @@ async function buildNavbarData() {
     for (const category of sport.categories) {
       category.brands?.sort(byOrder);
       category.audiences = Array.from(
-        audienceByCategory.get(category._id.toString()) || [],
+        audienceByCategory.get(`${sport._id}|${category._id}`) || [],
       );
 
       const fm = catFilterMeta.get(category._id.toString());
@@ -439,6 +439,6 @@ export const getCachedNavbar = unstable_cache(
     return JSON.parse(JSON.stringify(data));
   },
   // کلید با اضافه‌شدنِ دسته‌های ساختاری (hasProducts) بامپ شد تا کشِ قدیمی سرو نشود
-  ["navbar-data", "target-audience-unisex-v1", "structural-parents-v1", "category-sport-label-v1"],
+  ["navbar-data", "target-audience-unisex-v1", "subtree-parents-kids-v2", "category-sport-label-v1"],
   { revalidate: 10800, tags: ["navbar"] },
 );

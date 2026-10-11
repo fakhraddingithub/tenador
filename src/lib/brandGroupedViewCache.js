@@ -10,6 +10,7 @@ const cloneFilters = (filters = {}) => ({
   search: filters.search || "",
   minPrice: Number(filters.minPrice) || 0,
   maxPrice: Number(filters.maxPrice) || 0,
+  categoryIds: [...(filters.categoryIds || [])],
   categoryAttributes: Object.fromEntries(Object.entries(filters.categoryAttributes || {}).map(([name, values]) => [name, [...values]])),
 });
 
@@ -38,6 +39,7 @@ const filtersSignature = (filters) => {
     f.search,
     f.minPrice,
     f.maxPrice,
+    f.categoryIds.sort(),
     Object.entries(f.categoryAttributes)
       .map(([name, values]) => [name, values.sort()])
       .sort((a, b) => (a[0] < b[0] ? -1 : 1)),

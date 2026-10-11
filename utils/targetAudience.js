@@ -68,6 +68,12 @@ export function buildTargetAudienceMatch(value) {
   return values.length > 0 ? { $in: values } : null;
 }
 
+// Storefront's default view excludes kids; only an explicit kids selection
+// includes them. Unclassified legacy products remain in the default view.
+export function buildStorefrontAudienceMatch(value) {
+  return buildTargetAudienceMatch(value) || { $ne: TARGET_AUDIENCE.KIDS };
+}
+
 /** مخاطب‌های قابل‌فیلتر را از مقادیر ذخیره‌شده استخراج می‌کند. */
 export function getEffectiveTargetAudienceFilters(values = []) {
   const available = new Set();

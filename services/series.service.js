@@ -1,3 +1,5 @@
+import "base/models/registerModels";
+import { buildStorefrontAudienceMatch } from "base/utils/targetAudience";
 import { unstable_cache } from "next/cache";
 import connectToDB from "base/configs/db";
 import Product from "base/models/Product";
@@ -13,7 +15,7 @@ import { getProductSportVisibilityMatch } from "base/services/categorySportVisib
  * دریافت سری‌های مرتبط با یک ورزش
  * فقط سری‌هایی که حداقل یک محصول دارند
  */
-async function _getSeriesBySport(sportSlug) {
+async function _getSeriesBySport(sportSlug, targetAudience = null) {
   await connectToDB();
 
   const sport = await Sport.findOne({
@@ -35,6 +37,7 @@ async function _getSeriesBySport(sportSlug) {
     {
       $match: {
         ...visibilityMatch,
+        targetAudience: buildStorefrontAudienceMatch(targetAudience),
         isActive: true,
         serie: {
           $exists: true,
@@ -287,7 +290,7 @@ async function _getSeriesBySport(sportSlug) {
 
 export const getSeriesBySport = unstable_cache(
   _getSeriesBySport,
-  ["series-by-sport"],
+  ["series-by-sport-kids-separated-v2"],
   { revalidate: 10800, tags: ["products", "categories", "series", "sports"] }
 );
 

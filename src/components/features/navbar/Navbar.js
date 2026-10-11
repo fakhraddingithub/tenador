@@ -422,8 +422,6 @@ function MobileCategoryDrawer({ navData, onClose, selectedAudience, onSelectAudi
                   const kids = childrenOf(cat._id);
                   const isActive = cat._id === effectiveCatId;
                   const isExpanded = expandedCategoryId === cat._id;
-                  // دسته‌ی ساختاری: محصولِ مستقیم ندارد ⇒ فقط زیردسته‌ها را باز/بسته
-                  // می‌کند و پنل B را عوض نمی‌کند (صفحه‌ی خودش خالی است).
                   const isStructural = cat.hasProducts === false;
                   // ساختاری بدونِ فرزندِ قابل‌نمایش (مثلاً بعد از فیلترِ جنسیت) = آیتمِ مرده
                   if (isStructural && kids.length === 0) return null;
@@ -433,7 +431,7 @@ function MobileCategoryDrawer({ navData, onClose, selectedAudience, onSelectAudi
                       <button
                         type="button"
                         onClick={() => {
-                          if (!isStructural) setActiveCategoryId(cat._id);
+                          setActiveCategoryId(cat._id);
                           setExpandedCategoryId((prev) =>
                             kids.length > 0 && prev !== cat._id
                               ? cat._id
@@ -477,27 +475,18 @@ function MobileCategoryDrawer({ navData, onClose, selectedAudience, onSelectAudi
                             <ul className="bg-black/15 py-1">
                               {kids.map((child) => (
                                 <li key={child._id}>
-                                  {child.hasProducts === false ? (
-                                    // زیردسته‌ی ساختاری هم صفحه‌ی خالی دارد ⇒ لینک نمی‌شود
-                                    <div className="mr-3 flex items-center gap-1.5 border-r border-white/10 px-3 py-2 text-right text-[11px] font-medium leading-5 text-gray-400">
-                                      <span className="min-w-0 flex-1 truncate">
-                                        {child.title}
-                                      </span>
-                                    </div>
-                                  ) : (
-                                    <Link
-                                      href={withFilterForCategory(
-                                        child,
-                                        `/${activeSport.slug}/${child.slug}`,
-                                      )}
-                                      onClick={onClose}
-                                      className="mr-3 flex items-center gap-1.5 border-r border-white/10 px-3 py-2 text-right text-[11px] font-medium leading-5 text-gray-400 transition-colors hover:bg-white/[0.04] hover:text-[#aa4725]"
-                                    >
-                                      <span className="min-w-0 flex-1 truncate">
-                                        {child.title}
-                                      </span>
-                                    </Link>
-                                  )}
+                                  <Link
+                                    href={withFilterForCategory(
+                                      child,
+                                      `/${activeSport.slug}/${child.slug}`,
+                                    )}
+                                    onClick={onClose}
+                                    className="mr-3 flex items-center gap-1.5 border-r border-white/10 px-3 py-2 text-right text-[11px] font-medium leading-5 text-gray-400 transition-colors hover:bg-white/[0.04] hover:text-[#aa4725]"
+                                  >
+                                    <span className="min-w-0 flex-1 truncate">
+                                      {child.title}
+                                    </span>
+                                  </Link>
                                 </li>
                               ))}
                             </ul>

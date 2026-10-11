@@ -21,6 +21,7 @@
 
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
+import { withQueryParams } from "@/lib/navbarAudience";
 import Image from "next/image";
 import useDragClickGuard from "@/hooks/useDragClickGuard";
 import styles from "@/styles/BrandSection.module.css";
@@ -267,7 +268,7 @@ function useTintedRasterLogos(brands) {
   return tintedLogos;
 }
 
-const BrandsTicker = ({ brands = EMPTY_BRANDS, sportSlug = "" }) => {
+const BrandsTicker = ({ brands = EMPTY_BRANDS, sportSlug = "", targetAudience = null }) => {
   const brandList = Array.isArray(brands) ? brands : EMPTY_BRANDS;
   const tintedLogos = useTintedRasterLogos(brandList);
 
@@ -377,7 +378,7 @@ const BrandsTicker = ({ brands = EMPTY_BRANDS, sportSlug = "" }) => {
           return (
             <Link
               key={`${brand.slug}-${index}`}
-              href={href}
+              href={withQueryParams(href, { targetAudience })}
               className={styles.brandLogo}
               title={brand.name}
               aria-hidden={decorative ? true : undefined}

@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import { withQueryParams } from "@/lib/navbarAudience";
 import {
   FiChevronLeft,
   FiArrowLeft,
@@ -34,7 +35,7 @@ const GrungeFilter = () => (
   </svg>
 );
 
-function SerieCard({ serie, sportSlug, limited = false }) {
+function SerieCard({ serie, sportSlug, targetAudience, limited = false }) {
   const [hovered, setHovered] = useState(false);
 
   const primary = serie.colors?.primary || "#c0392b";
@@ -50,7 +51,7 @@ function SerieCard({ serie, sportSlug, limited = false }) {
   `;
 
   return (
-    <Link href={`/${sportSlug}/${serie.brand.slug}/${serie.slug}`} className="block w-full">
+    <Link href={withQueryParams(`/${sportSlug}/${serie.brand.slug}/${serie.slug}`, { targetAudience })} className="block w-full">
       <div
         onMouseEnter={() => setHovered(true)}
         onMouseLeave={() => setHovered(false)}
@@ -184,7 +185,7 @@ function SerieCard({ serie, sportSlug, limited = false }) {
   );
 }
 
-export default function SeriesSlider({ series = [], sportSlug, sportTitle }) {
+export default function SeriesSlider({ series = [], sportSlug, sportTitle, targetAudience }) {
   // قبل از return زودهنگام صدا زده می‌شود تا ترتیبِ هوک‌ها ثابت بماند.
   // حرکتِ خودِ اسلایدر با Swiper است؛ این هوک فقط کلیکِ بعد از درگ را می‌بلعد.
   const sliderRef = useDragClickGuard();
@@ -298,6 +299,7 @@ export default function SeriesSlider({ series = [], sportSlug, sportTitle }) {
                   <SerieCard
                     serie={serie}
                     sportSlug={sportSlug}
+                    targetAudience={targetAudience}
                     limited={isLimitedEdition}
                   />
                 </div>

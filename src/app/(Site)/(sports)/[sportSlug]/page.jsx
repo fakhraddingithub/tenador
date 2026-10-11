@@ -95,9 +95,9 @@ export default async function DynamicSportPage({ params, searchParams }) {
   // Root brand pages use the grouped, progressively-loaded storefront. This
   // removes the generic 20-product cap and exposes related limited editions as
   // collaboration sections without changing Product.
+  const sp = (await searchParams) || {};
+  const targetAudience = normalizeTargetAudience(sp.targetAudience);
   if (ctx.filters.brand && !ctx.filters.sport) {
-    const sp = (await searchParams) || {};
-    const targetAudience = normalizeTargetAudience(sp.targetAudience);
     const brandId = ctx.filters.brand._id;
 
     // بروشورِ *منتشرشده* جای محتوای صفحه‌ی برند را می‌گیرد — آدرس، متادیتا،
@@ -192,8 +192,8 @@ export default async function DynamicSportPage({ params, searchParams }) {
   }
 
   const [data, series, seriesIndex, rate] = await Promise.all([
-    getPageDataBySlug(sportSlug),
-    getSeriesBySport(sportSlug),
+    getPageDataBySlug(sportSlug, targetAudience),
+    getSeriesBySport(sportSlug, targetAudience),
     getSeriesFilterIndex(),
     getCachedRate(),
   ]);
@@ -222,7 +222,7 @@ export default async function DynamicSportPage({ params, searchParams }) {
   }
 
   // نوار برندهای همین ورزش — کلیک روی هر برند به /[sportSlug]/[brandSlug] می‌رود
-  const tickerBrands = await getSportTickerBrands(serializedSportInfo._id);
+  const tickerBrands = await getSportTickerBrands(serializedSportInfo._id, targetAudience);
 
   return (
     <>
@@ -232,10 +232,12 @@ export default async function DynamicSportPage({ params, searchParams }) {
         canonical={`${SITE_URL}/${sportSlug}`}
       />
       <SportPageClient
+        key={JSON.stringify([sportSlug, targetAudience])}
+        filters={ctx.filters}
         pageInfo={serializedSportInfo}
         products={serializedProducts}
         totalResults={data.totalResults}
-        listingFilter={{ sport: serializedSportInfo._id }}
+        listingFilter={{ sport: serializedSportInfo._id, targetAudience }}
         title={title}
         rate={rate}
         series={serializedSeries}
@@ -244,7 +246,7 @@ export default async function DynamicSportPage({ params, searchParams }) {
       />
       {/* نوار برندهای همین ورزش — در پایینِ صفحه */}
       {tickerBrands.length > 0 && (
-        <BrandsTicker brands={tickerBrands} sportSlug={sportSlug} />
+        <BrandsTicker brands={tickerBrands} sportSlug={sportSlug} targetAudience={targetAudience} />
       )}
     </>
   );

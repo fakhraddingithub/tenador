@@ -5,6 +5,7 @@
  */
 import {
   TARGET_AUDIENCE_FILTER_VALUES,
+  TARGET_AUDIENCE,
   getEffectiveTargetAudienceFilters,
   targetAudienceListMatches,
 } from "base/utils/targetAudience";
@@ -12,7 +13,7 @@ import {
 export const AUDIENCE_OPTIONS = TARGET_AUDIENCE_FILTER_VALUES;
 
 function matchesAudience(nodeAudiences, selected) {
-  if (!selected) return true;
+  if (!selected) return !nodeAudiences?.length || nodeAudiences.some((value) => value !== TARGET_AUDIENCE.KIDS);
   return targetAudienceListMatches(nodeAudiences, selected);
 }
 
@@ -25,7 +26,6 @@ export function collectAvailableAudiences(navData) {
 }
 
 export function filterNavDataByAudience(navData, selected) {
-  if (!selected) return navData;
   return navData
     .filter((sport) => matchesAudience(sport.audiences, selected))
     .map((sport) => ({

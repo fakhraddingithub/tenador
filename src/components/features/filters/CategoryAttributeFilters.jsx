@@ -3,6 +3,7 @@
 import AttributeFilters from "@/components/features/filters/AttributeFilters";
 import FilterGroup from "@/components/features/filters/FilterGroup";
 import { mergeAttributeMeta } from "@/lib/attributeFilters";
+import { filterCategoriesBySelection } from "base/utils/categorySubtree";
 
 /**
  * «نوع محصول + ویژگی‌هایش» — آخرین بخشِ سایدبارِ صفحه‌های سری/برند.
@@ -53,7 +54,7 @@ export default function CategoryAttributeFilters({
  */
 export function activeCategories(categories, selected = [], fixedCategory = false) {
   if (selected.length === 0) return fixedCategory ? [] : categories;
-  return categories.filter((c) => selected.includes(String(c._id)));
+  return filterCategoriesBySelection(categories, selected);
 }
 
 /** فیلترهای ویژگیِ دیگر نامرئی را دور می‌ریزد (پس از تغییرِ انتخابِ دسته). */

@@ -5,6 +5,7 @@
  * Replaces server-to-self fetch calls in SSR pages with a cached function call.
  */
 
+import "base/models/registerModels";
 import connectToDB from "base/configs/db";
 import Brand from "base/models/Brand";
 import Sport from "base/models/Sport";
@@ -17,6 +18,7 @@ import { getProductListingPage } from "base/services/productListing.service";
 import { withResolvedSerieSportContent } from "@/lib/serieSportContent";
 import { buildCategorySportMatch } from "base/utils/categorySportVisibility";
 import { applyProductSportVisibility } from "base/services/categorySportVisibility.service";
+import { applyCategorySubtree } from "base/services/categorySubtree.service";
 
 // سنتینل واحد برای ۴۰۴ — صفحه‌ی کنترلر با بررسی res.notFound === true تابع
 // notFound() نکست را صدا می‌زند.
@@ -155,9 +157,8 @@ async function _validatePath(slugs) {
         const brand = await Brand.findOne({ slug: s3 }).lean();
         if (
           brand &&
-          (await Product.exists(await applyProductSportVisibility(
+          (await Product.exists(await applyCategorySubtree(
             {
-              category: category._id,
               brand: brand._id,
               isActive: true,
             },

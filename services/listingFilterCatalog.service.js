@@ -6,7 +6,9 @@ import Product from "base/models/Product";
 import Serie from "base/models/Serie";
 import LimitedEdition from "base/models/LimitedEdition";
 import { applyProductSportVisibility } from "base/services/categorySportVisibility.service";
-import { buildTargetAudienceMatch } from "base/utils/targetAudience";
+import { buildStorefrontAudienceMatch } from "base/utils/targetAudience";
+import { applyCategorySubtree, getCategorySubtree } from "base/services/categorySubtree.service";
+import { collectCategorySubtree, filterCategoriesBySelection, selectedCategoryIds } from "base/utils/categorySubtree";
 import { buildCollaborationScopes, collaborationMatchBranches } from "base/utils/brandCollaboration";
 import { buildAttributeMeta, mergeAttributeMeta, productMatchesAttrFilters } from "@/lib/attributeFilters";
 
@@ -17,7 +19,6 @@ const oid = (value) => new mongoose.Types.ObjectId(String(value));
 const getCatalog = unstable_cache(async (scope) => {
   await connectToDB();
   let match = { isActive: true };
-  if (scope.categoryId) match.category = oid(scope.categoryId);
   if (scope.serieId) {
     const parent = await Serie.findById(scope.serieId).select("brand").lean();
     if (!parent) return { products: [], categories: [] };
@@ -41,12 +42,12 @@ const getCatalog = unstable_cache(async (scope) => {
     const editions = await LimitedEdition.find({ relatedBrands: scope.brandId }).select("brand").lean();
     const branches = collaborationMatchBranches(buildCollaborationScopes(editions, scope.brandId), oid);
     match.$or = [{ brand: oid(scope.brandId) }, ...branches];
-  } else {
+  } else if (!scope.categoryId) {
     return { products: [], categories: [] };
   }
-  const audience = buildTargetAudienceMatch(scope.targetAudience);
-  if (audience) match.targetAudience = audience;
-  if (scope.sportId) match = await applyProductSportVisibility(match, {
+  match.targetAudience = buildStorefrontAudienceMatch(scope.targetAudience);
+  if (scope.categoryId) match = await applyCategorySubtree(match, scope);
+  else if (scope.sportId) match = await applyProductSportVisibility(match, {
     sportId: scope.sportId, categoryId: scope.categoryId || null,
   });
   const products = await Product.find(match).select("category attributes color variants")
@@ -60,21 +61,40 @@ const getCatalog = unstable_cache(async (scope) => {
     if (!categories.has(id)) categories.set(id, { ...category, products: [] });
     categories.get(id).products.push(product);
   }
+  if (scope.categoryId) {
+    const tree = await getCategorySubtree(scope.categoryId, scope.sportId);
+    const present = new Set(categories.keys());
+    for (const category of tree) {
+      const descendantIds = collectCategorySubtree(tree, category._id)
+        .map((c) => String(c._id)).filter((id) => present.has(id));
+      if (!descendantIds.length) continue;
+      const id = String(category._id);
+      if (!categories.has(id)) categories.set(id, { ...category, products: [] });
+      categories.get(id).descendantIds = descendantIds;
+    }
+  }
   return JSON.parse(JSON.stringify({
     products: products.map((p) => ({ ...p, category: p.category?._id || null })),
     categories: [...categories.values()]
       .sort((a, b) => (a.order ?? Number.MAX_SAFE_INTEGER) - (b.order ?? Number.MAX_SAFE_INTEGER))
       .map((category) => ({
         _id: category._id, title: category.title || category.name,
+        ...(category.descendantIds && { descendantIds: category.descendantIds }),
         attributeMeta: buildAttributeMeta(category.attributes, category.products),
       })),
   }));
-}, ["listing-filter-catalog-v1"], {
+}, ["listing-filter-catalog-v2-kids-subtree"], {
   revalidate: 300, tags: ["products", "categories", "series", "brands", "limited-editions"],
 });
 
 export async function getListingFilterOptions(scope) {
   return (await getCatalog(scope)).categories;
+}
+
+export async function buildCategorySelectionMatch(scope, ids = []) {
+  if (!ids.length) return {};
+  const { categories } = await getCatalog(scope);
+  return { category: { $in: selectedCategoryIds(categories, ids.map(String)).map(oid) } };
 }
 
 // دامنه‌ی دسته‌ها را به لیستی از رشته‌های id تبدیل می‌کند (یکی، چندتا، یا هیچ).
@@ -93,7 +113,7 @@ export async function buildCategoryAttributeMatch(scope, categoryIds, selections
   if (!Object.values(selections || {}).some((v) => Array.isArray(v) && v.length)) return {};
   const ids = toIdList(categoryIds);
   const { categories, products } = await getCatalog(scope);
-  const active = ids.length ? categories.filter((c) => ids.includes(c._id)) : categories;
+  const active = filterCategoriesBySelection(categories, ids);
   if (active.length === 0) return { _id: { $in: [] } };
   // ادغامِ متادیتا همان چیزی است که کلاینت می‌بیند، پس نتیجه‌ی دو طرف یکی است.
   const meta = mergeAttributeMeta(active);

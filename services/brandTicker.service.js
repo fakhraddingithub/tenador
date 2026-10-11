@@ -10,6 +10,8 @@
  * با تگ‌های "brands"/"products" باطل می‌شود.
  */
 
+import "base/models/registerModels";
+import { buildStorefrontAudienceMatch } from "base/utils/targetAudience";
 import { unstable_cache } from "next/cache";
 import mongoose from "mongoose";
 import connectToDB from "base/configs/db";
@@ -44,7 +46,7 @@ export const getTickerBrands = unstable_cache(
   { revalidate: 10800, tags: ["brands"] }
 );
 
-async function _getSportTickerBrands(sportId) {
+async function _getSportTickerBrands(sportId, targetAudience) {
   if (!sportId) return [];
   await connectToDB();
 
@@ -59,7 +61,7 @@ async function _getSportTickerBrands(sportId) {
   const brandIds = await Product.distinct(
     "brand",
     await applyProductSportVisibility(
-      { isActive: true, brand: { $ne: null } },
+      { isActive: true, brand: { $ne: null }, targetAudience: buildStorefrontAudienceMatch(targetAudience) },
       { sportId: sid },
     ),
   );
@@ -73,8 +75,8 @@ async function _getSportTickerBrands(sportId) {
 }
 
 export const getSportTickerBrands = unstable_cache(
-  async (sportId) =>
-    JSON.parse(JSON.stringify(await _getSportTickerBrands(sportId))),
-  ["sport-ticker-brands"],
+  async (sportId, targetAudience = null) =>
+    JSON.parse(JSON.stringify(await _getSportTickerBrands(sportId, targetAudience))),
+  ["sport-ticker-brands-kids-v2"],
   { revalidate: 10800, tags: ["brands", "categories", "products"] }
 );

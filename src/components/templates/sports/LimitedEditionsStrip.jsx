@@ -10,9 +10,10 @@
  */
 
 import Link from "next/link";
+import { withQueryParams } from "@/lib/navbarAudience";
 import { FiArrowLeft } from "react-icons/fi";
 
-export default function LimitedEditionsStrip({ limitedEditions = [], brandSlug }) {
+export default function LimitedEditionsStrip({ limitedEditions = [], brandSlug, targetAudience }) {
   if (!limitedEditions?.length || !brandSlug) return null;
 
   return (
@@ -32,7 +33,7 @@ export default function LimitedEditionsStrip({ limitedEditions = [], brandSlug }
           return (
             <Link
               key={le._id}
-              href={`/${brandSlug}/${le.slug}`}
+              href={withQueryParams(`/${brandSlug}/${le.slug}`, { targetAudience })}
               className="group relative overflow-hidden rounded-[14px] border border-gray-100 bg-white hover:shadow-xl hover:-translate-y-1 transition-all duration-300"
             >
               {/* پس‌زمینه رنگی لیمیتد ادیشن */}

@@ -1,3 +1,4 @@
+import "base/models/registerModels";
 import mongoose from "mongoose";
 import connectToDB from "base/configs/db";
 import Product from "base/models/Product";
@@ -6,8 +7,10 @@ import { attachListingPrices } from "base/services/priceEngine";
 import {
   TARGET_AUDIENCE_VALUES,
   buildTargetAudienceMatch,
+  buildStorefrontAudienceMatch,
 } from "base/utils/targetAudience";
 import { applyProductSportVisibility } from "base/services/categorySportVisibility.service";
+import { applyCategorySubtree } from "base/services/categorySubtree.service";
 
 export { TARGET_AUDIENCE_VALUES, buildTargetAudienceMatch };
 
@@ -52,6 +55,7 @@ export function sanitizeListingFilter(input = {}) {
     }
     filter.targetAudience = match;
   }
+  filter.targetAudience = buildStorefrontAudienceMatch(input.targetAudience);
   return filter;
 }
 
@@ -64,7 +68,12 @@ export async function getProductListingPage({ filter = {}, offset = 0, limit = S
     Math.max(1, Number(limit) || STOREFRONT_PAGE_SIZE),
   );
   const safeFilter = sanitizeListingFilter(filter);
-  const effectiveFilter = safeFilter.sport
+  const effectiveFilter = safeFilter.category
+    ? await applyCategorySubtree(
+        Object.fromEntries(Object.entries(safeFilter).filter(([key]) => key !== "sport" && key !== "category")),
+        { categoryId: safeFilter.category, sportId: safeFilter.sport },
+      )
+    : safeFilter.sport
     ? await applyProductSportVisibility(
         Object.fromEntries(
           Object.entries(safeFilter).filter(([key]) => key !== "sport"),

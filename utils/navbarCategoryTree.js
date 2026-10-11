@@ -4,11 +4,13 @@
  * navData از روی محصول ساخته می‌شود، پس والدهایی مثل «پوشاک» یا «اکسسوری» که
  * محصولِ مستقیم ندارند اصلاً در لیست نمی‌آیند و زیردسته‌هایشان یتیم شده و به‌جای
  * والد، خودشان به‌عنوان ریشه نمایش داده می‌شوند. این ماژول آن والدها را (تا هر
- * تعداد سطح) با پرچمِ hasProducts:false برمی‌گرداند تا UI نمایششان بدهد ولی
- * لینکشان نکند.
+ * تعداد سطح) با پرچمِ hasProducts:false برمی‌گرداند. صفحه‌ی والد محصولات کل
+ * زیر‌درخت را نمایش می‌دهد، بنابراین والد هم قابل لینک‌کردن است.
  *
  * بدونِ وابستگی به mongoose/next تا با `node --test` قابلِ آزمون باشد.
  */
+
+import { categorySupportsSport } from "./categorySportVisibility.js";
 
 const id = (v) => (v == null ? null : String(v));
 
@@ -37,7 +39,7 @@ export function insertStructuralParents(sports, docsById) {
       const parentId = id(queue.shift());
       if (present.has(parentId)) continue;
       const doc = docsById.get(parentId);
-      if (!doc) continue;
+      if (!doc || !categorySupportsSport(doc, sport._id)) continue;
       present.add(parentId);
       categories.push({
         _id: doc._id,
@@ -60,7 +62,7 @@ export function insertStructuralParents(sports, docsById) {
 /**
  * دسته‌ی ساختاری خودش محصول (و در نتیجه مخاطب) ندارد؛ اگر مخاطبش خالی بماند با
  * انتخابِ هر جنسیت از نوبار حذف می‌شود و فرزندانش دوباره یتیم می‌شوند. پس
- * مخاطبش = اجتماعِ مخاطبِ کلِ زیردرختش. دسته‌های محصول‌دار دست‌نخورده می‌مانند.
+ * مخاطب و برند هر والد = اجتماع داده‌های خودش و کل زیر‌درختش.
  */
 export function fillStructuralAudiences(categories) {
   const kidsOf = (parentId) =>
@@ -75,7 +77,21 @@ export function fillStructuralAudiences(categories) {
     for (const kid of kidsOf(key)) {
       for (const v of subtree(kid)) set.add(v);
     }
-    if (category.hasProducts === false) category.audiences = Array.from(set);
+    category.audiences = Array.from(set);
+    const brands = new Map();
+    for (const brand of [
+      ...(category.brands || []),
+      ...kidsOf(key).flatMap((kid) => kid.brands || []),
+    ]) {
+      const previous = brands.get(id(brand._id));
+      brands.set(id(brand._id), {
+        ...brand,
+        audiences: [...new Set([...(previous?.audiences || []), ...(brand.audiences || [])])],
+        filterValues: [...new Set([...(previous?.filterValues || []), ...(brand.filterValues || [])])],
+      });
+    }
+    category.brands = [...brands.values()].sort((a, b) =>
+      (a.order ?? Number.MAX_SAFE_INTEGER) - (b.order ?? Number.MAX_SAFE_INTEGER));
     return set;
   };
 

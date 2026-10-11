@@ -8,6 +8,7 @@
  *   { index?, sections, nextOffset, hasMore, totalCount }
  */
 
+import "base/models/registerModels";
 import { unstable_cache } from "next/cache";
 import { buildCategoryAttributeMatch } from "base/services/listingFilterCatalog.service";
 import mongoose from "mongoose";
@@ -18,7 +19,7 @@ import { getCachedRate } from "@/lib/Exchangerate";
 import { attachListingPrices } from "base/services/priceEngine";
 import { resolveSerieSportContent } from "@/lib/serieSportContent";
 import { applyProductSportVisibility } from "base/services/categorySportVisibility.service";
-import { buildTargetAudienceMatch } from "base/utils/targetAudience";
+import { buildStorefrontAudienceMatch } from "base/utils/targetAudience";
 import { LISTING_FIELDS, POPULATES } from "base/services/productListing.service";
 import { withProductSearch } from "@/lib/productSearch";
 
@@ -99,7 +100,7 @@ async function buildBaseMatch({ parentSerieId, allDescendantIds, sportId, catego
   Object.assign(match, await buildCategoryAttributeMatch(
     { serieId: parentSerieId, sportId, targetAudience }, scopedCategoryIds, categoryAttributes,
   ));
-  const audienceMatch = buildTargetAudienceMatch(targetAudience);
+  const audienceMatch = buildStorefrontAudienceMatch(targetAudience);
   if (audienceMatch) match.targetAudience = audienceMatch;
   // جستجوی توکنی؛ توکنی که در نامِ محصول نیست می‌تواند با برند/سری تطبیق بخورد
   Object.assign(match, await withProductSearch(match, search));
@@ -244,7 +245,7 @@ async function _getSerieGroupedIndex(params) {
 
 const getSerieGroupedIndex = unstable_cache(
   _getSerieGroupedIndex,
-  ["serie-grouped-index", "target-audience-unisex-v1", "category-attributes-v1"],
+  ["serie-grouped-index", "kids-separated-v2", "category-attributes-v1"],
   { revalidate: 10800, tags: ["products", "categories", "series"] }
 );
 
@@ -360,6 +361,6 @@ async function _getSerieGroupedSections(params) {
 
 export const getSerieGroupedSections = unstable_cache(
   _getSerieGroupedSections,
-  ["serie-grouped-sections", "target-audience-unisex-v1", "category-attributes-v1"],
+  ["serie-grouped-sections", "kids-separated-v2", "category-attributes-v1"],
   { revalidate: 10800, tags: ["products", "categories", "series"] }
 );

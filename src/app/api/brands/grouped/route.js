@@ -86,10 +86,16 @@ export async function GET(req) {
       return NextResponse.json({ error: "دسته‌بندی نامعتبر است" }, { status: 400 });
     }
 
+    const categoryIds = [...new Set(searchParams.getAll("categoryIds"))];
+    if (categoryIds.length > 100 || categoryIds.some((id) => !/^[a-f0-9]{24}$/i.test(id))) {
+      return NextResponse.json({ error: "دسته‌بندی نامعتبر است" }, { status: 400 });
+    }
+
     const data = await getBrandGroupedSections({
       brandId,
       sportId: searchParams.get("sportId") || null,
       categoryId,
+      categoryIds,
       categoryAttributes,
       attrFilters,
       offset: toInt(searchParams.get("offset"), 0),
