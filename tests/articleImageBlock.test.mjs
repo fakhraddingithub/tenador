@@ -179,10 +179,10 @@ test("editor: block library and move dialog are portaled into an admin-scope wra
 test("فرزندانِ تصویر از همان BlockEditor می‌آیند، نه یک نسخه‌ی محدود", async () => {
   const registry = await readFile(new URL("../src/components/admin/articles/blockRegistry.js", import.meta.url), "utf8");
   const definition = registry.slice(registry.indexOf("  image: {"), registry.indexOf("  imageSlider: {"));
-  assert.deepEqual([...definition.matchAll(/text\("(\w+)"/g)].map((m) => m[1]), ["images", "displayHeight", "shade", "blocks", "caption"]);
+  assert.deepEqual([...definition.matchAll(/text\("(\w+)"/g)].map((m) => m[1]), ["images", "displayHeight", "caption", "shade", "blocks"]);
   // همان kind ای که فرزندانِ بلوکِ ادغام‌شده را ویرایش می‌کند: یعنی همان
   // ویرایشگر، با همه‌ی تنظیماتِ همیشگیِ هر بلوک.
-  assert.match(definition, /text\("blocks", "[^"]+", "mergedBlocks"\)/);
+  assert.match(definition, /text\("blocks", "[^"]+", "mergedBlocks"[,)]/);
 
   const editor = await readFile(new URL("../src/components/admin/articles/BlockEditor.jsx", import.meta.url), "utf8");
   assert.match(editor, /if \(field\.kind === "mergedBlocks"\) return <BlockEditor/);

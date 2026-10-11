@@ -26,6 +26,8 @@ function collectText(value, output, seen) {
       // شمردنِ هر دو، تعدادِ کلمات و زمانِ مطالعه را دو برابر می‌کرد. بلوکِ
       // «HTML سفارشی» که فقط html دارد از این شرط رد نمی‌شود و شمرده می‌ماند.
       if (key === "html" && typeof plain.text === "string") continue;
+      // همین قاعده برای پاسخِ پرسش و توضیحِ خبرنامه (answer/answerHtml، …).
+      if (key.endsWith("Html") && typeof plain[key.slice(0, -4)] === "string") continue;
       collectText(item, output, seen);
     }
   }

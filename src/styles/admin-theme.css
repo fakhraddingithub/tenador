@@ -296,11 +296,15 @@
   box-shadow: var(--admin-shadow);
 }
 
-.admin-scope .a-block-card[data-block-group="content"]   { --admin-block-accent: #c07a56; --admin-block-tint: #fbf1ea; }
-.admin-scope .a-block-card[data-block-group="media"]     { --admin-block-accent: #8f7bbe; --admin-block-tint: #f4f1fb; }
-.admin-scope .a-block-card[data-block-group="layout"]    { --admin-block-accent: #8d9c95; --admin-block-tint: #f1f5f3; }
-.admin-scope .a-block-card[data-block-group="data"]      { --admin-block-accent: #5f94bd; --admin-block-tint: #edf4fa; }
-.admin-scope .a-block-card[data-block-group="shop"]      { --admin-block-accent: #5c9c72; --admin-block-tint: #edf6f0; }
-.admin-scope .a-block-card[data-block-group="dynamic"]   { --admin-block-accent: #c49a35; --admin-block-tint: #fbf5e6; }
-.admin-scope .a-block-card[data-block-group="marketing"] { --admin-block-accent: #c1738f; --admin-block-tint: #fbeff3; }
-.admin-scope .a-block-card[data-block-group="advanced"]  { --admin-block-accent: #7c8794; --admin-block-tint: #f1f3f6; }
+/* بدونِ .a-block-card: هر عنصری که data-block-group دارد همان دو رنگ را می‌گیرد —
+   مثلاً دکمه‌ی «بلوک روی تصویر» که رنگِ بلوکِ تصویر را دارد، حتی در مودالِ
+   پیش‌نمایش که کارتی دورش نیست. هم‌وزن با قاعده‌ی کارت و پس از آن، پس روی کارت
+   همان نتیجه‌ی قبلی را می‌دهد. */
+.admin-scope [data-block-group="content"]   { --admin-block-accent: #c07a56; --admin-block-tint: #fbf1ea; }
+.admin-scope [data-block-group="media"]     { --admin-block-accent: #8f7bbe; --admin-block-tint: #f4f1fb; }
+.admin-scope [data-block-group="layout"]    { --admin-block-accent: #8d9c95; --admin-block-tint: #f1f5f3; }
+.admin-scope [data-block-group="data"]      { --admin-block-accent: #5f94bd; --admin-block-tint: #edf4fa; }
+.admin-scope [data-block-group="shop"]      { --admin-block-accent: #5c9c72; --admin-block-tint: #edf6f0; }
+.admin-scope [data-block-group="dynamic"]   { --admin-block-accent: #c49a35; --admin-block-tint: #fbf5e6; }
+.admin-scope [data-block-group="marketing"] { --admin-block-accent: #c1738f; --admin-block-tint: #fbeff3; }
+.admin-scope [data-block-group="advanced"]  { --admin-block-accent: #7c8794; --admin-block-tint: #f1f3f6; }

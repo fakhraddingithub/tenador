@@ -87,6 +87,18 @@ function richContent(data) {
   return html ? { dangerouslySetInnerHTML: { __html: html } } : { children: data.text };
 }
 
+/**
+ * متنِ غنیِ فیلدهایی که ارتفاعِ خطِ ثابتِ خودشان را دارند (نکته‌ی برجسته، پاسخِ
+ * پرسش، توضیحِ خبرنامه). بدونِ html همان <p>ِ قبلی است، بایت‌به‌بایت. با html،
+ * rt-inline فقط به *فرزندان* ارتفاعِ خطِ متناسب با اندازه می‌دهد و خودِ پاراگراف
+ * همان leading قبلی را نگه می‌دارد — پس متنی که فقط پررنگ شده جابه‌جا نمی‌شود.
+ */
+function RichParagraph({ className, style, html, text, preLine = false }) {
+  const content = richContent({ html, text });
+  if (content.children !== undefined) return <p className={preLine ? `whitespace-pre-line ${className}` : className} style={style}>{content.children}</p>;
+  return <p className={`rt-inline ${className}`} style={style} {...content} />;
+}
+
 /** پس‌زمینه بدونِ فاصله‌ی داخلی بد به نظر می‌رسد؛ پس با هم می‌آیند. */
 const padded = (visuals) => (visuals.background
   ? { backgroundColor: visuals.background, padding: "1.25rem", borderRadius: "var(--radius)" }
@@ -513,14 +525,14 @@ export default function ArticleBlockRenderer({ blocks = [], entities, preview = 
         >{data.label || "مشاهده"}{Icon ? <Icon aria-hidden="true" /> : null}</Link>
       </div>;
     }
-    if (block.type === "callout") return <aside key={block.id} className={`${blockSection} flex gap-4 rounded-[var(--radius)] border border-[color-mix(in_srgb,var(--color-primary)_25%,transparent)] bg-[color-mix(in_srgb,var(--color-primary)_7%,white)] p-5`} style={merge(v.spacing, v.background && { backgroundColor: v.background }, v.accent && { borderColor: v.accent })}><FiInfo className="mt-1 shrink-0 text-xl text-[var(--color-primary)]" style={v.accent ? { color: v.accent } : undefined} /><div>{data.title ? <strong className="mb-2 block text-gray-900" style={v.text ? { color: v.text } : undefined}>{data.title}</strong> : null}<p className="whitespace-pre-line text-sm leading-7 text-gray-700" style={v.text ? { color: v.text } : undefined}>{data.text}</p></div></aside>;
+    if (block.type === "callout") return <aside key={block.id} className={`${blockSection} flex gap-4 rounded-[var(--radius)] border border-[color-mix(in_srgb,var(--color-primary)_25%,transparent)] bg-[color-mix(in_srgb,var(--color-primary)_7%,white)] p-5`} style={merge(v.spacing, v.background && { backgroundColor: v.background }, v.accent && { borderColor: v.accent })}><FiInfo className="mt-1 shrink-0 text-xl text-[var(--color-primary)]" style={v.accent ? { color: v.accent } : undefined} /><div style={v.align ? { textAlign: v.align } : undefined}>{data.title ? <strong className="mb-2 block text-gray-900" style={v.text ? { color: v.text } : undefined}>{data.title}</strong> : null}<RichParagraph className="text-sm leading-7 text-gray-700" style={v.text ? { color: v.text } : undefined} html={data.html} text={data.text} preLine /></div></aside>;
     if (block.type === "table") {
       const variant = TABLE_VARIANTS[v.tableVariant] || TABLE_VARIANTS.default;
       const head = v.accent ? { backgroundColor: v.accent, color: readableOn(v.accent) } : undefined;
       const cell = v.text ? { color: v.text } : undefined;
       return <div key={block.id} className={`${blockSection} ${variant.wrapper}`} style={v.spacing || undefined}><DragScroll /><table className="w-full min-w-[560px] text-right text-sm"><thead className={variant.head} style={head}><tr>{(data.headers || []).map((header, index) => <th key={index} scope="col" className={variant.th}>{header}</th>)}</tr></thead><tbody>{(data.rows || []).map((row, rowIndex) => <tr key={rowIndex} className={variant.row}>{row.map((cellValue, index) => <td key={index} className={variant.cell} style={cell}>{cellValue}</td>)}</tr>)}</tbody></table></div>;
     }
-    if (block.type === "faq") return <section key={block.id} className={blockSection} style={v.spacing || undefined}><div className="space-y-3">{(data.items || []).filter((item) => item.question).map((item, index) => <details key={index} className="group rounded-[var(--radius)] border border-gray-200 bg-white p-5" style={merge(v.background && { backgroundColor: v.background }, v.accent && { borderColor: v.accent })}><summary className="cursor-pointer list-none font-bold text-gray-900" style={v.text ? { color: v.text } : undefined}>{item.question}</summary><p className="mt-4 border-t border-gray-100 pt-4 leading-8 text-gray-600" style={v.text ? { color: v.text } : undefined}>{item.answer}</p></details>)}</div></section>;
+    if (block.type === "faq") return <section key={block.id} className={blockSection} style={v.spacing || undefined}><div className="space-y-3">{(data.items || []).filter((item) => item.question).map((item, index) => <details key={index} className="group rounded-[var(--radius)] border border-gray-200 bg-white p-5" style={merge(v.background && { backgroundColor: v.background }, v.accent && { borderColor: v.accent })}><summary className="cursor-pointer list-none font-bold text-gray-900" style={v.text ? { color: v.text } : undefined}>{item.question}</summary><RichParagraph className="mt-4 border-t border-gray-100 pt-4 leading-8 text-gray-600" style={v.text ? { color: v.text } : undefined} html={item.answerHtml} text={item.answer} /></details>)}</div></section>;
     if (block.type === "productCard" || block.type === "productSlider") {
       const products = block.type === "productCard" ? ordered(data.product, maps.products) : ordered(data.products, maps.products);
       return products.length ? <section key={block.id} className={blockSection} style={v.spacing || undefined}>{data.title ? <h2 className="mb-5 text-xl font-black" style={v.text ? { color: v.text } : undefined}>{data.title}</h2> : null}<PublicProductGrid products={products} rate={rate} fill={inMerged} /></section> : null;
@@ -538,7 +550,7 @@ export default function ArticleBlockRenderer({ blocks = [], entities, preview = 
       const articles = ordered(data.articles, maps.articles).filter((item) => item.category?.status !== "archived");
       return articles.length ? <section key={block.id} className={blockSection} style={v.spacing || undefined}><h2 className="mb-5 text-xl font-black" style={v.text ? { color: v.text } : undefined}>{data.title || "مقالات مرتبط"}</h2><div className={`grid gap-4 ${inMerged ? slotGrid(articles.length) : "md:grid-cols-2"}`}>{articles.map((article) => <ArticleCard key={article._id} article={article} />)}</div></section> : null;
     }
-    if (block.type === "newsletterCta") return <section key={block.id} className={`${blockSection} rounded-[var(--radius)] bg-[#20232a] p-6 text-white md:p-8`} style={merge(v.spacing, v.background && { backgroundColor: v.background }, v.text && { color: v.text })}><h2 className="text-2xl font-black">{data.title || "عضویت در خبرنامه تنادور"}</h2><p className="mt-2 leading-8 text-gray-300" style={v.text ? { color: v.text } : undefined}>{data.description || "جدیدترین راهنماها و پیشنهادهای تنادور را دریافت کنید."}</p>{preview ? <div className="mt-4 inline-flex rounded-[var(--radius)] bg-[var(--color-secondary)] px-5 py-2.5 text-sm font-bold text-gray-900" style={v.accent ? { backgroundColor: v.accent, color: readableOn(v.accent) } : undefined}>{data.buttonLabel || "\u0639\u0636\u0648\u06cc\u062a"}</div> : <ArticleNewsletterForm buttonLabel={data.buttonLabel} />}</section>;
+    if (block.type === "newsletterCta") return <section key={block.id} className={`${blockSection} rounded-[var(--radius)] bg-[#20232a] p-6 text-white md:p-8`} style={merge(v.spacing, v.background && { backgroundColor: v.background }, v.text && { color: v.text })}><h2 className="text-2xl font-black">{data.title || "عضویت در خبرنامه تنادور"}</h2><RichParagraph className="mt-2 leading-8 text-gray-300" style={v.text ? { color: v.text } : undefined} html={data.descriptionHtml} text={data.description || "جدیدترین راهنماها و پیشنهادهای تنادور را دریافت کنید."} />{preview ? <div className="mt-4 inline-flex rounded-[var(--radius)] bg-[var(--color-secondary)] px-5 py-2.5 text-sm font-bold text-gray-900" style={v.accent ? { backgroundColor: v.accent, color: readableOn(v.accent) } : undefined}>{data.buttonLabel || "\u0639\u0636\u0648\u06cc\u062a"}</div> : <ArticleNewsletterForm buttonLabel={data.buttonLabel} />}</section>;
     if (block.type === "customHtml" && data.html) return <div key={block.id} className={`${blockSection} rt-flow text-gray-700`} style={merge(v.spacing, padded(v), v.text && { color: v.text })} dangerouslySetInnerHTML={{ __html: sanitizeArticleHtml(data.html) }} />;
     return null;
   };

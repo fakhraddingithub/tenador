@@ -17,9 +17,11 @@ const clampStep = (value, spec) => {
 
 // کلیدِ html فقط وقتی ساخته می‌شود که قالب‌بندیِ واقعی وجود داشته باشد؛ در غیر
 // این صورت شیءِ خالی برمی‌گردد و دادهٔ بلوک دقیقاً همان شکلِ قبلی را دارد.
-const rich = (value) => {
+// key: کلیدِ html کنارِ متنِ ساده‌اش — "html" برای متنِ اصلیِ بلوک، و `<کلید>Html`
+// برای فیلدهای دیگر (پاسخِ پرسش، توضیحِ خبرنامه) که متنِ ساده‌شان نامِ خودش را دارد.
+const rich = (value, key = "html") => {
   const html = richTextValue(value);
-  return html ? { html } : {};
+  return html ? { [key]: html } : {};
 };
 
 export function safeArticleUrl(value, { media = false } = {}) {
@@ -199,7 +201,7 @@ const validators = {
     if (BUTTON_ICONS.includes(data.icon) && data.icon !== "none") result.icon = data.icon;
     return result;
   },
-  callout: (data) => ({ title: string(data.title, 300), text: string(data.text, 10000), tone: ["info", "success", "warning", "danger"].includes(data.tone) ? data.tone : "info" }),
+  callout: (data) => ({ title: string(data.title, 300), text: string(data.text, 10000), ...rich(data.html), tone: ["info", "success", "warning", "danger"].includes(data.tone) ? data.tone : "info" }),
   table: (data, errors, field) => {
     const headers = (Array.isArray(data.headers) ? data.headers : []).slice(0, 30).map((item) => string(item, 500));
     const rows = (Array.isArray(data.rows) ? data.rows : []).slice(0, 100).map((row) => (Array.isArray(row) ? row : []).slice(0, headers.length || 30).map((item) => string(item, 2000)));
@@ -210,7 +212,7 @@ const validators = {
   faq: (data, errors, field) => {
     const items = Array.isArray(data.items) ? data.items : [];
     if (items.length > 50) errors[`${field}.items`] = "FAQ cannot exceed 50 items";
-    return { items: items.slice(0, 50).map((item) => ({ question: string(item?.question, 500), answer: string(item?.answer, 5000) })) };
+    return { items: items.slice(0, 50).map((item) => ({ question: string(item?.question, 500), answer: string(item?.answer, 5000), ...rich(item?.answerHtml, "answerHtml") })) };
   },
   productCard: (data, errors, field) => ({ product: id(data.product, errors, `${field}.product`) }),
   productSlider: entitySlider("products"),
@@ -223,7 +225,7 @@ const validators = {
   amazingOffers: (data) => ({ title: string(data.title, 300), limit: Math.min(16, Math.max(1, Number(data.limit) || 8)) }),
   usedProducts: entitySlider("products"),
   relatedArticles: entitySlider("articles"),
-  newsletterCta: (data) => ({ title: string(data.title, 300), description: string(data.description, 2000), buttonLabel: string(data.buttonLabel, 160) }),
+  newsletterCta: (data) => ({ title: string(data.title, 300), description: string(data.description, 2000), ...rich(data.descriptionHtml, "descriptionHtml"), buttonLabel: string(data.buttonLabel, 160) }),
   customHtml: (data) => ({ html: typeof data.html === "string" ? data.html.slice(0, 250000) : "" }),
 };
 

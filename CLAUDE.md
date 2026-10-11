@@ -933,9 +933,11 @@ Two things make that work:
 
 It is applied to the blocks that accept an inline font size — heading, paragraph, quote,
 custom HTML — and to the editor's `contentEditable`, so what the admin types matches the
-article (the preview already renders through the public renderer). Table cells, callouts,
-FAQ answers and captions keep their fixed leading on purpose: they have no font-size
-control, so nothing there can fall out of step. Font sizes themselves are untouched.
+article (the preview already renders through the public renderer). Table cells and
+captions keep their fixed leading on purpose: they have no font-size control, so nothing
+there can fall out of step. Callouts, FAQ answers and the newsletter description *do* take
+rich text now — see «Rich text beyond paragraphs» below for how they keep their leading.
+Font sizes themselves are untouched.
 
 ```bash
 npm run test:block-layout   # includes tests/richTextLineHeight.test.mjs
@@ -1101,6 +1103,51 @@ article, in a new tab so an unsaved brand form is not lost.
 
 ```bash
 npm run test:block-layout   # includes tests/blockAuthoring.test.mjs
+```
+
+### Rich text beyond paragraphs, and the block form layout
+
+The callout («نکته برجسته») text, each FAQ **answer** and the newsletter description use the
+same `RichTextField` as the paragraph — no second editor. The formatted copy always sits
+**beside** the plain text, never instead of it, and is only stored when there is real
+formatting (`richTextValue`), so existing content needs no migration:
+
+| block | plain (unchanged) | formatted |
+|---|---|---|
+| callout | `data.text` | `data.html` (same keys as a paragraph) |
+| faq | `items[].answer` | `items[].answerHtml` |
+| newsletterCta | `data.description` | `data.descriptionHtml` |
+
+- The plain copy is what everything else reads: FAQ JSON-LD (`articleSeo.js`), block
+  summaries, and word count — `countArticleWords` skips any `<key>Html` that has a plain
+  `<key>` next to it, exactly like `html`/`text`.
+- A rich field declares `htmlKey` in the registry when its plain key isn't `text`;
+  `BlockFields` maps `{text, html}` onto the two keys. `align: false` hides the alignment
+  buttons for fields that are not the block itself (alignment is block-level `style.align`).
+  The callout keeps alignment and the renderer applies it.
+- FAQ **questions**, titles, labels and the Tenador title stay plain: a question sits in a
+  `<summary>`, where a link fights the toggle.
+- `RichParagraph` in the renderer emits the old `<p>` byte for byte when there is no html. With
+  html it adds `rt-inline`, which gives only the **descendants** the size-following line
+  height — the paragraph keeps its own `leading-7`/`leading-8`, so bolding a word moves
+  nothing, while a 28px span still gets room.
+
+**Form layout is presentation only.** Registry fields may carry `row` (consecutive fields with
+the same `row` share a flex-wrap row) and `section` (a small heading above that row); width
+comes from the field kind (`fieldWidth`: short controls `basis-32 max-w-64`, text
+`basis-56`, editors full width). Rows are flex-wrap rather than breakpoint grids because
+cards nest at very different widths (merged, on an image, in the preview modal) and wrap
+follows the card's real width. **Do not use container queries here** — `container-type`
+adds layout containment, which would trap absolutely-positioned dropdowns (entity search,
+font-size list) in a new stacking context under the next card.
+
+The nested add buttons take their label from the field: «بلوک روی تصویر» (image, in the
+media group's colour via `data-block-group="media"` — the group colour selectors no longer
+require `.a-block-card`) and «افزودن بلوک به ترکیب» (merged, text only). The article-level
+button, the image slider's button and the floating bar are unchanged.
+
+```bash
+npm run test:block-layout   # includes tests/richTextBlocks.test.mjs
 ```
 
 ### Slug System

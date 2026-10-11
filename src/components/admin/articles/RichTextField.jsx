@@ -127,7 +127,7 @@ function NumericStyleControl({ label, unit, icon, range, presets, normalize, for
   </div>;
 }
 
-export default function RichTextField({ value, onChange, align, onAlign, singleLine = false }) {
+export default function RichTextField({ value, onChange, align, onAlign, singleLine = false, label }) {
   const ref = useRef(null);
   const savedRange = useRef(null);
   const [marks, setMarks] = useState({});
@@ -286,8 +286,12 @@ export default function RichTextField({ value, onChange, align, onAlign, singleL
       <ToolButton title="کج" active={marks.italic} onClick={() => exec("italic")}><FiItalic /></ToolButton>
       <ToolButton title="زیرخط" active={marks.underline} onClick={() => exec("underline")}><FiUnderline /></ToolButton>
 
-      <span className="mx-1 h-5 w-px bg-gray-200" />
-      {ALIGNS.map(([key, Icon, label]) => <ToolButton key={key} title={label} active={align === key} onClick={() => onAlign(align === key ? undefined : key)}><Icon /></ToolButton>)}
+      {/* چینش سطحِ *بلوک* است (style.align). فیلدی که بلوکِ خودش نیست — پاسخِ یک
+          پرسش، توضیحِ خبرنامه — جایی برای آن ندارد، پس دکمه‌هایش هم نشان داده نمی‌شوند. */}
+      {onAlign ? <>
+        <span className="mx-1 h-5 w-px bg-gray-200" />
+        {ALIGNS.map(([key, Icon, label]) => <ToolButton key={key} title={label} active={align === key} onClick={() => onAlign(align === key ? undefined : key)}><Icon /></ToolButton>)}
+      </> : null}
 
       <span className="mx-1 h-5 w-px bg-gray-200" />
       <NumericStyleControl
@@ -362,6 +366,7 @@ export default function RichTextField({ value, onChange, align, onAlign, singleL
       contentEditable
       suppressContentEditableWarning
       role="textbox"
+      aria-label={label}
       aria-multiline={!singleLine}
       dir="rtl"
       onInput={emit}

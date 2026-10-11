@@ -92,7 +92,7 @@ test("دو بخش، یک ویرایشگر: یک DndContext مشترک", async ()
 
   // و BlockEditor بدونِ dnd فقط SortableContext می‌دهد؛ پیش‌فرضش عوض نشده.
   const editor = await read("../src/components/admin/articles/BlockEditor.jsx");
-  assert.match(editor, /allow = null, dnd = true \}/);
+  assert.match(editor, /allow = null, dnd = true[,}]/);
   assert.match(editor, /function MaybeDndContext\(\{ enabled, sensors, onDragEnd, children \}\) \{/);
   assert.match(editor, /if \(!enabled\) return children;/);
 });

@@ -8,6 +8,12 @@ import { ARTICLE_BLOCK_TYPES, IMAGE_SLIDER_DELAY, IMAGE_SLIDER_HEIGHT } from "@/
 const text = (key, label, kind = "text", extra = {}) => ({ key, label, kind, ...extra });
 const entity = (key, label, entityType, multiple = true) => ({ key, label, kind: multiple ? "entities" : "entity", entityType });
 
+// چیدمانِ فرمِ ویرایش — فقط ظاهر، بی‌اثر بر داده:
+//   row: فیلدهای پشتِ‌سرِ‌همی که row یکسان دارند کنارِ هم در یک ردیف می‌نشینند
+//        (و در جای تنگ زیرِ هم می‌روند). فیلدِ بی‌row ردیفِ خودش را دارد.
+//   section: عنوانِ کوچکی بالای همان ردیف، برای بلوک‌هایی با تنظیماتِ زیاد.
+// پهنای هر فیلد از نوعش می‌آید (BlockEditor → fieldWidth)، نه از اینجا.
+
 // کنترل‌های استایلِ هر بلوک. فقط کلیدهایی که برای آن بلوک معنا دارند نشان داده
 // می‌شوند — «رنگ دکمه» روی پاراگراف چیزی جز سردرگمی نیست. همه‌ی بلوک‌ها فاصله
 // دارند؛ بقیه‌ی کلیدها انتخابی‌اند.
@@ -43,8 +49,8 @@ export const ARTICLE_BLOCKS = {
     label: "تیتر تنادور", group: "محتوا", icon: FiFeather,
     defaults: { highlight: "", title: "", subtitle: "" },
     fields: [
-      text("highlight", "متن نارنجی (ابتدای عنوان)"),
-      text("title", "ادامه‌ی عنوان"),
+      text("highlight", "متن نارنجی (ابتدای عنوان)", "text", { row: "title" }),
+      text("title", "ادامه‌ی عنوان", "text", { row: "title" }),
       text("subtitle", "زیرعنوان"),
     ],
     // ظاهر عیناً همان عنوانِ بخش‌های صفحه‌ی اصلی است و تنظیم‌پذیر نیست.
@@ -53,11 +59,11 @@ export const ARTICLE_BLOCKS = {
   paragraph: { label: "پاراگراف", group: "محتوا", icon: FiAlignRight, defaults: { text: "" }, fields: [text("text", "متن پاراگراف", "rich")], styleKeys: TEXTY },
   // تصویر یک *ظرف* است: تصویرِ پس‌زمینه، یک لایه‌ی تیره، و بلوک‌های واقعی روی
   // آن‌ها (همان ویرایشگر و همان تنظیماتِ همیشگیِ هر بلوک).
-  image: { label: "تصویر", group: "رسانه", icon: FiImage, defaults: { url: "", alt: "", caption: "" }, fields: [text("images", "تصاویر", "imageList"), text("displayHeight", "ارتفاع نمایش", "imageHeight"), text("shade", "لایه‌ی تیره و جای محتوا", "imageShade"), text("blocks", "بلوک‌های روی تصویر", "mergedBlocks"), text("caption", "زیرنویس")], styleKeys: SPACING_ONLY },
+  image: { label: "تصویر", group: "رسانه", icon: FiImage, defaults: { url: "", alt: "", caption: "" }, fields: [text("images", "تصاویر", "imageList"), text("displayHeight", "ارتفاع نمایش", "imageHeight", { row: "size" }), text("caption", "زیرنویس", "text", { row: "size" }), text("shade", "لایه‌ی تیره و جای محتوا", "imageShade"), text("blocks", "بلوک‌های روی تصویر", "mergedBlocks", { addLabel: "بلوک روی تصویر", addGroup: "media" })], styleKeys: SPACING_ONLY },
   // اسلایدرِ تصویر: ظرفی که فقط بلوکِ *تصویر* می‌پذیرد، با اندازه‌ی ثابت.
   imageSlider: { label: "اسلایدر تصویر", group: "رسانه", icon: FiColumns, defaults: { blocks: [], delay: IMAGE_SLIDER_DELAY.default, height: IMAGE_SLIDER_HEIGHT.default }, fields: [text("blocks", "تصاویر اسلایدر", "imageSliderBlocks"), text("slider", "اندازه و زمان‌بندی", "imageSliderSettings")], styleKeys: SPACING_ONLY },
   gallery: { label: "گالری", group: "رسانه", icon: FiGrid, defaults: { images: [] }, fields: [text("images", "تصاویر", "gallery")], styleKeys: SPACING_ONLY },
-  video: { label: "ویدئو", group: "رسانه", icon: FiPlay, defaults: { url: "", title: "" }, fields: [text("url", "آدرس ویدئو", "url"), text("title", "عنوان ویدئو")], styleKeys: SPACING_ONLY },
+  video: { label: "ویدئو", group: "رسانه", icon: FiPlay, defaults: { url: "", title: "" }, fields: [text("url", "آدرس ویدئو", "url", { row: "video" }), text("title", "عنوان ویدئو", "text", { row: "video" })], styleKeys: SPACING_ONLY },
   quote: { label: "نقل‌قول", group: "محتوا", icon: FiMessageSquare, defaults: { text: "", author: "" }, fields: [text("text", "متن نقل‌قول", "rich"), text("author", "نام گوینده")], styleKeys: ["spacing", "textColor", "background", "accent"] },
   // همان هدرِ صفحه‌ی ورزش. ظاهرش از SportHero می‌آید، پس فقط دو چیز تنظیم‌پذیر است.
   // once: جایش بالاترین نقطه‌ی صفحه است، پس دو تا معنا ندارد — کتابخانه پس از
@@ -68,19 +74,19 @@ export const ARTICLE_BLOCKS = {
     label: "دکمه", group: "محتوا", icon: FiLink,
     defaults: { label: "مشاهده", href: "", style: "primary" },
     fields: [
-      text("label", "متن دکمه"),
-      text("href", "پیوند", "url"),
-      text("style", "نوع", "select", { options: ["primary", "outline", "secondary"], labels: { primary: "اصلی", outline: "خطی", secondary: "ثانویه" } }),
-      text("size", "اندازه دکمه", "select", { options: ["sm", "md", "lg"], labels: { sm: "کوچک", md: "متوسط", lg: "بزرگ" } }),
-      text("fontSize", "اندازه متن دکمه", "fontSize"),
-      text("align", "جای دکمه در صفحه", "select", { options: ["right", "center", "left"], labels: { right: "راست", center: "وسط", left: "چپ" } }),
-      text("fullWidth", "دکمه تمام‌عرض", "checkbox"),
-      text("textAlign", "چینش متن داخل دکمه (وقتی تمام‌عرض است)", "select", { options: ["right", "center", "left"], labels: { right: "راست", center: "وسط", left: "چپ" } }),
-      text("icon", "آیکن", "select", { options: ["none", "arrow", "external", "download"], labels: { none: "بدون آیکن", arrow: "فلش", external: "پیوند بیرونی", download: "دانلود" } }),
+      text("label", "متن دکمه", "text", { row: "content" }),
+      text("href", "پیوند", "url", { row: "content" }),
+      text("style", "نوع", "select", { row: "look", section: "ظاهر", options: ["primary", "outline", "secondary"], labels: { primary: "اصلی", outline: "خطی", secondary: "ثانویه" } }),
+      text("size", "اندازه دکمه", "select", { row: "look", options: ["sm", "md", "lg"], labels: { sm: "کوچک", md: "متوسط", lg: "بزرگ" } }),
+      text("icon", "آیکن", "select", { row: "look", options: ["none", "arrow", "external", "download"], labels: { none: "بدون آیکن", arrow: "فلش", external: "پیوند بیرونی", download: "دانلود" } }),
+      text("fontSize", "اندازه متن دکمه", "fontSize", { row: "look" }),
+      text("align", "جای دکمه در صفحه", "select", { row: "place", section: "جایگیری", options: ["right", "center", "left"], labels: { right: "راست", center: "وسط", left: "چپ" } }),
+      text("fullWidth", "دکمه تمام‌عرض", "checkbox", { row: "place" }),
+      text("textAlign", "چینش متن داخل دکمه (وقتی تمام‌عرض است)", "select", { row: "place", options: ["right", "center", "left"], labels: { right: "راست", center: "وسط", left: "چپ" } }),
     ],
     styleKeys: ["spacing", "textColor", "accent"],
   },
-  callout: { label: "نکته برجسته", group: "محتوا", icon: FiZap, defaults: { title: "", text: "", tone: "info" }, fields: [text("title", "عنوان"), text("text", "متن", "textarea"), text("tone", "نوع", "select", { options: ["info", "success", "warning", "danger"] })], styleKeys: ["spacing", "textColor", "background", "accent"] },
+  callout: { label: "نکته برجسته", group: "محتوا", icon: FiZap, defaults: { title: "", text: "", tone: "info" }, fields: [text("title", "عنوان", "text", { row: "head" }), text("tone", "نوع", "select", { row: "head", options: ["info", "success", "warning", "danger"] }), text("text", "متن", "rich")], styleKeys: ["spacing", "textColor", "background", "accent"] },
   table: { label: "جدول", group: "داده", icon: FiTable, defaults: { headers: ["ستون ۱", "ستون ۲"], rows: [["", ""]] }, fields: [text("table", "داده‌های جدول", "table")], styleKeys: ["spacing", "textColor", "accent", "tableVariant"] },
   faq: { label: "سوالات متداول", group: "داده", icon: FiList, defaults: { items: [{ question: "", answer: "" }] }, fields: [text("items", "پرسش‌ها", "faq")], styleKeys: ["spacing", "textColor", "background", "accent"] },
   productCard: { label: "کارت محصول", group: "فروشگاه", icon: FiBox, defaults: { product: null }, fields: [entity("product", "محصول", "product", false)], styleKeys: TITLED },
@@ -89,15 +95,15 @@ export const ARTICLE_BLOCKS = {
   brandSlider: { label: "اسلایدر برند", group: "فروشگاه", icon: FiTag, defaults: { title: "", brands: [] }, fields: [text("title", "عنوان"), entity("brands", "برندها", "brand")], styleKeys: TITLED },
   categorySlider: { label: "اسلایدر دسته‌بندی", group: "فروشگاه", icon: FiGrid, defaults: { title: "", categories: [] }, fields: [text("title", "عنوان"), entity("categories", "دسته‌بندی‌ها", "category")], styleKeys: TITLED },
   sportSlider: { label: "اسلایدر ورزش", group: "فروشگاه", icon: FiBarChart2, defaults: { title: "", sports: [] }, fields: [text("title", "عنوان"), entity("sports", "ورزش‌ها", "sport")], styleKeys: TITLED },
-  latestProducts: { label: "جدیدترین محصولات", group: "پویا", icon: FiShoppingBag, defaults: { title: "جدیدترین محصولات", limit: 12, sports: [], categories: [] }, fields: [text("title", "عنوان"), text("limit", "تعداد", "number"), entity("sports", "محدود به ورزش", "sport"), entity("categories", "محدود به دسته", "category")], styleKeys: TITLED },
-  bestSellers: { label: "پرفروش‌ترین‌ها", group: "پویا", icon: FiStar, defaults: { title: "پرفروش‌ترین‌ها", limit: 12, categories: [] }, fields: [text("title", "عنوان"), text("limit", "تعداد", "number"), entity("categories", "محدود به دسته", "category")], styleKeys: TITLED },
-  amazingOffers: { label: "پیشنهادهای شگفت‌انگیز", group: "پویا", icon: FiZap, defaults: { title: "پیشنهادهای شگفت‌انگیز", limit: 12 }, fields: [text("title", "عنوان"), text("limit", "تعداد", "number")], styleKeys: TITLED },
+  latestProducts: { label: "جدیدترین محصولات", group: "پویا", icon: FiShoppingBag, defaults: { title: "جدیدترین محصولات", limit: 12, sports: [], categories: [] }, fields: [text("title", "عنوان", "text", { row: "head" }), text("limit", "تعداد", "number", { row: "head" }), entity("sports", "محدود به ورزش", "sport"), entity("categories", "محدود به دسته", "category")], styleKeys: TITLED },
+  bestSellers: { label: "پرفروش‌ترین‌ها", group: "پویا", icon: FiStar, defaults: { title: "پرفروش‌ترین‌ها", limit: 12, categories: [] }, fields: [text("title", "عنوان", "text", { row: "head" }), text("limit", "تعداد", "number", { row: "head" }), entity("categories", "محدود به دسته", "category")], styleKeys: TITLED },
+  amazingOffers: { label: "پیشنهادهای شگفت‌انگیز", group: "پویا", icon: FiZap, defaults: { title: "پیشنهادهای شگفت‌انگیز", limit: 12 }, fields: [text("title", "عنوان", "text", { row: "head" }), text("limit", "تعداد", "number", { row: "head" })], styleKeys: TITLED },
   usedProducts: { label: "محصولات دست دوم", group: "فروشگاه", icon: FiShoppingBag, defaults: { title: "محصولات دست دوم", products: [] }, fields: [text("title", "عنوان"), entity("products", "آگهی‌ها", "usedProduct")], styleKeys: TITLED },
   relatedArticles: { label: "مقالات مرتبط", group: "محتوا", icon: FiList, defaults: { title: "مقالات مرتبط", articles: [] }, fields: [text("title", "عنوان"), entity("articles", "مقالات", "article")], styleKeys: TITLED },
-  newsletterCta: { label: "عضویت خبرنامه", group: "بازاریابی", icon: FiMail, defaults: { title: "", description: "", buttonLabel: "عضویت" }, fields: [text("title", "عنوان"), text("description", "توضیح", "textarea"), text("buttonLabel", "متن دکمه")], styleKeys: ["spacing", "textColor", "background", "accent"] },
+  newsletterCta: { label: "عضویت خبرنامه", group: "بازاریابی", icon: FiMail, defaults: { title: "", description: "", buttonLabel: "عضویت" }, fields: [text("title", "عنوان", "text", { row: "head" }), text("buttonLabel", "متن دکمه", "text", { row: "head" }), text("description", "توضیح", "rich", { htmlKey: "descriptionHtml", align: false })], styleKeys: ["spacing", "textColor", "background", "accent"] },
   customHtml: { label: "HTML سفارشی", group: "پیشرفته", icon: FiBox, defaults: { html: "" }, fields: [text("html", "کد HTML", "html")], styleKeys: TEXTY },
   // فقط با «ادغام» ساخته می‌شود (hidden: در کتابخانه‌ی بلوک نیست). فرزندان عیناً در data.blocks می‌مانند.
-  merged: { label: "بلوک ادغام‌شده", group: "چیدمان", icon: FiLayers, hidden: true, defaults: { blocks: [] }, fields: [text("blocks", "بلوک‌های این ردیف — عرضِ هر بلوک (از «ظاهر و چیدمان» خودش) سهمِ آن در ردیف است؛ در موبایل ردیف افقی اسکرول می‌شود", "mergedBlocks")], styleKeys: SPACING_ONLY },
+  merged: { label: "بلوک ادغام‌شده", group: "چیدمان", icon: FiLayers, hidden: true, defaults: { blocks: [] }, fields: [text("blocks", "بلوک‌های این ردیف — عرضِ هر بلوک (از «ظاهر و چیدمان» خودش) سهمِ آن در ردیف است؛ در موبایل ردیف افقی اسکرول می‌شود", "mergedBlocks", { addLabel: "افزودن بلوک به ترکیب" })], styleKeys: SPACING_ONLY },
 };
 
 const missingDefinitions = ARTICLE_BLOCK_TYPES.filter((type) => !ARTICLE_BLOCKS[type]);

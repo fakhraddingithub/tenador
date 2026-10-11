@@ -576,6 +576,15 @@
 .rt-flow [style*="line-height"] * {
   line-height: inherit;
 }
+/* rt-inline: همان دو قاعده، ولی فقط برای *فرزندان*. نکته‌ی برجسته، پاسخِ پرسش و
+   توضیحِ خبرنامه leading ثابتِ خودشان را نگه می‌دارند (متنی که فقط پررنگ شده جابه‌جا
+   نمی‌شود)، و spanِ اندازه‌دارِ داخلشان ارتفاعِ خطِ متناسب با اندازه‌ی خودش را می‌گیرد. */
+.rt-inline * {
+  line-height: calc(8px + 1em);
+}
+.rt-inline [style*="line-height"] * {
+  line-height: inherit;
+}
 
 .a-block-box {
   display: flex;
