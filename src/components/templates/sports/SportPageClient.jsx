@@ -3,6 +3,7 @@
 import { matchesSearch } from "@/lib/search";
 import { filterCategoriesBySelection, selectedCategoryIds } from "base/utils/categorySubtree";
 import CategoryAttributeFilters, { pruneAttributes } from "@/components/features/filters/CategoryAttributeFilters";
+import AttributeFilters from "@/components/features/filters/AttributeFilters";
 import { buildSerieNames } from "@/lib/seo/taxonomyNames";
 import { useState, useMemo, useEffect, useRef } from "react";
 import ProductList from "@/components/templates/products/ProductList";
@@ -69,6 +70,9 @@ export default function SportPageClient({
   // ─────────────────────────────────────────────
   const isSeriePage = Boolean(filters?.serie) && !filters?.limitedEdition;
   const hasCategoryCatalog = isSeriePage || Boolean(filters?.category);
+  const categoryFilterFirst = Boolean(filters?.category) && filterCategories.some(
+    (category) => String(category._id) !== String(filters.category._id),
+  );
   const attributeMeta = useMemo(
     () => hasCategoryCatalog
       ? mergeAttributeMeta(
@@ -414,7 +418,14 @@ export default function SportPageClient({
               setFilters={applyLocalFilters}
               hideSportFilter={true}
               seriesOptions={seriesFilterOptions}
-              categoryFilter={hasCategoryCatalog ? (
+              topCategoryOptions={categoryFilterFirst ? filterCategories : null}
+              categoryFilter={categoryFilterFirst ? (
+                <AttributeFilters
+                  attrMeta={attributeMeta}
+                  attrFilters={attrFilters}
+                  setAttrFilters={applyAttrFilters}
+                />
+              ) : hasCategoryCatalog ? (
                 <CategoryAttributeFilters
                   categories={filterCategories}
                   selected={localFilters.categories}

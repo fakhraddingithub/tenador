@@ -14,6 +14,7 @@ export default function FilterSidebar({
   setFilters,
   hideSportFilter = false,
   categoryFilter = null,
+  topCategoryOptions = null,
   // اگر پاس داده شود، به‌جای استخراج سری‌ها از محصولات، همین لیست (مثلاً فقط
   // سری‌های ریشه) به‌عنوان گزینه‌های فیلتر «سری» نمایش داده می‌شود.
   seriesOptions = null,
@@ -94,6 +95,15 @@ export default function FilterSidebar({
       </div>
 
       <div className="bg-white rounded-[6px] border border-gray-100 shadow-sm overflow-hidden">
+        {topCategoryOptions && (
+          <FilterGroup
+            title="نوع محصول"
+            items={topCategoryOptions}
+            type="categories"
+            filters={filters}
+            setFilters={setFilters}
+          />
+        )}
         {/* فیلتر ورزش (Sport) */}
         {!hideSportFilter && (
           <FilterGroup
