@@ -1,8 +1,9 @@
+import "base/models/registerModels";
 import connectToDB from "base/configs/db";
 import Sport from "base/models/Sport";
 import { NextResponse } from "next/server";
 import { revalidateContent } from "@/lib/revalidate";
-import { handleApiError } from "@/lib/apiError";
+import { apiError, handleApiError } from "@/lib/apiError";
 import requireAdminPermission from "@/lib/requireAdminPermission";
 
 export async function GET(req, { params }) {
@@ -32,7 +33,13 @@ export async function PUT(req, { params }) {
     await connectToDB();
     const { sportId } = await params;
     const body = await req.json();
-    const { name, description, icon, image } = body;
+    const { name, title, description, icon, image } = body;
+
+    if (title !== undefined && (typeof title !== "string" || !title.trim())) {
+      return apiError("«عنوان فارسی ورزش» الزامی است", 400, {
+        fieldErrors: { title: "«عنوان فارسی ورزش» الزامی است" },
+      });
+    }
 
     const sport = await Sport.findById(sportId);
     if (!sport) {
@@ -44,6 +51,9 @@ export async function PUT(req, { params }) {
 
     if (name && name.trim() !== "") {
       sport.name = name.trim();
+    }
+    if (title !== undefined) {
+      sport.title = title.trim();
     }
     if (description !== undefined) {
       sport.description = description;

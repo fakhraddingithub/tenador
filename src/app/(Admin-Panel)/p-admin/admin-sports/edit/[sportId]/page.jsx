@@ -9,44 +9,48 @@ import 'react-toastify/dist/ReactToastify.css';
 import AdminLoader from '@/components/admin/AdminLoader';
 import { invalidateAdminCache } from '@/lib/adminCache';
 
+const NAME_REGEX = /^[a-zA-Z0-9\s\-_]+$/;
+
 export default function EditSport() {
   const router = useRouter();
   const { sportId } = useParams();
-  
+
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [uploadingType, setUploadingType] = useState(null); // 'icon' or 'image'
 
   const [formData, setFormData] = useState({
     name: '',
+    title: '',
     description: '',
     icon: '',
     image: '',
   });
 
   useEffect(() => {
+    const fetchSport = async () => {
+      try {
+        const res = await fetch(`/api/sports/${sportId}`);
+        const data = await res.json();
+        if (res.ok) {
+          const s = data.sport;
+          setFormData({
+            name: s.name || '',
+            title: s.title || '',
+            description: s.description || '',
+            icon: s.icon || '',
+            image: s.image || '',
+          });
+        }
+      } catch (error) {
+        toast.error('خطا در بارگذاری اطلاعات ورزش');
+      } finally {
+        setLoading(false);
+      }
+    };
+
     fetchSport();
   }, [sportId]);
-
-  const fetchSport = async () => {
-    try {
-      const res = await fetch(`/api/sports/${sportId}`);
-      const data = await res.json();
-      if (res.ok) {
-        const s = data.sport;
-        setFormData({
-          name: s.name || '',
-          description: s.description || '',
-          icon: s.icon || '',
-          image: s.image || '',
-        });
-      }
-    } catch (error) {
-      toast.error('خطا در بارگذاری اطلاعات ورزش');
-    } finally {
-      setLoading(false);
-    }
-  };
 
   const handleFileUpload = async (e, type) => {
     const file = e.target.files[0];
@@ -83,7 +87,11 @@ export default function EditSport() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!formData.name.trim()) return toast.warn("نام ورزش الزامی است");
+    if (!formData.name.trim()) return toast.warn("نام انگلیسی ورزش الزامی است");
+    if (!NAME_REGEX.test(formData.name)) {
+      return toast.warn('نام سیستمی فقط باید شامل حروف انگلیسی، عدد و کاراکترهای مجاز باشد');
+    }
+    if (!formData.title.trim()) return toast.warn("عنوان فارسی ورزش الزامی است");
 
     setSaving(true);
     try {
@@ -113,7 +121,7 @@ export default function EditSport() {
   return (
     <div className="min-h-screen bg-[#fcfcfc] text-[var(--color-text)] pb-20" dir="rtl">
       <ToastContainer rtl />
-      
+
       {/* هدر */}
       <header className="bg-white border-b border-gray-100 sticky top-0 z-20">
         <div className="max-w-4xl mx-auto px-4 py-6 flex items-center justify-between">
@@ -132,10 +140,10 @@ export default function EditSport() {
 
       <main className="max-w-4xl mx-auto px-4 mt-10">
         <form onSubmit={handleSubmit} className="space-y-8">
-          
+
           {/* بخش تصاویر (آیکون و تصویر اصلی) */}
           <div className="grid md:grid-cols-2 gap-6">
-            
+
             {/* آپلود تصویر اصلی */}
             <div className="bg-white p-6 rounded-[var(--radius)] border border-gray-100 shadow-sm">
               <label className="flex items-center gap-2 text-sm font-bold mb-4 text-gray-600">
@@ -196,17 +204,38 @@ export default function EditSport() {
 
           {/* فیلدهای متنی */}
           <div className="bg-white p-8 rounded-[var(--radius)] border border-gray-100 shadow-sm space-y-6">
-            <div className="space-y-2">
-              <label className="flex items-center gap-2 text-sm font-bold text-gray-600">
-                <FiType className="text-[var(--color-primary)]" /> نام ورزش
-              </label>
-              <input
-                type="text"
-                value={formData.name}
-                onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
-                className="w-full bg-gray-50 border-none rounded-[var(--radius)] px-5 py-4 outline-none focus:ring-2 ring-[var(--color-primary)]/20 transition-all font-bold"
-                placeholder="مثال: تنیس روی میز"
-              />
+            <div className="grid md:grid-cols-2 gap-6">
+              <div className="space-y-2">
+                <label htmlFor="sport-name" className="flex items-center gap-2 text-sm font-bold text-gray-600">
+                  <FiType className="text-[var(--color-primary)]" /> نام سیستمی (English)
+                </label>
+                <input
+                  id="sport-name"
+                  type="text"
+                  value={formData.name}
+                  onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
+                  required
+                  dir="ltr"
+                  className="w-full bg-gray-50 border-none rounded-[var(--radius)] px-5 py-4 outline-none focus:ring-2 ring-[var(--color-primary)]/20 transition-all font-bold text-left"
+                  placeholder="e.g. basketball"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <label htmlFor="sport-title" className="flex items-center gap-2 text-sm font-bold text-gray-600">
+                  <FiType className="text-[var(--color-primary)]" /> عنوان نمایشی (Persian)
+                </label>
+                <input
+                  id="sport-title"
+                  type="text"
+                  value={formData.title}
+                  onChange={(e) => setFormData(prev => ({ ...prev, title: e.target.value }))}
+                  required
+                  dir="rtl"
+                  className="w-full bg-gray-50 border-none rounded-[var(--radius)] px-5 py-4 outline-none focus:ring-2 ring-[var(--color-primary)]/20 transition-all font-bold"
+                  placeholder="مثال: بسکتبال"
+                />
+              </div>
             </div>
 
             <div className="space-y-2">
