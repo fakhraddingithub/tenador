@@ -12,6 +12,8 @@ const entity = (key, label, entityType, multiple = true) => ({ key, label, kind:
 //   row: فیلدهای پشتِ‌سرِ‌همی که row یکسان دارند کنارِ هم در یک ردیف می‌نشینند
 //        (و در جای تنگ زیرِ هم می‌روند). فیلدِ بی‌row ردیفِ خودش را دارد.
 //   section: عنوانِ کوچکی بالای همان ردیف، برای بلوک‌هایی با تنظیماتِ زیاد.
+//   advanced: فیلدِ کم‌کاربرد؛ همه‌ی advancedهای یک بلوک با هم در یک «تنظیمات بیشتر»ِ
+//        بسته می‌نشینند، جای آخرینشان. فقط نمایش است: کلید و داده همان است.
 // پهنای هر فیلد از نوعش می‌آید (BlockEditor → fieldWidth)، نه از اینجا.
 
 // کنترل‌های استایلِ هر بلوک. فقط کلیدهایی که برای آن بلوک معنا دارند نشان داده
@@ -59,9 +61,9 @@ export const ARTICLE_BLOCKS = {
   paragraph: { label: "پاراگراف", group: "محتوا", icon: FiAlignRight, defaults: { text: "" }, fields: [text("text", "متن پاراگراف", "rich")], styleKeys: TEXTY },
   // تصویر یک *ظرف* است: تصویرِ پس‌زمینه، یک لایه‌ی تیره، و بلوک‌های واقعی روی
   // آن‌ها (همان ویرایشگر و همان تنظیماتِ همیشگیِ هر بلوک).
-  image: { label: "تصویر", group: "رسانه", icon: FiImage, defaults: { url: "", alt: "", caption: "" }, fields: [text("images", "تصاویر", "imageList"), text("displayHeight", "ارتفاع نمایش", "imageHeight", { row: "size" }), text("caption", "زیرنویس", "text", { row: "size" }), text("shade", "لایه‌ی تیره و جای محتوا", "imageShade"), text("blocks", "بلوک‌های روی تصویر", "mergedBlocks", { addLabel: "بلوک روی تصویر", addGroup: "media" })], styleKeys: SPACING_ONLY },
+  image: { label: "تصویر", group: "رسانه", icon: FiImage, defaults: { url: "", alt: "", caption: "" }, fields: [text("images", "تصاویر", "imageList"), text("displayHeight", "ارتفاع نمایش", "imageHeight", { advanced: true }), text("caption", "زیرنویس"), text("shade", "لایه‌ی تیره و جای محتوا", "imageShade", { advanced: true }), text("blocks", "بلوک‌های روی تصویر", "mergedBlocks", { addLabel: "بلوک روی تصویر", addGroup: "media" })], styleKeys: SPACING_ONLY },
   // اسلایدرِ تصویر: ظرفی که فقط بلوکِ *تصویر* می‌پذیرد، با اندازه‌ی ثابت.
-  imageSlider: { label: "اسلایدر تصویر", group: "رسانه", icon: FiColumns, defaults: { blocks: [], delay: IMAGE_SLIDER_DELAY.default, height: IMAGE_SLIDER_HEIGHT.default }, fields: [text("blocks", "تصاویر اسلایدر", "imageSliderBlocks"), text("slider", "اندازه و زمان‌بندی", "imageSliderSettings")], styleKeys: SPACING_ONLY },
+  imageSlider: { label: "اسلایدر تصویر", group: "رسانه", icon: FiColumns, defaults: { blocks: [], delay: IMAGE_SLIDER_DELAY.default, height: IMAGE_SLIDER_HEIGHT.default }, fields: [text("slider", "اندازه و زمان‌بندی", "imageSliderSettings", { section: "تنظیمات کلِ اسلایدر" }), text("blocks", "اسلایدها — هر اسلاید یک بلوکِ تصویر با بلوک‌های روی خودش", "imageSliderBlocks")], styleKeys: SPACING_ONLY },
   gallery: { label: "گالری", group: "رسانه", icon: FiGrid, defaults: { images: [] }, fields: [text("images", "تصاویر", "gallery")], styleKeys: SPACING_ONLY },
   video: { label: "ویدئو", group: "رسانه", icon: FiPlay, defaults: { url: "", title: "" }, fields: [text("url", "آدرس ویدئو", "url", { row: "video" }), text("title", "عنوان ویدئو", "text", { row: "video" })], styleKeys: SPACING_ONLY },
   quote: { label: "نقل‌قول", group: "محتوا", icon: FiMessageSquare, defaults: { text: "", author: "" }, fields: [text("text", "متن نقل‌قول", "rich"), text("author", "نام گوینده")], styleKeys: ["spacing", "textColor", "background", "accent"] },
@@ -76,17 +78,18 @@ export const ARTICLE_BLOCKS = {
     fields: [
       text("label", "متن دکمه", "text", { row: "content" }),
       text("href", "پیوند", "url", { row: "content" }),
-      text("style", "نوع", "select", { row: "look", section: "ظاهر", options: ["primary", "outline", "secondary"], labels: { primary: "اصلی", outline: "خطی", secondary: "ثانویه" } }),
+      text("style", "نوع", "select", { row: "look", options: ["primary", "outline", "secondary"], labels: { primary: "اصلی", outline: "خطی", secondary: "ثانویه" } }),
       text("size", "اندازه دکمه", "select", { row: "look", options: ["sm", "md", "lg"], labels: { sm: "کوچک", md: "متوسط", lg: "بزرگ" } }),
-      text("icon", "آیکن", "select", { row: "look", options: ["none", "arrow", "external", "download"], labels: { none: "بدون آیکن", arrow: "فلش", external: "پیوند بیرونی", download: "دانلود" } }),
-      text("fontSize", "اندازه متن دکمه", "fontSize", { row: "look" }),
-      text("align", "جای دکمه در صفحه", "select", { row: "place", section: "جایگیری", options: ["right", "center", "left"], labels: { right: "راست", center: "وسط", left: "چپ" } }),
-      text("fullWidth", "دکمه تمام‌عرض", "checkbox", { row: "place" }),
-      text("textAlign", "چینش متن داخل دکمه (وقتی تمام‌عرض است)", "select", { row: "place", options: ["right", "center", "left"], labels: { right: "راست", center: "وسط", left: "چپ" } }),
+      // آیکن، اندازه‌ی متن و جایگیری کم‌کاربردترند: زیرِ «تنظیمات بیشتر».
+      text("icon", "آیکن", "select", { row: "extra", advanced: true, options: ["none", "arrow", "external", "download"], labels: { none: "بدون آیکن", arrow: "فلش", external: "پیوند بیرونی", download: "دانلود" } }),
+      text("fontSize", "اندازه متن دکمه", "fontSize", { row: "extra", advanced: true }),
+      text("align", "جای دکمه در صفحه", "select", { row: "place", section: "جایگیری", advanced: true, options: ["right", "center", "left"], labels: { right: "راست", center: "وسط", left: "چپ" } }),
+      text("fullWidth", "دکمه تمام‌عرض", "checkbox", { row: "place", advanced: true }),
+      text("textAlign", "چینش متن داخل دکمه (وقتی تمام‌عرض است)", "select", { row: "place", advanced: true, options: ["right", "center", "left"], labels: { right: "راست", center: "وسط", left: "چپ" } }),
     ],
     styleKeys: ["spacing", "textColor", "accent"],
   },
-  callout: { label: "نکته برجسته", group: "محتوا", icon: FiZap, defaults: { title: "", text: "", tone: "info" }, fields: [text("title", "عنوان", "text", { row: "head" }), text("tone", "نوع", "select", { row: "head", options: ["info", "success", "warning", "danger"] }), text("text", "متن", "rich")], styleKeys: ["spacing", "textColor", "background", "accent"] },
+  callout: { label: "نکته برجسته", group: "محتوا", icon: FiZap, defaults: { title: "", text: "", tone: "info" }, fields: [text("title", "عنوان", "text", { row: "head" }), text("tone", "نوع", "select", { row: "head", options: ["info", "success", "warning", "danger"], labels: { info: "اطلاعات", success: "موفقیت", warning: "هشدار", danger: "خطر" } }), text("text", "متن", "rich")], styleKeys: ["spacing", "textColor", "background", "accent"] },
   table: { label: "جدول", group: "داده", icon: FiTable, defaults: { headers: ["ستون ۱", "ستون ۲"], rows: [["", ""]] }, fields: [text("table", "داده‌های جدول", "table")], styleKeys: ["spacing", "textColor", "accent", "tableVariant"] },
   faq: { label: "سوالات متداول", group: "داده", icon: FiList, defaults: { items: [{ question: "", answer: "" }] }, fields: [text("items", "پرسش‌ها", "faq")], styleKeys: ["spacing", "textColor", "background", "accent"] },
   productCard: { label: "کارت محصول", group: "فروشگاه", icon: FiBox, defaults: { product: null }, fields: [entity("product", "محصول", "product", false)], styleKeys: TITLED },

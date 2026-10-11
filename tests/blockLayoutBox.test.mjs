@@ -321,9 +321,14 @@ test("هر گروهِ بلوک، هم نامِ لاتین دارد هم رنگ",
 test("سربرگِ کارت رنگِ ثابت ندارد و از گروه می‌خواند", async () => {
   const editor = await read("../src/components/admin/articles/BlockEditor.jsx");
   assert.match(editor, /data-block-group=\{BLOCK_GROUP_SLUGS\[definition\?\.group\] \|\| "content"\}/);
-  // bg-gray-50 روی سربرگ، رنگِ گروه را می‌پوشاند.
-  const header = editor.slice(editor.indexOf("<header className={`flex items-center gap-2"));
-  assert.ok(!header.slice(0, 200).includes("bg-gray-50"));
+  // رنگِ گروه روی کاشیِ آیکنِ سربرگ است (.be-icon از --admin-block-tint/accent می‌خواند)؛
+  // رنگِ ثابت روی سربرگ آن را می‌پوشاند.
+  const at = editor.indexOf('<header className="be-head"');
+  assert.ok(at > 0, "سربرگِ کارت باید از کلاسِ مشترکِ be-head بخواند");
+  assert.ok(!editor.slice(at, at + 200).includes("bg-"));
+  assert.match(editor, /<span className="be-icon" aria-hidden="true"><Icon \/><\/span>/);
+  const css = await read("../src/styles/admin-theme.css");
+  assert.match(css, /\.be-icon \{[^}]*background: var\(--admin-block-tint\);[^}]*color: var\(--admin-block-accent\);/);
 });
 
 // ——— اسلایدرِ بلوکِ ادغام‌شده و تیترِ تنادور ————————————————————————————
@@ -494,7 +499,8 @@ test("فقط بلوکِ تصویر داخلِ اسلایدر می‌ماند —
   assert.equal(clamped.data.delay, 1000);
 
   const editor = await read("../src/components/admin/articles/BlockEditor.jsx");
-  assert.match(editor, /if \(field\.kind === "imageSliderBlocks"\) return <BlockEditor value=\{Array\.isArray\(value\) \? value : \[\]\} onChange=\{onChange\} allow=\{IMAGE_SLIDER_CHILD_TYPES\} \/>;/);
+  // برچسب‌های نمایشی («اسلاید n»، «افزودن اسلاید») آزادند؛ allow همان است.
+  assert.match(editor, /if \(field\.kind === "imageSliderBlocks"\) return <BlockEditor value=\{Array\.isArray\(value\) \? value : \[\]\} onChange=\{onChange\} allow=\{IMAGE_SLIDER_CHILD_TYPES\}[ />]/);
   // کتابخانه فیلتر می‌شود و «ادغام» خاموش است (بلوکِ merged را سرور دور می‌ریزد).
   assert.match(editor, /\(!allow \|\| allow\.includes\(type\)\)/);
   assert.match(editor, /selectable=\{!allow\}/);

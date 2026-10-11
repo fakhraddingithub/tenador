@@ -1147,13 +1147,30 @@ comes from the field kind (`fieldWidth`: short controls — select, number, font
 checkbox, image height — `basis-32 max-w-64`, text `basis-44`, a rich field beside a short
 control `basis-[30rem] grow-[6]` so its toolbar stays on one line, editors full width).
 
-The forms are deliberately dense: «ظاهر و چیدمان» is a button in the card header, not a
-row in the body; inputs are `py-1.5` (`inputClass`, checkbox `h-[34px]` to match); long
-hints live in `title` rather than under the control; a block's *only* field hides its
-label (it repeats the header) except the merged block's, which is guidance; sub-settings
-(shade, slider timing) and a single image are not boxed — a box is kept only for repeated
-items (FAQ entries, several images). `ImageUpload` takes `compact` for these forms; every
-other form keeps its default. Rows are flex-wrap rather than breakpoint grids because
+**The editor's look is one design system in `admin-theme.css`**, not classes scattered per
+form: `--be-*` tokens on `.admin-scope` plus `.a-block-card`, `.be-head`, `.be-icon`,
+`.be-act`, `.be-menu`, `.be-body`, `.be-label`, `.be-input`, `.be-rich`, `.be-well`,
+`.be-more`, `.be-add`, `.be-upload`. They live in `@layer components`, so a Tailwind
+utility next to them still wins — but **a fixed-width box is `be-input w-28`, never
+`inputClass` + `w-28`**: two width utilities fight and `w-full` wins (that is what had
+collapsed the slider's range track to a dot). The card is *not* `.a-card` any more: that
+rule is unlayered and would beat every layered card state.
+
+| element | rule |
+|---|---|
+| card | white, 1px border; only the innermost focused card gets the ring (`:focus-within:not(:has(.a-block-card:focus-within))`) |
+| type | the group colour sits on the icon tile only (`--admin-block-tint`/`--admin-block-accent`) |
+| header | grip · position · icon + name (summary when collapsed) · up/down/duplicate (`be-quiet`: hover/focus on mouse devices, inside «⋯» on phones) · appearance · «⋯» (move to position, copy to another document) · delete (separated, red on hover) · collapse |
+| nested editors | `mergedBlocks` / `imageSliderBlocks` render in a grey `.be-well`, not a second frame; slider children are titled «اسلاید n» |
+| `advanced: true` (registry) | grouped in one closed «تنظیمات بیشتر» at the position of the last advanced field, with a dot when any of them is set — image height/darkness, button icon/size/placement |
+
+Inputs are `py-1.5`-ish (`.be-input`, 32px; `.be-check` matches); selects use
+`appearance: none` with a drawn chevron so they match inputs; long hints live in `title`
+rather than under the control; a block's *only* field hides its label (it repeats the
+header) except the merged block's, which is guidance; sub-settings and a single image
+are not boxed; FAQ items and several images are one divided list, not a box each.
+`ImageUpload` takes `compact` (a labelled «انتخاب تصویر» button over the same hidden
+input, always-visible remove) for these forms; every other form keeps its default. Rows are flex-wrap rather than breakpoint grids because
 cards nest at very different widths (merged, on an image, in the preview modal) and wrap
 follows the card's real width. **Do not use container queries here** — `container-type`
 adds layout containment, which would trap absolutely-positioned dropdowns (entity search,

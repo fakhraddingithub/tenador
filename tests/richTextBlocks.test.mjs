@@ -105,12 +105,12 @@ test("دکمه‌های افزودن: فقط دو ویرایشگرِ تودرت�
 
   const editor = await read("../src/components/admin/articles/BlockEditor.jsx");
   // پیش‌فرض همان برچسبِ قبلی است — ویرایشگرِ کلِ مقاله چیزی پاس نمی‌دهد.
-  assert.match(editor, /addLabel = "افزودن بلوک", addGroup = null \}\) \{/);
+  assert.match(editor, /addLabel = "افزودن بلوک", addGroup = null[,}]/);
   assert.match(editor, /addLabel=\{field\.addLabel\} addGroup=\{field\.addGroup\}/);
   // هر دو شکلِ دکمه همان کار را می‌کنند.
   assert.equal((editor.match(/<button type="button" onClick=\{\(\) => setLibraryOpen\(true\)\}/g) || []).length, 2);
-  // اسلایدرِ تصویر دست‌نخورده است.
-  assert.match(editor, /<BlockEditor value=\{Array\.isArray\(value\) \? value : \[\]\} onChange=\{onChange\} allow=\{IMAGE_SLIDER_CHILD_TYPES\} \/>/);
+  // اسلایدرِ تصویر: همان allow، و از بازطراحی برچسبِ خودش («اسلاید n»، «افزودن اسلاید»).
+  assert.match(editor, /<BlockEditor value=\{Array\.isArray\(value\) \? value : \[\]\} onChange=\{onChange\} allow=\{IMAGE_SLIDER_CHILD_TYPES\} itemLabel="اسلاید" addLabel="افزودن اسلاید" \/>/);
 
   const css = await read("../src/styles/admin-theme.css");
   assert.match(css, /\.admin-scope \[data-block-group="media"\]\s+\{ --admin-block-accent: #8f7bbe;/);

@@ -8,7 +8,11 @@ import { createPortal } from "react-dom";
  * نباید وجود داشته باشد.
  */
 
-export const inputClass = "w-full px-2.5 py-1.5 border border-[var(--admin-border-strong)] bg-gray-50 text-sm outline-none focus:bg-white focus:border-[var(--color-primary)] focus-visible:ring-2 focus-visible:ring-[var(--color-primary)]";
+// ظاهرِ کادر در admin-theme.css (.be-input، لایه‌ی components) است؛ utilityهای کنارش
+// (ps-2، text-xs در مودالِ چیدمان) همچنان بی‌زور از آن می‌برند. کادرِ عرض‌ثابت
+// «be-input w-28» می‌گیرد نه inputClass + w-28: دو utilityِ width با هم می‌جنگند و
+// w-full می‌برد — همان که نوارِ لغزنده‌ی اسلایدر را به یک نقطه رسانده بود.
+export const inputClass = "be-input w-full";
 
 // مودال‌ها به body می‌روند: هر نیایی با transform یا backdrop-filter (مثلِ کارتِ
 // مینی‌مقاله با backdrop-blur) بلوکِ دربرگیرنده‌ی position:fixed می‌شود و مودال را

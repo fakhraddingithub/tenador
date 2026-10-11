@@ -79,7 +79,7 @@ function NumberField({ label, unit, value, onChange, min, max, step, placeholder
           step={step}
           placeholder={placeholder}
           onChange={(event) => onChange(event.target.value === "" ? undefined : Number(event.target.value))}
-          className={`${inputClass} px-2 py-1.5 text-xs`}
+          className={`${inputClass} py-1.5 ps-2 text-xs`}
         />
         <span className="shrink-0 text-[10px] text-gray-400">{unit}</span>
       </div>
@@ -179,7 +179,7 @@ export default function BlockLayoutModal({ type, style, layout, onApply, onClose
                   <select
                     value={width}
                     onChange={(event) => set("width", event.target.value === "full" ? undefined : event.target.value)}
-                    className={`${inputClass} px-2 py-1.5 text-xs`}
+                    className={`${inputClass} py-1.5 ps-2 text-xs`}
                   >
                     {BLOCK_WIDTHS.map((item) => <option key={item} value={item}>{WIDTH_LABELS[item]}</option>)}
                   </select>
@@ -228,7 +228,7 @@ export default function BlockLayoutModal({ type, style, layout, onApply, onClose
                   <select
                     value={colors.spacing || "none"}
                     onChange={(event) => setStyle("spacing", event.target.value === "none" ? undefined : event.target.value)}
-                    className={`${inputClass} px-2 py-1.5 text-xs`}
+                    className={`${inputClass} py-1.5 ps-2 text-xs`}
                   >
                     {Object.entries(BLOCK_SPACING_LABELS).map(([value, label]) => <option key={value} value={value}>{label}</option>)}
                   </select>
@@ -273,7 +273,7 @@ export default function BlockLayoutModal({ type, style, layout, onApply, onClose
                     <select
                       value={colors.tableVariant || "default"}
                       onChange={(event) => setStyle("tableVariant", event.target.value === "default" ? undefined : event.target.value)}
-                      className={`${inputClass} px-2 py-1.5 text-xs`}
+                      className={`${inputClass} py-1.5 ps-2 text-xs`}
                     >
                       {Object.entries(BLOCK_TABLE_VARIANT_LABELS).map(([value, label]) => <option key={value} value={value}>{label}</option>)}
                     </select>

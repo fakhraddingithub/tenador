@@ -5,7 +5,7 @@ import { useEffect, useId, useMemo, useRef, useState } from "react";
 import { DndContext, KeyboardSensor, PointerSensor, closestCenter, useSensor, useSensors } from "@dnd-kit/core";
 import { SortableContext, arrayMove, sortableKeyboardCoordinates, useSortable, verticalListSortingStrategy } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { FiChevronDown, FiChevronUp, FiClipboard, FiColumns, FiCopy, FiDroplet, FiGrid, FiMenu, FiPlus, FiScissors, FiSearch, FiShare2, FiTrash2, FiX } from "react-icons/fi";
+import { FiChevronDown, FiChevronUp, FiClipboard, FiColumns, FiCopy, FiDroplet, FiGrid, FiMenu, FiMoreHorizontal, FiMove, FiPlus, FiScissors, FiSearch, FiShare2, FiSliders, FiTrash2, FiX } from "react-icons/fi";
 import ImageUpload from "@/components/admin/ImageUpload";
 import ArticleEntityPicker from "./ArticleEntityPicker";
 import BlockLayoutModal from "./BlockLayoutModal";
@@ -63,12 +63,13 @@ function fieldRows(fields) {
   return rows;
 }
 
-const boxStyle = { borderColor: "var(--admin-border)", borderRadius: "var(--admin-radius)" };
 // این نوع‌ها برای هر کنترلِ خودشان برچسب دارند؛ برچسبِ فیلد فقط برای صفحه‌خوان می‌ماند.
 const SELF_LABELLED_KINDS = ["imageShade", "imageSliderSettings"];
+// فیلدهایی که خودشان یک BlockEditor‌اند.
+const NESTED_KINDS = ["mergedBlocks", "imageSliderBlocks"];
 // برچسبِ کوچکِ بالای کنترل‌های داخلیِ یک فیلد. راهنماهای بلند در title می‌نشینند
 // نه زیرِ کنترل، تا هر کنترل فقط یک خط جا بگیرد.
-const smallLabel = "mb-1 block text-[11px] font-bold leading-4 text-gray-600";
+const smallLabel = "be-label";
 
 /**
  * پاسخ همان ویرایشگرِ متنِ غنیِ پاراگراف است: متنِ ساده در answer می‌ماند (همان
@@ -79,17 +80,21 @@ const smallLabel = "mb-1 block text-[11px] font-bold leading-4 text-gray-600";
 function FaqEditor({ value = [], onChange }) {
   const items = value.length ? value : [{ question: "", answer: "" }];
   const update = (index, patch) => onChange(items.map((item, i) => i === index ? { ...item, ...patch } : item));
-  return <div className="space-y-2">
-    {items.map((item, index) => <div key={index} className="space-y-1.5 border p-2" style={boxStyle}>
-      <div className="flex items-center gap-2">
-        <span className="w-5 shrink-0 text-center text-[11px] font-black text-gray-400">{(index + 1).toLocaleString("fa-IR")}</span>
-        <input className={inputClass} value={item.question} onChange={(e) => update(index, { question: e.target.value })} placeholder="پرسش" aria-label={`پرسش ${index + 1}`} />
-        <button type="button" onClick={() => onChange(items.filter((_, i) => i !== index))} className="shrink-0 px-1 text-xs text-red-600">حذف پرسش</button>
-      </div>
-      {/* چینشِ هر پاسخ مالِ خودِ همان پاسخ است (answerAlign)، نه style.alignِ بلوک. */}
-      <RichTextField label={`پاسخ ${index + 1}`} value={{ text: item.answer, html: item.answerHtml }} onChange={({ text, html }) => update(index, { answer: text, answerHtml: html })} align={item.answerAlign} onAlign={(answerAlign) => update(index, { answerAlign })} aligns={FAQ_ANSWER_ALIGNS} />
-    </div>)}
-    <button type="button" onClick={() => onChange([...items, { question: "", answer: "" }])} className="text-xs font-bold text-[var(--color-primary)]">+ افزودن پرسش</button>
+  // فهرستی با خطِ جداکننده، نه یک قاب برای هر پرسش: شماره | پرسش | حذف، و پاسخ
+  // زیرِ پرسش در همان ستون — ساختارِ پرسش و پاسخ بی‌قابِ اضافه خوانده می‌شود.
+  return <div className="space-y-1.5">
+    <ol className="divide-y divide-[var(--be-border)]">
+      {items.map((item, index) => <li key={index} className="grid grid-cols-[1.25rem_minmax(0,1fr)_auto] items-start gap-x-2 gap-y-1.5 py-2.5 first:pt-0">
+        <span className="mt-1.5 grid size-5 place-items-center rounded-full bg-[var(--be-well)] text-[10px] font-black text-[var(--be-muted)]">{(index + 1).toLocaleString("fa-IR")}</span>
+        <input className={`${inputClass} font-semibold`} value={item.question} onChange={(e) => update(index, { question: e.target.value })} placeholder="پرسش" aria-label={`پرسش ${index + 1}`} />
+        <button type="button" onClick={() => onChange(items.filter((_, i) => i !== index))} className="be-act be-act--danger" aria-label={`حذف پرسش ${index + 1}`} title="حذف پرسش"><FiTrash2 /></button>
+        <div className="col-start-2 col-end-4 min-w-0">
+          {/* چینشِ هر پاسخ مالِ خودِ همان پاسخ است (answerAlign)، نه style.alignِ بلوک. */}
+          <RichTextField label={`پاسخ ${index + 1}`} value={{ text: item.answer, html: item.answerHtml }} onChange={({ text, html }) => update(index, { answer: text, answerHtml: html })} align={item.answerAlign} onAlign={(answerAlign) => update(index, { answerAlign })} aligns={FAQ_ANSWER_ALIGNS} />
+        </div>
+      </li>)}
+    </ol>
+    <button type="button" onClick={() => onChange([...items, { question: "", answer: "" }])} className="be-act text-[var(--color-primary)]"><FiPlus aria-hidden="true" />افزودن پرسش</button>
   </div>;
 }
 
@@ -97,7 +102,8 @@ function TableEditor({ value, onChange }) {
   const headers = value?.headers?.length ? value.headers : ["ستون ۱", "ستون ۲"];
   const rows = value?.rows?.length ? value.rows : [["", ""]];
   const emit = (nextHeaders, nextRows) => onChange({ headers: nextHeaders, rows: nextRows });
-  return <div className="overflow-x-auto space-y-2"><table className="w-full text-xs border-collapse"><thead><tr>{headers.map((header, col) => <th key={col} className="border p-1" style={{ borderColor: "var(--admin-border)" }}><input className={inputClass} value={header} onChange={(e) => emit(headers.map((x, i) => i === col ? e.target.value : x), rows)} /></th>)}</tr></thead><tbody>{rows.map((row, rowIndex) => <tr key={rowIndex}>{headers.map((_, col) => <td key={col} className="border p-1" style={{ borderColor: "var(--admin-border)" }}><input className={inputClass} value={row[col] || ""} onChange={(e) => emit(headers, rows.map((r, i) => i === rowIndex ? headers.map((__, c) => c === col ? e.target.value : (r[c] || "")) : r))} /></td>)}</tr>)}</tbody></table><div className="flex gap-3"><button type="button" className="text-xs font-bold text-[var(--color-primary)]" onClick={() => emit(headers, [...rows, headers.map(() => "")])}>+ سطر</button><button type="button" className="text-xs font-bold text-[var(--color-primary)]" onClick={() => emit([...headers, `ستون ${headers.length + 1}`], rows.map((row) => [...row, ""]))}>+ ستون</button></div></div>;
+  // شبکه‌ی کادرها بدونِ خطوطِ جدول: فاصله‌ی ۴px کافی است و سرستون‌ها پررنگ‌ترند.
+  return <div className="space-y-1.5"><div className="overflow-x-auto"><table className="w-full border-separate border-spacing-1 text-xs"><thead><tr>{headers.map((header, col) => <th key={col} className="p-0 font-normal"><input className={`${inputClass} bg-[var(--be-well)] font-bold`} value={header} onChange={(e) => emit(headers.map((x, i) => i === col ? e.target.value : x), rows)} /></th>)}</tr></thead><tbody>{rows.map((row, rowIndex) => <tr key={rowIndex}>{headers.map((_, col) => <td key={col} className="p-0"><input className={inputClass} value={row[col] || ""} onChange={(e) => emit(headers, rows.map((r, i) => i === rowIndex ? headers.map((__, c) => c === col ? e.target.value : (r[c] || "")) : r))} /></td>)}</tr>)}</tbody></table></div><div className="flex gap-1"><button type="button" className="be-act text-[var(--color-primary)]" onClick={() => emit(headers, [...rows, headers.map(() => "")])}><FiPlus aria-hidden="true" />سطر</button><button type="button" className="be-act text-[var(--color-primary)]" onClick={() => emit([...headers, `ستون ${headers.length + 1}`], rows.map((row) => [...row, ""]))}><FiPlus aria-hidden="true" />ستون</button></div></div>;
 }
 
 // ابعادِ واقعیِ تصویر را کنارِ آدرس ذخیره می‌کند تا رندرِ عمومی بتواند پیش از
@@ -130,14 +136,14 @@ function ImageListEditor({ data, onChange }) {
   const update = (index, patch) => emit(editorImageItems(latest.current).map((item, i) => (i === index ? { ...item, ...patch } : item)));
   const remove = (index) => emit(editorImageItems(latest.current).filter((_, i) => i !== index));
   const add = () => emit([...editorImageItems(latest.current), { url: "", alt: "" }]);
-  // تک‌تصویر (حالتِ رایج) قاب و سربرگ ندارد؛ از دو تصویر به بعد هر کدام قابِ خودش
-  // را می‌گیرد تا مرزِ تصویرها و دکمه‌ی حذفِ هر یک معلوم باشد.
+  // تک‌تصویر (حالتِ رایج) سربرگ ندارد؛ از دو تصویر به بعد هر کدام شماره و دکمه‌ی
+  // حذفِ خودش را می‌گیرد و با یک خط از بعدی جدا می‌شود — نه با قابِ جدا.
   const several = items.length > 1;
-  return <div className="space-y-2">
-    {items.map((item, index) => <div key={index} className={several ? "space-y-1.5 border p-2" : undefined} style={several ? boxStyle : undefined}>
-      {several ? <div className="flex items-center justify-between text-[11px] font-bold text-gray-500">
-        <span>تصویر {(index + 1).toLocaleString("fa-IR")}</span>
-        <button type="button" onClick={() => remove(index)} className="text-red-600">حذف تصویر</button>
+  return <div className="space-y-1.5">
+    {items.map((item, index) => <div key={index} className={several ? "space-y-1.5 border-b border-[var(--be-border)] pb-2.5 last-of-type:border-b-0" : undefined}>
+      {several ? <div className="flex items-center justify-between">
+        <span className="be-label mb-0">تصویر {(index + 1).toLocaleString("fa-IR")}</span>
+        <button type="button" onClick={() => remove(index)} className="be-act be-act--danger" aria-label={`حذف تصویر ${index + 1}`} title="حذف تصویر"><FiTrash2 /></button>
       </div> : null}
       {/* بارگذاری یک طرف، متنِ جایگزین و پیوند طرفِ دیگر؛ در جای تنگ زیرِ هم. */}
       <div className="flex flex-wrap items-start gap-x-3 gap-y-2">
@@ -155,15 +161,15 @@ function ImageListEditor({ data, onChange }) {
         </div>
       </div>
     </div>)}
-    <button type="button" onClick={add} disabled={items.length >= MAX_IMAGE_BLOCK_ITEMS} className="text-xs font-bold text-[var(--color-primary)] disabled:opacity-40">+ افزودن تصویر</button>
+    <button type="button" onClick={add} disabled={items.length >= MAX_IMAGE_BLOCK_ITEMS} className="be-act text-[var(--color-primary)]"><FiPlus aria-hidden="true" />افزودن تصویر</button>
   </div>;
 }
 
 function ImageHeightField({ value, onChange }) {
   const hint = `${IMAGE_DISPLAY_HEIGHT.min.toLocaleString("fa-IR")} تا ${IMAGE_DISPLAY_HEIGHT.max.toLocaleString("fa-IR")} پیکسل. خالی = اندازه‌ی اصلیِ تصویر. در موبایل متناسب کوچک می‌شود.`;
   return <div className="flex items-center gap-2" title={hint}>
-    <input type="number" min={IMAGE_DISPLAY_HEIGHT.min} max={IMAGE_DISPLAY_HEIGHT.max} step={10} value={value ?? ""} placeholder="خودکار" onChange={(e) => onChange(e.target.value === "" ? undefined : Number(e.target.value))} className={`${inputClass} w-28`} />
-    <span className="shrink-0 text-[11px] text-gray-400">px</span>
+    <input type="number" min={IMAGE_DISPLAY_HEIGHT.min} max={IMAGE_DISPLAY_HEIGHT.max} step={10} value={value ?? ""} placeholder="خودکار" onChange={(e) => onChange(e.target.value === "" ? undefined : Number(e.target.value))} className="be-input w-28" />
+    <span className="be-unit">px</span>
   </div>;
 }
 
@@ -179,8 +185,8 @@ function ImageSliderSettings({ block, onUpdate }) {
     <span className={smallLabel}>{label}</span>
     <div className="flex items-center gap-2">
       <input type="range" min={spec.min} max={spec.max} step={spec.step} value={current} onChange={(event) => onUpdate({ [key]: Number(event.target.value) })} className="h-1.5 min-w-0 flex-1 cursor-pointer accent-[var(--color-primary)]" />
-      <input type="number" min={spec.min} max={spec.max} step={spec.step} value={current} onChange={(event) => onUpdate({ [key]: Number(event.target.value) })} className={`${inputClass} w-24`} />
-      <span className="shrink-0 text-[11px] text-gray-400">{unit}</span>
+      <input type="number" min={spec.min} max={spec.max} step={spec.step} value={current} onChange={(event) => onUpdate({ [key]: Number(event.target.value) })} className="be-input w-24 shrink-0" />
+      <span className="be-unit">{unit}</span>
     </div>
   </label>;
   return <div className="flex flex-wrap items-start gap-x-6 gap-y-2">
@@ -204,7 +210,7 @@ function ImageShadeField({ block, onUpdate }) {
       <span className={smallLabel}>تیرگیِ لایه روی تصویر</span>
       <div className="flex h-[34px] items-center gap-3">
         <input type="range" min={IMAGE_SHADE.min} max={IMAGE_SHADE.max} step={IMAGE_SHADE.step} value={shade} onChange={(e) => onUpdate({ shade: clampImageShade(e.target.value) })} className="h-1.5 flex-1 cursor-pointer accent-[var(--color-primary)]" />
-        <span className="w-12 shrink-0 text-center text-[11px] font-bold text-gray-600">{shade.toLocaleString("fa-IR")}٪</span>
+        <span className="be-unit w-12 text-center font-bold">{shade.toLocaleString("fa-IR")}٪</span>
       </div>
     </label>
     <label className="block min-w-0 grow basis-40 max-w-64" title="جای افقی، عرض و فاصله‌ی هر بلوک از «ظاهر و چیدمان» خودِ آن بلوک می‌آید.">
@@ -240,9 +246,9 @@ function BlockStylePanel({ type, style, layout, onApply }) {
   // در سربرگِ کارت می‌نشیند، نه یک ردیفِ تمام‌عرض در بدنه‌ی هر بلوک. در گوشی فقط
   // آیکن و شمارنده می‌ماند (نامش در aria-label و title).
   return <>
-    <button type="button" onClick={() => setOpen(true)} aria-label="ظاهر و چیدمان بلوک" title="ظاهر و چیدمان بلوک" className="flex items-center gap-1 px-1.5 py-1 text-[11px] font-bold text-gray-500 hover:text-[var(--color-primary)]">
-      <FiDroplet className="text-[var(--color-primary)]" aria-hidden="true" /><span className="hidden sm:inline">ظاهر</span>
-      {customised ? <span className="rounded-full bg-[var(--color-primary-soft)] px-1.5 text-[10px] font-black text-[var(--color-primary)]">{customised.toLocaleString("fa-IR")}</span> : null}
+    <button type="button" onClick={() => setOpen(true)} aria-label="ظاهر و چیدمان بلوک" title="ظاهر و چیدمان بلوک" className="be-act">
+      <FiDroplet aria-hidden="true" /><span className="hidden sm:inline">ظاهر</span>
+      {customised ? <span className="rounded-full bg-[var(--color-primary-soft)] px-1.5 text-[10px] font-black leading-4 text-[var(--color-primary)]">{customised.toLocaleString("fa-IR")}</span> : null}
     </button>
     {open ? <BlockLayoutModal
       type={type}
@@ -290,27 +296,46 @@ export function BlockFields({ block, onUpdate, onStyle }) {
     if (field.kind === "rich") return onUpdate({ [field.key]: next.text, [field.htmlKey || "html"]: next.html });
     return onUpdate(PATCH_KINDS.includes(field.kind) ? next : { [field.key]: next });
   };
+  const rows = (fields) => fieldRows(fields).map(({ fields: row }) => <div key={row[0].key}>
+    {row[0].section ? <p className="be-section">{row[0].section}</p> : null}
+    <div className="flex flex-wrap items-start gap-x-3 gap-y-2.5">
+      {row.map((field) => {
+        const Wrapper = fieldWrapper(field.kind);
+        // ویرایشگرِ تودرتو (ادغام، روی تصویر، اسلایدها) در چاهک می‌نشیند: یک سطحِ
+        // خاکستری به‌جای قابِ دوم، و برچسبش عنوانِ همان چاهک است.
+        return <Wrapper key={field.key} className={`block ${fieldWidth(field.kind, row.length === 1)}${NESTED_KINDS.includes(field.kind) ? " be-well" : ""}`}>
+          <span className={hiddenLabel(field) ? "sr-only" : "be-label"}>{field.label}</span>
+          <BlockField
+            field={field}
+            block={block}
+            onUpdate={onUpdate}
+            value={valueOf(field)}
+            onChange={changeOf(field)}
+            align={field.align === false ? undefined : block.style?.align}
+            onAlign={field.align === false ? undefined : setAlign}
+          />
+        </Wrapper>;
+      })}
+    </div>
+  </div>);
+  // فیلدهای advanced با هم در یک «تنظیمات بیشتر»ِ بسته، جای آخرینشان: تصویر →
+  // تصاویر، زیرنویس، [ارتفاع و لایه‌ی تیره]، بلوک‌های روی تصویر. نقطه یعنی چیزی
+  // داخلش تنظیم شده، تا بسته بودن چیزی را پنهان نکند.
+  const advanced = definition.fields.filter((field) => field.advanced);
+  const last = definition.fields.findLastIndex((field) => field.advanced);
+  const before = definition.fields.slice(0, last + 1).filter((field) => !field.advanced);
+  const after = definition.fields.slice(last + 1);
+  const customised = advanced.some((field) => {
+    const value = field.kind === "imageShade" ? (block.data?.shade || block.data?.contentPosition) : block.data?.[field.key];
+    return value !== undefined && value !== null && value !== "" && value !== false && value !== "none" && value !== definition.defaults?.[field.key];
+  });
   return <div className="space-y-3">
-    {fieldRows(definition.fields).map(({ fields }) => <div key={fields[0].key}>
-      {fields[0].section ? <p className="mb-1 text-[10px] font-black text-gray-400">{fields[0].section}</p> : null}
-      <div className="flex flex-wrap items-start gap-x-3 gap-y-2">
-        {fields.map((field) => {
-          const Wrapper = fieldWrapper(field.kind);
-          return <Wrapper key={field.key} className={`block ${fieldWidth(field.kind, fields.length === 1)}`}>
-            <span className={hiddenLabel(field) ? "sr-only" : smallLabel}>{field.label}</span>
-            <BlockField
-              field={field}
-              block={block}
-              onUpdate={onUpdate}
-              value={valueOf(field)}
-              onChange={changeOf(field)}
-              align={field.align === false ? undefined : block.style?.align}
-              onAlign={field.align === false ? undefined : setAlign}
-            />
-          </Wrapper>;
-        })}
-      </div>
-    </div>)}
+    {rows(before)}
+    {advanced.length ? <details className="be-more">
+      <summary><FiSliders aria-hidden="true" />تنظیمات بیشتر{customised ? <span className="be-dot" title="تنظیم شده" /> : null}<FiChevronDown className="be-chevron" aria-hidden="true" /></summary>
+      <div className="mt-2 space-y-3">{rows(advanced)}</div>
+    </details> : null}
+    {rows(after)}
   </div>;
 }
 
@@ -318,10 +343,10 @@ function BlockField({ field, value, onChange, align, onAlign, block, onUpdate })
   if (field.kind === "rich") return <RichTextField value={value} onChange={onChange} align={align} onAlign={onAlign} singleLine={field.singleLine} />;
   if (field.kind === "textarea" || field.kind === "html") return <textarea dir={field.kind === "html" ? "ltr" : "rtl"} rows={field.kind === "html" ? 9 : 4} value={value || ""} onChange={(e) => onChange(e.target.value)} className={`${inputClass} ${field.kind === "html" ? "font-mono" : "font-sans"}`} />;
   if (field.kind === "select") return <select value={value || field.options[0]} onChange={(e) => onChange(e.target.value)} className={inputClass}>{field.options.map((option) => <option key={option} value={option}>{field.labels?.[option] || option}</option>)}</select>;
-  // h-[34px] = ارتفاعِ inputClass، تا تیک کنارِ کادرهای همان ردیف هم‌تراز بنشیند.
-  if (field.kind === "checkbox") return <label className="flex h-[34px] items-center gap-2 text-xs font-bold text-gray-600"><input type="checkbox" checked={value === true} onChange={(e) => onChange(e.target.checked)} className="size-4 accent-[var(--color-primary)]" />فعال</label>;
+  // .be-check هم‌ارتفاعِ کادرهاست، تا تیک کنارِ کادرهای همان ردیف هم‌تراز بنشیند.
+  if (field.kind === "checkbox") return <label className="be-check"><input type="checkbox" checked={value === true} onChange={(e) => onChange(e.target.checked)} className="be-select" />فعال</label>;
   // اندازه‌ی متن به پیکسل، همان بازه و همان نرمال‌سازی متنِ غنی.
-  if (field.kind === "fontSize") return <div className="flex items-center gap-2" title="پیکسل — خالی = اندازه‌ی پیش‌فرضِ دکمه"><input type="number" min={8} max={96} value={value ?? ""} placeholder="پیش‌فرض" onChange={(e) => onChange(e.target.value === "" ? undefined : Number(e.target.value))} className={`${inputClass} min-w-0`} /><span className="shrink-0 text-[11px] text-gray-400">px</span></div>;
+  if (field.kind === "fontSize") return <div className="flex items-center gap-2" title="پیکسل — خالی = اندازه‌ی پیش‌فرضِ دکمه"><input type="number" min={8} max={96} value={value ?? ""} placeholder="پیش‌فرض" onChange={(e) => onChange(e.target.value === "" ? undefined : Number(e.target.value))} className={`${inputClass} min-w-0`} /><span className="be-unit">px</span></div>;
   if (field.kind === "image") return <ImageFieldWithSize value={value} onChange={onChange} />;
   if (field.kind === "imageList") return <ImageListEditor data={value} onChange={onChange} />;
   if (field.kind === "imageHeight") return <ImageHeightField value={value} onChange={onChange} />;
@@ -332,7 +357,7 @@ function BlockField({ field, value, onChange, align, onAlign, block, onUpdate })
   if (field.kind === "mergedBlocks") return <BlockEditor value={Array.isArray(value) ? value : []} onChange={onChange} addLabel={field.addLabel} addGroup={field.addGroup} />;
   // همان ویرایشگر، ولی کتابخانه‌اش فقط بلوکِ تصویر را نشان می‌دهد و «ادغام» ندارد:
   // تصویرهای اسلایدر همه‌ی توانایی‌های همیشگیِ بلوکِ تصویر را دارند.
-  if (field.kind === "imageSliderBlocks") return <BlockEditor value={Array.isArray(value) ? value : []} onChange={onChange} allow={IMAGE_SLIDER_CHILD_TYPES} />;
+  if (field.kind === "imageSliderBlocks") return <BlockEditor value={Array.isArray(value) ? value : []} onChange={onChange} allow={IMAGE_SLIDER_CHILD_TYPES} itemLabel="اسلاید" addLabel="افزودن اسلاید" />;
   if (field.kind === "imageSliderSettings") return <ImageSliderSettings block={block} onUpdate={onUpdate} />;
   if (field.kind === "gallery") return <ImageUpload value={value || []} onChange={onChange} folder="articles" multiple compact />;
   // برچسبِ فیلد دیگر <label>ِ دورِ آن نیست، پس نامِ کادرِ جستجو را صریح می‌گیرد.
@@ -435,12 +460,12 @@ export function MergedLayoutModal({ grid, count, onApply, onClose }) {
             <legend className="px-1 text-xs font-black">{BREAKPOINT_LABELS[breakpoint]}</legend>
             <label className="flex items-center gap-2 text-xs font-bold text-gray-700"><input type="checkbox" checked={settings.fit} onChange={(e) => set(breakpoint, "fit", e.target.checked)} className="size-4 accent-[var(--color-primary)]" />هم‌اندازه‌ی صفحه (بدونِ اسکرولِ افقی)</label>
             <div className="grid grid-cols-2 gap-2">
-              <label className="block"><span className="mb-1 block text-[11px] font-bold text-gray-600">ستون</span>{number(breakpoint, "columns", false)}</label>
-              <label className="block"><span className="mb-1 block text-[11px] font-bold text-gray-600">ردیف</span>{number(breakpoint, "rows", settings.fit)}</label>
+              <label className="block"><span className="be-label">ستون</span>{number(breakpoint, "columns", false)}</label>
+              <label className="block"><span className="be-label">ردیف</span>{number(breakpoint, "rows", settings.fit)}</label>
             </div>
             <div className="grid grid-cols-2 gap-2">
-              <label className="block"><span className="mb-1 block text-[11px] font-bold text-gray-600">فاصله بین بلوک‌ها (rem)</span>{number(breakpoint, "gap", false)}</label>
-              <label className="block"><span className="mb-1 block text-[11px] font-bold text-gray-600">کمینه‌ی عرضِ ستون (px)</span>{number(breakpoint, "minWidth", settings.fit)}</label>
+              <label className="block"><span className="be-label">فاصله بین بلوک‌ها (rem)</span>{number(breakpoint, "gap", false)}</label>
+              <label className="block"><span className="be-label">کمینه‌ی عرضِ ستون (px)</span>{number(breakpoint, "minWidth", settings.fit)}</label>
             </div>
             {settings.fit ? <p className="text-[10px] text-gray-400">در این حالت تعداد ردیف‌ها خودکار است.</p> : null}
             <GridPreview breakpoint={breakpoint} settings={sanitizeMergedGrid(draft)?.[breakpoint] || settings} count={count} />
@@ -471,7 +496,31 @@ function blockSummary(block) {
   return "";
 }
 
-function SortableBlock({ block, index, total, onUpdate, onStyle, onAppearance, onRemove, onDuplicate, onCopy, onMove, selectable = false, selected = false, onSelect, onUnmerge, open = true, onToggle }) {
+/**
+ * منوی «بیشتر» در سربرگِ کارت. هر کلیک روی یک گزینه، پس از کارِ خودِ گزینه منو را
+ * می‌بندد (کلیک از دکمه به ظرفِ منو بالا می‌رود). Escape و کلیکِ بیرون هم می‌بندند.
+ */
+function MoreMenu({ children }) {
+  const [open, setOpen] = useState(false);
+  const box = useRef(null);
+  useEffect(() => {
+    if (!open) return undefined;
+    const close = (event) => { if (!box.current?.contains(event.target)) setOpen(false); };
+    const onKey = (event) => { if (event.key === "Escape") setOpen(false); };
+    document.addEventListener("mousedown", close);
+    document.addEventListener("keydown", onKey);
+    return () => {
+      document.removeEventListener("mousedown", close);
+      document.removeEventListener("keydown", onKey);
+    };
+  }, [open]);
+  return <div ref={box} className="relative">
+    <button type="button" onClick={() => setOpen((value) => !value)} aria-haspopup="menu" aria-expanded={open} className="be-act" aria-label="کارهای بیشتر" title="کارهای بیشتر"><FiMoreHorizontal /></button>
+    {open ? <div role="menu" className="be-menu" onClick={() => setOpen(false)}>{children}</div> : null}
+  </div>;
+}
+
+function SortableBlock({ block, index, total, onUpdate, onStyle, onAppearance, onRemove, onDuplicate, onCopy, onMove, selectable = false, selected = false, onSelect, onUnmerge, open = true, onToggle, itemLabel = null }) {
   const [gridOpen, setGridOpen] = useState(false);
   const [moveOpen, setMoveOpen] = useState(false);
   const definition = ARTICLE_BLOCKS[block.type];
@@ -485,37 +534,51 @@ function SortableBlock({ block, index, total, onUpdate, onStyle, onAppearance, o
   // تقریباً کاملاً نامرئی و غیرقابلِ کلیک می‌شد. آکاردئون با رندرِ شرطی است نه
   // انیمیشنِ ارتفاع، پس به بریدن نیازی ندارد و فقط گردیِ گوشه‌ها لازم بود که
   // همان را خودِ header با border-radius: inherit می‌گیرد.
-  return <section ref={setNodeRef} id={blockDomId(block.id)} tabIndex={-1} style={{ transform: CSS.Transform.toString(transform), transition, opacity: isDragging ? .55 : 1 }} className="a-card a-block-card group outline-none" data-block-group={BLOCK_GROUP_SLUGS[definition?.group] || "content"}>
-    {/* رنگِ پس‌زمینه و مرزِ سربرگ از گروهِ بلوک می‌آید (admin-theme.css)، نه از کلاسِ ثابت. */}
+  // اسلایدهای اسلایدر همه «تصویر»اند؛ «اسلاید ۲» از «تصویر» گویاتر است.
+  const title = itemLabel ? `${itemLabel} ${(index + 1).toLocaleString("fa-IR")}` : definition?.label || block.type;
+  const summary = open ? "" : blockSummary(block);
+  // ظاهر از admin-theme.css (.a-block-card / .be-*) می‌آید؛ رنگِ گروه فقط روی کاشیِ آیکن.
+  return <section ref={setNodeRef} id={blockDomId(block.id)} tabIndex={-1} style={{ transform: CSS.Transform.toString(transform), transition, opacity: isDragging ? .55 : 1 }} className="a-block-card outline-none" data-selected={selected ? "true" : undefined} data-block-group={BLOCK_GROUP_SLUGS[definition?.group] || "content"}>
     {/* flex-wrap: در کارتِ تنگ (تودرتو یا گوشی) دکمه‌ها به خطِ دوم می‌روند، نه بیرون از کارت. */}
-    <header className={`flex flex-wrap items-center gap-x-1.5 gap-y-0.5 px-2 py-1 ${open ? "border-b rounded-t-[inherit]" : "rounded-[inherit]"}`}>
+    <header className="be-head" data-open={open ? "true" : "false"}>
       {/* بلوکِ ادغام‌شده هم مثلِ هر بلوکِ دیگری قابلِ انتخاب و ادغامِ دوباره است. */}
-      {selectable ? <input type="checkbox" checked={selected} onChange={onSelect} title="انتخاب برای ادغام" aria-label={`انتخاب بلوک ${index + 1} برای ادغام`} className="size-4 shrink-0 cursor-pointer accent-[var(--color-primary)]" /> : null}
-      <button type="button" onClick={() => setMoveOpen(true)} className="min-w-6 h-6 px-1.5 border text-[11px] font-black text-gray-500 hover:border-[var(--color-primary)] hover:text-[var(--color-primary)]" style={{ borderColor: "var(--admin-border)", borderRadius: "var(--admin-radius)" }} aria-label={`بلوک ${index + 1} از ${total} — تغییر موقعیت`}>{index + 1}</button>
+      {selectable ? <input type="checkbox" checked={selected} onChange={onSelect} title="انتخاب برای ادغام" aria-label={`انتخاب بلوک ${index + 1} برای ادغام`} className="be-select be-quiet mx-1 shrink-0" /> : null}
       {/* touch-none لازم است: بدونِ آن مرورگر لمسِ روی دستگیره را برای اسکرول
           برمی‌دارد و pointercancel می‌دهد؛ dnd-kit خودش این را ست نمی‌کند و
           همین علتِ نامطمئن بودنِ کشیدن در موبایل بود. */}
-      <button type="button" {...attributes} {...listeners} className="touch-none p-1.5 cursor-grab text-gray-400 hover:text-[var(--color-primary)]" aria-label="جابجایی بلوک"><FiMenu /></button>
+      <button type="button" {...attributes} {...listeners} className="be-grip shrink-0" aria-label="جابجایی بلوک" title="بکشید تا جابه‌جا شود"><FiMenu /></button>
+      <button type="button" onClick={() => setMoveOpen(true)} className="be-index shrink-0" aria-label={`بلوک ${index + 1} از ${total} — تغییر موقعیت`} title="تغییر موقعیت">{index + 1}</button>
       {/* کلِ عنوان بلوک را باز و بسته می‌کند (آکاردئون)؛ بسته که باشد، خلاصه‌اش دیده می‌شود. */}
-      <button type="button" onClick={onToggle} aria-expanded={open} aria-controls={`${blockDomId(block.id)}-body`} className="flex min-w-0 grow basis-24 items-center gap-2 self-stretch text-right focus-visible:outline-2 focus-visible:outline-[var(--color-primary)]">
-        <Icon className="shrink-0" style={{ color: "var(--admin-block-accent)" }} /><strong className="truncate text-sm">{definition?.label || block.type}</strong>
-        {!open && blockSummary(block) ? <span className="min-w-0 truncate text-xs text-gray-400">{blockSummary(block)}</span> : null}
+      <button type="button" onClick={onToggle} aria-expanded={open} aria-controls={`${blockDomId(block.id)}-body`} className="flex min-w-0 grow basis-24 items-center gap-2 self-stretch rounded-[var(--be-radius-sm)] px-1 text-start focus-visible:outline-2 focus-visible:outline-[var(--color-primary)]">
+        <span className="be-icon" aria-hidden="true"><Icon /></span>
+        <strong className="be-title truncate">{title}</strong>
+        {summary ? <span className="be-summary min-w-0 truncate">{summary}</span> : null}
       </button>
       <div className="mr-auto flex max-w-full flex-wrap items-center justify-end gap-0.5">
+        {/* کارهای پرتکرار ولی ثانوی: روی دسکتاپ آرام (با هاورِ کارت دیده می‌شوند)،
+            روی گوشی داخلِ منوی «بیشتر» تا سربرگ یک خط بماند. اولِ گروه‌اند، پس جای
+            خالی‌شان کنارِ عنوان است و دسته‌ی دکمه‌های همیشه‌پیدا فشرده می‌ماند. */}
+        <button type="button" onClick={() => onMove(index, index - 1)} disabled={index === 0} className="be-act be-quiet hidden sm:inline-flex" aria-label="انتقال به بالا" title="انتقال به بالا"><FiChevronUp /></button>
+        <button type="button" onClick={() => onMove(index, index + 1)} disabled={index === total - 1} className="be-act be-quiet hidden sm:inline-flex" aria-label="انتقال به پایین" title="انتقال به پایین"><FiChevronDown /></button>
+        <button type="button" onClick={onDuplicate} className="be-act be-quiet hidden sm:inline-flex" aria-label="تکثیر بلوک" title="تکثیر در همین سند"><FiCopy /></button>
         <BlockStylePanel type={block.type} style={block.style} layout={block.layout} onApply={onAppearance} />
-        <button type="button" onClick={() => onMove(index, index - 1)} disabled={index === 0} className="p-1.5 text-gray-400 disabled:opacity-20" aria-label="انتقال به بالا"><FiChevronUp /></button>
-        <button type="button" onClick={() => onMove(index, index + 1)} disabled={index === total - 1} className="p-1.5 text-gray-400" aria-label="انتقال به پایین"><FiChevronDown /></button>
-        {onUnmerge ? <button type="button" onClick={() => setGridOpen(true)} className="flex items-center gap-1 px-1.5 py-1 text-[11px] font-bold text-gray-500 hover:text-[var(--color-primary)]" aria-label="تنظیمات چیدمان بلوک ادغام‌شده"><FiGrid />چیدمان</button> : null}
-        {onUnmerge ? <button type="button" onClick={onUnmerge} className="flex items-center gap-1 px-1.5 py-1 text-[11px] font-bold text-gray-500 hover:text-[var(--color-primary)]" aria-label="جداسازی بلوک‌های ادغام‌شده"><FiScissors />جداسازی</button> : null}
-        <button type="button" onClick={onDuplicate} className="p-1.5 text-gray-400 hover:text-[var(--color-primary)]" aria-label="تکثیر بلوک" title="تکثیر در همین سند"><FiCopy /></button>
-        {/* تکثیر، بلوک را همین‌جا دوبرابر می‌کند؛ این یکی آن را برای *سندِ دیگر*
-            برمی‌دارد — مقاله، بروشور یا مینی‌مقاله. */}
-        {onCopy ? <button type="button" onClick={onCopy} className="p-1.5 text-gray-400 hover:text-[var(--color-primary)]" aria-label="کپی بلوک برای سند دیگر" title="کپی برای چسباندن در سندِ دیگر"><FiShare2 /></button> : null}
-        <button type="button" onClick={onRemove} className="p-1.5 text-gray-400 hover:text-red-600" aria-label="حذف بلوک"><FiTrash2 /></button>
-        <button type="button" onClick={onToggle} aria-expanded={open} className="p-1.5 text-gray-400 focus-visible:outline-2 focus-visible:outline-[var(--color-primary)]" aria-label="باز و بسته کردن">{open ? <FiChevronUp /> : <FiChevronDown />}</button>
+        {onUnmerge ? <button type="button" onClick={() => setGridOpen(true)} className="be-act" aria-label="تنظیمات چیدمان بلوک ادغام‌شده" title="چیدمانِ دسکتاپ و موبایل"><FiGrid /><span className="hidden sm:inline">چیدمان</span></button> : null}
+        {onUnmerge ? <button type="button" onClick={onUnmerge} className="be-act" aria-label="جداسازی بلوک‌های ادغام‌شده" title="جداسازی"><FiScissors /><span className="hidden sm:inline">جداسازی</span></button> : null}
+        <MoreMenu>
+          <button type="button" role="menuitem" onClick={() => onMove(index, index - 1)} disabled={index === 0} className="be-menu-item sm:hidden"><FiChevronUp aria-hidden="true" />انتقال به بالا</button>
+          <button type="button" role="menuitem" onClick={() => onMove(index, index + 1)} disabled={index === total - 1} className="be-menu-item sm:hidden"><FiChevronDown aria-hidden="true" />انتقال به پایین</button>
+          <button type="button" role="menuitem" onClick={() => setMoveOpen(true)} className="be-menu-item"><FiMove aria-hidden="true" />انتقال به موقعیتِ دلخواه…</button>
+          <button type="button" role="menuitem" onClick={onDuplicate} className="be-menu-item sm:hidden"><FiCopy aria-hidden="true" />تکثیر در همین سند</button>
+          {/* تکثیر، بلوک را همین‌جا دوبرابر می‌کند؛ این یکی آن را برای *سندِ دیگر*
+              برمی‌دارد — مقاله، بروشور یا مینی‌مقاله. */}
+          {onCopy ? <button type="button" role="menuitem" onClick={onCopy} className="be-menu-item" aria-label="کپی بلوک برای سند دیگر"><FiShare2 aria-hidden="true" />کپی برای چسباندن در سندِ دیگر</button> : null}
+        </MoreMenu>
+        <span className="be-sep" aria-hidden="true" />
+        <button type="button" onClick={onRemove} className="be-act be-act--danger" aria-label="حذف بلوک" title="حذف بلوک"><FiTrash2 /></button>
+        <button type="button" onClick={onToggle} aria-expanded={open} className="be-act" aria-label="باز و بسته کردن" title={open ? "بستن" : "باز کردن"}>{open ? <FiChevronUp /> : <FiChevronDown />}</button>
       </div>
     </header>
-    {open ? <div id={`${blockDomId(block.id)}-body`} className="p-2 sm:p-3"><BlockFields block={block} onUpdate={onUpdate} onStyle={onStyle} /></div> : null}
+    {open ? <div id={`${blockDomId(block.id)}-body`} className="be-body"><BlockFields block={block} onUpdate={onUpdate} onStyle={onStyle} /></div> : null}
     {moveOpen ? <MoveDialog index={index} total={total} onMove={onMove} onClose={() => setMoveOpen(false)} /> : null}
     {gridOpen ? <MergedLayoutModal grid={block.data?.grid} count={mergedChildren(block).length} onApply={(grid) => { onUpdate({ grid }); setGridOpen(false); }} onClose={() => setGridOpen(false)} /> : null}
   </section>;
@@ -538,10 +601,10 @@ export function BlockLibrary({ total, onAdd, onClose, allow = null, taken = [] }
     <div className="flex items-center gap-3 p-4 border-b" style={{ borderColor: "var(--admin-border)" }}><FiSearch aria-hidden="true" className="text-gray-400" /><h2 id="block-library-title" className="sr-only">Block library</h2><input aria-label="Search blocks" autoFocus value={query} onChange={(e) => setQuery(e.target.value)} placeholder="جستجوی نوع بلوک..." className="flex-1 outline-none text-sm" /><button type="button" onClick={onClose} aria-label="Close block library" className="rounded p-1 focus-visible:outline-2 focus-visible:outline-[var(--color-primary)]"><FiX aria-hidden="true" /></button></div>
     <label className="flex flex-wrap items-center gap-2 px-4 py-2.5 border-b text-xs font-bold text-gray-600" style={{ borderColor: "var(--admin-border)" }}>
       <span>موقعیت بلوک جدید</span>
-      <input type="number" min={1} max={total + 1} value={position} onChange={(e) => setPosition(e.target.value)} className={`${inputClass} w-20`} />
+      <input type="number" min={1} max={total + 1} value={position} onChange={(e) => setPosition(e.target.value)} className="be-input w-20" />
       <span className="text-[11px] font-normal text-gray-400">از {total + 1} — بلوک‌های بعدی یک شماره جلو می‌روند.</span>
     </label>
-    <div className="p-4 overflow-y-auto max-h-[65vh] space-y-5">{groups.map(({ group, blocks }) => <section key={group}><h3 className="text-[11px] font-black text-gray-400 mb-2">{group}</h3><div className="grid grid-cols-2 sm:grid-cols-3 gap-2">{blocks.map(([type, item]) => { const Icon = item.icon; return <button key={type} type="button" onClick={() => onAdd(type, position)} className="flex items-center gap-2.5 p-3 border text-right hover:bg-[var(--color-primary-soft)] hover:border-[var(--color-primary)] transition-colors" style={{ borderColor: "var(--admin-border)", borderRadius: "var(--admin-radius)" }}><Icon className="text-[var(--color-primary)]" /><span className="text-xs font-bold">{item.label}</span></button>; })}</div></section>)}</div>
+    <div className="p-4 overflow-y-auto max-h-[65vh] space-y-5">{groups.map(({ group, blocks }) => <section key={group}><h3 className="text-[11px] font-black text-gray-400 mb-2">{group}</h3><div className="grid grid-cols-2 sm:grid-cols-3 gap-2">{blocks.map(([type, item]) => { const Icon = item.icon; return <button key={type} type="button" onClick={() => onAdd(type, position)} data-block-group={BLOCK_GROUP_SLUGS[item.group]} className="flex items-center gap-2.5 rounded-[var(--be-radius)] border border-[var(--be-border)] p-2.5 text-right transition-colors hover:border-[var(--be-border-strong)] hover:bg-[var(--be-well)] focus-visible:outline-2 focus-visible:outline-[var(--color-primary)]"><span className="be-icon" aria-hidden="true"><Icon /></span><span className="text-xs font-bold">{item.label}</span></button>; })}</div></section>)}</div>
   </div></div></AdminPortal>;
 }
 
@@ -555,7 +618,7 @@ export function BlockLibrary({ total, onAdd, onClose, allow = null, taken = [] }
  * کتابخانه فقط همان‌ها را نشان می‌دهد و «ادغام» خاموش می‌شود — ادغام یک بلوکِ
  * merged می‌سازد که پاک‌سازیِ سرور از داخلِ اسلایدر دور می‌ریزد.
  */
-export default function BlockEditor({ value = [], onChange, libraryOpen: openProp, onLibraryOpen, allow = null, dnd = true, addLabel = "افزودن بلوک", addGroup = null }) {
+export default function BlockEditor({ value = [], onChange, libraryOpen: openProp, onLibraryOpen, allow = null, dnd = true, addLabel = "افزودن بلوک", addGroup = null, itemLabel = null }) {
   // انتخاب برای ادغام؛ فقط شناسه‌هایی که هنوز در فهرست هستند حساب می‌شوند.
   const [selection, setSelection] = useState([]);
   const selectedIds = selection.filter((id) => value.some((block) => block.id === id));
@@ -682,9 +745,10 @@ export default function BlockEditor({ value = [], onChange, libraryOpen: openPro
     many: `حداکثر ${MAX_MERGED_CHILDREN.toLocaleString("fa-IR")} بلوک در یک ادغام.`,
     deep: `ادغامِ تودرتو حداکثر ${MAX_MERGE_DEPTH.toLocaleString("fa-IR")} سطح.`,
   };
-  // فاصله‌ی بینِ کارت‌ها: ۱۶px. با ۱۲px (پیش از رنگِ گروه و مرزِ لبه) کارت‌ها به هم می‌چسبیدند؛
-  // حالا مرزِ رنگیِ هر کارت جدایش می‌کند و فاصله‌ی بیشتر فقط اسکرول اضافه می‌کرد.
-  return <div className="space-y-4">
+  // فاصله‌ی بینِ کارت‌ها ۱۰px: کارتِ سفید روی زمینه‌ی خاکستری و حلقه‌ی کارتِ فعال
+  // مرز را معلوم می‌کنند؛ فاصله‌ی بیشتر فقط اسکرول اضافه می‌کرد.
+  // data-selecting: وقتی چیزی برای ادغام انتخاب شده، تیکِ همه‌ی کارت‌ها دیده می‌شود.
+  return <div className="space-y-2.5" data-selecting={selectedIds.length ? "true" : undefined}>
     {/* نوارِ ادغام به body می‌رود و به پایینِ صفحه ثابت می‌شود: کارتِ مینی‌مقاله
         backdrop-blur دارد و position:fixed را در خودش حبس می‌کرد. روی موبایل بالاتر
         می‌نشیند تا نوارِ شناورِ ویرایشگرِ مقاله (پایین-چپ) را نپوشاند. */}
@@ -694,28 +758,29 @@ export default function BlockEditor({ value = [], onChange, libraryOpen: openPro
       <button type="button" onClick={() => setSelection([])} className="px-2 py-1.5 font-bold text-gray-500 hover:text-red-600">لغو انتخاب</button>
       <span className="text-[11px] text-gray-500">{blocker ? blockerText[blocker] : "چیدمانِ بلوکِ ادغام‌شده از دکمه‌ی «چیدمان» روی خودش تنظیم می‌شود."}</span>
     </div></AdminPortal> : null}
-    {value.length > 1 ? <div className="flex justify-end">
-      <button type="button" onClick={() => setCollapsed(allCollapsed ? new Set() : new Set(value.map((block) => block.id)))} className="inline-flex items-center gap-1 text-[11px] font-bold text-gray-500 hover:text-[var(--color-primary)]">
+    {value.length > 1 ? <div className="-mb-1 flex justify-end">
+      <button type="button" onClick={() => setCollapsed(allCollapsed ? new Set() : new Set(value.map((block) => block.id)))} className="be-act">
         {allCollapsed ? <><FiChevronDown />باز کردنِ همه</> : <><FiChevronUp />بستنِ همه</>}
       </button>
     </div> : null}
     <MaybeDndContext enabled={dnd} sensors={sensors} onDragEnd={({ active, over }) => { if (!over || active.id === over.id) return; move(value.findIndex((item) => item.id === active.id), value.findIndex((item) => item.id === over.id)); }}>
-      <SortableContext items={value.map((item) => item.id)} strategy={verticalListSortingStrategy}>{value.map((block, index) => <SortableBlock key={block.id} block={block} index={index} total={value.length} onUpdate={(patch) => onChange(latest.current.map((item) => item.id === block.id ? { ...item, data: { ...item.data, ...patch } } : item))} onStyle={(style) => setBlockKey(block.id, "style", style)} onAppearance={(next) => setBlockKeys(block.id, { style: next.style, layout: next.layout })} onRemove={() => remove(block)} onDuplicate={() => onChange([...value.slice(0, index + 1), cloneWithFreshIds(block), ...value.slice(index + 1)])} onCopy={() => copy(block)} onMove={move} open={!collapsed.has(block.id)} onToggle={() => toggleOpen(block.id)} selectable={!allow} selected={selectedIds.includes(block.id)} onSelect={() => toggleSelected(block.id)} onUnmerge={isMergedBlock(block) ? () => onChange(unmergeBlock(latest.current, block.id)) : undefined} />)}</SortableContext>
+      <SortableContext items={value.map((item) => item.id)} strategy={verticalListSortingStrategy}>{value.map((block, index) => <SortableBlock key={block.id} block={block} index={index} total={value.length} onUpdate={(patch) => onChange(latest.current.map((item) => item.id === block.id ? { ...item, data: { ...item.data, ...patch } } : item))} onStyle={(style) => setBlockKey(block.id, "style", style)} onAppearance={(next) => setBlockKeys(block.id, { style: next.style, layout: next.layout })} onRemove={() => remove(block)} onDuplicate={() => onChange([...value.slice(0, index + 1), cloneWithFreshIds(block), ...value.slice(index + 1)])} onCopy={() => copy(block)} onMove={move} open={!collapsed.has(block.id)} onToggle={() => toggleOpen(block.id)} selectable={!allow} selected={selectedIds.includes(block.id)} onSelect={() => toggleSelected(block.id)} onUnmerge={isMergedBlock(block) ? () => onChange(unmergeBlock(latest.current, block.id)) : undefined} itemLabel={itemLabel} />)}</SortableContext>
     </MaybeDndContext>
     <div className="flex flex-wrap items-stretch gap-2">
       {/* addGroup رنگِ گروهِ یک بلوک را می‌گیرد (data-block-group → admin-theme.css)؛
           متن کمی تیره‌تر از رنگِ گروه است تا روی زمینه‌ی روشن خوانا بماند. */}
       {addGroup
-        ? <button type="button" onClick={() => setLibraryOpen(true)} data-block-group={addGroup} className="flex min-w-48 flex-1 items-center justify-center gap-2 py-2 border border-dashed bg-[var(--admin-block-tint)] text-sm font-bold text-[color-mix(in_srgb,var(--admin-block-accent)_70%,black)] hover:brightness-95" style={{ borderColor: "var(--admin-block-accent)", borderRadius: "var(--admin-radius)" }}><FiPlus /> {addLabel}</button>
-        : <button type="button" onClick={() => setLibraryOpen(true)} className="flex min-w-48 flex-1 items-center justify-center gap-2 py-2 border border-dashed text-sm font-bold text-[var(--color-primary)] hover:bg-[var(--color-primary-soft)]" style={{ borderColor: "var(--color-primary)", borderRadius: "var(--admin-radius)" }}><FiPlus /> {addLabel}</button>}
+        ? <button type="button" onClick={() => setLibraryOpen(true)} data-block-group={addGroup} className="be-add"><FiPlus /> {addLabel}</button>
+        : <button type="button" onClick={() => setLibraryOpen(true)} className="be-add"><FiPlus /> {addLabel}</button>}
       {/* فقط وقتی چیزی برای چسباندن هست — دکمه‌ی همیشه‌خاموش چیزی را روشن نمی‌کند. */}
       {clipboard && (!allow || allow.includes(clipboard.block.type)) ? (
-        <button type="button" onClick={paste} title={`چسباندنِ «${clipboard.label || clipboard.block.type}»`} className="flex items-center justify-center gap-2 border border-dashed px-4 py-2 text-sm font-bold text-gray-600 hover:bg-gray-50" style={{ borderColor: "var(--admin-border-strong)", borderRadius: "var(--admin-radius)" }}>
+        <button type="button" onClick={paste} title={`چسباندنِ «${clipboard.label || clipboard.block.type}»`} className="be-add grow-0 px-4">
           <FiClipboard /> چسباندنِ «{clipboard.label || clipboard.block.type}»
         </button>
       ) : null}
     </div>
-    {value.length === 0 ? <p className="text-center text-xs text-gray-400">برای شروع اولین بلوک را اضافه کنید.</p> : null}
+    {/* در ویرایشگرِ تودرتو دکمه‌ی افزودن خودش گویاست؛ راهنما فقط برای سندِ خالی. */}
+    {value.length === 0 && !addGroup && !itemLabel ? <p className="text-center text-xs text-[var(--be-faint)]">برای شروع اولین بلوک را اضافه کنید.</p> : null}
     {libraryOpen ? <BlockLibrary total={value.length} onAdd={add} onClose={() => setLibraryOpen(false)} allow={allow} taken={value.map((block) => block.type)} /> : null}
   </div>;
 }

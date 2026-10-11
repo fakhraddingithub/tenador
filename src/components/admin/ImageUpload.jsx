@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
+import { FiUpload } from 'react-icons/fi';
 import { showError } from '@/lib/swal';
 
 export default function ImageUpload({
@@ -118,14 +119,22 @@ export default function ImageUpload({
       )}
       
       <div className={compact ? "space-y-2" : "space-y-4"}>
-        <div className="relative">
+        {/* فشرده: همان input، پنهان داخلِ یک دکمه‌ی برچسب‌دار (be-upload در
+            admin-theme.css) به‌جای ظاهرِ پیش‌فرضِ مرورگر. رفتار و رویدادها یکی است. */}
+        {compact ? (
+          <label className={`be-upload${uploading ? " pointer-events-none opacity-60" : ""}`}>
+            <input type="file" accept={accept} onChange={handleFileChange} disabled={uploading} multiple={multiple} className="sr-only" />
+            <FiUpload aria-hidden="true" />
+            {uploading ? 'در حال آپلود…' : multiple ? 'افزودن تصویر' : preview ? 'تعویض تصویر' : 'انتخاب تصویر'}
+          </label>
+        ) : <div className="relative">
           <input
             type="file"
             accept={accept}
             onChange={handleFileChange}
             disabled={uploading}
             multiple={multiple}
-            className={`w-full ${compact ? "px-2 py-1 text-xs file:mr-2 file:py-1 file:px-3 file:text-xs" : "px-4 py-3 file:mr-4 file:py-2 file:px-4 file:text-sm"} border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors bg-white text-gray-900 file:rounded-lg file:border-0 file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100 disabled:opacity-50 disabled:cursor-not-allowed`}
+            className="w-full px-4 py-3 file:mr-4 file:py-2 file:px-4 file:text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors bg-white text-gray-900 file:rounded-lg file:border-0 file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100 disabled:opacity-50 disabled:cursor-not-allowed"
           />
           {uploading && (
             <div className="absolute left-4 top-1/2 transform -translate-y-1/2">
@@ -151,9 +160,9 @@ export default function ImageUpload({
               </svg>
             </div>
           )}
-        </div>
+        </div>}
 
-        {uploading && (
+        {uploading && !compact && (
           <p className="text-sm text-gray-500">در حال آپلود...</p>
         )}
 
@@ -186,7 +195,11 @@ export default function ImageUpload({
                 <button
                   type="button"
                   onClick={() => removeImage()}
-                  className="absolute top-2 left-2 bg-red-500 text-white rounded-full w-8 h-8 flex items-center justify-center text-lg opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-600"
+                  aria-label="حذف تصویر"
+                  // فشرده: همیشه دیده می‌شود (روی لمس هاوری نیست) و کوچک‌تر است.
+                  className={compact
+                    ? "absolute top-1.5 left-1.5 bg-white/90 text-red-600 border border-gray-200 rounded-full w-6 h-6 flex items-center justify-center text-sm hover:bg-red-50"
+                    : "absolute top-2 left-2 bg-red-500 text-white rounded-full w-8 h-8 flex items-center justify-center text-lg opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-600"}
                 >
                   ×
                 </button>

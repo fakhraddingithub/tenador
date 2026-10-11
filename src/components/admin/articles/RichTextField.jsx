@@ -283,8 +283,8 @@ export default function RichTextField({ value, onChange, align, onAlign, aligns 
     if (restoreRange()) exec("unlink");
   };
 
-  return <div className="border" style={{ borderColor: "var(--admin-border)", borderRadius: "var(--admin-radius)" }}>
-    <div className="flex flex-wrap items-center gap-1 border-b bg-gray-50 p-1" style={{ borderColor: "var(--admin-border)" }}>
+  return <div className="be-rich">
+    <div className="be-rich-bar flex flex-wrap items-center gap-0.5">
       <ToolButton title="پررنگ" active={marks.bold} onClick={() => exec("bold")}><FiBold /></ToolButton>
       <ToolButton title="کج" active={marks.italic} onClick={() => exec("italic")}><FiItalic /></ToolButton>
       <ToolButton title="زیرخط" active={marks.underline} onClick={() => exec("underline")}><FiUnderline /></ToolButton>
@@ -293,11 +293,11 @@ export default function RichTextField({ value, onChange, align, onAlign, aligns 
           answerAlignِ همان پاسخ. فیلدی که جایی برای ذخیره‌اش ندارد (توضیحِ خبرنامه)
           onAlign نمی‌دهد و دکمه‌ها نشان داده نمی‌شوند. */}
       {onAlign ? <>
-        <span className="mx-1 h-5 w-px bg-gray-200" />
+        <span className="be-sep" aria-hidden="true" />
         {ALIGNS.filter(([key]) => aligns.includes(key)).map(([key, Icon, label]) => <ToolButton key={key} title={label} active={align === key} onClick={() => onAlign(align === key ? undefined : key)}><Icon /></ToolButton>)}
       </> : null}
 
-      <span className="mx-1 h-5 w-px bg-gray-200" />
+      <span className="be-sep" aria-hidden="true" />
       <NumericStyleControl
         label="اندازه متن (پیکسل)"
         unit="px"
@@ -390,7 +390,7 @@ export default function RichTextField({ value, onChange, align, onAlign, aligns 
       // دیده شود؛ وگرنه دکمه‌های چینش هیچ اثری در ویرایشگر نشان نمی‌دهند و
       // کاربر فکر می‌کند کار نمی‌کنند (خروجیِ عمومی از قبل درست بود).
       style={align ? { textAlign: align } : undefined}
-      className={`rt-flow w-full px-2.5 py-1.5 text-sm outline-none focus:bg-white ${singleLine ? "" : "min-h-12"}`}
+      className={`rt-flow w-full px-2.5 py-1.5 text-sm outline-none ${singleLine ? "" : "min-h-12"}`}
     />
   </div>;
 }
