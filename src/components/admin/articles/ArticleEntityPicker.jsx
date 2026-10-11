@@ -4,7 +4,7 @@ import { useCallback, useEffect, useId, useRef, useState } from "react";
 import Image from "next/image";
 import { FiSearch, FiX } from "react-icons/fi";
 
-export default function ArticleEntityPicker({ type, value, onChange, multiple = true, placeholder = "جستجو..." }) {
+export default function ArticleEntityPicker({ type, value, onChange, multiple = true, placeholder = "جستجو...", label }) {
   const resultsId = useId();
   const ids = multiple ? (Array.isArray(value) ? value : []) : value ? [value] : [];
   const [selected, setSelected] = useState([]);
@@ -72,8 +72,8 @@ export default function ArticleEntityPicker({ type, value, onChange, multiple = 
       ) : null}
       {multiple || selected.length === 0 ? (
         <div className="relative">
-          <FiSearch className="absolute right-3 top-3 text-gray-400" />
-          <input role="combobox" aria-controls={resultsId} aria-expanded={Boolean(query)} aria-autocomplete="list" value={query} onChange={(event) => changeQuery(event.target.value)} placeholder={placeholder} className="w-full pr-9 pl-3 py-2.5 border bg-gray-50 text-sm outline-none focus:border-[var(--color-primary)]" style={{ borderColor: "var(--admin-border)", borderRadius: "var(--admin-radius)" }} />
+          <FiSearch className="absolute right-2.5 top-2.5 text-gray-400" />
+          <input role="combobox" aria-label={label} aria-controls={resultsId} aria-expanded={Boolean(query)} aria-autocomplete="list" value={query} onChange={(event) => changeQuery(event.target.value)} placeholder={placeholder} className="w-full pr-8 pl-2.5 py-1.5 border bg-gray-50 text-sm outline-none focus:border-[var(--color-primary)]" style={{ borderColor: "var(--admin-border)", borderRadius: "var(--admin-radius)" }} />
           {/* لایه‌بندیِ ویرایشگر: نوارهای شناور ۴۰/۵۰ و مودال‌ها ۱۰۰ — نتایج بینِ
               این دو می‌نشیند تا نه زیرِ نوارِ ادغام برود نه روی مودال‌ها. */}
           {query ? (

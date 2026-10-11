@@ -52,7 +52,8 @@ test("بلوک‌های متنی ارتفاعِ ثابت ندارند و همه 
 
 test("ویرایشگر همان قاعده را دارد، وگرنه چیزی که ادمین می‌بیند با مقاله یکی نیست", async () => {
   const src = await read("../src/components/admin/articles/RichTextField.jsx");
-  assert.match(src, /className=\{`rt-flow w-full px-3 py-2\.5 text-sm outline-none/);
+  // فاصله‌گذاری (px/py) آزاد است؛ آنچه مهم است rt-flow روی خودِ ناحیه‌ی ویرایش است.
+  assert.match(src, /className=\{`rt-flow w-full px-[\d.]+ py-[\d.]+ text-sm outline-none/);
   assert.ok(!src.includes("leading-8"), "ارتفاعِ ثابتِ ویرایشگر برگشته است");
 });
 

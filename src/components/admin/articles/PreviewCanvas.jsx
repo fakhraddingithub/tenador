@@ -84,7 +84,7 @@ function EditModal({ block, onChange, onClose }) {
           <button type="button" onClick={() => setLayoutOpen(true)} className={`${merged ? "" : "mr-auto "}text-[11px] font-bold text-gray-500 hover:text-[var(--color-primary)]`}>ظاهر و چیدمان</button>
           <button type="button" onClick={onClose} className="p-1 text-gray-400 hover:text-red-600" aria-label="بستن"><FiX /></button>
         </header>
-        <div className="max-h-[68vh] space-y-4 overflow-y-auto p-4">
+        <div className="max-h-[68vh] overflow-y-auto p-3">
           <BlockFields block={block} onUpdate={update} onStyle={setStyle} />
         </div>
         <footer className="border-t p-3" style={{ borderColor: "var(--admin-border)" }}>

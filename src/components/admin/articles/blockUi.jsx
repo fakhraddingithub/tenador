@@ -8,7 +8,7 @@ import { createPortal } from "react-dom";
  * نباید وجود داشته باشد.
  */
 
-export const inputClass = "w-full px-3 py-2.5 border bg-gray-50 text-sm outline-none focus:bg-white focus:border-[var(--color-primary)] focus-visible:ring-2 focus-visible:ring-[var(--color-primary)]";
+export const inputClass = "w-full px-2.5 py-1.5 border border-[var(--admin-border-strong)] bg-gray-50 text-sm outline-none focus:bg-white focus:border-[var(--color-primary)] focus-visible:ring-2 focus-visible:ring-[var(--color-primary)]";
 
 // مودال‌ها به body می‌روند: هر نیایی با transform یا backdrop-filter (مثلِ کارتِ
 // مینی‌مقاله با backdrop-blur) بلوکِ دربرگیرنده‌ی position:fixed می‌شود و مودال را

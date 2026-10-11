@@ -4,7 +4,7 @@ import { normalizeFontSizePx, richTextValue } from "./sanitizeRichText.js";
 import {
   IMAGE_CONTENT_POSITIONS, IMAGE_DISPLAY_HEIGHT, MAX_IMAGE_BLOCK_ITEMS, clampImageShade, mirrorFirstImage, normalizeImageHref,
 } from "./articleImageBlock.js";
-import { IMAGE_SLIDER_DELAY, IMAGE_SLIDER_HEIGHT } from "./articleBlockTypes.js";
+import { FAQ_ANSWER_ALIGNS, IMAGE_SLIDER_DELAY, IMAGE_SLIDER_HEIGHT } from "./articleBlockTypes.js";
 
 const string = (value, max) => typeof value === "string" ? value.trim().slice(0, max) : "";
 
@@ -212,7 +212,8 @@ const validators = {
   faq: (data, errors, field) => {
     const items = Array.isArray(data.items) ? data.items : [];
     if (items.length > 50) errors[`${field}.items`] = "FAQ cannot exceed 50 items";
-    return { items: items.slice(0, 50).map((item) => ({ question: string(item?.question, 500), answer: string(item?.answer, 5000), ...rich(item?.answerHtml, "answerHtml") })) };
+    // answerAlign فقط وقتی ذخیره می‌شود که تنظیم شده باشد؛ پاسخِ قدیمی همان شکل را دارد.
+    return { items: items.slice(0, 50).map((item) => ({ question: string(item?.question, 500), answer: string(item?.answer, 5000), ...rich(item?.answerHtml, "answerHtml"), ...(FAQ_ANSWER_ALIGNS.includes(item?.answerAlign) ? { answerAlign: item.answerAlign } : {}) })) };
   },
   productCard: (data, errors, field) => ({ product: id(data.product, errors, `${field}.product`) }),
   productSlider: entitySlider("products"),

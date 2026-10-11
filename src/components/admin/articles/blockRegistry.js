@@ -44,7 +44,7 @@ export const BLOCK_SPACING_LABELS = { none: "بدون فاصله (پیش‌فر�
 export const BLOCK_TABLE_VARIANT_LABELS = { default: "پیش‌فرض", striped: "راه‌راه", bordered: "خط‌دار", plain: "ساده" };
 
 export const ARTICLE_BLOCKS = {
-  heading: { label: "تیتر", group: "محتوا", icon: FiType, defaults: { text: "", level: "h2" }, fields: [text("text", "متن تیتر", "rich", { singleLine: true }), text("level", "سطح تیتر", "select", { options: ["h2", "h3", "h4"] })], styleKeys: TEXTY },
+  heading: { label: "تیتر", group: "محتوا", icon: FiType, defaults: { text: "", level: "h2" }, fields: [text("text", "متن تیتر", "rich", { singleLine: true, row: "main" }), text("level", "سطح تیتر", "select", { row: "main", options: ["h2", "h3", "h4"] })], styleKeys: TEXTY },
   tenadorTitle: {
     label: "تیتر تنادور", group: "محتوا", icon: FiFeather,
     defaults: { highlight: "", title: "", subtitle: "" },

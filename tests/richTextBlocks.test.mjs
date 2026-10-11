@@ -137,3 +137,34 @@ test("چیدمانِ فرم فقط ظاهر است: همان فیلدها، هم
   assert.deepEqual(ARTICLE_BLOCKS.button.fields.map((field) => field.key).sort(), ["align", "fontSize", "fullWidth", "href", "icon", "label", "size", "style", "textAlign"]);
   assert.deepEqual(ARTICLE_BLOCKS.image.fields.map((field) => field.key).sort(), ["blocks", "caption", "displayHeight", "images", "shade"]);
 });
+
+test("پاسخِ پرسش چینشِ خودش را دارد؛ مقدارِ ناشناخته و تنظیم‌نشده ذخیره نمی‌شود", async () => {
+  const items = clean("faq", { items: [
+    { question: "a", answer: "x", answerAlign: "justify" },
+    { question: "b", answer: "y", answerAlign: "center" },
+    { question: "c", answer: "z", answerAlign: "start" },
+    { question: "d", answer: "w" },
+  ] }).items;
+  assert.deepEqual(items.map((item) => item.answerAlign), ["justify", "center", undefined, undefined]);
+  assert.equal("answerAlign" in items[3], false, "پاسخِ قدیمی همان شکل را نگه می‌دارد");
+
+  // ویرایشگر همان دکمه‌های چینشِ RichTextField را می‌دهد، با «تراز» فقط برای پاسخ.
+  const editor = await read("../src/components/admin/articles/BlockEditor.jsx");
+  assert.match(editor, /align=\{item\.answerAlign\} onAlign=\{\(answerAlign\) => update\(index, \{ answerAlign \}\)\} aligns=\{FAQ_ANSWER_ALIGNS\}/);
+  const field = await read("../src/components/admin/articles/RichTextField.jsx");
+  assert.match(field, /const DEFAULT_ALIGNS = \["right", "center", "left"\];/);
+  // و رندرِ عمومی همان مقدار را روی پاراگرافِ پاسخ می‌گذارد.
+  const renderer = await read("../src/components/features/articles/ArticleBlockRenderer.jsx");
+  assert.match(renderer, /item\.answerAlign && \{ textAlign: item\.answerAlign \}/);
+});
+
+test("فقط فیلدِ تک‌کنترلی داخلِ <label> است (کلیکِ پاسخ به کادرِ پرسش نمی‌رود)", async () => {
+  // <label> بدونِ for هر کلیکی را که روی خودِ یک کنترل نیست به *اولین* کنترلِ داخلش
+  // می‌فرستد؛ ناحیه‌ی contentEditableِ پاسخ کنترل نیست، پس کلیکش به کادرِ پرسش می‌رفت.
+  const editor = await read("../src/components/admin/articles/BlockEditor.jsx");
+  const list = JSON.parse(editor.match(/const SINGLE_CONTROL_KINDS = (\[[^\]]*\]);/)[1]);
+  for (const kind of ["faq", "rich", "table", "entity", "entities", "image", "gallery", "imageList", "imageShade", "mergedBlocks", "imageSliderBlocks", "imageSliderSettings", "checkbox"]) {
+    assert.equal(list.includes(kind), false, kind);
+  }
+  assert.match(editor, /const fieldWrapper = \(kind\) => \(SINGLE_CONTROL_KINDS\.includes\(kind\) \? "label" : "div"\);/);
+});

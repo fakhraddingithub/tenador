@@ -1125,6 +1125,15 @@ formatting (`richTextValue`), so existing content needs no migration:
   `BlockFields` maps `{text, html}` onto the two keys. `align: false` hides the alignment
   buttons for fields that are not the block itself (alignment is block-level `style.align`).
   The callout keeps alignment and the renderer applies it.
+- Each FAQ answer stores its **own** alignment in `items[].answerAlign`
+  (`FAQ_ANSWER_ALIGNS`: right/center/left/justify, only stored when set). `RichTextField`
+  takes `aligns` to opt into «تراز»; block-level `style.align` still accepts only the three
+  values, so no other block gained a justify button.
+- **Only single-control fields sit in a `<label>`** (`SINGLE_CONTROL_KINDS` in
+  `BlockEditor.jsx`; everything else is a `div`). A `<label>` without `for` forwards any click
+  that isn't on a control to its *first* control — a click in the FAQ answer's
+  contentEditable focused the question, a click on an entity chip hit the first chip's
+  remove button, a click on an image preview opened the file picker.
 - FAQ **questions**, titles, labels and the Tenador title stay plain: a question sits in a
   `<summary>`, where a link fights the toggle.
 - `RichParagraph` in the renderer emits the old `<p>` byte for byte when there is no html. With
@@ -1134,8 +1143,17 @@ formatting (`richTextValue`), so existing content needs no migration:
 
 **Form layout is presentation only.** Registry fields may carry `row` (consecutive fields with
 the same `row` share a flex-wrap row) and `section` (a small heading above that row); width
-comes from the field kind (`fieldWidth`: short controls `basis-32 max-w-64`, text
-`basis-56`, editors full width). Rows are flex-wrap rather than breakpoint grids because
+comes from the field kind (`fieldWidth`: short controls — select, number, font size,
+checkbox, image height — `basis-32 max-w-64`, text `basis-44`, a rich field beside a short
+control `basis-[30rem] grow-[6]` so its toolbar stays on one line, editors full width).
+
+The forms are deliberately dense: «ظاهر و چیدمان» is a button in the card header, not a
+row in the body; inputs are `py-1.5` (`inputClass`, checkbox `h-[34px]` to match); long
+hints live in `title` rather than under the control; a block's *only* field hides its
+label (it repeats the header) except the merged block's, which is guidance; sub-settings
+(shade, slider timing) and a single image are not boxed — a box is kept only for repeated
+items (FAQ entries, several images). `ImageUpload` takes `compact` for these forms; every
+other form keeps its default. Rows are flex-wrap rather than breakpoint grids because
 cards nest at very different widths (merged, on an image, in the preview modal) and wrap
 follows the card's real width. **Do not use container queries here** — `container-type`
 adds layout containment, which would trap absolutely-positioned dropdowns (entity search,

@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useId, useRef, useState } from "react";
-import { FiAlignCenter, FiAlignLeft, FiAlignRight, FiBold, FiCheck, FiChevronDown, FiItalic, FiLink, FiMenu, FiSlash, FiType, FiUnderline, FiX } from "react-icons/fi";
+import { FiAlignCenter, FiAlignJustify, FiAlignLeft, FiAlignRight, FiBold, FiCheck, FiChevronDown, FiItalic, FiLink, FiMenu, FiSlash, FiType, FiUnderline, FiX } from "react-icons/fi";
 import { RICH_TEXT_LINE_HEIGHTS, RICH_TEXT_LINE_HEIGHT_RANGE, RICH_TEXT_PX_RANGE, RICH_TEXT_PX_SIZES, normalizeFontSizePx, normalizeLineHeight } from "@/lib/sanitizeRichText";
 import { applyInlineStyle, readSelectionStyle, serializeEditor } from "@/lib/richTextInlineStyle";
 
@@ -14,7 +14,10 @@ import { applyInlineStyle, readSelectionStyle, serializeEditor } from "@/lib/ric
  * می‌شود تا نشانه‌گذاریِ ناخواسته اصلاً وارد ویرایشگر نشود.
  */
 
-const ALIGNS = [["right", FiAlignRight, "راست‌چین"], ["center", FiAlignCenter, "وسط‌چین"], ["left", FiAlignLeft, "چپ‌چین"]];
+const ALIGNS = [["right", FiAlignRight, "راست‌چین"], ["center", FiAlignCenter, "وسط‌چین"], ["left", FiAlignLeft, "چپ‌چین"], ["justify", FiAlignJustify, "تراز از دو طرف"]];
+// چینشِ سطحِ بلوک (style.align) فقط این سه را می‌پذیرد؛ «تراز» را فیلدی می‌گیرد که
+// خودش چینشش را ذخیره می‌کند و aligns را صریح می‌دهد (پاسخِ پرسش‌ها).
+const DEFAULT_ALIGNS = ["right", "center", "left"];
 
 // نشانیِ نامعتبر یا با پروتکلِ خطرناک (javascript:, data:) هرگز اعمال نمی‌شود.
 // هم‌تراز با safeArticleUrl سمتِ سرور: مسیرِ نسبی مجاز است، «//» نه. پاک‌سازیِ
@@ -127,7 +130,7 @@ function NumericStyleControl({ label, unit, icon, range, presets, normalize, for
   </div>;
 }
 
-export default function RichTextField({ value, onChange, align, onAlign, singleLine = false, label }) {
+export default function RichTextField({ value, onChange, align, onAlign, aligns = DEFAULT_ALIGNS, singleLine = false, label }) {
   const ref = useRef(null);
   const savedRange = useRef(null);
   const [marks, setMarks] = useState({});
@@ -281,16 +284,17 @@ export default function RichTextField({ value, onChange, align, onAlign, singleL
   };
 
   return <div className="border" style={{ borderColor: "var(--admin-border)", borderRadius: "var(--admin-radius)" }}>
-    <div className="flex flex-wrap items-center gap-1 border-b bg-gray-50 p-1.5" style={{ borderColor: "var(--admin-border)" }}>
+    <div className="flex flex-wrap items-center gap-1 border-b bg-gray-50 p-1" style={{ borderColor: "var(--admin-border)" }}>
       <ToolButton title="پررنگ" active={marks.bold} onClick={() => exec("bold")}><FiBold /></ToolButton>
       <ToolButton title="کج" active={marks.italic} onClick={() => exec("italic")}><FiItalic /></ToolButton>
       <ToolButton title="زیرخط" active={marks.underline} onClick={() => exec("underline")}><FiUnderline /></ToolButton>
 
-      {/* چینش سطحِ *بلوک* است (style.align). فیلدی که بلوکِ خودش نیست — پاسخِ یک
-          پرسش، توضیحِ خبرنامه — جایی برای آن ندارد، پس دکمه‌هایش هم نشان داده نمی‌شوند. */}
+      {/* چینش را صاحبِ فیلد ذخیره می‌کند: معمولاً style.alignِ بلوک، برای پاسخِ پرسش
+          answerAlignِ همان پاسخ. فیلدی که جایی برای ذخیره‌اش ندارد (توضیحِ خبرنامه)
+          onAlign نمی‌دهد و دکمه‌ها نشان داده نمی‌شوند. */}
       {onAlign ? <>
         <span className="mx-1 h-5 w-px bg-gray-200" />
-        {ALIGNS.map(([key, Icon, label]) => <ToolButton key={key} title={label} active={align === key} onClick={() => onAlign(align === key ? undefined : key)}><Icon /></ToolButton>)}
+        {ALIGNS.filter(([key]) => aligns.includes(key)).map(([key, Icon, label]) => <ToolButton key={key} title={label} active={align === key} onClick={() => onAlign(align === key ? undefined : key)}><Icon /></ToolButton>)}
       </> : null}
 
       <span className="mx-1 h-5 w-px bg-gray-200" />
@@ -386,7 +390,7 @@ export default function RichTextField({ value, onChange, align, onAlign, singleL
       // دیده شود؛ وگرنه دکمه‌های چینش هیچ اثری در ویرایشگر نشان نمی‌دهند و
       // کاربر فکر می‌کند کار نمی‌کنند (خروجیِ عمومی از قبل درست بود).
       style={align ? { textAlign: align } : undefined}
-      className={`rt-flow w-full px-3 py-2.5 text-sm outline-none focus:bg-white ${singleLine ? "" : "min-h-24"}`}
+      className={`rt-flow w-full px-2.5 py-1.5 text-sm outline-none focus:bg-white ${singleLine ? "" : "min-h-12"}`}
     />
   </div>;
 }

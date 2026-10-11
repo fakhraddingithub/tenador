@@ -5,7 +5,7 @@ import { useEffect, useId, useMemo, useRef, useState } from "react";
 import { DndContext, KeyboardSensor, PointerSensor, closestCenter, useSensor, useSensors } from "@dnd-kit/core";
 import { SortableContext, arrayMove, sortableKeyboardCoordinates, useSortable, verticalListSortingStrategy } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { FiChevronDown, FiChevronUp, FiClipboard, FiColumns, FiCopy, FiDroplet, FiGrid, FiMenu, FiPlus, FiScissors, FiSearch, FiSettings, FiShare2, FiTrash2, FiX } from "react-icons/fi";
+import { FiChevronDown, FiChevronUp, FiClipboard, FiColumns, FiCopy, FiDroplet, FiGrid, FiMenu, FiPlus, FiScissors, FiSearch, FiShare2, FiTrash2, FiX } from "react-icons/fi";
 import ImageUpload from "@/components/admin/ImageUpload";
 import ArticleEntityPicker from "./ArticleEntityPicker";
 import BlockLayoutModal from "./BlockLayoutModal";
@@ -17,7 +17,7 @@ import { toast } from "react-toastify";
 import { confirmDelete } from "@/lib/swal";
 import { BLOCK_CLIPBOARD_EVENT, copyBlockToClipboard, readBlockClipboard, takeBlockFromClipboard } from "@/lib/articleBlockClipboard";
 import { IMAGE_DISPLAY_HEIGHT, IMAGE_SHADE, MAX_IMAGE_BLOCK_ITEMS, clampImageShade, mirrorFirstImage, normalizeImageHref } from "@/lib/articleImageBlock";
-import { IMAGE_SLIDER_CHILD_TYPES, IMAGE_SLIDER_DELAY, IMAGE_SLIDER_HEIGHT, MAX_MERGED_CHILDREN, MAX_MERGE_DEPTH, MERGED_GRID_GAP_STEP, normalizeHeaderPosition, MERGED_GRID_LIMITS, MERGED_GRID_REFERENCE, defaultMergedGrid, imageOverlayChildren, isMergedBlock, mergedChildren, mergedGridColumnsAt, sanitizeMergedGrid } from "@/lib/articleBlockTypes";
+import { FAQ_ANSWER_ALIGNS, IMAGE_SLIDER_CHILD_TYPES, IMAGE_SLIDER_DELAY, IMAGE_SLIDER_HEIGHT, MAX_MERGED_CHILDREN, MAX_MERGE_DEPTH, MERGED_GRID_GAP_STEP, normalizeHeaderPosition, MERGED_GRID_LIMITS, MERGED_GRID_REFERENCE, defaultMergedGrid, imageOverlayChildren, isMergedBlock, mergedChildren, mergedGridColumnsAt, sanitizeMergedGrid } from "@/lib/articleBlockTypes";
 import { cloneWithFreshIds, mergeBlocker, mergeBlocks, unmergeBlock } from "@/lib/articleBlockMerge";
 
 
@@ -25,8 +25,13 @@ import { cloneWithFreshIds, mergeBlocker, mergeBlocks, unmergeBlock } from "@/li
 // برچسب می‌زند و مرورگر هاور و کلیکِ کلِ ناحیه را به همان دکمه می‌فرستد. فیلدِ
 // متنِ غنی یک نوارِ دکمه دارد (اولینش «پررنگ») و ناحیه‌ی ویرایشش contentEditable
 // است که اصلاً برچسب‌پذیر نیست — پس باید در یک wrapper ساده بنشیند.
-// همین دلیل برای فیلدهای چندکنترلیِ تصویر (چند input و دکمه) هم صادق است.
-const fieldWrapper = (kind) => (["rich", "imageList", "imageShade", "imageSliderSettings", "mergedBlocks", "imageSliderBlocks", "checkbox"].includes(kind) ? "div" : "label");
+// همین دلیل برای هر فیلدِ چندکنترلی صادق است، پس فهرست برعکس شده: فقط نوع‌هایی
+// که دقیقاً *یک* کنترل دارند <label> می‌گیرند. فهرستِ قبلی («این‌ها div باشند»)
+// faq را جا انداخته بود و هر کلیک روی ناحیه‌ی پاسخ به کادرِ پرسش می‌رفت؛ همان دام
+// کلیک روی چیپِ محصول را به دکمه‌ی حذفِ اولین چیپ و کلیک روی پیش‌نمایشِ تصویر را
+// به انتخابگرِ فایل می‌فرستاد. نوعِ تازه به‌طورِ پیش‌فرض div است، یعنی امن.
+const SINGLE_CONTROL_KINDS = ["text", "url", "number", "select", "textarea", "html", "fontSize", "imageHeight"];
+const fieldWrapper = (kind) => (SINGLE_CONTROL_KINDS.includes(kind) ? "label" : "div");
 // این نوع‌ها کلِ data را می‌خوانند و وصله‌ی چندکلیدی برمی‌گردانند.
 const WHOLE_DATA_KINDS = ["table", "imageList"];
 const PATCH_KINDS = ["table", "image", "imageList"];
@@ -35,11 +40,15 @@ const PATCH_KINDS = ["table", "image", "imageList"];
 // بلند را نمی‌گیرند؛ ویرایشگرهای چندکنترلی همیشه تمام‌عرض‌اند. ردیف flex-wrap است،
 // نه گریدِ نقطه‌شکن‌دار: کارت‌ها تودرتو و با پهنای متفاوت می‌آیند (داخلِ ادغام، روی
 // تصویر، در مودالِ پیش‌نمایش)، و wrap با پهنای *واقعیِ* همان کارت می‌شکند.
-const SHORT_KINDS = ["select", "number", "fontSize", "checkbox"];
-const INLINE_KINDS = ["text", "url", "imageHeight"];
+const SHORT_KINDS = ["select", "number", "fontSize", "checkbox", "imageHeight"];
+const INLINE_KINDS = ["text", "url"];
 function fieldWidth(kind, alone) {
   if (SHORT_KINDS.includes(kind)) return "min-w-0 grow basis-32 max-w-64";
-  if (INLINE_KINDS.includes(kind)) return `min-w-0 grow basis-56${alone ? " max-w-xl" : ""}`;
+  // متنِ غنی کنارِ یک کنترلِ کوتاه (سطحِ تیتر، نامِ گوینده) هم می‌نشیند. basis به
+  // اندازه‌ی نوارِ ابزار است و grow-[6] جای خالی را به آن می‌دهد، نه به کنترلِ کوتاه،
+  // تا نوارِ ابزار تا جای ممکن یک خط بماند.
+  if (kind === "rich" && !alone) return "min-w-0 grow-[6] basis-[30rem]";
+  if (INLINE_KINDS.includes(kind)) return `min-w-0 grow basis-44${alone ? " max-w-xl" : ""}`;
   return "w-full";
 }
 
@@ -55,6 +64,11 @@ function fieldRows(fields) {
 }
 
 const boxStyle = { borderColor: "var(--admin-border)", borderRadius: "var(--admin-radius)" };
+// این نوع‌ها برای هر کنترلِ خودشان برچسب دارند؛ برچسبِ فیلد فقط برای صفحه‌خوان می‌ماند.
+const SELF_LABELLED_KINDS = ["imageShade", "imageSliderSettings"];
+// برچسبِ کوچکِ بالای کنترل‌های داخلیِ یک فیلد. راهنماهای بلند در title می‌نشینند
+// نه زیرِ کنترل، تا هر کنترل فقط یک خط جا بگیرد.
+const smallLabel = "mb-1 block text-[11px] font-bold leading-4 text-gray-600";
 
 /**
  * پاسخ همان ویرایشگرِ متنِ غنیِ پاراگراف است: متنِ ساده در answer می‌ماند (همان
@@ -65,14 +79,15 @@ const boxStyle = { borderColor: "var(--admin-border)", borderRadius: "var(--admi
 function FaqEditor({ value = [], onChange }) {
   const items = value.length ? value : [{ question: "", answer: "" }];
   const update = (index, patch) => onChange(items.map((item, i) => i === index ? { ...item, ...patch } : item));
-  return <div className="space-y-3">
-    {items.map((item, index) => <div key={index} className="space-y-2 border p-3" style={boxStyle}>
+  return <div className="space-y-2">
+    {items.map((item, index) => <div key={index} className="space-y-1.5 border p-2" style={boxStyle}>
       <div className="flex items-center gap-2">
         <span className="w-5 shrink-0 text-center text-[11px] font-black text-gray-400">{(index + 1).toLocaleString("fa-IR")}</span>
         <input className={inputClass} value={item.question} onChange={(e) => update(index, { question: e.target.value })} placeholder="پرسش" aria-label={`پرسش ${index + 1}`} />
         <button type="button" onClick={() => onChange(items.filter((_, i) => i !== index))} className="shrink-0 px-1 text-xs text-red-600">حذف پرسش</button>
       </div>
-      <RichTextField label={`پاسخ ${index + 1}`} value={{ text: item.answer, html: item.answerHtml }} onChange={({ text, html }) => update(index, { answer: text, answerHtml: html })} />
+      {/* چینشِ هر پاسخ مالِ خودِ همان پاسخ است (answerAlign)، نه style.alignِ بلوک. */}
+      <RichTextField label={`پاسخ ${index + 1}`} value={{ text: item.answer, html: item.answerHtml }} onChange={({ text, html }) => update(index, { answer: text, answerHtml: html })} align={item.answerAlign} onAlign={(answerAlign) => update(index, { answerAlign })} aligns={FAQ_ANSWER_ALIGNS} />
     </div>)}
     <button type="button" onClick={() => onChange([...items, { question: "", answer: "" }])} className="text-xs font-bold text-[var(--color-primary)]">+ افزودن پرسش</button>
   </div>;
@@ -95,7 +110,7 @@ function ImageFieldWithSize({ value, onChange }) {
     probe.onerror = () => onChange({ url, width: undefined, height: undefined });
     probe.src = url;
   };
-  return <ImageUpload value={value || ""} onChange={emit} folder="articles" className="mb-0" />;
+  return <ImageUpload value={value || ""} onChange={emit} folder="articles" compact />;
 }
 
 // در ویرایشگر اسلاتِ خالی هم باید دیده شود، پس برخلافِ imageBlockItems چیزی
@@ -115,24 +130,25 @@ function ImageListEditor({ data, onChange }) {
   const update = (index, patch) => emit(editorImageItems(latest.current).map((item, i) => (i === index ? { ...item, ...patch } : item)));
   const remove = (index) => emit(editorImageItems(latest.current).filter((_, i) => i !== index));
   const add = () => emit([...editorImageItems(latest.current), { url: "", alt: "" }]);
-  const small = "block text-[11px] font-bold text-gray-500";
-  return <div className="space-y-3">
-    {items.map((item, index) => <div key={index} className="space-y-2 border p-3" style={boxStyle}>
-      <div className="flex items-center justify-between text-[11px] font-bold text-gray-500">
+  // تک‌تصویر (حالتِ رایج) قاب و سربرگ ندارد؛ از دو تصویر به بعد هر کدام قابِ خودش
+  // را می‌گیرد تا مرزِ تصویرها و دکمه‌ی حذفِ هر یک معلوم باشد.
+  const several = items.length > 1;
+  return <div className="space-y-2">
+    {items.map((item, index) => <div key={index} className={several ? "space-y-1.5 border p-2" : undefined} style={several ? boxStyle : undefined}>
+      {several ? <div className="flex items-center justify-between text-[11px] font-bold text-gray-500">
         <span>تصویر {(index + 1).toLocaleString("fa-IR")}</span>
-        {items.length > 1 ? <button type="button" onClick={() => remove(index)} className="text-red-600">حذف تصویر</button> : null}
-      </div>
-      {/* بارگذاری یک طرف، متنِ جایگزین و پیوند طرفِ دیگر؛ در جای تنگ زیرِ هم.
-          پیش‌نمایشِ ImageUpload (h-64) اینجا کوتاه‌تر است تا ردیف بلند نشود. */}
-      <div className="flex flex-wrap items-start gap-3">
-        <div className="min-w-0 grow basis-60 [&_img]:h-40">
+        <button type="button" onClick={() => remove(index)} className="text-red-600">حذف تصویر</button>
+      </div> : null}
+      {/* بارگذاری یک طرف، متنِ جایگزین و پیوند طرفِ دیگر؛ در جای تنگ زیرِ هم. */}
+      <div className="flex flex-wrap items-start gap-x-3 gap-y-2">
+        <div className="min-w-0 grow basis-60">
           {/* ImageUpload پیش‌نمایش را فقط یک‌بار از value می‌خواند؛ key بر اساسِ آدرس
               باعث می‌شود پس از حذفِ یک تصویر، اسلاتِ جابه‌جاشده پیش‌نمایشِ درست را نشان دهد. */}
           <ImageFieldWithSize key={item.url || `empty-${index}`} value={item.url} onChange={(patch) => update(index, patch)} />
         </div>
-        <div className="min-w-0 grow basis-60 space-y-2">
-          <label className="block"><span className={small}>متن جایگزین</span><input value={item.alt || ""} onChange={(e) => update(index, { alt: e.target.value })} className={inputClass} /></label>
-          <label className="block"><span className={small}>پیوند (اختیاری — در همین زبانه باز می‌شود)</span><input dir="ltr" value={item.href || ""} onChange={(e) => update(index, { href: e.target.value })} placeholder="/tennis/racket یا https://…" aria-invalid={normalizeImageHref(item.href) === null} className={inputClass} />
+        <div className="min-w-0 grow basis-60 space-y-1.5">
+          <label className="block"><span className={smallLabel}>متن جایگزین</span><input value={item.alt || ""} onChange={(e) => update(index, { alt: e.target.value })} className={inputClass} /></label>
+          <label className="block" title="در همین زبانه باز می‌شود"><span className={smallLabel}>پیوند (اختیاری)</span><input dir="ltr" value={item.href || ""} onChange={(e) => update(index, { href: e.target.value })} placeholder="/tennis/racket یا https://…" aria-invalid={normalizeImageHref(item.href) === null} className={inputClass} />
             {normalizeImageHref(item.href) === null ? <span role="alert" className="mt-1 block text-[11px] font-bold text-red-600">این پیوند معتبر نیست و ذخیره‌ی برند را رد می‌کند. آن را اصلاح یا پاک کنید.</span> : null}
           </label>
           {!item.url && item.href ? <p className="text-[11px] text-amber-600">تا تصویری بارگذاری نشود، پیوندِ این مورد ذخیره نمی‌شود.</p> : null}
@@ -144,9 +160,10 @@ function ImageListEditor({ data, onChange }) {
 }
 
 function ImageHeightField({ value, onChange }) {
-  return <div className="flex flex-wrap items-center gap-2">
-    <input type="number" min={IMAGE_DISPLAY_HEIGHT.min} max={IMAGE_DISPLAY_HEIGHT.max} step={10} value={value ?? ""} placeholder="خودکار" onChange={(e) => onChange(e.target.value === "" ? undefined : Number(e.target.value))} className={`${inputClass} w-32`} />
-    <span className="text-[11px] text-gray-400">پیکسل ({IMAGE_DISPLAY_HEIGHT.min.toLocaleString("fa-IR")} تا {IMAGE_DISPLAY_HEIGHT.max.toLocaleString("fa-IR")}). خالی = اندازه‌ی اصلیِ تصویر. در موبایل متناسب کوچک می‌شود.</span>
+  const hint = `${IMAGE_DISPLAY_HEIGHT.min.toLocaleString("fa-IR")} تا ${IMAGE_DISPLAY_HEIGHT.max.toLocaleString("fa-IR")} پیکسل. خالی = اندازه‌ی اصلیِ تصویر. در موبایل متناسب کوچک می‌شود.`;
+  return <div className="flex items-center gap-2" title={hint}>
+    <input type="number" min={IMAGE_DISPLAY_HEIGHT.min} max={IMAGE_DISPLAY_HEIGHT.max} step={10} value={value ?? ""} placeholder="خودکار" onChange={(e) => onChange(e.target.value === "" ? undefined : Number(e.target.value))} className={`${inputClass} w-28`} />
+    <span className="shrink-0 text-[11px] text-gray-400">px</span>
   </div>;
 }
 
@@ -158,21 +175,17 @@ function ImageHeightField({ value, onChange }) {
 function ImageSliderSettings({ block, onUpdate }) {
   const delay = Number(block.data?.delay) || IMAGE_SLIDER_DELAY.default;
   const height = Number(block.data?.height) || IMAGE_SLIDER_HEIGHT.default;
-  const row = (label, hint, spec, current, key, unit) => <label className="block min-w-0 grow basis-72">
-    <span className="mb-1 block text-[11px] font-bold text-gray-600">{label}</span>
-    <div className="flex items-center gap-3">
+  const row = (label, hint, spec, current, key, unit) => <label className="block min-w-0 grow basis-64" title={hint}>
+    <span className={smallLabel}>{label}</span>
+    <div className="flex items-center gap-2">
       <input type="range" min={spec.min} max={spec.max} step={spec.step} value={current} onChange={(event) => onUpdate({ [key]: Number(event.target.value) })} className="h-1.5 min-w-0 flex-1 cursor-pointer accent-[var(--color-primary)]" />
       <input type="number" min={spec.min} max={spec.max} step={spec.step} value={current} onChange={(event) => onUpdate({ [key]: Number(event.target.value) })} className={`${inputClass} w-24`} />
       <span className="shrink-0 text-[11px] text-gray-400">{unit}</span>
     </div>
-    <span className="mt-1 block text-[11px] text-gray-400">{hint}</span>
   </label>;
-  return <div className="space-y-3 border p-3" style={boxStyle}>
-    <div className="flex flex-wrap items-start gap-x-6 gap-y-4">
-      {row("ارتفاع اسلایدر", "همه‌ی تصویرها در همین ارتفاع برش می‌خورند، پس اسلایدر با عوض‌شدنِ اسلاید تغییرِ اندازه نمی‌دهد.", IMAGE_SLIDER_HEIGHT, height, "height", "پیکسل")}
-      {row("مکث هر اسلاید", "زمانِ ماندنِ هر تصویر پیش از رفتن به بعدی.", IMAGE_SLIDER_DELAY, delay, "delay", "میلی‌ثانیه")}
-    </div>
-    <p className="text-[11px] text-gray-400">عرضِ اسلایدر از «ظاهر و چیدمان» همین بلوک تنظیم می‌شود.</p>
+  return <div className="flex flex-wrap items-start gap-x-6 gap-y-2">
+    {row("ارتفاع اسلایدر", "همه‌ی تصویرها در همین ارتفاع برش می‌خورند، پس اسلایدر با عوض‌شدنِ اسلاید تغییرِ اندازه نمی‌دهد. عرضِ اسلایدر از «ظاهر و چیدمان» همین بلوک تنظیم می‌شود.", IMAGE_SLIDER_HEIGHT, height, "height", "پیکسل")}
+    {row("مکث هر اسلاید", "زمانِ ماندنِ هر تصویر پیش از رفتن به بعدی.", IMAGE_SLIDER_DELAY, delay, "delay", "میلی‌ثانیه")}
   </div>;
 }
 
@@ -186,21 +199,19 @@ const IMAGE_POSITION_LABELS = { top: "بالا", center: "وسط", bottom: "پا
 function ImageShadeField({ block, onUpdate }) {
   const shade = clampImageShade(block.data?.shade);
   const position = block.data?.contentPosition || "center";
-  return <div className="flex flex-wrap items-start gap-x-6 gap-y-4 border p-3" style={boxStyle}>
-    <label className="block min-w-0 grow basis-64">
-      <span className="mb-1 block text-[11px] font-bold text-gray-600">تیرگیِ لایه روی تصویر</span>
-      <div className="flex items-center gap-3">
+  return <div className="flex flex-wrap items-start gap-x-6 gap-y-2">
+    <label className="block min-w-0 grow basis-64" title="بینِ تصویر و بلوک‌های رویی می‌نشیند تا متن خوانا شود. ۰ یعنی بدونِ لایه.">
+      <span className={smallLabel}>تیرگیِ لایه روی تصویر</span>
+      <div className="flex h-[34px] items-center gap-3">
         <input type="range" min={IMAGE_SHADE.min} max={IMAGE_SHADE.max} step={IMAGE_SHADE.step} value={shade} onChange={(e) => onUpdate({ shade: clampImageShade(e.target.value) })} className="h-1.5 flex-1 cursor-pointer accent-[var(--color-primary)]" />
         <span className="w-12 shrink-0 text-center text-[11px] font-bold text-gray-600">{shade.toLocaleString("fa-IR")}٪</span>
       </div>
-      <span className="mt-1 block text-[11px] text-gray-400">بینِ تصویر و بلوک‌های رویی می‌نشیند تا متن خوانا شود. ۰ یعنی بدونِ لایه.</span>
     </label>
-    <label className="block min-w-0 grow basis-56">
-      <span className="mb-1 block text-[11px] font-bold text-gray-600">جای عمودیِ بلوک‌های روی تصویر</span>
+    <label className="block min-w-0 grow basis-40 max-w-64" title="جای افقی، عرض و فاصله‌ی هر بلوک از «ظاهر و چیدمان» خودِ آن بلوک می‌آید.">
+      <span className={smallLabel}>جای عمودیِ بلوک‌های روی تصویر</span>
       <select value={position} onChange={(e) => onUpdate({ contentPosition: e.target.value })} className={inputClass}>
         {Object.entries(IMAGE_POSITION_LABELS).map(([option, text]) => <option key={option} value={option}>{text}</option>)}
       </select>
-      <span className="mt-1 block text-[11px] text-gray-400">جای افقی، عرض و فاصله‌ی هر بلوک از «ظاهر و چیدمان» خودِ آن بلوک می‌آید.</span>
     </label>
   </div>;
 }
@@ -226,11 +237,12 @@ function BlockStylePanel({ type, style, layout, onApply }) {
   // شمارشِ تغییرها روی خودِ داده است، نه روی یک پرچمِ جدا، تا با «بازگشت به حالت
   // پیش‌فرض» خودبه‌خود صفر شود.
   const customised = Object.keys(style || {}).length + Object.keys(layout || {}).length;
-  return <div className="border-b pb-3" style={{ borderColor: "var(--admin-border)" }}>
-    <button type="button" onClick={() => setOpen(true)} className="flex w-full items-center gap-2 text-xs font-bold text-gray-600 hover:text-[var(--color-primary)]">
-      <FiDroplet className="text-[var(--color-primary)]" />ظاهر و چیدمان بلوک
-      {customised ? <span className="rounded-full bg-[var(--color-primary-soft)] px-2 py-0.5 text-[10px] font-black text-[var(--color-primary)]">{customised.toLocaleString("fa-IR")}</span> : null}
-      <FiSettings className="mr-auto text-gray-400" aria-hidden="true" />
+  // در سربرگِ کارت می‌نشیند، نه یک ردیفِ تمام‌عرض در بدنه‌ی هر بلوک. در گوشی فقط
+  // آیکن و شمارنده می‌ماند (نامش در aria-label و title).
+  return <>
+    <button type="button" onClick={() => setOpen(true)} aria-label="ظاهر و چیدمان بلوک" title="ظاهر و چیدمان بلوک" className="flex items-center gap-1 px-1.5 py-1 text-[11px] font-bold text-gray-500 hover:text-[var(--color-primary)]">
+      <FiDroplet className="text-[var(--color-primary)]" aria-hidden="true" /><span className="hidden sm:inline">ظاهر</span>
+      {customised ? <span className="rounded-full bg-[var(--color-primary-soft)] px-1.5 text-[10px] font-black text-[var(--color-primary)]">{customised.toLocaleString("fa-IR")}</span> : null}
     </button>
     {open ? <BlockLayoutModal
       type={type}
@@ -239,7 +251,7 @@ function BlockStylePanel({ type, style, layout, onApply }) {
       onApply={onApply}
       onClose={() => setOpen(false)}
     /> : null}
-  </div>;
+  </>;
 }
 
 const blockDomId = (id) => `article-block-${id}`;
@@ -262,7 +274,12 @@ export function BlockFields({ block, onUpdate, onStyle }) {
     if (align) next.align = align; else delete next.align;
     onStyle(Object.keys(next).length ? next : undefined);
   };
-  if (!definition?.fields.length) return <p className="text-xs text-gray-400 text-center py-3">این بلوک تنظیمات دیگری ندارد.</p>;
+  if (!definition?.fields.length) return <p className="text-xs text-gray-400 text-center py-1">این بلوک تنظیمات دیگری ندارد.</p>;
+  // برچسبِ تنها فیلدِ یک بلوک («متن پاراگراف»، «پرسش‌ها»، «کد HTML») همان عنوانِ
+  // سربرگ را تکرار می‌کند، پس فقط برای صفحه‌خوان می‌ماند. برچسبِ بلوکِ ادغام‌شده
+  // راهنماست، نه تکرار، و دیده می‌شود.
+  const lone = definition.fields.length === 1;
+  const hiddenLabel = (field) => SELF_LABELLED_KINDS.includes(field.kind) || (lone && field.kind !== "mergedBlocks");
   // متنِ غنی همیشه دو کلید است: متنِ ساده در field.key و نسخه‌ی قالب‌دار کنارش —
   // "html" برای متنِ اصلیِ بلوک (همان شکلِ قبلیِ تیتر/پاراگراف/نقل‌قول) یا htmlKey.
   const valueOf = (field) => {
@@ -273,14 +290,14 @@ export function BlockFields({ block, onUpdate, onStyle }) {
     if (field.kind === "rich") return onUpdate({ [field.key]: next.text, [field.htmlKey || "html"]: next.html });
     return onUpdate(PATCH_KINDS.includes(field.kind) ? next : { [field.key]: next });
   };
-  return <div className="space-y-4">
+  return <div className="space-y-3">
     {fieldRows(definition.fields).map(({ fields }) => <div key={fields[0].key}>
-      {fields[0].section ? <p className="mb-2 border-b pb-1 text-[11px] font-black text-gray-400" style={{ borderColor: "var(--admin-border)" }}>{fields[0].section}</p> : null}
-      <div className="flex flex-wrap items-start gap-x-3 gap-y-4">
+      {fields[0].section ? <p className="mb-1 text-[10px] font-black text-gray-400">{fields[0].section}</p> : null}
+      <div className="flex flex-wrap items-start gap-x-3 gap-y-2">
         {fields.map((field) => {
           const Wrapper = fieldWrapper(field.kind);
           return <Wrapper key={field.key} className={`block ${fieldWidth(field.kind, fields.length === 1)}`}>
-            <span className="block text-xs font-bold mb-1.5 text-gray-600">{field.label}</span>
+            <span className={hiddenLabel(field) ? "sr-only" : smallLabel}>{field.label}</span>
             <BlockField
               field={field}
               block={block}
@@ -301,10 +318,10 @@ function BlockField({ field, value, onChange, align, onAlign, block, onUpdate })
   if (field.kind === "rich") return <RichTextField value={value} onChange={onChange} align={align} onAlign={onAlign} singleLine={field.singleLine} />;
   if (field.kind === "textarea" || field.kind === "html") return <textarea dir={field.kind === "html" ? "ltr" : "rtl"} rows={field.kind === "html" ? 9 : 4} value={value || ""} onChange={(e) => onChange(e.target.value)} className={`${inputClass} ${field.kind === "html" ? "font-mono" : "font-sans"}`} />;
   if (field.kind === "select") return <select value={value || field.options[0]} onChange={(e) => onChange(e.target.value)} className={inputClass}>{field.options.map((option) => <option key={option} value={option}>{field.labels?.[option] || option}</option>)}</select>;
-  // h-[42px] = ارتفاعِ inputClass، تا تیک کنارِ کادرهای همان ردیف هم‌تراز بنشیند.
-  if (field.kind === "checkbox") return <label className="flex h-[42px] items-center gap-2 text-xs font-bold text-gray-600"><input type="checkbox" checked={value === true} onChange={(e) => onChange(e.target.checked)} className="size-4 accent-[var(--color-primary)]" />فعال</label>;
+  // h-[34px] = ارتفاعِ inputClass، تا تیک کنارِ کادرهای همان ردیف هم‌تراز بنشیند.
+  if (field.kind === "checkbox") return <label className="flex h-[34px] items-center gap-2 text-xs font-bold text-gray-600"><input type="checkbox" checked={value === true} onChange={(e) => onChange(e.target.checked)} className="size-4 accent-[var(--color-primary)]" />فعال</label>;
   // اندازه‌ی متن به پیکسل، همان بازه و همان نرمال‌سازی متنِ غنی.
-  if (field.kind === "fontSize") return <div className="flex flex-wrap items-center gap-2"><input type="number" min={8} max={96} value={value ?? ""} placeholder="پیش‌فرض" onChange={(e) => onChange(e.target.value === "" ? undefined : Number(e.target.value))} className={`${inputClass} w-28`} /><span className="text-[11px] text-gray-400">پیکسل — خالی = اندازه‌ی پیش‌فرضِ دکمه</span></div>;
+  if (field.kind === "fontSize") return <div className="flex items-center gap-2" title="پیکسل — خالی = اندازه‌ی پیش‌فرضِ دکمه"><input type="number" min={8} max={96} value={value ?? ""} placeholder="پیش‌فرض" onChange={(e) => onChange(e.target.value === "" ? undefined : Number(e.target.value))} className={`${inputClass} min-w-0`} /><span className="shrink-0 text-[11px] text-gray-400">px</span></div>;
   if (field.kind === "image") return <ImageFieldWithSize value={value} onChange={onChange} />;
   if (field.kind === "imageList") return <ImageListEditor data={value} onChange={onChange} />;
   if (field.kind === "imageHeight") return <ImageHeightField value={value} onChange={onChange} />;
@@ -317,8 +334,9 @@ function BlockField({ field, value, onChange, align, onAlign, block, onUpdate })
   // تصویرهای اسلایدر همه‌ی توانایی‌های همیشگیِ بلوکِ تصویر را دارند.
   if (field.kind === "imageSliderBlocks") return <BlockEditor value={Array.isArray(value) ? value : []} onChange={onChange} allow={IMAGE_SLIDER_CHILD_TYPES} />;
   if (field.kind === "imageSliderSettings") return <ImageSliderSettings block={block} onUpdate={onUpdate} />;
-  if (field.kind === "gallery") return <ImageUpload value={value || []} onChange={onChange} folder="articles" multiple className="mb-0" />;
-  if (field.kind === "entity" || field.kind === "entities") return <ArticleEntityPicker type={field.entityType} value={value} onChange={onChange} multiple={field.kind === "entities"} />;
+  if (field.kind === "gallery") return <ImageUpload value={value || []} onChange={onChange} folder="articles" multiple compact />;
+  // برچسبِ فیلد دیگر <label>ِ دورِ آن نیست، پس نامِ کادرِ جستجو را صریح می‌گیرد.
+  if (field.kind === "entity" || field.kind === "entities") return <ArticleEntityPicker type={field.entityType} value={value} onChange={onChange} multiple={field.kind === "entities"} label={field.label} />;
   if (field.kind === "faq") return <FaqEditor value={value} onChange={onChange} />;
   if (field.kind === "table") return <TableEditor value={value} onChange={onChange} />;
   return <input type={field.kind === "number" ? "number" : field.kind === "url" ? "url" : "text"} value={value ?? ""} onChange={(e) => onChange(field.kind === "number" ? Number(e.target.value) : e.target.value)} className={inputClass} />;
@@ -469,20 +487,22 @@ function SortableBlock({ block, index, total, onUpdate, onStyle, onAppearance, o
   // همان را خودِ header با border-radius: inherit می‌گیرد.
   return <section ref={setNodeRef} id={blockDomId(block.id)} tabIndex={-1} style={{ transform: CSS.Transform.toString(transform), transition, opacity: isDragging ? .55 : 1 }} className="a-card a-block-card group outline-none" data-block-group={BLOCK_GROUP_SLUGS[definition?.group] || "content"}>
     {/* رنگِ پس‌زمینه و مرزِ سربرگ از گروهِ بلوک می‌آید (admin-theme.css)، نه از کلاسِ ثابت. */}
-    <header className={`flex items-center gap-2 px-3 py-2.5 ${open ? "border-b rounded-t-[inherit]" : "rounded-[inherit]"}`}>
+    {/* flex-wrap: در کارتِ تنگ (تودرتو یا گوشی) دکمه‌ها به خطِ دوم می‌روند، نه بیرون از کارت. */}
+    <header className={`flex flex-wrap items-center gap-x-1.5 gap-y-0.5 px-2 py-1 ${open ? "border-b rounded-t-[inherit]" : "rounded-[inherit]"}`}>
       {/* بلوکِ ادغام‌شده هم مثلِ هر بلوکِ دیگری قابلِ انتخاب و ادغامِ دوباره است. */}
       {selectable ? <input type="checkbox" checked={selected} onChange={onSelect} title="انتخاب برای ادغام" aria-label={`انتخاب بلوک ${index + 1} برای ادغام`} className="size-4 shrink-0 cursor-pointer accent-[var(--color-primary)]" /> : null}
       <button type="button" onClick={() => setMoveOpen(true)} className="min-w-6 h-6 px-1.5 border text-[11px] font-black text-gray-500 hover:border-[var(--color-primary)] hover:text-[var(--color-primary)]" style={{ borderColor: "var(--admin-border)", borderRadius: "var(--admin-radius)" }} aria-label={`بلوک ${index + 1} از ${total} — تغییر موقعیت`}>{index + 1}</button>
       {/* touch-none لازم است: بدونِ آن مرورگر لمسِ روی دستگیره را برای اسکرول
           برمی‌دارد و pointercancel می‌دهد؛ dnd-kit خودش این را ست نمی‌کند و
           همین علتِ نامطمئن بودنِ کشیدن در موبایل بود. */}
-      <button type="button" {...attributes} {...listeners} className="touch-none p-2 cursor-grab text-gray-400 hover:text-[var(--color-primary)]" aria-label="جابجایی بلوک"><FiMenu /></button>
+      <button type="button" {...attributes} {...listeners} className="touch-none p-1.5 cursor-grab text-gray-400 hover:text-[var(--color-primary)]" aria-label="جابجایی بلوک"><FiMenu /></button>
       {/* کلِ عنوان بلوک را باز و بسته می‌کند (آکاردئون)؛ بسته که باشد، خلاصه‌اش دیده می‌شود. */}
-      <button type="button" onClick={onToggle} aria-expanded={open} aria-controls={`${blockDomId(block.id)}-body`} className="flex min-w-0 flex-1 items-center gap-2 text-right focus-visible:outline-2 focus-visible:outline-[var(--color-primary)]">
-        <Icon className="shrink-0" style={{ color: "var(--admin-block-accent)" }} /><strong className="shrink-0 text-sm">{definition?.label || block.type}</strong>
+      <button type="button" onClick={onToggle} aria-expanded={open} aria-controls={`${blockDomId(block.id)}-body`} className="flex min-w-0 grow basis-24 items-center gap-2 self-stretch text-right focus-visible:outline-2 focus-visible:outline-[var(--color-primary)]">
+        <Icon className="shrink-0" style={{ color: "var(--admin-block-accent)" }} /><strong className="truncate text-sm">{definition?.label || block.type}</strong>
         {!open && blockSummary(block) ? <span className="min-w-0 truncate text-xs text-gray-400">{blockSummary(block)}</span> : null}
       </button>
-      <div className="flex shrink-0 items-center gap-1">
+      <div className="mr-auto flex max-w-full flex-wrap items-center justify-end gap-0.5">
+        <BlockStylePanel type={block.type} style={block.style} layout={block.layout} onApply={onAppearance} />
         <button type="button" onClick={() => onMove(index, index - 1)} disabled={index === 0} className="p-1.5 text-gray-400 disabled:opacity-20" aria-label="انتقال به بالا"><FiChevronUp /></button>
         <button type="button" onClick={() => onMove(index, index + 1)} disabled={index === total - 1} className="p-1.5 text-gray-400" aria-label="انتقال به پایین"><FiChevronDown /></button>
         {onUnmerge ? <button type="button" onClick={() => setGridOpen(true)} className="flex items-center gap-1 px-1.5 py-1 text-[11px] font-bold text-gray-500 hover:text-[var(--color-primary)]" aria-label="تنظیمات چیدمان بلوک ادغام‌شده"><FiGrid />چیدمان</button> : null}
@@ -495,7 +515,7 @@ function SortableBlock({ block, index, total, onUpdate, onStyle, onAppearance, o
         <button type="button" onClick={onToggle} aria-expanded={open} className="p-1.5 text-gray-400 focus-visible:outline-2 focus-visible:outline-[var(--color-primary)]" aria-label="باز و بسته کردن">{open ? <FiChevronUp /> : <FiChevronDown />}</button>
       </div>
     </header>
-    {open ? <div id={`${blockDomId(block.id)}-body`} className="p-4 space-y-4"><BlockStylePanel type={block.type} style={block.style} layout={block.layout} onApply={onAppearance} /><BlockFields block={block} onUpdate={onUpdate} onStyle={onStyle} /></div> : null}
+    {open ? <div id={`${blockDomId(block.id)}-body`} className="p-2 sm:p-3"><BlockFields block={block} onUpdate={onUpdate} onStyle={onStyle} /></div> : null}
     {moveOpen ? <MoveDialog index={index} total={total} onMove={onMove} onClose={() => setMoveOpen(false)} /> : null}
     {gridOpen ? <MergedLayoutModal grid={block.data?.grid} count={mergedChildren(block).length} onApply={(grid) => { onUpdate({ grid }); setGridOpen(false); }} onClose={() => setGridOpen(false)} /> : null}
   </section>;
@@ -662,8 +682,9 @@ export default function BlockEditor({ value = [], onChange, libraryOpen: openPro
     many: `حداکثر ${MAX_MERGED_CHILDREN.toLocaleString("fa-IR")} بلوک در یک ادغام.`,
     deep: `ادغامِ تودرتو حداکثر ${MAX_MERGE_DEPTH.toLocaleString("fa-IR")} سطح.`,
   };
-  // فاصله‌ی بینِ کارت‌های بلوک: با ۱۲px دو کارتِ پشتِ‌سرِ‌هم به هم می‌چسبیدند.
-  return <div className="space-y-6">
+  // فاصله‌ی بینِ کارت‌ها: ۱۶px. با ۱۲px (پیش از رنگِ گروه و مرزِ لبه) کارت‌ها به هم می‌چسبیدند؛
+  // حالا مرزِ رنگیِ هر کارت جدایش می‌کند و فاصله‌ی بیشتر فقط اسکرول اضافه می‌کرد.
+  return <div className="space-y-4">
     {/* نوارِ ادغام به body می‌رود و به پایینِ صفحه ثابت می‌شود: کارتِ مینی‌مقاله
         backdrop-blur دارد و position:fixed را در خودش حبس می‌کرد. روی موبایل بالاتر
         می‌نشیند تا نوارِ شناورِ ویرایشگرِ مقاله (پایین-چپ) را نپوشاند. */}
@@ -685,11 +706,11 @@ export default function BlockEditor({ value = [], onChange, libraryOpen: openPro
       {/* addGroup رنگِ گروهِ یک بلوک را می‌گیرد (data-block-group → admin-theme.css)؛
           متن کمی تیره‌تر از رنگِ گروه است تا روی زمینه‌ی روشن خوانا بماند. */}
       {addGroup
-        ? <button type="button" onClick={() => setLibraryOpen(true)} data-block-group={addGroup} className="flex min-w-48 flex-1 items-center justify-center gap-2 py-3 border border-dashed bg-[var(--admin-block-tint)] text-sm font-bold text-[color-mix(in_srgb,var(--admin-block-accent)_70%,black)] hover:brightness-95" style={{ borderColor: "var(--admin-block-accent)", borderRadius: "var(--admin-radius)" }}><FiPlus /> {addLabel}</button>
-        : <button type="button" onClick={() => setLibraryOpen(true)} className="flex min-w-48 flex-1 items-center justify-center gap-2 py-3 border border-dashed text-sm font-bold text-[var(--color-primary)] hover:bg-[var(--color-primary-soft)]" style={{ borderColor: "var(--color-primary)", borderRadius: "var(--admin-radius)" }}><FiPlus /> {addLabel}</button>}
+        ? <button type="button" onClick={() => setLibraryOpen(true)} data-block-group={addGroup} className="flex min-w-48 flex-1 items-center justify-center gap-2 py-2 border border-dashed bg-[var(--admin-block-tint)] text-sm font-bold text-[color-mix(in_srgb,var(--admin-block-accent)_70%,black)] hover:brightness-95" style={{ borderColor: "var(--admin-block-accent)", borderRadius: "var(--admin-radius)" }}><FiPlus /> {addLabel}</button>
+        : <button type="button" onClick={() => setLibraryOpen(true)} className="flex min-w-48 flex-1 items-center justify-center gap-2 py-2 border border-dashed text-sm font-bold text-[var(--color-primary)] hover:bg-[var(--color-primary-soft)]" style={{ borderColor: "var(--color-primary)", borderRadius: "var(--admin-radius)" }}><FiPlus /> {addLabel}</button>}
       {/* فقط وقتی چیزی برای چسباندن هست — دکمه‌ی همیشه‌خاموش چیزی را روشن نمی‌کند. */}
       {clipboard && (!allow || allow.includes(clipboard.block.type)) ? (
-        <button type="button" onClick={paste} title={`چسباندنِ «${clipboard.label || clipboard.block.type}»`} className="flex items-center justify-center gap-2 border border-dashed px-4 py-3 text-sm font-bold text-gray-600 hover:bg-gray-50" style={{ borderColor: "var(--admin-border-strong)", borderRadius: "var(--admin-radius)" }}>
+        <button type="button" onClick={paste} title={`چسباندنِ «${clipboard.label || clipboard.block.type}»`} className="flex items-center justify-center gap-2 border border-dashed px-4 py-2 text-sm font-bold text-gray-600 hover:bg-gray-50" style={{ borderColor: "var(--admin-border-strong)", borderRadius: "var(--admin-radius)" }}>
           <FiClipboard /> چسباندنِ «{clipboard.label || clipboard.block.type}»
         </button>
       ) : null}

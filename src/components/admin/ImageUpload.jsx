@@ -15,6 +15,9 @@ export default function ImageUpload({
   // اختیاری — فرم‌ها با این پرچم دکمه‌ی ذخیره را تا پایانِ آپلود غیرفعال می‌کنند.
   // بدونش ادمین می‌توانست وسطِ آپلود ثبت کند و فرم بدونِ تصویر ارسال شود.
   onUploadingChange,
+  // نسخه‌ی فشرده برای فرم‌های بلوکِ مقاله: کادر و پیش‌نمایشِ کوچک‌تر، بدونِ حاشیه‌ی پایین.
+  // پیش‌فرض false است، پس بقیه‌ی فرم‌ها دقیقاً مثلِ قبل‌اند.
+  compact = false,
 }) {
   const [uploading, setUploading] = useState(false);
   const [preview, setPreview] = useState(value || (multiple ? [] : null));
@@ -106,7 +109,7 @@ export default function ImageUpload({
   };
 
   return (
-    <div className={`mb-6 ${className}`}>
+    <div className={`${compact ? "" : "mb-6 "}${className}`}>
       {label && (
         <label className="block text-sm font-semibold text-gray-700 mb-2">
           {label}
@@ -114,7 +117,7 @@ export default function ImageUpload({
         </label>
       )}
       
-      <div className="space-y-4">
+      <div className={compact ? "space-y-2" : "space-y-4"}>
         <div className="relative">
           <input
             type="file"
@@ -122,7 +125,7 @@ export default function ImageUpload({
             onChange={handleFileChange}
             disabled={uploading}
             multiple={multiple}
-            className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors bg-white text-gray-900 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100 disabled:opacity-50 disabled:cursor-not-allowed"
+            className={`w-full ${compact ? "px-2 py-1 text-xs file:mr-2 file:py-1 file:px-3 file:text-xs" : "px-4 py-3 file:mr-4 file:py-2 file:px-4 file:text-sm"} border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors bg-white text-gray-900 file:rounded-lg file:border-0 file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100 disabled:opacity-50 disabled:cursor-not-allowed`}
           />
           {uploading && (
             <div className="absolute left-4 top-1/2 transform -translate-y-1/2">
@@ -155,14 +158,14 @@ export default function ImageUpload({
         )}
 
         {preview && (
-          <div className={`grid gap-4 ${multiple ? 'grid-cols-2 md:grid-cols-4' : ''}`}>
+          <div className={`grid ${compact ? "gap-2" : "gap-4"} ${multiple ? (compact ? "grid-cols-3 sm:grid-cols-6" : "grid-cols-2 md:grid-cols-4") : ""}`}>
             {multiple ? (
               preview.map((url, index) => (
                 <div key={index} className="relative group">
                   <img
                     src={url}
                     alt={`Preview ${index + 1}`}
-                    className="w-full h-32 object-cover rounded-lg border border-gray-300"
+                    className={`w-full ${compact ? "h-20" : "h-32"} object-cover rounded-lg border border-gray-300`}
                   />
                   <button
                     type="button"
@@ -178,7 +181,7 @@ export default function ImageUpload({
                 <img
                   src={preview}
                   alt="Preview"
-                  className="w-full max-w-md h-64 object-contain rounded-lg border border-gray-300 bg-white p-2"
+                  className={`w-full max-w-md ${compact ? "h-24 p-1" : "h-64 p-2"} object-contain rounded-lg border border-gray-300 bg-white`}
                 />
                 <button
                   type="button"

@@ -104,6 +104,10 @@ export const isImageSliderBlock = (block) => block?.type === IMAGE_SLIDER_BLOCK_
 export const imageSliderChildren = (block) => (isImageSliderBlock(block) && Array.isArray(block.data?.blocks) ? block.data.blocks : []);
 export const IMAGE_SLIDER_DELAY = { min: 1000, max: 20000, step: 500, default: 5000 };
 export const IMAGE_SLIDER_HEIGHT = { min: 120, max: 900, step: 10, default: 320 };
+
+// چینشِ هر پاسخِ «سوالات متداول» (items[].answerAlign). «تراز» فقط اینجاست؛ چینشِ
+// سطحِ بلوک (style.align) همان سه مقدارِ قبلی را دارد.
+export const FAQ_ANSWER_ALIGNS = ["right", "center", "left", "justify"];
 export const isImageBlock = (block) => block?.type === IMAGE_BLOCK_TYPE;
 export const imageOverlayChildren = (block) => (isImageBlock(block) && Array.isArray(block.data?.blocks) ? block.data.blocks : []);
 export const blockHoldsBlocks = (block) => isMergedBlock(block) || isImageBlock(block) || isImageSliderBlock(block);
