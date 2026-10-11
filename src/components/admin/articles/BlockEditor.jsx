@@ -5,7 +5,7 @@ import { useEffect, useId, useMemo, useRef, useState } from "react";
 import { DndContext, KeyboardSensor, PointerSensor, closestCenter, useSensor, useSensors } from "@dnd-kit/core";
 import { SortableContext, arrayMove, sortableKeyboardCoordinates, useSortable, verticalListSortingStrategy } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { FiChevronDown, FiChevronUp, FiClipboard, FiColumns, FiCopy, FiDroplet, FiGrid, FiMenu, FiMoreHorizontal, FiMove, FiPlus, FiScissors, FiSearch, FiShare2, FiSliders, FiTrash2, FiX } from "react-icons/fi";
+import { FiArrowDown, FiArrowLeft, FiArrowRight, FiArrowUp, FiChevronDown, FiChevronUp, FiClipboard, FiColumns, FiCopy, FiDroplet, FiGrid, FiMenu, FiMoreHorizontal, FiMove, FiPlus, FiScissors, FiSearch, FiShare2, FiSliders, FiTrash2, FiX } from "react-icons/fi";
 import ImageUpload from "@/components/admin/ImageUpload";
 import ArticleEntityPicker from "./ArticleEntityPicker";
 import BlockLayoutModal from "./BlockLayoutModal";
@@ -16,7 +16,7 @@ import { insertBlockAt } from "@/lib/articleBlockLayout";
 import { toast } from "react-toastify";
 import { confirmDelete } from "@/lib/swal";
 import { BLOCK_CLIPBOARD_EVENT, copyBlockToClipboard, readBlockClipboard, takeBlockFromClipboard } from "@/lib/articleBlockClipboard";
-import { IMAGE_DISPLAY_HEIGHT, IMAGE_SHADE, MAX_IMAGE_BLOCK_ITEMS, clampImageShade, mirrorFirstImage, normalizeImageHref } from "@/lib/articleImageBlock";
+import { IMAGE_DISPLAY_HEIGHT, IMAGE_SHADE, MAX_IMAGE_BLOCK_ITEMS, imageBlockItems, imageShadeLayer, imageShadeSettings, mirrorFirstImage, normalizeHexColor, normalizeImageHref } from "@/lib/articleImageBlock";
 import { FAQ_ANSWER_ALIGNS, IMAGE_SLIDER_CHILD_TYPES, IMAGE_SLIDER_DELAY, IMAGE_SLIDER_HEIGHT, MAX_MERGED_CHILDREN, MAX_MERGE_DEPTH, MERGED_GRID_GAP_STEP, normalizeHeaderPosition, MERGED_GRID_LIMITS, MERGED_GRID_REFERENCE, defaultMergedGrid, imageOverlayChildren, isMergedBlock, mergedChildren, mergedGridColumnsAt, sanitizeMergedGrid } from "@/lib/articleBlockTypes";
 import { cloneWithFreshIds, mergeBlocker, mergeBlocks, unmergeBlock } from "@/lib/articleBlockMerge";
 
@@ -197,28 +197,93 @@ function ImageSliderSettings({ block, onUpdate }) {
 
 const IMAGE_POSITION_LABELS = { top: "بالا", center: "وسط", bottom: "پایین" };
 
+// Enter داخلِ ویرایشگر نباید فرمِ برند/سری را ثبت کند.
+const keepEnter = (event) => { if (event.key === "Enter") event.preventDefault(); };
+
+/** گزینه‌های کنارِ هم (رادیو)، فشرده. options: [[value, text, Icon?]] */
+function Segmented({ label, value, options, onChange }) {
+  return <div role="radiogroup" aria-label={label} className="be-seg">
+    {options.map(([key, text, Icon]) => <button key={key} type="button" role="radio" aria-checked={value === key} onClick={() => onChange(key)} title={text} aria-label={Icon ? text : undefined}>
+      {Icon ? <Icon aria-hidden="true" /> : text}
+    </button>)}
+  </div>;
+}
+
 /**
- * لایه‌ی تیره و جای عمودیِ بلوک‌های روی تصویر — دو تنظیمِ خودِ *ظرف*.
- * خودِ بلوک‌های رویی تنظیماتِ همیشگیِ خودشان را دارند و اینجا کاری با آن‌ها نیست.
- * مقدارِ پیش‌فرض (بدونِ تیرگی، وسط) ذخیره نمی‌شود — همان قراردادِ BlockStylePanel.
+ * رنگ: انتخابگر + کادرِ هگز. مقدارِ نیمه‌تایپ‌شده («#ff») فقط در کادر می‌ماند و
+ * ذخیره نمی‌شود؛ با ترکِ کادر به آخرین رنگِ معتبر برمی‌گردد.
+ */
+function ColorField({ label, value, onChange }) {
+  const [draft, setDraft] = useState(null);
+  const invalid = draft !== null && !normalizeHexColor(draft);
+  return <div className="be-color" data-invalid={invalid ? "true" : undefined}>
+    <input type="color" value={value} onChange={(e) => { setDraft(null); onChange(e.target.value); }} aria-label={`${label} — انتخابگر`} className="be-color-swatch" />
+    <input dir="ltr" value={draft ?? value} maxLength={7} spellCheck={false} aria-label={`${label} — کدِ هگز`} aria-invalid={invalid}
+      onChange={(e) => { setDraft(e.target.value); const hex = normalizeHexColor(e.target.value); if (hex) onChange(hex); }}
+      onBlur={() => setDraft(null)} onKeyDown={keepEnter} className="be-color-hex" />
+  </div>;
+}
+
+/** درصدِ ۰ تا ۱۰۰ با صفحه‌کلید. مقدارِ بیرونِ بازه یا غیرعددی ذخیره نمی‌شود. */
+function PercentField({ label, value, onChange }) {
+  const [draft, setDraft] = useState(null);
+  const valid = (text) => /^\d{1,3}$/.test(text.trim()) && Number(text) <= IMAGE_SHADE.max;
+  const invalid = draft !== null && !valid(draft);
+  return <div className="be-percent" data-invalid={invalid ? "true" : undefined}>
+    <input type="number" inputMode="numeric" min={IMAGE_SHADE.min} max={IMAGE_SHADE.max} step={IMAGE_SHADE.step} value={draft ?? value} aria-label={label} aria-invalid={invalid}
+      onChange={(e) => { setDraft(e.target.value); if (valid(e.target.value)) onChange(Number(e.target.value)); }}
+      onBlur={() => setDraft(null)} onKeyDown={keepEnter} />
+    <span aria-hidden="true">٪</span>
+  </div>;
+}
+
+/**
+ * پیش‌نمایشِ زنده با *همان* imageShadeLayer که صفحه رندر می‌کند. تصویر contain است
+ * تا جاهای شفاف یا خالی دیده شوند؛ شطرنجی زیرِ همه فقط «شفافیت» را نشان می‌دهد.
+ */
+function ShadePreview({ data }) {
+  const image = imageBlockItems(data)[0]?.url;
+  const layer = imageShadeLayer(data);
+  return <div className="be-shade-preview" aria-hidden="true">
+    <div className="absolute inset-0" style={layer?.layer === "below" ? { background: layer.background } : undefined} />
+    {image ? <div className="absolute inset-0 bg-contain bg-center bg-no-repeat" style={{ backgroundImage: `url(${JSON.stringify(image)})` }} /> : null}
+    {layer?.layer === "above" ? <div className="absolute inset-0" style={{ background: layer.background }} /> : null}
+  </div>;
+}
+
+const SHADE_MODES = [["solid", "رنگِ ساده"], ["gradient", "گرادیان"]];
+const SHADE_LAYERS = [["above", "روی تصویر"], ["below", "پشتِ تصویر"]];
+const SHADE_DIRECTIONS = [["to-bottom", "بالا به پایین", FiArrowDown], ["to-top", "پایین به بالا", FiArrowUp], ["to-right", "چپ به راست", FiArrowRight], ["to-left", "راست به چپ", FiArrowLeft]];
+
+/**
+ * لایه‌ی رنگ (ساده یا گرادیان، روی یا پشتِ تصویر) و جای عمودیِ بلوک‌های روی
+ * تصویر — تنظیماتِ خودِ *ظرف*. بلوک‌های رویی تنظیماتِ همیشگیِ خودشان را دارند.
+ * هر کلید را جدا می‌نویسد؛ پاک‌سازیِ سرور پیش‌فرض‌ها را ذخیره نمی‌کند، پس تصویرِ
+ * قدیمی تا ادمین به این بخش دست نزند همان داده را دارد.
  */
 function ImageShadeField({ block, onUpdate }) {
-  const shade = clampImageShade(block.data?.shade);
+  const settings = imageShadeSettings(block.data);
+  const gradient = settings.mode === "gradient";
   const position = block.data?.contentPosition || "center";
-  return <div className="flex flex-wrap items-start gap-x-6 gap-y-2">
-    <label className="block min-w-0 grow basis-64" title="بینِ تصویر و بلوک‌های رویی می‌نشیند تا متن خوانا شود. ۰ یعنی بدونِ لایه.">
-      <span className={smallLabel}>تیرگیِ لایه روی تصویر</span>
-      <div className="flex h-[34px] items-center gap-3">
-        <input type="range" min={IMAGE_SHADE.min} max={IMAGE_SHADE.max} step={IMAGE_SHADE.step} value={shade} onChange={(e) => onUpdate({ shade: clampImageShade(e.target.value) })} className="h-1.5 flex-1 cursor-pointer accent-[var(--color-primary)]" />
-        <span className="be-unit w-12 text-center font-bold">{shade.toLocaleString("fa-IR")}٪</span>
-      </div>
-    </label>
-    <label className="block min-w-0 grow basis-40 max-w-64" title="جای افقی، عرض و فاصله‌ی هر بلوک از «ظاهر و چیدمان» خودِ آن بلوک می‌آید.">
-      <span className={smallLabel}>جای عمودیِ بلوک‌های روی تصویر</span>
-      <select value={position} onChange={(e) => onUpdate({ contentPosition: e.target.value })} className={inputClass}>
-        {Object.entries(IMAGE_POSITION_LABELS).map(([option, text]) => <option key={option} value={option}>{text}</option>)}
-      </select>
-    </label>
+  const group = (label, control) => <div className="min-w-0"><span className="be-label">{label}</span>{control}</div>;
+  return <div className="space-y-2.5">
+    <div className="flex flex-wrap items-end gap-x-4 gap-y-2.5">
+      {group("لایه‌ی رنگ", <Segmented label="نوعِ لایه" value={settings.mode} options={SHADE_MODES} onChange={(shadeMode) => onUpdate({ shadeMode })} />)}
+      {group("جای لایه", <Segmented label="جای لایه" value={settings.layer} options={SHADE_LAYERS} onChange={(shadeLayer) => onUpdate({ shadeLayer })} />)}
+      {group("شدت", <PercentField label="شدتِ لایه (درصد)" value={settings.shade} onChange={(shade) => onUpdate({ shade })} />)}
+      <div className="ms-auto"><ShadePreview data={block.data} /></div>
+    </div>
+    <div className="flex flex-wrap items-end gap-x-4 gap-y-2.5">
+      {group(gradient ? "رنگِ اول" : "رنگ", <ColorField label={gradient ? "رنگِ اول" : "رنگ"} value={settings.color} onChange={(shadeColor) => onUpdate({ shadeColor })} />)}
+      {gradient ? group("رنگِ دوم", <ColorField label="رنگِ دوم" value={settings.color2} onChange={(shadeColor2) => onUpdate({ shadeColor2 })} />) : null}
+      {gradient ? group("جهت", <Segmented label="جهتِ گرادیان" value={settings.direction} options={SHADE_DIRECTIONS} onChange={(shadeDirection) => onUpdate({ shadeDirection })} />) : null}
+      <label className="block min-w-0 grow basis-40 max-w-56" title="جای افقی، عرض و فاصله‌ی هر بلوک از «ظاهر و چیدمان» خودِ آن بلوک می‌آید.">
+        <span className="be-label">جای عمودیِ بلوک‌های رویی</span>
+        <select value={position} onChange={(e) => onUpdate({ contentPosition: e.target.value })} className={inputClass}>
+          {Object.entries(IMAGE_POSITION_LABELS).map(([option, text]) => <option key={option} value={option}>{text}</option>)}
+        </select>
+      </label>
+    </div>
   </div>;
 }
 

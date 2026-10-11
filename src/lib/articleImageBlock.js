@@ -5,7 +5,8 @@
  * جدید (همه اختیاری):
  *   images: [{ url, alt, width, height, href }]  — چند تصویر
  *   displayHeight: عدد (px) — ارتفاعِ نمایش؛ نبودنش یعنی نسبتِ اصلیِ تصویر، مثل قبل
- *   shade: ۰ تا ۹۰ — تیرگیِ لایه‌ی روی تصویر (درصد)؛ ۰ یعنی بدونِ لایه
+ *   shade: ۰ تا ۱۰۰ — شدتِ لایه‌ی رنگ (درصد)؛ ۰ یعنی بدونِ لایه. رنگ، گرادیان و
+ *          جای لایه (روی/پشتِ تصویر) کلیدهای shade* هستند — پایین‌تر
  *   blocks: [بلوک] — بلوک‌هایی که *روی* تصویر می‌نشینند
  *   contentPosition: top|center|bottom — جای عمودیِ آن بلوک‌ها روی تصویر
  *
@@ -22,7 +23,60 @@
 export const MAX_IMAGE_BLOCK_ITEMS = 12;
 export const IMAGE_DISPLAY_HEIGHT = { min: 80, max: 1200 };
 export const IMAGE_CONTENT_POSITIONS = ["top", "center", "bottom"];
-export const IMAGE_SHADE = { min: 0, max: 90, step: 5 };
+// شدتِ لایه‌ی رنگ (درصد). پیش‌تر ۰ تا ۹۰ با پله‌ی ۵ بود؛ هر مقدارِ ذخیره‌شده‌ی قبلی
+// (مضربِ ۵، حداکثر ۹۰) در بازه‌ی تازه همان معنا را دارد، پس چیزی مهاجرت نمی‌خواهد.
+export const IMAGE_SHADE = { min: 0, max: 100, step: 1 };
+
+/**
+ * لایه‌ی رنگِ تصویر. همه‌ی کلیدها اختیاری‌اند و پیش‌فرض‌ها ذخیره نمی‌شوند؛
+ * پیش‌فرض دقیقاً رفتارِ قبلی است — رنگِ سیاهِ ساده، *روی* تصویر — پس تصویرِ
+ * موجود با همان `shade` همان‌طور که بود رندر می‌شود.
+ *
+ *   shade           ۰–۱۰۰ — شدت (آلفای رنگ‌ها؛ نه opacityِ تصویر یا بلوک‌های رویی)
+ *   shadeMode       "gradient" (نبودن = رنگِ ساده)
+ *   shadeColor      #rrggbb — رنگ (یا رنگِ اولِ گرادیان)
+ *   shadeColor2     #rrggbb — رنگِ دومِ گرادیان
+ *   shadeDirection  to-bottom | to-top | to-right | to-left
+ *   shadeLayer      "below" — پشتِ تصویر (نبودن = روی تصویر)
+ */
+export const IMAGE_SHADE_DIRECTIONS = ["to-bottom", "to-top", "to-right", "to-left"];
+export const IMAGE_SHADE_DEFAULTS = { mode: "solid", layer: "above", color: "#000000", color2: "#ffffff", direction: "to-bottom" };
+
+/** «#abc»، «abc»، «#AABBCC» → «#aabbcc»؛ هر چیزِ دیگر → null. */
+export function normalizeHexColor(value) {
+  const raw = typeof value === "string" ? value.trim().replace(/^#/, "") : "";
+  if (/^[0-9a-f]{3}$/i.test(raw)) return `#${[...raw].map((char) => char + char).join("")}`.toLowerCase();
+  return /^[0-9a-f]{6}$/i.test(raw) ? `#${raw.toLowerCase()}` : null;
+}
+
+/** تنظیماتِ مؤثرِ لایه، با پیش‌فرض‌ها پر شده — خواننده‌ی مشترکِ ویرایشگر و رندر. */
+export function imageShadeSettings(data) {
+  return {
+    shade: clampImageShade(data?.shade),
+    mode: data?.shadeMode === "gradient" ? "gradient" : IMAGE_SHADE_DEFAULTS.mode,
+    layer: data?.shadeLayer === "below" ? "below" : IMAGE_SHADE_DEFAULTS.layer,
+    color: normalizeHexColor(data?.shadeColor) || IMAGE_SHADE_DEFAULTS.color,
+    color2: normalizeHexColor(data?.shadeColor2) || IMAGE_SHADE_DEFAULTS.color2,
+    direction: IMAGE_SHADE_DIRECTIONS.includes(data?.shadeDirection) ? data.shadeDirection : IMAGE_SHADE_DEFAULTS.direction,
+  };
+}
+
+const rgba = (hex, alpha) => `rgba(${parseInt(hex.slice(1, 3), 16)}, ${parseInt(hex.slice(3, 5), 16)}, ${parseInt(hex.slice(5, 7), 16)}, ${alpha})`;
+
+/**
+ * لایه‌ای که باید رندر شود، یا null وقتی شدت صفر است (یعنی هیچ لایه‌ای — همان
+ * تصویرِ ساده). شدت در آلفای *رنگ‌ها* می‌نشیند، نه در opacityِ یک عنصر، پس نه
+ * تصویر کم‌رنگ می‌شود نه متن و دکمه‌های رویش.
+ */
+export function imageShadeLayer(data) {
+  const settings = imageShadeSettings(data);
+  if (!settings.shade) return null;
+  const alpha = settings.shade / 100;
+  const background = settings.mode === "gradient"
+    ? `linear-gradient(${settings.direction.replace("-", " ")}, ${rgba(settings.color, alpha)}, ${rgba(settings.color2, alpha)})`
+    : rgba(settings.color, alpha);
+  return { layer: settings.layer, background };
+}
 
 /** تصاویرِ بلوک، چه با شکلِ قدیمی ذخیره شده باشد چه جدید. */
 export function imageBlockItems(data) {
@@ -39,8 +93,8 @@ export function imageBlockChildren(data) {
 }
 
 /**
- * تیرگیِ لایه‌ی روی تصویر، ۰ تا ۹۰ درصد و روی پله‌های ۵تایی. ۰ (و هر مقدارِ
- * نامعتبر) یعنی هیچ لایه‌ای رندر نمی‌شود — پس تصویرِ موجود ذره‌ای عوض نمی‌شود.
+ * شدتِ لایه‌ی رنگ، عددِ صحیحِ ۰ تا ۱۰۰. ۰ (و هر مقدارِ نامعتبر) یعنی هیچ لایه‌ای
+ * رندر نمی‌شود — پس تصویرِ موجود ذره‌ای عوض نمی‌شود.
  */
 export function clampImageShade(value) {
   const shade = Math.round(Number(value) / IMAGE_SHADE.step) * IMAGE_SHADE.step;

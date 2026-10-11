@@ -12,7 +12,7 @@ import HomeSectionHeading from "@/components/features/home/HomeSectionHeading";
 import SportHero from "@/components/templates/sports/SportHero";
 import MergedSliderNav from "@/components/features/articles/MergedSliderNav";
 import ImageSliderControls from "@/components/features/articles/ImageSliderControls";
-import { clampImageShade, imageBlockItems } from "@/lib/articleImageBlock";
+import { imageBlockItems, imageShadeLayer } from "@/lib/articleImageBlock";
 import { IMAGE_SLIDER_DELAY, IMAGE_SLIDER_HEIGHT, blockChildren, blockHoldsBlocks, flattenArticleBlocks, imageOverlayChildren, imageSliderChildren, isMergedBlock, mergedChildren, sanitizeMergedGrid } from "@/lib/articleBlockTypes";
 
 const ordered = (values, map) => (Array.isArray(values) ? values : values ? [values] : []).map((id) => map?.[String(id)]).filter(Boolean);
@@ -333,15 +333,20 @@ function ImageBlock({ data, spacing, inMerged = false, overlay = [] }) {
   if (!items.length) return null;
   const cols = Math.min(items.length, 4);
   const sizes = cols === 1 ? "(max-width: 1024px) 100vw, 1200px" : `(max-width: 640px) 100vw, ${Math.ceil(100 / cols)}vw`;
-  const shade = clampImageShade(data.shade);
-  const layered = shade > 0 || overlay.length > 0;
+  // لایه‌ی رنگ (ساده یا گرادیان) با شدت در آلفای خودِ رنگ‌ها — imageShadeLayer.
+  const shade = imageShadeLayer(data);
+  const layered = Boolean(shade) || overlay.length > 0;
   const grid = <div className={cols === 1 ? "" : `grid gap-3 ${inMerged ? slotGrid(items.length, SLOT_TILES) : `grid-cols-1 ${IMAGE_GRID_COLS[cols]}`}`}>
     {items.map((item, index) => <ImageTile key={`${item.url}-${index}`} item={item} height={data.displayHeight} sizes={sizes} />)}
   </div>;
   return <figure className={blockSection} style={spacing || undefined}>
-    {layered ? <div className="relative overflow-hidden rounded-[var(--radius)]">
+    {/* «پشتِ تصویر» پس‌زمینه‌ی خودِ همین قاب است، نه یک لایه‌ی absolute در ابتدای آن:
+        عنصرِ positioned همیشه *روی* محتوای غیرpositioned (شبکه‌ی تصویرها) رنگ می‌شود،
+        هر جای DOM که باشد. پس‌زمینه‌ی قاب زیرِ همه‌ی فرزندان است و فقط از جاهای
+        شفافِ تصویر (یا جایی که تصویر قاب را پر نکرده) دیده می‌شود. */}
+    {layered ? <div className="relative overflow-hidden rounded-[var(--radius)]" style={shade?.layer === "below" ? { background: shade.background } : undefined}>
       {grid}
-      {shade ? <div aria-hidden="true" className="pointer-events-none absolute inset-0 rounded-[var(--radius)]" style={{ backgroundColor: `rgba(0, 0, 0, ${shade / 100})` }} /> : null}
+      {shade?.layer === "above" ? <div aria-hidden="true" className="pointer-events-none absolute inset-0 rounded-[var(--radius)]" style={{ background: shade.background }} /> : null}
       {overlay.length ? <div className="a-image-overlay pointer-events-none absolute inset-0">
         {/* لایه‌ی مقیاس: بلوک‌ها در یک فضای مرجع چیده می‌شوند و بعد *یکجا* به
             اندازه‌ی قاب کوچک می‌شوند، پس هر چیزی — عرض، فاصله، تورفتگی، قلم —

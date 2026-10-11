@@ -277,7 +277,7 @@
 
    - یک سطح، یک مرز. کارت سفید با مرزِ ۱px؛ بلوک‌های تودرتو (ادغام، روی تصویر،
      اسلایدها) در یک «چاهک»ِ خاکستریِ روشن می‌نشینند، نه در قابِ دوم و سوم.
-   - نوعِ بلوک را کاشیِ آیکن می‌گوید (رنگِ گروه، کم‌اشباع)، نه سربرگِ رنگی و نوارِ لبه.
+   - نوعِ بلوک را رنگِ گروهش می‌گوید (کم‌اشباع): مرز و نوارِ ۴px لبه، زمینه‌ی سربرگ، آیکن.
    - کارهای کم‌کاربرد آرام‌اند: روی دستگاهِ ماوس‌دار فقط با هاور/فوکوسِ کارت دیده
      می‌شوند و جایشان خالی نمی‌شود (opacity، نه display)، پس چیزی جابه‌جا نمی‌پرد.
      روی لمس همیشه دیده می‌شوند. حذف جداست و فقط در هاور قرمز می‌شود.
@@ -299,22 +299,27 @@
 
 @layer components {
   /* ── کارت ── */
+  /* رنگِ نوعِ بلوک — همان سه قاعده‌ی پیش از بازطراحی (9e0b120) با همان پالت:
+     مرزِ کارت و نوارِ ۴px لبه‌ی شروع به رنگِ گروه، سربرگ روی رنگِ روشنِ گروه، و
+     خطِ زیرِ سربرگ به رنگِ گروه. بازطراحی این‌ها را خاکستری کرده بود و نوعِ
+     بلوک‌ها از هم تشخیص داده نمی‌شد؛ بقیه‌ی طراحیِ فشرده دست‌نخورده است. */
   .admin-scope .a-block-card {
     --admin-block-accent: #c8927b;
     --admin-block-tint: #fdf5f1;
     position: relative;
     background: var(--be-surface);
-    border: 1px solid var(--be-border);
+    border: 1px solid var(--admin-block-accent);
+    border-inline-start-width: 4px;
     border-radius: var(--be-radius);
     box-shadow: none;
     transition: border-color .15s ease, box-shadow .15s ease;
   }
-  .admin-scope .a-block-card:hover { border-color: var(--be-border-strong); }
+  .admin-scope .a-block-card:hover { box-shadow: var(--admin-shadow-sm); }
   /* فقط درونی‌ترین کارتِ فعال حلقه می‌گیرد؛ وگرنه ویرایشِ یک بلوکِ روی تصویر،
-     تصویر و ادغامِ بیرونش را هم هم‌زمان «انتخاب‌شده» نشان می‌داد. */
+     تصویر و ادغامِ بیرونش را هم هم‌زمان «انتخاب‌شده» نشان می‌داد. مرز رنگِ گروه
+     را نگه می‌دارد — انتخاب فقط حلقه است، تا نوعِ بلوک در حالِ ویرایش هم پیدا بماند. */
   .admin-scope .a-block-card:focus-within:not(:has(.a-block-card:focus-within)),
   .admin-scope .a-block-card[data-selected="true"] {
-    border-color: var(--color-primary);
     box-shadow: 0 0 0 3px var(--be-ring);
   }
 
@@ -326,10 +331,30 @@
     gap: 2px 4px;
     min-height: 40px;
     padding: 4px 6px;
-    border-radius: var(--be-radius) var(--be-radius) 0 0;
+    background: var(--admin-block-tint);
+    /* گوشه‌ی داخلی = گوشه‌ی بیرونی منهای پهنای مرزِ همان سمت (۴px شروع، ۱px پایان)،
+       تا زمینه‌ی رنگیِ سربرگ دقیقاً در قوسِ کارت بنشیند. */
+    border-start-start-radius: calc(var(--be-radius) - 4px);
+    border-start-end-radius: calc(var(--be-radius) - 1px);
   }
-  .admin-scope .be-head[data-open="false"] { border-radius: var(--be-radius); }
-  .admin-scope .be-head[data-open="true"] { border-bottom: 1px solid var(--be-border); }
+  .admin-scope .be-head[data-open="false"] {
+    border-end-start-radius: calc(var(--be-radius) - 4px);
+    border-end-end-radius: calc(var(--be-radius) - 1px);
+  }
+  .admin-scope .be-head[data-open="true"] { border-bottom: 1px solid var(--admin-block-accent); }
+  /* روی زمینه‌ی رنگیِ سربرگ، کاشیِ آیکن سفید است تا آیکنِ رنگِ گروه دیده شود
+     (کاشیِ کتابخانه‌ی بلوک همان زمینه‌ی روشنِ گروه را نگه می‌دارد). */
+  .admin-scope .be-head .be-icon {
+    background: var(--be-surface);
+    box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--admin-block-accent) 35%, transparent);
+  }
+  /* هاورِ دکمه‌های سربرگ از رنگِ گروه، نه خاکستری که روی زمینه‌ی رنگی گم می‌شد. */
+  .admin-scope .be-head .be-act:hover,
+  .admin-scope .be-head .be-grip:hover,
+  .admin-scope .be-head .be-index:hover,
+  .admin-scope .be-head .be-act[aria-haspopup="menu"][aria-expanded="true"] { background: color-mix(in srgb, var(--admin-block-accent) 16%, transparent); }
+  .admin-scope .be-head .be-act--danger:hover { background: #fbeceb; }
+  .admin-scope .be-head .be-sep { background: color-mix(in srgb, var(--admin-block-accent) 35%, transparent); }
   .admin-scope .be-icon {
     display: grid;
     place-items: center;
@@ -376,7 +401,7 @@
   .admin-scope .be-grip:focus-visible { outline: 2px solid var(--color-primary); outline-offset: 1px; }
   .admin-scope .be-act:disabled { opacity: .3; pointer-events: none; }
   .admin-scope .be-act--danger:hover { background: #fbeceb; color: var(--admin-danger); }
-  .admin-scope .be-act[aria-expanded="true"] { background: var(--be-hover); color: var(--admin-text); }
+  .admin-scope .be-act[aria-haspopup="menu"][aria-expanded="true"] { background: var(--be-hover); color: var(--admin-text); }
   .admin-scope .be-sep { width: 1px; height: 16px; margin: 0 2px; background: var(--be-border); }
   .admin-scope .be-grip {
     display: grid;
@@ -506,6 +531,87 @@
   }
   .admin-scope .be-upload:hover { border-color: var(--color-primary); color: var(--color-primary); background: var(--color-primary-soft); }
   .admin-scope .be-upload:focus-within { outline: 2px solid var(--color-primary); outline-offset: 1px; }
+  /* ── لایه‌ی رنگِ تصویر: سوییچ، رنگ، درصد، پیش‌نمایش ── */
+  .admin-scope .be-seg {
+    display: inline-flex;
+    gap: 2px;
+    height: var(--be-control-h);
+    padding: 2px;
+    background: var(--be-well);
+    border: 1px solid var(--be-border);
+    border-radius: var(--be-radius-sm);
+  }
+  .admin-scope .be-seg > button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 28px;
+    padding: 0 10px;
+    border-radius: 4px;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--be-muted);
+    white-space: nowrap;
+    transition: background-color .12s ease, color .12s ease;
+  }
+  .admin-scope .be-seg > button:hover { color: var(--admin-text); }
+  .admin-scope .be-seg > button[aria-checked="true"] { background: var(--be-surface); color: var(--admin-text); box-shadow: 0 1px 2px rgba(15, 26, 21, .12); }
+  .admin-scope .be-seg > button:focus-visible { outline: 2px solid var(--color-primary); outline-offset: 1px; }
+  .admin-scope .be-color,
+  .admin-scope .be-percent {
+    display: inline-flex;
+    align-items: center;
+    height: var(--be-control-h);
+    background: var(--be-surface);
+    border: 1px solid var(--be-border-strong);
+    border-radius: var(--be-radius-sm);
+    transition: border-color .12s ease, box-shadow .12s ease;
+  }
+  .admin-scope .be-color:focus-within,
+  .admin-scope .be-percent:focus-within { border-color: var(--color-primary); box-shadow: 0 0 0 3px var(--be-ring); }
+  .admin-scope .be-color[data-invalid],
+  .admin-scope .be-percent[data-invalid] { border-color: var(--admin-danger); box-shadow: 0 0 0 3px color-mix(in srgb, var(--admin-danger) 15%, transparent); }
+  .admin-scope .be-color-swatch {
+    width: 26px;
+    height: 22px;
+    margin-inline-start: 4px;
+    padding: 0;
+    border: 0;
+    border-radius: 4px;
+    background: none;
+    cursor: pointer;
+  }
+  .admin-scope .be-color-swatch::-webkit-color-swatch-wrapper { padding: 0; }
+  .admin-scope .be-color-swatch::-webkit-color-swatch { border: 1px solid rgba(0, 0, 0, .15); border-radius: 4px; }
+  .admin-scope .be-color-hex,
+  .admin-scope .be-percent > input {
+    width: 76px;
+    height: 100%;
+    padding: 0 8px;
+    background: transparent;
+    font-size: 12.5px;
+    font-variant-numeric: tabular-nums;
+    color: var(--admin-text);
+    outline: none;
+  }
+  /* direction صریح: globals.css در لایه‌ی base روی * می‌گذارد direction: rtl که از
+     ویژگیِ dir="ltr" می‌برد، و «#» ابتدای کد به انتهایش می‌پرید («e91e63#»). */
+  .admin-scope .be-color-hex { direction: ltr; text-align: left; text-transform: lowercase; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
+  .admin-scope .be-percent > input { width: 52px; text-align: center; appearance: textfield; }
+  /* دکمه‌های ریزِ بالا/پایین در کادرِ ۵۲px جا نمی‌شوند؛ کلیدهای ↑/↓ همچنان کار می‌کنند. */
+  .admin-scope .be-percent > input::-webkit-inner-spin-button,
+  .admin-scope .be-percent > input::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
+  .admin-scope .be-percent > span { padding-inline-end: 8px; font-size: 12px; color: var(--be-faint); }
+  /* پیش‌نمایش: شطرنجیِ ریز فقط برای «شفافیت»، زیرِ همه‌ی لایه‌ها. */
+  .admin-scope .be-shade-preview {
+    position: relative;
+    width: 84px;
+    height: 52px;
+    overflow: hidden;
+    border: 1px solid var(--be-border);
+    border-radius: var(--be-radius-sm);
+    background: repeating-conic-gradient(#eef0ec 0% 25%, #fff 0% 50%) 50% / 12px 12px;
+  }
   .admin-scope .be-check { display: flex; align-items: center; gap: 8px; height: var(--be-control-h); font-size: 12px; font-weight: 600; color: var(--be-muted); }
   .admin-scope .be-unit { flex-shrink: 0; font-size: 11px; color: var(--be-faint); }
 

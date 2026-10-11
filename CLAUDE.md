@@ -831,9 +831,38 @@ Layers, in DOM order inside one `relative` stack:
 
 | | |
 |---|---|
+| *(colour layer “below”)* | the `background` of the `relative` frame itself |
 | the image (or the grid of images) | unchanged |
-| `data.shade` — 0–90%, step 5 | an independent `rgba(0,0,0,x)` layer, `aria-hidden`, `pointer-events-none` |
+| colour layer “above” (default) | an independent layer, `aria-hidden`, `pointer-events-none` |
 | `data.blocks` | a `grid` layer whose `align-content` is `data.contentPosition` |
+
+**The colour layer** (`imageShadeLayer` / `imageShadeSettings` in `articleImageBlock.js`,
+read by both the renderer and the editor's live preview):
+
+| key | values | default (never stored) |
+|---|---|---|
+| `shade` | integer 0–100 — opacity, applied as the **alpha of the colours** | 0 = no layer at all |
+| `shadeMode` | `"gradient"` | solid |
+| `shadeColor` / `shadeColor2` | `#rrggbb` (`normalizeHexColor` accepts `#abc`, `abc`) | `#000000` / `#ffffff` |
+| `shadeDirection` | `to-bottom` · `to-top` · `to-right` · `to-left` | `to-bottom` |
+| `shadeLayer` | `"below"` | above |
+
+Content saved before this has only `shade` (multiples of 5, ≤ 90) and renders
+`rgba(0, 0, 0, shade/100)` above the image exactly as before — no migration. The second
+colour and the direction are kept even in solid mode, so switching back to gradient loses
+nothing.
+
+**“Below” is the frame's own background, not an absolute layer placed first.** A
+positioned element paints over non-positioned content regardless of DOM order, so an
+`absolute inset-0` layer before the image grid would still cover the image. The frame's
+background sits under every child and shows only through transparent pixels (or where the
+image doesn't fill the frame); overlay blocks and the “above” layer are untouched.
+
+The editor control (`ImageShadeField`) is compact: solid/gradient and above/below switches,
+a typed 0–100 % (invalid input is flagged and never stored), colour picker + hex box per
+colour (`.be-color-hex` forces `direction: ltr` — `globals.css` sets `* { direction: rtl }`
+in its base layer, which beats `dir="ltr"`), direction arrows only in gradient mode, and a
+preview tile drawn with the same `imageShadeLayer`.
 
 Rules that are load-bearing:
 
@@ -841,7 +870,7 @@ Rules that are load-bearing:
   a `<Link>`; a button or card inside it is invalid HTML and steals the click.
 - **The block layer is `pointer-events-none` and each cell is `pointer-events-auto`**, so
   the image's own link still works in the gaps between blocks.
-- **The shade is its own layer, not `opacity` on anything.** Opacity would fade the nested
+- **The colour layer is its own layer (or the frame background), never `opacity` on anything.** Opacity would fade the nested
   blocks' colours too, which is exactly what the shade exists to prevent.
 - **Vertical placement is `content-*` on a grid, not `justify-*` on a flex column.** On a
   flex column `align-self` means *horizontal*, and the layout box's `alignY` would silently
@@ -1159,7 +1188,7 @@ rule is unlayered and would beat every layered card state.
 | element | rule |
 |---|---|
 | card | white, 1px border; only the innermost focused card gets the ring (`:focus-within:not(:has(.a-block-card:focus-within))`) |
-| type | the group colour sits on the icon tile only (`--admin-block-tint`/`--admin-block-accent`) |
+| type | the group colour, as before the redesign: card border + 4px leading stripe in `--admin-block-accent`, header on `--admin-block-tint` with an accent divider, accent icon on a white tile. Selection is a ring only, so the type colour stays visible while editing |
 | header | grip · position · icon + name (summary when collapsed) · up/down/duplicate (`be-quiet`: hover/focus on mouse devices, inside «⋯» on phones) · appearance · «⋯» (move to position, copy to another document) · delete (separated, red on hover) · collapse |
 | nested editors | `mergedBlocks` / `imageSliderBlocks` render in a grey `.be-well`, not a second frame; slider children are titled «اسلاید n» |
 | `advanced: true` (registry) | grouped in one closed «تنظیمات بیشتر» at the position of the last advanced field, with a dot when any of them is set — image height/darkness, button icon/size/placement |

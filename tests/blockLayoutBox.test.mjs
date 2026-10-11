@@ -321,14 +321,22 @@ test("هر گروهِ بلوک، هم نامِ لاتین دارد هم رنگ",
 test("سربرگِ کارت رنگِ ثابت ندارد و از گروه می‌خواند", async () => {
   const editor = await read("../src/components/admin/articles/BlockEditor.jsx");
   assert.match(editor, /data-block-group=\{BLOCK_GROUP_SLUGS\[definition\?\.group\] \|\| "content"\}/);
-  // رنگِ گروه روی کاشیِ آیکنِ سربرگ است (.be-icon از --admin-block-tint/accent می‌خواند)؛
-  // رنگِ ثابت روی سربرگ آن را می‌پوشاند.
+  // رنگِ گروه روی کارت و سربرگ (admin-theme.css)؛ کلاسِ رنگِ ثابت روی سربرگ آن را می‌پوشاند.
   const at = editor.indexOf('<header className="be-head"');
   assert.ok(at > 0, "سربرگِ کارت باید از کلاسِ مشترکِ be-head بخواند");
   assert.ok(!editor.slice(at, at + 200).includes("bg-"));
   assert.match(editor, /<span className="be-icon" aria-hidden="true"><Icon \/><\/span>/);
+  // بازطراحی یک بار همه‌ی کارت‌ها را خاکستری کرد و نوعِ بلوک‌ها گم شد: مرز و نوارِ لبه،
+  // زمینه‌ی سربرگ و خطِ زیرش باید از رنگِ گروه بخوانند.
   const css = await read("../src/styles/admin-theme.css");
-  assert.match(css, /\.be-icon \{[^}]*background: var\(--admin-block-tint\);[^}]*color: var\(--admin-block-accent\);/);
+  const rule = (selector) => css.slice(css.indexOf(`${selector} {`)).split("}")[0];
+  assert.match(rule(".admin-scope .a-block-card"), /border: 1px solid var\(--admin-block-accent\);/);
+  assert.match(rule(".admin-scope .a-block-card"), /border-inline-start-width: 4px;/);
+  assert.match(rule(".admin-scope .be-head"), /background: var\(--admin-block-tint\);/);
+  assert.match(rule('.admin-scope .be-head[data-open="true"]'), /border-bottom: 1px solid var\(--admin-block-accent\);/);
+  assert.match(css, /\.be-icon \{[^}]*color: var\(--admin-block-accent\);/);
+  // انتخاب فقط حلقه است؛ مرز رنگِ گروه را از دست نمی‌دهد.
+  assert.doesNotMatch(css.slice(css.indexOf(".a-block-card:focus-within"), css.indexOf("/* ── سربرگ ── */")), /border-color/);
 });
 
 // ——— اسلایدرِ بلوکِ ادغام‌شده و تیترِ تنادور ————————————————————————————

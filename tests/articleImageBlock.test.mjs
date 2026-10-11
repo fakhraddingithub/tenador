@@ -10,7 +10,7 @@ import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import { sanitizeArticleBlockData } from "../src/lib/articleBlockValidation.js";
 import { register } from "node:module";
-import { imageBlockItems, mirrorFirstImage } from "../src/lib/articleImageBlock.js";
+import { imageBlockItems, imageShadeLayer, imageShadeSettings, mirrorFirstImage, normalizeHexColor } from "../src/lib/articleImageBlock.js";
 
 // articleValidation با نام‌های مستعار (base/ و @/) به بقیه ارجاع می‌دهد.
 register("./aliasHooks.mjs", import.meta.url);
@@ -104,8 +104,10 @@ test("لایه‌ی تیره و جای محتوا: پیش‌فرض ذخیره ن
     assert.equal("shade" in sanitize({ url: URL1, shade: blank }).out, false, String(blank));
   }
   assert.equal(sanitize({ url: URL1, shade: 40 }).out.shade, 40);
-  assert.equal(sanitize({ url: URL1, shade: 43 }).out.shade, 45, "روی پله‌ی ۵تایی می‌نشیند");
-  assert.equal(sanitize({ url: URL1, shade: 500 }).out.shade, 90, "سقف ۹۰ است تا تصویر کاملاً سیاه نشود");
+  // درصدِ دقیق (۰ تا ۱۰۰، عددِ صحیح) — پیش‌تر پله‌ی ۵ و سقفِ ۹۰ بود.
+  assert.equal(sanitize({ url: URL1, shade: 43 }).out.shade, 43);
+  assert.equal(sanitize({ url: URL1, shade: 42.6 }).out.shade, 43);
+  assert.equal(sanitize({ url: URL1, shade: 500 }).out.shade, 100);
   assert.equal("contentPosition" in sanitize({ url: URL1, contentPosition: "center" }).out, false);
   assert.equal("contentPosition" in sanitize({ url: URL1, contentPosition: "sideways" }).out, false);
   assert.equal(sanitize({ url: URL1, contentPosition: "bottom" }).out.contentPosition, "bottom");
@@ -155,8 +157,8 @@ test("renderer: plain blocks keep the legacy markup path; links open in the same
   // داخلش هم HTML نامعتبر است هم کلیک را می‌دزدد.
   assert.match(src, /overlay\.length \? <div className="a-image-overlay pointer-events-none absolute inset-0">/);
   assert.match(src, /pointer-events-auto min-w-0/);
-  // لایه‌ی تیره لایه‌ی خودش است، نه opacity روی محتوا.
-  assert.match(src, /backgroundColor: `rgba\(0, 0, 0, \$\{shade \/ 100\}\)`/);
+  // لایه‌ی رنگ لایه‌ی خودش است، نه opacity روی محتوا.
+  assert.match(src, /const shade = imageShadeLayer\(data\);/);
   assert.match(src, /block\.type === "image" && data\.url\) return <figure key=\{block\.id\} className=\{blockSection\} style=\{v\.spacing \|\| undefined\}><Image src=\{data\.url\} alt=\{data\.alt \|\| "تصویر مقاله"\} width=\{data\.width \|\| 1600\} height=\{data\.height \|\| 900\}/);
   const tile = src.slice(src.indexOf("function ImageTile"), src.indexOf("function ImageBlock"));
   assert.doesNotMatch(tile, /target=/);
@@ -215,9 +217,9 @@ test("هیچ بلوکی زیرِ تصویر رنگِ توپُر نمی‌گذا�
   const tile = branch("function ImageTile", "function ImageBlock");
   assert.doesNotMatch(tile, /\bbg-/);
   const imageBlock = branch("function ImageBlock", "const BUTTON_SIZE_CLASS");
-  // تنها رنگِ مجاز، لایه‌ی تیره‌ای است که ادمین خودش خواسته (data.shade).
+  // تنها رنگِ مجاز، لایه‌ای است که ادمین خودش خواسته (data.shade*).
   assert.doesNotMatch(imageBlock, /\bbg-(?!\[)/);
-  assert.match(imageBlock, /backgroundColor: `rgba\(0, 0, 0, \$\{shade \/ 100\}\)`/);
+  assert.match(imageBlock, /style=\{\{ background: shade\.background \}\}/);
   // و اسلایدر فقط اندازه را ثابت می‌کند، رنگ نمی‌گذارد.
   const css = await readFile(new URL("../src/app/globals.css", import.meta.url), "utf8");
   const slide = css.slice(css.indexOf(".a-slider {"), css.indexOf(".a-slide figcaption"));
@@ -234,5 +236,60 @@ test("لودرِ ImageKit شفافیت را صاف نمی‌کند", async () =>
   // bg-… پارامترِ ImageKit است و ناحیه‌ی شفاف را با رنگ پر می‌کند؛ هرگز ساخته نشود.
   assert.doesNotMatch(src, /`bg-/);
   assert.doesNotMatch(src, /"bg-/);
+});
+
+// ——— لایه‌ی رنگ: رنگ، گرادیان، جا، شدت ——————————————————————————————
+test("لایه‌ی رنگ: محتوای قدیمی دقیقاً همان لایه‌ی سیاهِ روی تصویر را می‌گیرد", () => {
+  // بلوکی که فقط shade دارد (همه‌ی محتوای پیش از این تغییر) همان rgba قبلی را می‌دهد.
+  assert.deepEqual(imageShadeLayer({ shade: 40 }), { layer: "above", background: "rgba(0, 0, 0, 0.4)" });
+  assert.deepEqual(imageShadeLayer({ shade: 35 }), { layer: "above", background: "rgba(0, 0, 0, 0.35)" });
+  // بدونِ شدت، هیچ لایه‌ای — حتی اگر رنگ یا جا تنظیم شده باشد.
+  assert.equal(imageShadeLayer({}), null);
+  assert.equal(imageShadeLayer({ shade: 0, shadeColor: "#ff0000", shadeLayer: "below" }), null);
+  assert.deepEqual(imageShadeSettings({}), { shade: 0, mode: "solid", layer: "above", color: "#000000", color2: "#ffffff", direction: "to-bottom" });
+});
+
+test("لایه‌ی رنگ: شدت در آلفای رنگ‌هاست، گرادیان در هر چهار جهت، و پشتِ تصویر", () => {
+  assert.equal(imageShadeLayer({ shade: 60, shadeColor: "#aa4725" }).background, "rgba(170, 71, 37, 0.6)");
+  const directions = { "to-bottom": "to bottom", "to-top": "to top", "to-right": "to right", "to-left": "to left" };
+  for (const [key, css] of Object.entries(directions)) {
+    assert.equal(
+      imageShadeLayer({ shade: 50, shadeMode: "gradient", shadeColor: "#ff0000", shadeColor2: "#0000ff", shadeDirection: key }).background,
+      `linear-gradient(${css}, rgba(255, 0, 0, 0.5), rgba(0, 0, 255, 0.5))`,
+    );
+  }
+  assert.equal(imageShadeLayer({ shade: 100, shadeLayer: "below", shadeColor: "#ffffff" }).layer, "below");
+  assert.equal(imageShadeLayer({ shade: 100, shadeLayer: "below", shadeColor: "#ffffff" }).background, "rgba(255, 255, 255, 1)");
+});
+
+test("لایه‌ی رنگ: پاک‌سازی فقط مقدارِ معتبر و غیرپیش‌فرض را نگه می‌دارد", () => {
+  assert.equal(normalizeHexColor("#ABC"), "#aabbcc");
+  assert.equal(normalizeHexColor("12ab9F"), "#12ab9f");
+  for (const bad of ["", "#12", "red", "#gggggg", "rgb(0,0,0)", null, 42]) assert.equal(normalizeHexColor(bad), null, String(bad));
+
+  // پیش‌فرض‌ها ذخیره نمی‌شوند: بلوکِ قدیمی همان داده‌ی قبلی را دارد.
+  const plain = sanitize({ url: URL1, shade: 40, shadeColor: "#000000", shadeColor2: "#FFFFFF", shadeMode: "solid", shadeDirection: "to-bottom", shadeLayer: "above" }).out;
+  for (const key of ["shadeColor", "shadeColor2", "shadeMode", "shadeDirection", "shadeLayer"]) assert.equal(key in plain, false, key);
+
+  const full = sanitize({ url: URL1, shade: 70, shadeColor: "#F00", shadeColor2: "00ff00", shadeMode: "gradient", shadeDirection: "to-left", shadeLayer: "below" }).out;
+  assert.deepEqual(
+    { shade: full.shade, shadeColor: full.shadeColor, shadeColor2: full.shadeColor2, shadeMode: full.shadeMode, shadeDirection: full.shadeDirection, shadeLayer: full.shadeLayer },
+    { shade: 70, shadeColor: "#ff0000", shadeColor2: "#00ff00", shadeMode: "gradient", shadeDirection: "to-left", shadeLayer: "below" },
+  );
+
+  const junk = sanitize({ url: URL1, shade: 30, shadeColor: "red", shadeColor2: "#12", shadeMode: "radial", shadeDirection: "diagonal", shadeLayer: "behind" }).out;
+  for (const key of ["shadeColor", "shadeColor2", "shadeMode", "shadeDirection", "shadeLayer"]) assert.equal(key in junk, false, key);
+});
+
+test("لایه‌ی رنگ: «پشتِ تصویر» پس‌زمینه‌ی قاب است، «روی تصویر» لایه‌ی جدا", async () => {
+  const src = await readFile(new URL("../src/components/features/articles/ArticleBlockRenderer.jsx", import.meta.url), "utf8");
+  const body = src.slice(src.indexOf("function ImageBlock"), src.indexOf("const BUTTON_SIZE_CLASS"));
+  // عنصرِ absolute همیشه روی شبکه‌ی غیرpositionedِ تصویرها رنگ می‌شود؛ پس «پشت»
+  // پس‌زمینه‌ی خودِ قاب است، و «روی» همان لایه‌ی absoluteِ قبلی.
+  assert.match(body, /<div className="relative overflow-hidden rounded-\[var\(--radius\)\]" style=\{shade\?\.layer === "below" \? \{ background: shade\.background \} : undefined\}>/);
+  assert.match(body, /\{shade\?\.layer === "above" \? <div aria-hidden="true" className="pointer-events-none absolute inset-0/);
+  // و ویرایشگر همان تابع را برای پیش‌نمایش می‌خواند.
+  const editor = await readFile(new URL("../src/components/admin/articles/BlockEditor.jsx", import.meta.url), "utf8");
+  assert.match(editor, /const layer = imageShadeLayer\(data\);/);
 });
 

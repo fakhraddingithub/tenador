@@ -2,7 +2,7 @@ import mongoose from "mongoose";
 // نسبی، نه با نامک @: این فایل مستقیم زیر node هم تست می‌شود.
 import { normalizeFontSizePx, richTextValue } from "./sanitizeRichText.js";
 import {
-  IMAGE_CONTENT_POSITIONS, IMAGE_DISPLAY_HEIGHT, MAX_IMAGE_BLOCK_ITEMS, clampImageShade, mirrorFirstImage, normalizeImageHref,
+  IMAGE_CONTENT_POSITIONS, IMAGE_DISPLAY_HEIGHT, IMAGE_SHADE_DEFAULTS, IMAGE_SHADE_DIRECTIONS, MAX_IMAGE_BLOCK_ITEMS, clampImageShade, mirrorFirstImage, normalizeHexColor, normalizeImageHref,
 } from "./articleImageBlock.js";
 import { FAQ_ANSWER_ALIGNS, IMAGE_SLIDER_DELAY, IMAGE_SLIDER_HEIGHT } from "./articleBlockTypes.js";
 
@@ -155,6 +155,15 @@ function imageBlock(data, errors, field) {
   // با همان اعتبارسنجی‌ای که بیرون دارند.
   const shade = clampImageShade(data.shade);
   if (shade) result.shade = shade;
+  // رنگ، گرادیان و جای لایه: فقط مقدارِ معتبر و غیرپیش‌فرض نوشته می‌شود. رنگِ دوم و
+  // جهت حتی در حالتِ «رنگِ ساده» نگه داشته می‌شوند تا برگشتن به گرادیان آن‌ها را گم نکند.
+  const colour = normalizeHexColor(data.shadeColor);
+  if (colour && colour !== IMAGE_SHADE_DEFAULTS.color) result.shadeColor = colour;
+  const colour2 = normalizeHexColor(data.shadeColor2);
+  if (colour2 && colour2 !== IMAGE_SHADE_DEFAULTS.color2) result.shadeColor2 = colour2;
+  if (data.shadeMode === "gradient") result.shadeMode = "gradient";
+  if (data.shadeDirection !== IMAGE_SHADE_DEFAULTS.direction && IMAGE_SHADE_DIRECTIONS.includes(data.shadeDirection)) result.shadeDirection = data.shadeDirection;
+  if (data.shadeLayer === "below") result.shadeLayer = "below";
   if (data.contentPosition !== "center" && IMAGE_CONTENT_POSITIONS.includes(data.contentPosition)) result.contentPosition = data.contentPosition;
   return result;
 }
