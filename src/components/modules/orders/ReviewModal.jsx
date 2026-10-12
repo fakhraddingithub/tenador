@@ -5,6 +5,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { FaTimes, FaCheckCircle, FaCamera, FaTrash } from "react-icons/fa";
 import { toast } from "react-toastify";
 import RatingStars from "@/components/reviews/RatingStars";
+import { reviewRequest } from "@/lib/reviewRequest";
 
 const MIN_TEXT = 3;
 const MAX_TEXT = 1000;
@@ -27,6 +28,10 @@ export default function ReviewModal({ order, product, onClose, onDone }) {
   const [text, setText] = useState("");
   const [images, setImages] = useState([]);
   const [submitting, setSubmitting] = useState(false);
+  const [stage, setStage] = useState("");
+  const [submitError, setSubmitError] = useState("");
+  const inFlight = useRef(false);
+  const uploadedUrls = useRef(new WeakMap());
   const previewUrls = useRef(new Set());
   const isUsedProduct = product.reviewType === "used_product";
 
@@ -80,6 +85,8 @@ export default function ReviewModal({ order, product, onClose, onDone }) {
   async function uploadImages() {
     return Promise.all(
       images.map(async ({ file }) => {
+        const cachedUrl = uploadedUrls.current.get(file);
+        if (cachedUrl) return cachedUrl;
         const formData = new FormData();
         formData.append("file", file);
         formData.append(
@@ -87,15 +94,20 @@ export default function ReviewModal({ order, product, onClose, onDone }) {
           isUsedProduct ? "used-product-reviews" : "product-reviews"
         );
 
-        const response = await fetch("/api/upload", {
+        const { response, data: result } = await reviewRequest("/api/upload", {
           method: "POST",
           body: formData,
           credentials: "include",
+        }, {
+          timeoutMs: 60000,
+          timeoutMessage: "آپلود تصویر بیش از حد طول کشید. اتصال اینترنت را بررسی کنید و دوباره تلاش کنید؛ متن و عکس‌های شما حفظ شده‌اند.",
         });
-        const result = await response.json().catch(() => ({}));
         if (!response.ok || !result.url) {
-          throw new Error(result.error || "آپلود یکی از تصاویر ناموفق بود");
+          throw new Error(result.error || (response.status === 413
+            ? "حجم تصویر برای ارسال زیاد است؛ لطفاً عکس کم‌حجم‌تری انتخاب کنید."
+            : "آپلود یکی از تصاویر ناموفق بود؛ لطفاً دوباره تلاش کنید."));
         }
+        uploadedUrls.current.set(file, result.url);
         return result.url;
       })
     );
@@ -103,14 +115,18 @@ export default function ReviewModal({ order, product, onClose, onDone }) {
 
   async function handleSubmit(e) {
     e.preventDefault();
-    if (!valid || submitting) return;
+    if (!valid || inFlight.current) return;
 
+    inFlight.current = true;
     setSubmitting(true);
+    setSubmitError("");
     try {
       // آپلود عمداً پیش از ثبتِ نظر انجام می‌شود: اگر شکست بخورد، اصلاً نظری
       // ساخته نمی‌شود و کاربر با همان متن و همان عکس‌ها دوباره تلاش می‌کند.
+      setStage(images.length > 0 ? "در حال بارگذاری تصاویر…" : "در حال ثبت نظر…");
       const uploadedImages = images.length > 0 ? await uploadImages() : [];
-      const res = await fetch("/api/comments", {
+      setStage("در حال ثبت نظر…");
+      const { response: res, data } = await reviewRequest("/api/comments", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
@@ -123,10 +139,15 @@ export default function ReviewModal({ order, product, onClose, onDone }) {
           rating: rating || undefined,
           images: uploadedImages,
         }),
+      }, {
+        timeoutMs: 30000,
+        timeoutMessage: "پاسخ ثبت نظر دریافت نشد؛ ممکن است نظر ثبت شده باشد. دوباره تلاش کنید؛ نظر تکراری ثبت نمی‌شود.",
       });
-      const data = await res.json().catch(() => ({}));
 
       if (res.ok) {
+        if (!data.comment?.id) {
+          throw new Error("پاسخ معتبر ثبت نظر دریافت نشد؛ لطفاً دوباره تلاش کنید.");
+        }
         toast.success(data.message || "نظر شما ثبت شد");
         onDone?.(product.reviewKey || `product:${product._id}`);
         onClose();
@@ -135,11 +156,16 @@ export default function ReviewModal({ order, product, onClose, onDone }) {
         onDone?.(product.reviewKey || `product:${product._id}`);
         onClose();
       } else {
-        toast.error(data.message || "خطا در ثبت نظر");
+        throw new Error(data.message || "خطا در ثبت نظر؛ لطفاً دوباره تلاش کنید.");
       }
     } catch (error) {
-      toast.error(error.message || "خطا در ارتباط با سرور");
+      const message = error instanceof TypeError
+        ? "ارتباط با سرور برقرار نشد؛ اتصال اینترنت را بررسی کنید و دوباره تلاش کنید."
+        : error.message || "خطا در ارتباط با سرور";
+      setSubmitError(message);
+      toast.error(message);
     } finally {
+      inFlight.current = false;
       setSubmitting(false);
     }
   }
@@ -199,7 +225,7 @@ export default function ReviewModal({ order, product, onClose, onDone }) {
             {/* امتیاز */}
             <div className="flex items-center gap-3">
               <span className="text-xs font-medium text-gray-500">امتیاز شما:</span>
-              <RatingStars value={rating} onChange={setRating} size={24} />
+              <RatingStars value={rating} onChange={submitting ? undefined : setRating} size={24} />
             </div>
 
             {/* متن */}
@@ -210,6 +236,7 @@ export default function ReviewModal({ order, product, onClose, onDone }) {
               <textarea
                 id="order-review-text"
                 value={text}
+                disabled={submitting}
                 onChange={(e) => setText(e.target.value)}
                 maxLength={MAX_TEXT}
                 rows={4}
@@ -237,6 +264,7 @@ export default function ReviewModal({ order, product, onClose, onDone }) {
                     افزودن عکس
                     <input
                       type="file"
+                      disabled={submitting}
                       accept="image/jpeg,image/png,image/webp,image/avif"
                       multiple
                       className="sr-only"
@@ -260,6 +288,7 @@ export default function ReviewModal({ order, product, onClose, onDone }) {
                       />
                       <button
                         type="button"
+                        disabled={submitting}
                         onClick={() => removeImage(index)}
                         aria-label="حذف تصویر"
                         className="absolute left-1 top-1 flex h-6 w-6 items-center justify-center rounded-full bg-black/65 text-[10px] text-white transition hover:bg-red-600"
@@ -272,6 +301,11 @@ export default function ReviewModal({ order, product, onClose, onDone }) {
               )}
             </div>
 
+            {submitError && (
+              <p role="alert" className="text-sm leading-relaxed text-red-700">
+                {submitError}
+              </p>
+            )}
             <button
               type="submit"
               disabled={!valid || submitting}
@@ -280,7 +314,7 @@ export default function ReviewModal({ order, product, onClose, onDone }) {
               {submitting && (
                 <span className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-white/40 border-t-white" />
               )}
-              {submitting ? "در حال ثبت…" : "ثبت نظر"}
+              {submitting ? stage : "ثبت نظر"}
             </button>
             <p className="text-center text-[11px] text-gray-400">
               نظر شما پس از تأیید مدیر نمایش داده می‌شود.
