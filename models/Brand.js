@@ -1,7 +1,7 @@
 import mongoose from "mongoose";
 import { createSlug } from "base/utils/slugify";
 import Serie from "base/models/Serie";
-import { ArticleBlockSchema } from "base/models/articleSchemas";
+import { ArticleBlockSchema, BrochureSchema } from "base/models/articleSchemas";
 
 const schema = new mongoose.Schema(
   {
@@ -49,14 +49,7 @@ const schema = new mongoose.Schema(
     // است — جای محتوای صفحه‌ی برند را می‌گیرد. پیش‌نویس هرگز عمومی نمی‌شود.
     // select:false مثل بقیه‌ی محتواهای بلوکی، تا در ناوبار/محصول/سری حمل نشود.
     brochure: {
-      type: new mongoose.Schema(
-        {
-          status: { type: String, enum: ["draft", "published"], default: "draft" },
-          blocks: { type: [ArticleBlockSchema], default: [] },
-          updatedAt: { type: Date, default: Date.now },
-        },
-        { _id: false, minimize: false },
-      ),
+      type: BrochureSchema,
       default: undefined,
       select: false,
     },

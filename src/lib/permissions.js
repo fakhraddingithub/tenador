@@ -1087,6 +1087,8 @@ export const ADMIN_ROUTE_PERMISSIONS = {
   "/p-admin/admin-sports/add": ["sports.create"],
   "/p-admin/admin-sports/edit/[sportId]": ["sports.edit"],
   "/p-admin/admin-sports/[sportId]": ["sports.view"],
+  "/p-admin/admin-sports/[sportId]/brochure": ["sports.edit"],
+  "/p-admin/admin-sports/[sportId]/brochure/preview": ["sports.edit"],
   "/p-admin/admin-sports/[sportId]/athletes": ["athletes.view"],
 
   // مالی

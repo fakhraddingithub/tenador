@@ -7,6 +7,7 @@ import { FiArrowRight, FiUploadCloud, FiSave, FiLoader, FiType, FiFileText, FiIm
 import { toast, ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import AdminLoader from '@/components/admin/AdminLoader';
+import BrochureCard from '@/components/admin/brochure/BrochureCard';
 import { invalidateAdminCache } from '@/lib/adminCache';
 
 const NAME_REGEX = /^[a-zA-Z0-9\s\-_]+$/;
@@ -18,6 +19,9 @@ export default function EditSport() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [uploadingType, setUploadingType] = useState(null); // 'icon' or 'image'
+  // فقط وضعیتِ بروشور (draft/published/null) برای کارتِ بروشور؛ خودِ بروشور در
+  // صفحه‌ی خودش ویرایش و ذخیره می‌شود، جدا از این فرم.
+  const [brochureStatus, setBrochureStatus] = useState(null);
 
   const [formData, setFormData] = useState({
     name: '',
@@ -41,6 +45,7 @@ export default function EditSport() {
             icon: s.icon || '',
             image: s.image || '',
           });
+          setBrochureStatus(data.brochureStatus || null);
         }
       } catch (error) {
         toast.error('خطا در بارگذاری اطلاعات ورزش');
@@ -251,6 +256,15 @@ export default function EditSport() {
               />
             </div>
           </div>
+
+          {/* بروشور: همان کارت و همان ویرایشگرِ بروشورِ برند. منتشرشده‌اش جای
+              صفحه‌ی ورزش را می‌گیرد؛ بدونِ آن صفحه همان فهرستِ محصولات است. */}
+          <BrochureCard
+            owner="sport"
+            ownerId={sportId}
+            status={brochureStatus}
+            className="bg-white p-8 rounded-[var(--radius)] border border-gray-100 shadow-sm"
+          />
 
           {/* دکمه‌های عملیاتی */}
           <div className="flex items-center justify-end gap-4">

@@ -10,6 +10,7 @@ export const BLOCK_DOCUMENT_TARGETS = [
   { collection: "articlerevisions", paths: ["blocks"] },
   { collection: "brands", paths: ["articleBlocks", "brochure.blocks"], arrayOfObjects: ["categoryArticles"] },
   { collection: "series", paths: ["articleBlocks"] },
+  { collection: "sports", paths: ["brochure.blocks"] },
 ];
 
 export const getBlockPath = (doc, path) => path.split(".").reduce((value, key) => (value ? value[key] : undefined), doc);

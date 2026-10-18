@@ -277,3 +277,107 @@ test("brochure: sanitiser keeps only the two statuses and runs blocks through th
     assert.equal(isBrochureLive(value), false, JSON.stringify(value));
   }
 });
+
+/* ── sport brochure: the same system, owned by a sport ─────────────────── */
+
+test("sport brochure: same rules as the brand's — draft never public, empty never live", async () => {
+  const { default: Sport } = await import("base/models/Sport");
+  const { getPublishedSportBrochure } = await import("base/services/miniArticle.service");
+
+  // a sport created before this feature has no brochure at all, and reads as such
+  const plain = await Sport.create({ name: "squash", title: "اسکواش" });
+  assert.equal(await getPublishedSportBrochure(plain._id), null);
+  assert.equal("brochure" in (await Sport.findById(plain._id).lean()), false);
+  assert.equal("brochure" in (await Sport.findById(plain._id).select("+brochure").lean()), false, "nothing is written for an existing sport");
+
+  const sport = await Sport.create({ name: "tennis", title: "تنیس", brochure: { status: "draft", blocks: [block("s-1")] } });
+  assert.equal(await getPublishedSportBrochure(sport._id), null, "draft is never public");
+  await Sport.updateOne({ _id: sport._id }, { $set: { "brochure.status": "published" } });
+  assert.deepEqual((await getPublishedSportBrochure(sport._id)).map((b) => b.id), ["s-1"]);
+  assert.deepEqual(await getPublishedSportBrochure(String(sport._id)), await getPublishedSportBrochure(sport._id));
+
+  // select:false — the page context, navbar and the public GET never carry it
+  assert.equal("brochure" in (await Sport.findOne({ slug: sport.slug }).lean()), false);
+
+  // the sport form's PUT loads the sport *without* the brochure and saves it;
+  // that must never erase the brochure (unselected paths are not written)
+  const edited = await Sport.findById(sport._id);
+  edited.title = "تنیس خاکی";
+  await edited.save();
+  assert.deepEqual((await getPublishedSportBrochure(sport._id)).map((b) => b.id), ["s-1"]);
+
+  await Sport.updateOne({ _id: sport._id }, { $set: { "brochure.blocks": [] } });
+  assert.equal(await getPublishedSportBrochure(sport._id), null, "published but empty keeps the product page");
+  assert.equal(await getPublishedSportBrochure(new mongoose.Types.ObjectId()), null);
+  assert.equal(await getPublishedSportBrochure("nonsense"), null);
+
+  // a sport brochure is never read as a brand brochure, and vice versa
+  const { getPublishedBrandBrochure } = await import("base/services/miniArticle.service");
+  await Sport.updateOne({ _id: sport._id }, { $set: { "brochure.blocks": [block("s-2")] } });
+  assert.equal(await getPublishedBrandBrochure(sport._id), null);
+});
+
+test("sport brochure: the card status, the shared schema and the owner registry", async () => {
+  const { brochureStatusOf } = await import("@/lib/brandBrochure");
+  assert.equal(brochureStatusOf(undefined), null);
+  assert.equal(brochureStatusOf({ status: "published", blocks: [] }), null, "no blocks → «بدون بروشور»");
+  assert.equal(brochureStatusOf({ status: "draft", blocks: [block("a")] }), "draft");
+  assert.equal(brochureStatusOf({ status: "published", blocks: [block("a")] }), "published");
+
+  const { default: Sport } = await import("base/models/Sport");
+  const { BrochureSchema } = await import("base/models/articleSchemas");
+  assert.equal(Sport.schema.path("brochure").schema, BrochureSchema, "sport uses the brand's brochure schema");
+  assert.equal(Brand.schema.path("brochure").schema, BrochureSchema);
+  assert.equal(Sport.schema.path("brochure").options.select, false);
+
+  const { BROCHURE_OWNERS } = await import("@/lib/brochureOwners");
+  assert.deepEqual(
+    ["api", "editor", "preview", "back"].map((key) => BROCHURE_OWNERS.sport[key]("s1")),
+    ["/api/sports/s1/brochure", "/p-admin/admin-sports/s1/brochure", "/p-admin/admin-sports/s1/brochure/preview", "/p-admin/admin-sports/edit/s1"],
+  );
+  assert.equal(BROCHURE_OWNERS.sport.permission, "sports.edit");
+  assert.equal(BROCHURE_OWNERS.brand.api("b1"), "/api/brands/b1/brochure", "the brand's URLs are unchanged");
+});
+
+test("sport brochure: wiring — routes, admin pages, edit form and the public sport page", async () => {
+  const { readFile } = await import("node:fs/promises");
+  const read = (path) => readFile(new URL(path, import.meta.url), "utf8");
+
+  // one implementation for both API routes, each behind its owner's edit key
+  for (const [file, model, permission] of [
+    ["../src/app/api/brands/[brandId]/brochure/route.js", "Brand", "brands.edit"],
+    ["../src/app/api/sports/[sportId]/brochure/route.js", "Sport", "sports.edit"],
+  ]) {
+    const src = await read(file);
+    assert.match(src, /brochureRouteHandlers\(\{/, file);
+    assert.match(src, new RegExp(`Model: ${model},`), file);
+    assert.match(src, new RegExp(`permission: "${permission}",`), file);
+    assert.match(src, /export const GET = handlers\.GET;/, file);
+    assert.match(src, /export const PUT = handlers\.PUT;/, file);
+  }
+  const shared = await read("../src/lib/brochureRoute.js");
+  assert.match(shared, /await requireAdminPermission\(permission\);/);
+  assert.equal((shared.match(/await requireAdminPermission\(permission\);/g) || []).length, 2, "GET and PUT are both gated");
+  assert.match(shared, /await purgeSportPagesCdn\(\);/, "/[sport] is CDN-cached; a save must purge it");
+
+  // the sport GET exposes only the status, never the blocks
+  const sportGet = await read("../src/app/api/sports/[sportId]/route.js");
+  assert.match(sportGet, /const brochureStatus = brochureStatusOf\(sport\.brochure\);\s*\r?\n\s*sport\.brochure = undefined;/);
+
+  const { ADMIN_ROUTE_PERMISSIONS } = await import("@/lib/permissions");
+  assert.deepEqual(ADMIN_ROUTE_PERMISSIONS["/p-admin/admin-sports/[sportId]/brochure"], ["sports.edit"]);
+  assert.deepEqual(ADMIN_ROUTE_PERMISSIONS["/p-admin/admin-sports/[sportId]/brochure/preview"], ["sports.edit"]);
+
+  const edit = await read("../src/app/(Admin-Panel)/p-admin/admin-sports/edit/[sportId]/page.jsx");
+  assert.match(edit, /<BrochureCard\s*\r?\n\s*owner="sport"\s*\r?\n\s*ownerId=\{sportId\}\s*\r?\n\s*status=\{brochureStatus\}/);
+  assert.match(edit, /setBrochureStatus\(data\.brochureStatus \|\| null\);/);
+
+  // the published brochure is checked before any listing work, and renders with
+  // the brand brochure's own component; without one the listing path is untouched
+  const page = await read("../src/app/(Site)/(sports)/[sportSlug]/page.jsx");
+  const brochureAt = page.indexOf("await getPublishedSportBrochure(ctx.filters.sport._id)");
+  const listingAt = page.indexOf("getPageDataBySlug(sportSlug, targetAudience)");
+  assert.ok(brochureAt > 0 && brochureAt < listingAt, "brochure check runs before the product listing");
+  assert.match(page.slice(brochureAt, listingAt), /import\("@\/components\/features\/brands\/BrandBrochure"\)/);
+  assert.match(page.slice(brochureAt, listingAt), /canonical=\{`\$\{SITE_URL\}\/\$\{sportSlug\}`\}/);
+});

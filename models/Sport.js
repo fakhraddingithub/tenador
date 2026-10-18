@@ -1,5 +1,6 @@
 import mongoose from "mongoose";
 import { createSlug } from "base/utils/slugify";
+import { BrochureSchema } from "base/models/articleSchemas";
 
 const schema = new mongoose.Schema(
   {
@@ -48,6 +49,15 @@ const schema = new mongoose.Schema(
       type: Number,
       default: 0,
       index: true,
+    },
+
+    // بروشورِ ورزش — همان BrochureSchema و همان قواعدِ بروشورِ برند: فقط نسخه‌ی
+    // «published» با دست‌کم یک بلوک جای صفحه‌ی ورزش را می‌گیرد. select:false تا
+    // در ناوبار، کانتکستِ صفحه و هر جای دیگری که ورزش خوانده می‌شود حمل نشود.
+    brochure: {
+      type: BrochureSchema,
+      default: undefined,
+      select: false,
     },
   },
   {

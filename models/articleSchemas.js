@@ -76,3 +76,15 @@ export const ArticleBlockSchema = new mongoose.Schema(
   { _id: false, minimize: false },
 );
 
+// بروشور: محتوای بلوکیِ تمام‌صفحه که — فقط وقتی status === "published" است — جای
+// محتوای صفحه‌ی صاحبش (برند، ورزش) را می‌گیرد. یک شِما برای همه، تا بروشورِ
+// ورزش دقیقاً همان قواعدِ بروشورِ برند را داشته باشد.
+export const BrochureSchema = new mongoose.Schema(
+  {
+    status: { type: String, enum: ["draft", "published"], default: "draft" },
+    blocks: { type: [ArticleBlockSchema], default: [] },
+    updatedAt: { type: Date, default: Date.now },
+  },
+  { _id: false, minimize: false },
+);
+

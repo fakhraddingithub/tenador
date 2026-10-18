@@ -7,6 +7,7 @@ import { FiArrowRight, FiPlusCircle, FiImage, FiActivity, FiType, FiFileText, Fi
 import { toast, ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import { invalidateAdminCache } from '@/lib/adminCache';
+import BrochureCard from '@/components/admin/brochure/BrochureCard';
 
 const NAME_REGEX = /^[a-zA-Z0-9\s\-_]+$/;
 
@@ -224,6 +225,10 @@ export default function AddSport() {
               />
             </div>
           </div>
+
+          {/* بروشور — مثلِ فرمِ افزودنِ برند: ورزشِ ثبت‌نشده هنوز شناسه ندارد، پس
+              کارت فقط راهنمایی می‌کند که پس از ذخیره ساختِ بروشور ممکن است. */}
+          <BrochureCard owner="sport" className="bg-white p-8 rounded-[var(--radius)] border border-gray-100 shadow-sm" />
 
           {/* دکمه‌ها */}
           <div className="flex items-center justify-end gap-4">

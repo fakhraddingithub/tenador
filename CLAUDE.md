@@ -504,6 +504,34 @@ The editor is `/p-admin/admin-brands/[brandId]/brochure` — the article `BlockE
 without the article-only sidebars (category, tags, cover, slug, SEO). The brand form links to it through
 `BrandBrochureCard` (the old "mini article" section).
 
+**Sport brochure** (`Sport.brochure`) is *the same system*, not a copy. Everything that differs
+between the two owners lives in one table, `BROCHURE_OWNERS` (`src/lib/brochureOwners.js`:
+noun, edit permission, API/editor/preview/back URLs); everything else is shared:
+
+| piece | shared implementation | brand | sport |
+|---|---|---|---|
+| schema | `BrochureSchema` (`models/articleSchemas.js`), `select: false`, `default: undefined` | `Brand.brochure` | `Sport.brochure` |
+| API | `brochureRouteHandlers` (`src/lib/brochureRoute.js`) — gate, `sanitizeBrandBrochure`, revalidate, `purgeSportPagesCdn()` | `/api/brands/[brandId]/brochure` (`brands.edit`) | `/api/sports/[sportId]/brochure` (`sports.edit`) |
+| public read | `getPublishedBrochure(Model, id)` in `miniArticle.service.js`, status filtered *in the query* | `getPublishedBrandBrochure` | `getPublishedSportBrochure` |
+| admin UI | `components/admin/brochure/` — `BrochureCard`, `BrochureEditor`, `BrochurePreview` (`owner` prop) | `Brand*` files are one-line wrappers | used directly |
+| render | `BrandBrochure` | root brand page | root sport page `/[sport]` |
+
+The root sport page checks for a published brochure **before** any listing work; with one it
+renders `TaxonomyStructuredData` + `BrandBrochure` (breadcrumbs included) instead of
+`SportPageClient` and the brands ticker, with the sport page's own URL, metadata and canonical;
+without one the listing path is byte-for-byte the old one. Only `/[sport]` is replaced —
+`/[sport]/[category]/…` never is. The sport save **must** purge the sport-pages CDN tag, since
+`/tennis` itself is CDN-cached for an hour. The edit form gets only `brochureStatus` from
+`GET /api/sports/[sportId]` (blocks stripped, same contract as the brand GET), and a form save
+loads the sport without the brochure, so it can never erase one. `BLOCK_DOCUMENT_TARGETS`
+includes `sports.brochure.blocks`, so block migrations walk sport brochures too.
+
+The editor refuses to show an empty editor when loading fails (missing owner, malformed id,
+no permission): saving that would have overwritten an existing brochure with nothing.
+
+Known, pre-existing: the global admin assistant's floating button sits on top of the
+editors' bottom-left floating «ذخیره»; the header «ذخیره» is unaffected.
+
 ```bash
 npm run test:mini-articles
 npm run test:cdn-purge

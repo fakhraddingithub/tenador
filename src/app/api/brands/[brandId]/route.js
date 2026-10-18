@@ -6,6 +6,7 @@ import { purgeSportPagesCdn, revalidateContent } from "@/lib/revalidate";
 import { apiError, handleApiError } from "@/lib/apiError";
 import { sanitizeArticleBlocks } from "@/lib/articleValidation";
 import { findMissingCategoryIds, sanitizeBrandCategoryArticles } from "@/lib/brandCategoryArticles";
+import { brochureStatusOf } from "@/lib/brandBrochure";
 import requireAdminPermission from "@/lib/requireAdminPermission";
 
 export async function GET(req, { params }) {
@@ -33,7 +34,7 @@ export async function GET(req, { params }) {
     brand.categoryArticles = brand.categoryArticles || [];
     // فقط *وضعیتِ* بروشور، برای نشان دادن روی دکمه‌ی صفحه‌ی برند؛ خودِ بلوک‌ها
     // از روتِ بروشور خوانده می‌شوند تا پاسخِ این روت بی‌دلیل سنگین نشود.
-    const brochureStatus = brand.brochure?.blocks?.length ? brand.brochure.status : null;
+    const brochureStatus = brochureStatusOf(brand.brochure);
     brand.brochure = undefined;
 
     return NextResponse.json({ brand, brochureStatus });

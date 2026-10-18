@@ -16,7 +16,7 @@ import TaxonomyStructuredData from "@/components/seo/TaxonomyStructuredData";
 import TaxonomyBreadcrumbs from "@/components/seo/TaxonomyBreadcrumbs";
 import { getBrandGroupedSections } from "base/services/brandGrouped.service";
 import { resolveArticleEntities } from "base/services/publicArticle.service";
-import { getPublishedBrandBrochure } from "base/services/miniArticle.service";
+import { getPublishedBrandBrochure, getPublishedSportBrochure } from "base/services/miniArticle.service";
 import { normalizeTargetAudience } from "base/utils/targetAudience";
 import { BRAND_SECTIONS_PER_BATCH } from "base/utils/groupedProductPagination";
 
@@ -186,6 +186,33 @@ export default async function DynamicSportPage({ params, searchParams }) {
               {miniArticleSection}
             </>
           }
+        />
+      </>
+    );
+  }
+
+  // بروشورِ *منتشرشده*ِ ورزش — دقیقاً همان قاعده‌ی بروشورِ برند: جای محتوای صفحه
+  // (فهرستِ محصولات، سری‌ها، نوارِ برندها) را می‌گیرد؛ آدرس، متادیتا، کانونیکال و
+  // داده‌ی ساختاری همان صفحه‌ی ورزش‌اند. پیش‌نویس هرگز اینجا نمی‌آید، و ورزشِ بدونِ
+  // بروشورِ منتشرشده دقیقاً مسیرِ قبلی را می‌رود (یک کوئریِ ایندکس‌دار روی _id).
+  const sportBrochureBlocks = ctx.filters.sport?._id
+    ? await getPublishedSportBrochure(ctx.filters.sport._id)
+    : null;
+  if (sportBrochureBlocks) {
+    const { default: BrandBrochure } = await import("@/components/features/brands/BrandBrochure");
+    const brochureEntities = await resolveArticleEntities({ blocks: sportBrochureBlocks });
+    return (
+      <>
+        <TaxonomyStructuredData
+          filters={ctx.filters}
+          products={[]}
+          canonical={`${SITE_URL}/${sportSlug}`}
+        />
+        <BrandBrochure
+          blocks={sportBrochureBlocks}
+          entities={brochureEntities}
+          brandName={ctx.filters.sport.title || ctx.filters.sport.name || ""}
+          breadcrumbs={<TaxonomyBreadcrumbs filters={ctx.filters} />}
         />
       </>
     );

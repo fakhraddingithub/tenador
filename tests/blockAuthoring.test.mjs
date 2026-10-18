@@ -74,11 +74,16 @@ test("کپیِ بلوک بینِ سندها: شناسه‌ی تازه، نوعِ
 });
 
 test("فرمِ برند برای بروشور و هر دسته دکمه‌ی پیش‌نمایش دارد", async () => {
-  const brochure = await read("../src/components/admin/brands/BrandBrochureCard.jsx");
-  assert.match(brochure, /href=\{`\/p-admin\/admin-brands\/\$\{brandId\}\/brochure\/preview`\}/);
+  // کارتِ بروشور مشترکِ برند و ورزش است؛ کارتِ برند فقط owner="brand" را می‌دهد.
+  const brandCard = await read("../src/components/admin/brands/BrandBrochureCard.jsx");
+  assert.match(brandCard, /<BrochureCard owner="brand" ownerId=\{brandId\}/);
+  const brochure = await read("../src/components/admin/brochure/BrochureCard.jsx");
+  assert.match(brochure, /href=\{config\.preview\(ownerId\)\}/);
   assert.match(brochure, /target="_blank"/);
   // بدونِ بروشور چیزی برای دیدن نیست.
   assert.match(brochure, /\{status \? \(\s*\r?\n\s*<a/);
+  const { BROCHURE_OWNERS } = await import("../src/lib/brochureOwners.js");
+  assert.equal(BROCHURE_OWNERS.brand.preview("b1"), "/p-admin/admin-brands/b1/brochure/preview");
 
   const categories = await read("../src/components/admin/brands/BrandCategoryArticlesCard.jsx");
   assert.match(categories, /href=\{`\/p-admin\/admin-brands\/\$\{brandId\}\/category-article\/\$\{item\.id\}\/preview`\}/);

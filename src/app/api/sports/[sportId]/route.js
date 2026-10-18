@@ -5,13 +5,14 @@ import { NextResponse } from "next/server";
 import { revalidateContent } from "@/lib/revalidate";
 import { apiError, handleApiError } from "@/lib/apiError";
 import requireAdminPermission from "@/lib/requireAdminPermission";
+import { brochureStatusOf } from "@/lib/brandBrochure";
 
 export async function GET(req, { params }) {
   try {
     await connectToDB();
     const { sportId } = await params;
-    const sport = await Sport.findById(sportId);
-    
+    const sport = await Sport.findById(sportId).select("+brochure");
+
     if (!sport) {
       return NextResponse.json(
         { error: "ورزش پیدا نشد" },
@@ -19,7 +20,12 @@ export async function GET(req, { params }) {
       );
     }
 
-    return NextResponse.json({ sport });
+    // فقط *وضعیتِ* بروشور، برای کارتِ بروشور در فرمِ ورزش (همان قراردادِ روتِ
+    // برند)؛ خودِ بلوک‌ها از روتِ بروشور خوانده می‌شوند.
+    const brochureStatus = brochureStatusOf(sport.brochure);
+    sport.brochure = undefined;
+
+    return NextResponse.json({ sport, brochureStatus });
   } catch (error) {
     return handleApiError(error, "خطا در دریافت ورزش");
   }

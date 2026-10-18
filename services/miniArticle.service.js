@@ -14,6 +14,7 @@ import mongoose from "mongoose";
 import connectToDB from "base/configs/db";
 import Brand from "base/models/Brand";
 import Serie from "base/models/Serie";
+import Sport from "base/models/Sport";
 
 const toObjectId = (value) =>
   value && mongoose.isValidObjectId(value) ? new mongoose.Types.ObjectId(String(value)) : null;
@@ -55,18 +56,21 @@ export async function getSerieArticleBlocks(serieId) {
 }
 
 /**
- * بروشورِ منتشرشده‌ی برند، یا null. پیش‌نویس هرگز برنمی‌گردد — شرطِ status در خودِ
- * کوئری است، پس محتوای منتشرنشده اصلاً از دیتابیس بیرون نمی‌آید.
+ * بروشورِ منتشرشده‌ی یک صاحب (برند یا ورزش)، یا null. پیش‌نویس هرگز برنمی‌گردد —
+ * شرطِ status در خودِ کوئری است، پس محتوای منتشرنشده اصلاً از دیتابیس بیرون نمی‌آید.
  */
-export async function getPublishedBrandBrochure(brandId) {
-  const brand = toObjectId(brandId);
-  if (!brand) return null;
+async function getPublishedBrochure(Model, ownerId) {
+  const owner = toObjectId(ownerId);
+  if (!owner) return null;
 
   await connectToDB();
-  const doc = await Brand.findOne(
-    { _id: brand, "brochure.status": "published" },
+  const doc = await Model.findOne(
+    { _id: owner, "brochure.status": "published" },
     { brochure: 1 },
   ).lean();
   const blocks = doc?.brochure?.blocks;
   return Array.isArray(blocks) && blocks.length > 0 ? blocks : null;
 }
+
+export const getPublishedBrandBrochure = (brandId) => getPublishedBrochure(Brand, brandId);
+export const getPublishedSportBrochure = (sportId) => getPublishedBrochure(Sport, sportId);
