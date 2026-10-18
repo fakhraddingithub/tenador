@@ -17,9 +17,7 @@ export default async function RelatedProducts({ productId, rate }) {
     <ProductSlider
       title="محصولات مرتبط"
       highlight="مرتبط"
-      subtitle={selection.mode === "technical"
-        ? "نزدیک‌ترین انتخاب‌ها به مشخصات فنی این محصول"
-        : "انتخاب‌های مشابه بر اساس برچسب‌های این محصول"}
+      subtitle="انتخاب‌های مشابه و محصولات مکمل برای تجهیزات شما"
       products={selection.products}
       rate={rate}
     />
