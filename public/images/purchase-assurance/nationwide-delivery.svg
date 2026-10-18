@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="80" height="80" viewBox="0 0 80 80" fill="none" role="img" aria-labelledby="title">
+  <title id="title">ارسال به سراسر کشور</title>
+  <path d="M15 28h36v27H15V28Zm36 8h12l9 12v7H51V36Z" fill="#F7EDE8"/>
+  <g stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M15 28h36v27H15V28Zm36 8h12l9 12v7H51V36Z" stroke="#35393D"/>
+    <path d="M57 41h4l5 7h-9v-7Z" fill="#FFF" stroke="#35393D"/>
+    <path d="M28 28v10h10V28M6 37h15M8 44h9M4 51h7" stroke="#AA4725"/>
+    <circle cx="26" cy="56" r="6" fill="#FFF" stroke="#35393D"/>
+    <circle cx="61" cy="56" r="6" fill="#FFF" stroke="#35393D"/>
+    <path d="M37 62h13M20 69h45" stroke="#AA4725"/>
+    <path d="M66 15c0 6-7 11-7 11s-7-5-7-11a7 7 0 0 1 14 0Z" fill="#F7EDE8" stroke="#AA4725"/>
+  </g>
+  <circle cx="59" cy="15" r="2.3" fill="#FFBF00"/>
+  <circle cx="26" cy="56" r="1.8" fill="#AA4725"/>
+  <circle cx="61" cy="56" r="1.8" fill="#AA4725"/>
+</svg>

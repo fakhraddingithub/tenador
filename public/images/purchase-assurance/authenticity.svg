@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="80" height="80" viewBox="0 0 80 80" fill="none" role="img" aria-labelledby="title">
+  <title id="title">ضمانت اصل بودن کالا</title>
+  <path d="M40 9 64 18v21c0 15-11 25-24 32C27 64 16 54 16 39V18L40 9Z" fill="#F7EDE8"/>
+  <g stroke-linecap="round" stroke-linejoin="round" stroke-width="2.2">
+    <path d="M40 9 64 18v21c0 15-11 25-24 32C27 64 16 54 16 39V18L40 9Z" stroke="#AA4725"/>
+    <path d="m27 29 13-6 13 6v15l-13 7-13-7V29Z" fill="#FFF" stroke="#35393D"/>
+    <path d="m27 29 13 7 13-7M40 36v15m-7-25 14 7v7" stroke="#35393D"/>
+    <path d="m31 58 6 6 12-13" stroke="#AA4725"/>
+    <path d="M8 30v8m64-8v8" stroke="#35393D"/>
+  </g>
+  <circle cx="40" cy="16" r="2" fill="#FFBF00"/>
+</svg>

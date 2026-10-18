@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="80" height="80" viewBox="0 0 80 80" fill="none" role="img" aria-labelledby="title">
+  <title id="title">۷ روز ضمانت بازگشت کالا</title>
+  <circle cx="40" cy="40" r="25" fill="#F7EDE8"/>
+  <g stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M13 28a29 29 0 0 1 54 0M67 52a29 29 0 0 1-54 0" stroke="#AA4725"/>
+    <path d="m59 26 8 2 2-8M21 54l-8-2-2 8" stroke="#AA4725"/>
+    <path d="M24 32h32v24H24V32Zm0 0 6-9h20l6 9" fill="#FFF" stroke="#35393D"/>
+    <path d="M37 23v9h6v-9M30 51h5" stroke="#35393D"/>
+    <path d="M36 39h9l-7 11" stroke="#AA4725"/>
+  </g>
+  <circle cx="69" cy="40" r="2" fill="#FFBF00"/>
+  <circle cx="11" cy="40" r="2" fill="#35393D"/>
+</svg>
