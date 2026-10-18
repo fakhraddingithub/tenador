@@ -15,6 +15,7 @@ export default async function RelatedProducts({ productId, rate }) {
 
   return (
     <ProductSlider
+      removeTopPadding
       title="محصولات مرتبط"
       highlight="مرتبط"
       subtitle="انتخاب‌های مشابه و محصولات مکمل برای تجهیزات شما"

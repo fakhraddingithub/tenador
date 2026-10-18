@@ -35,6 +35,8 @@ export default function ProductSlider({
   rate,
 
   onToggleWishlist,
+
+  removeTopPadding = false,
 }) {
   const [selectedProduct, setSelectedProduct] = useState(null);
 
@@ -53,7 +55,7 @@ export default function ProductSlider({
   };
 
   return (
-    <section className="py-12 md:py-24 bg-[#fcfcfc] relative overflow-hidden group/section">
+    <section className={`${removeTopPadding ? "pt-0 pb-12 md:pb-24" : "py-12 md:py-24"} bg-[#fcfcfc] relative overflow-hidden group/section`}>
       {/* --- المان‌های پس‌زمینه (بهینه‌سازی شده برای موبایل) --- */}
 
       <div className="absolute top-[-5%] left-[-5%] w-[200px] md:w-[400px] h-[200px] md:h-[400px] bg-[#aa4725]/5 rounded-full blur-[60px] md:blur-[100px] pointer-events-none" />

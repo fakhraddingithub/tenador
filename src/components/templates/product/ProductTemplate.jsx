@@ -16,7 +16,7 @@ const ProductTemplate = ({ product, reviews = [], reviewStats, rate }) => {
   return (
     <div className="min-h-screen bg-background">
       <div className="max-w-7xl mx-auto px-4 pt-8">
-        <div className="container mx-auto px-4 py-6 sm:py-8 md:py-12 lg:px-8">
+        <div className="container mx-auto px-4 pt-6 sm:pt-8 md:pt-12 lg:px-8">
           {/* Gallery + Info — coupled via client state */}
           <ProductClientSection product={product} />
 
@@ -39,7 +39,7 @@ const ProductTemplate = ({ product, reviews = [], reviewStats, rate }) => {
             <div className="mt-3 sm:mt-4">
               <ProductShare />
             </div>
-            <div className="mt-3 sm:mt-4">
+            <div className="mt-6">
               <ProductExploreNav product={product} />
             </div>
           </div>
