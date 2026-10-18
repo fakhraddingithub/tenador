@@ -34,14 +34,10 @@ const ProductTemplate = ({ product, reviews = [], reviewStats, rate }) => {
               reviewStats={reviewStats}
             />
           </div>
-          <div className="mt-10 sm:mt-12 md:mt-16">
+          <div className="mt-10 flex flex-col gap-4 pb-8 sm:mt-12 sm:gap-6 md:mt-16 md:pb-10">
             <ProductAssurance />
-            <div className="mt-3 sm:mt-4">
-              <ProductShare />
-            </div>
-            <div className="mt-6">
-              <ProductExploreNav product={product} />
-            </div>
+            <ProductShare />
+            <ProductExploreNav product={product} />
           </div>
         </div>
       </div>
