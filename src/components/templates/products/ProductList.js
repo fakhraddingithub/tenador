@@ -1,5 +1,7 @@
 "use client";
 
+import { usePathname, useSearchParams } from "next/navigation";
+import { listingPage } from "@/lib/seo/listingPagination";
 import { useState, useEffect, useMemo } from "react";
 import ProductCard from "@/components/modules/cart/ProductCard";
 import QuickViewModal from "@/components/modules/cart/QuickViewModal";
@@ -20,19 +22,26 @@ const REVEAL_CHUNK = 4;
 // boundary when a Server Component renders this Client Component.
 // `campaignBadge` is a plain serializable object ({text,bgColor,textColor}) that
 // each ProductCard renders in its badge stack with the exact discount-badge style.
-export default function ProductList({ products = [], rate, onAddToCart, onToggleWishlist, cardOverlay = null, campaignBadge = null }) {
+export default function ProductList({ products = [], rate, loadedOffset = 0, totalResults, onAddToCart, onToggleWishlist, cardOverlay = null, campaignBadge = null }) {
   const [selectedProduct, setSelectedProduct] = useState(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [page, setPage] = useState(1);
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+  const page = listingPage(searchParams.get("page"));
+  const pageHref = (n) => {
+    const params = new URLSearchParams(searchParams.toString());
+    if (n > 1) params.set("page", String(n)); else params.delete("page");
+    return `${pathname}${params.size ? `?${params}` : ""}`;
+  };
 
-  const total = Array.isArray(products) ? products.length : 0;
+  const total = totalResults ?? (Array.isArray(products) ? products.length : 0);
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
   const effectivePage = Math.min(page, totalPages);
 
   const visibleProducts = useMemo(() => {
-    const start = (effectivePage - 1) * PAGE_SIZE;
+    const start = Math.max(0, (effectivePage - 1) * PAGE_SIZE - loadedOffset);
     return (products || []).slice(start, start + PAGE_SIZE);
-  }, [products, effectivePage]);
+  }, [products, effectivePage, loadedOffset]);
 
   // ── پخشِ تدریجیِ کلاینت‌ساید (progressive reveal) ──
   // تعداد کارت‌های واقعیِ نمایش‌داده‌شده از صفحه‌ی فعلی. در رندرِ اول فقط
@@ -59,9 +68,14 @@ export default function ProductList({ products = [], rate, onAddToCart, onToggle
     return () => cancelAnimationFrame(raf);
   }, [visibleProducts]);
 
-  const goTo = (p) => {
+  const goTo = (event, p) => {
+    if (p < 1 || p > totalPages) { event.preventDefault(); return; }
+    if (event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
     const next = Math.min(Math.max(1, p), totalPages);
-    setPage(next);
+    const start = (next - 1) * PAGE_SIZE;
+    if (start < loadedOffset || start + Math.min(PAGE_SIZE, total - start) > loadedOffset + products.length) return;
+    event.preventDefault();
+    window.history.pushState(null, "", pageHref(next));
     if (typeof window !== "undefined") window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
@@ -112,21 +126,24 @@ export default function ProductList({ products = [], rate, onAddToCart, onToggle
       {/* پیجینیشن — فقط وقتی بیش از یک صفحه داریم */}
       {totalPages > 1 && (
         <nav className="flex items-center justify-center gap-2 mt-10 select-none" dir="ltr">
-          <button
-            onClick={() => goTo(effectivePage - 1)}
-            disabled={effectivePage === 1}
-            className="px-3 py-2 rounded-[6px] border border-gray-200 bg-white text-sm font-bold text-gray-600 hover:border-[var(--color-primary)] hover:text-[var(--color-primary)] disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+          <a
+            href={effectivePage > 1 ? pageHref(effectivePage - 1) : undefined}
+            onClick={(event) => goTo(event, effectivePage - 1)}
+            aria-disabled={effectivePage === 1}
+            className="px-3 py-2 rounded-[6px] border border-gray-200 bg-white text-sm font-bold text-gray-600 hover:border-[var(--color-primary)] hover:text-[var(--color-primary)] aria-disabled:opacity-40 aria-disabled:cursor-not-allowed transition-colors"
           >
             قبلی
-          </button>
+          </a>
 
           {pageNumbers.map((n, i) =>
             n === "…" ? (
               <span key={`dots-${i}`} className="px-2 text-gray-400">…</span>
             ) : (
-              <button
+              <a
                 key={n}
-                onClick={() => goTo(n)}
+                href={pageHref(n)}
+                aria-current={n === effectivePage ? "page" : undefined}
+                onClick={(event) => goTo(event, n)}
                 className={`min-w-[40px] px-3 py-2 rounded-[6px] border text-sm font-bold transition-colors ${
                   n === effectivePage
                     ? "border-[var(--color-primary)] bg-[var(--color-primary)] text-white"
@@ -134,17 +151,18 @@ export default function ProductList({ products = [], rate, onAddToCart, onToggle
                 }`}
               >
                 {n.toLocaleString("fa-IR")}
-              </button>
+              </a>
             )
           )}
 
-          <button
-            onClick={() => goTo(effectivePage + 1)}
-            disabled={effectivePage === totalPages}
-            className="px-3 py-2 rounded-[6px] border border-gray-200 bg-white text-sm font-bold text-gray-600 hover:border-[var(--color-primary)] hover:text-[var(--color-primary)] disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+          <a
+            href={effectivePage < totalPages ? pageHref(effectivePage + 1) : undefined}
+            onClick={(event) => goTo(event, effectivePage + 1)}
+            aria-disabled={effectivePage === totalPages}
+            className="px-3 py-2 rounded-[6px] border border-gray-200 bg-white text-sm font-bold text-gray-600 hover:border-[var(--color-primary)] hover:text-[var(--color-primary)] aria-disabled:opacity-40 aria-disabled:cursor-not-allowed transition-colors"
           >
             بعدی
-          </button>
+          </a>
         </nav>
       )}
 

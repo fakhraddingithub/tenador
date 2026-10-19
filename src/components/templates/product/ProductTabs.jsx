@@ -123,7 +123,7 @@ const ProductTabs = ({
     },
   ];
 
-  const renderContent = (sectionId) => (
+  const renderContent = (sectionId, isActive = true) => (
     <>
       {sectionId === "description" && (
         <div className="prose prose-gray max-w-none leading-8">
@@ -134,6 +134,7 @@ const ProductTabs = ({
         <div className="rounded-[6px] border border-gray-100 bg-gray-50/50 p-1">
           <ProductAttributesTable
             attributes={attributes}
+            active={isActive}
             technicalStats={technicalStats}
             targetAudience={targetAudience}
           />
@@ -162,7 +163,7 @@ const ProductTabs = ({
   if (isMobile) {
     return (
       <div className="mt-24 w-full rtl text-right" dir="rtl">
-        <MobileProductTabs tabs={tabs} renderContent={renderContent} />
+        <MobileProductTabs tabs={tabs} renderContent={renderContent} keepMounted={["description", "attributes", "customTab"]} />
       </div>
     );
   }
@@ -217,6 +218,12 @@ const ProductTabs = ({
       </div>
 
       <div className="relative min-h-[300px] py-10">
+        {/* Keep searchable text in the document; expensive interactive panels
+            still mount only when selected. The visible tab animation is unchanged. */}
+        {tabs.filter(tab => tab.id !== activeTab && tab.id !== "reviews").map(tab => (
+          <div key={tab.id} hidden>{renderContent(tab.id, false)}</div>
+        ))}
+
         {/* initial={false} فقط رندر اول را بدون انیمیشن نشان می‌دهد تا تبِ توضیحات
             در HTML سرور مرئی باشد؛ initial خودِ فرزند برای تعویض تب فعال می‌ماند. */}
         <AnimatePresence mode="wait" initial={false}>

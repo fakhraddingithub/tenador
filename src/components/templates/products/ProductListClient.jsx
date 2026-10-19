@@ -15,11 +15,12 @@ import {
   productMatchesAttrFilters,
 } from "@/lib/attributeFilters";
 
-export default function ProductListClient({ products: initialProducts, totalResults, rate, filterableAttributes = [] }) {
-  const { products, isLoadingMore } = useDeferredProducts(
+export default function ProductListClient({ products: initialProducts, totalResults, rate, initialOffset = 0, filterableAttributes = [] }) {
+  const { products, isLoadingMore, loadedOffset } = useDeferredProducts(
     initialProducts,
     totalResults,
     {},
+    initialOffset,
   );
   const [searchTerm, setSearchTerm] = useState("");
   const [filters, setFilters] = useState({
@@ -156,6 +157,8 @@ export default function ProductListClient({ products: initialProducts, totalResu
         {filteredProducts.length > 0 ? (
           <ProductList
             products={filteredProducts}
+              loadedOffset={loadedOffset}
+              totalResults={filteredProducts.length === products.length && (isLoadingMore || loadedOffset > 0) ? totalResults : undefined}
             rate={rate}
             onAddToCart={(p) => console.log("Added", p)}
             onToggleWishlist={(p) => console.log("Wishlist", p)}

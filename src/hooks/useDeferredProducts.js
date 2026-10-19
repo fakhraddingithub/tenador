@@ -4,7 +4,8 @@ import { useEffect, useMemo, useState } from "react";
 
 const CHUNK_SIZE = 60;
 
-export default function useDeferredProducts(initialProducts, totalResults, listingFilter) {
+export default function useDeferredProducts(initialProducts, totalResults, listingFilter, initialOffset = 0) {
+  const [loadedOffset, setLoadedOffset] = useState(initialOffset);
   const [products, setProducts] = useState(initialProducts || []);
   const [isLoadingMore, setIsLoadingMore] = useState(
     (initialProducts?.length || 0) < (totalResults || 0),
@@ -20,9 +21,11 @@ export default function useDeferredProducts(initialProducts, totalResults, listi
 
     async function loadRemaining() {
       setProducts(firstPage);
+      setLoadedOffset(initialOffset);
       setIsLoadingMore(firstPage.length < total);
       if (firstPage.length >= total) return;
-      let offset = firstPage.length;
+      let offset = initialOffset > 0 ? 0 : firstPage.length;
+      const complete = [];
 
       try {
         while (!cancelled && offset < total) {
@@ -43,11 +46,17 @@ export default function useDeferredProducts(initialProducts, totalResults, listi
           const nextProducts = Array.isArray(data.products) ? data.products : [];
           if (nextProducts.length === 0) break;
 
-          setProducts((current) => {
+          if (initialOffset > 0) {
+            complete.push(...nextProducts);
+          } else setProducts((current) => {
             const ids = new Set(current.map((product) => product._id));
             return current.concat(nextProducts.filter((product) => !ids.has(product._id)));
           });
           offset += nextProducts.length;
+        }
+        if (!cancelled && initialOffset > 0 && offset >= total) {
+          setProducts(complete);
+          setLoadedOffset(0);
         }
       } catch (error) {
         if (error.name !== "AbortError") {
@@ -65,7 +74,7 @@ export default function useDeferredProducts(initialProducts, totalResults, listi
       window.clearTimeout(timer);
       controller.abort();
     };
-  }, [initialProducts, totalResults, filterKey]);
+  }, [initialProducts, totalResults, filterKey, initialOffset]);
 
-  return { products, isLoadingMore };
+  return { products, isLoadingMore, loadedOffset };
 }

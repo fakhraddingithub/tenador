@@ -19,7 +19,7 @@ export function useMobileProductLayout() {
   return useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot);
 }
 
-export default function MobileProductTabs({ tabs, renderContent }) {
+export default function MobileProductTabs({ tabs, renderContent, keepMounted = [] }) {
   const [openSection, setOpenSection] = useState("description");
   const instanceId = useId();
   const reduceMotion = useReducedMotion();
@@ -106,7 +106,11 @@ export default function MobileProductTabs({ tabs, renderContent }) {
               </button>
             </h3>
             <div id={panelId} role="region" aria-labelledby={`${panelId}-heading`} aria-hidden={!isOpen} inert={!isOpen}>
-              <AnimatePresence initial={false}>
+              {keepMounted.includes(tab.id) ? (
+                <motion.div initial={false} animate={{ height: isOpen ? "auto" : 0, opacity: isOpen ? 1 : 0 }} style={{ overflow: isOpen ? "visible" : "hidden" }} transition={{ duration: reduceMotion ? 0 : 0.28, ease: [0.22, 1, 0.36, 1] }}>
+                  <div className={styles.content}>{renderContent(tab.id, isOpen)}</div>
+                </motion.div>
+              ) : <AnimatePresence initial={false}>
                 {isOpen && (
                   <motion.div
                     key={tab.id}
@@ -118,7 +122,7 @@ export default function MobileProductTabs({ tabs, renderContent }) {
                     <div className={styles.content}>{renderContent(tab.id)}</div>
                   </motion.div>
                 )}
-              </AnimatePresence>
+              </AnimatePresence>}
             </div>
           </section>
         );

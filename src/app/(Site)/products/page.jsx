@@ -1,3 +1,6 @@
+import { listingPage, listingCanonical } from "@/lib/seo/listingPagination";
+import { getProductListingPage } from "base/services/productListing.service";
+import { notFound } from "next/navigation";
 import ProductListClient from "@/components/templates/products/ProductListClient";
 import SportHero from "@/components/templates/sports/SportHero";
 import ActiveFiltersLine from "@/components/templates/products/ActiveFiltersLine";
@@ -9,21 +12,28 @@ import { getCachedRate } from "@/lib/Exchangerate";
 // TTL زمان‌محور از ۶۰ث به ۱ساعت افزایش یافت تا ISR Writes کاهش یابد.
 export const revalidate = 3600;
 
-export const metadata = {
+const metadata = {
   title: "خرید تجهیزات تنیس و پدل",
   description:
     "مشاهده و خرید تجهیزات تخصصی تنیس و پدل از برندهای معتبر؛ شامل راکت، کفش، پوشاک و لوازم جانبی با ضمانت اصالت.",
   alternates: { canonical: "/products" },
 };
 
-export default async function ProductsPage() {
+export async function generateMetadata({ searchParams }) {
+  return { ...metadata, alternates: { canonical: listingCanonical("/products", (await searchParams)?.page) } };
+}
+
+export default async function ProductsPage({ searchParams }) {
+  const page = listingPage((await searchParams)?.page);
 
   const [listing, rate, filterableAttributes, firstSport] = await Promise.all([
-    getProducts(),
+    page === 1 ? getProducts() : getProductListingPage({ offset: (page - 1) * 20 }),
     getCachedRate(),
     getFilterableAttributes(),
     getFirstSport(),
   ]);
+
+  if (page > 1 && (page - 1) * 20 >= listing.totalResults) notFound();
 
   return (
     <>
@@ -41,6 +51,8 @@ export default async function ProductsPage() {
         </h1>
 
         <ProductListClient
+          key={page}
+          initialOffset={(page - 1) * 20}
           products={listing.products}
           totalResults={listing.totalResults}
           rate={rate}

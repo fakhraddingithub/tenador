@@ -1,3 +1,5 @@
+import TaxonomyBreadcrumbs from "@/components/seo/TaxonomyBreadcrumbs";
+import { getPublicProductPrice } from "base/services/publicProductPrice.service";
 import ProductTemplate from "@/components/templates/product/ProductTemplate";
 import { getProductBySlug } from "base/services/product.service";
 import { getApprovedReviews } from "base/services/comment.service";
@@ -45,10 +47,12 @@ export default async function ProductPage({ params }) {
   }
 
   // نظرهای تأییدشده (کش‌شده با تگ comments) — موازی با نرخ تبدیل
-  const [rate, { reviews, stats: reviewStats }] = await Promise.all([
-    getCachedRate(),
+  const [pricing, { reviews, stats: reviewStats }] = await Promise.all([
+    getCachedRate().then(async (rate) => ({ rate, price: await getPublicProductPrice(fetchProduct, rate) })),
     getApprovedReviews(fetchProduct._id),
   ]);
+
+  const { rate, price } = pricing;
 
   // تبدیل قیمت پایه محصول
   const priceInToman = eurToToman(fetchProduct.basePrice, rate);
@@ -64,6 +68,7 @@ export default async function ProductPage({ params }) {
   const product = {
     ...fetchProduct,
     basePrice: priceInToman,
+    finalPriceToman: price.finalPriceToman,
     variants: convertedVariants,
   };
 
@@ -109,6 +114,8 @@ export default async function ProductPage({ params }) {
         />
         <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent z-10" />
       </div>
+
+      <TaxonomyBreadcrumbs filters={{ sport: product.sport, category: product.category, brand: product.brand, serie: product.serie }} currentItem={false} includeStructuredData={false} />
 
       <ProductTemplate
         product={product}

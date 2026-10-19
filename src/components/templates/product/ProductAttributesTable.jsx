@@ -64,7 +64,7 @@ function SpecRow({ attr, index, open, onToggle, onClose }) {
 // ویژگی‌ها پیش از رسیدن به اینجا سمتِ سرور بر اساس مخاطب هدف فیلتر شده‌اند
 // (services/product.service.js و صفحه‌ی دستِ‌دوم)؛ اینجا فقط رندر می‌شوند.
 // تنها تصمیمِ وابسته به مخاطب هدف در این لایه، نمایشِ نمودار رادار است.
-const ProductAttributesTable = ({ attributes = [], technicalStats, targetAudience }) => {
+const ProductAttributesTable = ({ attributes = [], technicalStats, targetAudience, active = true }) => {
   // فقط یک تولتیپ هم‌زمان باز است → اندیسِ ردیفِ باز در والد نگه‌داری می‌شود.
   const [openIndex, setOpenIndex] = useState(null);
 
@@ -98,7 +98,7 @@ const ProductAttributesTable = ({ attributes = [], technicalStats, targetAudienc
       </div>
 
       <div dir="rtl">
-        {showComparisonGraph && (
+        {active && showComparisonGraph && (
           <ProductComparisonGraph technicalStats={technicalStats} />
         )}
       </div>

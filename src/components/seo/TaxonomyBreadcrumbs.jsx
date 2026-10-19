@@ -5,6 +5,7 @@ export default function TaxonomyBreadcrumbs({
   filters,
   items: providedItems,
   includeStructuredData = true,
+  currentItem = true,
 }) {
   const items = providedItems || buildTaxonomyBreadcrumbs(filters);
   if (items.length < 2) return null;
@@ -36,7 +37,7 @@ export default function TaxonomyBreadcrumbs({
       >
         <ol className="flex flex-wrap items-center gap-2.5">
           {items.map((item, index) => {
-            const isCurrent = index === items.length - 1;
+            const isCurrent = currentItem && index === items.length - 1;
             return (
               <li
                 key={`${item.href || item.url || item.name}-${index}`}

@@ -1,5 +1,7 @@
 const SITE_URL = (process.env.NEXT_PUBLIC_SITE_URL || "https://tenador.com").replace(/\/+$/, "");
 
+const paginatedPaths = ["/products", "/collection/*", ...["tennis", "padel", "badminton", "squash", "beachtennis", "pickleball", "ping-pong"].flatMap(sport => [`/${sport}`, `/${sport}/*`])];
+
 export default function robots() {
   return {
     rules: [
@@ -13,6 +15,7 @@ export default function robots() {
           // Public product batches are needed to render the rest of brand listings.
           // Include the query delimiter so other API paths are not allowed.
           "/api/brands/grouped?",
+          ...paginatedPaths.map(path => `${path}?page=*$`),
         ],
         disallow: [
           "/p-admin/",
@@ -25,6 +28,7 @@ export default function robots() {
           // Limit crawling of parameterized pages; static assets are allowed above.
           // A crawl restriction does not itself prevent URL indexing.
           "/*?*",
+          ...paginatedPaths.map(path => `${path}?page=*&*$`),
         ],
       },
     ],

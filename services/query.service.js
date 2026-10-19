@@ -302,7 +302,7 @@ async function _queryBySlugs(slugs, resolvedContext = null, extraFilter = {}) {
   // مخاطبِ هدف (navbar audience tabs) — مستقلِ کاملِ فیلترهای موجودیتی بالا
   if (extraFilter.targetAudience) finalFilter.targetAudience = extraFilter.targetAudience;
 
-  const listing = await getProductListingPage({ filter: finalFilter });
+  const listing = await getProductListingPage({ filter: finalFilter, offset: extraFilter.offset || 0 });
 
   return JSON.parse(
     JSON.stringify({

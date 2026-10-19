@@ -229,7 +229,7 @@ export const getFilterableAttributes = unstable_cache(
 );
 
 export const getPageDataBySlug = unstable_cache(
-  async (slug, targetAudience = null) => {
+  async (slug, targetAudience = null, offset = 0) => {
     await connectToDB();
 
     const slugData = await SlugRegistery.findOne({ slug: slug.toLowerCase() }).lean();
@@ -255,6 +255,7 @@ export const getPageDataBySlug = unstable_cache(
     const [listing, articleEntities] = await Promise.all([
       getProductListingPage({
         filter: { [slugData.filterField]: entityInfo._id, targetAudience },
+        offset,
       }),
       articleBlocks.length > 0
         ? import("base/services/publicArticle.service").then(

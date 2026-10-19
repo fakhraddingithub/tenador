@@ -34,7 +34,7 @@ export default function SportPageClient({
   // ایندکس سبک همه‌ی سری‌ها ({_id, parentSerie, brand, level, order, ...}) برای
   // فیلتر «سری» ریشه‌محور؛ اگر پاس داده نشود ([]) رفتار قبلی (سری مستقیم) حفظ می‌شود.
   seriesIndex = [],
-  totalResults,
+  totalResults, initialOffset = 0,
   listingFilter = {},
   // Optional slots — used by the themed Event page to reuse this exact layout.
   // All default to null/undefined so the Sport page renders byte-identically.
@@ -47,10 +47,11 @@ export default function SportPageClient({
   cardOverlay = null, // forwarded to ProductList → each ProductCard (event flair)
   campaignBadge = null, // forwarded to ProductList → each ProductCard badge stack
 }) {
-  const { products, isLoadingMore } = useDeferredProducts(
+  const { products, isLoadingMore, loadedOffset } = useDeferredProducts(
     initialProducts,
     totalResults,
     listingFilter,
+    initialOffset,
   );
   const [searchTerm, setSearchTerm] = useState("");
 
@@ -465,6 +466,8 @@ export default function SportPageClient({
           {filteredProducts.length > 0 ? (
             <ProductList
               products={filteredProducts}
+              loadedOffset={loadedOffset}
+              totalResults={filteredProducts.length === products.length && (isLoadingMore || loadedOffset > 0) ? totalResults : undefined}
               rate={rate}
               cardOverlay={cardOverlay}
               campaignBadge={campaignBadge}

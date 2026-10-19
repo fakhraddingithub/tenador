@@ -91,7 +91,7 @@ test("نمودار رادار فقط با isKidsAudience تصمیم گرفته �
     "شرطِ نمایشِ نمودار عوض شده است",
   );
   assert.ok(
-    source.includes("{showComparisonGraph && (") &&
+    source.includes("{active && showComparisonGraph && (") &&
       /showComparisonGraph && \(\s*<ProductComparisonGraph/.test(source),
     "نمودار پشتِ شرط نیست",
   );
@@ -108,7 +108,7 @@ test("ستونِ نمودار برای بچگانه خالی می‌ماند، �
   // چیدمانِ دو ستونه ثابت می‌ماند تا عرضِ فهرستِ مشخصات برای هیچ مخاطبی تغییر نکند
   assert.ok(source.includes('className="grid grid-cols-1 md:grid-cols-2'));
   assert.ok(
-    /<div dir="rtl">\s*\{showComparisonGraph/.test(source),
+    /<div dir="rtl">\s*\{active && showComparisonGraph/.test(source),
     "ستونِ نمودار خودش شرطی شده است؛ باید فقط محتوایش شرطی باشد",
   );
 });

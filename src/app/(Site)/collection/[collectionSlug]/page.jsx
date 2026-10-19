@@ -1,3 +1,4 @@
+import { listingCanonical, listingPage } from "@/lib/seo/listingPagination";
 import { notFound } from "next/navigation";
 import connectToDB from "base/configs/db";
 import Event from "base/models/Event";
@@ -20,7 +21,7 @@ function resolveHeaderImage(vi = {}) {
   return vi.headerImage || vi.heroImage || vi.coverImage || "";
 }
 
-export async function generateMetadata({ params }) {
+export async function generateMetadata({ params, searchParams }) {
   const { collectionSlug } = await params;
   await connectToDB();
   const event = await Event.findOne({
@@ -45,7 +46,7 @@ export async function generateMetadata({ params }) {
     title,
     description,
     keywords: event.seo?.keywords || [],
-    alternates: { canonical },
+    alternates: { canonical: listingCanonical(canonical, (await searchParams)?.page) },
     robots: { index: true, follow: true },
     openGraph: {
       title: event.social?.ogTitle || title,
@@ -65,8 +66,9 @@ export async function generateMetadata({ params }) {
   };
 }
 
-export default async function EventPage({ params }) {
+export default async function EventPage({ params, searchParams }) {
   const { collectionSlug } = await params;
+  const page = listingPage((await searchParams)?.page);
   await connectToDB();
 
   const event = await Event.findOne({
@@ -85,6 +87,7 @@ export default async function EventPage({ params }) {
     resolveEventProducts(serialized.productSelection),
     getCachedRate(),
   ]);
+  if (page > 1 && (page - 1) * 20 >= products.length) notFound();
 
   const canonical = `${SITE_URL}/collection/${serialized.slug}`;
   const collectionDescription =

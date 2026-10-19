@@ -37,7 +37,7 @@ export function generateProductSchema(product, reviewStats) {
 
   // Google product snippets expect ISO 4217 currency codes. Toman has no
   // official code, so publish the equivalent Rial amount for structured data.
-  const priceInRial = String(Math.round(product.basePrice || 0) * TOMAN_TO_RIAL);
+  const priceInRial = String(Math.round(product.finalPriceToman ?? product.basePrice ?? 0) * TOMAN_TO_RIAL);
 
   return {
     "@context": "https://schema.org/",
