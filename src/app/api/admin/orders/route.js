@@ -11,12 +11,11 @@
  *   هایلایت بصری در کلاینت مشخص می‌شوند، نه با جابه‌جایی در ترتیب
  */
 
+import "base/models/registerModels";
 import { buildSearchFilter } from "@/lib/search";
 import { NextResponse } from "next/server";
 import connectToDB from "base/configs/db";
 import Order from "base/models/Order";
-import Payment from "base/models/Payment";
-import Product from "base/models/Product";
 import requireAdminPermission from "@/lib/requireAdminPermission";
 
 export async function GET(req) {
@@ -63,9 +62,10 @@ export async function GET(req) {
             localField: "user",
             foreignField: "_id",
             as: "userObj",
+            pipeline: [{ $project: { name: 1, lastName: 1, phone: 1, email: 1 } }],
           },
         },
-        { $unwind: { path: "$userObj", preserveNullAndEmpty: true } },
+        { $unwind: { path: "$userObj", preserveNullAndEmptyArrays: true } },
         // هر توکنِ عبارت باید در یکی از این فیلدها بیاید — پس «رضا ۱۲۳۴» هم
         // کار می‌کند و ترتیبِ «نام خانوادگی نام» هم فرقی ندارد.
         {
