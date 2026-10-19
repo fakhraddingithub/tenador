@@ -59,3 +59,8 @@ test('mobile accordion keeps technical text mounted while its panel is closed', 
  const html=renderToStaticMarkup(React.createElement(Mobile,{tabs:[{id:'description',label:'توضیحات'},{id:'attributes',label:'مشخصات'}],keepMounted:['description','attributes'],renderContent:(id,active)=>React.createElement('p',null,id==='attributes'?'وزن 305 گرم':'description')}));
  assert.match(html,/وزن 305 گرم/);assert.match(html,/aria-expanded="false"/);assert.match(html,/aria-hidden="true"/);
 });
+test('nested taxonomy route forwards its server pagination offset to the client list', () => {
+ const source=readFileSync(new URL('../src/app/(Site)/(sports)/[sportSlug]/[...slug]/page.jsx',import.meta.url),'utf8');
+ assert.match(source,/queryBySlugs\(slugs, ctx, \{ targetAudience, offset: \(page - 1\) \* 20 \}\)/);
+ assert.match(source,/<SportPageClient\s+initialOffset=\{\(page - 1\) \* 20\}/);
+});

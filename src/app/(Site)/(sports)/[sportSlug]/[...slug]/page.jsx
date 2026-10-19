@@ -408,6 +408,7 @@ export default async function SportDynamicSlugPage({ params, searchParams }) {
           (مثلاً از نوبار، بدونِ هیچ پارامتری) کامپوننت را از نو می‌سازد، وگرنه
           React وضعیتِ فیلترِ قبلیِ کاربر را در جای خودش نگه می‌داشت. */}
       <SportPageClient
+        initialOffset={(page - 1) * 20}
         key={JSON.stringify([slugs, Object.entries(sp).sort()])}
         filterCategories={searchData.filters.category ? await getListingFilterOptions({ categoryId: String(searchData.filters.category._id), sportId: String(searchData.filters.sport._id), targetAudience }) : searchData.filters.serie ? await getListingFilterOptions({ serieId: String(searchData.filters.serie._id), sportId: String(searchData.filters.sport._id), targetAudience, descendants: false }) : []}
         pageInfo={pageInfo}
