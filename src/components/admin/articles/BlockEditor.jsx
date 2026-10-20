@@ -359,6 +359,11 @@ export function BlockFields({ block, onUpdate, onStyle }) {
   };
   const changeOf = (field) => (next) => {
     if (field.kind === "rich") return onUpdate({ [field.key]: next.text, [field.htmlKey || "html"]: next.html });
+    // clears: فیلدهایی که به این یکی وابسته‌اند (سری‌های یک ورزش) با عوض‌شدنش خالی
+    // می‌شوند — فقط وقتی مقدار واقعاً عوض شده، تا انتخابِ دوباره‌ی همان چیزی را نریزد.
+    if (field.clears && String(next ?? "") !== String(block.data?.[field.key] ?? "")) {
+      return onUpdate({ [field.key]: next, ...Object.fromEntries(field.clears.map((key) => [key, []])) });
+    }
     return onUpdate(PATCH_KINDS.includes(field.kind) ? next : { [field.key]: next });
   };
   const rows = (fields) => fieldRows(fields).map(({ fields: row }) => <div key={row[0].key}>
@@ -426,7 +431,13 @@ function BlockField({ field, value, onChange, align, onAlign, block, onUpdate })
   if (field.kind === "imageSliderSettings") return <ImageSliderSettings block={block} onUpdate={onUpdate} />;
   if (field.kind === "gallery") return <ImageUpload value={value || []} onChange={onChange} folder="articles" multiple compact />;
   // برچسبِ فیلد دیگر <label>ِ دورِ آن نیست، پس نامِ کادرِ جستجو را صریح می‌گیرد.
-  if (field.kind === "entity" || field.kind === "entities") return <ArticleEntityPicker type={field.entityType} value={value} onChange={onChange} multiple={field.kind === "entities"} label={field.label} />;
+  // scope: جستجو به مقدارِ فیلدِ دیگری از همین بلوک محدود است (سری‌ها ← ورزش)؛ تا آن
+  // خالی است، جستجو غیرفعال است و scopeHint می‌گوید چرا.
+  if (field.kind === "entity" || field.kind === "entities") {
+    const scope = field.scope ? block.data?.[field.scope] : undefined;
+    return <ArticleEntityPicker type={field.entityType} value={value} onChange={onChange} multiple={field.kind === "entities"} label={field.label}
+      params={field.scope ? { [field.scope]: scope || "" } : undefined} browse={field.browse} disabledHint={field.scope && !scope ? field.scopeHint : undefined} />;
+  }
   if (field.kind === "faq") return <FaqEditor value={value} onChange={onChange} />;
   if (field.kind === "table") return <TableEditor value={value} onChange={onChange} />;
   return <input type={field.kind === "number" ? "number" : field.kind === "url" ? "url" : "text"} value={value ?? ""} onChange={(e) => onChange(field.kind === "number" ? Number(e.target.value) : e.target.value)} className={inputClass} />;

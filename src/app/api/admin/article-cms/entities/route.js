@@ -1,4 +1,4 @@
-import { rankBySearch, withSearch } from "@/lib/search";
+import { matchesSearch, rankBySearch, withSearch } from "@/lib/search";
 import { NextResponse } from "next/server";
 import connectToDB from "base/configs/db";
 import "base/models/registerModels";
@@ -12,6 +12,7 @@ import UsedProduct from "base/models/UsedProduct";
 import requireAdminPermission from "@/lib/requireAdminPermission";
 import { articleApiError } from "@/lib/articleApi";
 import { rankProducts, withProductSearch } from "@/lib/productSearch";
+import { getSportSeriesOptions } from "base/services/series.service";
 
 export const runtime = "nodejs";
 
@@ -49,6 +50,26 @@ export async function GET(req) {
     } else if (type === "collection") {
       const docs = await Serie.find(idFilter || byTitle(q)).select("title name logo brand").populate("brand", "title").limit(CANDIDATE_LIMIT).lean();
       items = rank(docs, (d) => rankByTitle(q, d)).map((x) => ({ _id: x._id, label: x.title || x.name, sub: x.brand?.title || "", image: x.logo || null }));
+    } else if (type === "sportSerie") {
+      // بلوکِ «اسلایدر سری‌های ورزش»: جستجو فقط میانِ سری‌هایی که در ورزشِ
+      // انتخاب‌شده محصول دارند (همان pipeline ـِ اسلایدرِ صفحه‌ی ورزش). بدونِ ورزش
+      // چیزی برنمی‌گردد. resolve با ids فقط برچسبِ چیپ‌هاست و به ورزش نیازی ندارد.
+      const label = (x) => [x.brand?.title, x.title || x.name].filter(Boolean).join(" ");
+      if (idFilter) {
+        const docs = await Serie.find(idFilter).select("title name logo image brand").populate("brand", "title").lean();
+        items = docs.map((x) => ({ _id: x._id, label: label(x), image: x.logo || x.image || null }));
+      } else {
+        const options = await getSportSeriesOptions(params.get("sport"));
+        const ranked = q
+          ? rankBySearch(q, options.filter((d) => matchesSearch(q, `${d.title} ${d.name} ${d.brand?.title || ""}`)), (d) => [[d.title, 2], [d.name, 1], [d.brand?.title, 1]])
+          : options;
+        items = ranked.slice(0, 50).map((x) => ({
+          _id: x._id,
+          label: label(x),
+          sub: `${x.productCount.toLocaleString("fa-IR")} محصول در این ورزش`,
+          image: x.logo || x.image || null,
+        }));
+      }
     } else if (type === "sport") {
       const docs = await Sport.find(idFilter || byTitle(q)).select("title name image icon").limit(CANDIDATE_LIMIT).lean();
       items = rank(docs, (d) => rankByTitle(q, d)).map((x) => ({ _id: x._id, label: x.title || x.name, image: x.image || x.icon || null }));

@@ -1098,6 +1098,50 @@ drag springs back; a plain click on a linked slide still navigates.
 npm run test:block-layout
 ```
 
+### The «اسلایدر سری‌های ورزش» block, and dropdowns that escape their container
+
+**The block is the sport page's own `SeriesSlider`**, not a look-alike — same cards, same
+Swiper, same arrows. Data: `{ sport, series: [ids], highlight, title, subtitle }`; the
+heading reuses the «تیتر تنادور» split (orange `highlight`, then `title`, which falls back to
+the sport's name when empty).
+
+| piece | where |
+|---|---|
+| data | `aggregateSportSeries` in `services/series.service.js` — the pipeline `getSeriesBySport` always ran, now parameterised. The sport page passes `flaggedOnly: true` (unchanged); the block passes `flaggedOnly: false` + `serieIds` |
+| picker options | `getSportSeriesOptions(sportId)` → entity type `sportSerie` (`?sport=` scopes it). Only series with at least one product **in that sport** are offered, with the count |
+| public read | `getSportSeriesBlock` via `resolveArticleEntities` → `entities.sportSeries[blockId]`, in the admin's order; a serie that lost its products in that sport is dropped, and an empty result renders nothing |
+
+Registry fields gained two generic keys: `clears` (changing the sport empties `series`, since
+they belong to the old sport) and `scope` (the series search sends `sport=` and stays
+disabled with a hint until one is picked). `browse: true` opens the full list on focus.
+
+`SeriesSlider` changes, all inert for the sport page:
+
+- **Nav classes are per instance** (`series-prev-${useId()}`). Swiper resolves string
+  selectors document-wide, so with the old shared class every series slider on a page moved
+  together — that was already true on `/tennis`, not only with the block.
+- `heading` overrides the text only when passed; `fitContainer` switches Swiper's
+  breakpoints to the container (used inside a merged block).
+
+**Dropdowns in the editor render in a portal.** The preview modal body is
+`max-h-[68vh] overflow-y-auto`, and a block card has its own overflow, so an `absolute`
+list was clipped or painted under the next card — no z-index fixes clipping. `FloatingPanel`
+(`blockUi.jsx`) renders through `AdminPortal` with `position: fixed`, anchored to the input,
+re-placed on (capture-phase) scroll and resize, flipped above when there is no room below,
+`z-index: 130`. Both the entity picker (product, brand, article, serie, sport…) and the
+rich-text size/line-height list use it, so every block gets the fix at once.
+
+- The list keeps `onMouseDown={preventDefault}`, otherwise the input's blur closes it
+  before the click lands.
+- Escape on an open list `stopPropagation`s, so it closes the list and not the modal.
+- A focused input that becomes disabled gets no `blur` in Chrome; the picker resets
+  `focused` itself.
+- Chips render in saved-id order, not the API's — the order the slider uses.
+
+```bash
+npm run test:sport-series-slider
+```
+
 ### Authoring: a block clipboard, and what scales with what
 
 **Copying a block between documents** goes through `src/lib/articleBlockClipboard.js` —

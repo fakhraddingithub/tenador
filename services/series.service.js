@@ -1,4 +1,5 @@
 import "base/models/registerModels";
+import mongoose from "mongoose";
 import { buildStorefrontAudienceMatch } from "base/utils/targetAudience";
 import { unstable_cache } from "next/cache";
 import connectToDB from "base/configs/db";
@@ -26,6 +27,22 @@ async function _getSeriesBySport(sportSlug, targetAudience = null) {
 
   if (!sport) return [];
 
+  return aggregateSportSeries(sport._id, { targetAudience, flaggedOnly: true });
+}
+
+/**
+ * سری‌هایی که در این ورزش دست‌کم یک محصولِ فعال و قابلِ‌نمایش دارند — همان
+ * pipeline ـِ اسلایدرِ صفحه‌ی ورزش، با همان شکلِ خروجی (تصویر و پرچم‌های مخصوصِ
+ * همین ورزش، برند، رنگ‌ها).
+ *
+ * flaggedOnly: فقط سری‌هایی که برای اسلایدرِ صفحه‌ی ورزش «جدید» یا «لیمیتد» علامت
+ *   خورده‌اند (صفحه‌ی ورزش). بلوکِ «اسلایدر سری‌های ورزش» false می‌دهد: ادمین
+ *   خودش انتخاب می‌کند و هر سری‌ای که در این ورزش محصول دارد قابلِ انتخاب است.
+ * serieIds: فقط همین سری‌ها (رندرِ بلوک).
+ */
+async function aggregateSportSeries(sportId, { targetAudience = null, flaggedOnly = true, serieIds = null } = {}) {
+  const sport = { _id: new mongoose.Types.ObjectId(String(sportId)) };
+
   const visibilityMatch = await getProductSportVisibilityMatch({
     sportId: sport._id,
   });
@@ -39,10 +56,12 @@ async function _getSeriesBySport(sportSlug, targetAudience = null) {
         ...visibilityMatch,
         targetAudience: buildStorefrontAudienceMatch(targetAudience),
         isActive: true,
-        serie: {
-          $exists: true,
-          $ne: null,
-        },
+        serie: serieIds
+          ? { $in: serieIds.map((id) => new mongoose.Types.ObjectId(String(id))) }
+          : {
+              $exists: true,
+              $ne: null,
+            },
       },
     },
 
@@ -94,14 +113,16 @@ async function _getSeriesBySport(sportSlug, targetAudience = null) {
       },
     },
 
-    {
-      $match: {
-        $or: [
-          { serieIsNewForSport: true },
-          { serieIsLimitedForSport: true },
-        ],
-      },
-    },
+    ...(flaggedOnly
+      ? [{
+          $match: {
+            $or: [
+              { serieIsNewForSport: true },
+              { serieIsLimitedForSport: true },
+            ],
+          },
+        }]
+      : []),
 
     // ─────────────────────────────────────────
     // join brand
@@ -286,6 +307,36 @@ async function _getSeriesBySport(sportSlug, targetAudience = null) {
         : null,
     };
   });
+}
+
+const isObjectId = (value) => mongoose.isValidObjectId(value) && /^[a-f\d]{24}$/i.test(String(value));
+
+/**
+ * گزینه‌های ویرایشگرِ بلوکِ «اسلایدر سری‌های ورزش»: همه‌ی سری‌هایی که در این
+ * ورزش محصول دارند (نه فقط جدید/لیمیتد)، پرمحصول‌ترین اول.
+ */
+export async function getSportSeriesOptions(sportId) {
+  if (!isObjectId(sportId)) return [];
+  await connectToDB();
+  return aggregateSportSeries(sportId, { flaggedOnly: false });
+}
+
+/**
+ * داده‌ی رندرِ بلوکِ «اسلایدر سری‌های ورزش»: ورزش (برای پیوندِ کارت‌ها و عنوانِ
+ * پیش‌فرض) و سری‌های انتخاب‌شده به *ترتیبِ انتخابِ ادمین*. سری‌ای که دیگر در این
+ * ورزش محصولی ندارد کنار می‌رود — کارتش به صفحه‌ای خالی می‌رسید.
+ */
+export async function getSportSeriesBlock(sportId, serieIds = []) {
+  const wanted = [...new Set((serieIds || []).map(String))].filter(isObjectId);
+  if (!isObjectId(sportId) || !wanted.length) return null;
+  await connectToDB();
+  const sport = await Sport.findById(sportId).select("slug title name").lean();
+  if (!sport?.slug) return null;
+  const found = await aggregateSportSeries(sport._id, { flaggedOnly: false, serieIds: wanted });
+  const byId = new Map(found.map((serie) => [serie._id, serie]));
+  const series = wanted.map((id) => byId.get(id)).filter(Boolean);
+  if (!series.length) return null;
+  return { sport: { _id: String(sport._id), slug: sport.slug, title: sport.title || sport.name || "" }, series };
 }
 
 export const getSeriesBySport = unstable_cache(

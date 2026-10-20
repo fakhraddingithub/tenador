@@ -4,6 +4,7 @@ import { useEffect, useId, useRef, useState } from "react";
 import { FiAlignCenter, FiAlignJustify, FiAlignLeft, FiAlignRight, FiBold, FiCheck, FiChevronDown, FiItalic, FiLink, FiMenu, FiSlash, FiType, FiUnderline, FiX } from "react-icons/fi";
 import { RICH_TEXT_LINE_HEIGHTS, RICH_TEXT_LINE_HEIGHT_RANGE, RICH_TEXT_PX_RANGE, RICH_TEXT_PX_SIZES, normalizeFontSizePx, normalizeLineHeight } from "@/lib/sanitizeRichText";
 import { applyInlineStyle, readSelectionStyle, serializeEditor } from "@/lib/richTextInlineStyle";
+import { FloatingPanel } from "./blockUi";
 
 /**
  * ویرایشگرِ کوچکِ متنِ غنی برای بلوک‌های متنی.
@@ -64,13 +65,15 @@ function NumericStyleControl({ label, unit, icon, range, presets, normalize, for
   const [draft, setDraft] = useState(null);
   const [open, setOpen] = useState(false);
   const box = useRef(null);
+  const list = useRef(null);
   const listId = useId();
   const shown = draft ?? (current ? current.replace(/px$/, "") : "");
   const invalid = draft !== null && draft.trim() !== "" && normalize(draft) === null;
 
   useEffect(() => {
     if (!open) return undefined;
-    const close = (event) => { if (!box.current?.contains(event.target)) setOpen(false); };
+    // فهرست در FloatingPanel به body می‌رود، پس «بیرون» یعنی بیرون از هر دو.
+    const close = (event) => { if (!box.current?.contains(event.target) && !list.current?.contains(event.target)) setOpen(false); };
     document.addEventListener("mousedown", close);
     return () => document.removeEventListener("mousedown", close);
   }, [open]);
@@ -100,7 +103,8 @@ function NumericStyleControl({ label, unit, icon, range, presets, normalize, for
           // ویرایشگر داخلِ فرمِ برند/سری/مقاله است؛ Enter نباید آن فرم را ثبت کند.
           if (event.key === "Enter") { event.preventDefault(); commit(); }
           else if (event.key === "Tab") commit();
-          else if (event.key === "Escape") { setDraft(null); setOpen(false); }
+          // با فهرستِ باز، Escape فقط فهرست را می‌بندد، نه مودالِ پیش‌نمایش را.
+          else if (event.key === "Escape") { if (open) event.stopPropagation(); setDraft(null); setOpen(false); }
           else if (event.key === "ArrowDown") { event.preventDefault(); setOpen(true); }
         }}
         // با blur چیزی اعمال نمی‌شود (مثلِ Word): کلیک در ویرایشگر یعنی انتخابِ تازه،
@@ -112,7 +116,9 @@ function NumericStyleControl({ label, unit, icon, range, presets, normalize, for
       <button type="button" aria-label={`فهرست ${label}`} onMouseDown={(event) => event.preventDefault()} onClick={() => setOpen((value) => !value)} className="px-0.5 py-1 text-gray-400 hover:text-[var(--color-primary)]"><FiChevronDown /></button>
     </div>
     {invalid ? <span role="alert" className="absolute top-full right-0 z-20 mt-1 whitespace-nowrap rounded bg-white px-2 py-1 text-[10px] text-red-600 shadow">عددی بین {range.min} تا {range.max}</span> : null}
-    {open ? <ul id={listId} role="listbox" aria-label={label} className="absolute top-full right-0 z-20 mt-1 max-h-60 w-28 overflow-y-auto border bg-white py-1 shadow-lg" style={{ borderColor: "var(--admin-border)", borderRadius: "var(--admin-radius)" }}>
+    {/* همان FloatingPanel ـِ نتایجِ جستجو: مودالِ پیش‌نمایش و قابِ کارت آن را نمی‌بُرند. */}
+    <FloatingPanel anchorRef={box} open={open} panelRef={list} matchWidth={false} width={112} maxHeight={240}>
+    <ul id={listId} role="listbox" aria-label={label} className="border bg-white py-1 shadow-lg" style={{ borderColor: "var(--admin-border)", borderRadius: "var(--admin-radius)" }}>
       {[null, ...presets].map((value) => {
         const selected = value ? current === format(value) : current === "";
         return <li key={value ?? "default"} role="option" aria-selected={selected}>
@@ -126,7 +132,8 @@ function NumericStyleControl({ label, unit, icon, range, presets, normalize, for
           >{value ?? "پیش‌فرض"}</button>
         </li>;
       })}
-    </ul> : null}
+    </ul>
+    </FloatingPanel>
   </div>;
 }
 

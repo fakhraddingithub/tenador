@@ -102,6 +102,23 @@ export const ARTICLE_BLOCKS = {
   bestSellers: { label: "پرفروش‌ترین‌ها", group: "پویا", icon: FiStar, defaults: { title: "پرفروش‌ترین‌ها", limit: 12, categories: [] }, fields: [text("title", "عنوان", "text", { row: "head" }), text("limit", "تعداد", "number", { row: "head" }), entity("categories", "محدود به دسته", "category")], styleKeys: TITLED },
   amazingOffers: { label: "پیشنهادهای شگفت‌انگیز", group: "پویا", icon: FiZap, defaults: { title: "پیشنهادهای شگفت‌انگیز", limit: 12 }, fields: [text("title", "عنوان", "text", { row: "head" }), text("limit", "تعداد", "number", { row: "head" })], styleKeys: TITLED },
   usedProducts: { label: "محصولات دست دوم", group: "فروشگاه", icon: FiShoppingBag, defaults: { title: "محصولات دست دوم", products: [] }, fields: [text("title", "عنوان"), entity("products", "آگهی‌ها", "usedProduct")], styleKeys: TITLED },
+  // همان اسلایدرِ سری‌های صفحه‌ی ورزش (SeriesSlider)، با سری‌هایی که ادمین برمی‌گزیند.
+  // اول ورزش؛ عوض‌شدنِ ورزش سری‌های قبلی را پاک می‌کند (clears)، چون سری‌های
+  // ورزشِ دیگر اینجا معنایی ندارند. جستجوی سری‌ها به ورزش محدود است (scope) و
+  // بدونِ تایپ هم فهرستِ کاملشان باز می‌شود (browse). عنوان مثلِ «تیتر تنادور».
+  sportSeriesSlider: {
+    label: "اسلایدر سری‌های ورزش", group: "فروشگاه", icon: FiLayers,
+    defaults: { sport: null, series: [], highlight: "سری‌های", title: "", subtitle: "جدیدترین کالکشن‌های 2026" },
+    fields: [
+      { ...entity("sport", "ورزش", "sport", false), clears: ["series"] },
+      { ...entity("series", "سری‌ها — فقط سری‌هایی که در این ورزش محصول دارند", "sportSerie"), scope: "sport", scopeHint: "ابتدا ورزش را انتخاب کنید", browse: true },
+      text("highlight", "متن نارنجی (ابتدای عنوان)", "text", { row: "title" }),
+      text("title", "ادامه‌ی عنوان (خالی = نامِ ورزش)", "text", { row: "title" }),
+      text("subtitle", "زیرعنوان"),
+    ],
+    // ظاهر عیناً همان اسلایدرِ سری‌های صفحه‌ی ورزش است و تنظیم‌پذیر نیست.
+    styleKeys: SPACING_ONLY,
+  },
   relatedArticles: { label: "مقالات مرتبط", group: "محتوا", icon: FiList, defaults: { title: "مقالات مرتبط", articles: [] }, fields: [text("title", "عنوان"), entity("articles", "مقالات", "article")], styleKeys: TITLED },
   newsletterCta: { label: "عضویت خبرنامه", group: "بازاریابی", icon: FiMail, defaults: { title: "", description: "", buttonLabel: "عضویت" }, fields: [text("title", "عنوان", "text", { row: "head" }), text("buttonLabel", "متن دکمه", "text", { row: "head" }), text("description", "توضیح", "rich", { htmlKey: "descriptionHtml", align: false })], styleKeys: ["spacing", "textColor", "background", "accent"] },
   customHtml: { label: "HTML سفارشی", group: "پیشرفته", icon: FiBox, defaults: { html: "" }, fields: [text("html", "کد HTML", "html")], styleKeys: TEXTY },

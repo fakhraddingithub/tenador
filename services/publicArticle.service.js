@@ -18,6 +18,7 @@ import { getCachedRate } from "@/lib/Exchangerate";
 import { attachListingPrices } from "base/services/priceEngine";
 import { getProductsVisibleInAnySportMatch } from "base/services/categorySportVisibility.service";
 import { andMongoFilters } from "base/utils/categorySportVisibility";
+import { getSportSeriesBlock } from "base/services/series.service";
 import { isReservedArticleRoot, publicArticleFilter } from "base/utils/articleRoutes";
 
 
@@ -53,8 +54,12 @@ export async function resolveArticleEntities(article) {
   const refs = collectBlockReferences(allBlocks);
   const dynamicBlocks = allBlocks.filter((block) =>
     ["latestProducts", "bestSellers", "amazingOffers"].includes(block.type));
+  // «اسلایدر سری‌های ورزش»: داده‌ی هر بلوک همان شکلِ اسلایدرِ صفحه‌ی ورزش است
+  // (تصویرِ مخصوصِ همین ورزش، برند، رنگ‌ها) و فقط سری‌هایی که هنوز در این ورزش
+  // محصول دارند — به ترتیبِ انتخابِ ادمین.
+  const sportSeriesBlocks = allBlocks.filter((block) => block.type === "sportSeriesSlider");
 
-  const [rate, products, brands, series, categories, sports, articles, usedProducts, dynamicProducts] = await Promise.all([
+  const [rate, products, brands, series, categories, sports, articles, usedProducts, dynamicProducts, sportSeries] = await Promise.all([
     refs.products.length || dynamicBlocks.length ? getCachedRate() : Promise.resolve(1),
     refs.products.length ? Product.find({ _id: { $in: refs.products }, isActive: true }).populate("brand category variants").lean() : [],
     refs.brands.length ? Brand.find({ _id: { $in: refs.brands } }).select("name title slug logo image icon").lean() : [],
@@ -80,6 +85,7 @@ export async function resolveArticleEntities(article) {
       const docs = await Product.find(query).sort({ order: 1, createdAt: -1 }).limit(limit).populate("brand category variants").lean();
       return [String(block.id), docs];
     })),
+    Promise.all(sportSeriesBlocks.map(async (block) => [String(block.id), await getSportSeriesBlock(block.data?.sport, block.data?.series)])),
   ]);
 
   const allProducts = [...products, ...dynamicProducts.flatMap(([, list]) => list)];
@@ -92,7 +98,7 @@ export async function resolveArticleEntities(article) {
   for (const [key, list] of Object.entries({ products: pricedProducts, brands, series, categories, sports, articles, usedProducts })) {
     maps[key] = Object.fromEntries(list.map((item) => [String(item._id), item]));
   }
-  return serialise({ rate, maps, dynamicProducts: dynamicMap });
+  return serialise({ rate, maps, dynamicProducts: dynamicMap, sportSeries: Object.fromEntries(sportSeries.filter(([, value]) => value)) });
 }
 
 async function getCategoryInternal(slug) {

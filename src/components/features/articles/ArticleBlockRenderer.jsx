@@ -10,6 +10,7 @@ import { BLOCK_ALIGN_SELF, BLOCK_WIDTH_CLASS, blockBoxProps, blockWidth, groupBl
 import DragScroll from "@/components/features/articles/DragScroll";
 import HomeSectionHeading from "@/components/features/home/HomeSectionHeading";
 import SportHero from "@/components/templates/sports/SportHero";
+import SeriesSlider from "@/components/templates/sports/SeriesSlider";
 import MergedSliderNav from "@/components/features/articles/MergedSliderNav";
 import ImageSliderControls from "@/components/features/articles/ImageSliderControls";
 import { imageBlockItems, imageShadeLayer } from "@/lib/articleImageBlock";
@@ -549,6 +550,22 @@ export default function ArticleBlockRenderer({ blocks = [], entities, preview = 
     if (["brandSlider", "collectionSlider", "categorySlider", "sportSlider"].includes(block.type)) {
       const config = { brandSlider: ["brands", data.brands], collectionSlider: ["series", data.collections], categorySlider: ["categories", data.categories], sportSlider: ["sports", data.sports] }[block.type];
       return <EntityCards key={block.id} title={data.title} kind={config[0]} items={ordered(config[1], maps[config[0]])} visuals={v} inMerged={inMerged} />;
+    }
+    if (block.type === "sportSeriesSlider") {
+      // همان اسلایدرِ سری‌های صفحه‌ی ورزش (SeriesSlider)؛ فقط عنوان از داده‌ی بلوک
+      // می‌آید و کارت‌ها به /ورزش/برند/سری می‌روند. داخلِ خانه‌ی ادغام، تعدادِ کارت
+      // از عرضِ همان خانه حساب می‌شود (fitContainer)، نه از پنجره.
+      const resolved = entities?.sportSeries?.[String(block.id)];
+      if (!resolved?.series?.length) return null;
+      return <div key={block.id} className={blockSection} style={v.spacing || undefined}>
+        <SeriesSlider
+          series={resolved.series}
+          sportSlug={resolved.sport.slug}
+          sportTitle={resolved.sport.title}
+          heading={{ highlight: data.highlight || "", title: data.title || "", subtitle: data.subtitle || "" }}
+          fitContainer={inMerged}
+        />
+      </div>;
     }
     if (block.type === "usedProducts") return <section key={block.id} className={blockSection} style={v.spacing || undefined}>{data.title ? <h2 className="mb-5 text-xl font-black" style={v.text ? { color: v.text } : undefined}>{data.title}</h2> : null}<PublicUsedProductGrid fill={inMerged} products={ordered(data.products, maps.usedProducts)} /></section>;
     if (block.type === "relatedArticles") {

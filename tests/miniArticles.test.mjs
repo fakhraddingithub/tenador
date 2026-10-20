@@ -376,7 +376,7 @@ test("sport brochure: wiring — routes, admin pages, edit form and the public s
   // the brand brochure's own component; without one the listing path is untouched
   const page = await read("../src/app/(Site)/(sports)/[sportSlug]/page.jsx");
   const brochureAt = page.indexOf("await getPublishedSportBrochure(ctx.filters.sport._id)");
-  const listingAt = page.indexOf("getPageDataBySlug(sportSlug, targetAudience)");
+  const listingAt = page.indexOf("getPageDataBySlug(sportSlug, targetAudience"); // prefix: pagination added an offset argument
   assert.ok(brochureAt > 0 && brochureAt < listingAt, "brochure check runs before the product listing");
   assert.match(page.slice(brochureAt, listingAt), /import\("@\/components\/features\/brands\/BrandBrochure"\)/);
   assert.match(page.slice(brochureAt, listingAt), /canonical=\{`\$\{SITE_URL\}\/\$\{sportSlug\}`\}/);

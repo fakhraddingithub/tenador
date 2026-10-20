@@ -230,6 +230,16 @@ const validators = {
   brandSlider: entitySlider("brands"),
   categorySlider: entitySlider("categories"),
   sportSlider: entitySlider("sports"),
+  // همان سه متنِ «تیتر تنادور» (نارنجی، ادامه، زیرعنوان) + ورزش و سری‌های انتخابی.
+  // اینکه هر سری واقعاً در این ورزش محصول داشته باشد را رندر می‌سنجد، نه ذخیره:
+  // محصولات بعداً عوض می‌شوند و ذخیره نباید به آن وابسته باشد.
+  sportSeriesSlider: (data, errors, field) => ({
+    sport: id(data.sport, errors, `${field}.sport`),
+    series: idList(data.series, errors, `${field}.series`),
+    highlight: string(data.highlight, 200),
+    title: string(data.title, 300),
+    subtitle: string(data.subtitle, 500),
+  }),
   latestProducts: (data, errors, field) => ({ title: string(data.title, 300), limit: Math.min(16, Math.max(1, Number(data.limit) || 8)), sports: idList(data.sports, errors, `${field}.sports`), categories: idList(data.categories, errors, `${field}.categories`) }),
   bestSellers: (data, errors, field) => ({ title: string(data.title, 300), limit: Math.min(16, Math.max(1, Number(data.limit) || 8)), categories: idList(data.categories, errors, `${field}.categories`) }),
   amazingOffers: (data) => ({ title: string(data.title, 300), limit: Math.min(16, Math.max(1, Number(data.limit) || 8)) }),

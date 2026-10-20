@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useId, useState } from "react";
 import Link from "next/link";
 import { withQueryParams } from "@/lib/navbarAudience";
 import {
@@ -185,10 +185,20 @@ function SerieCard({ serie, sportSlug, targetAudience, limited = false }) {
   );
 }
 
-export default function SeriesSlider({ series = [], sportSlug, sportTitle, targetAudience }) {
+/**
+ * heading: { highlight, title, subtitle } — عنوانِ سفارشی (بلوکِ «اسلایدر سری‌های
+ *   ورزش»). بدونِ آن همان متن‌های صفحه‌ی ورزش رندر می‌شود.
+ * fitContainer: نقطه‌شکن‌ها با عرضِ خودِ اسلایدر سنجیده می‌شوند نه پنجره — برای
+ *   وقتی که اسلایدر داخلِ خانه‌ی باریکِ یک بلوکِ ادغام‌شده است.
+ */
+export default function SeriesSlider({ series = [], sportSlug, sportTitle, targetAudience, heading = null, fitContainer = false }) {
   // قبل از return زودهنگام صدا زده می‌شود تا ترتیبِ هوک‌ها ثابت بماند.
   // حرکتِ خودِ اسلایدر با Swiper است؛ این هوک فقط کلیکِ بعد از درگ را می‌بلعد.
   const sliderRef = useDragClickGuard();
+  // کلاسِ یکتای دکمه‌ها برای هر اسلایدر: Swiper انتخابگرِ رشته‌ای را در کلِ سند
+  // می‌جوید، پس با کلاسِ مشترک دو اسلایدرِ یک صفحه (جدید + لیمیتد، یا چند بلوک)
+  // هر کدام با دکمه‌های دیگری هم جابه‌جا می‌شدند.
+  const navKey = useId().replace(/[^a-zA-Z0-9_-]/g, "");
 
   if (!series?.length) return null;
 
@@ -238,7 +248,17 @@ export default function SeriesSlider({ series = [], sportSlug, sportTitle, targe
         <div className="relative flex flex-col md:flex-row md:items-end justify-between mb-10 md:mb-16">
           <div className="relative">
             <h2 className="text-2xl md:text-4xl font-black text-gray-900 leading-tight">
-              {isLimitedEdition ? (
+              {heading ? (
+                <>
+                  {heading.highlight ? <span className="text-[#aa4725]">{heading.highlight} </span> : null}{" "}
+                  {heading.title || sportTitle}
+                  {heading.subtitle ? (
+                    <p className="text-gray-500 mt-2 md:mt-4 text-sm md:text-lg font-light max-w-md border-r-2 md:border-r-4 border-[#aa4725]/20 pr-3 md:pr-4 italic">
+                      {heading.subtitle}
+                    </p>
+                  ) : null}
+                </>
+              ) : isLimitedEdition ? (
                 <>
                   <span className="text-[#aa4725]">سری های</span>لیمیتد ادیشن
                   <p className="text-gray-500 mt-2 md:mt-4 text-sm md:text-lg font-light max-w-md border-r-2 md:border-r-4 border-[#aa4725]/20 pr-3 md:pr-4 italic">
@@ -258,13 +278,13 @@ export default function SeriesSlider({ series = [], sportSlug, sportTitle, targe
 
           <div className="hidden md:flex items-center mt-8 md:mt-0">
             <div className="flex bg-white/80 backdrop-blur-md shadow-xl shadow-black/5 rounded-[16px] p-1 border border-white/50">
-              <button className="series-prev-btn w-12 h-12 flex items-center justify-center text-gray-400 hover:text-[#aa4725] hover:bg-[#aa4725]/5 transition-all duration-300 rounded-[12px]">
+              <button aria-label="قبلی" className={`series-prev-btn series-prev-${navKey} w-12 h-12 flex items-center justify-center text-gray-400 hover:text-[#aa4725] hover:bg-[#aa4725]/5 transition-all duration-300 rounded-[12px]`}>
                 <FiArrowRight size={22} />
               </button>
 
               <div className="w-[1px] h-6 bg-gray-100 self-center mx-1"></div>
 
-              <button className="series-next-btn w-12 h-12 flex items-center justify-center text-gray-400 hover:text-[#aa4725] hover:bg-[#aa4725]/5 transition-all duration-300 rounded-[12px]">
+              <button aria-label="بعدی" className={`series-next-btn series-next-${navKey} w-12 h-12 flex items-center justify-center text-gray-400 hover:text-[#aa4725] hover:bg-[#aa4725]/5 transition-all duration-300 rounded-[12px]`}>
                 <FiArrowLeft size={22} />
               </button>
             </div>
@@ -275,6 +295,7 @@ export default function SeriesSlider({ series = [], sportSlug, sportTitle, targe
           <GrungeFilter />
           <Swiper
             modules={[Navigation, Pagination, Autoplay]}
+            breakpointsBase={fitContainer ? "container" : "window"}
             watchOverflow={true}
             centeredSlides={false}
             autoplay={{
@@ -282,8 +303,8 @@ export default function SeriesSlider({ series = [], sportSlug, sportTitle, targe
               disableOnInteraction: true,
             }}
             navigation={{
-              nextEl: ".series-next-btn",
-              prevEl: ".series-prev-btn",
+              nextEl: `.series-next-${navKey}`,
+              prevEl: `.series-prev-${navKey}`,
             }}
             pagination={{
               el: ".series-pagination",
@@ -308,47 +329,19 @@ export default function SeriesSlider({ series = [], sportSlug, sportTitle, targe
           </Swiper>
         </div>
 
-        {/* فوتر اورجینال دکمه‌های پایین */}
-        <div
-          className="
-  flex 
-  flex-row             {/* روی موبایل هم در یک خط (افقی) بمانند */}
-  items-center 
-  justify-between 
-  gap-4 
-  mt-1
-  w-full
-"
-        >
+        {/* فوتر اورجینال دکمه‌های پایین — flex-row: روی موبایل هم در یک خط بمانند.
+            کلاس‌ها یک‌خطی‌اند: نسخه‌ی چندخطی، توضیح‌های JSX را *داخلِ* خودِ رشته
+            داشت که کلاس‌های بی‌معنا می‌ساخت و هیدریشن را ناهم‌خوان می‌کرد (سرور و
+            مرورگر خطِ تازه‌ی داخلِ class را یکسان نمی‌نویسند). همان کلاس‌ها، همان ظاهر. */}
+        <div className="flex flex-row items-center justify-between gap-4 mt-1 w-full">
           {/* پجینیشن اسلایدر */}
           <div className="slider-pagination-2 !w-auto flex gap-1.5 md:gap-2 flex-shrink-0"></div>
 
-          {/* دکمه کاتالوگ */}
+          {/* دکمه کاتالوگ — پدینگ جمع‌وجورتر و فونتِ ۱۱px در موبایل، whitespace-nowrap
+              تا متن نشکند. */}
           <Link
             href="/products"
-            className="
-      group 
-      flex 
-      items-center 
-      gap-2 
-      bg-white 
-      px-4 py-2          {/* پدینگ جمع‌وجورتر در موبایل */}
-      md:px-6 md:py-3    {/* پدینگ اصلی در دسکتاپ */}
-      rounded-full 
-      shadow-sm 
-      border 
-      border-gray-100 
-      text-gray-900 
-      font-bold 
-      text-[11px]        {/* اندازه فونت بهینه برای موبایل تا متن طولانی خراب نشود */}
-      sm:text-xs 
-      md:text-sm 
-      hover:bg-[#aa4725] 
-      hover:text-white 
-      transition-all 
-      duration-300 
-      whitespace-nowrap  {/* جلوگیری از شکستن متن در موبایل */}
-    "
+            className="group flex items-center gap-2 bg-white px-4 py-2 md:px-6 md:py-3 rounded-full shadow-sm border border-gray-100 text-gray-900 font-bold text-[11px] sm:text-xs md:text-sm hover:bg-[#aa4725] hover:text-white transition-all duration-300 whitespace-nowrap"
           >
             مشاهده کاتالوگ محصولات
             <FiPlusCircle className="text-base md:text-xl group-hover:rotate-180 transition-transform duration-500 flex-shrink-0" />

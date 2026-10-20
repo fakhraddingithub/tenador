@@ -19,6 +19,7 @@ export const ARTICLE_BLOCK_TYPES = [
   "brandSlider",
   "categorySlider",
   "sportSlider",
+  "sportSeriesSlider",
   "latestProducts",
   "bestSellers",
   "amazingOffers",
