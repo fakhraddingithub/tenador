@@ -15,6 +15,7 @@ import UsedProduct from "base/models/UsedProduct";
 import SiteSetting from "base/models/SiteSetting";
 import { buildArticlePath, normalizeArticleSlug } from "base/utils/articleSlug";
 import { getCachedRate } from "@/lib/Exchangerate";
+import { eurToToman } from "@/lib/currency";
 import { attachListingPrices } from "base/services/priceEngine";
 import { getProductsVisibleInAnySportMatch } from "base/services/categorySportVisibility.service";
 import { andMongoFilters } from "base/utils/categorySportVisibility";
@@ -60,7 +61,7 @@ export async function resolveArticleEntities(article) {
   const sportSeriesBlocks = allBlocks.filter((block) => block.type === "sportSeriesSlider");
 
   const [rate, products, brands, series, categories, sports, articles, usedProducts, dynamicProducts, sportSeries] = await Promise.all([
-    refs.products.length || dynamicBlocks.length ? getCachedRate() : Promise.resolve(1),
+    refs.products.length || dynamicBlocks.length || refs.usedProducts.length ? getCachedRate() : Promise.resolve(1),
     refs.products.length ? Product.find({ _id: { $in: refs.products }, isActive: true }).populate("brand category variants").lean() : [],
     refs.brands.length ? Brand.find({ _id: { $in: refs.brands } }).select("name title slug logo image icon").lean() : [],
     refs.series.length ? Serie.find({ _id: { $in: refs.series } }).select("name title slug logo image headImage brand").populate("brand", "slug title name").lean() : [],
@@ -95,7 +96,9 @@ export async function resolveArticleEntities(article) {
   const dynamicMap = Object.fromEntries(dynamicProducts.map(([blockId, list]) => [blockId, list.map((item) => productMap[String(item._id)]).filter(Boolean)]));
 
   const maps = {};
-  for (const [key, list] of Object.entries({ products: pricedProducts, brands, series, categories, sports, articles, usedProducts })) {
+  // قیمتِ کالای دست‌دوم به یورو ذخیره می‌شود؛ مثلِ صفحه‌ی دست‌دوم همین‌جا به تومان می‌رود.
+  const pricedUsedProducts = usedProducts.map((item) => ({ ...item, price: eurToToman(item.price, rate) }));
+  for (const [key, list] of Object.entries({ products: pricedProducts, brands, series, categories, sports, articles, usedProducts: pricedUsedProducts })) {
     maps[key] = Object.fromEntries(list.map((item) => [String(item._id), item]));
   }
   return serialise({ rate, maps, dynamicProducts: dynamicMap, sportSeries: Object.fromEntries(sportSeries.filter(([, value]) => value)) });
