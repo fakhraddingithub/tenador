@@ -347,6 +347,7 @@ export default function PreviewCanvas({ blocks: saved = [], entities, endpoint, 
           ref={canvas}
           className={`site-colors${canEdit ? " preview-canvas" : ""}`}
           data-viewport={viewport}
+          data-bleed-root
           onPointerDown={onPointerDown}
           onPointerMove={onPointerMove}
           onPointerUp={endDrag}

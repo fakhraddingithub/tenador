@@ -1123,6 +1123,17 @@ disabled with a hint until one is picked). `browse: true` opens the full list on
 - `heading` overrides the text only when passed; `fitContainer` switches Swiper's
   breakpoints to the container (used inside a merged block).
 
+**It is full width, like on the sport page.** A top-level block is wrapped in `FullBleed`
+(`src/components/features/articles/FullBleed.jsx`), which measures the column and cancels its
+offset with negative margins. CSS alone cannot do it: the article column sits beside the
+reading-tools sidebar, so it is not centred and `calc(50% - 50vw)` lands in the wrong place.
+The edge is the nearest `[data-bleed-root]` (the preview canvas — otherwise the slider
+would cover the admin menu), else the window's `clientWidth` (not `100vw`, whose scrollbar
+width makes the page scroll sideways). Inside a merged block or on an image (`inMerged`) it
+stays in its cell. Known trade-offs: the widening happens on hydration (the server HTML
+is column-wide), and on desktop the sticky sidebar passes behind the slider while
+scrolling.
+
 **Dropdowns in the editor render in a portal.** The preview modal body is
 `max-h-[68vh] overflow-y-auto`, and a block card has its own overflow, so an `absolute`
 list was clipped or painted under the next card — no z-index fixes clipping. `FloatingPanel`

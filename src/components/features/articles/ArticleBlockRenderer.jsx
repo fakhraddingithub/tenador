@@ -11,6 +11,7 @@ import DragScroll from "@/components/features/articles/DragScroll";
 import HomeSectionHeading from "@/components/features/home/HomeSectionHeading";
 import SportHero from "@/components/templates/sports/SportHero";
 import SeriesSlider from "@/components/templates/sports/SeriesSlider";
+import FullBleed from "@/components/features/articles/FullBleed";
 import MergedSliderNav from "@/components/features/articles/MergedSliderNav";
 import ImageSliderControls from "@/components/features/articles/ImageSliderControls";
 import { imageBlockItems, imageShadeLayer } from "@/lib/articleImageBlock";
@@ -557,14 +558,16 @@ export default function ArticleBlockRenderer({ blocks = [], entities, preview = 
       // از عرضِ همان خانه حساب می‌شود (fitContainer)، نه از پنجره.
       const resolved = entities?.sportSeries?.[String(block.id)];
       if (!resolved?.series?.length) return null;
+      const slider = <SeriesSlider
+        series={resolved.series}
+        sportSlug={resolved.sport.slug}
+        sportTitle={resolved.sport.title}
+        heading={{ highlight: data.highlight || "", title: data.title || "", subtitle: data.subtitle || "" }}
+        fitContainer={inMerged}
+      />;
+      // مثلِ صفحه‌ی ورزش لبه‌به‌لبه؛ داخلِ خانه‌ی ادغام یا روی تصویر در همان خانه می‌ماند.
       return <div key={block.id} className={blockSection} style={v.spacing || undefined}>
-        <SeriesSlider
-          series={resolved.series}
-          sportSlug={resolved.sport.slug}
-          sportTitle={resolved.sport.title}
-          heading={{ highlight: data.highlight || "", title: data.title || "", subtitle: data.subtitle || "" }}
-          fitContainer={inMerged}
-        />
+        {inMerged ? slider : <FullBleed>{slider}</FullBleed>}
       </div>;
     }
     if (block.type === "usedProducts") return <section key={block.id} className={blockSection} style={v.spacing || undefined}>{data.title ? <h2 className="mb-5 text-xl font-black" style={v.text ? { color: v.text } : undefined}>{data.title}</h2> : null}<PublicUsedProductGrid fill={inMerged} products={ordered(data.products, maps.usedProducts)} /></section>;

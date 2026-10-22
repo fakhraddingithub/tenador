@@ -109,6 +109,13 @@ test("block: validator, registry and renderer reuse the existing pieces", async 
   assert.match(renderer, /import SeriesSlider from "@\/components\/templates\/sports\/SeriesSlider";/);
   assert.match(renderer, /heading=\{\{ highlight: data\.highlight \|\| "", title: data\.title \|\| "", subtitle: data\.subtitle \|\| "" \}\}/);
   assert.match(renderer, /fitContainer=\{inMerged\}/);
+  // full width at the top level, inside its cell when merged / on an image
+  assert.match(renderer, /\{inMerged \? slider : <FullBleed>\{slider\}<\/FullBleed>\}/);
+  // the preview canvas bounds the bleed, otherwise it would cover the admin menu
+  assert.match(await read("../src/components/admin/articles/PreviewCanvas.jsx"), /data-bleed-root/);
+  const bleed = await read("../src/components/features/articles/FullBleed.jsx");
+  assert.match(bleed, /closest\("\[data-bleed-root\]"\)/);
+  assert.match(bleed, /document\.documentElement\.clientWidth/, "clientWidth, not 100vw — the scrollbar would cause a horizontal scroll");
   const resolver = await read("../services/publicArticle.service.js");
   assert.match(resolver, /getSportSeriesBlock\(block\.data\?\.sport, block\.data\?\.series\)/);
 });
