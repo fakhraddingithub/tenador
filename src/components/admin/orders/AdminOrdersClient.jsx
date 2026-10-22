@@ -4,7 +4,7 @@ import { couponDisplayCode } from "@/lib/couponLabel";
 import OrderFlowSelectionsView from "@/components/order/OrderFlowSelectionsView";
 import { getUserFullName } from "base/utils/userName";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import { toast } from "react-toastify";
@@ -588,47 +588,47 @@ export default function AdminOrdersClient() {
   const [loading, setLoading] = useState(true);
 
   const [search, setSearch] = useState("");
-  const [paymentStatus, setPaymentStatus] = useState("all");
-  const [fulfillmentStatus, setFulfillmentStatus] = useState("all");
-  const [paymentMethod, setPaymentMethod] = useState("all");
-  const [page, setPage] = useState(1);
+  const [query, setQuery] = useState({
+    page: 1, search: "", paymentStatus: "all", fulfillmentStatus: "all", paymentMethod: "all",
+  });
+  const { page, paymentStatus, fulfillmentStatus, paymentMethod } = query;
   const [showFilters, setShowFilters] = useState(false);
-  const [viewOrderId, setViewOrderId] = useState(null); // مودال جزئیات سفارش
+  const [viewOrderId, setViewOrderId] = useState(null);
 
-  const fetchOrders = useCallback(async (resetPage = false) => {
-    setLoading(true);
-    const currentPage = resetPage ? 1 : page;
-    if (resetPage) setPage(1);
-    try {
-      const params = new URLSearchParams({
-        page: String(currentPage),
-        limit: "20",
-        search,
-        paymentStatus,
-        fulfillmentStatus,
-        paymentMethod,
-      });
-      const res = await fetch(`/api/admin/orders?${params}`);
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.message);
-      setOrders(data.orders || []);
-      setStats(data.stats);
-      setPagination(data.pagination);
-    } catch (err) {
-      toast.error(err.message || "خطا در دریافت سفارشات");
-    } finally {
-      setLoading(false);
+  useEffect(() => {
+    const controller = new AbortController();
+    async function fetchOrders() {
+      setLoading(true);
+      try {
+        const params = new URLSearchParams({ ...query, page: String(query.page), limit: "20" });
+        const res = await fetch(`/api/admin/orders?${params}`, { signal: controller.signal });
+        const data = await res.json();
+        if (controller.signal.aborted) return;
+        if (!res.ok) throw new Error(data.message);
+        setOrders(data.orders || []);
+        setStats(data.stats);
+        setPagination(data.pagination);
+      } catch (err) {
+        if (!controller.signal.aborted) toast.error(err.message || "خطا در دریافت سفارشات");
+      } finally {
+        if (!controller.signal.aborted) setLoading(false);
+      }
     }
-  }, [page, search, paymentStatus, fulfillmentStatus, paymentMethod]);
-
-  useEffect(() => { fetchOrders(); }, [page]);
+    fetchOrders();
+    return () => controller.abort();
+  }, [query]);
 
   const handleSearch = (e) => {
     e.preventDefault();
-    fetchOrders(true);
+    setQuery((current) => ({ ...current, search: search.trim(), page: 1 }));
   };
 
-  const handleFilterChange = () => { fetchOrders(true); };
+  const handleFilterChange = (field, value) => {
+    setQuery((current) => ({ ...current, [field]: value, page: 1 }));
+  };
+  const setPage = (value) => {
+    setQuery((current) => ({ ...current, page: typeof value === "function" ? value(current.page) : value }));
+  };
 
   // ترتیب نمایش همان ترتیب سرور است: تاریخ ثبت، جدیدترین اول.
   // سفارش‌های دیده‌نشده فقط با هایلایت بصری متمایز می‌شوند، نه با جابه‌جایی.
@@ -668,7 +668,7 @@ export default function AdminOrdersClient() {
           </div>
           <div className="flex items-center gap-2">
             <button
-              onClick={() => fetchOrders()} disabled={loading}
+              onClick={() => setQuery((current) => ({ ...current }))} disabled={loading}
               className="flex items-center gap-2 bg-white border border-gray-200 text-gray-600
                 hover:border-[var(--color-primary)] hover:text-[var(--color-primary)] text-xs font-bold px-4 py-2 rounded-xl transition"
             >
@@ -773,19 +773,19 @@ export default function AdminOrdersClient() {
                 className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-1"
               >
                 <FilterSelect label="وضعیت پرداخت" value={paymentStatus}
-                  onChange={(v) => { setPaymentStatus(v); handleFilterChange(); }}
+                  onChange={(v) => handleFilterChange("paymentStatus", v)}
                   options={[
                     { value: "all", label: "همه" },
                     ...Object.entries(PAYMENT_STATUS).map(([k, v]) => ({ value: k, label: v.label })),
                   ]} />
                 <FilterSelect label="وضعیت ارسال" value={fulfillmentStatus}
-                  onChange={(v) => { setFulfillmentStatus(v); handleFilterChange(); }}
+                  onChange={(v) => handleFilterChange("fulfillmentStatus", v)}
                   options={[
                     { value: "all", label: "همه" },
                     ...Object.entries(FULFILLMENT_STATUS).map(([k, v]) => ({ value: k, label: v.label })),
                   ]} />
                 <FilterSelect label="روش پرداخت" value={paymentMethod}
-                  onChange={(v) => { setPaymentMethod(v); handleFilterChange(); }}
+                  onChange={(v) => handleFilterChange("paymentMethod", v)}
                   options={[
                     { value: "all", label: "همه" },
                     ...Object.entries(PAYMENT_METHOD).map(([k, v]) => ({ value: k, label: v.label })),
