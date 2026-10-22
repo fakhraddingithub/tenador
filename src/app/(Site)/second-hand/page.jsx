@@ -13,7 +13,7 @@ import { isSharedCategory } from "base/utils/categorySportVisibility";
 export const revalidate = 3600;
 
 const SITE_URL = (process.env.NEXT_PUBLIC_SITE_URL || "https://tenador.com").replace(/\/+$/, "");
-const PAGE_TITLE = "بازار دست دوم | فروش تجهیزات ورزشی کارکرده";
+const PAGE_TITLE = "بازار دست دوم | فروش تجهیزات تنیس و پدل کارکرده";
 const PAGE_DESC = "خرید و فروش تجهیزات ورزشی دست دوم با کارت سلامت معتبر";
 
 export async function generateMetadata() {
