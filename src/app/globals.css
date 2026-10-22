@@ -539,6 +539,29 @@
   color: #fff;
 }
 
+/* ─── اسلایدرِ نظرات (کاورفلو) ───
+   کوچک‌شدن، عقب‌رفتن و زیرِ هم رفتنِ کارت‌های کناری کارِ خودِ coverflow است
+   (scale + depth + stretch)؛ اینجا فقط کم‌رنگیِ کارت‌های کناری و محوشدنِ دو لبه.
+   کم‌رنگی یک پرده‌ی سفید روی کارت است، نه opacity: کارت‌ها روی هم می‌افتند و
+   کارتِ نیمه‌شفاف متنِ کارتِ پشتش را نشان می‌داد. */
+.review-coverflow .swiper {
+  --swiper-wrapper-transition-timing-function: cubic-bezier(0.22, 0.61, 0.36, 1);
+  -webkit-mask-image: linear-gradient(to right, transparent, #000 8%, #000 92%, transparent);
+  mask-image: linear-gradient(to right, transparent, #000 8%, #000 92%, transparent);
+}
+.review-coverflow .swiper-slide::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: 0.75rem;
+  background: rgb(255 255 255 / 0.55);
+  pointer-events: none;
+  transition: opacity 650ms cubic-bezier(0.22, 0.61, 0.36, 1);
+}
+.review-coverflow .swiper-slide-active::after {
+  opacity: 0;
+}
+
 /* ─── ارتفاعِ خطِ متنِ بلوک‌ها ───
    ارتفاعِ خط ثابت بود (leading-9 و leading-8، یعنی ۳۶ و ۳۲ پیکسل)، پس با عوض‌شدنِ
    اندازه‌ی قلم تکان نمی‌خورد: متنِ ۳۲ پیکسلی خطوطش روی هم می‌افتاد و متنِ ریز

@@ -13,6 +13,7 @@ import requireAdminPermission from "@/lib/requireAdminPermission";
 import { articleApiError } from "@/lib/articleApi";
 import { rankProducts, withProductSearch } from "@/lib/productSearch";
 import { getSportSeriesOptions } from "base/services/series.service";
+import { getReviewCardsByIds, searchReviewCards } from "base/services/comment.service";
 
 export const runtime = "nodejs";
 
@@ -81,6 +82,16 @@ export async function GET(req) {
         .select("title slug cover status").limit(CANDIDATE_LIMIT).lean();
       items = rank(docs, (d) => rankBySearch(q, d, (x) => [[x.title, 2], [x.slug, 1]]).slice(0, RESULT_LIMIT))
         .map((x) => ({ _id: x._id, label: x.title, sub: x.status, image: x.cover?.url || null }));
+    } else if (type === "review") {
+      // بلوکِ «اسلایدر نظرات»: فقط نظرهای سطح‌بالای تأییدشده (نو و دست‌دوم). برچسب
+      // نویسنده و محصول است و زیرش ابتدای متن، تا نظرهای یک محصول از هم جدا شوند.
+      const cards = idFilter ? await getReviewCardsByIds(ids) : await searchReviewCards(q);
+      items = cards.map((card) => ({
+        _id: card.id,
+        label: `${card.author} — ${card.product.name}`,
+        sub: `${card.rating ? `${"★".repeat(card.rating)} · ` : ""}${card.product.href ? "" : "دست‌دوم · "}${card.text.slice(0, 80)}`,
+        image: card.product.image || null,
+      }));
     } else if (type === "usedProduct") {
       const docs = await UsedProduct.find(idFilter || withSearch({}, q, ["name"])).select("name images status").limit(CANDIDATE_LIMIT).lean();
       items = rank(docs, (d) => rankBySearch(q, d, (x) => [[x.name, 1]]).slice(0, RESULT_LIMIT))

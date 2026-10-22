@@ -24,6 +24,7 @@ export const ARTICLE_BLOCK_TYPES = [
   "bestSellers",
   "amazingOffers",
   "usedProducts",
+  "reviewSlider",
   "relatedArticles",
   "newsletterCta",
   "customHtml",

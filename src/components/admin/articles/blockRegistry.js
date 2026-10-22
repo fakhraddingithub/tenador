@@ -1,7 +1,7 @@
 import {
   FiAlignRight, FiBarChart2, FiBox, FiColumns, FiGrid, FiImage, FiLink, FiList,
   FiFeather, FiLayout, FiMail, FiMessageSquare, FiMinus, FiPlay, FiShoppingBag, FiStar, FiTable,
-  FiLayers, FiTag, FiType, FiZap,
+  FiLayers, FiMessageCircle, FiTag, FiType, FiZap,
 } from "react-icons/fi";
 import { ARTICLE_BLOCK_TYPES, IMAGE_SLIDER_DELAY, IMAGE_SLIDER_HEIGHT } from "@/lib/articleBlockTypes";
 
@@ -117,6 +117,14 @@ export const ARTICLE_BLOCKS = {
       text("subtitle", "زیرعنوان"),
     ],
     // ظاهر عیناً همان اسلایدرِ سری‌های صفحه‌ی ورزش است و تنظیم‌پذیر نیست.
+    styleKeys: SPACING_ONLY,
+  },
+  // نظرهای تأییدشده‌ی محصولِ نو و دست‌دوم، در کاورفلو؛ کارت‌ها عیناً کارتِ نظرِ صفحه‌ی
+  // دست‌دوم‌اند و تنظیمِ ظاهری ندارند. با فوکوس، تازه‌ترین نظرها بدونِ تایپ باز می‌شوند.
+  reviewSlider: {
+    label: "اسلایدر نظرات", group: "فروشگاه", icon: FiMessageCircle,
+    defaults: { reviews: [] },
+    fields: [{ ...entity("reviews", "نظرها — همه‌ی نظرهای تأییدشده‌ی محصولات نو و دست‌دوم", "review"), browse: true }],
     styleKeys: SPACING_ONLY,
   },
   relatedArticles: { label: "مقالات مرتبط", group: "محتوا", icon: FiList, defaults: { title: "مقالات مرتبط", articles: [] }, fields: [text("title", "عنوان"), entity("articles", "مقالات", "article")], styleKeys: TITLED },

@@ -17,6 +17,7 @@ import { buildArticlePath, normalizeArticleSlug } from "base/utils/articleSlug";
 import { getCachedRate } from "@/lib/Exchangerate";
 import { eurToToman } from "@/lib/currency";
 import { attachListingPrices } from "base/services/priceEngine";
+import { getReviewCardsByIds } from "base/services/comment.service";
 import { getProductsVisibleInAnySportMatch } from "base/services/categorySportVisibility.service";
 import { andMongoFilters } from "base/utils/categorySportVisibility";
 import { getSportSeriesBlock } from "base/services/series.service";
@@ -33,7 +34,7 @@ async function rootSlugIsOccupied(slug) {
 }
 
 function collectBlockReferences(blocks = []) {
-  const refs = { products: [], brands: [], series: [], categories: [], sports: [], articles: [], usedProducts: [] };
+  const refs = { products: [], brands: [], series: [], categories: [], sports: [], articles: [], usedProducts: [], reviews: [] };
   for (const block of blocks) {
     const data = block?.data || {};
     if (block.type === "productCard") refs.products.push(...ids(data.product));
@@ -44,6 +45,7 @@ function collectBlockReferences(blocks = []) {
     if (block.type === "sportSlider") refs.sports.push(...ids(data.sports));
     if (block.type === "relatedArticles") refs.articles.push(...ids(data.articles));
     if (block.type === "usedProducts") refs.usedProducts.push(...ids(data.products));
+    if (block.type === "reviewSlider") refs.reviews.push(...ids(data.reviews));
   }
   for (const key of Object.keys(refs)) refs[key] = [...new Set(refs[key])];
   return refs;
@@ -60,7 +62,7 @@ export async function resolveArticleEntities(article) {
   // محصول دارند — به ترتیبِ انتخابِ ادمین.
   const sportSeriesBlocks = allBlocks.filter((block) => block.type === "sportSeriesSlider");
 
-  const [rate, products, brands, series, categories, sports, articles, usedProducts, dynamicProducts, sportSeries] = await Promise.all([
+  const [rate, products, brands, series, categories, sports, articles, usedProducts, dynamicProducts, sportSeries, reviews] = await Promise.all([
     refs.products.length || dynamicBlocks.length || refs.usedProducts.length ? getCachedRate() : Promise.resolve(1),
     refs.products.length ? Product.find({ _id: { $in: refs.products }, isActive: true }).populate("brand category variants").lean() : [],
     refs.brands.length ? Brand.find({ _id: { $in: refs.brands } }).select("name title slug logo image icon").lean() : [],
@@ -87,6 +89,7 @@ export async function resolveArticleEntities(article) {
       return [String(block.id), docs];
     })),
     Promise.all(sportSeriesBlocks.map(async (block) => [String(block.id), await getSportSeriesBlock(block.data?.sport, block.data?.series)])),
+    getReviewCardsByIds(refs.reviews),
   ]);
 
   const allProducts = [...products, ...dynamicProducts.flatMap(([, list]) => list)];
@@ -101,6 +104,7 @@ export async function resolveArticleEntities(article) {
   for (const [key, list] of Object.entries({ products: pricedProducts, brands, series, categories, sports, articles, usedProducts: pricedUsedProducts })) {
     maps[key] = Object.fromEntries(list.map((item) => [String(item._id), item]));
   }
+  maps.reviews = Object.fromEntries(reviews.map((review) => [review.id, review]));
   return serialise({ rate, maps, dynamicProducts: dynamicMap, sportSeries: Object.fromEntries(sportSeries.filter(([, value]) => value)) });
 }
 
@@ -150,7 +154,7 @@ async function getArticleInternal(categorySlug, articleSlug) {
 }
 
 const getCachedPublicArticleCategory = unstable_cache(getCategoryInternal, ["public-article-category"], { revalidate: 300, tags: ["articles"] });
-const getCachedPublicArticle = unstable_cache(getArticleInternal, ["public-article"], { revalidate: 300, tags: ["articles", "products", "categories", "brands", "sports", "series"] });
+const getCachedPublicArticle = unstable_cache(getArticleInternal, ["public-article"], { revalidate: 300, tags: ["articles", "products", "categories", "brands", "sports", "series", "comments"] });
 
 // Only cache known content. Caching null for arbitrary catch-all URLs lets bots
 // create an unbounded number of unique ISR entries.

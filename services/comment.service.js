@@ -3,6 +3,41 @@ import connectToDB from "base/configs/db";
 import "base/models/registerModels";
 import Comment from "base/models/Comment";
 import { getUserFullName } from "base/utils/userName";
+import { matchesSearch, rankBySearch } from "@/lib/search";
+
+// status منبع حقیقت است؛ approved:true بدونِ status نظرهای قدیمی‌اند (هرگز رد نشده‌اند).
+const APPROVED = { $or: [{ status: "approved" }, { status: { $exists: false }, approved: true }] };
+
+/**
+ * شکلِ کارتِ نظر (UsedProductReviewCard) — یک جا، برای صفحه‌ی دست‌دوم و بلوکِ
+ * «اسلایدر نظرات». نظرِ محصولِ نو و دست‌دوم هر دو به همین شکل درمی‌آیند؛ فقط
+ * مقصدِ پیوند و تصویرِ محصول از مدلِ خودشان می‌آید.
+ */
+function toReviewCard(comment) {
+  const used = comment.usedProduct;
+  const product = used
+    ? { id: String(used._id), name: used.name, slug: used.slug || null, image: used.images?.[0] || null }
+    : { id: String(comment.product._id), name: comment.product.name, slug: comment.product.slug || null, image: comment.product.mainImage || null, href: comment.product.slug ? `/products/${comment.product.slug}` : "/products" };
+  return {
+    id: String(comment._id),
+    author: getUserFullName(comment.user, "کاربر تنادور"),
+    avatar: comment.user?.avatar || null,
+    text: comment.text,
+    rating: comment.rating || 0,
+    images: Array.isArray(comment.images) ? comment.images.slice(0, 4) : [],
+    isVerifiedPurchase: !!comment.isVerifiedPurchase,
+    createdAt: comment.createdAt,
+    product,
+  };
+}
+
+const withReviewRefs = (query) => query
+  .populate("user", "name lastName avatar")
+  .populate("usedProduct", "name slug images")
+  .populate("product", "name slug mainImage");
+
+// محصولِ حذف‌شده populate را null می‌کند؛ چنین نظری کارتی برای نمایش ندارد.
+const hasProduct = (comment) => comment.usedProduct || comment.product;
 
 /**
  * نظرهای تأییدشده‌ی یک محصول + خلاصه‌ی امتیاز.
@@ -96,24 +131,36 @@ export const getApprovedUsedProductReviews = unstable_cache(
       .limit(safeLimit)
       .lean();
 
-    return docs
-      .filter((comment) => comment.usedProduct)
-      .map((comment) => ({
-        id: String(comment._id),
-        author: getUserFullName(comment.user, "کاربر تنادور"),
-        avatar: comment.user?.avatar || null,
-        text: comment.text,
-        rating: comment.rating || 0,
-        images: Array.isArray(comment.images) ? comment.images.slice(0, 4) : [],
-        createdAt: comment.createdAt,
-        product: {
-          id: String(comment.usedProduct._id),
-          name: comment.usedProduct.name,
-          slug: comment.usedProduct.slug || null,
-          image: comment.usedProduct.images?.[0] || null,
-        },
-      }));
+    return docs.filter((comment) => comment.usedProduct).map(toReviewCard);
   },
   ["approved-used-product-reviews"],
   { revalidate: 10800, tags: ["comments"] }
 );
+
+/**
+ * نظرهای انتخاب‌شده برای بلوکِ «اسلایدر نظرات»، به ترتیبِ انتخابِ ادمین.
+ * فقط نظرِ سطح‌بالای تأییدشده — نظری که بعداً رد یا حذف شد، یا محصولش دیگر
+ * نیست، بی‌صدا کنار می‌رود.
+ */
+export async function getReviewCardsByIds(ids = []) {
+  const wanted = ids.map(String).filter((id) => /^[a-f\d]{24}$/i.test(id));
+  if (!wanted.length) return [];
+  await connectToDB();
+  const docs = await withReviewRefs(Comment.find({ _id: { $in: wanted }, parent: null, ...APPROVED })).lean();
+  const byId = new Map(docs.filter(hasProduct).map((comment) => [String(comment._id), toReviewCard(comment)]));
+  return wanted.map((id) => byId.get(id)).filter(Boolean);
+}
+
+/**
+ * جستجوی نظرهای تأییدشده‌ی محصولِ نو و دست‌دوم برای انتخاب در پنل (متن، نامِ
+ * نویسنده یا نامِ محصول). بدونِ عبارت، تازه‌ترین‌ها.
+ * ponytail: روی تازه‌ترین ۵۰۰ نظر جستجو می‌کند؛ اگر نظرها خیلی بیشتر شد، جستجوی متنی در خودِ کوئری.
+ */
+export async function searchReviewCards(q = "", limit = 50) {
+  await connectToDB();
+  const docs = await withReviewRefs(Comment.find({ parent: null, ...APPROVED }).sort({ createdAt: -1 }).limit(500)).lean();
+  const cards = docs.filter(hasProduct).map(toReviewCard);
+  if (!q) return cards.slice(0, limit);
+  const hits = cards.filter((card) => matchesSearch(q, `${card.text} ${card.author} ${card.product.name}`));
+  return rankBySearch(q, hits, (card) => [[card.product.name, 2], [card.author, 2], [card.text, 1]]).slice(0, limit);
+}

@@ -1,0 +1,128 @@
+import Link from "next/link";
+import { FaCheckCircle, FaQuoteRight, FaStar } from "react-icons/fa";
+
+function formatDate(value) {
+  try {
+    return new Intl.DateTimeFormat("fa-IR", {
+      year: "numeric",
+      month: "long",
+      day: "numeric",
+    }).format(new Date(value));
+  } catch {
+    return "";
+  }
+}
+
+function Stars({ value }) {
+  if (!value) return null;
+
+  return (
+    <div
+      className="flex items-center gap-0.5 text-[#ffbf00]"
+      aria-label={`امتیاز ${value} از ۵`}
+    >
+      {Array.from({ length: 5 }, (_, index) => (
+        <FaStar
+          key={index}
+          className={index < value ? "text-[#ffbf00]" : "text-gray-200"}
+          size={13}
+        />
+      ))}
+    </div>
+  );
+}
+
+/**
+ * کارتِ نظرِ خریدار — همان کارتِ بخشِ «تجربه‌ی خرید واقعی» در صفحه‌ی دست‌دوم،
+ * که بلوکِ «اسلایدر نظرات» هم *همین* را رندر می‌کند.
+ *
+ * دو چیز از داده می‌آید تا نظرِ محصولِ نو هم درست نمایش داده شود، بی‌آنکه خروجیِ
+ * صفحه‌ی دست‌دوم عوض شود: مقصدِ پیوند (`product.href`، وگرنه همان مسیرِ
+ * دست‌دوم) و نشانِ «خریدار تأییدشده» (فقط وقتی `isVerifiedPurchase` صریحاً
+ * false نیست — صفحه‌ی دست‌دوم فقط نظرِ تأییدشده می‌آورد).
+ */
+export default function UsedProductReviewCard({ review, onOpenImage }) {
+  return (
+    <article className="flex h-full flex-col rounded-xl border border-black/5 bg-white p-5 shadow-[0_8px_30px_rgba(32,35,42,0.05)]">
+      <div className="mb-4 flex items-start justify-between gap-3">
+        <div className="flex min-w-0 items-center gap-3">
+          {review.avatar ? (
+            <img
+              src={review.avatar}
+              alt=""
+              className="h-10 w-10 flex-shrink-0 rounded-full object-cover"
+            />
+          ) : (
+            <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full bg-[#aa4725]/10 text-sm font-black text-[#aa4725]">
+              {review.author?.trim()?.[0] || "ت"}
+            </div>
+          )}
+          <div className="min-w-0">
+            <p className="truncate text-sm font-black text-gray-900">
+              {review.author}
+            </p>
+            {review.isVerifiedPurchase !== false ? (
+              <span className="mt-1 inline-flex items-center gap-1 text-[11px] font-bold text-emerald-700">
+                <FaCheckCircle />
+                خریدار تأییدشده
+              </span>
+            ) : null}
+          </div>
+        </div>
+        <FaQuoteRight className="flex-shrink-0 text-xl text-[#aa4725]/15" />
+      </div>
+
+      <div className="mb-3 flex items-center justify-between gap-2">
+        <Stars value={review.rating} />
+        <time className="text-[11px] text-gray-400">
+          {formatDate(review.createdAt)}
+        </time>
+      </div>
+
+      <p className="flex-1 whitespace-pre-line text-sm leading-7 text-gray-700">
+        {review.text}
+      </p>
+
+      {review.images.length > 0 && (
+        <div className="mt-4 grid grid-cols-4 gap-2">
+          {review.images.map((imageUrl, index) => (
+            <button
+              key={`${imageUrl}-${index}`}
+              type="button"
+              onClick={() => onOpenImage?.(imageUrl)}
+              className="aspect-square overflow-hidden rounded-lg border border-gray-100 bg-gray-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#aa4725]"
+              aria-label={`نمایش تصویر محصول ${index + 1}`}
+            >
+              <img
+                src={imageUrl}
+                alt={`تصویر ارسالی خریدار ${index + 1}`}
+                className="h-full w-full object-cover transition-transform duration-300 hover:scale-105"
+              />
+            </button>
+          ))}
+        </div>
+      )}
+
+      <Link
+        href={
+          review.product.href ||
+          (review.product.slug
+            ? `/second-hand/${review.product.slug}`
+            : "/second-hand")
+        }
+        className="mt-4 flex items-center gap-2 border-t border-gray-100 pt-4"
+      >
+        {review.product.image && (
+          <img
+            src={review.product.image}
+            alt=""
+            className="h-9 w-9 rounded-md object-cover"
+          />
+        )}
+        <span className="truncate text-xs font-bold text-gray-500 transition-colors hover:text-[#aa4725]">
+          {review.product.name}
+        </span>
+      </Link>
+    </article>
+  );
+}

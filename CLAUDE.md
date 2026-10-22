@@ -1153,6 +1153,52 @@ rich-text size/line-height list use it, so every block gets the fix at once.
 npm run test:sport-series-slider
 ```
 
+### The «اسلایدر نظرات» block (review coverflow)
+
+`data: { reviews: [commentIds] }` — any **approved top-level** review of a new *or* a used
+product, in the admin's order, shown as a coverflow.
+
+**The card is the second-hand page's card, not a copy.** The markup that was inline in
+`UsedProductReviewsSection` is now `UsedProductReviewCard.jsx`; the section and the slider both
+render it. Two things come from the data so a new-product review renders correctly without
+changing the second-hand output: the link target (`product.href`, else the old
+`/second-hand/<slug>`) and the «خریدار تأییدشده» badge (hidden only when
+`isVerifiedPurchase === false` — the second-hand list only ever contains verified reviews,
+but the block may pick an unverified one, and the badge must not lie).
+
+| piece | where |
+|---|---|
+| card shape | `toReviewCard` in `services/comment.service.js` — one shape for both kinds; `getApprovedUsedProductReviews` uses it too |
+| public read | `getReviewCardsByIds` via `resolveArticleEntities` → `maps.reviews`; a review later rejected, a reply, or one whose product is gone drops out silently |
+| picker | entity type `review` → `searchReviewCards(q)`: newest approved first with no query (`browse: true`), matches text, author or product name. Scans the newest 500 (`ponytail:` note there) |
+| cache | `getCachedPublicArticle` carries the `comments` tag, so moderating a review purges articles that show it |
+
+**The slider** (`ReviewCoverflow.jsx`) is Swiper's own `EffectCoverflow` — the dependency every
+site slider already uses — with `centeredSlides`, `slidesPerView: "auto"` and `dir="rtl"`:
+
+- `scale: 0.88` + `depth` make every step from the centre smaller and further back;
+  `stretch: "28%"` (a share of the card width) tucks the neighbours *behind* the centre card,
+  which is also what keeps them visible on a phone.
+- In this RTL document "next" is on the left, so each move carries the centre card to the
+  right and the left card takes the centre — exactly the requested direction.
+- Side cards are dimmed with a white `::after` veil, **not** `opacity`: the cards overlap, and
+  a translucent card shows the text of the card behind it.
+- A click anywhere on a side card (including its link) only brings it to the centre — caught in
+  the capture phase, since a Next `<Link>` handles its own click. The centre card behaves
+  exactly like on the second-hand page (product link, image lightbox).
+- `loop` needs slides on both sides, so a short list is repeated up to 6 (copies are
+  `aria-hidden`); a single review renders one still card with no arrows.
+- Autoplay uses the homepage delay (`HOME_SLIDER_AUTOPLAY.delay`), pauses on hover, and never
+  starts under `prefers-reduced-motion`. Speed is 650ms on a soft ease-out — the 300ms of the
+  homepage is too abrupt for a move that also scales and recedes.
+
+`tests/commentPhotosReplies.test.mjs` loads `comment.service.js` in a sandbox with its
+imports injected by hand — a new import there must be added to that list.
+
+```bash
+npm run test:review-slider
+```
+
 ### Authoring: a block clipboard, and what scales with what
 
 **Copying a block between documents** goes through `src/lib/articleBlockClipboard.js` —

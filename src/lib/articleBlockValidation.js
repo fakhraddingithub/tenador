@@ -244,6 +244,8 @@ const validators = {
   bestSellers: (data, errors, field) => ({ title: string(data.title, 300), limit: Math.min(16, Math.max(1, Number(data.limit) || 8)), categories: idList(data.categories, errors, `${field}.categories`) }),
   amazingOffers: (data) => ({ title: string(data.title, 300), limit: Math.min(16, Math.max(1, Number(data.limit) || 8)) }),
   usedProducts: entitySlider("products"),
+  // فقط شناسه‌ها؛ اینکه نظر هنوز تأییدشده باشد را رندر می‌سنجد (ممکن است بعداً رد شود).
+  reviewSlider: (data, errors, field) => ({ reviews: idList(data.reviews, errors, `${field}.reviews`) }),
   relatedArticles: entitySlider("articles"),
   newsletterCta: (data) => ({ title: string(data.title, 300), description: string(data.description, 2000), ...rich(data.descriptionHtml, "descriptionHtml"), buttonLabel: string(data.buttonLabel, 160) }),
   customHtml: (data) => ({ html: typeof data.html === "string" ? data.html.slice(0, 250000) : "" }),

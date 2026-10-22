@@ -30,6 +30,7 @@ const { default: UsedProduct } = await import("../models/UsedProduct.js");
 const { default: Order } = await import("../models/Order.js");
 await import("../models/User.js");
 const { getUserFullName } = await import("../utils/userName.js");
+const search = await import("../src/lib/search.js");
 
 const IMAGEKIT = "https://ik.imagekit.io/tenador";
 process.env.IMAGEKIT_URL_ENDPOINT = IMAGEKIT;
@@ -130,6 +131,7 @@ function reviewService() {
     "base/models/registerModels": {},
     "base/models/Comment": { default: Comment },
     "base/utils/userName": { getUserFullName },
+    "@/lib/search": search,
   });
 }
 
