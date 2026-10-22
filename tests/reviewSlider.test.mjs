@@ -33,6 +33,7 @@ after(async () => {
 });
 
 const read = (path) => readFile(new URL(path, import.meta.url), "utf8");
+const has = (source, text, message) => assert.ok(source.includes(text), message || `missing: ${text}`);
 const oid = () => new mongoose.Types.ObjectId();
 const db = () => mongoose.connection;
 
@@ -92,42 +93,60 @@ test("block: type, validator, registry, resolver and renderer", async () => {
   assert.ok(ARTICLE_BLOCK_TYPES.includes("reviewSlider"));
   const reviews = [String(oid()), String(oid())];
   const errors = {};
-  assert.deepEqual(sanitizeArticleBlockData("reviewSlider", { reviews: [...reviews, reviews[0]], title: "x" }, errors, "blocks.0.data"), { reviews });
+  assert.deepEqual(
+    sanitizeArticleBlockData("reviewSlider", { reviews: [...reviews, reviews[0]], highlight: " نظرات ", title: "خریداران", subtitle: "زیر", extra: 1 }, errors, "blocks.0.data"),
+    { reviews, highlight: "نظرات", title: "خریداران", subtitle: "زیر" },
+  );
   assert.deepEqual(errors, {});
   const bad = {};
   sanitizeArticleBlockData("reviewSlider", { reviews: ["nope"] }, bad, "blocks.0.data");
   assert.ok(bad["blocks.0.data.reviews"]);
 
   const { ARTICLE_BLOCKS } = await import("../src/components/admin/articles/blockRegistry.js");
+  const { REVIEW_SLIDER_HEADING } = await import("../src/lib/articleBlockTypes.js");
+  // a block saved before the heading existed gets the default on its next save, not a blank
+  // heading; a field the admin cleared on purpose stays empty
+  assert.deepEqual(sanitizeArticleBlockData("reviewSlider", { reviews }, {}, "b"), { reviews, ...REVIEW_SLIDER_HEADING });
+  assert.equal(sanitizeArticleBlockData("reviewSlider", { reviews, subtitle: "" }, {}, "b").subtitle, "");
   const def = ARTICLE_BLOCKS.reviewSlider;
-  assert.deepEqual(def.fields.map((field) => [field.key, field.entityType, field.browse]), [["reviews", "review", true]]);
+  assert.deepEqual(def.fields.map((field) => field.key), ["reviews", "highlight", "title", "subtitle"]);
+  assert.equal(def.fields[0].entityType, "review");
+  assert.equal(def.fields[0].browse, true);
+  assert.deepEqual(def.defaults, { reviews: [], ...REVIEW_SLIDER_HEADING });
   assert.deepEqual(def.styleKeys, ["spacing"]);
 
   const route = await read("../src/app/api/admin/article-cms/entities/route.js");
-  assert.match(route, /type === "review"/);
-  assert.match(route, /idFilter \? await getReviewCardsByIds\(ids\) : await searchReviewCards\(q\)/);
+  has(route, 'type === "review"');
+  has(route, "idFilter ? await getReviewCardsByIds(ids) : await searchReviewCards(q)");
   const resolver = await read("../services/publicArticle.service.js");
-  assert.match(resolver, /if \(block\.type === "reviewSlider"\) refs\.reviews\.push/);
-  assert.match(resolver, /"series", "comments"\]/, "moderating a review purges cached articles");
+  has(resolver, 'if (block.type === "reviewSlider") refs.reviews.push');
+  has(resolver, '"series", "comments"]', "moderating a review purges cached articles");
   const renderer = await read("../src/components/features/articles/ArticleBlockRenderer.jsx");
-  assert.match(renderer, /<ReviewCoverflow reviews=\{reviews\} \/>/);
+  has(renderer, "data[key] ?? fallback", "a block saved before it had a heading gets the default heading, not a blank one");
+  has(renderer, "{inMerged ? slider : <FullBleed>{slider}</FullBleed>}", "full width like the series slider; inside its cell when merged");
 });
 
-test("the slider renders the second-hand page's card, in a coverflow", async () => {
+test("the series slider's frame, the second-hand page's card, and no overlap", async () => {
   const section = await read("../src/components/templates/secondHands/UsedProductReviewsSection.jsx");
-  assert.match(section, /<UsedProductReviewCard key=\{review\.id\} review=\{review\} onOpenImage=\{setLightboxImage\} \/>/);
-  assert.doesNotMatch(section, /<article/, "the card markup lives in one place only");
+  has(section, "<UsedProductReviewCard key={review.id} review={review} onOpenImage={setLightboxImage} />");
+  assert.ok(!section.includes("<article"), "the card markup lives in one place only");
 
-  const coverflow = await read("../src/components/features/articles/ReviewCoverflow.jsx");
-  assert.match(coverflow, /import UsedProductReviewCard from "@\/components\/templates\/secondHands\/UsedProductReviewCard"/);
-  assert.match(coverflow, /effect="coverflow"/);
-  assert.match(coverflow, /centeredSlides/);
-  assert.match(coverflow, /dir="rtl"/, "next is on the left: the centre card moves right and the left one takes its place");
-  assert.match(coverflow, /scale: 0\.88/, "each step away from the centre is smaller");
-  assert.match(coverflow, /stretch: "28%"/, "neighbours tuck behind the centre card (and stay visible on a phone)");
-  assert.match(coverflow, /prefers-reduced-motion/);
+  // one frame for both sliders: two-tone title + subtitle, nav top-left
+  has(await read("../src/components/templates/sports/SeriesSlider.jsx"), "<SliderShowcase");
+  const slider = await read("../src/components/features/articles/ReviewSlider.jsx");
+  has(slider, "<SliderShowcase");
+  has(slider, "<ShowcaseTitle highlight={heading.highlight} title={heading.title} subtitle={heading.subtitle} />");
+  has(slider, 'import UsedProductReviewCard from "@/components/templates/secondHands/UsedProductReviewCard"');
+
+  // never overlapping: one card, or exactly three with a fixed gap — never coverflow's stretch
+  assert.doesNotMatch(slider, /coverflow|stretch/i);
+  has(slider, "spaceBetween={GAP}");
+  has(slider, "breakpoints={threeUp ? { 900: { slidesPerView: 3 } } : undefined}");
+  has(slider, 'breakpointsBase="container"');
+  has(slider, 'dir="rtl"', "next is on the left: the centre card moves right and the left one takes its place");
+  has(slider, "prefers-reduced-motion");
 
   const card = await read("../src/components/templates/secondHands/UsedProductReviewCard.jsx");
-  assert.match(card, /review\.product\.href \|\|/);
-  assert.match(card, /review\.isVerifiedPurchase !== false/);
+  has(card, "review.product.href ||");
+  has(card, "review.isVerifiedPurchase !== false");
 });

@@ -12,11 +12,11 @@ import HomeSectionHeading from "@/components/features/home/HomeSectionHeading";
 import SportHero from "@/components/templates/sports/SportHero";
 import SeriesSlider from "@/components/templates/sports/SeriesSlider";
 import FullBleed from "@/components/features/articles/FullBleed";
-import ReviewCoverflow from "@/components/features/articles/ReviewCoverflow";
+import ReviewSlider from "@/components/features/articles/ReviewSlider";
 import MergedSliderNav from "@/components/features/articles/MergedSliderNav";
 import ImageSliderControls from "@/components/features/articles/ImageSliderControls";
 import { imageBlockItems, imageShadeLayer } from "@/lib/articleImageBlock";
-import { IMAGE_SLIDER_DELAY, IMAGE_SLIDER_HEIGHT, blockChildren, blockHoldsBlocks, flattenArticleBlocks, imageOverlayChildren, imageSliderChildren, isMergedBlock, mergedChildren, sanitizeMergedGrid } from "@/lib/articleBlockTypes";
+import { IMAGE_SLIDER_DELAY, IMAGE_SLIDER_HEIGHT, REVIEW_SLIDER_HEADING, blockChildren, blockHoldsBlocks, flattenArticleBlocks, imageOverlayChildren, imageSliderChildren, isMergedBlock, mergedChildren, sanitizeMergedGrid } from "@/lib/articleBlockTypes";
 
 const ordered = (values, map) => (Array.isArray(values) ? values : values ? [values] : []).map((id) => map?.[String(id)]).filter(Boolean);
 // فاصله‌ی پیش‌فرض صفر است: دو بلوکِ پشتِ‌سرِ‌هم که فاصله‌ای برایشان تنظیم نشده،
@@ -573,7 +573,12 @@ export default function ArticleBlockRenderer({ blocks = [], entities, preview = 
     }
     if (block.type === "reviewSlider") {
       const reviews = ordered(data.reviews, maps.reviews);
-      return reviews.length ? <section key={block.id} className={blockSection} style={v.spacing || undefined}><ReviewCoverflow reviews={reviews} /></section> : null;
+      if (!reviews.length) return null;
+      // بلوکی که پیش از عنوان‌دار شدن ذخیره شده کلیدها را ندارد → عنوانِ پیش‌فرض.
+      const heading = Object.fromEntries(Object.entries(REVIEW_SLIDER_HEADING).map(([key, fallback]) => [key, data[key] ?? fallback]));
+      const slider = <ReviewSlider reviews={reviews} heading={heading} />;
+      // مثلِ اسلایدرِ سری‌ها لبه‌به‌لبه؛ داخلِ خانه‌ی ادغام یا روی تصویر در همان خانه.
+      return <div key={block.id} className={blockSection} style={v.spacing || undefined}>{inMerged ? slider : <FullBleed>{slider}</FullBleed>}</div>;
     }
     if (block.type === "usedProducts") return <section key={block.id} className={blockSection} style={v.spacing || undefined}>{data.title ? <h2 className="mb-5 text-xl font-black" style={v.text ? { color: v.text } : undefined}>{data.title}</h2> : null}<PublicUsedProductGrid fill={inMerged} products={ordered(data.products, maps.usedProducts)} /></section>;
     if (block.type === "relatedArticles") {

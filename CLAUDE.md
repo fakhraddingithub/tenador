@@ -1153,10 +1153,10 @@ rich-text size/line-height list use it, so every block gets the fix at once.
 npm run test:sport-series-slider
 ```
 
-### The «اسلایدر نظرات» block (review coverflow)
+### The «اسلایدر نظرات» block
 
 `data: { reviews: [commentIds] }` — any **approved top-level** review of a new *or* a used
-product, in the admin's order, shown as a coverflow.
+product, in the admin's order, in the series slider's frame.
 
 **The card is the second-hand page's card, not a copy.** The markup that was inline in
 `UsedProductReviewsSection` is now `UsedProductReviewCard.jsx`; the section and the slider both
@@ -1173,24 +1173,40 @@ but the block may pick an unverified one, and the badge must not lie).
 | picker | entity type `review` → `searchReviewCards(q)`: newest approved first with no query (`browse: true`), matches text, author or product name. Scans the newest 500 (`ponytail:` note there) |
 | cache | `getCachedPublicArticle` carries the `comments` tag, so moderating a review purges articles that show it |
 
-**The slider** (`ReviewCoverflow.jsx`) is Swiper's own `EffectCoverflow` — the dependency every
-site slider already uses — with `centeredSlides`, `slidesPerView: "auto"` and `dir="rtl"`:
+**The frame is the series slider's.** The section, halo, large background word, container,
+two-tone heading with subtitle and the nav pill in the top-left corner moved out of
+`SeriesSlider` into `SliderShowcase` (`src/components/templates/sports/SliderShowcase.jsx`,
+plus `ShowcaseTitle` for the orange-then-black heading). Both sliders render it; the series
+slider's server HTML on `/tennis` is byte-identical to before. The block carries
+`highlight`/`title`/`subtitle` (defaults in `REVIEW_SLIDER_HEADING`, shared by the registry,
+the validator and the renderer): a block saved before it had a heading gets the default on
+its next save — and on render meanwhile — never a blank heading; a field the admin cleared on
+purpose stays empty. Like the series block it is full width (`FullBleed`) except inside a
+merged cell.
 
-- `scale: 0.88` + `depth` make every step from the centre smaller and further back;
-  `stretch: "28%"` (a share of the card width) tucks the neighbours *behind* the centre card,
-  which is also what keeps them visible on a phone.
+**The slider** (`ReviewSlider.jsx`) is a plain Swiper slide carousel with `centeredSlides`,
+`loop` and `dir="rtl"`. **Cards never overlap** — an earlier coverflow version tucked the
+neighbours behind the centre card and was replaced for exactly that reason:
+
+- Either one card (slider narrower than 900px — `breakpointsBase: "container"`, so the
+  article column and merged cells count, not the window) or exactly three. Never a partly
+  visible fourth card; fewer than three reviews always show one at a time, so a review is
+  never shown twice side by side.
+- `spaceBetween` is a fixed 24px. The two side cards are scaled (0.92) and veiled with **one**
+  value, so the gap on either side of the centre card is always equal (measured 39/39px at
+  1400, 35/35px at 1100). The scale sits on the card wrapper, not the slide Swiper moves.
+- The veil is a white `::after` on the card wrapper, not `opacity` on the slide, so the
+  section background around a card is untouched.
 - In this RTL document "next" is on the left, so each move carries the centre card to the
-  right and the left card takes the centre — exactly the requested direction.
-- Side cards are dimmed with a white `::after` veil, **not** `opacity`: the cards overlap, and
-  a translucent card shows the text of the card behind it.
+  right and the left card takes the centre.
 - A click anywhere on a side card (including its link) only brings it to the centre — caught in
   the capture phase, since a Next `<Link>` handles its own click. The centre card behaves
   exactly like on the second-hand page (product link, image lightbox).
 - `loop` needs slides on both sides, so a short list is repeated up to 6 (copies are
   `aria-hidden`); a single review renders one still card with no arrows.
 - Autoplay uses the homepage delay (`HOME_SLIDER_AUTOPLAY.delay`), pauses on hover, and never
-  starts under `prefers-reduced-motion`. Speed is 650ms on a soft ease-out — the 300ms of the
-  homepage is too abrupt for a move that also scales and recedes.
+  starts under `prefers-reduced-motion`. Speed is 650ms on a soft ease-out, and the scale and
+  veil transition over the same 650ms.
 
 `tests/commentPhotosReplies.test.mjs` loads `comment.service.js` in a sandbox with its
 imports injected by hand — a new import there must be added to that list.

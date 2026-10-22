@@ -41,6 +41,10 @@ export const ARTICLE_BLOCK_TYPE_SET = new Set(ARTICLE_BLOCK_TYPES);
 // خودش یک بلوکِ عادی است و می‌تواند دوباره با بلوک‌های دیگر ادغام شود (تا
 // MAX_MERGE_DEPTH سطح). جداسازی همیشه فقط یک سطح را باز می‌کند.
 export const MERGED_BLOCK_TYPE = "merged";
+
+// عنوانِ پیش‌فرضِ «اسلایدر نظرات» — هم پیش‌فرضِ بلوکِ تازه در ویرایشگر، هم عنوانِ
+// بلوک‌هایی که پیش از افزوده‌شدنِ عنوان ذخیره شده‌اند (کلیدها را ندارند).
+export const REVIEW_SLIDER_HEADING = { highlight: "تجربه‌ی خرید", title: "واقعی", subtitle: "نظر خریداران تنادور" };
 export const MAX_MERGED_CHILDREN = 12;
 export const MAX_MERGE_DEPTH = 3;
 

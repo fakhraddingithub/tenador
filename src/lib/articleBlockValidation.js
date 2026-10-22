@@ -4,7 +4,7 @@ import { normalizeFontSizePx, richTextValue } from "./sanitizeRichText.js";
 import {
   IMAGE_CONTENT_POSITIONS, IMAGE_DISPLAY_HEIGHT, IMAGE_SHADE_DEFAULTS, IMAGE_SHADE_DIRECTIONS, MAX_IMAGE_BLOCK_ITEMS, clampImageShade, mirrorFirstImage, normalizeHexColor, normalizeImageHref,
 } from "./articleImageBlock.js";
-import { FAQ_ANSWER_ALIGNS, IMAGE_SLIDER_DELAY, IMAGE_SLIDER_HEIGHT } from "./articleBlockTypes.js";
+import { FAQ_ANSWER_ALIGNS, IMAGE_SLIDER_DELAY, IMAGE_SLIDER_HEIGHT, REVIEW_SLIDER_HEADING } from "./articleBlockTypes.js";
 
 const string = (value, max) => typeof value === "string" ? value.trim().slice(0, max) : "";
 
@@ -245,7 +245,14 @@ const validators = {
   amazingOffers: (data) => ({ title: string(data.title, 300), limit: Math.min(16, Math.max(1, Number(data.limit) || 8)) }),
   usedProducts: entitySlider("products"),
   // فقط شناسه‌ها؛ اینکه نظر هنوز تأییدشده باشد را رندر می‌سنجد (ممکن است بعداً رد شود).
-  reviewSlider: (data, errors, field) => ({ reviews: idList(data.reviews, errors, `${field}.reviews`) }),
+  // بلوکی که پیش از عنوان‌دار شدن ذخیره شده کلیدهای عنوان را ندارد: عنوانِ پیش‌فرض
+  // می‌گیرد، نه خالی. رشته‌ی خالیِ صریح (ادمین پاکش کرده) خالی می‌ماند.
+  reviewSlider: (data, errors, field) => ({
+    reviews: idList(data.reviews, errors, `${field}.reviews`),
+    highlight: string(data.highlight ?? REVIEW_SLIDER_HEADING.highlight, 200),
+    title: string(data.title ?? REVIEW_SLIDER_HEADING.title, 300),
+    subtitle: string(data.subtitle ?? REVIEW_SLIDER_HEADING.subtitle, 500),
+  }),
   relatedArticles: entitySlider("articles"),
   newsletterCta: (data) => ({ title: string(data.title, 300), description: string(data.description, 2000), ...rich(data.descriptionHtml, "descriptionHtml"), buttonLabel: string(data.buttonLabel, 160) }),
   customHtml: (data) => ({ html: typeof data.html === "string" ? data.html.slice(0, 250000) : "" }),

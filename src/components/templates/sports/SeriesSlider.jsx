@@ -5,11 +5,10 @@ import Link from "next/link";
 import { withQueryParams } from "@/lib/navbarAudience";
 import {
   FiChevronLeft,
-  FiArrowLeft,
-  FiArrowRight,
   FiPlusCircle,
 } from "react-icons/fi";
 import useDragClickGuard from "@/hooks/useDragClickGuard";
+import SliderShowcase, { ShowcaseTitle } from "./SliderShowcase";
 
 import { Swiper, SwiperSlide } from "swiper/react";
 import { Navigation, Autoplay, Pagination } from "swiper/modules";
@@ -232,122 +231,85 @@ export default function SeriesSlider({ series = [], sportSlug, sportTitle, targe
     : "px-4 sm:px-8 md:px-16 lg:px-[90px]";
 
   return (
-    <section className="py-12 md:py-24 bg-[#fcfcfc] relative overflow-hidden group/section">
-      {/* هاله رنگی بک‌گراند */}
-      <div className="absolute top-[-5%] left-[-5%] w-[300px] md:w-[500px] h-[300px] md:h-[500px] bg-[#aa4725]/5 rounded-full blur-[80px] md:blur-[120px] pointer-events-none" />
-
-      {/* تایپوگرافی بزرگ بک‌گراند */}
-      <div className="absolute top-8 left-6 text-[6rem] md:text-[15rem] font-black text-gray-200/15 select-none pointer-events-none z-0 tracking-tighter uppercase italic leading-none whitespace-nowrap">
-        SERIES
+    <SliderShowcase
+      watermark="SERIES"
+      paddingClass={containerPaddingClass}
+      prevClass={`series-prev-btn series-prev-${navKey}`}
+      nextClass={`series-next-btn series-next-${navKey}`}
+      title={heading ? (
+        <ShowcaseTitle highlight={heading.highlight} title={heading.title || sportTitle} subtitle={heading.subtitle} />
+      ) : isLimitedEdition ? (
+        <>
+          <span className="text-[#aa4725]">سری های</span>لیمیتد ادیشن
+          <p className="text-gray-500 mt-2 md:mt-4 text-sm md:text-lg font-light max-w-md border-r-2 md:border-r-4 border-[#aa4725]/20 pr-3 md:pr-4 italic">
+            کمیاب کالکشن‌های 2026
+          </p>
+        </>
+      ) : (
+        <>
+          <span className="text-[#aa4725]">سری‌های </span> {sportTitle}
+          <p className="text-gray-500 mt-2 md:mt-4 text-sm md:text-lg font-light max-w-md border-r-2 md:border-r-4 border-[#aa4725]/20 pr-3 md:pr-4 italic">
+            جدیدترین کالکشن‌های 2026
+          </p>
+        </>
+      )}
+    >
+      <div className="relative w-full" ref={sliderRef}>
+        <GrungeFilter />
+        <Swiper
+          modules={[Navigation, Pagination, Autoplay]}
+          breakpointsBase={fitContainer ? "container" : "window"}
+          watchOverflow={true}
+          centeredSlides={false}
+          autoplay={{
+            delay: 4500,
+            disableOnInteraction: true,
+          }}
+          navigation={{
+            nextEl: `.series-next-${navKey}`,
+            prevEl: `.series-prev-${navKey}`,
+          }}
+          pagination={{
+            el: ".series-pagination",
+            clickable: true,
+          }}
+          breakpoints={
+            isLimitedEdition ? limitedBreakpoints : regularBreakpoints
+          }
+        >
+          {series.map((serie, index) => (
+            <SwiperSlide key={serie._id || index} className="h-auto pb-10">
+              <div className="h-full">
+                <SerieCard
+                  serie={serie}
+                  sportSlug={sportSlug}
+                  targetAudience={targetAudience}
+                  limited={isLimitedEdition}
+                />
+              </div>
+            </SwiperSlide>
+          ))}
+        </Swiper>
       </div>
 
-      <div
-        className={`w-full max-w-[1800px] mx-auto relative z-10 ${containerPaddingClass}`}
-      >
-        {/* هدر اورجینال به همراه دکمه‌های قبلی */}
-        <div className="relative flex flex-col md:flex-row md:items-end justify-between mb-10 md:mb-16">
-          <div className="relative">
-            <h2 className="text-2xl md:text-4xl font-black text-gray-900 leading-tight">
-              {heading ? (
-                <>
-                  {heading.highlight ? <span className="text-[#aa4725]">{heading.highlight} </span> : null}{" "}
-                  {heading.title || sportTitle}
-                  {heading.subtitle ? (
-                    <p className="text-gray-500 mt-2 md:mt-4 text-sm md:text-lg font-light max-w-md border-r-2 md:border-r-4 border-[#aa4725]/20 pr-3 md:pr-4 italic">
-                      {heading.subtitle}
-                    </p>
-                  ) : null}
-                </>
-              ) : isLimitedEdition ? (
-                <>
-                  <span className="text-[#aa4725]">سری های</span>لیمیتد ادیشن
-                  <p className="text-gray-500 mt-2 md:mt-4 text-sm md:text-lg font-light max-w-md border-r-2 md:border-r-4 border-[#aa4725]/20 pr-3 md:pr-4 italic">
-                    کمیاب کالکشن‌های 2026
-                  </p>
-                </>
-              ) : (
-                <>
-                  <span className="text-[#aa4725]">سری‌های </span> {sportTitle}
-                  <p className="text-gray-500 mt-2 md:mt-4 text-sm md:text-lg font-light max-w-md border-r-2 md:border-r-4 border-[#aa4725]/20 pr-3 md:pr-4 italic">
-                    جدیدترین کالکشن‌های 2026
-                  </p>
-                </>
-              )}
-            </h2>
-          </div>
+      {/* فوتر اورجینال دکمه‌های پایین — flex-row: روی موبایل هم در یک خط بمانند.
+          کلاس‌ها یک‌خطی‌اند: نسخه‌ی چندخطی، توضیح‌های JSX را *داخلِ* خودِ رشته
+          داشت که کلاس‌های بی‌معنا می‌ساخت و هیدریشن را ناهم‌خوان می‌کرد (سرور و
+          مرورگر خطِ تازه‌ی داخلِ class را یکسان نمی‌نویسند). همان کلاس‌ها، همان ظاهر. */}
+      <div className="flex flex-row items-center justify-between gap-4 mt-1 w-full">
+        {/* پجینیشن اسلایدر */}
+        <div className="slider-pagination-2 !w-auto flex gap-1.5 md:gap-2 flex-shrink-0"></div>
 
-          <div className="hidden md:flex items-center mt-8 md:mt-0">
-            <div className="flex bg-white/80 backdrop-blur-md shadow-xl shadow-black/5 rounded-[16px] p-1 border border-white/50">
-              <button aria-label="قبلی" className={`series-prev-btn series-prev-${navKey} w-12 h-12 flex items-center justify-center text-gray-400 hover:text-[#aa4725] hover:bg-[#aa4725]/5 transition-all duration-300 rounded-[12px]`}>
-                <FiArrowRight size={22} />
-              </button>
-
-              <div className="w-[1px] h-6 bg-gray-100 self-center mx-1"></div>
-
-              <button aria-label="بعدی" className={`series-next-btn series-next-${navKey} w-12 h-12 flex items-center justify-center text-gray-400 hover:text-[#aa4725] hover:bg-[#aa4725]/5 transition-all duration-300 rounded-[12px]`}>
-                <FiArrowLeft size={22} />
-              </button>
-            </div>
-          </div>
-        </div>
-
-        <div className="relative w-full" ref={sliderRef}>
-          <GrungeFilter />
-          <Swiper
-            modules={[Navigation, Pagination, Autoplay]}
-            breakpointsBase={fitContainer ? "container" : "window"}
-            watchOverflow={true}
-            centeredSlides={false}
-            autoplay={{
-              delay: 4500,
-              disableOnInteraction: true,
-            }}
-            navigation={{
-              nextEl: `.series-next-${navKey}`,
-              prevEl: `.series-prev-${navKey}`,
-            }}
-            pagination={{
-              el: ".series-pagination",
-              clickable: true,
-            }}
-            breakpoints={
-              isLimitedEdition ? limitedBreakpoints : regularBreakpoints
-            }
-          >
-            {series.map((serie, index) => (
-              <SwiperSlide key={serie._id || index} className="h-auto pb-10">
-                <div className="h-full">
-                  <SerieCard
-                    serie={serie}
-                    sportSlug={sportSlug}
-                    targetAudience={targetAudience}
-                    limited={isLimitedEdition}
-                  />
-                </div>
-              </SwiperSlide>
-            ))}
-          </Swiper>
-        </div>
-
-        {/* فوتر اورجینال دکمه‌های پایین — flex-row: روی موبایل هم در یک خط بمانند.
-            کلاس‌ها یک‌خطی‌اند: نسخه‌ی چندخطی، توضیح‌های JSX را *داخلِ* خودِ رشته
-            داشت که کلاس‌های بی‌معنا می‌ساخت و هیدریشن را ناهم‌خوان می‌کرد (سرور و
-            مرورگر خطِ تازه‌ی داخلِ class را یکسان نمی‌نویسند). همان کلاس‌ها، همان ظاهر. */}
-        <div className="flex flex-row items-center justify-between gap-4 mt-1 w-full">
-          {/* پجینیشن اسلایدر */}
-          <div className="slider-pagination-2 !w-auto flex gap-1.5 md:gap-2 flex-shrink-0"></div>
-
-          {/* دکمه کاتالوگ — پدینگ جمع‌وجورتر و فونتِ ۱۱px در موبایل، whitespace-nowrap
-              تا متن نشکند. */}
-          <Link
-            href="/products"
-            className="group flex items-center gap-2 bg-white px-4 py-2 md:px-6 md:py-3 rounded-full shadow-sm border border-gray-100 text-gray-900 font-bold text-[11px] sm:text-xs md:text-sm hover:bg-[#aa4725] hover:text-white transition-all duration-300 whitespace-nowrap"
-          >
-            مشاهده کاتالوگ محصولات
-            <FiPlusCircle className="text-base md:text-xl group-hover:rotate-180 transition-transform duration-500 flex-shrink-0" />
-          </Link>
-        </div>
+        {/* دکمه کاتالوگ — پدینگ جمع‌وجورتر و فونتِ ۱۱px در موبایل، whitespace-nowrap
+            تا متن نشکند. */}
+        <Link
+          href="/products"
+          className="group flex items-center gap-2 bg-white px-4 py-2 md:px-6 md:py-3 rounded-full shadow-sm border border-gray-100 text-gray-900 font-bold text-[11px] sm:text-xs md:text-sm hover:bg-[#aa4725] hover:text-white transition-all duration-300 whitespace-nowrap"
+        >
+          مشاهده کاتالوگ محصولات
+          <FiPlusCircle className="text-base md:text-xl group-hover:rotate-180 transition-transform duration-500 flex-shrink-0" />
+        </Link>
       </div>
-    </section>
+    </SliderShowcase>
   );
 }

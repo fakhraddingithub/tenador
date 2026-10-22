@@ -3,7 +3,7 @@ import {
   FiFeather, FiLayout, FiMail, FiMessageSquare, FiMinus, FiPlay, FiShoppingBag, FiStar, FiTable,
   FiLayers, FiMessageCircle, FiTag, FiType, FiZap,
 } from "react-icons/fi";
-import { ARTICLE_BLOCK_TYPES, IMAGE_SLIDER_DELAY, IMAGE_SLIDER_HEIGHT } from "@/lib/articleBlockTypes";
+import { ARTICLE_BLOCK_TYPES, IMAGE_SLIDER_DELAY, IMAGE_SLIDER_HEIGHT, REVIEW_SLIDER_HEADING } from "@/lib/articleBlockTypes";
 
 const text = (key, label, kind = "text", extra = {}) => ({ key, label, kind, ...extra });
 const entity = (key, label, entityType, multiple = true) => ({ key, label, kind: multiple ? "entities" : "entity", entityType });
@@ -119,12 +119,18 @@ export const ARTICLE_BLOCKS = {
     // ظاهر عیناً همان اسلایدرِ سری‌های صفحه‌ی ورزش است و تنظیم‌پذیر نیست.
     styleKeys: SPACING_ONLY,
   },
-  // نظرهای تأییدشده‌ی محصولِ نو و دست‌دوم، در کاورفلو؛ کارت‌ها عیناً کارتِ نظرِ صفحه‌ی
-  // دست‌دوم‌اند و تنظیمِ ظاهری ندارند. با فوکوس، تازه‌ترین نظرها بدونِ تایپ باز می‌شوند.
+  // نظرهای تأییدشده‌ی محصولِ نو و دست‌دوم در قابِ اسلایدرِ سری‌ها (عنوانِ دورنگ مثلِ
+  // «تیتر تنادور»)؛ کارت‌ها عیناً کارتِ نظرِ صفحه‌ی دست‌دوم‌اند و تنظیمِ ظاهری ندارند.
+  // با فوکوس، تازه‌ترین نظرها بدونِ تایپ باز می‌شوند.
   reviewSlider: {
     label: "اسلایدر نظرات", group: "فروشگاه", icon: FiMessageCircle,
-    defaults: { reviews: [] },
-    fields: [{ ...entity("reviews", "نظرها — همه‌ی نظرهای تأییدشده‌ی محصولات نو و دست‌دوم", "review"), browse: true }],
+    defaults: { reviews: [], ...REVIEW_SLIDER_HEADING },
+    fields: [
+      { ...entity("reviews", "نظرها — همه‌ی نظرهای تأییدشده‌ی محصولات نو و دست‌دوم", "review"), browse: true },
+      text("highlight", "متن نارنجی (ابتدای عنوان)", "text", { row: "title" }),
+      text("title", "ادامه‌ی عنوان", "text", { row: "title" }),
+      text("subtitle", "زیرعنوان"),
+    ],
     styleKeys: SPACING_ONLY,
   },
   relatedArticles: { label: "مقالات مرتبط", group: "محتوا", icon: FiList, defaults: { title: "مقالات مرتبط", articles: [] }, fields: [text("title", "عنوان"), entity("articles", "مقالات", "article")], styleKeys: TITLED },

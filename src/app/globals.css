@@ -539,26 +539,32 @@
   color: #fff;
 }
 
-/* ─── اسلایدرِ نظرات (کاورفلو) ───
-   کوچک‌شدن، عقب‌رفتن و زیرِ هم رفتنِ کارت‌های کناری کارِ خودِ coverflow است
-   (scale + depth + stretch)؛ اینجا فقط کم‌رنگیِ کارت‌های کناری و محوشدنِ دو لبه.
-   کم‌رنگی یک پرده‌ی سفید روی کارت است، نه opacity: کارت‌ها روی هم می‌افتند و
-   کارتِ نیمه‌شفاف متنِ کارتِ پشتش را نشان می‌داد. */
-.review-coverflow .swiper {
+/* ─── اسلایدرِ نظرات ───
+   کارتِ مرکز جلوتر است: دو کارتِ کناری کمی کوچک‌تر و کم‌رنگ‌ترند. مقیاس فقط
+   روی کارت (فرزندِ اسلاید) است، نه خودِ اسلاید که Swiper جابه‌جایش می‌کند، و هر
+   دو کناری یک مقیاس دارند — پس فاصله‌ی دو طرفِ کارتِ مرکز همیشه برابر است.
+   کم‌رنگی یک پرده‌ی سفید روی خودِ کارت است، نه opacity روی اسلاید، تا زمینه‌ی
+   اطرافِ کارت دست نخورد. */
+.review-slider .swiper {
   --swiper-wrapper-transition-timing-function: cubic-bezier(0.22, 0.61, 0.36, 1);
-  -webkit-mask-image: linear-gradient(to right, transparent, #000 8%, #000 92%, transparent);
-  mask-image: linear-gradient(to right, transparent, #000 8%, #000 92%, transparent);
 }
-.review-coverflow .swiper-slide::after {
+.review-slider .swiper-slide > div {
+  transform: scale(0.92);
+  transition: transform 650ms cubic-bezier(0.22, 0.61, 0.36, 1);
+}
+.review-slider .swiper-slide > div::after {
   content: "";
   position: absolute;
   inset: 0;
   border-radius: 0.75rem;
-  background: rgb(255 255 255 / 0.55);
+  background: rgb(255 255 255 / 0.5);
   pointer-events: none;
   transition: opacity 650ms cubic-bezier(0.22, 0.61, 0.36, 1);
 }
-.review-coverflow .swiper-slide-active::after {
+.review-slider .swiper-slide-active > div {
+  transform: none;
+}
+.review-slider .swiper-slide-active > div::after {
   opacity: 0;
 }
 
@@ -659,3 +665,4 @@
     cursor: auto;
   }
 }
+
