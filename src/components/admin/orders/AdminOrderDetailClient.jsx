@@ -24,6 +24,7 @@ import {
 import SenderAddressModal from "@/components/admin/orders/SenderAddressModal";
 import ManualTrackingEditor from "@/components/admin/orders/ManualTrackingEditor";
 import OrderPrintOverlay from "@/components/print/OrderPrintOverlay";
+import DownloadInvoiceButton from "@/components/order/DownloadInvoiceButton";
 import FlowProductIdentity from "@/components/order/FlowProductIdentity";
 import OrderFlowSelectionsView from "@/components/order/OrderFlowSelectionsView";
 import { buildStepSequence } from "@/lib/flowTraversal";
@@ -2591,7 +2592,7 @@ export default function AdminOrderDetailClient({ orderId }) {
       <div className="max-w-4xl mx-auto p-5 space-y-5">
 
         {/* ─── Header ─── */}
-        <div className="flex items-center justify-between">
+        <div className="flex flex-wrap items-center justify-between gap-3">
           <div className="flex items-center gap-3">
             <div>
               <h1 className="text-lg font-black text-gray-900 flex items-center gap-2">
@@ -2603,7 +2604,8 @@ export default function AdminOrderDetailClient({ orderId }) {
               <p className="text-xs text-gray-400 font-mono mt-0.5">{order.trackingCode}</p>
             </div>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
+            <DownloadInvoiceButton order={order} admin includeEUR />
             {pendingReceipts > 0 && (
               <span className="flex items-center gap-1.5 bg-amber-50 border border-amber-200 text-amber-700
                 text-xs font-bold px-3 py-1.5 rounded-xl animate-pulse">

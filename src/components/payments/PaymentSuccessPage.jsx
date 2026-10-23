@@ -12,6 +12,7 @@ import {
 import { useEffect, useState } from "react";
 import OrderFlowSelectionsView from "@/components/order/OrderFlowSelectionsView";
 import VariantSummary from "@/components/order/VariantSummary";
+import DownloadInvoiceButton from "@/components/order/DownloadInvoiceButton";
 
 // جداسازی نام فارسی و انگلیسی
 function splitName(text) {
@@ -83,6 +84,7 @@ export default function PaymentSuccessPage({ trackingCode }) {
                     </div>
 
                     <div className="p-6 md:p-8 space-y-6">
+                        {order && <DownloadInvoiceButton order={order} />}
 
                         {/* Status Alert */}
                         <div className="bg-amber-50 border border-amber-200 rounded-xl p-4">

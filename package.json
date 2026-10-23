@@ -114,6 +114,7 @@
     "html5-qrcode": "^2.3.8",
     "imagekit": "^6.0.0",
     "jsonwebtoken": "^9.0.3",
+    "jspdf": "^4.2.1",
     "lucide-react": "^1.16.0",
     "mongodb": "^7.5.0",
     "mongoose": "^9.0.0",
