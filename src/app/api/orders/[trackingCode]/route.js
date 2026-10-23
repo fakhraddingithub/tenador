@@ -6,6 +6,8 @@
 
 import { NextResponse } from "next/server";
 import connectToDB from "base/configs/db";
+import "base/models/registerModels";
+import User from "base/models/User";
 import Order from "base/models/Order";
 import Product from "base/models/Product"; 
 import Variant from "base/models/Variant";
@@ -86,7 +88,8 @@ export async function GET(req, { params }) {
       });
     }
 
-    return NextResponse.json({ order }, { status: 200 });
+    const customer = await User.findById(order.user).select("role").lean();
+    return NextResponse.json({ order, invoiceCustomerRole: customer?.role || null }, { status: 200 });
   } catch (error) {
     console.error("Error fetching order by tracking code:", error);
     return NextResponse.json(

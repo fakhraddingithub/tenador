@@ -134,7 +134,7 @@ function OrderDetailModal({ order, onClose, isStore = false }) {
 
           {/* Scrollable content */}
           <div className="overflow-y-auto flex-1 p-5 space-y-5">
-            <DownloadInvoiceButton order={order} includeEUR={isStore} />
+            <DownloadInvoiceButton order={order} />
 
             {/* وضعیت */}
             <div className="flex flex-wrap gap-2">

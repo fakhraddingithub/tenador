@@ -11,7 +11,10 @@ const statuses = { PAID: "پرداخت شده", UNPAID: "پرداخت نشده",
 const label = (value) => statuses[value] || value || "—";
 const imageUrl = (value) => typeof value === "string" ? value : value?.url || "";
 
-export function buildInvoiceData(order, installment = null, { includeEUR = false } = {}) {
+export function buildInvoiceData(order, installment = null, { customerRole } = {}) {
+  // The order owner's current role comes from the authenticated detail endpoint.
+  // Being an admin downloading the invoice does not make it a store invoice.
+  const includeEUR = customerRole === "store";
   const rows = [];
   for (const [index, item] of (order.items || []).entries()) {
     const quantity = Number(item.quantity ?? 1);
@@ -22,10 +25,9 @@ export function buildInvoiceData(order, installment = null, { includeEUR = false
       const units = Object.entries(a.units || {}).filter(([, v]) => v !== null && v !== undefined && v !== "");
       return `${a.label || a.name}: ${units.length ? units.map(([u, v]) => `${v} ${u}`).join(" / ") : a.value ?? "—"}`;
     }).join(" • ");
-    const sku = item.variant?.sku || item.product?.sku;
     rows.push({
       title: `${invoiceNumber(index + 1)}. ${item.product?.name || item.usedProduct?.name || "محصول حذف‌شده"}${item.itemType === "used_product" ? " (دست دوم)" : ""}`,
-      detail: [variant, sku && `کد کالا: ${sku}`, item.unitDiscount > 0 && `تخفیف هر واحد: ${invoiceMoney(item.unitDiscount)}`,
+      detail: [variant, item.unitDiscount > 0 && `تخفیف هر واحد: ${invoiceMoney(item.unitDiscount)}`,
         includeEUR && item.priceEUR != null && `قیمت واحد: ${item.priceEUR} EUR • جمع: ${item.priceEUR * quantity} EUR`].filter(Boolean).join("\n"),
       image: imageUrl(item.variant?.images?.[0] || item.product?.mainImage || item.usedProduct?.images?.[0]),
       quantity: invoiceNumber(quantity), unit: invoiceNumber(unit), total: invoiceNumber(unit * quantity),

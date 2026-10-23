@@ -2605,7 +2605,7 @@ export default function AdminOrderDetailClient({ orderId }) {
             </div>
           </div>
           <div className="flex flex-wrap items-center gap-2">
-            <DownloadInvoiceButton order={order} admin includeEUR />
+            <DownloadInvoiceButton order={order} admin />
             {pendingReceipts > 0 && (
               <span className="flex items-center gap-1.5 bg-amber-50 border border-amber-200 text-amber-700
                 text-xs font-bold px-3 py-1.5 rounded-xl animate-pulse">

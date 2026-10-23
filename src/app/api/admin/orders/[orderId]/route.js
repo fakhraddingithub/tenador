@@ -11,6 +11,7 @@ import { NextResponse } from "next/server";
 import mongoose from "mongoose";
 
 import connectToDB from "base/configs/db";
+import "base/models/registerModels";
 import Order from "base/models/Order";
 import Installment from "base/models/Installment";
 import { deriveCheckStatus, summarizeInstallment } from "base/services/installmentService";
@@ -151,7 +152,7 @@ export async function GET(req, { params }) {
     const fullOrder = await Order.findById(orderId)
       .populate({
         path: "user",
-        select: "name lastName phone email coach",
+        select: "name lastName phone email coach role",
         populate: { path: "coach", model: "User", select: "name lastName _id" },
       })
       .populate({
@@ -194,7 +195,7 @@ export async function GET(req, { params }) {
         ? await loadInstallmentForOrder(orderId)
         : null;
 
-    return NextResponse.json({ order: fullOrder, installment }, { status: 200 });
+    return NextResponse.json({ order: fullOrder, installment, invoiceCustomerRole: fullOrder.user?.role || null }, { status: 200 });
   } catch (error) {
     console.error("[admin/orders/:id GET]", error);
     return NextResponse.json(

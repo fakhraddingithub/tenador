@@ -38,12 +38,23 @@ test("deleted products, missing historical fields and zero totals are supported"
   assert.equal(result.rows[0].total, "۰");
   assert.equal(invoiceDate("invalid"), "—");
 });
-test("EUR values are opt-in and source objects are not mutated", () => {
-  const source = structuredClone({ ...order, priceEUR: 100, paymentsEUR: [{ amount: 20 }] });
+test("EUR values appear only for store customers, including item prices", () => {
+  const source = structuredClone({ ...order, priceEUR: 100, paymentsEUR: [{ amount: 20 }], items: [{ ...order.items[0], priceEUR: 50 }] });
   const before = structuredClone(source);
-  assert.equal(buildInvoiceData(source).summary.some(([key]) => key.includes("یورویی")), false);
-  assert.equal(buildInvoiceData(source, null, { includeEUR: true }).summary.find(([key]) => key === "مانده یورویی")[1], "80 EUR");
+  for (const customerRole of [undefined, null, "user", "admin", "coach"]) {
+    const result = buildInvoiceData(source, null, { customerRole, includeEUR: true });
+    assert.doesNotMatch(JSON.stringify(result), /EUR|یورویی/);
+  }
+  const storeInvoice = buildInvoiceData(source, null, { customerRole: "store" });
+  assert.equal(storeInvoice.summary.find(([key]) => key === "مانده یورویی")[1], "80 EUR");
+  assert.match(storeInvoice.rows[0].detail, /50 EUR.*100 EUR/);
   assert.deepEqual(source, before);
+});
+test("product and variant SKUs are absent from every invoice", () => {
+  const source = { ...order, items: [{ ...order.items[0], product: { name: "راکت", sku: "PRODUCT-SKU" }, variant: { sku: "VARIANT-SKU" } }] };
+  for (const customerRole of ["user", "store"]) {
+    assert.doesNotMatch(JSON.stringify(buildInvoiceData(source, null, { customerRole })), /کد کالا|PRODUCT-SKU|VARIANT-SKU/);
+  }
 });
 test("long unbroken identifiers wrap without dropping characters", () => {
   const context = { measureText: (text) => ({ width: [...text].length * 10 }) };

@@ -4,7 +4,7 @@ import { useRef, useState } from "react";
 import { Download, LoaderCircle } from "lucide-react";
 import { toast } from "react-toastify";
 
-export default function DownloadInvoiceButton({ order, admin = false, includeEUR = false }) {
+export default function DownloadInvoiceButton({ order, admin = false }) {
   const [busy, setBusy] = useState(false);
   const pending = useRef(false);
   async function download() {
@@ -27,7 +27,7 @@ export default function DownloadInvoiceButton({ order, admin = false, includeEUR
         installment = result.installments?.find((i) => String(i.order?._id) === String(data.order._id)) || null;
       }
       const { downloadOrderInvoice } = await import("@/lib/downloadOrderInvoice");
-      const { missingImages } = await downloadOrderInvoice(data.order, installment, { includeEUR });
+      const { missingImages } = await downloadOrderInvoice(data.order, installment, { customerRole: data.invoiceCustomerRole });
       if (missingImages) toast.warn("فاکتور دانلود شد؛ بعضی تصاویر در دسترس نبودند و با جایگزین نمایش داده شدند.");
     } catch (error) {
       toast.error(error.name === "TimeoutError" ? "دریافت فاکتور طول کشید؛ دوباره تلاش کنید." : error.message || "ساخت فاکتور ناموفق بود.");
