@@ -1215,6 +1215,47 @@ imports injected by hand — a new import there must be added to that list.
 npm run test:review-slider
 ```
 
+### The two homepage banners as blocks, and a full-width preview
+
+**«بنر ابزار مقایسه» / «بنر انتخاب هوشمند» are the homepage's own `ComparisonBanner` and
+`MatchBanner`**, not look-alikes. The only change to the components is that their four texts
+— `title` (first line), `highlight` (coloured second line), `description`, `cta` — are props
+whose defaults come from `src/lib/homeBannerTexts.js`. The homepage passes no props, and its
+server HTML is byte-identical to before. Link targets, colours, graphics and layout are not
+configurable; `styleKeys` is spacing-only.
+
+- One source for the texts: the components' defaults, the registry's `defaults` and the
+  validator all read `homeBannerTexts.js`. A missing key saves as the default text; an
+  explicit `""` stays empty.
+- Sizes come from the banners' own container queries (`@container`), so a block renders
+  exactly as the homepage banner at the same width (measured identical at 740px: 38.56px
+  title, 80/64px padding, 350px minimum height). On the homepage the two sit in a grid and
+  stretch to one height; two banner blocks side by side in a merged block do the same.
+
+**The preview is full width.** `PreviewCanvas` cancels the padding of the panel's `<main>`
+(`-mx-4 sm:-mx-6`, matching `p-4 sm:p-6` in `admin/Layout.jsx`), so the canvas runs from the
+window edge to the sidebar — `main` already carries the sidebar's margin, so it never slides
+under it, collapsed or not. The article, brochure and mini-article previews lost their cards
+and narrow inner containers (`max-w-5xl`, `max-w-[1100px]`, `p-12`).
+
+Inside the canvas, `frame` (`src/lib/previewFrames.js`) is **the live page's own container**
+for that document, so a block gets the same width it gets on the site:
+
+| frame | live source |
+|---|---|
+| `article` | the 820px white column of `PublicArticlePage` (740px of content) |
+| `brochure` | `BrandBrochure` (`max-w-[1440px] px-4 lg:px-8`) |
+| `miniArticle` | `BrandMiniArticleSection` |
+
+The canvas stays the `[data-bleed-root]`, so full-width blocks (series and review sliders)
+bleed to the canvas edges, as they bleed to the window on the site. An article is therefore
+*not* stretched to the full canvas — that would show its blocks wider than any reader sees
+them. `tests/homeBanners.test.mjs` fails if a live container changes without its frame.
+
+```bash
+npm run test:home-banners
+```
+
 ### Authoring: a block clipboard, and what scales with what
 
 **Copying a block between documents** goes through `src/lib/articleBlockClipboard.js` —

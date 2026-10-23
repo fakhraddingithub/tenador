@@ -5,6 +5,7 @@ import {
   IMAGE_CONTENT_POSITIONS, IMAGE_DISPLAY_HEIGHT, IMAGE_SHADE_DEFAULTS, IMAGE_SHADE_DIRECTIONS, MAX_IMAGE_BLOCK_ITEMS, clampImageShade, mirrorFirstImage, normalizeHexColor, normalizeImageHref,
 } from "./articleImageBlock.js";
 import { FAQ_ANSWER_ALIGNS, IMAGE_SLIDER_DELAY, IMAGE_SLIDER_HEIGHT, REVIEW_SLIDER_HEADING } from "./articleBlockTypes.js";
+import { COMPARISON_BANNER_TEXT, MATCH_BANNER_TEXT } from "./homeBannerTexts.js";
 
 const string = (value, max) => typeof value === "string" ? value.trim().slice(0, max) : "";
 
@@ -173,6 +174,14 @@ export const BUTTON_ALIGNS = ["right", "center", "left"];
 export const BUTTON_SIZES = ["sm", "md", "lg"];
 export const BUTTON_ICONS = ["none", "arrow", "external", "download"];
 
+// دو بنرِ صفحه‌ی اصلی: فقط چهار متن. کلیدِ غایب = متنِ پیش‌فرض، رشته‌ی خالیِ صریح خالی می‌ماند.
+const homeBanner = (defaults) => (data) => ({
+  title: string(data.title ?? defaults.title, 200),
+  highlight: string(data.highlight ?? defaults.highlight, 200),
+  description: string(data.description ?? defaults.description, 600),
+  cta: string(data.cta ?? defaults.cta, 120),
+});
+
 const entitySlider = (key) => (data, errors, field) => ({
   title: string(data.title, 300),
   [key]: idList(data[key], errors, `${field}.${key}`),
@@ -244,6 +253,8 @@ const validators = {
   bestSellers: (data, errors, field) => ({ title: string(data.title, 300), limit: Math.min(16, Math.max(1, Number(data.limit) || 8)), categories: idList(data.categories, errors, `${field}.categories`) }),
   amazingOffers: (data) => ({ title: string(data.title, 300), limit: Math.min(16, Math.max(1, Number(data.limit) || 8)) }),
   usedProducts: entitySlider("products"),
+  comparisonBanner: homeBanner(COMPARISON_BANNER_TEXT),
+  matchBanner: homeBanner(MATCH_BANNER_TEXT),
   // فقط شناسه‌ها؛ اینکه نظر هنوز تأییدشده باشد را رندر می‌سنجد (ممکن است بعداً رد شود).
   // بلوکی که پیش از عنوان‌دار شدن ذخیره شده کلیدهای عنوان را ندارد: عنوانِ پیش‌فرض
   // می‌گیرد، نه خالی. رشته‌ی خالیِ صریح (ادمین پاکش کرده) خالی می‌ماند.

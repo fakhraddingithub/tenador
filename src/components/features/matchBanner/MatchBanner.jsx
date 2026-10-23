@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { motion, useReducedMotion } from "framer-motion";
 import { FiChevronLeft, FiTarget } from "react-icons/fi";
+import { MATCH_BANNER_TEXT as TEXT } from "@/lib/homeBannerTexts";
 
 // یک ردیف اسلایدر تزئینی — پر شدن نوار با هاور روی بنر جابه‌جا می‌شود
 function TunerRow({ label, fill, hoverFill, delay }) {
@@ -20,7 +21,9 @@ function TunerRow({ label, fill, hoverFill, delay }) {
   );
 }
 
-export default function MatchBanner() {
+// متن‌ها تنها چیزِ قابلِ تنظیم‌اند (بلوکِ «بنر انتخاب هوشمند»)؛ صفحه‌ی اصلی پراپی
+// نمی‌فرستد و همان متن‌های همیشگی را می‌گیرد. رشته‌ی خالی خالی می‌ماند.
+export default function MatchBanner({ title = TEXT.title, highlight = TEXT.highlight, description = TEXT.description, cta = TEXT.cta }) {
   const reduceMotion = useReducedMotion();
 
   return (
@@ -47,16 +50,16 @@ export default function MatchBanner() {
           {/* سمت راست: متن و محتوا — تایپوگرافی سیال مشترک با بنر مقایسه */}
           <div className="relative z-10 flex-1 min-w-0 text-right @2xl:pr-12">
             <h2 className="font-black text-white leading-tight text-[clamp(1.25rem,0.375rem_+_4.4cqw,3rem)] mb-[clamp(0.5rem,2.5cqw,1.5rem)]">
-              انتخاب بعدی‌تان را <br />
-              <span className="text-[#ffbf00]">هوشمندانه پیدا کنید</span>
+              {`${title} `}<br />
+              <span className="text-[#ffbf00]">{highlight}</span>
             </h2>
 
             <p className="text-gray-400 font-light max-w-md ml-0 ml-auto line-clamp-2 @lg:line-clamp-none text-[clamp(0.75rem,0.55rem_+_1cqw,1.125rem)] mb-[clamp(0.75rem,0.125rem_+_3.125cqw,2rem)]">
-              محصول فعلی خود را انتخاب کنید، شاخص‌های فنی را تنظیم کنید و نزدیک‌ترین گزینه‌ها را همان لحظه ببینید.
+              {description}
             </p>
 
             <div className="inline-flex items-center bg-white text-[#20232a] rounded-[6px] font-black shadow-xl transition-all group-hover:scale-105 group-hover:bg-[#ffbf00] gap-[clamp(0.5rem,0.3rem_+_0.8cqw,1rem)] px-[clamp(1rem,0.5rem_+_2.4cqw,2rem)] py-[clamp(0.75rem,0.6rem_+_0.8cqw,1rem)] text-[clamp(0.875rem,0.75rem_+_0.65cqw,1.125rem)]">
-              <span>یافتن بهترین جایگزین</span>
+              <span>{cta}</span>
               <FiChevronLeft className="shrink-0 group-hover:-translate-x-2 transition-transform size-[clamp(1.25rem,1.1rem_+_0.5cqw,1.5rem)]" />
             </div>
           </div>

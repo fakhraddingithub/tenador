@@ -113,7 +113,7 @@ function EditModal({ block, onChange, onClose }) {
   </AdminPortal>;
 }
 
-export default function PreviewCanvas({ blocks: saved = [], entities, endpoint, canEdit = true }) {
+export default function PreviewCanvas({ blocks: saved = [], entities, endpoint, canEdit = true, frame = null }) {
   const router = useRouter();
   const [blocks, setBlocks] = useState(saved);
   const [selected, setSelected] = useState(null);
@@ -338,14 +338,21 @@ export default function PreviewCanvas({ blocks: saved = [], entities, endpoint, 
         </div>
       ) : null}
 
-      {/* حالتِ موبایل عرضِ ظرف را به ۳۹۰px می‌برد و قاعده‌ی جعبه‌ی چیدمان را به
+      {/* بوم تمام‌عرض است: -mx همان padding ـِ <main> ـِ پنل (p-4 sm:p-6 در
+          admin/Layout.jsx) را خنثی می‌کند، پس از لبه‌ی سایدبار تا لبه‌ی پنجره
+          می‌رود و زیرِ سایدبار نمی‌رود (main خودش به اندازه‌ی سایدبار margin دارد).
+          داخلش frame همان ظرفِ صفحه‌ی عمومی است (PREVIEW_FRAMES)، تا هر بلوک همان
+          عرضی را بگیرد که روی سایت دارد؛ بلوکِ لبه‌به‌لبه (FullBleed) تا لبه‌ی بوم.
+
+          حالتِ موبایل عرضِ ظرف را به ۳۹۰px می‌برد و قاعده‌ی جعبه‌ی چیدمان را به
           حالتِ گوشی برمی‌گرداند. توجه: media queryهای خودِ بلوک‌ها (کلاس‌های md:)
           با عرضِ *پنجره* سنجیده می‌شوند، پس این نما تقریبی است — برای آزمایشِ
           دقیق باید پنجره را واقعاً کوچک کرد. */}
-      <div className={`${viewport === "mobile" ? "mx-auto w-[390px] max-w-full" : ""}${canEdit ? " pb-24" : ""}`}>
+      <div className={`-mx-4 sm:-mx-6${canEdit ? " pb-24" : ""}`}>
+      <div className={viewport === "mobile" ? "mx-auto w-[390px] max-w-full" : undefined}>
         <div
           ref={canvas}
-          className={`site-colors${canEdit ? " preview-canvas" : ""}`}
+          className={`site-colors${canEdit ? " preview-canvas" : ""}${frame?.page ? ` ${frame.page}` : ""}`}
           data-viewport={viewport}
           data-bleed-root
           onPointerDown={onPointerDown}
@@ -357,8 +364,11 @@ export default function PreviewCanvas({ blocks: saved = [], entities, endpoint, 
           onClick={onClick}
           onDoubleClick={onDoubleClick}
         >
-          <ArticleBlockRenderer blocks={blocks} entities={entities} preview interactive={canEdit} />
+          {frame?.column
+            ? <div className={frame.column}><ArticleBlockRenderer blocks={blocks} entities={entities} preview interactive={canEdit} /></div>
+            : <ArticleBlockRenderer blocks={blocks} entities={entities} preview interactive={canEdit} />}
         </div>
+      </div>
       </div>
 
       {canEdit ? (

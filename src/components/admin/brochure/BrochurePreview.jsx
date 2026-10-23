@@ -10,6 +10,7 @@ import { resolveArticleEntities } from "base/services/publicArticle.service";
 import { isBrochureLive } from "@/lib/brandBrochure";
 import { brochureOwner } from "@/lib/brochureOwners";
 import PreviewCanvas from "@/components/admin/articles/PreviewCanvas";
+import { PREVIEW_FRAMES } from "@/lib/previewFrames";
 
 const MODELS = { brand: Brand, sport: Sport };
 
@@ -37,7 +38,7 @@ export default async function BrochurePreview({ owner, ownerId }) {
   const plain = (value) => JSON.parse(JSON.stringify(value ?? null));
 
   return (
-    <div className="mx-auto max-w-[1440px]">
+    <div>
       <div className="a-card sticky top-[132px] z-20 mb-4 flex flex-wrap items-center gap-3 p-3">
         <div>
           <strong className="block text-sm">پیش‌نمایش بروشور {doc.title || doc.name}</strong>
@@ -61,20 +62,18 @@ export default async function BrochurePreview({ owner, ownerId }) {
         </div>
       </div>
 
-      {/* همان ظرفِ صفحه‌ی بروشور (تا پیش‌نمایش دقیقاً شکلِ صفحه‌ی عمومی باشد)
-          ولی محتوایش از بوم می‌آید تا قابلِ ویرایش بماند. وضعیتِ انتشار در
-          بدنه‌ی ذخیره تکرار می‌شود، وگرنه PUT آن را به پیش‌نویس برمی‌گرداند. */}
+      {/* بومِ تمام‌عرض با همان ظرفِ صفحه‌ی بروشور (PREVIEW_FRAMES.brochure)، بدونِ
+          کارت و قابِ اضافه — تا هر بلوک همان عرضی را بگیرد که روی سایت دارد.
+          وضعیتِ انتشار در بدنه‌ی ذخیره تکرار می‌شود، وگرنه PUT آن را به پیش‌نویس
+          برمی‌گرداند. */}
       {blocks.length ? (
-        <div className="a-card">
-          <div className="mx-auto max-w-[1100px] px-4 py-8 sm:px-8">
-            <PreviewCanvas
-              blocks={plain(blocks)}
-              entities={plain(entities)}
-              canEdit={canEdit}
-              endpoint={{ url: config.api(ownerId), method: "PUT", extra: { status: doc.brochure?.status || "draft" } }}
-            />
-          </div>
-        </div>
+        <PreviewCanvas
+          blocks={plain(blocks)}
+          entities={plain(entities)}
+          canEdit={canEdit}
+          endpoint={{ url: config.api(ownerId), method: "PUT", extra: { status: doc.brochure?.status || "draft" } }}
+          frame={PREVIEW_FRAMES.brochure}
+        />
       ) : (
         <p className="a-card p-12 text-center text-sm text-gray-400">هنوز بلوکی به این بروشور اضافه نشده است.</p>
       )}

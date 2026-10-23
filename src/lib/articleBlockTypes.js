@@ -25,6 +25,8 @@ export const ARTICLE_BLOCK_TYPES = [
   "amazingOffers",
   "usedProducts",
   "reviewSlider",
+  "comparisonBanner",
+  "matchBanner",
   "relatedArticles",
   "newsletterCta",
   "customHtml",

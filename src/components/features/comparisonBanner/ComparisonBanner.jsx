@@ -3,8 +3,11 @@
 import Link from "next/link";
 import { FiChevronLeft } from "react-icons/fi";
 import { MdCompareArrows } from "react-icons/md";
+import { COMPARISON_BANNER_TEXT as TEXT } from "@/lib/homeBannerTexts";
 
-export default function ComparisonBanner() {
+// متن‌ها تنها چیزِ قابلِ تنظیم‌اند (بلوکِ «بنر ابزار مقایسه»)؛ صفحه‌ی اصلی پراپی
+// نمی‌فرستد و همان متن‌های همیشگی را می‌گیرد. رشته‌ی خالی خالی می‌ماند.
+export default function ComparisonBanner({ title = TEXT.title, highlight = TEXT.highlight, description = TEXT.description, cta = TEXT.cta }) {
   return (
     <section className="@container py-6 md:py-12 w-full h-full">
       <Link href="/compare" className="block h-full">
@@ -24,16 +27,16 @@ export default function ComparisonBanner() {
           {/* سمت راست: متن و محتوا — تایپوگرافی سیال مشترک با بنر تطبیق */}
           <div className="relative z-10 flex-1 min-w-0 text-right @2xl:pr-12">
             <h2 className="font-black text-white leading-tight text-[clamp(1.25rem,0.375rem_+_4.4cqw,3rem)] mb-[clamp(0.5rem,2.5cqw,1.5rem)]">
-              ابزار هوشمند <br />
-              <span className="text-[#aa4725]">مقایسه محصولات</span>
+              {`${title} `}<br />
+              <span className="text-[#aa4725]">{highlight}</span>
             </h2>
 
             <p className="text-gray-400 font-light max-w-md ml-0 ml-auto line-clamp-2 @lg:line-clamp-none text-[clamp(0.75rem,0.55rem_+_1cqw,1.125rem)] mb-[clamp(0.75rem,0.125rem_+_3.125cqw,2rem)]">
-              مشخصات فنی را کنار هم بگذارید، نمودارها را تحلیل کنید و بهترین انتخاب را برای بازی خود داشته باشید.
+              {description}
             </p>
 
             <div className="inline-flex items-center bg-white text-[#20232a] rounded-[6px] font-black shadow-xl transition-all group-hover:scale-105 group-hover:bg-[#aa4725] group-hover:text-white gap-[clamp(0.5rem,0.3rem_+_0.8cqw,1rem)] px-[clamp(1rem,0.5rem_+_2.4cqw,2rem)] py-[clamp(0.75rem,0.6rem_+_0.8cqw,1rem)] text-[clamp(0.875rem,0.75rem_+_0.65cqw,1.125rem)]">
-              <span>شروع مقایسه فنی</span>
+              <span>{cta}</span>
               <FiChevronLeft className="shrink-0 group-hover:-translate-x-2 transition-transform size-[clamp(1.25rem,1.1rem_+_0.5cqw,1.5rem)]" />
             </div>
           </div>

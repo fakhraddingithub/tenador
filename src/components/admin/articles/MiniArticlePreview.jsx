@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { FiEdit3, FiExternalLink } from "react-icons/fi";
 import PreviewCanvas from "@/components/admin/articles/PreviewCanvas";
+import { PREVIEW_FRAMES } from "@/lib/previewFrames";
 
 /** جایگاهِ محتوای خودِ صفحه، بینِ دو مینی‌مقاله — تا ترتیبِ واقعیِ صفحه دیده شود. */
 function PageContentPlaceholder() {
@@ -22,7 +23,7 @@ export default function MiniArticlePreview({ title, note, editHref, liveHref, bl
   const parts = sections || [{ key: "blocks", blocks, entities, endpoint }];
   const filled = parts.filter((part) => (part.blocks || []).length > 0);
   return (
-    <div className="mx-auto max-w-[1440px]">
+    <div>
       <div className="a-card sticky top-[132px] z-30 mb-4 flex flex-wrap items-center gap-3 p-3">
         <div>
           <strong className="block text-sm">{title}</strong>
@@ -42,17 +43,17 @@ export default function MiniArticlePreview({ title, note, editHref, liveHref, bl
         </div>
       </div>
 
+      {/* هر بخش یک بومِ تمام‌عرض با همان ظرفِ مینی‌مقاله‌ی سایت
+          (PREVIEW_FRAMES.miniArticle)، بدونِ کارت و قابِ اضافه. */}
       {filled.length ? (
-        <div className="a-card">
-          <div className="mx-auto max-w-[1100px] px-4 py-8 sm:px-8">
-            {parts.map((part, index) => <div key={part.key || index}>
-              {sections ? <p className="mb-2 text-[11px] font-bold text-gray-500">{part.label}</p> : null}
-              {(part.blocks || []).length
-                ? <PreviewCanvas blocks={part.blocks} entities={part.entities} canEdit={canEdit} endpoint={part.endpoint} />
-                : <p className="rounded-[var(--admin-radius)] bg-gray-50 p-6 text-center text-xs text-gray-400">{emptyMessage}</p>}
-              {sections && index === 0 ? <PageContentPlaceholder /> : null}
-            </div>)}
-          </div>
+        <div>
+          {parts.map((part, index) => <div key={part.key || index}>
+            {sections ? <p className="mb-2 text-[11px] font-bold text-gray-500">{part.label}</p> : null}
+            {(part.blocks || []).length
+              ? <PreviewCanvas blocks={part.blocks} entities={part.entities} canEdit={canEdit} endpoint={part.endpoint} frame={PREVIEW_FRAMES.miniArticle} />
+              : <p className="rounded-[var(--admin-radius)] bg-gray-50 p-6 text-center text-xs text-gray-400">{emptyMessage}</p>}
+            {sections && index === 0 ? <PageContentPlaceholder /> : null}
+          </div>)}
         </div>
       ) : (
         <p className="a-card p-12 text-center text-sm text-gray-400">{emptyMessage}</p>

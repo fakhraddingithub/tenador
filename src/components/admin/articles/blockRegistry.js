@@ -1,12 +1,22 @@
 import {
   FiAlignRight, FiBarChart2, FiBox, FiColumns, FiGrid, FiImage, FiLink, FiList,
   FiFeather, FiLayout, FiMail, FiMessageSquare, FiMinus, FiPlay, FiShoppingBag, FiStar, FiTable,
-  FiLayers, FiMessageCircle, FiTag, FiType, FiZap,
+  FiLayers, FiMessageCircle, FiShuffle, FiTag, FiTarget, FiType, FiZap,
 } from "react-icons/fi";
 import { ARTICLE_BLOCK_TYPES, IMAGE_SLIDER_DELAY, IMAGE_SLIDER_HEIGHT, REVIEW_SLIDER_HEADING } from "@/lib/articleBlockTypes";
+import { COMPARISON_BANNER_TEXT, MATCH_BANNER_TEXT } from "@/lib/homeBannerTexts";
 
 const text = (key, label, kind = "text", extra = {}) => ({ key, label, kind, ...extra });
 const entity = (key, label, entityType, multiple = true) => ({ key, label, kind: multiple ? "entities" : "entity", entityType });
+
+// دو بنرِ صفحه‌ی اصلی، عیناً همان کامپوننت‌ها؛ فقط چهار متن قابلِ تنظیم است — نه
+// پیوند، نه رنگ، نه چیدمان (styleKeys فقط فاصله).
+const homeBannerFields = [
+  text("title", "خطِ اولِ عنوان", "text", { row: "title" }),
+  text("highlight", "خطِ دوم (رنگی)", "text", { row: "title" }),
+  text("description", "توضیح", "textarea"),
+  text("cta", "متنِ دکمه"),
+];
 
 // چیدمانِ فرمِ ویرایش — فقط ظاهر، بی‌اثر بر داده:
 //   row: فیلدهای پشتِ‌سرِ‌همی که row یکسان دارند کنارِ هم در یک ردیف می‌نشینند
@@ -134,6 +144,8 @@ export const ARTICLE_BLOCKS = {
     styleKeys: SPACING_ONLY,
   },
   relatedArticles: { label: "مقالات مرتبط", group: "محتوا", icon: FiList, defaults: { title: "مقالات مرتبط", articles: [] }, fields: [text("title", "عنوان"), entity("articles", "مقالات", "article")], styleKeys: TITLED },
+  comparisonBanner: { label: "بنر ابزار مقایسه", group: "بازاریابی", icon: FiShuffle, defaults: { ...COMPARISON_BANNER_TEXT }, fields: homeBannerFields, styleKeys: SPACING_ONLY },
+  matchBanner: { label: "بنر انتخاب هوشمند", group: "بازاریابی", icon: FiTarget, defaults: { ...MATCH_BANNER_TEXT }, fields: homeBannerFields, styleKeys: SPACING_ONLY },
   newsletterCta: { label: "عضویت خبرنامه", group: "بازاریابی", icon: FiMail, defaults: { title: "", description: "", buttonLabel: "عضویت" }, fields: [text("title", "عنوان", "text", { row: "head" }), text("buttonLabel", "متن دکمه", "text", { row: "head" }), text("description", "توضیح", "rich", { htmlKey: "descriptionHtml", align: false })], styleKeys: ["spacing", "textColor", "background", "accent"] },
   customHtml: { label: "HTML سفارشی", group: "پیشرفته", icon: FiBox, defaults: { html: "" }, fields: [text("html", "کد HTML", "html")], styleKeys: TEXTY },
   // فقط با «ادغام» ساخته می‌شود (hidden: در کتابخانه‌ی بلوک نیست). فرزندان عیناً در data.blocks می‌مانند.

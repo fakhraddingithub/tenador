@@ -13,6 +13,8 @@ import SportHero from "@/components/templates/sports/SportHero";
 import SeriesSlider from "@/components/templates/sports/SeriesSlider";
 import FullBleed from "@/components/features/articles/FullBleed";
 import ReviewSlider from "@/components/features/articles/ReviewSlider";
+import ComparisonBanner from "@/components/features/comparisonBanner/ComparisonBanner";
+import MatchBanner from "@/components/features/matchBanner/MatchBanner";
 import MergedSliderNav from "@/components/features/articles/MergedSliderNav";
 import ImageSliderControls from "@/components/features/articles/ImageSliderControls";
 import { imageBlockItems, imageShadeLayer } from "@/lib/articleImageBlock";
@@ -579,6 +581,13 @@ export default function ArticleBlockRenderer({ blocks = [], entities, preview = 
       const slider = <ReviewSlider reviews={reviews} heading={heading} />;
       // مثلِ اسلایدرِ سری‌ها لبه‌به‌لبه؛ داخلِ خانه‌ی ادغام یا روی تصویر در همان خانه.
       return <div key={block.id} className={blockSection} style={v.spacing || undefined}>{inMerged ? slider : <FullBleed>{slider}</FullBleed>}</div>;
+    }
+    if (block.type === "comparisonBanner" || block.type === "matchBanner") {
+      // همان دو بنرِ صفحه‌ی اصلی، فقط با متن‌های بلوک. کلیدِ غایب (undefined) پیش‌فرضِ
+      // خودِ بنر را می‌گیرد. اندازه‌ها با container query از عرضِ خودِ بلوک می‌آیند،
+      // پس در ستونِ مقاله، تمام‌عرض یا کنارِ هم در یک بلوکِ ادغام‌شده درست است.
+      const Banner = block.type === "comparisonBanner" ? ComparisonBanner : MatchBanner;
+      return <div key={block.id} className={blockSection} style={v.spacing || undefined}><Banner title={data.title} highlight={data.highlight} description={data.description} cta={data.cta} /></div>;
     }
     if (block.type === "usedProducts") return <section key={block.id} className={blockSection} style={v.spacing || undefined}>{data.title ? <h2 className="mb-5 text-xl font-black" style={v.text ? { color: v.text } : undefined}>{data.title}</h2> : null}<PublicUsedProductGrid fill={inMerged} products={ordered(data.products, maps.usedProducts)} /></section>;
     if (block.type === "relatedArticles") {

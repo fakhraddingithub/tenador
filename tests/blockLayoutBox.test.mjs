@@ -433,7 +433,8 @@ test("پیش‌نمایش رنگِ سایت را نشان می‌دهد، نه �
   assert.equal(css[at - 1].trim(), ":root,");
   assert.match(css[at + 1], /--primary: 15 64% 41%;/);
   const canvas = await read("../src/components/admin/articles/PreviewCanvas.jsx");
-  assert.ok(canvas.includes('className={`site-colors${canEdit ? " preview-canvas" : ""}`}'));
+  // the canvas (the bleed root) carries site-colors; a page frame may add its background after it
+  assert.ok(canvas.includes('className={`site-colors${canEdit ? " preview-canvas" : ""}'));
 });
 
 // ——— بلوکِ هدر ————————————————————————————————————————————————
