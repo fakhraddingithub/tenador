@@ -7,6 +7,7 @@ import { SortableContext, arrayMove, sortableKeyboardCoordinates, useSortable, v
 import { CSS } from "@dnd-kit/utilities";
 import { FiArrowDown, FiArrowLeft, FiArrowRight, FiArrowUp, FiChevronDown, FiChevronUp, FiClipboard, FiColumns, FiCopy, FiDroplet, FiGrid, FiMenu, FiMoreHorizontal, FiMove, FiPlus, FiScissors, FiSearch, FiShare2, FiSliders, FiTrash2, FiX } from "react-icons/fi";
 import ImageUpload from "@/components/admin/ImageUpload";
+import { LEGACY_BLOCK_TYPES, hasConvertibleLegacyBlocks, upgradeLegacyBlocks } from "@/lib/legacyArticleBlocks";
 import ArticleEntityPicker from "./ArticleEntityPicker";
 import BlockLayoutModal from "./BlockLayoutModal";
 import { AdminPortal, inputClass } from "./blockUi";
@@ -345,6 +346,9 @@ export function BlockFields({ block, onUpdate, onStyle }) {
     if (align) next.align = align; else delete next.align;
     onStyle(Object.keys(next).length ? next : undefined);
   };
+  // نوعِ حذف‌شده‌ای که جانشین ندارد (بلوک‌های پویا، اسلایدرِ کالکشن/دسته/ورزش): دیده
+  // می‌شود تا ادمین بداند، و با ذخیره‌ی بعدی برداشته می‌شود — legacyArticleBlocks.js.
+  if (LEGACY_BLOCK_TYPES.has(block.type)) return <p className="text-xs text-amber-700 text-center py-1">این نوع بلوک حذف شده است و با ذخیره‌ی بعدی از این سند برداشته می‌شود.</p>;
   if (!definition?.fields.length) return <p className="text-xs text-gray-400 text-center py-1">این بلوک تنظیمات دیگری ندارد.</p>;
   // برچسبِ تنها فیلدِ یک بلوک («متن پاراگراف»، «پرسش‌ها»، «کد HTML») همان عنوانِ
   // سربرگ را تکرار می‌کند، پس فقط برای صفحه‌خوان می‌ماند. برچسبِ بلوکِ ادغام‌شده
@@ -362,7 +366,8 @@ export function BlockFields({ block, onUpdate, onStyle }) {
     // clears: فیلدهایی که به این یکی وابسته‌اند (سری‌های یک ورزش) با عوض‌شدنش خالی
     // می‌شوند — فقط وقتی مقدار واقعاً عوض شده، تا انتخابِ دوباره‌ی همان چیزی را نریزد.
     if (field.clears && String(next ?? "") !== String(block.data?.[field.key] ?? "")) {
-      return onUpdate({ [field.key]: next, ...Object.fromEntries(field.clears.map((key) => [key, []])) });
+      // فهرست → [] و انتخابِ تکی → null (null است که validator برای «هیچ» می‌پذیرد).
+      return onUpdate({ [field.key]: next, ...Object.fromEntries(field.clears.map((key) => [key, Array.isArray(block.data?.[key]) ? [] : null])) });
     }
     return onUpdate(PATCH_KINDS.includes(field.kind) ? next : { [field.key]: next });
   };
@@ -429,14 +434,13 @@ function BlockField({ field, value, onChange, align, onAlign, block, onUpdate })
   // تصویرهای اسلایدر همه‌ی توانایی‌های همیشگیِ بلوکِ تصویر را دارند.
   if (field.kind === "imageSliderBlocks") return <BlockEditor value={Array.isArray(value) ? value : []} onChange={onChange} allow={IMAGE_SLIDER_CHILD_TYPES} itemLabel="اسلاید" addLabel="افزودن اسلاید" />;
   if (field.kind === "imageSliderSettings") return <ImageSliderSettings block={block} onUpdate={onUpdate} />;
-  if (field.kind === "gallery") return <ImageUpload value={value || []} onChange={onChange} folder="articles" multiple compact />;
   // برچسبِ فیلد دیگر <label>ِ دورِ آن نیست، پس نامِ کادرِ جستجو را صریح می‌گیرد.
   // scope: جستجو به مقدارِ فیلدِ دیگری از همین بلوک محدود است (سری‌ها ← ورزش)؛ تا آن
   // خالی است، جستجو غیرفعال است و scopeHint می‌گوید چرا.
   if (field.kind === "entity" || field.kind === "entities") {
     const scope = field.scope ? block.data?.[field.scope] : undefined;
     return <ArticleEntityPicker type={field.entityType} value={value} onChange={onChange} multiple={field.kind === "entities"} label={field.label}
-      params={field.scope ? { [field.scope]: scope || "" } : undefined} browse={field.browse} disabledHint={field.scope && !scope ? field.scopeHint : undefined} />;
+      params={field.scope ? { [field.scope]: scope || "" } : undefined} browse={field.browse} allByDefault={field.allByDefault} disabledHint={field.scope && !scope ? field.scopeHint : undefined} />;
   }
   if (field.kind === "faq") return <FaqEditor value={value} onChange={onChange} />;
   if (field.kind === "table") return <TableEditor value={value} onChange={onChange} />;
@@ -567,7 +571,7 @@ function blockSummary(block) {
   const text = plainText(data.text || data.title || data.label || data.caption || data.question || data.author || data.html);
   if (text) return text.length > 80 ? `${text.slice(0, 80)}…` : text;
   const list = Object.values(data).find((item) => Array.isArray(item) && item.length);
-  if (list) return `${list.length.toLocaleString("fa-IR")} ${block.type === "image" || block.type === "gallery" ? "تصویر" : "مورد"}`;
+  if (list) return `${list.length.toLocaleString("fa-IR")} ${block.type === "image" ? "تصویر" : "مورد"}`;
   if (data.url) return data.url.split("/").pop();
   return "";
 }
@@ -741,6 +745,13 @@ export default function BlockEditor({ value = [], onChange, libraryOpen: openPro
   // آخرین آرایه را دارد تا ویرایشِ هم‌زمانِ فیلدهای دیگر بازنویسی نشود.
   const latest = useRef(value);
   useEffect(() => { latest.current = value; });
+  // محتوای قدیمی همان لحظه به جانشینش تبدیل می‌شود (گالری → تصویر، محصولاتِ دست‌دوم
+  // → اسلایدرِ محصولات، اسلایدرِ برند → نوارِ برندها)، تا ادمین بلوکِ واقعی را ویرایش
+  // کند. بی‌جانشین‌ها (keepRemoved) می‌مانند و پیامِ حذف را نشان می‌دهند؛ چون پس از
+  // تبدیل دیگر «قابلِ تبدیل» ای نمی‌ماند، این effect دوباره اجرا نمی‌شود.
+  useEffect(() => {
+    if (hasConvertibleLegacyBlocks(value)) onChange(upgradeLegacyBlocks(value, { keepRemoved: true }));
+  }, [value, onChange]);
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 6 } }), useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }));
   // مقدارِ خالی کلید را کاملاً حذف می‌کند (نه اینکه شیءِ خالی بگذارد) تا بلوک
   // واقعاً به حالتِ «بدونِ استایل/چیدمان» برگردد و مثل قبل رندر شود.

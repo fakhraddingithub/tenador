@@ -5,7 +5,6 @@ export const ARTICLE_BLOCK_TYPES = [
   "paragraph",
   "image",
   "imageSlider",
-  "gallery",
   "video",
   "quote",
   "divider",
@@ -15,16 +14,9 @@ export const ARTICLE_BLOCK_TYPES = [
   "faq",
   "productCard",
   "productSlider",
-  "collectionSlider",
-  "brandSlider",
-  "categorySlider",
-  "sportSlider",
   "sportSeriesSlider",
-  "latestProducts",
-  "bestSellers",
-  "amazingOffers",
-  "usedProducts",
   "reviewSlider",
+  "brandBar",
   "comparisonBanner",
   "matchBanner",
   "relatedArticles",
@@ -35,6 +27,14 @@ export const ARTICLE_BLOCK_TYPES = [
 ];
 
 export const ARTICLE_BLOCK_TYPE_SET = new Set(ARTICLE_BLOCK_TYPES);
+
+/**
+ * بلوک‌هایی که مثلِ صفحه‌ی اصلی لبه‌به‌لبه‌اند (FullBleed): هر کدام قابِ تمام‌عرضِ
+ * خودش را دارد و ستونِ مقاله/بروشور فقط آن را باریک می‌کرد. بلوکِ ادغام‌شده‌ای که
+ * *همه‌ی* فرزندانش از این‌ها باشند (مثلاً دو بنرِ کنارِ هم) خودش هم لبه‌به‌لبه است.
+ * داخلِ خانه‌ی ادغام یا روی تصویر، هر کدام در همان خانه می‌ماند.
+ */
+export const FULL_BLEED_BLOCK_TYPES = new Set(["productSlider", "sportSeriesSlider", "reviewSlider", "brandBar", "comparisonBanner", "matchBanner"]);
 
 
 // ——— بلوکِ ادغام‌شده ——————————————————————————————————————————————————

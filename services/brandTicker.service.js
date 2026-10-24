@@ -23,8 +23,11 @@ import { applyProductSportVisibility } from "base/services/categorySportVisibili
 // (\S) — این null/خالی/فقط-فاصله را حذف می‌کند تا اسلاتِ خالی نمایش داده نشود.
 const HAS_LOGO = { logo: { $type: "string", $regex: /\S/ } };
 
+// id برای بلوکِ «نوار برندها» است که برندهای انتخاب‌شده را با آن جدا می‌کند؛
+// نوار خودش از آن استفاده‌ای نمی‌کند.
 function shape(brands) {
   return brands.map((b) => ({
+    id: String(b._id),
     slug: b.slug,
     logo: b.logo,
     name: b.title || b.name || "",
@@ -42,7 +45,8 @@ async function _getTickerBrands() {
 
 export const getTickerBrands = unstable_cache(
   async () => JSON.parse(JSON.stringify(await _getTickerBrands())),
-  ["ticker-brands"],
+  // v2: شکلِ کش‌شده id گرفت؛ کلیدِ قبلی شکلِ بی‌id را تا سه ساعت نگه می‌داشت.
+  ["ticker-brands-v2"],
   { revalidate: 10800, tags: ["brands"] }
 );
 

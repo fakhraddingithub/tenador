@@ -5,7 +5,7 @@ import {
   IMAGE_CONTENT_POSITIONS, IMAGE_DISPLAY_HEIGHT, IMAGE_SHADE_DEFAULTS, IMAGE_SHADE_DIRECTIONS, MAX_IMAGE_BLOCK_ITEMS, clampImageShade, mirrorFirstImage, normalizeHexColor, normalizeImageHref,
 } from "./articleImageBlock.js";
 import { FAQ_ANSWER_ALIGNS, IMAGE_SLIDER_DELAY, IMAGE_SLIDER_HEIGHT, REVIEW_SLIDER_HEADING } from "./articleBlockTypes.js";
-import { COMPARISON_BANNER_TEXT, MATCH_BANNER_TEXT } from "./homeBannerTexts.js";
+import { COMPARISON_BANNER_TEXT, MATCH_BANNER_TEXT, PRODUCT_SLIDER_TEXT } from "./homeBannerTexts.js";
 
 const string = (value, max) => typeof value === "string" ? value.trim().slice(0, max) : "";
 
@@ -105,20 +105,6 @@ function idList(value, errors, field, max = 50) {
   return result;
 }
 
-function gallery(value, errors, field) {
-  if (!Array.isArray(value)) return [];
-  if (value.length > 50) errors[field] = "Gallery cannot exceed 50 images";
-  return value.slice(0, 50).map((item, index) => {
-    if (typeof item === "string") return url(item, errors, `${field}.${index}`, { media: true });
-    const image = item && typeof item === "object" && !Array.isArray(item) ? item : {};
-    return {
-      url: url(image.url, errors, `${field}.${index}.url`, { media: true }),
-      alt: string(image.alt, 300),
-      caption: string(image.caption, 500),
-    };
-  }).filter((item) => typeof item === "string" ? item : item.url);
-}
-
 const positiveInt = (value) => (Number.isInteger(value) && value > 0 ? value : undefined);
 
 // بلوکِ تصویرِ بدونِ کلیدهای جدید دقیقاً همان خروجیِ قبلی را می‌دهد؛ کلیدهای
@@ -202,7 +188,6 @@ const validators = {
     delay: clampStep(data.delay, IMAGE_SLIDER_DELAY),
     height: clampStep(data.height, IMAGE_SLIDER_HEIGHT),
   }),
-  gallery: (data, errors, field) => ({ images: gallery(data.images, errors, `${field}.images`) }),
   video: (data, errors, field) => ({ url: url(data.url, errors, `${field}.url`, { media: true }), title: string(data.title, 300) }),
   quote: (data) => ({ text: string(data.text, 5000), ...rich(data.html), author: string(data.author, 300) }),
   divider: () => ({}),
@@ -233,12 +218,25 @@ const validators = {
     // answerAlign فقط وقتی ذخیره می‌شود که تنظیم شده باشد؛ پاسخِ قدیمی همان شکل را دارد.
     return { items: items.slice(0, 50).map((item) => ({ question: string(item?.question, 500), answer: string(item?.answer, 5000), ...rich(item?.answerHtml, "answerHtml"), ...(FAQ_ANSWER_ALIGNS.includes(item?.answerAlign) ? { answerAlign: item.answerAlign } : {}) })) };
   },
-  productCard: (data, errors, field) => ({ product: id(data.product, errors, `${field}.product`) }),
-  productSlider: entitySlider("products"),
-  collectionSlider: entitySlider("collections"),
-  brandSlider: entitySlider("brands"),
-  categorySlider: entitySlider("categories"),
-  sportSlider: entitySlider("sports"),
+  // یا محصولِ نو یا آگهیِ دست‌دوم — یکی. کارتِ قدیمی فقط product دارد و همان می‌ماند.
+  productCard: (data, errors, field) => {
+    const product = id(data.product, errors, `${field}.product`);
+    return { product, usedProduct: product ? null : id(data.usedProduct, errors, `${field}.usedProduct`) };
+  },
+  // همان اسلایدرِ «پرفروش‌ترین‌ها»ی صفحه‌ی اصلی. اسلایدرِ قدیمی فقط title/products
+  // دارد: کلیدِ غایب = پیش‌فرض، رشته‌ی خالیِ صریح خالی می‌ماند (دکمه‌ی بی‌متن یا
+  // بی‌نشانی اصلاً رندر نمی‌شود).
+  productSlider: (data, errors, field) => ({
+    products: idList(data.products, errors, `${field}.products`),
+    usedProducts: idList(data.usedProducts, errors, `${field}.usedProducts`),
+    title: string(data.title ?? PRODUCT_SLIDER_TEXT.title, 300),
+    subtitle: string(data.subtitle ?? PRODUCT_SLIDER_TEXT.subtitle, 500),
+    cta: string(data.cta ?? PRODUCT_SLIDER_TEXT.cta, 120),
+    ctaHref: data.ctaHref === undefined ? PRODUCT_SLIDER_TEXT.ctaHref : url(data.ctaHref, errors, `${field}.ctaHref`),
+  }),
+  // نوارِ برندهای صفحه‌ی اصلی. brands غایب = همه‌ی برندها (برندِ تازه هم خودکار
+  // می‌آید)؛ آرایه = همان برندها — یعنی ادمین دست‌کم یکی را برداشته است.
+  brandBar: (data, errors, field) => (Array.isArray(data.brands) ? { brands: idList(data.brands, errors, `${field}.brands`, 500) } : {}),
   // همان سه متنِ «تیتر تنادور» (نارنجی، ادامه، زیرعنوان) + ورزش و سری‌های انتخابی.
   // اینکه هر سری واقعاً در این ورزش محصول داشته باشد را رندر می‌سنجد، نه ذخیره:
   // محصولات بعداً عوض می‌شوند و ذخیره نباید به آن وابسته باشد.
@@ -249,10 +247,6 @@ const validators = {
     title: string(data.title, 300),
     subtitle: string(data.subtitle, 500),
   }),
-  latestProducts: (data, errors, field) => ({ title: string(data.title, 300), limit: Math.min(16, Math.max(1, Number(data.limit) || 8)), sports: idList(data.sports, errors, `${field}.sports`), categories: idList(data.categories, errors, `${field}.categories`) }),
-  bestSellers: (data, errors, field) => ({ title: string(data.title, 300), limit: Math.min(16, Math.max(1, Number(data.limit) || 8)), categories: idList(data.categories, errors, `${field}.categories`) }),
-  amazingOffers: (data) => ({ title: string(data.title, 300), limit: Math.min(16, Math.max(1, Number(data.limit) || 8)) }),
-  usedProducts: entitySlider("products"),
   comparisonBanner: homeBanner(COMPARISON_BANNER_TEXT),
   matchBanner: homeBanner(MATCH_BANNER_TEXT),
   // فقط شناسه‌ها؛ اینکه نظر هنوز تأییدشده باشد را رندر می‌سنجد (ممکن است بعداً رد شود).

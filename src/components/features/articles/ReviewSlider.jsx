@@ -6,7 +6,6 @@ import { Autoplay } from "swiper/modules";
 import UsedProductReviewCard from "@/components/templates/secondHands/UsedProductReviewCard";
 import CommentImageLightbox from "@/components/ui/CommentImageLightbox";
 import SliderShowcase, { ShowcaseTitle } from "@/components/templates/sports/SliderShowcase";
-import { HOME_SLIDER_AUTOPLAY } from "@/lib/homeSlider";
 
 import "swiper/css";
 
@@ -14,6 +13,8 @@ import "swiper/css";
 // (تکرارها برای صفحه‌خوان پنهان‌اند).
 const MIN_LOOP_SLIDES = 6;
 const GAP = 24;
+// مکثِ میانِ دو نظر (میلی‌ثانیه).
+const REVIEW_AUTOPLAY_DELAY = 3000;
 
 /**
  * اسلایدرِ بلوکِ «اسلایدر نظرات» — در قابِ اسلایدرِ سری‌ها (SliderShowcase: عنوانِ
@@ -28,7 +29,7 @@ const GAP = 24;
  *    را می‌گیرد.
  *  - کلیک روی کارتِ کناری فقط آن را به مرکز می‌آورد (در فازِ capture، چون <Link>
  *    روی خودِ لنگر می‌نشیند)؛ کارتِ مرکز مثلِ صفحه‌ی دست‌دوم کار می‌کند.
- *  - حرکتِ خودکار با فاصله‌ی اسلایدرهای صفحه‌ی اصلی، روی hover مکث می‌کند، و با
+ *  - حرکتِ خودکار هر ۳ ثانیه، روی hover مکث می‌کند، و با
  *    prefers-reduced-motion شروع نمی‌شود.
  */
 export default function ReviewSlider({ reviews = [], heading = {} }) {
@@ -71,7 +72,7 @@ export default function ReviewSlider({ reviews = [], heading = {} }) {
           slidesPerView={1}
           breakpointsBase="container"
           breakpoints={threeUp ? { 900: { slidesPerView: 3 } } : undefined}
-          autoplay={moves ? { delay: HOME_SLIDER_AUTOPLAY.delay, pauseOnMouseEnter: true, disableOnInteraction: false } : false}
+          autoplay={moves ? { delay: REVIEW_AUTOPLAY_DELAY, pauseOnMouseEnter: true, disableOnInteraction: false } : false}
           onSwiper={(swiper) => {
             swiperRef.current = swiper;
             if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) swiper.autoplay?.stop();

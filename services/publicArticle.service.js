@@ -8,8 +8,6 @@ import ArticleCategory from "base/models/ArticleCategory";
 import ArticleRedirect from "base/models/ArticleRedirect";
 import Product from "base/models/Product";
 import Brand from "base/models/Brand";
-import Category from "base/models/Category";
-import Serie from "base/models/Serie";
 import Sport from "base/models/Sport";
 import UsedProduct from "base/models/UsedProduct";
 import SiteSetting from "base/models/SiteSetting";
@@ -18,8 +16,8 @@ import { getCachedRate } from "@/lib/Exchangerate";
 import { eurToToman } from "@/lib/currency";
 import { attachListingPrices } from "base/services/priceEngine";
 import { getReviewCardsByIds } from "base/services/comment.service";
-import { getProductsVisibleInAnySportMatch } from "base/services/categorySportVisibility.service";
-import { andMongoFilters } from "base/utils/categorySportVisibility";
+import { getTickerBrands } from "base/services/brandTicker.service";
+import { hasLegacyBlocks, upgradeLegacyBlocks } from "@/lib/legacyArticleBlocks";
 import { getSportSeriesBlock } from "base/services/series.service";
 import { isReservedArticleRoot, publicArticleFilter } from "base/utils/articleRoutes";
 
@@ -34,17 +32,18 @@ async function rootSlugIsOccupied(slug) {
 }
 
 function collectBlockReferences(blocks = []) {
-  const refs = { products: [], brands: [], series: [], categories: [], sports: [], articles: [], usedProducts: [], reviews: [] };
+  const refs = { products: [], articles: [], usedProducts: [], reviews: [] };
   for (const block of blocks) {
     const data = block?.data || {};
-    if (block.type === "productCard") refs.products.push(...ids(data.product));
-    if (block.type === "productSlider") refs.products.push(...ids(data.products));
-    if (block.type === "brandSlider") refs.brands.push(...ids(data.brands));
-    if (block.type === "collectionSlider") refs.series.push(...ids(data.collections));
-    if (block.type === "categorySlider") refs.categories.push(...ids(data.categories));
-    if (block.type === "sportSlider") refs.sports.push(...ids(data.sports));
+    if (block.type === "productCard") {
+      refs.products.push(...ids(data.product));
+      refs.usedProducts.push(...ids(data.usedProduct));
+    }
+    if (block.type === "productSlider") {
+      refs.products.push(...ids(data.products));
+      refs.usedProducts.push(...ids(data.usedProducts));
+    }
     if (block.type === "relatedArticles") refs.articles.push(...ids(data.articles));
-    if (block.type === "usedProducts") refs.usedProducts.push(...ids(data.products));
     if (block.type === "reviewSlider") refs.reviews.push(...ids(data.reviews));
   }
   for (const key of Object.keys(refs)) refs[key] = [...new Set(refs[key])];
@@ -53,59 +52,38 @@ function collectBlockReferences(blocks = []) {
 
 export async function resolveArticleEntities(article) {
   // فرزندانِ بلوکِ ادغام‌شده هم محصول/برند/… ارجاع می‌دهند؛ بدونِ این در رندر خالی می‌ماندند.
-  const allBlocks = flattenArticleBlocks(article.blocks);
+  // محتوای پیش از حذفِ گالری/محصولاتِ دست‌دوم/اسلایدرِ برند همان‌طور رندر می‌شود که
+  // جانشینش (ArticleBlockRenderer هم همین را می‌کند) — پس ارجاع‌هایش هم از جانشین.
+  const source = hasLegacyBlocks(article.blocks) ? upgradeLegacyBlocks(article.blocks) : article.blocks;
+  const allBlocks = flattenArticleBlocks(source);
   const refs = collectBlockReferences(allBlocks);
-  const dynamicBlocks = allBlocks.filter((block) =>
-    ["latestProducts", "bestSellers", "amazingOffers"].includes(block.type));
+  // نوارِ برندها همان داده‌ی نوارِ صفحه‌ی اصلی را می‌خواند (کش‌شده، با ترتیبِ برندها).
+  const needsTickerBrands = allBlocks.some((block) => block.type === "brandBar");
   // «اسلایدر سری‌های ورزش»: داده‌ی هر بلوک همان شکلِ اسلایدرِ صفحه‌ی ورزش است
   // (تصویرِ مخصوصِ همین ورزش، برند، رنگ‌ها) و فقط سری‌هایی که هنوز در این ورزش
   // محصول دارند — به ترتیبِ انتخابِ ادمین.
   const sportSeriesBlocks = allBlocks.filter((block) => block.type === "sportSeriesSlider");
 
-  const [rate, products, brands, series, categories, sports, articles, usedProducts, dynamicProducts, sportSeries, reviews] = await Promise.all([
-    refs.products.length || dynamicBlocks.length || refs.usedProducts.length ? getCachedRate() : Promise.resolve(1),
+  const [rate, products, articles, usedProducts, sportSeries, reviews, tickerBrands] = await Promise.all([
+    refs.products.length || refs.usedProducts.length ? getCachedRate() : Promise.resolve(1),
     refs.products.length ? Product.find({ _id: { $in: refs.products }, isActive: true }).populate("brand category variants").lean() : [],
-    refs.brands.length ? Brand.find({ _id: { $in: refs.brands } }).select("name title slug logo image icon").lean() : [],
-    refs.series.length ? Serie.find({ _id: { $in: refs.series } }).select("name title slug logo image headImage brand").populate("brand", "slug title name").lean() : [],
-    refs.categories.length ? Category.find({ _id: { $in: refs.categories } }).select("name title slug image icon sport").populate("sport", "slug title name").lean() : [],
-    refs.sports.length ? Sport.find({ _id: { $in: refs.sports } }).select("name title slug image icon").lean() : [],
     refs.articles.length ? Article.find({ _id: { $in: refs.articles }, ...publicArticleFilter() }).select("title slug excerpt cover category publishedAt readingTime").populate("category", "name slug status").lean() : [],
     refs.usedProducts.length ? UsedProduct.find({ _id: { $in: refs.usedProducts }, status: { $ne: "sold" } }).populate({ path: "baseProduct", select: "mainImage brand", populate: { path: "brand", select: "title icon" } }).lean() : [],
-    Promise.all(dynamicBlocks.map(async (block) => {
-      const data = block.data || {};
-      const limit = Math.min(16, Math.max(1, Number(data.limit) || 8));
-      let query = { isActive: true };
-      const sportIds = ids(data.sports);
-      if (sportIds.length) {
-        query = andMongoFilters(
-          query,
-          await getProductsVisibleInAnySportMatch(sportIds),
-        );
-      }
-      if (ids(data.categories).length) query.category = { $in: ids(data.categories) };
-      if (block.type === "bestSellers") query.label = "best_seller";
-      if (block.type === "amazingOffers") query.label = "discount";
-      const docs = await Product.find(query).sort({ order: 1, createdAt: -1 }).limit(limit).populate("brand category variants").lean();
-      return [String(block.id), docs];
-    })),
     Promise.all(sportSeriesBlocks.map(async (block) => [String(block.id), await getSportSeriesBlock(block.data?.sport, block.data?.series)])),
     getReviewCardsByIds(refs.reviews),
+    needsTickerBrands ? getTickerBrands() : [],
   ]);
 
-  const allProducts = [...products, ...dynamicProducts.flatMap(([, list]) => list)];
-  const uniqueProducts = [...new Map(allProducts.map((item) => [String(item._id), item])).values()];
-  const pricedProducts = uniqueProducts.length ? await attachListingPrices(uniqueProducts, rate) : [];
-  const productMap = Object.fromEntries(pricedProducts.map((item) => [String(item._id), item]));
-  const dynamicMap = Object.fromEntries(dynamicProducts.map(([blockId, list]) => [blockId, list.map((item) => productMap[String(item._id)]).filter(Boolean)]));
+  const pricedProducts = products.length ? await attachListingPrices(products, rate) : [];
 
   const maps = {};
   // قیمتِ کالای دست‌دوم به یورو ذخیره می‌شود؛ مثلِ صفحه‌ی دست‌دوم همین‌جا به تومان می‌رود.
   const pricedUsedProducts = usedProducts.map((item) => ({ ...item, price: eurToToman(item.price, rate) }));
-  for (const [key, list] of Object.entries({ products: pricedProducts, brands, series, categories, sports, articles, usedProducts: pricedUsedProducts })) {
+  for (const [key, list] of Object.entries({ products: pricedProducts, articles, usedProducts: pricedUsedProducts })) {
     maps[key] = Object.fromEntries(list.map((item) => [String(item._id), item]));
   }
   maps.reviews = Object.fromEntries(reviews.map((review) => [review.id, review]));
-  return serialise({ rate, maps, dynamicProducts: dynamicMap, sportSeries: Object.fromEntries(sportSeries.filter(([, value]) => value)) });
+  return serialise({ rate, maps, tickerBrands, sportSeries: Object.fromEntries(sportSeries.filter(([, value]) => value)) });
 }
 
 async function getCategoryInternal(slug) {

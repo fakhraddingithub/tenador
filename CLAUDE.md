@@ -29,6 +29,8 @@ npm run check:article-image-dimensions    # Dry-run: report article/brand image 
 npm run migrate:article-image-dimensions  # Backfill those dimensions (idempotent); revalidate the `articles` tag afterwards
 npm run check:remove-seller-role          # Dry-run: data still referencing the removed `seller` role
 npm run migrate:remove-seller-role        # Move those references to `store` (users, discount rules, broadcasts, review-credit config)
+npm run check:legacy-blocks               # Dry-run: removed article/brochure block types and what each becomes
+npm run migrate:legacy-blocks             # Convert them (run right after deploying — see «Block consolidation»)
 
 # Background workers (must run separately from the web process)
 npm run worker:prices
@@ -640,7 +642,7 @@ Rules that are load-bearing:
   legacy modes alike, and a child with no layout keys leaves its cell byte-identical.
   Hierarchy: the merged block owns the container and the grid; each child owns its own slot.
 - **A block’s own internal grid is sized by its slot, not by the viewport.** Product cards,
-  entity cards, image blocks, the gallery and related articles all laid their contents out
+  entity cards, image blocks, the gallery and related articles (the last two since removed) all laid their contents out
   with page breakpoints (`md:grid-cols-3 lg:grid-cols-4`), and a media query measures the
   *window* — so inside a 300px merged cell the page was still "desktop" and a single product
   card became one of four columns, about 116px wide in a 499px cell. `renderBlock` now passes
@@ -1204,7 +1206,7 @@ neighbours behind the centre card and was replaced for exactly that reason:
   exactly like on the second-hand page (product link, image lightbox).
 - `loop` needs slides on both sides, so a short list is repeated up to 6 (copies are
   `aria-hidden`); a single review renders one still card with no arrows.
-- Autoplay uses the homepage delay (`HOME_SLIDER_AUTOPLAY.delay`), pauses on hover, and never
+- Autoplay pauses 3s between reviews (`REVIEW_AUTOPLAY_DELAY`), pauses on hover, and never
   starts under `prefers-reduced-motion`. Speed is 650ms on a soft ease-out, and the scale and
   veil transition over the same 650ms.
 
@@ -1222,7 +1224,8 @@ npm run test:review-slider
 — `title` (first line), `highlight` (coloured second line), `description`, `cta` — are props
 whose defaults come from `src/lib/homeBannerTexts.js`. The homepage passes no props, and its
 server HTML is byte-identical to before. Link targets, colours, graphics and layout are not
-configurable; `styleKeys` is spacing-only.
+configurable; `styleKeys` is spacing-only. Both are full width (`FullBleed`), and so is a merged
+block holding just the two of them — see «Block consolidation».
 
 - One source for the texts: the components' defaults, the registry's `defaults` and the
   validator all read `homeBannerTexts.js`. A missing key saves as the default text; an
@@ -1254,6 +1257,69 @@ them. `tests/homeBanners.test.mjs` fails if a live container changes without its
 
 ```bash
 npm run test:home-banners
+```
+
+### Block consolidation: what was removed, and where it went
+
+Nine block types were removed because another block already does the job. **Content that still
+holds one never breaks** — not on save, not on render, not in the editor — because one pure
+function, `upgradeLegacyBlocks` (`src/lib/legacyArticleBlocks.js`), turns each into its
+successor wherever stored blocks enter the system:
+
+| removed | successor |
+|---|---|
+| `gallery` | `image` — same images; >12 split into consecutive image blocks; a caption becomes the alt when the alt is empty |
+| `usedProducts` | `productSlider` with those listings in `usedProducts` |
+| `brandSlider` | `brandBar` with those brands |
+| `latestProducts` / `bestSellers` / `amazingOffers` | `productSlider` holding the products they show **today** — only the migration can do this (it runs the old query) |
+| `collectionSlider` / `categorySlider` / `sportSlider` | none — removed, and listed by the migration |
+
+| where | what happens |
+|---|---|
+| save — `sanitizeArticleBlocks` | upgraded before validation (otherwise «block type is not supported» would make every such document unsaveable); blocks with no successor are dropped |
+| render — `resolveArticleEntities` + `ArticleBlockRenderer` | upgraded before refs are collected and before rendering |
+| editor — `BlockEditor` | an effect converts the convertible ones on load; those with no successor stay (`keepRemoved`) and show «حذف شده… با ذخیره‌ی بعدی برداشته می‌شود», so nothing disappears silently. `hasConvertibleLegacyBlocks` is false after one pass, so the effect cannot loop |
+
+```bash
+npm run check:legacy-blocks     # dry run: every conversion, every removal
+npm run migrate:legacy-blocks   # apply (idempotent)
+```
+
+**Run it right after deploying, before content is edited again** — the overlayText rule: a
+save drops a dynamic section without recording its products. The script reuses the site's own
+query (sport visibility, categories, label, sort) through `tests/aliasHooks.mjs` with
+`next/cache` stubbed; the logic is `src/lib/legacyBlockMigration.js`, so it is tested without a
+database. `BLOCK_DOCUMENT_TARGETS` gained `Serie.articleBlocksBottom` and
+`Brand.categoryArticles[].blocksBottom` — the bottom mini-article sections, which every earlier
+block migration had missed.
+
+**«اسلایدر محصولات» is the homepage's `BestSellers`**, not a look-alike: `products`,
+`usedProducts` (rendered after the products with `UsedProductCard` and its own quick view),
+`title` (its first word is the orange one, like the homepage), `subtitle`, `cta`, `ctaHref`;
+defaults in `PRODUCT_SLIDER_TEXT` (`homeBannerTexts.js`), shared with the component. An empty
+button text or link hides the button. The props the block needs all default to the homepage's
+current output: `isolated` adds a per-instance class next to the base nav/pagination classes
+(Swiper resolves string selectors document-wide — two sliders on one page drove each other),
+and `fitContainer` switches to container breakpoints inside a merged cell.
+
+**«کارت محصول»** takes a product *or* a used listing (`clears` empties the other; a cleared
+single pick is `null`, which the validator accepts — `[]` was not). Used listings render with
+the second-hand card, priced in toman like everywhere else.
+
+**«نوار برندها» is the homepage's `BrandsTicker`** over `getTickerBrands()` (logo brands, by
+`order`). `brands` absent means **all** — a new brand appears automatically; removing one in
+the editor stores the explicit rest, and the search (entity type `tickerBrand`, open on focus)
+offers only removed brands to add back. The ticker shape gained `id`, and its cache key moved
+to `ticker-brands-v2`, because the cached shape had none.
+
+**Full width.** `FULL_BLEED_BLOCK_TYPES` (`articleBlockTypes.js`) lists the blocks that span the
+page like on the homepage: the product slider, brand bar, both banners, the series and review
+sliders. Each wraps itself in `FullBleed` at the top level; a **merged block made only of
+these** (two banners side by side) is wrapped as a whole. Inside a merged cell or on an image
+they stay in their slot.
+
+```bash
+npm run test:block-consolidation
 ```
 
 ### Authoring: a block clipboard, and what scales with what

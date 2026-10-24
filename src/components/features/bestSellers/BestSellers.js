@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useId, useState } from "react";
+import dynamic from "next/dynamic";
 
 import { Swiper, SwiperSlide } from "swiper/react";
 
@@ -16,15 +17,35 @@ import ProductCard from "@/components/modules/cart/ProductCard";
 
 import QuickViewModal from "@/components/modules/cart/QuickViewModal";
 
+import UsedProductCard from "@/components/templates/secondHands/UsedProductCard";
+
 import Link from "next/link";
 import HomeSectionHeading from "@/components/features/home/HomeSectionHeading";
 import HomeSliderNav from "@/components/features/home/HomeSliderNav";
 import { HOME_SLIDER_AUTOPLAY, HOME_SLIDER_SPEED } from "@/lib/homeSlider";
+import { PRODUCT_SLIDER_TEXT } from "@/lib/homeBannerTexts";
+
+// فقط وقتی آگهیِ دست‌دومی در اسلایدر باشد بارگذاری می‌شود (صفحه‌ی اصلی هرگز).
+const UsedQuickViewModal = dynamic(() => import("@/components/templates/secondHands/Usedquickviewmodal"), { ssr: false });
+
+/**
+ * اسلایدرِ «پرفروش‌ترین محصولات» صفحه‌ی اصلی — و بلوکِ «اسلایدر محصولات» مقاله‌ها،
+ * که *همین* کامپوننت را رندر می‌کند. هر پراپِ تازه پیش‌فرضی دارد که خروجیِ صفحه‌ی
+ * اصلی را عیناً همان قبلی نگه می‌دارد:
+ *
+ *  - isolated: کلاسِ دکمه‌ها و نقطه‌های صفحه‌بندی برای هر اسلایدر یکتا می‌شود.
+ *    Swiper انتخابگرِ رشته‌ای را در کلِ سند می‌جوید، پس دو اسلایدر در یک صفحه با
+ *    کلاسِ مشترک دکمه‌ها و نقطه‌های یکدیگر را می‌گرفتند (همان باگِ اسلایدرِ سری‌ها).
+ *    کلاس‌های پایه می‌مانند، چون استایلِ نقطه‌ها به آن‌ها بسته است.
+ *  - usedProducts: آگهی‌های دست‌دوم پس از محصولات، با کارت و پیش‌نمایشِ خودشان.
+ *  - ctaLabel / ctaHref: دکمه‌ی پایین؛ خالی بودنِ هر کدام یعنی دکمه‌ای نیست.
+ *  - fitContainer: نقطه‌شکن‌ها با عرضِ خودِ اسلایدر (داخلِ خانه‌ی بلوکِ ادغام‌شده).
+ */
 
 export default function ProductSlider({
-  title = "پرفروش‌ترین محصولات",
+  title = PRODUCT_SLIDER_TEXT.title,
 
-  subtitle = "محبوب‌ترین انتخاب‌های مشتریان ما",
+  subtitle = PRODUCT_SLIDER_TEXT.subtitle,
 
   // واژه‌ای از عنوان که با رنگِ اصلیِ سایت متمایز می‌شود؛ پیش‌فرض همان رفتارِ
   // قبلیِ صفحه‌ی اصلی است تا هیچ استفاده‌ی موجودی تغییر نکند.
@@ -32,7 +53,17 @@ export default function ProductSlider({
 
   products = [],
 
+  usedProducts = [],
+
   rate,
+
+  ctaLabel = PRODUCT_SLIDER_TEXT.cta,
+
+  ctaHref = PRODUCT_SLIDER_TEXT.ctaHref,
+
+  isolated = false,
+
+  fitContainer = false,
 
   onToggleWishlist,
 
@@ -41,6 +72,12 @@ export default function ProductSlider({
   const [selectedProduct, setSelectedProduct] = useState(null);
 
   const [isModalOpen, setIsModalOpen] = useState(false);
+
+  const [selectedUsed, setSelectedUsed] = useState(null);
+
+  const instance = useId().replace(/[^a-zA-Z0-9_-]/g, "");
+  const scope = (base) => (isolated ? `${base} ${base}-${instance}` : base);
+  const select = (base) => `.${isolated ? `${base}-${instance}` : base}`;
 
   const openQuickView = (product) => {
     setSelectedProduct(product);
@@ -68,11 +105,11 @@ export default function ProductSlider({
         {/* هدر */}
 
         <div className="relative flex flex-col md:flex-row md:items-end justify-between mb-10 md:mb-16">
-          <HomeSectionHeading title={title} highlight={highlight} subtitle={subtitle} />
+          {title || subtitle ? <HomeSectionHeading title={title} highlight={highlight} subtitle={subtitle} /> : <div />}
 
           {/* کنترلرهای ناوبری (مخفی در موبایل برای تمیزی بیشتر، نمایش در تبلت به بالا) */}
 
-          <HomeSliderNav prevClass="product-prev-btn" nextClass="product-next-btn" />
+          <HomeSliderNav prevClass={scope("product-prev-btn")} nextClass={scope("product-next-btn")} />
         </div>
 
         {/* اسلایدر */}
@@ -86,13 +123,14 @@ export default function ProductSlider({
             watchOverflow={true}
             speed={HOME_SLIDER_SPEED}
             autoplay={{ ...HOME_SLIDER_AUTOPLAY }}
+            {...(fitContainer ? { breakpointsBase: "container" } : null)}
             navigation={{
-              nextEl: ".product-next-btn",
+              nextEl: select("product-next-btn"),
 
-              prevEl: ".product-prev-btn",
+              prevEl: select("product-prev-btn"),
             }}
             pagination={{
-              el: ".slider-pagination",
+              el: select("slider-pagination"),
               clickable: true,
               bulletClass: "swiper-pagination-bullet",
               bulletActiveClass: "swiper-pagination-bullet-active",
@@ -137,20 +175,27 @@ export default function ProductSlider({
                 </div>
               </SwiperSlide>
             ))}
+            {usedProducts.map((product, index) => (
+              <SwiperSlide key={`used-${product._id || index}`} className="h-auto pb-12">
+                <div className="h-full hover:-translate-y-1.5 transition-transform duration-500">
+                  <UsedProductCard product={product} onQuickView={() => setSelectedUsed(product)} />
+                </div>
+              </SwiperSlide>
+            ))}
           </Swiper>
 
           {/* بخش زیر اسلایدر: پیجینیشن و دکمه کاتالوگ */}
 
           <div className="flex flex-row items-center justify-between gap-3 md:gap-6 mt-6">
-            <div className="slider-pagination !w-auto flex md:gap-2" />
+            <div className={`${scope("slider-pagination")} !w-auto flex md:gap-2`} />
 
-            <Link
-              href="/products"
+            {ctaLabel && ctaHref ? <Link
+              href={ctaHref}
               className="group flex items-center gap-2 bg-white px-5 py-2.5 md:px-6 md:py-3 rounded-full shadow-sm border border-gray-100 text-gray-900 font-bold text-xs md:text-sm hover:bg-[#aa4725] hover:text-white transition-all duration-300 w-full sm:w-auto justify-center"
             >
-              مشاهده کاتالوگ محصولات
+              {ctaLabel}
               <FiPlusCircle className="text-lg md:text-xl group-hover:rotate-180 transition-transform duration-500" />
-            </Link>
+            </Link> : null}
           </div>
         </div>
       </div>
@@ -163,6 +208,8 @@ export default function ProductSlider({
         onToggleWishlist={() => onToggleWishlist?.(selectedProduct)}
         isWishlisted={selectedProduct?.isWishlisted}
       />
+
+      {usedProducts.length ? <UsedQuickViewModal product={selectedUsed} isOpen={Boolean(selectedUsed)} onClose={() => setSelectedUsed(null)} /> : null}
     </section>
   );
 }

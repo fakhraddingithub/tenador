@@ -14,6 +14,17 @@ export const COMPARISON_BANNER_TEXT = {
   cta: "شروع مقایسه فنی",
 };
 
+/**
+ * اسلایدرِ «پرفروش‌ترین محصولات» صفحه‌ی اصلی (BestSellers) — پیش‌فرض‌های همان
+ * کامپوننت و بلوکِ «اسلایدر محصولات». واژه‌ی نارنجیِ عنوان، واژه‌ی اولِ آن است.
+ */
+export const PRODUCT_SLIDER_TEXT = {
+  title: "پرفروش‌ترین محصولات",
+  subtitle: "محبوب‌ترین انتخاب‌های مشتریان ما",
+  cta: "مشاهده کاتالوگ محصولات",
+  ctaHref: "/products",
+};
+
 export const MATCH_BANNER_TEXT = {
   title: "انتخاب بعدی‌تان را",
   highlight: "هوشمندانه پیدا کنید",

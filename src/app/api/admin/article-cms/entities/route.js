@@ -14,6 +14,7 @@ import { articleApiError } from "@/lib/articleApi";
 import { rankProducts, withProductSearch } from "@/lib/productSearch";
 import { getSportSeriesOptions } from "base/services/series.service";
 import { getReviewCardsByIds, searchReviewCards } from "base/services/comment.service";
+import { getTickerBrands } from "base/services/brandTicker.service";
 
 export const runtime = "nodejs";
 
@@ -82,6 +83,15 @@ export async function GET(req) {
         .select("title slug cover status").limit(CANDIDATE_LIMIT).lean();
       items = rank(docs, (d) => rankBySearch(q, d, (x) => [[x.title, 2], [x.slug, 1]]).slice(0, RESULT_LIMIT))
         .map((x) => ({ _id: x._id, label: x.title, sub: x.status, image: x.cover?.url || null }));
+    } else if (type === "tickerBrand") {
+      // بلوکِ «نوار برندها»: همان برندهای نوارِ صفحه‌ی اصلی (لوگودار، به ترتیبِ order).
+      // all=1 کلِ فهرست را می‌دهد — بلوکِ دست‌نخورده یعنی «همه»؛ q میانِ همان‌ها جستجو.
+      const all = await getTickerBrands();
+      const wanted = idFilter ? new Set(ids) : null;
+      const list = wanted ? all.filter((brand) => wanted.has(brand.id))
+        : params.get("all") === "1" ? all
+        : rankBySearch(q, all.filter((brand) => matchesSearch(q, `${brand.name} ${brand.slug}`)), (brand) => [[brand.name, 2], [brand.slug, 1]]).slice(0, 50);
+      items = list.map((brand) => ({ _id: brand.id, label: brand.name || brand.slug, image: brand.logo || null }));
     } else if (type === "review") {
       // بلوکِ «اسلایدر نظرات»: فقط نظرهای سطح‌بالای تأییدشده (نو و دست‌دوم). برچسب
       // نویسنده و محصول است و زیرش ابتدای متن، تا نظرهای یک محصول از هم جدا شوند.

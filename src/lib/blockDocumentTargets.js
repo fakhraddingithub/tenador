@@ -9,7 +9,9 @@ export const BLOCK_DOCUMENT_TARGETS = [
   { collection: "articles", paths: ["blocks"] },
   { collection: "articlerevisions", paths: ["blocks"] },
   { collection: "brands", paths: ["articleBlocks", "brochure.blocks"], arrayOfObjects: ["categoryArticles"] },
-  { collection: "series", paths: ["articleBlocks"] },
+  // مینی‌مقاله دو بخش دارد (بالا و پایینِ صفحه): articleBlocksBottom و، برای هر
+  // دسته‌ی برند، categoryArticles[].blocksBottom — پیش‌تر از این فهرست جا مانده بودند.
+  { collection: "series", paths: ["articleBlocks", "articleBlocksBottom"] },
   { collection: "sports", paths: ["brochure.blocks"] },
 ];
 
@@ -20,7 +22,7 @@ export function blockArraysOf(doc, target) {
   const arrays = [];
   for (const path of target.paths) arrays.push(getBlockPath(doc, path));
   for (const path of target.arrayOfObjects || []) {
-    for (const entry of getBlockPath(doc, path) || []) arrays.push(entry?.blocks);
+    for (const entry of getBlockPath(doc, path) || []) arrays.push(entry?.blocks, entry?.blocksBottom);
   }
   return arrays;
 }

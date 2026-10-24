@@ -11,13 +11,18 @@ import { FloatingPanel } from "./blockUi";
  * params: پارامترهای اضافه‌ی جستجو (مثلاً { sport } برای سری‌های یک ورزش).
  * browse: با فوکوس، بدونِ تایپ هم فهرستِ کامل باز می‌شود (فهرست‌های کوچک).
  * disabledHint: جستجو غیرفعال است و این متن دلیلش را می‌گوید.
+ * allByDefault: مقدارِ غایب یعنی «همه» (نوارِ برندها) — کلِ فهرست به‌شکلِ چیپ نشان
+ *   داده می‌شود؛ برداشتنِ یکی فهرستِ صریحِ بقیه را ذخیره می‌کند و جستجو فقط
+ *   برداشته‌ها را برای برگرداندن پیشنهاد می‌دهد.
  *
  * نتایج در FloatingPanel باز می‌شوند — بیرون از هر ظرفِ overflow‌دار (مودالِ
  * پیش‌نمایش، کارتِ بلوک)، پس هیچ‌جا زیرِ محتوا نمی‌روند یا بریده نمی‌شوند.
  */
-export default function ArticleEntityPicker({ type, value, onChange, multiple = true, placeholder = "جستجو...", label, params, browse = false, disabledHint }) {
+export default function ArticleEntityPicker({ type, value, onChange, multiple = true, placeholder = "جستجو...", label, params, browse = false, disabledHint, allByDefault = false }) {
   const resultsId = useId();
-  const ids = multiple ? (Array.isArray(value) ? value : []) : value ? [value] : [];
+  const allMode = allByDefault && multiple && !Array.isArray(value);
+  const [allItems, setAllItems] = useState(null);
+  const ids = allMode ? (allItems || []).map((item) => String(item._id)) : multiple ? (Array.isArray(value) ? value : []) : value ? [value] : [];
   const [selected, setSelected] = useState([]);
   const [query, setQuery] = useState("");
   const [results, setResults] = useState([]);
@@ -29,7 +34,19 @@ export default function ArticleEntityPicker({ type, value, onChange, multiple = 
   const extra = params ? Object.entries(params).map(([key, val]) => `&${key}=${encodeURIComponent(val ?? "")}`).join("") : "";
   const disabled = Boolean(disabledHint);
 
+  // «همه»: فهرستِ کامل یک‌بار خوانده می‌شود و همان چیپ‌هاست.
   useEffect(() => {
+    if (!allMode) return undefined;
+    const controller = new AbortController();
+    fetch(`/api/admin/article-cms/entities?type=${type}&all=1`, { signal: controller.signal })
+      .then((res) => res.json())
+      .then((data) => setAllItems(data.items || []))
+      .catch((error) => { if (error.name !== "AbortError") setAllItems([]); });
+    return () => controller.abort();
+  }, [allMode, type]);
+
+  useEffect(() => {
+    if (allMode) { Promise.resolve().then(() => setSelected(allItems || [])); return; }
     const key = ids.map(String).join(",");
     if (!key) { Promise.resolve().then(() => setSelected([])); return; }
     const controller = new AbortController();
@@ -38,7 +55,7 @@ export default function ArticleEntityPicker({ type, value, onChange, multiple = 
       .then((data) => setSelected(data.items || []))
       .catch((error) => { if (error.name !== "AbortError") setSelected([]); });
     return () => controller.abort();
-  }, [type, ids.map(String).join(",")]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [type, allMode, allItems, ids.map(String).join(",")]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const search = useCallback(async (term) => {
     if (!term.trim() && !browse) return setResults([]);

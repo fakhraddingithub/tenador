@@ -167,12 +167,10 @@ test("هر بلوکی که شبکه‌ی داخلی دارد، inMerged را م�
   const src = await read("../src/components/features/articles/ArticleBlockRenderer.jsx");
   for (const call of [
     /<PublicProductGrid products=\{products\} rate=\{rate\} fill=\{inMerged\} \/>/,
-    /<PublicUsedProductGrid fill=\{inMerged\}/,
-    /<EntityCards [^>]*inMerged=\{inMerged\}/,
+    /<PublicUsedProductGrid products=\{used\} fill=\{inMerged\} \/>/,
     /<ImageBlock [^>]*inMerged=\{inMerged\}/,
   ]) assert.match(src, call, String(call));
-  // گالری و مقالاتِ مرتبط هم همان قاعده را دارند.
-  assert.match(src, /inMerged \? slotGrid\(images\.length, SLOT_TILES\) : "grid-cols-2"/);
+  // مقالاتِ مرتبط هم همان قاعده را دارند (گالری و کارت‌های کالکشن/برند/دسته/ورزش حذف شدند).
   assert.match(src, /inMerged \? slotGrid\(articles\.length\) : "md:grid-cols-2"/);
 });
 
@@ -347,7 +345,9 @@ test("دکمه‌های اسلایدر همان کامپوننتِ صفحه‌ی
   const home = await read("../src/components/features/bestSellers/BestSellers.js");
   assert.match(nav, /import HomeSliderNav from "@\/components\/features\/home\/HomeSliderNav"/);
   assert.match(home, /import HomeSliderNav from "@\/components\/features\/home\/HomeSliderNav"/);
-  assert.match(home, /<HomeSliderNav prevClass="product-prev-btn" nextClass="product-next-btn" \/>/);
+  // کلاس‌های پایه همان‌اند؛ isolated (بلوکِ «اسلایدر محصولات») فقط کلاسِ یکتای خودش را می‌افزاید.
+  assert.match(home, /<HomeSliderNav prevClass=\{scope\("product-prev-btn"\)\} nextClass=\{scope\("product-next-btn"\)\} \/>/);
+  assert.ok(home.includes('const scope = (base) => (isolated ? `${base} ${base}-${instance}` : base);'));
   // مارک‌آپِ دکمه فقط یک جا تعریف شده است.
   const shared = await read("../src/components/features/home/HomeSliderNav.jsx");
   assert.match(shared, /w-12 h-12 flex items-center justify-center text-gray-400 hover:text-\[#aa4725\]/);
