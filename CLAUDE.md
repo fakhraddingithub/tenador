@@ -1466,6 +1466,38 @@ button, the image slider's button and the floating bar are unchanged.
 npm run test:block-layout   # includes tests/richTextBlocks.test.mjs
 ```
 
+### The «آیکن و لوگو» block
+
+One image picked from a real sport, brand, serie or category, an optional rich text under it,
+and an optional link — all in **one frame** (background, radius, padding).
+
+```
+data: { source: "type:id", url, alt, imageLabel, width, height|null, radius, padding,
+        text, html, href, shade, shadeColor, shadeColor2, shadeMode?, shadeDirection? }
+```
+
+| piece | where |
+|---|---|
+| which fields are images | `ENTITY_IMAGE_SOURCES` in `src/lib/entityImages.js` — sport `icon/image`; brand `logo/icon/monochromeLogo/image`; serie `logo/headImage/image` + every `sportImages[]` image (labelled with the sport); category `icon/image` + `customTab.icon` and its items' images. `entityImageOptions` drops blanks and duplicate URLs |
+| source search | entity type `imageSource` — **one** search across all four types; ids are composite `type:id` (`parseImageSource`), the sub-line says the type and the image count (or «بدونِ تصویر») |
+| the chosen source's images | entity type `entityImages&source=type:id` → `EntityImageGrid` in the editor (loading / failed / no images / grid with the selection marked) |
+| background | **the image block's colour layer**, not a second one: same keys, `ImageShadeField background` in the editor (hides above/below), `imageShadeLayer(data).background` in the renderer. Absent `shade` → 100 (a light grey by default); an explicit `0` is "no background" |
+
+Rules that are load-bearing:
+
+- **`height: null` means "keep the ratio".** With a height the image is `object-contain` in a
+  width×height box — never stretched. `max-w-full` means a large width shrinks to the slot.
+- **The link is a stretched `<Link>` (`absolute inset-0`), never an `<a>` around the frame**:
+  the rich text may carry its own links, and `<a>` in `<a>` is invalid HTML. Only the text's
+  inner `<a>` are lifted above it, so a click on plain text still follows the block's link.
+- **No text, no paragraph** — the frame has no empty space below the image.
+- Changing the source `clears` `url`/`alt`/`imageLabel`, so an image never outlives its source.
+- Settings follow the workflow in five registry `section`s: source → size → background → text → link.
+
+```bash
+npm run test:icon-logo
+```
+
 ### Slug System
 
 `SlugRegistery` model maps dynamic URL segments (sport/category/brand slugs) to their entity types. `actions/registerSlug.js` is a server action that creates entries on entity creation. This powers ISR revalidation — when a slug is revalidated, the correct entity page is rebuilt.

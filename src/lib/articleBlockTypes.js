@@ -5,6 +5,7 @@ export const ARTICLE_BLOCK_TYPES = [
   "paragraph",
   "image",
   "imageSlider",
+  "iconLogo",
   "video",
   "quote",
   "divider",

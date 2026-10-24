@@ -612,6 +612,8 @@
     border-radius: var(--be-radius-sm);
     background: repeating-conic-gradient(#eef0ec 0% 25%, #fff 0% 50%) 50% / 12px 12px;
   }
+  /* همان شطرنجی زیرِ پیش‌نمایشِ تصاویرِ «آیکن و لوگو»: لوگوی سفید یا شفاف هم دیده شود. */
+  .admin-scope .be-swatch-grid { background: repeating-conic-gradient(#eef0ec 0% 25%, #fff 0% 50%) 50% / 12px 12px; }
   .admin-scope .be-check { display: flex; align-items: center; gap: 8px; height: var(--be-control-h); font-size: 12px; font-weight: 600; color: var(--be-muted); }
   .admin-scope .be-unit { flex-shrink: 0; font-size: 11px; color: var(--be-faint); }
 

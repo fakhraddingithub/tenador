@@ -6,6 +6,7 @@ import {
 } from "./articleImageBlock.js";
 import { FAQ_ANSWER_ALIGNS, IMAGE_SLIDER_DELAY, IMAGE_SLIDER_HEIGHT, REVIEW_SLIDER_HEADING } from "./articleBlockTypes.js";
 import { COMPARISON_BANNER_TEXT, MATCH_BANNER_TEXT, PRODUCT_SLIDER_TEXT } from "./homeBannerTexts.js";
+import { ICON_LOGO_BACKGROUND, ICON_LOGO_PADDING, ICON_LOGO_RADIUS, ICON_LOGO_SIZE, parseImageSource } from "./entityImages.js";
 
 const string = (value, max) => typeof value === "string" ? value.trim().slice(0, max) : "";
 
@@ -168,6 +169,42 @@ const homeBanner = (defaults) => (data) => ({
   cta: string(data.cta ?? defaults.cta, 120),
 });
 
+/** عددِ صحیح داخلِ بازه؛ غیرعددی یا غایب → پیش‌فرضِ همان بازه. */
+const clampInt = (value, spec) => {
+  const number = Math.round(Number(value));
+  if (value === null || value === "" || !Number.isFinite(number)) return spec.default;
+  return Math.min(spec.max, Math.max(spec.min, number));
+};
+
+/**
+ * «آیکن و لوگو»: یک تصویر از ورزش/برند/سری/دسته، با اندازه، زمینه (همان لایه‌ی رنگِ
+ * بلوکِ تصویر)، گردی و فاصله‌ی داخلی، متنِ غنیِ اختیاری و پیوندِ اختیاری.
+ * height = null یعنی «نسبتِ تصویر حفظ شود» (پیش‌فرض). زمینه‌ی غایب = زمینه‌ی پیش‌فرض؛
+ * شدتِ ۰ِ صریح یعنی بی‌زمینه.
+ */
+function iconLogo(data, errors, field) {
+  const source = parseImageSource(data.source);
+  const result = {
+    source: source ? `${source.type}:${source.id}` : null,
+    url: url(data.url, errors, `${field}.url`, { media: true }),
+    alt: string(data.alt, 300),
+    imageLabel: string(data.imageLabel, 200),
+    width: clampInt(data.width, ICON_LOGO_SIZE),
+    height: data.height == null || data.height === "" ? null : clampInt(data.height, ICON_LOGO_SIZE),
+    radius: clampInt(data.radius, ICON_LOGO_RADIUS),
+    padding: clampInt(data.padding, ICON_LOGO_PADDING),
+    text: string(data.text, 5000),
+    ...rich(data.html),
+    href: url(data.href, errors, `${field}.href`),
+    shade: data.shade === undefined ? ICON_LOGO_BACKGROUND.shade : clampImageShade(data.shade),
+    shadeColor: normalizeHexColor(data.shadeColor) || ICON_LOGO_BACKGROUND.shadeColor,
+    shadeColor2: normalizeHexColor(data.shadeColor2) || ICON_LOGO_BACKGROUND.shadeColor2,
+  };
+  if (data.shadeMode === "gradient") result.shadeMode = "gradient";
+  if (IMAGE_SHADE_DIRECTIONS.includes(data.shadeDirection) && data.shadeDirection !== IMAGE_SHADE_DEFAULTS.direction) result.shadeDirection = data.shadeDirection;
+  return result;
+}
+
 const entitySlider = (key) => (data, errors, field) => ({
   title: string(data.title, 300),
   [key]: idList(data[key], errors, `${field}.${key}`),
@@ -219,6 +256,7 @@ const validators = {
     return { items: items.slice(0, 50).map((item) => ({ question: string(item?.question, 500), answer: string(item?.answer, 5000), ...rich(item?.answerHtml, "answerHtml"), ...(FAQ_ANSWER_ALIGNS.includes(item?.answerAlign) ? { answerAlign: item.answerAlign } : {}) })) };
   },
   // یا محصولِ نو یا آگهیِ دست‌دوم — یکی. کارتِ قدیمی فقط product دارد و همان می‌ماند.
+  iconLogo,
   productCard: (data, errors, field) => {
     const product = id(data.product, errors, `${field}.product`);
     return { product, usedProduct: product ? null : id(data.usedProduct, errors, `${field}.usedProduct`) };

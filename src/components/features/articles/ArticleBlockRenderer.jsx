@@ -21,6 +21,7 @@ import MatchBanner from "@/components/features/matchBanner/MatchBanner";
 import MergedSliderNav from "@/components/features/articles/MergedSliderNav";
 import ImageSliderControls from "@/components/features/articles/ImageSliderControls";
 import { imageBlockItems, imageShadeLayer } from "@/lib/articleImageBlock";
+import { ICON_LOGO_PADDING, ICON_LOGO_RADIUS, ICON_LOGO_SIZE } from "@/lib/entityImages";
 import { FULL_BLEED_BLOCK_TYPES, IMAGE_SLIDER_DELAY, IMAGE_SLIDER_HEIGHT, REVIEW_SLIDER_HEADING, blockChildren, blockHoldsBlocks, flattenArticleBlocks, imageOverlayChildren, imageSliderChildren, isMergedBlock, mergedChildren, sanitizeMergedGrid } from "@/lib/articleBlockTypes";
 
 const ordered = (values, map) => (Array.isArray(values) ? values : values ? [values] : []).map((id) => map?.[String(id)]).filter(Boolean);
@@ -261,6 +262,47 @@ function MergedBlock({ items, spacing }) {
   </div></SliderFrame>;
 }
 
+// ——— «آیکن و لوگو» ————————————————————————————————————————————————————————
+/**
+ * یک تصویر و متنِ اختیاری زیرش، *در یک قاب*: زمینه (همان imageShadeLayer ـِ بلوکِ
+ * تصویر، پس رنگِ ساده و گرادیان یکی‌اند)، گردی و فاصله‌ی داخلی روی خودِ قاب.
+ *
+ *  - تصویر عرضِ انتخاب‌شده را دارد و هرگز از قاب پهن‌تر نمی‌شود (max-width). بی‌ارتفاع
+ *    یعنی نسبتِ خودِ تصویر؛ با ارتفاع، تصویر در قابِ عرض×ارتفاع contain می‌شود —
+ *    هیچ‌وقت کشیده نمی‌شود.
+ *  - بی‌متن، هیچ فاصله‌ی خالی‌ای زیرِ تصویر نیست (پاراگراف اصلاً رندر نمی‌شود).
+ *  - پیوند یک لایه‌ی absolute روی کلِ قاب است (stretched link)، نه <a> دورِ همه‌چیز:
+ *    متنِ غنی خودش می‌تواند پیوند داشته باشد و <a> داخلِ <a> HTMLِ نامعتبر است.
+ *    پیوندهای متن روی آن لایه می‌نشینند و کلیک‌پذیر می‌مانند.
+ */
+function IconLogoBlock({ data, visuals, spacing }) {
+  if (!data.url) return null;
+  const width = data.width || ICON_LOGO_SIZE.default;
+  const height = data.height || null;
+  const alt = data.alt || data.imageLabel || "";
+  const hasText = Boolean(data.html || (data.text && data.text.trim()));
+  const frame = {
+    background: imageShadeLayer(data)?.background,
+    borderRadius: `${data.radius ?? ICON_LOGO_RADIUS.default}px`,
+    padding: `${data.padding ?? ICON_LOGO_PADDING.default}px`,
+  };
+  return <div className={blockSection} style={spacing || undefined}>
+    <div className={`relative flex w-full flex-col items-center gap-3${data.href ? " transition-opacity has-[>a:hover]:opacity-90" : ""}`} style={frame}>
+      <Image
+        src={data.url}
+        alt={alt}
+        width={width}
+        height={height || width}
+        sizes={`${width}px`}
+        className="block max-w-full object-contain"
+        style={{ width: `${width}px`, height: height ? `${height}px` : "auto" }}
+      />
+      {hasText ? <RichParagraph className="w-full text-[16px] leading-7 text-gray-700 [&_a]:relative [&_a]:z-[1]" style={{ textAlign: visuals.align || "center" }} html={data.html} text={data.text} preLine /> : null}
+      {data.href ? <Link href={data.href} aria-label={alt || data.text || "پیوند"} className="absolute inset-0 rounded-[inherit] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-primary)]" /> : null}
+    </div>
+  </div>;
+}
+
 // ——— بلوکِ تصویر: چند تصویر، ارتفاعِ دلخواه، پیوند، و بلوک‌های روی تصویر ————
 // بلوکِ «ساده» (یک تصویر، بدونِ ارتفاع/پیوند/لایه/بلوکِ رویی) از مسیرِ قدیمی و با
 // همان نشانه‌گذاریِ قبلی رندر می‌شود، تا مقاله‌های موجود ذره‌ای تغییر نکنند.
@@ -452,6 +494,7 @@ export default function ArticleBlockRenderer({ blocks = [], entities, preview = 
     // تصویرِ محتوا با نسبتِ واقعیِ خودش رندر می‌شود: عرض/ارتفاعِ ذخیره‌شده فقط
     // جا را پیش از بارگذاری رزرو می‌کند (aspect-ratio: auto w/h) و پس از بارگذاری
     // نسبتِ ذاتیِ تصویر جای آن را می‌گیرد — پس هیچ بُرشی رخ نمی‌دهد.
+    if (block.type === "iconLogo") return data.url ? <IconLogoBlock key={block.id} data={data} visuals={v} spacing={v.spacing} /> : null;
     if (block.type === "imageSlider") {
       // تصویرها *همان* بلوکِ تصویرند و با همین renderBlock رندر می‌شوند، پس هر
       // توانایی‌ای که بیرون دارند (چند تصویر، پیوند، لایه‌ی تیره، بلوکِ رویی)

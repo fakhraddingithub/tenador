@@ -1,10 +1,11 @@
 import {
   FiAlignRight, FiBox, FiColumns, FiImage, FiLink, FiList,
   FiFeather, FiLayout, FiMail, FiMessageSquare, FiMinus, FiPlay, FiTable,
-  FiLayers, FiMessageCircle, FiShuffle, FiTag, FiTarget, FiType, FiZap,
+  FiAward, FiLayers, FiMessageCircle, FiShuffle, FiTag, FiTarget, FiType, FiZap,
 } from "react-icons/fi";
 import { ARTICLE_BLOCK_TYPES, IMAGE_SLIDER_DELAY, IMAGE_SLIDER_HEIGHT, REVIEW_SLIDER_HEADING } from "@/lib/articleBlockTypes";
 import { COMPARISON_BANNER_TEXT, MATCH_BANNER_TEXT, PRODUCT_SLIDER_TEXT } from "@/lib/homeBannerTexts";
+import { ICON_LOGO_BACKGROUND, ICON_LOGO_PADDING, ICON_LOGO_RADIUS, ICON_LOGO_SIZE } from "@/lib/entityImages";
 
 const text = (key, label, kind = "text", extra = {}) => ({ key, label, kind, ...extra });
 const entity = (key, label, entityType, multiple = true) => ({ key, label, kind: multiple ? "entities" : "entity", entityType });
@@ -74,6 +75,25 @@ export const ARTICLE_BLOCKS = {
   image: { label: "تصویر", group: "رسانه", icon: FiImage, defaults: { url: "", alt: "", caption: "" }, fields: [text("images", "تصاویر", "imageList"), text("displayHeight", "ارتفاع نمایش", "imageHeight", { advanced: true }), text("caption", "زیرنویس"), text("shade", "لایه‌ی رنگ و جای محتوا", "imageShade", { advanced: true }), text("blocks", "بلوک‌های روی تصویر", "mergedBlocks", { addLabel: "بلوک روی تصویر", addGroup: "media" })], styleKeys: SPACING_ONLY },
   // اسلایدرِ تصویر: ظرفی که فقط بلوکِ *تصویر* می‌پذیرد، با اندازه‌ی ثابت.
   imageSlider: { label: "اسلایدر تصویر", group: "رسانه", icon: FiColumns, defaults: { blocks: [], delay: IMAGE_SLIDER_DELAY.default, height: IMAGE_SLIDER_HEIGHT.default }, fields: [text("slider", "اندازه و زمان‌بندی", "imageSliderSettings", { section: "تنظیمات کلِ اسلایدر" }), text("blocks", "اسلایدها — هر اسلاید یک بلوکِ تصویر با بلوک‌های روی خودش", "imageSliderBlocks")], styleKeys: SPACING_ONLY },
+  // یک آیکن/لوگو/تصویر از دادهِ واقعیِ یک ورزش، برند، سری یا دسته، در یک قابِ رنگی با
+  // متنِ غنیِ اختیاری زیرش و پیوندِ اختیاری. بخش‌ها به ترتیبِ کار: منبع و تصویر،
+  // اندازه، زمینه (همان لایه‌ی رنگِ بلوکِ تصویر) و قاب، متن، پیوند. عوض‌کردنِ منبع
+  // تصویرِ قبلی را خالی می‌کند (clears)، چون دیگر از آن منبع نیست.
+  iconLogo: {
+    label: "آیکن و لوگو", group: "رسانه", icon: FiAward,
+    defaults: { source: null, url: "", alt: "", imageLabel: "", width: ICON_LOGO_SIZE.default, height: null, radius: ICON_LOGO_RADIUS.default, padding: ICON_LOGO_PADDING.default, text: "", href: "", ...ICON_LOGO_BACKGROUND },
+    fields: [
+      { ...entity("source", "جستجوی ورزش، برند، سری یا دسته", "imageSource", false), clears: ["url", "alt", "imageLabel"], section: "۱. منبع و تصویر" },
+      text("url", "تصاویرِ این منبع", "entityImages"),
+      text("size", "اندازه‌ی تصویر", "iconSize", { section: "۲. اندازه" }),
+      text("background", "زمینه", "iconBackground", { section: "۳. زمینه و قاب" }),
+      text("radius", "گردیِ گوشه‌ها (px)", "number", { row: "box" }),
+      text("padding", "فاصله‌ی داخلی (px)", "number", { row: "box" }),
+      text("text", "متنِ زیرِ تصویر (اختیاری)", "rich", { section: "۴. متن" }),
+      text("href", "پیوندِ کلِ بلوک (اختیاری)", "url", { section: "۵. پیوند" }),
+    ],
+    styleKeys: SPACING_ONLY,
+  },
   video: { label: "ویدئو", group: "رسانه", icon: FiPlay, defaults: { url: "", title: "" }, fields: [text("url", "آدرس ویدئو", "url", { row: "video" }), text("title", "عنوان ویدئو", "text", { row: "video" })], styleKeys: SPACING_ONLY },
   quote: { label: "نقل‌قول", group: "محتوا", icon: FiMessageSquare, defaults: { text: "", author: "" }, fields: [text("text", "متن نقل‌قول", "rich"), text("author", "نام گوینده")], styleKeys: ["spacing", "textColor", "background", "accent"] },
   // همان هدرِ صفحه‌ی ورزش. ظاهرش از SportHero می‌آید، پس فقط دو چیز تنظیم‌پذیر است.

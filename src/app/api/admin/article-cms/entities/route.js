@@ -15,6 +15,7 @@ import { rankProducts, withProductSearch } from "@/lib/productSearch";
 import { getSportSeriesOptions } from "base/services/series.service";
 import { getReviewCardsByIds, searchReviewCards } from "base/services/comment.service";
 import { getTickerBrands } from "base/services/brandTicker.service";
+import { ENTITY_IMAGE_SOURCES, ENTITY_IMAGE_TYPES, entityImageOptions, parseImageSource } from "@/lib/entityImages";
 
 export const runtime = "nodejs";
 
@@ -41,7 +42,9 @@ export async function GET(req) {
     const rank = (docs, fn) => (idFilter ? docs : fn(docs));
     let items = [];
 
-    if (type === "product") {
+    if (type === "imageSource" || type === "entityImages") {
+      items = await imageSourceItems(type, params, q);
+    } else if (type === "product") {
       const docs = await Product.find(idFilter || (await withProductSearch({}, q)))
         .select("name sku tag color serie mainImage brand").populate("brand", "title name").limit(CANDIDATE_LIMIT).lean();
       items = rank(docs, (d) => rankProducts(q, d).slice(0, RESULT_LIMIT))
@@ -113,6 +116,64 @@ export async function GET(req) {
   } catch (error) {
     return articleApiError(error, "[GET /api/admin/article-cms/entities]");
   }
+}
+
+// ——— بلوکِ «آیکن و لوگو» ———————————————————————————————————————————————
+// منبع یک ورزش، برند، سری یا دسته است با شناسه‌ی «type:id». imageSource یک جستجو
+// در هر چهار نوع است (و با ids برچسبِ منبعِ انتخاب‌شده را برمی‌گرداند)؛ entityImages
+// تصاویرِ واقعیِ همان منبع است — entityImageOptions، نه فهرستی ثابت.
+const IMAGE_SOURCE_MODELS = {
+  sport: { model: Sport, select: "title name icon image" },
+  brand: { model: Brand, select: "title name logo icon monochromeLogo image" },
+  serie: { model: Serie, select: "title name logo headImage image sportImages brand", populate: [["brand", "title name"], ["sportImages.sport", "title name"]] },
+  category: { model: Category, select: "title name icon image customTab sport", populate: [["sport", "title name"]] },
+};
+
+const sourceLabel = (type, doc) => {
+  const name = doc.title || doc.name || "";
+  if (type === "serie" && doc.brand) return `${doc.brand.title || doc.brand.name} ${name}`.trim();
+  if (type === "category" && doc.sport) return `${name} — ${doc.sport.title || doc.sport.name}`;
+  return name;
+};
+
+async function findSources(type, filter, limit) {
+  const { model, select, populate = [] } = IMAGE_SOURCE_MODELS[type];
+  let query = model.find(filter).select(select).limit(limit);
+  for (const [path, fields] of populate) query = query.populate(path, fields);
+  return query.lean();
+}
+
+const sourceItem = (type, doc) => {
+  const images = entityImageOptions(type, doc);
+  return {
+    _id: `${type}:${doc._id}`,
+    label: sourceLabel(type, doc),
+    sub: `${ENTITY_IMAGE_SOURCES[type].label} · ${images.length ? `${images.length.toLocaleString("fa-IR")} تصویر` : "بدونِ تصویر"}`,
+    image: images[0]?.url || null,
+  };
+};
+
+async function imageSourceItems(type, params, q) {
+  if (type === "entityImages") {
+    const source = parseImageSource(params.get("source"));
+    if (!source) return [];
+    const [doc] = await findSources(source.type, { _id: source.id }, 1);
+    if (!doc) return [];
+    return entityImageOptions(source.type, doc).map((option) => ({ _id: option.key, label: option.label, url: option.url, image: option.url, entity: sourceLabel(source.type, doc) }));
+  }
+  // برچسبِ منبعِ ذخیره‌شده (چیپِ انتخابگر)
+  const wanted = (params.get("ids") || "").split(",").map(parseImageSource).filter(Boolean);
+  if (wanted.length) {
+    const docs = await Promise.all(wanted.map(async ({ type: kind, id }) => (await findSources(kind, { _id: id }, 1)).map((doc) => sourceItem(kind, doc))));
+    return docs.flat();
+  }
+  if (!q) return [];
+  const groups = await Promise.all(ENTITY_IMAGE_TYPES.map(async (kind) => {
+    const docs = await findSources(kind, byTitle(q), CANDIDATE_LIMIT);
+    return rankByTitle(q, docs).map((doc) => sourceItem(kind, doc));
+  }));
+  // نتایجِ هر نوع به ترتیبِ خودش، و انواع پشتِ‌سرِ هم — سقفِ کل همان سقفِ همیشگی.
+  return groups.flat().slice(0, RESULT_LIMIT * 2);
 }
 
 function mongooseId(value) {
