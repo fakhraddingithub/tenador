@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { buildInvoiceData, invoiceMoney, invoiceDate } from "../src/lib/orderInvoiceData.js";
+import { buildInvoiceData, invoiceMoney, invoiceDate, invoiceNumber } from "../src/lib/orderInvoiceData.js";
 import { wrapInvoiceText } from "../src/lib/downloadOrderInvoice.js";
 
 const order = {
@@ -47,7 +47,10 @@ test("EUR values appear only for store customers, including item prices", () => 
   }
   const storeInvoice = buildInvoiceData(source, null, { customerRole: "store" });
   assert.equal(storeInvoice.summary.find(([key]) => key === "مانده یورویی")[1], "80 EUR");
-  assert.match(storeInvoice.rows[0].detail, /50 EUR.*100 EUR/);
+  assert.equal(storeInvoice.currencyColumns, true);
+  assert.equal(storeInvoice.rows[0].unitEUR, invoiceNumber(50));
+  assert.equal(storeInvoice.rows[0].totalEUR, invoiceNumber(100));
+  assert.doesNotMatch(storeInvoice.rows[0].detail, /EUR|یورو/);
   assert.deepEqual(source, before);
 });
 test("product and variant SKUs are absent from every invoice", () => {
@@ -55,6 +58,13 @@ test("product and variant SKUs are absent from every invoice", () => {
   for (const customerRole of ["user", "store"]) {
     assert.doesNotMatch(JSON.stringify(buildInvoiceData(source, null, { customerRole })), /کد کالا|PRODUCT-SKU|VARIANT-SKU/);
   }
+});
+test("store columns distinguish missing prices from zero and preserve fractional totals", () => {
+  const source = { ...order, items: [null, 0, 12.75].map((priceEUR) => ({ ...order.items[0], priceEUR, quantity: 3 })) };
+  const rows = buildInvoiceData(source, null, { customerRole: "store" }).rows.filter((row) => !row.addon);
+  assert.deepEqual(rows.map((row) => row.unitEUR), ["—", invoiceNumber(0), invoiceNumber(12.75)]);
+  assert.deepEqual(rows.map((row) => row.totalEUR), ["—", invoiceNumber(0), invoiceNumber(38.25)]);
+  assert.equal(buildInvoiceData(source, null, { customerRole: "user" }).currencyColumns, false);
 });
 test("long unbroken identifiers wrap without dropping characters", () => {
   const context = { measureText: (text) => ({ width: [...text].length * 10 }) };

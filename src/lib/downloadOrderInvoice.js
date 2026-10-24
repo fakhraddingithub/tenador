@@ -61,6 +61,20 @@ async function loadImage(url) {
 
 export async function createOrderInvoice(order, installment, options = {}) {
   const data = buildInvoiceData(order, installment, options);
+  const columns = data.currencyColumns
+    ? [
+      { key: "quantity", label: "تعداد", right: 452, width: 32 },
+      { key: "unit", label: "واحد (تومان)", right: 412, width: 90 },
+      { key: "total", label: "جمع (تومان)", right: 312, width: 90, bold: true },
+      { key: "unitEUR", label: "قیمت واحد", currency: "یورو", right: 212, width: 75 },
+      { key: "totalEUR", label: "جمع", currency: "یورو", right: 127, width: 75, bold: true },
+    ]
+    : [
+      { key: "quantity", label: "تعداد", right: 368, width: 40 },
+      { key: "unit", label: "واحد (تومان)", right: 311, width: 120 },
+      { key: "total", label: "جمع (تومان)", right: 177, width: 125, bold: true },
+    ];
+  const descriptionWidth = data.currencyColumns ? 223 : 286;
   await loadInvoiceFonts();
   const logo = await loadImage(process.env.NEXT_PUBLIC_LOGO_URL || "/logo/logo.svg") || await loadImage("/logo/logo.svg");
   // JPEG pages are already compressed; leave content streams uncompressed for reader compatibility.
@@ -73,9 +87,10 @@ export async function createOrderInvoice(order, installment, options = {}) {
   ctx.scale(2, 2);
   let y = 0, page = 0, missingImages = 0;
   function font(size = 13, bold = false) { ctx.font = `${bold ? 700 : 400} ${size}px InvoiceVazirmatn, Tahoma, sans-serif`; }
-  function text(value, x, top, { size = 13, bold = false, color = INK, align = "right" } = {}) {
+  function text(value, x, top, { size = 13, bold = false, color = INK, align = "right", maxWidth } = {}) {
     font(size, bold); ctx.fillStyle = color; ctx.textAlign = align; ctx.textBaseline = "top"; ctx.direction = "rtl";
-    ctx.fillText(String(value ?? ""), x, top);
+    if (maxWidth) ctx.fillText(String(value ?? ""), x, top, maxWidth);
+    else ctx.fillText(String(value ?? ""), x, top);
   }
   function rect(x, top, w, h, color) { ctx.fillStyle = color; ctx.fillRect(x, top, w, h); }
   function rule(top) { rect(MARGIN, top, WIDTH - MARGIN * 2, 1, "#e9e2dc"); }
@@ -120,12 +135,14 @@ export async function createOrderInvoice(order, installment, options = {}) {
     text(title, WIDTH - MARGIN, y, { bold: true, color: PRIMARY }); y += 22;
   }
   function tableHeader() {
-    rect(MARGIN, y, WIDTH - MARGIN * 2, 30, PRIMARY);
+    const height = data.currencyColumns ? 42 : 30;
+    rect(MARGIN, y, WIDTH - MARGIN * 2, height, PRIMARY);
     text("محصول / مشخصات", 740, y + 7, { color: "#fff", size: 11, bold: true });
-    text("تعداد", 376, y + 7, { color: "#fff", size: 11 });
-    text("واحد (تومان)", 311, y + 7, { color: "#fff", size: 11 });
-    text("جمع (تومان)", 177, y + 7, { color: "#fff", size: 11 });
-    y += 30;
+    for (const column of columns) {
+      text(column.label, column.right, y + 7, { color: "#fff", size: 11, maxWidth: column.width });
+      if (column.currency) text(column.currency, column.right, y + 23, { color: "#fff", size: 10 });
+    }
+    y += height;
   }
   try {
     const images = new Map();
@@ -144,9 +161,9 @@ export async function createOrderInvoice(order, installment, options = {}) {
     y += 15; ensure(100); tableHeader();
     for (const row of data.rows) {
       font(12, true);
-      const titleLines = wrapInvoiceText(ctx, row.title, 286).map((value) => ({ value, bold: true }));
+      const titleLines = wrapInvoiceText(ctx, row.title, descriptionWidth).map((value) => ({ value, bold: true }));
       font(11);
-      const details = row.detail ? wrapInvoiceText(ctx, row.detail, 286).map((value) => ({ value, bold: false })) : [];
+      const details = row.detail ? wrapInvoiceText(ctx, row.detail, descriptionWidth).map((value) => ({ value, bold: false })) : [];
       const lines = [...titleLines, ...details];
       const image = images.get(row.image);
       if (row.image && !image) missingImages += 1;
@@ -164,9 +181,9 @@ export async function createOrderInvoice(order, installment, options = {}) {
             rect(697, y + 8, 48, 44, "#f1ece7");
             text(row.addon ? "خدمت" : "تنادور", 721, y + 23, { size: 10, color: MUTED, align: "center" });
           }
-          text(row.quantity, 368, y + 16, { size: 12 });
-          text(row.unit, 311, y + 16, { size: 12 });
-          text(row.total, 177, y + 16, { size: 12, bold: true });
+          for (const column of columns) {
+            text(row[column.key], column.right, y + 16, { size: 12, bold: column.bold, maxWidth: column.width });
+          }
         }
         lines.slice(offset, offset + count).forEach((line, i) => text(line.value, 683, y + 9 + i * 18, { size: line.bold ? 12 : 11, bold: line.bold, color: line.bold ? INK : MUTED }));
         y += height; rule(y); offset += count;

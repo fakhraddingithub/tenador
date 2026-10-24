@@ -27,8 +27,11 @@ export function buildInvoiceData(order, installment = null, { customerRole } = {
     }).join(" • ");
     rows.push({
       title: `${invoiceNumber(index + 1)}. ${item.product?.name || item.usedProduct?.name || "محصول حذف‌شده"}${item.itemType === "used_product" ? " (دست دوم)" : ""}`,
-      detail: [variant, item.unitDiscount > 0 && `تخفیف هر واحد: ${invoiceMoney(item.unitDiscount)}`,
-        includeEUR && item.priceEUR != null && `قیمت واحد: ${item.priceEUR} EUR • جمع: ${item.priceEUR * quantity} EUR`].filter(Boolean).join("\n"),
+      detail: [variant, item.unitDiscount > 0 && `تخفیف هر واحد: ${invoiceMoney(item.unitDiscount)}`].filter(Boolean).join("\n"),
+      ...(includeEUR ? {
+        unitEUR: item.priceEUR == null ? "—" : invoiceNumber(item.priceEUR),
+        totalEUR: item.priceEUR == null ? "—" : invoiceNumber(item.priceEUR * quantity),
+      } : {}),
       image: imageUrl(item.variant?.images?.[0] || item.product?.mainImage || item.usedProduct?.images?.[0]),
       quantity: invoiceNumber(quantity), unit: invoiceNumber(unit), total: invoiceNumber(unit * quantity),
     });
@@ -71,6 +74,7 @@ export function buildInvoiceData(order, installment = null, { customerRole } = {
   }
   const address = order.address?.snapshot || {};
   return {
+    currencyColumns: includeEUR,
     code: String(order.trackingCode || order._id || "—"), date: invoiceDate(order.orderDate || order.createdAt), rows, summary,
     meta: `روش پرداخت: ${methods[order.paymentMethod] || "—"}   •   ${label(order.paymentStatus)}   •   وضعیت سفارش: ${label(order.fulfillmentStatus)}`,
     recipient: [ `گیرنده: ${address.fullName || "—"}   •   تلفن: ${address.phone || "—"}`,
