@@ -12,7 +12,7 @@ import { register } from "node:module";
 register("./aliasHooks.mjs", import.meta.url);
 
 const { mergeBlocks, mergeBlocker, unmergeBlock, cloneWithFreshIds } = await import("../src/lib/articleBlockMerge.js");
-const { flattenArticleBlocks, mergeDepth, sanitizeMergedGrid, defaultMergedGrid, MAX_MERGED_CHILDREN, MAX_MERGE_DEPTH } = await import("../src/lib/articleBlockTypes.js");
+const { flattenArticleBlocks, sanitizeMergedGrid, defaultMergedGrid, MAX_MERGED_CHILDREN } = await import("../src/lib/articleBlockTypes.js");
 const { sanitizeArticleBlocks } = await import("@/lib/articleValidation");
 
 const article = () => [
@@ -46,7 +46,7 @@ test("a merged block can be merged again; each unmerge peels exactly one level",
   const twice = mergeBlocks(once, [once[1].id, "c"]);              // h, M2(M1(a,b), c), d
   assert.ok(twice, "merged + normal block merge is allowed");
   assert.deepEqual(twice.map((block) => block.type), ["heading", "merged", "divider"]);
-  assert.equal(mergeDepth(twice[1]), 2);
+  assert.equal(twice[1].data.blocks[0].type, "merged");
   assert.deepEqual(allIds(twice), ["h", "a", "b", "c", "d"], "no content lost or duplicated");
   const peeled = unmergeBlock(twice, twice[1].id);
   assert.deepEqual(peeled, once, "unmerging the outer block gives back exactly the previous state");
@@ -59,21 +59,21 @@ test("a merged block can be merged again; each unmerge peels exactly one level",
   assert.deepEqual(unmergeBlock(joined, joined[1].id), both);
 });
 
-test("merge rules: 2..max contiguous blocks, depth limit", () => {
+test("merge rules: 2..max contiguous blocks, and no depth limit", () => {
   const blocks = article();
   assert.equal(mergeBlocker(blocks, ["a"]), "few");
   assert.equal(mergeBlocker(blocks, ["a", "c"]), "gap");
   assert.equal(mergeBlocks(blocks, ["a", "ghost"]), null);
-  // enough neighbours to keep merging one level deeper each time
-  let current = [...blocks, ...Array.from({ length: MAX_MERGE_DEPTH + 2 }, (_, i) => ({ id: `extra${i}`, type: "divider", data: {} }))];
-  for (let level = 1; level <= MAX_MERGE_DEPTH; level += 1) {
+  // enough neighbours to keep merging one level deeper each time — 20 levels, every one allowed
+  let current = [...blocks, ...Array.from({ length: 22 }, (_, i) => ({ id: `extra${i}`, type: "divider", data: {} }))];
+  for (let level = 1; level <= 20; level += 1) {
     const top = current.find((block) => block.type === "merged") || current[1];
+    assert.equal(mergeBlocker(current, [top.id, current[current.indexOf(top) + 1].id]), null, `level ${level}`);
     current = mergeBlocks(current, [top.id, current[current.indexOf(top) + 1].id]);
-    assert.ok(current, `level ${level}`);
   }
-  const top = current.find((block) => block.type === "merged");
-  assert.equal(mergeDepth(top), MAX_MERGE_DEPTH);
-  assert.equal(mergeBlocker(current, [top.id, current[current.indexOf(top) + 1].id]), "deep");
+  let depth = 0;
+  for (let node = current.find((block) => block.type === "merged"); node?.type === "merged"; node = node.data.blocks[0]) depth += 1;
+  assert.equal(depth, 20);
   const many = Array.from({ length: MAX_MERGED_CHILDREN + 1 }, (_, i) => ({ id: `p${i}`, type: "paragraph", data: { text: String(i) } }));
   assert.equal(mergeBlocker(many, many.map((block) => block.id)), "many");
 });
@@ -125,15 +125,11 @@ test("server: legacy merged blocks without grid stay exactly as stored", () => {
   assert.deepEqual(errors, {});
 });
 
-test("server: same validation inside, unique ids across the tree, depth and size limits", () => {
+test("server: same validation inside, unique ids across the tree, size limit (no depth limit)", () => {
   const bad = (blocks) => { const errors = {}; sanitizeArticleBlocks(blocks, errors); return errors; };
   const child = { id: "x1", type: "button", data: { label: "l", href: "javascript:alert(1)" } };
   assert.ok(bad([{ id: "m", type: "merged", data: { blocks: [{ id: "m2", type: "merged", data: { blocks: [child] } }] } }])["blocks.0.data.blocks.0.data.blocks.0.data.href"], "deep children validated");
   assert.ok(bad([{ id: "dup", type: "divider", data: {} }, { id: "m", type: "merged", data: { blocks: [{ id: "dup", type: "divider", data: {} }] } }])["blocks.1.data.blocks.0.id"]);
-  let deep = { id: "leaf", type: "divider", data: {} };
-  for (let level = 0; level <= MAX_MERGE_DEPTH; level += 1) deep = { id: `m${level}`, type: "merged", data: { blocks: [deep] } };
-  const deepErrors = bad([deep]);
-  assert.ok(Object.keys(deepErrors).some((key) => key.endsWith(".type")), "more than MAX_MERGE_DEPTH levels is rejected");
   const tooMany = Array.from({ length: MAX_MERGED_CHILDREN + 1 }, (_, i) => ({ id: `c${i}`, type: "divider", data: {} }));
   const errors = {};
   const out = sanitizeArticleBlocks([{ id: "m", type: "merged", data: { blocks: tooMany } }], errors);

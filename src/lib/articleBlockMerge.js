@@ -5,7 +5,7 @@
  * پس جداسازی دقیقاً همان بلوک‌ها و همان ترتیب را برمی‌گرداند. بلوکِ ادغام‌شده هم
  * یک بلوکِ عادی است و می‌تواند دوباره ادغام شود؛ جداسازی فقط یک سطح را باز می‌کند.
  */
-import { MAX_MERGED_CHILDREN, MAX_MERGE_DEPTH, MERGED_BLOCK_TYPE, blockChildren, blockHoldsBlocks, isMergedBlock, mergeDepth, mergedChildren } from "./articleBlockTypes.js";
+import { MAX_MERGED_CHILDREN, MERGED_BLOCK_TYPE, blockChildren, blockHoldsBlocks, isMergedBlock, mergedChildren } from "./articleBlockTypes.js";
 
 /** دلیلِ ادغام‌ناپذیریِ انتخاب (برای پیامِ نوارِ ادغام)، یا null اگر قابلِ ادغام است. */
 export function mergeBlocker(blocks, selectedIds) {
@@ -14,7 +14,6 @@ export function mergeBlocker(blocks, selectedIds) {
   if (indices.length > MAX_MERGED_CHILDREN) return "many";
   // فقط بلوک‌های پشتِ‌سرِ‌هم؛ ادغامِ بلوک‌های دور از هم ترتیبِ مقاله را عوض می‌کرد.
   if (indices.some((index, i) => i > 0 && index !== indices[i - 1] + 1)) return "gap";
-  if (1 + Math.max(...indices.map((index) => mergeDepth(blocks[index]))) > MAX_MERGE_DEPTH) return "deep";
   return null;
 }
 

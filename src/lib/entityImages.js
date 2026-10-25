@@ -68,3 +68,14 @@ export const ICON_LOGO_RADIUS = { min: 0, max: 200, default: 6 };
 export const ICON_LOGO_PADDING = { min: 0, max: 120, default: 24 };
 // زمینه‌ی پیش‌فرض: همان لایه‌ی رنگِ بلوکِ تصویر، خاکستریِ خیلی روشن و کامل.
 export const ICON_LOGO_BACKGROUND = { shade: 100, shadeColor: "#f4f4f5", shadeColor2: "#ffffff" };
+
+/**
+ * کادرِ تصویرِ «آیکن و لوگو» — فقط از تنظیماتِ بلوک، هرگز از ابعادِ خودِ فایل.
+ * بی‌ارتفاع («حفظِ نسبت») یعنی کادرِ مربعِ عرض×عرض؛ با ارتفاع، عرض×ارتفاع. تصویر در
+ * هر دو حالت با contain داخلِ کادر می‌نشیند، پس نسبتِ خودش هم هرگز به‌هم نمی‌خورد.
+ * دو بلوک با تنظیماتِ یکسان، هر تصویری که داشته باشند، کادرِ یکسان دارند.
+ */
+export function iconLogoBox(data) {
+  const width = data?.width || ICON_LOGO_SIZE.default;
+  return { width, height: data?.height || width };
+}

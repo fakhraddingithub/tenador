@@ -41,23 +41,17 @@ export const FULL_BLEED_BLOCK_TYPES = new Set(["productSlider", "sportSeriesSlid
 // ——— بلوکِ ادغام‌شده ——————————————————————————————————————————————————
 // data.blocks همان بلوک‌های اصلی را عیناً نگه می‌دارد (id، type، data، style،
 // layout)، پس «جداسازی» دقیقاً همان ساختارِ قبلی را برمی‌گرداند. بلوکِ ادغام‌شده
-// خودش یک بلوکِ عادی است و می‌تواند دوباره با بلوک‌های دیگر ادغام شود (تا
-// MAX_MERGE_DEPTH سطح). جداسازی همیشه فقط یک سطح را باز می‌کند.
+// خودش یک بلوکِ عادی است و می‌تواند دوباره با بلوک‌های دیگر ادغام شود — در هر
+// عمقی؛ سقفِ عمق وجود ندارد. جداسازی همیشه فقط یک سطح را باز می‌کند.
 export const MERGED_BLOCK_TYPE = "merged";
 
 // عنوانِ پیش‌فرضِ «اسلایدر نظرات» — هم پیش‌فرضِ بلوکِ تازه در ویرایشگر، هم عنوانِ
 // بلوک‌هایی که پیش از افزوده‌شدنِ عنوان ذخیره شده‌اند (کلیدها را ندارند).
 export const REVIEW_SLIDER_HEADING = { highlight: "تجربه‌ی خرید", title: "واقعی", subtitle: "نظر خریداران تنادور" };
 export const MAX_MERGED_CHILDREN = 12;
-export const MAX_MERGE_DEPTH = 3;
 
 export const isMergedBlock = (block) => block?.type === MERGED_BLOCK_TYPE;
 export const mergedChildren = (block) => (isMergedBlock(block) && Array.isArray(block.data?.blocks) ? block.data.blocks : []);
-
-/** عمقِ تودرتوییِ ادغام: بلوکِ عادی ۰، ادغامِ بلوک‌های عادی ۱، … */
-export function mergeDepth(block) {
-  return isMergedBlock(block) ? 1 + Math.max(0, ...mergedChildren(block).map(mergeDepth)) : 0;
-}
 
 /**
  * همه‌ی بلوک‌ها، با فرزندانِ بلوک‌های ادغام‌شده (در هر عمقی) به‌جای خودشان. هر جا

@@ -23,7 +23,7 @@ export async function load(url, context, next) {
 }`);
 process.env.MONGODB_URI_TENADOR = "mongodb://127.0.0.1:1/unused-test-placeholder";
 
-const { entityImageOptions, parseImageSource, ENTITY_IMAGE_SOURCES, ICON_LOGO_BACKGROUND } = await import("../src/lib/entityImages.js");
+const { entityImageOptions, parseImageSource, ENTITY_IMAGE_SOURCES, ICON_LOGO_BACKGROUND, iconLogoBox } = await import("../src/lib/entityImages.js");
 const { sanitizeArticleBlockData } = await import("../src/lib/articleBlockValidation.js");
 const { ARTICLE_BLOCK_TYPES } = await import("../src/lib/articleBlockTypes.js");
 
@@ -93,8 +93,23 @@ test("editor: one workflow, in order; the renderer keeps image and text in one f
   has(renderer, "background: imageShadeLayer(data)?.background,", "the image block's own background renderer");
   has(renderer, '{hasText ? <RichParagraph', "no empty space without text");
   has(renderer, 'className="absolute inset-0 rounded-[inherit]', "a stretched link, never <a> around rich text");
-  has(renderer, 'style={{ width: `${width}px`, height: height ? `${height}px` : "auto" }}');
-  has(renderer, 'className="block max-w-full object-contain"', "never wider than its slot, never distorted");
+  has(renderer, "const { width, height } = iconLogoBox(data);", "the box comes from the settings");
+  has(renderer, 'style={{ width: `${width}px`, aspectRatio: `${width} / ${height}` }}', "explicit box; a narrow slot shrinks it at the same ratio");
+  has(renderer, '<Image src={data.url} alt={alt} fill sizes={`${width}px`} className="object-contain object-center" />', "the image fills the box without distortion and never sizes it");
+  const sizeField = editor.slice(editor.indexOf("function IconSizeField"), editor.indexOf("const ICON_SIZE_DEFAULT"));
+  assert.ok(sizeField.includes("const unlock = () => onUpdate({ height: width });") && !sizeField.includes("naturalWidth"), "unlocking the height never reads the file's own dimensions");
+});
+
+test("box: same settings → same box, whatever the image; the file's dimensions play no part", () => {
+  // square icon, wide logo, tall logo, transparent PNG, a huge photo — the box never sees any of them
+  const images = [["icon.svg", 24, 24], ["wide-logo.png", 1200, 200], ["tall-logo.png", 150, 900], ["transparent.png", 512, 512], ["photo.jpg", 6000, 4000]];
+  for (const settings of [{ width: 120, height: null }, { width: 200, height: 80 }, { width: 64, height: 160 }]) {
+    const boxes = images.map(([name, naturalWidth, naturalHeight]) => iconLogoBox({ ...settings, url: img(name), naturalWidth, naturalHeight }));
+    assert.equal(new Set(boxes.map((box) => `${box.width}x${box.height}`)).size, 1, JSON.stringify(settings));
+  }
+  assert.deepEqual(iconLogoBox({ width: 120, height: null }), { width: 120, height: 120 }, "keep ratio on: a square box");
+  assert.deepEqual(iconLogoBox({ width: 200, height: 80 }), { width: 200, height: 80 }, "keep ratio off: exactly width × height");
+  assert.deepEqual(iconLogoBox({}), { width: 120, height: 120 }, "defaults, like a block saved without sizes");
 });
 
 // ——— route ـِ واقعی ———————————————————————————————————————————————————————

@@ -1,7 +1,7 @@
 import mongoose from "mongoose";
 import { isValidArticleSlug, normalizeArticleSlug } from "base/utils/articleSlug";
 import { hasLegacyBlocks, upgradeLegacyBlocks } from "@/lib/legacyArticleBlocks";
-import { ARTICLE_BLOCK_TYPE_SET, IMAGE_BLOCK_TYPE, IMAGE_SLIDER_BLOCK_TYPE, IMAGE_SLIDER_CHILD_TYPES, MAX_MERGED_CHILDREN, MAX_MERGE_DEPTH, MERGED_BLOCK_TYPE, normalizeHeaderPosition, sanitizeMergedGrid } from "@/lib/articleBlockTypes";
+import { ARTICLE_BLOCK_TYPE_SET, IMAGE_BLOCK_TYPE, IMAGE_SLIDER_BLOCK_TYPE, IMAGE_SLIDER_CHILD_TYPES, MAX_MERGED_CHILDREN, MERGED_BLOCK_TYPE, normalizeHeaderPosition, sanitizeMergedGrid } from "@/lib/articleBlockTypes";
 import { safeArticleUrl, sanitizeArticleBlockData, sanitizeArticleBlockStyle } from "@/lib/articleBlockValidation";
 import { sanitizeArticleBlockLayout } from "@/lib/articleBlockLayout";
 
@@ -56,8 +56,9 @@ function sanitizeCover(value) {
   };
 }
 
-// level = تعدادِ بلوک‌های ادغام‌شده‌ی بالای این بلوک.
-function sanitizeBlock(block, errors, path, ids, level) {
+// عمقِ تودرتویی سقف ندارد (ادغام، روی تصویر، اسلاید — در هر ترکیبی). ساختارِ خراب
+// (حلقه، یا عمقی که پشته را تمام کند) در sanitizeArticleBlocks گرفته می‌شود.
+function sanitizeBlock(block, errors, path, ids) {
   const item = block && typeof block === "object" && !Array.isArray(block) ? block : {};
   const id = text(item.id, 120);
   const type = text(item.type, 80);
@@ -66,8 +67,7 @@ function sanitizeBlock(block, errors, path, ids, level) {
   ids.add(id);
   if (!type) errors[`${path}.type`] = "block type is required";
   if (type && !ARTICLE_BLOCK_TYPE_SET.has(type)) errors[`${path}.type`] = "block type is not supported";
-  const tooDeep = type === MERGED_BLOCK_TYPE && level >= MAX_MERGE_DEPTH;
-  if (tooDeep) errors[`${path}.type`] = `merged blocks cannot be nested more than ${MAX_MERGE_DEPTH} levels`;
+  const nest = (children) => children.slice(0, MAX_MERGED_CHILDREN).map((child, index) => sanitizeBlock(child, errors, `${path}.data.blocks.${index}`, ids));
 
   let data = {};
   if (type === MERGED_BLOCK_TYPE) {
@@ -75,7 +75,7 @@ function sanitizeBlock(block, errors, path, ids, level) {
     // اعتبارسنجیِ یک نوع بلوک از راهِ ادغام وجود ندارد.
     const children = Array.isArray(item.data?.blocks) ? item.data.blocks : [];
     if (children.length > MAX_MERGED_CHILDREN) errors[`${path}.data.blocks`] = `merged block cannot hold more than ${MAX_MERGED_CHILDREN} blocks`;
-    data = { blocks: tooDeep ? [] : children.slice(0, MAX_MERGED_CHILDREN).map((child, index) => sanitizeBlock(child, errors, `${path}.data.blocks.${index}`, ids, level + 1)) };
+    data = { blocks: nest(children) };
     // grid فقط وقتی ذخیره می‌شود که تنظیم شده باشد؛ نبودنش یعنی چیدمانِ ردیفیِ پیش‌فرض.
     const grid = sanitizeMergedGrid(item.data?.grid);
     if (grid) data.grid = grid;
@@ -86,20 +86,15 @@ function sanitizeBlock(block, errors, path, ids, level) {
       // ویرایشگر، که فقط بازخوردِ کاربر است.
       const children = (Array.isArray(item.data?.blocks) ? item.data.blocks : []).filter((child) => IMAGE_SLIDER_CHILD_TYPES.includes(child?.type));
       if (children.length > MAX_MERGED_CHILDREN) errors[`${path}.data.blocks`] = `image slider cannot hold more than ${MAX_MERGED_CHILDREN} images`;
-      const nested = level >= MAX_MERGE_DEPTH
-        ? []
-        : children.slice(0, MAX_MERGED_CHILDREN).map((child, index) => sanitizeBlock(child, errors, `${path}.data.blocks.${index}`, ids, level + 1));
+      const nested = nest(children);
       if (nested.length) data.blocks = nested;
     }
     if (type === IMAGE_BLOCK_TYPE) {
       // بلوک‌های روی تصویر با *همین* تابع پاک‌سازی می‌شوند، پس هیچ نوعی از راهِ
-      // تصویر از اعتبارسنجیِ خودش فرار نمی‌کند. عمق همان سقفِ ادغام را دارد:
-      // تصویرِ داخلِ تصویرِ داخلِ تصویر جایی تمام می‌شود.
+      // تصویر از اعتبارسنجیِ خودش فرار نمی‌کند — در هر عمقی.
       const children = Array.isArray(item.data?.blocks) ? item.data.blocks : [];
       if (children.length > MAX_MERGED_CHILDREN) errors[`${path}.data.blocks`] = `image block cannot hold more than ${MAX_MERGED_CHILDREN} blocks`;
-      const nested = level >= MAX_MERGE_DEPTH
-        ? []
-        : children.slice(0, MAX_MERGED_CHILDREN).map((child, index) => sanitizeBlock(child, errors, `${path}.data.blocks.${index}`, ids, level + 1));
+      const nested = nest(children);
       if (nested.length) data.blocks = nested;
     }
   }
@@ -135,8 +130,18 @@ export function sanitizeArticleBlocks(value, errors) {
   // بلوک‌های حذف‌شده پیش از هر چیز به جانشینشان تبدیل می‌شوند (گالری → تصویر، …)؛
   // بی‌جانشین‌ها می‌افتند — legacyArticleBlocks.js. وگرنه هر سندی که هنوز یکی از
   // آن‌ها را دارد با «block type is not supported» دیگر ذخیره نمی‌شد.
-  const current = hasLegacyBlocks(value) ? upgradeLegacyBlocks(value) : value;
-  const blocks = normalizeHeaderPosition(current.slice(0, MAX_BLOCKS)).map((block, index) => sanitizeBlock(block, errors, `blocks.${index}`, ids, 0));
+  let blocks;
+  try {
+    const current = hasLegacyBlocks(value) ? upgradeLegacyBlocks(value) : value;
+    blocks = normalizeHeaderPosition(current.slice(0, MAX_BLOCKS)).map((block, index) => sanitizeBlock(block, errors, `blocks.${index}`, ids));
+  } catch (error) {
+    // بلوکی که خودش را در خود دارد (حلقه) یا عمقی که پشته‌ی جاوااسکریپت را تمام
+    // کند (هزاران سطح) — هیچ‌کدام از ویرایشگر نمی‌آید. ۴۰۰ و هیچ نوشتنی: نه ۵۰۰،
+    // نه ذخیره‌ی نیمه‌کاره. عمقِ واقعی (ده‌ها سطح) هرگز به اینجا نمی‌رسد.
+    if (!(error instanceof RangeError)) throw error;
+    errors.blocks = "blocks structure is malformed (circular or unbounded nesting)";
+    return [];
+  }
 
   try {
     if (Buffer.byteLength(JSON.stringify(blocks), "utf8") > MAX_BLOCK_BYTES) {

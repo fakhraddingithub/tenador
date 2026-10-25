@@ -18,7 +18,7 @@ import { toast } from "react-toastify";
 import { confirmDelete } from "@/lib/swal";
 import { BLOCK_CLIPBOARD_EVENT, copyBlockToClipboard, readBlockClipboard, takeBlockFromClipboard } from "@/lib/articleBlockClipboard";
 import { IMAGE_DISPLAY_HEIGHT, IMAGE_SHADE, MAX_IMAGE_BLOCK_ITEMS, imageBlockItems, imageShadeLayer, imageShadeSettings, mirrorFirstImage, normalizeHexColor, normalizeImageHref } from "@/lib/articleImageBlock";
-import { FAQ_ANSWER_ALIGNS, IMAGE_SLIDER_CHILD_TYPES, IMAGE_SLIDER_DELAY, IMAGE_SLIDER_HEIGHT, MAX_MERGED_CHILDREN, MAX_MERGE_DEPTH, MERGED_GRID_GAP_STEP, normalizeHeaderPosition, MERGED_GRID_LIMITS, MERGED_GRID_REFERENCE, defaultMergedGrid, imageOverlayChildren, isMergedBlock, mergedChildren, mergedGridColumnsAt, sanitizeMergedGrid } from "@/lib/articleBlockTypes";
+import { FAQ_ANSWER_ALIGNS, IMAGE_SLIDER_CHILD_TYPES, IMAGE_SLIDER_DELAY, IMAGE_SLIDER_HEIGHT, MAX_MERGED_CHILDREN, MERGED_GRID_GAP_STEP, normalizeHeaderPosition, MERGED_GRID_LIMITS, MERGED_GRID_REFERENCE, defaultMergedGrid, imageOverlayChildren, isMergedBlock, mergedChildren, mergedGridColumnsAt, sanitizeMergedGrid } from "@/lib/articleBlockTypes";
 import { cloneWithFreshIds, mergeBlocker, mergeBlocks, unmergeBlock } from "@/lib/articleBlockMerge";
 import { ICON_LOGO_SIZE, parseImageSource } from "@/lib/entityImages";
 
@@ -362,21 +362,16 @@ function IconSizeField({ block, onUpdate }) {
   const height = block.data?.height ?? null;
   const keepRatio = height === null;
   const clamp = (value) => Math.min(ICON_LOGO_SIZE.max, Math.max(ICON_LOGO_SIZE.min, Math.round(Number(value) || ICON_LOGO_SIZE.min)));
-  const unlock = () => {
-    const url = block.data?.url;
-    if (!url) return onUpdate({ height: width });
-    const probe = new window.Image();
-    probe.onload = () => onUpdate({ height: clamp(probe.naturalWidth ? (width * probe.naturalHeight) / probe.naturalWidth : width) });
-    probe.onerror = () => onUpdate({ height: width });
-    probe.src = url;
-  };
+  // ارتفاع از تنظیمات شروع می‌شود (همان مربعی که تا الان دیده می‌شد)، نه از ابعادِ
+  // فایل — وگرنه دو بلوک با «همان تنظیم» به‌خاطرِ تصویرشان اندازه‌ی متفاوت می‌گرفتند.
+  const unlock = () => onUpdate({ height: width });
   const number = (label, value, onChange, disabled = false) => <label className="block min-w-0 basis-28">
     <span className="be-label">{label}</span>
     <span className="flex items-center gap-1.5"><input type="number" min={ICON_LOGO_SIZE.min} max={ICON_LOGO_SIZE.max} value={value} disabled={disabled} onChange={(e) => e.target.value !== "" && onChange(clamp(e.target.value))} onKeyDown={keepEnter} className="be-input w-24 disabled:opacity-50" /><span className="be-unit">px</span></span>
   </label>;
   return <div className="flex flex-wrap items-end gap-x-4 gap-y-2.5">
     {number("عرض", width, (next) => onUpdate({ width: next }))}
-    <label className="be-check" title="ارتفاع از نسبتِ خودِ تصویر می‌آید">
+    <label className="be-check" title="کادرِ مربع (ارتفاع = عرض). تصویر در هر حالت بی‌کشیدگی داخلِ کادر می‌نشیند؛ ابعادِ خودِ فایل اندازه‌ی بلوک را عوض نمی‌کند">
       <input type="checkbox" checked={keepRatio} onChange={(e) => (e.target.checked ? onUpdate({ height: null }) : unlock())} className="be-select" />حفظِ نسبت
     </label>
     {number("ارتفاع", keepRatio ? "" : height, (next) => onUpdate({ height: next }), keepRatio)}
@@ -932,7 +927,6 @@ export default function BlockEditor({ value = [], onChange, libraryOpen: openPro
     few: "دست‌کم دو بلوکِ کنارِ هم را انتخاب کنید.",
     gap: "فقط بلوک‌های پشتِ‌سرِ‌هم (بدونِ فاصله) ادغام می‌شوند.",
     many: `حداکثر ${MAX_MERGED_CHILDREN.toLocaleString("fa-IR")} بلوک در یک ادغام.`,
-    deep: `ادغامِ تودرتو حداکثر ${MAX_MERGE_DEPTH.toLocaleString("fa-IR")} سطح.`,
   };
   // فاصله‌ی بینِ کارت‌ها ۱۰px: کارتِ سفید روی زمینه‌ی خاکستری و حلقه‌ی کارتِ فعال
   // مرز را معلوم می‌کنند؛ فاصله‌ی بیشتر فقط اسکرول اضافه می‌کرد.

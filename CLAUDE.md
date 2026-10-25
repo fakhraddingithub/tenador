@@ -914,9 +914,27 @@ Rules that are load-bearing:
 
 **Nesting is now a general property, not a merged-block one.** `blockHoldsBlocks` /
 `blockChildren` in `articleBlockTypes.js` answer for both, and every walker uses them:
-`sanitizeBlock` recurses into image children with the same validation and the same
-`MAX_MERGE_DEPTH` / `MAX_MERGED_CHILDREN` caps and the same tree-wide unique ids;
+`sanitizeBlock` recurses into image children with the same validation, the same
+`MAX_MERGED_CHILDREN` cap and the same tree-wide unique ids;
 `reId` gives a copy fresh ids at any depth; the renderer's entity `walk` descends both.
+
+**There is no nesting depth limit** — merged in merged, blocks on an image on an image,
+slides with blocks on them, in any combination. The old `MAX_MERGE_DEPTH = 3` was
+enforced in three places, one of them silently: `mergeBlocker` refused the merge
+(«ادغامِ تودرتو حداکثر ۳ سطح»), the validator 400'd a deeper merged block, and — the
+data-loss one — it *emptied* the children of an image or slide below level 3 on save.
+All three are gone, along with `mergeDepth`. What is still refused is structure that is
+actually broken: a block that contains itself, or hand-made nesting deep enough to exhaust
+the JS stack (thousands of levels). Both surface as a `RangeError` in the recursive walk
+and `sanitizeArticleBlocks` turns it into a 400 (`blocks structure is malformed`) with
+nothing written. The real ceiling is MongoDB's BSON nesting limit: each block level costs
+three (`data` → `blocks` → child), which measured at **~57 block levels** for articles,
+revisions, brochures and brand-category articles alike — beyond that the save fails in
+the database, not in our code.
+
+```bash
+npm run test:block-nesting   # 5/10/20 levels: validator, API input, brochure, Mongo round trip, merge, clone, malformed
+```
 `flattenArticleBlocks` treats them differently on purpose — a merged block is *replaced*
 by its children (it has no content of its own), an image block yields **itself and** its
 children, so the image-dimension script still sees every image.
@@ -1485,8 +1503,15 @@ data: { source: "type:id", url, alt, imageLabel, width, height|null, radius, pad
 
 Rules that are load-bearing:
 
-- **`height: null` means "keep the ratio".** With a height the image is `object-contain` in a
-  width×height box — never stretched. `max-w-full` means a large width shrinks to the slot.
+- **The size belongs to the box, never to the file.** `iconLogoBox(data)` (`entityImages.js`)
+  is `width × (height ?? width)`: `height: null` («حفظِ نسبت») is a *square* box, an explicit
+  height is exactly width×height. The image is `fill` + `object-contain object-center` inside
+  it, so a 24×24 icon, a 1200×200 logo and a 150×900 logo with the same settings give
+  pixel-identical blocks, and none is ever stretched. It used to be `height: auto` on the
+  `<img>`, i.e. the file's aspect ratio decided the block's height — and unticking the box
+  probed the file's natural size to pick the height, the same bug from the editor side.
+  `max-w-full` + `aspect-ratio` shrinks the box *at its ratio* in a narrow slot (a fixed
+  height used to stay put while the width collapsed).
 - **The link is a stretched `<Link>` (`absolute inset-0`), never an `<a>` around the frame**:
   the rich text may carry its own links, and `<a>` in `<a>` is invalid HTML. Only the text's
   inner `<a>` are lifted above it, so a click on plain text still follows the block's link.

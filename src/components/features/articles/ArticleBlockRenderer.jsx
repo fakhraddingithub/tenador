@@ -21,7 +21,7 @@ import MatchBanner from "@/components/features/matchBanner/MatchBanner";
 import MergedSliderNav from "@/components/features/articles/MergedSliderNav";
 import ImageSliderControls from "@/components/features/articles/ImageSliderControls";
 import { imageBlockItems, imageShadeLayer } from "@/lib/articleImageBlock";
-import { ICON_LOGO_PADDING, ICON_LOGO_RADIUS, ICON_LOGO_SIZE } from "@/lib/entityImages";
+import { ICON_LOGO_PADDING, ICON_LOGO_RADIUS, iconLogoBox } from "@/lib/entityImages";
 import { FULL_BLEED_BLOCK_TYPES, IMAGE_SLIDER_DELAY, IMAGE_SLIDER_HEIGHT, REVIEW_SLIDER_HEADING, blockChildren, blockHoldsBlocks, flattenArticleBlocks, imageOverlayChildren, imageSliderChildren, isMergedBlock, mergedChildren, sanitizeMergedGrid } from "@/lib/articleBlockTypes";
 
 const ordered = (values, map) => (Array.isArray(values) ? values : values ? [values] : []).map((id) => map?.[String(id)]).filter(Boolean);
@@ -267,9 +267,11 @@ function MergedBlock({ items, spacing }) {
  * یک تصویر و متنِ اختیاری زیرش، *در یک قاب*: زمینه (همان imageShadeLayer ـِ بلوکِ
  * تصویر، پس رنگِ ساده و گرادیان یکی‌اند)، گردی و فاصله‌ی داخلی روی خودِ قاب.
  *
- *  - تصویر عرضِ انتخاب‌شده را دارد و هرگز از قاب پهن‌تر نمی‌شود (max-width). بی‌ارتفاع
- *    یعنی نسبتِ خودِ تصویر؛ با ارتفاع، تصویر در قابِ عرض×ارتفاع contain می‌شود —
- *    هیچ‌وقت کشیده نمی‌شود.
+ *  - اندازه مالِ *کادر* است، نه تصویر (iconLogoBox): عرض × (ارتفاع یا همان عرض).
+ *    تصویر با fill و contain داخلش می‌نشیند، پس ابعادِ ذاتیِ فایل — لوگوی پهن، آیکنِ
+ *    مربع، تصویرِ بلند — هیچ اثری روی اندازه‌ی بلوک ندارد و هیچ‌وقت کشیده نمی‌شود.
+ *    max-width + aspect-ratio: در خانه‌ی باریک‌تر، کادر *با همان نسبت* کوچک می‌شود
+ *    (قبلاً ارتفاعِ ثابت می‌ماند و عرض جمع می‌شد).
  *  - بی‌متن، هیچ فاصله‌ی خالی‌ای زیرِ تصویر نیست (پاراگراف اصلاً رندر نمی‌شود).
  *  - پیوند یک لایه‌ی absolute روی کلِ قاب است (stretched link)، نه <a> دورِ همه‌چیز:
  *    متنِ غنی خودش می‌تواند پیوند داشته باشد و <a> داخلِ <a> HTMLِ نامعتبر است.
@@ -277,8 +279,7 @@ function MergedBlock({ items, spacing }) {
  */
 function IconLogoBlock({ data, visuals, spacing }) {
   if (!data.url) return null;
-  const width = data.width || ICON_LOGO_SIZE.default;
-  const height = data.height || null;
+  const { width, height } = iconLogoBox(data);
   const alt = data.alt || data.imageLabel || "";
   const hasText = Boolean(data.html || (data.text && data.text.trim()));
   const frame = {
@@ -288,15 +289,9 @@ function IconLogoBlock({ data, visuals, spacing }) {
   };
   return <div className={blockSection} style={spacing || undefined}>
     <div className={`relative flex w-full flex-col items-center gap-3${data.href ? " transition-opacity has-[>a:hover]:opacity-90" : ""}`} style={frame}>
-      <Image
-        src={data.url}
-        alt={alt}
-        width={width}
-        height={height || width}
-        sizes={`${width}px`}
-        className="block max-w-full object-contain"
-        style={{ width: `${width}px`, height: height ? `${height}px` : "auto" }}
-      />
+      <div className="relative max-w-full shrink-0" style={{ width: `${width}px`, aspectRatio: `${width} / ${height}` }}>
+        <Image src={data.url} alt={alt} fill sizes={`${width}px`} className="object-contain object-center" />
+      </div>
       {hasText ? <RichParagraph className="w-full text-[16px] leading-7 text-gray-700 [&_a]:relative [&_a]:z-[1]" style={{ textAlign: visuals.align || "center" }} html={data.html} text={data.text} preLine /> : null}
       {data.href ? <Link href={data.href} aria-label={alt || data.text || "پیوند"} className="absolute inset-0 rounded-[inherit] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-primary)]" /> : null}
     </div>
