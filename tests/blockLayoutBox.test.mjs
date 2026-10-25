@@ -519,10 +519,22 @@ test("اسلایدر با عوض‌شدنِ اسلاید تغییرِ انداز
   const css = await read("../src/app/globals.css");
   // ارتفاع روی خودِ خانه است و از متغیّرِ ظرف می‌آید؛ تصویر در همان قاب برش می‌خورد.
   assert.match(css, /\.a-slide \{\s*\r?\n\s*height: var\(--slide-h\);/);
-  assert.match(css, /\.a-slide img \{[\s\S]*?object-fit: cover;/);
+  assert.match(css, /\.a-slide img:not\(\.a-image-overlay \*\) \{[\s\S]*?object-fit: cover;/);
   // بدونِ !important: کلاس‌های خودِ بلوکِ تصویر تک‌کلاسه‌اند و انتخابگرِ نزولی خاص‌تر است.
   const slice = css.slice(css.indexOf(".a-slider {"), css.indexOf("ارتفاعِ خطِ متنِ بلوک‌ها"));
   assert.ok(!slice.includes("!important"));
+});
+
+test("قاعده‌های اسلاید به بلوک‌های رویِ تصویر نمی‌رسند", async () => {
+  const css = await read("../src/app/globals.css");
+  // هر انتخابگرِ نزولیِ .a-slide (جز فرزندِ مستقیم) باید در لایه‌ی رویی بایستد؛ وگرنه
+  // لوگوی برندِ کارتِ محصولِ روی تصویر 100% و cover می‌گرفت و از تصویرِ محصول بزرگ‌تر می‌شد.
+  const selectors = [...css.matchAll(/^([^{}@/\n][^{}]*?)\s*\{/gm)]
+    .flatMap((m) => m[1].split(","))
+    .map((s) => s.trim())
+    .filter((s) => /^\.a-slide\s/.test(s) && !s.startsWith(".a-slide >"));
+  assert.ok(selectors.length >= 6, "slide rules not found");
+  for (const selector of selectors) assert.ok(selector.endsWith(":not(.a-image-overlay *)"), `unbounded: ${selector}`);
 });
 
 test("یک تایمر، با پاک‌سازی؛ ناوبریِ دستی آن را از نو می‌چیند", async () => {

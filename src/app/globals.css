@@ -503,6 +503,10 @@
    (h-auto، w-full)، و «.a-slide img» از آن‌ها خاص‌تر است — پس بدونِ زور، و
    بدونِ دست‌زدن به خودِ بلوکِ تصویر که بیرونِ اسلایدر باید دست‌نخورده بماند.
 
+   «:not(.a-image-overlay *)» مرزِ این قاعده‌هاست: بلوک‌های *رویِ* تصویر (کارتِ
+   محصول، لوگو، …) لایه‌های خودِ اسلاید نیستند. بی‌این مرز، لوگوی ۳۰ پیکسلیِ برندِ
+   کارت «height/width: 100%» و cover می‌گرفت و کادرِ مربعیِ تصویرِ محصول کش می‌آمد.
+
    نوارِ اسکرول پنهان است چون ناوبری با فلش و کشیدن انجام می‌شود؛ خودِ اسکرول
    (و در نتیجه لمس در موبایل) دست‌نخورده می‌ماند. */
 .a-slider {
@@ -516,20 +520,20 @@
   overflow: hidden;
 }
 .a-slide > *,
-.a-slide figure,
-.a-slide figure > div,
-.a-slide figure > div > div,
-.a-slide .relative {
+.a-slide figure:not(.a-image-overlay *),
+.a-slide figure > div:not(.a-image-overlay *),
+.a-slide figure > div > div:not(.a-image-overlay *),
+.a-slide .relative:not(.a-image-overlay *) {
   height: 100%;
   margin: 0;
 }
-.a-slide img {
+.a-slide img:not(.a-image-overlay *) {
   height: 100%;
   width: 100%;
   object-fit: cover;
 }
 /* زیرنویسِ تصویر داخلِ قاب می‌ماند و ارتفاع را هل نمی‌دهد. */
-.a-slide figcaption {
+.a-slide figcaption:not(.a-image-overlay *) {
   position: absolute;
   inset-inline: 0;
   bottom: 0;
