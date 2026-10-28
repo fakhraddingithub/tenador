@@ -168,86 +168,18 @@ export default function AddCategory() {
   const [showPromptSection, setShowPromptSection] = useState(false);
   const [editingId, setEditingId] = useState(null);
 
+  // قواعدِ پیش‌فرضِ این فیلدها حالا در «تنظیمات پرامپت» (پرامپت پایه) هستند؛ اینجا
+  // فقط قواعدِ اختصاصیِ همین دسته نوشته می‌شود، پس دسته‌ی تازه خالی شروع می‌شود.
   const productFields = [
-    {
-      field: 'name',
-      context: `- MUST strictly follow this exact pattern:
-  "{Persian product type} {Persian brand name} {Exact model name from raw content}"
-- Persian product type MUST be inferred from category and content (e.g. راکت تنیس)
-- Persian brand name MUST be the Persian transliteration of the brand
-  (e.g. Wilson → ویلسون, Nike → نایکی)
-- Model name MUST be copied EXACTLY from raw content in English
-- Do NOT translate, shorten, reorder, or modify the model name
-- This rule overrides any other naming rule
-Example:
-Raw content: "Wilson Tour Slam Lite Adult Recreational Tennis Racket"
-Correct name output:
-"راکت تنیس ویلسون Tour Slam Lite"
-      `
-    },
-    {
-      field: 'label',
-      context: `- Choose ONE value ONLY from: ["none", "new", "hot", "discount", "limited"]
-- If the text mentions things like "جدید" or "۲۰۲۴/۲۰۲۵" -> "new"
-- If it's a best-seller or "پرفروش" -> "hot"
-- If there is a clear discount mentioned in raw text -> "discount"
-- If it says "تعداد محدود" or "نسخه محدود" -> "limited"
-- DEFAULT is "none" if no specific label is detected.
-      `
-    },
-    {
-      field: 'shortDescription',
-      context: `- Persian
-- 3 line concise sentences
-- Marketing-friendly
-- No emojis
-      `
-    },
-    {
-      field: 'longDescription',
-      context: `- Persian
-- Detailed, structured
-- Explain usage, benefits, materials if possible
-- SEO-friendly but natural
-      `
-    },
-    {
-      field: 'color',
-      context: ` Read the provided product content carefully.
-Detect and extract the product color code.
-The color code may appear in formats like:
-   - Color Code: 1234
-   - Code: ABC-567
-   - SKU variation with color identifier
-   - Hex color format like #FFFFFF
- If multiple codes exist, select the one specifically related to color.
- If no color code exists, return null.`
-    },
-    {
-      field: 'basePrice',
-      context: `- Number ONLY
-- If price is missing, estimate realistically based on product type
-- DO NOT write strings like "نامشخص"
-      `
-    },
-    {
-      field: 'targetAudience',
-      context: `- Decide who this specific product is actually made and marketed for.
-- Prefer explicit signals in the raw content (e.g. "men's", "women's", "junior", "kids",
-  "بزرگسال", "بچگانه", a junior size range, a youth-specific model name).
-- If the product is made for children or juniors, always choose "بچگانه" — never "یونی سکس".
-- Choose "یونی سکس" only for adult products genuinely suitable for both men and women.
-- Never leave this field empty; pick the single best-fitting value.
-      `
-    },
-    {
-      field: 'tag',
-      context: `- Persian keywords
-  - Array of short strings
-  - Useful for search
-      `
-    },
-  ];
+    'name',
+    'label',
+    'shortDescription',
+    'longDescription',
+    'color',
+    'basePrice',
+    'targetAudience',
+    'tag',
+  ].map((field) => ({ field, context: '' }));
 
   const [productPrompts, setProductPrompts] = useState(
     productFields.map((item) => ({ field: item.field, context: item.context }))
@@ -916,6 +848,10 @@ The color code may appear in formats like:
               <div
                 className={`overflow-hidden transition-all duration-500 ${showPromptSection ? 'max-h-[2000px] mt-6' : 'max-h-0'}`}
               >
+                <p className="text-xs font-bold text-gray-500 mb-4 leading-6">
+                  فقط قواعدِ اختصاصیِ همین دسته را بنویسید. قواعدِ مشترکِ همه‌ی محصولات (پرامپت پایه) و قواعدِ چند دسته
+                  (گروه‌های پرامپت دسته) در «ورزش‌ها ← تنظیمات پرامپت» تعریف می‌شوند و پیش از این قواعد در پرامپت می‌آیند.
+                </p>
                 <div className="grid md:grid-cols-2 gap-5">
                   {productPrompts.map((item, index) => (
                     <Textarea

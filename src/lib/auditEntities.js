@@ -675,6 +675,13 @@ export const AUDIT_ENTITIES = {
   WalletAdjustment: { key: "walletAdjustment", label: "افزایش یا کاهش کیف پول توسط ادمین", priority: 84 },
   CoachWalletTransaction: { key: "coachWallet", label: "تراکنش کیف پول مربی", priority: 82 },
   ReviewCreditTransaction: { key: "reviewCredit", label: "اعتبار نظر", priority: 50 },
+  ProductPromptConfig: {
+    key: "productPrompts",
+    label: "تنظیمات پرامپت محصول",
+    priority: 60,
+    name: () => "پرامپت تولید محصول",
+    fields: { base: { label: "پرامپت پایه" }, groups: { label: "گروه‌های پرامپت دسته" } },
+  },
   HealthCard: { key: "healthCard", label: "کارت سلامت", priority: 54 },
   Banner: { key: "banner", label: "بنر", priority: 50 },
   Slide: { key: "slide", label: "اسلاید", priority: 50 },

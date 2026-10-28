@@ -194,3 +194,73 @@ test('a category with no scoped attribute says so instead of leaving a dangling 
   assert.ok(draft.includes('Every attribute in this category applies to every target audience.'));
   assert.ok(!draft.includes('Applies ONLY when targetAudience'));
 });
+
+// ── تنظیمات پرامپت: روتِ واقعیِ پنل → سندِ واقعی → روتِ واقعیِ پیش‌نویس ─────────
+
+test('prompt settings: saved through the admin route, applied per category by the draft route', async () => {
+  const { GET, PUT } = await import('../src/app/api/admin/product-prompts/route.js');
+  const Category = mongoose.model('Category');
+  const squash = await Category.create({ name: 'squash-racket', title: 'راکت', sport: padel._id });
+  const put = (body) => PUT({ json: async () => body });
+  const load = async () => (await (await GET()).json()).config;
+
+  const initial = await load();
+  assert.deepEqual(initial, { base: [], groups: [], updatedAt: null });
+
+  const group = (rules, categories = [String(tennisCategory._id), String(padelCategory._id), String(squash._id)]) =>
+    ({ title: 'راکت‌ها', categories, rules });
+  const body = {
+    updatedAt: null,
+    base: [{ section: 'task', rules: ['READ the raw product content provided below.', 'GLOBAL RULE FOR EVERY PRODUCT'] }],
+    groups: [group([
+      { field: 'name', text: 'GROUP RULE FOR ALL RACKETS', categories: [] },
+      { field: 'name', text: 'GROUP RULE ONLY TENNIS AND PADEL', categories: [String(tennisCategory._id), String(padelCategory._id)] },
+    ])],
+  };
+
+  // اعتبارسنجی: قاعده‌ای که به دسته‌ی بیرون از گروه اشاره کند رد می‌شود و چیزی ذخیره نمی‌شود
+  const outside = await put({ ...body, groups: [group([{ field: 'name', text: 'x', categories: [String(squash._id)] }], [String(tennisCategory._id)])] });
+  assert.equal(outside.status, 400);
+  assert.ok((await outside.json()).fieldErrors['groups.0.rules.0']);
+  const phantom = await put({ ...body, groups: [group([], [String(new mongoose.Types.ObjectId())])] });
+  assert.equal(phantom.status, 400);
+  assert.equal((await load()).updatedAt, null);
+
+  const saved = await put(body);
+  assert.equal(saved.status, 200, JSON.stringify(await saved.clone().json()));
+  const { config } = await saved.json();
+  assert.ok(config.updatedAt);
+  assert.deepEqual(await load(), config);
+
+  // نسخه‌ی کهنه: ذخیره‌ی دوم روی updatedAtِ قدیمی بازنویسی نمی‌کند
+  assert.equal((await put({ ...body, base: [] })).status, 409);
+  assert.deepEqual((await load()).base, config.base);
+
+  const draftFor = async (id) => (await (await requestDraft(id)).json()).draft;
+  const tennisDraft = await draftFor(tennisCategory._id);
+  const squashDraft = await draftFor(squash._id);
+  const otherDraft = await draftFor((await Category.create({ name: 'balls', title: 'توپ', sport: tennis._id }))._id);
+
+  for (const d of [tennisDraft, squashDraft, otherDraft]) assert.ok(d.includes('- GLOBAL RULE FOR EVERY PRODUCT'));
+  assert.equal(outputExample(squashDraft).sport, String(padel._id));
+  assert.ok(tennisDraft.includes('GROUP RULE FOR ALL RACKETS') && tennisDraft.includes('GROUP RULE ONLY TENNIS AND PADEL'));
+  assert.ok(squashDraft.includes('GROUP RULE FOR ALL RACKETS') && !squashDraft.includes('ONLY TENNIS AND PADEL'));
+  assert.ok(!otherDraft.includes('GROUP RULE'));
+  // داده‌های تزریقی همچنان سر جای خودشان‌اند
+  assert.ok(tennisDraft.includes('AVAILABLE BRANDS') && tennisDraft.includes(String(brand._id)));
+
+  // دسته‌ی حذف‌شده: ذخیره‌های بعدی قفل نمی‌شوند و قاعده‌اش به هیچ دسته‌ای نمی‌خورد
+  const doomed = await Category.create({ name: 'doomed', title: 'موقت', sport: tennis._id });
+  const withDoomed = { ...body, updatedAt: config.updatedAt, groups: [group(
+    [{ field: 'tag', text: 'DOOMED ONLY', categories: [String(doomed._id)] }],
+    [String(tennisCategory._id), String(doomed._id)],
+  )] };
+  const second = await put(withDoomed);
+  assert.equal(second.status, 200);
+  await Category.deleteOne({ _id: doomed._id });
+  const third = await put({ ...withDoomed, updatedAt: (await second.json()).config.updatedAt });
+  assert.equal(third.status, 200, JSON.stringify(await third.clone().json()));
+  assert.ok(!(await draftFor(tennisCategory._id)).includes('DOOMED ONLY'));
+
+  await mongoose.model('ProductPromptConfig').deleteMany({});
+});

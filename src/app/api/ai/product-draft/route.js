@@ -4,6 +4,7 @@ import Category from "base/models/Category";
 import Brand from "base/models/Brand";
 import Athlete from "base/models/Athlete";
 import LimitedEdition from "base/models/LimitedEdition";
+import ProductPromptConfig from "base/models/ProductPromptConfig";
 
 import { buildProductTemplate } from "@/lib/buildProductTemplate";
 import requireAdminPermission from "@/lib/requireAdminPermission";
@@ -56,6 +57,9 @@ export async function POST(req) {
       );
     }
 
+    // پرامپت پایه + گروه‌های پرامپت دسته (بدونِ سند → پرامپتِ پیش‌فرض)
+    const promptConfig = await ProductPromptConfig.findOne({ key: "product" }).sort({ createdAt: 1 }).lean();
+
     // 3. Build AI prompt
     const prompt = buildProductTemplate({
       category,
@@ -63,6 +67,7 @@ export async function POST(req) {
       athletes,
       limitedEditions,
       rawContent,
+      promptConfig,
     });
 
     

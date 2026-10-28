@@ -4,7 +4,7 @@ import { matchesSearch } from "@/lib/search";
 import { useState } from 'react';
 import Link from 'next/link';
 import { motion } from 'framer-motion';
-import { FiArrowRight, FiPlus, FiEdit3, FiTrash2, FiActivity, FiSearch } from 'react-icons/fi';
+import { FiArrowRight, FiPlus, FiEdit3, FiTrash2, FiActivity, FiSearch, FiSliders } from 'react-icons/fi';
 import Swal from 'sweetalert2';
 import {
   DndContext, closestCenter, PointerSensor, useSensor, useSensors,
@@ -136,6 +136,14 @@ export default function AdminSports() {
                 className="pr-9 pl-4 py-2.5 text-sm font-bold bg-white border-2 border-gray-200 rounded-[var(--radius)] w-56 focus:outline-none focus:border-[var(--color-primary)] transition-all"
               />
             </div>
+            {can('productPrompts.view') && (
+              <Link
+                href="/p-admin/admin-sports/prompt-settings"
+                className="flex items-center gap-2 px-4 py-2.5 rounded-[var(--radius)] text-sm font-bold text-gray-700 bg-white border-2 border-gray-200 transition-all hover:border-[var(--color-primary)] hover:text-[var(--color-primary)]"
+              >
+                <FiSliders size={16} /> تنظیمات پرامپت
+              </Link>
+            )}
             {can('sports.create') && (
               <Link
                 href="/p-admin/admin-sports/add"

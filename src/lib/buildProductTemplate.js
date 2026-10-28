@@ -12,20 +12,28 @@ import {
   TARGET_AUDIENCE_VALUES,
   attributeAppliesToAudience,
 } from "../../utils/targetAudience.js";
+import {
+  FIELD_PRECEDENCE_NOTE,
+  PRODUCT_PROMPT_FIELDS,
+  bulletRule,
+  numberedRule,
+  renderFieldRules,
+  resolveBasePrompt,
+  resolveFieldRules,
+} from "./productPromptConfig.js";
 
-/**
- * Extracts the context string for a given field from category.prompts array.
- * Safely handles null/undefined and returns a clean string.
- *
- * @param {Array}  prompts  - category.prompts array
- * @param {string} field    - field name to look up
- * @returns {string}
- */
-function getPromptContext(prompts, field) {
-  if (!Array.isArray(prompts)) return "No specific rule defined.";
+/** The category's own free-text prompt for a field ("" when it has none). */
+function categoryPromptText(prompts, field) {
+  if (!Array.isArray(prompts)) return "";
   const match = prompts.find((p) => p?.field === field);
-  return match?.context?.toString().trim() || "No specific rule defined.";
+  return match?.context?.toString().trim() || "";
 }
+
+const BANNER = "=================================================================";
+
+/** A banner-headed section of the prompt, omitted entirely when it has no rules. */
+const ruleSection = (title, lines) =>
+  lines.length ? `${BANNER}\n${title}\n${BANNER}\n${lines.join("\n")}\n\n` : "";
 
 /**
  * Builds the full AI prompt for product data extraction.
@@ -36,6 +44,8 @@ function getPromptContext(prompts, field) {
  * @param {Array}    params.athletes         - Athlete documents
  * @param {Array}   [params.limitedEditions] - Limited edition documents (optional)
  * @param {string}   params.rawContent       - Raw text to extract product data from
+ * @param {Object}  [params.promptConfig]    - Stored ProductPromptConfig ({ base, groups });
+ *                                             absent → the default base prompt and no groups
  * @returns {string} - The complete prompt string
  */
 export function buildProductTemplate({
@@ -44,6 +54,7 @@ export function buildProductTemplate({
   athletes,
   limitedEditions = [],
   rawContent,
+  promptConfig = null,
 }) {
   // ─── Input Validation ─────────────────────────────────────────────────────
   if (!category) throw new Error("category is required");
@@ -199,190 +210,59 @@ ${restrictedAttributes
     };
   });
 
-  // ─── Per-field Prompt Contexts ────────────────────────────────────────────
-  const fieldRules = {
-    name: getPromptContext(category.prompts, "name"),
-    shortDescription: getPromptContext(category.prompts, "shortDescription"),
-    longDescription: getPromptContext(category.prompts, "longDescription"),
-    color: getPromptContext(category.prompts, "color"),
-    basePrice: getPromptContext(category.prompts, "basePrice"),
-    label: getPromptContext(category.prompts, "label"),
-    targetAudience: getPromptContext(category.prompts, "targetAudience"),
-    tag: getPromptContext(category.prompts, "tag"),
+  // ─── Rules: base prompt → category prompt groups → the category's own ─────
+  // The static text lives in productPromptConfig.js (editable per rule in the
+  // admin panel). Lines that carry injected data stay here and are locked:
+  // they are passed as `before`/`after` so no edit can break an ID lock.
+  const base = resolveBasePrompt(promptConfig?.base);
+  const groups = Array.isArray(promptConfig?.groups) ? promptConfig.groups : [];
+
+  const lockedLines = {
+    sport: { before: [`- MUST be exactly: "${sportId}"`] },
+    category: { before: [`- MUST be exactly: "${category._id}"`] },
+    attributes: {
+      after: [audienceScopedAttributeRule || "- Every attribute in this category applies to every target audience."],
+    },
+    variantMeta: {
+      after: [
+        multiUnitVariantInstructions
+          ? `\nMulti-unit variant attributes for this category:\n${multiUnitVariantInstructions}`
+          : "- No multi-unit variant attributes are defined for this category.",
+      ],
+    },
   };
+
+  const fieldBlocks = PRODUCT_PROMPT_FIELDS
+    // the custom tab field exists only for a category whose tab has items
+    .filter(({ key }) => key !== "customTabItems" || customTabItemTitles.length)
+    .map(({ key }) =>
+      renderFieldRules(key, {
+        ...lockedLines[key],
+        rules: resolveFieldRules({
+          base,
+          groups,
+          categoryId: category._id,
+          field: key,
+          categoryText:
+            key === "technicalStats" ? globalTechnicalPrompt : categoryPromptText(category.prompts, key),
+        }),
+      }),
+    )
+    .join("\n\n");
+
+  const intro = [
+    base.role.length ? `${base.role.join("\n")}\n\n` : "",
+    base.task.length ? `Your task:\n${base.task.map(bulletRule).join("\n")}\n\n` : "",
+  ].join("");
 
   // ─── Build Prompt ─────────────────────────────────────────────────────────
   return `
-You are a senior Persian e-commerce product manager AI.
-
-Your task:
-- READ the raw product content provided below.
-- EXTRACT and GENERATE a complete product JSON object.
-- OUTPUT only the JSON — nothing else.
-
-=================================================================
-CRITICAL OUTPUT FORMAT RULES — NEVER VIOLATE THESE
-=================================================================
-1. Output ONLY raw JSON. Start with { and end with }.
-2. NO markdown code fences (no \`\`\`json, no \`\`\`).
-3. NO explanations, comments, or text before or after the JSON.
-4. NO trailing commas anywhere.
-5. ALL string values must be wrapped in balanced double quotes.
-6. Validate JSON structure mentally before responding.
-7. If you detect any syntax error in your output, fix it before responding.
-8. Treat this output as production data — not a draft.
-
-=================================================================
-LANGUAGE RULE
-=================================================================
-- All human-readable content (name, descriptions, tag, etc.) → PERSIAN (fa-IR)
-- JSON keys → Exactly as specified in the rules below (English)
-- Attribute keys → MUST be the English KEY shown in "Category Attributes" section
-  DO NOT use Persian labels as keys — they are provided for context only.
-
-=================================================================
+${intro}${ruleSection("CRITICAL OUTPUT FORMAT RULES — NEVER VIOLATE THESE", base.output.map(numberedRule))}${ruleSection("LANGUAGE RULE", base.language.map(bulletRule))}${BANNER}
 FIELD RULES
-=================================================================
+${BANNER}
+${FIELD_PRECEDENCE_NOTE}
 
-name:
-${fieldRules.name}
-
-shortDescription:
-${fieldRules.shortDescription}
-
-longDescription:
-${fieldRules.longDescription}
-
-color:
-${fieldRules.color}
-
-basePrice:
-${fieldRules.basePrice}
-
-label:
-${fieldRules.label}
-- Allowed values: "new" | "discount" | "best_seller" | "" (empty string if none)
-
-targetAudience:
-${fieldRules.targetAudience}
-- Allowed values only: "مردانه" | "زنانه" | "بچگانه" | "یونی سکس"
-- Choose exactly ONE based on who the product is actually made/marketed for.
-- Use "یونی سکس" only when the product is genuinely suitable for both adults: men AND women.
-- IMPORTANT: "یونی سکس" NEVER includes children. If the product is made for children, use "بچگانه".
-- For general-purpose products (e.g. balls, courts, general accessories), choose "یونی سکس" only when
-  they are intended for adult men and women and no child-specific signal exists.
-
-score:
-- DO NOT include this field at all.
-
-brand:
-- Choose exactly ONE id from AVAILABLE BRANDS.
-- Match by semantic meaning. Do NOT guess.
-
-serie:
-- Choose exactly ONE id from AVAILABLE SERIES — OR an empty string "" if none matches.
-- CRITICAL: The chosen serie's "parentBrandId" MUST match your selected brand's id.
-- If a series is mentioned in the text but belongs to a different brand, ignore it and return "".
-- A product can only have a serie from its own brand.
-
-limitedEdition:
-- Limited editions are brand-specific special releases (e.g. Wilson's Roland Garros).
-- Choose exactly ONE id from AVAILABLE LIMITED EDITIONS — OR an empty string "" if none applies.
-- CRITICAL: The chosen limited edition's "parentBrandId" MUST match your selected brand's id.
-- If a limited edition is mentioned in the text but belongs to a different brand, ignore it and return "".
-- Only pick a limited edition if the raw content clearly and explicitly mentions it.
-- A product can have BOTH a serie and a limited edition at the same time.
-
-sport:
-- MUST be exactly: "${sportId}"
-- This is the selected category's owning sport. Do NOT change this value.
-- Do NOT infer or select a sport from the raw content, product name, or category name.
-
-athlete:
-- Pick ALL relevant athlete ids from AVAILABLE ATHLETES as a JSON array.
-- If none mentioned → return [].
-
-category:
-- MUST be exactly: "${category._id}"
-- Do NOT change this value.
-
-attributes:
-- This is a flat JSON object of single string or number values.
-- Keys MUST be the exact English "KEY" field defined in "Category Attributes" below.
-  ✗ Wrong: { "اندازه صفحه": "100" }
-  ✓ Correct: { "Head Size": "100" }
-- If a value is NOT found in raw content:
-  - If the attribute is logically required → infer it from professional knowledge.
-  - If it is optional → omit the key entirely.
-${audienceScopedAttributeRule || "- Every attribute in this category applies to every target audience."}
-
-variantOptions:
-- This is a flat JSON object where each value is an ARRAY of strings.
-- Keys MUST be the exact English "KEY" field defined in "Variant Attributes" below.
-- Extract EVERY value mentioned in the raw content for each key.
-  Example: { "Grip": ["L2", "L3", "L4"] }
-- If no variant attributes are defined → return {}.
-- For normal/non-unit variant attributes, keep the current behavior: array of plain strings.
-- For multi-unit variant attributes:
-  - variantOptions MUST still be an array of strings, never objects.
-  - Put ONLY the primary unit values in variantOptions. The primary unit is the first unit listed for that attribute.
-  - Put all unit conversions/display values in variantMeta, keyed by the same primary value.
-  - DO NOT write combined strings like "EU 47 / CM 30.5" in variantOptions.
-  - DO NOT create separate variants for secondary units. Secondary units are display metadata only.
-  - Preserve fractional or half-step values exactly as strings, e.g. "47 1/3" or "36.5" — only if the raw content actually
-    uses that format for this product; do not invent fractional formatting that isn't present in the source.
-  - If the raw content states a RANGE of sizes (e.g. "36 to 46") instead of listing each one, expand it into every individual
-    size in that range — do not shorten it to just a couple of example values.
-  - Every value you place in variantMeta.<key>.<value>.units MUST be a real, accurate, mutually-consistent conversion of that
-    exact size across all listed units (use standard real-world conversion tables for this product type). Never derive a
-    secondary unit value by an arbitrary formula or pattern — only use correct, known conversions.
-
-variantMeta:
-- This is a JSON object for value-level variant metadata.
-- Always include this field. If there is no metadata → return {}.
-- Shape:
-  {
-    "variantAttributeKey": {
-      "variantOptionPrimaryValue": {
-        "units": { "unitLabel": "value as string" },
-        "images": []
-      }
-    }
-  }
-- For every multi-unit variant value, variantMeta is REQUIRED.
-- The variantMeta key must exactly match a value from variantOptions for the same attribute.
-- The units object must include every unit label defined for that attribute, including the primary unit.
-- Use strings for unit values, even when they look numeric.
-- If an attribute is not multi-unit, do not add units for it. You may omit it from variantMeta unless value-level images are explicitly available.
-${multiUnitVariantInstructions ? `\nMulti-unit variant attributes for this category:\n${multiUnitVariantInstructions}` : "- No multi-unit variant attributes are defined for this category."}
-
-technicalStats:
-- A flat JSON object for radar chart scoring.
-- Keys MUST exactly match the names in "Category Technical Stats" below.
-- Values MUST be integers between 0 and 100.
-- Use professional judgment when the raw content does not explicitly state a score.
-${globalTechnicalPrompt ? `\nScoring Guidance:\n${globalTechnicalPrompt}` : ""}
-- If no technical stats are defined for this category → return {}.
-
-${customTabItemTitles.length ? `customTabItems:
-- customTabItems must be a plain array of strings, each EXACTLY matching one of the titles listed below (character-for-character).
-- Pick ONLY the titles that genuinely apply to this specific product based on the raw content.
-- Do not paraphrase, translate, or invent new titles not in the list.
-- Omit this field entirely (or use an empty array) if none of the listed items apply to this product.
-` : ""}
-
-tag:
-${fieldRules.tag}
-- Must be a JSON array of Persian strings.
-- If none → return [].
-
-mainImage:
-- A direct image URL string if available in raw content.
-- If not found → return "".
-
-gallery:
-- An array of direct image URL strings.
-- If none found → return [].
+${fieldBlocks}
 
 =================================================================
 CATEGORY DEFINITION

@@ -870,6 +870,10 @@ export default function EditCategory() {
               </button>
 
               <div className={`overflow-hidden transition-all duration-500 ${showPromptSection ? 'max-h-[2000px] mt-6' : 'max-h-0'}`}>
+                <p className="text-xs font-bold text-gray-500 mb-4 leading-6">
+                  فقط قواعدِ اختصاصیِ همین دسته را بنویسید. قواعدِ مشترکِ همه‌ی محصولات (پرامپت پایه) و قواعدِ چند دسته
+                  (گروه‌های پرامپت دسته) در «ورزش‌ها ← تنظیمات پرامپت» تعریف می‌شوند و پیش از این قواعد در پرامپت می‌آیند.
+                </p>
                 <div className="grid md:grid-cols-2 gap-5">
                   {productPrompts.map((item, index) => (
                     <Textarea

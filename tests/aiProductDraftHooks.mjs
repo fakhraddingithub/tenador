@@ -3,7 +3,7 @@ export { resolve } from './productCreationHooks.mjs';
 
 export async function load(url, context, next) {
   const result = await loadProductCreation(url, context, next);
-  if (url.endsWith('/src/app/api/ai/product-draft/route.js')) {
+  if (url.endsWith('/src/app/api/ai/product-draft/route.js') || url.endsWith('/src/app/api/admin/product-prompts/route.js')) {
     // Keep the real route, query, population and prompt builder; only replace
     // request authentication and the production DB connection in this test.
     return { ...result, source: String(result.source)

@@ -57,6 +57,7 @@ import "base/models/Payment";
 import "base/models/PasswordResetToken";
 import "base/models/PriceCache";
 import "base/models/Product";
+import "base/models/ProductPromptConfig";
 import "base/models/PushSubscription";
 import "base/models/QuantityDiscount";
 import "base/models/RateLimitHit";

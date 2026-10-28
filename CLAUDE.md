@@ -199,10 +199,10 @@ npm run test:product-creation   # create + edit, real replica set, real schemas 
 Two things hang off it here.
 
 **1. `targetAudience` is a prompt-able field like any other.**
-`buildProductTemplate.js` always read `getPromptContext(category.prompts, "targetAudience")`;
-what was missing was the field in the `productFields` list of both category admin pages, so
-no admin could ever fill it. It is there now (with a default context in the add page), and
-`tests/categoryFormCopy.test.mjs` keeps the two lists in sync with the copy helper.
+`buildProductTemplate.js` always read the category's `targetAudience` prompt; what was missing
+was the field in the `productFields` list of both category admin pages, so no admin could ever
+fill it. It is there now (its default rules live in the base prompt — see «Product prompt
+settings»), and `tests/categoryFormCopy.test.mjs` keeps the two lists in sync with the copy helper.
 
 **2. A fixed attribute can be scoped to target audiences.**
 `Category.attributes[].targetAudiences` (an array on the shared `AttributeSchema`) says which
@@ -271,6 +271,50 @@ npm run test:target-audience       # the helper's truth table + route normalizat
 npm run test:product-page-audience # product-page wiring: server-side filter, radar rule, props
 npm run test:ai-product-draft      # the category prompt and the per-attribute rule in the draft
 npm run test:product-creation      # required-check relaxation, through the real create/edit routes
+```
+
+### Product prompt settings: base prompt + category prompt groups
+
+`/p-admin/admin-sports/prompt-settings` («تنظیمات پرامپت» on the sports page) configures the
+static text of the AI product-draft prompt. Everything lives in **`src/lib/productPromptConfig.js`**
+(pure, imported by the builder, the API and the page alike); storage is one `ProductPromptConfig`
+document (`key: "product"`) behind `GET/PUT /api/admin/product-prompts` (`productPrompts.view/edit`).
+
+Each field of the final prompt is assembled from three sources, always in this order, with one
+precedence note above FIELD RULES ("follow the more specific one"):
+
+| source | where | scope |
+|---|---|---|
+| base prompt | `base: [{section, rules}]` — role, task (global rules), output format, language, one section per field | every product |
+| category prompt groups | `groups[]` in admin order: `{categories, rules: [{field, text, categories}]}` | the group's categories; a rule with `categories: []` → all of them, otherwise only those |
+| the category's own | `category.prompts[]`, `technicalStatsPrompt`, and per-attribute `prompt`s | that category |
+
+Rules that are load-bearing:
+
+- **Data-derived lines are locked, never editable**: the sport/category id locks, the audience-scoped
+  attribute rule, multi-unit instructions, CATEGORY DEFINITION, the brand/athlete/serie/limited-edition
+  lists, raw content and the output skeleton. They stay in `buildProductTemplate.js` (`lockedLines`).
+- **Base `undefined ≠ []`.** An absent section uses the code default (`DEFAULT_BASE_PROMPT`); `rules: []`
+  is deliberately empty. The page only sends sections that differ from the default, so untouched
+  sections keep following the code.
+- **A rule never widens.** A group rule may only target categories in its group (validator → 400),
+  so removing a category from a group blocks the save until the rule is fixed — clearing its last
+  target would have silently turned it into "all categories". A category deleted elsewhere stays
+  stored (saves are not locked by it) and its rule simply matches nothing; the page flags it.
+- **Duplicates are dropped at assembly**, first occurrence wins, compared by `normalizeRule`
+  (whitespace + leading `- ` ignored) per *unit* (`splitRuleUnits`: a line starting with `- ` opens a
+  unit). The add-category page used to seed every new category with default prompts; those texts
+  (`LEGACY_CATEGORY_PROMPT_DEFAULTS`) are now base rules built with the same splitter, so a category
+  still holding a verbatim copy contributes nothing twice. New categories start empty.
+  `npm run check:category-prompt-defaults` lists categories still holding such copies (read-only).
+- The old hardcoded `label` line (`new | discount | best_seller`) contradicted the Product enum and
+  is gone; the base `label` rules list the enum (`none | new | hot | discount | limited`).
+- Concurrent edits: `PUT` requires the `updatedAt` it loaded (409 otherwise) and the schema uses
+  `optimisticConcurrency`.
+
+```bash
+npm run test:product-prompts     # defaults, targeting, validation, order, dedupe, locked lines
+npm run test:ai-product-draft    # real admin route → real document → real draft route
 ```
 
 ### Order EUR pricing (independent of Toman)

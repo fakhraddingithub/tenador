@@ -78,6 +78,17 @@ const SECTION_DEFINITIONS = [
         ],
       },
       {
+        key: "productPrompts",
+        title: "تنظیمات پرامپت محصول",
+        description: "پرامپت پایه و گروه‌های پرامپت دسته برای ساخت پیش‌نویس محصول با AI",
+        path: "/p-admin/admin-sports/prompt-settings",
+        api: ["/api/admin/product-prompts"],
+        permissions: [
+          { key: "view", title: "مشاهده تنظیمات پرامپت" },
+          { key: "edit", title: "ویرایش تنظیمات پرامپت" },
+        ],
+      },
+      {
         key: "categories",
         title: "دسته‌بندی‌ها",
         description: "دسته‌بندی‌های هر ورزش و محصولات آن‌ها",
@@ -1088,6 +1099,7 @@ export const ADMIN_ROUTE_PERMISSIONS = {
   "/p-admin/admin-sports/edit/[sportId]": ["sports.edit"],
   "/p-admin/admin-sports/[sportId]": ["sports.view"],
   "/p-admin/admin-sports/[sportId]/brochure": ["sports.edit"],
+  "/p-admin/admin-sports/prompt-settings": ["productPrompts.view"],
   "/p-admin/admin-sports/[sportId]/brochure/preview": ["sports.edit"],
   "/p-admin/admin-sports/[sportId]/athletes": ["athletes.view"],
 
