@@ -133,9 +133,27 @@ export const PRODUCT_PROMPT_FIELDS = [
   { key: "gallery", title: "گالری" },
 ];
 
-/** فیلدهایی که گروه‌های دسته برایشان قاعده دارند — ورزش/دسته مقدارِ ثابت دارند. */
-export const GROUP_PROMPT_FIELDS = PRODUCT_PROMPT_FIELDS.filter((f) => !f.baseOnly);
-const GROUP_FIELD_KEYS = new Set(GROUP_PROMPT_FIELDS.map((f) => f.key));
+/**
+ * فیلدهای ثابتی که بخشِ «تنظیمات هوش مصنوعی» در فرمِ دسته برایشان پرامپت دارد —
+ * تنها منبعِ این لیست؛ هر دو صفحه‌ی افزودن/ویرایشِ دسته و صفحه‌ی گروه از همین می‌خوانند.
+ */
+export const CATEGORY_PROMPT_FIELDS = [
+  "name", "label", "shortDescription", "longDescription", "color", "basePrice", "targetAudience", "tag",
+];
+
+/** فیلدهایی که گروه‌های پرامپت دسته پیشنهاد می‌دهند — همان فیلدهای فرمِ دسته. */
+export const GROUP_PROMPT_FIELDS = CATEGORY_PROMPT_FIELDS.map((key) => PRODUCT_PROMPT_FIELDS.find((f) => f.key === key));
+
+/**
+ * فیلدهایی که قاعده‌ی گروه *می‌تواند* داشته باشد. پیش از محدود شدنِ گروه‌ها به
+ * فیلدهای فرمِ دسته، همه‌ی فیلدهای غیرثابت پیشنهاد می‌شدند؛ قاعده‌ای که آن زمان
+ * برای مثلاً «برند» ذخیره شده، دست‌نخورده ذخیره و اعمال می‌شود و فقط ساختنِ
+ * قاعده‌ی تازه برایشان دیگر ممکن نیست (سازگاری با داده‌ی موجود).
+ */
+const GROUP_FIELD_KEYS = new Set(PRODUCT_PROMPT_FIELDS.filter((f) => !f.baseOnly).map((f) => f.key));
+const OFFERED_GROUP_FIELD_KEYS = new Set(CATEGORY_PROMPT_FIELDS);
+export const isLegacyGroupField = (field) => GROUP_FIELD_KEYS.has(field) && !OFFERED_GROUP_FIELD_KEYS.has(field);
+export const fieldTitle = (key) => PRODUCT_PROMPT_FIELDS.find((f) => f.key === key)?.title || key;
 
 export const BASE_PROMPT_SECTIONS = [
   { key: "role", title: "نقش مدل", style: "plain" },
@@ -308,9 +326,13 @@ const OBJECT_ID = /^[a-f\d]{24}$/i;
 const idList = (value) => (Array.isArray(value) ? value.map((id) => String(id?._id ?? id)) : null);
 
 /**
- * کلِ تنظیمات را اعتبارسنجی و پاک‌سازی می‌کند — همان تابع در سرور و پنل.
+ * تنظیمات را اعتبارسنجی و پاک‌سازی می‌کند — همان تابع در سرور و پنل.
  *
- * @param {object} input            { base: [{section, rules}], groups: [{title, categories, rules: [{field, text, categories}]}] }
+ * هر دو بخش اختیاری‌اند (undefined ≠ []): صفحه‌ی پرامپت پایه فقط `base` و صفحه‌ی
+ * گروه فقط `groups` می‌فرستد، و بخشِ نفرستاده در خروجی هم undefined می‌ماند تا
+ * روت آن را دست نزند. `_id`ِ گروه (شناسه‌ی صفحه‌ی آن) حفظ می‌شود.
+ *
+ * @param {object} input            { base?: [{section, rules}], groups?: [{_id?, title, categories, rules: [{field, text, categories}]}] }
  * @param {object} opts
  * @param {Set<string>} opts.knownCategoryIds  دسته‌هایی که مجازند: موجود در دیتابیس ∪ همان‌هایی که قبلاً
  *   ذخیره شده بودند (دسته‌ی حذف‌شده بی‌صدا می‌ماند و قاعده‌اش غیرفعال است، ولی دسته‌ی ناموجودِ تازه رد می‌شود)
@@ -334,8 +356,9 @@ export function validatePromptConfig(input, { knownCategoryIds = null } = {}) {
   };
 
   // ── پایه
-  const base = [];
+  const base = input?.base === undefined ? undefined : [];
   const seenSections = new Set();
+  if (base && !Array.isArray(input.base)) fail("base", "پرامپت پایه باید آرایه باشد");
   for (const [i, section] of (Array.isArray(input?.base) ? input.base : []).entries()) {
     const key = section?.section;
     if (!SECTION_KEYS.has(key)) { fail(`base.${i}`, "بخشِ ناشناخته"); continue; }
@@ -356,10 +379,16 @@ export function validatePromptConfig(input, { knownCategoryIds = null } = {}) {
   }
 
   // ── گروه‌ها
+  if (input?.groups !== undefined && !Array.isArray(input.groups)) fail("groups", "گروه‌ها باید آرایه باشند");
   const rawGroups = Array.isArray(input?.groups) ? input.groups : [];
   if (rawGroups.length > PROMPT_LIMITS.groups) fail("groups", `حداکثر ${PROMPT_LIMITS.groups} گروه`);
-  const groups = rawGroups.map((group, g) => {
+  const seenGroupIds = new Set();
+  const groups = input?.groups === undefined ? undefined : rawGroups.map((group, g) => {
     const at = `groups.${g}`;
+    // شناسه فقط اگر معتبر باشد نگه داشته می‌شود؛ گروهِ تازه شناسه را از mongoose می‌گیرد
+    const _id = OBJECT_ID.test(String(group?._id ?? "")) ? String(group._id) : undefined;
+    if (_id && seenGroupIds.has(_id)) fail(at, "شناسه‌ی گروه تکراری است");
+    if (_id) seenGroupIds.add(_id);
     const title = typeof group?.title === "string" ? group.title.trim() : "";
     if (title.length > PROMPT_LIMITS.titleLength) fail(`${at}.title`, "عنوانِ گروه خیلی بلند است");
 
@@ -391,7 +420,7 @@ export function validatePromptConfig(input, { knownCategoryIds = null } = {}) {
       seen.add(dup);
       rules.push({ field: rule.field, text, categories: targets });
     });
-    return { title, categories, rules };
+    return { ...(_id ? { _id } : {}), title, categories, rules };
   });
 
   return { value: errors.length ? null : { base, groups }, errors };

@@ -1,6 +1,7 @@
 'use client';
 
 import { getCategoryLabel } from "base/utils/categoryLabel";
+import { CATEGORY_PROMPT_FIELDS } from "@/lib/productPromptConfig";
 import { useState, useEffect, useMemo } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import AdminLoader from '@/components/admin/AdminLoader';
@@ -161,16 +162,7 @@ export default function EditCategory() {
   const [showPromptSection, setShowPromptSection] = useState(false);
   const [editingId, setEditingId] = useState(null);
 
-  const productFields = [
-    'name',
-    'label',
-    'shortDescription',
-    'longDescription',
-    'color',
-    'basePrice',
-    'targetAudience',
-    'tag',
-  ];
+  const productFields = CATEGORY_PROMPT_FIELDS;
 
   const [productPrompts, setProductPrompts] = useState(
     productFields.map((field) => ({ field, context: '' }))

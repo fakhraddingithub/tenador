@@ -277,8 +277,27 @@ npm run test:product-creation      # required-check relaxation, through the real
 
 `/p-admin/admin-sports/prompt-settings` («تنظیمات پرامپت» on the sports page) configures the
 static text of the AI product-draft prompt. Everything lives in **`src/lib/productPromptConfig.js`**
-(pure, imported by the builder, the API and the page alike); storage is one `ProductPromptConfig`
+(pure, imported by the builder, the API and the pages alike); storage is one `ProductPromptConfig`
 document (`key: "product"`) behind `GET/PUT /api/admin/product-prompts` (`productPrompts.view/edit`).
+
+| page | what it does |
+|---|---|
+| `…/prompt-settings` | overview: Base Prompt card, the groups (reorder / delete save immediately), «ایجاد گروه جدید», final-prompt preview |
+| `…/prompt-settings/base` | one tab per base section (general rules + one per product field); only the active tab's rules are shown |
+| `…/prompt-settings/groups/[groupId]` | one group (`new` creates); title + categories, then one tab per `CATEGORY_PROMPT_FIELDS` field |
+
+Shared client pieces (config load/save with the 409 handling, tabs, rule card, category picker,
+unsaved-changes guard) are in `src/components/admin/productPrompts/promptSettingsUi.jsx`.
+
+- **Each page saves only its own part.** `PUT` takes `{ base?, groups?, updatedAt }`; an absent part is
+  left untouched (`validatePromptConfig` returns it as `undefined`). `updatedAt` is shared, so a save on
+  a version another page already changed is a 409, never a silent overwrite.
+- **A group's `_id` is its URL** and is preserved by the validator; a group without one (a new group) gets
+  it from mongoose. The group page sends every group (the others exactly as loaded) with its own replaced.
+- **Groups offer exactly the category editor's AI-settings fields** — `CATEGORY_PROMPT_FIELDS`, which both
+  category forms import, so the two lists cannot drift. A rule stored earlier for another field (groups
+  used to offer every output field) stays valid and keeps being applied; the group page lists such rules
+  in a separate «فیلدهای دیگر (قدیمی)» tab where they can be edited or deleted but not added.
 
 Each field of the final prompt is assembled from three sources, always in this order, with one
 precedence note above FIELD RULES ("follow the more specific one"):

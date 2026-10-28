@@ -1,10 +1,13 @@
 import test from "node:test";
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import { buildProductTemplate } from "../src/lib/buildProductTemplate.js";
 import {
   BASE_PROMPT_SECTIONS,
   DEFAULT_BASE_PROMPT,
+  CATEGORY_PROMPT_FIELDS,
   GROUP_PROMPT_FIELDS,
+  isLegacyGroupField,
   LEGACY_CATEGORY_PROMPT_DEFAULTS,
   normalizeRule,
   resolveBasePrompt,
@@ -198,11 +201,40 @@ test("validation output is clean: trimmed text, string ids, unknown keys dropped
   });
 });
 
-test("every group field is a real output field (sport, category, score are base-only)", () => {
-  const keys = GROUP_PROMPT_FIELDS.map((f) => f.key);
-  for (const fixed of ["sport", "category", "score"]) assert.ok(!keys.includes(fixed));
-  const prompt = draft(category(A, { customTab: { enabled: true, name: "x", items: [{ title: "t" }] } }));
-  for (const key of keys) fieldBlock(prompt, key);
+test("groups offer exactly the fields of the category editor's AI settings, and both category forms read that list", () => {
+  assert.deepEqual(CATEGORY_PROMPT_FIELDS, ["name", "label", "shortDescription", "longDescription", "color", "basePrice", "targetAudience", "tag"]);
+  assert.deepEqual(GROUP_PROMPT_FIELDS.map((f) => f.key), CATEGORY_PROMPT_FIELDS);
+  for (const page of ["add/page.jsx", "edit/[categoryId]/page.jsx"]) {
+    const src = readFileSync(new URL(`../src/app/(Admin-Panel)/p-admin/admin-categories/${page}`, import.meta.url), "utf8");
+    assert.match(src, /const productFields = CATEGORY_PROMPT_FIELDS/, page);
+  }
+  const prompt = draft(category(A));
+  for (const key of CATEGORY_PROMPT_FIELDS) fieldBlock(prompt, key);
+});
+
+test("a group rule saved earlier for a field outside that list stays valid and keeps being applied", () => {
+  assert.ok(isLegacyGroupField("brand") && !isLegacyGroupField("name") && !isLegacyGroupField("sport"));
+  const groups = [{ categories: [A], rules: [{ field: "brand", text: "LEGACY BRAND RULE", categories: [] }] }];
+  assert.deepEqual(validatePromptConfig({ groups }).errors, []);
+  assert.ok(fieldBlock(draft(category(A), { groups }), "brand").includes("LEGACY BRAND RULE"));
+  // ورزش/دسته/امتیاز هرگز قاعده‌ی گروه نمی‌پذیرند
+  assert.equal(validatePromptConfig({ groups: [{ categories: [A], rules: [{ field: "sport", text: "x" }] }] }).errors.length, 1);
+});
+
+test("partial saves: an absent part stays undefined, a malformed one is rejected", () => {
+  assert.equal(validatePromptConfig({ base: [] }).value.groups, undefined);
+  assert.equal(validatePromptConfig({ groups: [] }).value.base, undefined);
+  assert.deepEqual(validatePromptConfig({}).value, { base: undefined, groups: undefined });
+  assert.deepEqual(validatePromptConfig({ base: "x" }).errors.map((e) => e.path), ["base"]);
+  assert.deepEqual(validatePromptConfig({ groups: {} }).errors.map((e) => e.path), ["groups"]);
+});
+
+test("group ids: a valid id is kept, an invalid one dropped, a duplicate rejected", () => {
+  const g = (_id) => ({ _id, categories: [A], rules: [] });
+  const { value } = validatePromptConfig({ groups: [g(B), g("not-an-id")] });
+  assert.equal(value.groups[0]._id, B);
+  assert.ok(!("_id" in value.groups[1]));
+  assert.deepEqual(validatePromptConfig({ groups: [g(B), g(B)] }).errors.map((e) => e.path), ["groups.1"]);
 });
 
 test("resolveFieldRules ignores groups that do not contain the category", () => {

@@ -264,3 +264,49 @@ test('prompt settings: saved through the admin route, applied per category by th
 
   await mongoose.model('ProductPromptConfig').deleteMany({});
 });
+
+test('prompt settings pages save separately: base-only and groups-only saves leave the other part alone, group ids are stable', async () => {
+  const { GET, PUT } = await import('../src/app/api/admin/product-prompts/route.js');
+  const put = async (body) => { const res = await PUT({ json: async () => body }); return { status: res.status, body: await res.json() }; };
+  const load = async () => (await (await GET()).json()).config;
+  await mongoose.model('ProductPromptConfig').deleteMany({});
+
+  const groupA = { title: 'A', categories: [String(tennisCategory._id)], rules: [{ field: 'name', text: 'RULE A', categories: [] }] };
+  const groupB = { title: 'B', categories: [String(padelCategory._id)], rules: [{ field: 'brand', text: 'LEGACY BRAND RULE', categories: [] }] };
+  let r = await put({ updatedAt: null, groups: [groupA, groupB] });
+  assert.equal(r.status, 200, JSON.stringify(r.body));
+  const [idA, idB] = r.body.config.groups.map((g) => g._id);
+  assert.match(idA, /^[a-f\d]{24}$/);
+  assert.deepEqual(r.body.config.base, []);
+
+  // صفحه‌ی پرامپت پایه فقط base می‌فرستد: گروه‌ها و شناسه‌هایشان دست‌نخورده
+  r = await put({ updatedAt: r.body.config.updatedAt, base: [{ section: 'task', rules: ['ONLY TASK RULE'] }] });
+  assert.equal(r.status, 200, JSON.stringify(r.body));
+  assert.deepEqual(r.body.config.groups.map((g) => g._id), [idA, idB]);
+  assert.deepEqual(r.body.config.groups[1].rules, [{ field: 'brand', text: 'LEGACY BRAND RULE', categories: [] }]);
+
+  // صفحه‌ی یک گروه فقط groups می‌فرستد (با _id): base دست‌نخورده، شناسه‌ها پایدار
+  const edited = { ...r.body.config.groups[0], rules: [{ field: 'name', text: 'RULE A EDITED', categories: [] }] };
+  r = await put({ updatedAt: r.body.config.updatedAt, groups: [edited, r.body.config.groups[1]] });
+  assert.equal(r.status, 200, JSON.stringify(r.body));
+  assert.deepEqual(r.body.config.base, [{ section: 'task', rules: ['ONLY TASK RULE'] }]);
+  assert.deepEqual(r.body.config.groups.map((g) => g._id), [idA, idB]);
+  assert.deepEqual(await load(), r.body.config);
+
+  // ساختِ گروهِ تازه (بدونِ _id) به انتها می‌رود و شناسه می‌گیرد؛ قبلی‌ها همان می‌مانند
+  r = await put({ updatedAt: r.body.config.updatedAt, groups: [...r.body.config.groups, { title: 'C', categories: [String(tennisCategory._id)], rules: [] }] });
+  assert.equal(r.status, 200, JSON.stringify(r.body));
+  assert.deepEqual(r.body.config.groups.slice(0, 2).map((g) => g._id), [idA, idB]);
+  assert.match(r.body.config.groups[2]._id, /^[a-f\d]{24}$/);
+
+  // بدنه‌ی بی‌محتوا ذخیره نمی‌شود؛ نسخه‌ی کهنه ۴۰۹
+  assert.equal((await put({ updatedAt: r.body.config.updatedAt })).status, 400);
+  assert.equal((await put({ updatedAt: null, base: [] })).status, 409);
+
+  const draft = (await (await requestDraft(tennisCategory._id)).json()).draft;
+  assert.ok(draft.includes('- ONLY TASK RULE') && draft.includes('RULE A EDITED') && !draft.includes('READ the raw product content'));
+  const padelDraft = (await (await requestDraft(padelCategory._id)).json()).draft;
+  assert.ok(padelDraft.includes('LEGACY BRAND RULE') && !padelDraft.includes('RULE A EDITED'));
+
+  await mongoose.model('ProductPromptConfig').deleteMany({});
+});

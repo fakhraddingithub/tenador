@@ -11,6 +11,7 @@ const KEY = "product";
 const serialize = (doc) => ({
   base: (doc?.base || []).map(({ section, rules }) => ({ section, rules: [...rules] })),
   groups: (doc?.groups || []).map((g) => ({
+    _id: String(g._id),
     title: g.title || "",
     categories: (g.categories || []).map(String),
     rules: (g.rules || []).map((r) => ({ field: r.field, text: r.text, categories: (r.categories || []).map(String) })),
@@ -51,7 +52,10 @@ export async function GET() {
   }
 }
 
-// PUT /api/admin/product-prompts  { base, groups, updatedAt } → کلِ تنظیمات، یک‌جا
+// PUT /api/admin/product-prompts  { base?, groups?, updatedAt }
+// هر بخشِ فرستاده‌نشده دست‌نخورده می‌ماند: صفحه‌ی پرامپت پایه فقط base و صفحه‌ی
+// گروه‌ها فقط groups را می‌فرستد. updatedAt برای هر دو یکی است، پس ذخیره روی
+// نسخه‌ای که ادمین ندیده (از هر صفحه‌ای) با ۴۰۹ رد می‌شود.
 export async function PUT(req) {
   const { denied } = await requireAdminPermission("productPrompts.edit");
   if (denied) return denied;
@@ -87,15 +91,16 @@ export async function PUT(req) {
     const knownCategoryIds = new Set([...stored, ...existing.map((c) => String(c._id))]);
 
     const { value, errors } = validatePromptConfig(body, { knownCategoryIds });
-    if (!value) {
+    if (!value || (value.base === undefined && value.groups === undefined)) {
+      if (value) return Response.json({ error: "چیزی برای ذخیره فرستاده نشده است" }, { status: 400 });
       const fieldErrors = {};
       for (const { path, message } of errors) fieldErrors[path] ??= message;
       return Response.json({ error: errors[0].message, fieldErrors }, { status: 400 });
     }
 
     const target = doc || new ProductPromptConfig({ key: KEY });
-    target.base = value.base;
-    target.groups = value.groups;
+    if (value.base !== undefined) target.base = value.base;
+    if (value.groups !== undefined) target.groups = value.groups;
     await target.save();
     return Response.json({ config: serialize(target) });
   } catch (err) {

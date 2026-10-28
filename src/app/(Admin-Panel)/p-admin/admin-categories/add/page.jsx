@@ -1,6 +1,7 @@
 'use client';
 
 import { getCategoryLabel } from "base/utils/categoryLabel";
+import { CATEGORY_PROMPT_FIELDS } from "@/lib/productPromptConfig";
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import {
@@ -170,16 +171,7 @@ export default function AddCategory() {
 
   // قواعدِ پیش‌فرضِ این فیلدها حالا در «تنظیمات پرامپت» (پرامپت پایه) هستند؛ اینجا
   // فقط قواعدِ اختصاصیِ همین دسته نوشته می‌شود، پس دسته‌ی تازه خالی شروع می‌شود.
-  const productFields = [
-    'name',
-    'label',
-    'shortDescription',
-    'longDescription',
-    'color',
-    'basePrice',
-    'targetAudience',
-    'tag',
-  ].map((field) => ({ field, context: '' }));
+  const productFields = CATEGORY_PROMPT_FIELDS.map((field) => ({ field, context: '' }));
 
   const [productPrompts, setProductPrompts] = useState(
     productFields.map((item) => ({ field: item.field, context: item.context }))
