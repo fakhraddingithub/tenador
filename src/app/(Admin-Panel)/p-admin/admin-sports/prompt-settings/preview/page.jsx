@@ -271,18 +271,20 @@ const fieldTitleOf = (key) => BASE_PROMPT_SECTIONS.find((s) => s.field === key)?
 
 function PromptArticle({ data, loading, categoryLabel, groupLabel, ruleProps }) {
   const { model } = data;
-  // فیلترِ منبع: کدام رنگ‌ها دیده شوند، و (اختیاری) فقط یک گروهِ مشخص
-  const [tones, setTones] = useState(() => new Set(Object.keys(TONES)));
+  // فیلترِ منبع: منبع‌های انتخاب‌شده — خالی یعنی «همه»؛ با انتخاب، فقط همان‌ها
+  // دیده می‌شوند. به‌علاوه (اختیاری) فقط یک گروهِ مشخص.
+  const [tones, setTones] = useState(() => new Set());
   const [groupFilter, setGroupFilter] = useState('');
 
   const rules = allRules(model);
   const counts = rules.reduce((acc, r) => ({ ...acc, [toneOf(r.source.kind)]: (acc[toneOf(r.source.kind)] || 0) + 1 }), {});
   const groupIds = [...new Set(rules.filter((r) => r.source.kind === 'group').map((r) => r.source.groupId ?? ''))];
   const activeGroup = groupIds.includes(groupFilter) ? groupFilter : '';
-  const filtering = tones.size < Object.keys(TONES).length || Boolean(activeGroup);
+  const toneShown = (tone) => !tones.size || tones.has(tone);
+  const filtering = tones.size > 0 || Boolean(activeGroup);
   const shown = (r) => {
     const tone = toneOf(r.source.kind);
-    return tones.has(tone) && (tone !== 'group' || !activeGroup || (r.source.groupId ?? '') === activeGroup);
+    return toneShown(tone) && (tone !== 'group' || !activeGroup || (r.source.groupId ?? '') === activeGroup);
   };
   const only = (list) => list.filter(shown);
   const toggleTone = (key) =>
@@ -355,7 +357,7 @@ function PromptArticle({ data, loading, categoryLabel, groupLabel, ruleProps }) 
           </p>
           {filtering && (
             <p className="text-xs font-bold text-amber-700">
-              فیلتر فعال است: فقط قواعدِ {[...tones].map((t) => TONES[t].label).join('، ') || '—'}
+              فیلتر فعال است: فقط قواعدِ {tones.size ? [...tones].map((t) => TONES[t].label).join('، ') : 'همه‌ی منبع‌ها'}
               {activeGroup !== '' && ` (فقط گروه «${groupLabel(activeGroup)}»)`} نمایش داده می‌شوند.
             </p>
           )}
@@ -437,7 +439,7 @@ function PromptArticle({ data, loading, categoryLabel, groupLabel, ruleProps }) 
             {filtering && (
               <button
                 type="button"
-                onClick={() => { setTones(new Set(Object.keys(TONES))); setGroupFilter(''); }}
+                onClick={() => { setTones(new Set()); setGroupFilter(''); }}
                 className="text-[11px] font-bold text-[var(--color-primary)] hover:underline"
               >
                 نمایش همه
@@ -446,19 +448,26 @@ function PromptArticle({ data, loading, categoryLabel, groupLabel, ruleProps }) 
           </div>
           <div className="flex flex-wrap lg:flex-col gap-1.5" role="group" aria-label="فیلتر بر اساسِ منبع">
             {Object.entries(TONES).map(([key, t]) => {
-              const on = tones.has(key);
+              // انتخاب‌شده: پررنگ با حاشیه؛ وقتی چیزی انتخاب نشده همه با رنگِ خودشان (همه دیده می‌شوند)؛
+              // وقتی منبعِ دیگری انتخاب شده، کم‌رنگ (پنهان)
+              const selected = tones.has(key);
+              const visible = toneShown(key);
               return (
                 <button
                   key={key}
                   type="button"
-                  aria-pressed={on}
+                  aria-pressed={selected}
                   onClick={() => toggleTone(key)}
                   className={`inline-flex items-center justify-between gap-2 px-2.5 py-1.5 rounded-lg text-xs font-bold border transition-colors ${
-                    on ? `${t.chip} border-transparent` : 'bg-white text-gray-400 border-gray-200 hover:border-gray-300'
+                    selected
+                      ? `${t.chip} border-current ring-1 ring-current`
+                      : visible
+                        ? `${t.chip} border-transparent hover:border-current`
+                        : 'bg-white text-gray-400 border-gray-200 hover:border-gray-300'
                   }`}
                 >
                   <span className="inline-flex items-center gap-1.5">
-                    <span className={`w-2 h-2 rounded-full ${on ? t.dot : 'bg-gray-300'}`} />
+                    <span className={`w-2 h-2 rounded-full ${visible ? t.dot : 'bg-gray-300'}`} />
                     {t.label}
                   </span>
                   <span className="text-[10px] opacity-80">{counts[key] || 0}</span>
@@ -466,7 +475,7 @@ function PromptArticle({ data, loading, categoryLabel, groupLabel, ruleProps }) 
               );
             })}
           </div>
-          {groupIds.length > 0 && tones.has('group') && (
+          {groupIds.length > 0 && toneShown('group') && (
             <label className="block mt-2">
               <span className="sr-only">گروه</span>
               <select
