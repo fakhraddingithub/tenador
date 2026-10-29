@@ -416,8 +416,8 @@ function PromptArticle({ data, loading, categoryLabel, groupLabel, ruleProps }) 
                     {f.def && f.def.items.length > 0 && (
                       <Layer tone="category" title={f.def.title} meta="در بخشِ «تعریف دسته»">
                         <div className="space-y-2">
-                          {f.def.items.map(({ rule, caption }, i) => (
-                            <Rule key={i} rule={rule} caption={caption} placement={f.def.placement} {...ruleProps} />
+                          {f.def.items.map(({ rule, caption }) => (
+                            <Rule key={sourceId(rule.source)} rule={rule} caption={caption} placement={f.def.placement} {...ruleProps} />
                           ))}
                         </div>
                       </Layer>
@@ -553,7 +553,7 @@ function RuleList({ rules, placement, numbered, ruleProps }) {
   return (
     <div className="space-y-2">
       {rules.map((rule, i) => (
-        <Rule key={i} rule={rule} marker={numbered ? `${i + 1}.` : null} placement={placement} {...ruleProps} />
+        <Rule key={sourceId(rule.source)} rule={rule} marker={numbered ? `${i + 1}.` : null} placement={placement} {...ruleProps} />
       ))}
     </div>
   );
@@ -572,82 +572,119 @@ function Rule({ rule, marker, caption, placement, openId, setOpenId, describe, c
   const [busy, setBusy] = useState(false);
   const ref = useRef(null);
 
-  const close = () => {
-    setEditing(false);
-    setError('');
-    setOpenId(null);
-  };
-  const toggle = () => {
-    setEditing(false);
-    setError('');
-    setOpenId(open ? null : id);
-  };
+  const close = () => setOpenId(null);
+  const toggle = () => setOpenId(open ? null : id);
 
-  // بستن با Escape یا کلیک بیرون — جز در حالِ ویرایش، تا متنِ نوشته‌شده از دست نرود
+  // بستنِ پنجره‌ی منبع با Escape یا کلیک بیرون
   useEffect(() => {
     if (!open) return;
-    const dismiss = () => {
-      setEditing(false);
-      setError('');
-      setOpenId(null);
-    };
-    const onDown = (e) => { if (!editing && !ref.current?.contains(e.target)) dismiss(); };
-    const onKey = (e) => { if (e.key === 'Escape') dismiss(); };
+    const onDown = (e) => { if (!ref.current?.contains(e.target)) setOpenId(null); };
+    const onKey = (e) => { if (e.key === 'Escape') setOpenId(null); };
     document.addEventListener('mousedown', onDown);
     document.addEventListener('keydown', onKey);
     return () => {
       document.removeEventListener('mousedown', onDown);
       document.removeEventListener('keydown', onKey);
     };
-  }, [open, editing, setOpenId]);
+  }, [open, setOpenId]);
 
+  // ویرایش درجا: متنِ خودِ کادر با ویرایشگر جایگزین می‌شود و پنجره‌ی منبع بسته می‌شود
   const startEdit = () => {
     setDraft(rule.source.value ?? rule.text);
     setError('');
     setEditing(true);
+    setOpenId(null);
+  };
+  const cancel = () => {
+    setEditing(false);
+    setError('');
   };
   const submit = async () => {
     setBusy(true);
     const message = await onSave(rule, draft);
     setBusy(false);
     if (message) setError(message);
-    else close();
+    else setEditing(false);
   };
 
   const isSystem = rule.source.kind === 'system';
   const partial = !isSystem && typeof rule.source.value === 'string' && rule.source.value.trim() !== rule.text.trim();
   const categoryOwned = toneOf(rule.source.kind) === 'category';
+  const unchanged = draft === rule.source.value;
 
-  return (
-    <div ref={ref} className="relative">
-      <div
-        dir="ltr"
-        role="button"
-        tabIndex={0}
-        aria-expanded={open}
-        onClick={toggle}
-        onKeyDown={(e) => {
-          if (e.key === 'Enter' || e.key === ' ') {
-            e.preventDefault();
-            toggle();
-          }
-        }}
-        className={`flex gap-3 items-start rounded-lg border-l-4 text-left px-3.5 py-2.5 cursor-pointer transition-colors outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-primary)]/40 ${tone.rule} ${open ? 'ring-2 ring-[var(--color-primary)]/30' : ''}`}
-      >
-        {marker && <span className="mt-0.5 shrink-0 w-6 text-center text-xs font-bold text-gray-400">{marker}</span>}
-        <div className="flex-1 min-w-0">
-          {caption && <p dir="auto" className="mb-0.5 text-left text-[11px] font-bold text-gray-500">{caption}</p>}
+  const body = (
+    <>
+      {marker && <span className="mt-0.5 shrink-0 w-6 text-center text-xs font-bold text-gray-400">{marker}</span>}
+      <div className="flex-1 min-w-0">
+        {caption && <p dir="auto" className="mb-0.5 text-left text-[11px] font-bold text-gray-500">{caption}</p>}
+        {editing ? (
+          <div className="space-y-2">
+            <textarea
+              value={draft}
+              autoFocus
+              rows={Math.min(14, Math.max(2, draft.split('\n').length + 1))}
+              onChange={(e) => setDraft(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Escape') cancel();
+                if (e.key === 'Enter' && (e.ctrlKey || e.metaKey) && !unchanged && !busy) submit();
+              }}
+              aria-label="متن قاعده"
+              className={`${textareaClass} bg-white! ${error ? 'border-red-400' : 'border-gray-200'}`}
+            />
+            <div dir="rtl" className="space-y-2 text-right">
+              {partial && (
+                <p className="text-[11px] font-bold text-amber-700 leading-5">
+                  متنِ کاملِ ذخیره‌شده ویرایش می‌شود؛ بخش‌هایی از آن که تکرارِ قاعده‌ای پیش از آن‌اند در پرامپت نمی‌آیند.
+                </p>
+              )}
+              {categoryOwned && <p className="text-[11px] font-bold text-gray-400">خالی گذاشتن یعنی حذفِ این متن از دسته.</p>}
+              {error && <p className="text-xs font-bold text-red-500">! {error}</p>}
+              <div className="flex flex-wrap items-center gap-2">
+                <Button size="sm" loading={busy} disabled={unchanged} onClick={submit}>ذخیره</Button>
+                <Button size="sm" variant="secondary" disabled={busy} onClick={cancel}>انصراف</Button>
+                <span dir="ltr" className="text-[10px] font-bold text-gray-400">Ctrl+Enter · Esc</span>
+              </div>
+            </div>
+          </div>
+        ) : (
           <div
             dir="auto"
             className={`whitespace-pre-wrap break-words text-left text-[13px] leading-7 ${isSystem ? 'text-gray-500 max-h-48 overflow-y-auto' : 'text-gray-800'}`}
           >
             {rule.text}
           </div>
-        </div>
-        {isSystem && <FiLock className="mt-1.5 shrink-0 text-gray-400" size={12} aria-label="قفل" />}
+        )}
       </div>
+      {isSystem && <FiLock className="mt-1.5 shrink-0 text-gray-400" size={12} aria-label="قفل" />}
+    </>
+  );
 
-      {open && (
+  return (
+    <div ref={ref} className="relative">
+      {editing ? (
+        <div dir="ltr" className={`flex gap-3 items-start rounded-lg border-l-4 text-left px-3.5 py-2.5 ring-2 ring-[var(--color-primary)]/40 ${tone.rule}`}>
+          {body}
+        </div>
+      ) : (
+        <div
+          dir="ltr"
+          role="button"
+          tabIndex={0}
+          aria-expanded={open}
+          onClick={toggle}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter' || e.key === ' ') {
+              e.preventDefault();
+              toggle();
+            }
+          }}
+          className={`flex gap-3 items-start rounded-lg border-l-4 text-left px-3.5 py-2.5 cursor-pointer transition-colors outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-primary)]/40 ${tone.rule} ${open ? 'ring-2 ring-[var(--color-primary)]/30' : ''}`}
+        >
+          {body}
+        </div>
+      )}
+
+      {open && !editing && (
         <div role="dialog" aria-label="منبع قاعده" className="absolute z-30 top-full left-0 mt-2 w-full sm:w-[min(36rem,100%)] rounded-xl bg-white shadow-xl ring-1 ring-black/10 p-4 space-y-3">
           <span aria-hidden className="absolute -top-1.5 left-6 w-3 h-3 rotate-45 bg-white border-t border-l border-black/10" />
           <div className="flex items-center justify-between gap-2">
@@ -677,38 +714,19 @@ function Rule({ rule, marker, caption, placement, openId, setOpenId, describe, c
             جایگاه در پرامپت: <span dir="ltr" className="font-mono">{placement}</span>
           </p>
 
-          {editing ? (
-            <div className="space-y-2">
-              <textarea
-                value={draft}
-                autoFocus
-                rows={Math.min(14, Math.max(3, draft.split('\n').length + 1))}
-                onChange={(e) => setDraft(e.target.value)}
-                aria-label="متن قاعده"
-                className={`${textareaClass} ${error ? 'border-red-400' : 'border-gray-200'}`}
-              />
-              {categoryOwned && <p className="text-[11px] font-bold text-gray-400">خالی گذاشتن یعنی حذفِ این متن از دسته.</p>}
-              {error && <p className="text-xs font-bold text-red-500">! {error}</p>}
-              <div className="flex gap-2">
-                <Button size="sm" loading={busy} disabled={draft === rule.source.value} onClick={submit}>ذخیره</Button>
-                <Button size="sm" variant="secondary" disabled={busy} onClick={() => { setEditing(false); setError(''); }}>انصراف</Button>
-              </div>
-            </div>
-          ) : (
-            <div className="flex flex-wrap items-center gap-2">
-              {d.editable && canEdit && (
-                <Button size="sm" icon={<FiEdit3 size={13} />} onClick={startEdit}>ویرایش قاعده</Button>
-              )}
-              {d.href && (
-                <Link href={d.href} className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold rounded-[var(--admin-radius)] border border-[var(--admin-border)] text-gray-700 hover:border-[var(--color-primary)] hover:text-[var(--color-primary)]">
-                  باز کردن در تنظیمات <FiExternalLink size={12} />
-                </Link>
-              )}
-              {d.editable && !canEdit && (
-                <span className="text-[11px] font-bold text-gray-400">برای ویرایش، دسترسی «ویرایش تنظیمات پرامپت» لازم است.</span>
-              )}
-            </div>
-          )}
+          <div className="flex flex-wrap items-center gap-2">
+            {d.editable && canEdit && (
+              <Button size="sm" icon={<FiEdit3 size={13} />} onClick={startEdit}>ویرایش قاعده</Button>
+            )}
+            {d.href && (
+              <Link href={d.href} className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold rounded-[var(--admin-radius)] border border-[var(--admin-border)] text-gray-700 hover:border-[var(--color-primary)] hover:text-[var(--color-primary)]">
+                باز کردن در تنظیمات <FiExternalLink size={12} />
+              </Link>
+            )}
+            {d.editable && !canEdit && (
+              <span className="text-[11px] font-bold text-gray-400">برای ویرایش، دسترسی «ویرایش تنظیمات پرامپت» لازم است.</span>
+            )}
+          </div>
         </div>
       )}
     </div>
