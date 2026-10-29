@@ -75,7 +75,13 @@ function GroupEditor({ ctx, stored, canEdit }) {
 
   const [group, setGroup] = useState(() => toLocal(stored));
   const [savedJson, setSavedJson] = useState(() => JSON.stringify(toPayload(toLocal(stored), groupIdOf)));
-  const [active, setActive] = useState(GROUP_PROMPT_FIELDS[0].key);
+  // پیوندِ مستقیم به تبِ یک فیلد (مثلاً از پیش‌نمایش): …/groups/<id>#name — این
+  // ویرایشگر فقط پس از بارگذاریِ تنظیمات و فقط در مرورگر mount می‌شود
+  const [active, setActive] = useState(() => {
+    const key = decodeURIComponent(window.location.hash.slice(1));
+    if (GROUP_PROMPT_FIELDS.some((f) => f.key === key)) return key;
+    return isLegacyGroupField(key) ? LEGACY_TAB : GROUP_PROMPT_FIELDS[0].key;
+  });
   const [editCategories, setEditCategories] = useState(!stored?.categories?.length);
   const [focusUid, setFocusUid] = useState(null);
   const [serverErrors, setServerErrors] = useState({});

@@ -128,12 +128,14 @@ export function buildCategoryCopy(
       enabled: !!source.customTab?.enabled,
       name: source.customTab?.name || "",
       icon: source.customTab?.icon || "",
+      prompt: source.customTab?.prompt || "",
       // _id آیتم‌ها کپی نمی‌شود — این‌ها ساب‌داکیومنتِ دسته‌ی تازه‌اند
       items: (source.customTab?.items || []).map((item) => ({
         title: item?.title || "",
         description: item?.description || "",
         link: item?.link || "",
         image: item?.image || "",
+        prompt: item?.prompt || "",
       })),
     },
     // کپیِ وفادار: فیلدی که مبدأ برایش پرامپت ندارد خالی می‌شود، وگرنه دسته‌ی

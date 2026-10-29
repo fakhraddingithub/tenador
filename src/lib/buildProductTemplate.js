@@ -3,6 +3,10 @@
  *
  * Generates a structured AI prompt for extracting product data from raw content.
  * Returns a prompt string that instructs the AI to output valid, consistent JSON.
+ *
+ * Every rule comes from composeProductPrompt(), which tags each rule with its exact
+ * source. The prompt string below and the admin preview page render that same model,
+ * so the preview cannot drift from what the AI actually receives.
  */
 
 // مسیرِ نسبی (نه اسمِ مستعارِ base/) عمدی است: tests/aiProductDraft.test.mjs این
@@ -22,11 +26,11 @@ import {
   resolveFieldRules,
 } from "./productPromptConfig.js";
 
-/** The category's own free-text prompt for a field ("" when it has none). */
-function categoryPromptText(prompts, field) {
+/** The category's own free-text prompt entry for a field (raw stored text, "" when none). */
+function categoryPromptValue(prompts, field) {
   if (!Array.isArray(prompts)) return "";
   const match = prompts.find((p) => p?.field === field);
-  return match?.context?.toString().trim() || "";
+  return match?.context == null ? "" : match.context.toString();
 }
 
 const BANNER = "=================================================================";
@@ -36,38 +40,47 @@ const ruleSection = (title, lines) =>
   lines.length ? `${BANNER}\n${title}\n${BANNER}\n${lines.join("\n")}\n\n` : "";
 
 /**
- * Builds the full AI prompt for product data extraction.
+ * A locked, data-derived rule. `line` is exactly what goes into the prompt; `text` is
+ * the same rule without its bullet, for display. `what` names the data it is built from.
+ */
+const systemRule = (what, line) => ({
+  text: line.replace(/^\s*-\s+/, "").trim(),
+  line,
+  source: { kind: "system", what },
+});
+
+const CUSTOM_TAB_INSTRUCTION = `Category custom tab items - pick ONLY the ones that genuinely apply to this specific product,
+based on the raw content. Use the EXACT title strings below, verbatim (do not paraphrase,
+translate, or invent new titles not in this list). If none apply, output an empty array.`;
+
+/**
+ * Every rule of the product prompt for one category, each tagged with its source:
+ *
+ *   { kind: "base", section, index }              the base prompt (rule `index` of `section`)
+ *   { kind: "group", groupId, groupTitle, field, index, targets }
+ *   { kind: "categoryField", field }              category.prompts[field].context
+ *   { kind: "technicalStats" }                    category.technicalStatsPrompt
+ *   { kind: "attribute" | "variantAttribute", name, label }   that attribute's prompt
+ *   { kind: "customTab", tabName }                category.customTab.prompt
+ *   { kind: "customTabItem", itemId, title }      category.customTab.items[].prompt
+ *   { kind: "system", what }                      locked, built from data, never editable
+ *
+ * Editable sources carry `value`, the stored text, so an edit can verify it is replacing
+ * exactly what was shown. Data lists (brands, series, athletes, …) are not rules and are
+ * not part of this model.
  *
  * @param {Object} params
- * @param {Object}   params.category        - Category with populated sport (_id, name, title)
- * @param {Array}    params.brands           - Populated brand documents (with .series)
- * @param {Array}    params.athletes         - Athlete documents
- * @param {Array}   [params.limitedEditions] - Limited edition documents (optional)
- * @param {string}   params.rawContent       - Raw text to extract product data from
- * @param {Object}  [params.promptConfig]    - Stored ProductPromptConfig ({ base, groups });
- *                                             absent → the default base prompt and no groups
- * @returns {string} - The complete prompt string
+ * @param {Object}  params.category      - Category with populated sport (_id, name, title)
+ * @param {Object} [params.promptConfig] - Stored ProductPromptConfig ({ base, groups });
+ *                                         absent → the default base prompt and no groups
  */
-export function buildProductTemplate({
-  category,
-  brands,
-  athletes,
-  limitedEditions = [],
-  rawContent,
-  promptConfig = null,
-}) {
-  // ─── Input Validation ─────────────────────────────────────────────────────
+export function composeProductPrompt({ category, promptConfig = null }) {
   if (!category) throw new Error("category is required");
   if (!category._id) throw new Error("category._id is required");
-  if (!Array.isArray(brands)) throw new Error("brands must be an array");
   if (!category.sport?._id || !category.sport.name?.trim()) {
     throw new Error("category.sport must be populated with _id and name");
   }
   const sportId = category.sport._id.toString();
-  if (!Array.isArray(athletes)) throw new Error("athletes must be an array");
-  if (typeof rawContent !== "string" || rawContent.trim().length < 50) {
-    throw new Error("rawContent is too short (minimum 50 characters)");
-  }
 
   // ─── Category Global Attributes ───────────────────────────────────────────
   // These produce single-value fields in "attributes" object.
@@ -86,20 +99,15 @@ export function buildProductTemplate({
     return allowed.length === TARGET_AUDIENCE_VALUES.length ? null : allowed;
   };
 
-  const restrictedAttributes = (category.attributes || [])
-    .map((attr) => ({ attr, scope: attributeAudienceScope(attr) }))
-    .filter(({ scope }) => scope !== null);
+  const attributes = (category.attributes || []).map((attr) => ({
+    attr,
+    scope: attributeAudienceScope(attr),
+    rule: attr.prompt
+      ? { text: attr.prompt, source: { kind: "attribute", name: attr.name, label: attr.label, value: attr.prompt } }
+      : null,
+  }));
 
-  const globalAttributeInstructions = (category.attributes || [])
-    .map((attr) => {
-      const rule = attr.prompt ? ` | Extraction Rule: ${attr.prompt}` : "";
-      const scope = attributeAudienceScope(attr);
-      const audience = scope
-        ? ` | Applies ONLY when targetAudience is one of: ${JSON.stringify(scope)} — otherwise OMIT this key entirely`
-        : "";
-      return `  - KEY: "${attr.name}" | Persian Label (context only): ${attr.label} | Type: single string or number${rule}${audience}`;
-    })
-    .join("\n");
+  const restrictedAttributes = attributes.filter(({ scope }) => scope !== null);
 
   const audienceScopedAttributeRule = restrictedAttributes.length
     ? `- Some attributes below only apply to certain target audiences. AFTER you decide "targetAudience",
@@ -114,25 +122,21 @@ ${restrictedAttributes
   // ─── Variant Attributes ───────────────────────────────────────────────────
   // These produce array-value fields in "variantOptions" object.
   // All values mentioned in the raw content must be collected.
-  const variantAttributeInstructions = (category.variantAttributes || [])
-    .map((attr) => {
-      const rule = attr.prompt ? ` | Guide: ${attr.prompt}` : "";
-      const units = Array.isArray(attr.units) ? attr.units.filter(Boolean) : [];
-      if (attr.multiUnit && units.length > 0) {
-        return `  - KEY: "${attr.name}" | Persian Label (context only): ${attr.label} | Type: multi-unit variant | variantOptions must contain ONLY primary "${units[0]}" values as strings | Units in order: ${JSON.stringify(units)}${rule}`;
-      }
-      return `  - KEY: "${attr.name}" | Persian Label (context only): ${attr.label} | Type: array of strings${rule}`;
-    })
-    .join("\n");
-
-  const multiUnitVariantAttributes = (category.variantAttributes || []).filter((attr) => {
+  const variants = (category.variantAttributes || []).map((attr) => {
     const units = Array.isArray(attr.units) ? attr.units.filter(Boolean) : [];
-    return attr.multiUnit && units.length > 0;
+    return {
+      attr,
+      units,
+      multiUnit: Boolean(attr.multiUnit && units.length > 0),
+      rule: attr.prompt
+        ? { text: attr.prompt, source: { kind: "variantAttribute", name: attr.name, label: attr.label, value: attr.prompt } }
+        : null,
+    };
   });
 
-  const multiUnitVariantInstructions = multiUnitVariantAttributes
-    .map((attr) => {
-      const units = attr.units.filter(Boolean);
+  const multiUnitVariantInstructions = variants
+    .filter(({ multiUnit }) => multiUnit)
+    .map(({ attr, units }) => {
       const placeholderUnits = Object.fromEntries(
         units.map((unit) => [unit, `<real ${unit} value for this size, as a string>`])
       );
@@ -160,19 +164,171 @@ ${restrictedAttributes
     })
     .join("\n\n");
 
+  // ─── Custom Tab ───────────────────────────────────────────────────────────
+  // The tab's own rule is the category-specific rule of the customTabItems field;
+  // an item's prompt is a selection hint shown next to its title in CATEGORY DEFINITION.
+  const customTab = category.customTab || {};
+  const tabItems =
+    customTab.enabled && Array.isArray(customTab.items)
+      ? customTab.items
+          .filter((item) => item?.title)
+          .map((item) => {
+            const hint = String(item.prompt ?? "").trim();
+            return {
+              title: item.title,
+              rule: hint
+                ? {
+                    text: hint,
+                    source: { kind: "customTabItem", itemId: item._id == null ? null : String(item._id), title: item.title, value: item.prompt },
+                  }
+                : null,
+            };
+          })
+      : [];
+  // Before the tab had its own prompt, the builder read a `customTabItems` entry from
+  // category.prompts; such an entry still applies when the tab's own prompt is empty.
+  const tabPrompt = String(customTab.prompt ?? "");
+  const tabRuleSource = tabPrompt.trim()
+    ? { kind: "customTab", tabName: customTab.name || "", value: tabPrompt }
+    : { kind: "categoryField", field: "customTabItems", value: categoryPromptValue(category.prompts, "customTabItems") };
+
+  // ─── Rules: base prompt → category prompt groups → the category's own ─────
+  // The static text lives in productPromptConfig.js (editable per rule in the
+  // admin panel). Lines that carry injected data stay here and are locked:
+  // they are passed as `before`/`after` so no edit can break an ID lock.
+  const base = resolveBasePrompt(promptConfig?.base);
+  const groups = Array.isArray(promptConfig?.groups) ? promptConfig.groups : [];
+  const baseRules = (section) =>
+    base[section].map((text, index) => ({ text, source: { kind: "base", section, index, value: text } }));
+
+  const lockedLines = {
+    sport: { before: [systemRule("sportLock", `- MUST be exactly: "${sportId}"`)] },
+    category: { before: [systemRule("categoryLock", `- MUST be exactly: "${category._id}"`)] },
+    attributes: {
+      after: [
+        systemRule(
+          "audienceScope",
+          audienceScopedAttributeRule || "- Every attribute in this category applies to every target audience.",
+        ),
+      ],
+    },
+    variantMeta: {
+      after: [
+        systemRule(
+          "multiUnit",
+          multiUnitVariantInstructions
+            ? `\nMulti-unit variant attributes for this category:\n${multiUnitVariantInstructions}`
+            : "- No multi-unit variant attributes are defined for this category.",
+        ),
+      ],
+    },
+  };
+
+  const categoryRuleFor = (key) => {
+    if (key === "technicalStats") {
+      const value = category.technicalStatsPrompt == null ? "" : String(category.technicalStatsPrompt);
+      return { categoryText: value.trim(), categorySource: { kind: "technicalStats", value } };
+    }
+    if (key === "customTabItems") return { categoryText: tabRuleSource.value.trim(), categorySource: tabRuleSource };
+    const value = categoryPromptValue(category.prompts, key);
+    return { categoryText: value.trim(), categorySource: { kind: "categoryField", field: key, value } };
+  };
+
+  const fields = PRODUCT_PROMPT_FIELDS
+    // the custom tab field exists only for a category whose tab has items
+    .filter(({ key }) => key !== "customTabItems" || tabItems.length)
+    .map(({ key, title }) => ({
+      key,
+      title,
+      before: lockedLines[key]?.before || [],
+      after: lockedLines[key]?.after || [],
+      rules: resolveFieldRules({ base, groups, categoryId: category._id, field: key, ...categoryRuleFor(key) }),
+    }));
+
+  return {
+    sportId,
+    general: {
+      role: baseRules("role"),
+      task: baseRules("task"),
+      output: baseRules("output"),
+      language: baseRules("language"),
+    },
+    precedenceNote: FIELD_PRECEDENCE_NOTE,
+    fields,
+    attributes,
+    variants,
+    multiUnitVariantInstructions,
+    customTab: {
+      name: customTab.name || "",
+      items: tabItems,
+      instruction: tabItems.length ? systemRule("customTabInstruction", CUSTOM_TAB_INSTRUCTION) : null,
+    },
+  };
+}
+
+/**
+ * Builds the full AI prompt for product data extraction.
+ *
+ * @param {Object} params
+ * @param {Object}   params.category        - Category with populated sport (_id, name, title)
+ * @param {Array}    params.brands           - Populated brand documents (with .series)
+ * @param {Array}    params.athletes         - Athlete documents
+ * @param {Array}   [params.limitedEditions] - Limited edition documents (optional)
+ * @param {string}   params.rawContent       - Raw text to extract product data from
+ * @param {Object}  [params.promptConfig]    - Stored ProductPromptConfig ({ base, groups });
+ *                                             absent → the default base prompt and no groups
+ * @returns {string} - The complete prompt string
+ */
+export function buildProductTemplate({
+  category,
+  brands,
+  athletes,
+  limitedEditions = [],
+  rawContent,
+  promptConfig = null,
+}) {
+  // ─── Input Validation ─────────────────────────────────────────────────────
+  if (!category) throw new Error("category is required");
+  if (!category._id) throw new Error("category._id is required");
+  if (!Array.isArray(brands)) throw new Error("brands must be an array");
+  const model = composeProductPrompt({ category, promptConfig });
+  const { sportId } = model;
+  if (!Array.isArray(athletes)) throw new Error("athletes must be an array");
+  if (typeof rawContent !== "string" || rawContent.trim().length < 50) {
+    throw new Error("rawContent is too short (minimum 50 characters)");
+  }
+
+  const globalAttributeInstructions = model.attributes
+    .map(({ attr, scope, rule }) => {
+      const extraction = rule ? ` | Extraction Rule: ${rule.text}` : "";
+      const audience = scope
+        ? ` | Applies ONLY when targetAudience is one of: ${JSON.stringify(scope)} — otherwise OMIT this key entirely`
+        : "";
+      return `  - KEY: "${attr.name}" | Persian Label (context only): ${attr.label} | Type: single string or number${extraction}${audience}`;
+    })
+    .join("\n");
+
+  const variantAttributeInstructions = model.variants
+    .map(({ attr, units, multiUnit, rule }) => {
+      const guide = rule ? ` | Guide: ${rule.text}` : "";
+      if (multiUnit) {
+        return `  - KEY: "${attr.name}" | Persian Label (context only): ${attr.label} | Type: multi-unit variant | variantOptions must contain ONLY primary "${units[0]}" values as strings | Units in order: ${JSON.stringify(units)}${guide}`;
+      }
+      return `  - KEY: "${attr.name}" | Persian Label (context only): ${attr.label} | Type: array of strings${guide}`;
+    })
+    .join("\n");
+
+  const { multiUnitVariantInstructions } = model;
+
   // ─── Technical Stats ──────────────────────────────────────────────────────
   const technicalStatsInstructions = (category.technicalStats || [])
     .map((stat) => `  - KEY: "${stat.name}" | Label: ${stat.label}`)
     .join("\n");
 
-  const globalTechnicalPrompt = (category.technicalStatsPrompt || "").trim();
-  const customTabItemTitles =
-    category.customTab?.enabled && Array.isArray(category.customTab?.items)
-      ? category.customTab.items.map((item) => item.title).filter(Boolean)
-      : [];
-  const customTabInstructions = customTabItemTitles.length
-    ? customTabItemTitles.map((title) => `  - "${title}"`).join("\n")
-    : "";
+  const tab = model.customTab;
+  const customTabInstructions = tab.items
+    .map(({ title, rule }) => `  - "${title}"${rule ? ` | Selection Rule: ${rule.text}` : ""}`)
+    .join("\n");
 
   // ─── Reference Lists ──────────────────────────────────────────────────────
   const brandList = brands.map((b) => ({
@@ -210,57 +366,23 @@ ${restrictedAttributes
     };
   });
 
-  // ─── Rules: base prompt → category prompt groups → the category's own ─────
-  // The static text lives in productPromptConfig.js (editable per rule in the
-  // admin panel). Lines that carry injected data stay here and are locked:
-  // they are passed as `before`/`after` so no edit can break an ID lock.
-  const base = resolveBasePrompt(promptConfig?.base);
-  const groups = Array.isArray(promptConfig?.groups) ? promptConfig.groups : [];
-
-  const lockedLines = {
-    sport: { before: [`- MUST be exactly: "${sportId}"`] },
-    category: { before: [`- MUST be exactly: "${category._id}"`] },
-    attributes: {
-      after: [audienceScopedAttributeRule || "- Every attribute in this category applies to every target audience."],
-    },
-    variantMeta: {
-      after: [
-        multiUnitVariantInstructions
-          ? `\nMulti-unit variant attributes for this category:\n${multiUnitVariantInstructions}`
-          : "- No multi-unit variant attributes are defined for this category.",
-      ],
-    },
-  };
-
-  const fieldBlocks = PRODUCT_PROMPT_FIELDS
-    // the custom tab field exists only for a category whose tab has items
-    .filter(({ key }) => key !== "customTabItems" || customTabItemTitles.length)
-    .map(({ key }) =>
-      renderFieldRules(key, {
-        ...lockedLines[key],
-        rules: resolveFieldRules({
-          base,
-          groups,
-          categoryId: category._id,
-          field: key,
-          categoryText:
-            key === "technicalStats" ? globalTechnicalPrompt : categoryPromptText(category.prompts, key),
-        }),
-      }),
-    )
+  const fieldBlocks = model.fields
+    .map(({ key, before, after, rules }) => renderFieldRules(key, { before, after, rules }))
     .join("\n\n");
 
+  const texts = (rules) => rules.map((r) => r.text);
+  const { role, task, output, language } = model.general;
   const intro = [
-    base.role.length ? `${base.role.join("\n")}\n\n` : "",
-    base.task.length ? `Your task:\n${base.task.map(bulletRule).join("\n")}\n\n` : "",
+    role.length ? `${texts(role).join("\n")}\n\n` : "",
+    task.length ? `Your task:\n${texts(task).map(bulletRule).join("\n")}\n\n` : "",
   ].join("");
 
   // ─── Build Prompt ─────────────────────────────────────────────────────────
   return `
-${intro}${ruleSection("CRITICAL OUTPUT FORMAT RULES — NEVER VIOLATE THESE", base.output.map(numberedRule))}${ruleSection("LANGUAGE RULE", base.language.map(bulletRule))}${BANNER}
+${intro}${ruleSection("CRITICAL OUTPUT FORMAT RULES — NEVER VIOLATE THESE", texts(output).map(numberedRule))}${ruleSection("LANGUAGE RULE", texts(language).map(bulletRule))}${BANNER}
 FIELD RULES
 ${BANNER}
-${FIELD_PRECEDENCE_NOTE}
+${model.precedenceNote}
 
 ${fieldBlocks}
 
@@ -286,10 +408,8 @@ ${multiUnitVariantInstructions || "  No multi-unit metadata is required. Return 
 Category Technical Stats (integer 0–100 → output in "technicalStats"):
 ${technicalStatsInstructions || "  (none defined)"}
 
-${customTabItemTitles.length ? `Category custom tab items - pick ONLY the ones that genuinely apply to this specific product,
-based on the raw content. Use the EXACT title strings below, verbatim (do not paraphrase,
-translate, or invent new titles not in this list). If none apply, output an empty array.
-Available titles for "${category.customTab.name}":
+${tab.instruction ? `${tab.instruction.line}
+Available titles for "${tab.name}":
 ${customTabInstructions}
 ` : ""}
 
@@ -346,7 +466,7 @@ Output exactly this structure with no extra fields:
   "variantMeta": {},
   "technicalStats": {
     "stat_name": 85
-  }${customTabItemTitles.length ? `,
+  }${tab.items.length ? `,
   "customTabItems": ["<exact title from the list above>", "..."]` : ""},
   "tag": [],
   "mainImage": "",

@@ -283,8 +283,31 @@ document (`key: "product"`) behind `GET/PUT /api/admin/product-prompts` (`produc
 | page | what it does |
 |---|---|
 | `…/prompt-settings` | overview: Base Prompt card, the groups (reorder / delete save immediately), «ایجاد گروه جدید», final-prompt preview |
-| `…/prompt-settings/base` | one tab per base section (general rules + one per product field); only the active tab's rules are shown |
-| `…/prompt-settings/groups/[groupId]` | one group (`new` creates); title + categories, then one tab per `CATEGORY_PROMPT_FIELDS` field |
+| `…/prompt-settings/base` | one tab per base section (general rules + one per product field); «نمایش همه‌ی قواعد» stacks every section under its heading; `#<section>` opens that tab |
+| `…/prompt-settings/groups/[groupId]` | one group (`new` creates); title + categories, then one tab per `CATEGORY_PROMPT_FIELDS` field; `#<field>` opens that tab |
+| `…/prompt-settings/preview?category=…` | the final prompt of one category as an article, field by field, colour-coded by source; click a rule → its exact source, edit it in place |
+
+**The preview and the prompt are one model.** `composeProductPrompt({ category, promptConfig })`
+(`buildProductTemplate.js`) returns every rule as `{ text, source }`; `buildProductTemplate` renders the
+string from it and `GET /api/admin/product-prompts/preview` returns it (minus data lists, raw content
+and the JSON skeleton). Never add a rule to the template string directly — add it to the model, or the
+preview stops matching what the AI gets. Source kinds: `base {section,index}`, `group {groupId,index,targets}`,
+`categoryField {field}`, `technicalStats`, `attribute`/`variantAttribute {name}`, `customTab`,
+`customTabItem {itemId}`, `system {what}` (locked). Editable sources carry `value`, the stored text.
+
+Editing from the preview writes the rule's own source and nothing else:
+
+| source | how |
+|---|---|
+| base / group | the normal `PUT` (`storableBase` builds the base payload; 409 and the duplicate check apply). The page first checks the text at that index is still the shown one |
+| category-owned | `PATCH /api/admin/product-prompts/category-rule` (`productPrompts.edit`): one atomic `updateOne` whose filter includes the previous text (compare-and-set → 409), attributes/items found by name/`_id` via `arrayFilters`, never by index. An empty field prompt `$pull`s that entry |
+
+**Custom tab prompts.** `Category.customTab.prompt` is the category rule of the `customTabItems` field
+(base → groups → this), and `customTab.items[].prompt` is a per-item hint rendered as
+`- "<title>" | Selection Rule: <hint>` in CATEGORY DEFINITION. Groups do not offer this field. Empty
+prompts leave the output byte-identical to before; a disabled tab contributes nothing. A legacy
+`category.prompts` entry for `customTabItems` still applies when the tab's own prompt is empty. The
+category `PUT` follows `undefined ≠ ""` for both, so a client that does not send them keeps them.
 
 Shared client pieces (config load/save with the 409 handling, tabs, rule card, category picker,
 unsaved-changes guard) are in `src/components/admin/productPrompts/promptSettingsUi.jsx`.

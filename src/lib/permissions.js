@@ -1102,6 +1102,7 @@ export const ADMIN_ROUTE_PERMISSIONS = {
   "/p-admin/admin-sports/prompt-settings": ["productPrompts.view"],
   "/p-admin/admin-sports/prompt-settings/base": ["productPrompts.view"],
   "/p-admin/admin-sports/prompt-settings/groups/[groupId]": ["productPrompts.view"],
+  "/p-admin/admin-sports/prompt-settings/preview": ["productPrompts.view"],
   "/p-admin/admin-sports/[sportId]/brochure/preview": ["sports.edit"],
   "/p-admin/admin-sports/[sportId]/athletes": ["athletes.view"],
 

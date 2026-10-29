@@ -310,3 +310,127 @@ test('prompt settings pages save separately: base-only and groups-only saves lea
 
   await mongoose.model('ProductPromptConfig').deleteMany({});
 });
+
+// ── پیش‌نمایش و ویرایش از پیش‌نمایش: روت‌های واقعی روی سندِ واقعی ─────────────────
+
+let previewSeq = 0;
+const previewCategory = async () => mongoose.model('Category').create({
+  name: `preview-racket-${++previewSeq}`, title: `راکت پیش‌نمایش ${previewSeq}`, sport: tennis._id,
+  prompts: [{ field: 'name', context: 'CATEGORY NAME RULE' }, { field: 'tag', context: 'CATEGORY TAG RULE' }],
+  attributes: [{ name: 'Head Size', label: 'اندازه سر', prompt: 'HEAD RULE' }, { name: 'Weight', label: 'وزن', prompt: 'WEIGHT RULE' }],
+  variantAttributes: [{ name: 'Grip', label: 'گریپ', prompt: 'GRIP RULE' }],
+  technicalStats: [{ name: 'power', label: 'قدرت' }],
+  technicalStatsPrompt: 'TECH RULE',
+  customTab: { enabled: true, name: 'تکنولوژی', prompt: 'TAB RULE', items: [{ title: 'ONE', prompt: 'ONE HINT' }, { title: 'TWO', prompt: 'TWO HINT' }] },
+});
+const getPreview = async (id) => {
+  const { GET } = await import('../src/app/api/admin/product-prompts/preview/route.js');
+  const res = await GET({ url: `http://x/api/admin/product-prompts/preview?categoryId=${id}` });
+  return { status: res.status, body: await res.json() };
+};
+const patchRule = async (body) => {
+  const { PATCH } = await import('../src/app/api/admin/product-prompts/category-rule/route.js');
+  const res = await PATCH({ json: async () => body });
+  return { status: res.status, body: await res.json() };
+};
+
+test('preview: the route returns the rules of the real draft with their sources, and no data lists', async () => {
+  const { PUT } = await import('../src/app/api/admin/product-prompts/route.js');
+  await mongoose.model('ProductPromptConfig').deleteMany({});
+  const cat = await previewCategory();
+  const saved = await (await PUT({ json: async () => ({ updatedAt: null, groups: [
+    { title: 'G', categories: [String(cat._id)], rules: [{ field: 'name', text: 'GROUP NAME RULE', categories: [] }] },
+  ] }) })).json();
+
+  const { status, body } = await getPreview(cat._id);
+  assert.equal(status, 200, JSON.stringify(body));
+  assert.equal(body.updatedAt, saved.config.updatedAt);
+  const draft = (await (await requestDraft(cat._id)).json()).draft;
+  const name = body.model.fields.find((f) => f.key === 'name');
+  assert.equal(name.rules.groups[0].source.groupId, saved.config.groups[0]._id);
+  assert.equal(name.rules.category.source.kind, 'categoryField');
+  for (const r of [...name.rules.base, ...name.rules.groups, name.rules.category]) assert.ok(draft.includes(r.text), r.text);
+  assert.ok(draft.includes('Extraction Rule: HEAD RULE') && draft.includes('Guide: GRIP RULE'));
+  assert.ok(draft.includes('"ONE" | Selection Rule: ONE HINT'));
+  assert.deepEqual(body.model.attributes.map((a) => Object.keys(a).sort()), [['label', 'name', 'rule', 'scope'], ['label', 'name', 'rule', 'scope']]);
+  const json = JSON.stringify(body);
+  assert.ok(!json.includes(String(brand._id)) && !json.includes('parentBrandName') && !json.includes(rawContent));
+
+  assert.equal((await getPreview('nope')).status, 400);
+  assert.equal((await getPreview(new mongoose.Types.ObjectId())).status, 404);
+  await mongoose.model('ProductPromptConfig').deleteMany({});
+  await mongoose.model('Category').deleteOne({ _id: cat._id });
+});
+
+test('preview edits: each category-owned source is written in place, nothing else changes, a stale edit is refused', async () => {
+  const Category = mongoose.model('Category');
+  const cat = await previewCategory();
+  const before = await Category.findById(cat._id).lean();
+  const [one, two] = before.customTab.items;
+
+  const edits = [
+    [{ kind: 'attribute', name: 'Weight' }, 'WEIGHT RULE', 'WEIGHT EDITED', (c) => c.attributes[1].prompt],
+    [{ kind: 'variantAttribute', name: 'Grip' }, 'GRIP RULE', 'GRIP EDITED', (c) => c.variantAttributes[0].prompt],
+    [{ kind: 'technicalStats' }, 'TECH RULE', 'TECH EDITED', (c) => c.technicalStatsPrompt],
+    [{ kind: 'customTab' }, 'TAB RULE', 'TAB EDITED', (c) => c.customTab.prompt],
+    [{ kind: 'customTabItem', itemId: String(two._id) }, 'TWO HINT', 'TWO EDITED', (c) => c.customTab.items[1].prompt],
+    [{ kind: 'categoryField', field: 'name' }, 'CATEGORY NAME RULE', 'NAME EDITED', (c) => c.prompts.find((p) => p.field === 'name').context],
+  ];
+  for (const [source, previous, text, read] of edits) {
+    const r = await patchRule({ categoryId: String(cat._id), source, previous, text: `  ${text}  ` });
+    assert.equal(r.status, 200, `${source.kind}: ${JSON.stringify(r.body)}`);
+    assert.equal(read(await Category.findById(cat._id).lean()), text, source.kind);
+    // دوباره با همان متنِ قبلی: در این فاصله عوض شده → ۴۰۹، بدونِ نوشتن
+    const stale = await patchRule({ categoryId: String(cat._id), source, previous, text: 'OVERWRITE' });
+    assert.equal(stale.status, 409, source.kind);
+    assert.equal(read(await Category.findById(cat._id).lean()), text, source.kind);
+  }
+
+  const after = await Category.findById(cat._id).lean();
+  // همسایه‌ها دست‌نخورده: ویژگی/آیتم/پرامپتِ دیگر، شناسه‌ی آیتم‌ها و بقیه‌ی دسته
+  assert.equal(after.attributes[0].prompt, 'HEAD RULE');
+  assert.equal(after.customTab.items[0].prompt, 'ONE HINT');
+  assert.deepEqual(after.customTab.items.map((i) => String(i._id)), [String(one._id), String(two._id)]);
+  assert.equal(after.prompts.find((p) => p.field === 'tag').context, 'CATEGORY TAG RULE');
+  for (const key of ['title', 'name', 'slug', 'sport', 'technicalStats']) assert.deepEqual(after[key], before[key], key);
+
+  // متنِ خالی برای پرامپتِ فیلد = حذفِ همان مدخل
+  assert.equal((await patchRule({ categoryId: String(cat._id), source: { kind: 'categoryField', field: 'tag' }, previous: 'CATEGORY TAG RULE', text: '' })).status, 200);
+  assert.deepEqual((await Category.findById(cat._id).lean()).prompts.map((p) => p.field), ['name']);
+
+  // پیش‌نویسِ واقعی همان متن‌های تازه را دارد
+  const draft = (await (await requestDraft(cat._id)).json()).draft;
+  for (const t of ['WEIGHT EDITED', 'GRIP EDITED', 'TECH EDITED', 'TAB EDITED', '"TWO" | Selection Rule: TWO EDITED', 'NAME EDITED']) assert.ok(draft.includes(t), t);
+  assert.ok(!draft.includes('CATEGORY TAG RULE'));
+
+  // ورودیِ نامعتبر و منبع‌های غیرِ دسته
+  for (const source of [{ kind: 'base', section: 'task', index: 0 }, { kind: 'system' }, { kind: 'categoryField', field: 'nope' }, { kind: 'customTabItem', itemId: 'x' }]) {
+    assert.equal((await patchRule({ categoryId: String(cat._id), source, previous: '', text: 'x' })).status, 400, JSON.stringify(source));
+  }
+  assert.equal((await patchRule({ categoryId: String(cat._id), source: { kind: 'technicalStats' }, previous: 1, text: 'x' })).status, 400);
+  assert.equal((await patchRule({ categoryId: String(new mongoose.Types.ObjectId()), source: { kind: 'technicalStats' }, previous: 'x', text: 'y' })).status, 404);
+  await Category.deleteOne({ _id: cat._id });
+});
+
+test('category PUT: custom tab prompts survive a client that does not send them, and are written when it does', async () => {
+  const { PUT } = await import('../src/app/api/categories/[categoryId]/route.js');
+  const Category = mongoose.model('Category');
+  const cat = await previewCategory();
+  const put = async (customTab) => {
+    const res = await PUT({ json: async () => ({ customTab }) }, { params: Promise.resolve({ categoryId: String(cat._id) }) });
+    assert.equal(res.status, 200, JSON.stringify(await res.clone().json()));
+    return (await Category.findById(cat._id).lean()).customTab;
+  };
+  const stored = (await Category.findById(cat._id).lean()).customTab;
+  const withoutPrompts = { enabled: true, name: 'تکنولوژی', items: stored.items.map(({ _id, title }) => ({ _id: String(_id), title })) };
+
+  let tab = await put(withoutPrompts);
+  assert.equal(tab.prompt, 'TAB RULE');
+  assert.deepEqual(tab.items.map((i) => i.prompt), ['ONE HINT', 'TWO HINT']);
+
+  tab = await put({ ...withoutPrompts, prompt: ' NEW TAB ', items: [{ ...withoutPrompts.items[0], prompt: '' }, withoutPrompts.items[1], { title: 'THREE', prompt: 'THREE HINT' }] });
+  assert.equal(tab.prompt, 'NEW TAB');
+  assert.deepEqual(tab.items.map((i) => i.prompt), ['', 'TWO HINT', 'THREE HINT']);
+  assert.deepEqual(tab.items.slice(0, 2).map((i) => String(i._id)), stored.items.map((i) => String(i._id)));
+  await Category.deleteOne({ _id: cat._id });
+});

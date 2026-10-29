@@ -1,18 +1,20 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
-import { buildProductTemplate } from "../src/lib/buildProductTemplate.js";
+import { buildProductTemplate, composeProductPrompt } from "../src/lib/buildProductTemplate.js";
 import {
   BASE_PROMPT_SECTIONS,
   DEFAULT_BASE_PROMPT,
   CATEGORY_PROMPT_FIELDS,
   GROUP_PROMPT_FIELDS,
+  isDefaultSection,
   isLegacyGroupField,
   LEGACY_CATEGORY_PROMPT_DEFAULTS,
   normalizeRule,
   resolveBasePrompt,
   resolveFieldRules,
   splitRuleUnits,
+  storableBase,
   validatePromptConfig,
 } from "../src/lib/productPromptConfig.js";
 
@@ -243,4 +245,118 @@ test("resolveFieldRules ignores groups that do not contain the category", () => 
     groups: [{ categories: [A], rules: [{ field: "name", text: "x", categories: [] }] }],
   });
   assert.deepEqual(rules.groups, []);
+});
+
+// ── composeProductPrompt: منبعِ هر قاعده، و یکی بودنِ پیش‌نمایش با پرامپت ─────────
+
+const richCategory = () => category(A, {
+  prompts: [{ field: "name", context: "  CATEGORY NAME RULE  " }],
+  attributes: [
+    { name: "Head Size", label: "اندازه سر", prompt: "HEAD SIZE RULE" },
+    { name: "Balance", label: "بالانس", targetAudiences: ["یونی سکس"] },
+  ],
+  variantAttributes: [{ name: "Grip", label: "گریپ", prompt: "GRIP GUIDE" }],
+  technicalStats: [{ name: "power", label: "قدرت" }],
+  technicalStatsPrompt: "TECH RULE",
+  customTab: {
+    enabled: true, name: "تکنولوژی‌ها", prompt: "TAB RULE",
+    items: [{ _id: C, title: "FORTYFIVE", prompt: "PICK FORTYFIVE WHEN NAMED" }, { _id: D, title: "Spin Effect" }],
+  },
+});
+const richConfig = {
+  base: [{ section: "task", rules: ["TASK ONE", "TASK TWO"] }],
+  groups: [{ _id: B, title: "Rackets", categories: [A], rules: [
+    { field: "brand", text: "OTHER FIELD", categories: [] },
+    { field: "name", text: "GROUP NAME RULE", categories: [A] },
+  ] }],
+};
+const flatten = (m) => [
+  ...Object.values(m.general).flat(),
+  ...m.fields.flatMap((f) => [...f.before, ...f.rules.base, ...f.after, ...f.rules.groups, ...(f.rules.category ? [f.rules.category] : [])]),
+  ...m.attributes.flatMap((a) => (a.rule ? [a.rule] : [])),
+  ...m.variants.flatMap((v) => (v.rule ? [v.rule] : [])),
+  ...(m.customTab.instruction ? [m.customTab.instruction] : []),
+  ...m.customTab.items.flatMap((i) => (i.rule ? [i.rule] : [])),
+];
+
+test("compose: every rule carries its exact source and the stored value an edit must match", () => {
+  const m = composeProductPrompt({ category: richCategory(), promptConfig: richConfig });
+  const field = (key) => m.fields.find((f) => f.key === key);
+
+  assert.deepEqual(m.general.task.map((r) => r.source), [
+    { kind: "base", section: "task", index: 0, value: "TASK ONE" },
+    { kind: "base", section: "task", index: 1, value: "TASK TWO" },
+  ]);
+  // اندیسِ قاعده در خودِ گروه (نه در فیلد) — همان چیزی که ویرایش با آن قاعده را پیدا می‌کند
+  assert.deepEqual(field("name").rules.groups[0].source, {
+    kind: "group", groupId: B, groupTitle: "Rackets", field: "name", index: 1, targets: [A], value: "GROUP NAME RULE",
+  });
+  assert.deepEqual(field("name").rules.category, {
+    text: "CATEGORY NAME RULE", source: { kind: "categoryField", field: "name", value: "  CATEGORY NAME RULE  " },
+  });
+  assert.deepEqual(field("technicalStats").rules.category.source, { kind: "technicalStats", value: "TECH RULE" });
+  assert.deepEqual(field("customTabItems").rules.category.source, { kind: "customTab", tabName: "تکنولوژی‌ها", value: "TAB RULE" });
+  assert.deepEqual(m.attributes[0].rule.source, { kind: "attribute", name: "Head Size", label: "اندازه سر", value: "HEAD SIZE RULE" });
+  assert.equal(m.attributes[1].rule, null);
+  assert.deepEqual(m.variants[0].rule.source, { kind: "variantAttribute", name: "Grip", label: "گریپ", value: "GRIP GUIDE" });
+  assert.deepEqual(m.customTab.items.map((i) => i.rule?.source ?? null), [
+    { kind: "customTabItem", itemId: C, title: "FORTYFIVE", value: "PICK FORTYFIVE WHEN NAMED" }, null,
+  ]);
+  assert.deepEqual(field("sport").before.map((r) => r.source), [{ kind: "system", what: "sportLock" }]);
+  assert.deepEqual(field("attributes").after.map((r) => r.source.what), ["audienceScope"]);
+});
+
+test("compose: the preview model and the prompt are the same rules — every model rule is in the prompt, in its place", () => {
+  const cat = richCategory();
+  const m = composeProductPrompt({ category: cat, promptConfig: richConfig });
+  const prompt = draft(cat, richConfig);
+  for (const rule of flatten(m)) {
+    assert.ok(prompt.includes(rule.line ?? rule.text), `${rule.source.kind}: ${rule.text.slice(0, 60)}`);
+  }
+  for (const f of m.fields) {
+    const block = fieldBlock(prompt, f.key);
+    for (const r of [...f.rules.base, ...f.rules.groups]) assert.ok(block.includes(`- ${r.text}`), `${f.key}: ${r.text}`);
+    if (f.rules.category) assert.ok(block.includes(f.rules.category.text), f.key);
+  }
+  // و برعکس: قاعده‌ی گروهِ فیلدِ دیگر یا دسته‌ی دیگر در هیچ‌کدام نیست
+  const other = composeProductPrompt({ category: category(D), promptConfig: richConfig });
+  assert.ok(!flatten(other).some((r) => r.source.kind === "group"));
+  assert.ok(!draft(category(D), richConfig).includes("GROUP NAME RULE"));
+  // دادهٔ تزریقی (فهرست‌ها، متنِ خام) جزوِ مدل نیست
+  assert.ok(!JSON.stringify(m).includes(rawContent));
+});
+
+test("custom tab: the tab rule is the category rule of customTabItems, item hints sit next to their titles", () => {
+  const prompt = draft(richCategory(), richConfig);
+  const block = fieldBlock(prompt, "customTabItems");
+  assert.ok(block.includes("Category-specific rules"));
+  assert.ok(block.endsWith("TAB RULE"));
+  assert.ok(prompt.includes('  - "FORTYFIVE" | Selection Rule: PICK FORTYFIVE WHEN NAMED\n  - "Spin Effect"\n'));
+  assert.ok(prompt.includes('"customTabItems": ["<exact title from the list above>", "..."]'));
+});
+
+test("custom tab: without a prompt the output is unchanged; a disabled tab contributes nothing; a legacy prompts entry still applies", () => {
+  const plainTab = { enabled: true, name: "T", items: [{ _id: C, title: "ONE" }] };
+  const plain = draft(category(A, { customTab: plainTab }));
+  assert.ok(plain.includes('Available titles for "T":\n  - "ONE"\n'));
+  assert.ok(!plain.includes("| Selection Rule:"));
+  assert.ok(!fieldBlock(plain, "customTabItems").includes("Category-specific rules"));
+
+  const off = draft(category(A, { customTab: { ...plainTab, enabled: false, prompt: "TAB RULE", items: [{ title: "ONE", prompt: "HINT" }] } }));
+  assert.ok(!off.includes("customTabItems") && !off.includes("TAB RULE") && !off.includes("HINT"));
+
+  const legacy = composeProductPrompt({ category: category(A, { customTab: plainTab, prompts: [{ field: "customTabItems", context: "LEGACY" }] }) });
+  assert.deepEqual(legacy.fields.find((f) => f.key === "customTabItems").rules.category.source, { kind: "categoryField", field: "customTabItems", value: "LEGACY" });
+});
+
+test("storableBase: editing one rule stores only that section; restoring the default stores nothing", () => {
+  const sections = resolveBasePrompt();
+  assert.deepEqual(storableBase(sections), []);
+  assert.ok(BASE_PROMPT_SECTIONS.every(({ key }) => isDefaultSection(key, sections[key])));
+  sections["field:name"][0] = "EDITED";
+  const stored = storableBase(sections);
+  assert.deepEqual(stored.map((s) => s.section), ["field:name"]);
+  assert.equal(stored[0].rules[0], "EDITED");
+  assert.equal(stored[0].rules.length, DEFAULT_BASE_PROMPT["field:name"].length);
+  assert.deepEqual(validatePromptConfig({ base: stored }).errors, []);
 });

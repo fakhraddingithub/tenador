@@ -319,6 +319,22 @@ export function resolveBasePrompt(storedBase) {
   );
 }
 
+/** آیا این متن‌ها همان پیش‌فرضِ کدِ بخش‌اند (با چشم‌پوشی از فاصله‌ی دو سر)؟ */
+export function isDefaultSection(key, texts) {
+  const def = DEFAULT_BASE_PROMPT[key];
+  return texts.length === def.length && texts.every((t, i) => t.trim() === def[i].trim());
+}
+
+/**
+ * آنچه از پرامپت پایه ذخیره می‌شود: فقط بخش‌هایی که با پیش‌فرض فرق دارند، تا
+ * بخش‌های دست‌نخورده پیش‌فرض‌های کد را دنبال کنند. ورودی همان شکلِ resolveBasePrompt است.
+ */
+export const storableBase = (sections) =>
+  BASE_PROMPT_SECTIONS.filter(({ key }) => !isDefaultSection(key, sections[key])).map(({ key }) => ({
+    section: key,
+    rules: sections[key],
+  }));
+
 /* ─── اعتبارسنجی ─────────────────────────────────────────────────────────── */
 
 export const PROMPT_LIMITS = { ruleLength: 4000, rulesPerSection: 100, groups: 100, rulesPerGroup: 500, titleLength: 120 };
@@ -430,13 +446,20 @@ export function validatePromptConfig(input, { knownCategoryIds = null } = {}) {
 
 /**
  * قواعدِ هر فیلد برای دسته‌ی داده‌شده: { base, groups, category } که تکرارها از آن‌ها
- * حذف شده‌اند. category متنِ آزادِ خودِ دسته است (یا null).
+ * حذف شده‌اند. هر قاعده `{ text, source }` است و source دقیقاً می‌گوید قاعده از کجا
+ * آمده (همان چیزی که پیش‌نمایش نشان می‌دهد و ویرایشِ از پیش‌نمایش با آن منبع را پیدا
+ * می‌کند). `source.value` متنِ ذخیره‌شده‌ی منبع است؛ برای دسته ممکن است با text فرق
+ * کند، چون واحدهای تکراریِ متنِ دسته از text حذف می‌شوند.
  *
  * قاعده‌ی گروه وقتی اعمال می‌شود که دسته عضوِ گروه باشد و (قاعده هیچ دسته‌ای
  * نداشته باشد یا این دسته در دسته‌های قاعده باشد). قاعده‌ای که همه‌ی دسته‌هایش
  * حذف شده‌اند خودبه‌خود به هیچ دسته‌ای نمی‌خورد — هرگز به «همه» گسترش نمی‌یابد.
+ *
+ * @param {object} p
+ * @param {string} p.categoryText    متنِ آزادِ خودِ دسته برای این فیلد
+ * @param {object} [p.categorySource] منبعِ آن متن (پیش‌فرض: پرامپتِ فیلدِ دسته)
  */
-export function resolveFieldRules({ base, groups = [], categoryId, field, categoryText = "" }) {
+export function resolveFieldRules({ base, groups = [], categoryId, field, categoryText = "", categorySource = null }) {
   const id = String(categoryId);
   const seen = new Set();
   const take = (text) => {
@@ -447,24 +470,43 @@ export function resolveFieldRules({ base, groups = [], categoryId, field, catego
     return fresh;
   };
 
-  const baseRules = (base[`field:${field}`] || []).filter(take);
+  const section = `field:${field}`;
+  const baseRules = (base[section] || [])
+    .map((text, index) => ({ text, source: { kind: "base", section, index, value: text } }))
+    .filter((r) => take(r.text));
   const groupRules = [];
   for (const group of groups) {
     if (!(group.categories || []).map(String).includes(id)) continue;
-    for (const rule of group.rules || []) {
-      if (rule.field !== field) continue;
+    (group.rules || []).forEach((rule, index) => {
+      if (rule.field !== field) return;
       const targets = (rule.categories || []).map(String);
-      if (targets.length && !targets.includes(id)) continue;
-      if (take(rule.text)) groupRules.push(rule.text);
-    }
+      if (targets.length && !targets.includes(id)) return;
+      if (!take(rule.text)) return;
+      groupRules.push({
+        text: rule.text,
+        source: {
+          kind: "group",
+          groupId: group._id == null ? null : String(group._id),
+          groupTitle: group.title || "",
+          field,
+          index,
+          targets,
+          value: rule.text,
+        },
+      });
+    });
   }
 
-  let category = String(categoryText ?? "").trim() || null;
-  if (category) {
-    const units = splitRuleUnits(category);
+  const stored = String(categoryText ?? "").trim();
+  let text = stored || null;
+  if (text) {
+    const units = splitRuleUnits(text);
     const kept = units.filter((u) => !seen.has(normalizeRule(u)));
-    if (kept.length !== units.length) category = kept.length ? kept.join("\n") : null;
+    if (kept.length !== units.length) text = kept.length ? kept.join("\n") : null;
   }
+  const category = text
+    ? { text, source: { ...(categorySource || { kind: "categoryField", field }), value: categorySource?.value ?? String(categoryText ?? "") } }
+    : null;
   return { base: baseRules, groups: groupRules, category };
 }
 
@@ -475,22 +517,23 @@ export const numberedRule = (text, i) => `${i + 1}. ${text}`;
 
 export const FIELD_PRECEDENCE_NOTE =
   "Each field's rules are listed from general to specific: base rules first, then category-group rules, then this category's own rules\n" +
-  "(the per-attribute Extraction Rules and variant Guides in CATEGORY DEFINITION are also this category's own rules).\n" +
+  "(the per-attribute Extraction Rules, variant Guides and custom-tab item Selection Rules in CATEGORY DEFINITION are also this category's own rules).\n" +
   "When two rules conflict, follow the more specific one.";
 
 /**
  * یک فیلدِ «FIELD RULES»: قیدهای قفلِ «پیش»، قواعدِ پایه، قیدهای قفلِ «پس»،
  * سپس گروه و دسته — هر کدام با یک سطرِ عنوان تا تقدم روشن باشد.
+ * before/after قاعده‌های سیستمی‌اند و `line`شان همان سطرِ آماده‌ی پرامپت است.
  */
 export function renderFieldRules(field, { before = [], after = [], rules }) {
-  const lines = [...before, ...rules.base.map(bulletRule), ...after];
+  const lines = [...before.map((r) => r.line), ...rules.base.map((r) => bulletRule(r.text)), ...after.map((r) => r.line)];
   if (rules.groups.length) {
     lines.push("Category-group rules (more specific — override the rules above on conflict):");
-    lines.push(...rules.groups.map(bulletRule));
+    lines.push(...rules.groups.map((r) => bulletRule(r.text)));
   }
   if (rules.category) {
     lines.push("Category-specific rules (most specific — override every rule above on conflict):");
-    lines.push(rules.category);
+    lines.push(rules.category.text);
   }
   return `${field}:\n${lines.length ? lines.join("\n") : "No specific rule defined."}`;
 }

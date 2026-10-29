@@ -214,10 +214,17 @@ export async function PUT(req, { params }) {
           }
         }
       }
+      // پرامپتِ تب و آیتم‌ها: undefined ≠ "" — کلاینتی که این کلیدها را نمی‌فرستد
+      // (مثلاً نسخه‌ی کش‌شده‌ی فرم) نباید پرامپتِ ذخیره‌شده را پاک کند.
+      const storedItemPrompts = new Map(
+        (category.customTab?.items || []).map((item) => [String(item._id), item.prompt || ""]),
+      );
+      const promptOf = (value, fallback) => (value === undefined ? fallback : String(value ?? "").trim());
       category.customTab = {
         enabled: !!customTab?.enabled,
         name: (customTab?.name || "").trim(),
         icon: (customTab?.icon || "").trim(),
+        prompt: promptOf(customTab?.prompt, category.customTab?.prompt || ""),
         items: Array.isArray(customTab?.items)
           ? customTab.items.map((item) => ({
               // حیاتی: آیتم‌های موجود باید _id اصلی خود را حفظ کنند تا ارتباط محصولات قبلی قطع نشود.
@@ -226,6 +233,7 @@ export async function PUT(req, { params }) {
               description: (item.description || "").trim(),
               image: (item.image || "").trim(),
               link: (item.link || "").trim(),
+              prompt: promptOf(item.prompt, item._id ? storedItemPrompts.get(String(item._id)) || "" : ""),
             }))
           : [],
       };

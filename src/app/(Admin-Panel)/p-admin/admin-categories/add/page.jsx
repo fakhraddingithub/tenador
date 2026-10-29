@@ -46,6 +46,7 @@ import Input from '@/components/admin/Input';
 import Select from '@/components/admin/Select';
 import AdditionalSportsField from '@/components/admin/AdditionalSportsField';
 import AttributeAudienceField from '@/components/admin/AttributeAudienceField';
+import CustomTabPromptField from '@/components/admin/CustomTabPromptField';
 import { showToast } from '@/lib/toast';
 import { showError } from '@/lib/swal';
 import { invalidateAdminCache } from '@/lib/adminCache';
@@ -223,7 +224,8 @@ export default function AddCategory() {
   const [customTabName, setCustomTabName] = useState('');
   const [customTabIcon, setCustomTabIcon] = useState('');
   const [customTabItems, setCustomTabItems] = useState([]);
-  const [currentTabItem, setCurrentTabItem] = useState({ title: '', description: '', link: '', image: '' });
+  const [currentTabItem, setCurrentTabItem] = useState({ title: '', description: '', link: '', image: '', prompt: '' });
+  const [customTabPrompt, setCustomTabPrompt] = useState('');
   const [editingTabItemIndex, setEditingTabItemIndex] = useState(null);
 
   const sensors = useSensors(
@@ -353,7 +355,7 @@ export default function AddCategory() {
     } else {
       setCustomTabItems((prev) => [...prev, { ...currentTabItem }]);
     }
-    setCurrentTabItem({ title: '', description: '', link: '', image: '' });
+    setCurrentTabItem({ title: '', description: '', link: '', image: '', prompt: '' });
   };
 
   const handleEditTabItem = (index) => {
@@ -363,6 +365,7 @@ export default function AddCategory() {
       description: item.description || '',
       link: item.link || '',
       image: item.image || '',
+      prompt: item.prompt || '',
     });
     setEditingTabItemIndex(index);
   };
@@ -371,7 +374,7 @@ export default function AddCategory() {
     setCustomTabItems((prev) => prev.filter((_, i) => i !== index));
     if (editingTabItemIndex === index) {
       setEditingTabItemIndex(null);
-      setCurrentTabItem({ title: '', description: '', link: '', image: '' });
+      setCurrentTabItem({ title: '', description: '', link: '', image: '', prompt: '' });
     }
   };
 
@@ -403,6 +406,7 @@ export default function AddCategory() {
     setCustomTabName(copy.customTab.name);
     setCustomTabIcon(copy.customTab.icon);
     setCustomTabItems(copy.customTab.items);
+    setCustomTabPrompt(copy.customTab.prompt);
     setProductPrompts(copy.prompts);
 
     // فرم‌های نیمه‌پرِ ویرایش نباید روی داده‌ی تازه باقی بمانند
@@ -411,7 +415,7 @@ export default function AddCategory() {
     setEditingStatId(null);
     setCurrentStat({ name: '', label: '', description: '' });
     setEditingTabItemIndex(null);
-    setCurrentTabItem({ title: '', description: '', link: '', image: '' });
+    setCurrentTabItem({ title: '', description: '', link: '', image: '', prompt: '' });
 
     showToast.success(
       `همه‌ی اطلاعات از دسته «${getCategoryLabel(source)}» کپی شد`,
@@ -624,6 +628,7 @@ export default function AddCategory() {
           enabled: customTabEnabled,
           name: customTabName,
           icon: customTabIcon,
+          prompt: customTabPrompt,
           items: customTabItems,
         },
         prompts: productPrompts.filter((p) => p.context.trim() !== ''),
@@ -1298,6 +1303,8 @@ export default function AddCategory() {
                     </div>
                   </div>
 
+                  <CustomTabPromptField value={customTabPrompt} onChange={setCustomTabPrompt} />
+
                   <div className={`rounded-[var(--radius)] p-6 space-y-5 border-2 ${editingTabItemIndex !== null ? 'bg-purple-50/30 border-purple-200' : 'bg-neutral-50 border-transparent'}`}>
                     <div>
                       <label className="block text-xs font-bold text-neutral-500 mb-2">عکس آیتم (لوگو)</label>
@@ -1353,6 +1360,12 @@ export default function AddCategory() {
                       onChange={(e) => setCurrentTabItem((p) => ({ ...p, description: e.target.value }))}
                       placeholder="توضیح کوتاهی درباره این آیتم"
                     />
+                    <Textarea
+                      label="راهنمای انتخاب برای هوش مصنوعی (اختیاری)"
+                      value={currentTabItem.prompt}
+                      onChange={(e) => setCurrentTabItem((p) => ({ ...p, prompt: e.target.value }))}
+                      placeholder="مثال: فقط وقتی انتخاب شود که متن محصول صراحتاً به FortyFive اشاره کند"
+                    />
                     <Input
                       label="لینک (اختیاری)"
                       value={currentTabItem.link}
@@ -1379,6 +1392,9 @@ export default function AddCategory() {
                             <span className="font-bold text-sm truncate">{item.title}</span>
                             {item.description && (
                               <span className="text-[11px] text-neutral-400 truncate">{item.description}</span>
+                            )}
+                            {item.prompt?.trim() && (
+                              <span className="text-[11px] text-purple-600 truncate" title={item.prompt}>راهنمای AI: {item.prompt}</span>
                             )}
                           </div>
                         </div>

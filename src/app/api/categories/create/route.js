@@ -163,12 +163,14 @@ export async function POST(req) {
         enabled: !!customTab?.enabled,
         name: (customTab?.name || "").trim(),
         icon: (customTab?.icon || "").trim(),
+        prompt: String(customTab?.prompt ?? "").trim(),
         items: Array.isArray(customTab?.items)
           ? customTab.items.map((item) => ({
               title: item.title.trim(),
               description: (item.description || "").trim(),
               image: (item.image || "").trim(),
               link: (item.link || "").trim(),
+              prompt: String(item.prompt ?? "").trim(),
             }))
           : [],
       },

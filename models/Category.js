@@ -98,6 +98,13 @@ const CustomTabItemSchema = new mongoose.Schema({
     trim: true,
     default: "",
   },
+  // راهنمای AI برای اینکه این آیتم را کِی برای محصول انتخاب کند — در پرامپت
+  // کنارِ عنوانِ آیتم می‌آید (Selection Rule). خالی = بدونِ راهنما (رفتارِ قبلی).
+  prompt: {
+    type: String,
+    trim: true,
+    default: "",
+  },
 });
 
 const CategorySchema = new mongoose.Schema(
@@ -208,6 +215,9 @@ const CategorySchema = new mongoose.Schema(
       enabled: { type: Boolean, default: false },
       name: { type: String, trim: true, default: "" },
       icon: { type: String, default: "" },
+      // قاعده‌ی اختصاصیِ این دسته برای انتخابِ آیتم‌های تب (فیلدِ customTabItems
+      // در پرامپتِ ساختِ محصول، بعد از پرامپت پایه). خالی = بدونِ قاعده.
+      prompt: { type: String, trim: true, default: "" },
       items: { type: [CustomTabItemSchema], default: [] },
     },
 

@@ -101,8 +101,10 @@ const tennisRacket = () => ({
         description: "توضیح",
         image: "https://cdn/i.jpg",
         link: "https://x",
+        prompt: "only when the text names FortyFive",
       },
     ],
+    prompt: "pick technologies the text names",
   },
 });
 
@@ -160,12 +162,14 @@ test("همه‌ی مقادیر متنی و آرایه‌ای دقیقاً از �
     enabled: true,
     name: "تکنولوژی‌ها",
     icon: "https://cdn/tab.svg",
+    prompt: "pick technologies the text names",
     items: [
       {
         title: "FORTYFIVE",
         description: "توضیح",
         image: "https://cdn/i.jpg",
         link: "https://x",
+        prompt: "only when the text names FortyFive",
       },
     ],
   });

@@ -183,7 +183,7 @@ export function PromptTabs({ rows, active, onChange, label }) {
   );
 }
 
-const textareaClass =
+export const textareaClass =
   'w-full px-3 py-2 text-[13px] leading-6 font-medium rounded-xl border-2 outline-none transition-all ' +
   'bg-gray-50 text-gray-900 placeholder-gray-400 resize-y text-left [direction:ltr] ' +
   'focus:bg-white focus:border-[var(--color-primary)] focus:ring-4 focus:ring-[var(--color-primary)]/10';

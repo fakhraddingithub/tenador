@@ -2,33 +2,28 @@
 
 /**
  * «تنظیمات پرامپت» — نمای کلی: کارتِ پرامپت پایه، فهرستِ گروه‌های پرامپت دسته و
- * پیش‌نمایشِ پرامپتِ نهایی. ویرایشِ قواعد در صفحه‌ی خودِ هر کدام است:
+ * پیوند به پیش‌نمایشِ پرامپتِ نهایی. ویرایشِ قواعد در صفحه‌ی خودِ هر کدام است:
  *   ./base             پرامپت پایه
  *   ./groups/[groupId] یک گروه («new» برای ساخت)
+ *   ./preview          پیش‌نمایشِ قاعده‌به‌قاعده با منبع و ویرایشِ مستقیم
  * جابه‌جایی و حذفِ گروه همین‌جا و فوراً ذخیره می‌شود (فقط `groups` فرستاده می‌شود).
  */
 
 import { useState } from 'react';
 import Link from 'next/link';
 import Swal from 'sweetalert2';
-import { toast } from 'react-toastify';
 import {
   FiArrowDown, FiArrowLeft, FiArrowRight, FiArrowUp, FiEye, FiLayers, FiLock, FiPlus, FiSliders, FiTrash2,
 } from 'react-icons/fi';
 import PageHeader from '@/components/admin/PageHeader';
-import Button from '@/components/admin/Button';
 import AdminLoader from '@/components/admin/AdminLoader';
 import { useAdminPermissions } from '@/components/admin/AdminPermissionProvider';
-import { getApiErrorMessage } from '@/lib/apiClientError';
 import {
   PROMPTS_HOME, categoryName, storedGroupPayload, swalTheme, usePromptConfig,
 } from '@/components/admin/productPrompts/promptSettingsUi';
 import {
   BASE_PROMPT_SECTIONS, DEFAULT_BASE_PROMPT, fieldTitle, isLegacyGroupField, resolveBasePrompt,
 } from '@/lib/productPromptConfig';
-
-const PREVIEW_RAW_CONTENT =
-  'Sample product content for previewing the assembled prompt. Replace this with real product text when generating a product.';
 
 export default function PromptSettingsPage() {
   const { can } = useAdminPermissions();
@@ -39,7 +34,7 @@ export default function PromptSettingsPage() {
   if (ctx.loadError) return <div className="a-card p-8 text-center text-sm font-bold text-red-500">{ctx.loadError}</div>;
   if (!ctx.config) return <AdminLoader />;
 
-  const { config, categories, categoryById, save } = ctx;
+  const { config, categoryById, save } = ctx;
   const base = resolveBasePrompt(config.base);
   const customSections = BASE_PROMPT_SECTIONS.filter(
     ({ key }) => JSON.stringify(base[key]) !== JSON.stringify(DEFAULT_BASE_PROMPT[key]),
@@ -192,7 +187,24 @@ export default function PromptSettingsPage() {
         )}
       </section>
 
-      <PreviewPanel categories={categories} canPreview={can('ai.productDraft')} />
+      {/* پیش‌نمایش */}
+      <section className="a-card p-5 flex flex-col md:flex-row md:items-center gap-4">
+        <span className="w-11 h-11 shrink-0 inline-flex items-center justify-center rounded-xl bg-[var(--color-primary-soft)] text-[var(--color-primary)]">
+          <FiEye size={20} />
+        </span>
+        <div className="flex-1 min-w-0">
+          <h2 className="text-base font-bold text-gray-900">پیش‌نمایش پرامپت نهایی</h2>
+          <p className="text-xs font-bold text-gray-500 mt-1 leading-6">
+            قواعدِ پرامپتِ یک دسته، فیلد به فیلد؛ با کلیک روی هر قاعده منبعش (پرامپت پایه، کدام گروه یا کدام تنظیمِ دسته) دیده و همان‌جا ویرایش می‌شود.
+          </p>
+        </div>
+        <Link
+          href={`${PROMPTS_HOME}/preview`}
+          className="inline-flex items-center justify-center gap-2 px-4 py-2.5 text-sm font-bold rounded-[var(--admin-radius)] border border-[var(--admin-border)] bg-white text-gray-800 hover:border-[var(--color-primary)] hover:text-[var(--color-primary)] transition-colors"
+        >
+          باز کردن پیش‌نمایش <FiArrowLeft size={14} />
+        </Link>
+      </section>
 
       <div className="flex gap-2 items-start p-3 rounded-xl bg-white border border-gray-200 text-xs font-bold text-gray-500 leading-6">
         <FiLock className="mt-1 shrink-0" size={13} />
@@ -202,58 +214,5 @@ export default function PromptSettingsPage() {
         </span>
       </div>
     </div>
-  );
-}
-
-/* ─── پیش‌نمایش ─────────────────────────────────────────────────────────── */
-function PreviewPanel({ categories, canPreview }) {
-  const [categoryId, setCategoryId] = useState('');
-  const [prompt, setPrompt] = useState('');
-  const [loading, setLoading] = useState(false);
-
-  const run = async () => {
-    setLoading(true);
-    try {
-      const res = await fetch('/api/ai/product-draft', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ categoryId, rawContent: PREVIEW_RAW_CONTENT }),
-      });
-      const data = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error(getApiErrorMessage(data, 'خطا در ساخت پیش‌نمایش'));
-      setPrompt(data.draft);
-    } catch (err) {
-      toast.error(err.message);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  return (
-    <section className="a-card p-5 space-y-4">
-      <div>
-        <h2 className="text-base font-bold text-gray-900 flex items-center gap-2"><FiEye size={16} /> پیش‌نمایش پرامپت نهایی</h2>
-        <p className="text-xs font-bold text-gray-500 mt-1 leading-6">پرامپتِ ساختِ محصول را برای یک دسته از آخرین تنظیماتِ ذخیره‌شده می‌سازد؛ متنِ خامِ محصول یک متنِ نمونه است.</p>
-      </div>
-      {!canPreview ? (
-        <p className="text-sm font-bold text-gray-400">برای پیش‌نمایش، دسترسی «تولید پیش‌نویس محصول با AI» لازم است.</p>
-      ) : (
-        <>
-          <div className="flex flex-wrap items-end gap-3">
-            <label className="flex-1 min-w-[220px]">
-              <span className="block text-sm font-bold text-gray-700 mb-1.5">دسته</span>
-              <select value={categoryId} onChange={(e) => setCategoryId(e.target.value)} className="w-full px-3 py-2.5 text-sm font-bold rounded-xl border-2 border-gray-200 bg-white">
-                <option value="">یک دسته را انتخاب کنید</option>
-                {categories.map((c) => <option key={c._id} value={c._id}>{c.label}</option>)}
-              </select>
-            </label>
-            <Button icon={<FiEye size={15} />} disabled={!categoryId} loading={loading} onClick={run}>ساخت پرامپت نهایی</Button>
-          </div>
-          {prompt && (
-            <pre className="text-xs leading-6 bg-gray-50 border rounded-xl p-4 max-h-[70vh] overflow-auto whitespace-pre-wrap text-left [direction:ltr]">{prompt}</pre>
-          )}
-        </>
-      )}
-    </section>
   );
 }
