@@ -36,7 +36,7 @@ export default async function RootLayout({ children }) {
           className="min-h-screen bg-[var(--color-background)] text-[var(--color-text)] antialiased"
           style={{ fontFamily: 'var(--font-sans)' }}
         >
-          <main className="min-h-screen overflow-x-hidden">
+          <main className="min-h-screen overflow-x-clip">
             <SiteNavbar />
             <div className="admin-scope">{children}</div>
           </main>
@@ -66,7 +66,7 @@ export default async function RootLayout({ children }) {
         <InitialLoadLoader />
         <NavigationLoader />
         <ScrollToTop />
-        <main className="min-h-screen overflow-x-hidden">
+        <main className="min-h-screen overflow-x-clip">
           {/* نوبار سایت — رنگ‌های سایت (خارج از admin-scope) دست‌نخورده می‌مانند */}
           <SiteNavbar />
           {/* از این‌جا به بعد داخل admin-scope هستیم: پریمری = سبز درباری، رادیوس = ۶ پیکسل */}

@@ -272,7 +272,7 @@ export default function AdminLayout({ children }) {
       <motion.div animate={{ marginRight: sidebarWidth }} transition={{ duration: 0.35, ease: [0.4, 0, 0.2, 1] }}
         className="admin-main-mobile flex-1 flex flex-col min-h-screen min-w-0">
         {/* Header */}
-        <header className="sticky top-[75px] z-40 flex flex-nowrap items-center justify-between gap-2 px-2 sm:px-6 py-3 border-b"
+        <header className="sticky top-[64px] lg:top-[75px] z-40 flex flex-nowrap items-center justify-between gap-2 px-2 sm:px-6 py-3 border-b"
           style={{ background: "rgba(244,245,242,0.9)", backdropFilter: "blur(16px)", borderColor: "var(--admin-border)" }}>
           <div className="flex flex-1 items-center gap-1 sm:gap-2 min-w-0">
             {/* همبرگر — فقط موبایل: باز کردن ساید‌بار */}

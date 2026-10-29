@@ -247,13 +247,6 @@ export default function PromptPreviewPage() {
             {ctx.categories.map((c) => <option key={c._id} value={c._id}>{c.label}</option>)}
           </select>
         </label>
-        <ul className="flex flex-wrap gap-2 lg:mr-auto" aria-label="راهنمای رنگ‌ها">
-          {Object.entries(TONES).map(([key, t]) => (
-            <li key={key} className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-bold ${t.chip}`}>
-              <span className={`w-2 h-2 rounded-full ${t.dot}`} /> {t.label}
-            </li>
-          ))}
-        </ul>
       </section>
 
       {!categoryId ? (
@@ -278,7 +271,28 @@ const fieldTitleOf = (key) => BASE_PROMPT_SECTIONS.find((s) => s.field === key)?
 
 function PromptArticle({ data, loading, categoryLabel, groupLabel, ruleProps }) {
   const { model } = data;
-  const counts = allRules(model).reduce((acc, r) => ({ ...acc, [toneOf(r.source.kind)]: (acc[toneOf(r.source.kind)] || 0) + 1 }), {});
+  // فیلترِ منبع: کدام رنگ‌ها دیده شوند، و (اختیاری) فقط یک گروهِ مشخص
+  const [tones, setTones] = useState(() => new Set(Object.keys(TONES)));
+  const [groupFilter, setGroupFilter] = useState('');
+
+  const rules = allRules(model);
+  const counts = rules.reduce((acc, r) => ({ ...acc, [toneOf(r.source.kind)]: (acc[toneOf(r.source.kind)] || 0) + 1 }), {});
+  const groupIds = [...new Set(rules.filter((r) => r.source.kind === 'group').map((r) => r.source.groupId ?? ''))];
+  const activeGroup = groupIds.includes(groupFilter) ? groupFilter : '';
+  const filtering = tones.size < Object.keys(TONES).length || Boolean(activeGroup);
+  const shown = (r) => {
+    const tone = toneOf(r.source.kind);
+    return tones.has(tone) && (tone !== 'group' || !activeGroup || (r.source.groupId ?? '') === activeGroup);
+  };
+  const only = (list) => list.filter(shown);
+  const toggleTone = (key) =>
+    setTones((prev) => {
+      const next = new Set(prev);
+      if (next.has(key)) next.delete(key);
+      else next.add(key);
+      return next;
+    });
+
   const precedence = { text: model.precedenceNote, source: { kind: 'system', what: 'precedenceNote' } };
 
   const definitionRules = (key) => {
@@ -307,9 +321,30 @@ function PromptArticle({ data, loading, categoryLabel, groupLabel, ruleProps }) 
     { key: 'output', title: 'قالب خروجی', placement: 'CRITICAL OUTPUT FORMAT RULES', rules: model.general.output, numbered: true },
     { key: 'language', title: 'زبان', placement: 'LANGUAGE RULE', rules: model.general.language },
   ];
+  // در حالتِ فیلتر، بخشی که قاعده‌ی دیده‌شونده ندارد کلاً پنهان می‌شود
+  const visibleGeneral = general.filter((g) => !filtering || only(g.rules).length);
+
+  const fields = model.fields.map((f) => {
+    const def = definitionRules(f.key);
+    const view = {
+      ...f,
+      def: def && { ...def, items: def.items.filter(({ rule }) => shown(rule)) },
+      before: only(f.before),
+      after: only(f.after),
+      base: only(f.rules.base),
+      groups: groupBy(only(f.rules.groups)),
+      category: f.rules.category && shown(f.rules.category) ? f.rules.category : null,
+      // «No specific rule defined.» وضعیتِ خودِ پرامپت است، نه نتیجه‌ی فیلتر
+      empty: !f.before.length && !f.rules.base.length && !f.after.length && !f.rules.groups.length && !f.rules.category,
+    };
+    view.count = view.before.length + view.base.length + view.after.length + view.groups.reduce((n, [, list]) => n + list.length, 0) + (view.category ? 1 : 0) + (view.def?.items.length || 0);
+    return view;
+  });
+  const visibleFields = fields.filter((f) => !filtering || f.count);
+  const nothing = filtering && !visibleGeneral.length && !visibleFields.length && !shown(precedence);
 
   return (
-    <div className={`grid lg:grid-cols-[minmax(0,1fr)_220px] gap-6 items-start transition-opacity ${loading ? 'opacity-60' : ''}`}>
+    <div className={`grid lg:grid-cols-[minmax(0,1fr)_240px] gap-6 items-start transition-opacity ${loading ? 'opacity-60' : ''}`}>
       <article className="a-card px-5 py-7 sm:px-10 sm:py-10 min-w-0">
         <header className="pb-6 border-b border-gray-100 space-y-3">
           <p className="text-xs font-bold text-[var(--color-primary)]">پرامپت ساخت محصول</p>
@@ -318,97 +353,156 @@ function PromptArticle({ data, loading, categoryLabel, groupLabel, ruleProps }) 
             قواعد به همان ترتیبی آمده‌اند که به هوش مصنوعی می‌رسند. روی هر قاعده کلیک کنید تا منبعش را ببینید و ویرایشش کنید.
             فهرست‌های داده (برندها، سری‌ها، ورزشکاران، لیمیتد ادیشن‌ها)، متنِ خامِ محصول و ساختارِ JSON خروجی اینجا نمایش داده نمی‌شوند.
           </p>
-          <div className="flex flex-wrap gap-2 pt-1">
-            {Object.entries(TONES).map(([key, t]) => (
-              <span key={key} className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-bold ${t.chip}`}>
-                {t.label}: {counts[key] || 0}
-              </span>
-            ))}
-          </div>
+          {filtering && (
+            <p className="text-xs font-bold text-amber-700">
+              فیلتر فعال است: فقط قواعدِ {[...tones].map((t) => TONES[t].label).join('، ') || '—'}
+              {activeGroup !== '' && ` (فقط گروه «${groupLabel(activeGroup)}»)`} نمایش داده می‌شوند.
+            </p>
+          )}
         </header>
 
-        <section id="general" className="pt-8 scroll-mt-24">
-          <h2 className="text-xl font-black text-gray-900 mb-1">قواعد عمومی</h2>
-          <p className="text-xs font-bold text-gray-400 mb-6">برای همه‌ی فیلدها؛ پیش از قواعدِ فیلدها می‌آیند.</p>
-          <div className="space-y-7">
-            {general.map((g) => (
-              <div key={g.key}>
-                <SubHeading title={g.title} meta={g.placement} />
-                {g.rules.length ? (
-                  <RuleList rules={g.rules} placement={g.placement} numbered={g.numbered} ruleProps={ruleProps} />
-                ) : (
-                  <Empty>این بخش خالی است و از پرامپت حذف می‌شود.</Empty>
-                )}
-              </div>
-            ))}
+        {nothing && <p className="pt-10 text-center text-sm font-bold text-gray-400">هیچ قاعده‌ای با این فیلتر وجود ندارد.</p>}
+
+        {visibleGeneral.length > 0 && (
+          <section id="general" className="pt-8 scroll-mt-40">
+            <h2 className="text-xl font-black text-gray-900 mb-1">قواعد عمومی</h2>
+            <p className="text-xs font-bold text-gray-400 mb-6">برای همه‌ی فیلدها؛ پیش از قواعدِ فیلدها می‌آیند.</p>
+            <div className="space-y-7">
+              {visibleGeneral.map((g) => (
+                <div key={g.key}>
+                  <SubHeading title={g.title} meta={g.placement} />
+                  {g.rules.length ? (
+                    <RuleList rules={only(g.rules)} placement={g.placement} numbered={g.numbered} ruleProps={ruleProps} />
+                  ) : (
+                    <Empty>این بخش خالی است و از پرامپت حذف می‌شود.</Empty>
+                  )}
+                </div>
+              ))}
+            </div>
+          </section>
+        )}
+
+        {(visibleFields.length > 0 || shown(precedence)) && (
+          <section id="fields" className="pt-12 scroll-mt-40">
+            <h2 className="text-xl font-black text-gray-900 mb-1">قواعد فیلدها</h2>
+            <p className="text-xs font-bold text-gray-400 mb-4">هر فیلد: پرامپت پایه ← گروه‌ها ← اختصاصیِ دسته. در تعارض، قاعده‌ی خاص‌تر برنده است.</p>
+            {shown(precedence) && <RuleList rules={[precedence]} placement="FIELD RULES" ruleProps={ruleProps} />}
+
+            <div className="mt-4 divide-y divide-gray-100">
+              {visibleFields.map((f) => {
+                const placement = `FIELD RULES › ${f.key}`;
+                return (
+                  <article key={f.key} id={`field-${f.key}`} className="py-8 scroll-mt-40 space-y-5">
+                    <header className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
+                      <h3 className="text-lg font-black text-gray-900">{f.title}</h3>
+                      <code dir="ltr" className="px-1.5 py-0.5 rounded bg-gray-100 text-xs font-bold text-gray-500">{f.key}</code>
+                    </header>
+                    {f.empty && !filtering && <Empty>قاعده‌ای ندارد — در پرامپت «No specific rule defined.» می‌آید.</Empty>}
+                    {f.before.length > 0 && <Layer tone="system" title="قیدِ قفل"><RuleList rules={f.before} placement={placement} ruleProps={ruleProps} /></Layer>}
+                    {f.base.length > 0 && <Layer tone="base" title="پرامپت پایه"><RuleList rules={f.base} placement={placement} ruleProps={ruleProps} /></Layer>}
+                    {f.after.length > 0 && <Layer tone="system" title="قیدِ قفل"><RuleList rules={f.after} placement={placement} ruleProps={ruleProps} /></Layer>}
+                    {f.groups.map(([groupId, list]) => (
+                      <Layer key={groupId} tone="group" title={`گروه «${groupLabel(groupId, list[0].source.groupTitle)}»`}>
+                        <RuleList rules={list} placement={placement} ruleProps={ruleProps} />
+                      </Layer>
+                    ))}
+                    {f.category && (
+                      <Layer tone="category" title="اختصاصیِ این دسته">
+                        <RuleList rules={[f.category]} placement={placement} ruleProps={ruleProps} />
+                      </Layer>
+                    )}
+                    {f.def && f.def.items.length > 0 && (
+                      <Layer tone="category" title={f.def.title} meta="در بخشِ «تعریف دسته»">
+                        <div className="space-y-2">
+                          {f.def.items.map(({ rule, caption }, i) => (
+                            <Rule key={i} rule={rule} caption={caption} placement={f.def.placement} {...ruleProps} />
+                          ))}
+                        </div>
+                      </Layer>
+                    )}
+                  </article>
+                );
+              })}
+            </div>
+          </section>
+        )}
+      </article>
+
+      {/* ستونِ کناری (چپ): فیلتر + فهرستِ فیلدها؛ روی دسکتاپ هنگامِ اسکرول ثابت می‌ماند.
+          top = نوبارِ سایت (75px) + هدرِ چسبانِ پنل */}
+      <aside className="order-first lg:order-none lg:sticky lg:top-[150px] a-card p-4 space-y-4 lg:max-h-[calc(100vh-170px)] lg:overflow-y-auto admin-scrollbar">
+        <div>
+          <div className="flex items-center justify-between mb-2">
+            <p className="text-[11px] font-bold text-gray-400">فیلتر بر اساسِ منبع</p>
+            {filtering && (
+              <button
+                type="button"
+                onClick={() => { setTones(new Set(Object.keys(TONES))); setGroupFilter(''); }}
+                className="text-[11px] font-bold text-[var(--color-primary)] hover:underline"
+              >
+                نمایش همه
+              </button>
+            )}
           </div>
-        </section>
-
-        <section id="fields" className="pt-12 scroll-mt-24">
-          <h2 className="text-xl font-black text-gray-900 mb-1">قواعد فیلدها</h2>
-          <p className="text-xs font-bold text-gray-400 mb-4">هر فیلد: پرامپت پایه ← گروه‌ها ← اختصاصیِ دسته. در تعارض، قاعده‌ی خاص‌تر برنده است.</p>
-          <RuleList rules={[precedence]} placement="FIELD RULES" ruleProps={ruleProps} />
-
-          <div className="mt-4 divide-y divide-gray-100">
-            {model.fields.map((f) => {
-              const def = definitionRules(f.key);
-              const groups = groupBy(f.rules.groups);
-              const empty = !f.before.length && !f.rules.base.length && !f.after.length && !f.rules.groups.length && !f.rules.category;
-              const placement = `FIELD RULES › ${f.key}`;
+          <div className="flex flex-wrap lg:flex-col gap-1.5" role="group" aria-label="فیلتر بر اساسِ منبع">
+            {Object.entries(TONES).map(([key, t]) => {
+              const on = tones.has(key);
               return (
-                <article key={f.key} id={`field-${f.key}`} className="py-8 scroll-mt-24 space-y-5">
-                  <header className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
-                    <h3 className="text-lg font-black text-gray-900">{f.title}</h3>
-                    <code dir="ltr" className="px-1.5 py-0.5 rounded bg-gray-100 text-xs font-bold text-gray-500">{f.key}</code>
-                  </header>
-                  {empty && <Empty>قاعده‌ای ندارد — در پرامپت «No specific rule defined.» می‌آید.</Empty>}
-                  {f.before.length > 0 && <Layer tone="system" title="قیدِ قفل"><RuleList rules={f.before} placement={placement} ruleProps={ruleProps} /></Layer>}
-                  {f.rules.base.length > 0 && <Layer tone="base" title="پرامپت پایه"><RuleList rules={f.rules.base} placement={placement} ruleProps={ruleProps} /></Layer>}
-                  {f.after.length > 0 && <Layer tone="system" title="قیدِ قفل"><RuleList rules={f.after} placement={placement} ruleProps={ruleProps} /></Layer>}
-                  {groups.map(([groupId, rules]) => (
-                    <Layer key={groupId} tone="group" title={`گروه «${groupLabel(groupId, rules[0].source.groupTitle)}»`}>
-                      <RuleList rules={rules} placement={placement} ruleProps={ruleProps} />
-                    </Layer>
-                  ))}
-                  {f.rules.category && (
-                    <Layer tone="category" title="اختصاصیِ این دسته">
-                      <RuleList rules={[f.rules.category]} placement={placement} ruleProps={ruleProps} />
-                    </Layer>
-                  )}
-                  {def && def.items.length > 0 && (
-                    <Layer tone="category" title={def.title} meta="در بخشِ «تعریف دسته»">
-                      <div className="space-y-2">
-                        {def.items.map(({ rule, caption }, i) => (
-                          <Rule key={i} rule={rule} caption={caption} placement={def.placement} {...ruleProps} />
-                        ))}
-                      </div>
-                    </Layer>
-                  )}
-                </article>
+                <button
+                  key={key}
+                  type="button"
+                  aria-pressed={on}
+                  onClick={() => toggleTone(key)}
+                  className={`inline-flex items-center justify-between gap-2 px-2.5 py-1.5 rounded-lg text-xs font-bold border transition-colors ${
+                    on ? `${t.chip} border-transparent` : 'bg-white text-gray-400 border-gray-200 hover:border-gray-300'
+                  }`}
+                >
+                  <span className="inline-flex items-center gap-1.5">
+                    <span className={`w-2 h-2 rounded-full ${on ? t.dot : 'bg-gray-300'}`} />
+                    {t.label}
+                  </span>
+                  <span className="text-[10px] opacity-80">{counts[key] || 0}</span>
+                </button>
               );
             })}
           </div>
-        </section>
-      </article>
+          {groupIds.length > 0 && tones.has('group') && (
+            <label className="block mt-2">
+              <span className="sr-only">گروه</span>
+              <select
+                value={activeGroup}
+                onChange={(e) => setGroupFilter(e.target.value)}
+                className="w-full px-2.5 py-1.5 text-xs font-bold rounded-lg border border-gray-200 bg-white outline-none focus:border-[var(--color-primary)]"
+              >
+                <option value="">همه‌ی گروه‌ها</option>
+                {groupIds.map((id) => <option key={id} value={id}>گروه «{groupLabel(id)}»</option>)}
+              </select>
+            </label>
+          )}
+        </div>
 
-      <nav aria-label="فهرست" className="hidden lg:block sticky top-24 a-card p-4 max-h-[calc(100vh-8rem)] overflow-y-auto">
-        <p className="text-[11px] font-bold text-gray-400 mb-2">فهرست</p>
-        <a href="#general" className="block px-2 py-1.5 rounded-lg text-xs font-bold text-gray-700 hover:bg-gray-50">قواعد عمومی</a>
-        <a href="#fields" className="block px-2 py-1.5 rounded-lg text-xs font-bold text-gray-700 hover:bg-gray-50">قواعد فیلدها</a>
-        <ul className="mt-1 border-r border-gray-100 pr-2 space-y-0.5">
-          {model.fields.map((f) => {
-            const n = f.rules.base.length + f.rules.groups.length + (f.rules.category ? 1 : 0);
-            return (
+        <nav aria-label="فهرستِ فیلدها" className="border-t border-gray-100 pt-3">
+          <p className="text-[11px] font-bold text-gray-400 mb-2">فهرست</p>
+          <div className="flex flex-wrap lg:block gap-1">
+            {visibleGeneral.length > 0 && (
+              <a href="#general" className="block px-2 py-1.5 rounded-lg text-xs font-bold text-gray-700 hover:bg-gray-50">قواعد عمومی</a>
+            )}
+            {(visibleFields.length > 0 || shown(precedence)) && (
+              <a href="#fields" className="block px-2 py-1.5 rounded-lg text-xs font-bold text-gray-700 hover:bg-gray-50">قواعد فیلدها</a>
+            )}
+          </div>
+          <ul className="mt-1 flex flex-wrap gap-1 lg:block lg:border-r lg:border-gray-100 lg:pr-2 lg:space-y-0.5">
+            {visibleFields.map((f) => (
               <li key={f.key}>
-                <a href={`#field-${f.key}`} className="flex items-center justify-between gap-2 px-2 py-1 rounded-lg text-xs font-bold text-gray-500 hover:bg-gray-50 hover:text-[var(--color-primary)]">
+                <a href={`#field-${f.key}`} className="flex items-center justify-between gap-2 px-2 py-1 rounded-lg text-xs font-bold text-gray-500 bg-gray-50 lg:bg-transparent hover:bg-gray-50 hover:text-[var(--color-primary)]">
                   {f.title}
-                  <span className="text-[10px] text-gray-400">{n}</span>
+                  <span className="text-[10px] text-gray-400">{f.count}</span>
                 </a>
               </li>
-            );
-          })}
-        </ul>
-      </nav>
+            ))}
+          </ul>
+        </nav>
+      </aside>
     </div>
   );
 }
@@ -518,6 +612,7 @@ function Rule({ rule, marker, caption, placement, openId, setOpenId, describe, c
   return (
     <div ref={ref} className="relative">
       <div
+        dir="ltr"
         role="button"
         tabIndex={0}
         aria-expanded={open}
@@ -528,14 +623,14 @@ function Rule({ rule, marker, caption, placement, openId, setOpenId, describe, c
             toggle();
           }
         }}
-        className={`flex gap-3 items-start rounded-lg border-r-4 px-3.5 py-2.5 cursor-pointer transition-colors outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-primary)]/40 ${tone.rule} ${open ? 'ring-2 ring-[var(--color-primary)]/30' : ''}`}
+        className={`flex gap-3 items-start rounded-lg border-l-4 text-left px-3.5 py-2.5 cursor-pointer transition-colors outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-primary)]/40 ${tone.rule} ${open ? 'ring-2 ring-[var(--color-primary)]/30' : ''}`}
       >
         {marker && <span className="mt-0.5 shrink-0 w-6 text-center text-xs font-bold text-gray-400">{marker}</span>}
         <div className="flex-1 min-w-0">
-          {caption && <p className="mb-0.5 text-[11px] font-bold text-gray-500">{caption}</p>}
+          {caption && <p dir="auto" className="mb-0.5 text-left text-[11px] font-bold text-gray-500">{caption}</p>}
           <div
             dir="auto"
-            className={`whitespace-pre-wrap break-words text-start text-[13px] leading-7 ${isSystem ? 'text-gray-500 max-h-48 overflow-y-auto' : 'text-gray-800'}`}
+            className={`whitespace-pre-wrap break-words text-left text-[13px] leading-7 ${isSystem ? 'text-gray-500 max-h-48 overflow-y-auto' : 'text-gray-800'}`}
           >
             {rule.text}
           </div>
@@ -544,8 +639,8 @@ function Rule({ rule, marker, caption, placement, openId, setOpenId, describe, c
       </div>
 
       {open && (
-        <div role="dialog" aria-label="منبع قاعده" className="absolute z-30 top-full right-0 mt-2 w-full sm:w-[min(36rem,100%)] rounded-xl bg-white shadow-xl ring-1 ring-black/10 p-4 space-y-3">
-          <span aria-hidden className="absolute -top-1.5 right-6 w-3 h-3 rotate-45 bg-white border-t border-r border-black/10" />
+        <div role="dialog" aria-label="منبع قاعده" className="absolute z-30 top-full left-0 mt-2 w-full sm:w-[min(36rem,100%)] rounded-xl bg-white shadow-xl ring-1 ring-black/10 p-4 space-y-3">
+          <span aria-hidden className="absolute -top-1.5 left-6 w-3 h-3 rotate-45 bg-white border-t border-l border-black/10" />
           <div className="flex items-center justify-between gap-2">
             <span className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[11px] font-bold ${tone.chip}`}>
               <span className={`w-1.5 h-1.5 rounded-full ${tone.dot}`} /> {tone.label}
