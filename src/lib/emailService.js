@@ -10,8 +10,8 @@
  *   EMAIL_PASS=your_password
  *   EMAIL_FROM="Tenador Store <noreply@tenador.ir>"
  *   ADMIN_EMAIL=admin@tenador.ir
- *   NEXT_PUBLIC_BASE_URL=https://tenador.ir
- *   NEXT_PUBLIC_LOGO_URL=https://www.tenador.com/logo/logo.svg  (اختیاری)
+ *   NEXT_PUBLIC_BASE_URL=https://tenador.com
+ *   NEXT_PUBLIC_LOGO_URL=https://tenador.com/logo/logo.svg  (اختیاری)
  */
 
 import { couponDisplayCode } from "@/lib/couponLabel";
