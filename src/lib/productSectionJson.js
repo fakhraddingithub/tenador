@@ -19,7 +19,7 @@ const empty = (value) => value === '' || value === undefined;
 
 // JSON.parse accepts duplicate keys silently. Detect them before accepting a draft,
 // including escaped equivalents such as "name" and "\u006eame".
-function duplicateKeys(text) {
+export function duplicateKeys(text) {
   const tokens = text.match(/"(?:\\.|[^"\\])*"|[{}\[\]:,]|true|false|null|-?\d+(?:\.\d+)?(?:[eE][+-]?\d+)?/g);
   let index = 0;
   const errors = [];

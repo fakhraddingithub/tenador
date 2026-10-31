@@ -6,8 +6,9 @@ import ProductSectionJsonModal from '@/components/admin/ProductSectionJsonModal'
 import { BASIC_PRODUCT_FIELDS, productAttributeType } from '@/lib/productSectionJson';
 import { useState, useEffect, useMemo } from 'react';
 import { useRouter, useParams } from 'next/navigation';
-import { FaEdit, FaBox, FaImages, FaTags, FaCogs, FaPalette, FaRunning, FaLayerGroup } from 'react-icons/fa';
-import { FiChevronDown, FiChevronUp } from 'react-icons/fi';
+import Link from 'next/link';
+import { FaEdit, FaBox, FaImages, FaTags, FaCogs, FaPalette, FaRunning, FaLayerGroup, FaMagic } from 'react-icons/fa';
+import { FiChevronDown, FiChevronUp, FiChevronLeft } from 'react-icons/fi';
 import { AnimatePresence, motion } from 'framer-motion';
 import Button from '@/components/admin/Button';
 import AdminLoader from '@/components/admin/AdminLoader';
@@ -825,6 +826,21 @@ export default function ProductEditPage() {
           {uploadsInFlight > 0 ? 'در حال بارگذاری تصویر…' : 'ذخیره تغییرات'}
         </Button>
       </div>
+
+      {/* Product Regeneration — صفحه‌ی جدا (POST /api/product/[id]/regenerate) */}
+      <Link
+        href={`/p-admin/admin-products/${id}/regenerate`}
+        className="flex items-center gap-4 bg-white p-6 rounded-[2.5rem] shadow-sm border border-gray-100 transition-colors hover:border-[var(--color-primary)] focus-visible:outline-2 focus-visible:outline-[var(--color-primary)]"
+      >
+        <div className="bg-purple-50 p-3 rounded-2xl text-purple-600"><FaMagic size={20} /></div>
+        <div className="flex-1">
+          <h2 className="font-bold text-gray-800">بازتولید محصول</h2>
+          <p className="text-xs text-gray-500 mt-1">
+            بازنویسیِ اطلاعاتِ محصول با پرامپت AI — تصاویر و واریانت‌ها دست‌نخورده می‌مانند
+          </p>
+        </div>
+        <FiChevronLeft className="text-gray-400" aria-hidden="true" />
+      </Link>
 
       {/* General Info */}
       <CollapsibleSection

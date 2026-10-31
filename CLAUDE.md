@@ -190,6 +190,50 @@ reports through `handleApiError` like everything else.
 npm run test:product-creation   # create + edit, real replica set, real schemas and hooks
 ```
 
+### Product regeneration (AI re-write of an existing product)
+
+«بازتولید محصول» on the edit page → `/p-admin/admin-products/[productId]/regenerate`, two modes:
+
+| mode | flow |
+|---|---|
+| automatic | raw text → `POST …/regenerate/generate` (`ai.productDraft`): builds the prompt, calls the configured AI provider, validates, returns `{ json, preview, ai }`. **Writes nothing.** |
+| manual | raw text → `POST /api/ai/product-draft` → copy prompt → external AI → paste JSON → `POST …/regenerate` with `dryRun: true` |
+
+Both apply through the **same** `POST /api/product/[productId]/regenerate` (`products.edit`) with the
+JSON text and the preview's `updatedAt` (409 if the product changed since) — AI output has no write
+path of its own and is re-validated on apply. Layers: `src/lib/productRegeneration.js` (pure field
+rules), `src/lib/productRegenerationService.js` (refs, preview, atomic apply), and
+**`src/lib/productDraftPrompt.js`** — the one prompt builder used by product creation and both modes,
+so prompt-settings edits in the panel reach all three. It sends athletes of the category's sport only.
+
+Automatic mode is stricter than manual: `requireComplete` makes a field the model left out an error
+(manual: absent = keep). Invalid model output is a 422 that returns the raw JSON, and the page can hand
+it to manual mode for repair. It has its own quota bucket (`consumeAssistantQuota(…, { scope: "product:" })`).
+
+**AI provider layer — `src/lib/ai/`.** `generate()` / `generateJson()` in `index.js` are the only way
+code talks to a model; the provider is picked by `AI_PROVIDER` (`gemini` default, `openai`). Each
+provider (`gemini.js`, `openai.js`) normalizes to `{ text, finishReason: stop|length|filtered|other,
+tokens }` and throws `AiError` with a safe Persian message and a code (`AI_TIMEOUT`, `AI_INCOMPLETE`,
+`GEMINI_QUOTA`, …) — provider messages are never forwarded. A non-`stop` finish is an error, never data.
+`schema` is plain JSON Schema; each provider maps it to its own form. The admin assistant uses this
+layer too (`src/lib/assistant/gemini.js` is a thin adapter keeping its own messages), so the Gemini
+key/model/proxy config exists once. Adding a provider = one file + one entry in `PROVIDERS`.
+
+- **Images and variants are never written.** `mainImage`, `gallery`, `variantOptions`, `variantMeta`
+  in the JSON are reported as preserved and dropped; the route never imports `Variant`, and aborts
+  the transaction if any of `PROTECTED_PRODUCT_PATHS` is modified on the document before `save()`.
+- `undefined ≠ empty`, like PUT: a key missing from the JSON is left alone (that is how an admin
+  keeps a real price); `""`/`[]`/`{}` clears. All-or-nothing — any field error rejects everything.
+- The JSON must belong to the product's own category/sport. Serie/limited edition must belong to
+  the effective brand (a brand change with no `serie` key is refused, not silently kept). An
+  attribute scoped out for the new audience keeps its stored value, same as the edit form.
+- A name change changes the slug (pre-save hook); a colliding slug is a 409 at preview time.
+
+```bash
+npm run test:product-regeneration   # both modes, real replica set, fake provider transport
+npm run test:ai-providers           # provider abstraction: wire formats, normalization, errors
+```
+
 ### Target audience: the category prompt, and audience-scoped fixed attributes
 
 `utils/targetAudience.js` is the single source of truth for the four values
@@ -1768,4 +1812,8 @@ BULLMQ_QUEUE / BATCH_SIZE / PRECOMPUTE_CONCURRENCY / PRICE_CACHE_TTL
 REDIS_URL                                                    # BullMQ connection (workers)
 NEXT_PUBLIC_VAPID_PUBLIC_KEY / VAPID_PRIVATE_KEY / VAPID_SUBJECT   # Web push
 CRON_SECRET                                                  # Authenticates Vercel Cron requests to /api/cron/*
+AI_PROVIDER                                                  # gemini (default) | openai — shared AI layer (src/lib/ai)
+GEMINI_API_KEY / GEMINI_MODEL / GEMINI_PROXY_URL             # Gemini (admin assistant + automatic product regeneration)
+OPENAI_API_KEY / OPENAI_MODEL / OPENAI_BASE_URL              # only when AI_PROVIDER=openai
+ADMIN_ASSISTANT_ENABLED                                      # "false" disables the assistant only
 ```

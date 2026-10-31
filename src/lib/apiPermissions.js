@@ -318,6 +318,9 @@ export const PUBLIC_ADMIN_API_PERMISSIONS = {
   "/product/create": { POST: "products.create" },
   "/product/reorder": { PUT: "products.edit" },
   "/product/[productId]": { PUT: "products.edit", DELETE: "products.delete" },
+  "/product/[productId]/regenerate": { POST: "products.edit" },
+  // فقط پیش‌نمایش می‌سازد و چیزی نمی‌نویسد؛ اعمال از روتِ بالا با products.edit می‌گذرد
+  "/product/[productId]/regenerate/generate": { POST: "ai.productDraft" },
   // ⚠️ DELETE اینجا قیمت را پاک نمی‌کند؛ کلِ محصول و واریانت‌هایش را حذف
   // می‌کند (کپیِ DELETE /product/[productId]). کلید بر اساس اثرِ واقعی.
   "/product/[productId]/price": { DELETE: "products.delete" },

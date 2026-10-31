@@ -1,50 +1,33 @@
-import { fetch, ProxyAgent } from 'undici';
+// Thin adapter: the assistant talks to the model through the shared AI layer
+// (src/lib/ai), so key/model/proxy config and provider errors live in one place.
+// It keeps its own enable flag, message wording and AssistantError type.
+import { AiError, generateJson as generateAiJson, getAiConfig } from '../ai/index.js';
 import { AssistantError } from './validation.js';
-import { classifyGeminiError, readProviderError } from './providerErrors.js';
 
-let proxyAgent;
-let proxyUrl;
+const MESSAGES = {
+  AI_INCOMPLETE: ['پاسخ مدل کامل نشد؛ سؤال را کوتاه‌تر یا دقیق‌تر مطرح کنید.', 502],
+  AI_EMPTY: ['پاسخ مدل کامل نشد؛ سؤال را کوتاه‌تر یا دقیق‌تر مطرح کنید.', 502],
+  AI_INVALID_JSON: ['پاسخ مدل قابل پردازش نبود؛ دوباره تلاش کنید.', 502],
+  AI_TIMEOUT: ['اتصال به Gemini برقرار نشد یا زمان پاسخ تمام شد. تنظیمات شبکهٔ سرور را بررسی کنید.', 503],
+  AI_UNREACHABLE: ['اتصال به Gemini برقرار نشد یا زمان پاسخ تمام شد. تنظیمات شبکهٔ سرور را بررسی کنید.', 503],
+};
+
 export function getAssistantConfig() {
-  return { configured: !!process.env.GEMINI_API_KEY?.trim(), enabled: process.env.ADMIN_ASSISTANT_ENABLED !== 'false', model: process.env.GEMINI_MODEL?.trim() || 'gemini-flash-lite-latest' };
+  const { configured, model } = getAiConfig();
+  return { configured, enabled: process.env.ADMIN_ASSISTANT_ENABLED !== 'false', model };
 }
 
 export async function generateJson({ system, input, schema, maxTokens = 1000, signal }) {
   const config = getAssistantConfig();
   if (!config.enabled || !config.configured) throw new AssistantError('دستیار هنوز روی سرور فعال نشده است.', 503);
-  if (!/^[a-zA-Z0-9._-]+$/.test(config.model)) throw new AssistantError('نام مدل در تنظیمات سرور نامعتبر است.', 503);
-  // Optional, scoped to this service only. Never change the application's global dispatcher.
-  const proxy = process.env.GEMINI_PROXY_URL;
-  if (proxy && proxy !== proxyUrl) {
-    if (proxyAgent) void proxyAgent.close();
-    proxyAgent = new ProxyAgent(proxy);
-    proxyUrl = proxy;
-  }
-  let response;
   try {
-    response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${config.model}:generateContent`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'x-goog-api-key': process.env.GEMINI_API_KEY.trim() },
-      body: JSON.stringify({
-        systemInstruction: { parts: [{ text: system }] },
-        contents: [{ role: 'user', parts: [{ text: JSON.stringify(input) }] }],
-        generationConfig: { responseMimeType: 'application/json', responseSchema: schema, maxOutputTokens: maxTokens, temperature: 0.1 },
-      }),
-      signal: signal ? AbortSignal.any([signal, AbortSignal.timeout(25000)]) : AbortSignal.timeout(25000),
-      ...(proxy ? { dispatcher: proxyAgent } : {}),
-    });
-  } catch {
-    throw new AssistantError('اتصال به Gemini برقرار نشد یا زمان پاسخ تمام شد. تنظیمات شبکهٔ سرور را بررسی کنید.', 503);
+    const { value, tokens } = await generateAiJson({ system, prompt: JSON.stringify(input), schema, maxTokens, signal });
+    return { value, tokens };
+  } catch (error) {
+    if (!(error instanceof AiError)) throw error;
+    const [message, status] = MESSAGES[error.code] || [error.message, error.status];
+    const wrapped = new AssistantError(message, status);
+    wrapped.code = error.code;
+    throw wrapped;
   }
-  if (!response.ok) {
-    const error = classifyGeminiError(response.status, await readProviderError(response));
-    console.warn('[assistant] Gemini rejected request', { code: error.code, httpStatus: response.status, model: config.model });
-    throw error;
-  }
-  const result = await response.json();
-  const candidate = result.candidates?.[0];
-  if (candidate?.finishReason !== 'STOP') throw new AssistantError('پاسخ مدل کامل نشد؛ سؤال را کوتاه‌تر یا دقیق‌تر مطرح کنید.', 502);
-  const raw = candidate.content?.parts?.filter((p) => !p.thought).map((p) => p.text || '').join('');
-  try {
-    return { value: JSON.parse(raw), tokens: result.usageMetadata?.totalTokenCount || 0 };
-  } catch { throw new AssistantError('پاسخ مدل قابل پردازش نبود؛ دوباره تلاش کنید.', 502); }
 }

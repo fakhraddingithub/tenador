@@ -1081,6 +1081,7 @@ export const ADMIN_ROUTE_PERMISSIONS = {
   "/p-admin/admin-products": ["products.view"],
   "/p-admin/admin-products/add": ["products.create"],
   "/p-admin/admin-products/edit/[productId]": ["products.edit"],
+  "/p-admin/admin-products/[productId]/regenerate": ["products.edit"],
   "/p-admin/admin-products/[productId]/variants": ["variants.view"],
   "/p-admin/admin-products/[productId]/variants/add": ["variants.edit"],
 
