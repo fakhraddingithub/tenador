@@ -6,6 +6,7 @@ import Link from "next/link";
 import { FaEye, FaRegHeart, FaHeart, FaArrowLeft } from "react-icons/fa";
 import { valueImageSwatches } from "@/lib/variantImages";
 import useWishlist from "@/hooks/useWishlist";
+import ProductCardTitle from "./ProductCardTitle";
 
 export default function ProductCard({ product, rate, onQuickView, overlay = null, campaignBadge = null }) {
   const { mainImage, name, slug, basePrice, label } = product;
@@ -109,7 +110,7 @@ export default function ProductCard({ product, rate, onQuickView, overlay = null
       </Link>
 
       {/* سوآچ‌های واریانت */}
-      <div className="relative z-20 flex items-center justify-center gap-1.5 h-[56px] bg-white">
+      <div className="relative z-20 flex shrink-0 items-center justify-center gap-1.5 h-[56px] bg-white">
         {swatches.length > 0 ? swatches.map((swatch) => (
           <button key={swatch.key} type="button"
             title={swatch.value || undefined}
@@ -123,11 +124,7 @@ export default function ProductCard({ product, rate, onQuickView, overlay = null
 
       {/* محتوا */}
       <div className="p-4 pt-0 flex flex-col items-center text-center relative z-10 pointer-events-none flex-1">
-        {/* زیر ۴۰۰px: دو خط فارسی (۴۰) + فاصله (۴) + انگلیسی (۱۶) = همان ۶۰px */}
-        <div className="mb-4 h-[60px] flex flex-col justify-start max-[400px]:w-full max-[400px]:min-w-0 max-[400px]:shrink-0" title={name}>
-          <h3 className="text-[14px] font-bold text-gray-800 leading-6 mb-1 max-[400px]:leading-5 max-[400px]:line-clamp-2 max-[400px]:shrink-0 max-[400px]:[overflow-wrap:anywhere]">{farsi}</h3>
-          <p dir="ltr" className={`text-[12px] text-gray-800 font-medium leading-4 line-clamp-2 max-[400px]:shrink-0 max-[400px]:[overflow-wrap:anywhere] ${farsi ? "max-[400px]:line-clamp-1" : ""}`}>{english}</p>
-        </div>
+        <ProductCardTitle name={name} slug={slug} farsi={farsi} english={english} />
 
         {/* قیمت */}
         <div className="mt-auto flex flex-col items-center">

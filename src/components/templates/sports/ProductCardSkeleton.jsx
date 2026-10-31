@@ -28,7 +28,7 @@ export function ProductCardSkeleton() {
       <Shimmer className="w-full aspect-square" />
 
       {/* نوار سوآچ‌ها — ارتفاعِ ۵۶px مثل کارت واقعی */}
-      <div className="flex items-center justify-center gap-1.5 h-[56px] bg-white">
+      <div className="flex shrink-0 items-center justify-center gap-1.5 h-[56px] bg-white">
         <div className="w-8 h-8 rounded-[6px] bg-gray-100" />
         <div className="w-8 h-8 rounded-[6px] bg-gray-100" />
         <div className="w-8 h-8 rounded-[6px] bg-gray-100" />
@@ -36,8 +36,8 @@ export function ProductCardSkeleton() {
 
       {/* محتوا */}
       <div className="p-4 pt-0 flex flex-col items-center text-center flex-1">
-        {/* بلوکِ نام — ارتفاعِ ۶۰px مثل کارت واقعی (دو خط) */}
-        <div className="mb-4 h-[60px] w-full flex flex-col items-center justify-start gap-2 pt-1">
+        {/* بلوکِ نام — ارتفاعِ ۶۰px مثل کارت واقعی */}
+        <div className="mb-4 h-[60px] shrink-0 w-full flex flex-col items-center justify-start gap-2 pt-1">
           <Shimmer className="h-4 w-3/4 rounded" />
           <Shimmer className="h-3 w-1/2 rounded" />
         </div>
