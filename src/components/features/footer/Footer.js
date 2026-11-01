@@ -76,7 +76,7 @@ export default function Footer() {
                 <h3 className="text-2xl font-bold mb-2 text-white">
                   {isSubscribed ? "شما عضو خبرنامه هستید" : "عضویت در خبرنامه"}
                 </h3>
-                <p className="text-gray-400">
+                <p className="text-[#9da5b3]">
                   {isSubscribed 
                     ? "از اینکه ما را دنبال می‌کنید سپاسگزاریم." 
                     : "از جدیدترین محصولات و تخفیف‌های ویژه با خبر شوید"}
@@ -118,7 +118,7 @@ export default function Footer() {
             <div className="mb-6 opacity-90">
               <Image src="/logo/logo.svg" alt="logo" width={120} height={120} />
             </div>
-            <p className="text-gray-400 mb-8 leading-relaxed text-sm">
+            <p className="text-[#9da5b3] mb-8 leading-relaxed text-sm">
               فروشگاه تخصصی تجهیزات ورزش‌های راکتی در ایران. ارائه‌دهنده محصولات
               اصل و با کیفیت برندهای معتبر جهانی با بهترین قیمت و خدمات پس از
               فروش.
@@ -152,9 +152,10 @@ export default function Footer() {
                 <a
                   key={idx}
                   href={social.href}
+                  aria-label={["اینستاگرام تنادور", "تلگرام تنادور", "توییتر تنادور", "یوتیوب تنادور"][idx]}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="text-white hover:text-[#aa4725] transition-all duration-300 ease-in-out transform hover:-translate-y-1"
+                  className="text-white hover:text-[#e6a18a] transition-all duration-300 ease-in-out transform hover:-translate-y-1"
                 >
                   {social.icon}
                 </a>
@@ -173,7 +174,7 @@ export default function Footer() {
                   <li key={linkIndex}>
                     <Link
                       href={link.href}
-                      className="text-gray-400 hover:text-[#aa4725] transition-colors block text-sm"
+                      className="text-[#9da5b3] hover:text-[#e6a18a] transition-colors block text-sm"
                     >
                       {link.label}
                     </Link>
@@ -188,7 +189,7 @@ export default function Footer() {
       {/* Copyright */}
       <div className="border-t border-white/5">
         <div className="container mx-auto px-4 py-6">
-          <div className="flex flex-col md:flex-row items-center justify-between gap-4 text-xs text-gray-500">
+          <div className="flex flex-col md:flex-row items-center justify-between gap-4 text-xs text-[#9da5b3]">
             <p>© ۲۰۲۶ تمامی حقوق برای فروشگاه محفوظ است.</p>
             <div className="flex gap-6">
               <Link href="/terms" className="hover:text-white transition-colors">

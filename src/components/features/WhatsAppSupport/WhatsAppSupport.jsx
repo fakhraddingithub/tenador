@@ -27,9 +27,10 @@ export default function WhatsAppSupport() {
           <div className="w-2.5 h-2.5 rounded-full bg-green-500 animate-pulse flex-shrink-0" />
           <div className="flex flex-col">
             <p className="text-xs font-black text-gray-800 leading-tight">پشتیبانی آنلاین</p>
-            <p className="text-[10px] text-gray-400 mt-0.5">معمولاً در چند دقیقه پاسخ می‌دهیم</p>
+            <p className="text-[10px] text-gray-500 mt-0.5">معمولاً در چند دقیقه پاسخ می‌دهیم</p>
           </div>
           <button
+            aria-label="بستن راهنمای پشتیبانی"
             onClick={(e) => {
               e.preventDefault();
               setShowTooltip(false);
@@ -47,6 +48,7 @@ export default function WhatsAppSupport() {
       {/* دکمه اصلی */}
       <a
         href={url}
+        aria-label="ارتباط با پشتیبانی در واتساپ"
         target="_blank"
         rel="noopener noreferrer"
        className="relative flex items-center justify-center w-14 h-14 rounded-full bg-[#25D366] hover:bg-[#20c15a] shadow-[0_8px_24px_rgba(37,211,102,0.4)] hover:scale-110 active:scale-95 transition-all duration-300"

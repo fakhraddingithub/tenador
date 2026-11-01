@@ -814,6 +814,7 @@ useEffect(() => {
                 onClick={() => setOpenCart(true)}
               >
                 <IconButton
+                  ariaLabel="سبد خرید"
                   className="bg-transparent border-white hover:bg-white text-white hover:text-black transition-all"
                   variant="outline"
                 >

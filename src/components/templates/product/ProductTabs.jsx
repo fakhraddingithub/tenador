@@ -169,7 +169,7 @@ const ProductTabs = ({
               onClick={() => setActiveTab(tab.id)}
               className={`
                 relative min-w-0 flex-1 basis-0 px-0.5 py-2.5 text-[11px] leading-tight outline-none transition-all duration-300 sm:px-1.5 sm:py-3.5 sm:text-[13px] lg:shrink lg:grow-0 lg:basis-auto lg:px-2 lg:py-4 lg:text-sm
-                ${isActive ? "font-bold text-[#1a1a1a]" : "font-bold text-gray-400 hover:text-gray-600"}
+                ${isActive ? "font-bold text-[#1a1a1a]" : "font-bold text-gray-500 hover:text-gray-600"}
               `}
             >
               <div className="flex flex-col items-center justify-center gap-1 sm:flex-row sm:gap-1.5 lg:gap-2">

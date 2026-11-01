@@ -307,6 +307,7 @@ const ProductInfo = ({ product, selectedVariant, onVariantChange, onSelectionCha
           <div className="flex items-center border-2 border-gray-200 rounded-xl overflow-hidden shadow-sm">
             <button
               type="button"
+              aria-label="کاهش تعداد"
               onClick={() => handleQuantityChange(quantity - 1)}
               disabled={quantity <= 1}
               className="px-4 py-3 bg-gray-50 hover:bg-gray-100 disabled:bg-gray-50 disabled:text-gray-300 transition-colors"
@@ -318,14 +319,16 @@ const ProductInfo = ({ product, selectedVariant, onVariantChange, onSelectionCha
             
             <input
               type="number"
+              aria-label="تعداد محصول"
               value={quantity}
               onChange={(e) => handleQuantityChange(parseInt(e.target.value) || 1)}
-              className="w-20 text-center font-bold text-lg text-gray-800 focus:outline-none"
+              className="w-20 text-center font-bold text-lg text-gray-800 focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[#aa4725]"
               min="1"
             />
             
             <button
               type="button"
+              aria-label="افزایش تعداد"
               onClick={() => handleQuantityChange(quantity + 1)}
               className="px-4 py-3 bg-gray-50 hover:bg-gray-100 transition-colors"
             >

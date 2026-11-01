@@ -50,7 +50,7 @@ export default function ProductShare({ title = "مشاهده این محصول",
   return (
     <div className="bg-[#fcfcfc] border border-gray-100 rounded-2xl p-5 flex flex-col sm:flex-row items-center justify-between gap-4 w-full">
       <div className="text-right w-full sm:w-auto">
-        <h4 className="text-sm font-bold text-gray-800 mb-1">اشتراک‌گذاری محصول</h4>
+        <h2 className="text-sm font-bold text-gray-800 mb-1">اشتراک‌گذاری محصول</h2>
         <p className="text-xs text-gray-500 font-medium">این محصول را با دوستان خود به اشتراک بگذارید.</p>
       </div>
 
