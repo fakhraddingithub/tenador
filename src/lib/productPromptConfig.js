@@ -335,6 +335,22 @@ export const storableBase = (sections) =>
     rules: sections[key],
   }));
 
+/**
+ * جابه‌جاییِ یک قاعده در میانِ زیرمجموعه‌ای از قواعدِ یک آرایه (قواعدِ یک فیلد در گروه،
+ * که قواعدِ همه‌ی فیلدها را در یک آرایه نگه می‌دارد). فقط خانه‌های `slots` جابه‌جا
+ * می‌شوند؛ قواعدِ فیلدهای دیگر سرِ جای خودشان می‌مانند. from/to اندیسِ درونِ slots‌اند.
+ * @param {Array} list  آرایه‌ی کامل
+ * @param {number[]} slots  اندیس‌های صعودیِ قواعدِ آن فیلد در list
+ */
+export function moveWithinSlots(list, slots, from, to) {
+  const picked = slots.map((i) => list[i]);
+  const [moved] = picked.splice(from, 1);
+  picked.splice(to, 0, moved);
+  const next = [...list];
+  slots.forEach((slot, k) => { next[slot] = picked[k]; });
+  return next;
+}
+
 /* ─── اعتبارسنجی ─────────────────────────────────────────────────────────── */
 
 export const PROMPT_LIMITS = { ruleLength: 4000, rulesPerSection: 100, groups: 100, rulesPerGroup: 500, titleLength: 120 };

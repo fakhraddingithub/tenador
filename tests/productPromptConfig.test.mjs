@@ -9,6 +9,7 @@ import {
   GROUP_PROMPT_FIELDS,
   isDefaultSection,
   isLegacyGroupField,
+  moveWithinSlots,
   LEGACY_CATEGORY_PROMPT_DEFAULTS,
   normalizeRule,
   resolveBasePrompt,
@@ -359,4 +360,25 @@ test("storableBase: editing one rule stores only that section; restoring the def
   assert.equal(stored[0].rules[0], "EDITED");
   assert.equal(stored[0].rules.length, DEFAULT_BASE_PROMPT["field:name"].length);
   assert.deepEqual(validatePromptConfig({ base: stored }).errors, []);
+});
+
+test("moveWithinSlots: reordering one field's group rules moves only those, and the prompt follows the new order", () => {
+  const rules = [
+    { field: "name", text: "N1", categories: [] },
+    { field: "tag", text: "T1", categories: [] },
+    { field: "name", text: "N2", categories: [] },
+    { field: "name", text: "N3", categories: [] },
+    { field: "tag", text: "T2", categories: [] },
+  ];
+  const slots = rules.flatMap((r, i) => (r.field === "name" ? [i] : []));
+  const moved = moveWithinSlots(rules, slots, 2, 0); // N3 to the top of «name»
+  assert.deepEqual(moved.map((r) => r.text), ["N3", "T1", "N1", "N2", "T2"]);
+  assert.deepEqual(rules.map((r) => r.text), ["N1", "T1", "N2", "N3", "T2"], "input untouched");
+  assert.deepEqual(moveWithinSlots(rules, slots, 1, 1), rules);
+
+  const config = { groups: [{ categories: [A], rules: moved }] };
+  assert.deepEqual(validatePromptConfig(config).errors, []);
+  const block = fieldBlock(draft(category(A), config), "name");
+  assert.ok(block.indexOf("- N3") < block.indexOf("- N1") && block.indexOf("- N1") < block.indexOf("- N2"));
+  assert.ok(fieldBlock(draft(category(A), config), "tag").includes("- T1\n- T2"));
 });

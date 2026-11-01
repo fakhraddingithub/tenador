@@ -23,9 +23,9 @@ import AdminLoader from '@/components/admin/AdminLoader';
 import { useAdminPermissions } from '@/components/admin/AdminPermissionProvider';
 import {
   AddRuleButton, CategoryPicker, PROMPTS_HOME, PromptTabs, RuleCard, categoryName, errorMap,
-  storedGroupPayload, swalTheme, uid, usePromptConfig, useUnsavedGuard,
+  SortableRuleList, storedGroupPayload, swalTheme, uid, usePromptConfig, useUnsavedGuard,
 } from '@/components/admin/productPrompts/promptSettingsUi';
-import { GROUP_PROMPT_FIELDS, fieldTitle, isLegacyGroupField, validatePromptConfig } from '@/lib/productPromptConfig';
+import { GROUP_PROMPT_FIELDS, fieldTitle, isLegacyGroupField, moveWithinSlots, validatePromptConfig } from '@/lib/productPromptConfig';
 
 const LEGACY_TAB = '__legacy';
 
@@ -249,13 +249,19 @@ function GroupEditor({ ctx, stored, canEdit }) {
             </div>
 
             <div className="space-y-3">
-              {tabRules.map(({ r, i }, n) => {
+              {/* جابه‌جایی فقط میانِ قواعدِ همین تب؛ قواعدِ فیلدهای دیگر سرِ جایشان می‌مانند */}
+              <SortableRuleList
+                items={tabRules}
+                getId={({ r }) => r.uid}
+                disabled={!canEdit}
+                onMove={(from, to) => update({ rules: moveWithinSlots(group.rules, tabRules.map(({ i }) => i), from, to) })}
+                renderItem={({ r, i }, n, dragHandle) => {
                 const stale = r.categories.filter((id) => !inGroup.has(id));
                 const disabled = r.categories.length > 0 && r.categories.every((id) => !categoryById.has(id));
                 return (
                   <RuleCard
-                    key={r.uid}
                     index={n}
+                    dragHandle={dragHandle}
                     rule={r}
                     readOnly={!canEdit}
                     autoFocus={r.uid === focusUid}
@@ -298,7 +304,8 @@ function GroupEditor({ ctx, stored, canEdit }) {
                     {disabled && <p className="mt-1 text-xs font-bold text-amber-600">این قاعده غیرفعال است: همه‌ی دسته‌های هدفش حذف شده‌اند.</p>}
                   </RuleCard>
                 );
-              })}
+                }}
+              />
               {!tabRules.length && <p className="text-center py-6 text-sm font-bold text-gray-400">برای این فیلد هنوز قاعده‌ای در این گروه نیست.</p>}
               {canEdit && active !== LEGACY_TAB && <AddRuleButton onClick={() => addRule(active)} label={`افزودن قاعده برای ${fieldTitle(active)}`} />}
             </div>

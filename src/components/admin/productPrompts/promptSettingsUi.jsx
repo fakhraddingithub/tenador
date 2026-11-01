@@ -9,7 +9,11 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { toast } from 'react-toastify';
 import Swal from 'sweetalert2';
-import { FiPlus, FiSearch, FiTrash2, FiX } from 'react-icons/fi';
+import { DndContext, KeyboardSensor, PointerSensor, closestCenter, useSensor, useSensors } from '@dnd-kit/core';
+import { SortableContext, sortableKeyboardCoordinates, useSortable, verticalListSortingStrategy } from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
+import { restrictToVerticalAxis } from '@dnd-kit/modifiers';
+import { FiMenu, FiPlus, FiSearch, FiTrash2, FiX } from 'react-icons/fi';
 import { getApiErrorMessage } from '@/lib/apiClientError';
 import { matchesSearch } from '@/lib/search';
 import { getCategoryLabel } from 'base/utils/categoryLabel';
@@ -188,11 +192,62 @@ export const textareaClass =
   'bg-gray-50 text-gray-900 placeholder-gray-400 resize-y text-left [direction:ltr] ' +
   'focus:bg-white focus:border-[var(--color-primary)] focus:ring-4 focus:ring-[var(--color-primary)]/10';
 
+/**
+ * فهرستِ قابل‌جابه‌جاییِ قواعد (کشیدن با دستگیره، یا با صفحه‌کلید: فاصله روی دستگیره و
+ * سپس جهت‌نماها). ترتیبِ قواعدِ هر فیلد همان ترتیبشان در پرامپت است.
+ * renderItem(item, index, dragHandle) — dragHandle را به RuleCard بدهید.
+ * onMove(from, to) با اندیس‌های همین فهرست صدا زده می‌شود.
+ */
+export function SortableRuleList({ items, getId, onMove, disabled, renderItem }) {
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
+  );
+  const ids = items.map(getId);
+  const onDragEnd = ({ active, over }) => {
+    if (!over || active.id === over.id) return;
+    onMove(ids.indexOf(active.id), ids.indexOf(over.id));
+  };
+  return (
+    <DndContext sensors={sensors} collisionDetection={closestCenter} modifiers={[restrictToVerticalAxis]} onDragEnd={onDragEnd}>
+      <SortableContext items={ids} strategy={verticalListSortingStrategy}>
+        {items.map((item, index) => (
+          <SortableRow key={ids[index]} id={ids[index]} disabled={disabled || items.length < 2}>
+            {(handle) => renderItem(item, index, handle)}
+          </SortableRow>
+        ))}
+      </SortableContext>
+    </DndContext>
+  );
+}
+
+function SortableRow({ id, disabled, children }) {
+  const { attributes, listeners, setNodeRef, setActivatorNodeRef, transform, transition, isDragging } = useSortable({ id, disabled });
+  const style = { transform: CSS.Transform.toString(transform), transition };
+  const handle = disabled ? null : { ref: setActivatorNodeRef, ...attributes, ...listeners };
+  return (
+    <div ref={setNodeRef} style={style} className={`relative ${isDragging ? 'z-10 opacity-80 shadow-lg rounded-xl bg-white' : ''}`}>
+      {children(handle)}
+    </div>
+  );
+}
+
 /** یک قاعده: textareaِ خودش، حذف، و (برای گروه‌ها) انتخابِ دسته‌ها در children. */
-export function RuleCard({ index, rule, onChange, onRemove, error, readOnly, autoFocus, children }) {
+export function RuleCard({ index, rule, onChange, onRemove, error, readOnly, autoFocus, dragHandle, children }) {
   const rows = Math.min(14, Math.max(2, rule.text.split('\n').length));
   return (
     <div className="flex gap-2 items-start">
+      {dragHandle && (
+        <button
+          type="button"
+          {...dragHandle}
+          title="برای جابه‌جایی بکشید"
+          aria-label={`جابه‌جاییِ قاعده ${index + 1}`}
+          className="mt-1.5 p-1.5 shrink-0 rounded-lg text-gray-300 hover:text-gray-600 hover:bg-gray-100 cursor-grab active:cursor-grabbing touch-none"
+        >
+          <FiMenu size={14} />
+        </button>
+      )}
       <span className="mt-2 w-6 shrink-0 text-center text-xs font-bold text-gray-400">{index + 1}</span>
       <div className="flex-1 min-w-0">
         <textarea

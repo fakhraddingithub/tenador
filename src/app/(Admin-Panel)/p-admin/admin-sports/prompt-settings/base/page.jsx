@@ -9,13 +9,14 @@
  */
 
 import { useState } from 'react';
+import { arrayMove } from '@dnd-kit/sortable';
 import { FiArrowRight, FiColumns, FiList, FiLock, FiRotateCcw, FiSave, FiSliders } from 'react-icons/fi';
 import PageHeader from '@/components/admin/PageHeader';
 import Button from '@/components/admin/Button';
 import AdminLoader from '@/components/admin/AdminLoader';
 import { useAdminPermissions } from '@/components/admin/AdminPermissionProvider';
 import {
-  AddRuleButton, PROMPTS_HOME, PromptTabs, RuleCard, errorMap, uid, usePromptConfig, useUnsavedGuard,
+  AddRuleButton, PROMPTS_HOME, PromptTabs, RuleCard, SortableRuleList, errorMap, uid, usePromptConfig, useUnsavedGuard,
 } from '@/components/admin/productPrompts/promptSettingsUi';
 import {
   BASE_PROMPT_SECTIONS, DEFAULT_BASE_PROMPT, isDefaultSection, resolveBasePrompt, storableBase, validatePromptConfig,
@@ -208,18 +209,24 @@ function SectionPanel({ section, tabPanel, sections, errors, canEdit, focusUid, 
       )}
 
       <div className="space-y-3">
-        {rules.map((rule, i) => (
-          <RuleCard
-            key={rule.uid}
-            index={i}
-            rule={rule}
-            readOnly={!canEdit}
-            autoFocus={rule.uid === focusUid}
-            error={errors[`base.${key}.${i}`]}
-            onChange={(text) => setRules(key, rules.map((r) => (r.uid === rule.uid ? { ...r, text } : r)))}
-            onRemove={() => setRules(key, rules.filter((r) => r.uid !== rule.uid))}
-          />
-        ))}
+        <SortableRuleList
+          items={rules}
+          getId={(r) => r.uid}
+          disabled={!canEdit}
+          onMove={(from, to) => setRules(key, arrayMove(rules, from, to))}
+          renderItem={(rule, i, dragHandle) => (
+            <RuleCard
+              index={i}
+              rule={rule}
+              readOnly={!canEdit}
+              autoFocus={rule.uid === focusUid}
+              dragHandle={dragHandle}
+              error={errors[`base.${key}.${i}`]}
+              onChange={(text) => setRules(key, rules.map((r) => (r.uid === rule.uid ? { ...r, text } : r)))}
+              onRemove={() => setRules(key, rules.filter((r) => r.uid !== rule.uid))}
+            />
+          )}
+        />
         {!rules.length && (
           <p className="text-center py-6 text-sm font-bold text-gray-400">
             این بخش قاعده‌ای ندارد{section.field ? ' — اگر گروه یا دسته هم قاعده‌ای نداشته باشد «No specific rule defined.» می‌آید' : ' و از پرامپت حذف می‌شود'}.
