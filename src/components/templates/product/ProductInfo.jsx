@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo, useRef, useEffect } from "react";
+import { useState, useMemo, useRef } from "react";
 import Link from "next/link";
 import ProductHeader from "./ProductHeader";
 import ProductPrice from "./ProductPrice";
@@ -80,31 +80,12 @@ const ProductInfo = ({ product, selectedVariant, onVariantChange, onSelectionCha
     }
   }
 
-  // ── قیمت پایه (یورو) ────────────────────────────────────────────────────────
-  const basePrice = (selectedVariant && selectedVariant.price) || product.basePrice;
-
-  // ── دریافت تخفیف واقعی از price API ─────────────────────────────────────────
-  const [priceApiData, setPriceApiData] = useState(null);
-
-  useEffect(() => {
-    if (!product?._id) return;
-    let cancelled = false;
-    fetch(`/api/product/${product._id}/price`)
-      .then((r) => r.json())
-      .then((data) => { if (!cancelled && !data.error) setPriceApiData(data); })
-      .catch(() => {});
-    return () => { cancelled = true; };
-  }, [product?._id]);
+  // Complete, request-specific pricing is ready before this component renders.
+  const priceApiData = product.displayPrice;
+  if (!priceApiData) throw new Error("قیمت محصول آماده نیست");
 
   // ── قیمت نهایی با توجه به واریانت و تخفیف ──────────────────────────────────
   const { basePriceToman, finalPriceToman, discountPercent, hasDiscount } = useMemo(() => {
-    if (!priceApiData) {
-      // قبل از load: قیمت پایه از سرور همین حالا تومان است؛ بدون تخفیف نمایش بده
-      // (تخفیف/حراج پس از پاسخ price API روی همین مقدار اعمال می‌شود)
-      const raw = Math.floor(basePrice / 1000) * 1000;
-      return { basePriceToman: raw, finalPriceToman: raw, discountPercent: 0, hasDiscount: false };
-    }
-
     if (selectedVariant) {
       const vData = priceApiData.variants?.find((v) => String(v._id) === String(selectedVariant._id));
       if (vData) {
@@ -116,7 +97,7 @@ const ProductInfo = ({ product, selectedVariant, onVariantChange, onSelectionCha
 
     const hasD = priceApiData.finalPriceToman < priceApiData.basePriceToman;
     return { basePriceToman: priceApiData.basePriceToman, finalPriceToman: priceApiData.finalPriceToman, discountPercent: priceApiData.discountPercent || 0, hasDiscount: hasD };
-  }, [priceApiData, selectedVariant, basePrice]);
+  }, [priceApiData, selectedVariant]);
 
   const finalUnitPrice = hasDiscount ? finalPriceToman : basePriceToman;
 

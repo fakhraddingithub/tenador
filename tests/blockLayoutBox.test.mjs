@@ -342,7 +342,7 @@ test("سربرگِ کارت رنگِ ثابت ندارد و از گروه می�
 // روزی از هم دور می‌افتد که یکی‌شان عوض شود.
 test("دکمه‌های اسلایدر همان کامپوننتِ صفحه‌ی اصلی‌اند", async () => {
   const nav = await read("../src/components/features/articles/MergedSliderNav.jsx");
-  const home = await read("../src/components/features/bestSellers/BestSellers.js");
+  const home = await read("../src/components/features/bestSellers/ProductSliderContent.jsx");
   assert.match(nav, /import HomeSliderNav from "@\/components\/features\/home\/HomeSliderNav"/);
   assert.match(home, /import HomeSliderNav from "@\/components\/features\/home\/HomeSliderNav"/);
   // کلاس‌های پایه همان‌اند؛ isolated (بلوکِ «اسلایدر محصولات») فقط کلاسِ یکتای خودش را می‌افزاید.
@@ -395,7 +395,7 @@ test("ناوبری بیرونِ جریانِ صفحه است، با همان ف�
   // تا اسلایدر همانی می‌ماند که ادمین تنظیم کرده.
   assert.match(nav, /className="pointer-events-none absolute bottom-full end-0 mb-10 md:mb-16"/);
   // mb-10/md:mb-16 دقیقاً فاصله‌ی سرصفحه تا اسلایدر در صفحه‌ی اصلی است.
-  const home = await read("../src/components/features/bestSellers/BestSellers.js");
+  const home = await read("../src/components/features/bestSellers/ProductSliderContent.jsx");
   assert.match(home, /justify-between mb-10 md:mb-16/);
   const renderer = await read("../src/components/features/articles/ArticleBlockRenderer.jsx");
   assert.match(renderer, /<div className=\{`\$\{blockSection\} relative`\}/);
@@ -405,7 +405,7 @@ test("حرکتِ اسلایدرِ ادغام‌شده از همان تنظیما
   const shared = await read("../src/lib/homeSlider.js");
   assert.match(shared, /HOME_SLIDER_AUTOPLAY = \{ delay: 5000, disableOnInteraction: true \}/);
   assert.match(shared, /HOME_SLIDER_SPEED = 300/);
-  for (const file of ["bestSellers/BestSellers.js", "amazingOffers/AmazingOffers.js"]) {
+  for (const file of ["bestSellers/ProductSliderContent.jsx", "amazingOffers/AmazingOffers.js"]) {
     const src = await read(`../src/components/features/${file}`);
     assert.match(src, /import \{ HOME_SLIDER_AUTOPLAY, HOME_SLIDER_SPEED \} from "@\/lib\/homeSlider"/);
     assert.match(src, /speed=\{HOME_SLIDER_SPEED\}/);

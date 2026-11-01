@@ -159,7 +159,7 @@ test("full width, the homepage slider and brand bar reused, review pause 3s", as
   has(renderer, "const current = hasLegacyBlocks(blocks) ? upgradeLegacyBlocks(blocks) : blocks;");
   for (const removed of ["EntityCards", "dynamicProducts", '"gallery"']) assert.ok(!renderer.includes(removed), removed);
 
-  const home = await read("../src/components/features/bestSellers/BestSellers.js");
+  const home = await read("../src/components/features/bestSellers/ProductSliderContent.jsx");
   has(home, "title = PRODUCT_SLIDER_TEXT.title");
   has(home, "ctaLabel = PRODUCT_SLIDER_TEXT.cta");
   has(home, "<UsedProductCard product={product}");

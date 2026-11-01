@@ -6,25 +6,14 @@
  */
 
 import { NextResponse } from "next/server";
-import { cookies } from "next/headers";
 import connectToDB from "base/configs/db";
-import { verifyToken } from "base/utils/auth";
 import Product from "base/models/Product";
 import Variant from "base/models/Variant";
-import {
-  getRate,
-  computeProductPrice,
-  loadQuantityDiscountMap,
-} from "base/services/priceEngine";
-import { eurToToman } from "@/lib/Exchangerate";
+import { getRate } from "base/services/priceEngine";
+import { getProductDisplayPrice } from "base/services/productDisplayPrice.service";
+import { getProductPricingUser } from "@/lib/productPageData";
 import requireAdminPermission from "@/lib/requireAdminPermission";
 
-async function getUserFromToken() {
-  const cookieStore = await cookies();
-  const token = cookieStore.get("accessToken")?.value;
-  if (!token) return null;
-  return verifyToken(token) || null;
-}
 
 export async function GET(request, { params }) {
   try {
@@ -41,69 +30,16 @@ export async function GET(request, { params }) {
       .populate("brand", "_id")
       .populate("category", "_id")
       .populate("serie", "_id")
+      .populate("variants")
       .lean();
 
     if (!product) {
       return NextResponse.json({ error: "محصول یافت نشد" }, { status: 404 });
     }
 
-    const user = await getUserFromToken();
-    const rate = await getRate();
+    const [user, rate] = await Promise.all([getProductPricingUser(), getRate()]);
 
-    // قیمت پایه محصول
-    const priceResult = await computeProductPrice(product, rate, user);
-
-    // قیمت واریانت‌ها
-    let variants = [];
-    if (product.variants?.length) {
-      const rawVariants = await Variant.find({ _id: { $in: product.variants } }).lean();
-      variants = rawVariants.map((v) => {
-        // قیمت ۰ یا خالی واریانت → قیمت پایه محصول (پشتیبانی از داده‌های قدیمی)
-        const variantBaseToman = eurToToman(v.price || product.basePrice || 0, rate);
-        const unitDiscount = Math.min(
-          Math.floor(variantBaseToman * (priceResult.discountPercent / 100)),
-          variantBaseToman
-        );
-        return {
-          _id:            v._id,
-          sku:            v.sku,
-          attributes:     v.attributes || [],
-          basePriceToman: variantBaseToman,
-          finalPriceToman: variantBaseToman - unitDiscount,
-          discountAmount:  unitDiscount,
-          discountPercent: priceResult.discountPercent,
-        };
-      });
-    }
-
-    // تخفیف تعدادی فعال (برای نمایش پله‌ها در صفحه محصول/مودال)
-    // ⚠️ آبجکت محصول پاس داده می‌شود (نه id)؛ تابع به brand/category/serie نیاز دارد
-    const qdMap = await loadQuantityDiscountMap([product]);
-    const qd = qdMap.get(product._id.toString());
-    const quantityDiscount = qd
-      ? {
-          title: qd.title || "",
-          tiers: [...qd.tiers]
-            .sort((a, b) => a.minQty - b.minQty)
-            .map((t) => ({
-              minQty: t.minQty,
-              kind: t.discount.kind,
-              value: t.discount.value,
-            })),
-        }
-      : null;
-
-    return NextResponse.json({
-      productId:      product._id,
-      basePriceToman: priceResult.basePriceToman,
-      finalPriceToman: priceResult.finalPriceToman,
-      discountAmount:  priceResult.discountAmount,
-      discountPercent: priceResult.discountPercent,
-      appliedRules:    priceResult.appliedRules,
-      quantityDiscount,
-      variants,
-      rate,
-    });
+    return NextResponse.json(await getProductDisplayPrice(product, rate, user));
   } catch (err) {
     console.error("خطا در دریافت قیمت محصول:", err);
     return NextResponse.json({ error: err.message }, { status: 500 });

@@ -100,7 +100,7 @@ export default function MobileProductTabs({ tabs, renderContent, keepMounted = [
                 </span>
                 <span className={styles.titleGroup}>
                   <span className={styles.title}>{tab.label}</span>
-                  {tab.count > 0 && <span className={styles.count}>{tab.count.toLocaleString("fa-IR")}</span>}
+                  {tab.countContent ? <span className="inline-flex w-10 shrink-0 justify-center">{tab.countContent}</span> : tab.count > 0 && <span className={styles.count}>{tab.count.toLocaleString("fa-IR")}</span>}
                 </span>
                 <FiArrowLeft className={styles.chevron} aria-hidden="true" />
               </button>

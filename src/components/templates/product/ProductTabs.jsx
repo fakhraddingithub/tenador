@@ -5,8 +5,6 @@ import { motion, AnimatePresence } from "framer-motion";
 import { FiFileText, FiSettings, FiMessageSquare } from "react-icons/fi";
 import ProductDescription from "./ProductDescription";
 import ProductAttributesTable from "./ProductAttributesTable";
-import ProductReviews from "./ProductReviews";
-import ReviewForm from "@/components/reviews/ReviewForm";
 import MobileProductTabs, { useMobileProductLayout } from "./MobileProductTabs";
 
 const normalizeId = (id) => id?.toString?.() || String(id);
@@ -83,9 +81,9 @@ const ProductTabs = ({
   targetAudience,
   customTab,
   customTabItemIds = [],
-  productId,
-  reviews = [],
-  reviewStats = { count: 0, average: 0 },
+  reviewsPanel,
+  reviewCount,
+  mobileReviewCount,
 }) => {
   const isMobile = useMobileProductLayout();
   const [activeTab, setActiveTab] = useState("description");
@@ -119,7 +117,7 @@ const ProductTabs = ({
       id: "reviews",
       label: "نظرات کاربران",
       icon: FiMessageSquare,
-      count: reviewStats.count,
+      countContent: isMobile ? mobileReviewCount : reviewCount,
     },
   ];
 
@@ -147,16 +145,7 @@ const ProductTabs = ({
           ))}
         </div>
       )}
-      {sectionId === "reviews" && (
-        <div className="space-y-6 px-2">
-          <ReviewForm productId={productId} />
-          <ProductReviews
-            reviews={reviews}
-            stats={reviewStats}
-            productId={productId}
-          />
-        </div>
-      )}
+      {sectionId === "reviews" && reviewsPanel}
     </>
   );
 
@@ -197,7 +186,7 @@ const ProductTabs = ({
                 </span>
                 <span className="flex min-w-0 items-center justify-center gap-1 sm:gap-1.5 lg:justify-start lg:gap-2">
                   <span className="break-words">{tab.label}</span>
-                  {tab.count > 0 && (
+                  {tab.countContent ? <span className="inline-flex w-10 shrink-0 justify-center">{tab.countContent}</span> : tab.count > 0 && (
                     <span className="shrink-0 rounded-full bg-gray-100 px-1.5 py-0.5 text-[10px] font-bold tabular-nums text-gray-500">
                       {tab.count.toLocaleString("fa-IR")}
                     </span>
