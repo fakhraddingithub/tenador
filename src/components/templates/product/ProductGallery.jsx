@@ -5,6 +5,7 @@ import Image from "next/image";
 import { motion, AnimatePresence } from "framer-motion";
 import VerifiedBadge from "@/components/ui/VerifiedBadge";
 import GalleryImageViewer from "@/components/ui/GalleryImageViewer";
+import { PRODUCT_IMAGE_SIZES } from "@/lib/productImageSizing";
 
 const ProductGallery = ({ images = [], logo, verified = false, productName = "" }) => {
   const mainAlt = productName || "نمای محصول";
@@ -42,6 +43,7 @@ const ProductGallery = ({ images = [], logo, verified = false, productName = "" 
                 alt="brand logo"
                 width={45}
                 height={45}
+                loading="eager"
                 className="object-contain"
               />
             </div>
@@ -62,7 +64,7 @@ const ProductGallery = ({ images = [], logo, verified = false, productName = "" 
                 src={images[activeIndex]}
                 alt={mainAlt}
                 fill
-                sizes="(max-width: 511px) calc(100vw - 64px), (max-width: 1023px) 448px, (max-width: 1279px) 36vw, 440px"
+                sizes={PRODUCT_IMAGE_SIZES}
                 priority
                 fetchPriority="high"
                 className="object-contain p-6 transition-transform duration-700 group-hover:scale-110"
@@ -101,6 +103,8 @@ const ProductGallery = ({ images = [], logo, verified = false, productName = "" 
                 src={image}
                 alt={`${mainAlt} - تصویر ${index + 1}`}
                 sizes="80px"
+                loading={index < 4 ? "eager" : "lazy"}
+                fetchPriority="low"
                 fill
                 className={`
                   object-cover p-1.5 transition-transform duration-300

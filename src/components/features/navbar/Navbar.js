@@ -700,6 +700,7 @@ useEffect(() => {
                 <Link href="/">
                   <Image
                     src="/logo/logo.svg"
+                  loading="eager"
                     alt="logo"
                     width={160}
                     height={65}
@@ -907,6 +908,7 @@ useEffect(() => {
               <Link href="/" className="flex-shrink-0">
                 <Image
                   src="/logo/logo.svg"
+                  loading="eager"
                   alt="logo"
                   width={100}
                   height={45}

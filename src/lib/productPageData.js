@@ -5,10 +5,15 @@ import { getProductBySlug } from "base/services/product.service";
 import { getApprovedReviews } from "base/services/comment.service";
 import { getRate } from "base/services/priceEngine";
 import { getProductDisplayPrice } from "base/services/productDisplayPrice.service";
+import { preloadProductImage } from "./productImageHints";
 
 // React.cache deduplicates metadata + page within one render only. The service's
 // existing tagged cache still controls public product invalidation.
-export const getProductForPage = cache(getProductBySlug);
+export const getProductForPage = cache(async (slug) => {
+  const product = await getProductBySlug(slug);
+  if (product && !product.error) preloadProductImage(product);
+  return product;
+});
 
 export async function getProductPricingUser() {
   const token = (await cookies()).get("accessToken")?.value;

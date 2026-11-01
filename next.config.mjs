@@ -31,6 +31,14 @@ const nextConfig = {
     const sportHeaders = [...headers, { key: "Vercel-Cache-Tag", value: SPORT_PAGES_CDN_TAG }];
     const sports = "tennis|padel|badminton|squash|beachtennis|pickleball|ping-pong";
     return [
+      // Discover fixed above-the-fold assets from response headers, even while
+      // product HTML is still rendering. Fonts must use anonymous CORS to reuse
+      // the same requests as @font-face. No shared caching of product prices.
+      { source: "/products/:productSlug", headers: [{ key: "Link", value: [
+        '</fonts/invoice/Vazirmatn-Regular.woff2>; rel=preload; as=font; type="font/woff2"; crossorigin=anonymous',
+        '</fonts/invoice/Vazirmatn-Bold.woff2>; rel=preload; as=font; type="font/woff2"; crossorigin=anonymous',
+        '</logo/logo.svg>; rel=preload; as=image; type="image/svg+xml"',
+      ].join(", ") }] },
       { source: `/:sport(${sports})`, headers: sportHeaders },
       { source: `/:sport(${sports})/:path*`, headers: sportHeaders },
       { source: "/content/:path*", headers },

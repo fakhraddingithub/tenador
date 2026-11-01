@@ -77,7 +77,7 @@ export default function MobileProductTabs({ tabs, renderContent, keepMounted = [
         const panelId = `${instanceId}-${tab.id}`;
         return (
           <section key={tab.id} className={styles.section} data-open={isOpen}>
-            <h3 className={styles.heading}>
+            <div className={styles.heading}>
               <button
                 id={`${panelId}-heading`}
                 type="button"
@@ -104,7 +104,7 @@ export default function MobileProductTabs({ tabs, renderContent, keepMounted = [
                 </span>
                 <FiArrowLeft className={styles.chevron} aria-hidden="true" />
               </button>
-            </h3>
+            </div>
             <div id={panelId} role="region" aria-labelledby={`${panelId}-heading`} aria-hidden={!isOpen} inert={!isOpen}>
               {keepMounted.includes(tab.id) ? (
                 <motion.div initial={false} animate={{ height: isOpen ? "auto" : 0, opacity: isOpen ? 1 : 0 }} style={{ overflow: isOpen ? "visible" : "hidden" }} transition={{ duration: reduceMotion ? 0 : 0.28, ease: [0.22, 1, 0.36, 1] }}>

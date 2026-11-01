@@ -8,6 +8,7 @@ import { renderToStaticMarkup, renderToPipeableStream } from "react-dom/server";
 import { PassThrough } from "node:stream";
 import { eurToToman } from "../src/lib/currency.js";
 import * as variantImages from "../src/lib/variantImages.js";
+import nextConfig from "../next.config.mjs";
 
 const require = createRequire(import.meta.url);
 function load(file, dependencies) {
@@ -28,6 +29,42 @@ const deferred = () => {
   const promise = new Promise((a, b) => { resolve = a; reject = b; });
   return { promise, resolve, reject };
 };
+
+test("early image preload matches the gallery source and responsive candidates", () => {
+  const { PRODUCT_IMAGE_SIZES } = load("src/lib/productImageSizing.js", {});
+  const previousEndpoint = process.env.NEXT_PUBLIC_IMAGEKIT_URL_ENDPOINT;
+  process.env.NEXT_PUBLIC_IMAGEKIT_URL_ENDPOINT = "https://ik.imagekit.io/test";
+  const { default: loader } = load("src/lib/imagekitLoader.js", {});
+  if (previousEndpoint === undefined) delete process.env.NEXT_PUBLIC_IMAGEKIT_URL_ENDPOINT;
+  else process.env.NEXT_PUBLIC_IMAGEKIT_URL_ENDPOINT = previousEndpoint;
+  const { getImageProps } = require("next/image");
+  const hints = [];
+  const { preloadProductImage } = load("src/lib/productImageHints.js", {
+    "next/image": { getImageProps }, "react-dom": { preload: (...args) => hints.push(args) },
+    "./imagekitLoader": { default: loader }, "./variantImages": variantImages,
+    "./productImageSizing": { PRODUCT_IMAGE_SIZES },
+  });
+  const product = { mainImage: "https://ik.imagekit.io/test/main.webp", gallery: ["https://ik.imagekit.io/test/gallery.webp"],
+    variants: [{ images: ["https://ik.imagekit.io/test/variant.webp"] }] };
+  preloadProductImage(product);
+  const src = variantImages.buildGalleryImages(product)[0];
+  const { props } = getImageProps({ src, alt: "", fill: true, sizes: PRODUCT_IMAGE_SIZES, loader });
+  assert.match(props.srcSet, /tr=w-\d+/);
+  assert.deepEqual(hints, [[props.src, { as: "image", imageSrcSet: props.srcSet, imageSizes: props.sizes, fetchPriority: "high" }]]);
+  preloadProductImage({});
+  assert.equal(hints.length, 1);
+});
+
+test("product response hints preload local fonts without enabling shared price caching", async () => {
+  const rule = (await nextConfig.headers()).find(rule => rule.source === "/products/:productSlug");
+  assert.equal(rule.headers.length, 1);
+  assert.equal(rule.headers[0].key, "Link");
+  for (const font of ["Regular", "Bold"]) {
+    assert.ok(rule.headers[0].value.includes(`/fonts/invoice/Vazirmatn-${font}.woff2`));
+  }
+  assert.equal((rule.headers[0].value.match(/crossorigin=anonymous/g) || []).length, 2);
+  assert.ok(rule.headers[0].value.includes("/logo/logo.svg"));
+});
 
 test("display pricing preserves API variant fallback, rounding, discounts and tier order", async () => {
   const user = { role: "coach" };
@@ -67,6 +104,7 @@ function pageHarness({ product, rate, reviews, pricing, user = null }) {
     if (!results.has(key)) results.set(key, fn(key)); return results.get(key);
   }; };
   const api = load("src/lib/productPageData.js", {
+    "./productImageHints": { preloadProductImage: () => { calls.push("imageHint"); } },
     react: { cache },
     "next/headers": { cookies: async () => ({ get: () => user ? { value: "token" } : undefined }) },
     "base/utils/auth": { verifyToken: () => user },
@@ -90,6 +128,7 @@ test("product and rate overlap; metadata shares product; pending reviews do not 
   product.resolve({ _id: "p" }); rate.resolve(100000);
   await new Promise(resolve => setImmediate(resolve));
   assert.equal(finished, false, "must not show an unpriced buy box");
+  assert.ok(api.calls.indexOf("imageHint") < api.calls.indexOf("pricing"), "image must be hinted before pricing completes");
   assert.ok(api.calls.includes("reviews"));
   pricing.resolve({ finalPriceToman: 8500000 });
   const result = await page;
@@ -98,6 +137,7 @@ test("product and rate overlap; metadata shares product; pending reviews do not 
   reviews.resolve({ reviews: [], stats: { count: 0 } });
   assert.deepEqual(await result.reviewsPromise, { data: { reviews: [], stats: { count: 0 } } });
   assert.equal(api.calls.filter(c => c === "product").length, 1);
+  assert.equal(api.calls.filter(c => c === "imageHint").length, 1);
 });
 
 test("pricing failure rejects the page rather than showing zero or an undiscounted fallback", async () => {
