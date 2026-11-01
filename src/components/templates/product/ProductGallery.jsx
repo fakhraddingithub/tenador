@@ -64,6 +64,7 @@ const ProductGallery = ({ images = [], logo, verified = false, productName = "" 
                 fill
                 sizes="(max-width: 511px) calc(100vw - 64px), (max-width: 1023px) 448px, (max-width: 1279px) 36vw, 440px"
                 priority
+                fetchPriority="high"
                 className="object-contain p-6 transition-transform duration-700 group-hover:scale-110"
               />
             </motion.div>

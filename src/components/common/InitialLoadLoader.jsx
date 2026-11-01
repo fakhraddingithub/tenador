@@ -7,7 +7,7 @@
  * در همان HTML اولیه‌ی سرور و بدون وابستگی به باندل CSS باشد؛ پس همه‌چیز
  * (استایل + مارک‌آپ + اسکریپت حذف) به‌صورت inline و از طریق dangerouslySetInnerHTML
  * رندر می‌شود. ری‌اکت داخلِ dangerouslySetInnerHTML را هنگام هیدریشن مقایسه
- * نمی‌کند، بنابراین حذفِ اورلی توسط اسکریپت باعث خطای hydration نمی‌شود.
+ * نمی‌کند، بنابراین مخفی‌کردنِ اورلی نیاز به تغییر درخت ری‌اکت ندارد.
  *
  * نکته‌ی مهم: ناوبری‌های کلاینتی (router.push) سند را دوباره لود نمی‌کنند، پس این
  * اورلی فقط در این حالت‌ها دیده می‌شود:
@@ -23,18 +23,16 @@
  * dangerouslySetInnerHTML با انتساب innerHTML دوباره ساخته می‌شود که:
  *   الف) اسکریپتِ داخلش هرگز اجرا نمی‌شود، و
  *   ب) نودِ اورلیِ قبلی (که تایمرهای اسکریپتِ اولیه به آن بسته بودند) دور ریخته می‌شود.
- * برای همین hide() نباید به نودِ گرفته‌شده در لحظه‌ی parse تکیه کند (هر بار با
- * getElementById نودِ فعلی را پیدا می‌کند) و بعد از اتمام، اتریبیوت
- * data-tnd-il-done روی <html> می‌نشیند تا قانونِ CSSِ همراهِ اورلی هر نسخه‌ی
- * دوباره‌ساخته‌شده را هم پنهان کند (خودِ <html> هیچ‌وقت توسط ری‌اکت تعویض نمی‌شود
- * و اتریبیوت‌های خارج از مدیریتش دست‌نخورده می‌مانند).
+ * برای همین hide() فقط اتریبیوت data-tnd-il-done را روی <html> می‌گذارد.
+ * قانون CSS هر نسخهٔ دوباره‌ساخته‌شدهٔ اورلی را هم پنهان نگه می‌دارد؛ هیچ
+ * نودِ ری‌اکت حذف نمی‌شود و بستن لودر به load، انیمیشن یا تایمر محوشدن وابسته نیست.
  */
 
 import InitialLoadLoaderDismiss from "./InitialLoadLoaderDismiss";
 
 const OVERLAY_HTML = `
 <style>
-#__tnd-initial-loader{position:fixed;inset:0;z-index:9999;display:flex;align-items:center;justify-content:center;width:100%;min-height:100vh;pointer-events:none;opacity:1;transition:opacity .3s ease}
+#__tnd-initial-loader{position:fixed;inset:0;z-index:9999;display:flex;align-items:center;justify-content:center;width:100%;min-height:100vh;pointer-events:none;opacity:1}
 html[data-tnd-il-done] #__tnd-initial-loader{display:none!important}
 #__tnd-initial-loader .tnd-il-panel{display:flex;flex-direction:column;align-items:center;gap:48px;background:#fff;padding:40px 56px;border-radius:6px;border:1px solid rgba(255,255,255,.72);box-shadow:0 18px 50px rgba(15,23,42,.16)}
 #__tnd-initial-loader .tnd-il-logo{width:auto;height:64px;object-fit:contain}
@@ -55,40 +53,25 @@ html[data-tnd-il-done] #__tnd-initial-loader{display:none!important}
 (function () {
   if (!document.getElementById("__tnd-initial-loader")) return;
   var hidden = false;
+  var safetyTimer;
   function hide() {
     if (hidden) return;
     hidden = true;
-    // دو فریم صبر می‌کنیم تا اولین رندرِ استایل‌خورده زیر اورلی نقاشی شود، بعد محو.
-    // نود هر بار تازه پیدا می‌شود؛ نودِ لحظه‌ی parse ممکن است با ری‌رندرِ کلاینتیِ
-    // ری‌اکت (بعد از hydration mismatch) دور ریخته و جایگزین شده باشد.
-    requestAnimationFrame(function () {
-      requestAnimationFrame(function () {
-        var el = document.getElementById("__tnd-initial-loader");
-        if (el) {
-          el.style.opacity = "0";
-          el.style.pointerEvents = "none";
-        }
-        setTimeout(function () {
-          // قفلِ دائمی: هر نسخه‌ای از اورلی که بعداً دوباره درج شود، با قانونِ
-          // html[data-tnd-il-done] در همان استایلِ inline پنهان می‌ماند
-          document.documentElement.setAttribute("data-tnd-il-done", "");
-          var current = document.getElementById("__tnd-initial-loader");
-          if (current && current.parentNode) {
-            current.parentNode.removeChild(current);
-          }
-        }, 350);
-      });
-    });
+    clearTimeout(safetyTimer);
+    document.removeEventListener("DOMContentLoaded", hide);
+    window.removeEventListener("pageshow", hide);
+    // قفل روی html می‌ماند تا بازسازی اورلی هنگام hydration آن را برنگرداند.
+    document.documentElement.setAttribute("data-tnd-il-done", "");
   }
-  if (document.readyState === "complete") {
+  // سقف ایمنی برای سندهای ناقص؛ حداقل زمان نمایش نیست.
+  safetyTimer = setTimeout(hide, 4000);
+  if (document.readyState !== "loading") {
     hide();
   } else {
-    window.addEventListener("load", hide);
+    // تصاویر و منابع دیرهنگام نباید آماده‌شدن صفحه را پشت لودر نگه دارند.
+    document.addEventListener("DOMContentLoaded", hide, { once: true });
+    window.addEventListener("pageshow", hide, { once: true });
   }
-  // بازگشت از bfcache یا هر pageshow دیگر نباید اورلی را زنده نگه دارد
-  window.addEventListener("pageshow", hide);
-  // سقف ایمنی: اگر load (مثلاً به‌خاطر تصاویر سنگین) دیر شد، صفحه را گروگان نگیر
-  setTimeout(hide, 4000);
 })();
 </script>
 `;
