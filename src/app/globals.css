@@ -1,5 +1,21 @@
 @import "tailwindcss";
 
+@font-face {
+  font-family: "Vazirmatn";
+  src: url("/fonts/invoice/Vazirmatn-Regular.woff2") format("woff2");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Vazirmatn";
+  src: url("/fonts/invoice/Vazirmatn-Bold.woff2") format("woff2");
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}
+
 /* .site-colors: هر جا داخلِ تمِ ادمین، محتوای سایت رندر می‌شود (پیش‌نمایشِ
    بلوک‌ها) و باید دقیقاً رنگِ سایت را بدهد، نه پریمریِ سبزِ پنل. */
 :root,

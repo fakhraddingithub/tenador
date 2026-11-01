@@ -1,5 +1,7 @@
 "use client";
 
+import ResponsiveImage from "@/components/common/ResponsiveImage";
+
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { FiArrowUpLeft, FiChevronDown } from "react-icons/fi";
@@ -44,6 +46,7 @@ export default function SportsGrid({ categories = [] }) {
               key={category._id}
               category={category}
               className={getTopGridSpan(index)}
+              sizes={index === 0 ? "(max-width: 767px) 100vw, 50vw" : "(max-width: 767px) 100vw, 25vw"}
             />
           ))}
         </div>
@@ -100,7 +103,7 @@ export default function SportsGrid({ categories = [] }) {
 }
 
 // کامپوننت مجزا برای کارت‌ها جهت تمیزی کد
-function CategoryCard({ category, className }) {
+function CategoryCard({ category, className, sizes = "(max-width: 767px) 100vw, 25vw" }) {
   return (
     <Link
       href={`/${category.slug}`}
@@ -108,8 +111,10 @@ function CategoryCard({ category, className }) {
       style={{ borderRadius: "6px" }}
     >
       {/* تصویر اصلی */}
-      <img
+      <ResponsiveImage
         src={category.image}
+        sizes={sizes}
+        loading="lazy"
         alt={category.name}
         className="absolute inset-0 w-full h-full object-cover transition-transform duration-700 ease-out group-hover:scale-105"
       />
@@ -127,6 +132,7 @@ function CategoryCard({ category, className }) {
                 src={category.icon}
                 alt={category.name}
                 fill
+                sizes="32px"
                 className="object-contain brightness-0 invert"
               />
             </div>
@@ -156,6 +162,7 @@ function CategoryCard({ category, className }) {
                     src={category.icon}
                     alt={category.name}
                     fill
+                    sizes="32px"
                     className="object-contain brightness-0 invert"
                   />
                 </div>

@@ -52,13 +52,6 @@ export default async function RootLayout({ children }) {
 
   return (
     <html lang="fa" dir="rtl" className="scroll-smooth">
-      <head>
-        <link
-          href="https://cdn.jsdelivr.net/gh/rastikerdar/vazirmatn@v33.003/Vazirmatn-font-face.css"
-          rel="stylesheet"
-          type="text/css"
-        />
-      </head>
       <body
         className="min-h-screen bg-[var(--color-background)] text-[var(--color-text)] antialiased"
         style={{ fontFamily: 'var(--font-sans)' }}

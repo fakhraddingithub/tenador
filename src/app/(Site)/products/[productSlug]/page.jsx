@@ -1,3 +1,4 @@
+import ResponsiveImage from "@/components/common/ResponsiveImage";
 import TaxonomyBreadcrumbs from "@/components/seo/TaxonomyBreadcrumbs";
 import { getPublicProductPrice } from "base/services/publicProductPrice.service";
 import ProductTemplate from "@/components/templates/product/ProductTemplate";
@@ -107,8 +108,10 @@ export default async function ProductPage({ params }) {
       />
 
       <div className="hidden md:block relative h-[200px] w-full overflow-hidden">
-        <img
+        <ResponsiveImage
           src={productHeaderImage}
+          sizes="(max-width: 767px) 1px, 100vw"
+          loading="lazy"
           alt={productHeaderAlt}
           className="w-full h-full object-cover scale-105"
         />

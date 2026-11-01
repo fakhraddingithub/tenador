@@ -62,6 +62,7 @@ const ProductGallery = ({ images = [], logo, verified = false, productName = "" 
                 src={images[activeIndex]}
                 alt={mainAlt}
                 fill
+                sizes="(max-width: 511px) calc(100vw - 64px), (max-width: 1023px) 448px, (max-width: 1279px) 36vw, 440px"
                 priority
                 className="object-contain p-6 transition-transform duration-700 group-hover:scale-110"
               />
@@ -98,6 +99,7 @@ const ProductGallery = ({ images = [], logo, verified = false, productName = "" 
               <Image
                 src={image}
                 alt={`${mainAlt} - تصویر ${index + 1}`}
+                sizes="80px"
                 fill
                 className={`
                   object-cover p-1.5 transition-transform duration-300

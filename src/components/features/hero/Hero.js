@@ -1,5 +1,7 @@
 "use client";
 
+import ResponsiveImage from "@/components/common/ResponsiveImage";
+
 import { Swiper, SwiperSlide } from "swiper/react";
 import { Autoplay, Pagination, Navigation } from "swiper/modules";
 import { motion } from "framer-motion";
@@ -36,7 +38,7 @@ export default function Hero({ slides = [] }) {
         }}
         className="h-full"
       >
-        {slides.map((slide) => (
+        {slides.map((slide, index) => (
           <SwiperSlide key={slide.id}>
             {({ isActive }) => (
               <div
@@ -45,8 +47,11 @@ export default function Hero({ slides = [] }) {
                 {/* Background Image */}
                 <div className="absolute inset-0 z-0">
                   <div className="absolute inset-0 bg-gradient-to-t from-[#0d0d0d]/60 via-transparent to-transparent z-10" />
-                  <img
+                  <ResponsiveImage
                     src={slide.image}
+                    sizes="100vw"
+                    loading={index === 0 ? "eager" : "lazy"}
+                    fetchPriority={index === 0 ? "high" : "auto"}
                     alt={slide.title}
                     className="w-full h-full object-cover object-center transition-transform duration-[6000ms] ease-out"
                     style={{ transform: isActive ? "scale(1.08)" : "scale(1)" }}

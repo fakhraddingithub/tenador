@@ -2,7 +2,7 @@
  * The fonts available to events.
  *
  * Each `value` is a font-family that is ALREADY registered:
- *  - Vazirmatn  → loaded via CDN <link> in the root layouts
+ *  - Vazirmatn  → loaded from local WOFF2 files via globals.css
  *  - the rest   → declared as @font-face in src/app/globals.css (files in /public/fonts)
  *
  * globals.css is imported by both the (Site) and (Admin-Panel) layouts, so any

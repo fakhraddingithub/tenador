@@ -66,6 +66,7 @@ export default function UsedProductCard({
           src={activeImage || "/images/placeholder.jpg"}
           alt={name}
           fill
+          sizes="(max-width: 639px) calc((100vw - 48px) / 2), (max-width: 1023px) calc((100vw - 64px) / 3), (max-width: 1439px) 18vw, 246px"
           className="object-contain p-3 transition-all duration-500 group-hover:scale-110"
         />
       </Link>

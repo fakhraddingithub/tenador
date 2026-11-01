@@ -104,9 +104,9 @@ const nextConfig = {
     loader: "custom",
     loaderFile: "./src/lib/imagekitLoader.js",
     // تعداد سایزهای مختلفی که Next.js برای srcset تولید می‌کند را محدود می‌کنیم
-    // تا تعداد ترنسفورم/بندویدثِ مصرفی کمتر شود (به‌جای ۸+۸ پیش‌فرض، فقط ۴+۳).
+    // تا تعداد ترنسفورم/بندویدثِ مصرفی کمتر شود (به‌جای ۸+۸ پیش‌فرض، فقط ۴+۴).
     deviceSizes: [640, 828, 1200, 1920],
-    imageSizes: [64, 128, 256],
+    imageSizes: [64, 128, 256, 384],
     remotePatterns: [
       {
         protocol: "https",

@@ -179,11 +179,6 @@ export default async function RootLayout({ children }) {
   return (
     <html lang="fa" dir="rtl">
       <head>
-        <link
-          href="https://cdn.jsdelivr.net/gh/rastikerdar/vazirmatn@v33.003/Vazirmatn-font-face.css"
-          rel="stylesheet"
-          type="text/css"
-        />
 
         <meta name="theme-color" content="#ffffff" />
 

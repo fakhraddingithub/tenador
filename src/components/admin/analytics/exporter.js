@@ -168,7 +168,21 @@ export function exportPdf(data, rangeLabel) {
 <!DOCTYPE html><html dir="rtl" lang="fa"><head><meta charset="utf-8">
 <title>گزارش تحلیل مالی</title>
 <style>
-  @import url('https://fonts.googleapis.com/css2?family=Vazirmatn:wght@400;600;700&display=swap');
+  @font-face {
+  font-family: "Vazirmatn";
+  src: url("${window.location.origin}/fonts/invoice/Vazirmatn-Regular.woff2") format("woff2");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Vazirmatn";
+  src: url("${window.location.origin}/fonts/invoice/Vazirmatn-Bold.woff2") format("woff2");
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}
   * { font-family: 'Vazirmatn', Tahoma, sans-serif; box-sizing: border-box; }
   body { padding: 24px; color: #1a1a1a; }
   h1 { color: #aa4725; font-size: 20px; margin: 0 0 4px; }
