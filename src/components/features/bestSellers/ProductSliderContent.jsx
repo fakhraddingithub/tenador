@@ -3,15 +3,12 @@
 import { useId, useState } from "react";
 import dynamic from "next/dynamic";
 
-import { Swiper, SwiperSlide } from "swiper/react";
-
-import { Navigation, Autoplay, Pagination } from "swiper/modules";
-
+import DeferredProductSwiper from "./DeferredProductSwiper";
 import { FiPlusCircle } from "react-icons/fi";
 
 import ProductCard from "@/components/modules/cart/ProductCard";
 
-import QuickViewModal from "@/components/modules/cart/QuickViewModal";
+import QuickViewModal from "@/components/modules/cart/LazyQuickViewModal";
 
 import UsedProductCard from "@/components/templates/secondHands/UsedProductCard";
 
@@ -20,6 +17,9 @@ import HomeSectionHeading from "@/components/features/home/HomeSectionHeading";
 import HomeSliderNav from "@/components/features/home/HomeSliderNav";
 import { HOME_SLIDER_AUTOPLAY, HOME_SLIDER_SPEED } from "@/lib/homeSlider";
 import { PRODUCT_SLIDER_TEXT } from "@/lib/homeBannerTexts";
+
+const EagerProductSwiper = dynamic(() => import("./ProductSwiper"));
+const SwiperSlide = ({ children, className }) => <div className={`swiper-slide ${className || ""}`}>{children}</div>;
 
 // فقط وقتی آگهیِ دست‌دومی در اسلایدر باشد بارگذاری می‌شود (صفحه‌ی اصلی هرگز).
 const UsedQuickViewModal = dynamic(() => import("@/components/templates/secondHands/Usedquickviewmodal"), { ssr: false });
@@ -64,7 +64,10 @@ export default function ProductSlider({
   onToggleWishlist,
 
   removeTopPadding = false,
+
+  deferActivation = false,
 }) {
+  const Swiper = deferActivation ? DeferredProductSwiper : EagerProductSwiper;
   const [selectedProduct, setSelectedProduct] = useState(null);
 
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -112,7 +115,6 @@ export default function ProductSlider({
 
         <div className="relative md:px-4 lg:px-8 xl:px-20">
           <Swiper
-            modules={[Navigation, Autoplay, Pagination]}
             spaceBetween={12}
             slidesPerView={2}
             centeredSlides={false}
@@ -205,7 +207,7 @@ export default function ProductSlider({
         isWishlisted={selectedProduct?.isWishlisted}
       />
 
-      {usedProducts.length ? <UsedQuickViewModal product={selectedUsed} isOpen={Boolean(selectedUsed)} onClose={() => setSelectedUsed(null)} /> : null}
+      {selectedUsed ? <UsedQuickViewModal product={selectedUsed} isOpen={Boolean(selectedUsed)} onClose={() => setSelectedUsed(null)} /> : null}
     </section>
   );
 }

@@ -18,6 +18,8 @@ export default async function RelatedProducts({ productId, rate }) {
     <>
     <style>{productSliderStyles}</style>
     <ProductSlider
+      deferActivation
+      isolated
       removeTopPadding
       title="محصولات مرتبط"
       highlight="مرتبط"
