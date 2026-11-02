@@ -4,10 +4,11 @@ import { useMemo } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import useSWR from "swr";
 import { toast } from "react-toastify";
+import useAuthSession from "./useAuthSession";
 
 const WISHLIST_KEY = "/api/wishlist";
 
-async function fetchWishlist(url) {
+async function fetchWishlist([url]) {
   const response = await fetch(url, { cache: "no-store" });
   const data = await response.json().catch(() => ({}));
 
@@ -29,13 +30,16 @@ async function fetchWishlist(url) {
 export default function useWishlist(product = null) {
   const router = useRouter();
   const pathname = usePathname();
-  const { data, error, isLoading, mutate } = useSWR(WISHLIST_KEY, fetchWishlist, {
+  const session = useAuthSession();
+  const userId = session.error ? null : session.data?.user?.id;
+  const { data, error, isLoading: wishlistLoading, mutate } = useSWR(userId ? [WISHLIST_KEY, userId] : null, fetchWishlist, {
     revalidateOnFocus: false,
     shouldRetryOnError: false,
   });
+  const isLoading = session.isLoading || wishlistLoading;
 
   const productId = String(product?._id || product || "");
-  const items = useMemo(() => data?.wishlist || [], [data?.wishlist]);
+  const items = useMemo(() => userId ? data?.wishlist || [] : [], [userId, data?.wishlist]);
   const ids = useMemo(
     () => new Set(items.map((item) => String(item?._id || item))),
     [items]
@@ -45,7 +49,12 @@ export default function useWishlist(product = null) {
   const toggle = async () => {
     if (!productId || isLoading) return false;
 
-    if (data?.authenticated === false) {
+    if (session.error || error || session.data === undefined) {
+      toast.error("بررسی وضعیت حساب انجام نشد. لطفاً دوباره تلاش کنید.");
+      return false;
+    }
+
+    if (!userId || data?.authenticated === false) {
       toast.info("برای ذخیره در علاقه‌مندی‌ها ابتدا وارد حساب کاربری شوید");
       const redirect = pathname ? `?callbackUrl=${encodeURIComponent(pathname)}` : "";
       router.push(`/login-register${redirect}`);
@@ -91,9 +100,13 @@ export default function useWishlist(product = null) {
     items,
     isWishlisted,
     isLoading,
-    error,
-    authenticated: data?.authenticated,
+    error: session.error || error,
+    authenticated: session.data === undefined ? undefined : Boolean(userId && data?.authenticated),
     toggle,
-    refresh: mutate,
+    refresh: async () => {
+      const updated = await session.mutate();
+      // A changed account gets a different SWR key and its own automatic fetch.
+      if (userId && updated?.user?.id === userId) return mutate();
+    },
   };
 }

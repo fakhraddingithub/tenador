@@ -7,6 +7,7 @@ import {
   useState,
   useCallback,
 } from "react";
+import useAuthSession from "@/hooks/useAuthSession";
 
 /**
  * UserProvider — جزیره‌ی احراز هویت سمت کلاینت.
@@ -16,7 +17,7 @@ import {
  * با انتقال وضعیت کاربر به این جزیره‌ی کلاینت، صفحات عمومی می‌توانند static/ISR شوند
  * و فقط همین ویجت کوچک نوبار سمت کلاینت هیدریت می‌شود.
  *
- * توکن httpOnly است، پس کلاینت مستقیماً آن را نمی‌خواند؛ از `/api/auth/profile`
+ * توکن httpOnly است، پس کلاینت مستقیماً آن را نمی‌خواند؛ از `/api/auth/session`
  * استفاده می‌شود (کوکی same-origin خودکار ارسال می‌شود).
  *
  * برای جلوگیری از «پرش» نمایش (logged-in → logged-out) برای کاربران بازگشتی،
@@ -37,53 +38,31 @@ export function useUser() {
 const STORAGE_KEY = "authUser";
 
 export function UserProvider({ children }) {
-  const [user, setUser] = useState(null);
-  const [loading, setLoading] = useState(true);
+  const [cachedUser, setCachedUser] = useState(null);
+  const { data, isLoading: loading, mutate } = useAuthSession();
+  const user = data === undefined ? cachedUser : data.user;
 
-  // هیدریت خوش‌بینانه از کش محلی (بدون پرش برای کاربران بازگشتی)
   useEffect(() => {
     try {
       const cached = localStorage.getItem(STORAGE_KEY);
-      if (cached) setUser(JSON.parse(cached));
-    } catch {
-      /* ignore */
-    }
-  }, []);
-
-  const refresh = useCallback(async () => {
-    try {
-      const res = await fetch("/api/auth/profile", { cache: "no-store" });
-      if (res.ok) {
-        const data = await res.json();
-        const u = data.user || null;
-        setUser(u);
-        try {
-          localStorage.setItem(STORAGE_KEY, JSON.stringify(u));
-        } catch {
-          /* ignore */
-        }
-      } else {
-        setUser(null);
-        try {
-          localStorage.removeItem(STORAGE_KEY);
-        } catch {
-          /* ignore */
-        }
-      }
-    } catch {
-      // خطای شبکه: وضعیت خوش‌بینانه‌ی فعلی حفظ شود
-    } finally {
-      setLoading(false);
-    }
+      // One-time browser storage hydration preserves the existing header behavior.
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      if (cached) setCachedUser(JSON.parse(cached));
+    } catch { /* storage may be unavailable */ }
   }, []);
 
   useEffect(() => {
-    refresh();
+    if (data === undefined) return;
+    try {
+      if (data.user) localStorage.setItem(STORAGE_KEY, JSON.stringify(data.user));
+      else localStorage.removeItem(STORAGE_KEY);
+    } catch { /* storage may be unavailable */ }
+  }, [data]);
 
-    // پس از login/logout سایر بخش‌ها می‌توانند این رویداد را dispatch کنند
-    const onAuthChanged = () => refresh();
+  const refresh = useCallback(() => mutate().catch(() => {}), [mutate]);
+  useEffect(() => {
+    const onAuthChanged = () => { void refresh(); };
     window.addEventListener("auth-changed", onAuthChanged);
-
     return () => window.removeEventListener("auth-changed", onAuthChanged);
   }, [refresh]);
 
