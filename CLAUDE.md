@@ -339,6 +339,14 @@ preview stops matching what the AI gets. Source kinds: `base {section,index}`, `
 `categoryField {field}`, `technicalStats`, `attribute`/`variantAttribute {name}`, `customTab`,
 `customTabItem {itemId}`, `system {what}` (locked). Editable sources carry `value`, the stored text.
 
+**The preview's «پرامپت نهایی (متن خام)» toggle** (off by default) shows the whole prompt as plain text in
+a `<pre>`. `GET /api/admin/product-prompts/final-prompt` → `buildFinalPromptPreview` (`productDraftPrompt.js`)
+calls the real `buildProductDraftPrompt` with a random marker and swaps that one slot for
+`PLACEHOLDER FOR SOURCE TEXT`: the placeholder is shorter than `RAW_CONTENT_MIN`, and a separate build
+path is exactly what must not exist. A test asserts it equals the real draft character for character. It
+does not show the fixed `system` message that automatic regeneration sends alongside the prompt. The rule
+preview stays mounted (hidden) in this mode, so its filter and open editors survive the toggle.
+
 Editing from the preview writes the rule's own source and nothing else:
 
 | source | how |

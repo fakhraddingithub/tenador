@@ -60,6 +60,7 @@ export const ADMIN_API_PERMISSIONS = {
   // ── تنظیمات پرامپت تولید محصول ──────────────────────────────────────
   "/admin/product-prompts": { GET: "productPrompts.view", PUT: "productPrompts.edit" },
   "/admin/product-prompts/preview": { GET: "productPrompts.view" },
+  "/admin/product-prompts/final-prompt": { GET: "productPrompts.view" },
   "/admin/product-prompts/category-rule": { PATCH: "productPrompts.edit" },
   "/admin/notifications/summary": { GET: ANY_ADMIN },
   "/admin/market-rates": { GET: ANY_ADMIN },

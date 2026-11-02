@@ -13,6 +13,8 @@
  *
  * caller باید اتصالِ دیتابیس را برقرار کرده باشد.
  */
+import { randomUUID } from "node:crypto";
+
 import Category from "base/models/Category";
 import Brand from "base/models/Brand";
 import Athlete from "base/models/Athlete";
@@ -74,4 +76,21 @@ export async function buildProductDraftPrompt({ categoryId, rawContent }) {
       sport: { id: category.sport._id.toString(), name: category.sport.name, title: category.sport.title },
     },
   };
+}
+
+export const SOURCE_TEXT_PLACEHOLDER = "PLACEHOLDER FOR SOURCE TEXT";
+
+/**
+ * پرامپتِ نهاییِ یک دسته برای نمایش در پنل، بدونِ متنِ منبع: خروجیِ همان
+ * buildProductDraftPrompt، و فقط جای متنِ منبع با SOURCE_TEXT_PLACEHOLDER پر شده.
+ *
+ * placeholder کوتاه‌تر از RAW_CONTENT_MIN است و نمی‌تواند مستقیم از اعتبارسنجی بگذرد،
+ * پس ساخت با یک نشانگرِ تصادفیِ به‌اندازه‌ی کافی بلند انجام و بعد جایگزین می‌شود؛ مسیرِ
+ * ساخت هیچ شاخه‌ی جدایی ندارد. replace با تابع است تا «$» در متن‌ها معنای خاص نگیرد.
+ */
+export async function buildFinalPromptPreview(categoryId) {
+  const slot = `SOURCE_TEXT_SLOT_${randomUUID()}`;
+  const result = await buildProductDraftPrompt({ categoryId, rawContent: slot });
+  if (result.error) return result;
+  return { ...result, prompt: result.prompt.replace(slot, () => SOURCE_TEXT_PLACEHOLDER) };
 }

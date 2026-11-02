@@ -434,3 +434,59 @@ test('category PUT: custom tab prompts survive a client that does not send them,
   assert.deepEqual(tab.items.slice(0, 2).map((i) => String(i._id)), stored.items.map((i) => String(i._id)));
   await Category.deleteOne({ _id: cat._id });
 });
+
+// ── حالتِ «پرامپت نهایی»: باید با پرامپتِ واقعی نویسه‌به‌نویسه یکی باشد ───────────────
+
+test('final prompt mode: identical to the real draft, character for character, except the source text slot', async () => {
+  const { GET } = await import('../src/app/api/admin/product-prompts/final-prompt/route.js');
+  const { PUT } = await import('../src/app/api/admin/product-prompts/route.js');
+  const finalPrompt = async (id) => {
+    const res = await GET({ url: `http://x/api/admin/product-prompts/final-prompt?categoryId=${id}` });
+    return { status: res.status, body: await res.json() };
+  };
+  const PLACEHOLDER = 'PLACEHOLDER FOR SOURCE TEXT';
+  const Category = mongoose.model('Category');
+  await mongoose.model('ProductPromptConfig').deleteMany({});
+
+  // هر منبع یک قاعده دارد؛ «$&» و «$'» اگر replace الگو را تفسیر کند متن را خراب می‌کنند
+  const cat = await previewCategory();
+  await Category.updateOne({ _id: cat._id }, { $push: { prompts: { field: 'color', context: "COST RULE $& and $' and $1" } } });
+  const saved = await PUT({ json: async () => ({ updatedAt: null,
+    base: [{ section: 'task', rules: ['EDITED BASE TASK RULE'] }],
+    groups: [{ title: 'G', categories: [String(cat._id)], rules: [{ field: 'name', text: 'GROUP NAME RULE', categories: [] }] }],
+  }) });
+  assert.equal(saved.status, 200);
+
+  const source = 'REAL SOURCE TEXT of a product, long enough to pass validation, appearing only once.';
+  const draftRes = await POST({ json: async () => ({ categoryId: String(cat._id), rawContent: `  ${source}\n` }) });
+  const { draft } = await draftRes.json();
+  assert.equal(draft.split(source).length, 2);
+
+  const { status, body } = await finalPrompt(cat._id);
+  assert.equal(status, 200, JSON.stringify(body));
+  assert.equal(body.prompt, draft.replace(source, () => PLACEHOLDER));
+
+  // در همان جای متنِ منبع، یک بار، و بدونِ نشانگرِ موقت
+  assert.equal(body.prompt.split(PLACEHOLDER).length, 2);
+  assert.match(body.prompt, /\nRAW PRODUCT CONTENT\n=+\nPLACEHOLDER FOR SOURCE TEXT\n\n=+\nREQUIRED JSON OUTPUT STRUCTURE\n/);
+  assert.ok(!body.prompt.includes('SOURCE_TEXT_SLOT_'));
+
+  // هر آنچه به AI می‌رسد هست: قواعد از هر منبع و فهرست‌های داده
+  for (const text of [
+    '- EDITED BASE TASK RULE', 'GROUP NAME RULE', 'CATEGORY NAME RULE', "COST RULE $& and $' and $1", 'TECH RULE', 'TAB RULE',
+    'Extraction Rule: HEAD RULE', 'Guide: GRIP RULE', '"ONE" | Selection Rule: ONE HINT',
+    'AVAILABLE BRANDS', String(brand._id), 'AVAILABLE ATHLETES', 'AVAILABLE SERIES', 'AVAILABLE LIMITED EDITIONS', '"customTabItems"',
+  ]) assert.ok(body.prompt.includes(text), text);
+
+  // دو بار ساختن یک متن می‌دهد (نشانگرِ تصادفی به خروجی نشت نمی‌کند)
+  assert.equal((await finalPrompt(cat._id)).body.prompt, body.prompt);
+
+  // ویرایشِ تازه بلافاصله دیده می‌شود
+  await Category.updateOne({ _id: cat._id }, { $set: { technicalStatsPrompt: 'TECH RULE AFTER EDIT' } });
+  assert.ok((await finalPrompt(cat._id)).body.prompt.includes('TECH RULE AFTER EDIT'));
+
+  assert.equal((await finalPrompt('nope')).status, 400);
+  assert.equal((await finalPrompt(new mongoose.Types.ObjectId())).status, 404);
+  await mongoose.model('ProductPromptConfig').deleteMany({});
+  await Category.deleteOne({ _id: cat._id });
+});

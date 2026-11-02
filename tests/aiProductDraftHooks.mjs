@@ -8,6 +8,7 @@ const STUBBED_ROUTES = [
   '/src/app/api/ai/product-draft/route.js',
   '/src/app/api/admin/product-prompts/route.js',
   '/src/app/api/admin/product-prompts/preview/route.js',
+  '/src/app/api/admin/product-prompts/final-prompt/route.js',
   '/src/app/api/admin/product-prompts/category-rule/route.js',
   '/src/app/api/categories/[categoryId]/route.js',
 ];

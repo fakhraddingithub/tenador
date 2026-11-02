@@ -86,6 +86,33 @@ export default function PromptPreviewPage() {
   const [loading, setLoading] = useState(false);
   const [loadError, setLoadError] = useState('');
   const [openId, setOpenId] = useState(null);
+  // حالتِ «پرامپت نهایی»: متنِ خامِ پرامپت. پیش‌فرض خاموش؛ پیش‌نمایشِ قواعد mount می‌ماند
+  // تا فیلتر و ویرایشِ نیمه‌کاره با رفت‌وبرگشت از بین نرود.
+  const [finalMode, setFinalMode] = useState(false);
+  const [finalPrompt, setFinalPrompt] = useState(null);
+  const [finalError, setFinalError] = useState('');
+  const finalRequest = useRef(0);
+
+  // هر بار از نو ساخته می‌شود تا ویرایش‌های تازه را نشان دهد؛ پاسخِ درخواستِ کهنه
+  // (مثلاً پس از عوض شدنِ دسته) نادیده گرفته می‌شود.
+  const loadFinal = async (id) => {
+    const request = ++finalRequest.current;
+    setFinalPrompt(null);
+    setFinalError('');
+    try {
+      const res = await fetch(`${PROMPTS_API}/final-prompt?categoryId=${encodeURIComponent(id)}`, { cache: 'no-store' });
+      const json = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(getApiErrorMessage(json, 'خطا در ساخت پرامپت نهایی'));
+      if (request === finalRequest.current) setFinalPrompt(json.prompt);
+    } catch (err) {
+      if (request === finalRequest.current) setFinalError(err.message);
+    }
+  };
+  const toggleFinal = () => {
+    const next = !finalMode;
+    setFinalMode(next);
+    if (next && categoryId) loadFinal(categoryId);
+  };
 
   const load = async (id) => {
     setLoading(true);
@@ -119,6 +146,7 @@ export default function PromptPreviewPage() {
     setData(null);
     router.replace(id ? `${PROMPTS_HOME}/preview?category=${id}` : `${PROMPTS_HOME}/preview`, { scroll: false });
     if (id) load(id);
+    if (id && finalMode) loadFinal(id);
   };
 
   if (ctx.loadError) return <div className="a-card p-8 text-center text-sm font-bold text-red-500">{ctx.loadError}</div>;
@@ -247,19 +275,57 @@ export default function PromptPreviewPage() {
             {ctx.categories.map((c) => <option key={c._id} value={c._id}>{c.label}</option>)}
           </select>
         </label>
+        {categoryId && (
+          <div className="flex items-center gap-2.5 lg:mr-auto lg:pb-2.5">
+            <button
+              type="button"
+              id="final-prompt-toggle"
+              role="switch"
+              aria-checked={finalMode}
+              onClick={toggleFinal}
+              className="relative h-5 w-9 shrink-0 rounded-full transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-primary)]"
+              style={{ background: finalMode ? 'var(--color-primary)' : 'var(--admin-border)' }}
+            >
+              <span
+                className="absolute top-0.5 h-4 w-4 rounded-full bg-white shadow transition-all"
+                style={{ left: finalMode ? 'calc(100% - 1.1rem)' : '2px' }}
+              />
+            </button>
+            <label htmlFor="final-prompt-toggle" className="cursor-pointer text-sm font-bold text-gray-700">پرامپت نهایی (متن خام)</label>
+          </div>
+        )}
       </section>
 
       {!categoryId ? (
         <p className="a-card p-10 text-center text-sm font-bold text-gray-400">یک دسته را انتخاب کنید تا پرامپتِ نهاییِ آن نمایش داده شود.</p>
-      ) : loadError ? (
-        <div className="a-card p-8 text-center space-y-3">
-          <p className="text-sm font-bold text-red-500">{loadError}</p>
-          <Button variant="secondary" size="sm" onClick={() => load(categoryId)}>تلاش دوباره</Button>
-        </div>
-      ) : !data ? (
-        <AdminLoader />
       ) : (
-        <PromptArticle data={data} loading={loading} categoryLabel={categoryLabel} groupLabel={groupLabel} ruleProps={ruleProps} />
+        <>
+          {finalMode && (
+            finalError ? (
+              <div className="a-card p-8 text-center space-y-3">
+                <p className="text-sm font-bold text-red-500">{finalError}</p>
+                <Button variant="secondary" size="sm" onClick={() => loadFinal(categoryId)}>تلاش دوباره</Button>
+              </div>
+            ) : finalPrompt === null ? (
+              <AdminLoader />
+            ) : (
+              // [direction:ltr] لازم است: globals.css روی * می‌گذارد direction: rtl که از dir قوی‌تر است
+              <pre dir="ltr" className="m-0 p-4 bg-white text-black text-left [direction:ltr] whitespace-pre-wrap break-words font-mono text-[13px] leading-6">{finalPrompt}</pre>
+            )
+          )}
+          <div hidden={finalMode}>
+            {loadError ? (
+              <div className="a-card p-8 text-center space-y-3">
+                <p className="text-sm font-bold text-red-500">{loadError}</p>
+                <Button variant="secondary" size="sm" onClick={() => load(categoryId)}>تلاش دوباره</Button>
+              </div>
+            ) : !data ? (
+              <AdminLoader />
+            ) : (
+              <PromptArticle data={data} loading={loading} categoryLabel={categoryLabel} groupLabel={groupLabel} ruleProps={ruleProps} />
+            )}
+          </div>
+        </>
       )}
     </div>
   );
