@@ -69,7 +69,8 @@ async function buildNavbarData() {
   //    ساختِ درختِ والد/فرزندِ ستونِ دوم. برندهای هر دسته از روی محصول استنتاج
   //    می‌شوند (برندهایی که در آن دسته دستِ‌کم یک محصول دارند).
   // ───────────────────────────────────────────────────────────────────────
-  const [sports, categoryRows] = await Promise.all([
+  // These four independent reads share one wait; keep parent lookups dependent.
+  const [sports, categoryRows, catDocs, audienceAgg] = await Promise.all([
     Sport.find({})
       .select("_id title slug icon order")
       .sort({ order: 1 })
@@ -125,6 +126,38 @@ async function buildNavbarData() {
         },
       },
     ]),
+    Category.find({
+      megaMenuFilterAttribute: { $type: "string", $ne: "" },
+    })
+      .select("_id megaMenuFilterAttribute attributes variantAttributes")
+      .lean(),
+    Product.aggregate([
+      {
+        $match: {
+          isActive: true,
+          sport: { $ne: null },
+          category: { $ne: null },
+          brand: { $ne: null },
+        },
+      },
+      {
+        $lookup: {
+          from: "categories",
+          localField: "category",
+          foreignField: "_id",
+          as: "cat",
+        },
+      },
+      { $unwind: "$cat" },
+      { $addFields: { _visibleSports: visibleSportsExpression("$cat") } },
+      { $unwind: "$_visibleSports" },
+      {
+        $group: {
+          _id: { sport: "$_visibleSports", category: "$category", brand: "$brand" },
+          values: { $addToSet: { $ifNull: ["$targetAudience", null] } },
+        },
+      },
+    ]),
   ]);
 
   const sportMap = new Map();
@@ -161,11 +194,6 @@ async function buildNavbarData() {
   // ۲) فراداده‌ی «ویژگیِ فیلترِ مگامنو» هر دسته: نام، برچسب و گزینه‌های تعریف‌شده.
   //    ویژگی می‌تواند ثابت (attributes) یا متغیر (variantAttributes) باشد.
   // ───────────────────────────────────────────────────────────────────────
-  const catDocs = await Category.find({
-    megaMenuFilterAttribute: { $type: "string", $ne: "" },
-  })
-    .select("_id megaMenuFilterAttribute attributes variantAttributes")
-    .lean();
 
   // categoryId → { name, label, options }
   const catFilterMeta = new Map();
@@ -314,33 +342,6 @@ async function buildNavbarData() {
   //    بالا (Stage 0: عمداً بدونِ ادغام). فیلدِ ثابتِ محصول است، نه یک ویژگیِ
   //    پویا؛ پس فقط یک aggregation ساده به تفکیکِ (ورزش، دسته، برند) لازم است.
   // ───────────────────────────────────────────────────────────────────────
-  const audienceAgg = await Product.aggregate([
-    {
-      $match: {
-        isActive: true,
-        sport: { $ne: null },
-        category: { $ne: null },
-        brand: { $ne: null },
-      },
-    },
-    {
-      $lookup: {
-        from: "categories",
-        localField: "category",
-        foreignField: "_id",
-        as: "cat",
-      },
-    },
-    { $unwind: "$cat" },
-    { $addFields: { _visibleSports: visibleSportsExpression("$cat") } },
-    { $unwind: "$_visibleSports" },
-    {
-      $group: {
-        _id: { sport: "$_visibleSports", category: "$category", brand: "$brand" },
-        values: { $addToSet: { $ifNull: ["$targetAudience", null] } },
-      },
-    },
-  ]);
 
   const audienceByCatBrand = new Map(); // `${sport}|${category}` → Map(brandId → Set(values))
   const audienceByCategory = new Map(); // categoryId → Set(values)
