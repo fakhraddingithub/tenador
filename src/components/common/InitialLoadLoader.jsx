@@ -54,20 +54,50 @@ html[data-tnd-il-done] #__tnd-initial-loader{display:none!important}
   if (!document.getElementById("__tnd-initial-loader")) return;
   var hidden = false;
   var safetyTimer;
+  var observer;
+  var frame;
   function hide() {
     if (hidden) return;
     hidden = true;
     clearTimeout(safetyTimer);
+    if (observer) observer.disconnect();
+    if (frame) cancelAnimationFrame(frame);
+    document.removeEventListener("load", scheduleCheck, true);
     document.removeEventListener("DOMContentLoaded", hide);
     window.removeEventListener("pageshow", hide);
     // قفل روی html می‌ماند تا بازسازی اورلی هنگام hydration آن را برنگرداند.
     document.documentElement.setAttribute("data-tnd-il-done", "");
+  }
+  function checkContent() {
+    frame = 0;
+    if (hidden) return;
+    var content = document.querySelector("[data-tnd-product-content]");
+    // The end marker follows the fully server-priced buy box. A streamed,
+    // hidden Suspense segment must not dismiss the overlay before it is visible.
+    if (!content || !content.querySelector("[data-tnd-product-ready]") ||
+        !content.getClientRects().length || getComputedStyle(content).display !== "grid") return;
+    var styles = document.querySelectorAll('link[rel="stylesheet"]');
+    for (var i = 0; i < styles.length; i++) {
+      var link = styles[i];
+      if (!link.disabled && (!link.media || window.matchMedia(link.media).matches) && !link.sheet) return;
+    }
+    hide();
+  }
+  function scheduleCheck() {
+    if (!hidden && !frame) frame = requestAnimationFrame(checkContent);
   }
   // سقف ایمنی برای سندهای ناقص؛ حداقل زمان نمایش نیست.
   safetyTimer = setTimeout(hide, 4000);
   if (document.readyState !== "loading") {
     hide();
   } else {
+    if (typeof MutationObserver !== "undefined" && window.location.pathname.startsWith("/products/") &&
+        window.location.pathname.split("/").filter(Boolean).length === 2) {
+      observer = new MutationObserver(scheduleCheck);
+      observer.observe(document.documentElement, { childList: true, subtree: true });
+      document.addEventListener("load", scheduleCheck, true);
+      scheduleCheck();
+    }
     // تصاویر و منابع دیرهنگام نباید آماده‌شدن صفحه را پشت لودر نگه دارند.
     document.addEventListener("DOMContentLoaded", hide, { once: true });
     window.addEventListener("pageshow", hide, { once: true });

@@ -21,7 +21,7 @@ const ProductClientSection = ({ product }) => {
   );
 
   return (
-    <div className="grid gap-6 sm:gap-8 lg:grid-cols-[1fr_1.5fr] lg:gap-12 xl:gap-16">
+    <div data-tnd-product-content="" className="grid gap-6 sm:gap-8 lg:grid-cols-[1fr_1.5fr] lg:gap-12 xl:gap-16">
       
       {/* Top on Mobile / Left on Desktop - Gallery */}
       <div className="w-full min-w-0">
@@ -43,6 +43,7 @@ const ProductClientSection = ({ product }) => {
           onSelectionChange={setSelection}
         />
       </div>
+      <span hidden data-tnd-product-ready="" />
       
     </div>
   );
