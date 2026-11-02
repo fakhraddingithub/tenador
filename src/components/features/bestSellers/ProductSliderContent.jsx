@@ -8,7 +8,7 @@ import { FiPlusCircle } from "react-icons/fi";
 
 import ProductCard from "@/components/modules/cart/ProductCard";
 
-import QuickViewModal from "@/components/modules/cart/LazyQuickViewModal";
+import QuickViewModal, { preloadQuickView } from "@/components/modules/cart/LazyQuickViewModal";
 
 import UsedProductCard from "@/components/templates/secondHands/UsedProductCard";
 
@@ -168,6 +168,7 @@ export default function ProductSlider({
                     rate={rate}
                     isWishlisted={product.isWishlisted}
                     onQuickView={() => openQuickView(product)}
+                    onQuickViewIntent={preloadQuickView}
                     onToggleWishlist={() => onToggleWishlist?.(product)}
                   />
                 </div>

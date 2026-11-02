@@ -8,7 +8,7 @@ import { valueImageSwatches } from "@/lib/variantImages";
 import useWishlist from "@/hooks/useWishlist";
 import ProductCardTitle from "./ProductCardTitle";
 
-export default function ProductCard({ product, rate, onQuickView, overlay = null, campaignBadge = null }) {
+export default function ProductCard({ product, rate, onQuickView, onQuickViewIntent, overlay = null, campaignBadge = null }) {
   const { mainImage, name, slug, basePrice, label } = product;
   const { isWishlisted, toggle: toggleWishlist, isLoading: wishlistLoading } = useWishlist(product);
 
@@ -145,7 +145,7 @@ export default function ProductCard({ product, rate, onQuickView, overlay = null
         </div>
 
         <div className="flex items-center gap-7 pointer-events-auto border-t border-gray-50 pt-4 w-full justify-center">
-          <ActionButton icon={<FaEye />} label="نمایش سریع" onClick={(e) => { e.preventDefault(); onQuickView(); }} />
+          <ActionButton icon={<FaEye />} label="نمایش سریع" onIntent={onQuickViewIntent} onClick={(e) => { e.preventDefault(); onQuickView(); }} />
           <ActionButton href={`/products/${slug}`} icon={<FaArrowLeft />} label="صفحه محصول" onClick={(e) => e.stopPropagation()} />
           <ActionButton
             icon={isWishlisted ? <FaHeart className="text-red-500" /> : <FaRegHeart />}
@@ -159,7 +159,7 @@ export default function ProductCard({ product, rate, onQuickView, overlay = null
   );
 }
 
-function ActionButton({ icon, label, onClick, disabled = false, href }) {
+function ActionButton({ icon, label, onClick, onIntent, disabled = false, href }) {
   const Control = href ? Link : "button";
   return (
     <div className="relative group/btn flex flex-col items-center">
@@ -167,7 +167,7 @@ function ActionButton({ icon, label, onClick, disabled = false, href }) {
         {label}
         <span className="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent border-t-gray-800" />
       </span>
-      <Control {...(href ? { href } : { type: "button", disabled })} onClick={onClick} aria-label={label} className="inline-flex h-6 w-6 -m-[3px] items-center justify-center rounded-sm text-gray-800 hover:text-[var(--color-primary)] transition-colors duration-300 text-[18px] disabled:cursor-wait disabled:opacity-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#aa4725]">{icon}</Control>
+      <Control {...(href ? { href } : { type: "button", disabled })} onPointerEnter={onIntent} onFocus={onIntent} onPointerDown={onIntent} onClick={onClick} aria-label={label} className="inline-flex h-6 w-6 -m-[3px] items-center justify-center rounded-sm text-gray-800 hover:text-[var(--color-primary)] transition-colors duration-300 text-[18px] disabled:cursor-wait disabled:opacity-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#aa4725]">{icon}</Control>
     </div>
   );
 }

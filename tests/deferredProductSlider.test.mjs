@@ -99,8 +99,7 @@ test('opening quick view loads the real modal with the selected product', async 
   });
   const props = { isOpen: true, product: { name: 'selected product' }, onClose() {} };
   const pending = renderToStaticMarkup(Component(props));
-  assert.match(pending, /role="dialog"/);
-  assert.match(pending, /بستن/);
+  assert.equal(pending, '', 'no temporary overlay or close button while the module loads');
   effects.forEach(fn => fn());
   await tick();
   cursor = 0;
@@ -125,4 +124,38 @@ test('related slider renders all cards on the server without running eager Swipe
     products: [{ _id: 'a', slug: 'a', name: 'A' }, { _id: 'b', slug: 'b', name: 'B' }] }));
   assert.match(html, /href="\/products\/a"/);
   assert.match(html, /href="\/products\/b"/);
+});
+
+test('failed quick view load closes the pending request and allows a retry without an overlay', async () => {
+  const effects = [], errors = [];
+  let closed = 0, attempts = 0;
+  const Component = load('src/components/modules/cart/LazyQuickViewModal.jsx', {
+    react: { useEffect: fn => effects.push(fn), useState: initial => [initial, () => {}] },
+    'react-toastify': { toast: { error: message => errors.push(message) } },
+    './QuickViewModal': { get default() { attempts++; throw Error('Network failure'); } },
+  });
+  const props = { isOpen: true, product: {}, onClose: () => closed++ };
+  assert.equal(Component(props), null);
+  effects.pop()();
+  await tick();
+  assert.equal(closed, 1);
+  assert.equal(errors.length, 1);
+  Component(props);
+  effects.pop()();
+  await tick();
+  assert.equal(attempts, 2);
+});
+
+test('leaving while quick view loads prevents a late modal update', async () => {
+  const effects = [];
+  let updates = 0;
+  const Component = load('src/components/modules/cart/LazyQuickViewModal.jsx', {
+    react: { useEffect: fn => effects.push(fn), useState: initial => [initial, () => updates++] },
+    './QuickViewModal': { default: () => null },
+  });
+  Component({ isOpen: true, product: {}, onClose() {} });
+  const cleanup = effects.pop()();
+  cleanup();
+  await tick();
+  assert.equal(updates, 0);
 });
