@@ -312,9 +312,12 @@ test('prompt settings pages save separately: each part leaves the others alone, 
   // بدنه‌ی بی‌محتوا ذخیره نمی‌شود؛ نسخه‌ی کهنه ۴۰۹؛ حذفِ {{source_text}} ۴۰۰ و بدونِ نوشتن
   assert.equal((await put({ updatedAt: r.body.config.updatedAt })).status, 400);
   assert.equal((await put({ updatedAt: null, fieldRules: [] })).status, 409);
-  const noSource = await put({ updatedAt: r.body.config.updatedAt, document: initial.document.filter((s) => s.key !== 'source') });
+  const noSource = await put({ updatedAt: r.body.config.updatedAt, document: initial.document.filter((s) => s.key !== 'source_text') });
   assert.equal(noSource.status, 400);
-  assert.ok(noSource.body.fieldErrors.document.includes('{{source_text}}'));
+  assert.ok(noSource.body.fieldErrors.document.includes('source_text'));
+  const noIdentifier = await put({ updatedAt: r.body.config.updatedAt, fieldRules: initial.fieldRules.map((f) => (f.field === 'name' ? { ...f, heading: 'نام:' } : f)) });
+  assert.equal(noIdentifier.status, 400);
+  assert.ok(noIdentifier.body.fieldErrors['fieldRules.name.heading']);
 
   const draft = (await (await requestDraft(tennisCategory._id)).json()).draft;
   assert.ok(draft.includes('\nONLY TASK RULE\n') && draft.includes('RULE A EDITED') && !draft.includes('READ the raw product content'));
@@ -374,21 +377,17 @@ test('every part survives the real schema: sections, group sections, dynamic-fie
   });
   const id = String(cat._id);
 
-  // فیلدهای پویای دسته برای انتخاب در گروه
+  // انتخابگرِ گروه فقط برچسبِ دسته را لازم دارد، نه تعریفِ ویژگی‌هایش
   const option = (await load()).categories.find((c) => c._id === id);
-  assert.deepEqual(option.fields, {
-    attribute: [{ name: 'Head', label: 'سر' }],
-    variant: [{ name: 'Grip', label: 'گریپ' }],
-    stat: [{ name: 'power', label: 'قدرت' }],
-    tabItem: [{ name: 'ONE', label: 'ONE' }],
-  });
+  assert.ok(!('fields' in option) && !('attributes' in option));
 
-  const newSection = { key: 'exception', kind: 'text', name: 'Exception Rules', top: '  ***  ', title: 'EXCEPTIONS', bottom: '', description: 'desc\n', blankLines: 3, rules: ['  spaced rule  ', '2. my number'] };
-  const groupSection = { key: 'g-sec', name: 'قواعد گروه', top: '', title: 'GROUP GENERAL', bottom: '', description: '', blankLines: 0, rules: [{ text: 'GENERAL RULE', categories: [id] }] };
-  const rules = ['attribute:Head', 'variant:Grip', 'stat:power', 'tabItem:ONE', 'sport', 'customTabItems'].map((field) => ({ field, text: `RULE FOR ${field}`, categories: [] }));
+  const newSection = { key: 'exception', kind: 'text', name: 'Exception Rules', heading: '\n\n  ***  \nEXCEPTIONS\n\ndesc  ', rules: ['  spaced rule  ', '2. my number'] };
+  const groupSection = { key: 'g-sec', name: 'قواعد گروه', heading: 'GROUP GENERAL', rules: [{ text: 'GENERAL RULE', categories: [id] }] };
+  const rules = ['attribute:Head', 'variant:Grip', 'stat:power', 'tabItem:ONE', 'sport', 'customTabItems', 'section:task', 'section:exception'].map((field) => ({ field, text: `RULE FOR ${field}`, categories: [] }));
   const body = {
     updatedAt: null,
     document: [...initial.document, newSection],
+    fieldRules: initial.fieldRules.map((f) => (f.field === 'name' ? { ...f, heading: '\n=== the name field ===  ' } : f)),
     templates: { ...initial.templates, attribute_rule: ' <<{{text}}>> ', field_empty: '' },
     groups: [{ title: 'G', categories: [id], rules, sections: [groupSection] }],
   };
@@ -401,11 +400,19 @@ test('every part survives the real schema: sections, group sections, dynamic-fie
   assert.deepEqual(config.groups[0].rules, rules);
   assert.equal(config.templates.attribute_rule, ' <<{{text}}>> ');
   assert.equal(config.templates.field_empty, '');
+  assert.equal(config.fieldRules.find((f) => f.field === 'name').heading, '\n=== the name field ===  ');
 
   const draft = (await (await requestDraft(id)).json()).draft;
-  assert.ok(draft.includes('  ***  \nEXCEPTIONS\ndesc\n\n  spaced rule  \n2. my number'));
+  assert.ok(draft.includes('\n\n  ***  \nEXCEPTIONS\n\ndesc  \n  spaced rule  \n2. my number'));
+  assert.ok(draft.includes('\n=== the name field ===  \nMUST strictly follow'));
   assert.ok(draft.includes('GROUP GENERAL\nGENERAL RULE\n'));
   assert.ok(draft.includes(' <<RULE FOR attribute:Head>> '));
+  // قاعده‌ی گروه روی بخش‌های پایه، از جمله بخشی که ادمین اضافه کرده؛ پرامپت پایه دست نمی‌خورد
+  assert.ok(draft.includes('OUTPUT only the JSON — nothing else.\nRULE FOR section:task\n'));
+  assert.ok(draft.includes('2. my number\nRULE FOR section:exception'));
+  assert.ok(!config.document.find((sec) => sec.key === 'task').rules.includes('RULE FOR section:task'));
+  const outsider = (await (await requestDraft(tennisCategory._id)).json()).draft;
+  assert.ok(!outsider.includes('RULE FOR section:'));
   for (const text of ['Guide: RULE FOR variant:Grip', 'Rule: RULE FOR stat:power', 'Selection Rule: RULE FOR tabItem:ONE', 'RULE FOR sport', 'RULE FOR customTabItems']) {
     assert.ok(draft.includes(text), text);
   }
@@ -470,9 +477,9 @@ test('preview: the route returns the rules of the real draft with their sources,
   assert.ok(draft.includes('"ONE" | Selection Rule: ONE HINT'));
   assert.deepEqual(body.model.attributes.map((a) => Object.keys(a).sort()), [['label', 'name', 'rules', 'scope'], ['label', 'name', 'rules', 'scope']]);
   assert.ok(!('values' in body.model));
-  // داده‌ی فهرست‌ها و متنِ خام در پیش‌نمایش فقط placeholder است
-  const texts = body.model.sections.map((sec) => sec.description).join('\n');
-  assert.ok(texts.includes('{{brands}}') && texts.includes('{{source_text}}'));
+  // بدنه‌ی بخش‌های داده‌ای در پیش‌نمایش نیست؛ فقط سربرگشان
+  assert.ok(!('bodies' in body.model));
+  assert.ok(body.model.sections.some((sec) => sec.kind === 'data' && sec.key === 'brands' && sec.heading.includes('AVAILABLE BRANDS')));
   const json = JSON.stringify(body);
   assert.ok(!json.includes(String(brand._id)) && !json.includes('parentBrandName') && !json.includes(rawContent));
 

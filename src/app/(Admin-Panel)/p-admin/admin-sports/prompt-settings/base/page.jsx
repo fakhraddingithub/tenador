@@ -2,23 +2,25 @@
 
 /**
  * صفحه‌ی «پرامپت پایه»: ادمین کلِ متنِ پرامپت را می‌سازد.
- *   بخش‌ها          : افزودن، حذف، تغییرِ نام/عنوان/جداکننده/توضیح و قواعد؛ «ترتیب بخش‌ها» ترتیبشان را
- *   فیلدهای محصول  : قواعدِ هر فیلد — خودِ فیلدها مالِ مدلِ محصول‌اند و از اینجا کم و زیاد نمی‌شوند
+ *   بخش‌ها          : افزودن، حذف، سربرگ و قواعد؛ «ترتیب بخش‌ها» ترتیبشان را
+ *   بخش‌های داده‌ای : برندها، متن خام، ویژگی‌ها… — داده را برنامه درج می‌کند و فقط سربرگ و جایشان با ادمین است
+ *   فیلدهای محصول  : سربرگ و قواعدِ هر فیلد — خودِ فیلدها مالِ مدلِ محصول‌اند و شناسه‌شان باید در سربرگ بماند
  *   قالب‌های داده   : متنِ سطرهایی که از داده ساخته می‌شوند (ویژگی‌ها، شاخص‌ها، تب سفارشی…)
- * قواعد دقیقاً همان‌طور که نوشته شده‌اند در پرامپت می‌آیند؛ کد نه شماره می‌زند نه پیشوند.
- * `#section:<key>` و `#field:<key>` در آدرس (مثلاً از پیش‌نمایش) همان تب را باز می‌کنند.
+ * سربرگ‌ها و قواعد دقیقاً همان‌طور که نوشته شده‌اند در پرامپت می‌آیند؛ خطِ خالی هم جزوِ متن است.
+ * قواعدِ عمومیِ گروه‌ها اینجا نیستند: فقط در صفحه‌ی هر گروه‌اند.
+ * `#section:<key>` و `#field:<key>` و `#__templates` در آدرس (مثلاً از پیش‌نمایش) همان تب را باز می‌کنند.
  */
 
 import { useState } from 'react';
 import Swal from 'sweetalert2';
 import { arrayMove } from '@dnd-kit/sortable';
-import { FiArrowRight, FiColumns, FiList, FiMenu, FiPlus, FiRotateCcw, FiSave, FiSliders, FiTrash2 } from 'react-icons/fi';
+import { FiArrowRight, FiColumns, FiDatabase, FiList, FiMenu, FiPlus, FiRotateCcw, FiSave, FiSliders, FiTrash2 } from 'react-icons/fi';
 import PageHeader from '@/components/admin/PageHeader';
 import Button from '@/components/admin/Button';
 import AdminLoader from '@/components/admin/AdminLoader';
 import { useAdminPermissions } from '@/components/admin/AdminPermissionProvider';
 import {
-  AddRuleButton, PROMPTS_HOME, PromptTabs, RuleCard, SectionHeadFields, SortableRuleList, TokenHelp, UnknownTokensNote,
+  AddRuleButton, HeadingAccordion, PROMPTS_HOME, PromptTabs, RuleCard, SortableRuleList, TokenHelp, UnknownTokensNote,
   errorMap, newSectionKey, swalTheme, textareaClass, uid, usePromptConfig, useUnsavedGuard,
 } from '@/components/admin/productPrompts/promptSettingsUi';
 import { PRODUCT_PROMPT_FIELDS, TEMPLATE_DEFS, unknownTokens, validatePromptConfig } from '@/lib/productPromptConfig';
@@ -26,35 +28,40 @@ import { PROMPT_SEED } from '@/lib/productPromptResolve';
 
 const ORDER_TAB = '__order';
 const TEMPLATES_TAB = '__templates';
-const toRules = (texts) => (texts || []).map((text) => ({ uid: uid(), text }));
+const toRules = (list) => (list || []).map((text) => ({ uid: uid(), text }));
 const texts = (rules) => rules.map((r) => r.text);
 
 const toLocalSection = (s) => ({ ...s, rules: toRules(s.rules) });
 const fromConfig = (config) => ({
   document: config.document.map(toLocalSection),
-  fieldRules: Object.fromEntries(
-    PRODUCT_PROMPT_FIELDS.map(({ key }) => [key, toRules(config.fieldRules.find((f) => f.field === key)?.rules)]),
+  fields: Object.fromEntries(
+    PRODUCT_PROMPT_FIELDS.map(({ key }) => {
+      const entry = config.fieldRules.find((f) => f.field === key);
+      return [key, { heading: entry?.heading ?? '', rules: toRules(entry?.rules) }];
+    }),
   ),
   templates: { ...config.templates },
 });
 
 const toPayload = (draft) => ({
-  document: draft.document.map((s) => ({ ...s, rules: texts(s.rules) })),
-  fieldRules: Object.entries(draft.fieldRules).map(([field, rules]) => ({ field, rules: texts(rules) })),
+  document: draft.document.map((s) => ({ key: s.key, kind: s.kind, name: s.name, heading: s.heading, rules: texts(s.rules) })),
+  fieldRules: Object.entries(draft.fields).map(([field, f]) => ({ field, heading: f.heading, rules: texts(f.rules) })),
   templates: draft.templates,
 });
 
 const seedSection = (key) => PROMPT_SEED.document.find((s) => s.key === key);
-const seedFieldRules = (field) => PROMPT_SEED.fieldRules.find((f) => f.field === field)?.rules || [];
+const seedField = (field) => PROMPT_SEED.fieldRules.find((f) => f.field === field);
 
 // مقدارها به ترتیبِ ثابت: ترتیبِ کلیدها در seed و پاسخِ API یکی نیست
-const sectionPayload = (s) =>
-  JSON.stringify([s.name, s.top, s.title, s.bottom, s.description, s.blankLines, s.fieldBlankLines ?? null, texts(s.rules)]);
+const sectionPayload = (s) => JSON.stringify([s.name, s.heading, texts(s.rules)]);
 const sectionIsSeed = (s) => {
   const seed = seedSection(s.key);
   return Boolean(seed) && sectionPayload(s) === sectionPayload(toLocalSection(seed));
 };
-const fieldIsSeed = (field, rules) => JSON.stringify(texts(rules)) === JSON.stringify(seedFieldRules(field));
+const fieldIsSeed = (key, f) => {
+  const seed = seedField(key);
+  return f.heading === seed?.heading && JSON.stringify(texts(f.rules)) === JSON.stringify(seed?.rules || []);
+};
 
 const TEMPLATE_GROUPS = [...new Set(TEMPLATE_DEFS.map((t) => t.group))];
 
@@ -78,7 +85,7 @@ function BaseEditor({ config, save, canEdit }) {
   // پیوندِ مستقیم: این ویرایشگر فقط پس از بارگذاریِ تنظیمات و فقط در مرورگر mount می‌شود
   const [active, setActive] = useState(() => {
     const key = decodeURIComponent(window.location.hash.slice(1));
-    const known = key.startsWith('section:') || (key.startsWith('field:') && PRODUCT_PROMPT_FIELDS.some((f) => `field:${f.key}` === key));
+    const known = key === TEMPLATES_TAB || key === ORDER_TAB || key.startsWith('section:') || PRODUCT_PROMPT_FIELDS.some((f) => `field:${f.key}` === key);
     return known ? key : `section:${config.document[0]?.key}`;
   });
   const [showAll, setShowAll] = useState(false);
@@ -99,13 +106,13 @@ function BaseEditor({ config, save, canEdit }) {
     setDraft((d) => ({ ...d, ...patch }));
   };
   const patchSection = (key, patch) => change({ document: draft.document.map((s) => (s.key === key ? { ...s, ...patch } : s)) });
-  const setFieldRules = (field, rules) => change({ fieldRules: { ...draft.fieldRules, [field]: rules } });
+  const patchField = (key, patch) => change({ fields: { ...draft.fields, [key]: { ...draft.fields[key], ...patch } } });
 
   const addSection = () => {
     const key = newSectionKey();
     const after = draft.document.findIndex((s) => `section:${s.key}` === active);
     const next = [...draft.document];
-    next.splice(after < 0 ? next.length : after + 1, 0, { key, kind: 'text', name: 'بخش تازه', top: '', title: '', bottom: '', description: '', blankLines: 1, rules: [] });
+    next.splice(after < 0 ? next.length : after + 1, 0, { key, kind: 'text', name: 'بخش تازه', heading: '', rules: [] });
     change({ document: next });
     setActive(`section:${key}`);
   };
@@ -129,7 +136,7 @@ function BaseEditor({ config, save, canEdit }) {
       ...swalTheme,
       icon: 'warning',
       title: 'بازگردانی کلِ پرامپت پایه؟',
-      text: 'همه‌ی بخش‌ها، قواعد فیلدها و قالب‌ها به نقطه‌ی شروع برمی‌گردند و بخش‌های افزوده حذف می‌شوند. گروه‌ها و تنظیمات دسته‌ها دست نمی‌خورند. تا «ذخیره» نزنید چیزی عوض نمی‌شود.',
+      text: 'همه‌ی بخش‌ها، سربرگ‌ها، قواعد فیلدها و قالب‌ها به نقطه‌ی شروع برمی‌گردند و بخش‌های افزوده حذف می‌شوند. گروه‌ها و تنظیمات دسته‌ها دست نمی‌خورند. تا «ذخیره» نزنید چیزی عوض نمی‌شود.',
       showCancelButton: true,
       confirmButtonText: 'بازگردانی',
       cancelButtonText: 'لغو',
@@ -151,19 +158,19 @@ function BaseEditor({ config, save, canEdit }) {
     setSaving(false);
   };
 
-  const sectionTabs = draft.document.map((s) => ({
+  const sectionTab = (s) => ({
     key: `section:${s.key}`,
     title: s.name || 'بی‌نام',
     count: s.kind === 'text' ? s.rules.length : undefined,
     error: hasErrorUnder(`document.${s.key}`),
     note: sectionIsSeed(s) ? '' : 'سفارشی',
-  }));
+  });
   const fieldTabs = PRODUCT_PROMPT_FIELDS.map((f) => ({
     key: `field:${f.key}`,
     title: f.title,
-    count: draft.fieldRules[f.key].length,
+    count: draft.fields[f.key].rules.length,
     error: hasErrorUnder(`fieldRules.${f.key}`),
-    note: fieldIsSeed(f.key, draft.fieldRules[f.key]) ? '' : 'سفارشی',
+    note: fieldIsSeed(f.key, draft.fields[f.key]) ? '' : 'سفارشی',
   }));
   const structureTabs = [
     { key: ORDER_TAB, title: 'ترتیب بخش‌ها' },
@@ -176,7 +183,7 @@ function BaseEditor({ config, save, canEdit }) {
   };
 
   const sectionProps = { canEdit, errors, focusUid, setFocusUid, patchSection, removeSection };
-  const fieldProps = { canEdit, errors, focusUid, setFocusUid, setFieldRules };
+  const fieldProps = { canEdit, errors, focusUid, setFocusUid, patchField };
   const activeField = active.startsWith('field:') ? active.slice(6) : null;
   // پیوندِ کهنه به بخشی که دیگر نیست، اولین بخش را نشان می‌دهد نه پنلِ خالی
   const activeSection = draft.document.find((s) => `section:${s.key}` === active) ?? draft.document[0];
@@ -185,7 +192,7 @@ function BaseEditor({ config, save, canEdit }) {
     <div dir="rtl" className="space-y-5 pb-10">
       <PageHeader
         title="پرامپت پایه"
-        subtitle="کلِ متنِ پرامپتِ ساختِ محصول: بخش‌ها، قواعد و قالب‌ها — دقیقاً همان‌طور که اینجا نوشته می‌شوند"
+        subtitle="کلِ متنِ پرامپتِ ساختِ محصول: سربرگ‌ها، قواعد و قالب‌ها — دقیقاً همان‌طور که اینجا نوشته می‌شوند"
         icon={<FiSliders size={18} />}
         actions={
           <>
@@ -222,7 +229,8 @@ function BaseEditor({ config, save, canEdit }) {
         active={active}
         onChange={onTab}
         rows={[
-          { label: 'بخش‌های پرامپت', tabs: sectionTabs },
+          { label: 'بخش‌های قواعد', tabs: draft.document.filter((s) => s.kind !== 'data').map(sectionTab) },
+          { label: 'بخش‌های داده‌ای', tabs: draft.document.filter((s) => s.kind === 'data').map(sectionTab) },
           { label: 'فیلدهای محصول', tabs: fieldTabs },
           { label: 'ساختار', tabs: structureTabs },
         ]}
@@ -238,7 +246,7 @@ function BaseEditor({ config, save, canEdit }) {
           <PanelHeading>بخش‌های پرامپت</PanelHeading>
           {draft.document.map((s) => <SectionPanel key={s.key} section={s} {...sectionProps} />)}
           <PanelHeading>فیلدهای محصول</PanelHeading>
-          {PRODUCT_PROMPT_FIELDS.map((f) => <FieldPanel key={f.key} field={f} rules={draft.fieldRules[f.key]} {...fieldProps} />)}
+          {PRODUCT_PROMPT_FIELDS.map((f) => <FieldPanel key={f.key} field={f} state={draft.fields[f.key]} {...fieldProps} />)}
         </>
       ) : active === ORDER_TAB ? (
         <OrderPanel draft={draft} canEdit={canEdit} onMove={(from, to) => change({ document: arrayMove(draft.document, from, to) })} />
@@ -250,7 +258,7 @@ function BaseEditor({ config, save, canEdit }) {
           onChange={(key, value) => change({ templates: { ...draft.templates, [key]: value } })}
         />
       ) : activeField ? (
-        <FieldPanel tabPanel field={PRODUCT_PROMPT_FIELDS.find((f) => f.key === activeField)} rules={draft.fieldRules[activeField]} {...fieldProps} />
+        <FieldPanel tabPanel field={PRODUCT_PROMPT_FIELDS.find((f) => f.key === activeField)} state={draft.fields[activeField]} {...fieldProps} />
       ) : activeSection ? (
         <SectionPanel tabPanel section={activeSection} {...sectionProps} />
       ) : null}
@@ -272,10 +280,7 @@ function SectionPanel({ section, tabPanel, canEdit, errors, focusUid, setFocusUi
   const { key, kind, rules } = section;
   const at = `document.${key}`;
   const seed = seedSection(key);
-  const headErrors = Object.fromEntries(
-    ['name', 'title', 'top', 'bottom', 'description', 'blankLines'].map((part) => [part, errors[`${at}.${part}`]]),
-  );
-  const unknown = unknownTokens([section.top, section.title, section.bottom, section.description, ...texts(rules)].join('\n'));
+  const unknown = unknownTokens([section.heading, ...texts(rules)].join('\n'));
   const setRules = (next) => patchSection(key, { rules: next });
 
   return (
@@ -296,36 +301,27 @@ function SectionPanel({ section, tabPanel, canEdit, errors, focusUid, setFocusUi
         )}
       </div>
 
-      {kind === 'groups' ? (
-        <p className="text-xs font-bold text-gray-500 leading-6">
-          این بخش جای قواعدِ عمومیِ گروه‌هاست: بخش‌هایی که در هر «گروه پرامپت دسته» تعریف شده‌اند، برای دسته‌های همان گروه همین‌جا می‌آیند.
-          متنشان در صفحه‌ی خودِ هر گروه است؛ جایشان را در «ترتیب بخش‌ها» عوض کنید.
-        </p>
-      ) : (
-        <SectionHeadFields section={section} readOnly={!canEdit} errors={headErrors} onChange={(patch) => patchSection(key, patch)}>
-          {kind === 'fields' && (
-            <label className="block">
-              <span className="block text-xs font-bold text-gray-600 mb-1">خط خالی بین فیلدها</span>
-              <input
-                type="number"
-                min={0}
-                max={10}
-                value={section.fieldBlankLines ?? 1}
-                readOnly={!canEdit}
-                onChange={(e) => patchSection(key, { fieldBlankLines: e.target.value === '' ? 0 : Number(e.target.value) })}
-                className="w-full px-3 py-2 text-sm font-medium rounded-xl border-2 border-gray-200 bg-gray-50 outline-none focus:bg-white focus:border-[var(--color-primary)]"
-              />
-              {errors[`${at}.fieldBlankLines`] && <span className="block mt-1 text-xs font-bold text-red-500">! {errors[`${at}.fieldBlankLines`]}</span>}
-            </label>
-          )}
-        </SectionHeadFields>
-      )}
+      <HeadingAccordion
+        heading={section.heading}
+        onHeading={(heading) => patchSection(key, { heading })}
+        name={section.name}
+        onName={(name) => patchSection(key, { name })}
+        readOnly={!canEdit}
+        headingError={errors[`${at}.heading`]}
+        nameError={errors[`${at}.name`]}
+      />
       <UnknownTokensNote tokens={unknown} />
       {errors[at] && <p className="text-xs font-bold text-red-500">! {errors[at]}</p>}
 
       {kind === 'fields' && (
         <p className="text-xs font-bold text-gray-500 leading-6">
-          فیلدها زیر همین سربرگ می‌آیند. قواعدِ هر فیلد در تب‌های «فیلدهای محصول» و عنوان‌های داخلِ هر فیلد در «قالب‌های داده» است.
+          فیلدها زیر همین سربرگ می‌آیند و قواعد عمومیِ گروه‌ها درست بالای آن. سربرگ و قواعدِ هر فیلد در تب‌های «فیلدهای محصول» است.
+        </p>
+      )}
+      {kind === 'data' && (
+        <p className="flex gap-2 items-start p-3 rounded-xl bg-gray-50 border border-gray-200 text-xs font-bold text-gray-600 leading-6">
+          <FiDatabase className="mt-1 shrink-0" size={13} />
+          داده‌ی این بخش را برنامه زیرِ سربرگ درج می‌کند و این بخش حذف نمی‌شود؛ فقط سربرگ و جایش در «ترتیب بخش‌ها» با شماست.
         </p>
       )}
 
@@ -365,10 +361,12 @@ function SectionPanel({ section, tabPanel, canEdit, errors, focusUid, setFocusUi
   );
 }
 
-function FieldPanel({ field, rules, tabPanel, canEdit, errors, focusUid, setFocusUid, setFieldRules }) {
+function FieldPanel({ field, state, tabPanel, canEdit, errors, focusUid, setFocusUid, patchField }) {
   const { key } = field;
+  const { heading, rules } = state;
   const at = `fieldRules.${key}`;
-  const setRules = (next) => setFieldRules(key, next);
+  const setRules = (next) => patchField(key, { rules: next });
+  const seed = seedField(key);
   return (
     <section {...panelA11y(tabPanel, `field:${key}`)} className="a-card p-5 space-y-4 scroll-mt-40">
       <div className="flex flex-wrap items-start justify-between gap-3">
@@ -376,13 +374,20 @@ function FieldPanel({ field, rules, tabPanel, canEdit, errors, focusUid, setFocu
           <h3 className="text-base font-bold text-gray-900">{field.title}</h3>
           <p dir="ltr" className="text-xs font-bold text-gray-400 mt-0.5 text-right">{key}</p>
         </div>
-        {canEdit && !fieldIsSeed(key, rules) && (
-          <Button size="sm" variant="secondary" icon={<FiRotateCcw size={13} />} onClick={() => setRules(toRules(seedFieldRules(key)))}>
+        {canEdit && !fieldIsSeed(key, state) && (
+          <Button size="sm" variant="secondary" icon={<FiRotateCcw size={13} />} onClick={() => patchField(key, { heading: seed.heading, rules: toRules(seed.rules) })}>
             بازگردانی پیش‌فرض
           </Button>
         )}
       </div>
-      <UnknownTokensNote tokens={unknownTokens(texts(rules).join('\n'))} />
+      <HeadingAccordion
+        heading={heading}
+        onHeading={(next) => patchField(key, { heading: next })}
+        readOnly={!canEdit}
+        headingError={errors[`${at}.heading`]}
+        hint={<>شناسه‌ی <code dir="ltr" className="px-1 rounded bg-gray-100 font-mono">{key}</code> نامِ این فیلد در مدلِ محصول است و باید در متن بماند؛ هر چیزی می‌توانید دورش بنویسید.</>}
+      />
+      <UnknownTokensNote tokens={unknownTokens([heading, ...texts(rules)].join('\n'))} />
       <div className="space-y-3">
         <SortableRuleList
           items={rules}
@@ -437,7 +442,8 @@ function OrderPanel({ draft, canEdit, onMove }) {
             )}
             <span className="w-6 text-center text-xs font-bold text-gray-400">{i + 1}</span>
             <span className="text-sm font-bold text-gray-800">{section.name}</span>
-            {section.kind !== 'text' && <span className="px-2 py-0.5 rounded bg-gray-100 text-[11px] font-bold text-gray-500">ساختاری</span>}
+            {section.kind === 'data' && <span className="px-2 py-0.5 rounded bg-gray-100 text-[11px] font-bold text-gray-500">داده‌ای</span>}
+            {section.kind === 'fields' && <span className="px-2 py-0.5 rounded bg-gray-100 text-[11px] font-bold text-gray-500">فیلدها</span>}
           </div>
         )}
       />
@@ -450,12 +456,12 @@ function TemplatesPanel({ templates, canEdit, errors, onChange }) {
   return (
     <section id="prompt-tabpanel" role="tabpanel" aria-labelledby={`tab-${TEMPLATES_TAB}`} className="a-card p-5 space-y-6">
       <p className="text-xs font-bold text-gray-500 leading-6">
-        این متن‌ها قالبِ بخش‌هایی‌اند که از داده ساخته می‌شوند؛ آنچه داخلِ {'{{ }}'} است با داده پر می‌شود. فاصله‌ها و خط‌های خالی دقیقاً همان‌طور چاپ می‌شوند و متنِ خالی یعنی چیزی چاپ نشود.
+        این متن‌ها قالبِ سطرهایی‌اند که برنامه از داده می‌سازد؛ آنچه داخلِ {'{{ }}'} است با داده پر می‌شود. فاصله‌ها و خط‌های خالی دقیقاً همان‌طور چاپ می‌شوند و متنِ خالی یعنی چیزی چاپ نشود.
       </p>
       {TEMPLATE_GROUPS.map((group) => (
         <div key={group} className="space-y-4">
           <h3 className="text-sm font-black text-gray-900 border-b border-gray-100 pb-2">{group}</h3>
-          {TEMPLATE_DEFS.filter((t) => t.group === group).map(({ key, label, tokens }) => {
+          {TEMPLATE_DEFS.filter((t) => t.group === group).map(({ key, label, tokens, required = [] }) => {
             const value = templates[key] ?? '';
             const seed = PROMPT_SEED.templates[key] ?? '';
             return (
@@ -477,7 +483,9 @@ function TemplatesPanel({ templates, canEdit, errors, onChange }) {
                   className={`${textareaClass} ${errors[`templates.${key}`] ? 'border-red-400' : 'border-gray-200'}`}
                 />
                 {tokens.length > 0 && (
-                  <p dir="ltr" className="text-right text-[11px] font-mono text-gray-400">{tokens.map((t) => `{{${t}}}`).join(' ')}</p>
+                  <p dir="ltr" className="text-right text-[11px] font-mono text-gray-400">
+                    {tokens.map((t) => <span key={t} className={required.includes(t) ? 'font-bold text-gray-600' : ''}>{`{{${t}}} `}</span>)}
+                  </p>
                 )}
                 {errors[`templates.${key}`] && <p className="text-xs font-bold text-red-500">! {errors[`templates.${key}`]}</p>}
               </div>

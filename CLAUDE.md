@@ -317,21 +317,20 @@ npm run test:ai-product-draft      # the category prompt and the per-attribute r
 npm run test:product-creation      # required-check relaxation, through the real create/edit routes
 ```
 
-### Product prompt settings: the admin writes the whole prompt
+### Product prompt settings: the admin writes the prompt, the app owns the data
 
-`/p-admin/admin-sports/prompt-settings` («تنظیمات پرامپت» on the sports page) controls the entire AI
-product prompt. **No prompt wording lives in application code**: every title, separator, description,
-rule and data-line format is data. The code only orders what the admin wrote, picks the rules that apply
-to a category and fills in `{{placeholders}}`. `tests/productPromptConfig.test.mjs` scans the prompt
-modules and fails if wording creeps back in. (The one deliberate exception is the fixed `SYSTEM` message
-in `regenerate/generate/route.js`. It mentions the «RAW PRODUCT CONTENT» section by name, so renaming that
-section makes the message stale.)
+`/p-admin/admin-sports/prompt-settings` («تنظیمات پرامپت» on the sports page) controls the AI product
+prompt. **No prompt wording lives in application code**: every heading, rule and data-line format is data.
+The code orders what the admin wrote, picks the rules that apply to a category and inserts the data itself.
+`tests/productPromptConfig.test.mjs` scans the prompt modules and fails if wording creeps back in. (The one
+deliberate exception is the fixed `SYSTEM` message in `regenerate/generate/route.js`. It mentions the «RAW
+PRODUCT CONTENT» section by name, so renaming that heading makes the message stale.)
 
 | file | role |
 |---|---|
-| `src/lib/productPromptConfig.js` | pure, no prompt text: field keys, placeholder and template names, `validatePromptConfig`, `resolveFieldRules`, `expandTokens`. Imported by the builder, the API and the pages alike |
+| `src/lib/productPromptConfig.js` | pure, no prompt text: field keys, data-section keys, placeholders, `TEMPLATE_DEFS`, `validatePromptConfig`, `resolveFieldRules`, `expandTokens`. Imported by the builder, the API and the pages alike |
 | `src/lib/productPromptSeed.json` | the starting text, as data. Used until the first save and by «بازگردانی پیش‌فرض» |
-| `src/lib/productPromptResolve.js` | stored document → full config; merges a pre-existing old-shape `base` onto the seed |
+| `src/lib/productPromptResolve.js` | stored document → full config; upgrades both earlier stored shapes |
 | `src/lib/buildProductTemplate.js` | `composeProductPrompt` (the model) + `renderProductPrompt` (the string) |
 | `models/ProductPromptConfig.js` | one document, `key: "product"`, behind `GET/PUT /api/admin/product-prompts` (`productPrompts.view/edit`) |
 
@@ -339,49 +338,66 @@ The configuration:
 
 | part | shape | meaning |
 |---|---|---|
-| `document` | `[{key, kind, name, top, title, bottom, description, blankLines, rules: [text]}]` | the prompt's sections, in order. `kind`: `text`, `fields` (where the field rules go), `groups` (where groups' general rules go); the last two must exist exactly once and can be moved but not deleted |
-| `fieldRules` | `[{field, rules: [text]}]` | base rules of each fixed product field |
-| `templates` | `{key: text}` (stored as `[{key, text}]`) | formats of data-derived text: attribute/variant/stat/custom-tab lines, «none defined» texts, the audience and multi-unit rules, field headings. See `TEMPLATE_DEFS` |
-| `groups` | `[{title, categories, rules: [{field, text, categories}], sections: [{key, name, top, title, bottom, description, blankLines, rules: [{text, categories}]}]}]` | `rules` per field, `sections` are the group's own general rules |
+| `document` | `[{key, kind, name, heading, rules: [text]}]` | the prompt's sections, in order. `name` is only the panel label. `kind`: `text` (rules; can be added and deleted), `fields` (where the field rules go; exactly one, movable), `data` (below) |
+| `fieldRules` | `[{field, heading, rules: [text]}]` | each fixed product field: its complete heading and its base rules |
+| `templates` | `{key: text}` (stored as `[{key, text}]`) | wording of text the app builds from data. See `TEMPLATE_DEFS` |
+| `groups` | `[{title, categories, rules: [{field, text, categories}], sections: [{key, name, heading, rules: [{text, categories}]}]}]` | `rules` per field or Base section (`section:<key>`); `sections` are the group's own |
 
 | page | what it does |
 |---|---|
 | `…/prompt-settings` | overview: Base Prompt card, the groups (reorder / delete save immediately), «ایجاد گروه جدید», link to the preview |
-| `…/prompt-settings/base` | one tab per section (add, delete, edit name/title/separators/description/rules, restore), per fixed field, «ترتیب بخش‌ها», «قالب‌های داده»; «نمایش همه‌ی قواعد» stacks sections and fields; `#section:<key>` / `#field:<key>` open a tab |
-| `…/prompt-settings/groups/[groupId]` | one group (`new` creates): its general-rule sections, one tab per fixed field and per dynamic field of its categories; `#section:<key>` / `#<field>` open a tab |
+| `…/prompt-settings/base` | a tab per rule section, per data section, per fixed field, plus «ترتیب بخش‌ها» and «قالب‌های داده»; «نمایش همه‌ی قواعد» stacks sections and fields; `#section:<key>` / `#field:<key>` / `#__templates` open a tab |
+| `…/prompt-settings/groups/[groupId]` | one group (`new` creates): a tab per Base rule section, per own section and per offered fixed field; `#section:<key>` / `#own:<key>` / `#<field>` open a tab |
 | `…/prompt-settings/preview?category=…` | the prompt of one category, section by section, colour-coded by source; click a rule → its exact source, edit it in place |
 
-Shared client pieces (config load/save with the 409 handling, tabs, rule card, section header fields,
-placeholder reference, category picker, unsaved-changes guard) are in
-`src/components/admin/productPrompts/promptSettingsUi.jsx`.
+Shared client pieces (config load/save with the 409 handling, tabs, rule card, `HeadingAccordion`, placeholder
+reference, category picker, unsaved-changes guard) are in `src/components/admin/productPrompts/promptSettingsUi.jsx`.
 
-**Text is printed exactly as written.** No numbers, bullets, prefixes or trims. A section prints
-`top`, `title`, `bottom`, `description`, then its rules, one per line; any empty part prints nothing, and
-`blankLines` follows it. A rule's visible markers are the admin's own text, so they go stale on reorder if
-the admin types numbers. The validator keeps text verbatim for the same reason.
+**A heading is one textarea, printed exactly as written.** Sections, data sections, group sections and product
+fields all use `HeadingAccordion`, collapsed by default (it opens itself on a validation error, otherwise the
+message would hide behind it). Separators, titles, descriptions and blank lines are just part of the text. The
+code adds nothing except the single line break that starts the next piece: **a blank line above a section exists
+only if the admin wrote one**, which is why seed headings start with `\n`. Rules also print verbatim, one per line,
+with no numbers, bullets, prefixes or trims.
 
-**Placeholders** (`PROMPT_TOKENS`): `{{source_text}}`, IDs and names, JSON lists (`{{brands}}`…), and text
-built from templates (`{{attributes}}`, `{{audience_rule}}`, `{{custom_tab}}`…). Expansion is **one pass**:
-a substituted value is never rescanned, so `{{brands}}` inside the pasted source text stays text. An unknown
-placeholder stays literal and the page flags it. `{{source_text}}` must appear **exactly once**, in a document
-section, and is refused anywhere else: without it the AI would invent a product (validator → 400).
+**Data sections belong to the app** (`DATA_SECTION_KEYS`): `category_info`, `attributes`, `variant_attributes`,
+`variant_metadata`, `technical_stats`, `custom_tab`, `brands`, `athletes`, `series`, `limited_editions`,
+`source_text`, `output_structure`. The key *is* the data source. The admin edits the heading and the position, and
+that is all: they cannot be deleted (validator → 400; the resolver restores any missing from an old document),
+take no rules, and have **no placeholder**. `custom_tab` is omitted with its heading when the category has no
+active tab. The line formats of the category-derived ones are in «قالب‌های داده».
 
-**The preview and the prompt are one model.** `composeProductPrompt({ category, promptConfig })` returns
-every rule as `{ text, display, source }`; `buildProductTemplate` renders the string from it and
-`GET /api/admin/product-prompts/preview` returns it (minus the expanded data values). `text` is as stored,
-`display` has placeholders expanded except data lists and the source text. Never add text to the render step
-— add it to the configuration, or the preview stops matching what the AI gets. Source kinds:
-`section {sectionKey,index}`, `baseField {field,index}`, `group {groupId,field,index,targets}`,
-`groupSection {groupId,sectionKey,index,targets}`, `categoryField {field}`, `technicalStats`,
-`attribute`/`variantAttribute {name}`, `customTab`, `customTabItem {itemId}`. All carry `value`, the stored text.
+**Placeholders are only names and IDs** (`PROMPT_TOKENS`): `{{category_title}}`, `{{category_id}}`, `{{sport_name}}`,
+`{{sport_title}}`, `{{sport_id}}`, `{{custom_tab_name}}`, usable in Base and category text, never in a group's. `{{brands}}` and friends do
+not exist: such text prints literally and the page flags it. Expansion is **one pass**, so a substituted value is
+never rescanned. Templates have their own tokens; `required` ones (`{{rules}}`, `{{items}}`, the IDs in
+`output_structure`…) cannot be removed, otherwise the data or the rules would silently fall out of the prompt.
 
-**The preview's «پرامپت نهایی (متن خام)» toggle** (off by default) shows the whole prompt as plain text in
-a `<pre>`. `GET /api/admin/product-prompts/final-prompt` → `buildFinalPromptPreview` (`productDraftPrompt.js`)
-calls the real `buildProductDraftPrompt` with a random marker and swaps that one slot for
-`PLACEHOLDER FOR SOURCE TEXT`: the placeholder is shorter than `RAW_CONTENT_MIN`, and a separate build
-path is exactly what must not exist. A test asserts it equals the real draft character for character. It
-does not show the fixed `system` message that automatic regeneration sends alongside the prompt. The rule
-preview stays mounted (hidden) in this mode, so its filter and open editors survive the toggle.
+**Locked lines are inserted by the app**, and only their wording is editable, in templates: the sport and category ID
+locks before those fields' rules, the audience-scope rule after `attributes`, the multi-unit rule after
+`variantMeta`, and the `customTabItems` line inside `output_structure`. They appear in the preview as
+`system` rules (grey, not editable, link to the template).
+
+**A product field's identifier stays.** A field heading must contain the field's key as a whole word
+(`headingHasFieldKey`, case-sensitive; `rename` does not count as `name`), because it is the model's output key.
+The rest of the heading is free text.
+
+**The preview and the prompt are one model.** `composeProductPrompt({ category, promptConfig })` returns every rule
+as `{ text, display, source }`; `buildProductTemplate` renders the string from it and
+`GET /api/admin/product-prompts/preview` returns it minus `values` and `bodies` (data sections show their heading
+only). `text` is as stored, `display` has placeholders expanded. Never add text to the render step — add it to the
+configuration, or the preview stops matching what the AI gets. Source kinds: `section {sectionKey,index}`,
+`baseField {field,index}`, `group {groupId,field,index,targets}`, `groupSection {groupId,sectionKey,index,targets}`,
+`categoryField {field}`, `technicalStats`, `attribute`/`variantAttribute {name}`, `customTab`,
+`customTabItem {itemId}`, `system {what}`. All but `system` carry `value`, the stored text.
+
+**The preview's «پرامپت نهایی (متن خام)» toggle** (off by default) shows the whole prompt as plain text in a `<pre>`.
+`GET /api/admin/product-prompts/final-prompt` → `buildFinalPromptPreview` (`productDraftPrompt.js`) calls the real
+`buildProductDraftPrompt` with a random marker and swaps that one slot for `PLACEHOLDER FOR SOURCE TEXT`: the
+placeholder is shorter than `RAW_CONTENT_MIN`, and a separate build path is exactly what must not exist. A test
+asserts it equals the real draft character for character. It does not show the fixed `system` message that automatic
+regeneration sends alongside the prompt. The rule preview stays mounted (hidden) in this mode, so its filter and open
+editors survive the toggle.
 
 Editing from the preview writes the rule's own source and nothing else:
 
@@ -390,27 +406,29 @@ Editing from the preview writes the rule's own source and nothing else:
 | base / group | the normal `PUT` (409 and the duplicate check apply). The page first checks the text at that index is still the shown one |
 | category-owned | `PATCH /api/admin/product-prompts/category-rule` (`productPrompts.edit`): one atomic `updateOne` whose filter includes the previous text (compare-and-set → 409), attributes/items found by name/`_id` via `arrayFilters`, never by index. An empty field prompt `$pull`s that entry |
 
-**Direction of mixed text.** `globals.css` sets `* { direction: rtl }` in its base layer, which beats the
-`dir` attribute. Rule boxes, editors and the plain-text view therefore use `unicode-bidi: plaintext` with
-`text-align: start`: each line takes its direction from its own text, so Persian punctuation stays at the end
-of the sentence and English lines read left to right.
+**Direction of mixed text.** `globals.css` sets `* { direction: rtl }` in its base layer, which beats the `dir`
+attribute. Rule boxes, editors and the plain-text view therefore use `unicode-bidi: plaintext` with `text-align: start`:
+each line takes its direction from its own text, so Persian punctuation stays at the end of the sentence and English
+lines read left to right.
 
-**All product fields are available in groups.** The fixed fields (`PRODUCT_PROMPT_FIELDS`) plus the dynamic
-ones defined on each category, keyed `attribute:<name>`, `variant:<name>`, `stat:<name>`, `tabItem:<title>`
-(`parseFieldKey`). The group page offers the union across the group's categories (from `categories[].fields` in
-the GET). Prompt Settings never adds, removes or renames a field; only rules. Rendering:
+**What a group offers** (`…/groups/[groupId]`). Each is independent per group and never changes the Base Prompt or other groups:
 
-- A dynamic rule goes next to its data line, once per rule through a template (`attribute_rule`, `variant_rule`,
-  `technical_stat_rule`, `custom_tab_item_rule`), group rules first, then the category's own prompt.
-- It applies only to a category that has the field. A rule whose field no longer exists in any of the group's
-  categories (deleted or **renamed** — renames are not migrated) matches nothing, breaks nothing, and shows in
-  the group's «فیلدهای ناموجود» tab.
+| tab row | stored as | prints |
+|---|---|---|
+| «بخش‌های پرامپت»: every Base **rule** section, including ones the admin adds | `rules[]` with `field: "section:<key>"` | right after that section's base rules, in group order, with no line of its own |
+| «بخش‌های خودِ گروه»: sections with the group's own heading | `sections[]` | directly above the field rules (so they move with the `fields` section); omitted with their heading when no rule applies to the category |
+| «فیلدهای محصول»: `GROUP_PROMPT_FIELDS` (the fixed fields minus `attributes`, `variantOptions`, `technicalStats`, `customTabItems`) | `rules[]` with `field: "<key>"` | in that field, after its base rules, under the `group_heading` template |
+| «فیلدهای دیگر (قدیمی)»: appears only when such rules exist | `rules[]` | see below |
 
-**Custom tab prompts.** `Category.customTab.prompt` is the category rule of the `customTabItems` field
-(base → groups → this), and `customTab.items[].prompt` is a per-item hint in `{{custom_tab}}`. A disabled tab
-contributes nothing. A legacy `category.prompts` entry for `customTabItems` still applies when the tab's own
-prompt is empty. The category `PUT` follows `undefined ≠ ""` for both, so a client that does not send them
-keeps them.
+- **Group text has no placeholders.** Rules and own-section headings print exactly as written (`display` = `text`): `{{sport_id}}` in a group rule stays literal, while Base and category text still expand. The page shows no placeholder reference.
+- **Rules saved for fields a group no longer offers keep applying.** Excluded fixed fields, and the per-category `attribute:<name>`, `variant:<name>`, `stat:<name>`, `tabItem:<title>` keys from an earlier version, are still valid (`parseFieldKey`) and reach the AI: a dynamic one next to its data line through a template, group rules first. They can be edited or deleted in the «فیلدهای دیگر» tab, but new ones cannot be added. Nothing silently changes on deploy.
+- **A rule whose target is gone matches nothing and breaks nothing.** A deleted Base section, or a deleted or **renamed** attribute (renames are not migrated), leaves the rule stored and listed in that tab.
+- Data sections take no rules, in groups as in the Base Prompt. Prompt Settings never adds, removes or renames a field, only rules. Two groups may each print an own section with the same heading; they are not merged.
+
+**Custom tab prompts.** `Category.customTab.prompt` is the category rule of the `customTabItems` field (base → groups →
+this), and `customTab.items[].prompt` is a per-item hint next to the item's line. A disabled tab contributes nothing. A
+legacy `category.prompts` entry for `customTabItems` still applies when the tab's own prompt is empty. The category `PUT`
+follows `undefined ≠ ""` for both, so a client that does not send them keeps them.
 
 Each field of the final prompt is assembled from three sources, always in this order:
 
@@ -422,35 +440,35 @@ Each field of the final prompt is assembled from three sources, always in this o
 
 Rules that are load-bearing:
 
-- **The seed is read only until the first save.** `resolvePromptConfig`: a non-empty `document` means the
-  document is the only source for sections and field rules (a field absent from `fieldRules` has no rules, never
-  the seed's). Only a template key never stored falls back to the seed; `""` stays empty. Reading writes nothing;
-  the first `PUT` of any part materializes the whole prompt into the document.
-- **Old-shape documents keep working with no migration.** `base: [{section, rules}]` is merged onto the seed:
-  absent section = seed, `rules: []` = section removed (what it did before), and the lines the old code wrapped
-  around field rules come from `legacyLocks`. `base` stays in the document but is ignored once `document` exists.
-- **Each page saves only its own part.** `PUT` takes `{ document?, fieldRules?, templates?, groups?, updatedAt }`;
-  an absent part is left untouched. `updatedAt` is shared, so a save on a version another page already changed is
-  a 409, never a silent overwrite. The schema also uses `optimisticConcurrency`.
-- **A group's `_id` is its URL** and is preserved by the validator; a group without one gets it from mongoose.
-  The group page sends every group (the others exactly as loaded) with its own replaced.
+- **The seed is read only until the first save.** `resolvePromptConfig`: a non-empty `document` means the document is
+  the only source for sections and field rules (a field absent from `fieldRules` has no rules and prints its bare key,
+  never the seed's text). Only a template key never stored falls back to the seed; `""` stays empty. Reading writes
+  nothing; the first `PUT` of any part materializes the whole prompt into the document.
+- **Earlier stored shapes keep working with no migration.** `base: [{section, rules}]` is merged onto the seed (absent
+  section = seed, `rules: []` = section removed). A `document` with `top/title/bottom/description/blankLines` becomes
+  one `heading` (blank lines move to the top of the next section's heading), its `groups` section is dropped, `definition`
+  and `source` become data sections, and rules that were locks (`legacyLockedRules`) are removed so they don't print
+  twice. Custom text in the old `definition`/`output_structure` descriptions is not carried over; those parts now come
+  from the seed's templates. The `PUT` reads the old shape with `.lean()`, since the schema no longer declares those keys.
+- **Each page saves only its own part.** `PUT` takes `{ document?, fieldRules?, templates?, groups?, updatedAt }`; an absent
+  part is left untouched. `updatedAt` is shared, so a save on a version another page already changed is a 409, never a
+  silent overwrite. The schema also uses `optimisticConcurrency`.
+- **A group's `_id` is its URL** and is preserved by the validator; a group without one gets it from mongoose. The group
+  page sends every group (the others exactly as loaded) with its own replaced.
 - **A new key must be declared in the schema too.** Mongoose strict mode drops undeclared keys silently;
   `tests/aiProductDraft.test.mjs` round-trips every part through the real schema.
-- **A rule never widens.** A group rule may only target categories in its group (validator → 400), so removing a
-  category from a group blocks the save until the rule is fixed — clearing its last target would have silently
-  turned it into "all categories". A category deleted elsewhere stays stored (saves are not locked by it) and its
-  rule simply matches nothing; the page flags it.
-- **Duplicates are dropped at assembly**, first occurrence wins, compared by `normalizeRule` (whitespace + leading
-  `- ` ignored) per *unit* (`splitRuleUnits`: a line starting with `- ` opens a unit). Within a field across its
-  sources, and for a group's general rules against everything already in the prompt. A category still holding a
-  verbatim copy of the old add-category defaults therefore contributes nothing twice;
-  `npm run check:category-prompt-defaults` lists them (read-only). Two groups may each print a section with the
-  same title; they are independent and are not merged.
-- **Admin text can break output parsing.** The JSON skeleton and the field rules are editable; the parsers still
-  validate whatever the model returns, so a bad edit fails loudly at parse time rather than writing bad data.
+- **A rule never widens.** A group rule may only target categories in its group (validator → 400), so removing a category
+  from a group blocks the save until the rule is fixed — clearing its last target would have silently turned it into "all
+  categories". A category deleted elsewhere stays stored (saves are not locked by it) and its rule simply matches nothing;
+  the page flags it.
+- **Duplicates are dropped at assembly**, first occurrence wins, compared by `normalizeRule` (whitespace + leading `- `
+  ignored) per *unit* (`splitRuleUnits`: a line starting with `- ` opens a unit). Within a field or Base section across its
+  sources, and for a group's own sections against everything already in the prompt. A category still holding a verbatim copy of the
+  old add-category defaults therefore contributes nothing twice; `npm run check:category-prompt-defaults` lists them
+  (read-only).
 
 ```bash
-npm run test:product-prompts     # seed validity, no wording in code, exact text, placeholders, targeting, legacy shape, sources
+npm run test:product-prompts     # seed validity, no wording in code, exact headings, data sections, locks, targeting, old shapes, sources
 npm run test:ai-product-draft    # real admin route → real schema → real draft route, restore, both preview modes
 ```
 

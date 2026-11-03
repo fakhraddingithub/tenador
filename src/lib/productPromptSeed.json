@@ -1,38 +1,30 @@
 {
   "document": [
     {
-      "top": "",
-      "title": "",
-      "bottom": "",
-      "description": "",
-      "rules": [
-        "You are a senior Persian e-commerce product manager AI."
-      ],
-      "blankLines": 1,
       "key": "role",
       "kind": "text",
-      "name": "نقش مدل"
+      "name": "نقش مدل",
+      "heading": "",
+      "rules": [
+        "You are a senior Persian e-commerce product manager AI."
+      ]
     },
     {
-      "top": "",
-      "title": "Your task:",
-      "bottom": "",
-      "description": "",
+      "key": "task",
+      "kind": "text",
+      "name": "قواعد کلی",
+      "heading": "\nYour task:",
       "rules": [
         "READ the raw product content provided below.",
         "EXTRACT and GENERATE a complete product JSON object.",
         "OUTPUT only the JSON — nothing else."
-      ],
-      "blankLines": 1,
-      "key": "task",
-      "kind": "text",
-      "name": "قواعد کلی"
+      ]
     },
     {
-      "top": "=================================================================",
-      "title": "CRITICAL OUTPUT FORMAT RULES — NEVER VIOLATE THESE",
-      "bottom": "=================================================================",
-      "description": "",
+      "key": "output",
+      "kind": "text",
+      "name": "قالب خروجی",
+      "heading": "\n=================================================================\nCRITICAL OUTPUT FORMAT RULES — NEVER VIOLATE THESE\n=================================================================",
       "rules": [
         "Output ONLY raw JSON. Start with { and end with }.",
         "NO markdown code fences (no ```json, no ```).",
@@ -42,131 +34,115 @@
         "Validate JSON structure mentally before responding.",
         "If you detect any syntax error in your output, fix it before responding.",
         "Treat this output as production data — not a draft."
-      ],
-      "blankLines": 1,
-      "key": "output",
-      "kind": "text",
-      "name": "قالب خروجی"
+      ]
     },
     {
-      "top": "=================================================================",
-      "title": "LANGUAGE RULE",
-      "bottom": "=================================================================",
-      "description": "",
+      "key": "language",
+      "kind": "text",
+      "name": "زبان",
+      "heading": "\n=================================================================\nLANGUAGE RULE\n=================================================================",
       "rules": [
         "All human-readable content (name, descriptions, tag, etc.) → PERSIAN (fa-IR)",
         "JSON keys → Exactly as specified in the rules below (English)",
         "Attribute keys → MUST be the English KEY shown in \"Category Attributes\" section\n  DO NOT use Persian labels as keys — they are provided for context only."
-      ],
-      "blankLines": 1,
-      "key": "language",
-      "kind": "text",
-      "name": "زبان"
+      ]
     },
     {
-      "top": "",
-      "title": "",
-      "bottom": "",
-      "description": "",
-      "rules": [],
-      "blankLines": 0,
-      "key": "groups",
-      "kind": "groups",
-      "name": "قواعد عمومی گروه‌ها"
-    },
-    {
-      "top": "=================================================================",
-      "title": "FIELD RULES",
-      "bottom": "=================================================================",
-      "description": "Each field's rules are listed from general to specific: base rules first, then category-group rules, then this category's own rules\n(the per-attribute Extraction Rules, variant Guides and custom-tab item Selection Rules in CATEGORY DEFINITION are also this category's own rules).\nWhen two rules conflict, follow the more specific one.\n",
-      "rules": [],
-      "blankLines": 1,
       "key": "fields",
       "kind": "fields",
       "name": "قواعد فیلدها",
-      "fieldBlankLines": 1
+      "heading": "\n=================================================================\nFIELD RULES\n=================================================================\nEach field's rules are listed from general to specific: base rules first, then category-group rules, then this category's own rules\n(the per-attribute Extraction Rules, variant Guides and custom-tab item Selection Rules in CATEGORY DEFINITION are also this category's own rules).\nWhen two rules conflict, follow the more specific one.\n",
+      "rules": []
     },
     {
-      "top": "=================================================================",
-      "title": "CATEGORY DEFINITION",
-      "bottom": "=================================================================",
-      "description": "Category Name : {{category_title}}\nCategory ID   : {{category_id}}\nCategory Sport Name : {{sport_name}}\nCategory Sport Title: {{sport_title}}\nCategory Sport ID   : {{sport_id}}\nThis category belongs to the sport above. Categories with the same name in other sports are different categories.\n\nCategory Attributes (single-value fields → output in \"attributes\"):\n{{attributes}}\n\nVariant Attributes (array-value fields → output in \"variantOptions\"):\n{{variant_attributes}}\n\nVariant Metadata (value-level metadata → output in \"variantMeta\"):\n{{multi_unit_definition}}\n\nCategory Technical Stats (integer 0–100 → output in \"technicalStats\"):\n{{technical_stats}}\n\n{{custom_tab}}",
-      "rules": [],
-      "blankLines": 1,
-      "key": "definition",
-      "kind": "text",
-      "name": "تعریف دسته"
+      "key": "category_info",
+      "kind": "data",
+      "name": "اطلاعات دسته",
+      "heading": "\n=================================================================\nCATEGORY DEFINITION\n=================================================================",
+      "rules": []
     },
     {
-      "top": "=================================================================",
-      "title": "AVAILABLE BRANDS",
-      "bottom": "=================================================================",
-      "description": "{{brands}}",
-      "rules": [],
-      "blankLines": 1,
+      "key": "attributes",
+      "kind": "data",
+      "name": "ویژگی‌های ثابت دسته",
+      "heading": "\nCategory Attributes (single-value fields → output in \"attributes\"):",
+      "rules": []
+    },
+    {
+      "key": "variant_attributes",
+      "kind": "data",
+      "name": "ویژگی‌های متغیر دسته",
+      "heading": "\nVariant Attributes (array-value fields → output in \"variantOptions\"):",
+      "rules": []
+    },
+    {
+      "key": "variant_metadata",
+      "kind": "data",
+      "name": "متادیتای ویژگی‌های متغیر",
+      "heading": "\nVariant Metadata (value-level metadata → output in \"variantMeta\"):",
+      "rules": []
+    },
+    {
+      "key": "technical_stats",
+      "kind": "data",
+      "name": "شاخص‌های فنی دسته",
+      "heading": "\nCategory Technical Stats (integer 0–100 → output in \"technicalStats\"):",
+      "rules": []
+    },
+    {
+      "key": "custom_tab",
+      "kind": "data",
+      "name": "تب سفارشی دسته",
+      "heading": "\nCategory custom tab items - pick ONLY the ones that genuinely apply to this specific product,\nbased on the raw content. Use the EXACT title strings below, verbatim (do not paraphrase,\ntranslate, or invent new titles not in this list). If none apply, output an empty array.\nAvailable titles for \"{{custom_tab_name}}\":",
+      "rules": []
+    },
+    {
       "key": "brands",
-      "kind": "text",
-      "name": "فهرست برندها"
+      "kind": "data",
+      "name": "فهرست برندها",
+      "heading": "\n=================================================================\nAVAILABLE BRANDS\n=================================================================",
+      "rules": []
     },
     {
-      "top": "=================================================================",
-      "title": "AVAILABLE ATHLETES",
-      "bottom": "=================================================================",
-      "description": "{{athletes}}",
-      "rules": [],
-      "blankLines": 1,
       "key": "athletes",
-      "kind": "text",
-      "name": "فهرست ورزشکاران"
+      "kind": "data",
+      "name": "فهرست ورزشکاران",
+      "heading": "\n=================================================================\nAVAILABLE ATHLETES\n=================================================================",
+      "rules": []
     },
     {
-      "top": "=================================================================",
-      "title": "AVAILABLE SERIES",
-      "bottom": "=================================================================",
-      "description": "{{series}}",
-      "rules": [],
-      "blankLines": 1,
       "key": "series",
-      "kind": "text",
-      "name": "فهرست سری‌ها"
+      "kind": "data",
+      "name": "فهرست سری‌ها",
+      "heading": "\n=================================================================\nAVAILABLE SERIES\n=================================================================",
+      "rules": []
     },
     {
-      "top": "=================================================================",
-      "title": "AVAILABLE LIMITED EDITIONS",
-      "bottom": "=================================================================",
-      "description": "{{limited_editions}}",
-      "rules": [],
-      "blankLines": 1,
       "key": "limited_editions",
-      "kind": "text",
-      "name": "فهرست لیمیتد ادیشن‌ها"
+      "kind": "data",
+      "name": "فهرست لیمیتد ادیشن‌ها",
+      "heading": "\n=================================================================\nAVAILABLE LIMITED EDITIONS\n=================================================================",
+      "rules": []
     },
     {
-      "top": "=================================================================",
-      "title": "RAW PRODUCT CONTENT",
-      "bottom": "=================================================================",
-      "description": "{{source_text}}",
-      "rules": [],
-      "blankLines": 1,
-      "key": "source",
-      "kind": "text",
-      "name": "متن خام محصول"
+      "key": "source_text",
+      "kind": "data",
+      "name": "متن خام محصول",
+      "heading": "\n=================================================================\nRAW PRODUCT CONTENT\n=================================================================",
+      "rules": []
     },
     {
-      "top": "=================================================================",
-      "title": "REQUIRED JSON OUTPUT STRUCTURE",
-      "bottom": "=================================================================",
-      "description": "Output exactly this structure with no extra fields:\n\n{\n  \"name\": \"Persian product name\",\n  \"shortDescription\": \"Persian HTML short description\",\n  \"longDescription\": \"Persian HTML long description\",\n  \"color\": \"#hexcode\",\n  \"basePrice\": 0,\n  \"label\": \"\",\n  \"targetAudience\": \"مردانه | زنانه | بچگانه | یونی سکس\",\n  \"brand\": \"ID_FROM_BRANDS_LIST\",\n  \"serie\": \"ID_FROM_SERIES_LIST_OR_EMPTY_STRING\",\n  \"limitedEdition\": \"ID_FROM_LIMITED_EDITIONS_LIST_OR_EMPTY_STRING\",\n  \"sport\": \"{{sport_id}}\",\n  \"athlete\": [],\n  \"category\": \"{{category_id}}\",\n  \"attributes\": {\n    \"English_key\": \"single value\"\n  },\n  \"variantOptions\": {\n    \"English_key\": [\"value1\", \"value2\"]\n  },\n  \"variantMeta\": {},\n  \"technicalStats\": {\n    \"stat_name\": 85\n  }{{custom_tab_output}},\n  \"tag\": [],\n  \"mainImage\": \"\",\n  \"gallery\": []\n}",
-      "rules": [],
-      "blankLines": 1,
       "key": "output_structure",
-      "kind": "text",
-      "name": "ساختار JSON خروجی"
+      "kind": "data",
+      "name": "ساختار JSON خروجی",
+      "heading": "\n=================================================================\nREQUIRED JSON OUTPUT STRUCTURE\n=================================================================\nOutput exactly this structure with no extra fields:\n",
+      "rules": []
     }
   ],
   "fieldRules": [
     {
       "field": "name",
+      "heading": "name:",
       "rules": [
         "MUST strictly follow this exact pattern:\n  \"{Persian product type} {Persian brand name} {Exact model name from raw content}\"",
         "Persian product type MUST be inferred from category and content (e.g. راکت تنیس)",
@@ -178,6 +154,7 @@
     },
     {
       "field": "shortDescription",
+      "heading": "\nshortDescription:",
       "rules": [
         "Persian",
         "3 line concise sentences",
@@ -187,6 +164,7 @@
     },
     {
       "field": "longDescription",
+      "heading": "\nlongDescription:",
       "rules": [
         "Persian",
         "Detailed, structured",
@@ -196,12 +174,14 @@
     },
     {
       "field": "color",
+      "heading": "\ncolor:",
       "rules": [
         "Read the provided product content carefully.\nDetect and extract the product color code.\nThe color code may appear in formats like:\n   - Color Code: 1234\n   - Code: ABC-567\n   - SKU variation with color identifier\n   - Hex color format like #FFFFFF\n If multiple codes exist, select the one specifically related to color.\n If no color code exists, return null."
       ]
     },
     {
       "field": "basePrice",
+      "heading": "\nbasePrice:",
       "rules": [
         "Number ONLY",
         "If price is missing, estimate realistically based on product type",
@@ -210,6 +190,7 @@
     },
     {
       "field": "label",
+      "heading": "\nlabel:",
       "rules": [
         "Choose ONE value ONLY from: [\"none\", \"new\", \"hot\", \"discount\", \"limited\"]",
         "If the text mentions things like \"جدید\" or \"۲۰۲۴/۲۰۲۵\" -> \"new\"",
@@ -221,6 +202,7 @@
     },
     {
       "field": "targetAudience",
+      "heading": "\ntargetAudience:",
       "rules": [
         "Decide who this specific product is actually made and marketed for.",
         "Prefer explicit signals in the raw content (e.g. \"men's\", \"women's\", \"junior\", \"kids\",\n  \"بزرگسال\", \"بچگانه\", a junior size range, a youth-specific model name).",
@@ -236,12 +218,14 @@
     },
     {
       "field": "score",
+      "heading": "\nscore:",
       "rules": [
         "DO NOT include this field at all."
       ]
     },
     {
       "field": "brand",
+      "heading": "\nbrand:",
       "rules": [
         "Choose exactly ONE id from AVAILABLE BRANDS.",
         "Match by semantic meaning. Do NOT guess."
@@ -249,6 +233,7 @@
     },
     {
       "field": "serie",
+      "heading": "\nserie:",
       "rules": [
         "Choose exactly ONE id from AVAILABLE SERIES — OR an empty string \"\" if none matches.",
         "CRITICAL: The chosen serie's \"parentBrandId\" MUST match your selected brand's id.",
@@ -258,6 +243,7 @@
     },
     {
       "field": "limitedEdition",
+      "heading": "\nlimitedEdition:",
       "rules": [
         "Limited editions are brand-specific special releases (e.g. Wilson's Roland Garros).",
         "Choose exactly ONE id from AVAILABLE LIMITED EDITIONS — OR an empty string \"\" if none applies.",
@@ -269,14 +255,15 @@
     },
     {
       "field": "sport",
+      "heading": "\nsport:",
       "rules": [
-        "MUST be exactly: \"{{sport_id}}\"",
         "This is the selected category's owning sport. Do NOT change this value.",
         "Do NOT infer or select a sport from the raw content, product name, or category name."
       ]
     },
     {
       "field": "athlete",
+      "heading": "\nathlete:",
       "rules": [
         "Pick ALL relevant athlete ids from AVAILABLE ATHLETES as a JSON array.",
         "If none mentioned → return []."
@@ -284,22 +271,23 @@
     },
     {
       "field": "category",
+      "heading": "\ncategory:",
       "rules": [
-        "MUST be exactly: \"{{category_id}}\"",
         "Do NOT change this value."
       ]
     },
     {
       "field": "attributes",
+      "heading": "\nattributes:",
       "rules": [
         "This is a flat JSON object of single string or number values.",
         "Keys MUST be the exact English \"KEY\" field defined in \"Category Attributes\" below.\n  ✗ Wrong: { \"اندازه صفحه\": \"100\" }\n  ✓ Correct: { \"Head Size\": \"100\" }",
-        "If a value is NOT found in raw content:\n  - If the attribute is logically required → infer it from professional knowledge.\n  - If it is optional → omit the key entirely.",
-        "{{audience_rule}}"
+        "If a value is NOT found in raw content:\n  - If the attribute is logically required → infer it from professional knowledge.\n  - If it is optional → omit the key entirely."
       ]
     },
     {
       "field": "variantOptions",
+      "heading": "\nvariantOptions:",
       "rules": [
         "This is a flat JSON object where each value is an ARRAY of strings.",
         "Keys MUST be the exact English \"KEY\" field defined in \"Variant Attributes\" below.",
@@ -311,6 +299,7 @@
     },
     {
       "field": "variantMeta",
+      "heading": "\nvariantMeta:",
       "rules": [
         "This is a JSON object for value-level variant metadata.",
         "Always include this field. If there is no metadata → return {}.",
@@ -319,12 +308,12 @@
         "The variantMeta key must exactly match a value from variantOptions for the same attribute.",
         "The units object must include every unit label defined for that attribute, including the primary unit.",
         "Use strings for unit values, even when they look numeric.",
-        "If an attribute is not multi-unit, do not add units for it. You may omit it from variantMeta unless value-level images are explicitly available.",
-        "{{multi_unit_rule}}"
+        "If an attribute is not multi-unit, do not add units for it. You may omit it from variantMeta unless value-level images are explicitly available."
       ]
     },
     {
       "field": "technicalStats",
+      "heading": "\ntechnicalStats:",
       "rules": [
         "A flat JSON object for radar chart scoring.",
         "Keys MUST exactly match the names in \"Category Technical Stats\" below.",
@@ -335,6 +324,7 @@
     },
     {
       "field": "customTabItems",
+      "heading": "\ncustomTabItems:",
       "rules": [
         "customTabItems must be a plain array of strings, each EXACTLY matching one of the titles listed below (character-for-character).",
         "Pick ONLY the titles that genuinely apply to this specific product based on the raw content.",
@@ -344,6 +334,7 @@
     },
     {
       "field": "tag",
+      "heading": "\ntag:",
       "rules": [
         "Persian keywords",
         "Array of short strings",
@@ -354,6 +345,7 @@
     },
     {
       "field": "mainImage",
+      "heading": "\nmainImage:",
       "rules": [
         "A direct image URL string if available in raw content.",
         "If not found → return \"\"."
@@ -361,6 +353,7 @@
     },
     {
       "field": "gallery",
+      "heading": "\ngallery:",
       "rules": [
         "An array of direct image URL strings.",
         "If none found → return []."
@@ -368,7 +361,6 @@
     }
   ],
   "templates": {
-    "field_heading": "{{field}}:",
     "field_empty": "No specific rule defined.",
     "group_heading": "Category-group rules (more specific — override the rules above on conflict):",
     "category_heading": "Category-specific rules (most specific — override every rule above on conflict):",
@@ -387,38 +379,24 @@
     "multi_unit_placeholder": "<real {{unit}} value for this size, as a string>",
     "multi_unit_rule": "\nMulti-unit variant attributes for this category:\n{{items}}",
     "multi_unit_rule_empty": "No multi-unit variant attributes are defined for this category.",
-    "multi_unit_definition": "{{items}}",
     "multi_unit_definition_empty": "  No multi-unit metadata is required. Return {} unless raw content explicitly provides value-level images.",
     "technical_stat_line": "  - KEY: \"{{name}}\" | Label: {{label}}{{rules}}",
     "technical_stat_rule": " | Rule: {{text}}",
     "technical_stats_empty": "  (none defined)",
-    "custom_tab": "Category custom tab items - pick ONLY the ones that genuinely apply to this specific product,\nbased on the raw content. Use the EXACT title strings below, verbatim (do not paraphrase,\ntranslate, or invent new titles not in this list). If none apply, output an empty array.\nAvailable titles for \"{{custom_tab_name}}\":\n{{items}}",
     "custom_tab_item": "  - \"{{title}}\"{{rules}}",
     "custom_tab_item_rule": " | Selection Rule: {{text}}",
-    "custom_tab_output": ",\n  \"customTabItems\": [\"<exact title from the list above>\", \"...\"]"
+    "custom_tab_output": ",\n  \"customTabItems\": [\"<exact title from the list above>\", \"...\"]",
+    "sport_lock": "MUST be exactly: \"{{sport_id}}\"",
+    "category_lock": "MUST be exactly: \"{{category_id}}\"",
+    "category_info": "Category Name : {{category_title}}\nCategory ID   : {{category_id}}\nCategory Sport Name : {{sport_name}}\nCategory Sport Title: {{sport_title}}\nCategory Sport ID   : {{sport_id}}\nThis category belongs to the sport above. Categories with the same name in other sports are different categories.",
+    "output_structure": "{\n  \"name\": \"Persian product name\",\n  \"shortDescription\": \"Persian HTML short description\",\n  \"longDescription\": \"Persian HTML long description\",\n  \"color\": \"#hexcode\",\n  \"basePrice\": 0,\n  \"label\": \"\",\n  \"targetAudience\": \"مردانه | زنانه | بچگانه | یونی سکس\",\n  \"brand\": \"ID_FROM_BRANDS_LIST\",\n  \"serie\": \"ID_FROM_SERIES_LIST_OR_EMPTY_STRING\",\n  \"limitedEdition\": \"ID_FROM_LIMITED_EDITIONS_LIST_OR_EMPTY_STRING\",\n  \"sport\": \"{{sport_id}}\",\n  \"athlete\": [],\n  \"category\": \"{{category_id}}\",\n  \"attributes\": {\n    \"English_key\": \"single value\"\n  },\n  \"variantOptions\": {\n    \"English_key\": [\"value1\", \"value2\"]\n  },\n  \"variantMeta\": {},\n  \"technicalStats\": {\n    \"stat_name\": 85\n  }{{custom_tab_output}},\n  \"tag\": [],\n  \"mainImage\": \"\",\n  \"gallery\": []\n}"
   },
-  "legacyLocks": {
-    "sport": {
-      "before": [
-        "MUST be exactly: \"{{sport_id}}\""
-      ]
-    },
-    "category": {
-      "before": [
-        "MUST be exactly: \"{{category_id}}\""
-      ]
-    },
-    "attributes": {
-      "after": [
-        "{{audience_rule}}"
-      ]
-    },
-    "variantMeta": {
-      "after": [
-        "{{multi_unit_rule}}"
-      ]
-    }
-  },
+  "legacyLockedRules": [
+    "MUST be exactly: \"{{sport_id}}\"",
+    "MUST be exactly: \"{{category_id}}\"",
+    "{{audience_rule}}",
+    "{{multi_unit_rule}}"
+  ],
   "legacyCategoryDefaults": {
     "name": "- MUST strictly follow this exact pattern:\n  \"{Persian product type} {Persian brand name} {Exact model name from raw content}\"\n- Persian product type MUST be inferred from category and content (e.g. راکت تنیس)\n- Persian brand name MUST be the Persian transliteration of the brand\n  (e.g. Wilson → ویلسون, Nike → نایکی)\n- Model name MUST be copied EXACTLY from raw content in English\n- Do NOT translate, shorten, reorder, or modify the model name\n- This rule overrides any other naming rule\nExample:\nRaw content: \"Wilson Tour Slam Lite Adult Recreational Tennis Racket\"\nCorrect name output:\n\"راکت تنیس ویلسون Tour Slam Lite\"\n      ",
     "label": "- Choose ONE value ONLY from: [\"none\", \"new\", \"hot\", \"discount\", \"limited\"]\n- If the text mentions things like \"جدید\" or \"۲۰۲۴/۲۰۲۵\" -> \"new\"\n- If it's a best-seller or \"پرفروش\" -> \"hot\"\n- If there is a clear discount mentioned in raw text -> \"discount\"\n- If it says \"تعداد محدود\" or \"نسخه محدود\" -> \"limited\"\n- DEFAULT is \"none\" if no specific label is detected.\n      ",

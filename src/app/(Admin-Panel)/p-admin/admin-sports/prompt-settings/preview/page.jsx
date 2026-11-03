@@ -6,7 +6,7 @@
  * داده از GET /api/admin/product-prompts/preview می‌آید که همان composeProductPrompt
  * را صدا می‌زند که پرامپتِ واقعی از آن رندر می‌شود؛ پس هر قاعده‌ای که اینجا دیده
  * می‌شود دقیقاً همان است که به AI می‌رسد، با منبعِ دقیقش. فهرست‌های داده (برند، سری،
- * ورزشکار…) و متنِ خامِ محصول باز نمی‌شوند و به‌صورتِ placeholder می‌مانند؛ متنِ کامل در حالتِ «پرامپت نهایی» است.
+ * ورزشکار…) و متنِ خامِ محصول اینجا نمی‌آیند؛ متنِ کامل در حالتِ «پرامپت نهایی» است.
  *
  * کلیک روی هر قاعده منبعش را نشان می‌دهد و (با دسترسیِ ویرایش) همان منبع را ویرایش می‌کند:
  *   پایه / گروه → همان PUTِ تنظیمات (۴۰۹ و بررسیِ تکرار همان‌جا)
@@ -17,7 +17,7 @@ import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { toast } from 'react-toastify';
-import { FiArrowRight, FiChevronLeft, FiEdit3, FiEye, FiExternalLink, FiX } from 'react-icons/fi';
+import { FiArrowRight, FiChevronLeft, FiEdit3, FiEye, FiExternalLink, FiLock, FiX } from 'react-icons/fi';
 import PageHeader from '@/components/admin/PageHeader';
 import Button from '@/components/admin/Button';
 import AdminLoader from '@/components/admin/AdminLoader';
@@ -34,21 +34,30 @@ const TONES = {
   base: { label: 'پرامپت پایه', rule: 'border-sky-400 bg-sky-50/70 hover:bg-sky-50', chip: 'bg-sky-100 text-sky-800', dot: 'bg-sky-400' },
   group: { label: 'گروه پرامپت دسته', rule: 'border-violet-400 bg-violet-50/70 hover:bg-violet-50', chip: 'bg-violet-100 text-violet-800', dot: 'bg-violet-400' },
   category: { label: 'اختصاصیِ دسته', rule: 'border-amber-400 bg-amber-50/70 hover:bg-amber-50', chip: 'bg-amber-100 text-amber-800', dot: 'bg-amber-400' },
+  system: { label: 'سیستمی (قفل)', rule: 'border-gray-300 bg-gray-50 hover:bg-gray-100/70', chip: 'bg-gray-100 text-gray-600', dot: 'bg-gray-400' },
 };
 const toneOf = (kind) => {
   if (kind === 'section' || kind === 'baseField') return 'base';
   if (kind === 'group' || kind === 'groupSection') return 'group';
+  if (kind === 'system') return 'system';
   return 'category';
 };
 
-const sourceId = (s) => [s.kind, s.sectionKey, s.index, s.groupId, s.field, s.name, s.itemId].join('|');
+const SYSTEM_WHAT = {
+  sportLock: 'قیدِ شناسه‌ی ورزش: برنامه آن را پیش از قواعد این فیلد درج می‌کند.',
+  categoryLock: 'قیدِ شناسه‌ی دسته: برنامه آن را پیش از قواعد این فیلد درج می‌کند.',
+  audienceScope: 'قاعده‌ی ویژگی‌های محدود به مخاطب: برنامه آن را از تنظیمِ «مخاطب هدف»ِ ویژگی‌های دسته می‌سازد.',
+  multiUnit: 'دستورِ ویژگی‌های چندواحدی: برنامه آن را از ویژگی‌های متغیرِ چندواحدیِ دسته می‌سازد.',
+};
+
+const sourceId = (s) => [s.kind, s.what, s.sectionKey, s.index, s.groupId, s.field, s.name, s.itemId].join('|');
 
 /** همه‌ی قاعده‌های مدل، به ترتیبِ پرامپت. */
 function allRules(model) {
   const { sections, fields, attributes, variants, technicalStats, customTab } = model;
   return [
-    ...sections.flatMap((s) => (s.kind === 'fields' ? [] : s.rules)),
-    ...fields.flatMap((f) => [...f.rules.base, ...f.rules.groups, ...(f.rules.category ? [f.rules.category] : [])]),
+    ...sections.flatMap((s) => (s.kind === 'text' ? s.rules : [])),
+    ...fields.flatMap((f) => [...f.before, ...f.rules.base, ...f.after, ...f.rules.groups, ...(f.rules.category ? [f.rules.category] : [])]),
     ...[...attributes, ...variants, ...technicalStats, ...customTab.items].flatMap((entry) => entry.rules),
   ];
 }
@@ -164,8 +173,11 @@ export default function PromptPreviewPage() {
         const targets = s.targets.length
           ? `فقط برای این دسته‌ها: ${s.targets.map((id) => categoryName(ctx.categoryById, id)).join('، ')}`
           : 'برای همه‌ی دسته‌های این گروه';
-        const place = s.kind === 'group' ? `فیلد ${fieldTitle(s.field)}` : `بخش «${s.sectionName}»`;
-        const tab = s.kind === 'group' ? s.field : `section:${s.sectionKey}`;
+        const onBaseSection = s.kind === 'group' && s.field.startsWith('section:');
+        const place = s.kind === 'group' && !onBaseSection
+          ? `فیلد ${fieldTitle(s.field)}`
+          : `بخش «${s.kind === 'group' ? fieldTitle(s.field, ctx.config.document) : s.sectionName}»`;
+        const tab = s.kind === 'group' ? s.field : `own:${s.sectionKey}`;
         return {
           path: ['گروه پرامپت دسته', `«${groupLabel(s.groupId, s.groupTitle)}»`, place, `قاعده‌ی ${s.index + 1}`],
           note: `${targets}.${order >= 0 ? ` این گروه ${order + 1}‌اُمین گروه در ترتیبِ گروه‌هاست.` : ''}`,
@@ -185,6 +197,8 @@ export default function PromptPreviewPage() {
         return { path: [cat, `تب سفارشی «${s.tabName}»`, 'قاعده‌ی انتخاب آیتم‌ها'], href: categoryHref, editable: true };
       case 'customTabItem':
         return { path: [cat, 'تب سفارشی', `آیتم «${s.title}»`, 'راهنمای انتخاب'], href: categoryHref, editable: Boolean(s.itemId) };
+      case 'system':
+        return { path: ['سیستمی (قفل)'], note: `${SYSTEM_WHAT[s.what] || ''} حذف نمی‌شود؛ متنش در «قالب‌های داده» است.`, href: `${PROMPTS_HOME}/base#__templates`, editable: false };
       default:
         return { path: [cat], editable: false };
     }
@@ -198,6 +212,7 @@ export default function PromptPreviewPage() {
     const stale = 'این قاعده در این فاصله تغییر کرده است؛ صفحه را دوباره بارگذاری کنید.';
     const replaceAt = (list, index, value) => list.map((item, i) => (i === index ? value : item));
 
+    if (toneOf(s.kind) === 'system') return 'این متن از اینجا ویرایش نمی‌شود.';
     if (toneOf(s.kind) !== 'category') {
       if (!text.trim()) return 'متن قاعده خالی است؛ برای حذفِ قاعده از صفحه‌ی تنظیماتِ آن استفاده کنید.';
       const { document, fieldRules } = ctx.config;
@@ -392,20 +407,22 @@ function PromptArticle({ data, loading, categoryLabel, groupLabel, ruleProps }) 
     const view = {
       ...f,
       def: def && { ...def, items: def.items.filter(({ rule }) => shown(rule)) },
+      before: only(f.before),
+      after: only(f.after),
       base: only(f.rules.base),
       groups: groupBy(only(f.rules.groups)),
       category: f.rules.category && shown(f.rules.category) ? f.rules.category : null,
       // «فیلدِ بدونِ قاعده» وضعیتِ خودِ پرامپت است، نه نتیجه‌ی فیلتر
-      empty: !f.rules.base.length && !f.rules.groups.length && !f.rules.category,
+      empty: !f.before.length && !f.after.length && !f.rules.base.length && !f.rules.groups.length && !f.rules.category,
     };
-    view.count = view.base.length + view.groups.reduce((n, [, list]) => n + list.length, 0) + (view.category ? 1 : 0) + (view.def?.items.length || 0);
+    view.count = view.before.length + view.after.length + view.base.length + view.groups.reduce((n, [, list]) => n + list.length, 0) + (view.category ? 1 : 0) + (view.def?.items.length || 0);
     return view;
   });
   const visibleFields = fields.filter((f) => !filtering || f.count);
 
   // بخش‌ها به ترتیبِ پرامپت؛ در حالتِ فیلتر، بخشی که قاعده‌ی دیده‌شونده ندارد پنهان می‌شود
   const sections = model.sections
-    .map((section, position) => ({ ...section, anchor: `section-${position}`, shownRules: section.kind === 'fields' ? [] : only(section.rules) }))
+    .map((section, position) => ({ ...section, anchor: `section-${position}`, shownRules: section.kind === 'text' ? only(section.rules) : [] }))
     .filter((section) => !filtering || (section.kind === 'fields' ? visibleFields.length : section.shownRules.length));
 
   return (
@@ -416,7 +433,7 @@ function PromptArticle({ data, loading, categoryLabel, groupLabel, ruleProps }) 
           <h1 className="text-2xl sm:text-3xl font-black text-gray-900 leading-tight">{categoryLabel}</h1>
           <p className="text-sm font-medium text-gray-500 leading-7">
             بخش‌ها به همان ترتیبی آمده‌اند که به هوش مصنوعی می‌رسند. روی هر قاعده کلیک کنید تا منبعش را ببینید و ویرایشش کنید.
-            داده‌هایی مثل فهرست برندها و متن خام محصول اینجا به‌صورت placeholder دیده می‌شوند؛ متنِ کامل در حالتِ «پرامپت نهایی» است.
+            داده‌هایی مثل فهرست برندها و متن خام محصول اینجا نمی‌آیند؛ متنِ کامل در حالتِ «پرامپت نهایی» است.
           </p>
           {filtering && (
             <p className="text-xs font-bold text-amber-700">
@@ -434,20 +451,26 @@ function PromptArticle({ data, loading, categoryLabel, groupLabel, ruleProps }) 
             {section.owner && (
               <p className="text-xs font-bold text-violet-700 mb-2">از گروه «{groupLabel(section.owner.groupId, section.owner.groupTitle)}»</p>
             )}
-            {!filtering && <SectionHeader section={section} />}
+            {!filtering && <SectionHeader heading={section.heading} />}
+            {section.kind === 'data' && !filtering && (
+              <p className="mt-2 text-xs font-bold text-gray-400">داده‌ی این بخش را برنامه زیرِ سربرگ درج می‌کند.</p>
+            )}
 
             {section.kind === 'fields' ? (
               <div className="mt-2 divide-y divide-gray-100">
                 {visibleFields.map((f) => {
-                  const placement = `${section.title || section.name} › ${f.key}`;
+                  const placement = `${section.name} › ${f.key}`;
                   return (
                     <article key={f.key} id={`field-${f.key}`} className="py-8 scroll-mt-40 space-y-5">
                       <header className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
                         <h3 className="text-lg font-black text-gray-900">{f.title}</h3>
                         <code dir="ltr" className="px-1.5 py-0.5 rounded bg-gray-100 text-xs font-bold text-gray-500">{f.key}</code>
                       </header>
+                      {!filtering && <SectionHeader heading={f.heading} />}
                       {f.empty && !filtering && <Empty>قاعده‌ای ندارد — در پرامپت متنِ «فیلد بدون قاعده» می‌آید.</Empty>}
+                      {f.before.length > 0 && <Layer tone="system" title="قیدِ قفل"><RuleList rules={f.before} placement={placement} ruleProps={ruleProps} /></Layer>}
                       {f.base.length > 0 && <Layer tone="base" title="پرامپت پایه"><RuleList rules={f.base} placement={placement} ruleProps={ruleProps} /></Layer>}
+                      {f.after.length > 0 && <Layer tone="system" title="قیدِ قفل"><RuleList rules={f.after} placement={placement} ruleProps={ruleProps} /></Layer>}
                       {f.groups.map(([groupId, list]) => (
                         <Layer key={groupId} tone="group" title={`گروه «${groupLabel(groupId, list[0].source.groupTitle)}»`}>
                           <RuleList rules={list} placement={placement} ruleProps={ruleProps} />
@@ -474,7 +497,7 @@ function PromptArticle({ data, loading, categoryLabel, groupLabel, ruleProps }) 
             ) : (
               section.shownRules.length > 0 && (
                 <div className="mt-3">
-                  <RuleList rules={section.shownRules} placement={section.title || section.name} ruleProps={ruleProps} />
+                  <RuleList rules={section.shownRules} placement={section.name} ruleProps={ruleProps} />
                 </div>
               )
             )}
@@ -567,13 +590,13 @@ function PromptArticle({ data, loading, categoryLabel, groupLabel, ruleProps }) 
   );
 }
 
-/** سربرگ و توضیحِ یک بخش همان‌طور که نوشته شده؛ placeholderها باز نمی‌شوند. */
-function SectionHeader({ section }) {
-  const head = [section.top, section.title, section.bottom].filter((line) => line !== '');
-  if (!head.length && !section.description) return null;
+/** سربرگ همان‌طور که نوشته شده؛ فقط خط‌های خالیِ بالایش در این نما نشان داده نمی‌شوند. */
+function SectionHeader({ heading }) {
+  const shown = String(heading ?? '').replace(/^\n+/, '');
+  if (!shown.trim()) return null;
   return (
     <div className="mt-2 rounded-lg bg-gray-50 border border-gray-200 px-3.5 py-2.5 font-mono text-xs leading-6 text-gray-600 whitespace-pre-wrap break-words text-start [unicode-bidi:plaintext]">
-      {[...head, ...(section.description ? [section.description] : [])].join('\n')}
+      {shown}
     </div>
   );
 }
@@ -669,7 +692,8 @@ function Rule({ rule, caption, placement, openId, setOpenId, describe, canEdit, 
     else setEditing(false);
   };
 
-  const partial = typeof rule.source.value === 'string' && rule.source.value.trim() !== rule.text.trim();
+  const isSystem = rule.source.kind === 'system';
+  const partial = !isSystem && typeof rule.source.value === 'string' && rule.source.value.trim() !== rule.text.trim();
   const categoryOwned = toneOf(rule.source.kind) === 'category';
   const unchanged = draft === rule.source.value;
 
@@ -709,11 +733,12 @@ function Rule({ rule, caption, placement, openId, setOpenId, describe, canEdit, 
         ) : (
           // plaintext: جهتِ هر خط از متنِ همان خط می‌آید، پس نقطه و دونقطه‌ی جمله‌ی فارسی آخرِ جمله می‌مانند و
           // متنِ مخلوط درست چیده می‌شود. dir کافی نیست: direction روی * در globals.css از آن قوی‌تر است.
-          <div className="whitespace-pre-wrap break-words text-start [unicode-bidi:plaintext] text-[13px] leading-7 text-gray-800">
+          <div className={`whitespace-pre-wrap break-words text-start [unicode-bidi:plaintext] text-[13px] leading-7 ${isSystem ? 'text-gray-500 max-h-48 overflow-y-auto' : 'text-gray-800'}`}>
             {rule.display ?? rule.text}
           </div>
         )}
       </div>
+      {isSystem && <FiLock className="mt-1.5 shrink-0 text-gray-400" size={12} aria-label="قفل" />}
     </>
   );
 

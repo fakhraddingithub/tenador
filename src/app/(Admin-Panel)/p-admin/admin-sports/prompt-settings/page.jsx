@@ -91,7 +91,7 @@ export default function PromptSettingsPage() {
         <div className="flex-1 min-w-0">
           <h2 className="text-base font-bold text-gray-900">پرامپت پایه</h2>
           <p className="text-xs font-bold text-gray-500 mt-1 leading-6">
-            کلِ متنِ پرامپت: بخش‌ها، جداکننده‌ها، قواعدِ هر فیلد و قالبِ سطرهای داده — {textSections.length} بخش، {totalBaseRules} قاعده.
+            کلِ متنِ پرامپت: سربرگ‌ها، قواعدِ هر بخش و هر فیلد و قالبِ سطرهای داده — {textSections.length} بخش قواعد، {totalBaseRules} قاعده.
           </p>
         </div>
         <Link
@@ -108,7 +108,7 @@ export default function PromptSettingsPage() {
           <div>
             <h2 className="text-base font-bold text-gray-900">گروه‌های پرامپت دسته ({config.groups.length})</h2>
             <p className="text-xs font-bold text-gray-500 mt-1 leading-6">
-              قواعدِ گروه بعد از پرامپت پایه و پیش از پرامپتِ خودِ دسته می‌آیند؛ یک دسته می‌تواند عضوِ چند گروه باشد و ترتیبِ گروه‌ها ترتیبِ قواعدشان در پرامپت است.
+              قاعده‌ی گروه روی یک بخش یا فیلد، بعد از قواعدِ پایه‌ی آن و پیش از پرامپتِ خودِ دسته می‌آید و بخش‌های خودِ گروه درست بالای قواعدِ فیلدها؛ یک دسته می‌تواند عضوِ چند گروه باشد و ترتیبِ گروه‌ها ترتیبِ قواعدشان در پرامپت است.
             </p>
           </div>
         </div>
@@ -138,8 +138,8 @@ export default function PromptSettingsPage() {
                 <p className="text-[11px] font-bold text-gray-400">
                   {group.rules.length || group.sections.length
                     ? [
-                        group.sections.length > 0 && `${group.sections.length} بخش قواعد عمومی`,
-                        group.rules.length > 0 && `${group.rules.length} قاعده — ${perField.map(([f, n]) => `${fieldTitle(f)}: ${n}`).join('، ')}`,
+                        group.sections.length > 0 && `${group.sections.length} بخش خودِ گروه`,
+                        group.rules.length > 0 && `${group.rules.length} قاعده — ${perField.map(([f, n]) => `${fieldTitle(f, config.document)}: ${n}`).join('، ')}`,
                       ].filter(Boolean).join(' · ')
                     : 'هنوز قاعده‌ای ندارد'}
                 </p>
@@ -204,7 +204,7 @@ export default function PromptSettingsPage() {
         <FiLock className="mt-1 shrink-0" size={13} />
         <span>
           ترتیبِ هر فیلد در پرامپتِ نهایی: پرامپت پایه ← گروه‌ها (به ترتیبِ بالا) ← پرامپتِ خودِ دسته؛ در تعارض، قاعده‌ی خاص‌تر برنده است.
-          همه‌ی متن‌ها، عنوان‌ها و جداکننده‌ها را خودتان می‌نویسید؛ کد فقط داده را به‌جای placeholderها می‌گذارد و چیزی به متن اضافه نمی‌کند.
+          سربرگ‌ها و قواعد را خودتان می‌نویسید و همان‌طور چاپ می‌شوند؛ داده‌ها (برندها، متن خام، ویژگی‌ها…) را برنامه زیرِ سربرگِ بخشِ خودشان درج می‌کند.
         </span>
       </div>
     </div>

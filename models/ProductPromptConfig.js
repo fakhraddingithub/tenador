@@ -7,7 +7,7 @@ import mongoose from "mongoose";
  * شکل و قواعد در src/lib/productPromptConfig.js است؛ اینجا فقط ذخیره‌سازی.
  *
  *   document   : بخش‌های پرامپت به ترتیب. خالی = هنوز ذخیره نشده (productPromptResolve.js)
- *   fieldRules : قواعدِ پایه‌ی هر فیلدِ محصول
+ *   fieldRules : سربرگ و قواعدِ پایه‌ی هر فیلدِ محصول
  *   templates  : قالبِ سطرهای داده‌محور
  *   groups     : گروه‌های پرامپت دسته، به ترتیبِ اعمال. rule.categories خالی یعنی
  *                «همه‌ی دسته‌های همین گروه».
@@ -28,19 +28,14 @@ const GroupRuleSchema = new mongoose.Schema(
 const sectionHead = {
   key: { type: String, required: true },
   name: { type: String, required: true },
-  top: { type: String, default: "" },
-  title: { type: String, default: "" },
-  bottom: { type: String, default: "" },
-  description: { type: String, default: "" },
-  blankLines: { type: Number, default: 1 },
+  heading: { type: String, default: "" },
 };
 
 const DocumentSectionSchema = new mongoose.Schema(
   {
     ...sectionHead,
-    kind: { type: String, enum: ["text", "fields", "groups"], required: true },
+    kind: { type: String, enum: ["text", "fields", "data"], required: true },
     rules: { type: [String], default: [] },
-    fieldBlankLines: { type: Number },
   },
   { _id: false },
 );
@@ -61,7 +56,7 @@ const ProductPromptConfigSchema = new mongoose.Schema(
     key: { type: String, required: true, unique: true, default: "product" },
     document: { type: [DocumentSectionSchema], default: [] },
     fieldRules: {
-      type: [{ field: { type: String, required: true }, rules: { type: [String], default: [] }, _id: false }],
+      type: [{ field: { type: String, required: true }, heading: { type: String, default: "" }, rules: { type: [String], default: [] }, _id: false }],
       default: [],
     },
     templates: {

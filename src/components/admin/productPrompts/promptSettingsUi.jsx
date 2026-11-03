@@ -285,65 +285,45 @@ export function RuleCard({ index, rule, onChange, onRemove, error, readOnly, aut
   );
 }
 
-const headInputClass =
-  'w-full px-3 py-2 text-sm font-medium rounded-xl border-2 border-gray-200 bg-gray-50 outline-none text-start [unicode-bidi:plaintext] ' +
-  'focus:bg-white focus:border-[var(--color-primary)]';
-
-const HeadField = ({ label, hint, error, children }) => (
-  <label className="block">
-    <span className="block text-xs font-bold text-gray-600 mb-1">{label}</span>
-    {children}
-    {hint && <span className="block mt-1 text-[11px] font-bold text-gray-400">{hint}</span>}
-    {error && <span className="block mt-1 text-xs font-bold text-red-500">! {error}</span>}
-  </label>
-);
-
 /**
- * فیلدهای سربرگِ یک بخشِ پرامپت. جز «نام» همه دقیقاً همان‌طور که نوشته شده‌اند چاپ می‌شوند
- * و هر کدام خالی باشد چیزی چاپ نمی‌شود.
+ * تنظیماتِ سربرگِ یک بخش یا فیلد، بسته به‌طور پیش‌فرض تا صفحه بلند نشود. متنِ سربرگ دقیقاً همان‌طور
+ * که نوشته شده چاپ می‌شود؛ خطِ خالی و جداکننده هم جزوِ همین متن‌اند. با خطا خودش باز می‌شود، وگرنه
+ * پیامِ خطا پشتِ پنلِ بسته پنهان می‌ماند. نام فقط برچسبِ پنل است و در پرامپت چاپ نمی‌شود.
  */
-export function SectionHeadFields({ section, onChange, readOnly, errors = {}, children }) {
-  const text = (part) => ({
-    value: section[part] ?? '',
-    readOnly,
-    onChange: (e) => onChange({ [part]: e.target.value }),
-  });
+export function HeadingAccordion({ heading, onHeading, name, onName, readOnly, headingError, nameError, hint }) {
   return (
-    <div className="grid md:grid-cols-2 gap-3">
-      <HeadField label="نام بخش (در پرامپت چاپ نمی‌شود)" error={errors.name}>
-        <input {...text('name')} className={headInputClass} />
-      </HeadField>
-      <HeadField label="عنوان" error={errors.title}>
-        <input {...text('title')} className={headInputClass} />
-      </HeadField>
-      <HeadField label="جداکننده‌ی بالای عنوان" error={errors.top}>
-        <input {...text('top')} className={headInputClass} />
-      </HeadField>
-      <HeadField label="جداکننده‌ی پایین عنوان" error={errors.bottom}>
-        <input {...text('bottom')} className={headInputClass} />
-      </HeadField>
-      <div className="md:col-span-2">
-        <HeadField label="توضیح (پیش از قواعد می‌آید؛ placeholder هم می‌پذیرد)" error={errors.description}>
+    <details open={headingError || nameError ? true : undefined} className="rounded-xl border border-gray-200 bg-gray-50/60">
+      <summary className="cursor-pointer select-none px-3 py-2 text-xs font-bold text-gray-600">
+        تنظیمات سربرگ
+        {(headingError || nameError) && <span className="mr-2 text-red-500">خطا</span>}
+      </summary>
+      <div className="px-3 pb-3 space-y-3">
+        {onName && (
+          <label className="block">
+            <span className="block text-xs font-bold text-gray-600 mb-1">نام بخش (فقط برچسبِ پنل؛ در پرامپت چاپ نمی‌شود)</span>
+            <input
+              value={name ?? ''}
+              readOnly={readOnly}
+              onChange={(e) => onName(e.target.value)}
+              className="w-full px-3 py-2 text-sm font-medium rounded-xl border-2 border-gray-200 bg-white outline-none focus:border-[var(--color-primary)]"
+            />
+            {nameError && <span className="block mt-1 text-xs font-bold text-red-500">! {nameError}</span>}
+          </label>
+        )}
+        <label className="block">
+          <span className="block text-xs font-bold text-gray-600 mb-1">متن سربرگ (دقیقاً همین در پرامپت می‌آید، با همه‌ی خط‌های خالی و جداکننده‌ها)</span>
           <textarea
-            {...text('description')}
-            rows={Math.min(16, Math.max(2, (section.description ?? '').split('\n').length))}
-            className={`${textareaClass} border-gray-200 hover:border-gray-300`}
+            value={heading ?? ''}
+            readOnly={readOnly}
+            rows={Math.min(16, Math.max(2, (heading ?? '').split('\n').length))}
+            onChange={(e) => onHeading(e.target.value)}
+            className={`${textareaClass} ${headingError ? 'border-red-400' : 'border-gray-200 hover:border-gray-300'}`}
           />
-        </HeadField>
+          {hint && <span className="block mt-1 text-[11px] font-bold text-gray-500 leading-5">{hint}</span>}
+          {headingError && <span className="block mt-1 text-xs font-bold text-red-500">! {headingError}</span>}
+        </label>
       </div>
-      <HeadField label="خط خالی بعد از این بخش" error={errors.blankLines}>
-        <input
-          type="number"
-          min={0}
-          max={10}
-          value={section.blankLines ?? 1}
-          readOnly={readOnly}
-          onChange={(e) => onChange({ blankLines: e.target.value === '' ? 0 : Number(e.target.value) })}
-          className={headInputClass}
-        />
-      </HeadField>
-      {children}
-    </div>
+    </details>
   );
 }
 
@@ -359,7 +339,7 @@ export function TokenHelp({ tokens = PROMPT_TOKENS }) {
   };
   return (
     <details className="rounded-xl border border-gray-200 bg-white p-3 text-xs font-bold text-gray-600">
-      <summary className="cursor-pointer">داده‌هایی که می‌توانید در متن بگذارید (placeholder)</summary>
+      <summary className="cursor-pointer">نام و شناسه‌هایی که می‌توانید در متن بگذارید (placeholder)</summary>
       <ul className="mt-3 grid md:grid-cols-2 gap-1.5">
         {tokens.map(({ key, label }) => (
           <li key={key} className="flex flex-wrap items-center gap-2">

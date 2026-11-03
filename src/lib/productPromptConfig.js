@@ -1,21 +1,22 @@
 /**
  * src/lib/productPromptConfig.js
  *
- * ساختارِ «تنظیماتِ پرامپتِ تولیدِ محصول» — بدونِ هیچ متنِ پرامپت. همه‌ی متن‌ها (عنوان‌ها،
- * جداکننده‌ها، توضیح‌ها، قواعد و قالبِ سطرهای داده) مالِ ادمین‌اند و در دیتابیس می‌مانند؛
- * نقطه‌ی شروع در productPromptSeed.json است (productPromptResolve.js).
+ * ساختارِ «تنظیماتِ پرامپتِ تولیدِ محصول» — بدونِ هیچ متنِ پرامپت. همه‌ی متن‌ها (سربرگ‌ها، قواعد و
+ * قالبِ سطرهای داده) مالِ ادمین‌اند و در دیتابیس می‌مانند؛ نقطه‌ی شروع در productPromptSeed.json
+ * است (productPromptResolve.js). خودِ داده‌ها (برندها، متن خام، ویژگی‌ها…) مالِ برنامه‌اند.
  *
  * خالص و بدونِ وابستگیِ سرور: buildProductTemplate (سرور)، روتِ API و صفحه‌های پنل همگی
  * از همین فایل می‌خوانند، پس «آنچه پنل قبول می‌کند» و «آنچه در پرامپت می‌رود» یکی است.
  *
  * شکلِ تنظیمات:
- *   document   : بخش‌های پرامپت به ترتیب. kind: text | fields (جای قواعدِ فیلدها) | groups (جای قواعدِ عمومیِ گروه‌ها)
- *   fieldRules : قواعدِ پایه‌ی هر فیلدِ ثابتِ محصول
- *   templates  : قالبِ سطرهای داده‌محور (TEMPLATE_DEFS)
+ *   document   : بخش‌های پرامپت به ترتیب: { key, kind, name, heading, rules }.
+ *                kind: text (قواعد) | fields (جای قواعدِ فیلدها) | data (داده را برنامه درج می‌کند)
+ *   fieldRules : هر فیلدِ ثابتِ محصول: { field, heading, rules }
+ *   templates  : قالبِ متن‌هایی که برنامه از داده می‌سازد (TEMPLATE_DEFS)
  *   groups     : گروه‌ها — rules (قواعدِ فیلدها) و sections (قواعدِ عمومیِ خودِ گروه)
  *
- * هر متن همان‌طور که ادمین نوشته در پرامپت می‌آید؛ کد نه شماره می‌زند نه پیشوند. تنها
- * جایگزینی، placeholderهای {{نام}} است.
+ * هر متن همان‌طور که ادمین نوشته در پرامپت می‌آید؛ کد نه شماره می‌زند نه پیشوند و جز شکستِ خطِ
+ * لازم بین قطعه‌ها چیزی اضافه نمی‌کند. تنها جایگزینی، placeholderهای نام و شناسه است (PROMPT_TOKENS).
  */
 
 /* ─── واحدِ قاعده (فقط برای تشخیصِ تکرار) ───────────────────────────────── */
@@ -78,103 +79,108 @@ export const CATEGORY_PROMPT_FIELDS = [
   "name", "label", "shortDescription", "longDescription", "color", "basePrice", "targetAudience", "tag",
 ];
 
+/** فیلدهای ثابتی که گروه‌ها برایشان قاعده‌ی تازه نمی‌پذیرند؛ بقیه‌ی فیلدها در صفحه‌ی گروه تب دارند. */
+const GROUP_EXCLUDED_FIELDS = new Set(["attributes", "variantOptions", "technicalStats", "customTabItems"]);
+export const GROUP_PROMPT_FIELDS = PRODUCT_PROMPT_FIELDS.filter((f) => !GROUP_EXCLUDED_FIELDS.has(f.key));
+
 /**
- * فیلدهای پویا: تعریفشان در خودِ هر دسته است (ویژگی‌ها، شاخص‌ها، آیتم‌های تب). قاعده‌ی گروه با
- * کلیدِ «نوع:نام» به آن‌ها اشاره می‌کند و فقط روی دسته‌ای اعمال می‌شود که آن فیلد را دارد.
+ * کلیدِ قاعده‌ی گروه: یک فیلدِ ثابت، یا
+ *   section:<key>   قاعده‌ی گروه روی یکی از بخش‌های قواعدِ پرامپت پایه؛ بعد از قواعدِ پایه‌ی همان بخش چاپ می‌شود
+ *   attribute:<name> · variant:<name> · stat:<name> · tabItem:<title>
+ *                   قاعده‌ی ذخیره‌شده روی فیلدهای پویای دسته. قاعده‌ی تازه برایشان ساخته نمی‌شود، ولی
+ *                   ذخیره‌شده‌ها معتبرند و اعمال می‌شوند؛ صفحه‌ی گروه آن‌ها را در تبِ جدا نشان می‌دهد.
  */
-export const DYNAMIC_FIELD_KINDS = [
-  { kind: "attribute", title: "ویژگی‌های ثابت" },
-  { kind: "variant", title: "ویژگی‌های متغیر" },
-  { kind: "stat", title: "شاخص‌های فنی" },
-  { kind: "tabItem", title: "آیتم‌های تب سفارشی" },
-];
-const DYNAMIC_FIELD = /^(attribute|variant|stat|tabItem):([\s\S]+)$/;
+const KEYED_FIELD = /^(section|attribute|variant|stat|tabItem):([\s\S]+)$/;
 
 export const dynamicFieldKey = (kind, name) => `${kind}:${name}`;
+export const sectionFieldKey = (sectionKey) => `section:${sectionKey}`;
 
-/** @returns {{kind: string, name: string}|null} kind = "fixed" یا یکی از DYNAMIC_FIELD_KINDS */
+/** @returns {{kind: string, name: string}|null} kind = "fixed"، "section" یا نوعِ فیلدِ پویا */
 export function parseFieldKey(key) {
   if (FIXED_FIELD_KEYS.has(key)) return { kind: "fixed", name: key };
-  const match = DYNAMIC_FIELD.exec(String(key ?? ""));
+  const match = KEYED_FIELD.exec(String(key ?? ""));
   return match ? { kind: match[1], name: match[2] } : null;
 }
 
-export const fieldTitle = (key) => {
+/** نامِ نمایشیِ کلیدِ یک قاعده. `document` نامِ بخش‌های پرامپت پایه را می‌دهد. */
+export const fieldTitle = (key, document = []) => {
   const parsed = parseFieldKey(key);
   if (parsed?.kind === "fixed") return PRODUCT_PROMPT_FIELDS.find((f) => f.key === key).title;
+  if (parsed?.kind === "section") return document.find((s) => s.key === parsed.name)?.name || parsed.name;
   return parsed?.name || key;
 };
 
-/* ─── placeholderها و قالب‌ها ───────────────────────────────────────────── */
+/* ─── بخش‌های داده‌ای، placeholderها و قالب‌ها ──────────────────────────── */
 
-export const SOURCE_TEXT_TOKEN = "source_text";
+/**
+ * بخش‌هایی که داده‌شان را برنامه درج می‌کند. ادمین فقط سربرگشان را می‌نویسد و جایشان را عوض
+ * می‌کند: نه حذف می‌شوند و نه placeholderی برای داده‌شان وجود دارد. کلید همان منبعِ داده است.
+ */
+export const DATA_SECTION_KEYS = [
+  "category_info", "attributes", "variant_attributes", "variant_metadata", "technical_stats", "custom_tab",
+  "brands", "athletes", "series", "limited_editions", "source_text", "output_structure",
+];
+const DATA_SECTIONS = new Set(DATA_SECTION_KEYS);
 
-/** آنچه کد در متن‌های ادمین جای می‌گذارد. جز source_text همه اختیاری‌اند. */
+/** تنها placeholderهای متن‌های ادمین: نام و شناسه، نه فهرست‌های داده. */
 export const PROMPT_TOKENS = [
-  { key: SOURCE_TEXT_TOKEN, label: "متن خام محصول (اجباری، دقیقاً یک بار، فقط در بخش‌های پرامپت)" },
   { key: "category_title", label: "نام دسته" },
   { key: "category_id", label: "شناسه‌ی دسته" },
   { key: "sport_name", label: "نام انگلیسی ورزش" },
   { key: "sport_title", label: "نام فارسی ورزش" },
   { key: "sport_id", label: "شناسه‌ی ورزش" },
-  { key: "brands", label: "فهرست JSON برندها" },
-  { key: "athletes", label: "فهرست JSON ورزشکاران" },
-  { key: "series", label: "فهرست JSON سری‌ها" },
-  { key: "limited_editions", label: "فهرست JSON لیمیتد ادیشن‌ها" },
-  { key: "attributes", label: "ویژگی‌های ثابت دسته" },
-  { key: "variant_attributes", label: "ویژگی‌های متغیر دسته" },
-  { key: "multi_unit_rule", label: "دستور ویژگی‌های چندواحدی" },
-  { key: "multi_unit_definition", label: "تعریف ویژگی‌های چندواحدی" },
-  { key: "audience_rule", label: "قاعده‌ی ویژگی‌های محدود به مخاطب" },
-  { key: "technical_stats", label: "شاخص‌های فنی دسته" },
-  { key: "custom_tab", label: "تب سفارشی و آیتم‌هایش (بدون تب: خالی)" },
   { key: "custom_tab_name", label: "نام تب سفارشی" },
-  { key: "custom_tab_output", label: "سطر customTabItems در ساختار خروجی (بدون تب: خالی)" },
 ];
 const PROMPT_TOKEN_KEYS = new Set(PROMPT_TOKENS.map((t) => t.key));
 
-/** قالب‌ها: کلید، گروهِ نمایش، توضیحِ فارسی و placeholderهای خودِ آن قالب. متنشان در دیتابیس است. */
+/**
+ * قالبِ متن‌هایی که برنامه از داده می‌سازد. متنشان در دیتابیس است. `tokens` آن چیزی است که
+ * قالب می‌پذیرد و `required` آنچه نباید حذف شود: بدونِ آن، داده یا قیدِ مربوطه از پرامپت می‌افتاد.
+ */
 export const TEMPLATE_DEFS = [
-  { key: "field_heading", group: "قواعد فیلدها", label: "عنوان هر فیلد", tokens: ["field"] },
   { key: "field_empty", group: "قواعد فیلدها", label: "فیلدی که هیچ قاعده‌ای ندارد", tokens: [] },
   { key: "group_heading", group: "قواعد فیلدها", label: "عنوان بالای قواعد گروه در هر فیلد", tokens: [] },
   { key: "category_heading", group: "قواعد فیلدها", label: "عنوان بالای قاعده‌ی دسته در هر فیلد", tokens: [] },
+  { key: "sport_lock", group: "قواعد فیلدها", label: "قیدِ شناسه‌ی ورزش (پیش از قواعد فیلد sport)", tokens: ["sport_id"], required: ["sport_id"] },
+  { key: "category_lock", group: "قواعد فیلدها", label: "قیدِ شناسه‌ی دسته (پیش از قواعد فیلد category)", tokens: ["category_id"], required: ["category_id"] },
 
-  { key: "attribute_line", group: "ویژگی‌های ثابت", label: "سطر هر ویژگی", tokens: ["name", "label", "rules", "scope"] },
-  { key: "attribute_rule", group: "ویژگی‌های ثابت", label: "هر قاعده‌ی ویژگی (در {{rules}})", tokens: ["text"] },
-  { key: "attribute_scope", group: "ویژگی‌های ثابت", label: "محدودیت مخاطب ویژگی (در {{scope}})", tokens: ["audiences"] },
+  { key: "category_info", group: "اطلاعات دسته", label: "متن بخش اطلاعات دسته", tokens: ["category_title", "category_id", "sport_name", "sport_title", "sport_id"] },
+
+  { key: "attribute_line", group: "ویژگی‌های ثابت", label: "سطر هر ویژگی", tokens: ["name", "label", "rules", "scope"], required: ["name", "rules", "scope"] },
+  { key: "attribute_rule", group: "ویژگی‌های ثابت", label: "هر قاعده‌ی ویژگی (در {{rules}})", tokens: ["text"], required: ["text"] },
+  { key: "attribute_scope", group: "ویژگی‌های ثابت", label: "محدودیت مخاطب ویژگی (در {{scope}})", tokens: ["audiences"], required: ["audiences"] },
   { key: "attributes_empty", group: "ویژگی‌های ثابت", label: "دسته‌ی بدون ویژگی", tokens: [] },
-  { key: "audience_rule", group: "ویژگی‌های ثابت", label: "قاعده‌ی ویژگی‌های محدود به مخاطب", tokens: ["items"] },
-  { key: "audience_rule_item", group: "ویژگی‌های ثابت", label: "هر ویژگیِ محدود (در {{items}})", tokens: ["name", "label", "audiences"] },
+  { key: "audience_rule", group: "ویژگی‌های ثابت", label: "قاعده‌ی ویژگی‌های محدود به مخاطب (پس از قواعد فیلد attributes)", tokens: ["items"], required: ["items"] },
+  { key: "audience_rule_item", group: "ویژگی‌های ثابت", label: "هر ویژگیِ محدود (در {{items}})", tokens: ["name", "label", "audiences"], required: ["name", "audiences"] },
   { key: "audience_rule_empty", group: "ویژگی‌های ثابت", label: "وقتی هیچ ویژگی‌ای محدود نیست", tokens: [] },
 
-  { key: "variant_line", group: "ویژگی‌های متغیر", label: "سطر هر ویژگی متغیر", tokens: ["name", "label", "rules"] },
-  { key: "variant_multi_unit_line", group: "ویژگی‌های متغیر", label: "سطر ویژگی متغیر چندواحدی", tokens: ["name", "label", "primary_unit", "units", "rules"] },
-  { key: "variant_rule", group: "ویژگی‌های متغیر", label: "هر قاعده‌ی ویژگی متغیر (در {{rules}})", tokens: ["text"] },
+  { key: "variant_line", group: "ویژگی‌های متغیر", label: "سطر هر ویژگی متغیر", tokens: ["name", "label", "rules"], required: ["name", "rules"] },
+  { key: "variant_multi_unit_line", group: "ویژگی‌های متغیر", label: "سطر ویژگی متغیر چندواحدی", tokens: ["name", "label", "primary_unit", "units", "rules"], required: ["name", "rules"] },
+  { key: "variant_rule", group: "ویژگی‌های متغیر", label: "هر قاعده‌ی ویژگی متغیر (در {{rules}})", tokens: ["text"], required: ["text"] },
   { key: "variants_empty", group: "ویژگی‌های متغیر", label: "دسته‌ی بدون ویژگی متغیر", tokens: [] },
-  { key: "multi_unit_item", group: "ویژگی‌های متغیر", label: "توضیح هر ویژگی چندواحدی", tokens: ["name", "label", "primary_unit", "units", "placeholder_units"] },
+  { key: "multi_unit_item", group: "ویژگی‌های متغیر", label: "توضیح هر ویژگی چندواحدی", tokens: ["name", "label", "primary_unit", "units", "placeholder_units"], required: ["name"] },
   { key: "multi_unit_placeholder", group: "ویژگی‌های متغیر", label: "نمونه‌ی مقدار هر واحد (در {{placeholder_units}})", tokens: ["unit"] },
-  { key: "multi_unit_rule", group: "ویژگی‌های متغیر", label: "دستور چندواحدی", tokens: ["items"] },
+  { key: "multi_unit_rule", group: "ویژگی‌های متغیر", label: "دستور چندواحدی (پس از قواعد فیلد variantMeta)", tokens: ["items"], required: ["items"] },
   { key: "multi_unit_rule_empty", group: "ویژگی‌های متغیر", label: "دستور چندواحدی وقتی چنین ویژگی‌ای نیست", tokens: [] },
-  { key: "multi_unit_definition", group: "ویژگی‌های متغیر", label: "تعریف چندواحدی", tokens: ["items"] },
-  { key: "multi_unit_definition_empty", group: "ویژگی‌های متغیر", label: "تعریف چندواحدی وقتی چنین ویژگی‌ای نیست", tokens: [] },
+  { key: "multi_unit_definition_empty", group: "ویژگی‌های متغیر", label: "متن بخش متادیتا وقتی چنین ویژگی‌ای نیست", tokens: [] },
 
-  { key: "technical_stat_line", group: "شاخص‌های فنی", label: "سطر هر شاخص", tokens: ["name", "label", "rules"] },
-  { key: "technical_stat_rule", group: "شاخص‌های فنی", label: "هر قاعده‌ی شاخص (در {{rules}})", tokens: ["text"] },
+  { key: "technical_stat_line", group: "شاخص‌های فنی", label: "سطر هر شاخص", tokens: ["name", "label", "rules"], required: ["name", "rules"] },
+  { key: "technical_stat_rule", group: "شاخص‌های فنی", label: "هر قاعده‌ی شاخص (در {{rules}})", tokens: ["text"], required: ["text"] },
   { key: "technical_stats_empty", group: "شاخص‌های فنی", label: "دسته‌ی بدون شاخص", tokens: [] },
 
-  { key: "custom_tab", group: "تب سفارشی", label: "متن تب سفارشی", tokens: ["items", "custom_tab_name"] },
-  { key: "custom_tab_item", group: "تب سفارشی", label: "سطر هر آیتم", tokens: ["title", "rules"] },
-  { key: "custom_tab_item_rule", group: "تب سفارشی", label: "هر قاعده‌ی آیتم (در {{rules}})", tokens: ["text"] },
-  { key: "custom_tab_output", group: "تب سفارشی", label: "سطر customTabItems در ساختار خروجی", tokens: [] },
+  { key: "custom_tab_item", group: "تب سفارشی", label: "سطر هر آیتم", tokens: ["title", "rules"], required: ["title", "rules"] },
+  { key: "custom_tab_item_rule", group: "تب سفارشی", label: "هر قاعده‌ی آیتم (در {{rules}})", tokens: ["text"], required: ["text"] },
+
+  { key: "output_structure", group: "ساختار خروجی", label: "ساختار JSON خروجی", tokens: ["sport_id", "category_id", "custom_tab_output"], required: ["sport_id", "category_id", "custom_tab_output"] },
+  { key: "custom_tab_output", group: "ساختار خروجی", label: "سطر customTabItems (فقط برای دسته‌ای که تب سفارشی دارد)", tokens: [] },
 ];
-const TEMPLATE_KEYS = new Set(TEMPLATE_DEFS.map((t) => t.key));
+const TEMPLATE_BY_KEY = new Map(TEMPLATE_DEFS.map((t) => [t.key, t]));
 
 const TOKEN = /\{\{\s*([a-zA-Z_]+)\s*\}\}/g;
 
 /**
  * placeholderها را در یک گذر جایگزین می‌کند. مقدارِ جایگذاری‌شده دوباره بررسی نمی‌شود، پس
- * «{{brands}}» داخلِ متنِ خامِ محصول متن می‌ماند. placeholderِ ناشناخته دست‌نخورده می‌ماند.
+ * «{{sport_id}}» داخلِ نام یک ویژگی متن می‌ماند. placeholderِ ناشناخته دست‌نخورده می‌ماند.
  */
 export const expandTokens = (text, values) =>
   String(text ?? "").replace(TOKEN, (match, key) =>
@@ -189,6 +195,20 @@ export const unknownTokens = (text, allowed = PROMPT_TOKEN_KEYS) => {
   return [...new Set(tokensIn(text).filter((key) => !known.has(key)))];
 };
 
+/** کلیدِ فیلد باید به‌صورتِ کلمه‌ی کامل در سربرگش باشد؛ «rename» جای «name» را نمی‌گیرد. */
+export const headingHasFieldKey = (heading, field) => {
+  let at = String(heading ?? "").indexOf(field);
+  const text = String(heading ?? "");
+  const wordChar = /[A-Za-z0-9_]/;
+  while (at >= 0) {
+    const before = at > 0 && wordChar.test(text[at - 1]);
+    const after = at + field.length < text.length && wordChar.test(text[at + field.length]);
+    if (!before && !after) return true;
+    at = text.indexOf(field, at + 1);
+  }
+  return false;
+};
+
 /* ─── اعتبارسنجی ─────────────────────────────────────────────────────────── */
 
 export const PROMPT_LIMITS = {
@@ -199,23 +219,17 @@ export const PROMPT_LIMITS = {
   rulesPerGroup: 500,
   titleLength: 120,
   textLength: 20000,
-  blankLines: 10,
 };
 const OBJECT_ID = /^[a-f\d]{24}$/i;
 const SECTION_KEY = /^[\w-]{1,60}$/;
-const SECTION_TEXTS = ["top", "title", "bottom", "description"];
 const idList = (value) => (Array.isArray(value) ? value.map((id) => String(id?._id ?? id)) : null);
-const lineCount = (value, fallback) => {
-  const n = value === undefined ? fallback : Number(value);
-  return Number.isInteger(n) && n >= 0 && n <= PROMPT_LIMITS.blankLines ? n : null;
-};
 
 /**
  * تنظیمات را اعتبارسنجی و پاک‌سازی می‌کند — همان تابع در سرور و پنل. هر بخش اختیاری است
  * (undefined ≠ [])؛ بخشِ نفرستاده در خروجی هم undefined می‌ماند تا روت آن را دست نزند.
  * متن‌ها دقیقاً همان‌طور که نوشته شده‌اند نگه داشته می‌شوند (بدونِ trim).
  *
- * @param {object} input { document?, fieldRules?: [{field, rules}], templates?: {key: text}, groups? }
+ * @param {object} input { document?, fieldRules?: [{field, heading, rules}], templates?: {key: text}, groups? }
  * @param {object} opts
  * @param {Set<string>} opts.knownCategoryIds  دسته‌هایی که مجازند: موجود در دیتابیس ∪ همان‌هایی که قبلاً
  *   ذخیره شده بودند (دسته‌ی حذف‌شده بی‌صدا می‌ماند و قاعده‌اش غیرفعال است، ولی دسته‌ی ناموجودِ تازه رد می‌شود)
@@ -235,14 +249,16 @@ export function validatePromptConfig(input, { knownCategoryIds = null } = {}) {
       fail(path, `متن قاعده بیش از ${PROMPT_LIMITS.ruleLength} نویسه است`);
       return null;
     }
-    if (tokensIn(text).includes(SOURCE_TEXT_TOKEN) && !path.startsWith("document.")) {
-      fail(path, `{{${SOURCE_TEXT_TOKEN}}} فقط در بخش‌های پرامپت پایه مجاز است`);
-      return null;
-    }
     return text;
   };
 
-  /** بخشِ پرامپت (پایه یا گروه) بدونِ قواعدش. */
+  const checkHeading = (value, path) => {
+    if (typeof value !== "string") { fail(path, "متن سربرگ نامعتبر است"); return ""; }
+    if (value.length > PROMPT_LIMITS.textLength) fail(path, "متن سربرگ خیلی بلند است");
+    return value;
+  };
+
+  /** نام و سربرگِ یک بخش (پایه یا گروه). نام فقط برچسبِ پنل است و چاپ نمی‌شود. */
   const cleanSectionHead = (section, path, seenKeys, seenNames) => {
     const key = section?.key;
     if (typeof key !== "string" || !SECTION_KEY.test(key)) fail(path, "شناسه‌ی بخش نامعتبر است");
@@ -255,17 +271,7 @@ export function validatePromptConfig(input, { knownCategoryIds = null } = {}) {
     else if (seenNames.has(name)) fail(`${path}.name`, "بخشی با همین نام وجود دارد");
     else seenNames.add(name);
 
-    const head = { key, name };
-    for (const part of SECTION_TEXTS) {
-      const value = section?.[part] ?? "";
-      if (typeof value !== "string") { fail(`${path}.${part}`, "متن نامعتبر است"); continue; }
-      if (value.length > PROMPT_LIMITS.textLength) fail(`${path}.${part}`, "متن خیلی بلند است");
-      head[part] = value;
-    }
-    const blankLines = lineCount(section?.blankLines, 1);
-    if (blankLines === null) fail(`${path}.blankLines`, `فاصله باید عددی بین ۰ تا ${PROMPT_LIMITS.blankLines} باشد`);
-    head.blankLines = blankLines;
-    return head;
+    return { key, name, heading: checkHeading(section?.heading ?? "", `${path}.heading`) };
   };
 
   // ── بخش‌های پرامپت پایه
@@ -276,44 +282,38 @@ export function validatePromptConfig(input, { knownCategoryIds = null } = {}) {
     if (raw.length > PROMPT_LIMITS.sections) fail("document", `حداکثر ${PROMPT_LIMITS.sections} بخش`);
     const seenKeys = new Set();
     const seenNames = new Set();
-    const kinds = { fields: 0, groups: 0 };
-    let sourceSlots = 0;
+    let fieldSections = 0;
     for (const [i, section] of raw.entries()) {
       const path = `document.${section?.key ?? i}`;
       const kind = section?.kind;
-      if (!["text", "fields", "groups"].includes(kind)) { fail(path, "نوع بخش نامعتبر است"); continue; }
-      if (kind !== "text") kinds[kind] += 1;
+      if (!["text", "fields", "data"].includes(kind)) { fail(path, "نوع بخش نامعتبر است"); continue; }
+      if (kind === "fields") fieldSections += 1;
+      // کلیدِ بخش داده‌ای همان منبعِ داده است؛ بخشِ معمولی نمی‌تواند جایش را بگیرد
+      if (kind === "data" && !DATA_SECTIONS.has(section.key)) { fail(path, "بخش داده‌ای ناشناخته"); continue; }
+      if (kind !== "data" && DATA_SECTIONS.has(section?.key)) { fail(path, "این شناسه مخصوص بخش داده‌ای است"); continue; }
       const clean = { ...cleanSectionHead(section, path, seenKeys, seenNames), kind, rules: [] };
-      if (kind === "fields") {
-        clean.fieldBlankLines = lineCount(section.fieldBlankLines, 1);
-        if (clean.fieldBlankLines === null) fail(`${path}.fieldBlankLines`, `فاصله باید عددی بین ۰ تا ${PROMPT_LIMITS.blankLines} باشد`);
-      }
       if (kind === "text") {
         const rules = Array.isArray(section.rules) ? section.rules : [];
         if (rules.length > PROMPT_LIMITS.rulesPerSection) fail(path, `حداکثر ${PROMPT_LIMITS.rulesPerSection} قاعده`);
         const seen = new Set();
-        rules.forEach((raw_, r) => {
-          const text = checkRuleText(raw_, `${path}.rules.${r}`);
+        rules.forEach((rawRule, r) => {
+          const text = checkRuleText(rawRule, `${path}.rules.${r}`);
           if (text === null) return;
           if (seen.has(normalizeRule(text))) return fail(`${path}.rules.${r}`, "این قاعده در همین بخش تکراری است");
           seen.add(normalizeRule(text));
           clean.rules.push(text);
         });
       }
-      sourceSlots += [...SECTION_TEXTS.map((part) => clean[part]), ...clean.rules]
-        .flatMap(tokensIn).filter((t) => t === SOURCE_TEXT_TOKEN).length;
       document.push(clean);
     }
     if (Array.isArray(input.document)) {
-      if (kinds.fields !== 1) fail("document", "بخش «قواعد فیلدها» باید دقیقاً یک بار وجود داشته باشد");
-      if (kinds.groups !== 1) fail("document", "جای «قواعد عمومی گروه‌ها» باید دقیقاً یک بار وجود داشته باشد");
-      if (sourceSlots !== 1) {
-        fail("document", `{{${SOURCE_TEXT_TOKEN}}} باید دقیقاً یک بار در بخش‌های پرامپت بیاید؛ بدونِ آن هوش مصنوعی متن محصول را نمی‌بیند (الان: ${sourceSlots} بار)`);
-      }
+      if (fieldSections !== 1) fail("document", "بخش «قواعد فیلدها» باید دقیقاً یک بار وجود داشته باشد");
+      const missing = DATA_SECTION_KEYS.filter((key) => !raw.some((s) => s?.kind === "data" && s.key === key));
+      if (missing.length) fail("document", `بخش‌های داده‌ای قابل حذف نیستند: ${missing.join("، ")}`);
     }
   }
 
-  // ── قواعدِ پایه‌ی فیلدها
+  // ── فیلدها: سربرگ و قواعدِ پایه
   const fieldRules = input?.fieldRules === undefined ? undefined : [];
   if (fieldRules) {
     if (!Array.isArray(input.fieldRules)) fail("fieldRules", "قواعد فیلدها باید آرایه باشند");
@@ -323,6 +323,9 @@ export function validatePromptConfig(input, { knownCategoryIds = null } = {}) {
       if (!FIXED_FIELD_KEYS.has(field)) { fail(`fieldRules.${i}`, "فیلد ناشناخته"); continue; }
       if (seenFields.has(field)) { fail(`fieldRules.${field}`, "فیلد تکراری"); continue; }
       seenFields.add(field);
+      const heading = checkHeading(entry.heading, `fieldRules.${field}.heading`);
+      // شناسه‌ی فیلد همان نامش در مدلِ محصول است و مدل با همین نام خروجی می‌دهد
+      if (!headingHasFieldKey(heading, field)) fail(`fieldRules.${field}.heading`, `شناسه‌ی «${field}» باید در سربرگ بماند`);
       if (!Array.isArray(entry.rules)) { fail(`fieldRules.${field}`, "قواعد باید آرایه باشند"); continue; }
       if (entry.rules.length > PROMPT_LIMITS.rulesPerSection) fail(`fieldRules.${field}`, `حداکثر ${PROMPT_LIMITS.rulesPerSection} قاعده`);
       const seen = new Set();
@@ -334,11 +337,11 @@ export function validatePromptConfig(input, { knownCategoryIds = null } = {}) {
         seen.add(normalizeRule(text));
         rules.push(text);
       });
-      fieldRules.push({ field, rules });
+      fieldRules.push({ field, heading, rules });
     }
   }
 
-  // ── قالب‌ها: متنِ خالی مجاز است (یعنی آن قطعه چیزی چاپ نکند)
+  // ── قالب‌ها: متنِ خالی مجاز است (یعنی آن قطعه چیزی چاپ نکند) مگر چیزی الزامی داشته باشد
   let templates;
   if (input?.templates !== undefined) {
     templates = {};
@@ -346,10 +349,13 @@ export function validatePromptConfig(input, { knownCategoryIds = null } = {}) {
       fail("templates", "قالب‌ها نامعتبرند");
     } else {
       for (const [key, value] of Object.entries(input.templates)) {
-        if (!TEMPLATE_KEYS.has(key)) { fail(`templates.${key}`, "قالب ناشناخته"); continue; }
+        const def = TEMPLATE_BY_KEY.get(key);
+        if (!def) { fail(`templates.${key}`, "قالب ناشناخته"); continue; }
         if (typeof value !== "string") { fail(`templates.${key}`, "متن نامعتبر است"); continue; }
         if (value.length > PROMPT_LIMITS.textLength) fail(`templates.${key}`, "متن خیلی بلند است");
-        if (tokensIn(value).includes(SOURCE_TEXT_TOKEN)) fail(`templates.${key}`, `{{${SOURCE_TEXT_TOKEN}}} فقط در بخش‌های پرامپت پایه مجاز است`);
+        const present = tokensIn(value);
+        const missing = (def.required || []).filter((token) => !present.includes(token));
+        if (missing.length) fail(`templates.${key}`, `این قالب باید ${missing.map((t) => `{{${t}}}`).join(" و ")} را داشته باشد`);
         templates[key] = value;
       }
     }

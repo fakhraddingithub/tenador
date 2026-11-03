@@ -15,19 +15,8 @@ const serializeSectionRule = (rule) => ({ text: rule.text, categories: (rule.cat
 const serialize = (stored) => {
   const config = resolvePromptConfig(stored);
   return {
-    document: config.document.map((s) => ({
-      key: s.key,
-      kind: s.kind,
-      name: s.name,
-      top: s.top ?? "",
-      title: s.title ?? "",
-      bottom: s.bottom ?? "",
-      description: s.description ?? "",
-      blankLines: s.blankLines ?? 1,
-      rules: [...(s.rules || [])],
-      ...(s.kind === "fields" ? { fieldBlankLines: s.fieldBlankLines ?? 1 } : {}),
-    })),
-    fieldRules: config.fieldRules,
+    document: config.document.map((s) => ({ key: s.key, kind: s.kind, name: s.name, heading: s.heading ?? "", rules: [...(s.rules || [])] })),
+    fieldRules: config.fieldRules.map(({ field, heading, rules }) => ({ field, heading, rules: [...rules] })),
     templates: config.templates,
     groups: config.groups.map((g) => ({
       _id: String(g._id),
@@ -37,11 +26,7 @@ const serialize = (stored) => {
       sections: g.sections.map((s) => ({
         key: s.key,
         name: s.name,
-        top: s.top ?? "",
-        title: s.title ?? "",
-        bottom: s.bottom ?? "",
-        description: s.description ?? "",
-        blankLines: s.blankLines ?? 1,
+        heading: s.heading ?? "",
         rules: (s.rules || []).map(serializeSectionRule),
       })),
     })),
@@ -49,31 +34,18 @@ const serialize = (stored) => {
   };
 };
 
-/** دسته‌ها برای انتخابگر، به‌همراهِ فیلدهای پویای هر دسته که گروه‌ها برایشان قاعده می‌نویسند. */
+/** دسته‌ها برای انتخابگر — فقط همان چیزی که برچسب لازم دارد. */
 async function categoryOptions() {
-  const categories = await Category.find(
-    {},
-    { title: 1, name: 1, sport: 1, additionalSports: 1, attributes: 1, variantAttributes: 1, technicalStats: 1, customTab: 1 },
-  )
+  const categories = await Category.find({}, { title: 1, name: 1, sport: 1, additionalSports: 1 })
     .populate("sport", "title name")
     .sort({ sport: 1, order: 1, createdAt: 1 })
     .lean();
-  const named = (list) => (list || []).map(({ name, label }) => ({ name, label: label || name }));
   return categories.map((c) => ({
     _id: String(c._id),
     title: c.title,
     name: c.name,
     sport: c.sport ? { title: c.sport.title, name: c.sport.name } : null,
     additionalSports: (c.additionalSports || []).map(String),
-    fields: {
-      attribute: named(c.attributes),
-      variant: named(c.variantAttributes),
-      stat: named(c.technicalStats),
-      // آیتم‌ها فقط وقتی معنا دارند که تب فعال باشد؛ همان شرطِ سازنده‌ی پرامپت
-      tabItem: c.customTab?.enabled
-        ? (c.customTab.items || []).filter((i) => i?.title).map((i) => ({ name: i.title, label: i.title }))
-        : [],
-    },
   }));
 }
 
@@ -144,8 +116,10 @@ export async function PUT(req) {
       return Response.json({ error: "چیزی برای ذخیره فرستاده نشده است" }, { status: 400 });
     }
 
-    // از اولین ذخیره به بعد کلِ پرامپت در سند است و seed دیگر خوانده نمی‌شود
-    const resolved = resolvePromptConfig(doc ? doc.toObject() : null);
+    // از اولین ذخیره به بعد کلِ پرامپت در سند است و seed دیگر خوانده نمی‌شود. نسخه‌ی lean چون
+    // سندِ قدیمی کلیدهایی دارد که اسکیما دیگر نمی‌شناسد و toObject آن‌ها را نمی‌دهد.
+    const raw = doc ? await ProductPromptConfig.findById(doc._id).lean() : null;
+    const resolved = resolvePromptConfig(raw);
     const target = doc || new ProductPromptConfig({ key: KEY });
     target.document = value.document ?? resolved.document;
     target.fieldRules = value.fieldRules ?? resolved.fieldRules;

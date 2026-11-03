@@ -8,8 +8,8 @@ import { composeProductPrompt } from "@/lib/buildProductTemplate";
 
 // GET /api/admin/product-prompts/preview?categoryId=…
 // → { category, updatedAt, model } — همان مدلی که پرامپتِ ساختِ محصول از آن رندر می‌شود
-// (composeProductPrompt)، با منبعِ دقیقِ هر قاعده. فهرست‌های داده (برند، سری، ورزشکار…)
-// و متنِ خامِ محصول جزوِ مدل نیستند.
+// (composeProductPrompt)، با منبعِ دقیقِ هر قاعده. داده‌ی بخش‌های داده‌ای (برند، سری، متنِ خام…)
+// جزوِ پاسخ نیست.
 export async function GET(req) {
   const { denied } = await requireAdminPermission("productPrompts.view");
   if (denied) return denied;
@@ -33,8 +33,8 @@ export async function GET(req) {
       );
     }
 
-    // values فقط برای رندرِ پرامپت است؛ پیش‌نمایش متنِ آماده‌ی هر قاعده را در display دارد
-    const { values: _values, ...model } = composeProductPrompt({ category, promptConfig: config });
+    // بدنه‌ی بخش‌های داده‌ای فقط برای رندرِ پرامپت است؛ پیش‌نمایش سربرگ و قواعد را نشان می‌دهد
+    const { values: _values, bodies: _bodies, ...model } = composeProductPrompt({ category, promptConfig: config });
     return Response.json({
       category: {
         _id: String(category._id),

@@ -3,12 +3,14 @@
 /**
  * صفحه‌ی یک «گروه پرامپت دسته» (groupId = "new" برای ساخت).
  *
- *   قواعد عمومی گروه : بخش‌های خودِ گروه (افزودن/حذف/ویرایش)، مستقل از گروه‌های دیگر؛ برای دسته‌های
- *                      همین گروه جایی می‌آیند که در پرامپت پایه تعیین شده است.
- *   قواعد فیلدها     : هر فیلدِ محصول یک تب دارد: فیلدهای ثابت + فیلدهای پویای دسته‌های این گروه
- *                      (ویژگی‌ها، شاخص‌ها، آیتم‌های تب). خودِ فیلدها مالِ مدیریتِ محصول/دسته‌اند و از
- *                      اینجا کم و زیاد نمی‌شوند؛ فقط قواعدشان. قاعده‌ای که فیلدش از همه‌ی دسته‌های گروه
- *                      حذف شده چیزی را خراب نمی‌کند و در تبِ «فیلدهای ناموجود» دیده می‌شود.
+ *   بخش‌های پرامپت   : قاعده‌ی گروه روی هر بخشِ قواعدِ پرامپت پایه (کلیدِ section:<key> در rules)؛ بعد از قواعدِ
+ *                      پایه‌ی همان بخش می‌آید و پرامپت پایه و گروه‌های دیگر را تغییر نمی‌دهد.
+ *   بخش‌های خودِ گروه : بخش‌هایی با سربرگِ خودشان، مستقل از گروه‌های دیگر؛ درست بالای قواعدِ فیلدها می‌آیند.
+ *   فیلدهای محصول    : فیلدهای ثابت (GROUP_PROMPT_FIELDS). خودِ فیلدها از اینجا کم و زیاد نمی‌شوند.
+ *   فیلدهای دیگر     : قاعده‌هایی که قبلاً برای فیلدی ذخیره شده‌اند که گروه دیگر پیشنهاد نمی‌دهد: همچنان اعمال
+ *                      می‌شوند (اگر آن فیلد یا بخش هنوز باشد) و فقط ویرایش یا حذف می‌شوند.
+ *
+ * متنِ گروه placeholder ندارد و همان‌طور که نوشته شده در پرامپت می‌آید.
  *
  * ذخیره فقط `groups` را می‌فرستد؛ گروه‌های دیگر همان‌طور که از سرور آمده‌اند فرستاده می‌شوند و
  * updatedAt جلوی بازنویسی را می‌گیرد.
@@ -25,14 +27,15 @@ import Button from '@/components/admin/Button';
 import AdminLoader from '@/components/admin/AdminLoader';
 import { useAdminPermissions } from '@/components/admin/AdminPermissionProvider';
 import {
-  AddRuleButton, CategoryPicker, PROMPTS_HOME, PromptTabs, RuleCard, SectionHeadFields, SortableRuleList, TokenHelp, UnknownTokensNote,
+  AddRuleButton, CategoryPicker, HeadingAccordion, PROMPTS_HOME, PromptTabs, RuleCard, SortableRuleList,
   categoryName, errorMap, newSectionKey, storedGroupPayload, swalTheme, uid, usePromptConfig, useUnsavedGuard,
 } from '@/components/admin/productPrompts/promptSettingsUi';
 import {
-  DYNAMIC_FIELD_KINDS, PRODUCT_PROMPT_FIELDS, dynamicFieldKey, fieldTitle, moveWithinSlots, parseFieldKey, unknownTokens, validatePromptConfig,
+  GROUP_PROMPT_FIELDS, fieldTitle, moveWithinSlots, sectionFieldKey, validatePromptConfig,
 } from '@/lib/productPromptConfig';
 
-const ORPHAN_TAB = '__orphans';
+const OTHER_TAB = '__other';
+const OWN_PREFIX = 'own:';
 
 const localRule = (r) => ({ uid: uid(), text: r.text, categories: [...(r.categories || [])] });
 
@@ -84,9 +87,9 @@ function GroupEditor({ ctx, stored, canEdit }) {
 
   const [group, setGroup] = useState(() => toLocal(stored));
   const [savedJson, setSavedJson] = useState(() => JSON.stringify(toPayload(toLocal(stored), groupIdOf)));
-  // پیوندِ مستقیم به یک تب (مثلاً از پیش‌نمایش): …/groups/<id>#name یا #section:<key>. این
-  // ویرایشگر فقط پس از بارگذاریِ تنظیمات و فقط در مرورگر mount می‌شود
-  const [active, setActive] = useState(() => decodeURIComponent(window.location.hash.slice(1)) || PRODUCT_PROMPT_FIELDS[0].key);
+  // پیوندِ مستقیم به یک تب (مثلاً از پیش‌نمایش): …/groups/<id>#name، #section:<key> یا #own:<key>.
+  // این ویرایشگر فقط پس از بارگذاریِ تنظیمات و فقط در مرورگر mount می‌شود
+  const [active, setActive] = useState(() => decodeURIComponent(window.location.hash.slice(1)));
   const [editCategories, setEditCategories] = useState(!stored?.categories?.length);
   const [focusUid, setFocusUid] = useState(null);
   const [serverErrors, setServerErrors] = useState({});
@@ -128,8 +131,8 @@ function GroupEditor({ ctx, stored, canEdit }) {
   const patchSection = (key, patch) => update({ sections: group.sections.map((s) => (s.key === key ? { ...s, ...patch } : s)) });
   const addSection = () => {
     const key = newSectionKey();
-    update({ sections: [...group.sections, { key, name: 'قواعد عمومی', top: '', title: '', bottom: '', description: '', blankLines: 1, rules: [] }] });
-    setActive(`section:${key}`);
+    update({ sections: [...group.sections, { key, name: 'قواعد عمومی', heading: '', rules: [] }] });
+    setActive(`${OWN_PREFIX}${key}`);
   };
   const removeSection = async (section) => {
     const { isConfirmed } = await Swal.fire({
@@ -143,28 +146,21 @@ function GroupEditor({ ctx, stored, canEdit }) {
     });
     if (!isConfirmed) return;
     update({ sections: group.sections.filter((s) => s.key !== section.key) });
-    setActive(PRODUCT_PROMPT_FIELDS[0].key);
+    setActive('');
   };
 
-  // ── فیلدهای پویا: اجتماعِ فیلدهای دسته‌های این گروه
-  const inGroup = new Set(group.categories);
-  const dynamicRows = DYNAMIC_FIELD_KINDS.map(({ kind, title }) => {
-    const byName = new Map();
-    for (const id of group.categories) {
-      for (const f of categoryById.get(id)?.fields?.[kind] || []) {
-        if (!byName.has(f.name)) byName.set(f.name, { key: dynamicFieldKey(kind, f.name), title: f.label || f.name });
-      }
-    }
-    return { kind, label: title, fields: [...byName.values()] };
-  });
-  const offeredFields = new Set([...PRODUCT_PROMPT_FIELDS.map((f) => f.key), ...dynamicRows.flatMap((row) => row.fields.map((f) => f.key))]);
+  // ── تب‌ها: بخش‌های قواعدِ پرامپت پایه و فیلدهای ثابت
+  const baseSections = config.document.filter((s) => s.kind === 'text');
+  const offeredFields = new Set([...baseSections.map((s) => sectionFieldKey(s.key)), ...GROUP_PROMPT_FIELDS.map((f) => f.key)]);
+  const defaultField = baseSections[0] ? sectionFieldKey(baseSections[0].key) : GROUP_PROMPT_FIELDS[0].key;
 
   const indexed = group.rules.map((r, i) => ({ r, i }));
-  const orphanRules = indexed.filter(({ r }) => !offeredFields.has(r.field));
-  const activeSection = active.startsWith('section:') ? group.sections.find((s) => `section:${s.key}` === active) : null;
-  // هشِ کهنه (فیلدی که دیگر در این گروه نیست) به اولین فیلد برمی‌گردد
-  const activeField = active === ORPHAN_TAB || offeredFields.has(active) ? active : PRODUCT_PROMPT_FIELDS[0].key;
-  const tabRules = activeField === ORPHAN_TAB ? orphanRules : indexed.filter(({ r }) => r.field === activeField);
+  const otherRules = indexed.filter(({ r }) => !offeredFields.has(r.field));
+  const activeSection = active.startsWith(OWN_PREFIX) ? group.sections.find((s) => `${OWN_PREFIX}${s.key}` === active) : null;
+  // هشِ کهنه (فیلد یا بخشی که دیگر نیست) به اولین تب برمی‌گردد
+  const activeField = active === OTHER_TAB || offeredFields.has(active) ? active : defaultField;
+  const tabRules = activeField === OTHER_TAB ? otherRules : indexed.filter(({ r }) => r.field === activeField);
+  const titleOf = (field) => fieldTitle(field, config.document);
   const deletedCount = group.categories.filter((id) => !categoryById.has(id)).length;
   const name = group.title.trim() || (isNew ? 'گروهِ تازه' : group.categories.map((id) => categoryName(categoryById, id)).join('، '));
 
@@ -203,39 +199,32 @@ function GroupEditor({ ctx, stored, canEdit }) {
   };
 
   const ruleError = (i) => errors[`rules.${i}`];
-  const fieldTab = (f) => ({
-    key: f.key,
-    title: f.title,
-    count: indexed.filter(({ r }) => r.field === f.key).length,
-    error: indexed.some(({ r, i }) => r.field === f.key && ruleError(i)),
+  const fieldTab = (key, title) => ({
+    key,
+    title,
+    count: indexed.filter(({ r }) => r.field === key).length,
+    error: indexed.some(({ r, i }) => r.field === key && ruleError(i)),
   });
   const rows = [
+    { label: 'بخش‌های پرامپت', tabs: baseSections.map((s) => fieldTab(sectionFieldKey(s.key), s.name)) },
     {
-      label: 'قواعد عمومی گروه',
+      label: 'بخش‌های خودِ گروه',
       tabs: group.sections.map((s, n) => ({
-        key: `section:${s.key}`,
+        key: `${OWN_PREFIX}${s.key}`,
         title: s.name || 'بی‌نام',
         count: s.rules.length,
         error: Object.keys(errors).some((p) => p.startsWith(`sections.${n}.`) || p === `sections.${n}`),
       })),
     },
-    { label: 'فیلدهای ثابت', tabs: PRODUCT_PROMPT_FIELDS.map(fieldTab) },
-    ...dynamicRows.filter((row) => row.fields.length).map((row) => ({ label: row.label, tabs: row.fields.map(fieldTab) })),
+    { label: 'فیلدهای محصول', tabs: GROUP_PROMPT_FIELDS.map((f) => fieldTab(f.key, f.title)) },
   ];
-  if (orphanRules.length) {
+  if (otherRules.length) {
     rows.push({
-      label: 'ناموجود',
-      tabs: [{ key: ORPHAN_TAB, title: 'فیلدهای ناموجود', count: orphanRules.length, error: orphanRules.some(({ i }) => ruleError(i)) }],
+      label: 'فیلدهای دیگر',
+      tabs: [{ key: OTHER_TAB, title: 'فیلدهای دیگر (قدیمی)', count: otherRules.length, error: otherRules.some(({ i }) => ruleError(i)) }],
     });
   }
 
-  const activeParsed = parseFieldKey(activeField);
-  const dynamicActive = Boolean(activeParsed) && activeParsed.kind !== 'fixed';
-  const categoryHasField = (id, field) => {
-    const parsed = parseFieldKey(field);
-    if (!parsed || parsed.kind === 'fixed') return true;
-    return (categoryById.get(id)?.fields?.[parsed.kind] || []).some((f) => f.name === parsed.name);
-  };
   const activeTabKey = activeSection ? active : activeField;
 
   return (
@@ -302,11 +291,10 @@ function GroupEditor({ ctx, stored, canEdit }) {
         <p className="a-card p-6 text-center text-sm font-bold text-gray-400">ابتدا دسته‌های گروه را انتخاب کنید تا فیلدهای محصول نمایش داده شوند.</p>
       ) : (
         <>
-          <TokenHelp />
           <PromptTabs label="قواعد گروه" active={activeTabKey} onChange={setActive} rows={rows} />
           {canEdit && (
             <button type="button" onClick={addSection} className="inline-flex items-center gap-1.5 text-xs font-bold text-[var(--color-primary)]">
-              <FiPlus size={14} /> افزودن بخش قواعد عمومی
+              <FiPlus size={14} /> افزودن بخش به این گروه
             </button>
           )}
 
@@ -327,16 +315,15 @@ function GroupEditor({ ctx, stored, canEdit }) {
           ) : (
             <section id="prompt-tabpanel" role="tabpanel" aria-labelledby={`tab-${activeField}`} className="a-card p-5 space-y-4">
               <div>
-                <h2 className="text-base font-bold text-gray-900">{activeField === ORPHAN_TAB ? 'فیلدهای ناموجود' : fieldTitle(activeField)}</h2>
+                <h2 className="text-base font-bold text-gray-900">{activeField === OTHER_TAB ? 'فیلدهای دیگر' : titleOf(activeField)}</h2>
                 <p className="text-xs font-bold text-gray-500 mt-1 leading-6">
-                  {activeField === ORPHAN_TAB
-                    ? 'فیلدِ این قاعده‌ها در هیچ‌کدام از دسته‌های گروه نیست (حذف یا تغییر نام داده شده) و روی هیچ محصولی اثر ندارند. می‌توانید ویرایش یا حذفشان کنید.'
-                    : dynamicActive
-                      ? 'این فیلد در تعریفِ دسته‌هاست و قاعده‌اش فقط روی دسته‌هایی اعمال می‌شود که این فیلد را دارند. قاعده‌ی بدونِ انتخابِ دسته روی همه‌ی آن‌ها می‌آید.'
+                  {activeField === OTHER_TAB
+                    ? 'این قاعده‌ها قبلاً برای فیلدهایی ذخیره شده‌اند که گروه‌ها دیگر پیشنهاد نمی‌دهند. تا حذفشان نکنید همچنان در پرامپت می‌آیند، مگر آن فیلد یا بخش دیگر وجود نداشته باشد. می‌توانید ویرایش یا حذفشان کنید؛ قاعده‌ی تازه برای این فیلدها ساخته نمی‌شود.'
+                    : activeField.startsWith('section:')
+                      ? 'این قاعده‌ها فقط برای دسته‌های همین گروه، بعد از قواعدِ پایه‌ی این بخش می‌آیند و پرامپت پایه را تغییر نمی‌دهند. قاعده‌ی بدونِ انتخابِ دسته روی همه‌ی دسته‌های گروه اعمال می‌شود.'
                       : 'قاعده‌ی بدونِ انتخابِ دسته روی همه‌ی دسته‌های این گروه اعمال می‌شود؛ با انتخابِ دسته فقط روی همان‌ها.'}
                 </p>
               </div>
-              <UnknownTokensNote tokens={unknownTokens(tabRules.map(({ r }) => r.text).join('\n'))} />
 
               <div className="space-y-3">
                 {/* جابه‌جایی فقط میانِ قواعدِ همین تب؛ قواعدِ فیلدهای دیگر سرِ جایشان می‌مانند */}
@@ -356,13 +343,13 @@ function GroupEditor({ ctx, stored, canEdit }) {
                       onChange={(text) => patchRule(r.uid, { text })}
                       onRemove={() => update({ rules: group.rules.filter((x) => x.uid !== r.uid) })}
                     >
-                      {activeField === ORPHAN_TAB && (
-                        <span className="inline-block mt-2 px-2 py-0.5 rounded bg-gray-100 text-[11px] font-bold text-gray-600">{fieldTitle(r.field)}</span>
+                      {activeField === OTHER_TAB && (
+                        <span className="inline-block mt-2 px-2 py-0.5 rounded bg-gray-100 text-[11px] font-bold text-gray-600">{titleOf(r.field)}</span>
                       )}
                       <RuleTargets
                         rule={r}
                         onChange={(next) => patchRule(r.uid, { categories: next })}
-                        chooseFrom={group.categories.filter((id) => categoryHasField(id, r.field) || r.categories.includes(id))}
+                        chooseFrom={group.categories}
                         inGroup={inGroup}
                         categoryById={categoryById}
                         canEdit={canEdit}
@@ -371,7 +358,7 @@ function GroupEditor({ ctx, stored, canEdit }) {
                   )}
                 />
                 {!tabRules.length && <p className="text-center py-6 text-sm font-bold text-gray-400">برای این فیلد هنوز قاعده‌ای در این گروه نیست.</p>}
-                {canEdit && activeField !== ORPHAN_TAB && <AddRuleButton onClick={() => addRule(activeField)} label={`افزودن قاعده برای ${fieldTitle(activeField)}`} />}
+                {canEdit && activeField !== OTHER_TAB && <AddRuleButton onClick={() => addRule(activeField)} label={`افزودن قاعده برای ${titleOf(activeField)}`} />}
               </div>
             </section>
           )}
@@ -425,25 +412,28 @@ function RuleTargets({ rule, onChange, chooseFrom, inGroup, categoryById, canEdi
 function GroupSectionPanel({ section, sectionIndex, group, errors, focusUid, setFocusUid, patchSection, removeSection, inGroup, categoryById, canEdit }) {
   const at = `sections.${sectionIndex}`;
   const { key, rules } = section;
-  const headErrors = Object.fromEntries(
-    ['name', 'title', 'top', 'bottom', 'description', 'blankLines'].map((part) => [part, errors[`${at}.${part}`]]),
-  );
   const setRules = (next) => patchSection(key, { rules: next });
-  const unknown = unknownTokens([section.top, section.title, section.bottom, section.description, ...rules.map((r) => r.text)].join('\n'));
 
   return (
-    <section id="prompt-tabpanel" role="tabpanel" aria-labelledby={`tab-section:${key}`} className="a-card p-5 space-y-4">
+    <section id="prompt-tabpanel" role="tabpanel" aria-labelledby={`tab-${OWN_PREFIX}${key}`} className="a-card p-5 space-y-4">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <h2 className="text-base font-bold text-gray-900">{section.name || 'بی‌نام'}</h2>
           <p className="text-xs font-bold text-gray-500 mt-1 leading-6">
-            مخصوص همین گروه. برای دسته‌های این گروه در جای «قواعد عمومی گروه‌ها» (در ترتیب بخش‌های پرامپت پایه) می‌آید.
+            مخصوص همین گروه. برای دسته‌های این گروه درست بالای قواعدِ فیلدها می‌آید.
           </p>
         </div>
         {canEdit && <Button size="sm" variant="secondary" icon={<FiTrash2 size={13} />} onClick={() => removeSection(section)}>حذف بخش</Button>}
       </div>
-      <SectionHeadFields section={section} readOnly={!canEdit} errors={headErrors} onChange={(patch) => patchSection(key, patch)} />
-      <UnknownTokensNote tokens={unknown} />
+      <HeadingAccordion
+        heading={section.heading}
+        onHeading={(heading) => patchSection(key, { heading })}
+        name={section.name}
+        onName={(name) => patchSection(key, { name })}
+        readOnly={!canEdit}
+        headingError={errors[`${at}.heading`]}
+        nameError={errors[`${at}.name`]}
+      />
       {errors[at] && <p className="text-xs font-bold text-red-500">! {errors[at]}</p>}
       <div className="space-y-3">
         <SortableRuleList

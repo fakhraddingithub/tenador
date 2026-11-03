@@ -1,10 +1,10 @@
 /**
  * buildProductTemplate.js
  *
- * The infrastructure that assembles the AI product prompt. It contains no prompt text:
- * every title, separator, description, rule and data-line format comes from the prompt
- * configuration (productPromptResolve.js). The code only orders what the admin wrote, picks
- * the rules that apply to a category and fills in {{placeholders}} with data.
+ * The infrastructure that assembles the AI product prompt. It contains no prompt text: every
+ * heading, rule and data-line format comes from the prompt configuration
+ * (productPromptResolve.js). The code orders what the admin wrote, picks the rules that apply to
+ * a category and inserts the data sections (brands, source text, attributes…) itself.
  *
  * composeProductPrompt() tags every rule with its exact source. The prompt string and the
  * admin preview page render that same model, so the preview cannot drift from what the AI
@@ -20,8 +20,8 @@ import {
 } from "../../utils/targetAudience.js";
 import {
   PRODUCT_PROMPT_FIELDS,
-  SOURCE_TEXT_TOKEN,
   dynamicFieldKey,
+  sectionFieldKey,
   expandTokens,
   normalizeRule,
   resolveFieldRules,
@@ -48,9 +48,10 @@ function categoryPromptValue(prompts, field) {
  *   { kind: "attribute" | "variantAttribute", name, label }   that attribute's prompt
  *   { kind: "customTab", tabName }                        category.customTab.prompt
  *   { kind: "customTabItem", itemId, title }              category.customTab.items[].prompt
+ *   { kind: "system", what }                              inserted by the app, wording in a template
  *
- * A rule carries `text` (as stored, tokens unexpanded), `display` (tokens expanded, data
- * lists left as tokens) and `source.value`, the stored text an edit must match.
+ * A rule carries `text` (as stored, placeholders unexpanded), `display` (expanded) and
+ * `source.value`, the stored text an edit must match.
  *
  * @param {Object} params
  * @param {Object}  params.category      - Category with populated sport (_id, name, title)
@@ -67,21 +68,27 @@ export function composeProductPrompt({ category, promptConfig = null }) {
   const categoryId = category._id;
   const template = (key, values = {}) => expandTokens(config.templates[key] ?? "", values);
 
-  const scalars = {
+  const customTab = category.customTab || {};
+  const tabName = customTab.name || "";
+  const values = {
     category_title: category.title,
     category_id: String(categoryId),
     sport_name: category.sport.name,
     sport_title: category.sport.title || category.sport.name,
     sport_id: String(category.sport._id),
+    custom_tab_name: tabName,
   };
+  const decorate = (rule) => ({ ...rule, display: expandTokens(rule.text, values) });
+  // placeholder فقط در پرامپت پایه و قواعدِ دسته است؛ متنِ گروه همان‌طور که نوشته شده می‌آید
+  const literal = (rule) => ({ ...rule, display: rule.text });
 
-  // ─── Rules of dynamic fields: this group rules → the category's own ───────
+  // ─── Rules of dynamic fields: group rules → the category's own ────────────
   const rulesFor = (key, stored, source) => {
     const value = stored == null ? "" : String(stored);
     const resolved = resolveFieldRules({ groups, categoryId, field: key, categoryText: value, categorySource: { ...source, value } });
-    return [...resolved.groups, ...(resolved.category ? [resolved.category] : [])];
+    return [...resolved.groups.map(literal), ...(resolved.category ? [decorate(resolved.category)] : [])];
   };
-  const ruleSuffix = (rules, key) => rules.map((r) => template(key, { text: expandTokens(r.text, scalars) })).join("");
+  const ruleSuffix = (rules, key) => rules.map((r) => template(key, { text: r.display })).join("");
 
   // ─── Category Global Attributes ───────────────────────────────────────────
   // An attribute may be restricted to some target audiences (e.g. balance only makes sense
@@ -136,7 +143,6 @@ export function composeProductPrompt({ category, promptConfig = null }) {
   }));
 
   // ─── Custom Tab ───────────────────────────────────────────────────────────
-  const customTab = category.customTab || {};
   const tabItems =
     customTab.enabled && Array.isArray(customTab.items)
       ? customTab.items
@@ -150,7 +156,6 @@ export function composeProductPrompt({ category, promptConfig = null }) {
             }),
           }))
       : [];
-  const tabName = customTab.name || "";
   // Before the tab had its own prompt, a `customTabItems` entry in category.prompts was the
   // field's category rule; such an entry still applies when the tab's own prompt is empty.
   const tabPrompt = String(customTab.prompt ?? "");
@@ -158,9 +163,9 @@ export function composeProductPrompt({ category, promptConfig = null }) {
     ? { kind: "customTab", tabName, value: tabPrompt }
     : { kind: "categoryField", field: "customTabItems", value: categoryPromptValue(category.prompts, "customTabItems") };
 
-  // ─── What the {{placeholders}} expand to ──────────────────────────────────
-  const values = {
-    ...scalars,
+  // ─── What the data sections print under their headings ────────────────────
+  const bodies = {
+    category_info: template("category_info", values),
     attributes: attributes.length
       ? attributes
           .map(({ name, label, scope, rules }) =>
@@ -173,13 +178,6 @@ export function composeProductPrompt({ category, promptConfig = null }) {
           )
           .join("\n")
       : template("attributes_empty"),
-    audience_rule: restricted.length
-      ? template("audience_rule", {
-          items: restricted
-            .map(({ name, label, scope }) => template("audience_rule_item", { name, label, audiences: JSON.stringify(scope) }))
-            .join("\n"),
-        })
-      : template("audience_rule_empty"),
     variant_attributes: variants.length
       ? variants
           .map(({ name, label, units, multiUnit, rules }) =>
@@ -193,32 +191,45 @@ export function composeProductPrompt({ category, promptConfig = null }) {
           )
           .join("\n")
       : template("variants_empty"),
-    multi_unit_rule: multiUnitItems ? template("multi_unit_rule", { items: multiUnitItems }) : template("multi_unit_rule_empty"),
-    multi_unit_definition: multiUnitItems ? template("multi_unit_definition", { items: multiUnitItems }) : template("multi_unit_definition_empty"),
+    variant_metadata: multiUnitItems || template("multi_unit_definition_empty"),
     technical_stats: technicalStats.length
       ? technicalStats
           .map(({ name, label, rules }) => template("technical_stat_line", { name, label, rules: ruleSuffix(rules, "technical_stat_rule") }))
           .join("\n")
       : template("technical_stats_empty"),
-    custom_tab_name: tabName,
-    custom_tab: tabItems.length
-      ? template("custom_tab", {
-          custom_tab_name: tabName,
-          items: tabItems
-            .map(({ title, rules }) => template("custom_tab_item", { title, rules: ruleSuffix(rules, "custom_tab_item_rule") }))
-            .join("\n"),
-        })
-      : "",
-    custom_tab_output: tabItems.length ? template("custom_tab_output") : "",
+    custom_tab: tabItems
+      .map(({ title, rules }) => template("custom_tab_item", { title, rules: ruleSuffix(rules, "custom_tab_item_rule") }))
+      .join("\n"),
+    output_structure: template("output_structure", {
+      sport_id: values.sport_id,
+      category_id: values.category_id,
+      custom_tab_output: tabItems.length ? template("custom_tab_output") : "",
+    }),
   };
 
-  const decorate = (rule) => ({ ...rule, display: expandTokens(rule.text, values) });
-  [attributes, variants, technicalStats, tabItems].forEach((list) =>
-    list.forEach((entry) => { entry.rules = entry.rules.map(decorate); }),
-  );
+  // ─── Lines the app inserts around a field's rules; only their wording is the admin's ──
+  const lockedRule = (what, text) => ({ text, display: text, source: { kind: "system", what } });
+  const lockedLines = {
+    sport: { before: [lockedRule("sportLock", template("sport_lock", values))] },
+    category: { before: [lockedRule("categoryLock", template("category_lock", values))] },
+    attributes: {
+      after: [
+        lockedRule("audienceScope", restricted.length
+          ? template("audience_rule", {
+              items: restricted
+                .map(({ name, label, scope }) => template("audience_rule_item", { name, label, audiences: JSON.stringify(scope) }))
+                .join("\n"),
+            })
+          : template("audience_rule_empty")),
+      ],
+    },
+    variantMeta: {
+      after: [lockedRule("multiUnit", multiUnitItems ? template("multi_unit_rule", { items: multiUnitItems }) : template("multi_unit_rule_empty"))],
+    },
+  };
 
   // ─── Product fields: base → category prompt groups → the category's own ───
-  const baseRulesOf = new Map(config.fieldRules.map(({ field, rules }) => [field, rules]));
+  const fieldConfig = new Map(config.fieldRules.map((entry) => [entry.field, entry]));
   const categoryRuleFor = (key) => {
     if (key === "technicalStats") {
       const value = category.technicalStatsPrompt == null ? "" : String(category.technicalStatsPrompt);
@@ -232,13 +243,17 @@ export function composeProductPrompt({ category, promptConfig = null }) {
     // the custom tab field exists only for a category whose tab has items
     .filter(({ key }) => key !== "customTabItems" || tabItems.length)
     .map(({ key, title }) => {
-      const rules = resolveFieldRules({ baseRules: baseRulesOf.get(key) || [], groups, categoryId, field: key, ...categoryRuleFor(key) });
+      const entry = fieldConfig.get(key);
+      const rules = resolveFieldRules({ baseRules: entry?.rules || [], groups, categoryId, field: key, ...categoryRuleFor(key) });
       return {
         key,
         title,
+        heading: entry?.heading ?? key,
+        before: lockedLines[key]?.before || [],
+        after: lockedLines[key]?.after || [],
         rules: {
           base: rules.base.map(decorate),
-          groups: rules.groups.map(decorate),
+          groups: rules.groups.map(literal),
           category: rules.category && decorate(rules.category),
         },
       };
@@ -246,20 +261,29 @@ export function composeProductPrompt({ category, promptConfig = null }) {
 
   // ─── The document, in the admin's order ───────────────────────────────────
   const id = String(categoryId);
-  const head = ({ key, name, top = "", title = "", bottom = "", description = "", blankLines = 1 }) =>
-    ({ key, name, top, title, bottom, description, blankLines });
+  const head = ({ key, name, heading = "" }) => ({ key, name, heading });
 
-  // A group's general rules that repeat a rule already in the prompt are dropped, first wins.
-  const seenGeneral = new Set(
+  // Each rule section: its base rules, then the group rules written for that section.
+  const sectionRules = new Map(
     config.document
-      .filter((s) => s.kind === "text")
-      .flatMap((s) => s.rules.flatMap(splitRuleUnits))
-      .map(normalizeRule),
+      .filter((section) => section.kind === "text")
+      .map((section) => [section.key, [
+        ...section.rules.map((text, index) =>
+          decorate({ text, source: { kind: "section", sectionKey: section.key, sectionName: section.name, index, value: text } }),
+        ),
+        ...resolveFieldRules({ baseRules: section.rules, groups, categoryId, field: sectionFieldKey(section.key) }).groups.map(literal),
+      ]]),
+  );
+
+  // A rule in a group's own section that repeats a rule already in the prompt is dropped, first wins.
+  const seenGeneral = new Set(
+    [...sectionRules.values()].flat().flatMap((rule) => splitRuleUnits(rule.text)).map(normalizeRule),
   );
   const groupSections = groups
     .filter((group) => (group.categories || []).map(String).includes(id))
     .flatMap((group) =>
       group.sections.flatMap((section) => {
+        const groupId = group._id == null ? null : String(group._id);
         const rules = [];
         (section.rules || []).forEach((rule, index) => {
           const targets = (rule.categories || []).map(String);
@@ -267,11 +291,11 @@ export function composeProductPrompt({ category, promptConfig = null }) {
           const unit = normalizeRule(rule.text);
           if (seenGeneral.has(unit)) return;
           seenGeneral.add(unit);
-          rules.push(decorate({
+          rules.push(literal({
             text: rule.text,
             source: {
               kind: "groupSection",
-              groupId: group._id == null ? null : String(group._id),
+              groupId,
               groupTitle: group.title || "",
               sectionKey: section.key,
               sectionName: section.name,
@@ -282,21 +306,20 @@ export function composeProductPrompt({ category, promptConfig = null }) {
           }));
         });
         // a section none of whose rules apply here has nothing to say to this category
-        if (!rules.length && !section.description) return [];
-        return [{ ...head(section), kind: "text", owner: { groupId: group._id == null ? null : String(group._id), groupTitle: group.title || "" }, rules }];
+        if (!rules.length) return [];
+        return [{ ...head(section), kind: "text", owner: { groupId, groupTitle: group.title || "" }, rules }];
       }),
     );
 
   const sections = config.document.flatMap((section) => {
-    if (section.kind === "groups") return groupSections;
-    if (section.kind === "fields") return [{ ...head(section), kind: "fields", fieldBlankLines: section.fieldBlankLines ?? 1 }];
-    return [{
-      ...head(section),
-      kind: "text",
-      rules: section.rules.map((text, index) =>
-        decorate({ text, source: { kind: "section", sectionKey: section.key, sectionName: section.name, index, value: text } }),
-      ),
-    }];
+    // a group's own sections always print directly above the product field rules
+    if (section.kind === "fields") return [...groupSections, { ...head(section), kind: "fields" }];
+    if (section.kind === "data") {
+      // no custom tab, nothing to introduce
+      if (section.key === "custom_tab" && !tabItems.length) return [];
+      return [{ ...head(section), kind: "data" }];
+    }
+    return [{ ...head(section), kind: "text", rules: sectionRules.get(section.key) }];
   });
 
   return {
@@ -307,50 +330,44 @@ export function composeProductPrompt({ category, promptConfig = null }) {
     technicalStats,
     customTab: { name: tabName, items: tabItems },
     templates: {
-      field_heading: config.templates.field_heading ?? "",
       field_empty: config.templates.field_empty ?? "",
       group_heading: config.templates.group_heading ?? "",
       category_heading: config.templates.category_heading ?? "",
     },
     values,
+    bodies,
   };
 }
 
-/** Lines are joined as written; a part the admin left empty simply prints nothing. */
+/** Lines are joined as written; an empty part prints nothing, and the code adds no other line. */
 const joinLines = (lines) => lines.filter((line) => line !== "").join("\n");
 
 /**
- * The prompt string from a composed model. `tokens` adds the values that are not part of the
- * model (data lists, source text). Rules and fields never expand the source text: it has
- * exactly one place, in a document section.
+ * The prompt string from a composed model. `dataBodies` adds what is not part of the model
+ * (data lists, source text). Substituted values are never rescanned for placeholders.
  */
-export function renderProductPrompt(model, tokens = {}) {
-  const documentTokens = { ...model.values, ...tokens };
-  const ruleTokens = { ...documentTokens };
-  delete ruleTokens[SOURCE_TEXT_TOKEN];
-  const rule = (r) => expandTokens(r.text, ruleTokens);
+export function renderProductPrompt(model, dataBodies = {}) {
+  const bodies = { ...model.bodies, ...dataBodies };
+  const expand = (text) => expandTokens(text, model.values);
 
-  const fieldBlock = ({ key, rules }) => {
-    const lines = rules.base.map(rule);
-    if (rules.groups.length) lines.push(model.templates.group_heading, ...rules.groups.map(rule));
-    if (rules.category) lines.push(model.templates.category_heading, rule(rules.category));
-    const body = joinLines(lines) || model.templates.field_empty;
-    return joinLines([expandTokens(model.templates.field_heading, { field: key }), body]);
+  const fieldBlock = ({ heading, before, after, rules }) => {
+    const lines = [...before.map((r) => r.text), ...rules.base.map((r) => r.display), ...after.map((r) => r.text)];
+    if (rules.groups.length) lines.push(model.templates.group_heading, ...rules.groups.map((r) => r.display));
+    if (rules.category) lines.push(model.templates.category_heading, rules.category.display);
+    return joinLines([expand(heading), joinLines(lines) || model.templates.field_empty]);
   };
 
-  const blocks = model.sections
+  return model.sections
     .map((section) => {
-      const parts = ["top", "title", "bottom", "description"].map((part) => expandTokens(section[part], documentTokens));
-      const body = section.kind === "fields"
-        ? model.fields.map(fieldBlock).join("\n".repeat(1 + (section.fieldBlankLines ?? 1)))
-        : joinLines((section.rules || []).map((r) => expandTokens(r.text, section.owner ? ruleTokens : documentTokens)));
-      return { text: joinLines([...parts, body]), blankLines: section.blankLines ?? 1 };
+      let body;
+      if (section.kind === "fields") body = model.fields.map(fieldBlock).join("\n");
+      else if (section.kind === "data") body = bodies[section.key] ?? "";
+      else body = joinLines(section.rules.map((r) => r.display));
+      // a group's own heading has no placeholders either
+      return joinLines([section.owner ? section.heading : expand(section.heading), body]);
     })
-    .filter((block) => block.text !== "");
-
-  return blocks
-    .map((block, i) => (i < blocks.length - 1 ? block.text + "\n".repeat(1 + block.blankLines) : block.text))
-    .join("");
+    .filter((block) => block !== "")
+    .join("\n");
 }
 
 /**
@@ -424,6 +441,6 @@ export function buildProductTemplate({
     athletes: JSON.stringify(athleteList, null, 2),
     series: JSON.stringify(serieList, null, 2),
     limited_editions: JSON.stringify(limitedEditionList, null, 2),
-    [SOURCE_TEXT_TOKEN]: rawContent.trim(),
+    source_text: rawContent.trim(),
   });
 }
