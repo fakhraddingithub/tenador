@@ -1,23 +1,23 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
-import { buildProductTemplate, composeProductPrompt } from "../src/lib/buildProductTemplate.js";
+import { buildProductTemplate, composeProductPrompt, renderProductPrompt } from "../src/lib/buildProductTemplate.js";
 import {
-  BASE_PROMPT_SECTIONS,
-  DEFAULT_BASE_PROMPT,
   CATEGORY_PROMPT_FIELDS,
-  GROUP_PROMPT_FIELDS,
-  isDefaultSection,
-  isLegacyGroupField,
+  PRODUCT_PROMPT_FIELDS,
+  TEMPLATE_DEFS,
+  dynamicFieldKey,
+  expandTokens,
+  fieldTitle,
   moveWithinSlots,
-  LEGACY_CATEGORY_PROMPT_DEFAULTS,
   normalizeRule,
-  resolveBasePrompt,
+  parseFieldKey,
   resolveFieldRules,
   splitRuleUnits,
-  storableBase,
+  unknownTokens,
   validatePromptConfig,
 } from "../src/lib/productPromptConfig.js";
+import { PROMPT_SEED, resolvePromptConfig } from "../src/lib/productPromptResolve.js";
 
 const A = "a".repeat(24), B = "b".repeat(24), C = "c".repeat(24), D = "d".repeat(24), GONE = "e".repeat(24);
 const sport = { _id: "f".repeat(24), name: "Tennis", title: "تنیس" };
@@ -32,28 +32,223 @@ const fieldBlock = (prompt, field) => {
   assert.ok(start >= 0, `field ${field} missing`);
   return body.slice(start + 1).split(/\n\n(?=[A-Za-z]+:\n)/)[0].replace(/\n+=+$/, "");
 };
+/** تنظیماتِ کاملِ ذخیره‌شده: seed + تغییرات. */
+const stored = (mutate = () => {}) => {
+  const config = structuredClone({ document: PROMPT_SEED.document, fieldRules: PROMPT_SEED.fieldRules, templates: PROMPT_SEED.templates, groups: [] });
+  mutate(config);
+  return config;
+};
+const sectionOf = (config, key) => config.document.find((s) => s.key === key);
+const fieldOf = (config, field) => config.fieldRules.find((f) => f.field === field);
 
-test("defaults: every section has a default and the defaults are valid", () => {
-  for (const { key } of BASE_PROMPT_SECTIONS) assert.ok(Array.isArray(DEFAULT_BASE_PROMPT[key]), key);
-  const base = BASE_PROMPT_SECTIONS.map(({ key }) => ({ section: key, rules: DEFAULT_BASE_PROMPT[key] }));
-  assert.deepEqual(validatePromptConfig({ base, groups: [] }).errors, []);
+/* ─── متنِ شروع داده است، نه کد ─────────────────────────────────────────── */
+
+test("the seed is a valid configuration covering every field and template", () => {
+  const { document, fieldRules, templates } = PROMPT_SEED;
+  assert.deepEqual(validatePromptConfig({ document, fieldRules, templates }).errors, []);
+  assert.deepEqual(fieldRules.map((f) => f.field).sort(), PRODUCT_PROMPT_FIELDS.map((f) => f.key).sort());
+  assert.deepEqual(Object.keys(templates).sort(), TEMPLATE_DEFS.map((t) => t.key).sort());
 });
 
-test("defaults: every unit of the old seeded category prompts is a base rule unit (so copies dedupe)", () => {
-  for (const [field, text] of Object.entries(LEGACY_CATEGORY_PROMPT_DEFAULTS)) {
-    const baseUnits = new Set(DEFAULT_BASE_PROMPT[`field:${field}`].flatMap(splitRuleUnits).map(normalizeRule));
+test("no prompt wording lives in the application code", () => {
+  const sources = ["buildProductTemplate.js", "productPromptConfig.js", "productPromptResolve.js", "productDraftPrompt.js"]
+    .map((file) => readFileSync(new URL(`../src/lib/${file}`, import.meta.url), "utf8"));
+  // نمونه‌هایی از هر نوعِ متن: جداکننده، عنوان، قاعده، توضیح، قالبِ سطر، ساختارِ خروجی
+  for (const text of [
+    "=====", "FIELD RULES", "CRITICAL OUTPUT", "LANGUAGE RULE", "CATEGORY DEFINITION", "AVAILABLE BRANDS", "RAW PRODUCT CONTENT",
+    "Your task", "senior Persian", "MUST be exactly", "No specific rule defined", "Category-group rules", "Category-specific rules",
+    "Extraction Rule", "Selection Rule", "Applies ONLY", "Persian Label", "KEY:", "Output exactly", "When two rules conflict", "(none defined)",
+  ]) {
+    for (const source of sources) assert.ok(!source.includes(text), `«${text}» is hardcoded`);
+  }
+});
+
+test("every unit of the old seeded category prompts is a base rule unit (so copies dedupe)", () => {
+  for (const [field, text] of Object.entries(PROMPT_SEED.legacyCategoryDefaults)) {
+    const baseUnits = new Set(PROMPT_SEED.fieldRules.find((f) => f.field === field).rules.flatMap(splitRuleUnits).map(normalizeRule));
     for (const unit of splitRuleUnits(text)) assert.ok(baseUnits.has(normalizeRule(unit)), `${field}: ${unit}`);
   }
 });
 
-test("label default matches the Product enum, the old best_seller line is gone", () => {
+test("label default matches the Product enum", () => {
   const prompt = draft(category(A));
   assert.ok(!prompt.includes("best_seller"));
   assert.ok(fieldBlock(prompt, "label").includes('["none", "new", "hot", "discount", "limited"]'));
 });
 
+/* ─── ادمین همه‌چیز را کنترل می‌کند ─────────────────────────────────────── */
+
+test("titles, separators and descriptions are printed exactly as written, for every section", () => {
+  const config = stored((c) => {
+    Object.assign(sectionOf(c, "output"), { top: "~~~ top ~~~", title: "قالب خروجی:", bottom: "", description: "توضیح بخش" });
+    Object.assign(sectionOf(c, "fields"), { top: "", title: "### Fields", bottom: "", description: "" });
+  });
+  const prompt = buildProductTemplate({ category: category(A), brands: [], athletes: [], rawContent, promptConfig: config });
+  assert.ok(prompt.includes("~~~ top ~~~\nقالب خروجی:\nتوضیح بخش\nOutput ONLY raw JSON."));
+  assert.ok(!prompt.includes("CRITICAL OUTPUT FORMAT RULES"));
+  assert.ok(prompt.includes("### Fields\nname:\n"));
+  assert.ok(!prompt.includes("\nFIELD RULES\n"));
+});
+
+test("rules go into the prompt exactly as written: no numbers, no bullets, nothing added", () => {
+  const prompt = draft(category(A));
+  assert.ok(prompt.includes("\nOutput ONLY raw JSON. Start with { and end with }.\nNO markdown code fences"));
+  assert.ok(!/^\s*\d+\. Output ONLY/m.test(prompt));
+  assert.ok(prompt.includes("\nREAD the raw product content provided below.\n"));
+  assert.ok(!prompt.includes("- READ the raw"));
+
+  const config = stored((c) => { sectionOf(c, "task").rules = ["1) my own   number", "  - my own bullet  "]; });
+  assert.ok(draft(category(A), config).includes("Your task:\n1) my own   number\n  - my own bullet  \n"));
+});
+
+test("sections can be added, removed and reordered; the prompt follows", () => {
+  const config = stored((c) => {
+    c.document = c.document.filter((s) => s.key !== "language");
+    const output = c.document.findIndex((s) => s.key === "output");
+    c.document.splice(output, 0, { key: "exceptions", kind: "text", name: "Exception Rules", top: "---", title: "EXCEPTION RULES", bottom: "---", description: "", blankLines: 2, rules: ["When in doubt, ask nothing."] });
+  });
+  assert.deepEqual(validatePromptConfig({ document: config.document }).errors, []);
+  const prompt = draft(category(A), config);
+  assert.ok(!prompt.includes("LANGUAGE RULE"));
+  assert.ok(prompt.includes("---\nEXCEPTION RULES\n---\nWhen in doubt, ask nothing.\n\n\n"));
+  assert.ok(prompt.indexOf("EXCEPTION RULES") < prompt.indexOf("CRITICAL OUTPUT FORMAT RULES"));
+
+  const moved = stored((c) => { c.document.reverse(); });
+  const reversed = draft(category(A), moved);
+  assert.ok(reversed.indexOf("REQUIRED JSON OUTPUT STRUCTURE") < reversed.indexOf("You are a senior"));
+});
+
+test("data-line formats come from the templates", () => {
+  const cat = category(A, {
+    attributes: [{ name: "Head", label: "سر", prompt: "HEAD RULE", targetAudiences: ["یونی سکس"] }],
+    variantAttributes: [{ name: "Grip", label: "گریپ" }, { name: "Size", label: "سایز", multiUnit: true, units: ["EU", "CM"] }],
+    technicalStats: [{ name: "power", label: "قدرت" }],
+    customTab: { enabled: true, name: "Tech", items: [{ _id: C, title: "ONE" }] },
+  });
+  const config = stored((c) => {
+    Object.assign(c.templates, {
+      attribute_line: "ATTR {{name}}={{label}}{{rules}}{{scope}}",
+      attribute_rule: " rule<{{text}}>",
+      attribute_scope: " only<{{audiences}}>",
+      variant_line: "VAR {{name}}",
+      variant_multi_unit_line: "MULTI {{name}} {{primary_unit}} {{units}}",
+      multi_unit_definition: "DEF[{{items}}]",
+      multi_unit_item: "ITEM {{name}} {{placeholder_units}}",
+      multi_unit_placeholder: "<{{unit}}>",
+      technical_stat_line: "STAT {{name}}",
+      custom_tab: "TAB {{custom_tab_name}}: {{items}}",
+      custom_tab_item: "- {{title}}",
+      custom_tab_output: ', "tab": 1',
+    });
+  });
+  const prompt = draft(cat, config);
+  assert.ok(prompt.includes('ATTR Head=سر rule<HEAD RULE> only<["مردانه","زنانه","یونی سکس"]>'));
+  assert.ok(prompt.includes("VAR Grip\nMULTI Size EU [\"EU\",\"CM\"]"));
+  assert.ok(prompt.includes('DEF[ITEM Size {"EU":"<EU>","CM":"<CM>"}]'));
+  assert.ok(prompt.includes("STAT power"));
+  assert.ok(prompt.includes("TAB Tech: - ONE"));
+  assert.ok(prompt.includes('"stat_name": 85\n  }, "tab": 1,'));
+});
+
+test("an emptied template prints nothing; field headings and the empty-field text are editable", () => {
+  const config = stored((c) => {
+    fieldOf(c, "gallery").rules = [];
+    fieldOf(c, "mainImage").rules = [];
+    c.templates.field_empty = "";
+    c.templates.field_heading = "## {{field}}";
+  });
+  const prompt = draft(category(A), config);
+  assert.ok(prompt.includes("## mainImage\n\n## gallery"));
+  assert.ok(!prompt.includes("No specific rule defined."));
+});
+
+test("the source text sits where the placeholder is, and is never re-expanded", () => {
+  const text = "Source mentions {{brands}} and {{sport_id}} literally, and is long enough to validate.";
+  const brands = [{ _id: B, name: "Wilson" }];
+  const prompt = buildProductTemplate({ category: category(A), brands, athletes: [], rawContent: text, promptConfig: null });
+  assert.equal(count(prompt, text), 1);
+  assert.match(prompt, /RAW PRODUCT CONTENT\n=+\nSource mentions/);
+  assert.ok(prompt.includes('"name": "Wilson"'));
+  assert.equal(expandTokens("{{a}} {{b}} {{ a }}", { a: "{{b}}", b: "x" }), "{{b}} x {{b}}");
+  assert.deepEqual(unknownTokens("{{brands}} {{nope}} {nope}"), ["nope"]);
+});
+
+test("{{source_text}} is required exactly once in the document and allowed nowhere else", () => {
+  const paths = (input) => validatePromptConfig(input).errors.map((e) => e.path);
+  const without = stored((c) => { c.document = c.document.filter((s) => s.key !== "source"); });
+  assert.deepEqual(paths({ document: without.document }), ["document"]);
+  const twice = stored((c) => { sectionOf(c, "task").rules.push("again {{source_text}}"); });
+  assert.deepEqual(paths({ document: twice.document }), ["document"]);
+  // می‌تواند جابه‌جا شود: داخلِ یک قاعده هم مجاز است
+  const moved = stored((c) => {
+    sectionOf(c, "source").description = "";
+    sectionOf(c, "task").rules.push("Product: {{ source_text }}");
+  });
+  assert.deepEqual(paths({ document: moved.document }), []);
+  assert.ok(draft(category(A), moved).includes(`Product: ${rawContent}`));
+
+  assert.deepEqual(paths({ fieldRules: [{ field: "name", rules: ["{{source_text}}"] }] }), ["fieldRules.name.0"]);
+  assert.deepEqual(paths({ templates: { attribute_line: "{{source_text}}" } }), ["templates.attribute_line"]);
+  assert.deepEqual(paths({ groups: [{ categories: [A], rules: [{ field: "name", text: "{{source_text}}" }] }] }), ["groups.0.rules.0"]);
+});
+
+test("the structural slots must exist exactly once, and section names may not repeat", () => {
+  const paths = (mutate) => validatePromptConfig({ document: stored(mutate).document }).errors.map((e) => e.path);
+  assert.deepEqual(paths((c) => { c.document = c.document.filter((s) => s.kind !== "fields"); }), ["document"]);
+  assert.deepEqual(paths((c) => { c.document = c.document.filter((s) => s.kind !== "groups"); }), ["document"]);
+  assert.deepEqual(paths((c) => { sectionOf(c, "task").name = sectionOf(c, "role").name; }), ["document.task.name"]);
+  assert.deepEqual(paths((c) => { sectionOf(c, "task").name = " "; }), ["document.task.name"]);
+  assert.deepEqual(paths((c) => { sectionOf(c, "task").key = "role"; }), ["document.role"]);
+  assert.deepEqual(paths((c) => { sectionOf(c, "task").blankLines = 99; }), ["document.task.blankLines"]);
+});
+
+/* ─── سندِ قدیمی بدونِ مهاجرت کار می‌کند ────────────────────────────────── */
+
+test("a config saved in the old shape keeps its rules: absent section = seed, [] = section gone", () => {
+  const legacy = {
+    base: [
+      { section: "task", rules: ["MY TASK RULE"] },
+      { section: "language", rules: [] },
+      { section: "field:name", rules: ["MY NAME RULE"] },
+      { section: "field:sport", rules: [] },
+      { section: "field:attributes", rules: ["MY ATTR RULE"] },
+      { section: "bogus", rules: ["x"] },
+    ],
+    groups: [{ _id: B, title: "G", categories: [A], rules: [{ field: "brand", text: "OLD GROUP RULE", categories: [] }] }],
+  };
+  const resolved = resolvePromptConfig(legacy);
+  assert.deepEqual(sectionOf(resolved, "task").rules, ["MY TASK RULE"]);
+  assert.equal(sectionOf(resolved, "language"), undefined);
+  assert.deepEqual(resolved.groups[0].sections, []);
+  assert.deepEqual(validatePromptConfig({ document: resolved.document, fieldRules: resolved.fieldRules }).errors, []);
+
+  const prompt = draft(category(A), legacy);
+  assert.ok(prompt.includes("Your task:\nMY TASK RULE\n"));
+  assert.ok(!prompt.includes("LANGUAGE RULE"));
+  assert.ok(prompt.includes("CRITICAL OUTPUT FORMAT RULES"));
+  assert.equal(fieldBlock(prompt, "name"), "name:\nMY NAME RULE");
+  // قاعده‌هایی که کدِ قبلی اضافه می‌کرد با سندِ قدیمی هم می‌مانند
+  assert.equal(fieldBlock(prompt, "sport"), `sport:\nMUST be exactly: "${sport._id}"`);
+  assert.equal(fieldBlock(prompt, "attributes"), "attributes:\nMY ATTR RULE\nEvery attribute in this category applies to every target audience.");
+  assert.ok(fieldBlock(prompt, "brand").includes("OLD GROUP RULE"));
+});
+
+test("once a document is stored the seed is never read for it", () => {
+  const config = stored((c) => { fieldOf(c, "name").rules = []; c.fieldRules = c.fieldRules.filter((f) => f.field !== "tag"); });
+  const resolved = resolvePromptConfig(config);
+  assert.deepEqual(fieldOf(resolved, "name").rules, []);
+  assert.equal(fieldOf(resolved, "tag"), undefined);
+  assert.equal(fieldBlock(draft(category(A), config), "tag"), "tag:\nNo specific rule defined.");
+  // قالبِ عمداً خالی خالی می‌ماند؛ فقط قالبی که اصلاً ذخیره نشده از seed می‌آید
+  const templates = resolvePromptConfig({ document: config.document, templates: [{ key: "field_empty", text: "" }] }).templates;
+  assert.equal(templates.field_empty, "");
+  assert.equal(templates.field_heading, PROMPT_SEED.templates.field_heading);
+});
+
+/* ─── قواعدِ دسته و گروه ─────────────────────────────────────────────────── */
+
 test("a category still holding the old seeded copies gets each rule exactly once", () => {
-  const prompts = Object.entries(LEGACY_CATEGORY_PROMPT_DEFAULTS).map(([field, context]) => ({ field, context }));
+  const prompts = Object.entries(PROMPT_SEED.legacyCategoryDefaults).map(([field, context]) => ({ field, context }));
   const prompt = draft(category(A, { prompts }));
   assert.ok(!prompt.includes("Category-specific rules"));
   assert.equal(count(prompt, "Model name MUST be copied EXACTLY"), 1);
@@ -97,63 +292,43 @@ test("rules land only in their own field", () => {
   assert.ok(fieldBlock(prompt, "brand").includes("BRAND-ONLY RULE"));
 });
 
-test("order: base → groups (in group order) → category, with the precedence note; output is deterministic", () => {
-  const config = {
-    base: [{ section: "field:name", rules: ["BASE RULE"] }],
-    groups: [
+test("order: base → groups (in group order) → category; output is deterministic", () => {
+  const config = stored((c) => {
+    fieldOf(c, "name").rules = ["BASE RULE"];
+    c.groups = [
       { categories: [A], rules: [{ field: "name", text: "FIRST GROUP", categories: [] }] },
       { categories: [A, B], rules: [{ field: "name", text: "SECOND GROUP", categories: [] }] },
-    ],
-  };
+    ];
+  });
   const cat = category(A, { prompts: [{ field: "name", context: "CATEGORY RULE" }] });
   const block = fieldBlock(draft(cat, config), "name");
   assert.equal(block, [
-    "name:", "- BASE RULE",
+    "name:", "BASE RULE",
     "Category-group rules (more specific — override the rules above on conflict):",
-    "- FIRST GROUP", "- SECOND GROUP",
+    "FIRST GROUP", "SECOND GROUP",
     "Category-specific rules (most specific — override every rule above on conflict):",
     "CATEGORY RULE",
   ].join("\n"));
-  assert.ok(draft(cat, config).includes("When two rules conflict, follow the more specific one."));
   assert.equal(draft(cat, config), draft(cat, config));
 });
 
 test("duplicates across sources are dropped, first occurrence wins", () => {
-  const config = {
-    base: [{ section: "field:tag", rules: ["Persian keywords only"] }],
-    groups: [
+  const config = stored((c) => {
+    fieldOf(c, "tag").rules = ["Persian keywords only"];
+    c.groups = [
       { categories: [A], rules: [{ field: "tag", text: "-   Persian   keywords only", categories: [] }, { field: "tag", text: "SHARED", categories: [] }] },
       { categories: [A], rules: [{ field: "tag", text: "SHARED", categories: [] }] },
-    ],
-  };
+    ];
+  });
   const block = fieldBlock(draft(category(A, { prompts: [{ field: "tag", context: "- SHARED" }] }), config), "tag");
   assert.equal(count(block, "Persian keywords only"), 1);
   assert.equal(count(block, "SHARED"), 1);
   assert.ok(!block.includes("Category-specific rules"));
 });
 
-test("emptied sections: intro and banners disappear, an empty field says so", () => {
-  const prompt = draft(category(A), {
-    base: [
-      { section: "role", rules: [] }, { section: "task", rules: [] },
-      { section: "output", rules: [] }, { section: "field:gallery", rules: [] },
-    ],
-  });
-  assert.ok(!prompt.includes("Your task:"));
-  assert.ok(!prompt.includes("senior Persian e-commerce"));
-  assert.ok(!prompt.includes("CRITICAL OUTPUT FORMAT RULES"));
-  assert.ok(prompt.includes("LANGUAGE RULE"));
-  assert.equal(fieldBlock(prompt, "gallery"), "gallery:\nNo specific rule defined.");
-});
-
-test("locked data lines survive any base edit", () => {
-  const prompt = draft(category(A), { base: [{ section: "field:sport", rules: [] }, { section: "field:category", rules: [] }] });
-  assert.equal(fieldBlock(prompt, "sport"), `sport:\n- MUST be exactly: "${sport._id}"`);
-  assert.equal(fieldBlock(prompt, "category"), `category:\n- MUST be exactly: "${A}"`);
-});
-
 test("customTabItems rules appear only for a category whose custom tab has items", () => {
   const groups = [{ categories: [A, B], rules: [{ field: "customTabItems", text: "TAB RULE", categories: [] }] }];
+  assert.deepEqual(validatePromptConfig({ groups }).errors, []);
   assert.ok(!draft(category(A), { groups }).includes("TAB RULE"));
   const withTab = category(B, { customTab: { enabled: true, name: "x", items: [{ title: "t" }] } });
   assert.ok(fieldBlock(draft(withTab, { groups }), "customTabItems").includes("TAB RULE"));
@@ -164,49 +339,100 @@ test("technicalStatsPrompt is the category-specific source for technicalStats", 
   assert.match(block, /return \{\}\.\nCategory-specific rules[^\n]*\nPower from weight$/);
 });
 
-test("resolveBasePrompt: absent section = default, [] = deliberately empty, unknown sections ignored", () => {
-  const base = resolveBasePrompt([{ section: "task", rules: [] }, { section: "nope", rules: ["x"] }]);
-  assert.deepEqual(base.task, []);
-  assert.deepEqual(base.output, DEFAULT_BASE_PROMPT.output);
-  assert.ok(!("nope" in base));
-});
+/* ─── قواعدِ عمومیِ گروه ─────────────────────────────────────────────────── */
 
-test("validation rejects every malformed or wrongly scoped input", () => {
-  const known = new Set([A, B, C]);
-  const errorsOf = (input) => validatePromptConfig(input, { knownCategoryIds: known }).errors.map((e) => e.path);
-  const group = (rules, categories = [A, B]) => ({ groups: [{ categories, rules }] });
+const groupSection = (key, rules, extra = {}) => ({ key, name: key, top: "", title: "", bottom: "", description: "", blankLines: 1, rules, ...extra });
 
-  assert.deepEqual(errorsOf({ base: [{ section: "bogus", rules: [] }] }), ["base.0"]);
-  assert.deepEqual(errorsOf({ base: [{ section: "task", rules: ["x", "  "] }] }), ["base.task.1"]);
-  assert.deepEqual(errorsOf({ base: [{ section: "task", rules: ["Same  rule", "- Same rule"] }] }), ["base.task.1"]);
-  assert.deepEqual(errorsOf({ base: [{ section: "task", rules: [] }, { section: "task", rules: [] }] }), ["base.task"]);
-  assert.deepEqual(errorsOf(group([], [])), ["groups.0.categories"]);
-  assert.deepEqual(errorsOf(group([], [A, D])), ["groups.0.categories"]);
-  assert.deepEqual(errorsOf(group([], [A, A])), ["groups.0.categories"]);
-  assert.deepEqual(errorsOf(group([{ field: "sport", text: "x" }])), ["groups.0.rules.0"]);
-  assert.deepEqual(errorsOf(group([{ field: "name", text: "" }])), ["groups.0.rules.0"]);
-  // دسته‌ای که از گروه برداشته شده: رد می‌شود، نه خالی‌شدنِ بی‌صدا به «همه»
-  assert.deepEqual(errorsOf(group([{ field: "name", text: "x", categories: [C] }])), ["groups.0.rules.0"]);
-  assert.deepEqual(errorsOf(group([{ field: "name", text: "x", categories: [A] }, { field: "name", text: "x ", categories: [B] }])), ["groups.0.rules.1"]);
-  // همان متن برای دو فیلدِ مختلف تکرار نیست
-  assert.deepEqual(errorsOf(group([{ field: "name", text: "x" }, { field: "tag", text: "x" }])), []);
-  assert.deepEqual(errorsOf({ base: [{ section: "task", rules: ["x".repeat(4001)] }] }), ["base.task.0"]);
-});
+test("a group's general rules reach only its categories, in the admin's slot, each group independent", () => {
+  const groups = [
+    { _id: B, title: "G1", categories: [A, B], rules: [], sections: [groupSection("exceptions", [{ text: "G1 ALL", categories: [] }, { text: "G1 ONLY B", categories: [B] }], { title: "EXCEPTION RULES" })] },
+    { _id: C, title: "G2", categories: [A], rules: [], sections: [groupSection("exceptions", [{ text: "G2 RULE", categories: [] }], { title: "G2 RULES" })] },
+  ];
+  assert.deepEqual(validatePromptConfig({ groups }).errors, []);
+  const forA = draft(category(A), { groups });
+  assert.ok(forA.includes("EXCEPTION RULES\nG1 ALL\n"));
+  assert.ok(!forA.includes("G1 ONLY B"));
+  assert.ok(forA.includes("G2 RULES\nG2 RULE\n"));
+  assert.ok(forA.indexOf("LANGUAGE RULE") < forA.indexOf("EXCEPTION RULES"));
+  assert.ok(forA.indexOf("EXCEPTION RULES") < forA.indexOf("G2 RULES"));
+  assert.ok(forA.indexOf("G2 RULES") < forA.indexOf("FIELD RULES"));
 
-test("validation output is clean: trimmed text, string ids, unknown keys dropped", () => {
-  const { value } = validatePromptConfig({
-    base: [{ section: "task", rules: ["  hello  "], extra: 1 }],
-    groups: [{ title: "  rackets ", uid: "x", categories: [A], rules: [{ uid: "y", field: "name", text: " t ", categories: [] }] }],
+  const forB = draft(category(B), { groups });
+  assert.ok(forB.includes("G1 ONLY B") && !forB.includes("G2 RULE"));
+  assert.ok(!draft(category(D), { groups }).includes("EXCEPTION RULES"));
+
+  // جای این بخش‌ها در پرامپت پایه تعیین می‌شود
+  const moved = stored((c) => {
+    c.groups = groups;
+    const slot = c.document.findIndex((s) => s.kind === "groups");
+    c.document.push(...c.document.splice(slot, 1));
   });
-  assert.deepEqual(value, {
-    base: [{ section: "task", rules: ["hello"] }],
-    groups: [{ title: "rackets", categories: [A], rules: [{ field: "name", text: "t", categories: [] }] }],
-  });
+  const last = draft(category(A), moved);
+  assert.ok(last.indexOf("EXCEPTION RULES") > last.indexOf("REQUIRED JSON OUTPUT STRUCTURE"));
 });
 
-test("groups offer exactly the fields of the category editor's AI settings, and both category forms read that list", () => {
-  assert.deepEqual(CATEGORY_PROMPT_FIELDS, ["name", "label", "shortDescription", "longDescription", "color", "basePrice", "targetAudience", "tag"]);
-  assert.deepEqual(GROUP_PROMPT_FIELDS.map((f) => f.key), CATEGORY_PROMPT_FIELDS);
+test("a group section with nothing for this category disappears; repeats of general rules are dropped", () => {
+  const groups = [{ categories: [A, B], rules: [], sections: [
+    groupSection("targeted", [{ text: "ONLY B", categories: [B] }], { title: "TARGETED TITLE" }),
+    groupSection("dup", [{ text: "- READ the raw product content provided below.", categories: [] }, { text: "FRESH", categories: [] }], { title: "DUP TITLE" }),
+  ] }];
+  const prompt = draft(category(A), { groups });
+  assert.ok(!prompt.includes("TARGETED TITLE"));
+  assert.equal(count(prompt, "READ the raw product content provided below."), 1);
+  assert.ok(prompt.includes("DUP TITLE\nFRESH\n"));
+});
+
+test("group sections validate like base sections, and their rules cannot target outside the group", () => {
+  const paths = (sections) => validatePromptConfig({ groups: [{ categories: [A], rules: [], sections }] }).errors.map((e) => e.path);
+  assert.deepEqual(paths([groupSection("a", [])]), []);
+  assert.deepEqual(paths([groupSection("a", []), groupSection("a", [])]), ["groups.0.sections.1", "groups.0.sections.1.name"]);
+  assert.deepEqual(paths([{ ...groupSection("a", []), name: "" }]), ["groups.0.sections.0.name"]);
+  assert.deepEqual(paths([groupSection("a", [{ text: "x", categories: [B] }])]), ["groups.0.sections.0.rules.0"]);
+  assert.deepEqual(paths([groupSection("a", [{ text: "", categories: [] }])]), ["groups.0.sections.0.rules.0"]);
+  assert.deepEqual(paths([groupSection("a", [{ text: "x", categories: [] }, { text: " x", categories: [] }])]), ["groups.0.sections.0.rules.1"]);
+});
+
+/* ─── همه‌ی فیلدها، از جمله فیلدهای پویا ─────────────────────────────────── */
+
+test("groups accept every product field, fixed or dynamic; unknown fields are refused", () => {
+  const paths = (field) => validatePromptConfig({ groups: [{ categories: [A], rules: [{ field, text: "x" }] }] }).errors.map((e) => e.path);
+  for (const { key } of PRODUCT_PROMPT_FIELDS) assert.deepEqual(paths(key), [], key);
+  for (const kind of ["attribute", "variant", "stat", "tabItem"]) assert.deepEqual(paths(dynamicFieldKey(kind, "Head Size")), [], kind);
+  for (const bad of ["bogus", "attribute:", "other:x", "", null]) assert.deepEqual(paths(bad), ["groups.0.rules.0"], String(bad));
+  assert.deepEqual(parseFieldKey("attribute:Head Size"), { kind: "attribute", name: "Head Size" });
+  assert.equal(fieldTitle("attribute:Head Size"), "Head Size");
+  assert.equal(fieldTitle("name"), "نام محصول");
+});
+
+test("dynamic field rules reach only the categories that have that field, group first then the category's own", () => {
+  const groups = [{ _id: B, title: "G", categories: [A, B], rules: [
+    { field: "attribute:Head", text: "GROUP HEAD", categories: [] },
+    { field: "attribute:Head", text: "ONLY-B HEAD", categories: [B] },
+    { field: "variant:Grip", text: "GROUP GRIP", categories: [] },
+    { field: "stat:power", text: "GROUP POWER", categories: [] },
+    { field: "tabItem:ONE", text: "GROUP ONE", categories: [] },
+    { field: "attribute:Gone", text: "ORPHAN RULE", categories: [] },
+  ] }];
+  const full = category(A, {
+    attributes: [{ name: "Head", label: "سر", prompt: "OWN HEAD" }, { name: "Weight", label: "وزن" }],
+    variantAttributes: [{ name: "Grip", label: "گریپ" }],
+    technicalStats: [{ name: "power", label: "قدرت" }],
+    customTab: { enabled: true, name: "T", items: [{ _id: C, title: "ONE" }, { _id: D, title: "TWO" }] },
+  });
+  const prompt = draft(full, { groups });
+  assert.ok(prompt.includes('KEY: "Head" | Persian Label (context only): سر | Type: single string or number | Extraction Rule: GROUP HEAD | Extraction Rule: OWN HEAD\n'));
+  assert.ok(prompt.includes('KEY: "Weight" | Persian Label (context only): وزن | Type: single string or number\n'));
+  assert.ok(prompt.includes('Type: array of strings | Guide: GROUP GRIP'));
+  assert.ok(prompt.includes('KEY: "power" | Label: قدرت | Rule: GROUP POWER'));
+  assert.ok(prompt.includes('- "ONE" | Selection Rule: GROUP ONE\n  - "TWO"'));
+  assert.ok(!prompt.includes("ONLY-B HEAD") && !prompt.includes("ORPHAN RULE"));
+
+  // دسته‌ی عضوِ گروه که این فیلدها را ندارد
+  const bare = draft(category(B), { groups });
+  for (const text of ["GROUP HEAD", "GROUP GRIP", "GROUP POWER", "GROUP ONE"]) assert.ok(!bare.includes(text), text);
+});
+
+test("category forms keep reading the shared field list", () => {
   for (const page of ["add/page.jsx", "edit/[categoryId]/page.jsx"]) {
     const src = readFileSync(new URL(`../src/app/(Admin-Panel)/p-admin/admin-categories/${page}`, import.meta.url), "utf8");
     assert.match(src, /const productFields = CATEGORY_PROMPT_FIELDS/, page);
@@ -215,21 +441,55 @@ test("groups offer exactly the fields of the category editor's AI settings, and 
   for (const key of CATEGORY_PROMPT_FIELDS) fieldBlock(prompt, key);
 });
 
-test("a group rule saved earlier for a field outside that list stays valid and keeps being applied", () => {
-  assert.ok(isLegacyGroupField("brand") && !isLegacyGroupField("name") && !isLegacyGroupField("sport"));
-  const groups = [{ categories: [A], rules: [{ field: "brand", text: "LEGACY BRAND RULE", categories: [] }] }];
-  assert.deepEqual(validatePromptConfig({ groups }).errors, []);
-  assert.ok(fieldBlock(draft(category(A), { groups }), "brand").includes("LEGACY BRAND RULE"));
-  // ورزش/دسته/امتیاز هرگز قاعده‌ی گروه نمی‌پذیرند
-  assert.equal(validatePromptConfig({ groups: [{ categories: [A], rules: [{ field: "sport", text: "x" }] }] }).errors.length, 1);
+/* ─── اعتبارسنجی ─────────────────────────────────────────────────────────── */
+
+test("validation rejects every malformed or wrongly scoped input", () => {
+  const known = new Set([A, B, C]);
+  const errorsOf = (input) => validatePromptConfig(input, { knownCategoryIds: known }).errors.map((e) => e.path);
+  const group = (rules, categories = [A, B]) => ({ groups: [{ categories, rules }] });
+  const taskRules = (rules) => ({ document: stored((c) => { sectionOf(c, "task").rules = rules; }).document });
+
+  assert.deepEqual(errorsOf({ fieldRules: [{ field: "bogus", rules: [] }] }), ["fieldRules.0"]);
+  assert.deepEqual(errorsOf({ fieldRules: [{ field: "name", rules: [] }, { field: "name", rules: [] }] }), ["fieldRules.name"]);
+  assert.deepEqual(errorsOf({ fieldRules: [{ field: "name", rules: ["x", "  "] }] }), ["fieldRules.name.1"]);
+  assert.deepEqual(errorsOf({ fieldRules: [{ field: "name", rules: ["Same  rule", "- Same rule"] }] }), ["fieldRules.name.1"]);
+  assert.deepEqual(errorsOf(taskRules(["x", ""])), ["document.task.rules.1"]);
+  assert.deepEqual(errorsOf(taskRules(["x".repeat(4001)])), ["document.task.rules.0"]);
+  assert.deepEqual(errorsOf({ templates: { bogus: "x" } }), ["templates.bogus"]);
+  assert.deepEqual(errorsOf({ templates: { field_empty: 1 } }), ["templates.field_empty"]);
+  assert.deepEqual(errorsOf(group([], [])), ["groups.0.categories"]);
+  assert.deepEqual(errorsOf(group([], [A, D])), ["groups.0.categories"]);
+  assert.deepEqual(errorsOf(group([], [A, A])), ["groups.0.categories"]);
+  assert.deepEqual(errorsOf(group([{ field: "name", text: "" }])), ["groups.0.rules.0"]);
+  // دسته‌ای که از گروه برداشته شده: رد می‌شود، نه خالی‌شدنِ بی‌صدا به «همه»
+  assert.deepEqual(errorsOf(group([{ field: "name", text: "x", categories: [C] }])), ["groups.0.rules.0"]);
+  assert.deepEqual(errorsOf(group([{ field: "name", text: "x", categories: [A] }, { field: "name", text: "x ", categories: [B] }])), ["groups.0.rules.1"]);
+  // همان متن برای دو فیلدِ مختلف تکرار نیست
+  assert.deepEqual(errorsOf(group([{ field: "name", text: "x" }, { field: "tag", text: "x" }])), []);
+});
+
+test("validation output keeps text exactly as written, with string ids and unknown keys dropped", () => {
+  const { value } = validatePromptConfig({
+    fieldRules: [{ field: "name", rules: ["  hello  "], extra: 1 }],
+    templates: { attribute_rule: "  spaced  ", field_empty: "" },
+    groups: [{ title: "  rackets ", uid: "x", categories: [A], rules: [{ uid: "y", field: "name", text: " t ", categories: [] }] }],
+  });
+  assert.deepEqual(value, {
+    document: undefined,
+    fieldRules: [{ field: "name", rules: ["  hello  "] }],
+    templates: { attribute_rule: "  spaced  ", field_empty: "" },
+    groups: [{ title: "rackets", categories: [A], rules: [{ field: "name", text: " t ", categories: [] }], sections: [] }],
+  });
 });
 
 test("partial saves: an absent part stays undefined, a malformed one is rejected", () => {
-  assert.equal(validatePromptConfig({ base: [] }).value.groups, undefined);
-  assert.equal(validatePromptConfig({ groups: [] }).value.base, undefined);
-  assert.deepEqual(validatePromptConfig({}).value, { base: undefined, groups: undefined });
-  assert.deepEqual(validatePromptConfig({ base: "x" }).errors.map((e) => e.path), ["base"]);
+  assert.equal(validatePromptConfig({ fieldRules: [] }).value.groups, undefined);
+  assert.equal(validatePromptConfig({ groups: [] }).value.document, undefined);
+  assert.deepEqual(validatePromptConfig({}).value, { document: undefined, fieldRules: undefined, templates: undefined, groups: undefined });
+  assert.deepEqual(validatePromptConfig({ fieldRules: "x" }).errors.map((e) => e.path), ["fieldRules"]);
+  assert.deepEqual(validatePromptConfig({ templates: [] }).errors.map((e) => e.path), ["templates"]);
   assert.deepEqual(validatePromptConfig({ groups: {} }).errors.map((e) => e.path), ["groups"]);
+  assert.ok(validatePromptConfig({ document: "x" }).errors.some((e) => e.path === "document"));
 });
 
 test("group ids: a valid id is kept, an invalid one dropped, a duplicate rejected", () => {
@@ -242,13 +502,14 @@ test("group ids: a valid id is kept, an invalid one dropped, a duplicate rejecte
 
 test("resolveFieldRules ignores groups that do not contain the category", () => {
   const rules = resolveFieldRules({
-    base: resolveBasePrompt(), categoryId: D, field: "name",
+    baseRules: ["b"], categoryId: D, field: "name",
     groups: [{ categories: [A], rules: [{ field: "name", text: "x", categories: [] }] }],
   });
   assert.deepEqual(rules.groups, []);
+  assert.deepEqual(rules.base.map((r) => r.source), [{ kind: "baseField", field: "name", index: 0, value: "b" }]);
 });
 
-// ── composeProductPrompt: منبعِ هر قاعده، و یکی بودنِ پیش‌نمایش با پرامپت ─────────
+/* ─── composeProductPrompt: منبعِ هر قاعده، و یکی بودنِ پیش‌نمایش با پرامپت ───── */
 
 const richCategory = () => category(A, {
   prompts: [{ field: "name", context: "  CATEGORY NAME RULE  " }],
@@ -264,71 +525,80 @@ const richCategory = () => category(A, {
     items: [{ _id: C, title: "FORTYFIVE", prompt: "PICK FORTYFIVE WHEN NAMED" }, { _id: D, title: "Spin Effect" }],
   },
 });
-const richConfig = {
-  base: [{ section: "task", rules: ["TASK ONE", "TASK TWO"] }],
-  groups: [{ _id: B, title: "Rackets", categories: [A], rules: [
-    { field: "brand", text: "OTHER FIELD", categories: [] },
-    { field: "name", text: "GROUP NAME RULE", categories: [A] },
-  ] }],
-};
+const richConfig = () => stored((c) => {
+  sectionOf(c, "task").rules = ["TASK ONE", "TASK TWO"];
+  c.groups = [{
+    _id: B, title: "Rackets", categories: [A],
+    rules: [{ field: "brand", text: "OTHER FIELD", categories: [] }, { field: "name", text: "GROUP NAME RULE", categories: [A] }, { field: "stat:power", text: "GROUP STAT", categories: [] }],
+    sections: [groupSection("extra", [{ text: "GROUP GENERAL", categories: [A] }], { title: "EXTRA" })],
+  }];
+});
 const flatten = (m) => [
-  ...Object.values(m.general).flat(),
-  ...m.fields.flatMap((f) => [...f.before, ...f.rules.base, ...f.after, ...f.rules.groups, ...(f.rules.category ? [f.rules.category] : [])]),
-  ...m.attributes.flatMap((a) => (a.rule ? [a.rule] : [])),
-  ...m.variants.flatMap((v) => (v.rule ? [v.rule] : [])),
-  ...(m.customTab.instruction ? [m.customTab.instruction] : []),
-  ...m.customTab.items.flatMap((i) => (i.rule ? [i.rule] : [])),
+  ...m.sections.flatMap((s) => (s.kind === "fields" ? [] : s.rules)),
+  ...m.fields.flatMap((f) => [...f.rules.base, ...f.rules.groups, ...(f.rules.category ? [f.rules.category] : [])]),
+  ...[...m.attributes, ...m.variants, ...m.technicalStats, ...m.customTab.items].flatMap((entry) => entry.rules),
 ];
 
 test("compose: every rule carries its exact source and the stored value an edit must match", () => {
-  const m = composeProductPrompt({ category: richCategory(), promptConfig: richConfig });
+  const m = composeProductPrompt({ category: richCategory(), promptConfig: richConfig() });
   const field = (key) => m.fields.find((f) => f.key === key);
+  const section = (key) => m.sections.find((s) => s.key === key);
 
-  assert.deepEqual(m.general.task.map((r) => r.source), [
-    { kind: "base", section: "task", index: 0, value: "TASK ONE" },
-    { kind: "base", section: "task", index: 1, value: "TASK TWO" },
+  assert.deepEqual(section("task").rules.map((r) => r.source), [
+    { kind: "section", sectionKey: "task", sectionName: "قواعد کلی", index: 0, value: "TASK ONE" },
+    { kind: "section", sectionKey: "task", sectionName: "قواعد کلی", index: 1, value: "TASK TWO" },
   ]);
+  assert.deepEqual(section("extra").rules[0].source, {
+    kind: "groupSection", groupId: B, groupTitle: "Rackets", sectionKey: "extra", sectionName: "extra", index: 0, targets: [A], value: "GROUP GENERAL",
+  });
   // اندیسِ قاعده در خودِ گروه (نه در فیلد) — همان چیزی که ویرایش با آن قاعده را پیدا می‌کند
   assert.deepEqual(field("name").rules.groups[0].source, {
     kind: "group", groupId: B, groupTitle: "Rackets", field: "name", index: 1, targets: [A], value: "GROUP NAME RULE",
   });
-  assert.deepEqual(field("name").rules.category, {
-    text: "CATEGORY NAME RULE", source: { kind: "categoryField", field: "name", value: "  CATEGORY NAME RULE  " },
-  });
+  assert.equal(field("name").rules.base[0].source.kind, "baseField");
+  assert.deepEqual(field("name").rules.category.source, { kind: "categoryField", field: "name", value: "  CATEGORY NAME RULE  " });
+  assert.equal(field("name").rules.category.text, "CATEGORY NAME RULE");
   assert.deepEqual(field("technicalStats").rules.category.source, { kind: "technicalStats", value: "TECH RULE" });
   assert.deepEqual(field("customTabItems").rules.category.source, { kind: "customTab", tabName: "تکنولوژی‌ها", value: "TAB RULE" });
-  assert.deepEqual(m.attributes[0].rule.source, { kind: "attribute", name: "Head Size", label: "اندازه سر", value: "HEAD SIZE RULE" });
-  assert.equal(m.attributes[1].rule, null);
-  assert.deepEqual(m.variants[0].rule.source, { kind: "variantAttribute", name: "Grip", label: "گریپ", value: "GRIP GUIDE" });
-  assert.deepEqual(m.customTab.items.map((i) => i.rule?.source ?? null), [
+  assert.deepEqual(m.attributes[0].rules[0].source, { kind: "attribute", name: "Head Size", label: "اندازه سر", value: "HEAD SIZE RULE" });
+  assert.deepEqual(m.attributes[1].rules, []);
+  assert.deepEqual(m.variants[0].rules[0].source, { kind: "variantAttribute", name: "Grip", label: "گریپ", value: "GRIP GUIDE" });
+  assert.equal(m.technicalStats[0].rules[0].source.field, "stat:power");
+  assert.deepEqual(m.customTab.items.map((i) => i.rules[0]?.source ?? null), [
     { kind: "customTabItem", itemId: C, title: "FORTYFIVE", value: "PICK FORTYFIVE WHEN NAMED" }, null,
   ]);
-  assert.deepEqual(field("sport").before.map((r) => r.source), [{ kind: "system", what: "sportLock" }]);
-  assert.deepEqual(field("attributes").after.map((r) => r.source.what), ["audienceScope"]);
 });
 
-test("compose: the preview model and the prompt are the same rules — every model rule is in the prompt, in its place", () => {
+test("compose: a rule's display expands its placeholders, its stored text keeps them", () => {
+  const m = composeProductPrompt({ category: richCategory(), promptConfig: richConfig() });
+  const lock = m.fields.find((f) => f.key === "sport").rules.base[0];
+  assert.equal(lock.text, 'MUST be exactly: "{{sport_id}}"');
+  assert.equal(lock.display, `MUST be exactly: "${sport._id}"`);
+  assert.equal(lock.source.value, lock.text);
+});
+
+test("the preview model and the prompt are the same rules — every model rule is in the prompt, in its place", () => {
   const cat = richCategory();
-  const m = composeProductPrompt({ category: cat, promptConfig: richConfig });
-  const prompt = draft(cat, richConfig);
-  for (const rule of flatten(m)) {
-    assert.ok(prompt.includes(rule.line ?? rule.text), `${rule.source.kind}: ${rule.text.slice(0, 60)}`);
-  }
+  const config = richConfig();
+  const m = composeProductPrompt({ category: cat, promptConfig: config });
+  const prompt = draft(cat, config);
+  for (const rule of flatten(m)) assert.ok(prompt.includes(rule.display), `${rule.source.kind}: ${rule.display.slice(0, 60)}`);
   for (const f of m.fields) {
     const block = fieldBlock(prompt, f.key);
-    for (const r of [...f.rules.base, ...f.rules.groups]) assert.ok(block.includes(`- ${r.text}`), `${f.key}: ${r.text}`);
-    if (f.rules.category) assert.ok(block.includes(f.rules.category.text), f.key);
+    for (const r of [...f.rules.base, ...f.rules.groups]) assert.ok(block.includes(r.display), `${f.key}: ${r.display.slice(0, 60)}`);
+    if (f.rules.category) assert.ok(block.includes(f.rules.category.display), f.key);
   }
-  // و برعکس: قاعده‌ی گروهِ فیلدِ دیگر یا دسته‌ی دیگر در هیچ‌کدام نیست
-  const other = composeProductPrompt({ category: category(D), promptConfig: richConfig });
-  assert.ok(!flatten(other).some((r) => r.source.kind === "group"));
-  assert.ok(!draft(category(D), richConfig).includes("GROUP NAME RULE"));
-  // دادهٔ تزریقی (فهرست‌ها، متنِ خام) جزوِ مدل نیست
+  // و برعکس: قاعده‌ی گروهِ دسته‌ی دیگر در هیچ‌کدام نیست
+  const other = composeProductPrompt({ category: category(D), promptConfig: config });
+  assert.ok(!flatten(other).some((r) => r.source.kind.startsWith("group")));
+  assert.ok(!draft(category(D), config).includes("GROUP NAME RULE"));
+  // متنِ خام جزوِ مدل نیست؛ بدونِ آن placeholder باز نمی‌شود
   assert.ok(!JSON.stringify(m).includes(rawContent));
+  assert.ok(renderProductPrompt(m).includes("{{source_text}}"));
 });
 
 test("custom tab: the tab rule is the category rule of customTabItems, item hints sit next to their titles", () => {
-  const prompt = draft(richCategory(), richConfig);
+  const prompt = draft(richCategory(), richConfig());
   const block = fieldBlock(prompt, "customTabItems");
   assert.ok(block.includes("Category-specific rules"));
   assert.ok(block.endsWith("TAB RULE"));
@@ -336,10 +606,10 @@ test("custom tab: the tab rule is the category rule of customTabItems, item hint
   assert.ok(prompt.includes('"customTabItems": ["<exact title from the list above>", "..."]'));
 });
 
-test("custom tab: without a prompt the output is unchanged; a disabled tab contributes nothing; a legacy prompts entry still applies", () => {
+test("custom tab: without a prompt nothing is added; a disabled tab contributes nothing; a legacy prompts entry still applies", () => {
   const plainTab = { enabled: true, name: "T", items: [{ _id: C, title: "ONE" }] };
   const plain = draft(category(A, { customTab: plainTab }));
-  assert.ok(plain.includes('Available titles for "T":\n  - "ONE"\n'));
+  assert.ok(plain.includes('Available titles for "T":\n  - "ONE"'));
   assert.ok(!plain.includes("| Selection Rule:"));
   assert.ok(!fieldBlock(plain, "customTabItems").includes("Category-specific rules"));
 
@@ -348,18 +618,6 @@ test("custom tab: without a prompt the output is unchanged; a disabled tab contr
 
   const legacy = composeProductPrompt({ category: category(A, { customTab: plainTab, prompts: [{ field: "customTabItems", context: "LEGACY" }] }) });
   assert.deepEqual(legacy.fields.find((f) => f.key === "customTabItems").rules.category.source, { kind: "categoryField", field: "customTabItems", value: "LEGACY" });
-});
-
-test("storableBase: editing one rule stores only that section; restoring the default stores nothing", () => {
-  const sections = resolveBasePrompt();
-  assert.deepEqual(storableBase(sections), []);
-  assert.ok(BASE_PROMPT_SECTIONS.every(({ key }) => isDefaultSection(key, sections[key])));
-  sections["field:name"][0] = "EDITED";
-  const stored = storableBase(sections);
-  assert.deepEqual(stored.map((s) => s.section), ["field:name"]);
-  assert.equal(stored[0].rules[0], "EDITED");
-  assert.equal(stored[0].rules.length, DEFAULT_BASE_PROMPT["field:name"].length);
-  assert.deepEqual(validatePromptConfig({ base: stored }).errors, []);
 });
 
 test("moveWithinSlots: reordering one field's group rules moves only those, and the prompt follows the new order", () => {
@@ -379,6 +637,6 @@ test("moveWithinSlots: reordering one field's group rules moves only those, and 
   const config = { groups: [{ categories: [A], rules: moved }] };
   assert.deepEqual(validatePromptConfig(config).errors, []);
   const block = fieldBlock(draft(category(A), config), "name");
-  assert.ok(block.indexOf("- N3") < block.indexOf("- N1") && block.indexOf("- N1") < block.indexOf("- N2"));
-  assert.ok(fieldBlock(draft(category(A), config), "tag").includes("- T1\n- T2"));
+  assert.ok(block.indexOf("N3") < block.indexOf("N1") && block.indexOf("N1") < block.indexOf("N2"));
+  assert.ok(fieldBlock(draft(category(A), config), "tag").includes("T1\nT2"));
 });

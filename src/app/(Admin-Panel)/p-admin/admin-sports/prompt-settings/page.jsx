@@ -21,9 +21,7 @@ import { useAdminPermissions } from '@/components/admin/AdminPermissionProvider'
 import {
   PROMPTS_HOME, categoryName, storedGroupPayload, swalTheme, usePromptConfig,
 } from '@/components/admin/productPrompts/promptSettingsUi';
-import {
-  BASE_PROMPT_SECTIONS, DEFAULT_BASE_PROMPT, fieldTitle, isLegacyGroupField, resolveBasePrompt,
-} from '@/lib/productPromptConfig';
+import { fieldTitle } from '@/lib/productPromptConfig';
 
 export default function PromptSettingsPage() {
   const { can } = useAdminPermissions();
@@ -35,11 +33,9 @@ export default function PromptSettingsPage() {
   if (!ctx.config) return <AdminLoader />;
 
   const { config, categoryById, save } = ctx;
-  const base = resolveBasePrompt(config.base);
-  const customSections = BASE_PROMPT_SECTIONS.filter(
-    ({ key }) => JSON.stringify(base[key]) !== JSON.stringify(DEFAULT_BASE_PROMPT[key]),
-  );
-  const totalBaseRules = Object.values(base).reduce((n, rules) => n + rules.length, 0);
+  const textSections = config.document.filter((s) => s.kind === 'text');
+  const totalBaseRules =
+    textSections.reduce((n, s) => n + s.rules.length, 0) + config.fieldRules.reduce((n, f) => n + f.rules.length, 0);
 
   const saveGroups = async (groups, message) => {
     setBusy(true);
@@ -95,11 +91,7 @@ export default function PromptSettingsPage() {
         <div className="flex-1 min-w-0">
           <h2 className="text-base font-bold text-gray-900">پرامپت پایه</h2>
           <p className="text-xs font-bold text-gray-500 mt-1 leading-6">
-            قواعدِ مشترکِ همه‌ی محصولات: نقش، قواعد کلی، قالب خروجی، زبان و قواعدِ هر فیلد — {BASE_PROMPT_SECTIONS.length} بخش، {totalBaseRules} قاعده.
-            {' '}
-            {customSections.length
-              ? <span className="text-amber-700">{customSections.length} بخش سفارشی شده است ({customSections.map((s) => s.title).join('، ')}).</span>
-              : 'همه‌ی بخش‌ها روی پیش‌فرض‌اند.'}
+            کلِ متنِ پرامپت: بخش‌ها، جداکننده‌ها، قواعدِ هر فیلد و قالبِ سطرهای داده — {textSections.length} بخش، {totalBaseRules} قاعده.
           </p>
         </div>
         <Link
@@ -125,7 +117,6 @@ export default function PromptSettingsPage() {
           const label = group.title || group.categories.map((id) => categoryName(categoryById, id)).join('، ');
           const deleted = group.categories.filter((id) => !categoryById.has(id)).length;
           const disabled = group.rules.filter((r) => r.categories.length && r.categories.every((id) => !categoryById.has(id))).length;
-          const legacy = group.rules.filter((r) => isLegacyGroupField(r.field)).length;
           const perField = Object.entries(
             group.rules.reduce((acc, r) => ({ ...acc, [r.field]: (acc[r.field] || 0) + 1 }), {}),
           );
@@ -145,13 +136,16 @@ export default function PromptSettingsPage() {
                   {group.categories.length > 6 && <span className="px-2 py-0.5 text-[11px] font-bold text-gray-400">+{group.categories.length - 6}</span>}
                 </div>
                 <p className="text-[11px] font-bold text-gray-400">
-                  {group.rules.length
-                    ? `${group.rules.length} قاعده — ${perField.map(([f, n]) => `${fieldTitle(f)}: ${n}`).join('، ')}`
+                  {group.rules.length || group.sections.length
+                    ? [
+                        group.sections.length > 0 && `${group.sections.length} بخش قواعد عمومی`,
+                        group.rules.length > 0 && `${group.rules.length} قاعده — ${perField.map(([f, n]) => `${fieldTitle(f)}: ${n}`).join('، ')}`,
+                      ].filter(Boolean).join(' · ')
                     : 'هنوز قاعده‌ای ندارد'}
                 </p>
-                {(deleted > 0 || disabled > 0 || legacy > 0) && (
+                {(deleted > 0 || disabled > 0) && (
                   <p className="text-[11px] font-bold text-amber-600">
-                    {[deleted && `${deleted} دسته‌ی حذف‌شده`, disabled && `${disabled} قاعده‌ی غیرفعال`, legacy && `${legacy} قاعده برای فیلدهای دیگر (قدیمی)`].filter(Boolean).join(' · ')}
+                    {[deleted && `${deleted} دسته‌ی حذف‌شده`, disabled && `${disabled} قاعده‌ی غیرفعال`].filter(Boolean).join(' · ')}
                   </p>
                 )}
               </div>
@@ -210,7 +204,7 @@ export default function PromptSettingsPage() {
         <FiLock className="mt-1 shrink-0" size={13} />
         <span>
           ترتیبِ هر فیلد در پرامپتِ نهایی: پرامپت پایه ← گروه‌ها (به ترتیبِ بالا) ← پرامپتِ خودِ دسته؛ در تعارض، قاعده‌ی خاص‌تر برنده است.
-          بخش‌های داده‌محور (شناسه‌ها، فهرست‌ها، تعریف دسته و ساختارِ خروجی) همیشه از داده ساخته می‌شوند.
+          همه‌ی متن‌ها، عنوان‌ها و جداکننده‌ها را خودتان می‌نویسید؛ کد فقط داده را به‌جای placeholderها می‌گذارد و چیزی به متن اضافه نمی‌کند.
         </span>
       </div>
     </div>

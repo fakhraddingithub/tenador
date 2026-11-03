@@ -1,12 +1,14 @@
 /**
  * buildProductTemplate.js
  *
- * Generates a structured AI prompt for extracting product data from raw content.
- * Returns a prompt string that instructs the AI to output valid, consistent JSON.
+ * The infrastructure that assembles the AI product prompt. It contains no prompt text:
+ * every title, separator, description, rule and data-line format comes from the prompt
+ * configuration (productPromptResolve.js). The code only orders what the admin wrote, picks
+ * the rules that apply to a category and fills in {{placeholders}} with data.
  *
- * Every rule comes from composeProductPrompt(), which tags each rule with its exact
- * source. The prompt string below and the admin preview page render that same model,
- * so the preview cannot drift from what the AI actually receives.
+ * composeProductPrompt() tags every rule with its exact source. The prompt string and the
+ * admin preview page render that same model, so the preview cannot drift from what the AI
+ * actually receives.
  */
 
 // مسیرِ نسبی (نه اسمِ مستعارِ base/) عمدی است: tests/aiProductDraft.test.mjs این
@@ -17,14 +19,15 @@ import {
   attributeAppliesToAudience,
 } from "../../utils/targetAudience.js";
 import {
-  FIELD_PRECEDENCE_NOTE,
   PRODUCT_PROMPT_FIELDS,
-  bulletRule,
-  numberedRule,
-  renderFieldRules,
-  resolveBasePrompt,
+  SOURCE_TEXT_TOKEN,
+  dynamicFieldKey,
+  expandTokens,
+  normalizeRule,
   resolveFieldRules,
+  splitRuleUnits,
 } from "./productPromptConfig.js";
+import { resolvePromptConfig } from "./productPromptResolve.js";
 
 /** The category's own free-text prompt entry for a field (raw stored text, "" when none). */
 function categoryPromptValue(prompts, field) {
@@ -33,46 +36,25 @@ function categoryPromptValue(prompts, field) {
   return match?.context == null ? "" : match.context.toString();
 }
 
-const BANNER = "=================================================================";
-
-/** A banner-headed section of the prompt, omitted entirely when it has no rules. */
-const ruleSection = (title, lines) =>
-  lines.length ? `${BANNER}\n${title}\n${BANNER}\n${lines.join("\n")}\n\n` : "";
-
-/**
- * A locked, data-derived rule. `line` is exactly what goes into the prompt; `text` is
- * the same rule without its bullet, for display. `what` names the data it is built from.
- */
-const systemRule = (what, line) => ({
-  text: line.replace(/^\s*-\s+/, "").trim(),
-  line,
-  source: { kind: "system", what },
-});
-
-const CUSTOM_TAB_INSTRUCTION = `Category custom tab items - pick ONLY the ones that genuinely apply to this specific product,
-based on the raw content. Use the EXACT title strings below, verbatim (do not paraphrase,
-translate, or invent new titles not in this list). If none apply, output an empty array.`;
-
 /**
  * Every rule of the product prompt for one category, each tagged with its source:
  *
- *   { kind: "base", section, index }              the base prompt (rule `index` of `section`)
+ *   { kind: "section", sectionKey, sectionName, index }   a rule of a base prompt section
+ *   { kind: "baseField", field, index }                   a base rule of a product field
  *   { kind: "group", groupId, groupTitle, field, index, targets }
- *   { kind: "categoryField", field }              category.prompts[field].context
- *   { kind: "technicalStats" }                    category.technicalStatsPrompt
+ *   { kind: "groupSection", groupId, groupTitle, sectionKey, sectionName, index, targets }
+ *   { kind: "categoryField", field }                      category.prompts[field].context
+ *   { kind: "technicalStats" }                            category.technicalStatsPrompt
  *   { kind: "attribute" | "variantAttribute", name, label }   that attribute's prompt
- *   { kind: "customTab", tabName }                category.customTab.prompt
- *   { kind: "customTabItem", itemId, title }      category.customTab.items[].prompt
- *   { kind: "system", what }                      locked, built from data, never editable
+ *   { kind: "customTab", tabName }                        category.customTab.prompt
+ *   { kind: "customTabItem", itemId, title }              category.customTab.items[].prompt
  *
- * Editable sources carry `value`, the stored text, so an edit can verify it is replacing
- * exactly what was shown. Data lists (brands, series, athletes, …) are not rules and are
- * not part of this model.
+ * A rule carries `text` (as stored, tokens unexpanded), `display` (tokens expanded, data
+ * lists left as tokens) and `source.value`, the stored text an edit must match.
  *
  * @param {Object} params
  * @param {Object}  params.category      - Category with populated sport (_id, name, title)
- * @param {Object} [params.promptConfig] - Stored ProductPromptConfig ({ base, groups });
- *                                         absent → the default base prompt and no groups
+ * @param {Object} [params.promptConfig] - Stored ProductPromptConfig; absent → the seed
  */
 export function composeProductPrompt({ category, promptConfig = null }) {
   if (!category) throw new Error("category is required");
@@ -80,17 +62,32 @@ export function composeProductPrompt({ category, promptConfig = null }) {
   if (!category.sport?._id || !category.sport.name?.trim()) {
     throw new Error("category.sport must be populated with _id and name");
   }
-  const sportId = category.sport._id.toString();
+  const config = resolvePromptConfig(promptConfig);
+  const { groups } = config;
+  const categoryId = category._id;
+  const template = (key, values = {}) => expandTokens(config.templates[key] ?? "", values);
+
+  const scalars = {
+    category_title: category.title,
+    category_id: String(categoryId),
+    sport_name: category.sport.name,
+    sport_title: category.sport.title || category.sport.name,
+    sport_id: String(category.sport._id),
+  };
+
+  // ─── Rules of dynamic fields: this group rules → the category's own ───────
+  const rulesFor = (key, stored, source) => {
+    const value = stored == null ? "" : String(stored);
+    const resolved = resolveFieldRules({ groups, categoryId, field: key, categoryText: value, categorySource: { ...source, value } });
+    return [...resolved.groups, ...(resolved.category ? [resolved.category] : [])];
+  };
+  const ruleSuffix = (rules, key) => rules.map((r) => template(key, { text: expandTokens(r.text, scalars) })).join("");
 
   // ─── Category Global Attributes ───────────────────────────────────────────
-  // These produce single-value fields in "attributes" object.
-  // The KEY the AI must use is attr.name (English). The label (Persian) is shown for context only.
-  //
-  // An attribute may be restricted to some target audiences (e.g. balance only
-  // makes sense on an adult racket). The model picks targetAudience itself, so
-  // the restriction has to travel with the attribute as a conditional rule. The
-  // list below is the EXPANDED set of product targetAudience values that keep
-  // the attribute applicable — computed with the same helper the rest of the
+  // An attribute may be restricted to some target audiences (e.g. balance only makes sense
+  // on an adult racket). The model picks targetAudience itself, so the restriction has to
+  // travel with the attribute. The list is the EXPANDED set of product targetAudience values
+  // that keep the attribute applicable — computed with the same helper the rest of the
   // system uses, so the model never has to infer the "یونی سکس = adults" rule.
   const attributeAudienceScope = (attr) => {
     const allowed = (TARGET_AUDIENCE_VALUES || []).filter((audience) =>
@@ -100,130 +97,128 @@ export function composeProductPrompt({ category, promptConfig = null }) {
   };
 
   const attributes = (category.attributes || []).map((attr) => ({
-    attr,
+    name: attr.name,
+    label: attr.label,
     scope: attributeAudienceScope(attr),
-    rule: attr.prompt
-      ? { text: attr.prompt, source: { kind: "attribute", name: attr.name, label: attr.label, value: attr.prompt } }
-      : null,
+    rules: rulesFor(dynamicFieldKey("attribute", attr.name), attr.prompt, { kind: "attribute", name: attr.name, label: attr.label }),
   }));
-
-  const restrictedAttributes = attributes.filter(({ scope }) => scope !== null);
-
-  const audienceScopedAttributeRule = restrictedAttributes.length
-    ? `- Some attributes below only apply to certain target audiences. AFTER you decide "targetAudience",
-  drop every attribute whose "Applies ONLY when targetAudience is one of" list does not contain the value
-  you chose — omit the key entirely, do NOT output null, "" or a guessed value. Audience-scoped attributes
-  in this category:
-${restrictedAttributes
-  .map(({ attr, scope }) => `  - "${attr.name}" (${attr.label}) → ${JSON.stringify(scope)}`)
-  .join("\n")}`
-    : "";
+  const restricted = attributes.filter(({ scope }) => scope !== null);
 
   // ─── Variant Attributes ───────────────────────────────────────────────────
-  // These produce array-value fields in "variantOptions" object.
-  // All values mentioned in the raw content must be collected.
   const variants = (category.variantAttributes || []).map((attr) => {
     const units = Array.isArray(attr.units) ? attr.units.filter(Boolean) : [];
     return {
-      attr,
+      name: attr.name,
+      label: attr.label,
       units,
       multiUnit: Boolean(attr.multiUnit && units.length > 0),
-      rule: attr.prompt
-        ? { text: attr.prompt, source: { kind: "variantAttribute", name: attr.name, label: attr.label, value: attr.prompt } }
-        : null,
+      rules: rulesFor(dynamicFieldKey("variant", attr.name), attr.prompt, { kind: "variantAttribute", name: attr.name, label: attr.label }),
     };
   });
-
-  const multiUnitVariantInstructions = variants
+  const multiUnitItems = variants
     .filter(({ multiUnit }) => multiUnit)
-    .map(({ attr, units }) => {
-      const placeholderUnits = Object.fromEntries(
-        units.map((unit) => [unit, `<real ${unit} value for this size, as a string>`])
-      );
-      return `  - KEY: "${attr.name}"
-    Persian Label: ${attr.label}
-    Units: ${JSON.stringify(units)}
-    Primary unit: "${units[0]}"
-    JSON shape (structure only — the placeholders below are NOT real values, do not copy them literally):
-      "variantOptions": { "${attr.name}": ["<primary value 1>", "<primary value 2>", "..."] }
-      "variantMeta": {
-        "${attr.name}": {
-          "<primary value 1>": { "units": ${JSON.stringify(placeholderUnits)}, "images": [] }
-        }
-      }
-    Important: the object key under variantMeta.${attr.name} MUST exactly equal the matching primary value from variantOptions.${attr.name}.
-    CRITICAL — completeness: if the raw content describes a size RANGE (e.g. "36 to 46", "sizes 36-46", "از 36 تا 46") rather than
-    listing every value individually, you MUST enumerate every single value in that range in variantOptions.${attr.name} — one
-    entry per available size — using the increment implied by the raw content (e.g. whole sizes, or half sizes if the text
-    mentions half sizes such as "36.5"). Do NOT collapse a range into just two or three sample values.
-    CRITICAL — real conversions only: every value inside a "units" object represents the exact SAME physical size expressed in
-    different measurement systems. These values must be accurate, mutually-consistent, real-world unit conversions for this
-    product type (use standard, well-known conversion tables for the domain, e.g. real EU↔CM↔US shoe-size charts, real
-    grip/handle size charts, etc.). NEVER invent a conversion by arithmetic pattern (e.g. never do "primary × 2" or similar
-    guesses) and never reuse the same conversion offset across unrelated products or unrelated attributes.`;
-    })
-    .join("\n\n");
+    .map(({ name, label, units }) =>
+      template("multi_unit_item", {
+        name,
+        label,
+        units: JSON.stringify(units),
+        primary_unit: units[0],
+        placeholder_units: JSON.stringify(Object.fromEntries(units.map((unit) => [unit, template("multi_unit_placeholder", { unit })]))),
+      }),
+    )
+    .join("\n");
+
+  // ─── Technical Stats ──────────────────────────────────────────────────────
+  const technicalStats = (category.technicalStats || []).map((stat) => ({
+    name: stat.name,
+    label: stat.label,
+    rules: rulesFor(dynamicFieldKey("stat", stat.name), "", { kind: "stat", name: stat.name }),
+  }));
 
   // ─── Custom Tab ───────────────────────────────────────────────────────────
-  // The tab's own rule is the category-specific rule of the customTabItems field;
-  // an item's prompt is a selection hint shown next to its title in CATEGORY DEFINITION.
   const customTab = category.customTab || {};
   const tabItems =
     customTab.enabled && Array.isArray(customTab.items)
       ? customTab.items
           .filter((item) => item?.title)
-          .map((item) => {
-            const hint = String(item.prompt ?? "").trim();
-            return {
+          .map((item) => ({
+            title: item.title,
+            rules: rulesFor(dynamicFieldKey("tabItem", item.title), item.prompt, {
+              kind: "customTabItem",
+              itemId: item._id == null ? null : String(item._id),
               title: item.title,
-              rule: hint
-                ? {
-                    text: hint,
-                    source: { kind: "customTabItem", itemId: item._id == null ? null : String(item._id), title: item.title, value: item.prompt },
-                  }
-                : null,
-            };
-          })
+            }),
+          }))
       : [];
-  // Before the tab had its own prompt, the builder read a `customTabItems` entry from
-  // category.prompts; such an entry still applies when the tab's own prompt is empty.
+  const tabName = customTab.name || "";
+  // Before the tab had its own prompt, a `customTabItems` entry in category.prompts was the
+  // field's category rule; such an entry still applies when the tab's own prompt is empty.
   const tabPrompt = String(customTab.prompt ?? "");
   const tabRuleSource = tabPrompt.trim()
-    ? { kind: "customTab", tabName: customTab.name || "", value: tabPrompt }
+    ? { kind: "customTab", tabName, value: tabPrompt }
     : { kind: "categoryField", field: "customTabItems", value: categoryPromptValue(category.prompts, "customTabItems") };
 
-  // ─── Rules: base prompt → category prompt groups → the category's own ─────
-  // The static text lives in productPromptConfig.js (editable per rule in the
-  // admin panel). Lines that carry injected data stay here and are locked:
-  // they are passed as `before`/`after` so no edit can break an ID lock.
-  const base = resolveBasePrompt(promptConfig?.base);
-  const groups = Array.isArray(promptConfig?.groups) ? promptConfig.groups : [];
-  const baseRules = (section) =>
-    base[section].map((text, index) => ({ text, source: { kind: "base", section, index, value: text } }));
-
-  const lockedLines = {
-    sport: { before: [systemRule("sportLock", `- MUST be exactly: "${sportId}"`)] },
-    category: { before: [systemRule("categoryLock", `- MUST be exactly: "${category._id}"`)] },
-    attributes: {
-      after: [
-        systemRule(
-          "audienceScope",
-          audienceScopedAttributeRule || "- Every attribute in this category applies to every target audience.",
-        ),
-      ],
-    },
-    variantMeta: {
-      after: [
-        systemRule(
-          "multiUnit",
-          multiUnitVariantInstructions
-            ? `\nMulti-unit variant attributes for this category:\n${multiUnitVariantInstructions}`
-            : "- No multi-unit variant attributes are defined for this category.",
-        ),
-      ],
-    },
+  // ─── What the {{placeholders}} expand to ──────────────────────────────────
+  const values = {
+    ...scalars,
+    attributes: attributes.length
+      ? attributes
+          .map(({ name, label, scope, rules }) =>
+            template("attribute_line", {
+              name,
+              label,
+              rules: ruleSuffix(rules, "attribute_rule"),
+              scope: scope ? template("attribute_scope", { audiences: JSON.stringify(scope) }) : "",
+            }),
+          )
+          .join("\n")
+      : template("attributes_empty"),
+    audience_rule: restricted.length
+      ? template("audience_rule", {
+          items: restricted
+            .map(({ name, label, scope }) => template("audience_rule_item", { name, label, audiences: JSON.stringify(scope) }))
+            .join("\n"),
+        })
+      : template("audience_rule_empty"),
+    variant_attributes: variants.length
+      ? variants
+          .map(({ name, label, units, multiUnit, rules }) =>
+            template(multiUnit ? "variant_multi_unit_line" : "variant_line", {
+              name,
+              label,
+              units: JSON.stringify(units),
+              primary_unit: units[0] ?? "",
+              rules: ruleSuffix(rules, "variant_rule"),
+            }),
+          )
+          .join("\n")
+      : template("variants_empty"),
+    multi_unit_rule: multiUnitItems ? template("multi_unit_rule", { items: multiUnitItems }) : template("multi_unit_rule_empty"),
+    multi_unit_definition: multiUnitItems ? template("multi_unit_definition", { items: multiUnitItems }) : template("multi_unit_definition_empty"),
+    technical_stats: technicalStats.length
+      ? technicalStats
+          .map(({ name, label, rules }) => template("technical_stat_line", { name, label, rules: ruleSuffix(rules, "technical_stat_rule") }))
+          .join("\n")
+      : template("technical_stats_empty"),
+    custom_tab_name: tabName,
+    custom_tab: tabItems.length
+      ? template("custom_tab", {
+          custom_tab_name: tabName,
+          items: tabItems
+            .map(({ title, rules }) => template("custom_tab_item", { title, rules: ruleSuffix(rules, "custom_tab_item_rule") }))
+            .join("\n"),
+        })
+      : "",
+    custom_tab_output: tabItems.length ? template("custom_tab_output") : "",
   };
 
+  const decorate = (rule) => ({ ...rule, display: expandTokens(rule.text, values) });
+  [attributes, variants, technicalStats, tabItems].forEach((list) =>
+    list.forEach((entry) => { entry.rules = entry.rules.map(decorate); }),
+  );
+
+  // ─── Product fields: base → category prompt groups → the category's own ───
+  const baseRulesOf = new Map(config.fieldRules.map(({ field, rules }) => [field, rules]));
   const categoryRuleFor = (key) => {
     if (key === "technicalStats") {
       const value = category.technicalStatsPrompt == null ? "" : String(category.technicalStatsPrompt);
@@ -233,37 +228,129 @@ ${restrictedAttributes
     const value = categoryPromptValue(category.prompts, key);
     return { categoryText: value.trim(), categorySource: { kind: "categoryField", field: key, value } };
   };
-
   const fields = PRODUCT_PROMPT_FIELDS
     // the custom tab field exists only for a category whose tab has items
     .filter(({ key }) => key !== "customTabItems" || tabItems.length)
-    .map(({ key, title }) => ({
-      key,
-      title,
-      before: lockedLines[key]?.before || [],
-      after: lockedLines[key]?.after || [],
-      rules: resolveFieldRules({ base, groups, categoryId: category._id, field: key, ...categoryRuleFor(key) }),
-    }));
+    .map(({ key, title }) => {
+      const rules = resolveFieldRules({ baseRules: baseRulesOf.get(key) || [], groups, categoryId, field: key, ...categoryRuleFor(key) });
+      return {
+        key,
+        title,
+        rules: {
+          base: rules.base.map(decorate),
+          groups: rules.groups.map(decorate),
+          category: rules.category && decorate(rules.category),
+        },
+      };
+    });
+
+  // ─── The document, in the admin's order ───────────────────────────────────
+  const id = String(categoryId);
+  const head = ({ key, name, top = "", title = "", bottom = "", description = "", blankLines = 1 }) =>
+    ({ key, name, top, title, bottom, description, blankLines });
+
+  // A group's general rules that repeat a rule already in the prompt are dropped, first wins.
+  const seenGeneral = new Set(
+    config.document
+      .filter((s) => s.kind === "text")
+      .flatMap((s) => s.rules.flatMap(splitRuleUnits))
+      .map(normalizeRule),
+  );
+  const groupSections = groups
+    .filter((group) => (group.categories || []).map(String).includes(id))
+    .flatMap((group) =>
+      group.sections.flatMap((section) => {
+        const rules = [];
+        (section.rules || []).forEach((rule, index) => {
+          const targets = (rule.categories || []).map(String);
+          if (targets.length && !targets.includes(id)) return;
+          const unit = normalizeRule(rule.text);
+          if (seenGeneral.has(unit)) return;
+          seenGeneral.add(unit);
+          rules.push(decorate({
+            text: rule.text,
+            source: {
+              kind: "groupSection",
+              groupId: group._id == null ? null : String(group._id),
+              groupTitle: group.title || "",
+              sectionKey: section.key,
+              sectionName: section.name,
+              index,
+              targets,
+              value: rule.text,
+            },
+          }));
+        });
+        // a section none of whose rules apply here has nothing to say to this category
+        if (!rules.length && !section.description) return [];
+        return [{ ...head(section), kind: "text", owner: { groupId: group._id == null ? null : String(group._id), groupTitle: group.title || "" }, rules }];
+      }),
+    );
+
+  const sections = config.document.flatMap((section) => {
+    if (section.kind === "groups") return groupSections;
+    if (section.kind === "fields") return [{ ...head(section), kind: "fields", fieldBlankLines: section.fieldBlankLines ?? 1 }];
+    return [{
+      ...head(section),
+      kind: "text",
+      rules: section.rules.map((text, index) =>
+        decorate({ text, source: { kind: "section", sectionKey: section.key, sectionName: section.name, index, value: text } }),
+      ),
+    }];
+  });
 
   return {
-    sportId,
-    general: {
-      role: baseRules("role"),
-      task: baseRules("task"),
-      output: baseRules("output"),
-      language: baseRules("language"),
-    },
-    precedenceNote: FIELD_PRECEDENCE_NOTE,
+    sections,
     fields,
     attributes,
     variants,
-    multiUnitVariantInstructions,
-    customTab: {
-      name: customTab.name || "",
-      items: tabItems,
-      instruction: tabItems.length ? systemRule("customTabInstruction", CUSTOM_TAB_INSTRUCTION) : null,
+    technicalStats,
+    customTab: { name: tabName, items: tabItems },
+    templates: {
+      field_heading: config.templates.field_heading ?? "",
+      field_empty: config.templates.field_empty ?? "",
+      group_heading: config.templates.group_heading ?? "",
+      category_heading: config.templates.category_heading ?? "",
     },
+    values,
   };
+}
+
+/** Lines are joined as written; a part the admin left empty simply prints nothing. */
+const joinLines = (lines) => lines.filter((line) => line !== "").join("\n");
+
+/**
+ * The prompt string from a composed model. `tokens` adds the values that are not part of the
+ * model (data lists, source text). Rules and fields never expand the source text: it has
+ * exactly one place, in a document section.
+ */
+export function renderProductPrompt(model, tokens = {}) {
+  const documentTokens = { ...model.values, ...tokens };
+  const ruleTokens = { ...documentTokens };
+  delete ruleTokens[SOURCE_TEXT_TOKEN];
+  const rule = (r) => expandTokens(r.text, ruleTokens);
+
+  const fieldBlock = ({ key, rules }) => {
+    const lines = rules.base.map(rule);
+    if (rules.groups.length) lines.push(model.templates.group_heading, ...rules.groups.map(rule));
+    if (rules.category) lines.push(model.templates.category_heading, rule(rules.category));
+    const body = joinLines(lines) || model.templates.field_empty;
+    return joinLines([expandTokens(model.templates.field_heading, { field: key }), body]);
+  };
+
+  const blocks = model.sections
+    .map((section) => {
+      const parts = ["top", "title", "bottom", "description"].map((part) => expandTokens(section[part], documentTokens));
+      const body = section.kind === "fields"
+        ? model.fields.map(fieldBlock).join("\n".repeat(1 + (section.fieldBlankLines ?? 1)))
+        : joinLines((section.rules || []).map((r) => expandTokens(r.text, section.owner ? ruleTokens : documentTokens)));
+      return { text: joinLines([...parts, body]), blankLines: section.blankLines ?? 1 };
+    })
+    .filter((block) => block.text !== "");
+
+  return blocks
+    .map((block, i) => (i < blocks.length - 1 ? block.text + "\n".repeat(1 + block.blankLines) : block.text))
+    .join("");
 }
 
 /**
@@ -275,8 +362,7 @@ ${restrictedAttributes
  * @param {Array}    params.athletes         - Athlete documents
  * @param {Array}   [params.limitedEditions] - Limited edition documents (optional)
  * @param {string}   params.rawContent       - Raw text to extract product data from
- * @param {Object}  [params.promptConfig]    - Stored ProductPromptConfig ({ base, groups });
- *                                             absent → the default base prompt and no groups
+ * @param {Object}  [params.promptConfig]    - Stored ProductPromptConfig; absent → the seed
  * @returns {string} - The complete prompt string
  */
 export function buildProductTemplate({
@@ -292,43 +378,10 @@ export function buildProductTemplate({
   if (!category._id) throw new Error("category._id is required");
   if (!Array.isArray(brands)) throw new Error("brands must be an array");
   const model = composeProductPrompt({ category, promptConfig });
-  const { sportId } = model;
   if (!Array.isArray(athletes)) throw new Error("athletes must be an array");
   if (typeof rawContent !== "string" || rawContent.trim().length < 50) {
     throw new Error("rawContent is too short (minimum 50 characters)");
   }
-
-  const globalAttributeInstructions = model.attributes
-    .map(({ attr, scope, rule }) => {
-      const extraction = rule ? ` | Extraction Rule: ${rule.text}` : "";
-      const audience = scope
-        ? ` | Applies ONLY when targetAudience is one of: ${JSON.stringify(scope)} — otherwise OMIT this key entirely`
-        : "";
-      return `  - KEY: "${attr.name}" | Persian Label (context only): ${attr.label} | Type: single string or number${extraction}${audience}`;
-    })
-    .join("\n");
-
-  const variantAttributeInstructions = model.variants
-    .map(({ attr, units, multiUnit, rule }) => {
-      const guide = rule ? ` | Guide: ${rule.text}` : "";
-      if (multiUnit) {
-        return `  - KEY: "${attr.name}" | Persian Label (context only): ${attr.label} | Type: multi-unit variant | variantOptions must contain ONLY primary "${units[0]}" values as strings | Units in order: ${JSON.stringify(units)}${guide}`;
-      }
-      return `  - KEY: "${attr.name}" | Persian Label (context only): ${attr.label} | Type: array of strings${guide}`;
-    })
-    .join("\n");
-
-  const { multiUnitVariantInstructions } = model;
-
-  // ─── Technical Stats ──────────────────────────────────────────────────────
-  const technicalStatsInstructions = (category.technicalStats || [])
-    .map((stat) => `  - KEY: "${stat.name}" | Label: ${stat.label}`)
-    .join("\n");
-
-  const tab = model.customTab;
-  const customTabInstructions = tab.items
-    .map(({ title, rule }) => `  - "${title}"${rule ? ` | Selection Rule: ${rule.text}` : ""}`)
-    .join("\n");
 
   // ─── Reference Lists ──────────────────────────────────────────────────────
   const brandList = brands.map((b) => ({
@@ -366,111 +419,11 @@ export function buildProductTemplate({
     };
   });
 
-  const fieldBlocks = model.fields
-    .map(({ key, before, after, rules }) => renderFieldRules(key, { before, after, rules }))
-    .join("\n\n");
-
-  const texts = (rules) => rules.map((r) => r.text);
-  const { role, task, output, language } = model.general;
-  const intro = [
-    role.length ? `${texts(role).join("\n")}\n\n` : "",
-    task.length ? `Your task:\n${texts(task).map(bulletRule).join("\n")}\n\n` : "",
-  ].join("");
-
-  // ─── Build Prompt ─────────────────────────────────────────────────────────
-  return `
-${intro}${ruleSection("CRITICAL OUTPUT FORMAT RULES — NEVER VIOLATE THESE", texts(output).map(numberedRule))}${ruleSection("LANGUAGE RULE", texts(language).map(bulletRule))}${BANNER}
-FIELD RULES
-${BANNER}
-${model.precedenceNote}
-
-${fieldBlocks}
-
-=================================================================
-CATEGORY DEFINITION
-=================================================================
-Category Name : ${category.title}
-Category ID   : ${category._id}
-Category Sport Name : ${category.sport.name}
-Category Sport Title: ${category.sport.title || category.sport.name}
-Category Sport ID   : ${sportId}
-This category belongs to the sport above. Categories with the same name in other sports are different categories.
-
-Category Attributes (single-value fields → output in "attributes"):
-${globalAttributeInstructions || "  (none defined)"}
-
-Variant Attributes (array-value fields → output in "variantOptions"):
-${variantAttributeInstructions || "  (none defined)"}
-
-Variant Metadata (value-level metadata → output in "variantMeta"):
-${multiUnitVariantInstructions || "  No multi-unit metadata is required. Return {} unless raw content explicitly provides value-level images."}
-
-Category Technical Stats (integer 0–100 → output in "technicalStats"):
-${technicalStatsInstructions || "  (none defined)"}
-
-${tab.instruction ? `${tab.instruction.line}
-Available titles for "${tab.name}":
-${customTabInstructions}
-` : ""}
-
-=================================================================
-AVAILABLE BRANDS
-=================================================================
-${JSON.stringify(brandList, null, 2)}
-
-=================================================================
-AVAILABLE ATHLETES
-=================================================================
-${JSON.stringify(athleteList, null, 2)}
-
-=================================================================
-AVAILABLE SERIES
-=================================================================
-${JSON.stringify(serieList, null, 2)}
-
-=================================================================
-AVAILABLE LIMITED EDITIONS
-=================================================================
-${JSON.stringify(limitedEditionList, null, 2)}
-
-=================================================================
-RAW PRODUCT CONTENT
-=================================================================
-${rawContent.trim()}
-
-=================================================================
-REQUIRED JSON OUTPUT STRUCTURE
-=================================================================
-Output exactly this structure with no extra fields:
-
-{
-  "name": "Persian product name",
-  "shortDescription": "Persian HTML short description",
-  "longDescription": "Persian HTML long description",
-  "color": "#hexcode",
-  "basePrice": 0,
-  "label": "",
-  "targetAudience": "مردانه | زنانه | بچگانه | یونی سکس",
-  "brand": "ID_FROM_BRANDS_LIST",
-  "serie": "ID_FROM_SERIES_LIST_OR_EMPTY_STRING",
-  "limitedEdition": "ID_FROM_LIMITED_EDITIONS_LIST_OR_EMPTY_STRING",
-  "sport": "${sportId}",
-  "athlete": [],
-  "category": "${category._id}",
-  "attributes": {
-    "English_key": "single value"
-  },
-  "variantOptions": {
-    "English_key": ["value1", "value2"]
-  },
-  "variantMeta": {},
-  "technicalStats": {
-    "stat_name": 85
-  }${tab.items.length ? `,
-  "customTabItems": ["<exact title from the list above>", "..."]` : ""},
-  "tag": [],
-  "mainImage": "",
-  "gallery": []
-}
-`;
+  return renderProductPrompt(model, {
+    brands: JSON.stringify(brandList, null, 2),
+    athletes: JSON.stringify(athleteList, null, 2),
+    series: JSON.stringify(serieList, null, 2),
+    limited_editions: JSON.stringify(limitedEditionList, null, 2),
+    [SOURCE_TEXT_TOKEN]: rawContent.trim(),
+  });
 }

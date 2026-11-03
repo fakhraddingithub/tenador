@@ -680,7 +680,12 @@ export const AUDIT_ENTITIES = {
     label: "تنظیمات پرامپت محصول",
     priority: 60,
     name: () => "پرامپت تولید محصول",
-    fields: { base: { label: "پرامپت پایه" }, groups: { label: "گروه‌های پرامپت دسته" } },
+    fields: {
+      document: { label: "بخش‌های پرامپت پایه" },
+      fieldRules: { label: "قواعد فیلدها" },
+      templates: { label: "قالب‌های داده" },
+      groups: { label: "گروه‌های پرامپت دسته" },
+    },
   },
   HealthCard: { key: "healthCard", label: "کارت سلامت", priority: 54 },
   Banner: { key: "banner", label: "بنر", priority: 50 },

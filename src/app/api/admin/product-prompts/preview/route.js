@@ -33,7 +33,8 @@ export async function GET(req) {
       );
     }
 
-    const model = composeProductPrompt({ category, promptConfig: config });
+    // values فقط برای رندرِ پرامپت است؛ پیش‌نمایش متنِ آماده‌ی هر قاعده را در display دارد
+    const { values: _values, ...model } = composeProductPrompt({ category, promptConfig: config });
     return Response.json({
       category: {
         _id: String(category._id),
@@ -42,12 +43,7 @@ export async function GET(req) {
         sport: { name: category.sport.name, title: category.sport.title },
       },
       updatedAt: config?.updatedAt ? new Date(config.updatedAt).toISOString() : null,
-      model: {
-        ...model,
-        // فقط آنچه پیش‌نمایش لازم دارد — نه کلِ تعریفِ ویژگی
-        attributes: model.attributes.map(({ attr, scope, rule }) => ({ name: attr.name, label: attr.label, scope, rule })),
-        variants: model.variants.map(({ attr, units, multiUnit, rule }) => ({ name: attr.name, label: attr.label, units, multiUnit, rule })),
-      },
+      model,
     });
   } catch (err) {
     console.error(err);

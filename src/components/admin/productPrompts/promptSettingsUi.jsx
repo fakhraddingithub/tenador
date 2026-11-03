@@ -14,6 +14,7 @@ import { SortableContext, sortableKeyboardCoordinates, useSortable, verticalList
 import { CSS } from '@dnd-kit/utilities';
 import { restrictToVerticalAxis } from '@dnd-kit/modifiers';
 import { FiMenu, FiPlus, FiSearch, FiTrash2, FiX } from 'react-icons/fi';
+import { PROMPT_TOKENS } from '@/lib/productPromptConfig';
 import { getApiErrorMessage } from '@/lib/apiClientError';
 import { matchesSearch } from '@/lib/search';
 import { getCategoryLabel } from 'base/utils/categoryLabel';
@@ -116,7 +117,11 @@ export const storedGroupPayload = (g) => ({
   title: g.title,
   categories: g.categories,
   rules: g.rules.map((r) => ({ field: r.field, text: r.text, categories: r.categories })),
+  sections: g.sections,
 });
+
+/** کلیدِ بخشِ تازه؛ فقط باید در همان سند یکتا باشد. */
+export const newSectionKey = () => `s${Date.now().toString(36)}${Math.random().toString(36).slice(2, 7)}`;
 
 /** هشدار هنگامِ بستن/بارگذاریِ دوباره‌ی صفحه + تأییدِ ترکِ صفحه برای لینک‌های داخلی. */
 export function useUnsavedGuard(dirty) {
@@ -189,7 +194,9 @@ export function PromptTabs({ rows, active, onChange, label }) {
 
 export const textareaClass =
   'w-full px-3 py-2 text-[13px] leading-6 font-medium rounded-xl border-2 outline-none transition-all ' +
-  'bg-gray-50 text-gray-900 placeholder-gray-400 resize-y text-left [direction:ltr] ' +
+  // plaintext: جهتِ هر خط از متنِ همان خط می‌آید (فارسی راست‌به‌چپ، انگلیسی چپ‌به‌راست) تا
+  // نقطه و دونقطه سرِ جایشان بمانند؛ direction روی * در globals.css جلوی dir را می‌گیرد.
+  'bg-gray-50 text-gray-900 placeholder-gray-400 resize-y text-start [unicode-bidi:plaintext] ' +
   'focus:bg-white focus:border-[var(--color-primary)] focus:ring-4 focus:ring-[var(--color-primary)]/10';
 
 /**
@@ -277,6 +284,103 @@ export function RuleCard({ index, rule, onChange, onRemove, error, readOnly, aut
     </div>
   );
 }
+
+const headInputClass =
+  'w-full px-3 py-2 text-sm font-medium rounded-xl border-2 border-gray-200 bg-gray-50 outline-none text-start [unicode-bidi:plaintext] ' +
+  'focus:bg-white focus:border-[var(--color-primary)]';
+
+const HeadField = ({ label, hint, error, children }) => (
+  <label className="block">
+    <span className="block text-xs font-bold text-gray-600 mb-1">{label}</span>
+    {children}
+    {hint && <span className="block mt-1 text-[11px] font-bold text-gray-400">{hint}</span>}
+    {error && <span className="block mt-1 text-xs font-bold text-red-500">! {error}</span>}
+  </label>
+);
+
+/**
+ * فیلدهای سربرگِ یک بخشِ پرامپت. جز «نام» همه دقیقاً همان‌طور که نوشته شده‌اند چاپ می‌شوند
+ * و هر کدام خالی باشد چیزی چاپ نمی‌شود.
+ */
+export function SectionHeadFields({ section, onChange, readOnly, errors = {}, children }) {
+  const text = (part) => ({
+    value: section[part] ?? '',
+    readOnly,
+    onChange: (e) => onChange({ [part]: e.target.value }),
+  });
+  return (
+    <div className="grid md:grid-cols-2 gap-3">
+      <HeadField label="نام بخش (در پرامپت چاپ نمی‌شود)" error={errors.name}>
+        <input {...text('name')} className={headInputClass} />
+      </HeadField>
+      <HeadField label="عنوان" error={errors.title}>
+        <input {...text('title')} className={headInputClass} />
+      </HeadField>
+      <HeadField label="جداکننده‌ی بالای عنوان" error={errors.top}>
+        <input {...text('top')} className={headInputClass} />
+      </HeadField>
+      <HeadField label="جداکننده‌ی پایین عنوان" error={errors.bottom}>
+        <input {...text('bottom')} className={headInputClass} />
+      </HeadField>
+      <div className="md:col-span-2">
+        <HeadField label="توضیح (پیش از قواعد می‌آید؛ placeholder هم می‌پذیرد)" error={errors.description}>
+          <textarea
+            {...text('description')}
+            rows={Math.min(16, Math.max(2, (section.description ?? '').split('\n').length))}
+            className={`${textareaClass} border-gray-200 hover:border-gray-300`}
+          />
+        </HeadField>
+      </div>
+      <HeadField label="خط خالی بعد از این بخش" error={errors.blankLines}>
+        <input
+          type="number"
+          min={0}
+          max={10}
+          value={section.blankLines ?? 1}
+          readOnly={readOnly}
+          onChange={(e) => onChange({ blankLines: e.target.value === '' ? 0 : Number(e.target.value) })}
+          className={headInputClass}
+        />
+      </HeadField>
+      {children}
+    </div>
+  );
+}
+
+/** placeholderهایی که کد در متن‌ها جای می‌گذارد؛ کلیک = کپی. */
+export function TokenHelp({ tokens = PROMPT_TOKENS }) {
+  const copy = async (key) => {
+    try {
+      await navigator.clipboard.writeText(`{{${key}}}`);
+      toast.success(`{{${key}}} کپی شد`);
+    } catch {
+      toast.error('کپی انجام نشد');
+    }
+  };
+  return (
+    <details className="rounded-xl border border-gray-200 bg-white p-3 text-xs font-bold text-gray-600">
+      <summary className="cursor-pointer">داده‌هایی که می‌توانید در متن بگذارید (placeholder)</summary>
+      <ul className="mt-3 grid md:grid-cols-2 gap-1.5">
+        {tokens.map(({ key, label }) => (
+          <li key={key} className="flex flex-wrap items-center gap-2">
+            <button type="button" onClick={() => copy(key)} title="کپی" dir="ltr" className="px-1.5 py-0.5 rounded bg-gray-100 font-mono text-[11px] text-gray-700 hover:bg-gray-200">
+              {`{{${key}}}`}
+            </button>
+            <span className="text-[11px] font-medium text-gray-500">{label}</span>
+          </li>
+        ))}
+      </ul>
+    </details>
+  );
+}
+
+/** هشدارِ placeholderی که کد نمی‌شناسد: همان‌طور خام به هوش مصنوعی می‌رسد. */
+export const UnknownTokensNote = ({ tokens }) =>
+  tokens.length > 0 && (
+    <p className="text-xs font-bold text-amber-700 leading-6">
+      این placeholderها شناخته نیستند و همان‌طور خام در پرامپت می‌مانند: <span dir="ltr" className="font-mono">{tokens.map((t) => `{{${t}}}`).join(' ')}</span>
+    </p>
+  );
 
 export const AddRuleButton = ({ onClick, label = 'افزودن قاعده' }) => (
   <button

@@ -14,10 +14,10 @@
  */
 
 import mongoose from "mongoose";
-import {
-  LEGACY_CATEGORY_PROMPT_DEFAULTS,
-  normalizeRule,
-} from "../src/lib/productPromptConfig.js";
+import { normalizeRule } from "../src/lib/productPromptConfig.js";
+import PROMPT_SEED from "../src/lib/productPromptSeed.json" with { type: "json" };
+
+const LEGACY_CATEGORY_PROMPT_DEFAULTS = PROMPT_SEED.legacyCategoryDefaults;
 
 try {
   process.loadEnvFile(".env");
