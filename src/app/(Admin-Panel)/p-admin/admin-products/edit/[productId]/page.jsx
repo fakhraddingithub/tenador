@@ -7,8 +7,8 @@ import { BASIC_PRODUCT_FIELDS, productAttributeType } from '@/lib/productSection
 import { useState, useEffect, useMemo } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import Link from 'next/link';
-import { FaEdit, FaBox, FaImages, FaTags, FaCogs, FaPalette, FaRunning, FaLayerGroup, FaMagic } from 'react-icons/fa';
-import { FiChevronDown, FiChevronUp, FiChevronLeft } from 'react-icons/fi';
+import { FaEdit, FaBox, FaImages, FaTags, FaCogs, FaRunning, FaLayerGroup, FaMagic } from 'react-icons/fa';
+import { FiChevronDown, FiChevronUp } from 'react-icons/fi';
 import { AnimatePresence, motion } from 'framer-motion';
 import Button from '@/components/admin/Button';
 import AdminLoader from '@/components/admin/AdminLoader';
@@ -103,8 +103,8 @@ function CollapsibleSection({
   isOpen,
   onToggle,
   children,
-  className = 'bg-white p-8 rounded-[2.5rem] shadow-sm border border-gray-100',
-  titleClassName = 'font-bold text-gray-800',
+  className = 'rounded-[var(--admin-radius)] border border-[var(--admin-border)] bg-[var(--admin-card)]',
+  titleClassName = 'text-sm font-bold text-[var(--admin-text)]',
   headerExtra = null,
   onEditJson,
   bodyClassName = '',
@@ -113,21 +113,21 @@ function CollapsibleSection({
 
   return (
     <div className={className}>
-      <div className={`flex flex-wrap items-center gap-2 border-b pb-4 ${isOpen ? 'mb-6' : 'mb-0'}`}>
+      <div className={`flex flex-wrap items-center gap-2 px-4 py-2 sm:px-5 ${isOpen ? 'border-b border-[var(--admin-border)]' : ''}`}>
       <button
         type="button"
         onClick={onToggle}
         aria-expanded={isOpen}
         aria-controls={contentId}
-        className="flex min-h-11 flex-1 items-center gap-2 text-right transition-colors hover:text-gray-900"
+        className="flex min-h-11 min-w-0 flex-1 items-center gap-3 rounded-[var(--admin-radius)] text-right transition-colors hover:text-[var(--color-primary)] focus-visible:outline-2 focus-visible:outline-[var(--color-primary)]"
       >
-        {icon}
+        {icon && <span className="flex size-8 shrink-0 items-center justify-center rounded-[var(--admin-radius)] bg-[var(--admin-bg)]" aria-hidden="true">{icon}</span>}
         <h2 className={titleClassName}>{title}</h2>
         {headerExtra}
       </button>
       {onEditJson && (
         <button type="button" onClick={onEditJson}
-          className="min-h-11 rounded-xl border border-[var(--admin-border-strong)] bg-[var(--color-primary-soft)] px-3 py-2 text-sm font-medium text-[var(--color-primary)] transition-colors hover:border-[var(--color-primary)] focus-visible:outline-2 focus-visible:outline-[var(--color-primary)]">
+          className="min-h-11 rounded-[var(--admin-radius)] border border-transparent px-3 py-2 text-sm font-medium text-[var(--color-primary)] transition-colors hover:bg-[var(--color-primary-soft)] focus-visible:outline-2 focus-visible:outline-[var(--color-primary)]">
           ویرایش جیسون
         </button>
       )}
@@ -137,7 +137,7 @@ function CollapsibleSection({
         {isOpen ? <FiChevronUp aria-hidden="true" /> : <FiChevronDown aria-hidden="true" />}
       </button>
       </div>
-      <AnimatedCollapse id={contentId} isOpen={isOpen} className={bodyClassName}>
+      <AnimatedCollapse id={contentId} isOpen={isOpen} className={`p-4 sm:p-5 ${bodyClassName}`}>
         {children}
       </AnimatedCollapse>
     </div>
@@ -148,7 +148,7 @@ function CollapsibleSection({
 // وقتی سرور خطای فیلدی برمی‌گرداند همهٔ بخش‌ها باز می‌شوند؛ وگرنه پیام به فیلدی
 // اشاره می‌کند که داخلِ یک بخشِ جمع‌شده پنهان است.
 const ALL_SECTIONS_OPEN = Object.fromEntries(
-  ['basicInfo', 'color', 'relations', 'athletes', 'fixedAttributes', 'variants',
+  ['basicInfo', 'relations', 'athletes', 'fixedAttributes', 'variants',
     'technicalStats', 'customTab', 'media'].map((key) => [key, true]),
 );
 
@@ -786,7 +786,7 @@ export default function ProductEditPage() {
   // Render
   // ---------------------------
   return (
-    <form onSubmit={handleSubmit} className="max-w-5xl mx-auto space-y-8 pb-20">
+    <form onSubmit={handleSubmit} className="mx-auto w-full max-w-5xl space-y-4 pb-12" dir="rtl">
       {jsonSection && (
         <ProductSectionJsonModal
           section={jsonSection}
@@ -807,40 +807,17 @@ export default function ProductEditPage() {
       )}
 
       {/* Header */}
-      <div className="flex justify-between items-center bg-white p-6 rounded-3xl shadow-sm border border-gray-100">
-        <div className="flex items-center gap-4">
-          <div className="bg-blue-50 p-4 rounded-2xl text-blue-600">
-            <FaEdit size={24} />
+      <div className="rounded-[var(--admin-radius)] border border-[var(--admin-border)] bg-[var(--admin-card)] px-4 py-4 sm:px-5">
+        <div className="flex min-w-0 items-center gap-3">
+          <div className="flex size-10 shrink-0 items-center justify-center rounded-[var(--admin-radius)] bg-black text-[var(--color-primary)]">
+            <FaEdit size={18} aria-hidden="true" />
           </div>
           <div>
-            <h1 className="text-xl font-bold text-gray-900">ویرایش محصول</h1>
-            <p className="text-gray-400 text-xs mt-1">شناسه: {id}</p>
+            <h1 className="text-lg font-extrabold text-[var(--admin-text)]">ویرایش محصول</h1>
+            <p className="mt-1 break-all text-xs text-[var(--admin-text-muted)]">شناسه: <bdi>{id}</bdi></p>
           </div>
         </div>
-        <Button
-          type="submit"
-          loading={submitLoading}
-          disabled={uploadsInFlight > 0}
-          className="px-10 rounded-2xl"
-        >
-          {uploadsInFlight > 0 ? 'در حال بارگذاری تصویر…' : 'ذخیره تغییرات'}
-        </Button>
       </div>
-
-      {/* Product Regeneration — صفحه‌ی جدا (POST /api/product/[id]/regenerate) */}
-      <Link
-        href={`/p-admin/admin-products/${id}/regenerate`}
-        className="flex items-center gap-4 bg-white p-6 rounded-[2.5rem] shadow-sm border border-gray-100 transition-colors hover:border-[var(--color-primary)] focus-visible:outline-2 focus-visible:outline-[var(--color-primary)]"
-      >
-        <div className="bg-purple-50 p-3 rounded-2xl text-purple-600"><FaMagic size={20} /></div>
-        <div className="flex-1">
-          <h2 className="font-bold text-gray-800">بازتولید محصول</h2>
-          <p className="text-xs text-gray-500 mt-1">
-            بازنویسیِ اطلاعاتِ محصول با پرامپت AI — تصاویر و واریانت‌ها دست‌نخورده می‌مانند
-          </p>
-        </div>
-        <FiChevronLeft className="text-gray-400" aria-hidden="true" />
-      </Link>
 
       {/* General Info */}
       <CollapsibleSection
@@ -872,26 +849,21 @@ export default function ProductEditPage() {
           value={formData.longDescription}
           onChange={e => updateField('longDescription', e.target.value)}
         />
-      </CollapsibleSection>
-
-      {/* Color Picker */}
-      <CollapsibleSection
-        id="product-color"
-        title="رنگ محصول"
-        icon={<FaPalette className="text-gray-400" />}
-        isOpen={isSectionOpen('color')}
-        onToggle={() => toggleSection('color')}
-      >
+        <div className="border-t border-[var(--admin-border)] pt-5">
+          <label htmlFor="product-color" className="mb-3 block text-sm font-bold text-[var(--admin-text)]">رنگ محصول</label>
         <div className="flex items-center gap-4 flex-wrap">
           <input
+            id="product-color"
             type="color"
             value={formData.color || '#000000'}
             onChange={e => updateField('color', e.target.value)}
             className="w-12 h-10 rounded cursor-pointer border border-gray-300 p-0.5"
             title="انتخاب رنگ"
           />
-          <div className="w-40">
+          <div className="w-40 [&>div]:mb-0">
             <Input
+              aria-label="کد رنگ محصول"
+              dir="ltr"
               placeholder="#000000"
               value={formData.color || ''}
               onChange={e => updateField('color', e.target.value)}
@@ -907,6 +879,7 @@ export default function ProductEditPage() {
               <span className="text-sm text-gray-500">{formData.color}</span>
             </>
           )}
+        </div>
         </div>
       </CollapsibleSection>
 
@@ -1027,7 +1000,7 @@ export default function ProductEditPage() {
             </span>
           ) : null}
         >
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2 max-h-52 overflow-y-auto pr-1">
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2 max-h-52 overflow-y-auto pr-1">
             {athletes.map(a => {
               const selected =
                 Array.isArray(formData.athlete) && formData.athlete.includes(a._id);
@@ -1104,7 +1077,7 @@ export default function ProductEditPage() {
 
           <div className="space-y-4 mb-8">
             {categoryVariantAttributes.map(attr => (
-              <div key={attr.name} className="border rounded-2xl p-4 bg-purple-50/30">
+              <div key={attr.name} className="border border-[var(--admin-border)] rounded-[var(--admin-radius)] p-4 bg-[var(--admin-bg)]">
                 <label className="block font-medium text-gray-700 mb-2">
                   {attr.label}
                   {attr.prompt && (
@@ -1120,7 +1093,7 @@ export default function ProductEditPage() {
                           type="text"
                           dir="ltr"
                           style={{ direction: 'ltr', unicodeBidi: 'isolate' }}
-                          className="border rounded-[var(--radius)] px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-400"
+                          className="border rounded-[var(--radius)] px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)]"
                           placeholder={`${attr.label} — ${unit}${ui === 0 ? ' (اصلی)' : ''}`}
                           value={variantInputBuffer[attr.name]?.[unit] || ''}
                           onChange={e =>
@@ -1141,7 +1114,7 @@ export default function ProductEditPage() {
                     <button
                       type="button"
                       onClick={() => addVariantValue(attr)}
-                      className="px-4 py-2 bg-purple-600 text-white rounded-[var(--radius)] text-sm hover:bg-purple-700 transition-colors"
+                      className="px-4 py-2 bg-[var(--color-primary)] text-white rounded-[var(--radius)] text-sm hover:bg-[var(--color-primary-hover)] transition-colors"
                     >
                       + افزودن مقدار
                     </button>
@@ -1152,7 +1125,7 @@ export default function ProductEditPage() {
                       type="text"
                       dir="ltr"
                       style={{ direction: 'ltr', unicodeBidi: 'isolate' }}
-                      className="flex-1 border rounded-[var(--radius)] px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-400"
+                      className="min-w-0 flex-1 border rounded-[var(--radius)] px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)]"
                       placeholder={`مقدار جدید برای ${attr.label}...`}
                       value={variantInputBuffer[attr.name] || ''}
                       onChange={e =>
@@ -1168,7 +1141,7 @@ export default function ProductEditPage() {
                     <button
                       type="button"
                       onClick={() => addVariantValue(attr)}
-                      className="px-4 py-2 bg-purple-600 text-white rounded-[var(--radius)] text-sm hover:bg-purple-700 transition-colors"
+                      className="px-4 py-2 bg-[var(--color-primary)] text-white rounded-[var(--radius)] text-sm hover:bg-[var(--color-primary-hover)] transition-colors"
                     >
                       + افزودن
                     </button>
@@ -1194,8 +1167,8 @@ export default function ProductEditPage() {
           {categoryVariantAttributes.some(
             (attr) => (variantOptions[attr.name] || []).length > 0
           ) && (
-            <div className="mb-8 border rounded-2xl p-4 bg-blue-50/30">
-              <h4 className="font-semibold mb-1 text-blue-800">تصاویر هر مقدار</h4>
+            <div className="mb-6 border border-[var(--admin-border)] rounded-[var(--admin-radius)] p-4 bg-[var(--admin-bg)]">
+              <h4 className="text-sm font-semibold mb-1 text-[var(--admin-text)]">تصاویر هر مقدار</h4>
               <p className="text-xs text-gray-500 mb-4">
                 تصاویری که برای هر مقدار (مثلا هر رنگ) بارگذاری می‌کنید بین همه واریانت‌هایی که آن مقدار را دارند مشترک است؛ لازم نیست برای هر سایز جدا آپلود کنید.
               </p>
@@ -1263,7 +1236,7 @@ export default function ProductEditPage() {
                   <button
                     type="button"
                     onClick={() => setAllCombos(true)}
-                    className="px-3 py-1.5 text-xs font-bold rounded-lg border border-purple-200 text-purple-700 hover:bg-purple-50 transition-colors"
+                    className="px-3 py-1.5 text-xs font-bold rounded-lg border border-[var(--admin-border-strong)] text-[var(--color-primary)] hover:bg-[var(--color-primary-soft)] transition-colors"
                   >
                     انتخاب همه
                   </button>
@@ -1290,8 +1263,8 @@ export default function ProductEditPage() {
                   return (
                     <div
                       key={key}
-                      className={`border rounded-2xl p-5 bg-white shadow-sm transition-opacity ${
-                        isSelected ? 'border-purple-200' : 'border-gray-200 opacity-60'
+                      className={`border rounded-[var(--admin-radius)] p-4 bg-white transition-opacity ${
+                        isSelected ? 'border-[var(--admin-border-strong)]' : 'border-gray-200 opacity-60'
                       }`}
                     >
                       <div className="flex flex-wrap items-center gap-2 mb-4">
@@ -1300,7 +1273,7 @@ export default function ProductEditPage() {
                             type="checkbox"
                             checked={isSelected}
                             onChange={() => toggleCombo(key)}
-                            className="w-5 h-5 rounded accent-purple-600 shrink-0"
+                            className="w-5 h-5 rounded accent-[var(--color-primary)] shrink-0"
                           />
                           <span className="sr-only">ساخت این ترکیب</span>
                         </label>
@@ -1310,7 +1283,7 @@ export default function ProductEditPage() {
                             className="px-2 py-0.5 bg-gray-100 rounded text-sm font-medium text-gray-700"
                           >
                             {k}:{' '}
-                            <span className="text-purple-700 font-semibold">{v}</span>
+                            <span className="text-[var(--color-primary)] font-semibold">{v}</span>
                           </span>
                         ))}
                         {!isSelected && (
@@ -1369,11 +1342,7 @@ export default function ProductEditPage() {
           id="technical-stats"
           title="تحلیل فنی (نمودار رادار)"
           onEditJson={() => setJsonSection('technicalStats')}
-          icon={(
-            <div className="bg-orange-50 p-2 rounded-lg text-orange-500">
-              <FaCogs size={20} />
-            </div>
-          )}
+          icon={<FaCogs className="text-gray-400" />}
           isOpen={isSectionOpen('technicalStats')}
           onToggle={() => toggleSection('technicalStats')}
         >
@@ -1417,8 +1386,6 @@ export default function ProductEditPage() {
           icon={null}
           isOpen={isSectionOpen('customTab')}
           onToggle={() => toggleSection('customTab')}
-          className="space-y-3 border-t pt-6 bg-white p-8 rounded-[2.5rem] shadow-sm border border-gray-100"
-          titleClassName="text-sm font-bold text-neutral-700"
         >
           <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
             {categoryCustomTab.items.map((item) => {
@@ -1488,6 +1455,23 @@ export default function ProductEditPage() {
         </div>
       </CollapsibleSection>
 
+      <div className="flex flex-wrap items-center gap-3 border-t border-[var(--admin-border)] pt-5">
+        <Button
+          type="submit"
+          loading={submitLoading}
+          disabled={uploadsInFlight > 0}
+          className="px-10 rounded-2xl"
+        >
+          {uploadsInFlight > 0 ? 'در حال بارگذاری تصویر…' : 'ذخیره تغییرات'}
+        </Button>
+        <Link
+          href={`/p-admin/admin-products/${id}/regenerate`}
+          className="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-[var(--admin-radius)] border border-purple-100 bg-purple-50 px-5 py-2.5 text-sm font-bold text-purple-600 transition-colors hover:border-purple-200 hover:bg-purple-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-purple-600"
+        >
+          <FaMagic size={20} aria-hidden="true" />
+          بازتولید محصول
+        </Link>
+      </div>
     </form>
   );
 }
