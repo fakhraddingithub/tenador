@@ -13,6 +13,7 @@ import { getRate } from "base/services/priceEngine";
 import { getProductDisplayPrice } from "base/services/productDisplayPrice.service";
 import { getProductPricingUser } from "@/lib/productPageData";
 import requireAdminPermission from "@/lib/requireAdminPermission";
+import { revalidateContent } from "@/lib/revalidate";
 
 
 export async function GET(request, { params }) {
@@ -80,6 +81,7 @@ export async function DELETE(request, { params }) {
 
     // ۴. حذف خود محصول
     await Product.findByIdAndDelete(productId);
+    revalidateContent(["products", "navbar"]);
 
     return NextResponse.json(
       { message: "محصول و تمامی واریانت‌های مربوط به آن با موفقیت حذف شدند" },

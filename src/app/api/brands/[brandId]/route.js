@@ -125,7 +125,7 @@ export async function PUT(req, { params }) {
 
     await brand.save();
 
-    revalidateContent(["navbar", "brands"]);
+    revalidateContent(["navbar", "brands", "products"]);
     // Category articles render on /[sport]/[category]/[brand], which the CDN caches.
     if (categoryArticles !== undefined) await purgeSportPagesCdn();
 
@@ -154,7 +154,7 @@ export async function DELETE(req, { params }) {
       );
     }
 
-    revalidateContent(["navbar", "brands"]);
+    revalidateContent(["navbar", "brands", "products"]);
 
     return NextResponse.json({
       message: "برند با موفقیت حذف شد",

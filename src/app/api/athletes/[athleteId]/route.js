@@ -72,7 +72,7 @@ export async function PUT(req, { params }) {
     // متد save باعث اجرای Middleware (تولید اسلاگ جدید) می‌شود
     await athlete.save();
 
-    revalidateContent(["athletes"]);
+    revalidateContent(["athletes", "products"]);
 
     return NextResponse.json({
       message: "ورزشکار با موفقیت به‌روزرسانی شد",
@@ -100,7 +100,7 @@ export async function DELETE(req, { params }) {
       return NextResponse.json({ error: "ورزشکار پیدا نشد" }, { status: 404 });
     }
 
-    revalidateContent(["athletes"]);
+    revalidateContent(["athletes", "products"]);
 
     return NextResponse.json({ message: "ورزشکار با موفقیت حذف شد" });
   } catch (error) {

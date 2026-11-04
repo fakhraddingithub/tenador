@@ -89,6 +89,20 @@ Server data is cached with Next.js `unstable_cache` in `services/` and `src/lib/
 
 After any admin mutation, call `revalidateContent(tags)` from `src/lib/revalidate.js` to purge relevant cache tags immediately.
 
+**Persian URLs need Next 16.3.1 or newer.** Next sends a page's path as a cache tag in an HTTP header. Before 16.3.1
+the tag kept the decoded Persian slug, which a header cannot carry, so on Vercel every Data Cache read and write of
+that page failed silently: nearly all product pages rebuilt the navbar, product and exchange rate from the database on
+every view (about 900ms for the navbar alone), while `/api/navbar` and a local build looked fine. Local builds use the
+file-system cache and cannot reproduce this, so check it on a deployment. `revalidatePath` encodes the same way, so
+Persian paths still match.
+
+**Whatever `getProductBySlug` populates must purge `products`.** It caches the brand, serie, limited edition, sport,
+athlete and category inside the product for hours, so saving any of them has to include the `products` tag.
+`tests/productPageLoading.test.mjs` fails if one of those routes drops it.
+
+`tsconfig.json` sets `ignoreDeprecations: "6.0"` because TypeScript 6 reports `baseUrl` as an error during the build.
+Removing `baseUrl` instead could break imports that resolve from the repo root.
+
 **Do not use `fetch()` inside server components to call your own API routes.** Call service functions or DB queries directly — this avoids a double round-trip (HTTP + DB) and was a deliberate performance fix.
 
 ### Pricing

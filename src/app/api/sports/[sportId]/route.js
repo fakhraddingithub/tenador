@@ -73,7 +73,7 @@ export async function PUT(req, { params }) {
 
     await sport.save();
 
-    revalidateContent(["navbar", "sports"]);
+    revalidateContent(["navbar", "sports", "products"]);
 
     return NextResponse.json({
       message: "ورزش با موفقیت به‌روزرسانی شد",
@@ -100,7 +100,7 @@ export async function DELETE(req, { params }) {
       );
     }
 
-    revalidateContent(["navbar", "sports"]);
+    revalidateContent(["navbar", "sports", "products"]);
 
     return NextResponse.json({
       message: "ورزش با موفقیت حذف شد",

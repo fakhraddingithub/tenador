@@ -247,3 +247,24 @@ test("related slider CSS stays byte-identical to installed Swiper and markup kee
   assert.match(html, /\.swiper-wrapper/);
   assert.match(html, /\.swiper-pagination-bullet/);
 });
+
+test("saving anything the product page populates purges the cached product", () => {
+  // getProductBySlug populates these and caches the result for hours under the `products` tag.
+  for (const route of [
+    "brands/[brandId]",
+    "series/[id]",
+    "sports/[sportId]",
+    "athletes/[athleteId]",
+    "limited-editions/[id]",
+    "categories/[categoryId]",
+    "product/[productId]",
+    "product/[productId]/price",
+  ]) {
+    const source = readFileSync(new URL(`../src/app/api/${route}/route.js`, import.meta.url), "utf8");
+    const calls = [...source.matchAll(/revalidateContent\(\[([^\]]*)\]\)/g)];
+    assert.ok(calls.length > 0, `${route} invalidates nothing`);
+    for (const [call, tags] of calls) {
+      assert.match(tags, /"products"/, `${route}: ${call} leaves product pages stale`);
+    }
+  }
+});

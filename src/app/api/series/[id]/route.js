@@ -197,7 +197,7 @@ export async function PUT(req, { params }) {
 
     await serie.save();
 
-    revalidateContent(["navbar", "series", "brands"]);
+    revalidateContent(["navbar", "series", "brands", "products"]);
     // The serie article renders on /[sport]/[brand]/[serie], which the CDN caches.
     if (body.articleBlocks !== undefined) await purgeSportPagesCdn();
 
@@ -290,7 +290,7 @@ export async function DELETE(req, { params }) {
       );
     }
 
-    revalidateContent(["navbar", "series", "brands"]);
+    revalidateContent(["navbar", "series", "brands", "products"]);
 
     return NextResponse.json(
       {
