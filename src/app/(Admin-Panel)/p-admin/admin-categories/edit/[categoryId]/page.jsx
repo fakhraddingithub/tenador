@@ -56,6 +56,22 @@ import {
   parentCategoryChoices,
 } from '@/lib/categoryFormCopy.mjs';
 
+function CategorySection({ id, title, description, icon: Icon, iconClass = 'bg-neutral-50 text-[var(--color-primary)]', children }) {
+  return (
+    <details id={id} className="group/section border-t border-neutral-200">
+      <summary className="flex min-h-12 cursor-pointer list-none items-center gap-3 py-3 focus-visible:outline-2 focus-visible:outline-[var(--color-primary)] [&::-webkit-details-marker]:hidden">
+        <span className={`rounded-lg p-2 ${iconClass}`}><Icon size={18} aria-hidden="true" /></span>
+        <span className="min-w-0 flex-1">
+          <span className="block text-lg font-bold">{title}</span>
+          {description && <span className="block text-xs text-neutral-500">{description}</span>}
+        </span>
+        <FiChevronDown aria-hidden="true" className="shrink-0 group-open/section:rotate-180" />
+      </summary>
+      <div className="space-y-6 pt-3">{children}</div>
+    </details>
+  );
+}
+
 // --- Sortable Item Component ---
 function SortableAttribute({ attr, onRemove, onEdit }) {
   const {
@@ -698,7 +714,14 @@ export default function EditCategory() {
     <div className="min-h-screen bg-[var(--color-background)] font-[var(--font-sans)] text-[var(--color-text)] pb-20">
       <div className="max-w-5xl mx-auto px-4 py-10">
         <div className="bg-white rounded-[var(--radius)] shadow-xl border border-neutral-100">
-          <form onSubmit={handleSubmit} className="p-8 space-y-10">
+          <form
+            onSubmit={handleSubmit}
+            onInvalidCapture={(event) => {
+              const section = event.target.closest('details');
+              if (section) section.open = true;
+            }}
+            className="p-8 space-y-4"
+          >
 
             {/* Header */}
             <div className="flex items-center gap-3">
@@ -711,148 +734,150 @@ export default function EditCategory() {
               </div>
             </div>
 
-            {/* Upload Section */}
-            <div className="grid md:grid-cols-2 gap-6">
-              {/* تصویر اصلی */}
-              <div className="bg-neutral-50 p-6 rounded-[var(--radius)] border border-neutral-200">
-                <label className="flex items-center gap-2 text-sm font-bold mb-4 text-neutral-600">
-                  <FiImage className="text-[var(--color-primary)]" /> تصویر اصلی دسته‌بندی
-                </label>
-                <div className="relative h-48 bg-white rounded-[var(--radius)] overflow-hidden border-2 border-dashed border-neutral-200 flex flex-col items-center justify-center group transition-all hover:border-[var(--color-primary)]/50">
-                  {formData.image ? (
-                    <>
-                      <img src={formData.image} alt="category" className="w-full h-full object-cover" />
-                      <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                        <label htmlFor="cat-image" className="cursor-pointer text-white font-bold text-sm">تغییر تصویر</label>
-                      </div>
-                    </>
-                  ) : (
-                    <label htmlFor="cat-image" className="flex flex-col items-center cursor-pointer text-neutral-400 hover:text-[var(--color-primary)] transition-colors">
-                      <FiUploadCloud size={40} className="mb-2" />
-                      <span className="text-xs font-bold">انتخاب تصویر</span>
-                    </label>
-                  )}
-                  <input
-                    type="file"
-                    id="cat-image"
-                    className="hidden"
-                    onChange={(e) => uploadFile(e.target.files[0], 'image')}
-                    accept="image/*"
-                  />
-                  {uploadingField === 'image' && (
-                    <div className="absolute inset-0 bg-white/80 flex items-center justify-center">
-                      <FiLoader className="animate-spin text-[var(--color-primary)]" size={28} />
-                    </div>
-                  )}
-                </div>
-              </div>
-
-              {/* آیکون */}
-              <div className="bg-neutral-50 p-6 rounded-[var(--radius)] border border-neutral-200 flex flex-col justify-center">
-                <label className="flex items-center gap-2 text-sm font-bold mb-4 text-neutral-600">
-                  <FiTag className="text-[var(--color-primary)]" /> آیکون دسته‌بندی
-                </label>
-                <div className="flex items-center gap-5">
-                  <div className="w-20 h-20 rounded-2xl bg-white border-2 border-dashed border-neutral-200 flex items-center justify-center relative overflow-hidden">
-                    {formData.icon ? (
-                      <img src={formData.icon} alt="icon" className="w-full h-full object-contain p-2" />
+            <CategorySection title="تصویر و آیکون دسته‌بندی" icon={FiImage}>
+              <div className="grid md:grid-cols-2 gap-6">
+                {/* تصویر اصلی */}
+                <div className="bg-neutral-50 p-6 rounded-[var(--radius)] border border-neutral-200">
+                  <label className="flex items-center gap-2 text-sm font-bold mb-4 text-neutral-600">
+                    <FiImage className="text-[var(--color-primary)]" /> تصویر اصلی دسته‌بندی
+                  </label>
+                  <div className="relative h-48 bg-white rounded-[var(--radius)] overflow-hidden border-2 border-dashed border-neutral-200 flex flex-col items-center justify-center group transition-all hover:border-[var(--color-primary)]/50">
+                    {formData.image ? (
+                      <>
+                        <img src={formData.image} alt="category" className="w-full h-full object-cover" />
+                        <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                          <label htmlFor="cat-image" className="cursor-pointer text-white font-bold text-sm">تغییر تصویر</label>
+                        </div>
+                      </>
                     ) : (
-                      <FiLayers size={24} className="text-neutral-300" />
+                      <label htmlFor="cat-image" className="flex flex-col items-center cursor-pointer text-neutral-400 hover:text-[var(--color-primary)] transition-colors">
+                        <FiUploadCloud size={40} className="mb-2" />
+                        <span className="text-xs font-bold">انتخاب تصویر</span>
+                      </label>
                     )}
-                    {uploadingField === 'icon' && (
-                      <div className="absolute inset-0 bg-white/80 flex items-center justify-center">
-                        <FiLoader className="animate-spin text-[var(--color-primary)]" size={18} />
-                      </div>
-                    )}
-                  </div>
-                  <div className="flex-1">
-                    <label
-                      htmlFor="cat-icon"
-                      className="bg-white border border-neutral-200 hover:border-[var(--color-primary)] px-4 py-2 rounded-lg text-xs font-bold cursor-pointer transition-all inline-block"
-                    >
-                      آپلود آیکون
-                    </label>
-                    <p className="text-[10px] text-neutral-400 mt-2 italic">فرمت PNG یا SVG پیشنهاد می‌شود</p>
                     <input
                       type="file"
-                      id="cat-icon"
+                      id="cat-image"
                       className="hidden"
-                      onChange={(e) => uploadFile(e.target.files[0], 'icon')}
+                      onChange={(e) => uploadFile(e.target.files[0], 'image')}
                       accept="image/*"
                     />
+                    {uploadingField === 'image' && (
+                      <div className="absolute inset-0 bg-white/80 flex items-center justify-center">
+                        <FiLoader className="animate-spin text-[var(--color-primary)]" size={28} />
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* آیکون */}
+                <div className="bg-neutral-50 p-6 rounded-[var(--radius)] border border-neutral-200 flex flex-col justify-center">
+                  <label className="flex items-center gap-2 text-sm font-bold mb-4 text-neutral-600">
+                    <FiTag className="text-[var(--color-primary)]" /> آیکون دسته‌بندی
+                  </label>
+                  <div className="flex items-center gap-5">
+                    <div className="w-20 h-20 rounded-2xl bg-white border-2 border-dashed border-neutral-200 flex items-center justify-center relative overflow-hidden">
+                      {formData.icon ? (
+                        <img src={formData.icon} alt="icon" className="w-full h-full object-contain p-2" />
+                      ) : (
+                        <FiLayers size={24} className="text-neutral-300" />
+                      )}
+                      {uploadingField === 'icon' && (
+                        <div className="absolute inset-0 bg-white/80 flex items-center justify-center">
+                          <FiLoader className="animate-spin text-[var(--color-primary)]" size={18} />
+                        </div>
+                      )}
+                    </div>
+                    <div className="flex-1">
+                      <label
+                        htmlFor="cat-icon"
+                        className="bg-white border border-neutral-200 hover:border-[var(--color-primary)] px-4 py-2 rounded-lg text-xs font-bold cursor-pointer transition-all inline-block"
+                      >
+                        آپلود آیکون
+                      </label>
+                      <p className="text-[10px] text-neutral-400 mt-2 italic">فرمت PNG یا SVG پیشنهاد می‌شود</p>
+                      <input
+                        type="file"
+                        id="cat-icon"
+                        className="hidden"
+                        onChange={(e) => uploadFile(e.target.files[0], 'icon')}
+                        accept="image/*"
+                      />
+                    </div>
                   </div>
                 </div>
               </div>
-            </div>
+            </CategorySection>
 
-            {/* انتخاب ورزش — اسلاگ دسته فقط در محدوده‌ی همین ورزش یکتاست */}
-            <Select
-              label="ورزش"
-              name="sport"
-              value={formData.sport}
-              onChange={(e) => {
-                const nextSport = e.target.value;
-                setFormData((prev) => ({
-                  ...prev,
-                  sport: nextSport,
-                  // والدِ ورزشِ قبلی دیگر انتخاب‌شدنی نیست و نباید بی‌صدا ذخیره شود
-                  parent: prev.sport === nextSport ? prev.parent : '',
-                  additionalSports: prev.additionalSports.filter(
-                    (id) => String(id) !== String(nextSport),
-                  ),
-                }));
-              }}
-              options={sports.map((s) => ({ value: s._id, label: s.title || s.name }))}
-              placeholder="ورزش را انتخاب کنید"
-              required
-            />
-
-            <AdditionalSportsField
-              sports={sports}
-              ownerSportId={formData.sport}
-              value={formData.additionalSports}
-              onChange={(additionalSports) =>
-                setFormData((prev) => ({ ...prev, additionalSports }))
-              }
-            />
-
-            {/* Basic Info */}
-            <div className="grid md:grid-cols-2 gap-6">
-              <Input
-                label="عنوان دسته‌بندی"
-                value={formData.title}
-                onChange={(e) => setFormData((prev) => ({ ...prev, title: e.target.value }))}
+            <CategorySection title="اطلاعات پایه و ارتباطات" icon={FiEdit3}>
+              <Select
+                label="ورزش"
+                name="sport"
+                value={formData.sport}
+                onChange={(e) => {
+                  const nextSport = e.target.value;
+                  setFormData((prev) => ({
+                    ...prev,
+                    sport: nextSport,
+                    // والدِ ورزشِ قبلی دیگر انتخاب‌شدنی نیست و نباید بی‌صدا ذخیره شود
+                    parent: prev.sport === nextSport ? prev.parent : '',
+                    additionalSports: prev.additionalSports.filter(
+                      (id) => String(id) !== String(nextSport),
+                    ),
+                  }));
+                }}
+                options={sports.map((s) => ({ value: s._id, label: s.title || s.name }))}
+                placeholder="ورزش را انتخاب کنید"
                 required
               />
-              <Input
-                label="نام (Slug)"
-                value={formData.name}
-                onChange={(e) => setFormData((prev) => ({ ...prev, name: e.target.value }))}
-                required
+
+              <AdditionalSportsField
+                sports={sports}
+                ownerSportId={formData.sport}
+                value={formData.additionalSports}
+                onChange={(additionalSports) =>
+                  setFormData((prev) => ({ ...prev, additionalSports }))
+                }
               />
-            </div>
 
-            <Select
-              label="دسته والد"
-              value={formData.parent}
-              onChange={(e) => setFormData((prev) => ({ ...prev, parent: e.target.value }))}
-              options={parentCategories.map((cat) => ({ value: cat._id, label: getCategoryLabel(cat) }))}
-              placeholder="والد را انتخاب کنید"
-              disabled={!formData.sport}
-              hint={
-                !formData.sport
-                  ? 'ابتدا ورزش را انتخاب کنید.'
-                  : 'فقط دسته‌های همین ورزش می‌توانند والد باشند.'
-              }
-            />
+              {/* Basic Info */}
+              <div className="grid md:grid-cols-2 gap-6">
+                <Input
+                  label="عنوان دسته‌بندی"
+                  value={formData.title}
+                  onChange={(e) => setFormData((prev) => ({ ...prev, title: e.target.value }))}
+                  required
+                />
+                <Input
+                  label="نام (Slug)"
+                  value={formData.name}
+                  onChange={(e) => setFormData((prev) => ({ ...prev, name: e.target.value }))}
+                  required
+                />
+              </div>
 
-            <Select
-              label="بارگذاری از دسته دیگر"
-              onChange={(e) => copyParentFileds(e.target.value)}
-              options={loadFromOptions}
-              placeholder="یک دسته را انتخاب کنید"
-              hint="از همه‌ی ورزش‌ها؛ نام ورزش پس از نام دسته می‌آید. ویژگی‌ها و پرامپت‌های آن دسته به لیستِ فعلی «افزوده» می‌شوند."
-            />
+              <Select
+                label="دسته والد"
+                value={formData.parent}
+                onChange={(e) => setFormData((prev) => ({ ...prev, parent: e.target.value }))}
+                options={parentCategories.map((cat) => ({ value: cat._id, label: getCategoryLabel(cat) }))}
+                placeholder="والد را انتخاب کنید"
+                disabled={!formData.sport}
+                hint={
+                  !formData.sport
+                    ? 'ابتدا ورزش را انتخاب کنید.'
+                    : 'فقط دسته‌های همین ورزش می‌توانند والد باشند.'
+                }
+              />
+
+              <Select
+                label="بارگذاری از دسته دیگر"
+                onChange={(e) => copyParentFileds(e.target.value)}
+                options={loadFromOptions}
+                placeholder="یک دسته را انتخاب کنید"
+                hint="از همه‌ی ورزش‌ها؛ نام ورزش پس از نام دسته می‌آید. ویژگی‌ها و پرامپت‌های آن دسته به لیستِ فعلی «افزوده» می‌شوند."
+              />
+            </CategorySection>
 
             {/* AI Prompts Section */}
             <div className="border rounded-[var(--radius)] p-6 bg-neutral-50/50">
@@ -889,10 +914,7 @@ export default function EditCategory() {
               </div>
             </div>
 
-            {/* Attributes Section */}
-            <div id="attribute-form-anchor" className="border-t pt-8 space-y-6">
-              <h3 className="text-lg font-bold">مدیریت ویژگی‌ها</h3>
-
+            <CategorySection id="attribute-form-anchor" title="مدیریت ویژگی‌های ثابت" icon={FiLayers}>
               <div className={`rounded-[var(--radius)] p-6 space-y-5 border-2 transition-all ${editingId ? 'bg-amber-50/30 border-amber-200' : 'bg-neutral-50 border-transparent'}`}>
                 <div className="grid md:grid-cols-2 gap-4">
                   <Input label="نام انگلیسی" value={currentAttribute.name} onChange={(e) => setCurrentAttribute(p => ({ ...p, name: e.target.value }))} />
@@ -935,20 +957,23 @@ export default function EditCategory() {
                   </div>
                 </SortableContext>
               </DndContext>
-            </div>
 
-            {/* Variant Attributes Section */}
-            <div id="variant-form-anchor" className="border-t pt-8 space-y-6">
-              <div className="flex items-center gap-3">
-                <div className="p-2 rounded-lg bg-blue-50 text-blue-600">
-                  <FiTag size={18} />
-                </div>
-                <div>
-                  <h3 className="text-lg font-bold">ویژگی‌های متغیر (Variant Attributes)</h3>
-                  <p className="text-xs text-neutral-500">برای هر ویژگی واریانت، نوع نمایش (uiType) را انتخاب کنید.</p>
-                </div>
-              </div>
+              <Select
+                label="ویژگی فیلتر مگامنو"
+                value={formData.megaMenuFilterAttribute}
+                onChange={(e) =>
+                  setFormData((prev) => ({ ...prev, megaMenuFilterAttribute: e.target.value }))
+                }
+                hint="یک ویژگی ثابت یا متغیر را انتخاب کنید تا مقادیر آن به‌صورت تب‌های فیلتر در مگامنو نمایش داده شوند."
+                placeholder="بدون فیلتر مگامنو"
+                options={[
+                  ...formData.attributes.map((a) => ({ value: a.name, label: `${a.label} (ثابت)` })),
+                  ...variantAttributes.map((a) => ({ value: a.name, label: `${a.label} (متغیر)` })),
+                ]}
+              />
+            </CategorySection>
 
+            <CategorySection id="variant-form-anchor" icon={FiTag} iconClass="bg-blue-50 text-blue-600" title="ویژگی‌های متغیر (Variant Attributes)" description="برای هر ویژگی واریانت، نوع نمایش (uiType) را انتخاب کنید.">
               <div className={`rounded-[var(--radius)] p-6 space-y-5 transition-all duration-300 border-2 ${editingVariantId ? 'bg-blue-50/30 border-blue-200' : 'bg-neutral-50 border-transparent'}`}>
                 <div className="grid md:grid-cols-2 gap-4">
                   <Input
@@ -1061,47 +1086,9 @@ export default function EditCategory() {
                   </div>
                 )}
               </div>
-            </div>
+            </CategorySection>
 
-            {/* Mega Menu Filter Attribute */}
-            <div className="border-t pt-8 space-y-4">
-              <div className="flex items-center gap-3">
-                <div className="p-2 rounded-lg bg-[var(--color-primary)]/10 text-[var(--color-primary)]">
-                  <FiMenu size={18} />
-                </div>
-                <div>
-                  <h3 className="text-lg font-bold">یک ویژگی برای فیلتر مگامنو</h3>
-                  <p className="text-xs text-neutral-500">
-                    یک ویژگی (ثابت یا متغیر) را انتخاب کنید تا مقادیر آن به‌صورت تب‌های فیلتر در مگامنوی نوبار نمایش داده شوند.
-                  </p>
-                </div>
-              </div>
-              <Select
-                label="ویژگی فیلتر مگامنو"
-                value={formData.megaMenuFilterAttribute}
-                onChange={(e) =>
-                  setFormData((prev) => ({ ...prev, megaMenuFilterAttribute: e.target.value }))
-                }
-                placeholder="بدون فیلتر مگامنو"
-                options={[
-                  ...formData.attributes.map((a) => ({ value: a.name, label: `${a.label} (ثابت)` })),
-                  ...variantAttributes.map((a) => ({ value: a.name, label: `${a.label} (متغیر)` })),
-                ]}
-              />
-            </div>
-
-            {/* Technical Stats Section */}
-            <div id="stat-form-anchor" className="border-t pt-8 space-y-6">
-              <div className="flex items-center gap-3">
-                <div className="p-2 rounded-lg bg-orange-100 text-orange-600">
-                  <FiLayers size={18} />
-                </div>
-                <div>
-                  <h3 className="text-lg font-bold">شاخص‌های فنی (نمودار رادار)</h3>
-                  <p className="text-xs text-neutral-500">ویژگی‌های نمره‌ای برای تحلیل هوش مصنوعی و نمایش در نمودار</p>
-                </div>
-              </div>
-
+            <CategorySection id="stat-form-anchor" icon={FiLayers} iconClass="bg-orange-100 text-orange-600" title="شاخص‌های فنی (نمودار رادار)" description="ویژگی‌های نمره‌ای برای تحلیل هوش مصنوعی و نمایش در نمودار">
               <div className={`rounded-[var(--radius)] p-6 space-y-5 border-2 transition-all ${editingStatId ? 'bg-orange-50/30 border-orange-200' : 'bg-neutral-50 border-transparent'}`}>
                 <div className="grid md:grid-cols-2 gap-4">
                   <Input
@@ -1172,30 +1159,18 @@ export default function EditCategory() {
                   </p>
                 </div>
               )}
-            </div>
+            </CategorySection>
 
-            {/* Custom Tab Section */}
-            <div className="border-t pt-8 space-y-6">
-              <div className="flex items-center gap-3">
-                <div className="p-2 rounded-lg bg-purple-100 text-purple-600">
-                  <FiLayers size={18} />
-                </div>
-                <div className="flex-1">
-                  <h3 className="text-lg font-bold">تب سفارشی صفحه محصول (اختیاری)</h3>
-                  <p className="text-xs text-neutral-500">
-                    مثلا «تکنولوژی‌ها» برای راکت تنیس؛ فقط برای محصولاتی نمایش داده می‌شود که آیتم مرتبط دارند.
-                  </p>
-                </div>
-                <label className="flex items-center gap-2 cursor-pointer shrink-0">
-                  <input
-                    type="checkbox"
-                    checked={customTabEnabled}
-                    onChange={(e) => setCustomTabEnabled(e.target.checked)}
-                    className="w-5 h-5 accent-[var(--color-primary)]"
-                  />
-                  <span className="text-sm font-bold">فعال</span>
-                </label>
-              </div>
+            <CategorySection icon={FiLayers} iconClass="bg-purple-100 text-purple-600" title="تب سفارشی صفحه محصول (اختیاری)" description="مثلا «تکنولوژی‌ها» برای راکت تنیس؛ فقط برای محصولاتی نمایش داده می‌شود که آیتم مرتبط دارند.">
+              <label className="flex items-center gap-2 cursor-pointer shrink-0">
+                <input
+                  type="checkbox"
+                  checked={customTabEnabled}
+                  onChange={(e) => setCustomTabEnabled(e.target.checked)}
+                  className="w-5 h-5 accent-[var(--color-primary)]"
+                />
+                <span className="text-sm font-bold">فعال</span>
+              </label>
 
               {customTabEnabled && (
                 <>
@@ -1354,7 +1329,7 @@ export default function EditCategory() {
                   </div>
                 </>
               )}
-            </div>
+            </CategorySection>
 
             {/* Actions */}
             <div className="flex flex-col sm:flex-row gap-4 pt-8 border-t">
