@@ -10,20 +10,21 @@ const requestTiming = cache(() => ({
   start: performance.now(),
   dbAtStart: mongoose.connection.readyState,
   steps: {},
+  pending: [],
 }));
 
 // Calls work synchronously, so wrapping a read never changes when it starts or what it rejects with.
+// A second call under the same name gets its own entry (name#2), so duplicate reads stay visible.
 export function timed(name, work) {
   const timing = requestTiming();
   const startedAt = performance.now();
+  let key = name;
+  for (let n = 2; timing.steps[key]; n++) key = `${name}#${n}`;
+  const step = { start: Math.round(startedAt - timing.start), ms: null };
+  timing.steps[key] = step;
   const promise = Promise.resolve(work());
-  const record = () => {
-    timing.steps[name] = {
-      start: Math.round(startedAt - timing.start),
-      ms: Math.round(performance.now() - startedAt),
-    };
-  };
-  promise.then(record, record);
+  const record = () => { step.ms = Math.round(performance.now() - startedAt); };
+  timing.pending.push(promise.then(record, record));
   return promise;
 }
 
@@ -36,4 +37,16 @@ export function readServerTiming() {
     dbAtStart: timing.dbAtStart,
     steps: timing.steps,
   };
+}
+
+// Streamed after the shell, so waiting for slower steps here does not delay the page.
+export async function ServerTimingLate() {
+  await Promise.all(requestTiming().pending);
+  return (
+    <script
+      type="application/json"
+      id="server-timing-late"
+      dangerouslySetInnerHTML={{ __html: JSON.stringify(readServerTiming()) }}
+    />
+  );
 }

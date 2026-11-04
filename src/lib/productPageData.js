@@ -1,6 +1,7 @@
 import { cache } from "react";
 import { cookies } from "next/headers";
 import { verifyToken } from "base/utils/auth";
+import { decodeSlugParam } from "base/utils/articleSlug";
 import { getProductBySlug } from "base/services/product.service";
 import { getApprovedReviews } from "base/services/comment.service";
 import { getRate } from "base/services/priceEngine";
@@ -10,11 +11,15 @@ import { timed } from "./serverTiming";
 
 // React.cache deduplicates metadata + page within one render only. The service's
 // existing tagged cache still controls public product invalidation.
-export const getProductForPage = cache(async (slug) => {
+const readProductForPage = cache(async (slug) => {
   const product = await timed("product", () => getProductBySlug(slug));
   if (product && !product.error) preloadProductImage(product);
   return product;
 });
+
+// Next gives the page and generateMetadata a Persian slug in different encodings. Without
+// one spelling here React.cache misses and the product is read twice on every request.
+export const getProductForPage = (slug) => readProductForPage(decodeSlugParam(slug));
 
 export async function getProductPricingUser() {
   const token = (await cookies()).get("accessToken")?.value;

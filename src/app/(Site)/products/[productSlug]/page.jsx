@@ -1,6 +1,6 @@
 import { Suspense } from "react";
 import { getProductForPage, getProductPageData } from "@/lib/productPageData";
-import { readServerTiming } from "@/lib/serverTiming";
+import { readServerTiming, ServerTimingLate } from "@/lib/serverTiming";
 import { ProductSchemaWithReviews } from "@/components/templates/product/DeferredProductReviews";
 import ResponsiveImage from "@/components/common/ResponsiveImage";
 import TaxonomyBreadcrumbs from "@/components/seo/TaxonomyBreadcrumbs";
@@ -92,6 +92,9 @@ export default async function ProductPage({ params }) {
         id="server-timing"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(readServerTiming()) }}
       />
+      <Suspense fallback={null}>
+        <ServerTimingLate />
+      </Suspense>
       <Suspense fallback={null}>
         <ProductSchemaWithReviews product={product} reviewsPromise={reviewsPromise} publicPricePromise={publicPricePromise} />
       </Suspense>
