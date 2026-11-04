@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { FiFileText, FiSettings, FiMessageSquare } from "react-icons/fi";
+import { FiArrowUpLeft, FiFileText, FiSettings, FiMessageSquare } from "react-icons/fi";
 import ProductDescription from "./ProductDescription";
 import ProductAttributesTable from "./ProductAttributesTable";
 import MobileProductTabs, { useMobileProductLayout } from "./MobileProductTabs";
@@ -22,13 +22,13 @@ const getItemLinkProps = (link) => {
 
 const CustomTabItemLogo = ({ item, linkProps }) => {
   const className =
-    "group/logo flex h-20 w-[clamp(4rem,22vw,5.5rem)] shrink-0 items-center justify-center overflow-hidden rounded-lg bg-white p-0.5 ring-1 ring-inset ring-black/5 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#aa4725] sm:h-[104px] sm:w-32";
+    "flex h-20 w-[clamp(4rem,22vw,5.5rem)] shrink-0 items-center justify-center focus-visible:outline-none sm:h-[104px] sm:w-32";
 
   const logo = item.image ? (
     <img
       src={item.image}
       alt={item.title || ""}
-      className="h-full w-full object-contain motion-safe:transition-transform motion-safe:duration-300 motion-safe:group-hover/logo:scale-[1.025]"
+      className="h-full w-full object-contain"
     />
   ) : (
     <FiFileText className="text-2xl text-stone-400" />
@@ -49,23 +49,25 @@ const CustomTabItemCard = ({ item }) => {
   const linkProps = getItemLinkProps(item.link);
   const title = item.title || "";
   const titleClass =
-    "text-base font-bold leading-7 text-stone-900 [overflow-wrap:anywhere] sm:text-lg";
+    "text-base font-extrabold leading-7 text-stone-900 [overflow-wrap:anywhere] sm:text-xl sm:leading-8";
 
   return (
-    <article className="flex min-w-0 items-start gap-3 py-2.5 text-right first:pt-0 last:pb-0 sm:gap-5 sm:py-3">
+    <article className="group/item flex min-w-0 items-center gap-3 py-3 text-right sm:gap-6 sm:py-4">
       <CustomTabItemLogo item={item} linkProps={linkProps} />
-      <div className="min-w-0 flex-1 self-center">
-        <div className="border-s-2 border-[#aa4725] ps-2.5">
+      <div className="min-w-0 flex-1 rounded-e-xl bg-linear-to-l from-transparent to-[#aa4725]/[0.045] py-2 pe-3 sm:py-3 sm:pe-5">
+        <span aria-hidden="true" className="mb-1 block h-px w-8 origin-right bg-[#aa4725]/45 motion-safe:transition-transform motion-safe:duration-300 motion-safe:group-hover/item:scale-x-125" />
+        <div>
           {linkProps ? (
-            <a {...linkProps} className={`${titleClass} rounded-sm hover:text-[#aa4725] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#aa4725] motion-safe:transition-colors`}>
-              {title}
+            <a {...linkProps} className={`${titleClass} inline-flex max-w-full items-baseline gap-2 decoration-[#aa4725] underline-offset-4 hover:text-[#aa4725] group-has-[:focus-visible]/item:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#aa4725] motion-safe:transition-colors`}>
+              <span className="min-w-0">{title}</span>
+              <FiArrowUpLeft aria-hidden="true" className="size-3.5 shrink-0 self-center text-[#aa4725]" />
             </a>
           ) : (
             <h4 className={titleClass}>{title}</h4>
           )}
         </div>
         {item.description && (
-          <p className="mt-1.5 text-sm leading-7 text-stone-600 [overflow-wrap:anywhere]">
+          <p className="mt-1 max-w-prose text-sm leading-7 text-stone-600 [overflow-wrap:anywhere] sm:leading-8">
             {item.description}
           </p>
         )}
