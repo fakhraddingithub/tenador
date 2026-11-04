@@ -22,16 +22,16 @@ const getItemLinkProps = (link) => {
 
 const CustomTabItemLogo = ({ item, linkProps }) => {
   const className =
-    "group flex h-16 w-16 shrink-0 items-center justify-center overflow-hidden p-1 sm:h-[72px] sm:w-[72px]";
+    "group/logo flex h-20 w-[clamp(4rem,22vw,5.5rem)] shrink-0 items-center justify-center overflow-hidden rounded-lg bg-white p-0.5 ring-1 ring-inset ring-black/5 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#aa4725] sm:h-[104px] sm:w-32";
 
   const logo = item.image ? (
     <img
       src={item.image}
       alt={item.title || ""}
-      className="h-full w-full object-contain p-2 transition-transform duration-300 group-hover:scale-105"
+      className="h-full w-full object-contain motion-safe:transition-transform motion-safe:duration-300 motion-safe:group-hover/logo:scale-[1.025]"
     />
   ) : (
-    <FiFileText className="text-xl text-gray-300 transition-transform duration-300 group-hover:scale-105" />
+    <FiFileText className="text-2xl text-stone-400" />
   );
 
   if (linkProps) {
@@ -49,15 +49,15 @@ const CustomTabItemCard = ({ item }) => {
   const linkProps = getItemLinkProps(item.link);
   const title = item.title || "";
   const titleClass =
-    "text-base font-extrabold leading-7 text-[#1a1a1a] transition-colors duration-200 hover:text-[#aa4725]";
+    "text-base font-bold leading-7 text-stone-900 [overflow-wrap:anywhere] sm:text-lg";
 
   return (
-    <article className="flex h-full items-start gap-4 p-2 text-right sm:p-3">
+    <article className="flex min-w-0 items-start gap-3 py-2.5 text-right first:pt-0 last:pb-0 sm:gap-5 sm:py-3">
       <CustomTabItemLogo item={item} linkProps={linkProps} />
-      <div className="min-w-0 flex-1 pt-1">
-        <div className="relative inline-flex max-w-full pr-3 before:absolute before:right-0 before:top-1/2 before:h-5 before:w-0.5 before:-translate-y-1/2 before:rounded-full before:bg-[#aa4725] before:content-['']">
+      <div className="min-w-0 flex-1 self-center">
+        <div className="border-s-2 border-[#aa4725] ps-2.5">
           {linkProps ? (
-            <a {...linkProps} className={titleClass}>
+            <a {...linkProps} className={`${titleClass} rounded-sm hover:text-[#aa4725] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#aa4725] motion-safe:transition-colors`}>
               {title}
             </a>
           ) : (
@@ -65,7 +65,7 @@ const CustomTabItemCard = ({ item }) => {
           )}
         </div>
         {item.description && (
-          <p className="mt-2 pr-3 text-sm leading-7 text-gray-500">
+          <p className="mt-1.5 text-sm leading-7 text-stone-600 [overflow-wrap:anywhere]">
             {item.description}
           </p>
         )}
@@ -139,7 +139,7 @@ const ProductTabs = ({
         </div>
       )}
       {sectionId === "customTab" && (
-        <div className="grid grid-cols-1 gap-4 px-2 md:grid-cols-2">
+        <div className="grid min-w-0 grid-cols-1 divide-y divide-stone-200/80">
           {matchingCustomItems.map((item) => (
             <CustomTabItemCard key={item._id || item.title} item={item} />
           ))}
