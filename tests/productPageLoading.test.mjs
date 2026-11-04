@@ -154,6 +154,9 @@ test("server timing records each step without changing start order or rejections
   const { timed, readServerTiming } = load("src/lib/serverTiming.js", {
     react: { cache: (fn) => () => (store ??= fn()) },
     mongoose: { default: { connection: { readyState: 0 } } },
+    "next/dist/server/app-render/work-async-storage.external.js": { workAsyncStorage: { getStore: () => undefined } },
+    "next/dist/server/app-render/work-unit-async-storage.external.js": { workUnitAsyncStorage: { getStore: () => undefined } },
+    "next/dist/server/lib/incremental-cache/tags-manifest.external.js": { tagsManifest: new Map() },
   });
   let started = false;
   const ok = timed("ok", () => { started = true; return Promise.resolve("value"); });
