@@ -77,6 +77,7 @@ test('navbar starts independent reads together and keeps category and audience o
   let aggregates = 0;
   const { getCachedNavbar } = load('src/lib/navbarService.js', {
     'next/cache': { unstable_cache: fn => fn },
+    '@/lib/serverTiming': { timed: (name, work) => work() },
     'base/configs/db': { default: async () => {} },
     'base/models/Sport': { default: { find: () => query(0) } },
     'base/models/Category': { default: { find: () => query(2) } },

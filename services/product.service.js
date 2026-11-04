@@ -10,6 +10,7 @@ import Category from "base/models/Category";
 import Variant from "base/models/Variant";
 import SiteSetting from "base/models/SiteSetting";
 import { getCachedRate } from "@/lib/Exchangerate";
+import { timed } from "@/lib/serverTiming";
 import { attachListingPrices } from "base/services/priceEngine";
 import { getProductListingPage } from "base/services/productListing.service";
 import { filterAttributesByAudience } from "base/utils/targetAudience";
@@ -140,7 +141,7 @@ export const getHomeSliderProducts = unstable_cache(
 );
 
 export const getProductBySlug = unstable_cache(
-  async (slug) => {
+  (slug) => timed("product:build", async () => {
     const decodedSlug = decodeURIComponent(slug);
 
     try {
@@ -196,7 +197,7 @@ export const getProductBySlug = unstable_cache(
       // نکته: return با status:404 در بالا یک نتیجه‌ی معتبر است و کش می‌ماند.
       throw err;
     }
-  },
+  }),
   ["product-by-slug-v2"],
   { revalidate: 10800, tags: ["products"] }
 );

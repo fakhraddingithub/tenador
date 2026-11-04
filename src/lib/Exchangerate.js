@@ -1,4 +1,5 @@
 import { unstable_cache } from "next/cache";
+import { timed } from "@/lib/serverTiming";
 import connectToDB from "base/configs/db";
 import { ExchangeRate } from "base/models/ExchangeRate";
 
@@ -15,7 +16,7 @@ export { eurToToman, formatToman, convertAndFormat } from "@/lib/currency";
 export const getCachedRate = unstable_cache(
   async () => {
     await connectToDB();
-    const doc = await ExchangeRate.findOne({ currency: "EUR" }).lean();
+    const doc = await timed("rate:build", () => ExchangeRate.findOne({ currency: "EUR" }).lean());
     return doc?.rateToToman ?? null;
   },
   ["exchange-rate"],

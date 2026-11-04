@@ -1,4 +1,4 @@
-import { cache } from "react";
+import { cache, createElement } from "react";
 import mongoose from "mongoose";
 
 // A server component cannot set response headers, so the page prints these numbers as JSON
@@ -42,11 +42,10 @@ export function readServerTiming() {
 // Streamed after the shell, so waiting for slower steps here does not delay the page.
 export async function ServerTimingLate() {
   await Promise.all(requestTiming().pending);
-  return (
-    <script
-      type="application/json"
-      id="server-timing-late"
-      dangerouslySetInnerHTML={{ __html: JSON.stringify(readServerTiming()) }}
-    />
-  );
+  // createElement, not JSX: the cached readers import this file, and tests load those in plain node.
+  return createElement("script", {
+    type: "application/json",
+    id: "server-timing-late",
+    dangerouslySetInnerHTML: { __html: JSON.stringify(readServerTiming()) },
+  });
 }
