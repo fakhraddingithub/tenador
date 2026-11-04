@@ -54,8 +54,7 @@ const CustomTabItemCard = ({ item }) => {
   return (
     <article className="group/item flex min-w-0 items-center gap-3 py-3 text-right sm:gap-6 sm:py-4">
       <CustomTabItemLogo item={item} linkProps={linkProps} />
-      <div className="min-w-0 flex-1 rounded-e-xl bg-linear-to-l from-transparent to-[#aa4725]/[0.045] py-2 pe-3 sm:py-3 sm:pe-5">
-        <span aria-hidden="true" className="mb-1 block h-px w-8 origin-right bg-[#aa4725]/45 motion-safe:transition-transform motion-safe:duration-300 motion-safe:group-hover/item:scale-x-125" />
+      <div className="min-w-0 flex-1 py-2 sm:py-3">
         <div>
           {linkProps ? (
             <a {...linkProps} className={`${titleClass} inline-flex max-w-full items-baseline gap-2 decoration-[#aa4725] underline-offset-4 hover:text-[#aa4725] group-has-[:focus-visible]/item:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#aa4725] motion-safe:transition-colors`}>
@@ -66,8 +65,9 @@ const CustomTabItemCard = ({ item }) => {
             <h4 className={titleClass}>{title}</h4>
           )}
         </div>
+        <span aria-hidden="true" className="mt-1.5 block h-px w-8 origin-right bg-[#aa4725]/45 motion-safe:transition-transform motion-safe:duration-300 motion-safe:group-hover/item:scale-x-125" />
         {item.description && (
-          <p className="mt-1 max-w-prose text-sm leading-7 text-stone-600 [overflow-wrap:anywhere] sm:leading-8">
+          <p className="mt-1.5 text-sm leading-7 text-stone-600 [overflow-wrap:anywhere] sm:leading-8">
             {item.description}
           </p>
         )}
