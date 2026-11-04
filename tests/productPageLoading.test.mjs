@@ -105,6 +105,7 @@ function pageHarness({ product, rate, reviews, pricing, user = null }) {
   }; };
   const api = load("src/lib/productPageData.js", {
     "./productImageHints": { preloadProductImage: () => { calls.push("imageHint"); } },
+    "./serverTiming": { timed: (name, work) => work() },
     react: { cache },
     "next/headers": { cookies: async () => ({ get: () => user ? { value: "token" } : undefined }) },
     "base/utils/auth": { verifyToken: () => user },
@@ -138,6 +139,27 @@ test("product and rate overlap; metadata shares product; pending reviews do not 
   assert.deepEqual(await result.reviewsPromise, { data: { reviews: [], stats: { count: 0 } } });
   assert.equal(api.calls.filter(c => c === "product").length, 1);
   assert.equal(api.calls.filter(c => c === "imageHint").length, 1);
+});
+
+test("server timing records each step without changing start order or rejections", async () => {
+  let store;
+  const { timed, readServerTiming } = load("src/lib/serverTiming.js", {
+    react: { cache: (fn) => () => (store ??= fn()) },
+    mongoose: { default: { connection: { readyState: 0 } } },
+  });
+  let started = false;
+  const ok = timed("ok", () => { started = true; return Promise.resolve("value"); });
+  assert.equal(started, true, "work must start synchronously");
+  assert.equal(await ok, "value");
+  await assert.rejects(timed("bad", () => Promise.reject(new Error("db down"))), /db down/);
+  assert.equal(await timed("sync", () => "plain"), "plain");
+  await new Promise((resolve) => setImmediate(resolve));
+  const output = readServerTiming();
+  assert.deepEqual(Object.keys(output.steps).sort(), ["bad", "ok", "sync"]);
+  assert.equal(output.dbAtStart, 0);
+  assert.equal(typeof output.steps.ok.ms, "number");
+  assert.equal(typeof output.totalMs, "number");
+  assert.doesNotThrow(() => JSON.stringify(output));
 });
 
 test("pricing failure rejects the page rather than showing zero or an undiscounted fallback", async () => {

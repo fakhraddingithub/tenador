@@ -6,11 +6,12 @@ import { getApprovedReviews } from "base/services/comment.service";
 import { getRate } from "base/services/priceEngine";
 import { getProductDisplayPrice } from "base/services/productDisplayPrice.service";
 import { preloadProductImage } from "./productImageHints";
+import { timed } from "./serverTiming";
 
 // React.cache deduplicates metadata + page within one render only. The service's
 // existing tagged cache still controls public product invalidation.
 export const getProductForPage = cache(async (slug) => {
-  const product = await getProductBySlug(slug);
+  const product = await timed("product", () => getProductBySlug(slug));
   if (product && !product.error) preloadProductImage(product);
   return product;
 });
@@ -31,13 +32,13 @@ export async function getProductPageData(slug) {
   });
   // Handle rejection immediately while product lookup is pending. A missing
   // product must remain a 404 even when pricing infrastructure is unavailable.
-  const inputsPromise = Promise.all([getRate(), getProductPricingUser()])
+  const inputsPromise = Promise.all([timed("rate", getRate), getProductPricingUser()])
     .then(([rate, user]) => ({ rate, user }), error => ({ error }));
   const product = await productPromise;
   if (!product || product.error) return { product };
   const inputs = await inputsPromise;
   if (inputs.error) throw inputs.error;
   const { rate, user } = inputs;
-  const pricing = await getProductDisplayPrice(product, rate, user);
+  const pricing = await timed("price", () => getProductDisplayPrice(product, rate, user));
   return { product, rate, pricing, reviewsPromise, personalized: Boolean(user) };
 }
