@@ -14,6 +14,7 @@ import {
   quantityDiscountPerUnit,
 } from "base/services/priceEngine";
 import { eurToToman } from "@/lib/Exchangerate";
+import { PUBLIC_VARIANT_ATTRIBUTES } from "@/lib/publicProductFields";
 import { calculateDiscount } from "base/utils/discountCalculator";
 import {
   buildLabelMap,
@@ -62,7 +63,7 @@ export async function POST(request) {
       productIds.length
         ? Product.find({ _id: { $in: productIds } })
             .populate("brand", "_id name")
-            .populate("category", "_id name variantAttributes")
+            .populate("category", `_id name ${PUBLIC_VARIANT_ATTRIBUTES}`)
             .populate("serie", "_id name")
             .lean()
         : Promise.resolve([]),
@@ -75,7 +76,7 @@ export async function POST(request) {
               path: "baseProduct",
               populate: [
                 { path: "brand", select: "_id name" },
-                { path: "category", select: "_id name variantAttributes" },
+                { path: "category", select: `_id name ${PUBLIC_VARIANT_ATTRIBUTES}` },
                 { path: "serie", select: "_id name" }
               ]
             })

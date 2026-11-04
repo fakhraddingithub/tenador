@@ -5,6 +5,7 @@ import User from "base/models/User";
 import Product from "base/models/Product";
 import { verifyToken } from 'base/utils/auth';
 import { getCachedRate } from "@/lib/Exchangerate";
+import { CARD_BRAND_FIELDS, CARD_CATEGORY_FIELDS } from "@/lib/publicProductFields";
 import { attachListingPrices } from "base/services/priceEngine";
 import mongoose from "mongoose";
 
@@ -32,8 +33,8 @@ export async function GET() {
       _id: { $in: user.wishlist },
       isActive: true,
     })
-      .populate("brand")
-      .populate("category")
+      .populate("brand", CARD_BRAND_FIELDS)
+      .populate("category", CARD_CATEGORY_FIELDS)
       .populate("serie")
       .populate("variants")
       .lean();

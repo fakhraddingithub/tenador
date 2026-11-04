@@ -3,6 +3,7 @@ import mongoose from "mongoose";
 import connectToDB from "base/configs/db";
 import Product from "base/models/Product";
 import { getCachedRate } from "@/lib/Exchangerate";
+import { LISTING_CATEGORY_FIELDS } from "@/lib/publicProductFields";
 import { attachListingPrices } from "base/services/priceEngine";
 import {
   TARGET_AUDIENCE_VALUES,
@@ -32,7 +33,7 @@ export const POPULATES = [
   { path: "athlete", select: "name title slug image" },
   // variantAttributes لازم است تا کوییک‌ویو برچسبِ فارسیِ ویژگی‌ها و واحدهای
   // چندواحدی را داشته باشد (بدونش کلیدِ خام مثل gripSize نمایش داده می‌شود).
-  { path: "category", select: "name title slug variantAttributes" },
+  { path: "category", select: LISTING_CATEGORY_FIELDS },
   { path: "serie", select: "name title slug level" },
   { path: "limitedEdition", select: "name title slug" },
   { path: "variants", select: "sku price attributes images stock isActive" },

@@ -10,6 +10,7 @@ import { notFound } from "next/navigation";
 import { getCachedRate, eurToToman } from "@/lib/Exchangerate";
 import TaxonomyBreadcrumbs from "@/components/seo/TaxonomyBreadcrumbs";
 import { filterAttributesByAudience } from "base/utils/targetAudience";
+import { PUBLIC_ATTRIBUTES, PUBLIC_VARIANT_ATTRIBUTES } from "@/lib/publicProductFields";
 
 // ⚠️ اسلاگ‌های فارسی با هدر x-next-cache-tags ناسازگارند (باگ Next: کاراکتر
 // غیر-ASCII در هدر → ERR_INVALID_CHAR → خطای ۵۰۰). داینامیک رندر می‌شود تا هدر
@@ -96,7 +97,7 @@ export default async function UsedProductPage({ params }) {
         { path: "brand", select: "title slug logo icon" },
         {
           path: "category",
-          select: "title slug technicalStats attributes variantAttributes",
+          select: `title slug technicalStats ${PUBLIC_ATTRIBUTES} ${PUBLIC_VARIANT_ATTRIBUTES}`,
           populate: { path: "technicalStats" },
         },
       ],

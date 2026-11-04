@@ -195,11 +195,16 @@ npm run test:product-creation   # create + edit, real replica set, real schemas 
 Whatever a storefront service returns is serialized into the page's HTML, so a bare `.populate("category")` or
 `.populate("brand")` there costs page weight and publishes the admin's AI prompts (`prompts`, `technicalStatsPrompt`,
 `*.prompt`). `src/lib/publicProductFields.js` holds the field lists: `CARD_*` for product cards and quick view (home
-sliders, related products, article blocks) and `PRODUCT_PAGE_*` for `getProductBySlug`, which excludes only what that page
-never reads. A field a card starts reading must be added to `CARD_*` first.
+sliders, related products, article blocks, wishlist), `LISTING_CATEGORY_FIELDS` for `POPULATES`, and `WITHOUT_AI_PROMPTS`
+where the whole document is wanted minus its prompts (`getProductBySlug`, `getPageDataBySlug`, `query.service`). A field a
+card starts reading must be added to `CARD_*` first, and a new `AttributeSchema` key to `ATTRIBUTE_KEYS` (a test fails otherwise).
+
+**Admin-side reads keep their prompts and must never use this file:** the edit forms and the AI prompt builder read
+`/api/categories`, `/api/brands/[brandId]`, `/api/product/[productId]`, `/api/query` and their own `Category` queries.
+Those GETs are still ungated, so the prompts remain reachable through them; closing that means gating them, not trimming them.
 
 ```bash
-npm run test:public-product-fields   # real schema + real mongo: no prompt leaves, every read field survives
+npm run test:public-product-fields   # real schema + real mongo: no prompt leaves, every read field survives, admin reads untouched
 ```
 
 ### Product regeneration (AI re-write of an existing product)

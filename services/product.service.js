@@ -17,7 +17,7 @@ import {
   CARD_BRAND_FIELDS,
   CARD_CATEGORY_FIELDS,
   PRODUCT_PAGE_BRAND_FIELDS,
-  PRODUCT_PAGE_CATEGORY_FIELDS,
+  WITHOUT_AI_PROMPTS,
 } from "@/lib/publicProductFields";
 
 const modelsMap = { Sport, Brand, Athlete, Category };
@@ -35,7 +35,7 @@ export const getProducts = unstable_cache(
   async () => {
     return getProductListingPage();
   },
-  ["all-products-kids-separated-v2"],
+  ["all-products-kids-separated-v3"],
   { revalidate: 10800, tags: ["products"] }
 );
 
@@ -152,7 +152,7 @@ export const getProductBySlug = unstable_cache(
         .populate("limitedEdition")
         .populate("sport")
         .populate("athlete")
-        .populate("category", PRODUCT_PAGE_CATEGORY_FIELDS)
+        .populate("category", WITHOUT_AI_PROMPTS)
         .populate("variants")
         .lean();
 
@@ -247,7 +247,7 @@ export const getPageDataBySlug = unstable_cache(
       return null;
     }
 
-    const entityInfo = await EntityModel.findOne({ slug }).lean();
+    const entityInfo = await EntityModel.findOne({ slug }).select(WITHOUT_AI_PROMPTS).lean();
     if (!entityInfo) return null;
 
     const articleBlocks =
@@ -288,7 +288,7 @@ export const getPageDataBySlug = unstable_cache(
       })
     );
   },
-  ["page-data-by-slug-kids-separated-v2"],
+  ["page-data-by-slug-kids-separated-v3"],
   {
     revalidate: 10800,
     tags: ["products", "sports", "categories", "brands", "series", "articles"],

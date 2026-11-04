@@ -19,6 +19,7 @@ import { withResolvedSerieSportContent } from "@/lib/serieSportContent";
 import { buildCategorySportMatch } from "base/utils/categorySportVisibility";
 import { applyProductSportVisibility } from "base/services/categorySportVisibility.service";
 import { applyCategorySubtree } from "base/services/categorySubtree.service";
+import { WITHOUT_AI_PROMPTS } from "@/lib/publicProductFields";
 
 // سنتینل واحد برای ۴۰۴ — صفحه‌ی کنترلر با بررسی res.notFound === true تابع
 // notFound() نکست را صدا می‌زند.
@@ -95,7 +96,7 @@ async function _validatePath(slugs) {
     if (sport) {
       resolved = { sport };
     } else {
-      const brand = await Brand.findOne({ slug: s1 }).lean();
+      const brand = await Brand.findOne({ slug: s1 }).select(WITHOUT_AI_PROMPTS).lean();
       if (brand) resolved = { brand };
     }
   } else if (slugs.length === 2) {
@@ -107,12 +108,12 @@ async function _validatePath(slugs) {
       const category = await Category.findOne({
         slug: s2,
         ...buildCategorySportMatch(sport._id),
-      }).lean();
+      }).select(WITHOUT_AI_PROMPTS).lean();
       if (category) {
         resolved = { sport, category };
       } else {
         // برند با محصولِ فعال در این ورزش (الگوی ۴)
-        const brand = await Brand.findOne({ slug: s2 }).lean();
+        const brand = await Brand.findOne({ slug: s2 }).select(WITHOUT_AI_PROMPTS).lean();
         if (
           brand &&
           (await Product.exists(await applyProductSportVisibility(
@@ -126,7 +127,7 @@ async function _validatePath(slugs) {
     } else {
       // الگوی ۷: /[brand]/[limitedEdition] — لیمیتد ادیشنِ متعلق به همین برند با
       // حداقل یک محصولِ فعال. لیمیتد ادیشن‌ها برند-محور هستند (مستقل از ورزش).
-      const brand = await Brand.findOne({ slug: s1 }).lean();
+      const brand = await Brand.findOne({ slug: s1 }).select(WITHOUT_AI_PROMPTS).lean();
       if (brand) {
         const limitedEdition = await LimitedEdition.findOne({
           brand: brand._id,
@@ -151,10 +152,10 @@ async function _validatePath(slugs) {
       const category = await Category.findOne({
         slug: s2,
         ...buildCategorySportMatch(sport._id),
-      }).lean();
+      }).select(WITHOUT_AI_PROMPTS).lean();
       if (category) {
         // Branch A (الگوی ۵): s3 باید BRAND باشد با محصول در ترکیبِ ورزش+دسته
-        const brand = await Brand.findOne({ slug: s3 }).lean();
+        const brand = await Brand.findOne({ slug: s3 }).select(WITHOUT_AI_PROMPTS).lean();
         if (
           brand &&
           (await Product.exists(await applyCategorySubtree(
@@ -169,7 +170,7 @@ async function _validatePath(slugs) {
         }
       } else {
         // Branch B (الگوی ۶): s2 باید BRAND و s3 باید SERIE متعلق به این برند+ورزش
-        const brand = await Brand.findOne({ slug: s2 }).lean();
+        const brand = await Brand.findOne({ slug: s2 }).select(WITHOUT_AI_PROMPTS).lean();
         if (brand) {
           const serie = await Serie.findOne({ slug: s3 }).lean();
           if (serie && String(serie.brand) === String(brand._id)) {

@@ -20,8 +20,11 @@ register("./aliasHooks.mjs", import.meta.url);
 const {
   CARD_BRAND_FIELDS,
   CARD_CATEGORY_FIELDS,
+  LISTING_CATEGORY_FIELDS,
   PRODUCT_PAGE_BRAND_FIELDS,
-  PRODUCT_PAGE_CATEGORY_FIELDS,
+  PUBLIC_ATTRIBUTES,
+  PUBLIC_VARIANT_ATTRIBUTES,
+  WITHOUT_AI_PROMPTS,
 } = await import("../src/lib/publicProductFields.js");
 const { default: Product } = await import("../models/Product.js");
 const { default: Category } = await import("../models/Category.js");
@@ -143,7 +146,7 @@ test("کارت و کوییک‌ویو: پرامپتی نمی‌رسد و داد�
 });
 
 test("صفحه‌ی محصول: فقط پرامپت‌ها و مقاله‌ی برند حذف می‌شوند", async () => {
-  const product = await load(PRODUCT_PAGE_BRAND_FIELDS, PRODUCT_PAGE_CATEGORY_FIELDS);
+  const product = await load(PRODUCT_PAGE_BRAND_FIELDS, WITHOUT_AI_PROMPTS);
   assert.ok(!JSON.stringify(product).includes(SECRET));
 
   const { category, brand } = product;
@@ -198,9 +201,62 @@ test("سرویس‌های عمومی برند و دسته را کامل populate
     "services/product.service.js",
     "services/relatedProducts.service.js",
     "services/publicArticle.service.js",
+    "src/app/api/wishlist/route.js",
   ]) {
     const source = readFileSync(new URL(`../${path}`, import.meta.url), "utf8");
     assert.ok(!/populate\(\s*"(brand|category)"\s*\)/.test(source), `${path}: populate کامل`);
     assert.ok(!/populate\(\s*"brand category/.test(source), `${path}: populate کامل`);
+  }
+});
+
+test("فهرست کلیدهای ویژگی با اسکیمای واقعی یکی است و فقط prompt را کم دارد", () => {
+  for (const [path, fields] of [["attributes", PUBLIC_ATTRIBUTES], ["variantAttributes", PUBLIC_VARIANT_ATTRIBUTES]]) {
+    const schemaKeys = Object.keys(Category.schema.path(path).schema.paths).filter((key) => key !== "_id");
+    const expected = schemaKeys.filter((key) => key !== "prompt").map((key) => `${path}.${key}`).sort();
+    assert.ok(schemaKeys.includes("prompt"));
+    assert.deepEqual(fields.split(" ").sort(), expected);
+  }
+});
+
+test("صفحه‌ی لیست: برچسب و گزینه‌های واریانت می‌رسند و پرامپت نمی‌رسد", async () => {
+  const product = await load(CARD_BRAND_FIELDS, LISTING_CATEGORY_FIELDS);
+  assert.ok(!JSON.stringify(product).includes(SECRET));
+  assert.deepEqual(buildLabelMap(product.category.variantAttributes), { gripSize: "سایز گریپ" });
+  assert.deepEqual(attrUnits(product, "gripSize"), ["EU", "US"]);
+  assert.equal(product.category.slug, "racket");
+});
+
+test("صفحات ورزش و برند: موجودیت بدون پرامپت خوانده می‌شود و مقاله‌ی برند می‌ماند", async () => {
+  const brand = await Brand.findOne({ slug: "wilson" }).select(WITHOUT_AI_PROMPTS).lean();
+  assert.equal(brand.prompts, undefined);
+  assert.equal(brand.description, "توضیح برند");
+  // getPageDataBySlug مینی‌مقاله‌ی برند را از همین سند می‌سازد
+  assert.equal(brand.articleBlocks.length, 1);
+
+  const category = await Category.findOne({ slug: "racket" }).select(WITHOUT_AI_PROMPTS).lean();
+  assert.ok(!JSON.stringify(category).includes(SECRET));
+  assert.equal(category.megaMenuFilterAttribute, "balance");
+  assert.deepEqual(category.attributes[0].options, ["head"]);
+  assert.equal(category.attributes[0].filterable, true);
+});
+
+test("خواندن‌های پنل ادمین دست نخورده‌اند و پرامپت را می‌گیرند", async () => {
+  const category = await Category.findOne({ slug: "racket" }).lean();
+  assert.equal(category.technicalStatsPrompt, SECRET);
+  assert.equal(category.prompts[0].context, SECRET);
+  assert.equal(category.attributes[0].prompt, SECRET);
+  assert.equal(category.customTab.items[0].prompt, SECRET);
+
+  for (const path of [
+    "src/app/api/categories/route.js",
+    "src/app/api/categories/[categoryId]/route.js",
+    "src/app/api/brands/[brandId]/route.js",
+    "src/app/api/product/[productId]/route.js",
+    "src/app/api/query/route.js",
+    "src/lib/productDraftPrompt.js",
+    "src/lib/buildProductTemplate.js",
+  ]) {
+    const source = readFileSync(new URL(`../${path}`, import.meta.url), "utf8");
+    assert.ok(!source.includes("publicProductFields"), `${path} نباید فیلدهای عمومی را به کار ببرد`);
   }
 });

@@ -11,7 +11,7 @@ const getCachedStorefrontProductPage = unstable_cache(
       offset,
       limit,
     }),
-  ["storefront-product-pages-v3-kids-subtree"],
+  ["storefront-product-pages-v4-kids-subtree"],
   {
     revalidate: 10800,
     tags: ["products", "categories", "exchange-rate"],

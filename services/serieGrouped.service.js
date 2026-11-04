@@ -361,6 +361,6 @@ async function _getSerieGroupedSections(params) {
 
 export const getSerieGroupedSections = unstable_cache(
   _getSerieGroupedSections,
-  ["serie-grouped-sections", "kids-separated-v2", "category-attributes-v1"],
+  ["serie-grouped-sections", "kids-separated-v2", "category-attributes-v1", "no-ai-prompts-v1"],
   { revalidate: 10800, tags: ["products", "categories", "series"] }
 );

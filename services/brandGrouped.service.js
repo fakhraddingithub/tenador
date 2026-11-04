@@ -579,6 +579,7 @@ export const getBrandGroupedSections = unstable_cache(
     // v2: همکاری‌ها بخشِ مستقل ندارند و به برندِ مالکِ ادیشن محدودند
     "limited-edition-relations-v3",
     "brand-product-cursor-v1",
+    "no-ai-prompts-v1",
   ],
   { revalidate: 10800, tags: ["products", "categories", "series", "brands", "limited-editions"] }
 );

@@ -1,4 +1,5 @@
 import test from "node:test";
+import { LISTING_CATEGORY_FIELDS } from "../src/lib/publicProductFields.js";
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 
@@ -25,8 +26,8 @@ async function readListingContract() {
 
   const populatesBlock = source.match(/export const POPULATES = \[([\s\S]*?)\n\];/)?.[1];
   assert.ok(populatesBlock, "POPULATES پیدا نشد");
-  const populates = [...populatesBlock.matchAll(/path:\s*"([^"]+)",\s*select:\s*"([^"]+)"/g)].map(
-    ([, path, select]) => ({ path, select }),
+  const populates = [...populatesBlock.matchAll(/path:\s*"([^"]+)",\s*select:\s*(?:"([^"]+)"|LISTING_CATEGORY_FIELDS)/g)].map(
+    ([, path, select]) => ({ path, select: select ?? LISTING_CATEGORY_FIELDS }),
   );
 
   return { fields, populates };

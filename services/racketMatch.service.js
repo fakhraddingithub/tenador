@@ -29,6 +29,7 @@ import Sport from "base/models/Sport";
 import { attachListingPrices } from "base/services/priceEngine";
 import { LISTING_FIELDS, POPULATES } from "base/services/productListing.service";
 import { getCachedRate } from "@/lib/Exchangerate";
+import { PUBLIC_VARIANT_ATTRIBUTES } from "@/lib/publicProductFields";
 import { normalizeRacketSpecs } from "@/lib/racketMatch/normalize";
 import { normalizePadelSpecs } from "@/lib/racketMatch/padel/normalize";
 
@@ -46,7 +47,7 @@ async function loadCatalog(sportSlug, categorySlug, normalizeSpecs) {
   if (!sport) return null;
 
   const category = await Category.findOne({ sport: sport._id, slug: categorySlug })
-    .select("_id title slug variantAttributes technicalStats")
+    .select(`_id title slug technicalStats ${PUBLIC_VARIANT_ATTRIBUTES}`)
     .lean();
   if (!category) return null;
 
@@ -92,13 +93,13 @@ const CATALOG_CACHE = { revalidate: 300, tags: ["products", "categories", "excha
 
 export const getRacketCatalog = unstable_cache(
   () => loadCatalog("tennis", "racket", normalizeRacketSpecs),
-  ["racket-match-catalog"],
+  ["racket-match-catalog-v2"],
   CATALOG_CACHE,
 );
 
 export const getPadelCatalog = unstable_cache(
   () => loadCatalog("padel", "racket", normalizePadelSpecs),
-  ["padel-match-catalog"],
+  ["padel-match-catalog-v2"],
   CATALOG_CACHE,
 );
 
