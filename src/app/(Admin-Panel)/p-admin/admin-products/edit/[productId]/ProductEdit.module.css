@@ -1,12 +1,12 @@
 /* Scoped to section bodies: shared admin controls keep their behavior and other pages keep their styles. */
-.fields.fields :is(input:not([type='checkbox']):not([type='color']):not([type='file']), select, textarea) {
+.fields.fields :where(input:not([type='checkbox']):not([type='color']):not([type='file']), select, textarea) {
   min-width: 0;
   min-height: 44px;
   border-width: 1px;
   border-radius: var(--admin-radius);
   padding: 10px 12px;
   color: var(--admin-text);
-  font-size: 13px;
+  font-size: 15px;
   font-weight: 500;
   line-height: 1.65;
   transition: border-color 150ms, box-shadow 150ms, background-color 150ms;
@@ -15,6 +15,14 @@
 .fields.fields :is(input, select, textarea):not([class*='border-red']) {
   border-color: var(--admin-border-strong);
   background-color: var(--admin-card);
+}
+
+/* A single writing line for short values; longer text and validation errors keep a full outline. */
+.fields.fields :is(input[type='text'], input[type='number'], select):not([class*='border-red']) {
+  border-width: 0 0 1px;
+  border-radius: 0;
+  border-color: var(--admin-text-muted);
+  padding-inline-start: 4px;
 }
 
 .fields.fields :is(input, select, textarea):not([class*='border-red']):hover {
@@ -29,7 +37,7 @@
 
 .fields.fields :is(input, textarea)::placeholder {
   color: var(--admin-text-muted);
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 400;
 }
 
@@ -45,7 +53,8 @@
 }
 
 .fields.fields label {
-  font-size: 13px;
+  color: var(--admin-text);
+  font-size: 14px;
   font-weight: 600;
   line-height: 1.8;
 }
@@ -105,16 +114,12 @@
 
 .attributeField {
   min-width: 0;
-  padding: 14px;
-  background: var(--admin-bg);
-  border-radius: var(--admin-radius);
 }
 
 .colorField {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  justify-content: space-between;
   gap: 12px;
   border-top: 1px solid var(--admin-border);
   padding-top: 18px;
@@ -154,34 +159,29 @@
 
 .choiceGrid > label {
   min-width: 0;
-  min-height: 52px;
+  min-height: 44px;
   gap: 12px;
-  padding: 12px 14px;
-  border: 1px solid var(--admin-border);
+  padding: 8px 10px;
+  border: 0;
   border-radius: var(--admin-radius);
   background: var(--admin-card);
-  color: var(--admin-text-muted);
-  transition: background-color 150ms, border-color 150ms;
+  color: var(--admin-text);
+  transition: background-color 150ms;
 }
 
 .choiceGrid > label:has(input:checked) {
-  border-color: var(--color-primary);
   background: var(--color-primary-soft);
   color: var(--color-primary);
 }
 
-.choiceGrid > label:hover,
-.choiceGrid > label:focus-within {
-  border-color: var(--color-primary);
+.choiceGrid > label:not(:has(input:checked)):hover {
+  background: var(--admin-bg);
 }
 
 .sectionHint {
   margin-bottom: 20px;
-  padding: 12px 16px;
-  border-inline-start: 2px solid var(--admin-border-strong);
-  background: var(--admin-bg);
   color: var(--admin-text-muted);
-  font-size: 12px;
+  font-size: 13px;
   line-height: 2;
 }
 
@@ -195,17 +195,16 @@
 .statCard,
 .mediaCard {
   min-width: 0;
-  border: 1px solid var(--admin-border);
-  border-radius: var(--admin-radius);
-  background: var(--admin-card);
-  padding: 16px;
+}
+
+.variantCard + .variantCard {
+  padding-top: 20px;
+  border-top: 1px solid var(--admin-border);
 }
 
 .variantCard > label {
   display: block;
-  padding-bottom: 12px;
-  margin-bottom: 16px;
-  border-bottom: 1px solid var(--admin-border);
+  margin-bottom: 10px;
 }
 
 .variantCard > label > span {
@@ -243,6 +242,7 @@
 
 .valueMediaCard > button {
   min-height: 44px;
+  border-bottom: 1px solid var(--admin-border);
 }
 
 .combinationGrid {
@@ -251,17 +251,14 @@
 
 .combinationCard {
   min-width: 0;
-  border-inline-start-width: 3px;
-}
-
-.combinationCard:has(input[type='checkbox']:checked) {
-  border-inline-start-color: var(--color-primary);
+  border-top: 1px solid var(--admin-border);
+  padding-block: 12px;
 }
 
 .combinationCard > div:first-child {
   min-height: 32px;
   gap: 8px;
-  margin-bottom: 16px;
+  margin-bottom: 8px;
 }
 
 .combinationCard > div:first-child > span {
@@ -271,8 +268,7 @@
 
 .statCard {
   display: grid;
-  gap: 12px;
-  background: linear-gradient(180deg, var(--admin-bg), var(--admin-card) 60%);
+  gap: 8px;
 }
 
 .statCard > label {
@@ -281,17 +277,14 @@
 }
 
 .statValue {
-  border-radius: var(--admin-radius-sm);
-  padding: 4px 8px;
-  background: var(--color-primary-soft);
   color: var(--color-primary);
-  font-size: 12px;
+  font-size: 14px;
   font-variant-numeric: tabular-nums;
 }
 
 .statHint {
   color: var(--admin-text-muted);
-  font-size: 12px;
+  font-size: 13px;
   line-height: 1.8;
 }
 
@@ -302,7 +295,6 @@
 
 .mediaCard.mediaCard {
   margin-bottom: 0;
-  background: var(--admin-bg);
 }
 
 .mediaCard > div {
@@ -312,8 +304,8 @@
 .fields.fields input[type='file'] {
   max-width: 100%;
   min-width: 0;
-  padding: 14px;
-  border: 1px dashed var(--admin-border-strong);
+  padding: 6px 0;
+  border: 0;
   border-radius: var(--admin-radius);
   background: var(--admin-card);
   color: var(--admin-text-muted);
@@ -366,10 +358,6 @@
 @media (min-width: 1024px) {
   .basicInfo {
     grid-template-columns: minmax(0, 0.8fr) minmax(0, 1.2fr);
-  }
-
-  .basicInfo textarea {
-    min-height: 190px;
   }
 
   .relationsGrid,

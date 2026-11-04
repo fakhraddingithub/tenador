@@ -1271,9 +1271,7 @@ export default function ProductEditPage() {
                   return (
                     <div
                       key={key}
-                      className={`${styles.combinationCard} border rounded-[var(--admin-radius)] p-4 bg-white transition-opacity ${
-                        isSelected ? 'border-[var(--admin-border-strong)]' : 'border-gray-200 opacity-60'
-                      }`}
+                      className={styles.combinationCard}
                     >
                       <div className="flex flex-wrap items-center gap-2 mb-4">
                         <label className="flex items-center cursor-pointer select-none">
@@ -1295,7 +1293,7 @@ export default function ProductEditPage() {
                           </span>
                         ))}
                         {!isSelected && (
-                          <span className="text-[11px] font-bold text-gray-400 bg-gray-100 border border-gray-200 px-2 py-0.5 rounded-full mr-auto">
+                          <span className="mr-auto text-xs font-medium text-[var(--admin-text-muted)]">
                             ساخته نمی‌شود
                           </span>
                         )}
