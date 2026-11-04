@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import vm from "node:vm";
 import { readFile } from "node:fs/promises";
 import * as ranking from "../src/lib/relatedProducts.js";
+import * as publicProductFields from "../src/lib/publicProductFields.js";
 
 async function loadService(source, candidates = [], details = [], fail = false, complements = [], series = []) {
   const calls = [];
@@ -27,6 +28,7 @@ async function loadService(source, candidates = [], details = [], fail = false, 
     } },
     "base/models/Serie": { default: { find: (filter) => { calls.push(["series", filter]); return chain(series); } } },
     "@/lib/relatedProducts": ranking,
+    "@/lib/publicProductFields": publicProductFields,
     "base/services/priceEngine": { attachListingPrices: async (products, rate) => {
       calls.push(["prices", products, rate]);
       return products.map((p) => ({ ...p, finalPriceToman: p.basePrice * rate }));

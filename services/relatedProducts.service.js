@@ -5,6 +5,7 @@ import Product from "base/models/Product";
 import Serie from "base/models/Serie";
 import { attachListingPrices } from "base/services/priceEngine";
 import { hasMatchableStats, normalizedProductTags, rankRelatedProducts, selectComplementaryProducts } from "@/lib/relatedProducts";
+import { CARD_BRAND_FIELDS, CARD_CATEGORY_FIELDS } from "@/lib/publicProductFields";
 
 const getRelatedSelection = unstable_cache(
   async (productId) => {
@@ -55,8 +56,8 @@ const getRelatedSelection = unstable_cache(
     // Same populated card/quick-view payload as the home sliders. Keep EUR
     // base/variant prices intact; attachListingPrices adds the Toman fields.
     const products = await Product.find({ _id: { $in: ids }, isActive: true })
-      .populate("brand")
-      .populate("category")
+      .populate("brand", CARD_BRAND_FIELDS)
+      .populate("category", CARD_CATEGORY_FIELDS)
       .populate("variants")
       .lean();
     const byId = new Map(products.map((product) => [String(product._id), product]));
@@ -66,7 +67,7 @@ const getRelatedSelection = unstable_cache(
       products: ids.map((id) => byId.get(String(id))).filter(Boolean),
     }));
   },
-  ["related-products-3-similar-5-complementary-v2"],
+  ["related-products-3-similar-5-complementary-v3"],
   { revalidate: 300, tags: ["products", "categories", "brands", "series", "sports"] },
 );
 

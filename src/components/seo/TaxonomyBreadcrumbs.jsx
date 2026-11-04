@@ -52,7 +52,7 @@ export default function TaxonomyBreadcrumbs({
                     {item.name}
                   </span>
                 ) : item.href ? (
-                  <Link href={item.href} className="hover:text-[var(--color-primary)]">
+                  <Link href={item.href} prefetch={item.href === "/" ? false : undefined} className="hover:text-[var(--color-primary)]">
                     {item.name}
                   </Link>
                 ) : (

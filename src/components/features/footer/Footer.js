@@ -6,9 +6,14 @@ import { FaTelegram } from "react-icons/fa";
 import { FOOTER_SECTIONS } from "@/lib/constants";
 import Input from "@/components/ui/Input";
 import Button from "@/components/ui/Button";
-import Swal from "sweetalert2";
 import Image from "next/image";
 import Link from "next/link";
+
+// فوتر در همه‌ی صفحات است؛ sweetalert2 فقط وقتی لازم می‌شود که فرم خبرنامه نتیجه بدهد.
+const showAlert = (options) =>
+  import("sweetalert2")
+    .then(({ default: Swal }) => Swal.fire(options))
+    .catch(() => window.alert(options.text));
 
 export default function Footer() {
   const [email, setEmail] = useState("");
@@ -41,7 +46,7 @@ export default function Footer() {
 
       setIsSubscribed(true);
       
-      Swal.fire({
+      showAlert({
         icon: "success",
         title: "عضویت موفق",
         text: "از همراهی شما سپاسگزاریم!",
@@ -52,7 +57,7 @@ export default function Footer() {
 
       setEmail("");
     } catch (err) {
-      Swal.fire({
+      showAlert({
         icon: "error",
         title: "خطا",
         text: err.message,

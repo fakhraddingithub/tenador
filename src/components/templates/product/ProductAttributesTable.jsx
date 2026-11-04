@@ -1,11 +1,18 @@
 "use client";
 
 import { useState, useRef } from "react";
+import dynamic from "next/dynamic";
 import { motion } from "framer-motion";
-import ProductComparisonGraph from "@/components/templates/productCompare/ProductComparisonGraph";
 import AttributeInfoTooltip from "./AttributeInfoTooltip";
 import { isKidsAudience } from "base/utils/targetAudience";
 import { hasChartableStats } from "@/lib/technicalStatsChart.mjs";
+
+// recharts بزرگ‌ترین چانکِ صفحه است و نمودار تا بازشدنِ تبِ مشخصات رندر نمی‌شود، پس
+// همان موقع بارگذاری می‌شود. خطای بارگذاری فقط نمودار را حذف می‌کند، نه کلِ صفحه را.
+const ProductComparisonGraph = dynamic(
+  () => import("@/components/templates/productCompare/ProductComparisonGraph").catch(() => () => null),
+  { ssr: false, loading: () => <div className="h-[420px]" aria-hidden="true" /> },
+);
 
 // یک ردیفِ مشخصات فنی. اگر ویژگی توضیح داشته باشد، کلِ ردیف کلیک‌پذیر می‌شود و
 // تولتیپِ آن باز/بسته می‌شود (آیکونِ ؟ فقط نشانگر است).

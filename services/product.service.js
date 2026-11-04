@@ -13,6 +13,12 @@ import { getCachedRate } from "@/lib/Exchangerate";
 import { attachListingPrices } from "base/services/priceEngine";
 import { getProductListingPage } from "base/services/productListing.service";
 import { filterAttributesByAudience } from "base/utils/targetAudience";
+import {
+  CARD_BRAND_FIELDS,
+  CARD_CATEGORY_FIELDS,
+  PRODUCT_PAGE_BRAND_FIELDS,
+  PRODUCT_PAGE_CATEGORY_FIELDS,
+} from "@/lib/publicProductFields";
 
 const modelsMap = { Sport, Brand, Athlete, Category };
 
@@ -46,8 +52,8 @@ export const getHomeProducts = unstable_cache(
     const products = await Product.find({ isActive: true })
       .sort({ createdAt: -1 })
       .limit(20)
-      .populate("brand")
-      .populate("category")
+      .populate("brand", CARD_BRAND_FIELDS)
+      .populate("category", CARD_CATEGORY_FIELDS)
       .populate("variants")
       .lean();
 
@@ -73,8 +79,8 @@ async function buildSliderList(ids, rate) {
   if (!Array.isArray(ids) || ids.length === 0) return null;
 
   const products = await Product.find({ _id: { $in: ids }, isActive: true })
-    .populate("brand")
-    .populate("category")
+    .populate("brand", CARD_BRAND_FIELDS)
+    .populate("category", CARD_CATEGORY_FIELDS)
     .populate("variants")
     .lean();
 
@@ -114,8 +120,8 @@ export const getHomeSliderProducts = unstable_cache(
       const recent = await Product.find({ isActive: true })
         .sort({ createdAt: -1 })
         .limit(20)
-        .populate("brand")
-        .populate("category")
+        .populate("brand", CARD_BRAND_FIELDS)
+        .populate("category", CARD_CATEGORY_FIELDS)
         .populate("variants")
         .lean();
       const pricedFallback = await attachListingPrices(recent, rate);
@@ -129,7 +135,7 @@ export const getHomeSliderProducts = unstable_cache(
 
     return JSON.parse(JSON.stringify({ bestSellers, offers }));
   },
-  ["home-slider-products"],
+  ["home-slider-products-v2"],
   { revalidate: 10800, tags: ["products", "home-sliders"] }
 );
 
@@ -141,12 +147,12 @@ export const getProductBySlug = unstable_cache(
       await connectToDB();
 
       const product = await Product.findOne({ slug: decodedSlug, isActive: true })
-        .populate("brand")
+        .populate("brand", PRODUCT_PAGE_BRAND_FIELDS)
         .populate("serie")
         .populate("limitedEdition")
         .populate("sport")
         .populate("athlete")
-        .populate("category")
+        .populate("category", PRODUCT_PAGE_CATEGORY_FIELDS)
         .populate("variants")
         .lean();
 
@@ -191,7 +197,7 @@ export const getProductBySlug = unstable_cache(
       throw err;
     }
   },
-  ["product-by-slug"],
+  ["product-by-slug-v2"],
   { revalidate: 10800, tags: ["products"] }
 );
 

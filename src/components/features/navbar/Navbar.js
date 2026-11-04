@@ -697,7 +697,7 @@ useEffect(() => {
           <div className="relative flex items-center justify-between h-full gap-6">
             <div className="flex items-center gap-5 flex-shrink-0">
               <div className="origin-right flex-shrink-0">
-                <Link href="/">
+                <Link href="/" prefetch={false}>
                   <Image
                     src="/logo/logo.svg"
                   loading="eager"
@@ -905,7 +905,7 @@ useEffect(() => {
                   <HiOutlineViewGrid size={24} />
                 )}
               </button>
-              <Link href="/" className="flex-shrink-0">
+              <Link href="/" prefetch={false} className="flex-shrink-0">
                 <Image
                   src="/logo/logo.svg"
                   loading="eager"

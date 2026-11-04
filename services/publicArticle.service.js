@@ -18,6 +18,7 @@ import { attachListingPrices } from "base/services/priceEngine";
 import { getReviewCardsByIds } from "base/services/comment.service";
 import { getTickerBrands } from "base/services/brandTicker.service";
 import { hasLegacyBlocks, upgradeLegacyBlocks } from "@/lib/legacyArticleBlocks";
+import { CARD_BRAND_FIELDS, CARD_CATEGORY_FIELDS } from "@/lib/publicProductFields";
 import { getSportSeriesBlock } from "base/services/series.service";
 import { isReservedArticleRoot, publicArticleFilter } from "base/utils/articleRoutes";
 
@@ -66,7 +67,7 @@ export async function resolveArticleEntities(article) {
 
   const [rate, products, articles, usedProducts, sportSeries, reviews, tickerBrands] = await Promise.all([
     refs.products.length || refs.usedProducts.length ? getCachedRate() : Promise.resolve(1),
-    refs.products.length ? Product.find({ _id: { $in: refs.products }, isActive: true }).populate("brand category variants").lean() : [],
+    refs.products.length ? Product.find({ _id: { $in: refs.products }, isActive: true }).populate("brand", CARD_BRAND_FIELDS).populate("category", CARD_CATEGORY_FIELDS).populate("variants").lean() : [],
     refs.articles.length ? Article.find({ _id: { $in: refs.articles }, ...publicArticleFilter() }).select("title slug excerpt cover category publishedAt readingTime").populate("category", "name slug status").lean() : [],
     refs.usedProducts.length ? UsedProduct.find({ _id: { $in: refs.usedProducts }, status: { $ne: "sold" } }).populate({ path: "baseProduct", select: "mainImage brand", populate: { path: "brand", select: "title icon" } }).lean() : [],
     Promise.all(sportSeriesBlocks.map(async (block) => [String(block.id), await getSportSeriesBlock(block.data?.sport, block.data?.series)])),

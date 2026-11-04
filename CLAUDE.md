@@ -190,6 +190,18 @@ reports through `handleApiError` like everything else.
 npm run test:product-creation   # create + edit, real replica set, real schemas and hooks
 ```
 
+### Public product payload
+
+Whatever a storefront service returns is serialized into the page's HTML, so a bare `.populate("category")` or
+`.populate("brand")` there costs page weight and publishes the admin's AI prompts (`prompts`, `technicalStatsPrompt`,
+`*.prompt`). `src/lib/publicProductFields.js` holds the field lists: `CARD_*` for product cards and quick view (home
+sliders, related products, article blocks) and `PRODUCT_PAGE_*` for `getProductBySlug`, which excludes only what that page
+never reads. A field a card starts reading must be added to `CARD_*` first.
+
+```bash
+npm run test:public-product-fields   # real schema + real mongo: no prompt leaves, every read field survives
+```
+
 ### Product regeneration (AI re-write of an existing product)
 
 «بازتولید محصول» on the edit page → `/p-admin/admin-products/[productId]/regenerate`, two modes:
