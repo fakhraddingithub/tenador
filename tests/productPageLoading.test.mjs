@@ -105,7 +105,6 @@ function pageHarness({ product, rate, reviews, pricing, user = null }) {
   }; };
   const api = load("src/lib/productPageData.js", {
     "./productImageHints": { preloadProductImage: () => { calls.push("imageHint"); } },
-    "./serverTiming": { timed: (name, work) => work() },
     "base/utils/articleSlug": { decodeSlugParam: (value) => decodeURIComponent(value) },
     react: { cache },
     "next/headers": { cookies: async () => ({ get: () => user ? { value: "token" } : undefined }) },
@@ -147,32 +146,6 @@ test("a Persian slug in either encoding reads the product once", async () => {
   const decoded = "راکت-تست";
   assert.equal(await api.getProductForPage(decoded), await api.getProductForPage(encodeURIComponent(decoded)));
   assert.equal(api.calls.filter((c) => c === "product").length, 1);
-});
-
-test("server timing records each step without changing start order or rejections", async () => {
-  let store;
-  const { timed, readServerTiming } = load("src/lib/serverTiming.js", {
-    react: { cache: (fn) => () => (store ??= fn()) },
-    mongoose: { default: { connection: { readyState: 0 } } },
-    "next/dist/server/app-render/work-async-storage.external.js": { workAsyncStorage: { getStore: () => undefined } },
-    "next/dist/server/app-render/work-unit-async-storage.external.js": { workUnitAsyncStorage: { getStore: () => undefined } },
-    "next/dist/server/lib/incremental-cache/tags-manifest.external.js": { tagsManifest: new Map() },
-  });
-  let started = false;
-  const ok = timed("ok", () => { started = true; return Promise.resolve("value"); });
-  assert.equal(started, true, "work must start synchronously");
-  assert.equal(await ok, "value");
-  await assert.rejects(timed("bad", () => Promise.reject(new Error("db down"))), /db down/);
-  assert.equal(await timed("sync", () => "plain"), "plain");
-  await new Promise((resolve) => setImmediate(resolve));
-  const output = readServerTiming();
-  assert.deepEqual(Object.keys(output.steps).sort(), ["bad", "ok", "sync"]);
-  await timed("ok", () => "again");
-  assert.ok(readServerTiming().steps["ok#2"], "a duplicate read must stay visible");
-  assert.equal(output.dbAtStart, 0);
-  assert.equal(typeof output.steps.ok.ms, "number");
-  assert.equal(typeof output.totalMs, "number");
-  assert.doesNotThrow(() => JSON.stringify(output));
 });
 
 test("pricing failure rejects the page rather than showing zero or an undiscounted fallback", async () => {

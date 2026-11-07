@@ -1,6 +1,5 @@
 import "base/models/registerModels";
 import { unstable_cache } from "next/cache";
-import { timed } from "@/lib/serverTiming";
 import connectToDB from "base/configs/db";
 import Sport from "base/models/Sport";
 import Product from "base/models/Product";
@@ -437,10 +436,10 @@ async function buildNavbarData() {
 
 export const getCachedNavbar = unstable_cache(
   async () => {
-    const data = await timed("navbar:build", buildNavbarData);
+    const data = await buildNavbarData();
     return JSON.parse(JSON.stringify(data));
   },
   // کلید با اضافه‌شدنِ دسته‌های ساختاری (hasProducts) بامپ شد تا کشِ قدیمی سرو نشود
-  ["navbar-data", "target-audience-unisex-v1", "subtree-parents-kids-v2", "category-sport-label-v1"],
+  ["navbar-data", "target-audience-unisex-v1", "subtree-parents-kids-v2", "category-sport-label-v1", "v2"],
   { revalidate: 10800, tags: ["navbar"] },
 );

@@ -11,7 +11,6 @@ import Footer from "@/components/features/footer/Footer";
 import PushOptInBanner from "@/components/features/push/PushOptInBanner";
 
 import { getCachedNavbar } from "@/lib/navbarService";
-import { timed } from "@/lib/serverTiming";
 import { UserProvider } from "@/components/features/auth/UserContext";
 import CartCleanup from "@/components/features/cart/CartCleanup";
 import ScrollToTop from "@/components/common/ScrollToTop";
@@ -155,7 +154,7 @@ export const metadata = {
 export default async function RootLayout({ children }) {
   // ⚠️ هیچ `cookies()`/`headers()` در این layout صدا زده نمی‌شود تا کل درخت `(Site)`
   // بتواند static/ISR باقی بماند. وضعیت کاربر در جزیره‌ی کلاینت `UserProvider` مدیریت می‌شود.
-  const navData = await timed("navbar", getCachedNavbar);
+  const navData = await getCachedNavbar();
 
   const jsonLd = {
     "@context": "https://schema.org",
