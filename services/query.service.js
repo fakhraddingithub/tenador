@@ -6,6 +6,7 @@
  */
 
 import "base/models/registerModels";
+import { unstable_cache } from "next/cache";
 import connectToDB from "base/configs/db";
 import Brand from "base/models/Brand";
 import Sport from "base/models/Sport";
@@ -326,8 +327,25 @@ export async function queryBySlugs(slugs, resolvedContext = null, extraFilter = 
  * برای صفحه‌ی برند (نمای گروه‌بندی‌شده + infinite scroll) استفاده می‌شود تا
  * بارِ اولیه سبک بماند و همه‌ی محصولات یک‌جا لود نشوند.
  */
+// A miss is thrown, not returned, so it is never cached: an arbitrary root URL must not
+// leave an entry behind.
+const PAGE_CONTEXT_MISS = "PAGE_CONTEXT_MISS";
+const readKnownPageContext = unstable_cache(
+  async (slugs, options) => {
+    const ctx = await _resolveContext(slugs, options);
+    if (ctx.notFound) throw Object.assign(new Error(PAGE_CONTEXT_MISS), { code: PAGE_CONTEXT_MISS });
+    return JSON.parse(JSON.stringify({ notFound: false, filters: ctx.filters }));
+  },
+  ["page-context-v1"],
+  // Every entity it resolves, plus products: a category with no visible product is a 404.
+  { revalidate: 10800, tags: ["sports", "brands", "categories", "series", "limited-editions", "products"] },
+);
+
 export async function resolvePageContext(slugs, options = {}) {
-  const ctx = await _resolveContext(slugs, options);
-  if (ctx.notFound) return { notFound: true };
-  return JSON.parse(JSON.stringify({ notFound: false, filters: ctx.filters }));
+  try {
+    return await readKnownPageContext(slugs, options);
+  } catch (err) {
+    if (err?.code === PAGE_CONTEXT_MISS) return { notFound: true };
+    throw err;
+  }
 }

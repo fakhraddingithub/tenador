@@ -5,12 +5,13 @@
  * a serie page. Both fields are select:false on their models, so nothing else
  * that loads brands/series ever carries them; these are the only public reads.
  *
- * Uncached on purpose, exactly like the root brand article (which comes from the
- * uncached resolvePageContext): the pages are force-dynamic and each read is a
- * single _id lookup, so an admin save shows up on the next request.
+ * The brand+category and serie reads are uncached: those pages sit behind the CDN and
+ * each read is a single _id lookup. The brochures are cached under their owner's tag,
+ * which every brochure save purges, so an admin save still shows on the next request.
  */
 
 import mongoose from "mongoose";
+import { unstable_cache } from "next/cache";
 import connectToDB from "base/configs/db";
 import Brand from "base/models/Brand";
 import Serie from "base/models/Serie";
@@ -69,8 +70,17 @@ async function getPublishedBrochure(Model, ownerId) {
     { brochure: 1 },
   ).lean();
   const blocks = doc?.brochure?.blocks;
-  return Array.isArray(blocks) && blocks.length > 0 ? blocks : null;
+  // Plain JSON, so a fresh read and a cached one have the same shape.
+  return Array.isArray(blocks) && blocks.length > 0 ? JSON.parse(JSON.stringify(blocks)) : null;
 }
 
-export const getPublishedBrandBrochure = (brandId) => getPublishedBrochure(Brand, brandId);
-export const getPublishedSportBrochure = (sportId) => getPublishedBrochure(Sport, sportId);
+export const getPublishedBrandBrochure = unstable_cache(
+  (brandId) => getPublishedBrochure(Brand, brandId),
+  ["published-brand-brochure-v1"],
+  { revalidate: 10800, tags: ["brands"] },
+);
+export const getPublishedSportBrochure = unstable_cache(
+  (sportId) => getPublishedBrochure(Sport, sportId),
+  ["published-sport-brochure-v1"],
+  { revalidate: 10800, tags: ["sports"] },
+);

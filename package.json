@@ -20,6 +20,7 @@
     "test:public-product-fields": "node --test --test-timeout=180000 tests/publicProductFields.test.mjs",
     "test:limited-edition-relations": "node --test tests/limitedEditionRelations.test.mjs",
     "test:brand-collaboration": "node --test tests/brandCollaboration.test.mjs",
+    "test:page-context-cache": "node --test tests/pageContextCache.test.mjs",
     "test:mini-articles": "node --test --test-timeout=180000 tests/miniArticles.test.mjs tests/miniArticleSections.test.mjs",
     "test:article-image-block": "node --test tests/articleImageBlock.test.mjs tests/imageOverlayTextMigration.test.mjs",
     "test:cdn-purge": "node --test tests/cdnPurge.test.mjs",

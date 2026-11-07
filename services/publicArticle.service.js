@@ -135,6 +135,15 @@ async function getArticleInternal(categorySlug, articleSlug) {
 const getCachedPublicArticleCategory = unstable_cache(getCategoryInternal, ["public-article-category"], { revalidate: 300, tags: ["articles"] });
 const getCachedPublicArticle = unstable_cache(getArticleInternal, ["public-article"], { revalidate: 300, tags: ["articles", "products", "categories", "brands", "sports", "series", "comments"] });
 
+// Blocks a public page renders outside an article (brochures, the root brand mini article).
+// Same lifetime and tags as an article, which embeds the same entities. Admin previews keep
+// calling resolveArticleEntities directly, so they always show live data.
+export const getCachedBlockEntities = unstable_cache(
+  (blocks) => resolveArticleEntities({ blocks }),
+  ["block-entities-v1"],
+  { revalidate: 300, tags: ["articles", "products", "categories", "brands", "sports", "series", "comments"] },
+);
+
 // Only cache known content. Caching null for arbitrary catch-all URLs lets bots
 // create an unbounded number of unique ISR entries.
 export async function getPublicArticleCategory(slug) {

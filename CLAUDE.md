@@ -100,6 +100,13 @@ Persian paths still match.
 athlete and category inside the product for hours, so saving any of them has to include the `products` tag.
 `tests/productPageLoading.test.mjs` fails if one of those routes drops it.
 
+**The root brand and sport page read through the cache too.** `resolvePageContext` (is this slug a sport, a brand…)
+is cached across requests under every tag it resolves, but only when it finds something: a miss is thrown inside the
+cache and turned into `notFound` outside it, so arbitrary root URLs never leave an entry. Published brochures are
+cached under `brands` / `sports`, which the brochure routes purge, and the products, articles and reviews inside
+blocks come from `getCachedBlockEntities` (300s, the same tags as an article). Admin previews keep calling
+`resolveArticleEntities` directly, so they always show live data. `npm run test:page-context-cache`.
+
 `tsconfig.json` sets `ignoreDeprecations: "6.0"` because TypeScript 6 reports `baseUrl` as an error during the build.
 Removing `baseUrl` instead could break imports that resolve from the repo root.
 

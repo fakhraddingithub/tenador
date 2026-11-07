@@ -16,7 +16,7 @@ import { buildTaxonomyMetadata } from "@/lib/seo/taxonomySeo";
 import TaxonomyStructuredData from "@/components/seo/TaxonomyStructuredData";
 import TaxonomyBreadcrumbs from "@/components/seo/TaxonomyBreadcrumbs";
 import { getBrandGroupedSections } from "base/services/brandGrouped.service";
-import { resolveArticleEntities } from "base/services/publicArticle.service";
+import { getCachedBlockEntities } from "base/services/publicArticle.service";
 import { getPublishedBrandBrochure, getPublishedSportBrochure } from "base/services/miniArticle.service";
 import { normalizeTargetAudience } from "base/utils/targetAudience";
 import { BRAND_SECTIONS_PER_BATCH } from "base/utils/groupedProductPagination";
@@ -108,7 +108,7 @@ export default async function DynamicSportPage({ params, searchParams }) {
     const brochureBlocks = await getPublishedBrandBrochure(brandId);
     if (brochureBlocks) {
       const { default: BrandBrochure } = await import("@/components/features/brands/BrandBrochure");
-      const brochureEntities = await resolveArticleEntities({ blocks: brochureBlocks });
+      const brochureEntities = await getCachedBlockEntities(brochureBlocks);
       const brochureFilters = { ...ctx.filters, brand: { ...ctx.filters.brand, articleBlocks: undefined, series: undefined } };
       return (
         <>
@@ -140,7 +140,7 @@ export default async function DynamicSportPage({ params, searchParams }) {
       }),
       getCachedRate(),
       articleBlocks.length > 0
-        ? resolveArticleEntities({ blocks: articleBlocks })
+        ? getCachedBlockEntities(articleBlocks)
         : Promise.resolve(null),
     ]);
 
@@ -202,7 +202,7 @@ export default async function DynamicSportPage({ params, searchParams }) {
     : null;
   if (sportBrochureBlocks) {
     const { default: BrandBrochure } = await import("@/components/features/brands/BrandBrochure");
-    const brochureEntities = await resolveArticleEntities({ blocks: sportBrochureBlocks });
+    const brochureEntities = await getCachedBlockEntities(sportBrochureBlocks);
     return (
       <>
         <TaxonomyStructuredData
