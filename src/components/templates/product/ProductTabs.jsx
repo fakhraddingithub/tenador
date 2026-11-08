@@ -1,11 +1,19 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import dynamic from "next/dynamic";
+import { isKidsAudience } from "base/utils/targetAudience";
+import { hasChartableStats } from "@/lib/technicalStatsChart.mjs";
 import { motion, AnimatePresence } from "framer-motion";
 import { FiArrowUpLeft, FiFileText, FiSettings, FiMessageSquare } from "react-icons/fi";
 import ProductDescription from "./ProductDescription";
 import ProductAttributesTable from "./ProductAttributesTable";
 import MobileProductTabs, { useMobileProductLayout } from "./MobileProductTabs";
+
+const ProductComparisonGraph = dynamic(
+  () => import("@/components/templates/productCompare/ProductComparisonGraph"),
+  { ssr: false, loading: () => <div className="min-h-[420px]" aria-hidden="true" /> },
+);
 
 const normalizeId = (id) => id?.toString?.() || String(id);
 
@@ -126,8 +134,13 @@ const ProductTabs = ({
   const renderContent = (sectionId, isActive = true) => (
     <>
       {sectionId === "description" && (
-        <div className="prose prose-gray max-w-none leading-8">
-          <ProductDescription description={description} />
+        <div className="space-y-8">
+          {isActive && !isKidsAudience(targetAudience) && hasChartableStats(technicalStats) && (
+            <ProductComparisonGraph technicalStats={technicalStats} showBars />
+          )}
+          <div className="prose prose-gray max-w-none leading-8">
+            <ProductDescription description={description} />
+          </div>
         </div>
       )}
       {sectionId === "attributes" && (
@@ -137,6 +150,7 @@ const ProductTabs = ({
             active={isActive}
             technicalStats={technicalStats}
             targetAudience={targetAudience}
+            includeGraph={false}
           />
         </div>
       )}
@@ -154,7 +168,7 @@ const ProductTabs = ({
   if (isMobile) {
     return (
       <div className="mt-24 w-full rtl text-right" dir="rtl">
-        <MobileProductTabs tabs={tabs} renderContent={renderContent} keepMounted={["description", "attributes", "customTab"]} />
+        <MobileProductTabs tabs={tabs} preserveOrder renderContent={renderContent} keepMounted={["description", "attributes", "customTab"]} />
       </div>
     );
   }

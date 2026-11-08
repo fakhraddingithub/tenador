@@ -10,6 +10,11 @@ import {
   ResponsiveContainer,
   Legend,
   Tooltip,
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  CartesianGrid,
 } from "recharts";
 import { FiSearch, FiPlus, FiTrash2 } from "react-icons/fi";
 import Link from "next/link";
@@ -38,36 +43,50 @@ const normalizeColor = (color) => {
   return c;
 };
 
-export default function ProductComparisonGraph({ technicalStats = {} }) {
+function CustomTick({ x, y, payload, cx, cy, labelOffset }) {
+  const dx = x - cx;
+  const dy = y - cy;
+  const dist = Math.sqrt(dx * dx + dy * dy) || 1;
+  const nx = x + (dx / dist) * labelOffset;
+  const ny = y + (dy / dist) * labelOffset;
+
+  let textAnchor = "middle";
+  if (Math.abs(dx) > Math.abs(dy)) {
+    textAnchor = dx > 0 ? "start" : "end";
+  } else {
+    textAnchor = "middle";
+  }
+
+  return (
+    <g>
+      <text
+        x={nx}
+        y={ny}
+        textAnchor={textAnchor}
+        dominantBaseline="central"
+        style={{ fill: "#374151", fontSize: 12, fontWeight: 800, pointerEvents: "none" }}
+      >
+        {payload.value}
+      </text>
+    </g>
+  );
+}
+
+export default function ProductComparisonGraph({ technicalStats = {}, showBars = false }) {
   const [comparisonProducts, setComparisonProducts] = useState([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [results, setResults] = useState([]);
   const [isSearching, setIsSearching] = useState(false);
   const searchRef = useRef(null);
 
-  const wrapperRef = useRef(null);
   const [size, setSize] = useState({ width: 0, height: 0 });
 
   useEffect(() => {
-    const updateSize = () => {
-      if (wrapperRef.current) {
-        const rect = wrapperRef.current.getBoundingClientRect();
-        setSize({ width: rect.width, height: rect.height });
-      }
-    };
-    updateSize();
-    window.addEventListener("resize", updateSize);
-    return () => window.removeEventListener("resize", updateSize);
-  }, []);
-
-  useEffect(() => {
     if (searchQuery.trim().length < 2) {
-      setResults([]);
       return;
     }
 
     let mounted = true;
-    setIsSearching(true);
     const timer = setTimeout(async () => {
       try {
         const res = await fetch(`/api/compare/search?q=${encodeURIComponent(searchQuery.trim())}`);
@@ -122,35 +141,6 @@ export default function ProductComparisonGraph({ technicalStats = {} }) {
   const cy = size.height / 2 || 0;
   const labelOffset = Math.min(size.width, size.height) * 0.06 || 12;
 
-  const CustomTick = (props) => {
-    const { x, y, payload } = props;
-    const dx = x - cx;
-    const dy = y - cy;
-    const dist = Math.sqrt(dx * dx + dy * dy) || 1;
-    const nx = x + (dx / dist) * labelOffset;
-    const ny = y + (dy / dist) * labelOffset;
-
-    let textAnchor = "middle";
-    if (Math.abs(dx) > Math.abs(dy)) {
-      textAnchor = dx > 0 ? "start" : "end";
-    } else {
-      textAnchor = "middle";
-    }
-
-    return (
-      <g>
-        <text
-          x={nx}
-          y={ny}
-          textAnchor={textAnchor}
-          dominantBaseline="central"
-          style={{ fill: "#374151", fontSize: 12, fontWeight: 800, pointerEvents: "none" }}
-        >
-          {payload.value}
-        </text>
-      </g>
-    );
-  };
 
   const addComparisonProduct = (product) => {
     if (!product) return;
@@ -179,7 +169,7 @@ export default function ProductComparisonGraph({ technicalStats = {} }) {
     setComparisonProducts((prev) => prev.filter((p) => p._id !== id));
   };
 
-  const currentColor = technicalStats.color || PRODUCT_COLORS[0];
+  const currentColor = normalizeColor(technicalStats.color) || PRODUCT_COLORS[0];
   
   const renderRadars = () => {
     const items = [];
@@ -220,7 +210,7 @@ export default function ProductComparisonGraph({ technicalStats = {} }) {
   };
 
   return (
-    <div className="bg-[#fcfcfc] rounded-[6px] p-6 border border-gray-100 h-full">
+    <div className="min-w-0 bg-[#fcfcfc] rounded-[6px] p-3 sm:p-6 border border-gray-100 h-full">
       <div className="relative mb-6" ref={searchRef}>
         <div className="absolute inset-y-0 right-4 flex items-center pointer-events-none">
           <FiSearch className="text-gray-400" />
@@ -230,7 +220,11 @@ export default function ProductComparisonGraph({ technicalStats = {} }) {
           placeholder="جستجوی محصول برای مقایسه..."
           className="w-full bg-white border border-gray-200 rounded-[6px] py-3 pr-12 pl-4 text-sm font-bold outline-none focus:border-[#aa4725] transition-all"
           value={searchQuery}
-          onChange={(e) => setSearchQuery(e.target.value)}
+          onChange={(e) => {
+            setSearchQuery(e.target.value);
+            setResults([]);
+            setIsSearching(e.target.value.trim().length >= 2);
+          }}
         />
 
         {searchQuery.trim().length >= 2 && (
@@ -280,83 +274,111 @@ export default function ProductComparisonGraph({ technicalStats = {} }) {
         </div>
       )}
 
-      <div ref={wrapperRef} className="pcg-chart-wrapper h-[420px] w-full bg-white rounded-md p-4">
-        <style jsx>{`
-          .pcg-chart-wrapper :global(*) {
-            outline: none !important;
-          }
-          .pcg-chart-wrapper :global(*:focus),
-          .pcg-chart-wrapper :global(*:focus-visible) {
-            outline: none !important;
-            box-shadow: none !important;
-            border: none !important;
-          }
-        `}</style>
-        <ResponsiveContainer width="100%" height="100%">
-          <RadarChart cx="50%" cy="50%" outerRadius="78%" data={data}>
-            <PolarGrid stroke="#e5e7eb" />
-            <PolarAngleAxis dataKey="subject" tick={<CustomTick />} tickLine={false} />
-            <PolarRadiusAxis angle={90}  ticks={[20, 40, 60, 80, 100]} domain={[0, (categoryStats[0]?.max ?? 100)]} tick={{ fill: "#9ca3af", fontSize: 11 }} />
-            <Tooltip
-              contentStyle={{
-                borderRadius: 8,
-                border: "none",
-                boxShadow: "0 10px 15px -3px rgba(0,0,0,0.08)",
-                direction: "rtl",
-                fontSize: 13,
-                fontWeight: 800,
-              }}
-              formatter={(value, name, props) => {
-                const label = props?.payload?.subject ?? "";
-                return [`${value} از ${props?.payload?.fullMark ?? 100}`, label];
-              }}
-              labelFormatter={(label) => `شاخص: ${label}`}
-            />
-            {renderRadars()}
-            <Legend
-              verticalAlign="bottom"
-              content={({ payload }) => (
-                <ul
-                  style={{
-                    display: "flex",
-                    justifyContent: "center",
-                    flexWrap: "wrap",
-                    gap: 16,
-                    paddingTop: 12,
-                    margin: 0,
-                    listStyle: "none",
-                  }}
-                >
-                  {payload.map((entry, index) => (
-                    <li
-                      key={`legend-item-${index}`}
-                      style={{
-                        display: "flex",
-                        alignItems: "center",
-                        gap: 6,
-                        fontSize: 12,
-                        fontWeight: 800,
-                        color: "#374151",
-                      }}
-                    >
-                      <span
+      <div className={showBars ? "grid min-w-0 grid-cols-1 gap-6 lg:grid-cols-2" : "min-w-0"}>
+        <div className="min-w-0">
+        {showBars && <h3 className="mb-3 text-sm font-bold text-gray-700">نمودار عنکبوتی</h3>}
+        <div className="pcg-chart-wrapper h-[360px] sm:h-[420px] w-full min-w-0 bg-white rounded-md">
+          <style jsx>{`
+            .pcg-chart-wrapper :global(*) {
+              outline: none !important;
+            }
+            .pcg-chart-wrapper :global(*:focus),
+            .pcg-chart-wrapper :global(*:focus-visible) {
+              outline: none !important;
+              box-shadow: none !important;
+              border: none !important;
+            }
+          `}</style>
+          <ResponsiveContainer width="100%" height="100%" onResize={(width, height) => setSize({ width, height })}>
+            <RadarChart cx="50%" cy="50%" outerRadius={showBars ? "60%" : "78%"} data={data}>
+              <PolarGrid stroke="#e5e7eb" />
+              <PolarAngleAxis dataKey="subject" tick={<CustomTick cx={cx} cy={cy} labelOffset={labelOffset} />} tickLine={false} />
+              <PolarRadiusAxis angle={90}  ticks={[20, 40, 60, 80, 100]} domain={[0, (categoryStats[0]?.max ?? 100)]} tick={{ fill: "#9ca3af", fontSize: 11 }} />
+              <Tooltip
+                contentStyle={{
+                  borderRadius: 8,
+                  border: "none",
+                  boxShadow: "0 10px 15px -3px rgba(0,0,0,0.08)",
+                  direction: "rtl",
+                  fontSize: 13,
+                  fontWeight: 800,
+                }}
+                formatter={(value, name, props) => {
+                  const label = props?.payload?.subject ?? "";
+                  return [`${value} از ${props?.payload?.fullMark ?? 100}`, label];
+                }}
+                labelFormatter={(label) => `شاخص: ${label}`}
+              />
+              {renderRadars()}
+              <Legend
+                verticalAlign="bottom"
+                content={({ payload }) => (
+                  <ul
+                    style={{
+                      display: "flex",
+                      justifyContent: "center",
+                      flexWrap: "wrap",
+                      gap: 16,
+                      paddingTop: 12,
+                      margin: 0,
+                      listStyle: "none",
+                    }}
+                  >
+                    {payload.map((entry, index) => (
+                      <li
+                        key={`legend-item-${index}`}
                         style={{
-                          display: "inline-block",
-                          width: 10,
-                          height: 10,
-                          borderRadius: "50%",
-                          backgroundColor: entry.color,
-                          flexShrink: 0,
+                          display: "flex",
+                          alignItems: "center",
+                          gap: 6,
+                          fontSize: 12,
+                          fontWeight: 800,
+                          color: "#374151",
                         }}
-                      />
-                      {entry.value}
-                    </li>
-                  ))}
-                </ul>
-              )}
-            />
-          </RadarChart>
-        </ResponsiveContainer>
+                      >
+                        <span
+                          style={{
+                            display: "inline-block",
+                            width: 10,
+                            height: 10,
+                            borderRadius: "50%",
+                            backgroundColor: entry.color,
+                            flexShrink: 0,
+                          }}
+                        />
+                        {entry.value}
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              />
+            </RadarChart>
+          </ResponsiveContainer>
+        </div>
+        </div>
+      {showBars && (
+        <div className="min-w-0">
+          <h3 className="mb-3 text-sm font-bold text-gray-700">نمودار میله‌ای</h3>
+          <div dir="ltr" className="w-full min-w-0 rounded-md bg-white" style={{ height: Math.max(360, data.length * (48 + comparisonProducts.length * 24)) }}>
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={data} layout="vertical" margin={{ top: 16, right: 12, left: 8, bottom: 12 }}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#e5e5e5" horizontal={false} />
+                <XAxis type="number" domain={[0, categoryStats[0]?.max ?? 100]} tick={{ fill: "#6b7280", fontSize: 11 }} tickLine={false} axisLine={false} />
+                <YAxis type="category" dataKey="subject" width={90} interval={0} tick={{ fill: "#4b5563", fontSize: 12, fontWeight: 700 }} tickLine={false} axisLine={false} />
+                <Tooltip
+                  contentStyle={{ borderRadius: 8, border: "none", boxShadow: "0 10px 15px -3px rgba(0,0,0,0.08)", direction: "rtl", fontSize: 13 }}
+                  formatter={(value, name, props) => [`${value} از ${props?.payload?.fullMark ?? 100}`, name]}
+                  labelFormatter={(label) => `شاخص: ${label}`}
+                />
+                <Bar name="این محصول" dataKey="current" fill={currentColor} radius={[0, 4, 4, 0]} maxBarSize={28} />
+                {comparisonProducts.map((product, index) => (
+                  <Bar key={product._id ?? index} name={product.title ?? product.name ?? `محصول ${index + 1}`} dataKey={`p_${product._id ?? index}`} fill={resolveProductColor(product, index + 1)} radius={[0, 4, 4, 0]} maxBarSize={28} />
+                ))}
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+        </div>
+      )}
       </div>
 
       <div className="mt-6 text-center">

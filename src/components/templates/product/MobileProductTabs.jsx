@@ -19,12 +19,12 @@ export function useMobileProductLayout() {
   return useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot);
 }
 
-export default function MobileProductTabs({ tabs, renderContent, keepMounted = [] }) {
+export default function MobileProductTabs({ tabs, renderContent, keepMounted = [], preserveOrder = false }) {
   const [openSection, setOpenSection] = useState("description");
   const instanceId = useId();
   const reduceMotion = useReducedMotion();
   const scrollTargetRef = useRef(null);
-  const orderedTabs = [...tabs.filter((tab) => tab.id !== "description"), ...tabs.filter((tab) => tab.id === "description")];
+  const orderedTabs = preserveOrder ? tabs : [...tabs.filter((tab) => tab.id !== "description"), ...tabs.filter((tab) => tab.id === "description")];
 
   useEffect(() => {
     const request = scrollTargetRef.current;

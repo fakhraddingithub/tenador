@@ -81,6 +81,11 @@ test("مقدارِ ذخیره‌شده پس از فیلتر خوانده می‌
 
 test("نمودار رادار فقط با isKidsAudience تصمیم گرفته می‌شود", () => {
   const source = read(ATTRIBUTES_TABLE);
+  const tabs = read("src/components/templates/product/ProductTabs.jsx");
+
+  assert.match(tabs, /isActive && !isKidsAudience\(targetAudience\) && hasChartableStats\(technicalStats\)/);
+  assert.match(tabs, /<ProductComparisonGraph technicalStats=\{technicalStats\} showBars/);
+  assert.match(tabs, /includeGraph=\{false\}/);
 
   assert.ok(
     source.includes('import { isKidsAudience } from "base/utils/targetAudience"'),
@@ -105,8 +110,8 @@ test("نمودار رادار فقط با isKidsAudience تصمیم گرفته �
 
 test("ستونِ نمودار برای بچگانه خالی می‌ماند، نه حذف‌شده", () => {
   const source = read(ATTRIBUTES_TABLE);
-  // چیدمانِ دو ستونه ثابت می‌ماند تا عرضِ فهرستِ مشخصات برای هیچ مخاطبی تغییر نکند
-  assert.ok(source.includes('className="grid grid-cols-1 md:grid-cols-2'));
+  // مسیر دست‌دوم همچنان چیدمان قبلی را دارد؛ محصول نو نمودار را در توضیحات نشان می‌دهد.
+  assert.ok(source.includes('includeGraph ? "grid grid-cols-1 md:grid-cols-2'));
   assert.ok(
     /<div dir="rtl">\s*\{active && showComparisonGraph/.test(source),
     "ستونِ نمودار خودش شرطی شده است؛ باید فقط محتوایش شرطی باشد",

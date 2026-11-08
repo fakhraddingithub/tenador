@@ -71,7 +71,7 @@ function SpecRow({ attr, index, open, onToggle, onClose }) {
 // ویژگی‌ها پیش از رسیدن به اینجا سمتِ سرور بر اساس مخاطب هدف فیلتر شده‌اند
 // (services/product.service.js و صفحه‌ی دستِ‌دوم)؛ اینجا فقط رندر می‌شوند.
 // تنها تصمیمِ وابسته به مخاطب هدف در این لایه، نمایشِ نمودار رادار است.
-const ProductAttributesTable = ({ attributes = [], technicalStats, targetAudience, active = true }) => {
+const ProductAttributesTable = ({ attributes = [], technicalStats, targetAudience, active = true, includeGraph = true }) => {
   // فقط یک تولتیپ هم‌زمان باز است → اندیسِ ردیفِ باز در والد نگه‌داری می‌شود.
   const [openIndex, setOpenIndex] = useState(null);
 
@@ -88,7 +88,7 @@ const ProductAttributesTable = ({ attributes = [], technicalStats, targetAudienc
     <motion.div
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
-      className="grid grid-cols-1 md:grid-cols-2 gap-x-12 gap-y-1"
+      className={includeGraph ? "grid grid-cols-1 md:grid-cols-2 gap-x-12 gap-y-1" : "min-w-0"}
       dir="rtl"
     >
       <div className="text-right">
@@ -104,11 +104,11 @@ const ProductAttributesTable = ({ attributes = [], technicalStats, targetAudienc
         ))}
       </div>
 
-      <div dir="rtl">
+      {includeGraph && <div dir="rtl">
         {active && showComparisonGraph && (
           <ProductComparisonGraph technicalStats={technicalStats} />
         )}
-      </div>
+      </div>}
     </motion.div>
   );
 };
