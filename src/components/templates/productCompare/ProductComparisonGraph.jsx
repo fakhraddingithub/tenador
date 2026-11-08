@@ -43,6 +43,23 @@ const normalizeColor = (color) => {
   return c;
 };
 
+function BarAxisTick({ x, y, payload }) {
+  return (
+    <text
+      x={x}
+      y={y}
+      direction="rtl"
+      textAnchor="start"
+      dominantBaseline="central"
+      fill="#4b5563"
+      fontSize={12}
+      fontWeight={700}
+    >
+      {payload.value}
+    </text>
+  );
+}
+
 function CustomTick({ x, y, payload, cx, cy, labelOffset }) {
   const dx = x - cx;
   const dy = y - cy;
@@ -276,7 +293,6 @@ export default function ProductComparisonGraph({ technicalStats = {}, showBars =
 
       <div className={showBars ? "grid min-w-0 grid-cols-1 gap-6 lg:grid-cols-2" : "min-w-0"}>
         <div className="min-w-0">
-        {showBars && <h3 className="mb-3 text-sm font-bold text-gray-700">نمودار عنکبوتی</h3>}
         <div className="pcg-chart-wrapper h-[360px] sm:h-[420px] w-full min-w-0 bg-white rounded-md">
           <style jsx>{`
             .pcg-chart-wrapper :global(*) {
@@ -358,21 +374,20 @@ export default function ProductComparisonGraph({ technicalStats = {}, showBars =
         </div>
       {showBars && (
         <div className="min-w-0">
-          <h3 className="mb-3 text-sm font-bold text-gray-700">نمودار میله‌ای</h3>
           <div dir="ltr" className="w-full min-w-0 rounded-md bg-white" style={{ height: Math.max(360, data.length * (48 + comparisonProducts.length * 24)) }}>
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={data} layout="vertical" margin={{ top: 16, right: 12, left: 8, bottom: 12 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#e5e5e5" horizontal={false} />
                 <XAxis type="number" domain={[0, categoryStats[0]?.max ?? 100]} tick={{ fill: "#6b7280", fontSize: 11 }} tickLine={false} axisLine={false} />
-                <YAxis type="category" dataKey="subject" width={90} interval={0} tick={{ fill: "#4b5563", fontSize: 12, fontWeight: 700 }} tickLine={false} axisLine={false} />
+                <YAxis type="category" dataKey="subject" width={90} interval={0} tick={<BarAxisTick />} tickMargin={12} tickLine={false} axisLine={false} />
                 <Tooltip
                   contentStyle={{ borderRadius: 8, border: "none", boxShadow: "0 10px 15px -3px rgba(0,0,0,0.08)", direction: "rtl", fontSize: 13 }}
                   formatter={(value, name, props) => [`${value} از ${props?.payload?.fullMark ?? 100}`, name]}
                   labelFormatter={(label) => `شاخص: ${label}`}
                 />
-                <Bar name="این محصول" dataKey="current" fill={currentColor} radius={[0, 4, 4, 0]} maxBarSize={28} />
+                <Bar name="این محصول" dataKey="current" fill={currentColor} radius={[0, 4, 4, 0]} maxBarSize={14} />
                 {comparisonProducts.map((product, index) => (
-                  <Bar key={product._id ?? index} name={product.title ?? product.name ?? `محصول ${index + 1}`} dataKey={`p_${product._id ?? index}`} fill={resolveProductColor(product, index + 1)} radius={[0, 4, 4, 0]} maxBarSize={28} />
+                  <Bar key={product._id ?? index} name={product.title ?? product.name ?? `محصول ${index + 1}`} dataKey={`p_${product._id ?? index}`} fill={resolveProductColor(product, index + 1)} radius={[0, 4, 4, 0]} maxBarSize={14} />
                 ))}
               </BarChart>
             </ResponsiveContainer>
