@@ -63,9 +63,9 @@ export async function loadRegenerationTarget(productId) {
  * @returns {Promise<{ error } | { plan, preview }>}
  *   preview = { changes, slug, missing, ignored, preserved, updatedAt }
  */
-export async function previewRegeneration({ product, category, draft, requireComplete = false }) {
+export async function previewRegeneration({ product, category, draft }) {
   const refs = await loadRefs(collectRegenerationRefIds(draft, product));
-  const plan = planProductRegeneration({ draft, product, category, refs, requireComplete });
+  const plan = planProductRegeneration({ draft, product, category, refs });
   const summary = { missing: plan.missing, ignored: plan.ignored, preserved: plan.preserved };
 
   if (plan.error) return fail(plan.error, 400, { fieldErrors: plan.fieldErrors, ...summary });

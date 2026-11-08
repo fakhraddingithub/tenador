@@ -230,23 +230,28 @@ npm run test:public-product-fields   # real schema + real mongo: no prompt leave
 
 ### Product regeneration (AI re-write of an existing product)
 
-«بازتولید محصول» on the edit page → `/p-admin/admin-products/[productId]/regenerate`, two modes:
+«بازتولید محصول» on the edit page → `/p-admin/admin-products/[productId]/regenerate`. Two ways to get a
+JSON, then one shared path — the same two stages as product creation:
 
-| mode | flow |
+| stage | what happens |
 |---|---|
-| automatic | raw text → `POST …/regenerate/generate` (`ai.productDraft`): builds the prompt, calls the configured AI provider, validates, returns `{ json, preview, ai }`. **Writes nothing.** |
-| manual | raw text → `POST /api/ai/product-draft` → copy prompt → external AI → paste JSON → `POST …/regenerate` with `dryRun: true` |
+| 1a. automatic | raw text → `POST …/regenerate/generate` (`ai.productDraft`): builds the prompt, calls the configured AI provider, returns `{ json, check, ai }`. **Writes nothing.** |
+| 1b. manual | raw text → `POST /api/ai/product-draft` → copy prompt → external AI → paste JSON |
+| 2. confirm JSON | `checkRegenerationDraft` (same function in the browser and in the generate route): **structure and format only** — wrong types, or a JSON built for another category/sport. Missing or empty required fields and unknown references **never** block here |
+| 3. edit form | the draft goes to `sessionStorage` (`saveRegenerationDraft`) and the normal edit page opens with `?regenerate=1`. `draftToFormPatch` overlays it with the page's own load mapping (`normalizeInitialAttributes`, now in `productSectionJson.js`); only keys present in the JSON change, references not in the site's data are left out with a warning |
+| 4. save | the edit form posts `pickRegeneratedFields(payload)` + the `updatedAt` it loaded to `POST /api/product/[productId]/regenerate` (`products.edit`). The planner runs `validateProductFields` (the creation validators) and returns `fieldErrors` keyed like the form, so the form highlights the fields and nothing is written until they pass. 409 if the product changed since the form loaded |
 
-Both apply through the **same** `POST /api/product/[productId]/regenerate` (`products.edit`) with the
-JSON text and the preview's `updatedAt` (409 if the product changed since) — AI output has no write
-path of its own and is re-validated on apply. Layers: `src/lib/productRegeneration.js` (pure field
-rules), `src/lib/productRegenerationService.js` (refs, preview, atomic apply), and
+In regeneration mode the edit page locks images and variants (rendered as notes, never sent), and
+disables category, sport and visibility, which regeneration does not write. A legacy non-hex `color`
+that the admin left untouched does not block the save; only a *new* colour must be hex.
+
+AI output has no write path of its own. Layers: `src/lib/productRegeneration.js` (pure: check, form patch,
+field rules, storage handoff), `src/lib/productRegenerationService.js` (refs, preview, atomic apply), and
 **`src/lib/productDraftPrompt.js`** — the one prompt builder used by product creation and both modes,
 so prompt-settings edits in the panel reach all three. It sends athletes of the category's sport only.
-
-Automatic mode is stricter than manual: `requireComplete` makes a field the model left out an error
-(manual: absent = keep). Invalid model output is a 422 that returns the raw JSON, and the page can hand
-it to manual mode for repair. It has its own quota bucket (`consumeAssistantQuota(…, { scope: "product:" })`).
+The route still accepts `dryRun: true` (diff preview); the UI no longer uses it. Unmappable model output
+is a 422 that returns the raw JSON, and the page can hand it to manual mode for repair. Automatic mode
+has its own quota bucket (`consumeAssistantQuota(…, { scope: "product:" })`).
 
 **AI provider layer — `src/lib/ai/`.** `generate()` / `generateJson()` in `index.js` are the only way
 code talks to a model; the provider is picked by `AI_PROVIDER` (`gemini` default, `openai`). Each

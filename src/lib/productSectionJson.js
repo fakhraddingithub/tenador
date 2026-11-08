@@ -14,6 +14,24 @@ export function productAttributeType(attr) {
   return 'text';
 }
 
+/**
+ * Stored/JSON attribute values → the edit form's input strings (a select's array
+ * becomes "a, b"). The edit page's own load and the regeneration overlay both use
+ * this, so a value lands in the form the same way whichever path it came from.
+ */
+export function normalizeInitialAttributes(attributes = {}, categoryAttributes = []) {
+  const result = {};
+  for (const attr of categoryAttributes) {
+    const value = attributes[attr.name];
+    if (productAttributeType(attr) === 'select') {
+      result[attr.name] = Array.isArray(value) ? value.join(', ') : (value ?? '');
+    } else {
+      result[attr.name] = value ?? '';
+    }
+  }
+  return result;
+}
+
 const isObject = (value) => value !== null && typeof value === 'object' && !Array.isArray(value);
 const empty = (value) => value === '' || value === undefined;
 

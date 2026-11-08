@@ -4,11 +4,18 @@ import { getCategoryLabel } from "base/utils/categoryLabel";
 import AdminInput from "@/components/admin/AdminInput";
 import styles from './ProductEdit.module.css';
 import ProductSectionJsonModal from '@/components/admin/ProductSectionJsonModal';
-import { BASIC_PRODUCT_FIELDS, productAttributeType } from '@/lib/productSectionJson';
+import { BASIC_PRODUCT_FIELDS, normalizeInitialAttributes, productAttributeType } from '@/lib/productSectionJson';
+import {
+  REGENERATED_FIELDS,
+  clearRegenerationDraft,
+  draftToFormPatch,
+  loadRegenerationDraft,
+  pickRegeneratedFields,
+} from '@/lib/productRegeneration';
 import { useState, useEffect, useMemo } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import Link from 'next/link';
-import { FaEdit, FaBox, FaImages, FaTags, FaCogs, FaRunning, FaLayerGroup, FaMagic } from 'react-icons/fa';
+import { FaEdit, FaBox, FaImages, FaTags, FaCogs, FaRunning, FaLayerGroup, FaMagic, FaLock } from 'react-icons/fa';
 import { FiChevronDown, FiChevronUp } from 'react-icons/fi';
 import { AnimatePresence, motion } from 'framer-motion';
 import Button from '@/components/admin/Button';
@@ -35,19 +42,6 @@ import {
 // ---------------------------
 // Helpers
 // ---------------------------
-function normalizeInitialAttributes(attributes = {}, categoryAttributes = []) {
-  const result = {};
-  for (const attr of categoryAttributes) {
-    const value = attributes[attr.name];
-    if (productAttributeType(attr) === 'select') {
-      result[attr.name] = Array.isArray(value) ? value.join(', ') : (value ?? '');
-    } else {
-      result[attr.name] = value ?? '';
-    }
-  }
-  return result;
-}
-
 /** Cartesian product — identical to POST/PUT backend logic */
 function generateCombinations(options) {
   const keys = Object.keys(options).filter(
@@ -210,6 +204,11 @@ export default function ProductEditPage() {
   const [fieldErrors, setFieldErrors] = useState({});
   const [jsonSection, setJsonSection] = useState(null);
 
+  // حالتِ بازتولید (?regenerate=1): JSONِ تأییدشده در صفحه‌ی بازتولید روی فرم
+  // نشسته است. { applied, warnings, source, updatedAt } — updatedAt نسخه‌ای است که
+  // فرم رویش ساخته شد و ذخیره فقط روی همان نسخه انجام می‌شود (۴۰۹ در غیر این صورت).
+  const [regen, setRegen] = useState(null);
+
   // تعدادِ واریانتِ محصول هنگام بارگذاری — «هیچ واریانتی» فقط برای محصولی
   // مجاز است که از قبل هم واریانت نداشته (سرور همین قاعده را دارد).
   const [loadedVariantCount, setLoadedVariantCount] = useState(0);
@@ -280,12 +279,21 @@ export default function ProductEditPage() {
 
     async function fetchData() {
       try {
-        const [sportsRes, brandsRes, categoriesRes, limitedEditionsRes, productRes] = await Promise.all([
+        // useSearchParams نه: خواندنِ مستقیم، فقط یک بار و فقط در مرورگر
+        const regenerating = new URLSearchParams(window.location.search).has('regenerate');
+        const regenDraft = regenerating ? loadRegenerationDraft(id) : null;
+        if (regenerating && !regenDraft) {
+          showError('پیش‌نویسِ بازتولید پیدا نشد', 'ممکن است در تبِ دیگری باز شده یا قبلاً ذخیره شده باشد؛ فرم با اطلاعاتِ فعلیِ محصول باز شد.');
+        }
+
+        const [sportsRes, brandsRes, categoriesRes, limitedEditionsRes, productRes, athletesRes] = await Promise.all([
           fetch('/api/sports'),
           fetch('/api/brands'),
           fetch('/api/categories'),
           fetch('/api/limited-editions'),
           fetch(`/api/product/${id}`),
+          // ورزشکارانِ پیش‌نویس فقط وقتی در فرم می‌نشینند که در فهرستِ همین ورزش باشند
+          regenDraft ? fetch('/api/athletes') : null,
         ]);
 
         const [sportsData, brandsData, categoriesData, limitedEditionsData, productData] = await Promise.all([
@@ -323,7 +331,7 @@ export default function ProductEditPage() {
             )
             .filter(Boolean);
 
-          setFormData({
+          const loaded = {
             name: p.name || '',
             shortDescription: p.shortDescription || '',
             longDescription: p.longDescription || '',
@@ -352,7 +360,26 @@ export default function ProductEditPage() {
             label: p.label || 'none',
             targetAudience: normalizeTargetAudience(p.targetAudience) || '',
             isActive: p.isActive ?? true, // ✨ اضافه شد: دریافت وضعیت فعلی محصول از دیتابیس
-          });
+          };
+
+          if (regenDraft) {
+            // همان نگاشتی که بارگذاریِ عادی دارد (normalizeInitialAttributes و ...)، فقط
+            // روی کلیدهایی که JSON آورده. ورزشکاران از همان ورزشِ فرم (فیلترِ fetchAthletes).
+            const allAthletes = (await athletesRes?.json().catch(() => ({})))?.athletes || [];
+            const { patch, applied, warnings } = draftToFormPatch(regenDraft.draft, {
+              form: loaded,
+              category: matchedCategory,
+              brands: brandsData.brands || [],
+              limitedEditions: limitedEditionsData.limitedEditions || [],
+              athletes: allAthletes.filter((a) => (a.sport?._id || a.sport) === loaded.sport),
+            });
+            setFormData({ ...loaded, ...patch });
+            setRegen({ applied, warnings, source: regenDraft.source, updatedAt: p.updatedAt });
+            // همه‌ی بخش‌ها باز تا مقادیرِ تازه دیده شوند
+            setOpenSections(ALL_SECTIONS_OPEN);
+          } else {
+            setFormData(loaded);
+          }
 
           // Rebuild variant state from populated variants array (قیمتِ برابر با
           // پایه به‌عنوان «بدون قیمت ویژه» بارگذاری می‌شود)
@@ -662,8 +689,9 @@ export default function ProductEditPage() {
         );
       }
 
-      // همان اعتبارسنجی‌ای که سرور اجرا می‌کند — تا خطا پیش از رفت‌وبرگشت دیده شود
-      const variantValidation = validateProductVariants(
+      // همان اعتبارسنجی‌ای که سرور اجرا می‌کند — تا خطا پیش از رفت‌وبرگشت دیده شود.
+      // در بازتولید واریانت‌ها فرستاده نمی‌شوند، پس چیزی برای بررسی نیست.
+      const variantValidation = regen ? {} : validateProductVariants(
         categoryVariantAttributes,
         variantOptions,
         combinations.map(makeComboKey).filter((key) => !deselectedCombos.has(key)),
@@ -748,23 +776,36 @@ export default function ProductEditPage() {
         variantMeta: buildCleanVariantMeta(),
       };
 
-      const res = await fetch(`/api/product/${id}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
-      });
+      // بازتولید: همان مقادیرِ فرم، ولی فقط فیلدهای بازتولیدی و از مسیرِ بازتولید —
+      // که تصاویر/واریانت‌ها را در سطحِ داده قفل می‌کند، فیلدهای الزامی را با قواعدِ
+      // ساختِ محصول می‌سنجد و روی نسخه‌ی تغییرکرده ۴۰۹ می‌دهد.
+      const res = regen
+        ? await fetch(`/api/product/${id}/regenerate`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            json: JSON.stringify(pickRegeneratedFields(payload)),
+            expectedUpdatedAt: regen.updatedAt,
+          }),
+        })
+        : await fetch(`/api/product/${id}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload),
+        });
 
       const data = await res.json().catch(() => ({}));
       if (!res.ok) {
         setFieldErrors(data?.fieldErrors || {});
         // بخش‌های جمع‌شده باز می‌شوند تا فیلدِ خطادار واقعاً دیده شود
         if (data?.fieldErrors) setOpenSections((prev) => ({ ...prev, ...ALL_SECTIONS_OPEN }));
-        throw new Error(getApiErrorMessage(data, 'خطا در ویرایش محصول'));
+        throw new Error(getApiErrorMessage(data, regen ? 'خطا در اعمالِ بازتولید' : 'خطا در ویرایش محصول'));
       }
 
       invalidateAdminCache('/api/product');
+      if (regen) clearRegenerationDraft(id);
 
-      showToast.success('تغییرات با موفقیت ذخیره شد');
+      showToast.success(regen ? 'بازتولید اعمال شد؛ تصاویر و واریانت‌ها دست‌نخورده ماندند' : 'تغییرات با موفقیت ذخیره شد');
       router.push(
         `/p-admin/admin-categories/category-products/${selectedCategory?._id || formData.category}`
       );
@@ -775,6 +816,19 @@ export default function ProductEditPage() {
       setSubmitLoading(false);
     }
   }
+
+  function discardRegeneration() {
+    clearRegenerationDraft(id);
+    // بارگذاریِ کامل: فرم دوباره از اطلاعاتِ ذخیره‌شده‌ی محصول ساخته می‌شود
+    window.location.assign(`/p-admin/admin-products/edit/${id}`);
+  }
+
+  const lockedNote = (text) => (
+    <div className="flex items-start gap-2 rounded-[var(--admin-radius)] border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-900">
+      <FaLock className="mt-1 shrink-0" aria-hidden="true" />
+      <p>{text}</p>
+    </div>
+  );
 
   // ---------------------------
   // Loading state
@@ -814,11 +868,35 @@ export default function ProductEditPage() {
             <FaEdit size={18} aria-hidden="true" />
           </div>
           <div>
-            <h1 className="text-lg font-extrabold text-[var(--admin-text)]">ویرایش محصول</h1>
+            <h1 className="text-lg font-extrabold text-[var(--admin-text)]">{regen ? 'بازتولید محصول — بررسی و تأیید' : 'ویرایش محصول'}</h1>
             <p className="mt-1 break-all text-xs text-[var(--admin-text-muted)]">شناسه: <bdi>{id}</bdi></p>
           </div>
         </div>
       </div>
+
+      {regen && (
+        <div role="status" className="space-y-2 rounded-[var(--admin-radius)] border border-purple-200 bg-purple-50 px-4 py-4 text-sm text-purple-950 sm:px-5">
+          <p className="flex items-center gap-2 font-bold">
+            <FaMagic aria-hidden="true" />
+            مقادیرِ تولیدشده ({regen.source === 'auto' ? 'خودکار با AI' : 'JSONِ دستی'}) در فرم قرار گرفت — هنوز چیزی ذخیره نشده است.
+          </p>
+          {regen.applied.length > 0 && (
+            <p>پر شده از JSON: {regen.applied.map((k) => REGENERATED_FIELDS[k]).join('، ')}</p>
+          )}
+          <p>
+            بررسی و در صورتِ نیاز اصلاح کنید؛ فیلدهای الزامی هنگامِ «تأیید و اعمال» بررسی می‌شوند. تصاویر و واریانت‌ها
+            قفل‌اند و تغییر نمی‌کنند؛ دسته‌بندی، ورزش و وضعیتِ نمایش هم بخشی از بازتولید نیستند.
+          </p>
+          {regen.warnings.length > 0 && (
+            <ul className="list-disc space-y-1 pr-5 text-amber-800">
+              {regen.warnings.map((w) => <li key={w}>{w}</li>)}
+            </ul>
+          )}
+          <button type="button" onClick={discardRegeneration} className="text-xs font-bold text-purple-700 underline">
+            انصراف از بازتولید و بازگشت به اطلاعاتِ ذخیره‌شده
+          </button>
+        </div>
+      )}
 
       {/* General Info */}
       <CollapsibleSection
@@ -868,6 +946,7 @@ export default function ProductEditPage() {
               <Input
                 aria-label="کد رنگ محصول"
                 dir="ltr"
+                error={fieldErrors.color}
                 placeholder="#000000"
                 value={formData.color || ''}
                 onChange={e => updateField('color', e.target.value)}
@@ -912,6 +991,7 @@ export default function ProductEditPage() {
             <Select
               name="product-serie"
               label="سری"
+              error={fieldErrors.serie}
               value={formData.serie}
               onChange={e => updateField('serie', e.target.value)}
               options={
@@ -944,6 +1024,8 @@ export default function ProductEditPage() {
             name="product-category"
             label="دسته‌بندی"
             error={fieldErrors.category}
+            disabled={!!regen}
+            hint={regen ? 'در بازتولید ثابت است' : undefined}
             value={formData.category}
             onChange={e => updateField('category', e.target.value)}
             options={categories.map(c => ({ value: c._id, label: getCategoryLabel(c) }))}
@@ -961,6 +1043,7 @@ export default function ProductEditPage() {
             name="product-sport"
             label="ورزش"
             error={fieldErrors.sport}
+            disabled={!!regen}
             value={formData.sport}
             onChange={e => updateField('sport', e.target.value)}
             options={sports.map(s => ({ value: s._id, label: s.name }))}
@@ -968,6 +1051,7 @@ export default function ProductEditPage() {
           <Select
             name="product-label"
             label="برچسب محصول"
+            error={fieldErrors.label}
             value={formData.label}
             onChange={e => updateField('label', e.target.value)}
             options={[
@@ -989,6 +1073,7 @@ export default function ProductEditPage() {
           <Select
             name="product-isActive"
             label="وضعیت نمایش محصول"
+            disabled={!!regen}
             value={formData.isActive ? 'true' : 'false'}
             onChange={e => updateField('isActive', e.target.value === 'true')}
             options={[
@@ -1036,6 +1121,7 @@ export default function ProductEditPage() {
               );
             })}
           </div>
+          {fieldErrors.athlete && <p className="mt-2 text-xs font-bold text-red-500">! {fieldErrors.athlete}</p>}
         </CollapsibleSection>
       )}
 
@@ -1070,8 +1156,11 @@ export default function ProductEditPage() {
         </CollapsibleSection>
       )}
 
-      {/* Variant Attributes */}
-      {categoryVariantAttributes.length > 0 && (
+      {/* Variant Attributes — در بازتولید قفل؛ سرور هم آن‌ها را نمی‌پذیرد */}
+      {regen && (categoryVariantAttributes.length > 0 || loadedVariantCount > 0) && lockedNote(
+        `واریانت‌ها (${loadedVariantCount} واریانت، با قیمت، تصاویر و بارکدها) در بازتولید دست‌نخورده می‌مانند و اینجا قابلِ ویرایش نیستند.`,
+      )}
+      {!regen && categoryVariantAttributes.length > 0 && (
         <CollapsibleSection
           id="variant-attributes"
           title="ویژگی‌های متغیر (واریانت‌ها)"
@@ -1419,6 +1508,7 @@ export default function ProductEditPage() {
               );
             })}
           </div>
+          {fieldErrors.customTabItems && <p className="mt-2 text-xs font-bold text-red-500">! {fieldErrors.customTabItems}</p>}
         </CollapsibleSection>
       )}
 
@@ -1430,7 +1520,10 @@ export default function ProductEditPage() {
         isOpen={isSectionOpen('media')}
         onToggle={() => toggleSection('media')}
       >
-        <div className={styles.mediaGrid}>
+        {regen && lockedNote(
+          `تصاویر (${(formData.mainImage ? 1 : 0) + (formData.gallery?.length || 0)} تصویر، با همان ترتیب) در بازتولید دست‌نخورده می‌مانند و اینجا قابلِ ویرایش نیستند.`,
+        )}
+        {!regen && <div className={styles.mediaGrid}>
           <div className={styles.mediaCard}>
             <ImageUpload
               label="تصویر اصلی محصول"
@@ -1453,11 +1546,12 @@ export default function ProductEditPage() {
             onUploadingChange={trackUpload}
             folder="product"
           />
-        </div>
+        </div>}
         <div className={styles.tagsField}>
           <Input
             name="product-tag"
             label="تگ‌ها (با کاما جدا کنید)"
+            error={fieldErrors.tag}
             value={formData.tag}
             onChange={e => updateField('tag', e.target.value)}
           />
@@ -1471,15 +1565,20 @@ export default function ProductEditPage() {
           disabled={uploadsInFlight > 0}
           className="px-10 rounded-2xl"
         >
-          {uploadsInFlight > 0 ? 'در حال بارگذاری تصویر…' : 'ذخیره تغییرات'}
+          {uploadsInFlight > 0 ? 'در حال بارگذاری تصویر…' : regen ? 'تأیید و اعمالِ بازتولید' : 'ذخیره تغییرات'}
         </Button>
-        <Link
+        {!regen && <Link
           href={`/p-admin/admin-products/${id}/regenerate`}
           className="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-[var(--admin-radius)] border border-purple-100 bg-purple-50 px-5 py-2.5 text-sm font-bold text-purple-600 transition-colors hover:border-purple-200 hover:bg-purple-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-purple-600"
         >
           <FaMagic size={20} aria-hidden="true" />
           بازتولید محصول
-        </Link>
+        </Link>}
+        {regen && (
+          <Button type="button" variant="outline" onClick={discardRegeneration} disabled={submitLoading} className="rounded-2xl">
+            انصراف از بازتولید
+          </Button>
+        )}
       </div>
     </form>
   );

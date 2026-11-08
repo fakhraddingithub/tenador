@@ -4,7 +4,9 @@ import { register } from 'node:module';
 import mongoose from 'mongoose';
 import { MongoMemoryReplSet } from 'mongodb-memory-server';
 import { createProductWithVariants } from '../src/lib/createProductWithVariants.js';
-import { parseRegenerationDraft, PRODUCT_LABELS } from '../src/lib/productRegeneration.js';
+import {
+  checkRegenerationDraft, draftToFormPatch, parseRegenerationDraft, pickRegeneratedFields, PRODUCT_LABELS,
+} from '../src/lib/productRegeneration.js';
 import { AiError, generate as realGenerate } from '../src/lib/ai/index.js';
 
 register('./productRegenerationHooks.mjs', import.meta.url);
@@ -341,7 +343,7 @@ async function generateRaw(rawContent = RAW, id) {
   return { res, data: await res.json() };
 }
 
-test('auto: one click produces a preview from the shared prompt and writes nothing', async () => {
+test('auto: one click returns the generated JSON from the shared prompt and writes nothing', async () => {
   const calls = useProvider(GEMINI_ENV, JSON.stringify(draft()));
   const before = await snapshot();
   const { res, data } = await generateRaw();
@@ -360,16 +362,17 @@ test('auto: one click produces a preview from the shared prompt and writes nothi
 
   assert.deepEqual(data.ai, { provider: 'gemini', model: 'gemini-test', tokens: 5 });
   assert.deepEqual(JSON.parse(data.json), draft());
-  assert.ok(data.preview.changes.length > 0);
-  assert.deepEqual(data.preview.preserved.sort(), ['gallery', 'mainImage', 'variantMeta', 'variantOptions'].sort());
+  assert.deepEqual(data.check.errors, []);
+  assert.equal(data.check.present.length, 15);
+  assert.deepEqual(data.check.preserved.sort(), ['gallery', 'mainImage', 'variantMeta', 'variantOptions'].sort());
   assert.deepEqual(await snapshot(), before, 'generation never writes');
 });
 
-test('auto: the generated JSON applies through the manual route with images and variants intact', async () => {
+test('auto: the generated JSON is saved through the regenerate route with images and variants intact', async () => {
   useProvider(GEMINI_ENV, JSON.stringify(draft()));
   const before = await snapshot();
   const { data } = await generateRaw();
-  const res = await call({ json: data.json, expectedUpdatedAt: data.preview.updatedAt });
+  const res = await call({ json: data.json, expectedUpdatedAt: before.p.updatedAt.toISOString() });
   assert.equal(res.status, 200, (await res.clone().json()).error);
   const afterSnap = await snapshot();
   assert.equal(afterSnap.p.name, 'New Racket Pro');
@@ -386,7 +389,7 @@ test('auto: switching provider changes nothing downstream', async () => {
   assert.equal(fromOpenAi.ai.provider, 'openai');
   assert.deepEqual(calls[0].response_format, { type: 'json_object' });
   assert.equal(promptOf(calls[0]).includes('ADMIN-BASE-RULE-7731'), true);
-  assert.deepEqual(fromOpenAi.preview, fromGemini.preview);
+  assert.deepEqual(fromOpenAi.check, fromGemini.check);
   assert.deepEqual(JSON.parse(fromOpenAi.json), JSON.parse(fromGemini.json));
 });
 
@@ -415,29 +418,54 @@ test('auto: an exhausted quota stops the request before the model is called', as
   assert.equal(calls.length, 0);
 });
 
-test('auto: malformed, incomplete or wrong AI output is rejected (422) with the raw JSON for manual repair', async () => {
+test('auto: only output that cannot be mapped to the form is rejected (422), with the raw JSON for repair', async () => {
   const before = await snapshot();
-  const omit = (key) => { const d = draft(); delete d[key]; return d; };
   const cases = [
     ['not json at all', null],
     ['[1, 2, 3]', null],
-    [JSON.stringify(draft({ brand: String(new mongoose.Types.ObjectId()) })), 'brand'], // invented id
-    [JSON.stringify(draft({ brand: 'Wilson' })), 'brand'],                                 // name instead of id
-    [JSON.stringify(draft({ serie: String(serieB._id) })), 'serie'],                       // serie of another brand
-    [JSON.stringify(draft({ brand: String(brandB._id), serie: String(serieA._id), limitedEdition: '' })), 'serie'],
     [JSON.stringify(draft({ category: String(otherCategory._id) })), 'category'],
-    [JSON.stringify(draft({ athlete: [String(padelAthlete._id), 'bogus'] })), 'athlete'],
-    [JSON.stringify(draft({ technicalStats: { power: 140 } })), 'power'],
-    [JSON.stringify(omit('longDescription')), 'longDescription'],  // incomplete: auto mode requires every field
-    [JSON.stringify(omit('basePrice')), 'basePrice'],
-    [JSON.stringify(omit('customTabItems')), 'customTabItems'],
+    [JSON.stringify(draft({ sport: String(new mongoose.Types.ObjectId()) })), 'sport'],
+    [JSON.stringify(draft({ name: { fa: 'x' } })), 'name'],
+    [JSON.stringify(draft({ attributes: ['Carbon'] })), 'attributes'],
+    [JSON.stringify(draft({ attributes: { material: { a: 1 } } })), 'material'],
+    [JSON.stringify(draft({ technicalStats: { power: 'high' } })), 'power'],
+    [JSON.stringify(draft({ athlete: [1, 2] })), 'athlete'],
+    [JSON.stringify(draft({ basePrice: 'نامشخص' })), 'basePrice'],
   ];
   for (const [reply, field] of cases) {
     useProvider(GEMINI_ENV, reply);
     const { res, data } = await generateRaw();
     assert.equal(res.status, 422, `${field}: ${JSON.stringify(data)}`);
     assert.equal(typeof data.json, 'string', 'raw output is returned for manual repair');
-    if (field) assert.ok(data.fieldErrors?.[field], `${field}: ${JSON.stringify(data.fieldErrors)}`);
+    if (field) assert.ok(data.errors?.some((e) => e.field === field), `${field}: ${JSON.stringify(data.errors)}`);
+  }
+  assert.deepEqual(await snapshot(), before);
+});
+
+test('auto: missing required fields and bad references never block the JSON stage — the save does', async () => {
+  const omit = (...keys) => { const d = draft(); for (const k of keys) delete d[k]; return d; };
+  const cases = [
+    [omit('name', 'longDescription', 'basePrice', 'customTabItems'), null],
+    [draft({ name: '', brand: '' }), 'name'],                                       // required, empty
+    [draft({ brand: String(new mongoose.Types.ObjectId()) }), 'brand'],              // invented id
+    [draft({ brand: 'Wilson' }), 'brand'],                                           // name instead of id
+    [draft({ serie: String(serieB._id) }), 'serie'],                                 // serie of another brand
+    [draft({ athlete: [String(padelAthlete._id), 'bogus'] }), 'athlete'],
+    [draft({ technicalStats: { power: 140 } }), 'power'],                            // out of range
+    [draft({ attributes: { grip: 'G2' } }), 'material'],                             // required attribute missing
+  ];
+  const before = await snapshot();
+  for (const [reply, saveError] of cases) {
+    useProvider(GEMINI_ENV, JSON.stringify(reply));
+    const { res, data } = await generateRaw();
+    assert.equal(res.status, 200, `JSON stage must pass: ${JSON.stringify(data)}`);
+    assert.deepEqual(data.check.errors, []);
+    if (!saveError) continue;
+    // the final save runs the creation validators and names the field
+    const saved = await call({ json: data.json, expectedUpdatedAt: before.p.updatedAt.toISOString() });
+    const body = await saved.json();
+    assert.equal(saved.status, 400, `${saveError}: ${JSON.stringify(body)}`);
+    assert.ok(body.fieldErrors?.[saveError], `${saveError}: ${JSON.stringify(body.fieldErrors)}`);
   }
   assert.deepEqual(await snapshot(), before);
 });
@@ -470,12 +498,90 @@ test('auto: provider errors, rate limits, timeouts and truncated answers fail sa
   assert.deepEqual(await snapshot(), before);
 });
 
-test('auto: a product edited between generation and apply is not overwritten', async () => {
+test('auto: a product edited between loading the form and saving is not overwritten', async () => {
   useProvider(GEMINI_ENV, JSON.stringify(draft()));
+  const loadedAt = (await snapshot()).p.updatedAt.toISOString(); // what the edit form captured
   const { data } = await generateRaw();
   await Product.updateOne({ _id: product._id }, { $set: { name: 'Edited meanwhile' } });
   const before = await snapshot();
-  const res = await call({ json: data.json, expectedUpdatedAt: data.preview.updatedAt });
+  const res = await call({ json: data.json, expectedUpdatedAt: loadedAt });
   assert.equal(res.status, 409);
   assert.deepEqual(await snapshot(), before);
+});
+
+/* ── JSON stage → edit form (pure, shared by both modes) ───────────────── */
+
+test('the JSON-stage check blocks only unmappable shapes, never missing or empty fields', () => {
+  const ctx = { categoryId: String(category._id), sportId: String(sport._id) };
+  assert.deepEqual(checkRegenerationDraft({}, ctx).errors, []);
+  assert.deepEqual(checkRegenerationDraft({ name: '', brand: '', attributes: {}, technicalStats: { power: null } }, ctx).errors, []);
+  assert.deepEqual(checkRegenerationDraft(draft({ basePrice: '199', tag: 'a, b', athlete: String(athlete._id) }), ctx).errors, []);
+  const fields = (d) => checkRegenerationDraft(d, ctx).errors.map((e) => e.field);
+  assert.deepEqual(fields({ brand: 42, attributes: 'x', technicalStats: [], customTabItems: 'x', tag: [{}] }),
+    ['brand', 'tag', 'customTabItems', 'attributes', 'technicalStats']);
+  const report = checkRegenerationDraft({ name: 'x', mainImage: 'u', isActive: false, sku: 's' }, ctx);
+  assert.deepEqual(report.present, ['name']);
+  assert.deepEqual(report.preserved, ['mainImage']);
+  assert.deepEqual(report.ignored, ['isActive', 'sku']);
+});
+
+test('the confirmed JSON lands in the edit form the way the form loads a product', () => {
+  const form = {
+    name: 'Old', shortDescription: 's', longDescription: 'l', color: '#000000', basePrice: 120, label: 'none',
+    targetAudience: 'یونی سکس', brand: String(brandA._id), serie: String(serieA._id), limitedEdition: '',
+    athlete: [], attributes: { material: 'Graphite', grip: '', weight: '', balance: 'Head-light' },
+    technicalStats: { power: 50 }, customTabItems: [], tag: 'old',
+    mainImage: 'm', gallery: ['g'], category: String(category._id), sport: String(sport._id), isActive: true,
+  };
+  const ctx = {
+    form,
+    category: category.toObject(),
+    brands: [{ _id: String(brandA._id), series: [{ _id: String(serieA._id) }] }, { _id: String(brandB._id), series: [{ _id: String(serieB._id) }] }],
+    limitedEditions: [{ _id: String(editionA._id), brand: { _id: String(brandA._id) } }],
+    athletes: [{ _id: String(athlete._id) }],
+  };
+  const { patch, applied, warnings } = draftToFormPatch(draft(), ctx);
+  assert.equal(patch.name, 'New Racket Pro');
+  assert.equal(patch.label, 'new');
+  assert.equal(patch.basePrice, 199);
+  assert.equal(patch.limitedEdition, String(editionA._id));
+  assert.deepEqual(patch.attributes, { material: 'Carbon', grip: 'G2, G3', weight: '300', balance: 'Even' });
+  assert.deepEqual(patch.technicalStats, { power: 88 });
+  assert.deepEqual(patch.customTabItems, ['قدرتی']);
+  assert.equal(patch.tag, 'راکت, حرفه‌ای');
+  assert.deepEqual(patch.athlete, [String(athlete._id)]);
+  for (const locked of ['mainImage', 'gallery', 'category', 'sport', 'isActive', 'variantOptions', 'variantMeta']) {
+    assert.ok(!Object.hasOwn(patch, locked), `${locked} is never patched`);
+  }
+  assert.equal(applied.length, 15);
+  assert.deepEqual(warnings, []);
+
+  // absent keys keep the form's value; unresolvable references are left out, with a warning
+  const partial = draftToFormPatch({
+    name: '', brand: String(brandB._id), athlete: ['bogus'], label: 'best_seller',
+    targetAudience: 'بچگانه', attributes: { material: 'Wood', unknown: 'x' }, customTabItems: ['ناموجود'],
+  }, ctx);
+  assert.equal(partial.patch.name, '', 'an empty required field reaches the form, to be caught on save');
+  assert.ok(!Object.hasOwn(partial.patch, 'shortDescription'));
+  assert.equal(partial.patch.brand, String(brandB._id));
+  assert.equal(partial.patch.serie, '', 'the old brand serie is cleared when the brand changes');
+  assert.deepEqual(partial.patch.athlete, []);
+  assert.ok(!Object.hasOwn(partial.patch, 'label'));
+  assert.equal(partial.patch.attributes.balance, 'Head-light', 'a scoped-out attribute keeps its stored value');
+  assert.equal(partial.patch.attributes.material, 'Wood');
+  assert.deepEqual(partial.patch.customTabItems, []);
+  assert.equal(partial.warnings.length, 5, partial.warnings.join(' | '));
+
+  assert.equal(draftToFormPatch({ brand: 'Wilson' }, ctx).patch.brand, undefined, 'an unknown brand keeps the current one');
+});
+
+test('the edit form sends only regenerated fields, and an untouched legacy colour does not lock the save', async () => {
+  assert.deepEqual(Object.keys(pickRegeneratedFields({ name: 'x', mainImage: 'm', gallery: [], variantOptions: {}, isActive: false, category: 'c' })), ['name']);
+  await Product.updateOne({ _id: product._id }, { $set: { color: 'red' } });
+  const before = await snapshot();
+  const keep = await call({ json: JSON.stringify({ color: 'red', name: 'Renamed' }), expectedUpdatedAt: before.p.updatedAt.toISOString() });
+  assert.equal(keep.status, 200, (await keep.clone().json()).error);
+  const now = (await snapshot()).p;
+  const bad = await call({ json: JSON.stringify({ color: '#hexcode' }), expectedUpdatedAt: now.updatedAt.toISOString() });
+  assert.equal(bad.status, 400);
 });

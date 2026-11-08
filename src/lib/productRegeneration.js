@@ -16,11 +16,18 @@
  * - **یا همه یا هیچ.** هر خطایی کلِ درخواست را رد می‌کند؛ نیمه‌نوشتن وجود ندارد.
  * - JSON باید برای *همین* دسته ساخته شده باشد: `category`/`sport`ِ ناهم‌خوان رد
  *   می‌شود (پرامپتِ دسته‌ی دیگر یعنی ویژگی‌ها و شاخص‌های دسته‌ی دیگر).
+ *
+ * دو مرحله، مثلِ ساختِ محصول:
+ *   1. تأییدِ JSON — checkRegenerationDraft: فقط ساختار و قالب. فیلدِ الزامیِ
+ *      جاافتاده اینجا هرگز جلوی ادامه را نمی‌گیرد.
+ *   2. فرمِ ویرایش — draftToFormPatch مقادیر را در فرم می‌گذارد؛ هنگامِ ذخیره
+ *      planProductRegeneration (با validateProductFields ِ ساختِ محصول) همه‌ی
+ *      الزامی‌ها را بررسی می‌کند و fieldErrors روی همان فیلدها نشان داده می‌شود.
  */
 
 import { attributeAppliesToAudience, normalizeTargetAudience } from '../../utils/targetAudience.js';
 import { validateProductFields } from './productVariantValidation.js';
-import { duplicateKeys, productAttributeType } from './productSectionJson.js';
+import { duplicateKeys, normalizeInitialAttributes, productAttributeType } from './productSectionJson.js';
 
 /** فیلدهایی که بازتولید می‌نویسد، با برچسبِ فارسی برای پیش‌نمایش. */
 export const REGENERATED_FIELDS = {
@@ -103,6 +110,203 @@ export function collectRegenerationRefIds(draft, product) {
   return Object.fromEntries(Object.entries(ids).map(([k, set]) => [k, [...set]]));
 }
 
+/* ── مرحله‌ی تأییدِ JSON: فقط ساختار و قالب ──────────────────────────────── */
+
+const DRAFT_STRING_FIELDS = ['name', 'shortDescription', 'longDescription', 'color', 'label', 'targetAudience', 'brand', 'serie', 'limitedEdition'];
+const isNumeric = (v) => (typeof v === 'number' && Number.isFinite(v)) || (typeof v === 'string' && v.trim() !== '' && Number.isFinite(Number(v.trim())));
+const isScalar = (v) => typeof v === 'string' || (typeof v === 'number' && Number.isFinite(v));
+
+/**
+ * آیا JSON قابلِ پردازش و نگاشت به فرمِ ویرایش است؟ مشترک بین هر دو حالت
+ * (حالتِ دستی در مرورگر، حالتِ خودکار در روتِ generate).
+ *
+ * **فیلدِ جاافتاده، خالی یا ارجاعِ ناموجود اینجا هرگز خطا نیست** — آن‌ها در فرم
+ * دیده و اصلاح می‌شوند و الزامی‌بودنشان هنگامِ ذخیره (planProductRegeneration →
+ * validateProductFields، همان قواعدِ ساختِ محصول) بررسی می‌شود. خطا فقط وقتی
+ * است که مقدار اصلاً در فیلدِ فرم جا نمی‌شود (نوعِ اشتباه) یا JSON برای دسته‌ی
+ * دیگری ساخته شده است (کلیدهای ویژگی/شاخصِ دسته‌ی دیگر).
+ *
+ * @returns {{ errors: {field: string, message: string}[], present: string[], ignored: string[], preserved: string[] }}
+ */
+export function checkRegenerationDraft(draft, { categoryId, sportId } = {}) {
+  const errors = [];
+  const fail = (field, message) => errors.push({ field, message });
+  const has = (key) => Object.hasOwn(draft, key) && draft[key] !== null;
+
+  if (categoryId && has('category') && !isBlank(draft.category) && idString(draft.category) !== idString(categoryId)) {
+    fail('category', 'این JSON برای دسته‌بندیِ دیگری ساخته شده است؛ پرامپت را از صفحه‌ی بازتولیدِ همین محصول بسازید');
+  }
+  if (sportId && has('sport') && !isBlank(draft.sport) && idString(draft.sport) !== idString(sportId)) {
+    fail('sport', 'ورزشِ این JSON با ورزشِ دسته‌بندیِ محصول یکی نیست؛ پرامپت را دوباره بسازید');
+  }
+
+  for (const key of DRAFT_STRING_FIELDS) {
+    if (has(key) && typeof draft[key] !== 'string') fail(key, `«${REGENERATED_FIELDS[key]}» باید متن باشد`);
+  }
+  if (has('basePrice') && draft.basePrice !== '' && !isNumeric(draft.basePrice)) {
+    fail('basePrice', 'قیمت پایه باید عدد باشد');
+  }
+  if (has('athlete') && typeof draft.athlete !== 'string'
+    && !(Array.isArray(draft.athlete) && draft.athlete.every((a) => typeof a === 'string'))) {
+    fail('athlete', 'ورزشکاران باید آرایه‌ای از شناسه‌ها باشند');
+  }
+  if (has('tag') && typeof draft.tag !== 'string' && !(Array.isArray(draft.tag) && draft.tag.every(isScalar))) {
+    fail('tag', 'برچسب‌ها باید آرایه‌ای از متن باشند');
+  }
+  if (has('customTabItems') && !(Array.isArray(draft.customTabItems) && draft.customTabItems.every((t) => typeof t === 'string'))) {
+    fail('customTabItems', 'آیتم‌های تب اختصاصی باید آرایه‌ای از عنوان‌ها باشند');
+  }
+  if (has('attributes')) {
+    if (!isPlainObject(draft.attributes)) fail('attributes', 'ویژگی‌ها باید یک شیء باشند');
+    else {
+      for (const [key, value] of Object.entries(draft.attributes)) {
+        const ok = value === null || isScalar(value) || (Array.isArray(value) && value.every(isScalar));
+        if (!ok) fail(key, `ویژگیِ «${key}» باید متن، عدد یا آرایه‌ای از آن‌ها باشد`);
+      }
+    }
+  }
+  if (has('technicalStats')) {
+    if (!isPlainObject(draft.technicalStats)) fail('technicalStats', 'شاخص‌های فنی باید یک شیء باشند');
+    else {
+      for (const [key, value] of Object.entries(draft.technicalStats)) {
+        if (value !== null && value !== '' && !isNumeric(value)) fail(key, `شاخصِ «${key}» باید عدد باشد`);
+      }
+    }
+  }
+
+  const known = new Set([...Object.keys(REGENERATED_FIELDS), ...PRESERVED_DRAFT_KEYS, ...CONTEXT_KEYS]);
+  return {
+    errors,
+    present: Object.keys(REGENERATED_FIELDS).filter((k) => Object.hasOwn(draft, k)),
+    ignored: Object.keys(draft).filter((k) => !known.has(k)),
+    preserved: PRESERVED_DRAFT_KEYS.filter((k) => Object.hasOwn(draft, k)),
+  };
+}
+
+/**
+ * JSONِ تأییدشده → وصله‌ای روی state ِ فرمِ ویرایش (همان شکلی که صفحه‌ی ویرایش
+ * هنگامِ بارگذاریِ محصول می‌سازد). فقط کلیدهای موجود در JSON عوض می‌شوند؛ بقیه
+ * همان مقدارِ فعلیِ محصول می‌مانند. تصاویر، واریانت‌ها، دسته، ورزش و وضعیت هرگز.
+ *
+ * ارجاعی که در داده‌های سایت نیست (برند/سری/ادیشن/ورزشکار/آیتمِ تب) در فرم
+ * گذاشته نمی‌شود — select نمی‌تواند نشانش دهد و ادمین چیزی را می‌دید که ذخیره
+ * نمی‌شد — و به‌جایش در `warnings` گفته می‌شود. برندِ خالی خالی می‌ماند تا
+ * بررسیِ «الزامی» هنگامِ ذخیره آن را نشان دهد.
+ *
+ * @param {object} ctx  { form, category, brands, limitedEditions, athletes } — داده‌های همان صفحه
+ * @returns {{ patch: object, applied: string[], warnings: string[] }}
+ */
+export function draftToFormPatch(draft, { form, category, brands = [], limitedEditions = [], athletes = [] }) {
+  const patch = {};
+  const warnings = [];
+  const has = (key) => Object.hasOwn(draft, key);
+  const text = (v) => (v == null ? '' : String(v).trim());
+
+  for (const key of ['name', 'shortDescription', 'longDescription', 'color']) {
+    if (has(key)) patch[key] = text(draft[key]);
+  }
+  if (has('basePrice')) patch.basePrice = text(draft.basePrice) === '' ? '' : Number(draft.basePrice);
+
+  if (has('label')) {
+    const label = text(draft.label) || 'none';
+    if (PRODUCT_LABELS.includes(label)) patch.label = label;
+    else warnings.push(`برچسبِ «${label}» مجاز نیست؛ برچسبِ فعلی حفظ شد`);
+  }
+  if (has('targetAudience')) {
+    const raw = text(draft.targetAudience);
+    const audience = raw ? normalizeTargetAudience(raw) : '';
+    if (audience !== null) patch.targetAudience = audience;
+    else warnings.push(`مخاطبِ هدفِ «${raw}» شناخته نشد؛ مقدارِ فعلی حفظ شد`);
+  }
+
+  if (has('brand')) {
+    const id = text(draft.brand);
+    if (!id || brands.some((b) => idString(b._id) === id)) patch.brand = id;
+    else warnings.push(`برندِ «${id}» در فهرستِ برندها نیست؛ برندِ فعلی حفظ شد`);
+  }
+  const brand = patch.brand ?? form.brand;
+  const brandChanged = brand !== form.brand;
+  const brandSeries = (brands.find((b) => idString(b._id) === brand)?.series || []).map((s) => idString(s._id));
+  const brandEditions = limitedEditions
+    .filter((le) => idString(le.brand?._id ?? le.brand) === brand)
+    .map((le) => idString(le._id));
+  for (const [key, allowed, noun] of [['serie', brandSeries, 'سری'], ['limitedEdition', brandEditions, 'لیمیتد ادیشن']]) {
+    if (has(key)) {
+      const id = text(draft[key]);
+      patch[key] = !id || allowed.includes(id) ? id : '';
+      if (id && !allowed.includes(id)) warnings.push(`${noun}ِ «${id}» متعلق به برندِ انتخاب‌شده نیست؛ خالی گذاشته شد`);
+    } else if (brandChanged && form[key] && !allowed.includes(form[key])) {
+      patch[key] = '';
+      warnings.push(`برند عوض شد؛ ${noun}ِ قبلی متعلق به برندِ قبلی بود و خالی گذاشته شد`);
+    }
+  }
+
+  if (has('athlete')) {
+    const ids = (Array.isArray(draft.athlete) ? draft.athlete : [draft.athlete]).map(text).filter(Boolean);
+    const known = new Set(athletes.map((a) => idString(a._id)));
+    patch.athlete = [...new Set(ids.filter((id) => known.has(id)))];
+    const unknown = ids.filter((id) => !known.has(id));
+    if (unknown.length) warnings.push(`ورزشکارِ ناموجود (یا از ورزشِ دیگر) کنار گذاشته شد: ${unknown.join('، ')}`);
+  }
+
+  const defs = category?.attributes || [];
+  if (has('attributes') && isPlainObject(draft.attributes)) {
+    const audience = patch.targetAudience ?? form.targetAudience;
+    // ویژگیِ محدود به مخاطبِ دیگر مقدارِ ذخیره‌شده‌اش را نگه می‌دارد (فرم آن را پنهان
+    // و دست‌نخورده دوباره می‌فرستد)، همان قاعده‌ی خودِ فرمِ ویرایش.
+    const applies = defs.filter((d) => attributeAppliesToAudience(d.targetAudiences, audience) || Object.hasOwn(draft.attributes, d.name));
+    patch.attributes = { ...form.attributes, ...normalizeInitialAttributes(draft.attributes, applies) };
+    const unknown = Object.keys(draft.attributes).filter((k) => !defs.some((d) => d.name === k));
+    if (unknown.length) warnings.push(`ویژگی‌های تعریف‌نشده در این دسته نادیده گرفته شدند: ${unknown.join('، ')}`);
+  }
+
+  const stats = category?.technicalStats || [];
+  if (has('technicalStats') && isPlainObject(draft.technicalStats)) {
+    patch.technicalStats = Object.fromEntries(stats.map((s) => {
+      const value = draft.technicalStats[s.name];
+      return [s.name, text(value) === '' ? '' : Number(value)];
+    }));
+    const unknown = Object.keys(draft.technicalStats).filter((k) => !stats.some((s) => s.name === k));
+    if (unknown.length) warnings.push(`شاخص‌های تعریف‌نشده نادیده گرفته شدند: ${unknown.join('، ')}`);
+  }
+
+  if (has('customTabItems') && Array.isArray(draft.customTabItems)) {
+    const titles = new Set((category?.customTab?.items || []).map((it) => it.title));
+    const wanted = [...new Set(draft.customTabItems.map(text).filter(Boolean))];
+    patch.customTabItems = wanted.filter((t) => titles.has(t));
+    const unknown = wanted.filter((t) => !titles.has(t));
+    if (unknown.length) warnings.push(`آیتم‌های ناموجود در تب اختصاصی کنار گذاشته شدند: ${unknown.join('، ')}`);
+  }
+
+  if (has('tag')) {
+    patch.tag = Array.isArray(draft.tag) ? [...new Set(draft.tag.map(text).filter(Boolean))].join(', ') : text(draft.tag);
+  }
+
+  return { patch, applied: Object.keys(patch).filter((k) => Object.hasOwn(REGENERATED_FIELDS, k)), warnings };
+}
+
+/** مقادیرِ فرم را به همان JSONی تبدیل می‌کند که روتِ بازتولید می‌پذیرد — فقط فیلدهای بازتولیدی. */
+export function pickRegeneratedFields(payload) {
+  return Object.fromEntries(Object.keys(REGENERATED_FIELDS).filter((k) => Object.hasOwn(payload, k)).map((k) => [k, payload[k]]));
+}
+
+/* ── تحویلِ پیش‌نویس از صفحه‌ی بازتولید به فرمِ ویرایش ──────────────────── */
+// sessionStorage: فقط همین تب، با رفرش هم می‌ماند و پس از ذخیره/انصراف پاک می‌شود.
+const storageKey = (productId) => `product-regeneration:${productId}`;
+
+export function saveRegenerationDraft(productId, value) {
+  try { sessionStorage.setItem(storageKey(productId), JSON.stringify(value)); return true; } catch { return false; }
+}
+export function loadRegenerationDraft(productId) {
+  try {
+    const value = JSON.parse(sessionStorage.getItem(storageKey(productId)) || 'null');
+    return isPlainObject(value?.draft) ? value : null;
+  } catch { return null; }
+}
+export function clearRegenerationDraft(productId) {
+  try { sessionStorage.removeItem(storageKey(productId)); } catch { /* storage unavailable */ }
+}
+
 function normalizeAttributeValue(def, value) {
   if (isBlank(value) || (Array.isArray(value) && value.length === 0)) return { skip: true };
   const label = def.label || def.name;
@@ -142,27 +346,14 @@ function stable(value) {
  * @param {object} args.product   محصولِ فعلی (lean)
  * @param {object} args.category  دسته‌ی محصول (lean)
  * @param {object} args.refs      Mapهای { brands, series, limitedEditions, athletes } — id → { name, brand? }
- * @param {boolean} [args.requireComplete]  حالتِ خودکار: خروجیِ مدل باید همه‌ی فیلدهایی را که
- *   پرامپت خواسته داشته باشد. در حالتِ دستی کلیدِ نیامده یعنی «دست نخورد» (ادمین عمداً حذفش
- *   کرده)، ولی مدلی که فیلدی را جا انداخته پاسخِ ناقص داده و ذخیره‌اش «بازتولید» نیست.
  * @returns {{ error?: string, fieldErrors?: object, update: object, changes: Array,
  *            missing: string[], ignored: string[], preserved: string[] }}
  */
-export function planProductRegeneration({ draft, product, category, refs, requireComplete = false }) {
+export function planProductRegeneration({ draft, product, category, refs }) {
   const fieldErrors = {};
   const fail = (key, message) => { if (!fieldErrors[key]) fieldErrors[key] = message; };
   const has = (key) => Object.hasOwn(draft, key);
   const update = {};
-
-  if (requireComplete) {
-    // customTabItems فقط وقتی در قالبِ خروجیِ پرامپت هست که تب فعال و آیتم‌دار باشد
-    const tab = category.customTab;
-    const asked = Object.keys(REGENERATED_FIELDS)
-      .filter((key) => key !== 'customTabItems' || (tab?.enabled && tab.items?.length));
-    for (const key of asked) {
-      if (!has(key)) fail(key, `پاسخِ AI فیلدِ «${REGENERATED_FIELDS[key]}» را نداشت`);
-    }
-  }
 
   // ── JSON باید برای همین دسته ساخته شده باشد ──
   if (has('category') && !isBlank(draft.category) && idString(draft.category) !== idString(product.category)) {
@@ -181,7 +372,10 @@ export function planProductRegeneration({ draft, product, category, refs, requir
 
   if (has('color')) {
     const color = draft.color ?? '';
-    if (typeof color !== 'string' || (color.trim() && !HEX_COLOR.test(color.trim()))) {
+    // فرمِ ویرایش رنگ را همیشه می‌فرستد؛ رنگِ قدیمیِ غیرهگزی که دست نخورده نباید
+    // ذخیره را قفل کند. فقط مقدارِ *تازه* باید هگز باشد.
+    const unchanged = typeof color === 'string' && color.trim() === String(product.color ?? '').trim();
+    if (typeof color !== 'string' || (color.trim() && !unchanged && !HEX_COLOR.test(color.trim()))) {
       fail('color', 'رنگ باید کدِ هگز مثل #1a2b3c یا خالی باشد');
     } else update.color = color.trim();
   }

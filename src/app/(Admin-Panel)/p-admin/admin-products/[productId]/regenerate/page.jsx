@@ -3,32 +3,32 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
-import Swal from 'sweetalert2';
 import { FaMagic, FaArrowRight, FaLock, FaRobot, FaClipboardList } from 'react-icons/fa';
 import Button from '@/components/admin/Button';
 import AdminLoader from '@/components/admin/AdminLoader';
 import { useAdminPermissions } from '@/components/admin/AdminPermissionProvider';
 import { getApiErrorMessage } from '@/lib/apiClientError';
-import { invalidateAdminCache } from '@/lib/adminCache';
-import { REGENERATED_FIELDS } from '@/lib/productRegeneration';
+import {
+  REGENERATED_FIELDS,
+  checkRegenerationDraft,
+  parseRegenerationDraft,
+  saveRegenerationDraft,
+} from '@/lib/productRegeneration';
 import { showToast } from '@/lib/toast';
-import { showError } from '@/lib/swal';
 
 /**
- * بازتولیدِ محصول — دو حالت با یک خطِ لوله:
- * - خودکار: متن → POST /regenerate/generate (پرامپتِ مشترک → providerِ AI → پیش‌نمایش)
- * - دستی: متن → پرامپت → AIِ بیرونی → JSON → POST /regenerate (dryRun)
- * اعمال در هر دو حالت POST /regenerate با همان JSON است که سمتِ سرور از نو
- * اعتبارسنجی می‌شود؛ تصاویر و واریانت‌ها آن‌جا محافظت می‌شوند، نه در این صفحه.
+ * بازتولیدِ محصول — دو راه برای رسیدن به یک JSON، و یک مسیرِ مشترک بعد از آن:
+ * - خودکار: متن → POST /regenerate/generate (پرامپتِ مشترک → providerِ AI)
+ * - دستی: متن → پرامپت → AIِ بیرونی → چسباندنِ JSON
+ * در هر دو، اینجا فقط ساختار و قالبِ JSON بررسی می‌شود (checkRegenerationDraft).
+ * پس از تأیید، JSON در فرمِ ویرایشِ محصول (?regenerate=1) قرار می‌گیرد؛ بررسیِ
+ * فیلدهای الزامی و ذخیره آن‌جا انجام می‌شود، مثلِ ساختِ محصول.
  */
 const MANUAL_STEPS = [
   { id: 1, label: 'متن خام' },
   { id: 2, label: 'پرامپت AI' },
   { id: 3, label: 'JSON خروجی' },
-  { id: 4, label: 'پیش‌نمایش و اعمال' },
 ];
-
-const FIELD_HINT = 'برای حفظِ مقدارِ فعلیِ یک فیلد (مثلاً قیمتِ واقعی)، کلیدش را از JSON حذف کنید.';
 
 async function postJson(url, body) {
   const res = await fetch(url, {
@@ -39,35 +39,19 @@ async function postJson(url, body) {
   return { res, data: await res.json().catch(() => ({})) };
 }
 
-function ValueView({ value }) {
-  if (value === null || value === undefined || value === '' || (Array.isArray(value) && !value.length)) {
-    return <span className="text-gray-400">—</span>;
-  }
-  if (Array.isArray(value)) return <span>{value.join('، ')}</span>;
-  if (typeof value === 'object') {
-    const entries = Object.entries(value);
-    if (!entries.length) return <span className="text-gray-400">—</span>;
-    return (
-      <ul className="space-y-0.5">
-        {entries.map(([k, v]) => (
-          <li key={k}><span className="font-mono text-xs text-gray-500" dir="ltr">{k}</span>: {Array.isArray(v) ? v.join('، ') : String(v)}</li>
-        ))}
-      </ul>
-    );
-  }
-  return <span className="whitespace-pre-wrap break-words">{String(value)}</span>;
-}
+const idOf = (v) => (v && typeof v === 'object' ? v._id : v) || '';
+const labels = (keys) => keys.map((k) => REGENERATED_FIELDS[k] || k).join('، ');
 
 function ErrorBox({ errors, children }) {
   if (!errors) return null;
-  const list = errors.fieldErrors ? Object.entries(errors.fieldErrors) : [];
+  const list = errors.list || [];
   return (
     <div role="alert" className="bg-red-50 border border-red-200 text-red-700 rounded-xl p-4 text-sm space-y-2">
       <p className="font-bold">{errors.message}</p>
       {list.length > 1 && (
         <ul className="list-disc pr-5 space-y-1">
-          {list.map(([key, message]) => (
-            <li key={key}><span className="font-mono text-xs" dir="ltr">{key}</span>: {message}</li>
+          {list.map(({ field, message }, i) => (
+            <li key={`${field}-${i}`}><span className="font-mono text-xs" dir="ltr">{field}</span>: {message}</li>
           ))}
         </ul>
       )}
@@ -76,66 +60,43 @@ function ErrorBox({ errors, children }) {
   );
 }
 
-function PreviewPanel({ preview, product, ai }) {
-  const changed = new Set(preview.changes.map((c) => c.field));
-  const unchanged = Object.entries(REGENERATED_FIELDS)
-    .filter(([key]) => !changed.has(key) && !preview.missing.includes(key))
-    .map(([, label]) => label);
+/** مرحله‌ی تأییدِ JSON — مشترک بین دو حالت. */
+function ConfirmPanel({ review, json, product, onConfirm, actions }) {
+  const { check, ai } = review;
+  const missing = Object.keys(REGENERATED_FIELDS).filter((k) => !check.present.includes(k));
   const imageCount = (product.mainImage ? 1 : 0) + (product.gallery?.length || 0);
-
   return (
-    <div className="space-y-5">
+    <div className="space-y-4">
+      <div className="bg-emerald-50 border border-emerald-200 text-emerald-900 rounded-2xl p-4 text-sm space-y-1.5">
+        <p className="font-bold">ساختارِ JSON معتبر است.</p>
+        <p>با تأیید، این مقادیر در فرمِ ویرایشِ محصول قرار می‌گیرند تا بررسی و در صورتِ نیاز اصلاحشان کنید. تا زمانی که فرم را ذخیره نکنید چیزی تغییر نمی‌کند.</p>
+        {check.present.length > 0 && <p>در فرم قرار می‌گیرد: {labels(check.present)}</p>}
+        {missing.length > 0 && <p>در JSON نبودند و مقدارِ فعلی‌شان در فرم می‌ماند: {labels(missing)}</p>}
+      </div>
+
+      <div className="flex items-start gap-2 text-sm text-gray-700">
+        <FaLock className="mt-1 shrink-0 text-emerald-700" aria-hidden="true" />
+        <p>
+          تصاویر ({imageCount}) و واریانت‌ها ({product.variants?.length || 0}) دست‌نخورده می‌مانند
+          {check.preserved.length > 0 && <> — کلیدهای <span dir="ltr" className="font-mono">{check.preserved.join(', ')}</span> در JSON نادیده گرفته می‌شوند</>}.
+        </p>
+      </div>
+      {check.ignored.length > 0 && (
+        <p className="text-sm text-gray-600">کلیدهای ناشناخته (نادیده گرفته می‌شوند): <span dir="ltr" className="font-mono">{check.ignored.join(', ')}</span></p>
+      )}
       {ai && <p className="text-xs text-gray-400" dir="ltr">{ai.provider} · {ai.model}</p>}
 
-      {preview.changes.length === 0 ? (
-        <p className="text-center text-gray-600 py-6">نتیجه هیچ تغییری نسبت به محصولِ فعلی ندارد.</p>
-      ) : (
-        <section className="space-y-3">
-          <h2 className="font-bold text-gray-800">تغییر می‌کند ({preview.changes.length} فیلد)</h2>
-          <div className="divide-y border rounded-2xl">
-            {preview.changes.map((change) => (
-              <div key={change.field} className="p-4 space-y-2">
-                <div className="font-bold text-sm text-gray-800">
-                  {change.label}
-                  {change.field === 'basePrice' && <span className="mr-2 text-xs font-bold text-amber-700">قیمت تغییر می‌کند</span>}
-                </div>
-                <div className="grid md:grid-cols-2 gap-3 text-sm">
-                  <div className="bg-red-50/60 rounded-xl p-3 max-h-48 overflow-auto">
-                    <div className="text-xs text-gray-500 mb-1">فعلی</div>
-                    <ValueView value={change.before} />
-                  </div>
-                  <div className="bg-emerald-50/60 rounded-xl p-3 max-h-48 overflow-auto">
-                    <div className="text-xs text-gray-500 mb-1">جدید</div>
-                    <ValueView value={change.after} />
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-        </section>
-      )}
+      <details className="border rounded-xl">
+        <summary className="cursor-pointer px-4 py-2 text-sm font-bold text-gray-700">نمایشِ JSON</summary>
+        <pre className="text-xs bg-gray-50 p-4 max-h-80 overflow-auto whitespace-pre-wrap" dir="ltr">{json}</pre>
+      </details>
 
-      {preview.slug && (
-        <p className="text-sm bg-amber-50 border border-amber-200 text-amber-900 rounded-xl p-3">
-          با تغییرِ نام، نشانیِ صفحه‌ی محصول هم عوض می‌شود: <span dir="ltr" className="font-mono">{preview.slug.before}</span> ← <span dir="ltr" className="font-mono">{preview.slug.after}</span>
-        </p>
-      )}
-
-      <section className="bg-emerald-50 border border-emerald-200 text-emerald-900 rounded-2xl p-4 text-sm space-y-1.5">
-        <h3 className="font-bold flex items-center gap-2"><FaLock aria-hidden="true" /> حفظ می‌شود</h3>
-        <p>تصاویر ({imageCount}) و واریانت‌ها ({product.variants?.length || 0}، با قیمت، تصاویر و بارکدها) — همیشه، بدونِ استثنا.</p>
-        {unchanged.length > 0 && <p>بدونِ تغییر: {unchanged.join('، ')}</p>}
-        {preview.missing.length > 0 && (
-          <p>در JSON نبودند و دست‌نخورده می‌مانند: {preview.missing.map((k) => REGENERATED_FIELDS[k] || k).join('، ')}</p>
-        )}
-        {preview.preserved.length > 0 && (
-          <p>کلیدهای تصویر/واریانت در خروجی نادیده گرفته شدند: <span dir="ltr" className="font-mono">{preview.preserved.join(', ')}</span></p>
-        )}
-      </section>
-
-      {preview.ignored.length > 0 && (
-        <p className="text-sm text-gray-600">کلیدهای ناشناخته (نادیده گرفته شدند): <span dir="ltr" className="font-mono">{preview.ignored.join(', ')}</span></p>
-      )}
+      <div className="flex flex-wrap gap-3">
+        {actions}
+        <Button variant="success" onClick={onConfirm} className="flex-1">
+          تأیید JSON و رفتن به فرمِ ویرایش
+        </Button>
+      </div>
     </div>
   );
 }
@@ -152,11 +113,10 @@ export default function ProductRegeneratePage() {
   const [step, setStep] = useState(1); // فقط حالتِ دستی
   const [rawContent, setRawContent] = useState('');
   const [aiPrompt, setAiPrompt] = useState('');
-  const [json, setJson] = useState(''); // JSONی که پیش‌نمایش و اعمال رویش انجام می‌شود
-  const [preview, setPreview] = useState(null);
-  const [aiMeta, setAiMeta] = useState(null);
-  const [errors, setErrors] = useState(null); // { message, fieldErrors, recoverable }
-  const [busy, setBusy] = useState(''); // '' | 'prompt' | 'generate' | 'preview' | 'apply'
+  const [json, setJson] = useState('');
+  const [review, setReview] = useState(null); // { check, ai? } — JSONِ معتبر، منتظرِ تأیید
+  const [errors, setErrors] = useState(null); // { message, list?, recoverable? }
+  const [busy, setBusy] = useState(''); // '' | 'prompt' | 'generate'
 
   const activeMode = mode ?? (canUseAi ? 'auto' : 'manual');
 
@@ -172,22 +132,21 @@ export default function ProductRegeneratePage() {
     return () => { alive = false; };
   }, [productId]);
 
-  const categoryId = product?.category?._id || product?.category || '';
+  const categoryId = idOf(product?.category);
   const editHref = `/p-admin/admin-products/edit/${productId}`;
 
   function switchMode(next) {
     if (busy) return;
     setMode(next);
-    setPreview(null);
+    setReview(null);
     setErrors(null);
-    setAiMeta(null);
     if (next === 'manual') setStep(json ? 3 : 1);
   }
 
   /** خروجیِ خودکار را به حالتِ دستی می‌برد تا ادمین JSON را اصلاح کند. */
   function editJsonManually() {
     setMode('manual');
-    setPreview(null);
+    setReview(null);
     setErrors(null);
     setStep(3);
   }
@@ -201,22 +160,21 @@ export default function ProductRegeneratePage() {
   // ── خودکار ──
   async function generateAuto() {
     setErrors(null);
-    setPreview(null);
+    setReview(null);
     if (!checkRawContent()) return;
     setBusy('generate');
     try {
       const { res, data } = await postJson(`/api/product/${productId}/regenerate/generate`, { rawContent });
-      setAiMeta(data.ai || null);
       if (typeof data.json === 'string') setJson(data.json);
       if (!res.ok) {
         setErrors({
           message: getApiErrorMessage(data, 'بازتولیدِ خودکار انجام نشد'),
-          fieldErrors: data.fieldErrors,
+          list: data.errors,
           recoverable: typeof data.json === 'string',
         });
         return;
       }
-      setPreview(data.preview);
+      setReview({ check: data.check, ai: data.ai });
     } catch {
       setErrors({ message: 'ارتباط با سرور برقرار نشد؛ دوباره تلاش کنید.' });
     } finally {
@@ -251,68 +209,35 @@ export default function ProductRegeneratePage() {
     }
   }
 
-  async function requestPreview() {
+  /** همان بررسیِ ساختاری‌ای که روتِ generate روی خروجیِ مدل اجرا می‌کند. */
+  function checkManualJson() {
     setErrors(null);
-    if (!json.trim()) {
-      setErrors({ message: 'JSON خروجیِ AI را وارد کنید.' });
+    const parsed = parseRegenerationDraft(json);
+    if (parsed.error) {
+      setErrors({ message: parsed.error });
       return;
     }
-    setBusy('preview');
-    try {
-      const { res, data } = await postJson(`/api/product/${productId}/regenerate`, { json, dryRun: true });
-      if (!res.ok) {
-        setErrors({ message: getApiErrorMessage(data, 'JSON نامعتبر است'), fieldErrors: data.fieldErrors });
-        return;
-      }
-      setAiMeta(null);
-      setPreview(data);
-      setStep(4);
-    } catch {
-      setErrors({ message: 'ارتباط با سرور برقرار نشد؛ دوباره تلاش کنید.' });
-    } finally {
-      setBusy('');
+    const check = checkRegenerationDraft(parsed.draft, { categoryId, sportId: idOf(product.category?.sport) });
+    if (check.errors.length) {
+      setErrors({ message: `JSON قابلِ نگاشت به فرم نیست: ${check.errors[0].message}`, list: check.errors });
+      return;
     }
+    setReview({ check });
   }
 
-  // ── اعمال (مشترک) ──
-  async function apply() {
-    const { isConfirmed } = await Swal.fire({
-      icon: 'question',
-      title: 'تغییرات اعمال شود؟',
-      text: `${preview.changes.length} فیلد بازنویسی می‌شود. تصاویر و واریانت‌ها دست‌نخورده می‌مانند.`,
-      showCancelButton: true,
-      confirmButtonText: 'اعمال تغییرات',
-      cancelButtonText: 'انصراف',
-      reverseButtons: true,
-    });
-    if (!isConfirmed) return;
-
-    setErrors(null);
-    setBusy('apply');
-    try {
-      const { res, data } = await postJson(`/api/product/${productId}/regenerate`, {
-        json, expectedUpdatedAt: preview.updatedAt,
-      });
-      if (!res.ok) {
-        const message = getApiErrorMessage(data, 'خطا در بازتولید محصول');
-        setErrors({ message, fieldErrors: data.fieldErrors, recoverable: activeMode === 'auto' });
-        // نسخه‌ی محصول یا ارجاع‌ها عوض شده — پیش‌نمایشِ فعلی دیگر معتبر نیست
-        if (res.status === 409 || res.status === 400) {
-          setPreview(null);
-          if (activeMode === 'manual') setStep(3);
-        }
-        showError('بازتولید انجام نشد', message);
-        return;
-      }
-      invalidateAdminCache('/api/product');
-      showToast.success(`محصول بازتولید شد (${data.changes?.length ?? 0} فیلد به‌روز شد)`);
-      router.push(editHref);
-      router.refresh();
-    } catch {
-      showError('خطا', 'ارتباط با سرور برقرار نشد؛ وضعیتِ محصول را در صفحه‌ی ویرایش بررسی کنید.');
-    } finally {
-      setBusy('');
+  // ── تأیید (مشترک) → فرمِ ویرایش ──
+  function confirmJson() {
+    const parsed = parseRegenerationDraft(json);
+    if (parsed.error) {
+      setErrors({ message: parsed.error });
+      setReview(null);
+      return;
     }
+    if (!saveRegenerationDraft(productId, { draft: parsed.draft, source: activeMode, savedAt: Date.now() })) {
+      setErrors({ message: 'مرورگر اجازه‌ی نگه‌داشتنِ موقتِ داده را نمی‌دهد (حالتِ خصوصی یا ذخیره‌سازیِ مسدود)؛ JSON را در فرمِ ویرایش با «ویرایش جیسون» هر بخش وارد کنید.' });
+      return;
+    }
+    router.push(`${editHref}?regenerate=1`);
   }
 
   if (loadError) {
@@ -340,21 +265,6 @@ export default function ProductRegeneratePage() {
     </div>
   );
 
-  const applyBar = (secondary) => (
-    <div className="flex flex-wrap gap-3">
-      {secondary}
-      <Button
-        variant="success"
-        onClick={apply}
-        loading={busy === 'apply'}
-        disabled={preview.changes.length === 0 || !!busy}
-        className="flex-1"
-      >
-        اعمال تغییرات روی محصول
-      </Button>
-    </div>
-  );
-
   return (
     <div className="max-w-5xl mx-auto space-y-6 pb-20">
       {/* Header */}
@@ -374,7 +284,7 @@ export default function ProductRegeneratePage() {
       {/* Mode selector */}
       <div role="tablist" aria-label="حالتِ بازتولید" className="grid sm:grid-cols-2 gap-3">
         {[
-          { id: 'auto', icon: <FaRobot />, title: 'خودکار با AI', text: 'متن را بچسبانید؛ AI با قواعدِ پرامپت و داده‌های سایت محصول را می‌سازد.', disabled: !canUseAi },
+          { id: 'auto', icon: <FaRobot />, title: 'خودکار با AI', text: 'متن را بچسبانید؛ AI با قواعدِ پرامپت و داده‌های سایت JSON را می‌سازد.', disabled: !canUseAi },
           { id: 'manual', icon: <FaClipboardList />, title: 'دستی', text: 'پرامپت را کپی کنید، به AIِ دلخواه بدهید و JSON را برگردانید.' },
         ].map((m) => (
           <button
@@ -398,44 +308,40 @@ export default function ProductRegeneratePage() {
       <div className="bg-white rounded-3xl shadow-sm border border-gray-100 p-6 space-y-6">
         {/* ── AUTO ── */}
         {activeMode === 'auto' && (
-          <>
-            {!preview && (
-              <div className="space-y-4">
-                {sourceInput}
-                <ErrorBox errors={errors}>
-                  {errors?.recoverable && (
-                    <div className="flex flex-wrap gap-2 pt-1">
-                      <Button size="sm" variant="outline" onClick={generateAuto}>تلاش دوباره</Button>
-                      <Button size="sm" variant="secondary" onClick={editJsonManually}>اصلاحِ دستیِ JSON خروجی</Button>
-                    </div>
-                  )}
-                </ErrorBox>
-                <Button onClick={generateAuto} loading={busy === 'generate'} disabled={!!busy} className="w-full" icon={<FaMagic />}>
-                  {busy === 'generate' ? 'AI در حال تحلیل متن…' : 'بازتولید محصول'}
-                </Button>
-                {busy === 'generate' && (
-                  <p className="text-xs text-gray-500 text-center" aria-live="polite">
-                    متن تحلیل، با قواعدِ پرامپت و برندها/سری‌های سایت تطبیق و اعتبارسنجی می‌شود — ممکن است تا یک دقیقه طول بکشد. هنوز چیزی ذخیره نمی‌شود.
-                  </p>
+          review ? (
+            <ConfirmPanel
+              review={review}
+              json={json}
+              product={product}
+              onConfirm={confirmJson}
+              actions={(
+                <>
+                  <Button variant="outline" onClick={() => { setReview(null); setErrors(null); }}>تولیدِ دوباره</Button>
+                  <Button variant="secondary" onClick={editJsonManually}>ویرایش دستی JSON</Button>
+                </>
+              )}
+            />
+          ) : (
+            <div className="space-y-4">
+              {sourceInput}
+              <ErrorBox errors={errors}>
+                {errors?.recoverable && (
+                  <div className="flex flex-wrap gap-2 pt-1">
+                    <Button size="sm" variant="outline" onClick={generateAuto}>تلاش دوباره</Button>
+                    <Button size="sm" variant="secondary" onClick={editJsonManually}>اصلاحِ دستیِ JSON خروجی</Button>
+                  </div>
                 )}
-              </div>
-            )}
-
-            {preview && (
-              <div className="space-y-5">
-                <PreviewPanel preview={preview} product={product} ai={aiMeta} />
-                <ErrorBox errors={errors} />
-                {applyBar(
-                  <>
-                    <Button variant="outline" onClick={() => { setPreview(null); setErrors(null); }} disabled={!!busy}>
-                      بازتولیدِ دوباره
-                    </Button>
-                    <Button variant="secondary" onClick={editJsonManually} disabled={!!busy}>ویرایش دستی JSON</Button>
-                  </>,
-                )}
-              </div>
-            )}
-          </>
+              </ErrorBox>
+              <Button onClick={generateAuto} loading={busy === 'generate'} disabled={!!busy} className="w-full" icon={<FaMagic />}>
+                {busy === 'generate' ? 'AI در حال تحلیل متن…' : 'بازتولید محصول'}
+              </Button>
+              {busy === 'generate' && (
+                <p className="text-xs text-gray-500 text-center" aria-live="polite">
+                  متن تحلیل و با قواعدِ پرامپت و برندها/سری‌های سایت تطبیق داده می‌شود — ممکن است تا یک دقیقه طول بکشد. هنوز چیزی ذخیره نمی‌شود.
+                </p>
+              )}
+            </div>
+          )
         )}
 
         {/* ── MANUAL ── */}
@@ -446,7 +352,7 @@ export default function ProductRegeneratePage() {
                 <li key={s.id} className="flex items-center flex-1 gap-2 min-w-0">
                   <button
                     type="button"
-                    onClick={() => s.id < step && s.id !== 4 && setStep(s.id)}
+                    onClick={() => s.id < step && (setStep(s.id), setReview(null))}
                     disabled={s.id >= step}
                     aria-current={s.id === step ? 'step' : undefined}
                     className={`size-9 shrink-0 rounded-full flex items-center justify-center font-bold text-sm
@@ -489,7 +395,15 @@ export default function ProductRegeneratePage() {
               </div>
             )}
 
-            {step === 3 && (
+            {step === 3 && (review ? (
+              <ConfirmPanel
+                review={review}
+                json={json}
+                product={product}
+                onConfirm={confirmJson}
+                actions={<Button variant="outline" onClick={() => setReview(null)}>ویرایش JSON</Button>}
+              />
+            ) : (
               <div className="space-y-4">
                 <label className="block text-sm font-bold text-gray-700" htmlFor="ai-json">JSON خروجیِ AI</label>
                 <textarea
@@ -501,23 +415,12 @@ export default function ProductRegeneratePage() {
                   className="w-full border rounded-xl p-3 text-xs font-mono"
                   placeholder='{ "name": "...", ... }'
                 />
-                <p className="text-xs text-gray-500">{FIELD_HINT}</p>
-                <Button onClick={requestPreview} loading={busy === 'preview'} className="w-full">
-                  بررسی و پیش‌نمایشِ تغییرات
-                </Button>
+                <p className="text-xs text-gray-500">
+                  فقط ساختار و قالب بررسی می‌شود؛ فیلدهای الزامی در فرمِ ویرایش و هنگامِ ذخیره بررسی می‌شوند. کلیدی که در JSON نباشد مقدارِ فعلی‌اش را نگه می‌دارد.
+                </p>
+                <Button onClick={checkManualJson} className="w-full">بررسیِ JSON</Button>
               </div>
-            )}
-
-            {step === 4 && preview && (
-              <div className="space-y-5">
-                <PreviewPanel preview={preview} product={product} />
-                {applyBar(
-                  <Button variant="outline" onClick={() => { setStep(3); setPreview(null); }} disabled={!!busy}>
-                    ویرایش JSON
-                  </Button>,
-                )}
-              </div>
-            )}
+            ))}
           </>
         )}
       </div>

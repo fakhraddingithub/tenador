@@ -1,18 +1,19 @@
 /**
  * src/app/api/product/[productId]/regenerate/generate/route.js
  *
- * POST { rawContent } → { json, preview, ai }
+ * POST { rawContent } → { json, check, ai }
  *
  * بازتولیدِ خودکار: همان پرامپتی که حالتِ دستی به ادمین می‌دهد
  * (buildProductDraftPrompt — پرامپت پایه، گروه‌ها و قواعدِ دسته از پنل) مستقیم به
  * providerِ پیکربندی‌شده (src/lib/ai) فرستاده می‌شود، و خروجی با همان
- * parseRegenerationDraft + previewRegeneration ِ حالتِ دستی بررسی می‌شود.
+ * parseRegenerationDraft + checkRegenerationDraft ِ حالتِ دستی بررسی می‌شود.
  *
- * اینجا **هیچ چیز نوشته نمی‌شود.** خروجی فقط پیش‌نمایش است؛ اعمال از همان
- * POST /api/product/[id]/regenerate می‌گذرد که JSON را از نو اعتبارسنجی می‌کند.
+ * اینجا **هیچ چیز نوشته نمی‌شود.** ادمین JSON را تأیید می‌کند، در فرمِ ویرایش
+ * می‌بیند و ذخیره از POST /api/product/[id]/regenerate می‌گذرد که همه‌چیز را
+ * (از جمله فیلدهای الزامی) از نو اعتبارسنجی می‌کند.
  *
- * خروجیِ نامعتبرِ مدل (JSONِ خراب، شناسه‌ی ناموجود، سریِ برندِ دیگر، فیلدِ جاافتاده)
- * ۴۲۲ است و JSONِ خام برگردانده می‌شود تا ادمین بتواند در حالتِ دستی اصلاحش کند.
+ * فقط خروجیِ غیرقابلِ نگاشت (JSONِ خراب، نوعِ اشتباه، دسته‌ی دیگر) ۴۲۲ است و
+ * JSONِ خام برگردانده می‌شود تا ادمین بتواند در حالتِ دستی اصلاحش کند.
  */
 
 import "base/models/registerModels";
@@ -21,8 +22,8 @@ import { NextResponse } from "next/server";
 import connectToDB from "base/configs/db";
 import { generate, getAiConfig, AiError } from "@/lib/ai/index";
 import { buildProductDraftPrompt, validateRawContent } from "@/lib/productDraftPrompt";
-import { parseRegenerationDraft } from "@/lib/productRegeneration";
-import { loadRegenerationTarget, previewRegeneration } from "@/lib/productRegenerationService";
+import { checkRegenerationDraft, parseRegenerationDraft } from "@/lib/productRegeneration";
+import { loadRegenerationTarget } from "@/lib/productRegenerationService";
 import { consumeAssistantQuota } from "@/lib/assistant/quota";
 import { AssistantError } from "@/lib/assistant/validation";
 import { apiError, handleApiError } from "@/lib/apiError";
@@ -87,17 +88,19 @@ export async function POST(request, { params }) {
     }
     const json = JSON.stringify(parsed.draft, null, 2);
 
-    const preview = await previewRegeneration({ ...target, draft: parsed.draft, requireComplete: true });
-    if (preview.error) {
-      const { message, status, extra } = preview.error;
-      return apiError(
-        status === 400 ? `خروجیِ AI معتبر نیست و ذخیره نمی‌شود: ${message}` : message,
-        status === 400 ? 422 : status,
-        { ...extra, json, ai: meta },
-      );
+    // فقط ساختار و قالب — همان بررسیِ حالتِ دستی. فیلدهای الزامیِ جاافتاده یا
+    // ارجاعِ ناموجود اینجا جلوی ادامه را نمی‌گیرند؛ در فرمِ ویرایش دیده و هنگامِ
+    // ذخیره (با قواعدِ ساختِ محصول) بررسی می‌شوند.
+    const check = checkRegenerationDraft(parsed.draft, {
+      categoryId: target.product.category, sportId: target.category.sport,
+    });
+    if (check.errors.length) {
+      return apiError(`خروجیِ AI قابلِ نگاشت به فرم نیست: ${check.errors[0].message}`, 422, {
+        errors: check.errors, json, ai: meta,
+      });
     }
 
-    return NextResponse.json({ json, preview: preview.preview, ai: meta }, { status: 200 });
+    return NextResponse.json({ json, check, ai: meta }, { status: 200 });
   } catch (err) {
     if (err instanceof AiError || err instanceof AssistantError) {
       return apiError(err.message, err.status || 502, err.code ? { code: err.code } : undefined);
