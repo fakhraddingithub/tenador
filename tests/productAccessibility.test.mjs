@@ -61,3 +61,20 @@ test('replacement text colors exceed 4.5:1 against the report backgrounds', () =
     assert.ok((Math.max(a, b) + .05) / (Math.min(a, b) + .05) >= 4.5, foreground);
   }
 });
+
+test('product short description HTML stays inside its container after the browser parses it', () => {
+  // A <p> inside a <p> is split by the HTML parser, so the DOM stops matching React's tree and
+  // hydration fails (React error #418). parse5 builds the tree exactly as a browser does.
+  const { parse } = require('parse5');
+  const plain = (tag) => function Plain({ initial, animate, transition, ...props }) { return React.createElement(tag, props); };
+  const Header = load('src/components/templates/product/ProductHeader.jsx', {
+    'framer-motion': { motion: { h1: plain('h1'), div: plain('div') } },
+  });
+  const html = renderToStaticMarkup(React.createElement(Header, {
+    name: 'راکت Blade 98', shortDescription: '<p>اول</p><p>دوم</p>',
+  }));
+  const find = (node, test) => test(node) ? node : (node.childNodes || []).map((c) => find(c, test)).find(Boolean);
+  const container = find(parse(html), (n) => n.attrs?.some((a) => a.name === 'class' && a.value.includes('lg:max-w-3xl')));
+  const paragraphs = (node) => (node.childNodes || []).flatMap((c) => (c.nodeName === 'p' ? [c] : paragraphs(c)));
+  assert.equal(paragraphs(container).length, 2);
+});

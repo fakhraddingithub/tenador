@@ -796,7 +796,7 @@ useEffect(() => {
                   </Button>
                 </Link>
               ) : (
-                <Link href="/login-register">
+                <Link href="/login-register" prefetch={false}>
                   <Button
                     className="rounded-[var(--radius)] text-white border-white hover:bg-white hover:text-black transition-all"
                     variant="outline"
@@ -942,7 +942,7 @@ useEffect(() => {
                   </Button>
                 </Link>
               ) : (
-                <Link href="/login-register">
+                <Link href="/login-register" prefetch={false}>
                   <Button
                     className="rounded-[var(--radius)] text-white border-white hover:bg-white hover:text-black transition-all"
                     variant="outline"

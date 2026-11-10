@@ -71,7 +71,10 @@ const ProductHeader = ({ name, shortDescription, logo = null }) => {
           {/* تزئین سمت راست (خط عمودی مدرن) */}
           <div className="absolute right-0 top-0 bottom-0 w-[3px] bg-gray-200 md:bg-gray-100 rounded-full" />
 
-          <p
+          {/* div, not p: the description is HTML that holds its own <p>s. A <p> inside a <p>
+              is split by the browser's parser, the DOM no longer matches React's tree, and
+              hydration fails (React error #418) — React then re-renders the page on the client. */}
+          <div
             className="
               pr-4
               sm:pr-5
@@ -88,12 +91,8 @@ const ProductHeader = ({ name, shortDescription, logo = null }) => {
               lg:max-w-3xl
             "
           >
-            {/* تمیز کردن تگ‌های HTML اگر وجود داشته باشند */}
-            <span
-              dangerouslySetInnerHTML={{ __html: shortDescription }}
-              className="block"
-            />
-          </p>
+            <div dangerouslySetInnerHTML={{ __html: shortDescription }} />
+          </div>
         </motion.div>
       )}
     </div>
