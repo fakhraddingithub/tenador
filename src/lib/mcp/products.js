@@ -13,7 +13,7 @@ import { revalidateContent } from "@/lib/revalidate";
 import { consumeAssistantQuota } from "@/lib/assistant/quota";
 import { openAuditScope, activateAuditScope } from "@/lib/adminAuditScope";
 import { flushAuditScope } from "@/lib/adminAuditFlush";
-import { digest, secret } from "./security.js";
+import { config, digest, secret } from "./security.js";
 import { downloadPublic, extractSource } from "./source.js";
 
 const id = z.string().regex(/^[a-f\d]{24}$/i);
@@ -31,6 +31,13 @@ export function productServer(ctx) {
     annotations: { readOnlyHint: !write, destructiveHint: write, idempotentHint: !write, openWorldHint: true },
     _meta: { securitySchemes: [{ type: "oauth2", scopes: ["products"] }] },
   }, async args => {
+    if (!ctx) return {
+      ...output({ error: "برای استفاده از تنادور ابتدا حساب ادمین خود را متصل کنید." }),
+      isError: true,
+      _meta: { "mcp/www_authenticate": [
+        `Bearer resource_metadata="${config().origin}/.well-known/oauth-protected-resource/api/mcp", error="insufficient_scope", error_description="Connect your Tenador admin account to continue", scope="products"`,
+      ] },
+    };
     const scope = openAuditScope();
     try {
       if (!ctx.isAdmin || !ctx.can(permissions)) return { ...output({ error: "دسترسی لازم برای این ابزار را ندارید" }), isError: true };

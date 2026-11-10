@@ -63,7 +63,7 @@ test('OAuth discovery works before callback setup while authorization remains cl
     const response = await GET(new Request('https://shop.example/api/mcp'));
     assert.equal(response.status, 401);
     assert.match(response.headers.get('www-authenticate'), /oauth-protected-resource/);
-    assert.equal((await POST(new Request('https://shop.example/api/mcp', { method: 'POST' }))).status, 401);
+    assert.equal((await POST(new Request('https://shop.example/api/mcp', { method: 'POST' }))).status, 400);
     assert.throws(() => validateAuthorization(new URLSearchParams({ client_id: 'chatgpt', redirect_uri: 'https://chatgpt.com/callback', response_type: 'code', code_challenge_method: 'S256', code_challenge: digest(secret()) }), config()));
   } finally { process.env.MCP_REDIRECT_URIS = saved; }
 });
@@ -131,6 +131,39 @@ test('HTTP endpoint negotiates MCP, lists tools and rejects missing credentials'
   assert.equal(list.status, 200); assert.equal((await list.json()).result.tools.length, 8);
   const denied = await POST(request({ jsonrpc: '2.0', id: 3, method: 'tools/list' }, 'invalid'));
   assert.equal(denied.status, 401); assert.match(denied.headers.get('www-authenticate'), /oauth-protected-resource/);
+});
+test('anonymous clients discover tools but every tool requests OAuth without reading or writing data', async () => {
+  const { POST } = await import('../src/app/api/mcp/route.js');
+  const request = body => new Request('https://shop.example/api/mcp', {
+    method: 'POST', headers: { 'content-type': 'application/json', accept: 'application/json, text/event-stream' }, body: JSON.stringify(body),
+  });
+  const init = await POST(request({ jsonrpc: '2.0', id: 1, method: 'initialize', params: { protocolVersion: '2025-03-26', capabilities: {}, clientInfo: { name: 'anonymous', version: '1' } } }));
+  assert.equal(init.status, 200);
+  const listed = await POST(request({ jsonrpc: '2.0', id: 2, method: 'tools/list' }));
+  assert.equal(listed.status, 200);
+  const tools = (await listed.json()).result.tools;
+  assert.equal(tools.length, 8);
+  for (const tool of tools) assert.deepEqual(tool._meta.securitySchemes, [{ type: 'oauth2', scopes: ['products'] }]);
+  const key = secret(), objectId = String(new mongoose.Types.ObjectId());
+  const cases = {
+    list_product_categories: {}, search_products: { query: 'Wilson' },
+    prepare_product: { categoryId: objectId, rawContent: 'x'.repeat(60) },
+    import_product_images: { preparationId: key, urls: ['https://vendor.example/photo.jpg'] },
+    create_product: { preparationId: key, json: '{}' },
+    preview_product_regeneration: { preparationId: key, json: '{}' },
+    apply_product_regeneration: { preparationId: key, json: '{}', expectedUpdatedAt: new Date().toISOString() },
+    replace_product_images: { preparationId: key, mainImage: 'https://vendor.example/photo.jpg', gallery: [], expectedUpdatedAt: new Date().toISOString() },
+  };
+  const before = await Grant.countDocuments();
+  for (const [name, args] of Object.entries(cases)) {
+    const r = await POST(request({ jsonrpc: '2.0', id: 3, method: 'tools/call', params: { name, arguments: args } }));
+    assert.equal(r.status, 200);
+    const result = (await r.json()).result;
+    assert.equal(result.isError, true);
+    assert.match(result._meta['mcp/www_authenticate'][0], /error="insufficient_scope"/);
+    assert.match(result._meta['mcp/www_authenticate'][0], /error_description=/);
+  }
+  assert.equal(await Grant.countDocuments(), before);
 });
 test('prepare uses admin rules; create requires imported photos, creates inactive, and retry does not duplicate', async () => {
   const { client, close } = await connect();

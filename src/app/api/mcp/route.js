@@ -15,7 +15,9 @@ export async function POST(req) {
     const origin = req.headers.get("origin");
     if (origin && ![c.origin, "https://chatgpt.com"].includes(origin)) return new Response("Forbidden", { status: 403 });
     const ctx = await authenticateMcp(req);
-    if (!ctx) return authRequired();
+    // Public protocol discovery contains only tool schemas, never catalog data.
+    // Tool handlers signal OAuth linking before any database or upload operation.
+    if (!ctx && req.headers.has("authorization")) return authRequired();
     // Bounded streaming read; Content-Length alone is not trustworthy.
     let size = 0; const chunks = [];
     if (!req.body) return new Response("Missing body", { status: 400 });
