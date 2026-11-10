@@ -60,9 +60,15 @@ export async function resolveAdminContext({ token: explicitToken } = {}) {
   const decoded = verifyToken(token);
   if (!decoded?.userId) return null;
 
+  return resolveAdminContextForUser(decoded.userId);
+}
+
+// Server-only: caller must already authenticate this identity (session JWT or MCP OAuth).
+export async function resolveAdminContextForUser(userId) {
+
   await connectToDB();
 
-  const user = await User.findById(decoded.userId).select(USER_FIELDS).lean();
+  const user = await User.findById(userId).select(USER_FIELDS).lean();
   if (!user) return null;
 
   // ⚠️ عمداً بدون فیلترِ isActive: باید بین «عضویتِ لغو‌شده» و «بدون عضویت»

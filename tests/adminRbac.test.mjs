@@ -3204,7 +3204,8 @@ test("a file that calls can()/canRoute() actually pulls them from the provider",
 
   for (const file of SOURCE_FILES) {
     const source = fs.readFileSync(file, "utf8");
-    const usesGate = /\b(can|canRoute)\(/.test(
+    // Bare UI gates require the provider; ctx.can() is the authenticated server context.
+    const usesGate = /(?<![\w.])(can|canRoute)\(/.test(
       source.replace(/\/\*[\s\S]*?\*\/|\/\/.*$/gm, "")
     );
     if (!usesGate) continue;
