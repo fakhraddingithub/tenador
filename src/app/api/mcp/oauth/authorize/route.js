@@ -12,9 +12,14 @@ export async function GET(req) {
     const ctx = await getAdminContext();
     if (!ctx) return new Response('<html lang="fa" dir="rtl"><meta charset="utf-8"><p>ابتدا در سایت با حساب ادمین وارد شوید، سپس اتصال را از ChatGPT دوباره شروع کنید.</p><a href="/login-register">ورود</a></html>', { status: 401, headers: { ...noStore, "Content-Type": "text/html; charset=utf-8" } });
     if (!ctx.can("ai.productDraft")) return new Response("Forbidden", { status: 403 });
+    // Chromium also checks form-action on the redirect after the POST.
+    // This origin comes only from the exact, validated callback allowlist.
+    const callbackOrigin = new URL(data.redirect_uri).origin;
     const consent = secret();
     await McpGrant.create({ key: digest(consent), kind: "consent", userId: ctx.userId, data, expiresAt: new Date(Date.now() + 300000) });
-    return new Response(`<!doctype html><html lang="fa" dir="rtl"><meta charset="utf-8"><title>اتصال تنادور</title><body><h1>اتصال ChatGPT به محصولات تنادور</h1><p>این اتصال اجازهٔ خواندن قوانین و محصولات، دریافت اطلاعات و عکس از سایت مرجع، ساخت محصول غیرفعال و بازنویسی محصول را در محدودهٔ دسترسی حساب شما دارد.</p><p>حساب: ${escapeHtml(ctx.user.name || ctx.userId)}</p><p>مقصد اتصال: <bdi>${escapeHtml(new URL(data.redirect_uri).origin)}</bdi></p><form method="post"><input type="hidden" name="consent" value="${consent}"><button name="decision" value="allow">اجازهٔ اتصال</button> <button name="decision" value="deny">انصراف</button></form></body></html>`, { headers: { ...noStore, "Content-Type": "text/html; charset=utf-8", "Content-Security-Policy": "default-src 'none'; form-action 'self'; frame-ancestors 'none'; base-uri 'none'", "X-Frame-Options": "DENY", "Referrer-Policy": "no-referrer" } });
+    // no-referrer makes native form POSTs send Origin: null, failing the CSRF gate.
+    // strict-origin preserves Origin without leaking OAuth query parameters.
+    return new Response(`<!doctype html><html lang="fa" dir="rtl"><meta charset="utf-8"><title>اتصال تنادور</title><body><h1>اتصال ChatGPT به محصولات تنادور</h1><p>این اتصال اجازهٔ خواندن قوانین و محصولات، دریافت اطلاعات و عکس از سایت مرجع، ساخت محصول غیرفعال و بازنویسی محصول را در محدودهٔ دسترسی حساب شما دارد.</p><p>حساب: ${escapeHtml(ctx.user.name || ctx.userId)}</p><p>مقصد اتصال: <bdi>${escapeHtml(new URL(data.redirect_uri).origin)}</bdi></p><form method="post"><input type="hidden" name="consent" value="${consent}"><button name="decision" value="allow">اجازهٔ اتصال</button> <button name="decision" value="deny">انصراف</button></form></body></html>`, { headers: { ...noStore, "Content-Type": "text/html; charset=utf-8", "Content-Security-Policy": `default-src 'none'; form-action 'self' ${callbackOrigin}; frame-ancestors 'none'; base-uri 'none'`, "X-Frame-Options": "DENY", "Referrer-Policy": "strict-origin" } });
   } catch { return Response.json({ error: "invalid_request" }, { status: 400, headers: noStore }); }
 }
 export async function POST(req) {

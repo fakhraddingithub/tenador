@@ -74,9 +74,16 @@ test('authorization needs same-origin consent bound to the current admin and con
   const url = `https://shop.example/api/mcp/oauth/authorize?${params}`;
   ctx.user = { name: 'Admin' };
   const page = await GET(new Request(url)); assert.equal(page.status, 200);
+  // Native HTML form POSTs under no-referrer send Origin: null; keep the
+  // browser-compatible policy while continuing to reject opaque origins.
+  assert.equal(page.headers.get('referrer-policy'), 'strict-origin');
+  assert.match(page.headers.get('content-security-policy'), /form-action 'self' https:\/\/chatgpt\.com;/);
   const consent = (await page.text()).match(/name="consent" value="([^"]+)"/)[1];
   const req = origin => new Request(url, { method: 'POST', headers: { origin }, body: new URLSearchParams({ consent, decision: 'allow' }) });
   assert.equal((await POST(req('https://evil.example'))).status, 403);
+  assert.equal((await POST(req('null'))).status, 403);
+  const withoutOrigin = req('https://shop.example'); withoutOrigin.headers.delete('origin');
+  assert.equal((await POST(withoutOrigin)).status, 403);
   ctx.userId = String(new mongoose.Types.ObjectId());
   assert.equal((await POST(req('https://shop.example'))).status, 400); ctx.userId = userId;
   const accepted = await POST(req('https://shop.example')); assert.equal(accepted.status, 303);
