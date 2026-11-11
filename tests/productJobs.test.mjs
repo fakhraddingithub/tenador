@@ -22,10 +22,12 @@ beforeEach(async () => {
   ctx = { userId: String(new mongoose.Types.ObjectId()), isAdmin: true, can: () => true };
   for (const key of ['PRODUCT_AI_MODEL', 'PRODUCT_JOBS_WORKER_SECRET', 'GEMINI_API_KEY', 'OPENAI_API_KEY']) delete process.env[key];
 });
+let lastJob;
 async function prepare(args, job) {
-  calls++;
+  calls++; lastJob = job;
   const raw = args.rawContent || 'Extracted original source text from website for source-only jobs.';
-  await Grant.create({ key: digest(job.key), kind: 'preparation', userId: ctx.userId, data: { jobId: job.jobId }, expiresAt: new Date(Date.now() + 3600000) });
+  await Grant.updateOne({ key: digest(job.key), kind: 'preparation', userId: ctx.userId },
+    { $set: { 'data.jobId': job.jobId, expiresAt: new Date(Date.now() + 3600000) } }, { upsert: true });
   return { preparationId: job.key, workflow: 'Native Codex subagents only', rawContent: raw + (args.clarification || ''), prompt: 'FULL ADMIN PROMPT' };
 }
 test('start requires no provider keys, preserves source, repeats same identity and never queues work', async () => {
@@ -39,16 +41,18 @@ test('start requires no provider keys, preserves source, repeats same identity a
   assert.deepEqual(await service.runProductJobStage(), { disabled: true, executionMode: 'codex_agents' });
   await assert.rejects(service.startProductJob(ctx, { ...args, rawContent: rawContent + ' changed' }, prepare), /requestKey/);
 });
-test('resume invalidates previous preparation and preserves source/identity; completed jobs cannot restart', async () => {
+test('resume keeps the preparation key and imported images, preserves source/identity; completed jobs cannot restart', async () => {
   const args = input();
   const initial = await service.startProductJob(ctx, args, prepare);
+  const image = { sourceUrl: 'https://vendor.example/a.jpg', url: 'https://ik.imagekit.io/t/a.jpg', fileId: 'f1' };
+  await Job.updateOne({ _id: initial.jobId }, { $push: { 'data.images': image } });
   const stored = await Job.findById(initial.jobId).lean();
   const resumed = await service.resumeProductJob(ctx, initial.jobId, 'Confirmed exact year 2026', prepare);
   assert.equal(resumed.jobId, initial.jobId);
   assert.match(resumed.preparation.rawContent, /Exact model 98/);
   assert.match(resumed.preparation.rawContent, /Confirmed exact year/);
-  const old = await Grant.findOne({ key: digest(initial.preparation.preparationId) });
-  assert.ok(old.expiresAt <= new Date());
+  assert.equal(lastJob.key, initial.preparation.preparationId);
+  assert.deepEqual(lastJob.images, [image]);
   assert.equal((await Job.findById(initial.jobId)).data.reservedProductId, stored.data.reservedProductId);
   await Job.updateOne({ _id: initial.jobId }, { $set: { status: 'completed', result: { saved: true, productId: stored.data.reservedProductId } } });
   const done = await service.resumeProductJob(ctx, initial.jobId, 'please retry again', prepare);
@@ -95,7 +99,7 @@ test('retired HTTP worker returns 410 and service has no model provider imports'
   assert.doesNotMatch(source, /generateJson|@\/lib\/ai|fetch\(/);
 });
 
-test('expired preparation renews the same job without adding facts and invalidates the old token', async () => {
+test('expired preparation renews the same job and token without adding facts', async () => {
   const job = await service.startProductJob(ctx, input(), prepare);
   await Grant.updateOne({ key: digest(job.preparation.preparationId) }, { $set: { expiresAt: new Date(0) } });
   const state = await service.getProductJob(ctx, job.jobId);
@@ -104,7 +108,7 @@ test('expired preparation renews the same job without adding facts and invalidat
   const renewed = await service.resumeProductJob(ctx, job.jobId, undefined, prepare);
   assert.equal(renewed.jobId, job.jobId);
   assert.equal(renewed.preparation.rawContent, rawContent);
-  assert.notEqual(renewed.preparation.preparationId, job.preparation.preparationId);
+  assert.equal(renewed.preparation.preparationId, job.preparation.preparationId);
   assert.equal((await service.getProductJob(ctx, job.jobId)).preparationExpired, false);
 });
 test('legacy queued job is fenced before external preparation starts', async () => {

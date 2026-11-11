@@ -148,7 +148,7 @@ const call = async (client, name, args) => {
 test('MCP tools enforce permissions through actual protocol calls', async () => {
   const { client, close } = await connect({ ...ctx, can: () => false });
   try {
-    assert.equal((await client.listTools()).tools.length, 12);
+    assert.equal((await client.listTools()).tools.length, 13);
     assert.equal((await call(client, 'search_products', { query: 'test' })).isError, true);
   } finally { await close(); }
 });
@@ -162,7 +162,7 @@ test('HTTP endpoint negotiates MCP, lists tools and rejects missing credentials'
   const init = await POST(request({ jsonrpc: '2.0', id: 1, method: 'initialize', params: { protocolVersion: '2025-03-26', capabilities: {}, clientInfo: { name: 'test', version: '1' } } }));
   assert.equal(init.status, 200); assert.equal((await init.json()).result.serverInfo.name, 'tenador-products');
   const list = await POST(request({ jsonrpc: '2.0', id: 2, method: 'tools/list' }));
-  assert.equal(list.status, 200); assert.equal((await list.json()).result.tools.length, 12);
+  assert.equal(list.status, 200); assert.equal((await list.json()).result.tools.length, 13);
   const denied = await POST(request({ jsonrpc: '2.0', id: 3, method: 'tools/list' }, 'invalid'));
   assert.equal(denied.status, 401); assert.match(denied.headers.get('www-authenticate'), /oauth-protected-resource/);
 });
@@ -176,7 +176,7 @@ test('anonymous clients discover tools but every tool requests OAuth without rea
   const listed = await POST(request({ jsonrpc: '2.0', id: 2, method: 'tools/list' }));
   assert.equal(listed.status, 200);
   const tools = (await listed.json()).result.tools;
-  assert.equal(tools.length, 12);
+  assert.equal(tools.length, 13);
   for (const tool of tools) assert.deepEqual(tool._meta.securitySchemes, [{ type: 'oauth2', scopes: ['products'] }]);
   const key = secret(), objectId = String(new mongoose.Types.ObjectId());
   const cases = {
@@ -187,6 +187,7 @@ test('anonymous clients discover tools but every tool requests OAuth without rea
     import_product_images: { preparationId: key, urls: ['https://vendor.example/photo.jpg'] },
     create_product: { preparationId: key, json: '{}' },
     review_product_draft: { preparationId: key, json: '{}', ...reviewArgs() },
+    validate_product_draft: { preparationId: key, json: '{}' },
     preview_product_regeneration: { preparationId: key, json: '{}' },
     apply_product_regeneration: { preparationId: key, json: '{}', expectedUpdatedAt: new Date().toISOString() },
     replace_product_images: { preparationId: key, mainImage: 'https://vendor.example/photo.jpg', gallery: [], expectedUpdatedAt: new Date().toISOString() },
@@ -290,5 +291,60 @@ test('Codex job commits the reviewed product atomically and recovers retries wit
     assert.equal((await call(client, 'get_product_job', { jobId: regenJob.jobId })).status, 'completed');
     const actual = await mongoose.model('Product').findById(saved.product._id);
     assert.equal(actual.basePrice, 100); assert.equal(actual.mainImage, draft.mainImage);
+  } finally { await close(); }
+});
+
+test('validation runs before review; unrelated catalog edits keep a preparation; resume keeps key, images and an unchanged review', async () => {
+  const { client, close } = await connect();
+  try {
+    const input = { requestKey: 'codex-resume-keeps-state', categoryId: String(category._id), rawContent: 'Exact Wilson racket reference with graphite frame for a resumable preparation test.' };
+    const job = await call(client, 'start_product_job', input);
+    const key = job.preparation.preparationId;
+    const draft = { name: 'Resumable racket', shortDescription: 'Short text', longDescription: 'Long description', brand: String(brand._id), basePrice: 100, mainImage: 'https://ik.imagekit.io/test/resume.jpg', attributes: {}, technicalStats: {} };
+    const args = { preparationId: key, json: JSON.stringify(draft) };
+    const grant = () => Grant.findOne({ key: digest(key) }).lean();
+
+    // The save's own checks run before review, and review refuses JSON that fails them.
+    const notImported = await call(client, 'validate_product_draft', args);
+    assert.equal(notImported.valid, false); assert.ok(notImported.fieldErrors.mainImage);
+    const refused = await call(client, 'review_product_draft', { ...args, ...reviewArgs() });
+    assert.equal(refused.approved, false); assert.equal(refused.valid, false);
+    assert.equal((await grant()).data.reviewHash, undefined);
+    globalThis.__mcpDownload = async () => ({ buffer: Buffer.from([255,216,255,0]), mime: 'image/jpeg' });
+    globalThis.__mcpUpload = async () => ({ url: draft.mainImage, fileId: 'resume-id' });
+    await call(client, 'import_product_images', { preparationId: key, urls: ['https://vendor.example/resume.jpg'] });
+    delete globalThis.__mcpDownload; delete globalThis.__mcpUpload;
+    const negative = await call(client, 'validate_product_draft', { ...args, json: JSON.stringify({ ...draft, basePrice: -5 }) });
+    assert.equal(negative.valid, false, JSON.stringify(negative)); assert.ok(negative.fieldErrors?.basePrice, JSON.stringify(negative));
+    const html = await call(client, 'validate_product_draft', { ...args, json: JSON.stringify({ ...draft, longDescription: '<p onclick="x()">Long</p>' }) });
+    assert.equal(html.valid, false); assert.doesNotMatch(html.normalizedJson, /onclick/);
+    assert.equal((await call(client, 'validate_product_draft', args)).valid, true);
+    assert.equal((await call(client, 'review_product_draft', { ...args, ...reviewArgs() })).approved, true);
+
+    // A brand added elsewhere changes the full prompt but not the rules: still valid, still reviewed.
+    await mongoose.model('Brand').create({ name: 'Head', title: 'هد' });
+    assert.equal((await call(client, 'validate_product_draft', args)).valid, true);
+
+    // Using the preparation slides its expiry.
+    await Grant.updateOne({ key: digest(key) }, { $set: { expiresAt: new Date(Date.now() + 5000) } });
+    await call(client, 'validate_product_draft', args);
+    assert.ok((await grant()).expiresAt > new Date(Date.now() + 3000000));
+
+    // Resume without changes: same key, same images, review kept.
+    assert.equal((await call(client, 'resume_product_job', { jobId: job.jobId })).preparation.preparationId, key);
+    assert.equal((await grant()).data.images.length, 1); assert.equal((await grant()).data.reviewHash, digest(args.json));
+
+    // A clarification changes the source: same key and images, review dropped.
+    assert.equal((await call(client, 'resume_product_job', { jobId: job.jobId, clarification: 'Confirmed by admin: 2026 edition.' })).preparation.preparationId, key);
+    assert.equal((await grant()).data.images.length, 1); assert.equal((await grant()).data.reviewHash, undefined);
+    assert.equal((await call(client, 'create_product', args)).isError, true);
+
+    // The preparation record is gone (TTL): the renewed one re-adopts the job's images.
+    await Grant.deleteOne({ key: digest(key) });
+    await call(client, 'resume_product_job', { jobId: job.jobId });
+    assert.equal((await grant()).data.images[0].url, draft.mainImage);
+    assert.equal((await call(client, 'review_product_draft', { ...args, ...reviewArgs() })).approved, true);
+    const saved = await call(client, 'create_product', args);
+    assert.equal(saved.saved, true, JSON.stringify(saved)); assert.equal(saved.product.mainImage, draft.mainImage);
   } finally { await close(); }
 });

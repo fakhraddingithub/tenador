@@ -38,9 +38,13 @@ After the brief is stable, run these in parallel within available host slots:
 
 The coordinator imports selected images with `import_product_images` and uses only successful returned URLs. Merge catalog fields and the complete writer output into one candidate JSON. Do not summarize the descriptions while merging. In regeneration, include existing preserved fields in the review packet so the reviewer can assess the effective final product.
 
+### Validate before review
+
+Call `validate_product_draft` with the preparation ID and the exact candidate JSON. It runs the same checks as the save (field rules, catalog references, image provenance, HTML allowlist) and writes nothing. Route each `fieldErrors` entry to the responsible agent, or adopt `normalizedJson`, and validate again until it returns `valid: true`. Only a valid candidate goes to the reviewer; `review_product_draft` refuses to record an approval for JSON that fails validation.
+
 ### Independent reviewer
 
-Spawn a fresh reviewer after the candidate is complete. Give it the exact candidate JSON, original product, shared brief, raw reference, full admin prompt, and image provenance/results. The reviewer must be distinct from the analyst and writer. Request a decision covering:
+Spawn a fresh reviewer after the candidate is complete and valid. Give it the exact candidate JSON, original product, shared brief, raw reference, full admin prompt, and image provenance/results. The reviewer must be distinct from the analyst and writer. Request a decision covering:
 
 - `facts`: every factual claim is supported and unknown values were not invented.
 - `identity`: all sections and images refer to the same model, generation, color, and variant.
@@ -63,4 +67,4 @@ Keep image replacement separate and only use it when explicitly requested. It ch
 
 If a save response is lost or ambiguous, inspect the existing preparation/job and search the product before starting another request. Report success only after the tool confirms `saved: true` or a completed job contains a saved result. State the final product ID/link, whether it is inactive, and any unresolved limitations. Chat closure pauses this model work; it does not continue autonomously on Tenador.
 
-For expired preparation or changed panel rules on a job, call resume_product_job with the same jobId and omit clarification to renew without adding facts. This returns a new preparation token and requires a fresh review. If review_product_draft returns normalizedJson, have the reviewer inspect that HTML-normalized JSON and submit a new report before saving.
+A preparation stays valid while you keep using it (each call extends it by an hour). For an expired preparation or changed panel rules on a job, call resume_product_job with the same jobId and omit clarification to renew without adding facts. The preparation ID and imported images stay the same; the recorded review survives only if the rules, source and original product are unchanged, otherwise a fresh review is required. Edits to unrelated catalog data (brands, athletes, series) do not invalidate a preparation. If review_product_draft returns normalizedJson, have the reviewer inspect that HTML-normalized JSON and submit a new report before saving.

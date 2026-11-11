@@ -58,9 +58,10 @@ async function prepareJob(ctx, job, prepare, clarification, refresh = false) {
     if (clarification && input.rawContent) input.rawContent += "\nاطلاعات تکمیلی ادمین:\n" + clarification;
     else if (clarification) input.clarification = clarification;
     if (input.rawContent?.length > 60000) throw fail("متن از سقف ۶۰۰۰۰ نویسه بیشتر است.");
-    const key = clarification || refresh ? secret() : job.data?.preparationId || secret();
-    const preparation = await prepare(input, { key, jobId: String(job._id), reservedProductId: job.data?.reservedProductId });
-    if ((clarification || refresh) && job.data?.preparationId) await McpGrant.updateOne({ key: digest(job.data.preparationId), userId: ctx.userId }, { $set: { expiresAt: new Date(0) } });
+    // One key for the job's whole life: renewing it keeps imported images, and the prepare step
+    // drops the review itself when the rules, source or original product changed.
+    const key = job.data?.preparationId || secret();
+    const preparation = await prepare(input, { key, jobId: String(job._id), reservedProductId: job.data?.reservedProductId, images: job.data?.images || [] });
     const updated = await ProductJob.findOneAndUpdate({ _id: job._id, "data.preparingLock": lock },
       { $set: { status: "awaiting_chat", stage: "analyse", input: { ...input, rawContent: preparation.rawContent, clarification: undefined },
         "data.preparationId": key, "data.preparation": preparation, "data.rawContent": preparation.rawContent,

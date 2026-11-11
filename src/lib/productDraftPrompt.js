@@ -66,16 +66,17 @@ export async function buildProductDraftPrompt({ categoryId, rawContent }) {
   if (!brands.length) return { error: "Brands not configured", status: 500 };
 
   const prompt = buildProductTemplate({ category, brands, athletes, limitedEditions, rawContent, promptConfig });
+  const model = composeProductPrompt({ category, promptConfig });
 
   return {
     prompt,
     // Same rules and precedence as the copied prompt, without unrelated catalog
     // lists. The writer receives resolved product facts and the full source separately.
-    writingPrompt: renderProductPrompt((() => {
-      const model = composeProductPrompt({ category, promptConfig });
-      return { ...model, sections: model.sections.filter(s => s.kind !== "data"),
-        fields: model.fields.filter(f => ["name", "shortDescription", "longDescription", "tag"].includes(f.key)) };
-    })()),
+    writingPrompt: renderProductPrompt({ ...model, sections: model.sections.filter(s => s.kind !== "data"),
+      fields: model.fields.filter(f => ["name", "shortDescription", "longDescription", "tag"].includes(f.key)) }),
+    // Admin rules + this category only: no catalog lists, no source text. Callers use it to
+    // tell "the rules changed" apart from "someone added a brand somewhere".
+    rulesPrompt: renderProductPrompt(model),
     category,
     meta: {
       category: category.title,

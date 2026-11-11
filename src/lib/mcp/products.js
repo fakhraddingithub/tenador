@@ -24,6 +24,10 @@ const id = z.string().regex(/^[a-f\d]{24}$/i);
 const preparationId = z.string().regex(/^[A-Za-z0-9_-]{43}$/);
 const json = z.string().min(2).max(500000);
 const output = value => ({ content: [{ type: "text", text: JSON.stringify(value) }] });
+// Only the admin rules and the category decide whether a preparation is stale. The full prompt
+// also lists every brand, serie, athlete and edition, so hashing it let any unrelated catalog edit
+// invalidate every open preparation; references are validated again at save anyway.
+const rulesHash = built => digest(built.rulesPrompt);
 const safeProduct = p => Object.fromEntries([...Object.keys(REGENERATED_FIELDS), "_id", "slug", "category", "sport", "mainImage", "gallery", "variantMeta", "updatedAt", "isActive"].map(k => [k, p[k]]));
 
 export function productServer(ctx) {
@@ -54,8 +58,10 @@ export function productServer(ctx) {
     } finally { if (write) await flushAuditScope(scope); }
   });
   const publicError = message => { const e = new Error(message); e.mcpPublic = true; throw e; };
+  // Sliding expiry: a long analyse → write → review loop stays alive while it keeps using the preparation.
   const prep = async key => {
-    const record = await McpGrant.findOne({ key: digest(key), kind: "preparation", userId: ctx.userId, expiresAt: { $gt: new Date() } }).lean();
+    const record = await McpGrant.findOneAndUpdate({ key: digest(key), kind: "preparation", userId: ctx.userId, expiresAt: { $gt: new Date() } },
+      { $set: { expiresAt: new Date(Date.now() + 3600000) } }, { returnDocument: "after" }).lean();
     if (!record) publicError("آماده‌سازی منقضی شده؛ اگر jobId دارید همان کار را با resume_product_job و بدون clarification تمدید کنید؛ کار تازه نسازید. فقط برای آماده‌سازی بدون جاب از prepare_product استفاده کنید.");
     return record;
   };
@@ -97,11 +103,20 @@ export function productServer(ctx) {
     if (rawContent.length > 60000) publicError("متن از سقف ۶۰۰۰۰ نویسه بیشتر است.");
     const built = checkedPublic(await buildProductDraftPrompt({ categoryId, rawContent }));
     const key = job.key || secret();
-    await McpGrant.findOneAndUpdate({ key: digest(key), kind: "preparation", userId: ctx.userId }, {
-      $setOnInsert: { data: { categoryId, productId: args.productId || null, rawContent, promptHash: digest(built.prompt), images: [],
-        requiresReview: true, jobId: job.jobId, reservedProductId: job.reservedProductId, preparationKey: key,
-        originalVersion: original?.updatedAt, variantsHash: original ? digest(JSON.stringify(original.variants)) : null } },
-      $set: { expiresAt: new Date(Date.now() + 3600000) } }, { upsert: true });
+    // A job keeps one preparation key for its whole life. Re-preparing it keeps the imported
+    // images; the review survives only when nothing it judged (rules, source, original) changed.
+    const fields = { categoryId, productId: args.productId || null, rawContent, promptHash: rulesHash(built),
+      jobId: job.jobId, reservedProductId: job.reservedProductId, preparationKey: key,
+      originalVersion: original?.updatedAt, variantsHash: original ? digest(JSON.stringify(original.variants)) : null };
+    const stateHash = digest(JSON.stringify(fields)), expiresAt = new Date(Date.now() + 3600000);
+    const old = await McpGrant.findOne({ key: digest(key), kind: "preparation", userId: ctx.userId }).lean();
+    if (!old) {
+      const images = [...new Map((job.images || []).map(i => [i.sourceUrl || i.url, i])).values()];
+      await McpGrant.create({ key: digest(key), kind: "preparation", userId: ctx.userId, expiresAt, data: { ...fields, stateHash, images, requiresReview: true } });
+    } else if (old.data.stateHash === stateHash) await McpGrant.updateOne({ _id: old._id }, { $set: { expiresAt } });
+    else await McpGrant.updateOne({ _id: old._id }, {
+      $set: { expiresAt, "data.stateHash": stateHash, ...Object.fromEntries(Object.entries(fields).map(([k, v]) => [`data.${k}`, v])) },
+      $unset: { "data.reviewHash": 1, "data.review": 1, "data.reviewAgents": 1, "data.previewHash": 1, "data.previewVersion": 1 } });
     return { preparationId: key, executionMode: "codex_agents", workflow: CHAT_WORKFLOW,
       prompt: built.prompt, writingPrompt: built.writingPrompt, rawContent, meta: built.meta, original,
       imageCandidates: [...new Set([...(args.imageUrls || []), ...(source?.images || [])])], sourceWarning: source?.warning,
@@ -126,6 +141,8 @@ export function productServer(ctx) {
         if (!result.url || !result.fileId) throw new Error("upload");
         const image = { sourceUrl: url, url: result.url, fileId: result.fileId };
         await McpGrant.updateOne({ _id: record._id }, { $push: { "data.images": image } });
+        // The job outlives its preparation record (TTL); a renewed preparation re-adopts these.
+        if (record.data.jobId) await ProductJob.updateOne({ _id: record.data.jobId, userId: ctx.userId }, { $push: { "data.images": image } });
         results.push(image);
       } catch { results.push({ sourceUrl: url, error: "دریافت یا بارگذاری این تصویر ناموفق بود" }); }
     }
@@ -134,7 +151,7 @@ export function productServer(ctx) {
   const contextDraft = async args => {
     const record = await prep(args.preparationId);
     const built = checkedPublic(await buildProductDraftPrompt({ categoryId: record.data.categoryId, rawContent: record.data.rawContent }));
-    if (digest(built.prompt) !== record.data.promptHash) publicError("قواعد پنل تغییر کرده؛ برای کار دارای jobId از resume_product_job بدون clarification استفاده کنید، سپس دوباره بازبینی کنید. برای آماده‌سازی بدون جاب دوباره prepare_product را اجرا کنید.");
+    if (rulesHash(built) !== record.data.promptHash) publicError("قواعد پنل تغییر کرده؛ برای کار دارای jobId از resume_product_job بدون clarification استفاده کنید، سپس دوباره بازبینی کنید. برای آماده‌سازی بدون جاب دوباره prepare_product را اجرا کنید.");
     const draft = { ...parsePublic(args.json), category: record.data.categoryId, sport: built.meta.sport.id };
     if (record.data.productId && Object.hasOwn(draft, "basePrice")) {
       const target = checkedPublic(await loadRegenerationTarget(record.data.productId));
@@ -153,6 +170,47 @@ export function productServer(ctx) {
       publicError("محصول یا واریانت‌ها از زمان آماده‌سازی تغییر کرده‌اند؛ دوباره آماده‌سازی و بازبینی کنید.");
     return target;
   };
+  const invalid = (message, fieldErrors) => ({ error: { message, extra: { fieldErrors } } });
+  // The exact checks create/apply run, shared so a reviewer is never asked to approve JSON that
+  // the save would then reject. Returns { error } or { plan, preview, target }; mutates `draft`
+  // into the shape that is saved (no variantMeta, inactive).
+  const validateDraft = async (record, draft, category) => {
+    if (record.data.productId) {
+      const target = await assertOriginal(record);
+      const result = await previewRegeneration({ ...target, draft });
+      return result.error ? result : { ...result, target };
+    }
+    const allowed = new Set(record.data.images.map(i => i.url));
+    const urls = [draft.mainImage, ...(Array.isArray(draft.gallery) ? draft.gallery : [])];
+    for (const detail of Object.values(draft.variantDetails || {})) urls.push(...(detail.images || []));
+    if (!draft.mainImage || urls.some(u => !allowed.has(u))) return invalid("تصویر اصلی و گالری باید از خروجی بارگذاری تصاویر همین آماده‌سازی باشند.", { mainImage: "فقط URLهای خروجی import_product_images" });
+    // AI cannot introduce image URLs through nested variant metadata.
+    draft.variantMeta = {};
+    draft.isActive = false;
+    let combinationCount = 1;
+    for (const values of Object.values(draft.variantOptions || {})) {
+      if (!Array.isArray(values) || values.length > 100) return invalid("مقادیر واریانت نامعتبر یا بیش از حد مجاز است.", { variantOptions: "نامعتبر" });
+      combinationCount *= Math.max(1, values.length);
+      if (combinationCount > 500) return invalid("ساخت بیش از ۵۰۰ ترکیب واریانت در یک محصول مجاز نیست.", { variantOptions: "بیش از ۵۰۰ ترکیب" });
+    }
+    // Validate catalog references and content with the existing regeneration planner, too.
+    return previewRegeneration({ product: { _id: record._id, category: category._id, sport: category.sport._id, attributes: {}, technicalStats: {}, athlete: [], tag: [], customTabItems: [] }, category, draft });
+  };
+  const failure = result => ({ error: result.error.message, fieldErrors: result.error.extra?.fieldErrors, missing: result.error.extra?.missing });
+  const normalizedJsonOf = value => {
+    const parsed = parsePublic(value), normalized = normalizeDraftHtml(parsed);
+    return JSON.stringify(parsed) === JSON.stringify(normalized) ? null : JSON.stringify(normalized);
+  };
+  register("validate_product_draft", "پیش از فرستادن JSON به بازبین مستقل، همان اعتبارسنجی ذخیره (فیلدها، ارجاع‌ها، تصاویر، پاک‌سازی HTML) را بدون ثبت چیزی اجرا می‌کند. فقط JSON با valid:true را به بازبین بدهید.", { preparationId, json }, ["products.view", "ai.productDraft"], false, async args => {
+    const { record, draft, category } = await contextDraft(args);
+    const normalizedJson = normalizedJsonOf(args.json);
+    const checked = await validateDraft(record, draft, category);
+    if (checked.error) return { valid: false, ...failure(checked), ...(normalizedJson && { normalizedJson }),
+      nextAction: "Route each fieldErrors entry to the responsible agent, merge the fix, and validate again before review." };
+    if (normalizedJson) return { valid: false, normalizedJson, nextAction: "HTML is outside the allowed tags/styles. Use normalizedJson (or fix the HTML) and validate again." };
+    return { valid: true, missing: checked.preview.missing, ...(record.data.productId && { changes: checked.preview.changes }),
+      nextAction: "Give this exact JSON to the independent reviewer, then call review_product_draft with it." };
+  });
   const committed = (record, value) => async (session, product) => {
     const grant = await McpGrant.updateOne({ _id: record._id, "data.reviewHash": digest(value), expiresAt: { $gt: new Date() } },
       { $set: { "data.createdProductId": String(product._id) } }, { session });
@@ -167,14 +225,19 @@ export function productServer(ctx) {
   register("review_product_draft", "گزارش واقعی بازبین مستقل Codex را برای JSON نهایی ثبت می‌کند؛ این ابزار مدل اجرا نمی‌کند. شناسه واقعی سه ایجنت متفاوت را بدهید. تأیید فقط برای همین JSON معتبر است؛ پس از اصلاح دوباره بازبینی کنید.", {
     preparationId, json, analystId: z.string().trim().min(1).max(200), writerId: z.string().trim().min(1).max(200), reviewerId: z.string().trim().min(1).max(200), review: reviewSchema,
   }, ["products.view", "ai.productDraft"], true, async args => {
-    const { record } = await contextDraft(args);
+    const { record, draft, category } = await contextDraft(args);
     if (!ctx.can(record.data.productId ? "products.edit" : "products.create")) publicError("اجازهٔ تغییر این محصول را ندارید.");
     if (new Set([args.analystId, args.writerId, args.reviewerId].map(s => s.trim())).size !== 3) publicError("تحلیلگر، نویسنده و بازبین باید ایجنت‌های مستقل باشند.");
-    await assertOriginal(record);
-    const parsed = parsePublic(args.json), normalized = normalizeDraftHtml(parsed);
-    if (JSON.stringify(parsed) !== JSON.stringify(normalized)) {
+    // Never record an approval for JSON the save would reject.
+    const checked = await validateDraft(record, draft, category);
+    if (checked.error) {
       await McpGrant.updateOne({ _id: record._id }, { $unset: { "data.reviewHash": 1 } });
-      return { approved: false, normalizedJson: JSON.stringify(normalized), nextAction: "HTML was normalized to the allowed tags/styles. Have the independent reviewer inspect normalizedJson and submit a fresh review of that exact JSON before saving." };
+      return { approved: false, valid: false, ...failure(checked), nextAction: "This JSON fails save validation. Fix it, run validate_product_draft until valid, then get a fresh independent review." };
+    }
+    const normalizedJson = normalizedJsonOf(args.json);
+    if (normalizedJson) {
+      await McpGrant.updateOne({ _id: record._id }, { $unset: { "data.reviewHash": 1 } });
+      return { approved: false, normalizedJson, nextAction: "HTML was normalized to the allowed tags/styles. Have the independent reviewer inspect normalizedJson and submit a fresh review of that exact JSON before saving." };
     }
     const approved = approvedReview(args.review);
     await McpGrant.updateOne({ _id: record._id }, { $set: { "data.review": args.review,
@@ -188,21 +251,7 @@ export function productServer(ctx) {
     if (record.data.productId) publicError("برای بازسازی از ابزار بازتولید استفاده کنید.");
     if (record.data.createdProductId) return { productId: record.data.createdProductId, alreadyCreated: true };
     assertReviewed(record, args.json);
-    const allowed = new Set(record.data.images.map(i => i.url));
-    const urls = [draft.mainImage, ...(Array.isArray(draft.gallery) ? draft.gallery : [])];
-    for (const detail of Object.values(draft.variantDetails || {})) urls.push(...(detail.images || []));
-    if (!draft.mainImage || urls.some(u => !allowed.has(u))) publicError("تصویر اصلی و گالری باید از خروجی بارگذاری تصاویر همین آماده‌سازی باشند.");
-    // AI cannot introduce image URLs through nested variant metadata.
-    draft.variantMeta = {};
-    draft.isActive = false;
-    let combinationCount = 1;
-    for (const values of Object.values(draft.variantOptions || {})) {
-      if (!Array.isArray(values) || values.length > 100) publicError("مقادیر واریانت نامعتبر یا بیش از حد مجاز است.");
-      combinationCount *= Math.max(1, values.length);
-      if (combinationCount > 500) publicError("ساخت بیش از ۵۰۰ ترکیب واریانت در یک محصول مجاز نیست.");
-    }
-    // Validate catalog references and content with the existing regeneration planner, too.
-    checkedPublic(await previewRegeneration({ product: { _id: record._id, category: category._id, sport: category.sport._id, attributes: {}, technicalStats: {}, athlete: [], tag: [], customTabItems: [] }, category, draft }));
+    checkedPublic(await validateDraft(record, draft, category));
     const lock = await McpGrant.findOneAndUpdate({ _id: record._id, "data.creating": { $ne: true }, "data.createdProductId": { $exists: false } }, { $set: { "data.creating": true } });
     if (!lock) publicError("ساخت این محصول قبلاً شروع شده؛ دوباره اجرا نکنید و فهرست محصولات را بررسی کنید.");
     const response = await createProduct(draft, { reservedProductId: record.data.reservedProductId, onCommitted: committed(record, args.json) });
@@ -215,11 +264,10 @@ export function productServer(ctx) {
     return { product: safeProduct(result.product), saved: true, message: "محصول غیرفعال ساخته شد؛ در پنل ادمین قابل بررسی است." };
   });
   const regeneration = async args => {
-    const { record, draft } = await contextDraft(args);
+    const { record, draft, category } = await contextDraft(args);
     if (!record.data.productId) publicError("prepare_product را با productId اجرا کنید.");
-    const target = await assertOriginal(record);
-    const result = checkedPublic(await previewRegeneration({ ...target, draft }));
-    return { ...result, record, productId: record.data.productId };
+    const { target, ...result } = checkedPublic(await validateDraft(record, draft, category));
+    return { ...target, ...result, record, productId: record.data.productId };
   };
   register("preview_product_regeneration", "تغییرات JSON روی محصول موجود را نشان می‌دهد؛ تصاویر و واریانت‌ها حفظ می‌شوند. updatedAt را برای اعمال نگه دارید.", { preparationId, json }, "products.edit", false, async args => {
     const result = await regeneration(args);
