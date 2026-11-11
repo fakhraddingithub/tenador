@@ -141,6 +141,8 @@ async function connect(context = ctx) {
   const client = new Client({ name: 'test', version: '1' }); await server.connect(b); await client.connect(a);
   return { client, close: async () => { await client.close(); await server.close(); } };
 }
+// start_product_job is the only way to prepare; a fresh requestKey per call keeps tests independent.
+const prepare = async (client, args) => (await call(client, 'start_product_job', { requestKey: secret().slice(0, 24), ...args })).preparation;
 const call = async (client, name, args) => {
   const result = await client.callTool({ name, arguments: args });
   return { ...JSON.parse(result.content[0].text), isError: result.isError };
@@ -148,7 +150,7 @@ const call = async (client, name, args) => {
 test('MCP tools enforce permissions through actual protocol calls', async () => {
   const { client, close } = await connect({ ...ctx, can: () => false });
   try {
-    assert.equal((await client.listTools()).tools.length, 13);
+    assert.equal((await client.listTools()).tools.length, 12);
     assert.equal((await call(client, 'search_products', { query: 'test' })).isError, true);
   } finally { await close(); }
 });
@@ -162,7 +164,7 @@ test('HTTP endpoint negotiates MCP, lists tools and rejects missing credentials'
   const init = await POST(request({ jsonrpc: '2.0', id: 1, method: 'initialize', params: { protocolVersion: '2025-03-26', capabilities: {}, clientInfo: { name: 'test', version: '1' } } }));
   assert.equal(init.status, 200); assert.equal((await init.json()).result.serverInfo.name, 'tenador-products');
   const list = await POST(request({ jsonrpc: '2.0', id: 2, method: 'tools/list' }));
-  assert.equal(list.status, 200); assert.equal((await list.json()).result.tools.length, 13);
+  assert.equal(list.status, 200); assert.equal((await list.json()).result.tools.length, 12);
   const denied = await POST(request({ jsonrpc: '2.0', id: 3, method: 'tools/list' }, 'invalid'));
   assert.equal(denied.status, 401); assert.match(denied.headers.get('www-authenticate'), /oauth-protected-resource/);
 });
@@ -176,14 +178,13 @@ test('anonymous clients discover tools but every tool requests OAuth without rea
   const listed = await POST(request({ jsonrpc: '2.0', id: 2, method: 'tools/list' }));
   assert.equal(listed.status, 200);
   const tools = (await listed.json()).result.tools;
-  assert.equal(tools.length, 13);
+  assert.equal(tools.length, 12);
   for (const tool of tools) assert.deepEqual(tool._meta.securitySchemes, [{ type: 'oauth2', scopes: ['products'] }]);
   const key = secret(), objectId = String(new mongoose.Types.ObjectId());
   const cases = {
     start_product_job: { requestKey: 'oauth-test-request', categoryId: objectId, rawContent: 'x'.repeat(60) },
     get_product_job: { jobId: objectId }, resume_product_job: { jobId: objectId, clarification: 'x'.repeat(60) },
     list_product_categories: {}, search_products: { query: 'Wilson' },
-    prepare_product: { categoryId: objectId, rawContent: 'x'.repeat(60) },
     import_product_images: { preparationId: key, urls: ['https://vendor.example/photo.jpg'] },
     create_product: { preparationId: key, json: '{}' },
     review_product_draft: { preparationId: key, json: '{}', ...reviewArgs() },
@@ -206,8 +207,11 @@ test('anonymous clients discover tools but every tool requests OAuth without rea
 test('prepare uses admin rules; create requires imported photos, creates inactive, and retry does not duplicate', async () => {
   const { client, close } = await connect();
   try {
-    const prepared = await call(client, 'prepare_product', { categoryId: String(category._id), rawContent: 'Wilson graphite tennis racket, specifications and full product reference text.' });
+    const source = 'Wilson graphite tennis racket, specifications and full product reference text.';
+    const prepared = await prepare(client, { categoryId: String(category._id), rawContent: source });
     assert.match(prepared.prompt, /ADMIN-MCP-RULE/);
+    // The source comes back once, in rawContent; the prompt points at it.
+    assert.equal(prepared.rawContent, source); assert.ok(!prepared.prompt.includes(source)); assert.match(prepared.prompt, /identical to the rawContent field/);
     const draft = { name: 'MCP Racket', shortDescription: 'short', longDescription: 'long description', brand: String(brand._id), basePrice: 100, mainImage: 'https://ik.imagekit.io/test/photo.jpg', attributes: {}, technicalStats: {}, isActive: true };
     const args = { preparationId: prepared.preparationId, json: JSON.stringify(draft) };
     assert.equal((await call(client, 'create_product', args)).isError, true);
@@ -233,7 +237,7 @@ test('prepare uses admin rules; create requires imported photos, creates inactiv
     assert.equal(created.product.isActive, false);
     assert.equal((await call(client, 'create_product', args)).alreadyCreated, true);
     assert.equal(await mongoose.model('Product').countDocuments({ name: draft.name }), 1);
-    const p = await call(client, 'prepare_product', { productId: created.product._id, rawContent: 'Wilson graphite tennis racket, updated specifications and reference text.' });
+    const p = await prepare(client, { productId: created.product._id, rawContent: 'Wilson graphite tennis racket, updated specifications and reference text.' });
     const regen = { preparationId: p.preparationId, json: JSON.stringify({ shortDescription: 'new text' }) };
     assert.equal((await call(client, 'apply_product_regeneration', { ...regen, expectedUpdatedAt: p.original.updatedAt })).isError, true);
     const preview = await call(client, 'preview_product_regeneration', regen);
@@ -346,5 +350,51 @@ test('validation runs before review; unrelated catalog edits keep a preparation;
     assert.equal((await call(client, 'review_product_draft', { ...args, ...reviewArgs() })).approved, true);
     const saved = await call(client, 'create_product', args);
     assert.equal(saved.saved, true, JSON.stringify(saved)); assert.equal(saved.product.mainImage, draft.mainImage);
+  } finally { await close(); }
+});
+
+test('annotations mark only overwrites destructive, quota splits reads from writes, variantMeta is kept and checked, the job keeps the review', async () => {
+  const { client, close } = await connect();
+  try {
+    const tools = Object.fromEntries((await client.listTools()).tools.map(t => [t.name, t.annotations]));
+    assert.deepEqual(Object.keys(tools).filter(n => tools[n].destructiveHint).sort(), ['apply_product_regeneration', 'replace_product_images']);
+    assert.equal(tools.create_product.readOnlyHint, false); assert.equal(tools.create_product.idempotentHint, true);
+    assert.equal(tools.search_products.readOnlyHint, true); assert.equal(tools.search_products.openWorldHint, false);
+    for (const name of ['start_product_job', 'resume_product_job', 'import_product_images']) assert.equal(tools[name].openWorldHint, true, name);
+    assert.equal(tools.prepare_product, undefined);
+
+    const scopes = [];
+    globalThis.__mcpQuota = async (_user, _now, options) => { scopes.push(options.scope); };
+    await call(client, 'search_products', { query: 'nothing' });
+    const shoes = await mongoose.model('Category').create({ name: 'shoes', title: 'کفش', sport: sport._id, variantAttributes: [{ name: 'size', label: 'سایز', required: true }] });
+    const job = await call(client, 'start_product_job', { requestKey: 'variant-meta-job', categoryId: String(shoes._id), rawContent: 'Wilson tennis shoe reference with sizes 42 and 43 in EU and US units, verified catalogue.' });
+    delete globalThis.__mcpQuota;
+    assert.deepEqual(scopes, ['mcp-read:', 'mcp:']);
+
+    const key = job.preparation.preparationId, image = 'https://ik.imagekit.io/test/shoe.jpg', sizeImage = 'https://ik.imagekit.io/test/shoe-42.jpg';
+    await Grant.updateOne({ key: digest(key) }, { $push: { 'data.images': { $each: [{ url: image }, { url: sizeImage }] } } });
+    const variantMeta = { size: { 42: { units: { EU: '42', US: '8.5' }, images: [sizeImage] }, 43: { units: { EU: '43', US: '9.5' } } } };
+    const draft = { name: 'Variant meta shoe', shortDescription: 'Short', longDescription: 'Long description', brand: String(brand._id), basePrice: 100, mainImage: image,
+      attributes: {}, technicalStats: {}, variantOptions: { size: ['42', '43'] }, selectedCombos: ['size=42', 'size=43'], variantMeta };
+    const json = d => ({ preparationId: key, json: JSON.stringify(d) });
+    for (const bad of [
+      { size: { 44: { units: { EU: '44' } } } },                          // value not in variantOptions
+      { colour: { red: { units: {} } } },                                 // attribute not in variantOptions
+      { size: { 42: { units: { EU: 42 } } } },                            // unit value not a string
+      { size: { 42: { images: ['https://evil.example/x.jpg'] } } },      // image not imported here
+      { size: { 42: { price: 5 } } },                                     // undocumented key
+    ]) assert.equal((await call(client, 'validate_product_draft', json({ ...draft, variantMeta: bad }))).valid, false, JSON.stringify(bad));
+    assert.equal((await call(client, 'validate_product_draft', json(draft))).valid, true);
+    assert.equal((await call(client, 'review_product_draft', { ...json(draft), ...reviewArgs() })).approved, true);
+    const saved = await call(client, 'create_product', json(draft));
+    assert.equal(saved.saved, true, JSON.stringify(saved));
+    assert.deepEqual((await mongoose.model('Product').findById(saved.product._id).lean()).variantMeta, variantMeta);
+
+    // The preparation record expires; the completed job keeps the review evidence for good.
+    const done = await call(client, 'get_product_job', { jobId: job.jobId });
+    assert.equal(done.result.review.agents.reviewer, 'host-agent-reviewer');
+    assert.equal(done.result.review.report.approved, true);
+    assert.equal(done.result.review.jsonHash, digest(JSON.stringify(draft)));
+    assert.ok(done.result.review.reviewedAt);
   } finally { await close(); }
 });

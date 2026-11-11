@@ -22,6 +22,8 @@ beforeEach(async () => {
   ctx = { userId: String(new mongoose.Types.ObjectId()), isAdmin: true, can: () => true };
   for (const key of ['PRODUCT_AI_MODEL', 'PRODUCT_JOBS_WORKER_SECRET', 'GEMINI_API_KEY', 'OPENAI_API_KEY']) delete process.env[key];
 });
+// Jobs written by the retired worker carry fields the schema no longer declares; insert them raw.
+const legacy = async doc => ({ _id: (await Job.collection.insertOne({ createdAt: new Date(), updatedAt: new Date(), ...doc, userId: new mongoose.Types.ObjectId(ctx.userId) })).insertedId });
 let lastJob;
 async function prepare(args, job) {
   calls++; lastJob = job;
@@ -37,8 +39,11 @@ test('start requires no provider keys, preserves source, repeats same identity a
   assert.equal(initial.status, 'awaiting_chat'); assert.equal(initial.executionMode, 'codex_agents');
   assert.equal(initial.jobId, again.jobId); assert.equal(initial.preparation.preparationId, again.preparation.preparationId);
   assert.equal(initial.preparation.rawContent, rawContent); assert.equal(calls, 1);
-  assert.equal((await service.getProductJob(ctx, initial.jobId)).pollAfterSeconds, null);
-  assert.deepEqual(await service.runProductJobStage(), { disabled: true, executionMode: 'codex_agents' });
+  // The source is stored once and returned once: not in the stored preparation, not in the returned input.
+  const stored = await Job.findById(initial.jobId).lean();
+  assert.equal(stored.data.rawContent, rawContent); assert.equal(stored.data.preparation.rawContent, undefined);
+  assert.equal(initial.input.rawContent, undefined);
+  assert.equal((await service.getProductJob(ctx, initial.jobId)).preparation.rawContent, rawContent);
   await assert.rejects(service.startProductJob(ctx, { ...args, rawContent: rawContent + ' changed' }, prepare), /requestKey/);
 });
 test('resume keeps the preparation key and imported images, preserves source/identity; completed jobs cannot restart', async () => {
@@ -66,15 +71,14 @@ test('owner and current mutation permissions are required even for get/resume', 
 });
 test('legacy failed job uses its extracted source and does not call server model', async () => {
   const args = input();
-  const old = await Job.create({ userId: ctx.userId, requestKey: 'legacy', inputHash: 'legacy', input: { ...args, rawContent: undefined, sourceUrl: 'https://example.com/old' }, status: 'failed', stage: 'analyse', data: { rawContent, reservedProductId: String(new mongoose.Types.ObjectId()) }, errorCode: 'GEMINI_MODEL_UNAVAILABLE' });
+  const old = await legacy({ requestKey: 'legacy', inputHash: 'legacy', input: { ...args, rawContent: undefined, sourceUrl: 'https://example.com/old' }, status: 'failed', stage: 'analyse', data: { rawContent, reservedProductId: String(new mongoose.Types.ObjectId()) }, errorCode: 'GEMINI_MODEL_UNAVAILABLE' });
   assert.match((await service.getProductJob(ctx, old._id)).nextAction, /resume_product_job/);
   const resumed = await service.resumeProductJob(ctx, old._id, 'Continue from the original source', prepare);
   assert.equal(resumed.status, 'awaiting_chat'); assert.match(resumed.preparation.rawContent, /Exact model/);
-  assert.equal((await Job.findById(old._id)).errorCode, null);
 });
 test('legacy active lease cannot be migrated while an old worker may commit', async () => {
   const args = input();
-  const old = await Job.create({ userId: ctx.userId, requestKey: 'legacy', inputHash: 'legacy', input: args, status: 'running', leaseUntil: new Date(Date.now() + 60000) });
+  const old = await legacy({ requestKey: 'legacy', inputHash: 'legacy', input: args, status: 'running', leaseUntil: new Date(Date.now() + 60000) });
   await assert.rejects(service.resumeProductJob(ctx, old._id, 'continue in chat now', prepare), /قفل/);
   assert.equal(calls, 0);
 });
@@ -91,10 +95,7 @@ test('preparation failure releases lock and concurrent requests cannot prepare t
   await Job.updateOne({ _id: ok.jobId }, { $unset: { 'data.preparation': 1 }, $set: { 'data.preparingUntil': new Date(Date.now() + 60000), 'data.preparingLock': 'other' } });
   await assert.rejects(service.startProductJob(ctx, args, prepare), /هم‌زمان/);
 });
-test('retired HTTP worker returns 410 and service has no model provider imports', async () => {
-  const { POST } = await import('../src/app/api/internal/product-jobs/route.js');
-  const response = await POST(); assert.equal(response.status, 410);
-  assert.equal((await response.json()).executionMode, 'codex_agents');
+test('service has no model provider imports', async () => {
   const source = await readFile(new URL('../src/lib/productJobs/service.js', import.meta.url), 'utf8');
   assert.doesNotMatch(source, /generateJson|@\/lib\/ai|fetch\(/);
 });

@@ -9,13 +9,14 @@ const fail = message => Object.assign(new Error(message), { jobPublic: true });
 function authorize(ctx, input) {
   if (!ctx?.isAdmin || !ctx.can(permissionsFor(input))) throw fail("دسترسی ساخت یا بازسازی محصول کافی نیست.");
 }
+// The source text is stored once (data.rawContent) and returned once (preparation.rawContent).
 function result(job) {
+  const open = job.status === "awaiting_chat" && job.data?.preparation;
   return { jobId: String(job._id), executionMode: "codex_agents", status: job.status,
-    stage: job.stage, updatedAt: job.updatedAt, result: job.result || null,
-    preparation: job.status === "awaiting_chat" ? job.data?.preparation : undefined,
-    input: job.status !== "completed" ? job.input : undefined,
-    nextAction: job.status === "completed" ? "done" : job.status === "awaiting_chat" ? "Run the native Codex agents described in preparation.workflow. No worker or polling will generate content." : "Use resume_product_job to continue this legacy job in Codex; no server model will run.",
-    pollAfterSeconds: null };
+    updatedAt: job.updatedAt, result: job.result || null,
+    preparation: open ? { ...job.data.preparation, rawContent: job.data.rawContent ?? job.data.preparation.rawContent } : undefined,
+    input: job.status !== "completed" ? { ...job.input, rawContent: undefined } : undefined,
+    nextAction: job.status === "completed" ? "done" : job.status === "awaiting_chat" ? "Run the native Codex agents described in preparation.workflow. No worker or polling will generate content." : "Use resume_product_job to continue this legacy job in Codex; no server model will run." };
 }
 async function owned(ctx, id) {
   const job = await ProductJob.findOne({ _id: id, userId: ctx.userId }).lean();
@@ -40,6 +41,7 @@ export async function startProductJob(ctx, args, prepare) {
 }
 async function prepareJob(ctx, job, prepare, clarification, refresh = false) {
   if (job.status === "completed") return result(job);
+  // Jobs from the retired server worker may still carry its lease (read raw; no longer in the schema).
   if (job.status === "running" && new Date(job.leaseUntil) > new Date()) throw fail("اجرای قدیمی هنوز قفل دارد؛ پس از پایان قفل همین کار را ادامه دهید.");
   if (job.data?.preparation && !clarification && !refresh) {
     const grant = await McpGrant.findOneAndUpdate({ key: digest(job.data.preparationId), userId: ctx.userId, kind: "preparation" },
@@ -49,8 +51,7 @@ async function prepareJob(ctx, job, prepare, clarification, refresh = false) {
   const lock = secret();
   const locked = await ProductJob.findOneAndUpdate({ _id: job._id, userId: ctx.userId, updatedAt: job.updatedAt,
     $or: [{ "data.preparingUntil": { $exists: false } }, { "data.preparingUntil": { $lt: new Date() } }] },
-    { $set: { status: "awaiting_chat", leaseUntil: new Date(0), "data.preparingUntil": new Date(Date.now() + 120000), "data.preparingLock": lock },
-      $unset: { lease: 1 } }, { returnDocument: "after" }).lean();
+    { $set: { status: "awaiting_chat", "data.preparingUntil": new Date(Date.now() + 120000), "data.preparingLock": lock } }, { returnDocument: "after" }).lean();
   if (!locked) throw fail("آماده‌سازی هم‌زمان در حال اجراست؛ همین درخواست را دوباره بررسی کنید.");
   try {
     const input = { ...job.input };
@@ -61,12 +62,11 @@ async function prepareJob(ctx, job, prepare, clarification, refresh = false) {
     // One key for the job's whole life: renewing it keeps imported images, and the prepare step
     // drops the review itself when the rules, source or original product changed.
     const key = job.data?.preparationId || secret();
-    const preparation = await prepare(input, { key, jobId: String(job._id), reservedProductId: job.data?.reservedProductId, images: job.data?.images || [] });
+    const { rawContent, ...preparation } = await prepare(input, { key, jobId: String(job._id), reservedProductId: job.data?.reservedProductId, images: job.data?.images || [] });
     const updated = await ProductJob.findOneAndUpdate({ _id: job._id, "data.preparingLock": lock },
-      { $set: { status: "awaiting_chat", stage: "analyse", input: { ...input, rawContent: preparation.rawContent, clarification: undefined },
-        "data.preparationId": key, "data.preparation": preparation, "data.rawContent": preparation.rawContent,
-        leaseUntil: new Date(0), error: null, errorCode: null, questions: [] },
-        $unset: { "data.preparingUntil": 1, "data.preparingLock": 1, lease: 1 } }, { returnDocument: "after" }).lean();
+      { $set: { status: "awaiting_chat", input: { ...input, rawContent, clarification: undefined },
+        "data.preparationId": key, "data.preparation": preparation, "data.rawContent": rawContent },
+        $unset: { "data.preparingUntil": 1, "data.preparingLock": 1 } }, { returnDocument: "after" }).lean();
     if (!updated) throw fail("وضعیت آماده‌سازی تغییر کرده است.");
     return result(updated);
   } catch (e) {
@@ -80,12 +80,10 @@ export async function getProductJob(ctx, jobId) {
   if (job.status === "awaiting_chat") {
     const active = job.data?.preparationId && await McpGrant.exists({ key: digest(job.data.preparationId), userId: ctx.userId, expiresAt: { $gt: new Date() } });
     value.preparationExpired = !active;
-    if (!active) { delete value.preparation; value.nextAction = "Call resume_product_job with this jobId and no clarification to renew the SAME job. Do not call prepare_product or start a different job."; }
+    if (!active) { delete value.preparation; value.nextAction = "Call resume_product_job with this jobId and no clarification to renew the SAME job. Do not start a different job."; }
   }
   return value;
 }
 export async function resumeProductJob(ctx, jobId, clarification, prepare) {
   return prepareJob(ctx, await owned(ctx, jobId), prepare, clarification, true);
 }
-// Tombstone for stale importers. Never invokes a model.
-export async function runProductJobStage() { return { disabled: true, executionMode: "codex_agents" }; }

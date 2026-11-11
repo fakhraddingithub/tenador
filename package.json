@@ -5,7 +5,6 @@
   "scripts": {
     "test:mcp": "node --test --test-timeout=180000 tests/mcp.test.mjs",
     "test:product-jobs": "node --test --test-timeout=180000 tests/productJobs.test.mjs",
-    "worker:products": "node workers/productJobsWorker.mjs",
     "dev": "next dev",
     "build": "next build",
     "start": "next start",

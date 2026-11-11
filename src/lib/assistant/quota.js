@@ -7,8 +7,10 @@ import { AssistantError } from './validation.js';
 export async function consumeAssistantQuota(userId, now = Date.now(), {
   scope = '',
   message = 'سقف استفاده از دستیار رسیده است (۱۰ سؤال در دقیقه و ۱۰۰ سؤال در روز). کمی بعد دوباره تلاش کنید.',
+  perMinute = 10,
+  perDay = 100,
 } = {}) {
-  for (const [duration, limit] of [[60000, 10], [86400000, 100]]) {
+  for (const [duration, limit] of [[60000, perMinute], [86400000, perDay]]) {
     const bucket = Math.floor(now / duration);
     const filter = { _id: `${scope}${userId}:${duration}:${bucket}`, count: { $lt: limit } };
     try {

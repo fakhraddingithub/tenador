@@ -28,15 +28,28 @@ const output = value => ({ content: [{ type: "text", text: JSON.stringify(value)
 // also lists every brand, serie, athlete and edition, so hashing it let any unrelated catalog edit
 // invalidate every open preparation; references are validated again at save anyway.
 const rulesHash = built => digest(built.rulesPrompt);
+// The source is already returned once as `rawContent`; the prompt points at it instead of carrying a second copy.
+const SOURCE_MARKER = "[SOURCE TEXT: identical to the rawContent field of this preparation; read it there, unchanged.]";
+const withoutSource = (prompt, rawContent) => {
+  const source = rawContent.trim(), at = prompt.lastIndexOf(source);
+  return at < 0 ? prompt : prompt.slice(0, at) + SOURCE_MARKER + prompt.slice(at + source.length);
+};
+// Reads only touch Tenador's database; writes and anything that fetches the open web share the tighter budget.
+const QUOTA = {
+  read: { scope: "mcp-read:", perMinute: 60, perDay: 1000 },
+  write: { scope: "mcp:", perMinute: 20, perDay: 300 },
+};
 const safeProduct = p => Object.fromEntries([...Object.keys(REGENERATED_FIELDS), "_id", "slug", "category", "sport", "mainImage", "gallery", "variantMeta", "updatedAt", "isActive"].map(k => [k, p[k]]));
 
 export function productServer(ctx) {
-  const server = new McpServer({ name: "tenador-products", version: "2.0.0" }, {
-    instructions: CHAT_WORKFLOW,
+  const server = new McpServer({ name: "tenador-products", version: "3.0.0" }, {
+    instructions: "Tenador product authoring runs in Codex with native subagents. Start every create/regenerate request with start_product_job and follow preparation.workflow exactly; it is the authoritative workflow.",
   });
-  const register = (name, description, inputSchema, permissions, write, fn) => server.registerTool(name, {
+  // Hints tell the host which calls need the user's confirmation. Only overwriting an existing
+  // product is destructive; creation is inactive and idempotent, bookkeeping writes are internal.
+  const register = (name, description, inputSchema, permissions, write, fn, hints = {}) => server.registerTool(name, {
     description, inputSchema,
-    annotations: { readOnlyHint: !write, destructiveHint: write, idempotentHint: !write, openWorldHint: true },
+    annotations: { readOnlyHint: !write, destructiveHint: false, idempotentHint: true, openWorldHint: false, ...hints },
     _meta: { securitySchemes: [{ type: "oauth2", scopes: ["products"] }] },
   }, async args => {
     if (!ctx) return {
@@ -50,7 +63,7 @@ export function productServer(ctx) {
     try {
       if (!ctx.isAdmin || !ctx.can(permissions)) return { ...output({ error: "دسترسی لازم برای این ابزار را ندارید" }), isError: true };
       if (write) activateAuditScope(scope, { ctx, permissions: [permissions].flat() });
-      await consumeAssistantQuota(ctx.userId, Date.now(), { scope: "mcp:", message: "سقف درخواست‌های MCP رسیده است؛ کمی بعد دوباره تلاش کنید." });
+      await consumeAssistantQuota(ctx.userId, Date.now(), { ...QUOTA[write || hints.openWorldHint ? "write" : "read"], message: "سقف درخواست‌های MCP رسیده است؛ کمی بعد دوباره تلاش کنید." });
       return output(await fn(args));
     } catch (error) {
       // Do not expose database/SDK messages, credentials, or stack traces.
@@ -62,7 +75,7 @@ export function productServer(ctx) {
   const prep = async key => {
     const record = await McpGrant.findOneAndUpdate({ key: digest(key), kind: "preparation", userId: ctx.userId, expiresAt: { $gt: new Date() } },
       { $set: { expiresAt: new Date(Date.now() + 3600000) } }, { returnDocument: "after" }).lean();
-    if (!record) publicError("آماده‌سازی منقضی شده؛ اگر jobId دارید همان کار را با resume_product_job و بدون clarification تمدید کنید؛ کار تازه نسازید. فقط برای آماده‌سازی بدون جاب از prepare_product استفاده کنید.");
+    if (!record) publicError("آماده‌سازی منقضی شده؛ همان کار را با resume_product_job و بدون clarification تمدید کنید؛ کار تازه نسازید.");
     return record;
   };
   const checkedPublic = value => { if (value.error) publicError(typeof value.error === "string" ? value.error : value.error.message); return value; };
@@ -72,12 +85,12 @@ export function productServer(ctx) {
     requestKey: z.string().min(8).max(100), categoryId: id.optional(), productId: id.optional(),
     rawContent: z.string().min(50).max(60000).optional(), sourceUrl: z.string().url().max(2048).optional(),
     imageUrls: z.array(z.string().url().max(2048)).max(6).optional(),
-  }, ["products.view", "ai.productDraft"], true, async args => (await import("@/lib/productJobs/service")).startProductJob(ctx, args, prepareProduct));
+  }, ["products.view", "ai.productDraft"], true, async args => (await import("@/lib/productJobs/service")).startProductJob(ctx, args, prepareProduct), { openWorldHint: true });
   register("get_product_job", "اطلاعات کار و نتیجه ذخیره‌سازی را برمی‌گرداند. awaiting_chat یعنی ایجنت‌های Codex باید کار کنند؛ ورکر یا مدل سروری وجود ندارد. برای ثبت موفق result.saved لازم است.",
     { jobId: id }, ["products.view", "ai.productDraft"], false, async args => (await import("@/lib/productJobs/service")).getProductJob(ctx, args.jobId));
   register("resume_product_job", "همان کار را برای ادامه داخل Codex بازیابی یا تمدید می‌کند؛ بدون clarification منبع تغییر نمی‌کند. فقط پاسخ واقعی کاربر را در clarification بدهید. کار تکمیل‌شده دوباره اجرا نمی‌شود.",
     { jobId: id, clarification: z.string().min(10).max(10000).optional() }, ["products.view", "ai.productDraft"], true,
-    async args => (await import("@/lib/productJobs/service")).resumeProductJob(ctx, args.jobId, args.clarification, prepareProduct));
+    async args => (await import("@/lib/productJobs/service")).resumeProductJob(ctx, args.jobId, args.clarification, prepareProduct), { openWorldHint: true });
 
   register("list_product_categories", "فهرست دسته‌ها به همراه ورزش؛ دستهٔ مناسب محصول را انتخاب کنید.", { query: z.string().max(100).optional(), offset: z.number().int().min(0).default(0) }, "products.view", false, async ({ query, offset }) => {
     const filter = query ? { $or: ["name", "title"].map(k => ({ [k]: { $regex: query.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), $options: "i" } })) } : {};
@@ -118,13 +131,10 @@ export function productServer(ctx) {
       $set: { expiresAt, "data.stateHash": stateHash, ...Object.fromEntries(Object.entries(fields).map(([k, v]) => [`data.${k}`, v])) },
       $unset: { "data.reviewHash": 1, "data.review": 1, "data.reviewAgents": 1, "data.previewHash": 1, "data.previewVersion": 1 } });
     return { preparationId: key, executionMode: "codex_agents", workflow: CHAT_WORKFLOW,
-      prompt: built.prompt, writingPrompt: built.writingPrompt, rawContent, meta: built.meta, original,
+      prompt: withoutSource(built.prompt, rawContent), writingPrompt: built.writingPrompt, rawContent, meta: built.meta, original,
       imageCandidates: [...new Set([...(args.imageUrls || []), ...(source?.images || [])])], sourceWarning: source?.warning,
       truncated: source?.truncated || false, expiresIn: 3600 };
   };
-  register("prepare_product", "پرامپت کامل جاری پنل و منبع را برای ایجنت‌های Codex می‌دهد. workflow را اجرا کنید و پس از بازبینی مستقل review_product_draft را ثبت کنید. هیچ API مدل استفاده نمی‌شود.", {
-    categoryId: id.optional(), productId: id.optional(), rawContent: z.string().min(50).max(60000).optional(), sourceUrl: z.string().url().max(2048).optional(),
-  }, ["products.view", "ai.productDraft"], false, args => prepareProduct(args));
   register("import_product_images", "تصاویر انتخاب‌شدهٔ همان محصول مرجع را دانلود و در ImageKit آپلود می‌کند؛ URLهای خروجی را در mainImage/gallery به کار ببرید. هر بار حداکثر ۶ تصویر.", {
     preparationId, urls: z.array(z.string().url().max(2048)).min(1).max(6),
   }, "ai.productDraft", true, async args => {
@@ -147,11 +157,11 @@ export function productServer(ctx) {
       } catch { results.push({ sourceUrl: url, error: "دریافت یا بارگذاری این تصویر ناموفق بود" }); }
     }
     return { images: results };
-  });
+  }, { openWorldHint: true });
   const contextDraft = async args => {
     const record = await prep(args.preparationId);
     const built = checkedPublic(await buildProductDraftPrompt({ categoryId: record.data.categoryId, rawContent: record.data.rawContent }));
-    if (rulesHash(built) !== record.data.promptHash) publicError("قواعد پنل تغییر کرده؛ برای کار دارای jobId از resume_product_job بدون clarification استفاده کنید، سپس دوباره بازبینی کنید. برای آماده‌سازی بدون جاب دوباره prepare_product را اجرا کنید.");
+    if (rulesHash(built) !== record.data.promptHash) publicError("قواعد پنل تغییر کرده؛ همان کار را با resume_product_job و بدون clarification ادامه دهید، سپس دوباره بازبینی کنید.");
     const draft = { ...parsePublic(args.json), category: record.data.categoryId, sport: built.meta.sport.id };
     if (record.data.productId && Object.hasOwn(draft, "basePrice")) {
       const target = checkedPublic(await loadRegenerationTarget(record.data.productId));
@@ -173,7 +183,7 @@ export function productServer(ctx) {
   const invalid = (message, fieldErrors) => ({ error: { message, extra: { fieldErrors } } });
   // The exact checks create/apply run, shared so a reviewer is never asked to approve JSON that
   // the save would then reject. Returns { error } or { plan, preview, target }; mutates `draft`
-  // into the shape that is saved (no variantMeta, inactive).
+  // into the shape that is saved (inactive).
   const validateDraft = async (record, draft, category) => {
     if (record.data.productId) {
       const target = await assertOriginal(record);
@@ -183,9 +193,23 @@ export function productServer(ctx) {
     const allowed = new Set(record.data.images.map(i => i.url));
     const urls = [draft.mainImage, ...(Array.isArray(draft.gallery) ? draft.gallery : [])];
     for (const detail of Object.values(draft.variantDetails || {})) urls.push(...(detail.images || []));
-    if (!draft.mainImage || urls.some(u => !allowed.has(u))) return invalid("تصویر اصلی و گالری باید از خروجی بارگذاری تصاویر همین آماده‌سازی باشند.", { mainImage: "فقط URLهای خروجی import_product_images" });
-    // AI cannot introduce image URLs through nested variant metadata.
-    draft.variantMeta = {};
+    // The prompt asks for variantMeta (unit conversions, value images), so it is kept — but only
+    // in its documented shape, for values that exist, and with images from this preparation.
+    const meta = draft.variantMeta ?? {}, plain = v => v && typeof v === "object" && !Array.isArray(v);
+    if (!plain(meta)) return invalid("variantMeta باید شیء باشد.", { variantMeta: "باید شیء باشد" });
+    for (const [attr, values] of Object.entries(meta)) {
+      const options = draft.variantOptions?.[attr];
+      if (!Array.isArray(options) || !plain(values)) return invalid(`variantMeta.${attr} به ویژگی واریانتی در variantOptions اشاره نمی‌کند.`, { variantMeta: `کلید ناشناخته: ${attr}` });
+      for (const [value, entry] of Object.entries(values)) {
+        if (!options.map(String).includes(value)) return invalid(`variantMeta.${attr}.${value} در variantOptions نیست.`, { variantMeta: `مقدار ناشناخته: ${attr} → ${value}` });
+        if (!plain(entry) || Object.keys(entry).some(k => k !== "units" && k !== "images")
+          || (entry.units !== undefined && (!plain(entry.units) || Object.values(entry.units).some(u => typeof u !== "string")))
+          || (entry.images !== undefined && (!Array.isArray(entry.images) || entry.images.some(u => typeof u !== "string"))))
+          return invalid(`variantMeta.${attr}.${value} فقط units (رشته‌ها) و images (URL) می‌پذیرد.`, { variantMeta: `ساختار نامعتبر: ${attr} → ${value}` });
+        urls.push(...(entry.images || []));
+      }
+    }
+    if (!draft.mainImage || urls.some(u => !allowed.has(u))) return invalid("تصویر اصلی، گالری و تصاویر واریانت باید از خروجی بارگذاری تصاویر همین آماده‌سازی باشند.", { mainImage: "فقط URLهای خروجی import_product_images" });
     draft.isActive = false;
     let combinationCount = 1;
     for (const values of Object.values(draft.variantOptions || {})) {
@@ -218,7 +242,9 @@ export function productServer(ctx) {
     if (record.data.jobId) {
       const job = await ProductJob.updateOne({ _id: record.data.jobId, userId: ctx.userId, status: "awaiting_chat", "data.preparingLock": { $exists: false },
         "data.preparation.preparationId": record.data.preparationKey },
-        { $set: { status: "completed", stage: "commit", result: { saved: true, productId: String(product._id) } } }, { session });
+        // The preparation record expires within the hour; the job keeps the review evidence for good.
+        { $set: { status: "completed", result: { saved: true, productId: String(product._id),
+          review: { report: record.data.review, agents: record.data.reviewAgents, reviewedAt: record.data.reviewedAt, jsonHash: record.data.reviewHash } } } }, { session });
       if (!job.matchedCount) throw new Error("JOB_CHANGED");
     }
   };
@@ -242,7 +268,7 @@ export function productServer(ctx) {
     const approved = approvedReview(args.review);
     await McpGrant.updateOne({ _id: record._id }, { $set: { "data.review": args.review,
       "data.reviewAgents": { analyst: args.analystId, writer: args.writerId, reviewer: args.reviewerId },
-      "data.reviewHash": approved ? digest(args.json) : null } });
+      "data.reviewedAt": new Date(), "data.reviewHash": approved ? digest(args.json) : null } });
     return { approved, nextAction: approved ? "Create product, or preview then apply regeneration with this exact JSON." : "Revise with the writer and obtain a fresh independent review.",
       verification: "Agent identity and semantic review are host attestations; server verifies schema, distinct IDs and exact JSON binding only." };
   });
@@ -265,7 +291,7 @@ export function productServer(ctx) {
   });
   const regeneration = async args => {
     const { record, draft, category } = await contextDraft(args);
-    if (!record.data.productId) publicError("prepare_product را با productId اجرا کنید.");
+    if (!record.data.productId) publicError("برای بازسازی، start_product_job را با productId اجرا کنید.");
     const { target, ...result } = checkedPublic(await validateDraft(record, draft, category));
     return { ...target, ...result, record, productId: record.data.productId };
   };
@@ -281,7 +307,7 @@ export function productServer(ctx) {
     checkedPublic(await applyRegeneration({ ...result, expectedUpdatedAt: args.expectedUpdatedAt, onCommitted: committed(result.record, args.json) }));
     revalidateContent(["products", "navbar"]);
     return { saved: true, productId: result.productId };
-  });
+  }, { destructiveHint: true, idempotentHint: false });
   register("replace_product_images", "فقط به درخواست صریح کاربر تصاویر محصول موجود را با تصاویر بارگذاری‌شده جایگزین می‌کند. mainImage و gallery مجموعهٔ نهایی هستند. expectedUpdatedAt را از آماده‌سازی جدید بگیرید.", {
     preparationId, mainImage: z.string().url(), gallery: z.array(z.string().url()).max(30), expectedUpdatedAt: z.string().datetime(),
   }, "products.edit", true, async args => {
@@ -293,6 +319,6 @@ export function productServer(ctx) {
     if (!updated) publicError("محصول تغییر کرده؛ دوباره آماده‌سازی کنید.");
     revalidateContent(["products", "navbar"]);
     return { saved: true, product: safeProduct(updated) };
-  });
+  }, { destructiveHint: true, idempotentHint: false });
   return server;
 }
