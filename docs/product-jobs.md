@@ -26,6 +26,8 @@ PRODUCT_AI_MODEL=gemini-2.5-pro
 PRODUCT_AI_MAX_TOKENS=16000
 PRODUCT_JOBS_BASE_URL=https://tenador.com
 PRODUCT_JOBS_WORKER_SECRET=<random-secret-shared-with-web-process>
+PRODUCT_JOBS_POLL_INTERVAL_MS=15000
+PRODUCT_JOBS_ERROR_INTERVAL_MS=15000
 ```
 
 کلید مدل از همان `GEMINI_API_KEY` یا `OPENAI_API_KEY` موجود خوانده می‌شود. مدل محصول مستقل از مدل دستیار ادمین است. اشتراک ChatGPT هزینهٔ API را پوشش نمی‌دهد. متغیرهای اتصال ImageKit موجود نیز لازم‌اند. کلید Gemini نباید وارد commit شود. نام مدل از مستندات رسمی قابل بررسی است: https://ai.google.dev/gemini-api/docs/models/gemini-2.5-pro
@@ -36,7 +38,29 @@ PRODUCT_JOBS_WORKER_SECRET=<random-secret-shared-with-web-process>
 npm run worker:products
 ```
 
-این پردازش سبک است و دیتابیس/مدل را مستقیم بارگذاری نمی‌کند؛ با secret، هر بار یک مرحله را در `POST /api/internal/product-jobs` اجرا می‌کند. به‌این‌ترتیب runtime خود Next، aliasها، ممیزی و invalidation کش یکسان می‌مانند. روی میزبان دائمی از supervisor/process manager با restart خودکار استفاده کنید. اجرای آن در یک تابع کوتاه‌عمر Vercel کافی نیست. خود endpoint باید حداقل بودجهٔ اجرای ۱۸۰ ثانیه داشته باشد؛ پلن میزبان باید این زمان را پشتیبانی کند. کلید worker نباید به مرورگر یا MCP برگردد.
+این پردازش سبک است و دیتابیس/مدل را مستقیم بارگذاری نمی‌کند؛ با secret، هر بار یک مرحله را در `POST /api/internal/product-jobs` اجرا می‌کند. به‌این‌ترتیب runtime خود Next، aliasها، ممیزی و invalidation کش یکسان می‌مانند. خود endpoint باید بودجهٔ اجرای ۱۸۰ ثانیه داشته باشد. کلید worker نباید به مرورگر یا MCP برگردد.
+
+### اجرای دائمی روی Vercel
+
+`vercel.json` یک Daemon به نام `product-jobs` با یک نمونه در `iad1` و حافظهٔ `1Gi` تعریف می‌کند. `workers/Dockerfile.products` فقط فایل پردازشگر را در Node 24 کپی می‌کند؛ `.env` و کلیدها داخل image قرار نمی‌گیرند. Cronهای قبلی سایت حفظ شده‌اند.
+
+1. در **Project → Settings → Environment Variables**، متغیرهای `PRODUCT_JOBS_BASE_URL`، `PRODUCT_JOBS_WORKER_SECRET` و دو interval بالا را برای **Production** از `.env` وارد کنید. secret پردازشگر و endpoint وب باید یکسان باشد. پوش `.env` به‌تنهایی متغیرهای runtime کانتینر را تنظیم نمی‌کند.
+2. متغیرهای `PRODUCT_AI_*`، کلید API مدل و تنظیمات فعلی دیتابیس/ImageKit نیز باید در سرویس وب قابل دسترس باشند. کلید Gemini فقط در محیط Production تنظیم می‌شود، نه در Git.
+3. Root Directory پروژه باید ریشهٔ مخزن باشد. تغییرات `master` را به Production deploy کنید؛ Preview پردازشگر را اجرا نمی‌کند.
+4. در **Daemons → product-jobs → Logs** پیام `Product job dispatcher started` را بررسی کنید. پیام `Processed product job stage` نشان می‌دهد یک درخواست مرحله پردازش شده؛ موفقیت نهایی را از `get_product_job` و `completed` بررسی کنید. خطای 401 یعنی secret اشتباه یا حفاظت دسترسی جلوی endpoint را گرفته است.
+
+با SIGTERM درخواست در حال اجرا تا سقف ۱۹۰ ثانیه فرصت تکمیل دارد و انتظار بین درخواست‌ها فوراً قطع می‌شود؛ تنظیم Vercel برای خاموش‌شدن ۲۱۰ ثانیه است. در صف خالی هر ۱۵ ثانیه بررسی انجام می‌شود؛ پس از پردازش مرحله، ادامه سریع‌تر است. اجرای هم‌زمان نسخهٔ لپ‌تاپ دیگر لازم نیست. Daemon حتی در حالت انتظار مصرف حافظه و هزینه/سهمیهٔ میزبان دارد.
+
+مستندات رسمی: https://vercel.com/docs/daemons و https://vercel.com/docs/daemons/config-reference
+
+آزمون کانتینر در محیط توسعه با Docker:
+
+```bash
+docker build -f workers/Dockerfile.products -t tenador-product-jobs workers
+docker run --rm --env-file .env tenador-product-jobs
+```
+
+اجرای فرمان دوم با آدرس production، صف واقعی سایت را پردازش می‌کند؛ برای آزمایش ایزوله آدرس سرور آزمایشی و secret همان سرور را بدهید.
 
 برای توسعه `PRODUCT_JOBS_BASE_URL=http://localhost:3000` قرار دهید و وب و worker را جدا اجرا کنید. سرور آزمایشی را به دیتابیس زنده وصل نکنید. در این تغییر، نه worker تولید اجرا شده و نه محصول زنده ساخته/بازسازی شده است.
 
