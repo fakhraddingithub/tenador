@@ -82,3 +82,4 @@ import "base/models/Variant";
 import "base/models/Event";
 
 import "base/models/WalletNotification";
+import "base/models/ProductJob";

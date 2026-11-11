@@ -95,8 +95,8 @@ export async function previewRegeneration({ product, category, draft }) {
  * محصول در این فاصله ویرایش شده باشد ۴۰۹ — آنچه تأیید شده همان چیزی است که نوشته می‌شود.
  * @returns {Promise<{ error } | { ok: true }>}
  */
-export async function applyRegeneration({ productId, plan, preview, expectedUpdatedAt }) {
-  if (!plan.changes.length) {
+export async function applyRegeneration({ productId, plan, preview, expectedUpdatedAt, onCommitted }) {
+  if (!plan.changes.length && !onCommitted) {
     return fail("این JSON هیچ تغییری نسبت به محصولِ فعلی ندارد", 400, {
       missing: plan.missing, ignored: plan.ignored, preserved: plan.preserved,
     });
@@ -119,6 +119,7 @@ export async function applyRegeneration({ productId, plan, preview, expectedUpda
 
     doc.$session(session);
     await doc.save();
+    if (onCommitted) await onCommitted(session, doc);
   });
 
   if (outcome === "missing") return fail("محصول یافت نشد", 404);

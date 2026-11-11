@@ -36,7 +36,7 @@ async function generateUniqueSKU(name) {
 /* ----------------------------------
    POST: Create Product
 ---------------------------------- */
-export async function createProduct(body) {
+export async function createProduct(body, { reservedProductId, onCommitted } = {}) {
   try {
     await connectToDB();
 
@@ -185,6 +185,8 @@ export async function createProduct(body) {
         Create Product
      ------------------------------- */
     const productData = {
+      // Internal job identity, deliberately not accepted from HTTP request bodies.
+      ...(reservedProductId ? { _id: reservedProductId } : {}),
       name,
       shortDescription,
       longDescription,
@@ -218,7 +220,7 @@ export async function createProduct(body) {
         images: Array.isArray(detail?.images) ? detail.images : [],
       };
     });
-    const product = await createProductWithVariants({ Product, Variant, productData, variants });
+    const product = await createProductWithVariants({ Product, Variant, productData, variants, onCommitted });
 
     // باطل‌سازی کش محتوا تا محصول جدید بلافاصله در صفحات نمایش داده شود
     revalidateContent(["products", "navbar"]);

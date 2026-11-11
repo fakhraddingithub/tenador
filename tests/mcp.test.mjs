@@ -121,7 +121,7 @@ const call = async (client, name, args) => {
 test('MCP tools enforce permissions through actual protocol calls', async () => {
   const { client, close } = await connect({ ...ctx, can: () => false });
   try {
-    assert.equal((await client.listTools()).tools.length, 8);
+    assert.equal((await client.listTools()).tools.length, 11);
     assert.equal((await call(client, 'search_products', { query: 'test' })).isError, true);
   } finally { await close(); }
 });
@@ -135,7 +135,7 @@ test('HTTP endpoint negotiates MCP, lists tools and rejects missing credentials'
   const init = await POST(request({ jsonrpc: '2.0', id: 1, method: 'initialize', params: { protocolVersion: '2025-03-26', capabilities: {}, clientInfo: { name: 'test', version: '1' } } }));
   assert.equal(init.status, 200); assert.equal((await init.json()).result.serverInfo.name, 'tenador-products');
   const list = await POST(request({ jsonrpc: '2.0', id: 2, method: 'tools/list' }));
-  assert.equal(list.status, 200); assert.equal((await list.json()).result.tools.length, 8);
+  assert.equal(list.status, 200); assert.equal((await list.json()).result.tools.length, 11);
   const denied = await POST(request({ jsonrpc: '2.0', id: 3, method: 'tools/list' }, 'invalid'));
   assert.equal(denied.status, 401); assert.match(denied.headers.get('www-authenticate'), /oauth-protected-resource/);
 });
@@ -149,10 +149,12 @@ test('anonymous clients discover tools but every tool requests OAuth without rea
   const listed = await POST(request({ jsonrpc: '2.0', id: 2, method: 'tools/list' }));
   assert.equal(listed.status, 200);
   const tools = (await listed.json()).result.tools;
-  assert.equal(tools.length, 8);
+  assert.equal(tools.length, 11);
   for (const tool of tools) assert.deepEqual(tool._meta.securitySchemes, [{ type: 'oauth2', scopes: ['products'] }]);
   const key = secret(), objectId = String(new mongoose.Types.ObjectId());
   const cases = {
+    start_product_job: { requestKey: 'oauth-test-request', categoryId: objectId, rawContent: 'x'.repeat(60) },
+    get_product_job: { jobId: objectId }, resume_product_job: { jobId: objectId, clarification: 'x'.repeat(60) },
     list_product_categories: {}, search_products: { query: 'Wilson' },
     prepare_product: { categoryId: objectId, rawContent: 'x'.repeat(60) },
     import_product_images: { preparationId: key, urls: ['https://vendor.example/photo.jpg'] },

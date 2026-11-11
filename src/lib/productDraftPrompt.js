@@ -20,7 +20,7 @@ import Brand from "base/models/Brand";
 import Athlete from "base/models/Athlete";
 import LimitedEdition from "base/models/LimitedEdition";
 import ProductPromptConfig from "base/models/ProductPromptConfig";
-import { buildProductTemplate } from "./buildProductTemplate.js";
+import { buildProductTemplate, composeProductPrompt, renderProductPrompt } from "./buildProductTemplate.js";
 
 export const RAW_CONTENT_MIN = 50;
 export const RAW_CONTENT_MAX = 60000;
@@ -69,6 +69,13 @@ export async function buildProductDraftPrompt({ categoryId, rawContent }) {
 
   return {
     prompt,
+    // Same rules and precedence as the copied prompt, without unrelated catalog
+    // lists. The writer receives resolved product facts and the full source separately.
+    writingPrompt: renderProductPrompt((() => {
+      const model = composeProductPrompt({ category, promptConfig });
+      return { ...model, sections: model.sections.filter(s => s.kind !== "data"),
+        fields: model.fields.filter(f => ["name", "shortDescription", "longDescription", "tag"].includes(f.key)) };
+    })()),
     category,
     meta: {
       category: category.title,

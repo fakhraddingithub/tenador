@@ -1,6 +1,6 @@
 // Keep all writes in one transaction, including validation/save middleware.
 // Sequential writes are required on a MongoDB transaction session.
-export async function createProductWithVariants({ Product, Variant, productData, variants }) {
+export async function createProductWithVariants({ Product, Variant, productData, variants, onCommitted }) {
   return Product.db.transaction(async (session) => {
     const product = new Product(productData);
     const documents = variants.map((variant, index) => new Variant({
@@ -17,6 +17,7 @@ export async function createProductWithVariants({ Product, Variant, productData,
     }
     await product.save();
     for (const variant of documents) await variant.save();
+    if (onCommitted) await onCommitted(session, product);
     return product;
   });
 }
