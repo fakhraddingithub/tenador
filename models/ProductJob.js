@@ -15,6 +15,7 @@ const schema = new mongoose.Schema({
   revisions: { type: Number, default: 0 },
   nextRunAt: { type: Date, default: Date.now },
   error: String,
+  errorCode: String,
   questions: [String],
   history: { type: [mongoose.Schema.Types.Mixed], default: [] },
   result: mongoose.Schema.Types.Mixed,

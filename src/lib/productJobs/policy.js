@@ -37,6 +37,8 @@ export function publicJob(job) {
   return {
     jobId: String(job._id), status: job.status, stage: job.stage,
     updatedAt: job.updatedAt, questions: job.questions || [], error: job.error || null,
+    errorCode: job.errorCode || null, attempts: job.attempts,
+    nextRunAt: job.status === "queued" ? job.nextRunAt : null,
     result: job.result || null, revisions: job.revisions,
     editorialNotes: job.data?.review?.editorialNotes || [],
     stages: (job.history || []).map(({ stage, at, provider, model }) => ({ stage, at, provider, model })),

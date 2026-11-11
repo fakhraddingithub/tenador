@@ -18,6 +18,7 @@ import { downloadPublic, extractSource } from "@/lib/mcp/source";
 import { jobInput, analysisSchema, writingSchema, reviewSchema, approvedReview, permissionsFor, publicJob, validateEvidence, assertVariantLimit } from "./policy.js";
 import { SYSTEM, ANALYSE, WRITE, REVIEW } from "./prompts.js";
 import { uploadJobImage } from "./images.js";
+import { describeJobError } from "./errors.js";
 
 const LEASE_MS = 10 * 60 * 1000;
 const fail = (message, questions = []) => Object.assign(new Error(message), { jobPublic: true, questions });
@@ -67,7 +68,7 @@ export async function resumeProductJob(ctx, jobId, clarification) {
   if (rawContent.length > 60000) throw fail("متن تکمیلی از سقف مجاز فراتر می‌رود؛ کار تازه‌ای با منبع کوتاه‌تر بسازید.");
   const updated = await ProductJob.findOneAndUpdate({ _id: job._id, status: job.status, updatedAt: job.updatedAt }, {
     $set: { status: "queued", stage: "prepare", "input.rawContent": rawContent, attempts: 0, revisions: 0,
-      error: null, questions: [], leaseUntil: new Date(0), nextRunAt: new Date(),
+      error: null, errorCode: null, questions: [], leaseUntil: new Date(0), nextRunAt: new Date(),
       data: { reservedProductId: job.data.reservedProductId, images: job.data.images || [] } },
     $push: { history: { stage: "clarification", at: new Date() } },
   }, { returnDocument: "after" }).lean();
@@ -81,7 +82,7 @@ async function checkpoint(job, set, event) {
   if (!result.matchedCount) throw new Error("JOB_LEASE_LOST");
 }
 async function next(job, stage, data = {}, event = {}) {
-  await checkpoint(job, { ...data, stage, status: "queued", attempts: 0, error: null, leaseUntil: new Date(0), nextRunAt: new Date() }, { stage: job.stage, ...event });
+  await checkpoint(job, { ...data, stage, status: "queued", attempts: 0, error: null, errorCode: null, leaseUntil: new Date(0), nextRunAt: new Date() }, { stage: job.stage, ...event });
 }
 const cleanHtml = value => sanitizeHtml(value, {
   allowedTags: ["h2", "h3", "h4", "p", "ul", "ol", "li", "strong", "em", "br", "span"],
@@ -266,10 +267,14 @@ export async function runProductJobStage() {
     if (job.attempts > 3) throw fail("این مرحله چند بار قطع شد؛ کار متوقف شد تا هزینه و اجرای تکراری ایجاد نشود.");
     await execute(job);
   } catch (error) {
-    const retry = !error.jobPublic && job.attempts < 3;
+    const failure = describeJobError(error, job.stage);
+    const retry = failure.retryable && job.attempts < 3;
+    // Never log raw exceptions: provider/network errors can contain credentials.
+    console.warn("[product-job] stage failed", { jobId: String(job._id), stage: job.stage,
+      attempt: job.attempts, code: failure.code, retry, provider: job.data.provider, model: job.data.model });
     await ProductJob.updateOne(leaseFilter(job), { $set: {
       status: retry ? "queued" : error.questions?.length ? "needs_input" : "failed",
-      error: error.jobPublic ? error.message : "اجرای مرحله کامل نشد؛ تنظیمات مدل، شبکه و سرویس تصویر را بررسی کنید.",
+      error: failure.message, errorCode: failure.code,
       questions: error.questions || [], leaseUntil: new Date(0), nextRunAt: new Date(Date.now() + 30000),
     } });
   } finally { await flushAuditScope(scope); }
