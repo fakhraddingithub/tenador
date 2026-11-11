@@ -1,14 +1,5 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
-  "daemons": {
-    "product-jobs": {
-      "root": "workers/",
-      "entrypoint": "Dockerfile.products",
-      "instances": { "iad1": 1 },
-      "resources": { "requests": { "memory": "1Gi" } },
-      "terminationGracePeriodSeconds": 210
-    }
-  },
   "crons": [
     {
       "path": "/api/cron/installment-reminders",

@@ -6,7 +6,7 @@ const schema = new mongoose.Schema({
   requestKey: { type: String, required: true },
   inputHash: { type: String, required: true },
   input: { type: mongoose.Schema.Types.Mixed, required: true },
-  status: { type: String, enum: ["queued", "running", "needs_input", "failed", "completed"], default: "queued" },
+  status: { type: String, enum: ["awaiting_chat", "queued", "running", "needs_input", "failed", "completed"], default: "queued" },
   stage: { type: String, enum: ["prepare", "analyse", "write", "review", "revise", "commit"], default: "prepare" },
   data: { type: mongoose.Schema.Types.Mixed, default: {} },
   lease: String,

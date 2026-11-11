@@ -1,8 +1,0 @@
-FROM node:24-slim
-ENV NODE_ENV=production
-WORKDIR /app
-# This dispatcher uses only Node built-ins; no app dependencies or env files.
-COPY --chown=node:node productJobsWorker.mjs ./productJobsWorker.mjs
-USER node
-STOPSIGNAL SIGTERM
-CMD ["node", "productJobsWorker.mjs"]

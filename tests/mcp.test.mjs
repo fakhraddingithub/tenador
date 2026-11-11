@@ -10,6 +10,7 @@ import { secret, digest, validateAuthorization } from '../src/lib/mcp/security.j
 register('./mcpHooks.mjs', import.meta.url);
 
 let repl, Grant, productServer, tokenRequest, authenticateMcp, category, brand, userId, sport;
+const reviewArgs = () => ({ analystId: 'host-agent-analyst', writerId: 'host-agent-writer', reviewerId: 'host-agent-reviewer', review: { approved: true, checks: { facts: true, identity: true, coherence: true, rules: true, depth: true, images: true }, issues: [], editorialNotes: ['Reviewed exact draft against source.'] } });
 const ctx = { isAdmin: true, can: () => true, permissions: ['products.create', 'products.edit'] };
 before(async () => {
   repl = await MongoMemoryReplSet.create({ replSet: { count: 1 } });
@@ -147,7 +148,7 @@ const call = async (client, name, args) => {
 test('MCP tools enforce permissions through actual protocol calls', async () => {
   const { client, close } = await connect({ ...ctx, can: () => false });
   try {
-    assert.equal((await client.listTools()).tools.length, 11);
+    assert.equal((await client.listTools()).tools.length, 12);
     assert.equal((await call(client, 'search_products', { query: 'test' })).isError, true);
   } finally { await close(); }
 });
@@ -161,7 +162,7 @@ test('HTTP endpoint negotiates MCP, lists tools and rejects missing credentials'
   const init = await POST(request({ jsonrpc: '2.0', id: 1, method: 'initialize', params: { protocolVersion: '2025-03-26', capabilities: {}, clientInfo: { name: 'test', version: '1' } } }));
   assert.equal(init.status, 200); assert.equal((await init.json()).result.serverInfo.name, 'tenador-products');
   const list = await POST(request({ jsonrpc: '2.0', id: 2, method: 'tools/list' }));
-  assert.equal(list.status, 200); assert.equal((await list.json()).result.tools.length, 11);
+  assert.equal(list.status, 200); assert.equal((await list.json()).result.tools.length, 12);
   const denied = await POST(request({ jsonrpc: '2.0', id: 3, method: 'tools/list' }, 'invalid'));
   assert.equal(denied.status, 401); assert.match(denied.headers.get('www-authenticate'), /oauth-protected-resource/);
 });
@@ -175,7 +176,7 @@ test('anonymous clients discover tools but every tool requests OAuth without rea
   const listed = await POST(request({ jsonrpc: '2.0', id: 2, method: 'tools/list' }));
   assert.equal(listed.status, 200);
   const tools = (await listed.json()).result.tools;
-  assert.equal(tools.length, 11);
+  assert.equal(tools.length, 12);
   for (const tool of tools) assert.deepEqual(tool._meta.securitySchemes, [{ type: 'oauth2', scopes: ['products'] }]);
   const key = secret(), objectId = String(new mongoose.Types.ObjectId());
   const cases = {
@@ -185,6 +186,7 @@ test('anonymous clients discover tools but every tool requests OAuth without rea
     prepare_product: { categoryId: objectId, rawContent: 'x'.repeat(60) },
     import_product_images: { preparationId: key, urls: ['https://vendor.example/photo.jpg'] },
     create_product: { preparationId: key, json: '{}' },
+    review_product_draft: { preparationId: key, json: '{}', ...reviewArgs() },
     preview_product_regeneration: { preparationId: key, json: '{}' },
     apply_product_regeneration: { preparationId: key, json: '{}', expectedUpdatedAt: new Date().toISOString() },
     replace_product_images: { preparationId: key, mainImage: 'https://vendor.example/photo.jpg', gallery: [], expectedUpdatedAt: new Date().toISOString() },
@@ -222,6 +224,9 @@ test('prepare uses admin rules; create requires imported photos, creates inactiv
     await call(client, 'import_product_images', { preparationId: prepared.preparationId, urls: ['https://vendor.example/photo.jpg'] });
     assert.equal(uploadCount, 1);
     delete globalThis.__mcpDownload; delete globalThis.__mcpUpload;
+    assert.equal((await call(client, 'review_product_draft', { ...args, ...reviewArgs(), reviewerId: 'host-agent-writer' })).isError, true);
+    assert.equal((await call(client, 'review_product_draft', { ...args, ...reviewArgs() })).approved, true);
+    assert.equal((await call(client, 'create_product', { ...args, json: JSON.stringify({ ...draft, name: 'Changed after review' }) })).isError, true);
     const created = await call(client, 'create_product', args);
     assert.equal(created.saved, true, JSON.stringify(created));
     assert.equal(created.product.isActive, false);
@@ -232,6 +237,7 @@ test('prepare uses admin rules; create requires imported photos, creates inactiv
     assert.equal((await call(client, 'apply_product_regeneration', { ...regen, expectedUpdatedAt: p.original.updatedAt })).isError, true);
     const preview = await call(client, 'preview_product_regeneration', regen);
     assert.equal((await call(client, 'apply_product_regeneration', { ...regen, json: JSON.stringify({ shortDescription: 'unreviewed' }), expectedUpdatedAt: preview.updatedAt })).isError, true);
+    assert.equal((await call(client, 'review_product_draft', { ...regen, ...reviewArgs() })).approved, true);
     const applied = await call(client, 'apply_product_regeneration', { ...regen, expectedUpdatedAt: preview.updatedAt });
     assert.equal(applied.saved, true, JSON.stringify(applied));
     const saved = await mongoose.model('Product').findById(created.product._id).lean();
@@ -245,5 +251,44 @@ test('prepare uses admin rules; create requires imported photos, creates inactiv
     await mongoose.model('ProductPromptConfig').updateOne({ key: 'product' }, { $set: { base: [{ section: 'task', rules: ['CHANGED-ADMIN-RULE'] }] } });
     const stale = await call(client, 'preview_product_regeneration', regen);
     assert.equal(stale.isError, true); assert.match(stale.error, /قواعد پنل/);
+  } finally { await close(); }
+});
+
+test('Codex job commits the reviewed product atomically and recovers retries without model keys', async () => {
+  const { client, close } = await connect();
+  try {
+    const input = { requestKey: 'codex-product-job-1', categoryId: String(category._id), rawContent: 'Exact Wilson racket reference with graphite frame and verified catalogue information.' };
+    const job = await call(client, 'start_product_job', input);
+    assert.equal(job.status, 'awaiting_chat', JSON.stringify(job));
+    assert.equal(job.preparation.rawContent, input.rawContent);
+    assert.match(job.preparation.workflow, /native subagent/);
+    assert.equal((await call(client, 'start_product_job', input)).preparation.preparationId, job.preparation.preparationId);
+    const draft = { name: 'Codex coordinated racket', shortDescription: 'Verified short description', longDescription: 'Detailed product description', brand: String(brand._id), basePrice: 100, mainImage: 'https://ik.imagekit.io/test/codex.jpg', attributes: {}, technicalStats: {} };
+    const args = { preparationId: job.preparation.preparationId, json: JSON.stringify(draft) };
+    await Grant.updateOne({ key: digest(args.preparationId) }, { $push: { 'data.images': { url: draft.mainImage } } });
+    const unsafe = await call(client, 'review_product_draft', { ...args, json: JSON.stringify({ ...draft, longDescription: '<p onclick="bad()">Description</p><script>bad()</script>' }), ...reviewArgs() });
+    assert.equal(unsafe.approved, false);
+    assert.doesNotMatch(unsafe.normalizedJson, /onclick|<script|bad\(\)/);
+    assert.equal((await call(client, 'create_product', { ...args, json: unsafe.normalizedJson })).isError, true);
+    const rejected = reviewArgs(); rejected.review.approved = false; rejected.review.checks.depth = false;
+    assert.equal((await call(client, 'review_product_draft', { ...args, ...rejected })).approved, false);
+    assert.equal((await call(client, 'create_product', args)).isError, true);
+    assert.equal((await call(client, 'review_product_draft', { ...args, ...reviewArgs() })).approved, true);
+    const saved = await call(client, 'create_product', args); assert.equal(saved.saved, true, JSON.stringify(saved));
+    const status = await call(client, 'get_product_job', { jobId: job.jobId });
+    assert.equal(status.status, 'completed'); assert.equal(status.result.productId, saved.product._id);
+    assert.equal((await call(client, 'start_product_job', input)).result.productId, saved.product._id);
+    assert.equal(await mongoose.model('Product').countDocuments({ name: draft.name }), 1);
+    const regenJob = await call(client, 'start_product_job', { requestKey: 'codex-regenerate-job', productId: saved.product._id, rawContent: input.rawContent });
+    const regen = { preparationId: regenJob.preparation.preparationId, json: JSON.stringify({ shortDescription: 'More useful regenerated text' }) };
+    const badPrice = { ...regen, json: JSON.stringify({ basePrice: 999 }) };
+    assert.equal((await call(client, 'review_product_draft', { ...badPrice, ...reviewArgs() })).isError, true);
+    assert.equal((await call(client, 'review_product_draft', { ...regen, ...reviewArgs() })).approved, true);
+    const preview = await call(client, 'preview_product_regeneration', regen);
+    const applied = await call(client, 'apply_product_regeneration', { ...regen, expectedUpdatedAt: preview.updatedAt });
+    assert.equal(applied.saved, true, JSON.stringify(applied));
+    assert.equal((await call(client, 'get_product_job', { jobId: regenJob.jobId })).status, 'completed');
+    const actual = await mongoose.model('Product').findById(saved.product._id);
+    assert.equal(actual.basePrice, 100); assert.equal(actual.mainImage, draft.mainImage);
   } finally { await close(); }
 });
