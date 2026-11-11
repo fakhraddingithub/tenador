@@ -68,6 +68,32 @@ test('OAuth discovery works before callback setup while authorization remains cl
   } finally { process.env.MCP_REDIRECT_URIS = saved; }
 });
 const oauthRequest = body => new Request('https://shop.example/api/mcp/oauth/token', { method: 'POST', body: new URLSearchParams({ client_id: 'chatgpt', client_secret: process.env.MCP_CLIENT_SECRET, ...body }) });
+test('browser login returns to the same OAuth request and still requires consent', async () => {
+  const { GET, POST } = await import('../src/app/api/mcp/oauth/authorize/route.js');
+  const params = new URLSearchParams({ client_id: 'chatgpt', redirect_uri: 'https://chatgpt.com/callback', response_type: 'code',
+    code_challenge_method: 'S256', code_challenge: digest(secret()), state: 'browser-state&+/<test>', scope: 'products' });
+  globalThis.__mcpContext = async () => null;
+  let login;
+  try {
+    const response = await GET(new Request(`https://shop.example/api/mcp/oauth/authorize?${params}`));
+    assert.equal(response.status, 401);
+    assert.equal(response.headers.get('referrer-policy'), 'no-referrer');
+    const html = await response.text();
+    login = new URL(html.match(/href="([^"]+)"/)[1].replaceAll('&amp;', '&'), 'https://shop.example');
+    assert.equal(login.pathname, '/login-register');
+  } finally { globalThis.__mcpContext = async () => ctx; }
+  const returned = new URL(login.searchParams.get('callbackUrl'), 'https://shop.example');
+  assert.equal(returned.pathname, '/api/mcp/oauth/authorize');
+  assert.deepEqual(Object.fromEntries(returned.searchParams), Object.fromEntries(params));
+  ctx.user = { name: 'Admin' };
+  const consentPage = await GET(new Request(returned));
+  assert.equal(consentPage.status, 200);
+  const consent = (await consentPage.text()).match(/name="consent" value="([^"]+)"/)[1];
+  const result = await POST(new Request(returned, { method: 'POST', headers: { origin: 'https://shop.example' },
+    body: new URLSearchParams({ consent, decision: 'allow' }) }));
+  assert.equal(result.status, 303);
+  assert.equal(new URL(result.headers.get('location')).searchParams.get('state'), params.get('state'));
+});
 test('authorization needs same-origin consent bound to the current admin and consumes it once', async () => {
   const { GET, POST } = await import('../src/app/api/mcp/oauth/authorize/route.js');
   const params = new URLSearchParams({ client_id: 'chatgpt', redirect_uri: 'https://chatgpt.com/callback', response_type: 'code', code_challenge_method: 'S256', code_challenge: digest(secret()), state: 'client-state' });

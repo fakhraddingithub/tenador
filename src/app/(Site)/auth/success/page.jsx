@@ -1,19 +1,18 @@
 'use client';
 
 import { useEffect, Suspense } from 'react';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { useSearchParams } from 'next/navigation';
+import { safeLoginReturn } from 'base/utils/safeLoginReturn';
 
 function AuthSuccessContent() {
-  const router = useRouter();
   const searchParams = useSearchParams();
-  const next = searchParams.get('next') || '/';
+  const next = safeLoginReturn(searchParams.get('next'));
 
   useEffect(() => {
-    // کوکی الان کاملاً در مرورگر commit شده
-    // refresh کش client رو پاک میکنه → Navbar آپدیت میشه
-    router.refresh();
-    router.push(next);
-  }, []);
+    // OAuth consent is an HTML route handler, not an RSC page. Navigate the
+    // document after cookies are committed; this also refreshes auth context.
+    window.location.replace(next);
+  }, [next]);
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-slate-50">

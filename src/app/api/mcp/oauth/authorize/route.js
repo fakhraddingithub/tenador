@@ -10,7 +10,14 @@ export async function GET(req) {
     const c = config();
     const data = validateAuthorization(new URL(req.url).searchParams, c);
     const ctx = await getAdminContext();
-    if (!ctx) return new Response('<html lang="fa" dir="rtl"><meta charset="utf-8"><p>ابتدا در سایت با حساب ادمین وارد شوید، سپس اتصال را از ChatGPT دوباره شروع کنید.</p><a href="/login-register">ورود</a></html>', { status: 401, headers: { ...noStore, "Content-Type": "text/html; charset=utf-8" } });
+    if (!ctx) {
+      // Keep the already-validated OAuth request, including state and PKCE,
+      // through local/Google login. Never redirect directly to the client here:
+      // the authenticated admin must still see and approve the consent screen.
+      const returnTo = `/api/mcp/oauth/authorize?${new URLSearchParams(data)}`;
+      const loginUrl = `/login-register?${new URLSearchParams({ callbackUrl: returnTo })}`;
+      return new Response(`<!doctype html><html lang="fa" dir="rtl"><meta charset="utf-8"><title>ورود برای اتصال تنادور</title><p>با حساب ادمین وارد شوید؛ سپس برای تأیید اجازهٔ اتصال به همین درخواست برمی‌گردید.</p><a href="${escapeHtml(loginUrl)}">ورود</a></html>`, { status: 401, headers: { ...noStore, "Content-Type": "text/html; charset=utf-8", "Referrer-Policy": "no-referrer", "Content-Security-Policy": "default-src 'none'; frame-ancestors 'none'; base-uri 'none'", "X-Frame-Options": "DENY" } });
+    }
     if (!ctx.can("ai.productDraft")) return new Response("Forbidden", { status: 403 });
     // Chromium also checks form-action on the redirect after the POST.
     // This origin comes only from the exact, validated callback allowlist.

@@ -8,6 +8,7 @@ import GoogleButton from '@/components/auth/GoogleButton';
 import ForgotPasswordEmailFlow from '@/components/auth/ForgotPasswordEmailFlow';
 import { showToast } from '@/lib/toast';
 import { loginAction } from 'base/actions/authActions';
+import { safeLoginReturn } from 'base/utils/safeLoginReturn';
 
 function AuthContent() {
   const [mode, setMode] = useState('login');
@@ -15,7 +16,7 @@ function AuthContent() {
 
   const router = useRouter();
   const searchParams = useSearchParams();
-  const callbackUrl = searchParams.get('callbackUrl') || '/';
+  const callbackUrl = safeLoginReturn(searchParams.get('callbackUrl'));
 
   const handleSubmit = async (data) => {
     setLoading(true);

@@ -3,6 +3,7 @@
 import { cookies } from 'next/headers';
 import connectToDB from 'base/configs/db';
 import User from 'base/models/User';
+import { safeLoginReturn } from 'base/utils/safeLoginReturn';
 import {
   passwordValidator,
   tokenGenrator,
@@ -66,5 +67,5 @@ export async function loginAction({ phone, password, callbackUrl = '/' }) {
   // به‌جای redirect سروری (soft-nav) موفقیت را برمی‌گردانیم تا کلاینت یک
   // hard-navigation انجام دهد؛ این‌طور جزیره‌ی UserProvider با وضعیت جدید مانت
   // می‌شود و نام کاربر بلافاصله در نوبار ظاهر می‌شود. (صفحات عمومی static باقی می‌مانند)
-  return { success: true, redirectUrl: callbackUrl };
+  return { success: true, redirectUrl: safeLoginReturn(callbackUrl) };
 }
