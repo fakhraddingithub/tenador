@@ -4,7 +4,7 @@ import { z } from "zod";
 import ImageKit from "imagekit";
 import Product from "base/models/Product";
 import Category from "base/models/Category";
-import McpGrant from "base/models/McpGrant";
+import Preparation from "base/models/ProductPreparation";
 import ProductJob from "base/models/ProductJob";
 import Variant from "base/models/Variant";
 import { CHAT_WORKFLOW, normalizeDraftHtml } from "./chatWorkflow.js";
@@ -73,7 +73,7 @@ export function productServer(ctx) {
   const publicError = message => { const e = new Error(message); e.mcpPublic = true; throw e; };
   // Sliding expiry: a long analyse → write → review loop stays alive while it keeps using the preparation.
   const prep = async key => {
-    const record = await McpGrant.findOneAndUpdate({ key: digest(key), kind: "preparation", userId: ctx.userId, expiresAt: { $gt: new Date() } },
+    const record = await Preparation.findOneAndUpdate({ key: digest(key), userId: ctx.userId, expiresAt: { $gt: new Date() } },
       { $set: { expiresAt: new Date(Date.now() + 3600000) } }, { returnDocument: "after" }).lean();
     if (!record) publicError("آماده‌سازی منقضی شده؛ همان کار را با resume_product_job و بدون clarification تمدید کنید؛ کار تازه نسازید.");
     return record;
@@ -122,12 +122,12 @@ export function productServer(ctx) {
       jobId: job.jobId, reservedProductId: job.reservedProductId, preparationKey: key,
       originalVersion: original?.updatedAt, variantsHash: original ? digest(JSON.stringify(original.variants)) : null };
     const stateHash = digest(JSON.stringify(fields)), expiresAt = new Date(Date.now() + 3600000);
-    const old = await McpGrant.findOne({ key: digest(key), kind: "preparation", userId: ctx.userId }).lean();
+    const old = await Preparation.findOne({ key: digest(key), userId: ctx.userId }).lean();
     if (!old) {
       const images = [...new Map((job.images || []).map(i => [i.sourceUrl || i.url, i])).values()];
-      await McpGrant.create({ key: digest(key), kind: "preparation", userId: ctx.userId, expiresAt, data: { ...fields, stateHash, images, requiresReview: true } });
-    } else if (old.data.stateHash === stateHash) await McpGrant.updateOne({ _id: old._id }, { $set: { expiresAt } });
-    else await McpGrant.updateOne({ _id: old._id }, {
+      await Preparation.create({ key: digest(key), userId: ctx.userId, expiresAt, data: { ...fields, stateHash, images, requiresReview: true } });
+    } else if (old.data.stateHash === stateHash) await Preparation.updateOne({ _id: old._id }, { $set: { expiresAt } });
+    else await Preparation.updateOne({ _id: old._id }, {
       $set: { expiresAt, "data.stateHash": stateHash, ...Object.fromEntries(Object.entries(fields).map(([k, v]) => [`data.${k}`, v])) },
       $unset: { "data.reviewHash": 1, "data.review": 1, "data.reviewAgents": 1, "data.previewHash": 1, "data.previewVersion": 1 } });
     return { preparationId: key, executionMode: "codex_agents", workflow: CHAT_WORKFLOW,
@@ -150,9 +150,9 @@ export function productServer(ctx) {
         const result = await imagekit.upload({ file: fetched.buffer, fileName: `reference-${secret().slice(0, 12)}.${fetched.mime.split("/")[1]}`, folder: "/product", useUniqueFileName: true });
         if (!result.url || !result.fileId) throw new Error("upload");
         const image = { sourceUrl: url, url: result.url, fileId: result.fileId };
-        await McpGrant.updateOne({ _id: record._id }, { $push: { "data.images": image } });
+        await Preparation.updateOne({ _id: record._id }, { $push: { "data.images": image } });
         // The job outlives its preparation record (TTL); a renewed preparation re-adopts these.
-        if (record.data.jobId) await ProductJob.updateOne({ _id: record.data.jobId, userId: ctx.userId }, { $push: { "data.images": image } });
+        if (record.data.jobId) await ProductJob.updateOne({ _id: record.data.jobId, userId: ctx.userId }, { $push: { "data.images": image }, $unset: { "data.imagesSettled": 1 } });
         results.push(image);
       } catch { results.push({ sourceUrl: url, error: "دریافت یا بارگذاری این تصویر ناموفق بود" }); }
     }
@@ -236,7 +236,7 @@ export function productServer(ctx) {
       nextAction: "Give this exact JSON to the independent reviewer, then call review_product_draft with it." };
   });
   const committed = (record, value) => async (session, product) => {
-    const grant = await McpGrant.updateOne({ _id: record._id, "data.reviewHash": digest(value), expiresAt: { $gt: new Date() } },
+    const grant = await Preparation.updateOne({ _id: record._id, "data.reviewHash": digest(value), expiresAt: { $gt: new Date() } },
       { $set: { "data.createdProductId": String(product._id) } }, { session });
     if (!grant.matchedCount) throw new Error("REVIEW_CHANGED");
     if (record.data.jobId) {
@@ -257,16 +257,16 @@ export function productServer(ctx) {
     // Never record an approval for JSON the save would reject.
     const checked = await validateDraft(record, draft, category);
     if (checked.error) {
-      await McpGrant.updateOne({ _id: record._id }, { $unset: { "data.reviewHash": 1 } });
+      await Preparation.updateOne({ _id: record._id }, { $unset: { "data.reviewHash": 1 } });
       return { approved: false, valid: false, ...failure(checked), nextAction: "This JSON fails save validation. Fix it, run validate_product_draft until valid, then get a fresh independent review." };
     }
     const normalizedJson = normalizedJsonOf(args.json);
     if (normalizedJson) {
-      await McpGrant.updateOne({ _id: record._id }, { $unset: { "data.reviewHash": 1 } });
+      await Preparation.updateOne({ _id: record._id }, { $unset: { "data.reviewHash": 1 } });
       return { approved: false, normalizedJson, nextAction: "HTML was normalized to the allowed tags/styles. Have the independent reviewer inspect normalizedJson and submit a fresh review of that exact JSON before saving." };
     }
     const approved = approvedReview(args.review);
-    await McpGrant.updateOne({ _id: record._id }, { $set: { "data.review": args.review,
+    await Preparation.updateOne({ _id: record._id }, { $set: { "data.review": args.review,
       "data.reviewAgents": { analyst: args.analystId, writer: args.writerId, reviewer: args.reviewerId },
       "data.reviewedAt": new Date(), "data.reviewHash": approved ? digest(args.json) : null } });
     return { approved, nextAction: approved ? "Create product, or preview then apply regeneration with this exact JSON." : "Revise with the writer and obtain a fresh independent review.",
@@ -278,15 +278,15 @@ export function productServer(ctx) {
     if (record.data.createdProductId) return { productId: record.data.createdProductId, alreadyCreated: true };
     assertReviewed(record, args.json);
     checkedPublic(await validateDraft(record, draft, category));
-    const lock = await McpGrant.findOneAndUpdate({ _id: record._id, "data.creating": { $ne: true }, "data.createdProductId": { $exists: false } }, { $set: { "data.creating": true } });
+    const lock = await Preparation.findOneAndUpdate({ _id: record._id, "data.creating": { $ne: true }, "data.createdProductId": { $exists: false } }, { $set: { "data.creating": true } });
     if (!lock) publicError("ساخت این محصول قبلاً شروع شده؛ دوباره اجرا نکنید و فهرست محصولات را بررسی کنید.");
     const response = await createProduct(draft, { reservedProductId: record.data.reservedProductId, onCommitted: committed(record, args.json) });
     const result = await response.json();
     if (!response.ok) {
-      await McpGrant.updateOne({ _id: record._id }, { $unset: { "data.creating": 1 } });
+      await Preparation.updateOne({ _id: record._id }, { $unset: { "data.creating": 1 } });
       return { error: result, saved: false };
     }
-    await McpGrant.updateOne({ _id: record._id }, { $set: { "data.createdProductId": String(result.product._id) } });
+    await Preparation.updateOne({ _id: record._id }, { $set: { "data.createdProductId": String(result.product._id) } });
     return { product: safeProduct(result.product), saved: true, message: "محصول غیرفعال ساخته شد؛ در پنل ادمین قابل بررسی است." };
   });
   const regeneration = async args => {
@@ -297,7 +297,7 @@ export function productServer(ctx) {
   };
   register("preview_product_regeneration", "تغییرات JSON روی محصول موجود را نشان می‌دهد؛ تصاویر و واریانت‌ها حفظ می‌شوند. updatedAt را برای اعمال نگه دارید.", { preparationId, json }, "products.edit", false, async args => {
     const result = await regeneration(args);
-    await McpGrant.updateOne({ _id: result.record._id }, { $set: { "data.previewHash": digest(args.json), "data.previewVersion": result.preview.updatedAt } });
+    await Preparation.updateOne({ _id: result.record._id }, { $set: { "data.previewHash": digest(args.json), "data.previewVersion": result.preview.updatedAt } });
     return result.preview;
   });
   register("apply_product_regeneration", "تغییرات بازتولید را با کنترل نسخه اعمال می‌کند. JSON باید همان JSON پیش‌نمایش باشد. تصاویر و واریانت‌ها حفظ می‌شوند.", { preparationId, json, expectedUpdatedAt: z.string().datetime() }, "products.edit", true, async args => {

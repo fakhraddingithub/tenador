@@ -12,6 +12,10 @@
     {
       "path": "/api/cron/wallet-notifications",
       "schedule": "0 5 * * *"
+    },
+    {
+      "path": "/api/cron/product-images",
+      "schedule": "0 4 * * *"
     }
   ]
 }

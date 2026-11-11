@@ -1,7 +1,7 @@
 import "base/models/registerModels";
 import mongoose from "mongoose";
 import ProductJob from "base/models/ProductJob";
-import McpGrant from "base/models/McpGrant";
+import Preparation from "base/models/ProductPreparation";
 import { digest, secret } from "@/lib/mcp/security";
 import { jobInput, permissionsFor } from "./policy.js";
 
@@ -44,7 +44,7 @@ async function prepareJob(ctx, job, prepare, clarification, refresh = false) {
   // Jobs from the retired server worker may still carry its lease (read raw; no longer in the schema).
   if (job.status === "running" && new Date(job.leaseUntil) > new Date()) throw fail("اجرای قدیمی هنوز قفل دارد؛ پس از پایان قفل همین کار را ادامه دهید.");
   if (job.data?.preparation && !clarification && !refresh) {
-    const grant = await McpGrant.findOneAndUpdate({ key: digest(job.data.preparationId), userId: ctx.userId, kind: "preparation" },
+    const grant = await Preparation.findOneAndUpdate({ key: digest(job.data.preparationId), userId: ctx.userId },
       { $set: { expiresAt: new Date(Date.now() + 3600000) } });
     if (grant) return result(job);
   }
@@ -78,7 +78,7 @@ export async function getProductJob(ctx, jobId) {
   const job = await owned(ctx, jobId);
   const value = result(job);
   if (job.status === "awaiting_chat") {
-    const active = job.data?.preparationId && await McpGrant.exists({ key: digest(job.data.preparationId), userId: ctx.userId, expiresAt: { $gt: new Date() } });
+    const active = job.data?.preparationId && await Preparation.exists({ key: digest(job.data.preparationId), userId: ctx.userId, expiresAt: { $gt: new Date() } });
     value.preparationExpired = !active;
     if (!active) { delete value.preparation; value.nextAction = "Call resume_product_job with this jobId and no clarification to renew the SAME job. Do not start a different job."; }
   }

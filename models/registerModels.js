@@ -59,6 +59,7 @@ import "base/models/PriceCache";
 import "base/models/Product";
 import "base/models/ProductPromptConfig";
 import "base/models/McpGrant";
+import "base/models/ProductPreparation";
 import "base/models/PushSubscription";
 import "base/models/QuantityDiscount";
 import "base/models/RateLimitHit";

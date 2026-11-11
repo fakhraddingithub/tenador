@@ -44,6 +44,12 @@ export const AUDIT_IGNORED_MODELS = new Set([
   "UserNotificationState",
   "ArticleRevision",
   "ArticleRedirect",
+  // MCP bookkeeping: hashed OAuth credentials, and product-job preparations whose `data` carries
+  // the full source text and prompt (tens of KB per write). The product the job saves is what
+  // gets audited; the job keeps its own review evidence in `result.review`.
+  "McpGrant",
+  "ProductPreparation",
+  "ProductJob",
 ]);
 
 /** مسیرهایی که در هیچ تفاوتی نمی‌آیند — نویزِ محض. */

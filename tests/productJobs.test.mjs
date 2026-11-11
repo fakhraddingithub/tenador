@@ -12,7 +12,7 @@ const input = () => ({ requestKey: 'test-request-key', categoryId: String(new mo
 before(async () => {
   repl = await MongoMemoryReplSet.create({ replSet: { count: 1 } });
   await mongoose.connect(repl.getUri()); await import('../models/registerModels.js');
-  Job = mongoose.model('ProductJob'); Grant = mongoose.model('McpGrant');
+  Job = mongoose.model('ProductJob'); Grant = mongoose.model('ProductPreparation');
   await Job.init(); await Grant.init();
   service = await import('../src/lib/productJobs/service.js');
 });
@@ -28,7 +28,7 @@ let lastJob;
 async function prepare(args, job) {
   calls++; lastJob = job;
   const raw = args.rawContent || 'Extracted original source text from website for source-only jobs.';
-  await Grant.updateOne({ key: digest(job.key), kind: 'preparation', userId: ctx.userId },
+  await Grant.updateOne({ key: digest(job.key), userId: ctx.userId },
     { $set: { 'data.jobId': job.jobId, expiresAt: new Date(Date.now() + 3600000) } }, { upsert: true });
   return { preparationId: job.key, workflow: 'Native Codex subagents only', rawContent: raw + (args.clarification || ''), prompt: 'FULL ADMIN PROMPT' };
 }

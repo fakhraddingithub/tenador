@@ -9,7 +9,7 @@ import { publicAddress, sourceUrl, extractSource, validImage, downloadPublic } f
 import { secret, digest, validateAuthorization } from '../src/lib/mcp/security.js';
 register('./mcpHooks.mjs', import.meta.url);
 
-let repl, Grant, productServer, tokenRequest, authenticateMcp, category, brand, userId, sport;
+let repl, Grant, Prep, productServer, tokenRequest, authenticateMcp, category, brand, userId, sport;
 const reviewArgs = () => ({ analystId: 'host-agent-analyst', writerId: 'host-agent-writer', reviewerId: 'host-agent-reviewer', review: { approved: true, checks: { facts: true, identity: true, coherence: true, rules: true, depth: true, images: true }, issues: [], editorialNotes: ['Reviewed exact draft against source.'] } });
 const ctx = { isAdmin: true, can: () => true, permissions: ['products.create', 'products.edit'] };
 before(async () => {
@@ -17,6 +17,7 @@ before(async () => {
   await mongoose.connect(repl.getUri());
   await import('../models/registerModels.js');
   Grant = mongoose.model('McpGrant'); await Grant.init();
+  Prep = mongoose.model('ProductPreparation'); await Prep.init();
   ({ productServer } = await import('../src/lib/mcp/products.js'));
   ({ tokenRequest } = await import('../src/lib/mcp/oauth.js'));
   ({ authenticateMcp } = await import('../src/lib/mcp/auth.js'));
@@ -193,7 +194,7 @@ test('anonymous clients discover tools but every tool requests OAuth without rea
     apply_product_regeneration: { preparationId: key, json: '{}', expectedUpdatedAt: new Date().toISOString() },
     replace_product_images: { preparationId: key, mainImage: 'https://vendor.example/photo.jpg', gallery: [], expectedUpdatedAt: new Date().toISOString() },
   };
-  const before = await Grant.countDocuments();
+  const before = await Grant.countDocuments() + await Prep.countDocuments();
   for (const [name, args] of Object.entries(cases)) {
     const r = await POST(request({ jsonrpc: '2.0', id: 3, method: 'tools/call', params: { name, arguments: args } }));
     assert.equal(r.status, 200);
@@ -202,7 +203,7 @@ test('anonymous clients discover tools but every tool requests OAuth without rea
     assert.match(result._meta['mcp/www_authenticate'][0], /error="insufficient_scope"/);
     assert.match(result._meta['mcp/www_authenticate'][0], /error_description=/);
   }
-  assert.equal(await Grant.countDocuments(), before);
+  assert.equal(await Grant.countDocuments() + await Prep.countDocuments(), before);
 });
 test('prepare uses admin rules; create requires imported photos, creates inactive, and retry does not duplicate', async () => {
   const { client, close } = await connect();
@@ -249,7 +250,7 @@ test('prepare uses admin rules; create requires imported photos, creates inactiv
     assert.equal(saved.shortDescription, 'new text'); assert.equal(saved.mainImage, draft.mainImage);
     assert.equal((await call(client, 'apply_product_regeneration', { ...regen, expectedUpdatedAt: preview.updatedAt })).isError, true);
     const picture = 'https://ik.imagekit.io/test/replacement.jpg';
-    await Grant.updateOne({ key: digest(p.preparationId) }, { $push: { 'data.images': { url: picture } } });
+    await Prep.updateOne({ key: digest(p.preparationId) }, { $push: { 'data.images': { url: picture } } });
     const images = { preparationId: p.preparationId, mainImage: picture, gallery: [], expectedUpdatedAt: preview.updatedAt };
     assert.equal((await call(client, 'replace_product_images', images)).isError, true);
     assert.equal((await call(client, 'replace_product_images', { ...images, expectedUpdatedAt: saved.updatedAt.toISOString() })).saved, true);
@@ -270,7 +271,7 @@ test('Codex job commits the reviewed product atomically and recovers retries wit
     assert.equal((await call(client, 'start_product_job', input)).preparation.preparationId, job.preparation.preparationId);
     const draft = { name: 'Codex coordinated racket', shortDescription: 'Verified short description', longDescription: 'Detailed product description', brand: String(brand._id), basePrice: 100, mainImage: 'https://ik.imagekit.io/test/codex.jpg', attributes: {}, technicalStats: {} };
     const args = { preparationId: job.preparation.preparationId, json: JSON.stringify(draft) };
-    await Grant.updateOne({ key: digest(args.preparationId) }, { $push: { 'data.images': { url: draft.mainImage } } });
+    await Prep.updateOne({ key: digest(args.preparationId) }, { $push: { 'data.images': { url: draft.mainImage } } });
     const unsafe = await call(client, 'review_product_draft', { ...args, json: JSON.stringify({ ...draft, longDescription: '<p onclick="bad()">Description</p><script>bad()</script>' }), ...reviewArgs() });
     assert.equal(unsafe.approved, false);
     assert.doesNotMatch(unsafe.normalizedJson, /onclick|<script|bad\(\)/);
@@ -306,7 +307,7 @@ test('validation runs before review; unrelated catalog edits keep a preparation;
     const key = job.preparation.preparationId;
     const draft = { name: 'Resumable racket', shortDescription: 'Short text', longDescription: 'Long description', brand: String(brand._id), basePrice: 100, mainImage: 'https://ik.imagekit.io/test/resume.jpg', attributes: {}, technicalStats: {} };
     const args = { preparationId: key, json: JSON.stringify(draft) };
-    const grant = () => Grant.findOne({ key: digest(key) }).lean();
+    const grant = () => Prep.findOne({ key: digest(key) }).lean();
 
     // The save's own checks run before review, and review refuses JSON that fails them.
     const notImported = await call(client, 'validate_product_draft', args);
@@ -330,7 +331,7 @@ test('validation runs before review; unrelated catalog edits keep a preparation;
     assert.equal((await call(client, 'validate_product_draft', args)).valid, true);
 
     // Using the preparation slides its expiry.
-    await Grant.updateOne({ key: digest(key) }, { $set: { expiresAt: new Date(Date.now() + 5000) } });
+    await Prep.updateOne({ key: digest(key) }, { $set: { expiresAt: new Date(Date.now() + 5000) } });
     await call(client, 'validate_product_draft', args);
     assert.ok((await grant()).expiresAt > new Date(Date.now() + 3000000));
 
@@ -344,7 +345,7 @@ test('validation runs before review; unrelated catalog edits keep a preparation;
     assert.equal((await call(client, 'create_product', args)).isError, true);
 
     // The preparation record is gone (TTL): the renewed one re-adopts the job's images.
-    await Grant.deleteOne({ key: digest(key) });
+    await Prep.deleteOne({ key: digest(key) });
     await call(client, 'resume_product_job', { jobId: job.jobId });
     assert.equal((await grant()).data.images[0].url, draft.mainImage);
     assert.equal((await call(client, 'review_product_draft', { ...args, ...reviewArgs() })).approved, true);
@@ -372,7 +373,7 @@ test('annotations mark only overwrites destructive, quota splits reads from writ
     assert.deepEqual(scopes, ['mcp-read:', 'mcp:']);
 
     const key = job.preparation.preparationId, image = 'https://ik.imagekit.io/test/shoe.jpg', sizeImage = 'https://ik.imagekit.io/test/shoe-42.jpg';
-    await Grant.updateOne({ key: digest(key) }, { $push: { 'data.images': { $each: [{ url: image }, { url: sizeImage }] } } });
+    await Prep.updateOne({ key: digest(key) }, { $push: { 'data.images': { $each: [{ url: image }, { url: sizeImage }] } } });
     const variantMeta = { size: { 42: { units: { EU: '42', US: '8.5' }, images: [sizeImage] }, 43: { units: { EU: '43', US: '9.5' } } } };
     const draft = { name: 'Variant meta shoe', shortDescription: 'Short', longDescription: 'Long description', brand: String(brand._id), basePrice: 100, mainImage: image,
       attributes: {}, technicalStats: {}, variantOptions: { size: ['42', '43'] }, selectedCombos: ['size=42', 'size=43'], variantMeta };
@@ -396,5 +397,55 @@ test('annotations mark only overwrites destructive, quota splits reads from writ
     assert.equal(done.result.review.report.approved, true);
     assert.equal(done.result.review.jsonHash, digest(JSON.stringify(draft)));
     assert.ok(done.result.review.reviewedAt);
+  } finally { await close(); }
+});
+
+test('unused imported images are deleted once a job is settled; used, recent and failed ones stay', async () => {
+  const { cleanupProductJobImages, ABANDONED_AFTER_DAYS } = await import('../src/lib/productJobs/imageCleanup.js');
+  const Job = mongoose.model('ProductJob'), Product = mongoose.model('Product');
+  const day = 86400000, old = new Date(Date.now() - (ABANDONED_AFTER_DAYS + 1) * day);
+  const img = (name, fileId = `file-${name}`) => ({ sourceUrl: `https://vendor.example/${name}.jpg`, url: `https://ik.imagekit.io/cleanup/${name}.jpg`, fileId });
+  const job = async (doc, updatedAt = new Date()) => (await Job.collection.insertOne({ userId: new mongoose.Types.ObjectId(userId), requestKey: secret(), inputHash: 'x', input: {}, createdAt: updatedAt, updatedAt, ...doc })).insertedId;
+  const productId = new mongoose.Types.ObjectId(), otherId = new mongoose.Types.ObjectId();
+  await Product.collection.insertMany([
+    { _id: productId, sku: secret(), slug: secret(), name: 'Cleanup product', mainImage: img('main').url, variantMeta: { size: { 42: { images: [img('meta').url] } } } },
+    { _id: otherId, sku: secret(), slug: secret(), name: 'Other product', gallery: [img('reused').url] },
+  ]);
+  const activePrep = secret();
+  await Prep.create({ key: digest(activePrep), userId, data: {}, expiresAt: new Date(Date.now() + 3600000) });
+  const done = await job({ status: 'completed', result: { saved: true, productId: String(productId) }, data: { preparationId: secret(),
+    images: [img('main'), img('meta'), img('reused'), img('unused'), img('broken')] } });
+  const stillOpen = await job({ status: 'completed', result: { productId: String(productId) }, data: { preparationId: activePrep, images: [img('open')] } });
+  const recent = await job({ status: 'awaiting_chat', data: { images: [img('recent')] } });
+  const abandoned = await job({ status: 'awaiting_chat', data: { images: [img('abandoned'), img('nofile', null)] } }, old);
+
+  const deleted = [];
+  const deleteFile = async id => { if (id === 'file-broken') throw new Error('imagekit down'); deleted.push(id); };
+  const report = await cleanupProductJobImages({ deleteFile });
+  assert.deepEqual(deleted.sort(), ['file-abandoned', 'file-unused']);
+  assert.deepEqual(report, { jobs: 2, deleted: 3, kept: 3, failed: 1 });
+  const urls = async id => (await Job.findById(id).lean()).data.images.map(i => i.url.split('/').pop());
+  assert.deepEqual(await urls(done), ['main.jpg', 'meta.jpg', 'reused.jpg', 'broken.jpg']);
+  assert.equal((await Job.findById(done).lean()).data.imagesSettled, undefined, 'a failed delete keeps the job for the next run');
+  assert.deepEqual(await urls(stillOpen), ['open.jpg']);
+  assert.deepEqual(await urls(recent), ['recent.jpg']);
+  assert.deepEqual(await urls(abandoned), []);
+  assert.equal((await Job.findById(abandoned).lean()).data.imagesSettled, true);
+
+  // Next run retries only the failed delete, then the job is settled and never scanned again.
+  deleted.length = 0;
+  await cleanupProductJobImages({ deleteFile: async id => { deleted.push(id); } });
+  assert.deepEqual(deleted, ['file-broken']);
+  assert.equal((await Job.findById(done).lean()).data.imagesSettled, true);
+  assert.deepEqual(await urls(done), ['main.jpg', 'meta.jpg', 'reused.jpg']);
+});
+test('MCP bookkeeping stays out of the audit log and out of the OAuth collection', async () => {
+  const { AUDIT_IGNORED_MODELS } = await import('../src/lib/auditEntities.js');
+  for (const name of ['McpGrant', 'ProductPreparation', 'ProductJob']) assert.ok(AUDIT_IGNORED_MODELS.has(name), name);
+  const { client, close } = await connect();
+  try {
+    const job = await call(client, 'start_product_job', { requestKey: 'separate-collection', categoryId: String(category._id), rawContent: 'Wilson racket reference text for the separate preparation collection check.' });
+    const key = digest(job.preparation.preparationId);
+    assert.ok(await Prep.exists({ key })); assert.equal(await Grant.exists({ key }), null);
   } finally { await close(); }
 });

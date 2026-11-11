@@ -39,7 +39,7 @@ npm run worker:installment-reminders   # Sends installment due-date reminders
 npm run worker:review-followup         # Sends "did your order arrive?" follow-up 3 days after delivery
 ```
 
-`installment-reminders` and `review-followup` are periodic scans (not BullMQ), designed to be triggered by an external scheduler rather than run continuously. In production they run via **Vercel Cron** (`vercel.json`), which calls `GET /api/cron/installment-reminders` and `GET /api/cron/review-followup` — both check an `Authorization: Bearer $CRON_SECRET` header (Vercel sets this automatically when `CRON_SECRET` is configured as a project env var) and 401 otherwise. The `npm run worker:*` scripts remain for local/manual runs.
+`installment-reminders` and `review-followup` are periodic scans (not BullMQ), designed to be triggered by an external scheduler rather than run continuously. In production they run via **Vercel Cron** (`vercel.json`), which calls `GET /api/cron/installment-reminders` and `GET /api/cron/review-followup` — both check an `Authorization: Bearer $CRON_SECRET` header (Vercel sets this automatically when `CRON_SECRET` is configured as a project env var) and 401 otherwise. The `npm run worker:*` scripts remain for local/manual runs. `GET /api/cron/product-images` (same auth) deletes ImageKit files that product MCP jobs imported but no product uses (`src/lib/productJobs/imageCleanup.js`); it has no worker script.
 
 ## Architecture
 
