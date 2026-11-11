@@ -43,7 +43,7 @@ const safeProduct = p => Object.fromEntries([...Object.keys(REGENERATED_FIELDS),
 
 export function productServer(ctx) {
   const server = new McpServer({ name: "tenador-products", version: "3.0.0" }, {
-    instructions: "Tenador product authoring runs in Codex with native subagents. Start every create/regenerate request with start_product_job and follow preparation.workflow exactly; it is the authoritative workflow.",
+    instructions: "Tenador product authoring runs in a host with native subagents (Codex, Claude Code). Start every create/regenerate request with start_product_job and follow preparation.workflow exactly; it is the authoritative workflow.",
   });
   // Hints tell the host which calls need the user's confirmation. Only overwriting an existing
   // product is destructive; creation is inactive and idempotent, bookkeeping writes are internal.
@@ -81,14 +81,14 @@ export function productServer(ctx) {
   const checkedPublic = value => { if (value.error) publicError(typeof value.error === "string" ? value.error : value.error.message); return value; };
   const parsePublic = value => checkedPublic(parseRegenerationDraft(value)).draft;
 
-  register("start_product_job", "آماده‌سازی پایدار برای ایجنت‌های داخل Codex؛ هیچ مدل یا ورکری روی سرور اجرا نمی‌شود. preparation.workflow را با زیرایجنت‌های واقعی اجرا کنید. requestKey ثابت بماند؛ awaiting_chat منتظر کار شماست نه صف سرور.", {
+  register("start_product_job", "آماده‌سازی پایدار برای زیرایجنت‌های میزبان (Codex یا Claude Code)؛ هیچ مدل یا ورکری روی سرور اجرا نمی‌شود. preparation.workflow را با زیرایجنت‌های واقعی اجرا کنید. requestKey ثابت بماند؛ awaiting_chat منتظر کار شماست نه صف سرور.", {
     requestKey: z.string().min(8).max(100), categoryId: id.optional(), productId: id.optional(),
     rawContent: z.string().min(50).max(60000).optional(), sourceUrl: z.string().url().max(2048).optional(),
     imageUrls: z.array(z.string().url().max(2048)).max(6).optional(),
   }, ["products.view", "ai.productDraft"], true, async args => (await import("@/lib/productJobs/service")).startProductJob(ctx, args, prepareProduct), { openWorldHint: true });
-  register("get_product_job", "اطلاعات کار و نتیجه ذخیره‌سازی را برمی‌گرداند. awaiting_chat یعنی ایجنت‌های Codex باید کار کنند؛ ورکر یا مدل سروری وجود ندارد. برای ثبت موفق result.saved لازم است.",
+  register("get_product_job", "اطلاعات کار و نتیجه ذخیره‌سازی را برمی‌گرداند. awaiting_chat یعنی زیرایجنت‌های میزبان باید کار کنند؛ ورکر یا مدل سروری وجود ندارد. برای ثبت موفق result.saved لازم است.",
     { jobId: id }, ["products.view", "ai.productDraft"], false, async args => (await import("@/lib/productJobs/service")).getProductJob(ctx, args.jobId));
-  register("resume_product_job", "همان کار را برای ادامه داخل Codex بازیابی یا تمدید می‌کند؛ بدون clarification منبع تغییر نمی‌کند. فقط پاسخ واقعی کاربر را در clarification بدهید. کار تکمیل‌شده دوباره اجرا نمی‌شود.",
+  register("resume_product_job", "همان کار را برای ادامه داخل میزبان بازیابی یا تمدید می‌کند؛ بدون clarification منبع تغییر نمی‌کند. فقط پاسخ واقعی کاربر را در clarification بدهید. کار تکمیل‌شده دوباره اجرا نمی‌شود.",
     { jobId: id, clarification: z.string().min(10).max(10000).optional() }, ["products.view", "ai.productDraft"], true,
     async args => (await import("@/lib/productJobs/service")).resumeProductJob(ctx, args.jobId, args.clarification, prepareProduct), { openWorldHint: true });
 
@@ -170,7 +170,7 @@ export function productServer(ctx) {
     return { record, draft, category: built.category };
   };
   const assertReviewed = (record, value) => {
-    if (record.data.reviewHash !== digest(value)) publicError("بازبین مستقل Codex باید همین JSON نهایی را بررسی کند؛ ابتدا review_product_draft را اجرا کنید.");
+    if (record.data.reviewHash !== digest(value)) publicError("بازبین مستقل باید همین JSON نهایی را بررسی کند؛ ابتدا review_product_draft را اجرا کنید.");
   };
   const assertOriginal = async record => {
     if (!record.data.productId) return;
@@ -248,7 +248,7 @@ export function productServer(ctx) {
       if (!job.matchedCount) throw new Error("JOB_CHANGED");
     }
   };
-  register("review_product_draft", "گزارش واقعی بازبین مستقل Codex را برای JSON نهایی ثبت می‌کند؛ این ابزار مدل اجرا نمی‌کند. شناسه واقعی سه ایجنت متفاوت را بدهید. تأیید فقط برای همین JSON معتبر است؛ پس از اصلاح دوباره بازبینی کنید.", {
+  register("review_product_draft", "گزارش واقعی بازبین مستقل را برای JSON نهایی ثبت می‌کند؛ این ابزار مدل اجرا نمی‌کند. شناسه واقعی سه ایجنت متفاوت را بدهید. تأیید فقط برای همین JSON معتبر است؛ پس از اصلاح دوباره بازبینی کنید.", {
     preparationId, json, analystId: z.string().trim().min(1).max(200), writerId: z.string().trim().min(1).max(200), reviewerId: z.string().trim().min(1).max(200), review: reviewSchema,
   }, ["products.view", "ai.productDraft"], true, async args => {
     const { record, draft, category } = await contextDraft(args);

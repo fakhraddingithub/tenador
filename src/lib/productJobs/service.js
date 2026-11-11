@@ -16,7 +16,7 @@ function result(job) {
     updatedAt: job.updatedAt, result: job.result || null,
     preparation: open ? { ...job.data.preparation, rawContent: job.data.rawContent ?? job.data.preparation.rawContent } : undefined,
     input: job.status !== "completed" ? { ...job.input, rawContent: undefined } : undefined,
-    nextAction: job.status === "completed" ? "done" : job.status === "awaiting_chat" ? "Run the native Codex agents described in preparation.workflow. No worker or polling will generate content." : "Use resume_product_job to continue this legacy job in Codex; no server model will run." };
+    nextAction: job.status === "completed" ? "done" : job.status === "awaiting_chat" ? "Run the host's native subagents described in preparation.workflow. No worker or polling will generate content." : "Use resume_product_job to continue this legacy job in Codex; no server model will run." };
 }
 async function owned(ctx, id) {
   const job = await ProductJob.findOne({ _id: id, userId: ctx.userId }).lean();

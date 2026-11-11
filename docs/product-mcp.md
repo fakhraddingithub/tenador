@@ -37,6 +37,41 @@ MCP_REDIRECT_URIS=EXACT_CALLBACK_URL_FROM_CHATGPT
 
 مستند رسمی اتصال و احراز هویت: https://developers.openai.com/plugins/build/auth
 
+## اتصال Claude Code
+
+Claude Code یک کلاینت و یک endpoint جدا دارد، تا اتصال ChatGPT/Codex دست نخورد:
+
+| | ChatGPT / Codex | Claude Code |
+|---|---|---|
+| endpoint | `/api/mcp` | `/api/mcp/native` |
+| کلاینت | `MCP_CLIENT_ID` / `MCP_CLIENT_SECRET` | `MCP_NATIVE_CLIENT_ID` / `MCP_NATIVE_CLIENT_SECRET` |
+| callback | `MCP_REDIRECT_URIS` (فقط HTTPS) | `MCP_NATIVE_REDIRECT_URIS` (فقط `http://localhost:PORT/...`) |
+| بدون توکن | ابزارها دیده می‌شوند و فراخوانی، پنجرهٔ اتصال را باز می‌کند | پاسخ 401 که Claude Code را به ورود OAuth می‌برد |
+
+توکن هر endpoint فقط روی همان endpoint کار می‌کند. تنظیمات `MCP_NATIVE_*` اختیاری‌اند؛ اگر نباشند یا اشتباه باشند فقط اتصال Claude Code غیرفعال می‌شود (یک هشدار در لاگ سرور) و اتصال ChatGPT/Codex کار می‌کند.
+
+۱. در محیط سرور (Vercel) اضافه کنید و دوباره deploy کنید:
+
+```dotenv
+MCP_NATIVE_CLIENT_ID=tenador-claude-code
+MCP_NATIVE_CLIENT_SECRET=GENERATE_ANOTHER_LONG_RANDOM_SECRET
+MCP_NATIVE_REDIRECT_URIS=http://localhost:8765/callback
+```
+
+secret را مثل secret اصلی بسازید، ولی **همان را دوباره استفاده نکنید**. پورت دلخواه است ولی باید با `--callback-port` یکی باشد.
+
+۲. در ترمینالی که Claude Code را اجرا می‌کنید (نام سرور باید `tenador` باشد، چون ایجنت‌ها با همین نام به ابزارها دسترسی دارند):
+
+```bash
+MCP_CLIENT_SECRET=<MCP_NATIVE_CLIENT_SECRET> claude mcp add --transport http tenador https://YOUR-DOMAIN/api/mcp/native --client-id tenador-claude-code --client-secret --callback-port 8765
+```
+
+۳. در Claude Code دستور `/mcp` را بزنید، `tenador` را انتخاب و Authenticate کنید. در مرورگر با حساب ادمین وارد شوید؛ صفحهٔ رضایت نام برنامه و مقصد `http://localhost:8765` را نشان می‌دهد.
+
+۴. Claude Code را در همین مخزن باز کنید تا مهارت `.claude/skills/tenador-products` و چهار ایجنت `.claude/agents/tenador-*` را ببیند. در این ایجنت‌ها فقط متخصص کاتالوگ ابزارهای خواندنی تنادور را دارد و هیچ‌کدام نمی‌توانند ذخیره کنند؛ همهٔ تغییرات را جلسهٔ اصلی انجام می‌دهد.
+
+فلگ‌های `--client-id`، `--client-secret` و `--callback-port` را پیش از استفاده با `claude mcp add --help` در نسخهٔ نصب‌شده تأیید کنید.
+
 ## استفاده
 
 برای ساخت و بازسازی از ایجنت‌های بومی Codex و مهارت `tenador-products` استفاده کنید. `start_product_job` پرامپت کامل، منبع و `preparation.workflow` را برمی‌گرداند؛ همین workflow تنها نسخهٔ معتبر گردش کار است. `awaiting_chat` یعنی ادامهٔ کار با مدل داخل چت است. راهنمای کامل: [ایجنت‌های محصول](product-jobs.md).

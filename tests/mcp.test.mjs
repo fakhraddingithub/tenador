@@ -26,6 +26,9 @@ before(async () => {
   process.env.MCP_PUBLIC_ORIGIN = 'https://shop.example';
   process.env.MCP_CLIENT_ID = 'chatgpt'; process.env.MCP_CLIENT_SECRET = secret();
   process.env.MCP_REDIRECT_URIS = 'https://chatgpt.com/callback';
+  // The native client is on for the whole suite, so every ChatGPT/Codex test also proves it is untouched.
+  process.env.MCP_NATIVE_CLIENT_ID = 'claude-code'; process.env.MCP_NATIVE_CLIENT_SECRET = secret();
+  process.env.MCP_NATIVE_REDIRECT_URIS = 'http://localhost:8765/callback';
   sport = await mongoose.model('Sport').create({ name: 'Tennis', title: 'تنیس' });
   category = await mongoose.model('Category').create({ name: 'racket', title: 'راکت', sport: sport._id });
   brand = await mongoose.model('Brand').create({ name: 'Wilson', title: 'ویلسون' });
@@ -448,4 +451,90 @@ test('MCP bookkeeping stays out of the audit log and out of the OAuth collection
     const key = digest(job.preparation.preparationId);
     assert.ok(await Prep.exists({ key })); assert.equal(await Grant.exists({ key }), null);
   } finally { await close(); }
+});
+
+test('native client config: loopback only, isolated from the hosted client, broken settings disable only itself', async () => {
+  const { config } = await import('../src/lib/mcp/security.js');
+  const auth = (client_id, redirect_uri) => new URLSearchParams({ client_id, redirect_uri, response_type: 'code', code_challenge_method: 'S256', code_challenge: digest(secret()) });
+  const c = config();
+  assert.ok(validateAuthorization(auth('claude-code', 'http://localhost:8765/callback'), c));
+  assert.ok(validateAuthorization(auth('chatgpt', 'https://chatgpt.com/callback'), c));
+  assert.throws(() => validateAuthorization(auth('chatgpt', 'http://localhost:8765/callback'), c), /redirect/);
+  assert.throws(() => validateAuthorization(auth('claude-code', 'https://chatgpt.com/callback'), c), /redirect/);
+  assert.throws(() => validateAuthorization(auth('claude-code', 'http://localhost:9999/callback'), c), /redirect/);
+  const saved = { ...process.env };
+  try {
+    for (const [key, value] of [
+      ['MCP_NATIVE_REDIRECT_URIS', 'https://evil.example/callback'], ['MCP_NATIVE_REDIRECT_URIS', 'http://localhost/callback'],
+      ['MCP_NATIVE_REDIRECT_URIS', 'http://evil.example:8765/callback'], ['MCP_NATIVE_REDIRECT_URIS', 'not a url'],
+      ['MCP_NATIVE_CLIENT_SECRET', 'short'], ['MCP_NATIVE_CLIENT_ID', 'chatgpt'],
+    ]) {
+      Object.assign(process.env, saved, { [key]: value });
+      const broken = config();
+      assert.equal(broken.clients.size, 1, `${key}=${value}`);
+      assert.ok(validateAuthorization(auth('chatgpt', 'https://chatgpt.com/callback'), broken));
+    }
+  } finally { Object.assign(process.env, saved); }
+});
+test('Claude Code: consent to a loopback callback, a token bound to /api/mcp/native, 401 without one', async () => {
+  const { GET, POST } = await import('../src/app/api/mcp/oauth/authorize/route.js');
+  const { GET: metadata } = await import('../src/app/.well-known/oauth-protected-resource/api/mcp/native/route.js');
+  const native = await import('../src/app/api/mcp/native/route.js');
+  const hosted = await import('../src/app/api/mcp/route.js');
+  const resource = 'https://shop.example/api/mcp/native', verifier = secret();
+  assert.equal((await (await metadata()).json()).resource, resource);
+
+  // No token: the native endpoint answers 401 even to initialize (what starts Claude Code's OAuth).
+  const rpc = (url, body, token) => new Request(url, { method: 'POST', body: JSON.stringify(body),
+    headers: { 'content-type': 'application/json', accept: 'application/json, text/event-stream', ...(token && { authorization: `Bearer ${token}` }) } });
+  const init = { jsonrpc: '2.0', id: 1, method: 'initialize', params: { protocolVersion: '2025-03-26', capabilities: {}, clientInfo: { name: 'claude-code', version: '1' } } };
+  const anonymous = await native.POST(rpc(resource, init));
+  assert.equal(anonymous.status, 401);
+  assert.match(anonymous.headers.get('www-authenticate'), /oauth-protected-resource\/api\/mcp\/native"/);
+  assert.equal((await hosted.POST(rpc('https://shop.example/api/mcp', init))).status, 200, 'hosted discovery stays anonymous');
+
+  const params = new URLSearchParams({ client_id: 'claude-code', redirect_uri: 'http://localhost:8765/callback', response_type: 'code',
+    code_challenge_method: 'S256', code_challenge: digest(verifier), state: 'cli-state', resource, scope: 'products' });
+  const url = `https://shop.example/api/mcp/oauth/authorize?${params}`;
+  ctx.user = { name: 'Admin' };
+  const page = await GET(new Request(url)); assert.equal(page.status, 200);
+  assert.match(page.headers.get('content-security-policy'), /form-action 'self' http:\/\/localhost:8765;/);
+  const html = await page.text(); assert.match(html, /claude-code/); assert.match(html, /http:\/\/localhost:8765/);
+  const consent = html.match(/name="consent" value="([^"]+)"/)[1];
+  const accepted = await POST(new Request(url, { method: 'POST', headers: { origin: 'https://shop.example' }, body: new URLSearchParams({ consent, decision: 'allow' }) }));
+  assert.equal(accepted.status, 303);
+  const callback = new URL(accepted.headers.get('location'));
+  assert.equal(callback.origin, 'http://localhost:8765'); assert.equal(callback.searchParams.get('state'), 'cli-state');
+
+  const token = (body, id = 'claude-code', password = process.env.MCP_NATIVE_CLIENT_SECRET) =>
+    tokenRequest(new Request('https://shop.example/api/mcp/oauth/token', { method: 'POST', body: new URLSearchParams({ client_id: id, client_secret: password, ...body }) }));
+  const exchange = { grant_type: 'authorization_code', code: callback.searchParams.get('code'), redirect_uri: 'http://localhost:8765/callback', code_verifier: verifier, resource };
+  assert.equal((await token(exchange, 'chatgpt', process.env.MCP_CLIENT_SECRET)).status, 400, 'the hosted client cannot redeem a native code');
+  assert.equal((await token(exchange, 'claude-code', process.env.MCP_CLIENT_SECRET)).status, 401, 'secrets are per client');
+  const issued = await token(exchange); assert.equal(issued.status, 200);
+  const tokens = await issued.json();
+  const bearer = new Request(resource, { headers: { authorization: `Bearer ${tokens.access_token}` } });
+  assert.equal((await authenticateMcp(bearer, true)).userId, userId);
+  assert.equal(await authenticateMcp(bearer), null, 'a native token does not open the hosted endpoint');
+
+  const listed = await native.POST(rpc(resource, { jsonrpc: '2.0', id: 2, method: 'tools/list' }, tokens.access_token));
+  assert.equal(listed.status, 200); assert.equal((await listed.json()).result.tools.length, 12);
+  assert.equal((await hosted.POST(rpc('https://shop.example/api/mcp', { jsonrpc: '2.0', id: 2, method: 'tools/list' }, tokens.access_token))).status, 401);
+
+  assert.equal((await token({ grant_type: 'refresh_token', refresh_token: tokens.refresh_token }, 'chatgpt', process.env.MCP_CLIENT_SECRET)).status, 400, 'refresh stays with its client');
+  const rotated = await token({ grant_type: 'refresh_token', refresh_token: tokens.refresh_token });
+  assert.equal(rotated.status, 200);
+  const fresh = await rotated.json();
+  assert.equal((await authenticateMcp(new Request(resource, { headers: { authorization: `Bearer ${fresh.access_token}` } }), true)).userId, userId);
+});
+test('hosted tokens issued before the native client still refresh with the hosted client', async () => {
+  const refresh = secret();
+  await Grant.create({ key: digest(refresh), kind: 'refresh', userId, data: { resource: 'https://shop.example/api/mcp', family: secret() }, expiresAt: new Date(Date.now() + 60000) });
+  const request = (id, password) => tokenRequest(new Request('https://shop.example/api/mcp/oauth/token', { method: 'POST',
+    body: new URLSearchParams({ client_id: id, client_secret: password, grant_type: 'refresh_token', refresh_token: refresh }) }));
+  assert.equal((await request('claude-code', process.env.MCP_NATIVE_CLIENT_SECRET)).status, 400);
+  const response = await request('chatgpt', process.env.MCP_CLIENT_SECRET);
+  assert.equal(response.status, 200);
+  const { access_token } = await response.json();
+  assert.equal((await authenticateMcp(new Request('https://shop.example/api/mcp', { headers: { authorization: `Bearer ${access_token}` } }))).userId, userId);
 });
