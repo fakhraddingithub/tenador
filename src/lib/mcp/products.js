@@ -19,6 +19,7 @@ import { openAuditScope, activateAuditScope } from "@/lib/adminAuditScope";
 import { flushAuditScope } from "@/lib/adminAuditFlush";
 import { config, digest, secret } from "./security.js";
 import { downloadPublic, extractSource } from "./source.js";
+import { createSlug } from "base/utils/slugify";
 
 const id = z.string().regex(/^[a-f\d]{24}$/i);
 const preparationId = z.string().regex(/^[A-Za-z0-9_-]{43}$/);
@@ -45,8 +46,8 @@ const QUOTA = {
 const safeProduct = p => Object.fromEntries([...Object.keys(REGENERATED_FIELDS), "_id", "slug", "category", "sport", "mainImage", "gallery", "variantMeta", "updatedAt", "isActive"].map(k => [k, p[k]]));
 
 export function productServer(ctx) {
-  const server = new McpServer({ name: "tenador-products", version: "3.2.0" }, {
-    instructions: "Start every Tenador create/regenerate request with start_product_job and follow preparation.workflow exactly; it is the authoritative workflow. Hosts with native subagents (Codex, Claude Code) use the agents; a host without them (such as a ChatGPT chat) uses its QUICK MODE: create_product_quick for new products, preview then apply_product_regeneration_quick for existing ones.",
+  const server = new McpServer({ name: "tenador-products", version: "3.3.0" }, {
+    instructions: "Tenador products. In any chat: get_product_prompt returns the admin's product prompt with the source, exactly as the site's copy-prompt button gives it. Write the JSON it asks for and save it with create_product_quick (new product) or regenerate_product_quick (existing product). Hosts with native subagents (Codex, Claude Code) can instead use start_product_job and follow its workflow.",
   });
   // Hints tell the host which calls need the user's confirmation. Only overwriting an existing
   // product is destructive; creation is inactive and idempotent, bookkeeping writes are internal.
@@ -78,13 +79,13 @@ export function productServer(ctx) {
   const prep = async key => {
     const record = await Preparation.findOneAndUpdate({ key: digest(key), userId: ctx.userId, expiresAt: { $gt: new Date() } },
       { $set: { expiresAt: new Date(Date.now() + 3600000) } }, { returnDocument: "after" }).lean();
-    if (!record) publicError("آماده‌سازی منقضی شده؛ همان کار را با resume_product_job و بدون clarification تمدید کنید؛ کار تازه نسازید.");
+    if (!record) publicError("آماده‌سازی منقضی شده؛ دوباره get_product_prompt را بگیرید (یا برای کار ایجنت‌ها resume_product_job بدون clarification).");
     return record;
   };
   const checkedPublic = value => { if (value.error) publicError(typeof value.error === "string" ? value.error : value.error.message); return value; };
   const parsePublic = value => checkedPublic(parseRegenerationDraft(value)).draft;
 
-  register("start_product_job", "شروع ساخت یا بازسازی محصول: پرامپت کامل پنل و منبع را می‌دهد؛ هیچ مدل یا ورکری روی سرور اجرا نمی‌شود. preparation.workflow را اجرا کنید: با زیرایجنت‌های واقعی (Codex یا Claude Code)، یا در میزبان بدون زیرایجنت مثل چت ChatGPT با حالت سریع و create_product_quick. requestKey ثابت بماند؛ awaiting_chat منتظر کار شماست نه صف سرور.", {
+  register("start_product_job", "مسیر ایجنت‌ها (فقط Codex یا Claude Code با زیرایجنت): پرامپت کامل پنل، منبع و preparation.workflow را می‌دهد؛ هیچ مدل یا ورکری روی سرور اجرا نمی‌شود. در چت معمولی به‌جای آن get_product_prompt را به کار ببرید. requestKey ثابت بماند؛ awaiting_chat منتظر کار شماست نه صف سرور.", {
     requestKey: z.string().min(8).max(100), categoryId: id.optional(), productId: id.optional(),
     rawContent: z.string().min(50).max(60000).optional(), sourceUrl: z.string().url().max(2048).optional(),
     imageUrls: z.array(z.string().url().max(2048)).max(6).optional(),
@@ -102,7 +103,8 @@ export function productServer(ctx) {
   register("search_products", "جستجوی محصول موجود برای بازسازی؛ نام یا بخشی از نام را بدهید.", { query: z.string().min(1).max(100) }, "products.view", false, async ({ query }) => ({
     products: await Product.find({ name: { $regex: query.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), $options: "i" } }).select("name slug category updatedAt isActive").limit(20).lean(),
   }));
-  const prepareProduct = async (args, job = {}) => {
+  // plain: the response is only what the site's copy-prompt path gives the admin, nothing added.
+  const prepareProduct = async (args, job = {}, plain = false) => {
     let categoryId = args.categoryId, original = null;
     if (args.productId) {
       const target = checkedPublic(await loadRegenerationTarget(args.productId));
@@ -133,11 +135,15 @@ export function productServer(ctx) {
     else await Preparation.updateOne({ _id: old._id }, {
       $set: { expiresAt, "data.stateHash": stateHash, ...Object.fromEntries(Object.entries(fields).map(([k, v]) => [`data.${k}`, v])) },
       $unset: { "data.reviewHash": 1, "data.review": 1, "data.reviewAgents": 1, "data.previewHash": 1, "data.previewVersion": 1 } });
+    if (plain) return { preparationId: key, prompt: built.prompt };
     return { preparationId: key, executionMode: "codex_agents", workflow: CHAT_WORKFLOW,
       prompt: withoutSource(built.prompt, rawContent), rawContent, meta: built.meta, original,
       imageCandidates: [...new Set([...(args.imageUrls || []), ...(source?.images || [])])], sourceWarning: source?.warning,
       truncated: source?.truncated || false, expiresIn: 3600 };
   };
+  register("get_product_prompt", "پرامپت ساخت محصول پنل را همراه متن مرجع برمی‌گرداند؛ دقیقاً همان که دکمهٔ کپی پرامپت سایت می‌دهد. برای محصول تازه categoryId و برای بازسازی productId بدهید، به‌همراه rawContent (متن صفحه) یا sourceUrl (لینک). JSON خواسته‌شده را با create_product_quick یا regenerate_product_quick ذخیره کنید.", {
+    categoryId: id.optional(), productId: id.optional(), rawContent: z.string().min(50).max(60000).optional(), sourceUrl: z.string().url().max(2048).optional(),
+  }, ["products.view", "ai.productDraft"], false, args => prepareProduct(args, {}, true), { readOnlyHint: false, openWorldHint: true });
   register("import_product_images", "تصاویر انتخاب‌شدهٔ همان محصول مرجع را دانلود و در ImageKit آپلود می‌کند؛ URLهای خروجی را در mainImage/gallery به کار ببرید. هر بار حداکثر ۶ تصویر.", {
     preparationId, urls: z.array(z.string().url().max(2048)).min(1).max(6),
   }, "ai.productDraft", true, async args => {
@@ -161,11 +167,14 @@ export function productServer(ctx) {
     }
     return { images: results };
   }, { openWorldHint: true });
-  const contextDraft = async args => {
+  const contextDraft = async (args, { plain = false } = {}) => {
     const record = await prep(args.preparationId);
     const built = checkedPublic(await buildProductDraftPrompt({ categoryId: record.data.categoryId, rawContent: record.data.rawContent }));
-    if (rulesHash(built) !== record.data.promptHash) publicError("قواعد پنل تغییر کرده؛ همان کار را با resume_product_job و بدون clarification ادامه دهید، سپس دوباره بازبینی کنید.");
+    if (rulesHash(built) !== record.data.promptHash) publicError("قواعد پنل تغییر کرده؛ پرامپت تازه بگیرید (get_product_prompt، یا برای کار ایجنت‌ها resume_product_job بدون clarification) و JSON را با قواعد جدید بسازید.");
     const draft = { ...parsePublic(args.json), category: record.data.categoryId, sport: built.meta.sport.id };
+    // The prompt's output structure always carries basePrice; regeneration keeps the stored price,
+    // as the site's regeneration form does, so the plain path simply drops the key.
+    if (plain) delete draft.basePrice;
     if (record.data.productId && Object.hasOwn(draft, "basePrice")) {
       const target = checkedPublic(await loadRegenerationTarget(record.data.productId));
       if (Number(draft.basePrice) !== Number(target.product.basePrice)) publicError("در بازسازی قیمت موجود حفظ می‌شود؛ basePrice را از JSON حذف کنید و دوباره بازبینی کنید.");
@@ -221,7 +230,13 @@ export function productServer(ctx) {
       if (combinationCount > 500) return invalid("ساخت بیش از ۵۰۰ ترکیب واریانت در یک محصول مجاز نیست.", { variantOptions: "بیش از ۵۰۰ ترکیب" });
     }
     // Validate catalog references and content with the existing regeneration planner, too.
-    return previewRegeneration({ product: { _id: record._id, category: category._id, sport: category.sport._id, attributes: {}, technicalStats: {}, athlete: [], tag: [], customTabItems: [] }, category, draft });
+    const result = await previewRegeneration({ product: { _id: record._id, category: category._id, sport: category.sport._id, attributes: {}, technicalStats: {}, athlete: [], tag: [], customTabItems: [] }, category, draft });
+    // The planner's message is the admin form's ("change the name"); here it only states the fact.
+    if (result.error?.status === 409 && result.error.extra?.fieldErrors?.name) {
+      const existing = await Product.findOne({ slug: createSlug(draft.name) }).select("name slug").lean();
+      if (existing) return invalid(`محصولی با همین نام از قبل وجود دارد: «${existing.name}» (/products/${existing.slug})؛ محصول ساخته نشد.`, { name: "محصول تکراری" });
+    }
+    return result;
   };
   const failure = result => ({ error: result.error.message, fieldErrors: result.error.extra?.fieldErrors, missing: result.error.extra?.missing });
   const normalizedJsonOf = value => {
@@ -298,9 +313,9 @@ export function productServer(ctx) {
       ? "محصول غیرفعال با تصویر پیش‌فرض ساخته شد؛ تصاویر را در پنل ادمین اضافه و سپس منتشر کنید."
       : "محصول غیرفعال ساخته شد؛ در پنل ادمین قابل بررسی است." };
   };
-  register("create_product_quick", "حالت سریع برای میزبان بدون زیرایجنت (مثل چت ChatGPT)، فقط ساخت محصول تازه: JSONی را که پرامپت می‌خواهد بدهید؛ محصول غیرفعال با تصویر پیش‌فرض ساخته می‌شود و ادمین بعداً عکس‌ها را در پنل می‌گذارد. بازبینی و وارد کردن عکس لازم نیست. اگر fieldErrors برگشت، JSON را اصلاح و دوباره بفرستید.", { preparationId, json }, ["products.create", "ai.productDraft"], true, async args => {
+  register("create_product_quick", "JSON ساخته‌شده از get_product_prompt را مثل ثبت دستی در سایت ذخیره می‌کند: محصول غیرفعال با تصویر پیش‌فرض؛ ادمین عکس‌ها را بعداً در پنل می‌گذارد. اگر fieldErrors برگشت، همان فیلدها را اصلاح و دوباره بفرستید.", { preparationId, json }, ["products.create", "ai.productDraft"], true, async args => {
     const { record, draft: parsed, category } = await contextDraft(args);
-    if (record.data.productId) publicError("این آماده‌سازی برای بازسازی است؛ در حالت سریع از preview_product_regeneration و سپس apply_product_regeneration_quick استفاده کنید.");
+    if (record.data.productId) publicError("این پرامپت برای بازسازی یک محصول موجود است؛ JSON را با regenerate_product_quick ذخیره کنید.");
     if (record.data.createdProductId) return { productId: record.data.createdProductId, alreadyCreated: true };
     // No reviewer will look at a normalized copy in this mode, so the HTML allowlist is applied
     // instead of being sent back. Photos are the admin's job here: every image in the JSON is
@@ -311,9 +326,23 @@ export function productServer(ctx) {
     for (const values of objects(draft.variantMeta)) for (const entry of objects(values)) if (entry && typeof entry === "object") delete entry.images;
     for (const detail of objects(draft.variantDetails)) if (detail && typeof detail === "object") delete detail.images;
     const checked = await validateDraft(record, draft, category);
-    if (checked.error) return { saved: false, ...failure(checked), nextAction: "Fix these fields in the JSON and call create_product_quick again with the same preparationId." };
+    if (checked.error) return { saved: false, ...failure(checked) };
     return saveNew(record, draft, args.json, true);
   });
+  register("regenerate_product_quick", "JSON ساخته‌شده از get_product_prompt (با productId) را مثل ثبت بازتولید دستی در سایت روی همان محصول اعمال می‌کند. قیمت، تصاویر و واریانت‌ها دست نمی‌خورند. اگر محصول از زمان گرفتن پرامپت ویرایش شده باشد، رد می‌شود.", { preparationId, json }, "products.edit", true, async args => {
+    const { record, draft: parsed, category } = await contextDraft(args, { plain: true });
+    if (!record.data.productId) publicError("این پرامپت برای محصول تازه است؛ JSON را با create_product_quick ذخیره کنید.");
+    if (record.data.createdProductId) return { saved: true, productId: record.data.productId, alreadyApplied: true };
+    const draft = normalizeDraftHtml(parsed);
+    const checked = await validateDraft(record, draft, category);
+    if (checked.error) return { saved: false, ...failure(checked) };
+    const { target, ...plan } = checked;
+    // The version is the one the prompt was prepared on: an edit in the panel since then wins.
+    checkedPublic(await applyRegeneration({ ...target, ...plan, productId: record.data.productId,
+      expectedUpdatedAt: new Date(record.data.originalVersion).toISOString(), onCommitted: committed(record, args.json, true) }));
+    revalidateContent(["products", "navbar"]);
+    return { saved: true, productId: record.data.productId };
+  }, { destructiveHint: true, idempotentHint: false });
   const regeneration = async args => {
     const { record, draft, category } = await contextDraft(args);
     if (!record.data.productId) publicError("برای بازسازی، start_product_job را با productId اجرا کنید.");
@@ -328,22 +357,16 @@ export function productServer(ctx) {
     return { ...result.preview, ...(normalizedJson && { normalizedJson, nextAction: "HTML is outside the allowed tags/styles: preview normalizedJson instead, and apply that." }) };
   });
   // What is applied is exactly what was previewed: same JSON hash, same product version.
-  const applyPreviewed = async (args, quick) => {
+  const applyPreviewed = async args => {
     const result = await regeneration(args);
-    if (!quick) assertReviewed(result.record, args.json);
+    assertReviewed(result.record, args.json);
     if (result.record.data.previewHash !== digest(args.json) || result.record.data.previewVersion !== args.expectedUpdatedAt) publicError("ابتدا پیش‌نمایش همین JSON را بگیرید.");
-    checkedPublic(await applyRegeneration({ ...result, expectedUpdatedAt: args.expectedUpdatedAt, onCommitted: committed(result.record, args.json, quick) }));
+    checkedPublic(await applyRegeneration({ ...result, expectedUpdatedAt: args.expectedUpdatedAt, onCommitted: committed(result.record, args.json) }));
     revalidateContent(["products", "navbar"]);
     return { saved: true, productId: result.productId };
   };
   register("apply_product_regeneration", "تغییرات بازتولید را با کنترل نسخه اعمال می‌کند. JSON باید همان JSON پیش‌نمایش باشد. تصاویر و واریانت‌ها حفظ می‌شوند.", { preparationId, json, expectedUpdatedAt: z.string().datetime() }, "products.edit", true,
-    args => applyPreviewed(args, false), { destructiveHint: true, idempotentHint: false });
-  register("apply_product_regeneration_quick", "حالت سریع (میزبان بدون زیرایجنت، مثل چت ChatGPT): تغییرات بازسازی را بدون بازبینی مستقل اعمال می‌کند. فقط بعد از preview_product_regeneration همین JSON و تأیید کاربر. JSON و updatedAt باید همان پیش‌نمایش باشند. قیمت، تصاویر و واریانت‌ها حفظ می‌شوند.", { preparationId, json, expectedUpdatedAt: z.string().datetime() }, "products.edit", true, async args => {
-    // No reviewer sees a normalized copy here, so normalized HTML must go through preview first.
-    const normalizedJson = normalizedJsonOf(args.json);
-    if (normalizedJson) return { saved: false, normalizedJson, nextAction: "HTML is outside the allowed tags/styles. Preview normalizedJson, show the user, then apply that exact JSON." };
-    return applyPreviewed(args, true);
-  }, { destructiveHint: true, idempotentHint: false });
+    args => applyPreviewed(args), { destructiveHint: true, idempotentHint: false });
   register("replace_product_images", "فقط به درخواست صریح کاربر تصاویر محصول موجود را با تصاویر بارگذاری‌شده جایگزین می‌کند. mainImage و gallery مجموعهٔ نهایی هستند. expectedUpdatedAt را از آماده‌سازی جدید بگیرید.", {
     preparationId, mainImage: z.string().url(), gallery: z.array(z.string().url()).max(30), expectedUpdatedAt: z.string().datetime(),
   }, "products.edit", true, async args => {
