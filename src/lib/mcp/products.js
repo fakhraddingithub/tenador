@@ -131,7 +131,7 @@ export function productServer(ctx) {
       $set: { expiresAt, "data.stateHash": stateHash, ...Object.fromEntries(Object.entries(fields).map(([k, v]) => [`data.${k}`, v])) },
       $unset: { "data.reviewHash": 1, "data.review": 1, "data.reviewAgents": 1, "data.previewHash": 1, "data.previewVersion": 1 } });
     return { preparationId: key, executionMode: "codex_agents", workflow: CHAT_WORKFLOW,
-      prompt: withoutSource(built.prompt, rawContent), writingPrompt: built.writingPrompt, rawContent, meta: built.meta, original,
+      prompt: withoutSource(built.prompt, rawContent), rawContent, meta: built.meta, original,
       imageCandidates: [...new Set([...(args.imageUrls || []), ...(source?.images || [])])], sourceWarning: source?.warning,
       truncated: source?.truncated || false, expiresIn: 3600 };
   };

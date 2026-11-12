@@ -18,6 +18,8 @@ For an existing or interrupted request, call `get_product_job` (or `resume_produ
 ## Host notes not covered by the workflow
 
 - Keep the actual agent IDs your host issues for `review_product_draft`; never invent them.
+- When you spawn an agent, paste `prompt` and `rawContent` into its task verbatim and complete; never summarize or excerpt them. It can only follow the rules it actually receives.
+- To revise after the reviewer's issues, continue the same writer or catalogue agent with `followup_task` (it keeps its context) instead of spawning a new one.
 - Ask the user only for missing facts or choices; do not ask again for permission already given.
 - If the user asked to see a regeneration preview before it is applied, show it and wait.
 - Use `replace_product_images` only when the user explicitly asks to replace an existing product's images.

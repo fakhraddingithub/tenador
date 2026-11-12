@@ -24,7 +24,7 @@ You, the main session, are the coordinator: the only one that calls `import_prod
 | catalogue/images | `tenador-catalog` | read-only Tenador tools |
 | reviewer | `tenador-reviewer` | none of Tenador's |
 
-- Give each agent, in its prompt, its role paragraph from `preparation.workflow` plus exactly the material that paragraph lists. The agents start with empty context and know nothing else.
+- Give each agent, in its prompt, its role paragraph from `preparation.workflow` plus exactly the material that paragraph lists. Paste `prompt` and `rawContent` verbatim and complete; never summarize or excerpt them. The agents start with empty context and know only what you paste.
 - Start the writer and the catalogue specialist in the same message, so they run in parallel.
 - Each Agent result reports an `agentId`. Pass the analyst's, writer's and reviewer's actual IDs to `review_product_draft`; never invent them.
 - To revise, send the reviewer's issues to the same writer or catalogue agent with SendMessage (it keeps its context), then validate again and send the revised JSON to the reviewer. Use a new reviewer only if the old one cannot continue.

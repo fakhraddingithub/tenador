@@ -215,7 +215,8 @@ test('prepare uses admin rules; create requires imported photos, creates inactiv
     const prepared = await prepare(client, { categoryId: String(category._id), rawContent: source });
     assert.match(prepared.prompt, /ADMIN-MCP-RULE/);
     // The source comes back once, in rawContent; the prompt points at it.
-    assert.equal(prepared.rawContent, source); assert.ok(!prepared.prompt.includes(source)); assert.match(prepared.prompt, /identical to the rawContent field/);
+    assert.equal(prepared.rawContent, source); assert.ok(!prepared.prompt.includes(source)); assert.match(prepared.prompt, /identical to the rawContent field/); // The writer gets the same full prompt the site's copy-prompt path sends, never a trimmed one.
+    assert.equal(prepared.writingPrompt, undefined); assert.match(prepared.workflow, /Writer \(gets: full prompt/); assert.match(prepared.workflow, /VERBATIM/);
     const draft = { name: 'MCP Racket', shortDescription: 'short', longDescription: 'long description', brand: String(brand._id), basePrice: 100, mainImage: 'https://ik.imagekit.io/test/photo.jpg', attributes: {}, technicalStats: {}, isActive: true };
     const args = { preparationId: prepared.preparationId, json: JSON.stringify(draft) };
     assert.equal((await call(client, 'create_product', args)).isError, true);
