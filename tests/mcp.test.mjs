@@ -154,7 +154,7 @@ const call = async (client, name, args) => {
 test('MCP tools enforce permissions through actual protocol calls', async () => {
   const { client, close } = await connect({ ...ctx, can: () => false });
   try {
-    assert.equal((await client.listTools()).tools.length, 12);
+    assert.equal((await client.listTools()).tools.length, 14);
     assert.equal((await call(client, 'search_products', { query: 'test' })).isError, true);
   } finally { await close(); }
 });
@@ -168,7 +168,7 @@ test('HTTP endpoint negotiates MCP, lists tools and rejects missing credentials'
   const init = await POST(request({ jsonrpc: '2.0', id: 1, method: 'initialize', params: { protocolVersion: '2025-03-26', capabilities: {}, clientInfo: { name: 'test', version: '1' } } }));
   assert.equal(init.status, 200); assert.equal((await init.json()).result.serverInfo.name, 'tenador-products');
   const list = await POST(request({ jsonrpc: '2.0', id: 2, method: 'tools/list' }));
-  assert.equal(list.status, 200); assert.equal((await list.json()).result.tools.length, 12);
+  assert.equal(list.status, 200); assert.equal((await list.json()).result.tools.length, 14);
   const denied = await POST(request({ jsonrpc: '2.0', id: 3, method: 'tools/list' }, 'invalid'));
   assert.equal(denied.status, 401); assert.match(denied.headers.get('www-authenticate'), /oauth-protected-resource/);
 });
@@ -182,7 +182,7 @@ test('anonymous clients discover tools but every tool requests OAuth without rea
   const listed = await POST(request({ jsonrpc: '2.0', id: 2, method: 'tools/list' }));
   assert.equal(listed.status, 200);
   const tools = (await listed.json()).result.tools;
-  assert.equal(tools.length, 12);
+  assert.equal(tools.length, 14);
   for (const tool of tools) assert.deepEqual(tool._meta.securitySchemes, [{ type: 'oauth2', scopes: ['products'] }]);
   const key = secret(), objectId = String(new mongoose.Types.ObjectId());
   const cases = {
@@ -193,6 +193,8 @@ test('anonymous clients discover tools but every tool requests OAuth without rea
     create_product: { preparationId: key, json: '{}' },
     review_product_draft: { preparationId: key, json: '{}', ...reviewArgs() },
     validate_product_draft: { preparationId: key, json: '{}' },
+    create_product_quick: { preparationId: key, json: '{}' },
+    apply_product_regeneration_quick: { preparationId: key, json: '{}', expectedUpdatedAt: new Date().toISOString() },
     preview_product_regeneration: { preparationId: key, json: '{}' },
     apply_product_regeneration: { preparationId: key, json: '{}', expectedUpdatedAt: new Date().toISOString() },
     replace_product_images: { preparationId: key, mainImage: 'https://vendor.example/photo.jpg', gallery: [], expectedUpdatedAt: new Date().toISOString() },
@@ -362,7 +364,7 @@ test('annotations mark only overwrites destructive, quota splits reads from writ
   const { client, close } = await connect();
   try {
     const tools = Object.fromEntries((await client.listTools()).tools.map(t => [t.name, t.annotations]));
-    assert.deepEqual(Object.keys(tools).filter(n => tools[n].destructiveHint).sort(), ['apply_product_regeneration', 'replace_product_images']);
+    assert.deepEqual(Object.keys(tools).filter(n => tools[n].destructiveHint).sort(), ['apply_product_regeneration', 'apply_product_regeneration_quick', 'replace_product_images']);
     assert.equal(tools.create_product.readOnlyHint, false); assert.equal(tools.create_product.idempotentHint, true);
     assert.equal(tools.search_products.readOnlyHint, true); assert.equal(tools.search_products.openWorldHint, false);
     for (const name of ['start_product_job', 'resume_product_job', 'import_product_images']) assert.equal(tools[name].openWorldHint, true, name);
@@ -519,7 +521,7 @@ test('Claude Code: consent to a loopback callback, a token bound to /api/mcp/nat
   assert.equal(await authenticateMcp(bearer), null, 'a native token does not open the hosted endpoint');
 
   const listed = await native.POST(rpc(resource, { jsonrpc: '2.0', id: 2, method: 'tools/list' }, tokens.access_token));
-  assert.equal(listed.status, 200); assert.equal((await listed.json()).result.tools.length, 12);
+  assert.equal(listed.status, 200); assert.equal((await listed.json()).result.tools.length, 14);
   assert.equal((await hosted.POST(rpc('https://shop.example/api/mcp', { jsonrpc: '2.0', id: 2, method: 'tools/list' }, tokens.access_token))).status, 401);
 
   assert.equal((await token({ grant_type: 'refresh_token', refresh_token: tokens.refresh_token }, 'chatgpt', process.env.MCP_CLIENT_SECRET)).status, 400, 'refresh stays with its client');
@@ -538,4 +540,59 @@ test('hosted tokens issued before the native client still refresh with the hoste
   assert.equal(response.status, 200);
   const { access_token } = await response.json();
   assert.equal((await authenticateMcp(new Request('https://shop.example/api/mcp', { headers: { authorization: `Bearer ${access_token}` } }))).userId, userId);
+});
+
+test('quick mode: one model, no review, no imported photos; saved inactive with the default image', async () => {
+  const { DEFAULT_PRODUCT_IMAGE } = await import('../src/lib/mcp/products.js');
+  const { client, close } = await connect();
+  try {
+    const job = await call(client, 'start_product_job', { requestKey: 'quick-mode-job', categoryId: String(category._id), rawContent: 'Wilson Clash 100 v3 tennis racket reference text for the quick mode test.' });
+    assert.match(job.preparation.workflow, /QUICK MODE/);
+    const key = job.preparation.preparationId;
+    const draft = { name: 'Quick mode racket', shortDescription: '<p>Short</p>', longDescription: '<h2>Title</h2><p onclick="bad()">Long</p><script>bad()</script>',
+      brand: String(brand._id), basePrice: 100, mainImage: 'https://vendor.example/not-imported.jpg', gallery: ['https://vendor.example/other.jpg'], attributes: {}, technicalStats: {} };
+    const args = d => ({ preparationId: key, json: JSON.stringify(d) });
+
+    // Validation still applies, and nothing is written until it passes.
+    const invalid = await call(client, 'create_product_quick', args({ ...draft, basePrice: -5 }));
+    assert.equal(invalid.saved, false); assert.ok(invalid.fieldErrors?.basePrice, JSON.stringify(invalid));
+    assert.equal(await mongoose.model('Product').countDocuments({ name: draft.name }), 0);
+
+    // The agents path is unchanged: no review, no create.
+    assert.equal((await call(client, 'create_product', args(draft))).isError, true);
+
+    const saved = await call(client, 'create_product_quick', args(draft));
+    assert.equal(saved.saved, true, JSON.stringify(saved));
+    const product = await mongoose.model('Product').findById(saved.product._id).lean();
+    assert.equal(product.mainImage, DEFAULT_PRODUCT_IMAGE); assert.deepEqual(product.gallery, []);
+    assert.equal(product.isActive, false);
+    assert.doesNotMatch(product.longDescription, /onclick|<script|bad\(\)/); assert.match(product.longDescription, /<h2>Title<\/h2>/);
+    const done = await call(client, 'get_product_job', { jobId: job.jobId });
+    assert.equal(done.status, 'completed'); assert.deepEqual(done.result.review, { mode: 'quick' });
+    assert.equal((await call(client, 'create_product_quick', args(draft))).alreadyCreated, true);
+    assert.equal(await mongoose.model('Product').countDocuments({ name: draft.name }), 1);
+
+    // Quick regeneration: preview, the user approves, apply exactly what was previewed; no review.
+    const regen = await call(client, 'start_product_job', { requestKey: 'quick-mode-regen', productId: saved.product._id, rawContent: 'Wilson Clash 100 v3 tennis racket reference text for the quick mode test.' });
+    const rkey = regen.preparation.preparationId;
+    assert.equal((await call(client, 'create_product_quick', { preparationId: rkey, json: JSON.stringify({ shortDescription: 'x' }) })).isError, true);
+    const change = JSON.stringify({ shortDescription: '<p>Quick regenerated short</p>' });
+    assert.equal((await call(client, 'apply_product_regeneration_quick', { preparationId: rkey, json: change, expectedUpdatedAt: new Date(product.updatedAt).toISOString() })).isError, true, 'no apply without a preview');
+    const unsafe = JSON.stringify({ shortDescription: '<p onclick="bad()">Quick</p>' });
+    const unsafePreview = await call(client, 'preview_product_regeneration', { preparationId: rkey, json: unsafe });
+    assert.ok(unsafePreview.normalizedJson, 'preview warns before the user approves');
+    assert.equal((await call(client, 'apply_product_regeneration_quick', { preparationId: rkey, json: unsafe, expectedUpdatedAt: unsafePreview.updatedAt })).saved, false);
+    const preview = await call(client, 'preview_product_regeneration', { preparationId: rkey, json: change });
+    assert.ok(preview.changes.some(c => c.field === 'shortDescription'), JSON.stringify(preview));
+    assert.equal((await call(client, 'apply_product_regeneration_quick', { preparationId: rkey, json: JSON.stringify({ shortDescription: '<p>Edited after preview</p>' }), expectedUpdatedAt: preview.updatedAt })).isError, true, 'only the previewed JSON');
+    const applied = await call(client, 'apply_product_regeneration_quick', { preparationId: rkey, json: change, expectedUpdatedAt: preview.updatedAt });
+    assert.equal(applied.saved, true, JSON.stringify(applied));
+    const after = await mongoose.model('Product').findById(saved.product._id).lean();
+    assert.equal(after.shortDescription, '<p>Quick regenerated short</p>');
+    assert.equal(after.mainImage, DEFAULT_PRODUCT_IMAGE); assert.equal(after.basePrice, 100);
+    const regenDone = await call(client, 'get_product_job', { jobId: regen.jobId });
+    assert.equal(regenDone.status, 'completed'); assert.deepEqual(regenDone.result.review, { mode: 'quick' });
+    // The agents path still demands a review for the same kind of apply.
+    assert.equal((await call(client, 'apply_product_regeneration', { preparationId: rkey, json: change, expectedUpdatedAt: preview.updatedAt })).isError, true);
+  } finally { await close(); }
 });

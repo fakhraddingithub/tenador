@@ -28,6 +28,9 @@ const output = value => ({ content: [{ type: "text", text: JSON.stringify(value)
 // also lists every brand, serie, athlete and edition, so hashing it let any unrelated catalog edit
 // invalidate every open preparation; references are validated again at save anyway.
 const rulesHash = built => digest(built.rulesPrompt);
+// Quick mode saves a product without photos; the site's own fallback image stands in until the
+// admin uploads real ones in the panel. Also accepted in agents mode.
+export const DEFAULT_PRODUCT_IMAGE = "/images/default-site-image.png";
 // The source is already returned once as `rawContent`; the prompt points at it instead of carrying a second copy.
 const SOURCE_MARKER = "[SOURCE TEXT: identical to the rawContent field of this preparation; read it there, unchanged.]";
 const withoutSource = (prompt, rawContent) => {
@@ -42,8 +45,8 @@ const QUOTA = {
 const safeProduct = p => Object.fromEntries([...Object.keys(REGENERATED_FIELDS), "_id", "slug", "category", "sport", "mainImage", "gallery", "variantMeta", "updatedAt", "isActive"].map(k => [k, p[k]]));
 
 export function productServer(ctx) {
-  const server = new McpServer({ name: "tenador-products", version: "3.0.0" }, {
-    instructions: "Tenador product authoring runs in a host with native subagents (Codex, Claude Code). Start every create/regenerate request with start_product_job and follow preparation.workflow exactly; it is the authoritative workflow.",
+  const server = new McpServer({ name: "tenador-products", version: "3.2.0" }, {
+    instructions: "Start every Tenador create/regenerate request with start_product_job and follow preparation.workflow exactly; it is the authoritative workflow. Hosts with native subagents (Codex, Claude Code) use the agents; a host without them (such as a ChatGPT chat) uses its QUICK MODE: create_product_quick for new products, preview then apply_product_regeneration_quick for existing ones.",
   });
   // Hints tell the host which calls need the user's confirmation. Only overwriting an existing
   // product is destructive; creation is inactive and idempotent, bookkeeping writes are internal.
@@ -81,7 +84,7 @@ export function productServer(ctx) {
   const checkedPublic = value => { if (value.error) publicError(typeof value.error === "string" ? value.error : value.error.message); return value; };
   const parsePublic = value => checkedPublic(parseRegenerationDraft(value)).draft;
 
-  register("start_product_job", "آماده‌سازی پایدار برای زیرایجنت‌های میزبان (Codex یا Claude Code)؛ هیچ مدل یا ورکری روی سرور اجرا نمی‌شود. preparation.workflow را با زیرایجنت‌های واقعی اجرا کنید. requestKey ثابت بماند؛ awaiting_chat منتظر کار شماست نه صف سرور.", {
+  register("start_product_job", "شروع ساخت یا بازسازی محصول: پرامپت کامل پنل و منبع را می‌دهد؛ هیچ مدل یا ورکری روی سرور اجرا نمی‌شود. preparation.workflow را اجرا کنید: با زیرایجنت‌های واقعی (Codex یا Claude Code)، یا در میزبان بدون زیرایجنت مثل چت ChatGPT با حالت سریع و create_product_quick. requestKey ثابت بماند؛ awaiting_chat منتظر کار شماست نه صف سرور.", {
     requestKey: z.string().min(8).max(100), categoryId: id.optional(), productId: id.optional(),
     rawContent: z.string().min(50).max(60000).optional(), sourceUrl: z.string().url().max(2048).optional(),
     imageUrls: z.array(z.string().url().max(2048)).max(6).optional(),
@@ -190,7 +193,7 @@ export function productServer(ctx) {
       const result = await previewRegeneration({ ...target, draft });
       return result.error ? result : { ...result, target };
     }
-    const allowed = new Set(record.data.images.map(i => i.url));
+    const allowed = new Set([DEFAULT_PRODUCT_IMAGE, ...record.data.images.map(i => i.url)]);
     const urls = [draft.mainImage, ...(Array.isArray(draft.gallery) ? draft.gallery : [])];
     for (const detail of Object.values(draft.variantDetails || {})) urls.push(...(detail.images || []));
     // The prompt asks for variantMeta (unit conversions, value images), so it is kept — but only
@@ -235,8 +238,9 @@ export function productServer(ctx) {
     return { valid: true, missing: checked.preview.missing, ...(record.data.productId && { changes: checked.preview.changes }),
       nextAction: "Give this exact JSON to the independent reviewer, then call review_product_draft with it." };
   });
-  const committed = (record, value) => async (session, product) => {
-    const grant = await Preparation.updateOne({ _id: record._id, "data.reviewHash": digest(value), expiresAt: { $gt: new Date() } },
+  // quick: no review exists, so only the preparation itself must still be live.
+  const committed = (record, value, quick = false) => async (session, product) => {
+    const grant = await Preparation.updateOne({ _id: record._id, ...(!quick && { "data.reviewHash": digest(value) }), expiresAt: { $gt: new Date() } },
       { $set: { "data.createdProductId": String(product._id) } }, { session });
     if (!grant.matchedCount) throw new Error("REVIEW_CHANGED");
     if (record.data.jobId) {
@@ -244,7 +248,7 @@ export function productServer(ctx) {
         "data.preparation.preparationId": record.data.preparationKey },
         // The preparation record expires within the hour; the job keeps the review evidence for good.
         { $set: { status: "completed", result: { saved: true, productId: String(product._id),
-          review: { report: record.data.review, agents: record.data.reviewAgents, reviewedAt: record.data.reviewedAt, jsonHash: record.data.reviewHash } } } }, { session });
+          review: quick ? { mode: "quick" } : { report: record.data.review, agents: record.data.reviewAgents, reviewedAt: record.data.reviewedAt, jsonHash: record.data.reviewHash } } } }, { session });
       if (!job.matchedCount) throw new Error("JOB_CHANGED");
     }
   };
@@ -278,16 +282,37 @@ export function productServer(ctx) {
     if (record.data.createdProductId) return { productId: record.data.createdProductId, alreadyCreated: true };
     assertReviewed(record, args.json);
     checkedPublic(await validateDraft(record, draft, category));
+    return saveNew(record, draft, args.json);
+  });
+  const saveNew = async (record, draft, json, quick = false) => {
     const lock = await Preparation.findOneAndUpdate({ _id: record._id, "data.creating": { $ne: true }, "data.createdProductId": { $exists: false } }, { $set: { "data.creating": true } });
     if (!lock) publicError("ساخت این محصول قبلاً شروع شده؛ دوباره اجرا نکنید و فهرست محصولات را بررسی کنید.");
-    const response = await createProduct(draft, { reservedProductId: record.data.reservedProductId, onCommitted: committed(record, args.json) });
+    const response = await createProduct(draft, { reservedProductId: record.data.reservedProductId, onCommitted: committed(record, json, quick) });
     const result = await response.json();
     if (!response.ok) {
       await Preparation.updateOne({ _id: record._id }, { $unset: { "data.creating": 1 } });
       return { error: result, saved: false };
     }
     await Preparation.updateOne({ _id: record._id }, { $set: { "data.createdProductId": String(result.product._id) } });
-    return { product: safeProduct(result.product), saved: true, message: "محصول غیرفعال ساخته شد؛ در پنل ادمین قابل بررسی است." };
+    return { product: safeProduct(result.product), saved: true, message: quick
+      ? "محصول غیرفعال با تصویر پیش‌فرض ساخته شد؛ تصاویر را در پنل ادمین اضافه و سپس منتشر کنید."
+      : "محصول غیرفعال ساخته شد؛ در پنل ادمین قابل بررسی است." };
+  };
+  register("create_product_quick", "حالت سریع برای میزبان بدون زیرایجنت (مثل چت ChatGPT)، فقط ساخت محصول تازه: JSONی را که پرامپت می‌خواهد بدهید؛ محصول غیرفعال با تصویر پیش‌فرض ساخته می‌شود و ادمین بعداً عکس‌ها را در پنل می‌گذارد. بازبینی و وارد کردن عکس لازم نیست. اگر fieldErrors برگشت، JSON را اصلاح و دوباره بفرستید.", { preparationId, json }, ["products.create", "ai.productDraft"], true, async args => {
+    const { record, draft: parsed, category } = await contextDraft(args);
+    if (record.data.productId) publicError("این آماده‌سازی برای بازسازی است؛ در حالت سریع از preview_product_regeneration و سپس apply_product_regeneration_quick استفاده کنید.");
+    if (record.data.createdProductId) return { productId: record.data.createdProductId, alreadyCreated: true };
+    // No reviewer will look at a normalized copy in this mode, so the HTML allowlist is applied
+    // instead of being sent back. Photos are the admin's job here: every image in the JSON is
+    // replaced, including value-level ones, so no unimported URL can reach the product.
+    const draft = normalizeDraftHtml(parsed);
+    draft.mainImage = DEFAULT_PRODUCT_IMAGE; draft.gallery = [];
+    const objects = v => (v && typeof v === "object" && !Array.isArray(v) ? Object.values(v) : []);
+    for (const values of objects(draft.variantMeta)) for (const entry of objects(values)) if (entry && typeof entry === "object") delete entry.images;
+    for (const detail of objects(draft.variantDetails)) if (detail && typeof detail === "object") delete detail.images;
+    const checked = await validateDraft(record, draft, category);
+    if (checked.error) return { saved: false, ...failure(checked), nextAction: "Fix these fields in the JSON and call create_product_quick again with the same preparationId." };
+    return saveNew(record, draft, args.json, true);
   });
   const regeneration = async args => {
     const { record, draft, category } = await contextDraft(args);
@@ -298,15 +323,26 @@ export function productServer(ctx) {
   register("preview_product_regeneration", "تغییرات JSON روی محصول موجود را نشان می‌دهد؛ تصاویر و واریانت‌ها حفظ می‌شوند. updatedAt را برای اعمال نگه دارید.", { preparationId, json }, "products.edit", false, async args => {
     const result = await regeneration(args);
     await Preparation.updateOne({ _id: result.record._id }, { $set: { "data.previewHash": digest(args.json), "data.previewVersion": result.preview.updatedAt } });
-    return result.preview;
+    // Apply refuses HTML outside the allowlist, so say so now, before the user approves this preview.
+    const normalizedJson = normalizedJsonOf(args.json);
+    return { ...result.preview, ...(normalizedJson && { normalizedJson, nextAction: "HTML is outside the allowed tags/styles: preview normalizedJson instead, and apply that." }) };
   });
-  register("apply_product_regeneration", "تغییرات بازتولید را با کنترل نسخه اعمال می‌کند. JSON باید همان JSON پیش‌نمایش باشد. تصاویر و واریانت‌ها حفظ می‌شوند.", { preparationId, json, expectedUpdatedAt: z.string().datetime() }, "products.edit", true, async args => {
+  // What is applied is exactly what was previewed: same JSON hash, same product version.
+  const applyPreviewed = async (args, quick) => {
     const result = await regeneration(args);
-    assertReviewed(result.record, args.json);
+    if (!quick) assertReviewed(result.record, args.json);
     if (result.record.data.previewHash !== digest(args.json) || result.record.data.previewVersion !== args.expectedUpdatedAt) publicError("ابتدا پیش‌نمایش همین JSON را بگیرید.");
-    checkedPublic(await applyRegeneration({ ...result, expectedUpdatedAt: args.expectedUpdatedAt, onCommitted: committed(result.record, args.json) }));
+    checkedPublic(await applyRegeneration({ ...result, expectedUpdatedAt: args.expectedUpdatedAt, onCommitted: committed(result.record, args.json, quick) }));
     revalidateContent(["products", "navbar"]);
     return { saved: true, productId: result.productId };
+  };
+  register("apply_product_regeneration", "تغییرات بازتولید را با کنترل نسخه اعمال می‌کند. JSON باید همان JSON پیش‌نمایش باشد. تصاویر و واریانت‌ها حفظ می‌شوند.", { preparationId, json, expectedUpdatedAt: z.string().datetime() }, "products.edit", true,
+    args => applyPreviewed(args, false), { destructiveHint: true, idempotentHint: false });
+  register("apply_product_regeneration_quick", "حالت سریع (میزبان بدون زیرایجنت، مثل چت ChatGPT): تغییرات بازسازی را بدون بازبینی مستقل اعمال می‌کند. فقط بعد از preview_product_regeneration همین JSON و تأیید کاربر. JSON و updatedAt باید همان پیش‌نمایش باشند. قیمت، تصاویر و واریانت‌ها حفظ می‌شوند.", { preparationId, json, expectedUpdatedAt: z.string().datetime() }, "products.edit", true, async args => {
+    // No reviewer sees a normalized copy here, so normalized HTML must go through preview first.
+    const normalizedJson = normalizedJsonOf(args.json);
+    if (normalizedJson) return { saved: false, normalizedJson, nextAction: "HTML is outside the allowed tags/styles. Preview normalizedJson, show the user, then apply that exact JSON." };
+    return applyPreviewed(args, true);
   }, { destructiveHint: true, idempotentHint: false });
   register("replace_product_images", "فقط به درخواست صریح کاربر تصاویر محصول موجود را با تصاویر بارگذاری‌شده جایگزین می‌کند. mainImage و gallery مجموعهٔ نهایی هستند. expectedUpdatedAt را از آماده‌سازی جدید بگیرید.", {
     preparationId, mainImage: z.string().url(), gallery: z.array(z.string().url()).max(30), expectedUpdatedAt: z.string().datetime(),

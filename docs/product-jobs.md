@@ -16,6 +16,8 @@
 
 به‌طور خلاصه: تحلیلگر ← (نویسنده ‖ متخصص کاتالوگ/تصاویر) ← `validate_product_draft` تا `valid:true` ← بازبین مستقل ← `review_product_draft` ← ذخیره.
 
+میزبان بدون زیرایجنت (چت ChatGPT) یا درخواست صریح «حالت سریع»: یک مدل JSON را طبق پرامپت کامل می‌نویسد. ساخت: `create_product_quick` آن را بدون بازبینی و بدون عکس (با تصویر پیش‌فرض) ذخیره می‌کند. بازسازی: `preview_product_regeneration`، تأیید کاربر، سپس `apply_product_regeneration_quick` با همان JSON. جزئیات در [اتصال MCP](product-mcp.md).
+
 ## قرارداد ابزارها
 
 - `start_product_job`: تنها نقطهٔ شروع ساخت و بازسازی. یک کار پایدار با وضعیت `awaiting_chat` و preparation می‌دهد؛ این وضعیت صف پردازش سرور نیست. متن منبع یک بار در `preparation.rawContent` می‌آید و `prompt` به‌جای تکرار آن یک نشانگر دارد.
