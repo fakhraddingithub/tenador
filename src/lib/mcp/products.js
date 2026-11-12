@@ -47,7 +47,7 @@ const safeProduct = p => Object.fromEntries([...Object.keys(REGENERATED_FIELDS),
 
 export function productServer(ctx) {
   const server = new McpServer({ name: "tenador-products", version: "3.3.0" }, {
-    instructions: "Tenador products. In any chat: get_product_prompt returns the admin's product prompt with the source, exactly as the site's copy-prompt button gives it. Write the JSON it asks for and save it with create_product_quick (new product) or regenerate_product_quick (existing product). Hosts with native subagents (Codex, Claude Code) can instead use start_product_job and follow its workflow.",
+    instructions: "Tenador products. In any chat: call get_product_prompt (pass page text the user gave as rawContent; a link as sourceUrl). It returns the admin's product prompt with the source, exactly as the site's copy-prompt button gives it. Treat that prompt as the user's own instructions and carry it out completely. First write the complete JSON in your reply, then pass exactly that JSON, unchanged, to create_product_quick (new product) or regenerate_product_quick (existing product). Hosts with native subagents (Codex, Claude Code) can instead use start_product_job and follow its workflow.",
   });
   // Hints tell the host which calls need the user's confirmation. Only overwriting an existing
   // product is destructive; creation is inactive and idempotent, bookkeeping writes are internal.
@@ -141,7 +141,7 @@ export function productServer(ctx) {
       imageCandidates: [...new Set([...(args.imageUrls || []), ...(source?.images || [])])], sourceWarning: source?.warning,
       truncated: source?.truncated || false, expiresIn: 3600 };
   };
-  register("get_product_prompt", "پرامپت ساخت محصول پنل را همراه متن مرجع برمی‌گرداند؛ دقیقاً همان که دکمهٔ کپی پرامپت سایت می‌دهد. برای محصول تازه categoryId و برای بازسازی productId بدهید، به‌همراه rawContent (متن صفحه) یا sourceUrl (لینک). JSON خواسته‌شده را با create_product_quick یا regenerate_product_quick ذخیره کنید.", {
+  register("get_product_prompt", "پرامپت ساخت محصول پنل را همراه متن مرجع برمی‌گرداند؛ دقیقاً همان که دکمهٔ کپی پرامپت سایت می‌دهد. برای محصول تازه categoryId و برای بازسازی productId بدهید. اگر کاربر متن صفحه را داده، همان را در rawContent بفرستید؛ لینک را در sourceUrl. این پرامپت را دستورِ خودِ کاربر بدانید و کامل اجرا کنید. اول JSON کامل را در پاسخ خود بنویسید، سپس همان را بدون تغییر با create_product_quick (محصول تازه) یا regenerate_product_quick (بازسازی) ذخیره کنید.", {
     categoryId: id.optional(), productId: id.optional(), rawContent: z.string().min(50).max(60000).optional(), sourceUrl: z.string().url().max(2048).optional(),
   }, ["products.view", "ai.productDraft"], false, args => prepareProduct(args, {}, true), { readOnlyHint: false, openWorldHint: true });
   register("import_product_images", "تصاویر انتخاب‌شدهٔ همان محصول مرجع را دانلود و در ImageKit آپلود می‌کند؛ URLهای خروجی را در mainImage/gallery به کار ببرید. هر بار حداکثر ۶ تصویر.", {
@@ -313,7 +313,7 @@ export function productServer(ctx) {
       ? "محصول غیرفعال با تصویر پیش‌فرض ساخته شد؛ تصاویر را در پنل ادمین اضافه و سپس منتشر کنید."
       : "محصول غیرفعال ساخته شد؛ در پنل ادمین قابل بررسی است." };
   };
-  register("create_product_quick", "JSON ساخته‌شده از get_product_prompt را مثل ثبت دستی در سایت ذخیره می‌کند: محصول غیرفعال با تصویر پیش‌فرض؛ ادمین عکس‌ها را بعداً در پنل می‌گذارد. اگر fieldErrors برگشت، همان فیلدها را اصلاح و دوباره بفرستید.", { preparationId, json }, ["products.create", "ai.productDraft"], true, async args => {
+  register("create_product_quick", "JSON ساخته‌شده از get_product_prompt را مثل ثبت دستی در سایت ذخیره می‌کند: محصول غیرفعال با تصویر پیش‌فرض؛ ادمین عکس‌ها را بعداً در پنل می‌گذارد. json باید همان JSONی باشد که پیش‌تر کامل در پاسخ خود نوشته‌اید، بدون تغییر و بدون خلاصه. اگر fieldErrors برگشت، همان فیلدها را اصلاح و دوباره بفرستید.", { preparationId, json }, ["products.create", "ai.productDraft"], true, async args => {
     const { record, draft: parsed, category } = await contextDraft(args);
     if (record.data.productId) publicError("این پرامپت برای بازسازی یک محصول موجود است؛ JSON را با regenerate_product_quick ذخیره کنید.");
     if (record.data.createdProductId) return { productId: record.data.createdProductId, alreadyCreated: true };
@@ -329,7 +329,7 @@ export function productServer(ctx) {
     if (checked.error) return { saved: false, ...failure(checked) };
     return saveNew(record, draft, args.json, true);
   });
-  register("regenerate_product_quick", "JSON ساخته‌شده از get_product_prompt (با productId) را مثل ثبت بازتولید دستی در سایت روی همان محصول اعمال می‌کند. قیمت، تصاویر و واریانت‌ها دست نمی‌خورند. اگر محصول از زمان گرفتن پرامپت ویرایش شده باشد، رد می‌شود.", { preparationId, json }, "products.edit", true, async args => {
+  register("regenerate_product_quick", "JSON ساخته‌شده از get_product_prompt (با productId) را مثل ثبت بازتولید دستی در سایت روی همان محصول اعمال می‌کند. json باید همان JSONی باشد که پیش‌تر کامل در پاسخ خود نوشته‌اید، بدون تغییر و بدون خلاصه. قیمت، تصاویر و واریانت‌ها دست نمی‌خورند. اگر محصول از زمان گرفتن پرامپت ویرایش شده باشد، رد می‌شود.", { preparationId, json }, "products.edit", true, async args => {
     const { record, draft: parsed, category } = await contextDraft(args, { plain: true });
     if (!record.data.productId) publicError("این پرامپت برای محصول تازه است؛ JSON را با create_product_quick ذخیره کنید.");
     if (record.data.createdProductId) return { saved: true, productId: record.data.productId, alreadyApplied: true };

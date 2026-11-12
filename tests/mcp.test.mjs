@@ -548,6 +548,10 @@ test('plain path: only the admin prompt, the chat writes the JSON, the server sa
   const { buildProductDraftPrompt } = await import('../src/lib/productDraftPrompt.js');
   const { client, close } = await connect();
   try {
+    // The wording the admin tested lives in the tool descriptions, never in a tool result.
+    const described = Object.fromEntries((await client.listTools()).tools.map(t => [t.name, t.description]));
+    for (const name of ['get_product_prompt', 'create_product_quick', 'regenerate_product_quick']) assert.match(described[name], /در پاسخ خود/, name);
+    assert.match(described.get_product_prompt, /دستورِ خودِ کاربر/);
     const source = 'Wilson Clash 100 v3 tennis racket reference text for the plain path test.';
     const prepared = await call(client, 'get_product_prompt', { categoryId: String(category._id), rawContent: source });
     // Nothing but the prompt the site's copy-prompt button gives, source included; no workflow, no warnings.
