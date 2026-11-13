@@ -29,6 +29,7 @@ const ProductHeader = ({ name, shortDescription, logo = null }) => {
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.1 }}
         className="
+          latin-digits
           min-w-0
           flex-1
           break-words

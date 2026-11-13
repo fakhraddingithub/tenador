@@ -16,6 +16,28 @@
   font-display: swap;
 }
 
+/* Vazirmatn-*.woff2 نسخه‌ی FD (ارقام فارسی) است: هر عددی در سایت، حتی 0-9 لاتین، فارسی دیده می‌شود.
+   تنها استثنا: نام محصول در عنوان صفحه‌ی محصول (.latin-digits) که با نسخه‌ی اصلی، ارقام انگلیسی دارد. */
+@font-face {
+  font-family: "Vazirmatn Latin Digits";
+  src: url("/fonts/invoice/Vazirmatn-LatinDigits-Regular.woff2") format("woff2");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Vazirmatn Latin Digits";
+  src: url("/fonts/invoice/Vazirmatn-LatinDigits-Bold.woff2") format("woff2");
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}
+
+.latin-digits {
+  font-family: "Vazirmatn Latin Digits", system-ui, sans-serif;
+}
+
 /* .site-colors: هر جا داخلِ تمِ ادمین، محتوای سایت رندر می‌شود (پیش‌نمایشِ
    بلوک‌ها) و باید دقیقاً رنگِ سایت را بدهد، نه پریمریِ سبزِ پنل. */
 :root,
