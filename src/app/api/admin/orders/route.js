@@ -5,6 +5,13 @@
  *        query params:
  *          page, limit, search, paymentStatus, fulfillmentStatus, paymentMethod
  *
+ * POST → ایجاد سفارش برای یک مشتری توسط ادمین (orders.create)
+ *        body: { userId, items: [{ productId, variantId?, quantity, flowSelections? }],
+ *                addressId, paymentMethod, description?, receiptImageUrls?, installment?,
+ *                expectedTotal?, dryRun? }
+ *        dryRun: true فقط قیمت‌ها را برمی‌گرداند و چیزی نمی‌نویسد.
+ *        ثبتِ واقعی از services/placeOrder.js می‌گذرد — همان مسیرِ سفارشِ مشتری.
+ *
  * تغییرات:
  * - جستجو روی نام کاربر هم اضافه شد (با lookup)
  * - مرتب‌سازی همیشه بر اساس تاریخ ثبت (جدیدترین اول)؛ سفارش‌های دیده‌نشده با
@@ -17,6 +24,12 @@ import { NextResponse } from "next/server";
 import connectToDB from "base/configs/db";
 import Order from "base/models/Order";
 import requireAdminPermission from "@/lib/requireAdminPermission";
+import mongoose from "mongoose";
+import { markAuditHandled } from "@/lib/adminAuditScope";
+import User from "base/models/User";
+import { computeCartPrice } from "base/services/priceEngine";
+import { placeOrder } from "base/services/placeOrder";
+import { validateAdminOrderLine, mapAdminFlowSelection } from "base/services/adminOrderItemFlow";
 
 export async function GET(req) {
   const { denied } = await requireAdminPermission("orders.view");
@@ -180,5 +193,64 @@ export async function GET(req) {
   } catch (error) {
     console.error("[admin/orders GET]", error);
     return NextResponse.json({ message: "خطای داخلی سرور" }, { status: 500 });
+  }
+}
+
+const MAX_ORDER_LINES = 50;
+
+export async function POST(req) {
+  const { denied } = await requireAdminPermission("orders.create");
+  if (denied) return denied;
+
+  const fail = (message, status = 400) => NextResponse.json({ message }, { status });
+  try {
+    await connectToDB();
+    const body = await req.json();
+
+    if (!mongoose.isValidObjectId(body.userId)) return fail("ابتدا مشتری را انتخاب کنید");
+    const buyer = await User.findById(body.userId).select("_id role level").lean();
+    if (!buyer) return fail("کاربر یافت نشد", 404);
+    // همان چیزی که توکنِ خودِ مشتری به موتورِ قیمت می‌دهد
+    const user = { userId: String(buyer._id), role: buyer.role, level: buyer.level };
+
+    if (!Array.isArray(body.items) || body.items.length === 0) return fail("حداقل یک قلم به سفارش اضافه کنید");
+    if (body.items.length > MAX_ORDER_LINES) return fail("تعداد اقلام سفارش بیش از حد مجاز است");
+    const items = [];
+    for (const line of body.items) items.push(await validateAdminOrderLine(line));
+
+    if (body.dryRun) {
+      // پیش‌نمایشِ قیمت چیزی نمی‌نویسد؛ نباید برای هر بار محاسبه یک رکوردِ ممیزی بسازد.
+      markAuditHandled();
+      const priced = await computeCartPrice(items, user, null);
+      if (priced.flowConfigErrors?.length) return fail(priced.flowConfigErrors.join(" "));
+      if (priced.items?.length !== items.length) {
+        return fail("قیمت‌گذاری برخی اقلام ممکن نبود؛ آن‌ها را حذف و دوباره اضافه کنید");
+      }
+      return NextResponse.json({
+        items: priced.items.map((item) => ({
+          unitPrice: item.unitFinalPrice || item.unitPrice,
+          unitDiscount: item.unitDiscount || 0,
+          flowSelections: (item.flowSelections || []).map(mapAdminFlowSelection),
+        })),
+        subtotalToman: priced.subtotalToman,
+        discountToman: priced.discountToman,
+        totalToman: priced.finalTotalToman,
+      });
+    }
+
+    if (!mongoose.isValidObjectId(body.addressId)) return fail("آدرس تحویل را انتخاب کنید");
+    // فقط فیلدهای مجاز عبور می‌کنند: کیف پول و کد تخفیفِ مشتری از این مسیر خرج نمی‌شود.
+    return await placeOrder(user, {
+      items,
+      addressId: body.addressId,
+      paymentMethod: body.paymentMethod,
+      description: typeof body.description === "string" ? body.description.trim().slice(0, 2000) : "",
+      receiptImageUrls: body.receiptImageUrls,
+      installment: body.installment || null,
+      expectedTotal: body.expectedTotal,
+    }, { admin: true });
+  } catch (error) {
+    console.error("[admin/orders POST]", error);
+    return fail(error.status ? error.message : "خطای داخلی سرور", error.status || 500);
   }
 }

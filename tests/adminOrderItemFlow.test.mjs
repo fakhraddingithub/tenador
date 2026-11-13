@@ -56,7 +56,7 @@ before(async () => {
     "base/configs/db": { default: async () => {} },
     "base/models/registerModels": {},
     "@/lib/requireAdminPermission": { default: async (permission) => {
-      assert.equal(permission, "orders.editItems");
+      assert.ok([].concat(permission).includes("orders.editItems"));
       return { denied, actor: { userId: String(actor) } };
     } },
     "@/lib/flowTraversal": traversal,

@@ -4,6 +4,8 @@ import { readFile } from 'node:fs/promises';
 import vm from 'node:vm';
 
 const source = await readFile(new URL('../src/app/api/checkout/route.js', import.meta.url), 'utf8');
+// The route only authenticates; the order is built in the shared service, loaded here with the same fake deps.
+const serviceSource = await readFile(new URL('../services/placeOrder.js', import.meta.url), 'utf8');
 const requestBody = (patch = {}) => ({ items: [{ productId: 'product', quantity: 1 }], addressId: 'address', paymentMethod: 'BANK_RECEIPT',
   walletAmount: 200, expectedTotal: 1000, checkoutKey: 'unique-checkout-key-1', receiptImageUrls: ['receipt'], ...patch });
 
@@ -47,7 +49,7 @@ async function checkout(body, { auth = { userId: 'user' }, replay = null, price 
     },
   };
   const loaded = new vm.SourceTextModule(source, { context });
-  await loaded.link((name) => new vm.SyntheticModule(Object.keys(deps[name]), function () {
+  await loaded.link((name) => name === 'base/services/placeOrder' ? new vm.SourceTextModule(serviceSource, { context }) : new vm.SyntheticModule(Object.keys(deps[name]), function () {
     for (const [key, value] of Object.entries(deps[name])) this.setExport(key, value);
   }, { context }));
   await loaded.evaluate();

@@ -6,6 +6,8 @@ import { getUserFullName } from "base/utils/userName";
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
+import { useAdminPermissions } from "@/components/admin/AdminPermissionProvider";
 import { motion, AnimatePresence } from "framer-motion";
 import { toast } from "react-toastify";
 import {
@@ -14,7 +16,7 @@ import {
   Home, AlertCircle, RefreshCw, Receipt, CreditCard,
   Users, BadgeCheck, ChevronDown, Ban, Loader2,
   ReceiptText, Inbox, Sparkles, ShoppingBag,
-  X, MapPin, Phone, Hash, ExternalLink, User
+  X, MapPin, Phone, Hash, ExternalLink, User, Plus
 } from "lucide-react";
 
 /* ─── Constants ─────────────────────────────────────────────────────── */
@@ -581,6 +583,7 @@ function OrderDetailModal({ orderId, onClose, onOpenFull }) {
 
 /* ─── Main Component ─────────────────────────────────────────────────── */
 export default function AdminOrdersClient() {
+  const { can } = useAdminPermissions();
   const router = useRouter();
   const [orders, setOrders] = useState([]);
   const [stats, setStats] = useState(null);
@@ -754,6 +757,13 @@ export default function AdminOrdersClient() {
               className="bg-[var(--color-primary)] text-white text-sm font-bold px-5 py-2.5 rounded-xl hover:bg-[var(--color-primary-hover)] transition">
               جستجو
             </button>
+            {can("orders.create") && (
+              <Link href="/p-admin/admin-orders/create"
+                className="flex items-center gap-1.5 bg-[var(--color-primary)] text-white text-sm font-bold px-4 py-2.5 rounded-xl hover:bg-[var(--color-primary-hover)] transition">
+                <Plus size={14} />
+                ایجاد سفارش
+              </Link>
+            )}
             <button type="button" onClick={() => setShowFilters(!showFilters)}
               className={`flex items-center gap-1.5 text-sm font-bold px-4 py-2.5 rounded-xl border transition
                 ${showFilters

@@ -1,7 +1,7 @@
 
 import React from 'react';
 
-const SubmitPaymentButton = ({ disabled, loading, onClick }) => {
+const SubmitPaymentButton = ({ disabled, loading, onClick, label = 'ثبت نهایی و تکمیل پرداخت' }) => {
   return (
     <button
       onClick={onClick}
@@ -20,7 +20,7 @@ const SubmitPaymentButton = ({ disabled, loading, onClick }) => {
           در حال ثبت...
         </>
       ) : (
-        'ثبت نهایی و تکمیل پرداخت'
+        label
       )}
     </button>
   );

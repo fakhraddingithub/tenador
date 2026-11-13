@@ -87,6 +87,7 @@
     "audit:admin-rbac": "node scripts/auditAdminRbac.mjs",
     "migrate:admin-rbac": "node scripts/auditAdminRbac.mjs --apply",
     "test:article-deletion": "node --test --test-timeout=180000 tests/articleDeletionSafety.test.mjs",
+    "test:admin-order-create": "node --experimental-loader ./tests/aliasHooks.mjs --experimental-vm-modules --test --test-timeout=180000 tests/adminOrderCreate.test.mjs",
     "test:admin-rbac": "node --test tests/adminRbac.test.mjs",
     "test:admin-audit": "node --test --test-timeout=180000 tests/adminAudit.test.mjs",
     "test:admin-rbac-tx": "node --test --test-timeout=120000 tests/adminRbacTransactions.test.mjs",

@@ -431,7 +431,9 @@ function EditPaymentModal({ payment, currency, onConfirm, onClose }) {
 /* ─── Add Item Modal ────────────────────────────────────────────────── */
 // جستجوی محصول (همان API بخش تخفیف‌ها) → انتخاب واریانت (در صورت وجود) → تعداد.
 // قیمت در سرور و از همان مسیر priceEngine ثبت می‌شود؛ اینجا فقط انتخاب انجام می‌شود.
-function AddItemModal({ orderId, onSuccess, onClose }) {
+// با onPick (صفحه‌ی «ایجاد سفارش»، که هنوز سفارشی ندارد) چیزی ارسال نمی‌شود و همان
+// انتخاب به والد برمی‌گردد.
+export function AddItemModal({ orderId, onSuccess, onClose, onPick }) {
   const [query, setQuery] = useState("");
   const [results, setResults] = useState([]);
   const [searching, setSearching] = useState(false);
@@ -535,6 +537,14 @@ function AddItemModal({ orderId, onSuccess, onClose }) {
     submitLock.current = true;
     setSubmitting(true);
     try {
+      if (onPick) {
+        onPick({
+          product, variantId: variantId || null, quantity: Math.max(1, Math.floor(quantity)), flowSelections,
+          variantLabel: variants.find((variant) => String(variant._id) === variantId)?.label || "",
+        });
+        onClose();
+        return;
+      }
       const res = await fetch(`/api/admin/orders/${orderId}/items`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },

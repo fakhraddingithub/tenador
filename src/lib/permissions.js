@@ -295,6 +295,9 @@ const SECTION_DEFINITIONS = [
           // کلیدِ زیر دقیقاً همان عملیات را ریزدانه پوشش می‌دهند. چون معلوم
           // نیست دارنده‌ی کلیدِ قدیمی کدام‌یک را باید بگیرد، در
           // AMBIGUOUS_PERMISSIONS ثبت شده تا مهاجرت صریح تصمیم بگیرد.
+          // ثبتِ سفارش به‌جای مشتری. کلیدِ مستقل است و هیچ نقشِ فعلی آن را
+          // خودکار نمی‌گیرد (فقط دسترسیِ کامل)، چون به نامِ مشتری سفارش و پرداخت می‌سازد.
+          { key: "create", title: "ایجاد سفارش برای مشتری" },
           { key: "changeStatus", title: "تغییر وضعیت سفارش" },
           { key: "editItems", title: "ویرایش اقلام سفارش" },
           { key: "adjustDiscount", title: "اعمال تخفیف دستی روی سفارش" },
@@ -1071,6 +1074,7 @@ export const ADMIN_ROUTE_PERMISSIONS = {
   // سفارشات
   "/p-admin/admin-orders": ["orders.view"],
   "/p-admin/admin-orders/[orderId]": ["orders.view"],
+  "/p-admin/admin-orders/create": ["orders.create"],
 
   // صفحات سایت — هابِ دو تبی (?tab=home | ?tab=content). مسیر پایه با هر کدام
   // از دو قابلیت باز می‌شود؛ تبِ صریح در ADMIN_TAB_PERMISSIONS دقیق می‌ماند.

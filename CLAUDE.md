@@ -544,6 +544,34 @@ Store-role users (`role === "store"`) see each item's EUR price alongside the To
 
 Tests: `npm run test:order-item-eur`.
 
+### Admin-created orders: one way to place an order
+
+«ایجاد سفارش» on the admin orders list → `/p-admin/admin-orders/create` (customer → address → items →
+payment). **There is no second order-creation path.** `services/placeOrder.js` holds what used to be the
+body of `POST /api/checkout`; the checkout route only reads the buyer from the cookie and calls it, and
+`POST /api/admin/orders` calls the same function with the chosen customer as `user`. Pricing, variant and
+flow snapshots, used-product reservation, the confirmation email and the panel notification are therefore
+identical, and the order is the customer's own (`order.user`, their dashboard, their emails).
+
+| | customer checkout | admin (`{ admin: true }`) |
+|---|---|---|
+| receipt images | required | optional. None → no `Payment`, the order is `UNPAID` and the customer pays from their own order page (`/api/payments/bank-receipt`), like any unpaid order |
+| installment plan | required | optional. With a plan the amounts and due dates are validated exactly the same; only the receipt, check image and check number may be missing |
+| wallet / coupon | from the body | never: the admin route passes a fixed list of fields, so a customer's wallet cannot be spent from the panel |
+
+- The key is `orders.create`. Like `orders.delete`, no existing role gets it automatically.
+- `GET/POST /api/admin/orders/customers` (customer search, the customer's addresses, new address) is on
+  the same key, not `users.view`. A new address is saved to the customer's own addresses.
+- Lines are checked by `validateAdminOrderLine` (variant belongs to the product, required variant, flow)
+  before pricing. `dryRun: true` returns the prices and writes nothing; the page sends the total it showed
+  as `expectedTotal`, so a price that changed in between is a 409, never a silently different order.
+- The page reuses `AddItemModal` (`onPick` hands the choice back instead of posting to an order) and
+  `InstallmentPage` (`embedded`), so item picking and installment maths are not reimplemented.
+
+```bash
+npm run test:admin-order-create   # real route → placeOrder → real schemas and price engine
+```
+
 ### Order address printing (sender addresses)
 
 "چاپ برگه آدرس" on the admin order screen → `SenderAddressModal` (pick/add/edit/delete a

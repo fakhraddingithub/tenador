@@ -177,7 +177,10 @@ export const ADMIN_API_PERMISSIONS = {
   },
 
   // ── سفارشات ────────────────────────────────────────────────────────
-  "/admin/orders": { GET: "orders.view" },
+  // POST = ایجاد سفارش برای مشتری؛ از همان مسیرِ ثبتِ سفارشِ مشتری می‌گذرد.
+  "/admin/orders": { GET: "orders.view", POST: "orders.create" },
+  "/admin/orders/customers": { GET: "orders.create", POST: "orders.create" },
+  "/admin/orders/item-options": { GET: { any: ["orders.editItems", "orders.create"] } },
   // بررسیِ خودِ هندلر: PATCH فقط paymentStatus/fulfillmentStatus را می‌نویسد
   // (هیچ فیلد دیگری set نمی‌شود)، پس شاخه‌ای نیست — یک کلیدِ ثابت است.
   // DELETE = حذفِ دائمیِ سفارش + پرداخت‌هایش. کلیدِ مستقل، نه changeStatus:

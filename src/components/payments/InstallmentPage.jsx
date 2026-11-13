@@ -11,6 +11,10 @@
  *  - صفحه پرداخت سفارش‌های موجود (PaymentPage)        → POST /api/payments/bank-receipt
  *
  * همه مبالغ به تومان هستند.
+ *
+ * embedded: همین فرم داخلِ «ایجاد سفارش» پنل ادمین. فقط کارتِ تنظیمات رندر می‌شود
+ * (بدونِ خلاصه‌ی سفارش، ایمیل و قوانین) و تصویرِ رسید، تصویرِ چک و شماره‌ی چک
+ * اختیاری‌اند — ادمین ممکن است هنوز آن‌ها را در دست نداشته باشد. محاسبات یکی است.
  */
 
 import React, { useState, useEffect, useMemo } from 'react';
@@ -50,6 +54,7 @@ const checkDateToISO = (date) => {
 
 // آپلود تصویر چک (data URL) و دریافت URL نهایی
 const uploadCheckImage = async (dataUrl, index) => {
+  if (!dataUrl) return null; // فقط در حالت embedded ممکن است
   // اگر از قبل URL آپلودشده باشد (نه data URL)، همان را برگردان
   if (typeof dataUrl === 'string' && !dataUrl.startsWith('data:')) {
     return dataUrl;
@@ -71,7 +76,7 @@ const uploadCheckImage = async (dataUrl, index) => {
   return data.url;
 };
 
-const InstallmentPage = ({ order, user, onFinalSubmit }) => {
+const InstallmentPage = ({ order, user, onFinalSubmit, embedded = false, submitLabel }) => {
   const installmentBase = Math.max(0, order.totalPrice - (order.walletPaid || 0));
   const [downPayment, setDownPayment] = useState(0);
   const [downPaymentReceipts, setDownPaymentReceipts] = useState([]);
@@ -165,11 +170,11 @@ const InstallmentPage = ({ order, user, onFinalSubmit }) => {
     if (downPayment >= installmentBase) {
       return toast.error('پیش‌پرداخت باید کمتر از مبلغ کل سفارش باشد');
     }
-    if (downPaymentReceipts.length === 0) {
+    if (downPaymentReceipts.length === 0 && !embedded) {
       return toast.error('لطفاً حداقل یک تصویر رسید پیش‌پرداخت بارگذاری کنید');
     }
 
-    const isAllFilled = checks.every(c => c.image && c.number && c.amount && c.date);
+    const isAllFilled = checks.every(c => (embedded || (c.image && c.number)) && c.amount && c.date);
     if (!isAllFilled) {
       return toast.error('لطفا تمامی فیلدهای مربوط به چک‌ها را تکمیل کنید');
     }
@@ -179,7 +184,7 @@ const InstallmentPage = ({ order, user, onFinalSubmit }) => {
     if (Math.abs(totalCheckAmount - calculations.totalWithInterest) > 100) {
       return toast.error(`مجموع مبالغ چک‌ها باید برابر با ${Math.round(calculations.totalWithInterest).toLocaleString()} تومان باشد`);
     }
-    if (!rulesChecked) {
+    if (!rulesChecked && !embedded) {
       toast.error('پذیرش قوانین الزامی است.');
       return;
     }
@@ -195,7 +200,7 @@ const InstallmentPage = ({ order, user, onFinalSubmit }) => {
 
     const result = await Swal.fire({
       title: 'آیا از تایید نهایی اطمینان دارید؟',
-      text: 'پس از تایید، سفارش شما ثبت و طرح اقساطی برای بازبینی ارسال خواهد شد.',
+      text: embedded ? 'سفارش و طرح اقساطی برای این مشتری ثبت می‌شود.' : 'پس از تایید، سفارش شما ثبت و طرح اقساطی برای بازبینی ارسال خواهد شد.',
       icon: 'question',
       showCancelButton: true,
       confirmButtonText: 'بله، تایید می‌کنم',
@@ -219,7 +224,7 @@ const InstallmentPage = ({ order, user, onFinalSubmit }) => {
         downPaymentReceiptUrls: downPaymentReceipts,
         numberOfChecks:         installmentCount,
         checks: checks.map((c, i) => ({
-          checkNumber:     c.number,
+          checkNumber:     c.number || null,
           amount:          Number(c.amount),
           dueDate:         dueDates[i],
           receiptImageUrl: checkImageUrls[i],
@@ -236,22 +241,7 @@ const InstallmentPage = ({ order, user, onFinalSubmit }) => {
     }
   };
 
-  return (
-    <div className="min-h-screen bg-gray-50 py-8">
-      <div className="max-w-8xl mx-auto">
-        <header className="mb-8 text-center lg:text-right">
-          <h1 className="text-3xl font-bold text-[var(--color-text)] mb-2">مدیریت پرداخت اقساطی</h1>
-          <p className="text-gray-500">مراحل تنظیم و تایید چک‌های بانکی</p>
-        </header>
-
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
-          {/* Left Column: Order Summary */}
-          <aside className="lg:col-span-4 h-fit lg:sticky lg:top-8 order-1 lg:order-2">
-            <OrderSummary order={order} downPayment={downPayment} />
-          </aside>
-
-          {/* Right Column: Configuration */}
-          <main className="lg:col-span-8 space-y-6 order-2 lg:order-1">
+  const settings = (
             <div className="bg-[var(--color-background)] rounded-[var(--radius)] shadow-sm border border-gray-100 p-6 space-y-8">
               <section>
                 <h2 className="text-xl font-bold mb-6 pb-2 border-b border-gray-100">تنظیمات اقساط</h2>
@@ -296,22 +286,47 @@ const InstallmentPage = ({ order, user, onFinalSubmit }) => {
                 remainingBalance={calculations.totalWithInterest}
               />
 
-              <EmailBox
-                show={!user?.email}
-                email={email}
-                setEmail={setEmail}
-              />
+              {!embedded && (
+                <>
+                  <EmailBox
+                    show={!user?.email}
+                    email={email}
+                    setEmail={setEmail}
+                  />
 
-              <RulesAgreement
-                checked={rulesChecked}
-                onChange={setRulesChecked}
-              />
+                  <RulesAgreement
+                    checked={rulesChecked}
+                    onChange={setRulesChecked}
+                  />
+                </>
+              )}
               <SubmitPaymentButton
                 loading={submitLoading}
-                disabled={!checks.length || !rulesChecked}
+                disabled={!checks.length || (!rulesChecked && !embedded)}
+                label={submitLabel}
                 onClick={handleFinalSubmit}
               />
             </div>
+  );
+  if (embedded) return settings;
+
+  return (
+    <div className="min-h-screen bg-gray-50 py-8">
+      <div className="max-w-8xl mx-auto">
+        <header className="mb-8 text-center lg:text-right">
+          <h1 className="text-3xl font-bold text-[var(--color-text)] mb-2">مدیریت پرداخت اقساطی</h1>
+          <p className="text-gray-500">مراحل تنظیم و تایید چک‌های بانکی</p>
+        </header>
+
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+          {/* Left Column: Order Summary */}
+          <aside className="lg:col-span-4 h-fit lg:sticky lg:top-8 order-1 lg:order-2">
+            <OrderSummary order={order} downPayment={downPayment} />
+          </aside>
+
+          {/* Right Column: Configuration */}
+          <main className="lg:col-span-8 space-y-6 order-2 lg:order-1">
+            {settings}
           </main>
         </div>
       </div>

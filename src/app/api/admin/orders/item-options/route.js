@@ -9,8 +9,9 @@ import requireAdminPermission from "@/lib/requireAdminPermission";
 import { rankProducts, withProductSearch } from "@/lib/productSearch";
 
 // The order editor must not require unrelated discounts/products permissions.
+// The create-order page picks products the same way, so either key opens it.
 export async function GET(req) {
-  const { denied } = await requireAdminPermission("orders.editItems");
+  const { denied } = await requireAdminPermission(["orders.editItems", "orders.create"], { mode: "any" });
   if (denied) return denied;
   try {
     await connectToDB();

@@ -95,3 +95,29 @@ export function mapAdminFlowSelection(sel) {
     selectedProductName: sel.selectedProductName || "", selectedVariantLabel: sel.selectedVariantLabel || null,
   };
 }
+
+// One line of an order the admin is creating → a cart item the price engine accepts.
+// Same checks the "add item to an existing order" route runs before pricing.
+export async function validateAdminOrderLine({ productId, variantId, quantity, flowSelections = [] } = {}) {
+  if (!mongoose.isValidObjectId(productId)) invalid("شناسه محصول نامعتبر است");
+  const qty = Number(quantity);
+  if (!Number.isSafeInteger(qty) || qty < 1) invalid("تعداد باید عددی صحیح و حداقل ۱ باشد");
+  const product = await Product.findById(productId).select("_id name category").lean();
+  if (!product) throw Object.assign(new Error("محصول یافت نشد"), { status: 404 });
+  if (variantId) {
+    if (!mongoose.isValidObjectId(variantId)) invalid("شناسه واریانت نامعتبر است");
+    const variant = await Variant.findById(variantId).select("_id productId").lean();
+    if (!variant || String(variant.productId) !== String(productId)) {
+      invalid(`واریانت انتخاب‌شده متعلق به «${product.name}» نیست`);
+    }
+  } else if (await Variant.exists({ productId })) {
+    invalid(`لطفاً واریانت «${product.name}» را انتخاب کنید`);
+  }
+  return {
+    productId: String(productId),
+    variantId: variantId ? String(variantId) : null,
+    quantity: qty,
+    itemType: "product",
+    flowSelections: await validateAdminItemFlow(product, flowSelections),
+  };
+}
