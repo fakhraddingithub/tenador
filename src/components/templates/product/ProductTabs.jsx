@@ -144,7 +144,7 @@ const ProductTabs = ({
         </div>
       )}
       {sectionId === "attributes" && (
-        <div className="rounded-[6px] border border-gray-100 bg-gray-50/50 p-1">
+        <div className="rounded-[6px] border border-gray-100 bg-gray-50/50 p-1 lg:w-1/2">
           <ProductAttributesTable
             attributes={attributes}
             active={isActive}

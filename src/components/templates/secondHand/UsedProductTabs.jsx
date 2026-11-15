@@ -2,11 +2,12 @@
 
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import ProductDescription from "@/components/templates/product/ProductDescription";
+import Link from "next/link";
+import Image from "next/image";
 import ProductAttributesTable from "@/components/templates/product/ProductAttributesTable";
 import ProductReviews from "@/components/templates/product/ProductReviews";
 import MobileProductTabs, { useMobileProductLayout } from "@/components/templates/product/MobileProductTabs";
-import { FiCheckCircle, FiInfo, FiStar } from 'react-icons/fi';
+import { FiArrowLeft, FiCheckCircle, FiInfo, FiStar } from 'react-icons/fi';
 
 /* ── تب کارت سلامت ── */
 
@@ -138,6 +139,50 @@ function Badge({ icon, text }) {
   );
 }
 
+/* ── تب توضیحات: چهار خطِ اول، محو، و کارتی که به صفحه‌ی محصولِ پایه می‌رود ── */
+
+function DescriptionTeaser({ description, baseProduct }) {
+  const href = `/products/${baseProduct?.slug || baseProduct?._id}`;
+
+  return (
+    <div
+      className="group relative overflow-hidden rounded-2xl border border-[var(--color-primary)]/15 bg-gradient-to-b from-white to-[var(--color-primary)]/[0.06] shadow-sm transition-all duration-300 hover:-translate-y-0.5 hover:border-[var(--color-primary)]/40 hover:shadow-xl hover:shadow-[var(--color-primary)]/10"
+      dir="rtl"
+    >
+      <div className="absolute -left-16 -top-16 h-48 w-48 rounded-full bg-[var(--color-primary)]/10 blur-3xl" aria-hidden="true" />
+
+      {/* لینکِ کشیده روی کلِ کارت؛ خودِ متن ممکن است <a> داشته باشد و <a> درونِ <a> نامعتبر است */}
+      <Link href={href} className="absolute inset-0 z-10 rounded-2xl focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-primary)]" aria-label={`ادامه‌ی توضیحات در صفحه‌ی ${baseProduct?.name || "محصول"}`} />
+
+      {description && (
+        <div
+          className="pointer-events-none max-h-[4lh] overflow-hidden px-5 pt-6 text-sm leading-8 text-neutral-700 [mask-image:linear-gradient(to_bottom,black_30%,transparent)] sm:px-8 sm:pt-8 sm:text-base sm:leading-8 [&_*]:!m-0 [&_*]:!text-[length:inherit] [&_*]:!leading-[inherit]"
+          dangerouslySetInnerHTML={{ __html: description }}
+        />
+      )}
+
+      <div className="relative flex items-center gap-4 px-5 pb-5 pt-4 sm:gap-6 sm:px-8 sm:pb-7">
+        {baseProduct?.mainImage && (
+          <div className="relative h-20 w-20 shrink-0 overflow-hidden rounded-xl border border-neutral-100 bg-white p-1.5 shadow-md transition-transform duration-300 group-hover:-rotate-3 group-hover:scale-105 sm:h-28 sm:w-28">
+            <Image src={baseProduct.mainImage} alt={baseProduct.name || ""} width={112} height={112} className="h-full w-full object-contain" />
+          </div>
+        )}
+
+        <div className="min-w-0 flex-1">
+          <p className="text-[11px] font-bold text-[var(--color-primary)] sm:text-xs">ادامه‌ی توضیحات در صفحه‌ی محصول</p>
+          <p className="mt-1 truncate text-sm font-black text-neutral-900 sm:text-lg">{baseProduct?.name}</p>
+          <p className="mt-1 hidden text-xs text-neutral-500 sm:block">معرفی کامل، بررسی تخصصی و نظر خریداران</p>
+        </div>
+
+        <span className="flex shrink-0 items-center gap-2 rounded-full bg-[var(--color-primary)] px-3 py-2.5 text-xs font-bold text-white shadow-lg shadow-[var(--color-primary)]/25 sm:px-5 sm:text-sm">
+          <span className="hidden sm:inline">مشاهده‌ی کامل</span>
+          <FiArrowLeft className="transition-transform duration-300 group-hover:-translate-x-1" />
+        </span>
+      </div>
+    </div>
+  );
+}
+
 /* ── تب‌های اصلی ── */
 const tabs = [
   { id: "health",      label: "کارت سلامت",      icon: "🛡️" },
@@ -151,6 +196,7 @@ const UsedProductTabs = ({
   customFields,
   overallScore,
   description,
+  baseProduct,
   attributes=[],
   technicalStats=[],
   targetAudience,
@@ -168,9 +214,7 @@ const UsedProductTabs = ({
         />
       )}
       {sectionId === "description" && (
-        <div className="prose prose-gray max-w-none leading-8">
-          <ProductDescription description={description} />
-        </div>
+        <DescriptionTeaser description={description} baseProduct={baseProduct} />
       )}
       {sectionId === "attributes" && (
         <div className="bg-gray-50/50 rounded-[6px] p-1 border border-gray-100">

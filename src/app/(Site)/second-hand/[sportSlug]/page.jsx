@@ -181,6 +181,7 @@ export default async function UsedProductPage({ params }) {
     baseProduct: {
       _id:              raw.baseProduct._id.toString(),
       name:             raw.baseProduct.name,
+      slug:             raw.baseProduct.slug,
       mainImage:        raw.baseProduct.mainImage,
       gallery:          raw.baseProduct.gallery || [],
       shortDescription: raw.baseProduct.shortDescription || "",

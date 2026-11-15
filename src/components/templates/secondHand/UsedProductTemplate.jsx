@@ -21,6 +21,7 @@ const UsedProductTemplate = ({ product }) => {
             customFields={product.customFields}
             overallScore={product.overallScore}
             description={product.baseProduct.longDescription}
+            baseProduct={product.baseProduct}
             attributes={product.baseProduct.attributes}
             technicalStats={technicalStats}
             targetAudience={product.baseProduct.targetAudience}
