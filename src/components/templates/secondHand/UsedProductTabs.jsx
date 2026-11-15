@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
+import ProductDescription from "@/components/templates/product/ProductDescription";
 import Link from "next/link";
 import Image from "next/image";
 import ProductAttributesTable from "@/components/templates/product/ProductAttributesTable";
@@ -146,13 +147,13 @@ function DescriptionTeaser({ description, baseProduct }) {
 
   return (
     <div
-      className="group relative overflow-hidden rounded-2xl border border-[var(--color-primary)]/15 bg-gradient-to-b from-white to-[var(--color-primary)]/[0.06] shadow-sm transition-all duration-300 hover:-translate-y-0.5 hover:border-[var(--color-primary)]/40 hover:shadow-xl hover:shadow-[var(--color-primary)]/10"
+      className="group relative overflow-hidden rounded-[6px] border border-[var(--color-primary)]/15 bg-gradient-to-b from-white to-[var(--color-primary)]/[0.06] shadow-sm transition-all duration-300 hover:-translate-y-0.5 hover:border-[var(--color-primary)]/40 hover:shadow-xl hover:shadow-[var(--color-primary)]/10"
       dir="rtl"
     >
       <div className="absolute -left-16 -top-16 h-48 w-48 rounded-full bg-[var(--color-primary)]/10 blur-3xl" aria-hidden="true" />
 
       {/* لینکِ کشیده روی کلِ کارت؛ خودِ متن ممکن است <a> داشته باشد و <a> درونِ <a> نامعتبر است */}
-      <Link href={href} className="absolute inset-0 z-10 rounded-2xl focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-primary)]" aria-label={`ادامه‌ی توضیحات در صفحه‌ی ${baseProduct?.name || "محصول"}`} />
+      <Link href={href} className="absolute inset-0 z-10 rounded-[6px] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-primary)]" aria-label={`ادامه‌ی توضیحات در صفحه‌ی ${baseProduct?.name || "محصول"}`} />
 
       {description && (
         <div
@@ -163,7 +164,7 @@ function DescriptionTeaser({ description, baseProduct }) {
 
       <div className="relative flex items-center gap-4 px-5 pb-5 pt-4 sm:gap-6 sm:px-8 sm:pb-7">
         {baseProduct?.mainImage && (
-          <div className="relative h-20 w-20 shrink-0 overflow-hidden rounded-xl border border-neutral-100 bg-white p-1.5 shadow-md transition-transform duration-300 group-hover:-rotate-3 group-hover:scale-105 sm:h-28 sm:w-28">
+          <div className="relative h-20 w-20 shrink-0 overflow-hidden rounded-[6px] border border-neutral-100 bg-white p-1.5 shadow-md transition-transform duration-300 group-hover:-rotate-3 group-hover:scale-105 sm:h-28 sm:w-28">
             <Image src={baseProduct.mainImage} alt={baseProduct.name || ""} width={112} height={112} className="h-full w-full object-contain" />
           </div>
         )}
@@ -214,7 +215,14 @@ const UsedProductTabs = ({
         />
       )}
       {sectionId === "description" && (
-        <DescriptionTeaser description={description} baseProduct={baseProduct} />
+        // محصولِ پایه‌ی غیرفعال صفحه ندارد (۴۰۴)، پس توضیحاتش همین‌جا کامل می‌آید
+        baseProduct?.isActive ? (
+          <DescriptionTeaser description={description} baseProduct={baseProduct} />
+        ) : (
+          <div className="prose prose-gray max-w-none leading-8">
+            <ProductDescription description={description} />
+          </div>
+        )
       )}
       {sectionId === "attributes" && (
         <div className="bg-gray-50/50 rounded-[6px] p-1 border border-gray-100">
