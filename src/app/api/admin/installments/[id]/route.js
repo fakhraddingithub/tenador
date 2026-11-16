@@ -12,6 +12,7 @@ import { getUserFullName } from "base/utils/userName";
 import "base/models/registerModels";
 import Installment from "base/models/Installment";
 import { deriveCheckStatus, summarizeInstallment } from "base/services/installmentService";
+import { eurPaidByCheck, eurSummary } from "base/services/orderEurRecalc";
 
 import requireAdminPermission from "@/lib/requireAdminPermission";
 
@@ -30,7 +31,7 @@ export async function GET(req, { params }) {
     const inst = await Installment.findById(id)
       .populate({
         path: "order",
-        select: "trackingCode totalPrice subtotalPrice discountAmount couponDiscount coupon priceEUR paymentMethod paymentStatus fulfillmentStatus orderDate user",
+        select: "trackingCode totalPrice subtotalPrice discountAmount couponDiscount coupon priceEUR paymentsEUR paymentMethod paymentStatus fulfillmentStatus orderDate user",
         populate: { path: "user", select: "name lastName phone email" },
       })
       .populate({ path: "downPayment", select: "amount status bankReceipt createdAt" })
@@ -43,6 +44,7 @@ export async function GET(req, { params }) {
     const now = new Date();
     const summary = summarizeInstallment(inst, now);
     const u = inst.order.user || {};
+    const eurByCheck = eurPaidByCheck(inst.order.paymentsEUR);
 
     const checks = (inst.checks || [])
       .slice()
@@ -60,6 +62,7 @@ export async function GET(req, { params }) {
         notes: c.notes || "",
         bounceReason: c.bounceReason || "",
         reviewedAt: c.reviewedAt || null,
+        amountEUR: eurByCheck[String(c._id)] ?? null,
       }));
 
     return NextResponse.json(
@@ -100,6 +103,7 @@ export async function GET(req, { params }) {
           remainingChecksCount: summary.remainingChecksCount,
           nextDueDate: summary.nextDueDate,
           overdueCount: summary.overdueCount,
+          eur: eurSummary(inst.order),
           checks,
         },
       },

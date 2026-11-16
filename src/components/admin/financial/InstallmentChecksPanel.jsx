@@ -6,10 +6,11 @@ import { toast } from "react-toastify";
 import { useAdminPermissions } from "@/components/admin/AdminPermissionProvider";
 import {
   CheckCircle, XCircle, Clock, AlertTriangle, Upload, StickyNote,
-  Loader2, X, BadgeCheck, Image as ImageIcon, ExternalLink, ShieldCheck,
+  Loader2, X, BadgeCheck, Image as ImageIcon, ExternalLink, ShieldCheck, Euro,
 } from "lucide-react";
 
 const fa = (n) => new Intl.NumberFormat("fa-IR").format(Number(n ?? 0));
+const fmtEUR = (n) => new Intl.NumberFormat("en-US", { maximumFractionDigits: 2 }).format(Number(n ?? 0));
 const faDate = (d) =>
   d
     ? new Intl.DateTimeFormat("fa-IR", { year: "numeric", month: "2-digit", day: "2-digit", timeZone: "Asia/Tehran" }).format(new Date(d))
@@ -23,8 +24,17 @@ const CHECK_STATUS = {
 };
 
 /* ─── Confirm "mark cleared" modal ─── */
-function MarkClearedModal({ check, onConfirm, onClose }) {
+// eur = خلاصه‌ی یوروی سفارش ({priceEUR, paidEUR, remainingEUR}) یا null وقتی ادمین
+// کلید orders.setCurrency را ندارد (فیلد یورو نمایش داده نمی‌شود).
+function MarkClearedModal({ check, eur, onConfirm, onClose }) {
   const [loading, setLoading] = useState(false);
+  const [eurAmount, setEurAmount] = useState("");
+  const eurRequired = eur?.priceEUR != null;
+  const eurRaw = eurAmount.trim();
+  const eurParsed = eurRaw === "" ? null : Number(eurRaw);
+  const eurInvalid = eurParsed !== null && (!Number.isFinite(eurParsed) || eurParsed < 0);
+  const blocked = eurInvalid || (eurRequired && eurParsed === null);
+
   return (
     <Modal onClose={onClose} title="تأیید پاس‌شدن چک" icon={BadgeCheck}>
       <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 text-xs text-amber-700 leading-relaxed">
@@ -36,10 +46,34 @@ function MarkClearedModal({ check, onConfirm, onClose }) {
         <Cell label="سررسید" value={faDate(check.dueDate)} />
         <Cell label="شماره چک" value={check.checkNumber || "—"} />
       </div>
+      {eur && (
+        <div>
+          <label className="flex items-center gap-1.5 text-sm font-bold text-gray-700 mb-2">
+            <Euro size={13} className="text-[#aa4725]" />
+            مبلغ یوروی این چک
+            {eurRequired ? <span className="text-red-500">*</span> : <span className="text-[10px] font-medium text-gray-400">(اختیاری)</span>}
+          </label>
+          <div className="relative">
+            <input
+              type="number" step="any" min="0" dir="ltr" value={eurAmount}
+              onChange={(e) => setEurAmount(e.target.value)}
+              placeholder="0.00"
+              className={`w-full border rounded-xl px-4 py-2.5 text-sm font-bold text-gray-800 text-left focus:outline-none focus:ring-2 transition
+                ${eurInvalid ? "border-red-400 focus:ring-red-200" : "border-gray-300 focus:ring-[#aa4725]/30 focus:border-[#aa4725]"}`}
+            />
+            <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-gray-400">€</span>
+          </div>
+          <p className="text-[10px] text-gray-400 mt-1.5 leading-relaxed">
+            {eurRequired
+              ? <>مانده‌ی یوروی سفارش: <span dir="ltr">€ {fmtEUR(eur.remainingEUR)}</span> — این مبلغ به‌عنوان پرداخت یورویی ثبت و از مانده کسر می‌شود. اگر یورویی دریافت نشده ۰ وارد کنید.</>
+              : "مبلغ کل یوروی سفارش ثبت نشده؛ در صورت دریافت یورو، مبلغ را وارد کنید."}
+          </p>
+        </div>
+      )}
       <div className="flex gap-3 pt-1">
         <button
-          disabled={loading}
-          onClick={async () => { setLoading(true); await onConfirm(); setLoading(false); }}
+          disabled={loading || blocked}
+          onClick={async () => { setLoading(true); await onConfirm(eurParsed); setLoading(false); }}
           className="flex-1 bg-green-500 hover:bg-green-600 text-white font-bold py-2.5 rounded-xl text-sm transition flex items-center justify-center gap-2 disabled:opacity-60"
         >
           {loading ? <Loader2 size={15} className="animate-spin" /> : <CheckCircle size={15} />}
@@ -152,6 +186,8 @@ export default function InstallmentChecksPanel({ installment, orderFulfillmentSt
   const { can } = useAdminPermissions();
   const canEditChecks = can("installments.edit");
   const canApproveOrder = can("installments.approveCheck");
+  // ثبت یورو همان کلیدِ پنل یوروی سفارش است (API هم همین را چک می‌کند)
+  const eur = can("orders.setCurrency") ? installment.eur || { priceEUR: null } : null;
   const [modal, setModal] = useState(null); // {type, check}
   const [busyCheck, setBusyCheck] = useState(null);
   const [confirming, setConfirming] = useState(false);
@@ -223,6 +259,13 @@ export default function InstallmentChecksPanel({ installment, orderFulfillmentSt
         <Cell label="پیش‌پرداخت" value={`${fa(installment.downPayment?.amount)} ${installment.downPayment?.paid ? "✓" : "(در انتظار)"}`} />
         <Cell label="پرداخت‌شده" value={`${fa(installment.paidAmount)} تومان`} />
         <Cell label="مانده چک‌ها" value={`${fa(installment.remainingAmount)} تومان`} />
+        {installment.eur?.priceEUR != null && (
+          <>
+            <Cell label="مبلغ کل یورو" value={<span dir="ltr">€ {fmtEUR(installment.eur.priceEUR)}</span>} />
+            <Cell label="پرداخت‌شده یورو" value={<span dir="ltr">€ {fmtEUR(installment.eur.paidEUR)}</span>} />
+            <Cell label="مانده یورو" value={<span dir="ltr">€ {fmtEUR(installment.eur.remainingEUR)}</span>} />
+          </>
+        )}
       </div>
 
       {/* Confirm order gate */}
@@ -277,6 +320,9 @@ export default function InstallmentChecksPanel({ installment, orderFulfillmentSt
                 </div>
                 <div className="text-left flex-shrink-0">
                   <p className="text-sm font-black text-gray-800">{fa(c.amount)}</p>
+                  {c.amountEUR != null && (
+                    <p className="text-[11px] font-bold text-blue-600" dir="ltr">€ {fmtEUR(c.amountEUR)}</p>
+                  )}
                   <span className={`inline-block mt-0.5 text-[10px] font-bold px-2 py-0.5 rounded-full border ${cs.cls}`}>{cs.label}</span>
                 </div>
               </div>
@@ -350,8 +396,15 @@ export default function InstallmentChecksPanel({ installment, orderFulfillmentSt
         {modal?.type === "clear" && (
           <MarkClearedModal
             check={modal.check}
+            eur={eur}
             onClose={() => setModal(null)}
-            onConfirm={() => patchCheck(modal.check._id, { status: "CLEARED" }, "چک پاس‌شده ثبت شد")}
+            onConfirm={(amountEUR) =>
+              patchCheck(
+                modal.check._id,
+                amountEUR === null ? { status: "CLEARED" } : { status: "CLEARED", amountEUR },
+                "چک پاس‌شده ثبت شد"
+              )
+            }
           />
         )}
         {modal?.type === "bounce" && (

@@ -9,6 +9,12 @@ import { grantAutomaticCoachCredit } from "base/services/coachWallet.service";
  *   bounceReason?:    string  (الزامی وقتی status = BOUNCED)
  *   receiptImageUrl?: string  (آپلود/تغییر تصویر چک)
  *   notes?:           string  (یادداشت ادمین)
+ *   amountEUR?:       number  (مبلغ یوروییِ این چک — فقط هنگام پاس‌شدن)
+ *
+ * یورو: هنگام پاس‌شدنِ چک، amountEUR به‌صورت یک ردیف در order.paymentsEUR (با
+ * installmentCheck = همین چک) در همان تراکنش ثبت و از مانده‌ی یوروی سفارش کسر
+ * می‌شود. اگر سفارش مبلغ کلِ یورو دارد و ادمین کلید orders.setCurrency را دارد،
+ * این مبلغ الزامی است؛ فرستادنش بدون orders.setCurrency → ۴۰۳.
  *
  * رفتار وضعیتِ سفارش:
  *   - اگر همه چک‌ها CLEARED شوند → installment.status=COMPLETED، پیش‌پرداخت PAID،
@@ -26,6 +32,7 @@ import Payment from "base/models/Payment.js";
 import Order from "base/models/Order.js";
 import User from "base/models/User.js";
 import mongoose from "mongoose";
+import { parseCheckEurAmount } from "base/services/orderEurRecalc";
 import {
   sendInstallmentCheckClearedEmail,
   sendInstallmentCompletedEmail,
@@ -45,7 +52,7 @@ export async function PATCH(req, { params }) {
 
     const { checkId } = await params;
     const body = await req.json();
-    const { status, bounceReason, receiptImageUrl, notes } = body;
+    const { status, bounceReason, receiptImageUrl, notes, amountEUR } = body;
 
     const hasStatus = status !== undefined && status !== null && status !== "";
     const hasMeta = receiptImageUrl !== undefined || notes !== undefined;
@@ -92,6 +99,28 @@ export async function PATCH(req, { params }) {
     }
 
     const wasCleared = check.status === "CLEARED";
+    const justCleared = hasStatus && status === "CLEARED" && !wasCleared;
+
+    /* ── مبلغ یوروییِ چک (فقط در لحظه‌ی پاس‌شدن) ── */
+    let eurValue = null;
+    if (justCleared) {
+      const eurSent = amountEUR !== undefined && amountEUR !== null && amountEUR !== "";
+      const canEur = ctx.can("orders.setCurrency");
+      if (eurSent && !canEur) {
+        return NextResponse.json(
+          { message: "شما دسترسی لازم برای ثبت مبلغ یورو را ندارید" },
+          { status: 403 }
+        );
+      }
+      const eurOrder = await Order.findById(installment.order).select("priceEUR").lean();
+      const parsedEur = parseCheckEurAmount(amountEUR, {
+        required: canEur && eurOrder?.priceEUR != null,
+      });
+      if (parsedEur.error) {
+        return NextResponse.json({ message: parsedEur.error }, { status: 400 });
+      }
+      eurValue = parsedEur.value;
+    }
 
     /* ── آپدیت متادیتا ── */
     if (receiptImageUrl !== undefined) check.receiptImageUrl = receiptImageUrl || null;
@@ -126,8 +155,6 @@ export async function PATCH(req, { params }) {
       installment.status = "PENDING";
     }
 
-    const justCleared = hasStatus && status === "CLEARED" && !wasCleared;
-
     const dbSession = await mongoose.startSession();
     dbSession.startTransaction();
     try {
@@ -147,6 +174,35 @@ export async function PATCH(req, { params }) {
           await grantAutomaticCoachCredit(order, dbSession);
           await order.save({ session: dbSession });
         }
+      }
+
+      /* یوروی چک → یک پرداخت یورویی روی سفارش (همان شکلِ POST /eur). بعد از
+         order.save تا سندِ بارگذاری‌شده‌ی بالا آن را بازنویسی نکند. */
+      if (eurValue > 0) {
+        const now = new Date();
+        const number =
+          installment.checks
+            .slice()
+            .sort((a, b) => new Date(a.dueDate) - new Date(b.dueDate))
+            .findIndex((c) => String(c._id) === String(check._id)) + 1;
+        await Order.updateOne(
+          { _id: installment.order },
+          {
+            $push: {
+              paymentsEUR: {
+                _id: new mongoose.Types.ObjectId(),
+                amount: eurValue,
+                note: `پاس‌شدن قسط ${number}${check.checkNumber ? ` — چک ${check.checkNumber}` : ""}`,
+                installmentCheck: check._id,
+                confirmedBy: new mongoose.Types.ObjectId(ctx.userId),
+                confirmedAt: now,
+                createdAt: now,
+                updatedAt: now,
+              },
+            },
+          },
+          { session: dbSession, strict: false }
+        );
       }
 
       await dbSession.commitTransaction();

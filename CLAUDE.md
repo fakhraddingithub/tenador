@@ -544,6 +544,23 @@ Store-role users (`role === "store"`) see each item's EUR price alongside the To
 
 Tests: `npm run test:order-item-eur`.
 
+**Installment orders: one EUR row per cleared check.** Clearing a check
+(`PATCH /api/installments/checks/[checkId]/status`) takes `amountEUR` and, in the same transaction,
+pushes it onto `order.paymentsEUR` with `installmentCheck` set to the check id. That is the only
+link: a check's EUR amount is *derived* (`eurPaidByCheck`), never stored on the check, so editing or
+deleting the row in the EUR panel shows on the check too, and remaining EUR, euro analytics, the
+invoice and the customer view (all `Σ paymentsEUR.amount`) needed no change. Nothing converts from
+the check's Toman amount.
+
+| case | rule |
+|---|---|
+| order has `priceEUR` and the admin has `orders.setCurrency` | `amountEUR` required (≥ 0; `0` records no row) |
+| order has no `priceEUR` | optional |
+| `amountEUR` sent without `orders.setCurrency` | 403 |
+| check already CLEARED | no second row |
+
+`npm run test:installment-check-eur` (real replica set, real route).
+
 ### Admin-created orders: one way to place an order
 
 «ایجاد سفارش» on the admin orders list → `/p-admin/admin-orders/create` (customer → address → items →

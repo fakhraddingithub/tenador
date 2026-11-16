@@ -15,6 +15,7 @@ import "base/models/registerModels";
 import Order from "base/models/Order";
 import Installment from "base/models/Installment";
 import { deriveCheckStatus, summarizeInstallment } from "base/services/installmentService";
+import { eurPaidByCheck, eurSummary } from "base/services/orderEurRecalc";
 import { syncOrderFulfillmentFromTracking } from "@/lib/orderFulfillmentSync";
 import { markOrderUsedProductsSold } from "@/lib/usedProductOrderStatus";
 import { deleteOrderPermanently } from "base/services/orderDeletion";
@@ -40,7 +41,8 @@ function normalizeVariant(variant) {
 }
 
 // طرح اقساط مرتبط با این سفارش را (در صورت وجود) به‌صورت خلاصه برمی‌گرداند
-async function loadInstallmentForOrder(orderId) {
+// `order` = همان سفارشی که پاسخ برمی‌گرداند (priceEUR / paymentsEUR) برای یوروی چک‌ها
+async function loadInstallmentForOrder(orderId, order) {
   const inst = await Installment.findOne({ order: orderId })
     .populate({ path: "downPayment", select: "amount status bankReceipt" })
     .lean();
@@ -48,6 +50,7 @@ async function loadInstallmentForOrder(orderId) {
 
   const now = new Date();
   const summary = summarizeInstallment(inst, now);
+  const eurByCheck = eurPaidByCheck(order?.paymentsEUR);
 
   return {
     _id: inst._id,
@@ -70,6 +73,7 @@ async function loadInstallmentForOrder(orderId) {
     remainingChecksCount: summary.remainingChecksCount,
     nextDueDate: summary.nextDueDate,
     overdueCount: summary.overdueCount,
+    eur: eurSummary(order),
     checks: (inst.checks || [])
       .slice()
       .sort((a, b) => new Date(a.dueDate) - new Date(b.dueDate))
@@ -85,6 +89,7 @@ async function loadInstallmentForOrder(orderId) {
         receiptImageUrl: c.receiptImageUrl || null,
         notes: c.notes || "",
         bounceReason: c.bounceReason || "",
+        amountEUR: eurByCheck[String(c._id)] ?? null,
       })),
   };
 }
@@ -192,7 +197,7 @@ export async function GET(req, { params }) {
     // طرح اقساط مرتبط (در صورت وجود) برای نمایش تبِ «اقساط» در جزئیات سفارش
     const installment =
       fullOrder.paymentMethod === "INSTALLMENT"
-        ? await loadInstallmentForOrder(orderId)
+        ? await loadInstallmentForOrder(orderId, fullOrder)
         : null;
 
     return NextResponse.json({ order: fullOrder, installment, invoiceCustomerRole: fullOrder.user?.role || null }, { status: 200 });
@@ -307,7 +312,7 @@ export async function PATCH(req, { params }) {
 
     const installment =
       order.paymentMethod === "INSTALLMENT"
-        ? await loadInstallmentForOrder(orderId)
+        ? await loadInstallmentForOrder(orderId, order)
         : null;
 
     return NextResponse.json(

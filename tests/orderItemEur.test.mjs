@@ -156,3 +156,33 @@ test("هیچ فیلد تومانی خوانده یا نوشته نمی‌شود"
     "هیچ فیلد تومانی نباید عوض شده باشد"
   );
 });
+
+/* ─── یوروی چک‌های اقساطی ────────────────────────────────────────────── */
+
+import { eurSummary, eurPaidByCheck, parseCheckEurAmount } from "../services/orderEurRecalc.js";
+
+test("یوروی چکِ پاس‌شده یک ردیفِ paymentsEUR است و از مانده کسر می‌شود", () => {
+  const checkA = "aaaaaaaaaaaaaaaaaaaaaaaa";
+  const order = {
+    priceEUR: 300,
+    paymentsEUR: [
+      { amount: 100 }, // پیش‌پرداخت / پرداخت دستی
+      { amount: 50.1, installmentCheck: checkA },
+      { amount: 49.9, installmentCheck: checkA }, // ویرایش/افزودنِ دستی روی همان چک
+    ],
+  };
+  assert.deepEqual(eurSummary(order), { priceEUR: 300, paidEUR: 200, remainingEUR: 100 });
+  assert.deepEqual(eurPaidByCheck(order.paymentsEUR), { [checkA]: 100 });
+  // سفارش بدون مبلغ کلِ یورو: مانده null، نه صفر
+  assert.deepEqual(eurSummary({ paymentsEUR: [] }), { priceEUR: null, paidEUR: 0, remainingEUR: null });
+});
+
+test("parseCheckEurAmount: الزامی فقط وقتی سفارش یورو دارد؛ ۰ مجاز، منفی نه", () => {
+  assert.ok(parseCheckEurAmount(undefined, { required: true }).error);
+  assert.ok(parseCheckEurAmount("", { required: true }).error);
+  assert.deepEqual(parseCheckEurAmount(undefined, { required: false }), { value: null });
+  assert.deepEqual(parseCheckEurAmount(0, { required: true }), { value: 0 });
+  assert.deepEqual(parseCheckEurAmount("12.345", { required: true }), { value: 12.35 });
+  assert.ok(parseCheckEurAmount(-1, { required: false }).error);
+  assert.ok(parseCheckEurAmount("abc", { required: false }).error);
+});

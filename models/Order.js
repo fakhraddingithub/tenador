@@ -111,6 +111,11 @@ const EurPaymentSchema = new mongoose.Schema(
       ],
       default: [],
     },
+
+    // چکِ اقساطی‌ای که این پرداخت یورویی هنگام «پاس شدنش» ثبت شد (Installment.checks._id).
+    // null = پرداخت یوروییِ معمولی. مبلغ یوروییِ هر چک از روی همین پیوند خوانده می‌شود،
+    // پس حذف/ویرایشِ این ردیف در پنل یورو خودبه‌خود روی چک هم دیده می‌شود.
+    installmentCheck: { type: mongoose.Schema.Types.ObjectId, default: null },
   },
   { _id: true, timestamps: true }
 );

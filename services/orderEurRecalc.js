@@ -81,3 +81,47 @@ export function applyOrderEurTotal(order) {
   order.priceEUR = next;
   return true;
 }
+
+/* ─── یورو در سفارش‌های اقساطی ─────────────────────────────────────────
+ * مبلغ یوروییِ هر چکِ پاس‌شده یک ردیفِ عادی در order.paymentsEUR است با
+ * installmentCheck = شناسه‌ی چک. پس مانده‌ی یورو، گزارش‌ها، فاکتور و پنل مشتری
+ * (که همه Σ paymentsEUR.amount را می‌خوانند) بدون هیچ تغییری هماهنگ می‌مانند.
+ * هیچ تبدیلی از مبلغ تومانیِ چک انجام نمی‌شود. */
+
+/** خلاصه‌ی یوروی سفارش: مبلغ کل، پرداخت‌شده، مانده (null وقتی مبلغ کل ثبت نشده). */
+export function eurSummary(order) {
+  const priceEUR = hasItemEur(order?.priceEUR) ? Number(order.priceEUR) : null;
+  const paid = (order?.paymentsEUR || []).reduce((s, p) => s + (Number(p?.amount) || 0), 0);
+  const paidEUR = Math.round(paid * 100) / 100;
+  return {
+    priceEUR,
+    paidEUR,
+    remainingEUR: priceEUR === null ? null : Math.round((priceEUR - paidEUR) * 100) / 100,
+  };
+}
+
+/** جمعِ پرداخت‌های یوروییِ پیوندخورده به هر چک: { [checkId]: amount } */
+export function eurPaidByCheck(paymentsEUR) {
+  const out = {};
+  for (const p of paymentsEUR || []) {
+    if (!p?.installmentCheck) continue;
+    const key = String(p.installmentCheck);
+    out[key] = Math.round(((out[key] || 0) + (Number(p.amount) || 0)) * 100) / 100;
+  }
+  return out;
+}
+
+/**
+ * اعتبارسنجیِ مبلغ یوروییِ ارسالی هنگام پاس‌کردنِ چک.
+ * required = سفارش مبلغ کلِ یورو دارد (یعنی سیستم یورو برایش فعال است).
+ * ۰ مجاز است (مثلاً یورو قبلاً تسویه شده) ولی ردیفی ثبت نمی‌کند.
+ * @returns {{ value: number|null } | { error: string }}
+ */
+export function parseCheckEurAmount(raw, { required }) {
+  if (raw === null || raw === undefined || raw === "") {
+    return required ? { error: "مبلغ یورویی این چک را وارد کنید" } : { value: null };
+  }
+  const n = Number(raw);
+  if (!Number.isFinite(n) || n < 0) return { error: "مبلغ یورو باید عددی نامنفی باشد" };
+  return { value: Math.round(n * 100) / 100 };
+}
