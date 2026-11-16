@@ -295,7 +295,8 @@ export const PUBLIC_ADMIN_API_PERMISSIONS = {
   "/categories/create": { POST: "categories.create" },
   "/categories/[categoryId]": {
     PUT: "categories.edit",
-    DELETE: "categories.delete",
+    // حذف دسته محصولاتش را هم حذف می‌کند (deleteCategoryWithProducts) → هر دو کلید
+    DELETE: ["categories.delete", "products.delete"],
   },
   "/categories/reorder": { PUT: "categories.reorder" },
 

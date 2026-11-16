@@ -13,7 +13,7 @@ const readMarketRates = unstable_cache(
 );
 
 export async function GET() {
-  const { denied } = await requireAdminPermission(null);
+  const { denied } = await requireAdminPermission();
   if (denied) return denied;
 
   try {
