@@ -15,7 +15,7 @@ import "base/models/registerModels";
 import Order from "base/models/Order";
 import Installment from "base/models/Installment";
 import { deriveCheckStatus, summarizeInstallment } from "base/services/installmentService";
-import { eurPaidByCheck, eurSummary } from "base/services/orderEurRecalc";
+import { eurPaidByLink, eurSummary } from "base/services/orderEurRecalc";
 import { syncOrderFulfillmentFromTracking } from "@/lib/orderFulfillmentSync";
 import { markOrderUsedProductsSold } from "@/lib/usedProductOrderStatus";
 import { deleteOrderPermanently } from "base/services/orderDeletion";
@@ -50,7 +50,7 @@ async function loadInstallmentForOrder(orderId, order) {
 
   const now = new Date();
   const summary = summarizeInstallment(inst, now);
-  const eurByCheck = eurPaidByCheck(order?.paymentsEUR);
+  const eurByCheck = eurPaidByLink(order?.paymentsEUR, "installmentCheck");
 
   return {
     _id: inst._id,

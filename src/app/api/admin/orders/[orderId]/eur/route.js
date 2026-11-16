@@ -21,6 +21,8 @@
  *
  * PATCH  → تنظیم/ویرایش priceEUR
  * POST   → افزودن یک پرداخت یورویی به paymentsEUR
+ *          با `payment` (شناسه‌ی رسیدِ تومانیِ همین سفارش): «یوروی این رسید» را تنظیم می‌کند
+ *          (ساخت/ویرایش/با ۰ حذفِ ردیفِ paymentsEUR[].payment = آن رسید)
  * PUT    → ویرایش مبلغِ یک پرداخت یورویی موجود (با ردپای ممیزی)
  * DELETE → حذف یک پرداخت یورویی از paymentsEUR
  */
@@ -30,6 +32,8 @@ import mongoose from "mongoose";
 
 import connectToDB from "base/configs/db";
 import Order from "base/models/Order";
+import Payment from "base/models/Payment";
+import { parseCheckEurAmount, setLinkedEur } from "base/services/orderEurRecalc";
 
 import requireAdminPermission from "@/lib/requireAdminPermission";
 
@@ -112,7 +116,43 @@ export async function POST(req, { params }) {
     }
 
     const body = await req.json();
-    const { amount, note } = body;
+    const { amount, note, payment } = body;
+
+    // حالتِ «یوروی این رسید»: تنظیم (نه افزودن) — ردیفِ پیوندخورده با رسید ساخته،
+    // ویرایش (با editHistory) یا با ۰ حذف می‌شود؛ همان قاعده‌ی چک‌های اقساطی.
+    if (payment !== undefined && payment !== null && payment !== "") {
+      if (!mongoose.Types.ObjectId.isValid(payment)) {
+        return NextResponse.json({ message: "شناسه رسید نامعتبر است" }, { status: 400 });
+      }
+      const parsedLinked = parseCheckEurAmount(amount, { required: true });
+      if (parsedLinked.error) {
+        return NextResponse.json({ message: parsedLinked.error }, { status: 400 });
+      }
+      const receipt = await Payment.exists({ _id: payment, order: orderId });
+      if (!receipt) {
+        return NextResponse.json({ message: "این رسید متعلق به این سفارش نیست" }, { status: 404 });
+      }
+      const order = await Order.findById(orderId).select("paymentsEUR").lean();
+      if (!order) {
+        return NextResponse.json({ message: "سفارش یافت نشد" }, { status: 404 });
+      }
+      const { rows, changed } = setLinkedEur(order.paymentsEUR, {
+        field: "payment",
+        id: new mongoose.Types.ObjectId(payment),
+        amount: parsedLinked.value,
+        adminId: new mongoose.Types.ObjectId(admin.userId),
+        now: new Date(),
+        newId: new mongoose.Types.ObjectId(),
+        note: typeof note === "string" && note.trim() ? note.trim().slice(0, 500) : "ثبت همراه تأیید رسید",
+      });
+      if (changed) {
+        await Order.updateOne({ _id: orderId }, { $set: { paymentsEUR: rows } }, { strict: false });
+      }
+      return NextResponse.json(
+        { message: "مبلغ یوروی رسید ذخیره شد", ...(await eurPayload(orderId)) },
+        { status: 200 }
+      );
+    }
 
     const parsed = Number(amount);
     if (isNaN(parsed) || parsed <= 0) {

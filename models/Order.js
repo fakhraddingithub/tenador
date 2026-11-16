@@ -116,6 +116,8 @@ const EurPaymentSchema = new mongoose.Schema(
     // null = پرداخت یوروییِ معمولی. مبلغ یوروییِ هر چک از روی همین پیوند خوانده می‌شود،
     // پس حذف/ویرایشِ این ردیف در پنل یورو خودبه‌خود روی چک هم دیده می‌شود.
     installmentCheck: { type: mongoose.Schema.Types.ObjectId, default: null },
+    // رسید/پرداختِ تومانی‌ای (Payment) که این مبلغ یورو همراهش ثبت شد — همان قاعده‌ی پیوندِ چک.
+    payment: { type: mongoose.Schema.Types.ObjectId, ref: "Payment", default: null },
   },
   { _id: true, timestamps: true }
 );

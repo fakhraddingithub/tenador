@@ -3366,8 +3366,15 @@ test("order-detail controls use the same keys as the order APIs", () => {
   assert.match(source, /\{editStatus && canChangeStatus \? \(/);
   // ردیفِ کنترل‌های آیتم کاملاً حذف می‌شود، نه غیرفعال
   assert.match(source, /\{canEditItems && \(\n\s+<div className="flex items-center gap-2 mt-2">/);
-  // دکمه‌ی ویرایشِ مبلغِ پرداخت اصلاً پاس داده نمی‌شود
-  assert.match(source, /onEdit=\{canEditPayment \? \(\) => setEditPaymentTarget/);
+  // دکمه‌ی ویرایشِ رسید فقط با payments.edit، یا با orders.setCurrency روی رسیدِ تأییدشده
+  // (برای یوروی همان رسید) پاس داده می‌شود؛ وگرنه اصلاً پاس داده نمی‌شود
+  assert.match(
+    source,
+    /onEdit=\{canEditPayment \|\| \(canSetCurrency && payment\.status === "PAID"\)\n\s+\? \(\) => setEditPaymentTarget/
+  );
+  // بدونِ payments.edit فیلدِ تومان در همان مودال قفل است، و بخشِ یورو فقط با orders.setCurrency
+  assert.match(source, /canEditAmount=\{editPaymentTarget\.currency === "eur" \|\| canEditPayment\}/);
+  assert.match(source, /editPaymentTarget\.currency === "toman" && canSetCurrency && editPaymentTarget\.payment\.status === "PAID"/);
 });
 
 test("the installment check-status route is gated on live permissions", () => {

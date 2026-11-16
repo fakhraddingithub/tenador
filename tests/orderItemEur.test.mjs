@@ -159,7 +159,7 @@ test("هیچ فیلد تومانی خوانده یا نوشته نمی‌شود"
 
 /* ─── یوروی چک‌های اقساطی ────────────────────────────────────────────── */
 
-import { eurSummary, eurPaidByCheck, parseCheckEurAmount } from "../services/orderEurRecalc.js";
+import { eurSummary, eurPaidByLink, setLinkedEur, parseCheckEurAmount } from "../services/orderEurRecalc.js";
 
 test("یوروی چکِ پاس‌شده یک ردیفِ paymentsEUR است و از مانده کسر می‌شود", () => {
   const checkA = "aaaaaaaaaaaaaaaaaaaaaaaa";
@@ -171,10 +171,10 @@ test("یوروی چکِ پاس‌شده یک ردیفِ paymentsEUR است و ا
       { amount: 49.9, installmentCheck: checkA }, // ویرایش/افزودنِ دستی روی همان چک
     ],
   };
-  assert.deepEqual(eurSummary(order), { priceEUR: 300, paidEUR: 200, remainingEUR: 100 });
-  assert.deepEqual(eurPaidByCheck(order.paymentsEUR), { [checkA]: 100 });
+  assert.deepEqual(eurSummary(order), { priceEUR: 300, paidEUR: 200, remainingEUR: 100, unlinkedCount: 1 });
+  assert.deepEqual(eurPaidByLink(order.paymentsEUR, "installmentCheck"), { [checkA]: 100 });
   // سفارش بدون مبلغ کلِ یورو: مانده null، نه صفر
-  assert.deepEqual(eurSummary({ paymentsEUR: [] }), { priceEUR: null, paidEUR: 0, remainingEUR: null });
+  assert.deepEqual(eurSummary({ paymentsEUR: [] }), { priceEUR: null, paidEUR: 0, remainingEUR: null, unlinkedCount: 0 });
 });
 
 test("parseCheckEurAmount: الزامی فقط وقتی سفارش یورو دارد؛ ۰ مجاز، منفی نه", () => {
@@ -185,4 +185,71 @@ test("parseCheckEurAmount: الزامی فقط وقتی سفارش یورو دا
   assert.deepEqual(parseCheckEurAmount("12.345", { required: true }), { value: 12.35 });
   assert.ok(parseCheckEurAmount(-1, { required: false }).error);
   assert.ok(parseCheckEurAmount("abc", { required: false }).error);
+});
+
+test("setLinkedEur: می‌سازد، ویرایش می‌کند (با تاریخچه)، با ۰ حذف می‌کند، و به بقیه دست نمی‌زند", () => {
+  const now = new Date("2026-11-16T10:00:00Z");
+  const base = { adminId: "admin", now, note: "رسید" };
+  const manual = { _id: "m", amount: 40 };
+  const rcp = "pppppppppppppppppppppppp";
+
+  // ساخت
+  let r = setLinkedEur([manual], { ...base, field: "payment", id: rcp, amount: 25, newId: "n1" });
+  assert.equal(r.changed, true);
+  assert.equal(r.rows.length, 2);
+  assert.deepEqual({ ...r.rows[1] }, { _id: "n1", amount: 25, note: "رسید", payment: rcp, confirmedBy: "admin", confirmedAt: now, createdAt: now, updatedAt: now });
+
+  // همان مبلغ → بدون تغییر
+  const same = setLinkedEur(r.rows, { ...base, field: "payment", id: rcp, amount: 25, newId: "n2" });
+  assert.equal(same.changed, false);
+
+  // ویرایش: همان ردیف (همان _id)، تاریخچه‌ی قبلی→جدید
+  r = setLinkedEur(r.rows, { ...base, field: "payment", id: rcp, amount: 30, newId: "n3" });
+  assert.equal(r.rows.length, 2);
+  assert.equal(r.rows[1]._id, "n1");
+  assert.equal(r.rows[1].amount, 30);
+  assert.deepEqual(r.rows[1].editHistory, [{ oldAmount: 25, newAmount: 30, at: now, by: "admin" }]);
+  assert.equal(r.rows[0], manual, "ردیفِ دستی دست‌نخورده می‌ماند");
+
+  // پیوندِ چک با همان شناسه ربطی به پیوندِ رسید ندارد
+  const other = setLinkedEur(r.rows, { ...base, field: "installmentCheck", id: rcp, amount: 0 });
+  assert.equal(other.changed, false);
+
+  // ۰ → حذف
+  r = setLinkedEur(r.rows, { ...base, field: "payment", id: rcp, amount: 0 });
+  assert.equal(r.changed, true);
+  assert.deepEqual(r.rows, [manual]);
+
+  assert.throws(() => setLinkedEur([], { ...base, field: "order", id: rcp, amount: 1 }));
+});
+
+/* ─── اتصالِ ردیف‌های قدیمیِ «ثبت همراه تأیید رسید» به رسیدشان ─────────── */
+
+import { matchLegacyReceiptRows, LEGACY_NOTE } from "../scripts/linkEurReceiptRows.mjs";
+
+test("matchLegacyReceiptRows فقط با مدرکِ یکتا وصل می‌کند", () => {
+  const t = (min) => new Date(Date.UTC(2026, 0, 1, 10, min));
+  const receipts = [
+    { _id: "A", bankReceipt: { reviewedAt: t(0) } },
+    { _id: "B", bankReceipt: { reviewedAt: t(30) } },
+    { _id: "C", bankReceipt: { reviewedAt: t(60) } },
+    { _id: "D", bankReceipt: { reviewedAt: t(61) } },
+  ];
+  const rows = [
+    { _id: "r1", note: LEGACY_NOTE, confirmedAt: t(1) },        // → A
+    { _id: "r2", note: LEGACY_NOTE, confirmedAt: t(31) },       // B، ولی r3 هم B را می‌خواهد
+    { _id: "r3", note: LEGACY_NOTE, confirmedAt: t(32) },
+    { _id: "r4", note: LEGACY_NOTE, confirmedAt: t(62) },       // C و D هر دو در بازه
+    { _id: "r5", note: LEGACY_NOTE, confirmedAt: t(200) },      // هیچ رسیدی
+    { _id: "r6", note: "دستی", confirmedAt: t(1) },              // یادداشتِ دیگر: اصلاً بررسی نمی‌شود
+    { _id: "r7", note: LEGACY_NOTE, confirmedAt: t(1), payment: "A" }, // از قبل وصل
+  ];
+  const { links, skipped } = matchLegacyReceiptRows(rows, receipts);
+  assert.deepEqual(links, []);  // A را r7 دارد، پس r1 هم رها می‌شود
+  assert.deepEqual(skipped.map((s) => s.rowId).sort(), ["r1", "r2", "r3", "r4", "r5"]);
+
+  const clean = matchLegacyReceiptRows(rows.filter((r) => r._id !== "r7"), receipts);
+  assert.deepEqual(clean.links, [{ rowId: "r1", paymentId: "A" }]);
+  // ردیفِ ساخته‌شده پیش از تأیید هیچ‌وقت وصل نمی‌شود
+  assert.deepEqual(matchLegacyReceiptRows([{ _id: "x", note: LEGACY_NOTE, confirmedAt: t(-1) }], receipts).links, []);
 });

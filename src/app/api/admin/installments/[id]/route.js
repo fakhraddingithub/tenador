@@ -12,7 +12,7 @@ import { getUserFullName } from "base/utils/userName";
 import "base/models/registerModels";
 import Installment from "base/models/Installment";
 import { deriveCheckStatus, summarizeInstallment } from "base/services/installmentService";
-import { eurPaidByCheck, eurSummary } from "base/services/orderEurRecalc";
+import { eurPaidByLink, eurSummary } from "base/services/orderEurRecalc";
 
 import requireAdminPermission from "@/lib/requireAdminPermission";
 
@@ -44,7 +44,7 @@ export async function GET(req, { params }) {
     const now = new Date();
     const summary = summarizeInstallment(inst, now);
     const u = inst.order.user || {};
-    const eurByCheck = eurPaidByCheck(inst.order.paymentsEUR);
+    const eurByCheck = eurPaidByLink(inst.order.paymentsEUR, "installmentCheck");
 
     const checks = (inst.checks || [])
       .slice()

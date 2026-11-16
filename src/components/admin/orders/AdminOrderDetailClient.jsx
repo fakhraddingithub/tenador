@@ -31,6 +31,7 @@ import { buildStepSequence } from "@/lib/flowTraversal";
 import VariantSummary from "@/components/order/VariantSummary";
 import InstallmentChecksPanel from "@/components/admin/financial/InstallmentChecksPanel";
 import { useAdminPermissions } from "@/components/admin/AdminPermissionProvider";
+import { eurPaidByLink, eurSummary } from "base/services/orderEurRecalc";
 
 const OrderFlowModal = dynamic(() => import("@/components/modules/orderFlow/OrderFlowModal"));
 
@@ -320,11 +321,16 @@ function ApproveModal({ payment, orderTotal, dueAmount, onConfirm, onClose }) {
 /* ─── Edit Payment Modal (تومان و یورو) ─────────────────────────────── */
 // تأییدِ ویرایش مبلغ پرداخت با نمایش «مبلغ قبلی → مبلغ جدید».
 // currency: "toman" | "eur"
-function EditPaymentModal({ payment, currency, onConfirm, onClose }) {
+// رسیدِ تومانی (currency=toman) می‌تواند یوروی پیوندخورده‌ی خودش را هم داشته باشد:
+//   eur = { amount: number|null, unlinkedCount } وقتی ادمین orders.setCurrency دارد و رسید تأیید شده
+//   canEditAmount = false وقتی ادمین فقط کلید یورو را دارد (payments.edit ندارد)
+// onConfirm(newToman | null, newEur | undefined) — null/undefined یعنی «این یکی تغییر نکرد».
+function EditPaymentModal({ payment, currency, eur = null, canEditAmount = true, onConfirm, onClose }) {
   const isEUR = currency === "eur";
   const fmt = isEUR ? formatEUR : formatPrice;
   const unit = isEUR ? "€" : "تومان";
   const [value, setValue] = useState(String(payment.amount ?? ""));
+  const [eurValue, setEurValue] = useState(eur?.amount == null ? "" : String(eur.amount));
   const [loading, setLoading] = useState(false);
   const inputRef = useRef(null);
 
@@ -335,10 +341,18 @@ function EditPaymentModal({ payment, currency, onConfirm, onClose }) {
   const changed = valid && Math.round(parsed) !== Math.round(Number(payment.amount) || 0);
   const diff = valid ? parsed - (Number(payment.amount) || 0) : 0;
 
+  // یورو: خالی = ۰ (یورویی ندارد). فقط وقتی با مقدارِ فعلی فرق کند فرستاده می‌شود.
+  const eurRaw = eurValue.trim();
+  const eurParsed = eurRaw === "" ? 0 : Number(eurRaw);
+  const eurValid = Number.isFinite(eurParsed) && eurParsed >= 0;
+  const eurChanged = !!eur && eurValid && eurParsed !== (Number(eur.amount) || 0);
+
   const handleSubmit = async () => {
-    if (!valid) { toast.error(`مبلغ ${isEUR ? "یورو" : "تومان"} معتبر وارد کنید`); return; }
+    if (canEditAmount && !valid) { toast.error(`مبلغ ${isEUR ? "یورو" : "تومان"} معتبر وارد کنید`); return; }
+    if (eur && !eurValid) { toast.error("مبلغ یورو معتبر وارد کنید"); return; }
+    if (!(canEditAmount && changed) && !eurChanged) { onClose(); return; }
     setLoading(true);
-    await onConfirm(parsed);
+    await onConfirm(canEditAmount && changed ? parsed : null, eurChanged ? eurParsed : undefined);
     setLoading(false);
   };
 
@@ -370,15 +384,20 @@ function EditPaymentModal({ payment, currency, onConfirm, onClose }) {
             <div className="flex items-center gap-1.5 font-bold mb-1">
               <AlertCircle size={12} /><span>ویرایش سابقه‌ی مالی</span>
             </div>
-            <p>این تغییر فقط مانده و وضعیت {isEUR ? "یورو" : "تومان"} را بروزرسانی می‌کند و در تاریخچه‌ی ممیزی ثبت می‌شود.</p>
+            <p>
+              {eur
+                ? "مبلغ تومان فقط مانده و وضعیت تومان را، و مبلغ یورو فقط مانده‌ی یورو را بروزرسانی می‌کند؛ هر دو در تاریخچه‌ی ممیزی ثبت می‌شوند."
+                : <>این تغییر فقط مانده و وضعیت {isEUR ? "یورو" : "تومان"} را بروزرسانی می‌کند و در تاریخچه‌ی ممیزی ثبت می‌شود.</>}
+            </p>
           </div>
 
           <div>
             <label className="block text-sm font-bold text-gray-700 mb-2">
-              مبلغ جدید ({unit}) <span className="text-red-500">*</span>
+              مبلغ جدید ({unit}) {canEditAmount && <span className="text-red-500">*</span>}
             </label>
             <div className="relative">
               <AdminInput
+                disabled={!canEditAmount}
                 ref={inputRef} type="number" step={isEUR ? "any" : "1"} min="0" value={value}
                 onChange={(e) => setValue(e.target.value)}
                 onKeyDown={(e) => e.key === "Enter" && handleSubmit()}
@@ -410,8 +429,38 @@ function EditPaymentModal({ payment, currency, onConfirm, onClose }) {
             </p>
           )}
 
+          {/* ─── یوروی همین رسید (مستقل از تومان) ─── */}
+          {eur && (
+            <div>
+              <label className="flex items-center gap-1.5 text-sm font-bold text-gray-700 mb-2">
+                <Euro size={13} className="text-[var(--color-primary)]" />
+                مبلغ یوروی این رسید
+              </label>
+              <div className="relative">
+                <AdminInput
+                  type="number" step="any" min="0" value={eurValue} dir="ltr"
+                  onChange={(e) => setEurValue(e.target.value)}
+                  onKeyDown={(e) => e.key === "Enter" && handleSubmit()}
+                  placeholder="0.00"
+                  className="w-full border border-gray-300 rounded-xl px-4 py-3 text-sm font-bold text-gray-800 text-left
+                    focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)]/30 focus:border-[var(--color-primary)] transition"
+                />
+                <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-gray-400">€</span>
+              </div>
+              <p className="text-[10px] text-gray-400 mt-1.5 leading-relaxed">
+                کلِ یوروی این رسید (جایگزینِ قبلی، نه اضافه). خالی یا ۰ یعنی یورویی ندارد.
+              </p>
+              {eur.amount == null && eur.unlinkedCount > 0 && (
+                <p className="text-[10px] text-blue-600 bg-blue-50 border border-blue-100 rounded-lg px-2.5 py-1.5 mt-1.5 leading-relaxed">
+                  این سفارش {new Intl.NumberFormat("fa-IR").format(eur.unlinkedCount)} پرداخت یورویی بدون اتصال به رسید/چک دارد.
+                  اگر یوروی این رسید آن‌جا ثبت شده، این‌جا دوباره وارد نکنید.
+                </p>
+              )}
+            </div>
+          )}
+
           <div className="flex gap-3">
-            <button onClick={handleSubmit} disabled={loading || !valid}
+            <button onClick={handleSubmit} disabled={loading || (canEditAmount ? !valid : false) || (eur ? !eurValid : false)}
               className="flex-1 bg-[var(--color-primary)] hover:bg-[var(--color-primary-hover)] text-white font-bold py-2.5 rounded-xl text-sm
                 transition flex items-center justify-center gap-2 disabled:opacity-60">
               {loading ? <Loader2 size={15} className="animate-spin" /> : <Save size={15} />}
@@ -1216,7 +1265,7 @@ function ScanModal({ target, orderId, mode = "choose", onSuccess, onClose }) {
 }
 
 /* ─── Payment Card ──────────────────────────────────────────────────── */
-function PaymentCard({ payment, orderTotal, onViewReceipt, onApprove, onReject, onEdit }) {
+function PaymentCard({ payment, orderTotal, onViewReceipt, onApprove, onReject, onEdit, eurAmount = null }) {
   // همان کلیدهایی که /api/admin/payments/[id]/{approve,reject,edit} با آن‌ها گیت شده‌اند
   const { can } = useAdminPermissions();
   const canApprove = can("payments.approve");
@@ -1271,6 +1320,9 @@ function PaymentCard({ payment, orderTotal, onViewReceipt, onApprove, onReject, 
             <p className="text-sm font-black text-gray-800">{formatPrice(payment.amount)}</p>
           </div>
           <p className="text-[10px] text-gray-400">تومان پرداخت شده</p>
+          {eurAmount != null && (
+            <p className="text-[11px] font-bold text-blue-600" dir="ltr">€ {formatEUR(eurAmount)}</p>
+          )}
           {payment.meta?.editedAt && (
             <p className="text-[9px] text-amber-500 font-medium">ویرایش‌شده</p>
           )}
@@ -2254,7 +2306,8 @@ export default function AdminOrderDetailClient({ orderId }) {
           const eurRes = await fetch(`/api/admin/orders/${orderId}/eur`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ amount: eurAmount, note: "ثبت همراه تأیید رسید" }),
+            // پیوند با همین رسید: بعداً از «ویرایش» همین رسید قابل ویرایش است
+            body: JSON.stringify({ amount: eurAmount, note: "ثبت همراه تأیید رسید", payment: approveTarget._id }),
           });
           const eurData = await eurRes.json();
           if (!eurRes.ok) {
@@ -2457,24 +2510,43 @@ export default function AdminOrderDetailClient({ orderId }) {
   };
 
   // ─── ویرایش مبلغ پرداخت (تومان یا یورو، مستقل) ───
-  const handleEditPayment = async (newAmount) => {
+  const handleEditPayment = async (newAmount, newEur) => {
     if (!editPaymentTarget) return;
     const { payment, currency } = editPaymentTarget;
     try {
       let res, data;
-      if (currency === "eur") {
-        res = await fetch(`/api/admin/orders/${orderId}/eur`, {
-          method: "PUT",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ paymentId: payment._id, amount: newAmount }),
-        });
-      } else {
-        res = await fetch(`/api/admin/payments/${payment._id}/edit`, {
-          method: "PATCH",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ amount: newAmount }),
-        });
+      // ویرایشِ رسیدِ تومانی: تومان و یوروی پیوندخورده هر کدام فقط اگر عوض شده باشند
+      if (currency === "toman") {
+        if (newAmount !== null) {
+          res = await fetch(`/api/admin/payments/${payment._id}/edit`, {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ amount: newAmount }),
+          });
+          data = await res.json();
+          if (!res.ok) throw new Error(data.message || "خطا");
+          toast.success(data.message || "مبلغ پرداخت ویرایش شد");
+        }
+        if (newEur !== undefined) {
+          res = await fetch(`/api/admin/orders/${orderId}/eur`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ payment: payment._id, amount: newEur }),
+          });
+          data = await res.json();
+          if (!res.ok) throw new Error(data.message || "خطا در ذخیره‌ی یورو");
+          toast.success(data.message || "مبلغ یوروی رسید ذخیره شد");
+        }
+        setEditPaymentTarget(null);
+        await fetchOrder();
+        return;
       }
+      // ردیفِ پنلِ یورو
+      res = await fetch(`/api/admin/orders/${orderId}/eur`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ paymentId: payment._id, amount: newAmount }),
+      });
       data = await res.json();
       if (!res.ok) throw new Error(data.message || "خطا");
       toast.success(data.message || "مبلغ پرداخت ویرایش شد");
@@ -2591,6 +2663,8 @@ export default function AdminOrderDetailClient({ orderId }) {
     Number(order.totalPrice || 0) +
       Number(order.discountAmount || 0) +
       Number(order.couponDiscount || 0);
+  // یوروی پیوندخورده با هر رسیدِ تومانی (paymentsEUR[].payment) — نمایش روی کارت و پیش‌فرضِ ویرایش
+  const eurByReceipt = eurPaidByLink(order.paymentsEUR, "payment");
   // مبلغ باقیمانده قابل پرداخت — کل سفارش (پس از تخفیف مدیریت/کوپن) منهای پرداخت‌های تأییدشده
   const totalPaidAmount = (order.payments || [])
     .filter((p) => p.status === "PAID")
@@ -3131,7 +3205,10 @@ export default function AdminOrderDetailClient({ orderId }) {
                       onViewReceipt={setLightboxUrl}
                       onApprove={() => setApproveTarget(payment)}
                       onReject={() => handleRejectPayment(payment._id)}
-                      onEdit={canEditPayment ? () => setEditPaymentTarget({ payment, currency: "toman" }) : undefined}
+                      eurAmount={eurByReceipt[String(payment._id)] ?? null}
+                      onEdit={canEditPayment || (canSetCurrency && payment.status === "PAID")
+                        ? () => setEditPaymentTarget({ payment, currency: "toman" })
+                        : undefined}
                     />
                   ))}
                 </div>
@@ -3317,6 +3394,15 @@ export default function AdminOrderDetailClient({ orderId }) {
           <EditPaymentModal
             payment={editPaymentTarget.payment}
             currency={editPaymentTarget.currency}
+            canEditAmount={editPaymentTarget.currency === "eur" || canEditPayment}
+            eur={
+              editPaymentTarget.currency === "toman" && canSetCurrency && editPaymentTarget.payment.status === "PAID"
+                ? {
+                    amount: eurByReceipt[String(editPaymentTarget.payment._id)] ?? null,
+                    unlinkedCount: eurSummary(order).unlinkedCount,
+                  }
+                : null
+            }
             onConfirm={handleEditPayment}
             onClose={() => setEditPaymentTarget(null)}
           />

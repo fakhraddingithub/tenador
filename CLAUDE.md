@@ -544,22 +544,39 @@ Store-role users (`role === "store"`) see each item's EUR price alongside the To
 
 Tests: `npm run test:order-item-eur`.
 
-**Installment orders: one EUR row per cleared check.** Clearing a check
-(`PATCH /api/installments/checks/[checkId]/status`) takes `amountEUR` and, in the same transaction,
-pushes it onto `order.paymentsEUR` with `installmentCheck` set to the check id. That is the only
-link: a check's EUR amount is *derived* (`eurPaidByCheck`), never stored on the check, so editing or
-deleting the row in the EUR panel shows on the check too, and remaining EUR, euro analytics, the
-invoice and the customer view (all `Σ paymentsEUR.amount`) needed no change. Nothing converts from
-the check's Toman amount.
+**EUR linked to a check or a receipt.** A `paymentsEUR` row may carry `installmentCheck` (an
+`Installment.checks._id`) or `payment` (a Toman `Payment._id`). That link is the only connection: a
+check's or receipt's EUR amount is *derived* (`eurPaidByLink`), never stored on the check/receipt, so
+editing or deleting the row in the EUR panel shows on the check/receipt too, and remaining EUR, euro
+analytics, the invoice and the customer view (all `Σ paymentsEUR.amount`) need no change. Nothing
+converts from Toman. Every write goes through `setLinkedEur` (`services/orderEurRecalc.js`), which
+*sets* the amount — creates the row, edits it with an `editHistory` entry, or removes it on `0`.
 
-| case | rule |
+| where | how |
 |---|---|
-| order has `priceEUR` and the admin has `orders.setCurrency` | `amountEUR` required (≥ 0; `0` records no row) |
-| order has no `priceEUR` | optional |
-| `amountEUR` sent without `orders.setCurrency` | 403 |
-| check already CLEARED | no second row |
+| clearing a check | `PATCH /api/installments/checks/[checkId]/status` with `amountEUR`, same transaction. Required when the order has `priceEUR` and the admin has `orders.setCurrency` (`0` = none) |
+| a check that is already CLEARED | same route, body `{ amountEUR }` only. 400 on a check that isn't cleared |
+| receipt approval / receipt «ویرایش» | `POST /api/admin/orders/[orderId]/eur` with `{ payment, amount }`; the receipt must belong to the order (404 otherwise). A POST without `payment` still just adds a row |
+| `amountEUR` without `orders.setCurrency` | 403 |
 
-`npm run test:installment-check-eur` (real replica set, real route).
+**A cleared check can be un-cleared** (CLEARED → PENDING/BOUNCED, «ویرایش وضعیت»). It undoes what
+clearing did, in one transaction: its EUR row is removed, `paidAt` is cleared, and if the order had
+become PAID it drops to PARTIALLY_PAID/UNPAID (from its PAID receipts), the automatic coach credit is
+reversed (`reverseAutomaticCoachCredit`; a credit the coach already spent is a 409 and nothing changes)
+and `coachCreditProcessedAt` is reset so a later re-clear grants it again. Customer emails go out only
+at the moment a check is cleared — before, any edit on a completed plan re-sent «اقساط تکمیل شد».
+
+Receipt EUR rows saved before the `payment` link existed are unlinked rows noted «ثبت همراه تأیید رسید»;
+both edit windows warn when an order has unlinked rows (`eurSummary().unlinkedCount`) so they are not
+entered twice. `npm run check:eur-receipt-links` / `migrate:eur-receipt-links` link each one to its receipt
+only when exactly one PAID receipt of the order was approved within 10 minutes before it and nothing else
+claims that receipt; anything ambiguous is reported and left alone. EUR entered by hand for old checks
+cannot be matched and stays unlinked.
+
+```bash
+npm run test:installment-check-eur   # real replica set, real check + EUR routes
+npm run test:order-item-eur          # setLinkedEur, summaries, the legacy matcher
+```
 
 ### Admin-created orders: one way to place an order
 

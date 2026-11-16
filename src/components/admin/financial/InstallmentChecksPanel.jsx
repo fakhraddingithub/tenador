@@ -38,7 +38,7 @@ function MarkClearedModal({ check, eur, onConfirm, onClose }) {
   return (
     <Modal onClose={onClose} title="تأیید پاس‌شدن چک" icon={BadgeCheck}>
       <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 text-xs text-amber-700 leading-relaxed">
-        با تأیید، این چک «پاس‌شده» ثبت می‌شود. این عملِ مالی قابل بازگشت نیست.
+        با تأیید، این چک «پاس‌شده» ثبت می‌شود. در صورت اشتباه، از «ویرایش وضعیت» روی همین چک قابل برگشت است.
       </div>
       <div className="grid grid-cols-2 gap-2 text-xs">
         <Cell label="شماره قسط" value={`قسط ${fa(check.number)}`} />
@@ -68,6 +68,7 @@ function MarkClearedModal({ check, eur, onConfirm, onClose }) {
               ? <>مانده‌ی یوروی سفارش: <span dir="ltr">€ {fmtEUR(eur.remainingEUR)}</span> — این مبلغ به‌عنوان پرداخت یورویی ثبت و از مانده کسر می‌شود. اگر یورویی دریافت نشده ۰ وارد کنید.</>
               : "مبلغ کل یوروی سفارش ثبت نشده؛ در صورت دریافت یورو، مبلغ را وارد کنید."}
           </p>
+          <UnlinkedEurHint eur={eur} />
         </div>
       )}
       <div className="flex gap-3 pt-1">
@@ -78,6 +79,108 @@ function MarkClearedModal({ check, eur, onConfirm, onClose }) {
         >
           {loading ? <Loader2 size={15} className="animate-spin" /> : <CheckCircle size={15} />}
           تأیید پاس‌شدن
+        </button>
+        <button onClick={onClose} className="flex-1 bg-gray-100 hover:bg-gray-200 text-gray-600 font-bold py-2.5 rounded-xl text-sm transition">انصراف</button>
+      </div>
+    </Modal>
+  );
+}
+
+// پرداخت‌های یورویی‌ای که به هیچ چک/رسیدی وصل نیستند (دستی یا قدیمی) — اگر یوروی همین
+// چک قبلاً دستی در پنل یورو ثبت شده، ثبتِ دوباره‌اش این‌جا دوبار از مانده کم می‌کند.
+function UnlinkedEurHint({ eur }) {
+  if (!eur?.unlinkedCount) return null;
+  return (
+    <p className="text-[10px] text-blue-600 bg-blue-50 border border-blue-100 rounded-lg px-2.5 py-1.5 mt-1.5 leading-relaxed">
+      این سفارش {fa(eur.unlinkedCount)} پرداخت یورویی بدون اتصال به چک/رسید دارد (در پنل یوروی سفارش).
+      اگر یوروی این چک آن‌جا ثبت شده، این‌جا دوباره وارد نکنید یا آن ردیف را حذف کنید.
+    </p>
+  );
+}
+
+/* ─── EUR of an already-cleared check ─── */
+function EurEditModal({ check, eur, onConfirm, onClose }) {
+  const [value, setValue] = useState(check.amountEUR == null ? "" : String(check.amountEUR));
+  const [loading, setLoading] = useState(false);
+  const raw = value.trim();
+  const parsed = raw === "" ? null : Number(raw);
+  const valid = parsed !== null && Number.isFinite(parsed) && parsed >= 0;
+  return (
+    <Modal onClose={onClose} title={`مبلغ یوروی قسط ${fa(check.number)}`} icon={Euro}>
+      <div className="grid grid-cols-2 gap-2 text-xs">
+        <Cell label="مبلغ چک" value={`${fa(check.amount)} تومان`} />
+        <Cell label="یوروی ثبت‌شده" value={check.amountEUR == null ? "—" : <span dir="ltr">€ {fmtEUR(check.amountEUR)}</span>} />
+      </div>
+      <div>
+        <div className="relative">
+          <input
+            type="number" step="any" min="0" dir="ltr" value={value} autoFocus
+            onChange={(e) => setValue(e.target.value)}
+            placeholder="0.00"
+            className="w-full border border-gray-300 rounded-xl px-4 py-2.5 text-sm font-bold text-gray-800 text-left focus:outline-none focus:ring-2 focus:ring-[#aa4725]/30 focus:border-[#aa4725] transition"
+          />
+          <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-gray-400">€</span>
+        </div>
+        <p className="text-[10px] text-gray-400 mt-1.5 leading-relaxed">
+          {eur?.priceEUR != null && <>مانده‌ی یوروی سفارش: <span dir="ltr">€ {fmtEUR(eur.remainingEUR)}</span> — </>}
+          مبلغ کلِ یوروی این چک است (جایگزینِ قبلی، نه اضافه). ۰ یعنی یورویی ندارد و ردیفش حذف می‌شود.
+        </p>
+        {check.amountEUR == null && <UnlinkedEurHint eur={eur} />}
+      </div>
+      <div className="flex gap-3">
+        <button
+          disabled={loading || !valid}
+          onClick={async () => { setLoading(true); await onConfirm(parsed); setLoading(false); }}
+          className="flex-1 bg-[#aa4725] hover:bg-[#8f3b1e] text-white font-bold py-2.5 rounded-xl text-sm transition flex items-center justify-center gap-2 disabled:opacity-50"
+        >
+          {loading ? <Loader2 size={15} className="animate-spin" /> : <Euro size={15} />}
+          ذخیره یورو
+        </button>
+        <button onClick={onClose} className="flex-1 bg-gray-100 hover:bg-gray-200 text-gray-600 font-bold py-2.5 rounded-xl text-sm transition">انصراف</button>
+      </div>
+    </Modal>
+  );
+}
+
+/* ─── Change the status of an already-cleared check ─── */
+function StatusEditModal({ check, onConfirm, onClose }) {
+  const [next, setNext] = useState("PENDING");
+  const [reason, setReason] = useState("");
+  const [loading, setLoading] = useState(false);
+  const blocked = next === "BOUNCED" && !reason.trim();
+  return (
+    <Modal onClose={onClose} title={`ویرایش وضعیت قسط ${fa(check.number)}`} icon={StickyNote}>
+      <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 text-xs text-amber-700 leading-relaxed space-y-1">
+        <p className="font-bold">این چک الان «پاس‌شده» است. با تغییر وضعیت:</p>
+        <p>• مبلغ این چک دیگر پرداخت‌شده حساب نمی‌شود{check.amountEUR != null ? ` و یوروی آن (€ ${fmtEUR(check.amountEUR)}) از پرداخت‌های یورویی سفارش حذف می‌شود` : ""}.</p>
+        <p>• اگر سفارش با همین چک‌ها تسویه شده بود، به «پرداخت ناقص» برمی‌گردد و کردیت خودکار مربی (در صورت وجود) برگشت می‌خورد.</p>
+      </div>
+      <div className="grid grid-cols-2 gap-2">
+        {[["PENDING", "در انتظار"], ["BOUNCED", "برگشت خورده"]].map(([key, label]) => (
+          <button
+            key={key} type="button" onClick={() => setNext(key)}
+            className={`py-2 rounded-xl text-sm font-bold border transition
+              ${next === key ? "bg-[#aa4725] text-white border-[#aa4725]" : "bg-gray-50 text-gray-600 border-gray-200 hover:bg-gray-100"}`}
+          >
+            {label}
+          </button>
+        ))}
+      </div>
+      {next === "BOUNCED" && (
+        <textarea
+          value={reason} onChange={(e) => setReason(e.target.value)} rows={3}
+          placeholder="دلیل برگشت (الزامی) — مثلاً: کسر موجودی"
+          className="w-full border border-gray-300 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-red-300 focus:border-red-400 transition"
+        />
+      )}
+      <div className="flex gap-3">
+        <button
+          disabled={loading || blocked}
+          onClick={async () => { setLoading(true); await onConfirm(next, reason.trim()); setLoading(false); }}
+          className="flex-1 bg-[#aa4725] hover:bg-[#8f3b1e] text-white font-bold py-2.5 rounded-xl text-sm transition flex items-center justify-center gap-2 disabled:opacity-50"
+        >
+          {loading ? <Loader2 size={15} className="animate-spin" /> : <CheckCircle size={15} />}
+          ثبت وضعیت
         </button>
         <button onClick={onClose} className="flex-1 bg-gray-100 hover:bg-gray-200 text-gray-600 font-bold py-2.5 rounded-xl text-sm transition">انصراف</button>
       </div>
@@ -361,6 +464,23 @@ export default function InstallmentChecksPanel({ installment, orderFulfillmentSt
                   </>
                 )}
 
+                {locked && canEditChecks && (
+                  <button
+                    disabled={busy}
+                    onClick={() => setModal({ type: "status", check: c })}
+                    className="flex items-center gap-1 text-[11px] font-bold text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-2.5 py-1.5 hover:bg-amber-100 transition disabled:opacity-50">
+                    <Clock size={12} /> ویرایش وضعیت
+                  </button>
+                )}
+                {locked && canEditChecks && eur && (
+                  <button
+                    disabled={busy}
+                    onClick={() => setModal({ type: "eur", check: c })}
+                    className="flex items-center gap-1 text-[11px] font-bold text-blue-600 bg-blue-50 border border-blue-200 rounded-lg px-2.5 py-1.5 hover:bg-blue-100 transition disabled:opacity-50">
+                    <Euro size={12} /> {c.amountEUR == null ? "ثبت یورو" : "ویرایش یورو"}
+                  </button>
+                )}
+
                 {canEditChecks && (
                 <>
                 <button
@@ -405,6 +525,27 @@ export default function InstallmentChecksPanel({ installment, orderFulfillmentSt
                 "چک پاس‌شده ثبت شد"
               )
             }
+          />
+        )}
+        {modal?.type === "status" && (
+          <StatusEditModal
+            check={modal.check}
+            onClose={() => setModal(null)}
+            onConfirm={(status, reason) =>
+              patchCheck(
+                modal.check._id,
+                status === "BOUNCED" ? { status, bounceReason: reason } : { status },
+                "وضعیت چک تغییر کرد"
+              )
+            }
+          />
+        )}
+        {modal?.type === "eur" && (
+          <EurEditModal
+            check={modal.check}
+            eur={eur}
+            onClose={() => setModal(null)}
+            onConfirm={(amountEUR) => patchCheck(modal.check._id, { amountEUR }, "مبلغ یوروی چک ذخیره شد")}
           />
         )}
         {modal?.type === "bounce" && (

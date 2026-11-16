@@ -97,24 +97,82 @@ export function eurSummary(order) {
     priceEUR,
     paidEUR,
     remainingEUR: priceEUR === null ? null : Math.round((priceEUR - paidEUR) * 100) / 100,
+    // ردیف‌هایی که به هیچ چک/رسیدی وصل نیستند (دستی یا قدیمی) — برای هشدارِ «دوباره ثبت نکنید»
+    unlinkedCount: (order?.paymentsEUR || []).filter((p) => !p?.installmentCheck && !p?.payment).length,
   };
 }
 
-/** جمعِ پرداخت‌های یوروییِ پیوندخورده به هر چک: { [checkId]: amount } */
-export function eurPaidByCheck(paymentsEUR) {
+/**
+ * پیوندِ یک ردیفِ یورو:
+ *   installmentCheck → چکِ اقساطی (Installment.checks._id)
+ *   payment          → رسید/پرداختِ تومانی (Payment._id)
+ */
+export const EUR_LINK_FIELDS = ["installmentCheck", "payment"];
+
+/** جمعِ پرداخت‌های یوروییِ پیوندخورده با `field`: { [id]: amount } */
+export function eurPaidByLink(paymentsEUR, field) {
   const out = {};
   for (const p of paymentsEUR || []) {
-    if (!p?.installmentCheck) continue;
-    const key = String(p.installmentCheck);
+    if (!p?.[field]) continue;
+    const key = String(p[field]);
     out[key] = Math.round(((out[key] || 0) + (Number(p.amount) || 0)) * 100) / 100;
   }
   return out;
 }
 
 /**
- * اعتبارسنجیِ مبلغ یوروییِ ارسالی هنگام پاس‌کردنِ چک.
- * required = سفارش مبلغ کلِ یورو دارد (یعنی سیستم یورو برایش فعال است).
- * ۰ مجاز است (مثلاً یورو قبلاً تسویه شده) ولی ردیفی ثبت نمی‌کند.
+ * مبلغ یوروی پیوندخورده به یک چک/رسید را «تنظیم» می‌کند (نه اضافه): ردیفِ موجود
+ * ویرایش می‌شود (با editHistory، مثل PUT /eur)، نبودش ردیفِ تازه می‌سازد، و
+ * amount = 0 ردیف را برمی‌دارد. خالص است؛ نوشتن با فراخوان است.
+ *
+ * @returns {{ rows: Array, changed: boolean }}
+ */
+export function setLinkedEur(paymentsEUR, { field, id, amount, adminId, now, newId, note }) {
+  if (!EUR_LINK_FIELDS.includes(field)) throw new Error(`unknown EUR link field: ${field}`);
+  const list = Array.isArray(paymentsEUR) ? paymentsEUR : [];
+  const isLinked = (p) => p?.[field] != null && String(p[field]) === String(id);
+  const linked = list.filter(isLinked);
+
+  if (!(amount > 0)) {
+    return { rows: list.filter((p) => !isLinked(p)), changed: linked.length > 0 };
+  }
+
+  if (!linked.length) {
+    const row = {
+      _id: newId, amount, note: note || "", [field]: id,
+      confirmedBy: adminId, confirmedAt: now, createdAt: now, updatedAt: now,
+    };
+    return { rows: [...list, row], changed: true };
+  }
+
+  // یک چک/رسید یک ردیف دارد؛ اگر به‌هر دلیل بیشتر بود، اولی می‌ماند و بقیه ادغام نمی‌شوند بلکه حذف
+  // می‌شوند — مبلغِ جدید همان «کلِ یوروی این چک/رسید» است.
+  const [first] = linked;
+  const same = Number(first.amount) === amount && linked.length === 1;
+  if (same) return { rows: list, changed: false };
+
+  const updated = Number(first.amount) === amount ? first : {
+    ...first,
+    amount,
+    editedBy: adminId,
+    editedAt: now,
+    updatedAt: now,
+    editHistory: [
+      ...(Array.isArray(first.editHistory) ? first.editHistory : []),
+      { oldAmount: Number(first.amount) || 0, newAmount: amount, at: now, by: adminId },
+    ],
+  };
+  return {
+    rows: list.filter((p) => !isLinked(p) || p === first).map((p) => (p === first ? updated : p)),
+    changed: true,
+  };
+}
+
+/**
+ * اعتبارسنجیِ مبلغ یوروییِ یک چک/رسید.
+ * required = مقدار باید فرستاده شود (پاس‌کردنِ چک روی سفارشی که مبلغ کلِ یورو دارد،
+ * یا ویرایشِ یوروی چک/رسیدی که از قبل ثبت شده).
+ * ۰ مجاز است و یعنی «یورویی ندارد» — ردیفی ثبت نمی‌شود (و ردیفِ موجود برداشته می‌شود).
  * @returns {{ value: number|null } | { error: string }}
  */
 export function parseCheckEurAmount(raw, { required }) {

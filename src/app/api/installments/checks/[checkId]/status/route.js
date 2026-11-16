@@ -1,4 +1,4 @@
-import { grantAutomaticCoachCredit } from "base/services/coachWallet.service";
+import { grantAutomaticCoachCredit, reverseAutomaticCoachCredit } from "base/services/coachWallet.service";
 /**
  * PATCH /api/installments/checks/[checkId]/status
  *
@@ -9,12 +9,17 @@ import { grantAutomaticCoachCredit } from "base/services/coachWallet.service";
  *   bounceReason?:    string  (الزامی وقتی status = BOUNCED)
  *   receiptImageUrl?: string  (آپلود/تغییر تصویر چک)
  *   notes?:           string  (یادداشت ادمین)
- *   amountEUR?:       number  (مبلغ یوروییِ این چک — فقط هنگام پاس‌شدن)
+ *   amountEUR?:       number  (مبلغ یوروییِ این چک — هنگام پاس‌شدن یا روی چکِ پاس‌شده)
  *
- * یورو: هنگام پاس‌شدنِ چک، amountEUR به‌صورت یک ردیف در order.paymentsEUR (با
- * installmentCheck = همین چک) در همان تراکنش ثبت و از مانده‌ی یوروی سفارش کسر
- * می‌شود. اگر سفارش مبلغ کلِ یورو دارد و ادمین کلید orders.setCurrency را دارد،
- * این مبلغ الزامی است؛ فرستادنش بدون orders.setCurrency → ۴۰۳.
+ * یورو: یوروی چک یک ردیف در order.paymentsEUR است با installmentCheck = همین چک،
+ * و در همان تراکنش «تنظیم» می‌شود (ثبت، ویرایش با editHistory، یا با ۰ حذف).
+ *   - پاس‌شدن: اگر سفارش مبلغ کلِ یورو دارد و ادمین orders.setCurrency دارد، الزامی است.
+ *   - چکِ پاس‌شده: فقط amountEUR بفرستید تا ویرایش شود.
+ *   - فرستادنش بدون orders.setCurrency → ۴۰۳؛ روی چکِ پاس‌نشده → ۴۰۰.
+ *
+ * برگرداندنِ چکِ پاس‌شده (CLEARED → PENDING/BOUNCED) مجاز است و همه‌ی اثرهایش را
+ * برمی‌گرداند: ردیفِ یوروی آن چک حذف، paidAt پاک، و اگر سفارش با پاس‌شدنِ همه‌ی
+ * چک‌ها PAID شده بود → PARTIALLY_PAID/UNPAID و برگشتِ کردیتِ خودکارِ مربی.
  *
  * رفتار وضعیتِ سفارش:
  *   - اگر همه چک‌ها CLEARED شوند → installment.status=COMPLETED، پیش‌پرداخت PAID،
@@ -32,7 +37,7 @@ import Payment from "base/models/Payment.js";
 import Order from "base/models/Order.js";
 import User from "base/models/User.js";
 import mongoose from "mongoose";
-import { parseCheckEurAmount } from "base/services/orderEurRecalc";
+import { parseCheckEurAmount, setLinkedEur } from "base/services/orderEurRecalc";
 import {
   sendInstallmentCheckClearedEmail,
   sendInstallmentCompletedEmail,
@@ -55,7 +60,8 @@ export async function PATCH(req, { params }) {
     const { status, bounceReason, receiptImageUrl, notes, amountEUR } = body;
 
     const hasStatus = status !== undefined && status !== null && status !== "";
-    const hasMeta = receiptImageUrl !== undefined || notes !== undefined;
+    const eurSent = amountEUR !== undefined && amountEUR !== null && amountEUR !== "";
+    const hasMeta = receiptImageUrl !== undefined || notes !== undefined || eurSent;
 
     if (!hasStatus && !hasMeta) {
       return NextResponse.json(
@@ -90,21 +96,17 @@ export async function PATCH(req, { params }) {
       return NextResponse.json({ message: "چک یافت نشد" }, { status: 404 });
     }
 
-    /* جلوگیری از تغییر وضعیتِ چکِ CLEARED قبلی (متادیتا قابل تغییر است) */
-    if (hasStatus && check.status === "CLEARED" && status !== "CLEARED") {
-      return NextResponse.json(
-        { message: "چک تأیید شده را نمی‌توان تغییر داد" },
-        { status: 400 }
-      );
-    }
-
     const wasCleared = check.status === "CLEARED";
     const justCleared = hasStatus && status === "CLEARED" && !wasCleared;
+    // برگرداندنِ چکِ پاس‌شده (به «در انتظار» یا «برگشت‌خورده»): پولی که شمرده شده بود دیگر نیست
+    const unCleared = hasStatus && wasCleared && status !== "CLEARED";
+    const clearedAfter = hasStatus ? status === "CLEARED" : wasCleared;
 
-    /* ── مبلغ یوروییِ چک (فقط در لحظه‌ی پاس‌شدن) ── */
+    /* ── مبلغ یوروییِ چک ──
+       هنگام پاس‌شدن (الزامی اگر سفارش یورو دارد) یا ویرایش روی چکی که پاس‌شده می‌ماند.
+       eurValue = null یعنی «دست نزن»؛ عدد یعنی «یوروی این چک همین است» (۰ = ندارد). */
     let eurValue = null;
-    if (justCleared) {
-      const eurSent = amountEUR !== undefined && amountEUR !== null && amountEUR !== "";
+    if (eurSent || justCleared) {
       const canEur = ctx.can("orders.setCurrency");
       if (eurSent && !canEur) {
         return NextResponse.json(
@@ -112,15 +114,24 @@ export async function PATCH(req, { params }) {
           { status: 403 }
         );
       }
-      const eurOrder = await Order.findById(installment.order).select("priceEUR").lean();
+      if (eurSent && !clearedAfter) {
+        return NextResponse.json(
+          { message: "مبلغ یورو فقط برای چکِ پاس‌شده ثبت می‌شود" },
+          { status: 400 }
+        );
+      }
+      const eurOrder = justCleared
+        ? await Order.findById(installment.order).select("priceEUR").lean()
+        : null;
       const parsedEur = parseCheckEurAmount(amountEUR, {
-        required: canEur && eurOrder?.priceEUR != null,
+        required: justCleared ? canEur && eurOrder?.priceEUR != null : eurSent,
       });
       if (parsedEur.error) {
         return NextResponse.json({ message: parsedEur.error }, { status: 400 });
       }
       eurValue = parsedEur.value;
     }
+    if (unCleared) eurValue = 0; // یوروی این چک هم با خودش برمی‌گردد
 
     /* ── آپدیت متادیتا ── */
     if (receiptImageUrl !== undefined) check.receiptImageUrl = receiptImageUrl || null;
@@ -133,6 +144,8 @@ export async function PATCH(req, { params }) {
       check.reviewedAt = new Date();
       if (status === "CLEARED") {
         check.paidAt = check.paidAt || new Date();
+      } else {
+        check.paidAt = undefined;
       }
       if (status === "BOUNCED") {
         check.bounceReason = bounceReason;
@@ -176,33 +189,47 @@ export async function PATCH(req, { params }) {
         }
       }
 
-      /* یوروی چک → یک پرداخت یورویی روی سفارش (همان شکلِ POST /eur). بعد از
-         order.save تا سندِ بارگذاری‌شده‌ی بالا آن را بازنویسی نکند. */
-      if (eurValue > 0) {
-        const now = new Date();
+      /* چکِ پاس‌شده برگشت: سفارشی که با همین چک «پرداخت‌شده» شده بود دیگر نیست.
+         وضعیت از روی رسیدهای تأییدشده (پیش‌پرداخت) دوباره تعیین می‌شود و کردیتِ
+         خودکارِ مربی که با PAID شدن داده شده بود برگردانده می‌شود (اگر مربی آن را
+         خرج کرده باشد، reverse خطای ۴۰۹ می‌دهد و کلِ تراکنش لغو می‌شود). */
+      if (unCleared) {
+        const order = await Order.findById(installment.order).session(dbSession);
+        if (order && order.paymentStatus === "PAID") {
+          const paidReceipts = await Payment.countDocuments({ order: order._id, status: "PAID" }).session(dbSession);
+          await reverseAutomaticCoachCredit(order, dbSession);
+          order.paymentStatus = paidReceipts > 0 ? "PARTIALLY_PAID" : "UNPAID";
+          order.coachCreditProcessedAt = null; // پاس‌شدنِ دوباره کردیت را از نو می‌دهد
+          await order.save({ session: dbSession });
+        }
+      }
+
+      /* یوروی چک = یک ردیفِ paymentsEUR با installmentCheck = همین چک (تنظیم، نه افزودن).
+         بعد از order.save تا سندِ بارگذاری‌شده‌ی بالا آن را بازنویسی نکند؛
+         read-modify-write مثل PUT /eur، داخلِ همین تراکنش. */
+      if (eurValue !== null) {
+        const current = await Order.findById(installment.order).select("paymentsEUR").session(dbSession).lean();
         const number =
           installment.checks
             .slice()
             .sort((a, b) => new Date(a.dueDate) - new Date(b.dueDate))
             .findIndex((c) => String(c._id) === String(check._id)) + 1;
-        await Order.updateOne(
-          { _id: installment.order },
-          {
-            $push: {
-              paymentsEUR: {
-                _id: new mongoose.Types.ObjectId(),
-                amount: eurValue,
-                note: `پاس‌شدن قسط ${number}${check.checkNumber ? ` — چک ${check.checkNumber}` : ""}`,
-                installmentCheck: check._id,
-                confirmedBy: new mongoose.Types.ObjectId(ctx.userId),
-                confirmedAt: now,
-                createdAt: now,
-                updatedAt: now,
-              },
-            },
-          },
-          { session: dbSession, strict: false }
-        );
+        const { rows, changed } = setLinkedEur(current?.paymentsEUR, {
+          field: "installmentCheck",
+          id: check._id,
+          amount: eurValue,
+          adminId: new mongoose.Types.ObjectId(ctx.userId),
+          now: new Date(),
+          newId: new mongoose.Types.ObjectId(),
+          note: `پاس‌شدن قسط ${number}${check.checkNumber ? ` — چک ${check.checkNumber}` : ""}`,
+        });
+        if (changed) {
+          await Order.updateOne(
+            { _id: installment.order },
+            { $set: { paymentsEUR: rows } },
+            { session: dbSession, strict: false }
+          );
+        }
       }
 
       await dbSession.commitTransaction();
@@ -210,11 +237,16 @@ export async function PATCH(req, { params }) {
     } catch (err) {
       await dbSession.abortTransaction();
       dbSession.endSession();
+      if (err?.code === "WALLET_CHECKOUT_ERROR") {
+        return NextResponse.json({ message: err.message }, { status: err.status || 409 });
+      }
       throw err;
     }
 
-    /* ── ایمیل مشتری (شکست ایمیل روند را متوقف نمی‌کند) ── */
-    if (justCleared || allCleared) {
+    /* ── ایمیل مشتری (شکست ایمیل روند را متوقف نمی‌کند) ──
+       فقط در لحظه‌ی پاس‌شدن؛ وگرنه هر ویرایشِ یادداشت/یوروی یک اقساطِ تکمیل‌شده
+       ایمیلِ «اقساط تکمیل شد» را دوباره می‌فرستاد. */
+    if (justCleared) {
       try {
         const order = await Order.findById(installment.order)
           .select("trackingCode user totalPrice")
