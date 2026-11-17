@@ -6,6 +6,7 @@ import ProductShare from "./ProductShare";
 import ProductExploreNav from "./ProductExploreNav";
 import RelatedProducts from "./RelatedProducts";
 import ProductAssurance from "./ProductAssurance";
+import ProductAthletes from "./ProductAthletes";
 import mobileTabStyles from "./MobileProductTabs.module.css";
 
 const ProductTemplate = ({ product, reviewsPromise, rate }) => {
@@ -36,6 +37,7 @@ const ProductTemplate = ({ product, reviewsPromise, rate }) => {
               reviewsPanel={<Suspense fallback={<ReviewsLoading />}><ProductReviewsContent productId={product._id} reviewsPromise={reviewsPromise} /></Suspense>}
             />
           </div>
+          <ProductAthletes athletes={product.athlete} />
           <div className="mt-10 flex flex-col gap-4 pb-8 sm:mt-12 sm:gap-6 md:mt-16 md:pb-10">
             <ProductAssurance />
             <ProductShare />

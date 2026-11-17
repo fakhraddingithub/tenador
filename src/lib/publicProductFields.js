@@ -29,3 +29,6 @@ export const WITHOUT_AI_PROMPTS =
 
 // صفحه‌ی محصول مقاله‌ی برند را هم نمی‌خواند.
 export const PRODUCT_PAGE_BRAND_FIELDS = "-prompts -articleBlocks";
+
+// کارت‌های «ورزشکارانی که از این محصول استفاده می‌کنند» در صفحه‌ی محصول؛ بیو و افتخارات لازم نیست.
+export const PRODUCT_PAGE_ATHLETE_FIELDS = "title slug photo";

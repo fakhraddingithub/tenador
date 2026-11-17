@@ -17,6 +17,7 @@ import {
   CARD_BRAND_FIELDS,
   CARD_CATEGORY_FIELDS,
   PRODUCT_PAGE_BRAND_FIELDS,
+  PRODUCT_PAGE_ATHLETE_FIELDS,
   WITHOUT_AI_PROMPTS,
 } from "@/lib/publicProductFields";
 
@@ -151,7 +152,7 @@ export const getProductBySlug = unstable_cache(
         .populate("serie")
         .populate("limitedEdition")
         .populate("sport")
-        .populate("athlete")
+        .populate("athlete", PRODUCT_PAGE_ATHLETE_FIELDS)
         .populate("category", WITHOUT_AI_PROMPTS)
         .populate("variants")
         .lean();

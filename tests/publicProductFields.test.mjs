@@ -21,6 +21,7 @@ const {
   CARD_BRAND_FIELDS,
   CARD_CATEGORY_FIELDS,
   LISTING_CATEGORY_FIELDS,
+  PRODUCT_PAGE_ATHLETE_FIELDS,
   PRODUCT_PAGE_BRAND_FIELDS,
   PUBLIC_ATTRIBUTES,
   PUBLIC_VARIANT_ATTRIBUTES,
@@ -29,6 +30,8 @@ const {
 const { default: Product } = await import("../models/Product.js");
 const { default: Category } = await import("../models/Category.js");
 const { default: Brand } = await import("../models/Brand.js");
+// models/Athlete.js از require استفاده می‌کند و در ESM بار نمی‌شود؛ populate فقط نامِ مدل را لازم دارد.
+const Athlete = mongoose.model("Athlete", new mongoose.Schema({}, { strict: false }));
 const { buildLabelMap, attrUnits } = await import("../src/lib/variantImages.js");
 const { filterAttributesByAudience } = await import("../utils/targetAudience.js");
 
@@ -36,6 +39,7 @@ const SECRET = "SECRET-AI-PROMPT";
 let server;
 let productId;
 let tabItemId;
+let athleteId;
 
 before(async () => {
   server = await MongoMemoryServer.create();
@@ -114,7 +118,12 @@ before(async () => {
     prompts: [{ field: "name", context: SECRET }],
     articleBlocks: [{ id: "a", type: "paragraph", data: { text: SECRET } }],
   });
-  await Product.collection.insertOne({ _id: productId, name: "راکت", category: categoryId, brand: brandId });
+  athleteId = new mongoose.Types.ObjectId();
+  await Athlete.collection.insertOne({
+    _id: athleteId, name: "roger", title: "راجر", slug: "roger", photo: "roger.webp",
+    bio: "بیوگرافیِ طولانی", honors: [{ title: "قهرمانی", quantity: 20 }], sponsors: [brandId],
+  });
+  await Product.collection.insertOne({ _id: productId, name: "راکت", category: categoryId, brand: brandId, athlete: [athleteId] });
 });
 
 after(async () => {
@@ -194,6 +203,15 @@ test("صفحه‌ی محصول: فقط پرامپت‌ها و مقاله‌ی ب
     image: "brand.webp",
     order: 1,
   })) assert.deepEqual(brand[key], value, `brand.${key}`);
+});
+
+test("صفحه‌ی محصول: کارتِ ورزشکار فقط نام، اسلاگ و عکس می‌گیرد", async () => {
+  const { athlete } = await Product.findById(productId).populate("athlete", PRODUCT_PAGE_ATHLETE_FIELDS).lean();
+  assert.equal(athlete.length, 1);
+  const { _id, ...rest } = athlete[0];
+  assert.deepEqual(rest, { title: "راجر", slug: "roger", photo: "roger.webp" });
+  const source = readFileSync(new URL("../services/product.service.js", import.meta.url), "utf8");
+  assert.ok(source.includes('.populate("athlete", PRODUCT_PAGE_ATHLETE_FIELDS)'));
 });
 
 test("سرویس‌های عمومی برند و دسته را کامل populate نمی‌کنند", () => {
