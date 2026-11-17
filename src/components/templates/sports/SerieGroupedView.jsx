@@ -577,21 +577,21 @@ export default function SerieGroupedView({
                       />
                     )}
                     <div className="flex flex-col items-center gap-2">
-                      {section.serie?.slug && sportSlug && brandSlug ? (
-                        <Link
-                          href={withQueryParams(
-                            `/${sportSlug}/${brandSlug}/${section.serie.slug}`,
-                            { targetAudience },
-                          )}
-                          className="text-2xl md:text-3xl font-bold text-[#1a1a1a] tracking-tight text-center hover:text-[var(--color-primary)] transition-colors"
-                        >
-                          {section.serie.title}
-                        </Link>
-                      ) : (
-                        <h2 className="text-2xl md:text-3xl font-bold text-[#1a1a1a] tracking-tight text-center">
-                          {section.serie?.title}
-                        </h2>
-                      )}
+                      <h3 className="text-2xl md:text-3xl font-bold text-[#1a1a1a] tracking-tight text-center">
+                        {section.serie?.slug && sportSlug && brandSlug ? (
+                          <Link
+                            href={withQueryParams(
+                              `/${sportSlug}/${brandSlug}/${section.serie.slug}`,
+                              { targetAudience },
+                            )}
+                            className="hover:text-[var(--color-primary)] transition-colors"
+                          >
+                            {section.serie.title}
+                          </Link>
+                        ) : (
+                          section.serie?.title
+                        )}
+                      </h3>
                       <span className="block w-12 h-1 rounded-full bg-[var(--color-primary)]" />
                     </div>
                   </div>
