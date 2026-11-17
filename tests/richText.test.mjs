@@ -199,6 +199,9 @@ const clean = (type, data) => sanitizeArticleBlockData(type, data, {}, "blocks.0
 test("بلوک‌های متنیِ قدیمی بایت‌به‌بایت همان می‌مانند", () => {
   assert.deepEqual(clean("paragraph", { text: "متنِ ساده" }), { text: "متنِ ساده" });
   assert.deepEqual(clean("heading", { text: "تیتر", level: "h3" }), { text: "تیتر", level: "h3" });
+  // «ظاهر: مثلِ پاراگراف» ذخیره می‌شود؛ پیش‌فرض (تیتر) و مقدارِ ناشناخته نه.
+  assert.deepEqual(clean("heading", { text: "تیتر", level: "h3", look: "text" }), { text: "تیتر", level: "h3", look: "text" });
+  assert.deepEqual(clean("heading", { text: "تیتر", level: "h3", look: "heading" }), { text: "تیتر", level: "h3" });
   assert.deepEqual(clean("quote", { text: "نقل", author: "کسی" }), { text: "نقل", author: "کسی" });
 });
 

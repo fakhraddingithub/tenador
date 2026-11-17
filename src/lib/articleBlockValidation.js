@@ -211,7 +211,8 @@ const entitySlider = (key) => (data, errors, field) => ({
 });
 
 const validators = {
-  heading: (data) => ({ text: string(data.text, 500), ...rich(data.html), level: ["h2", "h3", "h4"].includes(data.level) ? data.level : "h2" }),
+  // look: "text" — تیترِ واقعی (برای ساختارِ صفحه) با ظاهرِ پاراگراف. پیش‌فرض ذخیره نمی‌شود.
+  heading: (data) => ({ text: string(data.text, 500), ...rich(data.html), level: ["h2", "h3", "h4"].includes(data.level) ? data.level : "h2", ...(data.look === "text" ? { look: "text" } : null) }),
   paragraph: (data) => ({ text: string(data.text, 50000), ...rich(data.html) }),
   // فقط سه متن؛ بقیه‌ی ظاهر از HomeSectionHeading می‌آید و قابلِ تنظیم نیست.
   tenadorTitle: (data) => ({ highlight: string(data.highlight, 200), title: string(data.title, 300), subtitle: string(data.subtitle, 500) }),

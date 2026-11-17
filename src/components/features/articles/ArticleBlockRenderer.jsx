@@ -136,6 +136,8 @@ function safeHeadingId(block) {
 function normalizeHeadingLevels(blocks = []) {
   let previous = 1;
   const normalize = (block) => {
+    // «تیتر تنادور» خودش یک h2 است (HomeSectionHeading)؛ تیترِ h3 بعد از آن نباید h2 شود.
+    if (block.type === "tenadorTitle") previous = 2;
     if (block.type !== "heading") return block;
     const requested = Number(String(block.data?.level || "h2").slice(1));
     previous = Math.max(2, Math.min(4, Number.isFinite(requested) ? requested : 2, previous + 1));
@@ -478,7 +480,9 @@ export default function ArticleBlockRenderer({ blocks = [], entities, preview = 
       const level = ["h2", "h3", "h4"].includes(data.level) ? data.level : "h2";
       const Tag = level;
       const sizes = { h2: "text-2xl md:text-3xl", h3: "text-xl md:text-2xl", h4: "text-lg md:text-xl" };
-      return <Tag key={block.id} id={safeHeadingId(block)} className={`${blockSection} ${sizes[level]} rt-flow font-black text-gray-900`} style={merge(v.spacing, padded(v), v.text && { color: v.text }, v.align && { textAlign: v.align })} {...richContent(data)} />;
+      // «مثلِ پاراگراف»: همان کلاس‌های بلوکِ پاراگراف، تا فقط تگ عوض شود نه ظاهر.
+      const look = data.look === "text" ? "rt-flow text-[16px] text-gray-700 md:text-[17px]" : `${sizes[level]} rt-flow font-black text-gray-900`;
+      return <Tag key={block.id} id={safeHeadingId(block)} className={`${blockSection} ${look}`} style={merge(v.spacing, padded(v), v.text && { color: v.text }, v.align && { textAlign: v.align })} {...richContent(data)} />;
     }
     if (block.type === "paragraph") {
       const content = richContent(data);
