@@ -161,6 +161,7 @@ function GroupEditor({ ctx, stored, canEdit }) {
   const activeField = active === OTHER_TAB || offeredFields.has(active) ? active : defaultField;
   const tabRules = activeField === OTHER_TAB ? otherRules : indexed.filter(({ r }) => r.field === activeField);
   const titleOf = (field) => fieldTitle(field, config.document);
+  const inGroup = new Set(group.categories);
   const deletedCount = group.categories.filter((id) => !categoryById.has(id)).length;
   const name = group.title.trim() || (isNew ? 'گروهِ تازه' : group.categories.map((id) => categoryName(categoryById, id)).join('، '));
 
