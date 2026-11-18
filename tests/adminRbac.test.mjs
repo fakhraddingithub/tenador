@@ -500,7 +500,9 @@ test("duplicate tab params fail closed", () => {
 
 test("the site-pages hub opens from either real capability, tabs stay exact", () => {
   const base = "/p-admin/admin-pages";
-  assert.deepEqual(ADMIN_ROUTE_PERMISSIONS[base], ["home.view", "pages.view"]);
+  assert.deepEqual(ADMIN_ROUTE_PERMISSIONS[base], ["home.view", "pages.view", "footer.view"]);
+  assert.equal(canAccessAdminRoute(["footer.view"], `${base}?tab=footer`), true);
+  assert.equal(canAccessAdminRoute(["footer.view"], `${base}?tab=home`), false);
   assert.ok(ADMIN_ROUTE_ANY_MODE.has(base));
 
   // هرکدام از دو قابلیت به‌تنهایی کافی است

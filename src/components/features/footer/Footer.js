@@ -1,9 +1,9 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { FiMail, FiInstagram, FiTwitter, FiYoutube } from "react-icons/fi";
-import { FaTelegram } from "react-icons/fa";
-import { FOOTER_SECTIONS } from "@/lib/constants";
+import { FiMail, FiMapPin, FiPhone } from "react-icons/fi";
+import { FOOTER_SOCIAL_PLATFORMS, normalizeSiteFooter, phoneHref } from "@/lib/siteFooter";
+import { SOCIAL_ICONS } from "./socialIcons";
 import Input from "@/components/ui/Input";
 import Button from "@/components/ui/Button";
 import Image from "next/image";
@@ -15,7 +15,13 @@ const showAlert = (options) =>
     .then(({ default: Swal }) => Swal.fire(options))
     .catch(() => window.alert(options.text));
 
-export default function Footer() {
+const isExternal = (href) => /^https?:\/\//i.test(href);
+
+/** محتوا از پنل ادمین می‌آید (services/siteFooter.service.js → layout). */
+export default function Footer({ footer: footerProp }) {
+  const footer = footerProp ?? normalizeSiteFooter(null);
+  const { newsletter, contact } = footer;
+  const socials = footer.socials.filter((s) => s.enabled && s.href);
   const [email, setEmail] = useState("");
   const [isSubscribed, setIsSubscribed] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -79,12 +85,10 @@ export default function Footer() {
             <div className="grid md:grid-cols-2 gap-8 items-center">
               <div>
                 <h3 className="text-2xl font-bold mb-2 text-white">
-                  {isSubscribed ? "شما عضو خبرنامه هستید" : "عضویت در خبرنامه"}
+                  {isSubscribed ? newsletter.subscribedTitle : newsletter.title}
                 </h3>
                 <p className="text-[#9da5b3]">
-                  {isSubscribed 
-                    ? "از اینکه ما را دنبال می‌کنید سپاسگزاریم." 
-                    : "از جدیدترین محصولات و تخفیف‌های ویژه با خبر شوید"}
+                  {isSubscribed ? newsletter.subscribedDescription : newsletter.description}
                 </p>
               </div>
 
@@ -94,7 +98,8 @@ export default function Footer() {
                     type="email"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
-                    placeholder="ایمیل خود را وارد کنید"
+                    placeholder={newsletter.placeholder}
+                    aria-label={newsletter.placeholder || "ایمیل"}
                     required
                     className="flex-grow bg-white/5 border-white/10 text-white placeholder:text-gray-500 focus:border-[#aa4725]"
                   />
@@ -103,7 +108,7 @@ export default function Footer() {
                     disabled={loading}
                     className="bg-[#aa4725] hover:bg-[#c2532d] text-white px-8"
                   >
-                    {loading ? "در حال ثبت..." : "عضویت"}
+                    {loading ? "در حال ثبت..." : newsletter.buttonLabel || "عضویت"}
                   </Button>
                 </form>
               ) : (
@@ -123,53 +128,71 @@ export default function Footer() {
             <div className="mb-6 opacity-90">
               <Image src="/logo/logo.svg" alt="logo" width={120} height={120} />
             </div>
-            <p className="text-[#9da5b3] mb-8 leading-relaxed text-sm">
-              فروشگاه تخصصی تجهیزات ورزش‌های راکتی در ایران. ارائه‌دهنده محصولات
-              اصل و با کیفیت برندهای معتبر جهانی با بهترین قیمت و خدمات پس از
-              فروش.
-            </p>
+            {footer.description && (
+              <p className="text-[#9da5b3] mb-8 leading-relaxed text-sm whitespace-pre-line">
+                {footer.description}
+              </p>
+            )}
 
-            {/* Contact Info */}
-            <div className="space-y-4">
-              <div className="flex items-center gap-3 text-gray-300 hover:text-white transition-colors group">
-                <FiMail
-                  className="text-[#aa4725] group-hover:scale-110 transition-transform"
-                  size={20}
-                />
-                <span className="text-sm">info.tenador@gmail.com</span>
-              </div>
-            </div>
+            {/* Contact Info — تلفن و آدرس بالای ایمیل */}
+            {(contact.phone || contact.address || contact.email) && (
+              <ul className="space-y-4">
+                {contact.phone && (
+                  <li>
+                    <a
+                      href={phoneHref(contact.phone)}
+                      className="flex items-center gap-3 text-gray-300 hover:text-white transition-colors group"
+                    >
+                      <FiPhone className="text-[#aa4725] shrink-0 group-hover:scale-110 transition-transform" size={20} />
+                      <span className="text-sm">{contact.phone}</span>
+                    </a>
+                  </li>
+                )}
+                {contact.address && (
+                  <li className="flex items-start gap-3 text-gray-300">
+                    <FiMapPin className="text-[#aa4725] shrink-0 mt-0.5" size={20} />
+                    <span className="text-sm leading-relaxed whitespace-pre-line">{contact.address}</span>
+                  </li>
+                )}
+                {contact.email && (
+                  <li>
+                    <a
+                      href={`mailto:${contact.email}`}
+                      className="flex items-center gap-3 text-gray-300 hover:text-white transition-colors group"
+                    >
+                      <FiMail className="text-[#aa4725] shrink-0 group-hover:scale-110 transition-transform" size={20} />
+                      <span className="text-sm">{contact.email}</span>
+                    </a>
+                  </li>
+                )}
+              </ul>
+            )}
 
             {/* Social Media */}
-            <div className="flex gap-5 mt-8">
-              {[
-                {
-                  icon: <FiInstagram size={24} />,
-                  href: "https://www.instagram.com/tenador.shop",
-                },
-                {
-                  icon: <FaTelegram size={24} />,
-                  href: "https://telegram.org",
-                },
-                { icon: <FiTwitter size={24} />, href: "https://twitter.com" },
-                { icon: <FiYoutube size={24} />, href: "https://youtube.com" },
-              ].map((social, idx) => (
-                <a
-                  key={idx}
-                  href={social.href}
-                  aria-label={["اینستاگرام تنادور", "تلگرام تنادور", "توییتر تنادور", "یوتیوب تنادور"][idx]}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-white hover:text-[#e6a18a] transition-all duration-300 ease-in-out transform hover:-translate-y-1"
-                >
-                  {social.icon}
-                </a>
-              ))}
-            </div>
+            {socials.length > 0 && (
+              <div className="flex flex-wrap gap-5 mt-8">
+                {socials.map((social) => {
+                  const Icon = SOCIAL_ICONS[social.platform];
+                  const label = FOOTER_SOCIAL_PLATFORMS.find((p) => p.key === social.platform)?.label;
+                  return (
+                    <a
+                      key={social.platform}
+                      href={social.href}
+                      aria-label={`${label} تنادور`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-white hover:text-[#e6a18a] transition-all duration-300 ease-in-out transform hover:-translate-y-1"
+                    >
+                      <Icon size={24} />
+                    </a>
+                  );
+                })}
+              </div>
+            )}
           </div>
 
           {/* Footer Links Columns */}
-          {FOOTER_SECTIONS.map((section, index) => (
+          {footer.sections.map((section, index) => (
             <div key={index}>
               <h3 className="text-white font-bold mb-6 pb-2 border-b border-[#aa4725] inline-block">
                 {section.title}
@@ -179,6 +202,7 @@ export default function Footer() {
                   <li key={linkIndex}>
                     <Link
                       href={link.href}
+                      {...(isExternal(link.href) ? { target: "_blank", rel: "noopener noreferrer" } : {})}
                       className="text-[#9da5b3] hover:text-[#e6a18a] transition-colors block text-sm"
                     >
                       {link.label}
@@ -192,21 +216,13 @@ export default function Footer() {
       </div>
 
       {/* Copyright */}
-      <div className="border-t border-white/5">
-        <div className="container mx-auto px-4 py-6">
-          <div className="flex flex-col md:flex-row items-center justify-between gap-4 text-xs text-[#9da5b3]">
-            <p>© ۲۰۲۶ تمامی حقوق برای فروشگاه محفوظ است.</p>
-            <div className="flex gap-6">
-              <Link href="/terms" className="hover:text-white transition-colors">
-                قوانین و مقررات
-              </Link>
-              <Link href="/privacy" className="hover:text-white transition-colors">
-                حریم خصوصی
-              </Link>
-            </div>
+      {footer.copyright && (
+        <div className="border-t border-white/5">
+          <div className="container mx-auto px-4 py-6">
+            <p className="text-center text-xs text-[#9da5b3]">{footer.copyright}</p>
           </div>
         </div>
-      </div>
+      )}
     </footer>
   );
 }

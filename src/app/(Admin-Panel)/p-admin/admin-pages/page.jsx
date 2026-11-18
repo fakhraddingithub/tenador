@@ -2,23 +2,24 @@
 
 /**
  * صفحات سایت (فاز ۲) — «صفحه‌ی اصلی» به‌عنوان تب داخلی همین صفحه ادغام شد.
- * دو تب: «صفحه اصلی سایت» (ویترین) و «صفحات محتوایی».
+ * سه تب: «صفحه اصلی سایت» (ویترین)، «صفحات محتوایی» و «فوتر سایت».
  * منطق موجودِ PagesList و بخش‌های admin-home کاملاً حفظ می‌شود.
- * URL-sync سبک: ?tab=home|content
+ * URL-sync سبک: ?tab=home|content|footer
  */
 import { Suspense, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { motion } from "framer-motion";
 import { FaFileAlt, FaHome } from "react-icons/fa";
-import { FiBookOpen, FiChevronLeft, FiGrid, FiImage, FiLayers, FiTrendingUp, FiAward } from "react-icons/fi";
+import { FiBookOpen, FiChevronLeft, FiGrid, FiImage, FiLayers, FiLayout, FiTrendingUp, FiAward } from "react-icons/fi";
 
 import SectionTabs from "@/components/admin/SectionTabs";
 import PagesList from "@/components/admin/pages/PagesList";
+import FooterManager from "@/components/admin/pages/FooterManager";
 import { useAdminPermissions } from "@/components/admin/AdminPermissionProvider";
 import { ADMIN_TAB_PERMISSIONS } from "@/lib/permissions";
 
-const ORDER = ["home", "content"];
+const ORDER = ["home", "content", "footer"];
 const VALID = new Set(ORDER);
 
 const HOME_SECTIONS = [
@@ -164,6 +165,7 @@ function AdminPagesContent() {
       [
         { value: "home", label: "صفحه اصلی سایت", icon: FaHome },
         { value: "content", label: "صفحات محتوایی", icon: FaFileAlt },
+        { value: "footer", label: "فوتر سایت", icon: FiLayout },
       ].filter((t) => allows(t.value)),
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [can]
@@ -195,7 +197,7 @@ function AdminPagesContent() {
               صفحات سایت
             </h1>
             <p className="text-xs font-bold mt-0.5" style={{ color: "var(--admin-text-muted)" }}>
-              مدیریت ویترین صفحه اصلی و محتوای صفحات اطلاع‌رسانی
+              مدیریت ویترین صفحه اصلی، محتوای صفحات اطلاع‌رسانی و فوتر
             </p>
           </div>
         </div>
@@ -206,6 +208,7 @@ function AdminPagesContent() {
         {/* برابریِ صریح: با `else` ی قبلی، تبِ null هم فهرستِ صفحات را نشان می‌داد */}
         {tab === "home" && <HomeSectionsPanel />}
         {tab === "content" && <PagesList />}
+        {tab === "footer" && <FooterManager />}
       </div>
     </div>
   );

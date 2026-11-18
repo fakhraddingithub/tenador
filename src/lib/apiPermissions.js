@@ -260,6 +260,7 @@ export const ADMIN_API_PERMISSIONS = {
     GET: "homeRolandGarros.view",
     PUT: "homeRolandGarros.edit",
   },
+  "/admin/footer": { GET: "footer.view", PUT: "footer.edit" },
   // انتشار کلیدِ جدا دارد — resolvePagePutPermissions
   "/admin/pages": { GET: "pages.view", PUT: branch("resolvePagePutPermissions") },
 

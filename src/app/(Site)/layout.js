@@ -11,6 +11,7 @@ import Footer from "@/components/features/footer/Footer";
 import PushOptInBanner from "@/components/features/push/PushOptInBanner";
 
 import { getCachedNavbar } from "@/lib/navbarService";
+import { getSiteFooter } from "base/services/siteFooter.service";
 import { UserProvider } from "@/components/features/auth/UserContext";
 import CartCleanup from "@/components/features/cart/CartCleanup";
 import ScrollToTop from "@/components/common/ScrollToTop";
@@ -154,7 +155,7 @@ export const metadata = {
 export default async function RootLayout({ children }) {
   // ⚠️ هیچ `cookies()`/`headers()` در این layout صدا زده نمی‌شود تا کل درخت `(Site)`
   // بتواند static/ISR باقی بماند. وضعیت کاربر در جزیره‌ی کلاینت `UserProvider` مدیریت می‌شود.
-  const navData = await getCachedNavbar();
+  const [navData, footer] = await Promise.all([getCachedNavbar(), getSiteFooter()]);
 
   const jsonLd = {
     "@context": "https://schema.org",
@@ -173,7 +174,7 @@ export default async function RootLayout({ children }) {
 
     description: "فروشگاه آنلاین لوازم تنیس و پدل",
 
-    sameAs: ["https://instagram.com/tenador.shop"],
+    sameAs: footer.socials.filter((s) => s.enabled && s.href).map((s) => s.href),
   };
 
   return (
@@ -211,7 +212,7 @@ export default async function RootLayout({ children }) {
 
           <main className="min-h-screen">{children}</main>
 
-          <Footer />
+          <Footer footer={footer} />
         </UserProvider>
 
         <ToastContainer

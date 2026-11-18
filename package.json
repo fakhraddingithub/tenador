@@ -52,7 +52,7 @@
     "test:order-item-eur": "node --test tests/orderItemEur.test.mjs",
     "check:eur-receipt-links": "node scripts/linkEurReceiptRows.mjs",
     "migrate:eur-receipt-links": "node scripts/linkEurReceiptRows.mjs --apply",
-    "test:installment-check-eur":"node --experimental-vm-modules --test --test-timeout=180000 tests/installmentCheckEur.test.mjs",
+    "test:installment-check-eur": "node --experimental-vm-modules --test --test-timeout=180000 tests/installmentCheckEur.test.mjs",
     "test:manual-order-tracking": "node --experimental-vm-modules --test --test-timeout=180000 tests/manualOrderTracking.test.mjs",
     "test:order-deletion": "node --test --test-timeout=180000 tests/orderDeletion.test.mjs",
     "test:sender-address": "node --test tests/senderAddressForm.test.mjs",
@@ -111,7 +111,8 @@
     "verify:admin-auth": "node scripts/verify-admin-auth.mjs",
     "rbac:coverage": "node scripts/rbacCoverage.mjs",
     "test:comment-notification": "node --test --test-timeout=180000 tests/commentNotification.test.mjs",
-    "test:comment-photos-replies": "node --experimental-vm-modules --test --test-timeout=180000 tests/commentPhotosReplies.test.mjs"
+    "test:comment-photos-replies": "node --experimental-vm-modules --test --test-timeout=180000 tests/commentPhotosReplies.test.mjs",
+    "test:site-footer": "node --test tests/siteFooter.test.mjs"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",
