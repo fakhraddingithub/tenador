@@ -745,7 +745,7 @@ useEffect(() => {
             <div className="flex-grow max-w-xl" ref={desktopSearchRef}>
               <div className="relative">
                 <Input
-                  className="rounded-[var(--radius)] bg-white/10 border-white/20 text-white placeholder:text-gray-400"
+                  className="rounded-[var(--radius)] bg-white/10 border-white/20 pl-11 text-white placeholder:text-gray-400 [&::-webkit-search-cancel-button]:hidden"
                   type="search"
                   placeholder="جستجو در محصولات..."
                   value={searchQuery}
@@ -755,6 +755,19 @@ useEffect(() => {
                   }
                   icon={<FiSearch size={18} className="text-white" />}
                 />
+                {searchQuery && (
+                  <button
+                    type="button"
+                    aria-label="پاک کردن جستجو"
+                    onClick={() => {
+                      handleSearch("");
+                      desktopSearchRef.current?.querySelector("input")?.focus();
+                    }}
+                    className="absolute left-1.5 top-1/2 flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-[6px] text-white hover:bg-white/10"
+                  >
+                    <FiX size={20} />
+                  </button>
+                )}
 
                 {showSearchDropdown && (
                   <div className="absolute top-full right-0 left-0 mt-2 bg-[#20232ae6] border border-white/10 rounded-[var(--radius)] shadow-2xl z-[200]">
@@ -849,7 +862,7 @@ useEffect(() => {
                 onFocus={() =>
                   searchQuery.length >= 2 && setShowSearchDropdown(true)
                 }
-                className="h-10 w-full rounded-[var(--radius)] border border-white/10 bg-white/[0.06] pr-10 pl-11 text-sm text-white placeholder:text-gray-400/80 outline-none transition-colors focus:border-[#aa4725]/50 focus:bg-white/[0.09]"
+                className="h-10 w-full rounded-[var(--radius)] border border-white/10 bg-white/[0.06] pr-10 pl-11 text-sm text-white placeholder:text-gray-400/80 outline-none transition-colors focus:border-[#aa4725]/50 focus:bg-white/[0.09] [&::-webkit-search-cancel-button]:hidden"
               />
               <button
                 type="button"
