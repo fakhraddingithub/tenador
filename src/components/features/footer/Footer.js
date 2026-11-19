@@ -144,7 +144,8 @@ export default function Footer({ footer: footerProp }) {
                       className="flex items-center gap-3 text-gray-300 hover:text-white transition-colors group"
                     >
                       <FiPhone className="text-[#aa4725] shrink-0 group-hover:scale-110 transition-transform" size={20} />
-                      <span className="text-sm">{contact.phone}</span>
+                      {/* globals.css: `* { direction: rtl }` بر dir غلبه می‌کند؛ بدونِ این، «(+98) 991…» به‌هم می‌ریزد */}
+                      <span dir="ltr" className="text-sm [direction:ltr] [unicode-bidi:isolate]">{contact.phone}</span>
                     </a>
                   </li>
                 )}
@@ -161,7 +162,7 @@ export default function Footer({ footer: footerProp }) {
                       className="flex items-center gap-3 text-gray-300 hover:text-white transition-colors group"
                     >
                       <FiMail className="text-[#aa4725] shrink-0 group-hover:scale-110 transition-transform" size={20} />
-                      <span className="text-sm">{contact.email}</span>
+                      <span dir="ltr" className="text-sm [direction:ltr] [unicode-bidi:isolate]">{contact.email}</span>
                     </a>
                   </li>
                 )}

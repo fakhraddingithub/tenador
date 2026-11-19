@@ -72,4 +72,8 @@ test("footer renders from config: bottom terms/privacy links gone, copyright cen
   // تلفن و آدرس پیش از ایمیل
   assert.ok(src.indexOf("contact.phone &&") < src.indexOf("contact.email &&"));
   assert.ok(src.indexOf("contact.address &&") < src.indexOf("contact.email &&"));
+  // `* { direction: rtl }` در globals.css بر dir="ltr" غلبه می‌کند — «(+98) 991…» برعکس می‌شد
+  assert.match(src, /\[direction:ltr\][^"]*">\{contact\.phone\}/);
+  const admin = fs.readFileSync("src/components/admin/pages/FooterManager.jsx", "utf8");
+  assert.match(admin, /type="tel"\s+dir="ltr"\s+className=\{`\$\{inputClass\} text-left \[direction:ltr\]`\}/);
 });

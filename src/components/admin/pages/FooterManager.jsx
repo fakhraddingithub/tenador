@@ -193,7 +193,9 @@ export default function FooterManager() {
           <div className="grid gap-4 md:grid-cols-2">
             <Field label="شماره تلفن">
               <input
-                className={inputClass}
+                type="tel"
+                dir="ltr"
+                className={`${inputClass} text-left [direction:ltr]`}
                 maxLength={FOOTER_LIMITS.text}
                 value={form.contact.phone}
                 placeholder="۰۲۱-۱۲۳۴۵۶۷۸"
