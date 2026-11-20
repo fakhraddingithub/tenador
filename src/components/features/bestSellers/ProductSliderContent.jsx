@@ -59,6 +59,9 @@ export default function ProductSlider({
 
   isolated = false,
 
+  // تگِ عنوان (پیش‌فرض h2، همان صفحه‌ی اصلی)
+  headingAs,
+
   fitContainer = false,
 
   onToggleWishlist,
@@ -104,7 +107,7 @@ export default function ProductSlider({
         {/* هدر */}
 
         <div className="relative flex flex-col md:flex-row md:items-end justify-between mb-10 md:mb-16">
-          {title || subtitle ? <HomeSectionHeading title={title} highlight={highlight} subtitle={subtitle} /> : <div />}
+          {title || subtitle ? <HomeSectionHeading title={title} highlight={highlight} subtitle={subtitle} as={headingAs} /> : <div />}
 
           {/* کنترلرهای ناوبری (مخفی در موبایل برای تمیزی بیشتر، نمایش در تبلت به بالا) */}
 

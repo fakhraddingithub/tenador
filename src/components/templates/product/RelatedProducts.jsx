@@ -21,6 +21,7 @@ export default async function RelatedProducts({ productId, rate }) {
       deferActivation
       isolated
       removeTopPadding
+      headingAs="span"
       title="محصولات مرتبط"
       highlight="مرتبط"
       subtitle="انتخاب‌های مشابه و محصولات مکمل برای تجهیزات شما"

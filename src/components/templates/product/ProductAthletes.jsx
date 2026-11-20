@@ -18,6 +18,7 @@ export default function ProductAthletes({ athletes }) {
     <section aria-labelledby="product-athletes-heading" className="mt-10 sm:mt-12 md:mt-16">
       <HomeSectionHeading
         id="product-athletes-heading"
+        as="span"
         title="ورزشکارانِ این محصول"
         highlight="ورزشکارانِ"
         subtitle="حرفه‌ای‌هایی که در مسابقات به این محصول اعتماد کرده‌اند"

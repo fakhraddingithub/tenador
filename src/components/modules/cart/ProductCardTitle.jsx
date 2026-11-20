@@ -61,14 +61,14 @@ export default function ProductCardTitle({ name, slug, farsi, english }) {
     >
       <div ref={textRef} style={{ "--title-scale": 1 }}>
         {farsi && (
-          <h3
-            className="font-bold text-gray-800"
+          <span
+            className="block font-bold text-gray-800"
             style={{
               fontSize: "calc(14px * var(--title-scale))",
               lineHeight: "calc(24px * var(--title-scale))",
               marginBottom: english ? "calc(4px * var(--title-scale))" : 0,
             }}
-          >{farsi}</h3>
+          >{farsi}</span>
         )}
         {english && (
           <p
