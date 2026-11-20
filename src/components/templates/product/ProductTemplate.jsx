@@ -32,6 +32,7 @@ const ProductTemplate = ({ product, reviewsPromise, rate }) => {
               targetAudience={product.targetAudience}
               customTab={product.category.customTab}
               customTabItemIds={product.customTabItems || []}
+              customTabTexts={product.customTabTexts || []}
               reviewCount={<Suspense fallback={null}><ProductReviewCount reviewsPromise={reviewsPromise} /></Suspense>}
               mobileReviewCount={<Suspense fallback={null}><ProductReviewCount reviewsPromise={reviewsPromise} className={mobileTabStyles.count} /></Suspense>}
               reviewsPanel={<Suspense fallback={<ReviewsLoading />}><ProductReviewsContent productId={product._id} reviewsPromise={reviewsPromise} /></Suspense>}

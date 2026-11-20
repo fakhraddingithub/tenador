@@ -1,9 +1,10 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import dynamic from "next/dynamic";
 import { isKidsAudience } from "base/utils/targetAudience";
 import { hasChartableStats } from "@/lib/technicalStatsChart.mjs";
+import { resolveCustomTabItems } from "@/lib/customTabTexts";
 import { motion, AnimatePresence } from "framer-motion";
 import { FiArrowUpLeft, FiFileText, FiSettings, FiMessageSquare } from "react-icons/fi";
 import ProductDescription from "./ProductDescription";
@@ -14,8 +15,6 @@ const ProductComparisonGraph = dynamic(
   () => import("@/components/templates/productCompare/ProductComparisonGraph"),
   { ssr: false, loading: () => <div className="min-h-[420px]" aria-hidden="true" /> },
 );
-
-const normalizeId = (id) => id?.toString?.() || String(id);
 
 const getItemLinkProps = (link) => {
   const href = (link || "").trim();
@@ -91,6 +90,7 @@ const ProductTabs = ({
   targetAudience,
   customTab,
   customTabItemIds = [],
+  customTabTexts = [],
   reviewsPanel,
   reviewCount,
   mobileReviewCount,
@@ -98,17 +98,8 @@ const ProductTabs = ({
   const isMobile = useMobileProductLayout();
   const [activeTab, setActiveTab] = useState("description");
 
-  const matchingCustomItems = useMemo(() => {
-    if (!customTab?.enabled || !Array.isArray(customTab?.items)) return [];
-
-    const customTabItemIdSet = new Set(
-      customTabItemIds.filter(Boolean).map((id) => normalizeId(id))
-    );
-
-    return customTab.items.filter((item) =>
-      customTabItemIdSet.has(normalizeId(item._id))
-    );
-  }, [customTab, customTabItemIds]);
+  // عنوان/توضیحاتی که برای همین محصول ساخته شده، وگرنه متنِ دستیِ آیتم در دسته
+  const matchingCustomItems = resolveCustomTabItems(customTab, customTabItemIds, customTabTexts);
 
   const tabs = [
     { id: "description", label: "توضیحات تخصصی", icon: FiFileText },
