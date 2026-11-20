@@ -14,6 +14,7 @@ import { createProductWithVariants } from "@/lib/createProductWithVariants";
 import { apiError, handleApiError } from "@/lib/apiError";
 import { normalizeTargetAudience } from "base/utils/targetAudience";
 import { resolveProductLimitedEdition } from "@/lib/limitedEditionRelations";
+import { checkTextMap, mergeCustomTabTexts, unknownTextKeys } from "@/lib/customTabTexts";
 
 
 /* ----------------------------------
@@ -138,6 +139,27 @@ export async function createProduct(body, { reservedProductId, onCommitted } = {
       }
     }
 
+    // عنوان/توضیحاتی که AI (یا ادمین) برای همین محصول روی آیتم‌های انتخاب‌شده نوشته
+    const titleMap = checkTextMap(body.customTabTitles, "customTabTitles");
+    const descriptionMap = checkTextMap(body.customTabDescriptions, "customTabDescriptions");
+    for (const [field, checked] of [["customTabTitles", titleMap], ["customTabDescriptions", descriptionMap]]) {
+      if (checked.error) return apiError(checked.error, 400, { fieldErrors: { [field]: checked.error } });
+    }
+    const categoryTabItems = foundCategory.customTab?.items || [];
+    const unknownTextTitles = [...new Set([
+      ...unknownTextKeys(categoryTabItems, titleMap.value),
+      ...unknownTextKeys(categoryTabItems, descriptionMap.value),
+    ])];
+    if (unknownTextTitles.length) {
+      console.warn(`custom tab texts for unknown item(s) in category "${foundCategory.title}" were skipped: ${unknownTextTitles.join(", ")}`);
+    }
+    const customTabTexts = mergeCustomTabTexts({
+      items: categoryTabItems,
+      selectedIds: resolvedCustomTabItemIds,
+      titles: titleMap.value ?? {},
+      descriptions: descriptionMap.value ?? {},
+    });
+
     /* -------------------------------
         Validate Base Price, Attributes & Tech Stats
      ------------------------------- */
@@ -205,6 +227,7 @@ export async function createProduct(body, { reservedProductId, onCommitted } = {
       attributes: attributes || {},
       technicalStats: technicalStats || {},
       customTabItems: resolvedCustomTabItemIds,
+      customTabTexts,
       variantMeta: variantMeta && typeof variantMeta === "object" ? variantMeta : {},
       label: label || "none",
       targetAudience: normalizedTargetAudience,

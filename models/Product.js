@@ -102,6 +102,21 @@ const ProductSchema = new mongoose.Schema(
       default: [],
     },
 
+    // عنوان و توضیحاتی که برای همین محصول روی آیتم‌های انتخاب‌شده‌ی تب نوشته شده (src/lib/customTabTexts.js).
+    // با _idِ آیتم وصل است تا تغییرِ نامِ آیتم در دسته متن را نبُرد. فقط آیتم‌های انتخاب‌شده؛
+    // بخشِ خالی یعنی «ساخته نشده» و صفحه‌ی محصول متنِ دستیِ آیتم را نشان می‌دهد.
+    customTabTexts: {
+      type: [
+        {
+          _id: false,
+          item: { type: mongoose.Schema.Types.ObjectId, required: true },
+          title: { type: String, trim: true, default: "" },
+          description: { type: String, trim: true, default: "" },
+        },
+      ],
+      default: [],
+    },
+
     // متادیتای سطحِ مقدارِ واریانت (Change 2/3): تصاویرِ مشترک هر مقدار و مقادیرِ چندواحدی.
     // شکل: { [attrName]: { [value]: { images: [String], units: { [unitLabel]: String } } } }
     // اختیاری و افزایشی؛ نبودنش = رفتارِ قبلی (تصاویر فقط در سطحِ واریانت).

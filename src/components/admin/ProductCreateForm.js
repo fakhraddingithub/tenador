@@ -8,6 +8,7 @@ import { useSports, useBrands, useCategories, useAthletes, useLimitedEditions } 
 import Button from '@/components/admin/Button';
 import Input from '@/components/admin/Input';
 import Textarea from '@/components/admin/Textarea';
+import CustomTabItemsField from '@/components/admin/CustomTabItemsField';
 import Select from '@/components/admin/Select';
 import ImageUpload from '@/components/admin/ImageUpload';
 import VariantValueImageUpload from '@/components/admin/VariantValueImageUpload';
@@ -114,6 +115,9 @@ export default function ProductCreateForm({ initialData = {}, categoryId = '' })
     // از مسیرِ «افزودن محصول به این دسته» دسته از پیش انتخاب می‌شود
     category: initialData?.category || categoryId || '',
     customTabItems: initialData?.customTabItems || [],
+    // عنوان/توضیحاتی که AI برای آیتم‌های انتخاب‌شده نوشته (با عنوانِ آیتم)
+    customTabTitles: initialData?.customTabTitles ?? {},
+    customTabDescriptions: initialData?.customTabDescriptions ?? {},
     // Override athlete to guarantee array form
     athlete: initialAthletes,
   });
@@ -1080,31 +1084,14 @@ export default function ProductCreateForm({ initialData = {}, categoryId = '' })
       {categoryCustomTab?.enabled && categoryCustomTab.items?.length > 0 && (
         <div className="space-y-3 border-t pt-6">
           <h3 className="text-sm font-bold text-neutral-700">{categoryCustomTab.name || 'تب سفارشی'}</h3>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-            {categoryCustomTab.items.map((item) => {
-              const checked = (formData.customTabItems || []).includes(item.title);
-              return (
-                <label
-                  key={item._id}
-                  className="flex items-center gap-2 p-2.5 bg-neutral-50 border border-neutral-200 rounded-lg cursor-pointer text-sm"
-                >
-                  <input
-                    type="checkbox"
-                    checked={checked}
-                    onChange={(e) =>
-                      setFormData((prev) => ({
-                        ...prev,
-                        customTabItems: e.target.checked
-                          ? [...(prev.customTabItems || []), item.title]
-                          : (prev.customTabItems || []).filter((t) => t !== item.title),
-                      }))
-                    }
-                  />
-                  <span className="font-bold truncate">{item.title}</span>
-                </label>
-              );
-            })}
-          </div>
+          <CustomTabItemsField
+            tab={categoryCustomTab}
+            selected={formData.customTabItems || []}
+            titles={formData.customTabTitles}
+            descriptions={formData.customTabDescriptions}
+            onChange={(patch) => setFormData((prev) => ({ ...prev, ...patch }))}
+            errors={fieldErrors}
+          />
         </div>
       )}
 

@@ -22,6 +22,8 @@ import Button from '@/components/admin/Button';
 import AdminLoader from '@/components/admin/AdminLoader';
 import Input from '@/components/admin/Input';
 import Textarea from '@/components/admin/Textarea';
+import CustomTabItemsField from '@/components/admin/CustomTabItemsField';
+import { customTabTextMaps } from '@/lib/customTabTexts';
 import Select from '@/components/admin/Select';
 import ImageUpload from '@/components/admin/ImageUpload';
 import VariantValueImageUpload from '@/components/admin/VariantValueImageUpload';
@@ -242,6 +244,8 @@ export default function ProductEditPage() {
     attributes: {},
     technicalStats: {},
     customTabItems: [],
+    customTabTitles: {},
+    customTabDescriptions: {},
     label: 'none',
     targetAudience: '',
     isActive: true, // ✨ اضافه شد: مقدار اولیه وضعیت فعال بودن
@@ -356,6 +360,8 @@ export default function ProductEditPage() {
 
             technicalStats: p.technicalStats || {},
             customTabItems: customTabItemTitles,
+            // متن‌های ذخیره‌شده، با عنوانِ *فعلیِ* آیتم‌ها
+            ...customTabTextMaps(matchedCategory?.customTab?.items || [], p.customTabTexts),
 
             label: p.label || 'none',
             targetAudience: normalizeTargetAudience(p.targetAudience) || '',
@@ -762,6 +768,8 @@ export default function ProductEditPage() {
         attributes: normalizedAttributes,
         technicalStats: normalizedStats,
         customTabItems: formData.customTabItems || [],
+        customTabTitles: formData.customTabTitles || {},
+        customTabDescriptions: formData.customTabDescriptions || {},
         label: formData.label,
         targetAudience: formData.targetAudience,
         isActive: formData.isActive, // ✨ اضافه شد: ارسال وضعیت محصول در ریکوئست آپدیت
@@ -1483,32 +1491,14 @@ export default function ProductEditPage() {
           isOpen={isSectionOpen('customTab')}
           onToggle={() => toggleSection('customTab')}
         >
-          <div className={styles.choiceGrid}>
-            {categoryCustomTab.items.map((item) => {
-              const checked = (formData.customTabItems || []).includes(item.title);
-              return (
-                <label
-                  key={item._id}
-                  className="flex items-center gap-2 p-2.5 bg-neutral-50 border border-neutral-200 rounded-lg cursor-pointer text-sm"
-                >
-                  <input
-                    type="checkbox"
-                    checked={checked}
-                    onChange={(e) =>
-                      setFormData((prev) => ({
-                        ...prev,
-                        customTabItems: e.target.checked
-                          ? [...(prev.customTabItems || []), item.title]
-                          : (prev.customTabItems || []).filter((t) => t !== item.title),
-                      }))
-                    }
-                  />
-                  <span className="font-bold truncate">{item.title}</span>
-                </label>
-              );
-            })}
-          </div>
-          {fieldErrors.customTabItems && <p className="mt-2 text-xs font-bold text-red-500">! {fieldErrors.customTabItems}</p>}
+          <CustomTabItemsField
+            tab={categoryCustomTab}
+            selected={formData.customTabItems || []}
+            titles={formData.customTabTitles}
+            descriptions={formData.customTabDescriptions}
+            onChange={(patch) => setFormData((prev) => ({ ...prev, ...patch }))}
+            errors={fieldErrors}
+          />
         </CollapsibleSection>
       )}
 

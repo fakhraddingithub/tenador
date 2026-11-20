@@ -26,6 +26,7 @@ import {
 import { apiError, handleApiError } from "@/lib/apiError";
 import { normalizeTargetAudience } from "base/utils/targetAudience";
 import { resolveProductLimitedEdition } from "@/lib/limitedEditionRelations";
+import { checkTextMap, mergeCustomTabTexts, unknownTextKeys } from "@/lib/customTabTexts";
 import requireAdminPermission from "@/lib/requireAdminPermission";
 
 // --------------------------------------------------
@@ -292,6 +293,29 @@ export async function PUT(request, { params }) {
       }
     }
 
+    // عنوان/توضیحاتِ مخصوصِ محصول برای آیتم‌های تب — هر نقشه جدا: نیامده = متنِ ذخیره‌شده‌ی همان
+    // بخش می‌ماند، {} = خالی. همیشه به آیتم‌های انتخاب‌شده (تازه یا ذخیره‌شده) محدود می‌شود.
+    const titleMap = checkTextMap(body.customTabTitles, "customTabTitles");
+    const descriptionMap = checkTextMap(body.customTabDescriptions, "customTabDescriptions");
+    for (const [field, checked] of [["customTabTitles", titleMap], ["customTabDescriptions", descriptionMap]]) {
+      if (checked.error) return apiError(checked.error, 400, { fieldErrors: { [field]: checked.error } });
+    }
+    let resolvedCustomTabTexts = null;
+    if (resolvedCustomTabItemIds || titleMap.value !== undefined || descriptionMap.value !== undefined) {
+      const categoryItems = foundCategory.customTab?.items || [];
+      const unknown = [...unknownTextKeys(categoryItems, titleMap.value), ...unknownTextKeys(categoryItems, descriptionMap.value)];
+      if (unknown.length) {
+        console.warn(`custom tab texts for unknown item(s) in category "${foundCategory.title}" were skipped: ${[...new Set(unknown)].join(", ")}`);
+      }
+      resolvedCustomTabTexts = mergeCustomTabTexts({
+        items: categoryItems,
+        selectedIds: resolvedCustomTabItemIds ?? product.customTabItems,
+        existing: product.customTabTexts,
+        titles: titleMap.value,
+        descriptions: descriptionMap.value,
+      });
+    }
+
     // قیمتِ پایهٔ مؤثر — fallbackِ قیمتِ واریانت‌ها. پیش‌تر مقدارِ خامِ payload
     // پاس می‌شد، پس یک درخواستِ بدونِ basePrice قیمتِ همهٔ واریانت‌ها را صفر می‌کرد.
     const effectiveBasePrice = sent("basePrice")
@@ -366,6 +390,7 @@ export async function PUT(request, { params }) {
       }
 
       if (resolvedCustomTabItemIds) doc.customTabItems = resolvedCustomTabItemIds;
+      if (resolvedCustomTabTexts) doc.customTabTexts = resolvedCustomTabTexts;
 
       if (sent("variantMeta")) {
         doc.variantMeta =

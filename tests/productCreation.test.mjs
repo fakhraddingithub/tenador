@@ -361,3 +361,71 @@ test('edit can still remove a combination the admin deliberately deselected', as
   assert.equal(after.length, 1);
   assert.equal(after[0].attributes.get('size'), '42');
 });
+
+// ── Custom tab: per-product item titles and descriptions ─────────────────────
+
+const tabCategory = async () => mongoose.model('Category').create({
+  name: `tab-rackets-${Date.now()}`, title: 'راکت تب', sport: category.sport, variantAttributes: [],
+  customTab: { enabled: true, name: 'تکنولوژی', items: [{ title: 'ONE', description: 'catalog one' }, { title: 'TWO' }, { title: 'THREE' }] },
+});
+const tabData = (name, cat) => ({ ...data(name), category: cat._id });
+const textsOf = async (id) => (await Product.findById(id).lean()).customTabTexts.map(({ item, title, description }) => ({ item: String(item), title, description }));
+
+test('create stores the AI texts by item id, only for selected items; unknown keys are skipped', async () => {
+  const cat = await tabCategory();
+  const [one, two, three] = cat.customTab.items.map((i) => String(i._id));
+  const response = await POST({ json: async () => ({ ...tabData('tab-create', cat),
+    customTabItems: ['TWO', 'ONE'],
+    customTabTitles: { ONE: '  T1  ', TWO: '', THREE: 'not selected', NOPE: 'unknown' },
+    customTabDescriptions: { TWO: 'D2' } }) });
+  assert.equal(response.status, 201, JSON.stringify(await response.clone().json()));
+  const { product } = await response.json();
+  assert.deepEqual(await textsOf(product._id), [
+    { item: two, title: '', description: 'D2' },
+    { item: one, title: 'T1', description: '' },
+  ]);
+  assert.ok(![three].some((id) => JSON.stringify(product).includes(`"item":"${id}"`)));
+});
+
+test('create and edit reject a malformed text map with a field error, writing nothing', async () => {
+  const cat = await tabCategory();
+  for (const body of [{ customTabTitles: ['x'] }, { customTabDescriptions: { ONE: 5 } }, { customTabTitles: { ONE: 'x'.repeat(201) } }]) {
+    const name = `tab-bad-${Object.keys(body)[0]}-${JSON.stringify(body).length}`;
+    const response = await POST({ json: async () => ({ ...tabData(name, cat), customTabItems: ['ONE'], ...body }) });
+    assert.equal(response.status, 400);
+    assert.ok((await response.json()).fieldErrors?.[Object.keys(body)[0]]);
+    assert.equal(await Product.countDocuments({ name }), 0);
+  }
+  const created = await (await POST({ json: async () => ({ ...tabData('tab-bad-edit', cat), customTabItems: ['ONE'], customTabTitles: { ONE: 'KEEP' } }) })).json();
+  const response = await put(created.product._id, { customTabDescriptions: 'text' });
+  assert.equal(response.status, 400);
+  assert.ok((await response.json()).fieldErrors?.customTabDescriptions);
+  assert.deepEqual((await textsOf(created.product._id)).map((t) => t.title), ['KEEP']);
+});
+
+test('edit: an absent map keeps the stored texts, {} clears them, deselecting an item drops its text', async () => {
+  const cat = await tabCategory();
+  const [one, two] = cat.customTab.items.map((i) => String(i._id));
+  const { product } = await (await POST({ json: async () => ({ ...tabData('tab-edit', cat),
+    customTabItems: ['ONE', 'TWO'], customTabTitles: { ONE: 'T1', TWO: 'T2' }, customTabDescriptions: { ONE: 'D1' } }) })).json();
+
+  // a request that is not about the tab touches nothing
+  assert.equal((await put(product._id, { name: 'tab-edit' })).status, 200);
+  assert.equal((await textsOf(product._id)).length, 2);
+
+  // only the selection sent (an old client): texts of still-selected items survive
+  assert.equal((await put(product._id, { customTabItems: ['ONE'] })).status, 200);
+  assert.deepEqual(await textsOf(product._id), [{ item: one, title: 'T1', description: 'D1' }]);
+
+  // re-selecting TWO does not bring its old text back
+  assert.equal((await put(product._id, { customTabItems: ['ONE', 'TWO'] })).status, 200);
+  assert.deepEqual((await textsOf(product._id)).map((t) => t.item), [one]);
+
+  // titles replaced, descriptions untouched
+  assert.equal((await put(product._id, { customTabTitles: { TWO: 'NEW T2' } })).status, 200);
+  assert.deepEqual(await textsOf(product._id), [{ item: one, title: '', description: 'D1' }, { item: two, title: 'NEW T2', description: '' }]);
+
+  // {} clears
+  assert.equal((await put(product._id, { customTabTitles: {}, customTabDescriptions: {} })).status, 200);
+  assert.deepEqual(await textsOf(product._id), []);
+});
