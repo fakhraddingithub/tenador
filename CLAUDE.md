@@ -29,6 +29,8 @@ npm run check:article-image-dimensions    # Dry-run: report article/brand image 
 npm run migrate:article-image-dimensions  # Backfill those dimensions (idempotent); revalidate the `articles` tag afterwards
 npm run check:remove-seller-role          # Dry-run: data still referencing the removed `seller` role
 npm run migrate:remove-seller-role        # Move those references to `store` (users, discount rules, broadcasts, review-credit config)
+npm run check:remove-tab-item-prompts     # Dry-run: custom-tab items still holding the removed per-item AI prompt
+npm run migrate:remove-tab-item-prompts   # $unset them (idempotent)
 npm run check:legacy-blocks               # Dry-run: removed article/brochure block types and what each becomes
 npm run migrate:legacy-blocks             # Convert them (run right after deploying — see «Block consolidation»)
 
@@ -432,7 +434,7 @@ only). `text` is as stored, `display` has placeholders expanded. Never add text 
 configuration, or the preview stops matching what the AI gets. Source kinds: `section {sectionKey,index}`,
 `baseField {field,index}`, `group {groupId,field,index,targets}`, `groupSection {groupId,sectionKey,index,targets}`,
 `categoryField {field}`, `technicalStats`, `attribute`/`variantAttribute {name}`, `customTab`,
-`customTabItem {itemId}`, `system {what}`. All but `system` carry `value`, the stored text.
+`customTabTitle`, `customTabDescription` (each `{tabName}`), `system {what}`. All but `system` carry `value`, the stored text.
 
 **The preview's «پرامپت نهایی (متن خام)» toggle** (off by default) shows the whole prompt as plain text in a `<pre>`.
 `GET /api/admin/product-prompts/final-prompt` → `buildFinalPromptPreview` (`productDraftPrompt.js`) calls the real
@@ -447,7 +449,7 @@ Editing from the preview writes the rule's own source and nothing else:
 | source | how |
 |---|---|
 | base / group | the normal `PUT` (409 and the duplicate check apply). The page first checks the text at that index is still the shown one |
-| category-owned | `PATCH /api/admin/product-prompts/category-rule` (`productPrompts.edit`): one atomic `updateOne` whose filter includes the previous text (compare-and-set → 409), attributes/items found by name/`_id` via `arrayFilters`, never by index. An empty field prompt `$pull`s that entry |
+| category-owned | `PATCH /api/admin/product-prompts/category-rule` (`productPrompts.edit`): one atomic `updateOne` whose filter includes the previous text (compare-and-set → 409), attributes found by name via `arrayFilters`, never by index. An empty field prompt `$pull`s that entry |
 
 **Direction of mixed text.** `globals.css` sets `* { direction: rtl }` in its base layer, which beats the `dir`
 attribute. Rule boxes, editors and the plain-text view therefore use `unicode-bidi: plaintext` with `text-align: start`:
@@ -468,10 +470,16 @@ lines read left to right.
 - **A rule whose target is gone matches nothing and breaks nothing.** A deleted Base section, or a deleted or **renamed** attribute (renames are not migrated), leaves the rule stored and listed in that tab.
 - Data sections take no rules, in groups as in the Base Prompt. Prompt Settings never adds, removes or renames a field, only rules. Two groups may each print an own section with the same heading; they are not merged.
 
-**Custom tab prompts.** `Category.customTab.prompt` is the category rule of the `customTabItems` field (base → groups →
-this), and `customTab.items[].prompt` is a per-item hint next to the item's line. A disabled tab contributes nothing. A
-legacy `category.prompts` entry for `customTabItems` still applies when the tab's own prompt is empty. The category `PUT`
-follows `undefined ≠ ""` for both, so a client that does not send them keeps them.
+**Custom tab prompts.** The tab has three category rules, each the category rule of its own field (base → groups →
+this): `customTab.prompt` → `customTabItems` (which items), `customTab.titlePrompt` → `customTabTitles`,
+`customTab.descriptionPrompt` → `customTabDescriptions`. The two text fields print only when the tab has items and are
+offered to groups. Items have **no prompt of their own** any more (the per-item «راهنمای انتخاب» was removed; stored ones
+are deleted by `npm run migrate:remove-tab-item-prompts` and never print meanwhile); an item's line carries its catalog
+description as context (`custom_tab_item_description`, optional `{{description}}` token) plus legacy `tabItem:` group
+rules. The two output lines are their own template, `custom_tab_text_output`, appended to `{{custom_tab_output}}`, so a
+config stored before them still asks for them. A disabled tab contributes nothing. A legacy `category.prompts` entry for
+`customTabItems` still applies when the tab's own prompt is empty. The category `PUT` follows `undefined ≠ ""` for all
+three, so a client that does not send them keeps them. See «Custom tab: per-product item texts» for what happens to the output.
 
 Each field of the final prompt is assembled from three sources, always in this order:
 
@@ -484,8 +492,9 @@ Each field of the final prompt is assembled from three sources, always in this o
 Rules that are load-bearing:
 
 - **The seed is read only until the first save.** `resolvePromptConfig`: a non-empty `document` means the document is
-  the only source for sections and field rules (a field absent from `fieldRules` has no rules and prints its bare key,
-  never the seed's text). Only a template key never stored falls back to the seed; `""` stays empty. Reading writes
+  the only source for sections and field rules (`rules: []` stays empty). The one exception: a fixed field absent from
+  stored `fieldRules` gets the seed's entry — the panel never removes a field, so absent means it was added after the save
+  (e.g. `customTabTitles`), and a bare heading could not even be saved by the base page. Only a template key never stored falls back to the seed; `""` stays empty. Reading writes
   nothing; the first `PUT` of any part materializes the whole prompt into the document.
 - **Earlier stored shapes keep working with no migration.** `base: [{section, rules}]` is merged onto the seed (absent
   section = seed, `rules: []` = section removed). A `document` with `top/title/bottom/description/blankLines` becomes
@@ -513,6 +522,36 @@ Rules that are load-bearing:
 ```bash
 npm run test:product-prompts     # seed validity, no wording in code, exact headings, data sections, locks, targeting, old shapes, sources
 npm run test:ai-product-draft    # real admin route → real schema → real draft route, restore, both preview modes
+```
+
+### Custom tab: per-product item texts
+
+A category's custom-tab items (title, description, image, link) are a catalog. When a product is created or
+regenerated, the AI picks items (`customTabItems`, exact titles, unchanged) **and writes a title and a description for
+each picked item, for that product**: `customTabTitles` / `customTabDescriptions`, each `{ "<exact item title>": "<text>" }`.
+`src/lib/customTabTexts.js` (pure) is the one place that converts and resolves them:
+
+| function | used by |
+|---|---|
+| `checkTextMap` | every write path: `undefined` = not about this map, `null`/`""` = `{}`, non-string → error, limits title 200 / description 3000 |
+| `mergeCustomTabTexts` | create, PUT, regeneration planner → `Product.customTabTexts: [{ item, title, description }]` |
+| `customTabTextMaps` | edit form load (maps keyed by the item's **current** title) |
+| `resolveCustomTabItems` | `ProductTabs`: catalog order, each field independently = product text, else the item's manual text |
+
+- **Stored by item `_id`, not title,** so renaming an item in the category keeps the product's text.
+- **Only selected items carry text**, and only when title or description is non-empty. Deselecting prunes; re-selecting
+  later does not resurrect the old text.
+- **`undefined ≠ {}` per map**, on PUT and regeneration alike: a request with only `customTabItems` (an old client, an old
+  JSON) keeps the stored texts of still-selected items; a sent map replaces that half for every item.
+- Unknown titles: create/PUT skip them with a warning (like `customTabItems`), the edit form drops them with a warning,
+  the regeneration planner rejects them (`fieldErrors.customTabTitles|customTabDescriptions`).
+- Both product forms use `CustomTabItemsField`: under each ticked item a title input and a description textarea whose
+  placeholders are the catalog text that shows when they stay empty.
+
+```bash
+npm run test:custom-tab-texts       # helper + product-page wiring
+npm run test:product-creation       # create/edit through the real routes
+npm run test:product-regeneration   # both regeneration modes
 ```
 
 ### Order EUR pricing (independent of Toman)
