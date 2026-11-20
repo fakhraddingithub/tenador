@@ -28,6 +28,7 @@
 import { attributeAppliesToAudience, normalizeTargetAudience } from '../../utils/targetAudience.js';
 import { validateProductFields } from './productVariantValidation.js';
 import { duplicateKeys, normalizeInitialAttributes, productAttributeType } from './productSectionJson.js';
+import { checkTextMap, mergeCustomTabTexts, unknownTextKeys } from './customTabTexts.js';
 
 /** فیلدهایی که بازتولید می‌نویسد، با برچسبِ فارسی برای پیش‌نمایش. */
 export const REGENERATED_FIELDS = {
@@ -45,8 +46,14 @@ export const REGENERATED_FIELDS = {
   attributes: 'ویژگی‌های ثابت',
   technicalStats: 'شاخص‌های فنی',
   customTabItems: 'آیتم‌های تب اختصاصی',
+  customTabTitles: 'عنوان آیتم‌های تب اختصاصی',
+  customTabDescriptions: 'توضیحات آیتم‌های تب اختصاصی',
   tag: 'برچسب‌های جستجو',
 };
+
+/** دو نقشه‌ی بالا با هم یک مسیرِ سند می‌شوند: Product.customTabTexts (برچسبِ پیش‌نمایش). */
+const UPDATE_LABELS = { ...REGENERATED_FIELDS, customTabTexts: 'متن آیتم‌های تب اختصاصی' };
+const TAB_TEXT_KEYS = ['customTabTitles', 'customTabDescriptions'];
 
 /** کلیدهای JSON که عمداً نادیده گرفته می‌شوند چون داده‌شان حفظ می‌شود. */
 export const PRESERVED_DRAFT_KEYS = [
@@ -155,6 +162,10 @@ export function checkRegenerationDraft(draft, { categoryId, sportId } = {}) {
   }
   if (has('customTabItems') && !(Array.isArray(draft.customTabItems) && draft.customTabItems.every((t) => typeof t === 'string'))) {
     fail('customTabItems', 'آیتم‌های تب اختصاصی باید آرایه‌ای از عنوان‌ها باشند');
+  }
+  for (const key of TAB_TEXT_KEYS) {
+    const checked = has(key) ? checkTextMap(draft[key], key) : {};
+    if (checked.error) fail(key, checked.error);
   }
   if (has('attributes')) {
     if (!isPlainObject(draft.attributes)) fail('attributes', 'ویژگی‌ها باید یک شیء باشند');
@@ -276,6 +287,15 @@ export function draftToFormPatch(draft, { form, category, brands = [], limitedEd
     patch.customTabItems = wanted.filter((t) => titles.has(t));
     const unknown = wanted.filter((t) => !titles.has(t));
     if (unknown.length) warnings.push(`آیتم‌های ناموجود در تب اختصاصی کنار گذاشته شدند: ${unknown.join('، ')}`);
+  }
+
+  for (const key of TAB_TEXT_KEYS) {
+    if (!has(key)) continue;
+    const { value } = checkTextMap(draft[key], key);
+    if (!value) continue;
+    const unknown = unknownTextKeys(category?.customTab?.items, value);
+    patch[key] = Object.fromEntries(Object.entries(value).filter(([title]) => !unknown.includes(title)));
+    if (unknown.length) warnings.push(`${REGENERATED_FIELDS[key]}ِ آیتم‌های ناموجود کنار گذاشته شد: ${unknown.join('، ')}`);
   }
 
   if (has('tag')) {
@@ -511,6 +531,28 @@ export function planProductRegeneration({ draft, product, category, refs }) {
     }
   }
 
+  // ── عنوان/توضیحاتِ آیتم‌ها → Product.customTabTexts (همان قاعده‌ی PUT: نقشه‌ی نیامده متنِ
+  // ذخیره‌شده را نگه می‌دارد، {} پاکش می‌کند؛ آیتمِ انتخاب‌نشده متنی ندارد) ──
+  const tabItems = category.customTab?.items || [];
+  const tabMaps = {};
+  for (const key of TAB_TEXT_KEYS) {
+    if (!has(key)) continue;
+    const checked = checkTextMap(isBlank(draft[key]) ? {} : draft[key], key);
+    const unknown = checked.error ? [] : unknownTextKeys(tabItems, checked.value);
+    if (checked.error) fail(key, checked.error);
+    else if (unknown.length) fail(key, `عنوان‌های ناموجود در تب اختصاصی: ${unknown.join('، ')}`);
+    else tabMaps[key] = checked.value;
+  }
+  if (['customTabItems', ...TAB_TEXT_KEYS].some(has)) {
+    update.customTabTexts = mergeCustomTabTexts({
+      items: tabItems,
+      selectedIds: update.customTabItems ?? (product.customTabItems || []).map(idString),
+      existing: product.customTabTexts,
+      titles: tabMaps.customTabTitles,
+      descriptions: tabMaps.customTabDescriptions,
+    });
+  }
+
   if (has('tag')) {
     const raw = isBlank(draft.tag) ? [] : typeof draft.tag === 'string' ? draft.tag.split(',') : draft.tag;
     if (!Array.isArray(raw) || !raw.every((t) => typeof t === 'string' || typeof t === 'number')) {
@@ -543,7 +585,7 @@ export function planProductRegeneration({ draft, product, category, refs }) {
     .filter((field) => stable(before[field]) !== stable(update[field]))
     .map((field) => ({
       field,
-      label: REGENERATED_FIELDS[field],
+      label: UPDATE_LABELS[field],
       before: display(field, before[field], { refs, category }),
       after: display(field, update[field], { refs, category }),
     }));
@@ -568,6 +610,7 @@ function currentValues(product) {
     attributes: product.attributes || {},
     technicalStats: product.technicalStats || {},
     customTabItems: (product.customTabItems || []).map(idString),
+    customTabTexts: (product.customTabTexts || []).map((t) => ({ item: idString(t.item), title: t.title || '', description: t.description || '' })),
     tag: product.tag || [],
   };
 }
@@ -581,6 +624,12 @@ function display(field, value, { refs, category }) {
     case 'athlete': return value.map((id) => name(refs.athletes, id));
     case 'customTabItems':
       return value.map((id) => (category.customTab?.items || []).find((it) => idString(it._id) === id)?.title || id);
+    case 'customTabTexts':
+      return value.map((t) => [
+        (category.customTab?.items || []).find((it) => idString(it._id) === t.item)?.title || t.item,
+        t.title && `عنوان: ${t.title}`,
+        t.description && `توضیحات: ${t.description}`,
+      ].filter(Boolean).join(' — '));
     case 'targetAudience': return value || '';
     default: return value;
   }

@@ -43,7 +43,7 @@ const QUOTA = {
   read: { scope: "mcp-read:", perMinute: 60, perDay: 1000 },
   write: { scope: "mcp:", perMinute: 20, perDay: 300 },
 };
-const safeProduct = p => Object.fromEntries([...Object.keys(REGENERATED_FIELDS), "_id", "slug", "category", "sport", "mainImage", "gallery", "variantMeta", "updatedAt", "isActive"].map(k => [k, p[k]]));
+const safeProduct = p => Object.fromEntries([...Object.keys(REGENERATED_FIELDS), "customTabTexts", "_id", "slug", "category", "sport", "mainImage", "gallery", "variantMeta", "updatedAt", "isActive"].map(k => [k, p[k]]));
 
 export function productServer(ctx) {
   const server = new McpServer({ name: "tenador-products", version: "3.3.0" }, {
@@ -230,7 +230,7 @@ export function productServer(ctx) {
       if (combinationCount > 500) return invalid("ساخت بیش از ۵۰۰ ترکیب واریانت در یک محصول مجاز نیست.", { variantOptions: "بیش از ۵۰۰ ترکیب" });
     }
     // Validate catalog references and content with the existing regeneration planner, too.
-    const result = await previewRegeneration({ product: { _id: record._id, category: category._id, sport: category.sport._id, attributes: {}, technicalStats: {}, athlete: [], tag: [], customTabItems: [] }, category, draft });
+    const result = await previewRegeneration({ product: { _id: record._id, category: category._id, sport: category.sport._id, attributes: {}, technicalStats: {}, athlete: [], tag: [], customTabItems: [], customTabTexts: [] }, category, draft });
     // The planner's message is the admin form's ("change the name"); here it only states the fact.
     if (result.error?.status === 409 && result.error.extra?.fieldErrors?.name) {
       const existing = await Product.findOne({ slug: createSlug(draft.name) }).select("name slug").lean();

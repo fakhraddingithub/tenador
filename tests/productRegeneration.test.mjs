@@ -585,3 +585,80 @@ test('the edit form sends only regenerated fields, and an untouched legacy colou
   const bad = await call({ json: JSON.stringify({ color: '#hexcode' }), expectedUpdatedAt: now.updatedAt.toISOString() });
   assert.equal(bad.status, 400);
 });
+
+/* ── custom tab: per-product item titles and descriptions ───────────────── */
+
+const tabIds = () => category.customTab.items.map((i) => String(i._id)); // [سبک, قدرتی]
+const storedTexts = async () => (await Product.findById(product._id).lean()).customTabTexts
+  .map(({ item, title, description }) => ({ item: String(item), title, description }));
+
+test('apply writes the AI item texts for selected items only, and reports the diff', async () => {
+  const [light, power] = tabIds();
+  const json = draft({
+    customTabItems: ['قدرتی'],
+    customTabTitles: { 'قدرتی': '  قدرتِ این راکت  ', 'سبک': 'not selected' },
+    customTabDescriptions: { 'قدرتی': 'توضیحِ مخصوص' },
+  });
+  const { data } = await preview(json);
+  const change = data.changes.find((c) => c.field === 'customTabTexts');
+  assert.ok(change, JSON.stringify(data.changes.map((c) => c.field)));
+  assert.equal(change.label, 'متن آیتم‌های تب اختصاصی');
+  assert.deepEqual(change.after, ['قدرتی — عنوان: قدرتِ این راکت — توضیحات: توضیحِ مخصوص']);
+  const res = await apply(json);
+  assert.equal(res.status, 200, (await res.clone().json()).error);
+  assert.deepEqual(await storedTexts(), [{ item: power, title: 'قدرتِ این راکت', description: 'توضیحِ مخصوص' }]);
+  assert.ok(!(await storedTexts()).some((t) => t.item === light));
+});
+
+test('regeneration follows undefined ≠ {} per map, and prunes deselected items', async () => {
+  const [light, power] = tabIds();
+  await Product.updateOne({ _id: product._id }, { $set: {
+    customTabItems: [light, power],
+    customTabTexts: [{ item: light, title: 'L', description: 'LD' }, { item: power, title: 'P', description: 'PD' }],
+  } });
+  // no tab key at all: nothing about the tab changes
+  const untouched = await apply(draft({ customTabItems: undefined }));
+  assert.equal(untouched.status, 200);
+  assert.equal((await storedTexts()).length, 2);
+  // selection only: still-selected text kept, deselected dropped
+  assert.equal((await apply(draft({ customTabItems: ['قدرتی'] }))).status, 200);
+  assert.deepEqual(await storedTexts(), [{ item: power, title: 'P', description: 'PD' }]);
+  // descriptions replaced, titles kept; {} would clear
+  assert.equal((await apply(draft({ customTabDescriptions: { 'قدرتی': 'NEW' } }))).status, 200);
+  assert.deepEqual(await storedTexts(), [{ item: power, title: 'P', description: 'NEW' }]);
+  assert.equal((await apply(draft({ customTabTitles: {}, customTabDescriptions: {} }))).status, 200);
+  assert.deepEqual(await storedTexts(), []);
+});
+
+test('regeneration rejects text maps for unknown items or of the wrong shape', async () => {
+  const before = await snapshot();
+  for (const [overrides, field] of [
+    [{ customTabTitles: { 'ناموجود': 'x' } }, 'customTabTitles'],
+    [{ customTabDescriptions: ['x'] }, 'customTabDescriptions'],
+    [{ customTabTitles: { 'قدرتی': 7 } }, 'customTabTitles'],
+  ]) {
+    const res = await call({ json: JSON.stringify(draft(overrides)), dryRun: true });
+    const data = await res.json();
+    assert.equal(res.status, 400, `${field}: ${JSON.stringify(data)}`);
+    assert.ok(data.fieldErrors?.[field], `${field}: ${JSON.stringify(data.fieldErrors)}`);
+  }
+  assert.deepEqual(await snapshot(), before);
+});
+
+test('JSON stage and edit form: text maps are checked for shape, unknown titles are left out with a warning', () => {
+  const ctx = { categoryId: String(category._id), sportId: String(sport._id) };
+  const fields = (d) => checkRegenerationDraft(d, ctx).errors.map((e) => e.field);
+  assert.deepEqual(fields({ customTabTitles: [], customTabDescriptions: { a: 1 } }), ['customTabTitles', 'customTabDescriptions']);
+  assert.deepEqual(fields({ customTabTitles: { 'ناموجود': 'x' }, customTabDescriptions: {} }), []);
+
+  const form = { customTabItems: [], customTabTitles: { 'سبک': 'KEEP' }, customTabDescriptions: {} };
+  const { patch, applied, warnings } = draftToFormPatch({
+    customTabItems: ['قدرتی'], customTabTitles: { 'قدرتی': ' T ', 'ناموجود': 'x' },
+  }, { form, category: category.toObject(), brands: [], limitedEditions: [], athletes: [] });
+  assert.deepEqual(patch.customTabTitles, { 'قدرتی': 'T' });
+  assert.ok(!Object.hasOwn(patch, 'customTabDescriptions'), 'an absent map keeps the form value');
+  assert.deepEqual(applied.sort(), ['customTabItems', 'customTabTitles']);
+  assert.equal(warnings.length, 1, warnings.join(' | '));
+  // what the form sends back on save carries both maps
+  assert.deepEqual(Object.keys(pickRegeneratedFields({ customTabTitles: {}, customTabDescriptions: {}, mainImage: 'm' })).sort(), ['customTabDescriptions', 'customTabTitles']);
+});
