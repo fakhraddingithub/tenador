@@ -47,7 +47,7 @@
     "test:product-regeneration": "node --test --test-timeout=180000 tests/productRegeneration.test.mjs",
     "test:ai-providers": "node --test tests/aiProviders.test.mjs",
     "test:product-prompts": "node --test tests/productPromptConfig.test.mjs",
-    "test:custom-tab-texts": "node --test tests/customTabTexts.test.mjs",
+    "test:custom-tab-texts": "node --test tests/customTabTexts.test.mjs tests/productSeoRendering.test.mjs",
     "test:variant-reconcile": "node --test tests/variantReconcile.test.mjs",
     "test:variant-identity": "node --test --test-timeout=180000 tests/variantIdentity.test.mjs",
     "test:order-item-eur": "node --test tests/orderItemEur.test.mjs",

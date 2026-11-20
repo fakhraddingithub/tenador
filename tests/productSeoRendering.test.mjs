@@ -6,6 +6,9 @@ import React from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 const require = createRequire(import.meta.url);
 const { transformSync } = require('next/dist/build/swc');
+const targetAudience = await import('../utils/targetAudience.js');
+const technicalStatsChart = await import('../src/lib/technicalStatsChart.mjs');
+const customTabTexts = await import('../src/lib/customTabTexts.js');
 const load = (path, mocks) => {
  const code = transformSync(readFileSync(new URL('../'+path, import.meta.url),'utf8'), { jsc: { parser: { syntax: 'ecmascript', jsx: true }, transform: { react: { runtime: 'automatic' } } }, module: { type: 'commonjs' } }).code;
  const module = { exports: {} };
@@ -21,9 +24,20 @@ test('initial product HTML contains technical values and custom technology text 
   './ProductReviews': () => React.createElement('p',null,'reviews'),
   '@/components/reviews/ReviewForm': () => { throw Error('Review form mounted before interaction'); },
   './MobileProductTabs': { default: () => null, useMobileProductLayout: () => false },
+  'next/dynamic': () => () => null,
+  'base/utils/targetAudience': targetAudience,
+  '@/lib/technicalStatsChart.mjs': technicalStatsChart,
+  '@/lib/customTabTexts': customTabTexts,
  });
- const html = renderToStaticMarkup(React.createElement(Tabs,{ description:'Blade description', attributes:[{label:'وزن',value:'305 گرم'}],customTab:{enabled:true,name:'Technology',items:[{_id:'tech',title:'FORTYFIVE',description:'Specific frame technology'}]},customTabItemIds:['tech'] }));
+ const customTab = {enabled:true,name:'Technology',items:[{_id:'tech',title:'FORTYFIVE',description:'Specific frame technology'},{_id:'spin',title:'SPIN',description:'Catalog spin text'}]};
+ const html = renderToStaticMarkup(React.createElement(Tabs,{ description:'Blade description', attributes:[{label:'وزن',value:'305 گرم'}],customTab,customTabItemIds:['tech'] }));
  assert.match(html,/305 گرم/); assert.match(html,/Specific frame technology/); assert.match(html,/hidden=""/); assert.match(html,/data-active="false"/);
+ assert.doesNotMatch(html,/Catalog spin text/);
+ // a text written for this product wins, per field; the other field keeps the manual catalog text
+ const own = renderToStaticMarkup(React.createElement(Tabs,{ description:'d', attributes:[], customTab, customTabItemIds:['tech','spin'],
+  customTabTexts:[{item:'tech',title:'FortyFive in this racket',description:''},{item:'spin',title:'',description:'Spin written for this racket'}] }));
+ assert.match(own,/FortyFive in this racket/); assert.match(own,/Specific frame technology/);
+ assert.match(own,/>SPIN</); assert.match(own,/Spin written for this racket/); assert.doesNotMatch(own,/Catalog spin text/);
 });
 test('page two SSR contains its own products and crawlable adjacent links', () => {
  const List = load('src/components/templates/products/ProductList.js', {
