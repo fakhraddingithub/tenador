@@ -195,8 +195,10 @@ export default function PromptPreviewPage() {
         return { path: [cat, 'ویژگی‌های متغیر', `«${s.label}» (${s.name})`, 'پرامپت ویژگی'], href: categoryHref, editable: true };
       case 'customTab':
         return { path: [cat, `تب سفارشی «${s.tabName}»`, 'قاعده‌ی انتخاب آیتم‌ها'], href: categoryHref, editable: true };
-      case 'customTabItem':
-        return { path: [cat, 'تب سفارشی', `آیتم «${s.title}»`, 'راهنمای انتخاب'], href: categoryHref, editable: Boolean(s.itemId) };
+      case 'customTabTitle':
+        return { path: [cat, `تب سفارشی «${s.tabName}»`, 'قاعده‌ی ساخت عنوان آیتم‌ها'], href: categoryHref, editable: true };
+      case 'customTabDescription':
+        return { path: [cat, `تب سفارشی «${s.tabName}»`, 'قاعده‌ی ساخت توضیحات آیتم‌ها'], href: categoryHref, editable: true };
       case 'system':
         return { path: ['سیستمی (قفل)'], note: `${SYSTEM_WHAT[s.what] || ''} حذف نمی‌شود؛ متنش در «قالب‌های داده» است.`, href: `${PROMPTS_HOME}/base#__templates`, editable: false };
       default:

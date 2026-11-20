@@ -91,6 +91,8 @@ before(async () => {
       name: "تکنولوژی",
       icon: "tab-icon.svg",
       prompt: SECRET,
+      titlePrompt: SECRET,
+      descriptionPrompt: SECRET,
       items: [{
         _id: tabItemId,
         title: "فریم",
@@ -263,7 +265,10 @@ test("خواندن‌های پنل ادمین دست نخورده‌اند و پ
   assert.equal(category.technicalStatsPrompt, SECRET);
   assert.equal(category.prompts[0].context, SECRET);
   assert.equal(category.attributes[0].prompt, SECRET);
+  // a per-item prompt stored before it was removed still never leaves through a public read
   assert.equal(category.customTab.items[0].prompt, SECRET);
+  assert.equal(category.customTab.titlePrompt, SECRET);
+  assert.equal(category.customTab.descriptionPrompt, SECRET);
 
   for (const path of [
     "src/app/api/categories/route.js",

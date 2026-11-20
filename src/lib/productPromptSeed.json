@@ -333,6 +333,31 @@
       ]
     },
     {
+      "field": "customTabTitles",
+      "heading": "\ncustomTabTitles:",
+      "rules": [
+        "A JSON object. Each key MUST be one of the exact titles you returned in customTabItems (character-for-character); each value is a Persian title for that item, written for THIS product.",
+        "Add a key only for items listed in customTabItems. Never add keys for items you did not select or for titles that are not in the list.",
+        "Keep it short (2 to 6 words). It may keep the item's own name, but it should say how the item shows up in this product.",
+        "Plain text only: no HTML, no emojis, no surrounding quotes.",
+        "If the raw content gives nothing product-specific for an item, omit its key — the item's catalog title is shown instead.",
+        "If customTabItems is empty → return {}."
+      ]
+    },
+    {
+      "field": "customTabDescriptions",
+      "heading": "\ncustomTabDescriptions:",
+      "rules": [
+        "A JSON object. Each key MUST be one of the exact titles you returned in customTabItems (character-for-character); each value is a Persian description of that item, written for THIS product.",
+        "Add a key only for items listed in customTabItems. Never add keys for items you did not select or for titles that are not in the list.",
+        "1 to 3 Persian sentences: what this item does in this product and why it matters to the player, based on the raw content.",
+        "Use the item's catalog description only as context about what the item is. Do not copy it verbatim, and never invent specifications the raw content does not support.",
+        "Plain text only: no HTML, no lists, no line breaks.",
+        "If the raw content gives nothing product-specific for an item, omit its key — the item's catalog description is shown instead.",
+        "If customTabItems is empty → return {}."
+      ]
+    },
+    {
       "field": "tag",
       "heading": "\ntag:",
       "rules": [
@@ -383,9 +408,11 @@
     "technical_stat_line": "  - KEY: \"{{name}}\" | Label: {{label}}{{rules}}",
     "technical_stat_rule": " | Rule: {{text}}",
     "technical_stats_empty": "  (none defined)",
-    "custom_tab_item": "  - \"{{title}}\"{{rules}}",
+    "custom_tab_item": "  - \"{{title}}\"{{description}}{{rules}}",
+    "custom_tab_item_description": " | Catalog description (context only): {{text}}",
     "custom_tab_item_rule": " | Selection Rule: {{text}}",
     "custom_tab_output": ",\n  \"customTabItems\": [\"<exact title from the list above>\", \"...\"]",
+    "custom_tab_text_output": ",\n  \"customTabTitles\": { \"<exact title from customTabItems>\": \"<Persian title for this product>\" },\n  \"customTabDescriptions\": { \"<exact title from customTabItems>\": \"<Persian description for this product>\" }",
     "sport_lock": "MUST be exactly: \"{{sport_id}}\"",
     "category_lock": "MUST be exactly: \"{{category_id}}\"",
     "category_info": "Category Name : {{category_title}}\nCategory ID   : {{category_id}}\nCategory Sport Name : {{sport_name}}\nCategory Sport Title: {{sport_title}}\nCategory Sport ID   : {{sport_id}}\nThis category belongs to the sport above. Categories with the same name in other sports are different categories.",

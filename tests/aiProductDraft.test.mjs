@@ -444,7 +444,7 @@ const previewCategory = async () => mongoose.model('Category').create({
   variantAttributes: [{ name: 'Grip', label: 'گریپ', prompt: 'GRIP RULE' }],
   technicalStats: [{ name: 'power', label: 'قدرت' }],
   technicalStatsPrompt: 'TECH RULE',
-  customTab: { enabled: true, name: 'تکنولوژی', prompt: 'TAB RULE', items: [{ title: 'ONE', prompt: 'ONE HINT' }, { title: 'TWO', prompt: 'TWO HINT' }] },
+  customTab: { enabled: true, name: 'تکنولوژی', prompt: 'TAB RULE', titlePrompt: 'TITLE RULE', descriptionPrompt: 'DESC RULE', items: [{ title: 'ONE', description: 'ONE CATALOG' }, { title: 'TWO' }] },
 });
 const getPreview = async (id) => {
   const { GET } = await import('../src/app/api/admin/product-prompts/preview/route.js');
@@ -474,7 +474,8 @@ test('preview: the route returns the rules of the real draft with their sources,
   assert.equal(name.rules.category.source.kind, 'categoryField');
   for (const r of [...name.rules.base, ...name.rules.groups, name.rules.category]) assert.ok(draft.includes(r.text), r.text);
   assert.ok(draft.includes('Extraction Rule: HEAD RULE') && draft.includes('Guide: GRIP RULE'));
-  assert.ok(draft.includes('"ONE" | Selection Rule: ONE HINT'));
+  assert.ok(draft.includes('"ONE" | Catalog description (context only): ONE CATALOG\n  - "TWO"\n'));
+  for (const key of ['customTabTitles', 'customTabDescriptions']) assert.equal(body.model.fields.find((f) => f.key === key).rules.category.text, key === 'customTabTitles' ? 'TITLE RULE' : 'DESC RULE');
   assert.deepEqual(body.model.attributes.map((a) => Object.keys(a).sort()), [['label', 'name', 'rules', 'scope'], ['label', 'name', 'rules', 'scope']]);
   assert.ok(!('values' in body.model));
   // بدنه‌ی بخش‌های داده‌ای در پیش‌نمایش نیست؛ فقط سربرگشان
@@ -500,7 +501,8 @@ test('preview edits: each category-owned source is written in place, nothing els
     [{ kind: 'variantAttribute', name: 'Grip' }, 'GRIP RULE', 'GRIP EDITED', (c) => c.variantAttributes[0].prompt],
     [{ kind: 'technicalStats' }, 'TECH RULE', 'TECH EDITED', (c) => c.technicalStatsPrompt],
     [{ kind: 'customTab' }, 'TAB RULE', 'TAB EDITED', (c) => c.customTab.prompt],
-    [{ kind: 'customTabItem', itemId: String(two._id) }, 'TWO HINT', 'TWO EDITED', (c) => c.customTab.items[1].prompt],
+    [{ kind: 'customTabTitle' }, 'TITLE RULE', 'TITLE EDITED', (c) => c.customTab.titlePrompt],
+    [{ kind: 'customTabDescription' }, 'DESC RULE', 'DESC EDITED', (c) => c.customTab.descriptionPrompt],
     [{ kind: 'categoryField', field: 'name' }, 'CATEGORY NAME RULE', 'NAME EDITED', (c) => c.prompts.find((p) => p.field === 'name').context],
   ];
   for (const [source, previous, text, read] of edits) {
@@ -516,7 +518,7 @@ test('preview edits: each category-owned source is written in place, nothing els
   const after = await Category.findById(cat._id).lean();
   // همسایه‌ها دست‌نخورده: ویژگی/آیتم/پرامپتِ دیگر، شناسه‌ی آیتم‌ها و بقیه‌ی دسته
   assert.equal(after.attributes[0].prompt, 'HEAD RULE');
-  assert.equal(after.customTab.items[0].prompt, 'ONE HINT');
+  assert.equal(after.customTab.prompt, 'TAB EDITED');
   assert.deepEqual(after.customTab.items.map((i) => String(i._id)), [String(one._id), String(two._id)]);
   assert.equal(after.prompts.find((p) => p.field === 'tag').context, 'CATEGORY TAG RULE');
   for (const key of ['title', 'name', 'slug', 'sport', 'technicalStats']) assert.deepEqual(after[key], before[key], key);
@@ -527,7 +529,7 @@ test('preview edits: each category-owned source is written in place, nothing els
 
   // پیش‌نویسِ واقعی همان متن‌های تازه را دارد
   const draft = (await (await requestDraft(cat._id)).json()).draft;
-  for (const t of ['WEIGHT EDITED', 'GRIP EDITED', 'TECH EDITED', 'TAB EDITED', '"TWO" | Selection Rule: TWO EDITED', 'NAME EDITED']) assert.ok(draft.includes(t), t);
+  for (const t of ['WEIGHT EDITED', 'GRIP EDITED', 'TECH EDITED', 'TAB EDITED', 'TITLE EDITED', 'DESC EDITED', 'NAME EDITED']) assert.ok(draft.includes(t), t);
   assert.ok(!draft.includes('CATEGORY TAG RULE'));
 
   // ورودیِ نامعتبر و منبع‌های غیرِ دسته
@@ -552,13 +554,16 @@ test('category PUT: custom tab prompts survive a client that does not send them,
   const withoutPrompts = { enabled: true, name: 'تکنولوژی', items: stored.items.map(({ _id, title }) => ({ _id: String(_id), title })) };
 
   let tab = await put(withoutPrompts);
-  assert.equal(tab.prompt, 'TAB RULE');
-  assert.deepEqual(tab.items.map((i) => i.prompt), ['ONE HINT', 'TWO HINT']);
+  assert.deepEqual([tab.prompt, tab.titlePrompt, tab.descriptionPrompt], ['TAB RULE', 'TITLE RULE', 'DESC RULE']);
 
-  tab = await put({ ...withoutPrompts, prompt: ' NEW TAB ', items: [{ ...withoutPrompts.items[0], prompt: '' }, withoutPrompts.items[1], { title: 'THREE', prompt: 'THREE HINT' }] });
-  assert.equal(tab.prompt, 'NEW TAB');
-  assert.deepEqual(tab.items.map((i) => i.prompt), ['', 'TWO HINT', 'THREE HINT']);
+  // only the title prompt sent: the other two stay; a per-item prompt from an old client is not stored
+  tab = await put({ ...withoutPrompts, titlePrompt: ' NEW TITLE ', items: [...withoutPrompts.items, { title: 'THREE', prompt: 'THREE HINT' }] });
+  assert.deepEqual([tab.prompt, tab.titlePrompt, tab.descriptionPrompt], ['TAB RULE', 'NEW TITLE', 'DESC RULE']);
+  assert.ok(tab.items.every((i) => !('prompt' in i)), JSON.stringify(tab.items));
   assert.deepEqual(tab.items.slice(0, 2).map((i) => String(i._id)), stored.items.map((i) => String(i._id)));
+
+  tab = await put({ ...withoutPrompts, prompt: ' NEW TAB ', descriptionPrompt: '' });
+  assert.deepEqual([tab.prompt, tab.titlePrompt, tab.descriptionPrompt], ['NEW TAB', 'NEW TITLE', '']);
   await Category.deleteOne({ _id: cat._id });
 });
 
@@ -603,8 +608,9 @@ test('final prompt mode: identical to the real draft, character for character, e
   // هر آنچه به AI می‌رسد هست: قواعد از هر منبع و فهرست‌های داده
   for (const text of [
     '\nEDITED BASE TASK RULE\n', 'GROUP NAME RULE', 'CATEGORY NAME RULE', "COST RULE $& and $' and $1", 'TECH RULE', 'TAB RULE',
-    'Extraction Rule: HEAD RULE', 'Guide: GRIP RULE', '"ONE" | Selection Rule: ONE HINT',
+    'Extraction Rule: HEAD RULE', 'Guide: GRIP RULE', '"ONE" | Catalog description (context only): ONE CATALOG', 'TITLE RULE', 'DESC RULE',
     'AVAILABLE BRANDS', String(brand._id), 'AVAILABLE ATHLETES', 'AVAILABLE SERIES', 'AVAILABLE LIMITED EDITIONS', '"customTabItems"',
+    '"customTabTitles"', '"customTabDescriptions"',
   ]) assert.ok(body.prompt.includes(text), text);
 
   // دو بار ساختن یک متن می‌دهد (نشانگرِ تصادفی به خروجی نشت نمی‌کند)

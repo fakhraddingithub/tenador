@@ -103,6 +103,8 @@
     "check:remove-seller-role": "node scripts/migrateRemoveSellerRole.mjs",
     "check:category-prompt-defaults": "node scripts/checkCategoryPromptDefaults.mjs",
     "migrate:remove-seller-role": "node scripts/migrateRemoveSellerRole.mjs --apply",
+    "check:remove-tab-item-prompts": "node scripts/removeCustomTabItemPrompts.mjs",
+    "migrate:remove-tab-item-prompts": "node scripts/removeCustomTabItemPrompts.mjs --apply",
     "worker:prices": "node workers/priceWorker.js",
     "worker:discounts": "node workers/discountWorker.js",
     "worker:installment-reminders": "node workers/installmentReminderWorker.js",

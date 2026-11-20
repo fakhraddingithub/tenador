@@ -29,6 +29,8 @@ import {
 } from "./productPromptConfig.js";
 import { resolvePromptConfig } from "./productPromptResolve.js";
 
+const CUSTOM_TAB_FIELDS = new Set(["customTabItems", "customTabTitles", "customTabDescriptions"]);
+
 /** The category's own free-text prompt entry for a field (raw stored text, "" when none). */
 function categoryPromptValue(prompts, field) {
   if (!Array.isArray(prompts)) return "";
@@ -46,8 +48,9 @@ function categoryPromptValue(prompts, field) {
  *   { kind: "categoryField", field }                      category.prompts[field].context
  *   { kind: "technicalStats" }                            category.technicalStatsPrompt
  *   { kind: "attribute" | "variantAttribute", name, label }   that attribute's prompt
- *   { kind: "customTab", tabName }                        category.customTab.prompt
- *   { kind: "customTabItem", itemId, title }              category.customTab.items[].prompt
+ *   { kind: "customTab", tabName }                        category.customTab.prompt (selection)
+ *   { kind: "customTabTitle", tabName }                   category.customTab.titlePrompt
+ *   { kind: "customTabDescription", tabName }             category.customTab.descriptionPrompt
  *   { kind: "system", what }                              inserted by the app, wording in a template
  *
  * A rule carries `text` (as stored, placeholders unexpanded), `display` (expanded) and
@@ -143,17 +146,16 @@ export function composeProductPrompt({ category, promptConfig = null }) {
   }));
 
   // ─── Custom Tab ───────────────────────────────────────────────────────────
+  // An item has no prompt of its own any more: only rules a group saved for it in an earlier
+  // version (tabItem:<title>) still sit next to its title. Its catalog description is context.
   const tabItems =
     customTab.enabled && Array.isArray(customTab.items)
       ? customTab.items
           .filter((item) => item?.title)
           .map((item) => ({
             title: item.title,
-            rules: rulesFor(dynamicFieldKey("tabItem", item.title), item.prompt, {
-              kind: "customTabItem",
-              itemId: item._id == null ? null : String(item._id),
-              title: item.title,
-            }),
+            description: String(item.description ?? "").trim(),
+            rules: rulesFor(dynamicFieldKey("tabItem", item.title), "", { kind: "tabItem", title: item.title }),
           }))
       : [];
   // Before the tab had its own prompt, a `customTabItems` entry in category.prompts was the
@@ -198,12 +200,19 @@ export function composeProductPrompt({ category, promptConfig = null }) {
           .join("\n")
       : template("technical_stats_empty"),
     custom_tab: tabItems
-      .map(({ title, rules }) => template("custom_tab_item", { title, rules: ruleSuffix(rules, "custom_tab_item_rule") }))
+      .map(({ title, description, rules }) =>
+        template("custom_tab_item", {
+          title,
+          description: description ? template("custom_tab_item_description", { text: description }) : "",
+          rules: ruleSuffix(rules, "custom_tab_item_rule"),
+        }),
+      )
       .join("\n"),
     output_structure: template("output_structure", {
       sport_id: values.sport_id,
       category_id: values.category_id,
-      custom_tab_output: tabItems.length ? template("custom_tab_output") : "",
+      // titles/descriptions are their own template, so a config stored before they existed still asks for them
+      custom_tab_output: tabItems.length ? template("custom_tab_output") + template("custom_tab_text_output") : "",
     }),
   };
 
@@ -236,12 +245,17 @@ export function composeProductPrompt({ category, promptConfig = null }) {
       return { categoryText: value.trim(), categorySource: { kind: "technicalStats", value } };
     }
     if (key === "customTabItems") return { categoryText: tabRuleSource.value.trim(), categorySource: tabRuleSource };
+    if (key === "customTabTitles" || key === "customTabDescriptions") {
+      const [kind, path] = key === "customTabTitles" ? ["customTabTitle", "titlePrompt"] : ["customTabDescription", "descriptionPrompt"];
+      const value = String(customTab[path] ?? "");
+      return { categoryText: value.trim(), categorySource: { kind, tabName, value } };
+    }
     const value = categoryPromptValue(category.prompts, key);
     return { categoryText: value.trim(), categorySource: { kind: "categoryField", field: key, value } };
   };
   const fields = PRODUCT_PROMPT_FIELDS
-    // the custom tab field exists only for a category whose tab has items
-    .filter(({ key }) => key !== "customTabItems" || tabItems.length)
+    // the custom tab fields exist only for a category whose tab has items
+    .filter(({ key }) => !CUSTOM_TAB_FIELDS.has(key) || tabItems.length)
     .map(({ key, title }) => {
       const entry = fieldConfig.get(key);
       const rules = resolveFieldRules({ baseRules: entry?.rules || [], groups, categoryId, field: key, ...categoryRuleFor(key) });

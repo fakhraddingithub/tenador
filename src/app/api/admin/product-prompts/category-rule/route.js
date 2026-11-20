@@ -1,4 +1,3 @@
-import mongoose from "mongoose";
 import "base/models/registerModels";
 import connectToDB from "base/configs/db";
 import Category from "base/models/Category";
@@ -8,7 +7,9 @@ import { PRODUCT_PROMPT_FIELDS } from "@/lib/productPromptConfig";
 
 const OBJECT_ID = /^[a-f\d]{24}$/i;
 const FIELD_KEYS = new Set(PRODUCT_PROMPT_FIELDS.map((f) => f.key));
-const STALE = "این قاعده در این فاصله تغییر کرده است؛ پیش‌نمایش را دوباره بارگذاری کنید";
+// سه قاعده‌ی تب سفارشی: انتخاب، عنوان و توضیحاتِ هر آیتم
+const TAB_PROMPT_PATH = { customTab: "prompt", customTabTitle: "titlePrompt", customTabDescription: "descriptionPrompt" };
+const STALE ="این قاعده در این فاصله تغییر کرده است؛ پیش‌نمایش را دوباره بارگذاری کنید";
 
 /** مقدارِ قبلی: "" یعنی «خالی یا ذخیره‌نشده». */
 const was = (previous) => (previous === "" ? { $in: [null, ""] } : previous);
@@ -17,7 +18,7 @@ const was = (previous) => (previous === "" ? { $in: [null, ""] } : previous);
  * فیلتر و به‌روزرسانیِ اتمیکِ یک منبعِ پرامپتِ دسته. فیلتر مقدارِ قبلی را هم
  * می‌خواهد (compare-and-set)، پس اگر کسی در این فاصله همان متن را عوض کرده باشد
  * هیچ چیز نوشته نمی‌شود. فقط همان یک مسیر نوشته می‌شود؛ ویژگی‌ها و آیتم‌ها با
- * نام/شناسه پیدا می‌شوند، نه با اندیس، تا جابه‌جاییِ هم‌زمان قاعده‌ی دیگری را عوض نکند.
+ * نام پیدا می‌شوند، نه با اندیس، تا جابه‌جاییِ هم‌زمان قاعده‌ی دیگری را عوض نکند.
  * @returns {{filter, update, options}|{error: string}}
  */
 function plan(source, previous, text) {
@@ -47,15 +48,10 @@ function plan(source, previous, text) {
       };
     }
     case "customTab":
-      return { filter: { "customTab.prompt": was(previous) }, update: { $set: { "customTab.prompt": text } } };
-    case "customTabItem": {
-      if (!OBJECT_ID.test(String(source.itemId ?? ""))) return { error: "آیتمِ نامعتبر" };
-      const itemId = new mongoose.Types.ObjectId(String(source.itemId));
-      return {
-        filter: { "customTab.items": { $elemMatch: { _id: itemId, prompt: was(previous) } } },
-        update: { $set: { "customTab.items.$[i].prompt": text } },
-        options: { arrayFilters: [{ "i._id": itemId }] },
-      };
+    case "customTabTitle":
+    case "customTabDescription": {
+      const path = `customTab.${TAB_PROMPT_PATH[source.kind]}`;
+      return { filter: { [path]: was(previous) }, update: { $set: { [path]: text } } };
     }
     default:
       return { error: "این منبع از اینجا قابل ویرایش نیست" };
@@ -63,7 +59,7 @@ function plan(source, previous, text) {
 }
 
 // PATCH /api/admin/product-prompts/category-rule
-// { categoryId, source: { kind, field? | name? | itemId? }, previous, text }
+// { categoryId, source: { kind, field? | name? }, previous, text }
 // ویرایشِ یک قاعده‌ی متعلق به دسته از صفحه‌ی پیش‌نمایش. فقط همان متن عوض می‌شود.
 export async function PATCH(req) {
   const { denied } = await requireAdminPermission("productPrompts.edit");

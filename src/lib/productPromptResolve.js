@@ -78,7 +78,13 @@ const LOCKED = new Set(PROMPT_SEED.legacyLockedRules);
 
 function upgradeFieldRules(entries, templates) {
   const customHeading = templates.field_heading;
-  return (entries || []).map(({ field, heading, rules }) => {
+  // پنل هرگز فیلدی را حذف نمی‌کند، پس فیلدِ ثابتی که در سندِ ذخیره‌شده نیست بعد از آن ذخیره
+  // اضافه شده است (مثلاً customTabTitles): قواعدِ seedش را می‌گیرد، نه سربرگِ خالی.
+  const present = new Set((entries || []).map((entry) => entry.field));
+  const added = PROMPT_SEED.fieldRules
+    .filter(({ field }) => !present.has(field))
+    .map(({ field, heading, rules }) => ({ field, heading, rules: [...rules] }));
+  return [...(entries || []).map(({ field, heading, rules }) => {
     const seed = SEED_FIELD_HEADING.get(field) ?? `${field}:`;
     const lead = seed.startsWith("\n") ? "\n" : "";
     return {
@@ -88,7 +94,7 @@ function upgradeFieldRules(entries, templates) {
         : customHeading ? `${lead}${customHeading.replace(/\{\{\s*field\s*\}\}/g, field)}` : seed,
       rules: (rules || []).filter((text) => !LOCKED.has(text)),
     };
-  });
+  }), ...added];
 }
 
 const upgradeGroupSection = (section) =>

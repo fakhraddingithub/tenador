@@ -381,10 +381,12 @@ test("a config saved with separate header fields becomes one heading, with nothi
 test("once a document is stored the seed is never read for it", () => {
   const config = stored((c) => { fieldOf(c, "name").rules = []; c.fieldRules = c.fieldRules.filter((f) => f.field !== "tag"); });
   const resolved = resolvePromptConfig(config);
+  // a field the admin emptied stays empty
   assert.deepEqual(fieldOf(resolved, "name").rules, []);
-  assert.equal(fieldOf(resolved, "tag"), undefined);
-  // فیلدی که در سند نیست با همان شناسه‌اش می‌آید، نه با متنِ seed
-  assert.ok(draft(category(A), config).includes("\ntag\nNo specific rule defined."));
+  assert.ok(draft(category(A), config).includes("\nname:\nNo specific rule defined."));
+  // the panel never removes a field, so one missing from a stored document was added after it was
+  // saved: it gets the seed's entry instead of a bare key the base page could not even save
+  assert.deepEqual(fieldOf(resolved, "tag"), PROMPT_SEED.fieldRules.find((f) => f.field === "tag"));
   // قالبِ عمداً خالی خالی می‌ماند؛ فقط قالبی که اصلاً ذخیره نشده از seed می‌آید
   const templates = resolvePromptConfig({ document: config.document, templates: [{ key: "field_empty", text: "" }] }).templates;
   assert.equal(templates.field_empty, "");
@@ -670,8 +672,9 @@ const richCategory = () => category(A, {
   technicalStats: [{ name: "power", label: "قدرت" }],
   technicalStatsPrompt: "TECH RULE",
   customTab: {
-    enabled: true, name: "تکنولوژی‌ها", prompt: "TAB RULE",
-    items: [{ _id: C, title: "FORTYFIVE", prompt: "PICK FORTYFIVE WHEN NAMED" }, { _id: D, title: "Spin Effect" }],
+    enabled: true, name: "تکنولوژی‌ها", prompt: "TAB RULE", titlePrompt: "TITLE RULE", descriptionPrompt: "DESC RULE",
+    // a per-item prompt stored before it was removed must never reach the AI
+    items: [{ _id: C, title: "FORTYFIVE", description: "CATALOG 45", prompt: "PICK FORTYFIVE WHEN NAMED" }, { _id: D, title: "Spin Effect" }],
   },
 });
 const richConfig = () => stored((c) => {
@@ -713,9 +716,9 @@ test("compose: every rule carries its exact source and the stored value an edit 
   assert.deepEqual(m.attributes[1].rules, []);
   assert.deepEqual(m.variants[0].rules[0].source, { kind: "variantAttribute", name: "Grip", label: "گریپ", value: "GRIP GUIDE" });
   assert.equal(m.technicalStats[0].rules[0].source.field, "stat:power");
-  assert.deepEqual(m.customTab.items.map((i) => i.rules[0]?.source ?? null), [
-    { kind: "customTabItem", itemId: C, title: "FORTYFIVE", value: "PICK FORTYFIVE WHEN NAMED" }, null,
-  ]);
+  assert.deepEqual(field("customTabTitles").rules.category.source, { kind: "customTabTitle", tabName: "تکنولوژی‌ها", value: "TITLE RULE" });
+  assert.deepEqual(field("customTabDescriptions").rules.category.source, { kind: "customTabDescription", tabName: "تکنولوژی‌ها", value: "DESC RULE" });
+  assert.deepEqual(m.customTab.items.map((i) => i.rules), [[], []]);
 });
 
 test("compose: locked lines are marked as such; a rule's display expands its placeholders, its stored text keeps them", () => {
@@ -754,24 +757,55 @@ test("the preview model and the prompt are the same rules — every model rule i
   assert.ok(renderProductPrompt(m).includes("RAW PRODUCT CONTENT"));
 });
 
-test("custom tab: the tab rule is the category rule of customTabItems, item hints sit next to their titles", () => {
+test("custom tab: its three prompts are the category rules of selection, titles and descriptions; item hints are gone", () => {
   const prompt = draft(richCategory(), richConfig());
-  const block = fieldBlock(prompt, "customTabItems");
-  assert.ok(block.includes("Category-specific rules"));
-  assert.ok(block.endsWith("TAB RULE"));
-  assert.ok(prompt.includes('  - "FORTYFIVE" | Selection Rule: PICK FORTYFIVE WHEN NAMED\n  - "Spin Effect"\n'));
+  for (const [field, rule] of [["customTabItems", "TAB RULE"], ["customTabTitles", "TITLE RULE"], ["customTabDescriptions", "DESC RULE"]]) {
+    const block = fieldBlock(prompt, field);
+    assert.ok(block.includes("Category-specific rules"), field);
+    assert.ok(block.endsWith(rule), field);
+  }
+  // the three blocks follow each other, in this order
+  assert.ok(prompt.indexOf("\ncustomTabItems:\n") < prompt.indexOf("\ncustomTabTitles:\n"));
+  assert.ok(prompt.indexOf("\ncustomTabTitles:\n") < prompt.indexOf("\ncustomTabDescriptions:\n"));
+  // the catalog description is context next to its title; a stored per-item prompt never prints
+  assert.ok(prompt.includes('  - "FORTYFIVE" | Catalog description (context only): CATALOG 45\n  - "Spin Effect"\n'));
+  assert.ok(!prompt.includes("PICK FORTYFIVE"));
   assert.ok(prompt.includes('"customTabItems": ["<exact title from the list above>", "..."]'));
+  assert.ok(prompt.includes('"customTabTitles": {'));
+  assert.ok(prompt.includes('"customTabDescriptions": {'));
+});
+
+test("custom tab: a config stored with the old output line still asks for titles and descriptions", () => {
+  const config = stored((c) => {
+    c.fieldRules = c.fieldRules.filter((f) => !["customTabTitles", "customTabDescriptions"].includes(f.field));
+    delete c.templates.custom_tab_text_output;
+    delete c.templates.custom_tab_item_description;
+  });
+  const resolved = resolvePromptConfig(config);
+  // a fixed field absent from a stored document predates it: the seed's entry fills in
+  assert.deepEqual(resolved.fieldRules.find((f) => f.field === "customTabTitles"), PROMPT_SEED.fieldRules.find((f) => f.field === "customTabTitles"));
+  assert.deepEqual(validatePromptConfig({ fieldRules: resolved.fieldRules }).errors, []);
+  const prompt = draft(richCategory(), config);
+  assert.ok(fieldBlock(prompt, "customTabTitles").includes(PROMPT_SEED.fieldRules.find((f) => f.field === "customTabTitles").rules[0]));
+  assert.ok(prompt.includes('"customTabDescriptions": {'));
+  // a template stored as "" stays empty
+  const silenced = draft(richCategory(), stored((c) => { c.templates.custom_tab_text_output = ""; c.templates.custom_tab_item_description = ""; }));
+  assert.ok(!silenced.includes('"customTabTitles": {'));
+  assert.ok(!silenced.includes("CATALOG 45"));
 });
 
 test("custom tab: without a prompt nothing is added; a disabled tab contributes nothing; a legacy prompts entry still applies", () => {
   const plainTab = { enabled: true, name: "T", items: [{ _id: C, title: "ONE" }] };
   const plain = draft(category(A, { customTab: plainTab }));
-  assert.ok(plain.includes('Available titles for "T":\n  - "ONE"'));
+  assert.ok(plain.includes('Available titles for "T":\n  - "ONE"\n'));
   assert.ok(!plain.includes("| Selection Rule:"));
-  assert.ok(!fieldBlock(plain, "customTabItems").includes("Category-specific rules"));
+  assert.ok(!plain.includes("Catalog description"));
+  for (const field of ["customTabItems", "customTabTitles", "customTabDescriptions"]) {
+    assert.ok(!fieldBlock(plain, field).includes("Category-specific rules"), field);
+  }
 
-  const off = draft(category(A, { customTab: { ...plainTab, enabled: false, prompt: "TAB RULE", items: [{ title: "ONE", prompt: "HINT" }] } }));
-  assert.ok(!off.includes("customTabItems") && !off.includes("TAB RULE") && !off.includes("HINT"));
+  const off = draft(category(A, { customTab: { ...plainTab, enabled: false, prompt: "TAB RULE", titlePrompt: "TITLE RULE", items: [{ title: "ONE", prompt: "HINT" }] } }));
+  for (const text of ["customTabItems", "customTabTitles", "customTabDescriptions", "TAB RULE", "TITLE RULE", "HINT"]) assert.ok(!off.includes(text), text);
   assert.ok(!off.includes("Available titles"));
 
   const legacy = composeProductPrompt({ category: category(A, { customTab: plainTab, prompts: [{ field: "customTabItems", context: "LEGACY" }] }) });
@@ -865,7 +899,7 @@ test("group rules on a section are traced to their group, and the preview matche
 test("groups offer only the fixed fields you asked for; saved rules on excluded fields keep applying", () => {
   const offered = GROUP_PROMPT_FIELDS.map((f) => f.key);
   for (const excluded of ["attributes", "variantOptions", "technicalStats", "customTabItems"]) assert.ok(!offered.includes(excluded), excluded);
-  for (const kept of ["name", "brand", "sport", "category", "score", "variantMeta", "tag", "gallery"]) assert.ok(offered.includes(kept), kept);
+  for (const kept of ["name", "brand", "sport", "category", "score", "variantMeta", "tag", "gallery", "customTabTitles", "customTabDescriptions"]) assert.ok(offered.includes(kept), kept);
 
   const cat = category(A, {
     attributes: [{ name: "Head", label: "سر" }],

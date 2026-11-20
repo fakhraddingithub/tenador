@@ -65,6 +65,8 @@ export const PRODUCT_PROMPT_FIELDS = [
   { key: "variantMeta", title: "متادیتای واریانت" },
   { key: "technicalStats", title: "آمار فنی" },
   { key: "customTabItems", title: "آیتم‌های تب سفارشی" },
+  { key: "customTabTitles", title: "عنوان آیتم‌های تب سفارشی" },
+  { key: "customTabDescriptions", title: "توضیحات آیتم‌های تب سفارشی" },
   { key: "tag", title: "تگ‌ها" },
   { key: "mainImage", title: "تصویر اصلی" },
   { key: "gallery", title: "گالری" },
@@ -168,11 +170,13 @@ export const TEMPLATE_DEFS = [
   { key: "technical_stat_rule", group: "شاخص‌های فنی", label: "هر قاعده‌ی شاخص (در {{rules}})", tokens: ["text"], required: ["text"] },
   { key: "technical_stats_empty", group: "شاخص‌های فنی", label: "دسته‌ی بدون شاخص", tokens: [] },
 
-  { key: "custom_tab_item", group: "تب سفارشی", label: "سطر هر آیتم", tokens: ["title", "rules"], required: ["title", "rules"] },
-  { key: "custom_tab_item_rule", group: "تب سفارشی", label: "هر قاعده‌ی آیتم (در {{rules}})", tokens: ["text"], required: ["text"] },
+  { key: "custom_tab_item", group: "تب سفارشی", label: "سطر هر آیتم", tokens: ["title", "description", "rules"], required: ["title", "rules"] },
+  { key: "custom_tab_item_description", group: "تب سفارشی", label: "توضیحِ دستیِ آیتم در دسته، برای زمینه (در {{description}})", tokens: ["text"], required: ["text"] },
+  { key: "custom_tab_item_rule", group: "تب سفارشی", label: "قاعده‌ی قدیمیِ گروه روی یک آیتم (در {{rules}})", tokens: ["text"], required: ["text"] },
 
   { key: "output_structure", group: "ساختار خروجی", label: "ساختار JSON خروجی", tokens: ["sport_id", "category_id", "custom_tab_output"], required: ["sport_id", "category_id", "custom_tab_output"] },
   { key: "custom_tab_output", group: "ساختار خروجی", label: "سطر customTabItems (فقط برای دسته‌ای که تب سفارشی دارد)", tokens: [] },
+  { key: "custom_tab_text_output", group: "ساختار خروجی", label: "سطرهای customTabTitles و customTabDescriptions (بلافاصله بعد از سطر customTabItems)", tokens: [] },
 ];
 const TEMPLATE_BY_KEY = new Map(TEMPLATE_DEFS.map((t) => [t.key, t]));
 

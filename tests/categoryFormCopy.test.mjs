@@ -101,10 +101,13 @@ const tennisRacket = () => ({
         description: "توضیح",
         image: "https://cdn/i.jpg",
         link: "https://x",
+        // a per-item prompt stored before it was removed is not carried into the copy
         prompt: "only when the text names FortyFive",
       },
     ],
     prompt: "pick technologies the text names",
+    titlePrompt: "title rule",
+    descriptionPrompt: "description rule",
   },
 });
 
@@ -163,13 +166,14 @@ test("همه‌ی مقادیر متنی و آرایه‌ای دقیقاً از �
     name: "تکنولوژی‌ها",
     icon: "https://cdn/tab.svg",
     prompt: "pick technologies the text names",
+    titlePrompt: "title rule",
+    descriptionPrompt: "description rule",
     items: [
       {
         title: "FORTYFIVE",
         description: "توضیح",
         image: "https://cdn/i.jpg",
         link: "https://x",
-        prompt: "only when the text names FortyFive",
       },
     ],
   });

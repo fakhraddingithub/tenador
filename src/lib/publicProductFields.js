@@ -25,7 +25,7 @@ export const LISTING_CATEGORY_FIELDS = `name title slug ${PUBLIC_VARIANT_ATTRIBU
 
 // همه‌چیز می‌ماند و فقط پرامپت‌ها حذف می‌شوند. روی هر مدل معتبر است، چون مسیرِ ناموجود نادیده گرفته می‌شود.
 export const WITHOUT_AI_PROMPTS =
-  "-prompts -technicalStatsPrompt -customTab.prompt -customTab.items.prompt -attributes.prompt -variantAttributes.prompt";
+  "-prompts -technicalStatsPrompt -customTab.prompt -customTab.titlePrompt -customTab.descriptionPrompt -customTab.items.prompt -attributes.prompt -variantAttributes.prompt";
 
 // صفحه‌ی محصول مقاله‌ی برند را هم نمی‌خواند.
 export const PRODUCT_PAGE_BRAND_FIELDS = "-prompts -articleBlocks";

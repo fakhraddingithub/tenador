@@ -47,7 +47,7 @@ import Input from '@/components/admin/Input';
 import Select from '@/components/admin/Select';
 import AdditionalSportsField from '@/components/admin/AdditionalSportsField';
 import AttributeAudienceField from '@/components/admin/AttributeAudienceField';
-import CustomTabPromptField from '@/components/admin/CustomTabPromptField';
+import CustomTabPromptField, { EMPTY_TAB_PROMPTS, tabPromptsOf } from '@/components/admin/CustomTabPromptField';
 import { showToast } from '@/lib/toast';
 import { showError } from '@/lib/swal';
 import { invalidateAdminCache } from '@/lib/adminCache';
@@ -230,8 +230,8 @@ export default function EditCategory() {
   const [customTabName, setCustomTabName] = useState('');
   const [customTabIcon, setCustomTabIcon] = useState('');
   const [customTabItems, setCustomTabItems] = useState([]);
-  const [customTabPrompt, setCustomTabPrompt] = useState('');
-  const [currentTabItem, setCurrentTabItem] = useState({ title: '', description: '', link: '', image: '', prompt: '' });
+  const [customTabPrompts, setCustomTabPrompts] = useState(EMPTY_TAB_PROMPTS);
+  const [currentTabItem, setCurrentTabItem] = useState({ title: '', description: '', link: '', image: '' });
   const [editingTabItemIndex, setEditingTabItemIndex] = useState(null);
 
   const sensors = useSensors(
@@ -291,7 +291,7 @@ export default function EditCategory() {
         setCustomTabEnabled(cat.customTab?.enabled || false);
         setCustomTabName(cat.customTab?.name || '');
         setCustomTabIcon(cat.customTab?.icon || '');
-        setCustomTabPrompt(cat.customTab?.prompt || '');
+        setCustomTabPrompts(tabPromptsOf(cat.customTab));
         setCustomTabItems(
           (cat.customTab?.items || []).map((item) => ({
             _id: item._id,
@@ -299,7 +299,6 @@ export default function EditCategory() {
             description: item.description || '',
             link: item.link || '',
             image: item.image || '',
-            prompt: item.prompt || '',
           }))
         );
 
@@ -410,7 +409,7 @@ export default function EditCategory() {
     } else {
       setCustomTabItems((prev) => [...prev, { ...currentTabItem }]);
     }
-    setCurrentTabItem({ title: '', description: '', link: '', image: '', prompt: '' });
+    setCurrentTabItem({ title: '', description: '', link: '', image: '' });
   };
 
   const handleEditTabItem = (index) => {
@@ -420,7 +419,6 @@ export default function EditCategory() {
       description: item.description || '',
       link: item.link || '',
       image: item.image || '',
-      prompt: item.prompt || '',
     });
     setEditingTabItemIndex(index);
   };
@@ -429,7 +427,7 @@ export default function EditCategory() {
     setCustomTabItems((prev) => prev.filter((_, i) => i !== index));
     if (editingTabItemIndex === index) {
       setEditingTabItemIndex(null);
-      setCurrentTabItem({ title: '', description: '', link: '', image: '', prompt: '' });
+      setCurrentTabItem({ title: '', description: '', link: '', image: '' });
     }
   };
 
@@ -674,7 +672,7 @@ export default function EditCategory() {
           enabled: customTabEnabled,
           name: customTabName,
           icon: customTabIcon,
-          prompt: customTabPrompt,
+          ...customTabPrompts,
           items: customTabItems,
         },
         prompts: productPrompts.filter((p) => p.context.trim() !== ''),
@@ -1215,7 +1213,7 @@ export default function EditCategory() {
                   </div>
                 </div>
 
-                <CustomTabPromptField value={customTabPrompt} onChange={setCustomTabPrompt} />
+                <CustomTabPromptField value={customTabPrompts} onChange={(key, text) => setCustomTabPrompts((p) => ({ ...p, [key]: text }))} />
 
                 <div className={`rounded-[var(--radius)] p-6 space-y-5 border-2 ${editingTabItemIndex !== null ? 'bg-purple-50/30 border-purple-200' : 'bg-neutral-50 border-transparent'}`}>
                   <div>
@@ -1270,13 +1268,7 @@ export default function EditCategory() {
                     label="توضیح کوتاه"
                     value={currentTabItem.description}
                     onChange={(e) => setCurrentTabItem((p) => ({ ...p, description: e.target.value }))}
-                    placeholder="توضیح کوتاهی درباره این آیتم"
-                  />
-                  <Textarea
-                    label="راهنمای انتخاب برای هوش مصنوعی (اختیاری)"
-                    value={currentTabItem.prompt}
-                    onChange={(e) => setCurrentTabItem((p) => ({ ...p, prompt: e.target.value }))}
-                    placeholder="مثال: فقط وقتی انتخاب شود که متن محصول صراحتاً به FortyFive اشاره کند"
+                    placeholder="متنِ پیش‌فرض؛ وقتی AI برای محصول توضیحی ننوشته باشد همین نمایش داده می‌شود"
                   />
                   <Input
                     label="لینک (اختیاری)"
@@ -1304,9 +1296,6 @@ export default function EditCategory() {
                           <span className="font-bold text-sm truncate">{item.title}</span>
                           {item.description && (
                             <span className="text-[11px] text-neutral-400 truncate">{item.description}</span>
-                          )}
-                          {item.prompt?.trim() && (
-                            <span className="text-[11px] text-purple-600 truncate" title={item.prompt}>راهنمای AI: {item.prompt}</span>
                           )}
                         </div>
                       </div>

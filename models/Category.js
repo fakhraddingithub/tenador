@@ -98,13 +98,9 @@ const CustomTabItemSchema = new mongoose.Schema({
     trim: true,
     default: "",
   },
-  // راهنمای AI برای اینکه این آیتم را کِی برای محصول انتخاب کند — در پرامپت
-  // کنارِ عنوانِ آیتم می‌آید (Selection Rule). خالی = بدونِ راهنما (رفتارِ قبلی).
-  prompt: {
-    type: String,
-    trim: true,
-    default: "",
-  },
+  // آیتم پرامپتِ خودش را ندارد؛ AI با سه قاعده‌ی کلیِ تب (پایین) انتخاب می‌کند و برای هر محصول
+  // عنوان و توضیحاتِ خودش را می‌نویسد (Product.customTabTexts). title/description همین‌جا متنِ
+  // پیش‌فرض‌اند وقتی برای محصول متنی ساخته نشده.
 });
 
 const CategorySchema = new mongoose.Schema(
@@ -215,9 +211,13 @@ const CategorySchema = new mongoose.Schema(
       enabled: { type: Boolean, default: false },
       name: { type: String, trim: true, default: "" },
       icon: { type: String, default: "" },
-      // قاعده‌ی اختصاصیِ این دسته برای انتخابِ آیتم‌های تب (فیلدِ customTabItems
-      // در پرامپتِ ساختِ محصول، بعد از پرامپت پایه). خالی = بدونِ قاعده.
+      // قواعدِ اختصاصیِ این دسته در پرامپتِ ساختِ محصول (بعد از پرامپت پایه و گروه‌ها). خالی = بدونِ قاعده.
+      // prompt: انتخابِ آیتم‌ها (customTabItems)
       prompt: { type: String, trim: true, default: "" },
+      // titlePrompt: نوشتنِ عنوانِ هر آیتمِ انتخاب‌شده برای همان محصول (customTabTitles)
+      titlePrompt: { type: String, trim: true, default: "" },
+      // descriptionPrompt: نوشتنِ توضیحاتِ هر آیتمِ انتخاب‌شده برای همان محصول (customTabDescriptions)
+      descriptionPrompt: { type: String, trim: true, default: "" },
       items: { type: [CustomTabItemSchema], default: [] },
     },
 
