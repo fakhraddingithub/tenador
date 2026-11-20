@@ -10,11 +10,6 @@ import {
   ResponsiveContainer,
   Legend,
   Tooltip,
-  BarChart,
-  Bar,
-  XAxis,
-  YAxis,
-  CartesianGrid,
 } from "recharts";
 import { FiSearch, FiPlus, FiTrash2 } from "react-icons/fi";
 import Link from "next/link";
@@ -43,22 +38,7 @@ const normalizeColor = (color) => {
   return c;
 };
 
-function BarAxisTick({ x, y, payload }) {
-  return (
-    <text
-      x={x}
-      y={y}
-      direction="rtl"
-      textAnchor="start"
-      dominantBaseline="central"
-      fill="#4b5563"
-      fontSize={12}
-      fontWeight={700}
-    >
-      {payload.value}
-    </text>
-  );
-}
+const scoreFormat = new Intl.NumberFormat("fa-IR");
 
 function CustomTick({ x, y, payload, cx, cy, labelOffset }) {
   const dx = x - cx;
@@ -188,6 +168,15 @@ export default function ProductComparisonGraph({ technicalStats = {}, showBars =
 
   const currentColor = normalizeColor(technicalStats.color) || PRODUCT_COLORS[0];
   
+  const barSeries = [
+    { key: "current", name: "این محصول", color: currentColor },
+    ...comparisonProducts.map((product, index) => ({
+      key: `p_${product._id ?? index}`,
+      name: product.title ?? product.name ?? `محصول ${index + 1}`,
+      color: resolveProductColor(product, index + 1),
+    })),
+  ];
+
   const renderRadars = () => {
     const items = [];
     items.push(
@@ -373,26 +362,33 @@ export default function ProductComparisonGraph({ technicalStats = {}, showBars =
         </div>
         </div>
       {showBars && (
-        <div className="min-w-0">
-          <div dir="ltr" className="w-full min-w-0 rounded-md bg-white" style={{ height: Math.max(360, data.length * (48 + comparisonProducts.length * 24)) }}>
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={data} layout="vertical" margin={{ top: 16, right: 12, left: 8, bottom: 12 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#e5e5e5" horizontal={false} />
-                <XAxis type="number" domain={[0, categoryStats[0]?.max ?? 100]} tick={{ fill: "#6b7280", fontSize: 11 }} tickLine={false} axisLine={false} />
-                <YAxis type="category" dataKey="subject" width={90} interval={0} tick={<BarAxisTick />} tickMargin={12} tickLine={false} axisLine={false} />
-                <Tooltip
-                  contentStyle={{ borderRadius: 8, border: "none", boxShadow: "0 10px 15px -3px rgba(0,0,0,0.08)", direction: "rtl", fontSize: 13 }}
-                  formatter={(value, name, props) => [`${value} از ${props?.payload?.fullMark ?? 100}`, name]}
-                  labelFormatter={(label) => `شاخص: ${label}`}
-                />
-                <Bar name="این محصول" dataKey="current" fill={currentColor} radius={[0, 4, 4, 0]} maxBarSize={14} />
-                {comparisonProducts.map((product, index) => (
-                  <Bar key={product._id ?? index} name={product.title ?? product.name ?? `محصول ${index + 1}`} dataKey={`p_${product._id ?? index}`} fill={resolveProductColor(product, index + 1)} radius={[0, 4, 4, 0]} maxBarSize={14} />
-                ))}
-              </BarChart>
-            </ResponsiveContainer>
-          </div>
-        </div>
+        <dl dir="rtl" className="flex min-w-0 flex-col justify-center gap-5 rounded-md bg-white p-3 sm:p-5">
+          {data.map((point, index) => (
+            <div key={categoryStats[index].name} className="grid grid-cols-[28%_minmax(0,1fr)] items-center gap-3">
+              <dt className="text-sm font-bold text-gray-700 [overflow-wrap:anywhere]">{point.subject}</dt>
+              <dd className="grid gap-2">
+                {barSeries.map(({ key, name, color }) => {
+                  const value = point[key];
+                  const valid = Number.isFinite(value);
+                  const percent = valid && point.fullMark > 0
+                    ? Math.min(100, Math.max(0, value / point.fullMark * 100))
+                    : 0;
+                  const score = valid ? scoreFormat.format(value) : "—";
+                  const description = `${name}، ${score} از ${scoreFormat.format(point.fullMark)}`;
+                  return (
+                    <div key={key} className="grid grid-cols-[minmax(0,1fr)_4ch] items-center gap-2 text-sm font-bold tabular-nums" title={description}>
+                      <span aria-hidden="true" className="h-3 overflow-hidden rounded-full bg-neutral-200">
+                        <span className="block h-full rounded-full" style={{ width: `${percent}%`, backgroundColor: color }} />
+                      </span>
+                      <span aria-hidden="true" dir="ltr" className="text-left">{score}</span>
+                      <span className="sr-only">{description}</span>
+                    </div>
+                  );
+                })}
+              </dd>
+            </div>
+          ))}
+        </dl>
       )}
       </div>
 
