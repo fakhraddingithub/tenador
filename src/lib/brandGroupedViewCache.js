@@ -11,7 +11,9 @@ const cloneFilters = (filters = {}) => ({
   minPrice: Number(filters.minPrice) || 0,
   maxPrice: Number(filters.maxPrice) || 0,
   categoryIds: [...(filters.categoryIds || [])],
-  categoryAttributes: Object.fromEntries(Object.entries(filters.categoryAttributes || {}).map(([name, values]) => [name, [...values]])),
+  // آرایه (دکمه/رنگ) یا بازه‌ی عددیِ { min, max }
+  categoryAttributes: Object.fromEntries(Object.entries(filters.categoryAttributes || {}).map(([name, values]) =>
+    [name, Array.isArray(values) ? [...values] : { min: values?.min ?? null, max: values?.max ?? null }])),
 });
 
 export function buildBrandGroupedViewCacheKey({
@@ -41,7 +43,7 @@ const filtersSignature = (filters) => {
     f.maxPrice,
     f.categoryIds.sort(),
     Object.entries(f.categoryAttributes)
-      .map(([name, values]) => [name, values.sort()])
+      .map(([name, values]) => [name, Array.isArray(values) ? values.sort() : values])
       .sort((a, b) => (a[0] < b[0] ? -1 : 1)),
   ]);
 };

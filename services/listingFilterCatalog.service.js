@@ -10,7 +10,7 @@ import { buildStorefrontAudienceMatch } from "base/utils/targetAudience";
 import { applyCategorySubtree, getCategorySubtree } from "base/services/categorySubtree.service";
 import { collectCategorySubtree, filterCategoriesBySelection, selectedCategoryIds } from "base/utils/categorySubtree";
 import { buildCollaborationScopes, collaborationMatchBranches } from "base/utils/brandCollaboration";
-import { buildAttributeMeta, mergeAttributeMeta, productMatchesAttrFilters } from "@/lib/attributeFilters";
+import { buildAttributeMeta, countActiveAttrFilters, mergeAttributeMeta, productMatchesAttrFilters } from "@/lib/attributeFilters";
 
 const oid = (value) => new mongoose.Types.ObjectId(String(value));
 
@@ -83,7 +83,8 @@ const getCatalog = unstable_cache(async (scope) => {
         attributeMeta: buildAttributeMeta(category.attributes, category.products),
       })),
   }));
-}, ["listing-filter-catalog-v2-kids-subtree"], {
+  // v3: attributeMeta عددی min/max/step دارد؛ ورودیِ کش‌شده‌ی قبلی آن‌ها را نداشت.
+}, ["listing-filter-catalog-v3-number-range"], {
   revalidate: 300, tags: ["products", "categories", "series", "brands", "limited-editions"],
 });
 
@@ -110,7 +111,7 @@ const toIdList = (value) =>
  * هرگز به یک مسیرِ Mongo تبدیل نمی‌شود.
  */
 export async function buildCategoryAttributeMatch(scope, categoryIds, selections = {}) {
-  if (!Object.values(selections || {}).some((v) => Array.isArray(v) && v.length)) return {};
+  if (countActiveAttrFilters(selections) === 0) return {};
   const ids = toIdList(categoryIds);
   const { categories, products } = await getCatalog(scope);
   const active = filterCategoriesBySelection(categories, ids);

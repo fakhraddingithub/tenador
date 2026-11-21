@@ -1871,6 +1871,25 @@ Rules that are load-bearing:
 npm run test:icon-logo
 ```
 
+### Storefront attribute filters: ranges and single colour
+
+`src/lib/attributeFilters.js` decides each filterable fixed attribute's type from the values on the page.
+**Only when every value is a plain number** (`toNumber`: Persian/Arabic digits and `٫` count, any letter or
+unit does not — `305g` keeps buttons) it is `type: "number"` with `min`/`max`/`step`, and the sidebar shows
+a range like the price. Its selection is `{ min, max }` (`null` = no bound, reaching either end of the slider
+clears that bound), in the URL as `Name_min`/`Name_max`; an old `?Weight=300` link becomes the range of
+those values. Colour is single-select (`?Color=a&Color=b` keeps the first).
+
+- A range on a non-number attribute is ignored, and `pruneAttributes` drops a selection whose shape no
+  longer matches the merged type after a category change.
+- Arrays on a number attribute still mean exact values: campaign rules (`EventForm` passes `exactValues`,
+  `resolveAttributeRule` stores arrays) and the order-flow picker are unchanged.
+- `parseCategoryAttributes` accepts `{min, max}` of finite numbers (or null) only; anything else is a 400.
+
+```bash
+npm run test:attribute-filters
+```
+
 ### Slug System
 
 `SlugRegistery` model maps dynamic URL segments (sport/category/brand slugs) to their entity types. `actions/registerSlug.js` is a server action that creates entries on entity creation. This powers ISR revalidation — when a slug is revalidated, the correct entity page is rebuilt.

@@ -2,7 +2,7 @@
 
 import AttributeFilters from "@/components/features/filters/AttributeFilters";
 import FilterGroup from "@/components/features/filters/FilterGroup";
-import { mergeAttributeMeta } from "@/lib/attributeFilters";
+import { isRangeSelection, mergeAttributeMeta } from "@/lib/attributeFilters";
 import { filterCategoriesBySelection } from "base/utils/categorySubtree";
 
 /**
@@ -57,10 +57,16 @@ export function activeCategories(categories, selected = [], fixedCategory = fals
   return filterCategoriesBySelection(categories, selected);
 }
 
-/** فیلترهای ویژگیِ دیگر نامرئی را دور می‌ریزد (پس از تغییرِ انتخابِ دسته). */
+/**
+ * فیلترهای ویژگیِ دیگر نامرئی را دور می‌ریزد (پس از تغییرِ انتخابِ دسته). انتخابی
+ * که شکلش دیگر به نوعِ ویژگی نمی‌خورد هم حذف می‌شود: با اضافه‌شدنِ دسته‌ای که برای
+ * همان ویژگی مقدارِ متنی دارد، بازه به دکمه تبدیل می‌شود (و برعکس)؛ وگرنه فیلتری
+ * می‌ماند که در سایدبار دیده نمی‌شود.
+ */
 export function pruneAttributes(attributes, categories, selected, fixedCategory = false) {
-  const visible = new Set(
-    mergeAttributeMeta(activeCategories(categories, selected, fixedCategory)).map((m) => m.name),
+  const visible = new Map(
+    mergeAttributeMeta(activeCategories(categories, selected, fixedCategory)).map((m) => [m.name, m]),
   );
-  return Object.fromEntries(Object.entries(attributes || {}).filter(([name]) => visible.has(name)));
+  return Object.fromEntries(Object.entries(attributes || {}).filter(([name, sel]) =>
+    visible.has(name) && isRangeSelection(sel) === (visible.get(name).type === "number")));
 }

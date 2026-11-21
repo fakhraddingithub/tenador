@@ -592,6 +592,7 @@ function AttributeRuleInput({ value, onChange }) {
           attrFilters={filters}
           setAttrFilters={(next) => onChange({ filters: next })}
           defaultOpen
+          exactValues
         />
       )}
     </div>

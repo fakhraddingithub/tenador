@@ -111,10 +111,27 @@ test("subseries catalog includes only its own categories and products", async ()
 });
 
 test("malformed filter payloads are rejected", () => {
-  for (const value of ['[]', 'null', '{', '{"Weight":{"$gt":0}}', '{"Weight":[5]}']) {
+  for (const value of ['[]', 'null', '{', '{"Weight":{"$gt":0}}', '{"Weight":[5]}',
+    '{"Weight":{"min":"300"}}', '{"Weight":{"min":310,"max":300}}', '{"Weight":{"min":1,"$where":1}}']) {
     assert.throws(() => parseCategoryAttributes(value));
   }
   assert.deepEqual([...parseCategoryAttributes('{"Weight":["300","300"]}').Weight], ["300"]);
+  assert.deepEqual({ ...parseCategoryAttributes('{"Weight":{"min":301,"max":null}}') }, { Weight: { min: 301, max: null } });
+  assert.deepEqual({ ...parseCategoryAttributes('{"Weight":{"min":null,"max":null}}') }, {});
+});
+
+test("a numeric attribute filters by range on the server, string and number values alike", async () => {
+  const options = await getListingFilterOptions(scope);
+  assert.deepEqual(
+    (({ type, min, max, step }) => ({ type, min, max, step }))(options[0].attributeMeta[0]),
+    { type: "number", min: 300, max: 305, step: 1 },
+  );
+  const heavy = await getBrandGroupedSections({ ...scope, categoryAttributes: { Weight: { min: 301, max: null } }, withIndex: true });
+  assert.equal(heavy.totalCount, 22); // "305" (رشته)
+  const light = await getBrandGroupedSections({ ...scope, categoryAttributes: { Weight: { min: null, max: 300 } }, withIndex: true });
+  assert.equal(light.totalCount, 24); // 300 (عدد) + Direct
+  const none = await getBrandGroupedSections({ ...scope, categoryAttributes: { Weight: { min: 301, max: 304 } }, withIndex: true });
+  assert.equal(none.totalCount, 0);
 });
 
 test("category checkboxes scope several categories at once and merge their attributes", async () => {
