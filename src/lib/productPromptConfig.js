@@ -176,7 +176,8 @@ export const TEMPLATE_DEFS = [
 
   { key: "output_structure", group: "ساختار خروجی", label: "ساختار JSON خروجی", tokens: ["sport_id", "category_id", "custom_tab_output"], required: ["sport_id", "category_id", "custom_tab_output"] },
   { key: "custom_tab_output", group: "ساختار خروجی", label: "سطر customTabItems (فقط برای دسته‌ای که تب سفارشی دارد)", tokens: [] },
-  { key: "custom_tab_text_output", group: "ساختار خروجی", label: "سطرهای customTabTitles و customTabDescriptions (بلافاصله بعد از سطر customTabItems)", tokens: [] },
+  { key: "custom_tab_titles_output", group: "ساختار خروجی", label: "سطر customTabTitles (فقط وقتی دسته قاعده‌ی ساخت عنوان دارد)", tokens: [] },
+  { key: "custom_tab_descriptions_output", group: "ساختار خروجی", label: "سطر customTabDescriptions (فقط وقتی دسته قاعده‌ی ساخت توضیحات دارد)", tokens: [] },
 ];
 const TEMPLATE_BY_KEY = new Map(TEMPLATE_DEFS.map((t) => [t.key, t]));
 

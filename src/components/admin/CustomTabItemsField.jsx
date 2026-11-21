@@ -12,8 +12,12 @@ const fieldClass =
  * مخصوصِ همین محصول (customTabTitles / customTabDescriptions، با عنوانِ آیتم) نوشته می‌شود؛ خالی
  * یعنی صفحه‌ی محصول متنِ دستیِ آیتم را نشان می‌دهد، که همین‌جا placeholder است.
  *
+ * هر کادر فقط وقتی هست که دسته قاعده‌ی همان بخش را دارد (customTab.titlePrompt /
+ * descriptionPrompt) — همان کلیدی که پرامپت را روشن می‌کند — یا متنی برایش ذخیره شده،
+ * تا متنِ ذخیره‌شده هیچ‌وقت پنهان نماند. بی‌قاعده، فرم همان چک‌باکس‌های قبلی است.
+ *
  * @param {{
- *   tab: { items: Array<{ _id, title, description }> },
+ *   tab: { items: Array<{ _id, title, description }>, titlePrompt?, descriptionPrompt? },
  *   selected: string[], titles: Record<string,string>, descriptions: Record<string,string>,
  *   onChange: (patch: { customTabItems?, customTabTitles?, customTabDescriptions? }) => void,
  *   errors?: Record<string,string>, disabled?: boolean,
@@ -23,12 +27,16 @@ export default function CustomTabItemsField({ tab, selected = [], titles, descri
   const titleMap = isMap(titles) ? titles : {};
   const descriptionMap = isMap(descriptions) ? descriptions : {};
   const setText = (key, map, title, text) => onChange({ [key]: { ...map, [title]: text } });
+  const writesTitles = Boolean(String(tab?.titlePrompt ?? '').trim());
+  const writesDescriptions = Boolean(String(tab?.descriptionPrompt ?? '').trim());
 
   return (
     <div className="space-y-2">
       <div className="grid grid-cols-1 md:grid-cols-2 gap-2 items-start">
         {(tab?.items || []).map((item) => {
           const checked = selected.includes(item.title);
+          const showTitle = checked && (writesTitles || Boolean(titleMap[item.title]));
+          const showDescription = checked && (writesDescriptions || Boolean(descriptionMap[item.title]));
           return (
             <div key={item._id || item.title} className={`rounded-lg border p-2.5 text-sm ${checked ? 'border-[var(--color-primary)]/40 bg-white' : 'border-neutral-200 bg-neutral-50'}`}>
               <label className="flex cursor-pointer items-center gap-2">
@@ -46,9 +54,9 @@ export default function CustomTabItemsField({ tab, selected = [], titles, descri
                 />
                 <span className="truncate font-bold">{item.title}</span>
               </label>
-              {checked && (
+              {(showTitle || showDescription) && (
                 <div className="mt-2.5 space-y-2">
-                  <input
+                  {showTitle && <input
                     dir="auto"
                     className={fieldClass}
                     value={titleMap[item.title] || ''}
@@ -57,8 +65,8 @@ export default function CustomTabItemsField({ tab, selected = [], titles, descri
                     onChange={(e) => setText('customTabTitles', titleMap, item.title, e.target.value)}
                     placeholder={`عنوان برای این محصول — خالی: «${item.title}»`}
                     aria-label={`عنوانِ «${item.title}» برای این محصول`}
-                  />
-                  <textarea
+                  />}
+                  {showDescription && <textarea
                     dir="auto"
                     rows={3}
                     className={`${fieldClass} resize-y leading-6`}
@@ -68,7 +76,7 @@ export default function CustomTabItemsField({ tab, selected = [], titles, descri
                     onChange={(e) => setText('customTabDescriptions', descriptionMap, item.title, e.target.value)}
                     placeholder={item.description ? `توضیحات برای این محصول — خالی: «${item.description}»` : 'توضیحات برای این محصول (آیتم توضیحِ پیش‌فرض ندارد)'}
                     aria-label={`توضیحاتِ «${item.title}» برای این محصول`}
-                  />
+                  />}
                 </div>
               )}
             </div>

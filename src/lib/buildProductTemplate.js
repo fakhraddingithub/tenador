@@ -148,13 +148,21 @@ export function composeProductPrompt({ category, promptConfig = null }) {
   // ─── Custom Tab ───────────────────────────────────────────────────────────
   // An item has no prompt of its own any more: only rules a group saved for it in an earlier
   // version (tabItem:<title>) still sit next to its title. Its catalog description is context.
+  // Titles and descriptions per product are opt-in per category: each field (and the catalog
+  // description as context) is in the prompt only once its category prompt is written. With
+  // neither, the AI only picks items and the page shows the items' own text, as before.
+  const tabTextFields = {
+    customTabTitles: Boolean(String(customTab.titlePrompt ?? "").trim()),
+    customTabDescriptions: Boolean(String(customTab.descriptionPrompt ?? "").trim()),
+  };
+  const writesTabTexts = tabTextFields.customTabTitles || tabTextFields.customTabDescriptions;
   const tabItems =
     customTab.enabled && Array.isArray(customTab.items)
       ? customTab.items
           .filter((item) => item?.title)
           .map((item) => ({
             title: item.title,
-            description: String(item.description ?? "").trim(),
+            description: writesTabTexts ? String(item.description ?? "").trim() : "",
             rules: rulesFor(dynamicFieldKey("tabItem", item.title), "", { kind: "tabItem", title: item.title }),
           }))
       : [];
@@ -211,8 +219,12 @@ export function composeProductPrompt({ category, promptConfig = null }) {
     output_structure: template("output_structure", {
       sport_id: values.sport_id,
       category_id: values.category_id,
-      // titles/descriptions are their own template, so a config stored before they existed still asks for them
-      custom_tab_output: tabItems.length ? template("custom_tab_output") + template("custom_tab_text_output") : "",
+      // titles/descriptions are their own templates, so a config stored before they existed still asks for them
+      custom_tab_output: tabItems.length
+        ? template("custom_tab_output")
+          + (tabTextFields.customTabTitles ? template("custom_tab_titles_output") : "")
+          + (tabTextFields.customTabDescriptions ? template("custom_tab_descriptions_output") : "")
+        : "",
     }),
   };
 
@@ -254,8 +266,8 @@ export function composeProductPrompt({ category, promptConfig = null }) {
     return { categoryText: value.trim(), categorySource: { kind: "categoryField", field: key, value } };
   };
   const fields = PRODUCT_PROMPT_FIELDS
-    // the custom tab fields exist only for a category whose tab has items
-    .filter(({ key }) => !CUSTOM_TAB_FIELDS.has(key) || tabItems.length)
+    // the custom tab fields exist only for a category whose tab has items; its two text fields only once switched on
+    .filter(({ key }) => !CUSTOM_TAB_FIELDS.has(key) || (tabItems.length && (tabTextFields[key] ?? true)))
     .map(({ key, title }) => {
       const entry = fieldConfig.get(key);
       const rules = resolveFieldRules({ baseRules: entry?.rules || [], groups, categoryId, field: key, ...categoryRuleFor(key) });

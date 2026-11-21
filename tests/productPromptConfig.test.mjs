@@ -775,10 +775,42 @@ test("custom tab: its three prompts are the category rules of selection, titles 
   assert.ok(prompt.includes('"customTabDescriptions": {'));
 });
 
+test("custom tab: with no title/description prompt the AI only picks items, as before; each prompt switches on its own field", () => {
+  const items = [{ _id: C, title: "ONE", description: "CATALOG ONE" }, { _id: D, title: "TWO" }];
+  const build = (extra) => draft(category(A, { customTab: { enabled: true, name: "T", prompt: "PICK RULE", items, ...extra } }));
+  const has = (prompt, field) => prompt.includes(`\n${field}:\n`);
+
+  // nothing written (or only blanks): exactly the old prompt — selection only, bare item lines
+  for (const off of [build({}), build({ titlePrompt: "  ", descriptionPrompt: "\n" })]) {
+    assert.ok(has(off, "customTabItems") && fieldBlock(off, "customTabItems").endsWith("PICK RULE"));
+    assert.ok(!has(off, "customTabTitles") && !has(off, "customTabDescriptions"));
+    assert.ok(!off.includes('"customTabTitles"') && !off.includes('"customTabDescriptions"'));
+    assert.ok(off.includes('Available titles for "T":\n  - "ONE"\n  - "TWO"\n'));
+    assert.ok(!off.includes("CATALOG ONE"));
+  }
+
+  // a title prompt switches on titles only
+  const titles = build({ titlePrompt: "TITLE RULE" });
+  assert.ok(has(titles, "customTabTitles") && fieldBlock(titles, "customTabTitles").endsWith("TITLE RULE"));
+  assert.ok(!has(titles, "customTabDescriptions"));
+  assert.ok(titles.includes('"customTabTitles": {') && !titles.includes('"customTabDescriptions"'));
+  assert.ok(titles.includes('  - "ONE" | Catalog description (context only): CATALOG ONE\n'));
+
+  // a description prompt switches on descriptions only
+  const descriptions = build({ descriptionPrompt: "DESC RULE" });
+  assert.ok(has(descriptions, "customTabDescriptions") && !has(descriptions, "customTabTitles"));
+  assert.ok(descriptions.includes('"customTabDescriptions": {') && !descriptions.includes('"customTabTitles"'));
+
+  // the preview model follows the same switch
+  const model = composeProductPrompt({ category: category(A, { customTab: { enabled: true, name: "T", items, titlePrompt: "TITLE RULE" } }) });
+  assert.deepEqual(model.fields.filter((f) => f.key.startsWith("customTab")).map((f) => f.key), ["customTabItems", "customTabTitles"]);
+});
+
 test("custom tab: a config stored with the old output line still asks for titles and descriptions", () => {
   const config = stored((c) => {
     c.fieldRules = c.fieldRules.filter((f) => !["customTabTitles", "customTabDescriptions"].includes(f.field));
-    delete c.templates.custom_tab_text_output;
+    delete c.templates.custom_tab_titles_output;
+    delete c.templates.custom_tab_descriptions_output;
     delete c.templates.custom_tab_item_description;
   });
   const resolved = resolvePromptConfig(config);
@@ -789,7 +821,9 @@ test("custom tab: a config stored with the old output line still asks for titles
   assert.ok(fieldBlock(prompt, "customTabTitles").includes(PROMPT_SEED.fieldRules.find((f) => f.field === "customTabTitles").rules[0]));
   assert.ok(prompt.includes('"customTabDescriptions": {'));
   // a template stored as "" stays empty
-  const silenced = draft(richCategory(), stored((c) => { c.templates.custom_tab_text_output = ""; c.templates.custom_tab_item_description = ""; }));
+  const silenced = draft(richCategory(), stored((c) => {
+    c.templates.custom_tab_titles_output = ""; c.templates.custom_tab_descriptions_output = ""; c.templates.custom_tab_item_description = "";
+  }));
   assert.ok(!silenced.includes('"customTabTitles": {'));
   assert.ok(!silenced.includes("CATALOG 45"));
 });
@@ -800,9 +834,7 @@ test("custom tab: without a prompt nothing is added; a disabled tab contributes 
   assert.ok(plain.includes('Available titles for "T":\n  - "ONE"\n'));
   assert.ok(!plain.includes("| Selection Rule:"));
   assert.ok(!plain.includes("Catalog description"));
-  for (const field of ["customTabItems", "customTabTitles", "customTabDescriptions"]) {
-    assert.ok(!fieldBlock(plain, field).includes("Category-specific rules"), field);
-  }
+  assert.ok(!fieldBlock(plain, "customTabItems").includes("Category-specific rules"));
 
   const off = draft(category(A, { customTab: { ...plainTab, enabled: false, prompt: "TAB RULE", titlePrompt: "TITLE RULE", items: [{ title: "ONE", prompt: "HINT" }] } }));
   for (const text of ["customTabItems", "customTabTitles", "customTabDescriptions", "TAB RULE", "TITLE RULE", "HINT"]) assert.ok(!off.includes(text), text);

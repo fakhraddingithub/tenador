@@ -472,12 +472,15 @@ lines read left to right.
 
 **Custom tab prompts.** The tab has three category rules, each the category rule of its own field (base → groups →
 this): `customTab.prompt` → `customTabItems` (which items), `customTab.titlePrompt` → `customTabTitles`,
-`customTab.descriptionPrompt` → `customTabDescriptions`. The two text fields print only when the tab has items and are
-offered to groups. Items have **no prompt of their own** any more (the per-item «راهنمای انتخاب» was removed; stored ones
-are deleted by `npm run migrate:remove-tab-item-prompts` and never print meanwhile); an item's line carries its catalog
-description as context (`custom_tab_item_description`, optional `{{description}}` token) plus legacy `tabItem:` group
-rules. The two output lines are their own template, `custom_tab_text_output`, appended to `{{custom_tab_output}}`, so a
-config stored before them still asks for them. A disabled tab contributes nothing. A legacy `category.prompts` entry for
+`customTab.descriptionPrompt` → `customTabDescriptions`. **The two text fields are opt-in per category: each prints only
+when its own category prompt is non-blank** (and the tab has items). With neither written the prompt is the old one —
+selection only, bare item lines, no text output — so the page shows the items' manual text; writing one switches on just
+that field. Base and group rules for them therefore only ever reach a category that switched them on. Items have **no
+prompt of their own** any more (the per-item «راهنمای انتخاب» was removed and deleted from the database by
+`npm run migrate:remove-tab-item-prompts`); while either text field is on, an item's line carries its catalog
+description as context (`custom_tab_item_description`, optional `{{description}}` token), plus legacy `tabItem:` group
+rules. Each output line is its own template (`custom_tab_titles_output`, `custom_tab_descriptions_output`), appended to
+`{{custom_tab_output}}` only for a field that is on, so a config stored before them still asks for them. A disabled tab contributes nothing. A legacy `category.prompts` entry for
 `customTabItems` still applies when the tab's own prompt is empty. The category `PUT` follows `undefined ≠ ""` for all
 three, so a client that does not send them keeps them. See «Custom tab: per-product item texts» for what happens to the output.
 
@@ -546,7 +549,9 @@ each picked item, for that product**: `customTabTitles` / `customTabDescriptions
 - Unknown titles: create/PUT skip them with a warning (like `customTabItems`), the edit form drops them with a warning,
   the regeneration planner rejects them (`fieldErrors.customTabTitles|customTabDescriptions`).
 - Both product forms use `CustomTabItemsField`: under each ticked item a title input and a description textarea whose
-  placeholders are the catalog text that shows when they stay empty.
+  placeholders are the catalog text that shows when they stay empty. Each box appears only when the category switched that
+  field on (its prompt is non-blank) **or** a text is already stored, so a stored text is never hidden; with both prompts
+  blank the form is the old checkbox list.
 
 ```bash
 npm run test:custom-tab-texts       # helper + product-page wiring
