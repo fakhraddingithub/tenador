@@ -49,7 +49,7 @@ export default function UsedProductCard({
         <div className="absolute top-3 left-3 z-20">
           <Image
             src={baseProduct.brand.icon}
-            alt={baseProduct.brand.title || "brand"}
+            alt={baseProduct.brand.title || baseProduct.brand.name || "برند"}
             width={30}
             height={30}
             className="object-contain"

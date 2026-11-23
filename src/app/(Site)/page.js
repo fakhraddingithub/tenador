@@ -70,6 +70,8 @@ export default async function Home() {
 
   return (
     <>
+      {/* اسلایدرِ هیرو تیتر متنی ندارد؛ این H1 برای موتورهای جستجو و صفحه‌خوان است */}
+      <h1 className="sr-only">{metadata.title}</h1>
       <Hero slides={JSON.parse(JSON.stringify(slides))} />
       <BannerSection />
       <SportsGrid categories={JSON.parse(JSON.stringify(sports))} />

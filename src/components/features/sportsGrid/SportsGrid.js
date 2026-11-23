@@ -115,7 +115,7 @@ function CategoryCard({ category, className, sizes = "(max-width: 767px) 100vw, 
         src={category.image}
         sizes={sizes}
         loading="lazy"
-        alt={category.name}
+        alt={category.title || category.name}
         className="absolute inset-0 w-full h-full object-cover transition-transform duration-700 ease-out group-hover:scale-105"
       />
 
@@ -130,7 +130,7 @@ function CategoryCard({ category, className, sizes = "(max-width: 767px) 100vw, 
             <div className="w-8 h-8 relative flex-shrink-0">
               <Image
                 src={category.icon}
-                alt={category.name}
+                alt={category.title || category.name}
                 fill
                 sizes="32px"
                 className="object-contain brightness-0 invert"
@@ -160,7 +160,7 @@ function CategoryCard({ category, className, sizes = "(max-width: 767px) 100vw, 
                 <div className="w-7 h-7 relative flex-shrink-0">
                   <Image
                     src={category.icon}
-                    alt={category.name}
+                    alt={category.title || category.name}
                     fill
                     sizes="32px"
                     className="object-contain brightness-0 invert"

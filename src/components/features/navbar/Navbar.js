@@ -701,7 +701,7 @@ useEffect(() => {
                   <Image
                     src="/logo/logo.svg"
                   loading="eager"
-                    alt="logo"
+                    alt="تنادور"
                     width={160}
                     height={65}
                     className="w-auto h-[55px] object-contain transition-transform duration-300 hover:scale-105"
@@ -922,7 +922,7 @@ useEffect(() => {
                 <Image
                   src="/logo/logo.svg"
                   loading="eager"
-                  alt="logo"
+                  alt="تنادور"
                   width={100}
                   height={45}
                   className="w-auto h-[45px] object-contain"

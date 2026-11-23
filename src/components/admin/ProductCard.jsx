@@ -56,7 +56,7 @@ export default function ProductCard({ product, onEdit, onDelete }) {
       {/* بج برند (سمت چپ‌بالا) — اختیاری */}
       {brand?.icon && (
         <div className="absolute top-3 left-3 z-20">
-          <Image src={brand.icon} alt="brand" width={30} height={30} className="object-contain" />
+          <Image src={brand.icon} alt={brand.title || brand.name || "برند"} width={30} height={30} className="object-contain" />
         </div>
       )}
 

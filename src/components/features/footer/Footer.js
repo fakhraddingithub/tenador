@@ -126,7 +126,7 @@ export default function Footer({ footer: footerProp }) {
           {/* Brand Column */}
           <div className="lg:col-span-2">
             <div className="mb-6 opacity-90">
-              <Image src="/logo/logo.svg" alt="logo" width={120} height={120} />
+              <Image src="/logo/logo.svg" alt="تنادور" width={120} height={120} />
             </div>
             {footer.description && (
               <p className="text-[#9da5b3] mb-8 leading-relaxed text-sm whitespace-pre-line">

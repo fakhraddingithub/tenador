@@ -59,7 +59,7 @@ export default function ProductCard({ product, rate, onQuickView, onQuickViewInt
 
       {product.brand?.icon && (
         <div className="absolute top-3 left-3 z-20">
-          <Image src={product.brand.icon} alt="brand" width={30} height={30} className="object-contain" />
+          <Image src={product.brand.icon} alt={product.brand.title || product.brand.name || "برند"} width={30} height={30} className="object-contain" />
         </div>
       )}
 
